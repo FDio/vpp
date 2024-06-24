@@ -68,6 +68,24 @@
       "parentUuid": "134ec6b8_45cd438b",
       "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27e59742_65e368f2",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2024-06-24T12:19:35Z",
+      "side": 1,
+      "message": "\u003e When this code is actually getting executed in the main thread, the state and condition of the bond interface might have changed such that link up/link down event might not be valid anymore. I think we should pass the sw_if_index and event to this function. When this function is run, grab the bif from the sw_if_index. Based on the event link up/down, test the condition again prior to calling vnet_hw_interface_set_flags so that we don\u0027t erroneously set the flags to the wrong state.\n\nIf two events occur in a row where the first one causes the link to change and the second one changes it back, two RPCs will be scheduled one by another. The first one will make the initial change and the second one will revert it. This will be done in a single iteration of the main thread\u0027s main loop and under a barrier sync. So I don\u0027t expect any problems.\n\nThe same thing would happen if the link was updated immediately without calling RPCs. There would be two changes to the link in a raw too. The second change would cancel the first one. However, was the first one erroneous?\n\n\u003e On a second thought, we have a bond_process already. Why not take advantage of it and send the event to bond process to handle it instead?\n\nThis approach might also work. However, processes are not executed under a barrier sync. And more code would be required in order to handle the case you mentioned above.",
+      "parentUuid": "95ec4900_52ba1305",
+      "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
