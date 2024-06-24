@@ -67,6 +67,9 @@ RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
 
 void RT (mma_rules_table_free) (RTT (mma_rules_table) * srt)
 {
+  RTT (mma_rule) * rule;
+
+  pool_flush (rule, srt->rules, ({}));
   pool_free (srt->rules);
 }
 
