@@ -242,6 +242,12 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	}
 }
 
+func (s *HstSuite) SkipIfNotEnoughCpus(NRequiredCpus int) {
+	if s.CpuPerVpp < NRequiredCpus {
+		s.Skip("test case requires " + fmt.Sprint(NRequiredCpus) + " cpus per container")
+	}
+}
+
 func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
 	imageName := "hs-test/nginx-http3"
 
