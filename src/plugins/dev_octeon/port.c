@@ -393,6 +393,18 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_tx_queue (q, port)
     oct_txq_stop (vm, q);
+
+  vnet_dev_port_state_change (vm, port,
+			      (vnet_dev_port_state_changes_t){
+				.change.link_state = 1,
+				.change.link_speed = 1,
+				.link_speed = 0,
+				.link_state = 0,
+			      });
+
+  /* Update the device status */
+  cd->status = 0;
+  cd->speed = 0;
 }
 
 vnet_dev_rv_t
