@@ -184,6 +184,7 @@ func (vpp *VppInstance) Start() error {
 	e := <-connEv
 	if e.State != core.Connected {
 		vpp.getSuite().Log("connecting to VPP failed: " + fmt.Sprint(e.Error))
+		return e.Error
 	}
 
 	ch, err := conn.NewStream(
