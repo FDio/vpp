@@ -242,6 +242,22 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	}
 }
 
+func (s *HstSuite) SkipIfNotMultiWorker(NRequiredCpus int) {
+	if s.CpuPerVpp < NRequiredCpus {
+		s.Skip("test case requires " + fmt.Sprint(NRequiredCpus) + " cpus per container")
+	}
+}
+
+func (s *HstSuite) SkipIfNotEnoughAvailableCpus(containerCount int, nCpus int) bool {
+	MaxRequestedCpu := (GinkgoParallelProcess() * containerCount * nCpus)
+
+	if len(s.CpuAllocator.cpus)-1 < MaxRequestedCpu {
+		s.Skip(fmt.Sprint("test case cannot allocate requested cpus (%d cpus * %d containers)", nCpus, containerCount))
+	}
+
+	return true
+}
+
 func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
 	imageName := "hs-test/nginx-http3"
 
