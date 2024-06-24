@@ -88,6 +88,13 @@ type VppInstance struct {
 	Connection       *core.Connection
 	ApiStream        api.Stream
 	Cpus             []int
+	CpuConfig        VppCpuConfig
+}
+
+type VppCpuConfig struct {
+	PinMainCpu         bool
+	PinWorkersCorelist bool
+	SkipCores          int
 }
 
 func (vpp *VppInstance) getSuite() *HstSuite {
@@ -131,7 +138,7 @@ func (vpp *VppInstance) Start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 	)
-	configContent += vpp.generateCpuConfig()
+	configContent += vpp.generateVPPCpuConfig()
 	for _, c := range vpp.AdditionalConfig {
 		configContent += c.ToString()
 	}
@@ -476,26 +483,55 @@ func (vpp *VppInstance) Disconnect() {
 	vpp.ApiStream.Close()
 }
 
-func (vpp *VppInstance) generateCpuConfig() string {
+func (vpp *VppInstance) setDefaultCpuConfig() {
+	vpp.CpuConfig.PinMainCpu = true
+	vpp.CpuConfig.PinWorkersCorelist = true
+	vpp.CpuConfig.SkipCores = 0
+}
+
+func (vpp *VppInstance) generateVPPCpuConfig() string {
 	var c Stanza
 	var s string
+	startCpu := 0
 	if len(vpp.Cpus) < 1 {
 		return ""
 	}
-	c.NewStanza("cpu").
-		Append(fmt.Sprintf("main-core %d", vpp.Cpus[0]))
-	vpp.getSuite().Log(fmt.Sprintf("main-core %d", vpp.Cpus[0]))
-	workers := vpp.Cpus[1:]
+
+	c.NewStanza("cpu")
+
+	// If skip-cores is valid, use as start value to assign main/workers CPUs
+	if vpp.CpuConfig.SkipCores != 0 {
+		c.Append(fmt.Sprintf("skip-cores %d", vpp.CpuConfig.SkipCores))
+		vpp.getSuite().Log(fmt.Sprintf("skip-cores %d", vpp.CpuConfig.SkipCores))
+	}
+
+	if len(vpp.Cpus) > vpp.CpuConfig.SkipCores {
+		startCpu = vpp.CpuConfig.SkipCores
+	}
+
+	if vpp.CpuConfig.PinMainCpu {
+		c.Append(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
+		vpp.getSuite().Log(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
+	}
+
+	workers := vpp.Cpus[startCpu+1:]
 
 	if len(workers) > 0 {
-		for i := 0; i < len(workers); i++ {
-			if i != 0 {
-				s = s + ", "
+		if vpp.CpuConfig.PinWorkersCorelist {
+			for i := 0; i < len(workers); i++ {
+				if i != 0 {
+					s = s + ", "
+				}
+				s = s + fmt.Sprintf("%d", workers[i])
 			}
-			s = s + fmt.Sprintf("%d", workers[i])
+			c.Append(fmt.Sprintf("corelist-workers %s", s))
+			vpp.getSuite().Log("corelist-workers " + s)
+		} else {
+			s = fmt.Sprintf("%d", len(workers))
+			c.Append(fmt.Sprintf("workers %s", s))
+			vpp.getSuite().Log("workers " + s)
 		}
-		c.Append(fmt.Sprintf("corelist-workers %s", s))
-		vpp.getSuite().Log("corelist-workers " + s)
 	}
+
 	return c.Close().ToString()
 }
