@@ -107,6 +107,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "26884d9c_b54ad2e3",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-24T17:21:52Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d51b4fa5_a6df08ee",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1521fbba_c7c747a8",
         "filename": "src/vnet/ip6-nd/ip6_ra.c",
         "patchSetId": 2
@@ -118,6 +136,24 @@
       "writtenOn": "2024-06-04T21:48:48Z",
       "side": 1,
       "message": "I think you should get rid of \"defaults\". If you\u0027re trying to simplify the configuration of IPv6 RA, lets just use the values that were passed in. If the default values should be set, the default values can be passed in the message.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91aa4f92_53903d1d",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1708,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-24T17:21:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1521fbba_c7c747a8",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -135,6 +171,24 @@
       "writtenOn": "2024-06-04T21:48:48Z",
       "side": 1,
       "message": "This comment is copy/pasted and is not relevant anymore since \"is_no\" is going away.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1be5168f_2ad2d5c7",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1738,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-24T17:21:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "104e4241_f4d4e459",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
