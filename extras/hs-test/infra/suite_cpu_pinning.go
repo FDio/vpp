@@ -2,10 +2,10 @@ package hst
 
 import (
 	"fmt"
+	. "github.com/onsi/ginkgo/v2"
 	"reflect"
 	"runtime"
 	"strings"
-	. "github.com/onsi/ginkgo/v2"
 )
 
 var cpuPinningTests = map[string][]func(s *CpuPinningSuite){}

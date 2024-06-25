@@ -5,14 +5,14 @@ import (
 )
 
 func init() {
-	RegisterCpuPinningTests(DefaultCpuConfigurationTest, SkipCoresTest, SkipCoresNegativeTest)
+	RegisterCpuPinningTests(DefaultCpuConfigurationTest, SkipCoresTest, TranslateAutoTest, TranslateAutoNoMainPinTest, TranslateAutoSkipCoresTest)
 }
-
-// TODO: Add more CPU configuration tests
 
 func DefaultCpuConfigurationTest(s *CpuPinningSuite) {
 	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
 	s.AssertNil(vpp.Start())
+	// o := vpp.Vppctl("show threads")
+	// s.Log(o)
 }
 
 func SkipCoresTest(s *CpuPinningSuite) {
@@ -22,6 +22,7 @@ func SkipCoresTest(s *CpuPinningSuite) {
 	skipCoresConfiguration := VppCpuConfig{
 		PinMainCpu:         true,
 		PinWorkersCorelist: true,
+		TranslateCores:     false,
 		SkipCores:          1,
 	}
 
@@ -31,17 +32,50 @@ func SkipCoresTest(s *CpuPinningSuite) {
 	s.AssertNil(vpp.Start())
 }
 
-func SkipCoresNegativeTest(s *CpuPinningSuite) {
+func TranslateAutoTest(s *CpuPinningSuite) {
+	s.SkipIfNotMultiWorker(2)
+
+	translateCoresConfiguration := VppCpuConfig{
+		PinMainCpu:         true,
+		PinWorkersCorelist: false,
+		TranslateCores:     true,
+		SkipCores:          0,
+	}
+	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
+	vpp.CpuConfig = translateCoresConfiguration
+
+	s.AssertNil(vpp.Start())
+
+}
+
+func TranslateAutoNoMainPinTest(s *CpuPinningSuite) {
+	s.SkipIfNotMultiWorker(2)
+
+	translateCoresConfiguration := VppCpuConfig{
+		PinMainCpu:         false,
+		PinWorkersCorelist: false,
+		TranslateCores:     true,
+		SkipCores:          0,
+	}
+	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
+	vpp.CpuConfig = translateCoresConfiguration
+
+	s.AssertNil(vpp.Start())
+
+}
+
+func TranslateAutoSkipCoresTest(s *CpuPinningSuite) {
 	s.SkipIfNotMultiWorker(3)
 
-	skipCoresConfiguration := VppCpuConfig{
+	translateCoresConfiguration := VppCpuConfig{
 		PinMainCpu:         true,
-		PinWorkersCorelist: true,
-		SkipCores:          100,
+		PinWorkersCorelist: false,
+		TranslateCores:     true,
+		SkipCores:          1,
 	}
-
 	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
-	vpp.CpuConfig = skipCoresConfiguration
+	vpp.CpuConfig = translateCoresConfiguration
 
-	s.AssertNotNil(vpp.Start())
+	s.AssertNil(vpp.Start())
+
 }

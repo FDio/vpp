@@ -244,7 +244,7 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 
 func (s *HstSuite) SkipIfNotMultiWorker(NRequiredCpus int) {
 	if *NConfiguredCpus < NRequiredCpus {
-		s.Skip("test case requires "+ fmt.Sprint(NRequiredCpus) + " Cpus per container")
+		s.Skip("test case requires " + fmt.Sprint(NRequiredCpus) + " Cpus per container")
 	}
 }
 
