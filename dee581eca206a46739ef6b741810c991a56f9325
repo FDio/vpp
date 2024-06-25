@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00a5f866_e62827cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2024-06-25T10:42:13Z",
+      "side": 1,
+      "message": "just checking, is there anything that is holding this commit?",
+      "revId": "dee581eca206a46739ef6b741810c991a56f9325",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
