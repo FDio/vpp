@@ -4,7 +4,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
-#include <vnet/dev/pci.h>
 #include <vnet/dev/counters.h>
 #include <vppinfra/ring.h>
 #include <dev_iavf/iavf.h>

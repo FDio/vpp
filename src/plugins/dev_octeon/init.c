@@ -4,7 +4,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
-#include <vnet/dev/pci.h>
+#include <vnet/dev/bus/pci.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/plugin/plugin.h>
