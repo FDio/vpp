@@ -16,6 +16,24 @@
       "message": "you still have %U in the format string",
       "revId": "8299510264bc95a3dc29f86c27e7bc1aacd2cff1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "831c698a_7902bda2",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2024-06-25T06:29:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1876915_5cf62881",
+      "revId": "8299510264bc95a3dc29f86c27e7bc1aacd2cff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
