@@ -4,7 +4,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
-#include <vnet/dev/pci.h>
+#include <vnet/dev/bus/pci.h>
 #include <dev_ena/ena.h>
 #include <dev_ena/ena_inlines.h>
 #include <vnet/ethernet/ethernet.h>
