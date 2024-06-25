@@ -95,7 +95,9 @@ type VppInstance struct {
 
 type VppCpuConfig struct {
 	PinMainCpu         bool
+	UseWorkers         bool
 	PinWorkersCorelist bool
+	RelativeCores      bool
 	SkipCores          int
 }
 
@@ -603,7 +605,9 @@ func (vpp *VppInstance) Disconnect() {
 
 func (vpp *VppInstance) setDefaultCpuConfig() {
 	vpp.CpuConfig.PinMainCpu = true
+	vpp.CpuConfig.UseWorkers = true
 	vpp.CpuConfig.PinWorkersCorelist = true
+	vpp.CpuConfig.RelativeCores = false
 	vpp.CpuConfig.SkipCores = 0
 }
 
@@ -617,6 +621,11 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 
 	c.NewStanza("cpu")
 
+	if vpp.CpuConfig.RelativeCores {
+		c.Append("relative")
+		vpp.getSuite().Log("relative")
+	}
+
 	// If skip-cores is valid, use as start value to assign main/workers CPUs
 	if vpp.CpuConfig.SkipCores != 0 {
 		c.Append(fmt.Sprintf("skip-cores %d", vpp.CpuConfig.SkipCores))
@@ -628,19 +637,32 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 	}
 
 	if vpp.CpuConfig.PinMainCpu {
-		c.Append(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
-		vpp.getSuite().Log(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
+		if vpp.CpuConfig.RelativeCores {
+			c.Append(fmt.Sprintf("main-core %d", startCpu))
+			vpp.getSuite().Log(fmt.Sprintf("main-core %d", startCpu))
+		} else {
+			c.Append(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
+			vpp.getSuite().Log(fmt.Sprintf("main-core %d", vpp.Cpus[startCpu]))
+		}
 	}
 
 	workers := vpp.Cpus[startCpu+1:]
+	workersRelativeCpu := startCpu + 1
 
-	if len(workers) > 0 {
+	if len(workers) > 0 && vpp.CpuConfig.UseWorkers {
 		if vpp.CpuConfig.PinWorkersCorelist {
 			for i := 0; i < len(workers); i++ {
 				if i != 0 {
 					s = s + ", "
 				}
-				s = s + fmt.Sprintf("%d", workers[i])
+
+				if vpp.CpuConfig.RelativeCores {
+					s = s + fmt.Sprintf("%d", workersRelativeCpu)
+					workersRelativeCpu++
+				} else {
+					s = s + fmt.Sprintf("%d", workers[i])
+				}
+
 			}
 			c.Append(fmt.Sprintf("corelist-workers %s", s))
 			vpp.getSuite().Log("corelist-workers " + s)
