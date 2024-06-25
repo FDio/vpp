@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0330d7e0_bda7686f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-06-25T16:54:07Z",
+      "side": 1,
+      "message": "Looks good, just a quick nit",
+      "revId": "218ade7fbb0528b7c394d0482e14a7099412d7ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77ee113d_8d4350af",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-06-25T16:54:07Z",
+      "side": 1,
+      "message": "Should we add s.Fail() ?",
+      "revId": "218ade7fbb0528b7c394d0482e14a7099412d7ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
