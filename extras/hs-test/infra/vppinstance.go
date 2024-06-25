@@ -95,7 +95,9 @@ type VppInstance struct {
 
 type VppCpuConfig struct {
 	PinMainCpu         bool
+	UseWorkers         bool
 	PinWorkersCorelist bool
+	TranslateCores     bool
 	SkipCores          int
 }
 
@@ -157,7 +159,11 @@ func (vpp *VppInstance) Start() error {
 		defaultLogFilePath,
 		cliConfig,
 	)
-	configContent += vpp.generateVPPCpuConfig()
+	if vpp.CpuConfig.TranslateCores == false {
+		configContent += vpp.generateVPPCpuConfig()
+	} else {
+		configContent += vpp.generateVPPTranslatedCpuConfig()
+	}
 	for _, c := range vpp.AdditionalConfig {
 		configContent += c.ToString()
 	}
@@ -601,8 +607,64 @@ func (vpp *VppInstance) Disconnect() {
 
 func (vpp *VppInstance) setDefaultCpuConfig() {
 	vpp.CpuConfig.PinMainCpu = true
+	vpp.CpuConfig.UseWorkers = true
 	vpp.CpuConfig.PinWorkersCorelist = true
+	vpp.CpuConfig.TranslateCores = false
 	vpp.CpuConfig.SkipCores = 0
+}
+
+func (vpp *VppInstance) generateVPPTranslatedCpuConfig() string {
+	var c Stanza
+	var s string
+	startCpu := 0
+	if len(vpp.Cpus) < 1 {
+		return ""
+	}
+
+	c.NewStanza("cpu")
+
+	if vpp.CpuConfig.TranslateCores {
+		c.Append("translate")
+		vpp.getSuite().Log("translate")
+	}
+
+	// If skip-cores is valid, use as start value to assign main/workers CPUs
+	if vpp.CpuConfig.SkipCores != 0 {
+		c.Append(fmt.Sprintf("skip-cores %d", vpp.CpuConfig.SkipCores))
+		vpp.getSuite().Log(fmt.Sprintf("skip-cores %d", vpp.CpuConfig.SkipCores))
+	}
+
+	if len(vpp.Cpus) > vpp.CpuConfig.SkipCores {
+		startCpu = vpp.CpuConfig.SkipCores
+	}
+
+	if vpp.CpuConfig.PinMainCpu {
+		c.Append(fmt.Sprintf("main-core %d", startCpu))
+		vpp.getSuite().Log(fmt.Sprintf("main-core %d", startCpu))
+	}
+
+	workers := vpp.Cpus[startCpu+1:]
+	workerStartCpu := startCpu + 1
+
+	if len(workers) > 0 && vpp.CpuConfig.UseWorkers {
+		if vpp.CpuConfig.PinWorkersCorelist {
+			for i := 0; i < len(workers); i++ {
+				if i != 0 {
+					s = s + ", "
+				}
+				s = s + fmt.Sprintf("%d", workerStartCpu)
+				workerStartCpu++
+			}
+			c.Append(fmt.Sprintf("corelist-workers %s", s))
+			vpp.getSuite().Log("corelist-workers " + s)
+		} else {
+			s = fmt.Sprintf("%d", len(workers))
+			c.Append(fmt.Sprintf("workers %s", s))
+			vpp.getSuite().Log("workers " + s)
+		}
+	}
+
+	return c.Close().ToString()
 }
 
 func (vpp *VppInstance) generateVPPCpuConfig() string {
@@ -632,7 +694,7 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 
 	workers := vpp.Cpus[startCpu+1:]
 
-	if len(workers) > 0 {
+	if len(workers) > 0 && vpp.CpuConfig.UseWorkers {
 		if vpp.CpuConfig.PinWorkersCorelist {
 			for i := 0; i < len(workers); i++ {
 				if i != 0 {
