@@ -130,7 +130,7 @@ func (c *CpuAllocatorT) readCpus() error {
 			tmpCpus = iterateAndAppend(third, fourth, tmpCpus)
 
 			// discard cpu 0
-			if tmpCpus[0] == 0 && !*UseCpu0{
+			if tmpCpus[0] == 0 && !*UseCpu0 {
 				tmpCpus = tmpCpus[1:]
 			}
 
