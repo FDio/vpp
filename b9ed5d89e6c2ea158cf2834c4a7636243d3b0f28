@@ -104,6 +104,24 @@
       "parentUuid": "27e59742_65e368f2",
       "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab327ada_a980b0ee",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2024-06-25T11:40:15Z",
+      "side": 1,
+      "message": "\u003e The bond interface can be deleted by the time this routine is run. The same hw_if_index may be recycled and used for other interface.\n\nIn theory, yes. But do you know what series of events could lead to this in practice? I see that RPCs are always executed before API requests are processed. In other words, before an interface can be deleted by the control plane and hw_if_index recycled.\n\nBy the way, bond_process accepts hw_if_index and thus, also suffers from the case you are mentioning. However, in the case of a process node, it is real that it may be executed after a series of API requests of deleting a bond and creating another interface (that will get the same hw_if_index). And the event will be processed for the wrong interface.\n\n\u003e It is nice to have bond_process to handle events serially rather than introducing RPCs.\n\nRPCs are also executed serially.\n\nI think RPCs exist for a reason. Their goal is to be able to run unsafe code. And I think the goal of a process node is to be able to execute periodic tasks. No safety is implied.",
+      "parentUuid": "b6e3fb25_2a9fbc5b",
+      "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
