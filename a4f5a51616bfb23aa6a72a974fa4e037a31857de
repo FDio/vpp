@@ -16,6 +16,23 @@
       "message": "Related mail to vpp-dev: https://lists.fd.io/g/vpp-dev/message/24407?p\u003d%2C%2C%2C20%2C0%2C0%2C0%3A%3Arecentpostdate%2Fsticky%2C%2Cseed%2C20%2C2%2C0%2C105945403",
       "revId": "a4f5a51616bfb23aa6a72a974fa4e037a31857de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c50e3c04_04ee73fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2024-06-25T10:40:04Z",
+      "side": 1,
+      "message": "Hello, just checking. Is there any concerns holding this request?",
+      "revId": "a4f5a51616bfb23aa6a72a974fa4e037a31857de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
