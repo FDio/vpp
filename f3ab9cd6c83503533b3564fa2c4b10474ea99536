@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "adf49bc1_0b46f66e",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-25T15:29:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "039ae156_d6837d43",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6a3630ef_c48d594d",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-06-04T21:48:48Z",
       "side": 1,
       "message": "The old message should be marked deprecated so that eventually everyone could migrate to the newer one.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8aad4845_85a934ac",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-25T15:29:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6a3630ef_c48d594d",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +124,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "34efd7b8_37fb6cdc",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-25T15:29:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5da70caf_722e4146",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d51b4fa5_a6df08ee",
@@ -119,6 +173,24 @@
       "side": 1,
       "message": "Ack",
       "parentUuid": "d51b4fa5_a6df08ee",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d731329a_879c18bc",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-25T15:29:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "26884d9c_b54ad2e3",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -241,6 +313,24 @@
       "side": 1,
       "message": "So regarding your previous comment about enumflag, we could have something like ip6_ra_config_flag.. Sounds good",
       "parentUuid": "28546c02_18844f07",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3dd3f0b9_5139354e",
+        "filename": "src/vnet/ip6-nd/ip6_ra.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-06-25T15:29:53Z",
+      "side": 1,
+      "message": "I\u0027ve tried both options. Keep existing internal API with the new external and old ones. And tried to use new internal for both external APIs. It was pretty hard to support and pretty dirty, so I believe, having the dedicated internal function to handle flags is not the worst choice",
+      "parentUuid": "28939ad6_e3cda91e",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
