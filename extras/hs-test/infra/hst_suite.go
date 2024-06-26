@@ -463,13 +463,15 @@ func (s *HstSuite) GetPortFromPpid() string {
 	return port[len(port)-3:] + s.ProcessIndex
 }
 
-func (s *HstSuite) StartServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.GetPortFromPpid())
-	if env != nil {
-		cmd.Env = env
+func (s *HstSuite) StartServerApp(c *Container, env map[string]string, running chan error, done chan struct{}) {
+	for key, value := range env {
+		c.AddEnvVar(key, value)
 	}
-	s.Log(cmd)
-	err := cmd.Start()
+
+	s.Log("starting server")
+	c.ExecServer("iperf3 -4 -s -1 -p " + s.GetPortFromPpid())
+
+	err := exechelper.Run("docker exec " + c.Name + " pidof iperf3")
 	if err != nil {
 		msg := fmt.Errorf("failed to start iperf server: %v", err)
 		running <- msg
@@ -477,32 +479,33 @@ func (s *HstSuite) StartServerApp(running chan error, done chan struct{}, env []
 	}
 	running <- nil
 	<-done
-	cmd.Process.Kill()
 }
 
-func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
+func (s *HstSuite) StartClientApp(c *Container, ipAddress string, env map[string]string, clnCh chan error, clnRes chan string) {
 	defer func() {
 		clnCh <- nil
 	}()
 
-	nTries := 0
+	for key, value := range env {
+		c.AddEnvVar(key, value)
+	}
 
+	s.Log("starting client")
+	cmd := "docker exec " + c.getEnvVarsAsCliOption() + " " + c.Name + " iperf3 -c " + ipAddress + " -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
+	nTries := 0
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.GetPortFromPpid())
-		if env != nil {
-			cmd.Env = env
-		}
 		s.Log(cmd)
-		o, err := cmd.CombinedOutput()
+		o, err := exechelper.CombinedOutput(cmd)
 		if err != nil {
 			if nTries > 5 {
-				clnCh <- fmt.Errorf("failed to start client app '%s'.\n%s", err, o)
+				clnCh <- fmt.Errorf("failed to start client app '%s'", err)
 				return
 			}
 			time.Sleep(1 * time.Second)
 			nTries++
 			continue
 		} else {
+			s.Log("running iperf3:")
 			clnRes <- fmt.Sprintf("Client output: %s", o)
 		}
 		break
