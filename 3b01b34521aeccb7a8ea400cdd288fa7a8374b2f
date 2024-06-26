@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13b766ed_211709d0",
+        "filename": "extras/hs-test/cpu_pinning_test.go",
+        "patchSetId": 9
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-06-26T13:20:35Z",
+      "side": 1,
+      "message": "Do we need these skips if we force s.CpuPerVpp?\nIf you could add a skip if the host doesn\u0027t have enough cpus, that would be great.",
+      "range": {
+        "startLine": 14,
+        "startChar": 1,
+        "endLine": 14,
+        "endChar": 26
+      },
+      "revId": "3b01b34521aeccb7a8ea400cdd288fa7a8374b2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
