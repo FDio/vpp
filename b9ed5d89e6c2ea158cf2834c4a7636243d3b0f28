@@ -122,6 +122,24 @@
       "parentUuid": "b6e3fb25_2a9fbc5b",
       "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b4aa85d_774de606",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-06-26T18:36:21Z",
+      "side": 1,
+      "message": "I am thinking some race condition like this may happen albeit rare. The API/CLI to delete the bond interface is already in the queue, waiting for the barrier due to the worker thread is running and making this RPC call. As soon as this worker thread is done, the CLI/API to delete the bond interface is able to obtain the barrier sync and run to delete the bond interface before the RPC message gets to run.",
+      "parentUuid": "ab327ada_a980b0ee",
+      "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
