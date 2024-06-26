@@ -29,5 +29,7 @@ then
     else
         echo "Not compressing files in temporary directories from test runs."
     fi
+    echo "*************************** SUMMARY ***************************"
+    cat "${HS_ROOT}/summary/failed-summary.log"
     exit 1
 fi
