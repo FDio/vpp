@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
@@ -18,28 +17,32 @@ func LDPreloadIperfVppInterruptModeTest(s *VethsSuite) {
 
 func LDPreloadIperfVppTest(s *VethsSuite) {
 	var clnVclConf, srvVclConf Stanza
-	var ldpreload string
+
+	envVarsCln := make(map[string]string)
+	envVarsSrv := make(map[string]string)
 
 	serverContainer := s.GetContainerByName("server-vpp")
 	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
+	defer delete(serverContainer.EnvVars, "LD_PRELOAD")
+	defer delete(serverContainer.EnvVars, "VCL_CONFIG")
 
 	clientContainer := s.GetContainerByName("client-vpp")
 	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
+	defer delete(clientContainer.EnvVars, "LD_PRELOAD")
+	defer delete(clientContainer.EnvVars, "VCL_CONFIG")
 
-	if *IsDebugBuild {
-		ldpreload = "LD_PRELOAD=../../build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
-	} else {
-		ldpreload = "LD_PRELOAD=../../build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
-	}
+	envVarsCln["LD_PRELOAD"] = "/usr/lib/libvcl_ldpreload.so"
+	envVarsSrv["LD_PRELOAD"] = "/usr/lib/libvcl_ldpreload.so"
 
-	stopServerCh := make(chan struct{}, 1)
-	srvCh := make(chan error, 1)
+	runningSrv := make(chan error)
+	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
+	clnRes := make(chan string, 1)
 
 	s.Log("starting VPPs")
 
 	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		clientContainer.GetHostWorkDir())
+		clientContainer.GetContainerWorkDir())
 	err := clnVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
@@ -52,7 +55,7 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		serverContainer.GetHostWorkDir())
+		serverContainer.GetContainerWorkDir())
 	err = srvVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
@@ -66,22 +69,22 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 
 	s.Log("attaching server to vpp")
 
-	srvEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+serverVclFileName)
+	envVarsCln["VCL_CONFIG"] = clientContainer.GetContainerWorkDir() + "/vcl_cln.conf"
+	envVarsSrv["VCL_CONFIG"] = serverContainer.GetContainerWorkDir() + "/vcl_srv.conf"
+
 	go func() {
 		defer GinkgoRecover()
-		s.StartServerApp(srvCh, stopServerCh, srvEnv)
+		s.StartServerApp(serverContainer, envVarsSrv, runningSrv, doneSrv)
 	}()
 
-	err = <-srvCh
-	s.AssertNil(err, fmt.Sprint(err))
+	err = <-runningSrv
+	s.AssertNil(err)
 
 	s.Log("attaching client to vpp")
-	var clnRes = make(chan string, 1)
-	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clientVclFileName)
 	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.StartClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
+		s.StartClientApp(clientContainer, serverVethAddress, envVarsCln, clnCh, clnRes)
 	}()
 	s.Log(<-clnRes)
 
@@ -90,5 +93,5 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 
 	// stop server
-	stopServerCh <- struct{}{}
+	doneSrv <- struct{}{}
 }
