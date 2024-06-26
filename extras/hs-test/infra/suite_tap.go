@@ -27,7 +27,31 @@ func (s *TapSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("tap")
+	s.LoadContainerTopology("2vpp")
 }
+
+// *** Not needed for now as TapSuite is only used for iperf_linux_test,
+// which doesn't need VPP
+// func (s *TapSuite) SetupTest() {
+// 	s.HstSuite.SetupTest()
+// var sessionConfig Stanza
+
+// sessionConfig.
+// 	NewStanza("session").
+// 	Append("enable").
+// 	Append("use-app-socket-api")
+
+// if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
+// 	sessionConfig.Append("use-private-rx-mqs").Close()
+// 	s.Log("**********************INTERRUPT MODE**********************")
+// } else {
+// 	sessionConfig.Close()
+// }
+
+// vppContainer := s.GetContainerByName("server-vpp")
+// vpp, _ := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
+// s.AssertNil(vpp.Start())
+// }
 
 var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 	var s TapSuite
