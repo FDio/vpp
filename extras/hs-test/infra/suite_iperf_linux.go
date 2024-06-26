@@ -9,28 +9,36 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-type TapSuite struct {
+type IperfSuite struct {
 	HstSuite
 }
 
-var tapTests = map[string][]func(s *TapSuite){}
-var tapSoloTests = map[string][]func(s *TapSuite){}
+const (
+	ServerIperfContainerName string = "server"
+	ServerIperfInterfaceName string = "hstsrv"
+	ClientIperfContainerName string = "client"
+	ClientIperfInterfaceName string = "hstcln"
+)
 
-func RegisterTapTests(tests ...func(s *TapSuite)) {
-	tapTests[getTestFilename()] = tests
+var iperfTests = map[string][]func(s *IperfSuite){}
+var iperfSoloTests = map[string][]func(s *IperfSuite){}
+
+func RegisterIperfTests(tests ...func(s *IperfSuite)) {
+	iperfTests[getTestFilename()] = tests
 }
-func RegisterTapSoloTests(tests ...func(s *TapSuite)) {
-	tapSoloTests[getTestFilename()] = tests
+func RegisterIperfSoloTests(tests ...func(s *IperfSuite)) {
+	iperfSoloTests[getTestFilename()] = tests
 }
 
-func (s *TapSuite) SetupSuite() {
+func (s *IperfSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("tap")
+	s.ConfigureNetworkTopology("2taps")
+	s.LoadContainerTopology("2containers")
 }
 
-var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
-	var s TapSuite
+var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, func() {
+	var s IperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -44,7 +52,7 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for filename, tests := range tapTests {
+	for filename, tests := range iperfTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -58,8 +66,8 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
-	var s TapSuite
+var _ = Describe("IperfSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+	var s IperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -73,7 +81,7 @@ var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for filename, tests := range tapSoloTests {
+	for filename, tests := range iperfSoloTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()

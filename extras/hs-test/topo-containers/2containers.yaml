@@ -1,0 +1,4 @@
+---
+containers:
+  - name: "server"
+  - name: "client"
