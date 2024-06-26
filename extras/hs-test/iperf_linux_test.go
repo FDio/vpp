@@ -1,27 +1,33 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
+
+	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	RegisterTapTests(LinuxIperfTest)
+	RegisterTapTests(IperfLinuxTest)
 }
 
-func LinuxIperfTest(s *TapSuite) {
+func IperfLinuxTest(s *TapSuite) {
+	serverContainer := s.GetContainerByName("server-vpp")
+	clientContainer := s.GetContainerByName("client-vpp")
+
 	clnCh := make(chan error)
 	stopServerCh := make(chan struct{})
 	srvCh := make(chan error, 1)
 	clnRes := make(chan string, 1)
+
 	defer func() {
 		stopServerCh <- struct{}{}
 	}()
 
 	go func() {
 		defer GinkgoRecover()
-		s.StartIperfServerApp(srvCh, stopServerCh, nil)
+		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid()
+		s.StartServerApp(serverContainer, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 	err := <-srvCh
 	s.AssertNil(err, fmt.Sprint(err))
@@ -30,11 +36,11 @@ func LinuxIperfTest(s *TapSuite) {
 	ipAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.StartIperfClientApp(ipAddress, nil, clnCh, clnRes)
+		cmd := "iperf3 -c " + ipAddress + " -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
+		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
-	s.Log("client running")
+
 	s.Log(<-clnRes)
 	err = <-clnCh
 	s.AssertNil(err, "err: '%s', ip: '%s'", err, ipAddress)
-	s.Log("Test completed")
 }
