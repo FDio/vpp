@@ -82,9 +82,17 @@ http_state_is_tx_valid (http_conn_t *hc)
 {
   http_state_t state = hc->http_state;
   return (state == HTTP_STATE_APP_IO_MORE_DATA ||
-	  state == HTTP_STATE_CLIENT_IO_MORE_DATA ||
 	  state == HTTP_STATE_WAIT_APP_REPLY ||
 	  state == HTTP_STATE_WAIT_APP_METHOD);
+}
+
+static inline int
+http_state_is_rx_valid (http_conn_t *hc)
+{
+  http_state_t state = hc->http_state;
+  return (state == HTTP_STATE_WAIT_SERVER_REPLY ||
+	  state == HTTP_STATE_CLIENT_IO_MORE_DATA ||
+	  state == HTTP_STATE_WAIT_CLIENT_METHOD);
 }
 
 static inline http_worker_t *
@@ -1052,7 +1060,6 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   return HTTP_SM_CONTINUE;
 
 error:
-  clib_warning ("unexpected msg type from app %u", msg.type);
   http_send_error (hc, sc);
   http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
   session_transport_closing_notify (&hc->connection);
@@ -1286,12 +1293,16 @@ http_ts_rx_callback (session_t *ts)
       return -1;
     }
 
-  if (hc->state == HTTP_CONN_STATE_CLOSED)
+  if (!http_state_is_rx_valid (hc))
     {
+      if (hc->state != HTTP_CONN_STATE_CLOSED)
+	clib_warning ("app data req state '%U' session state %u",
+		      format_http_state, hc->http_state, hc->state);
       svm_fifo_dequeue_drop_all (ts->tx_fifo);
       return 0;
     }
 
+  HTTP_DBG (1, "run state machine");
   http_req_run_state_machine (hc, 0);
 
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
@@ -1597,6 +1608,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
   sp->max_burst_size = max_burst_sz;
 
+  HTTP_DBG (1, "run state machine");
   http_req_run_state_machine (hc, sp);
 
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
