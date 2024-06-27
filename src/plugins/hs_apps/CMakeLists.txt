@@ -23,6 +23,7 @@ add_vpp_plugin(hs_apps
   http_client_cli.c
   http_tps.c
   proxy.c
+  test_builtins.c
 )
 
 ##############################################################################
