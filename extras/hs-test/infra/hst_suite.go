@@ -219,6 +219,10 @@ func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{})
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
+func (s *HstSuite) AssertMatchError(actual, expected error, msgAndArgs ...interface{}) {
+	Expect(actual).To(MatchError(expected))
+}
+
 func (s *HstSuite) CreateLogger() {
 	suiteName := s.GetCurrentSuiteName()
 	var err error
