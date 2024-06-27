@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"github.com/onsi/gomega/gmeasure"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptrace"
+	"os"
 	"time"
 
 	. "fd.io/hs-test/infra"
-	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest)
-	RegisterNoTopoTests(HeaderServerTest,
+	RegisterNoTopoTests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
 		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
 		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
@@ -55,6 +57,98 @@ func HttpTpsTest(s *NoTopoSuite) {
 	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
 
 	s.RunBenchmark("HTTP tps 10M", 10, 0, httpDownloadBenchmark, url)
+}
+
+func HttpPersistentConnectionTest(s *NoTopoSuite) {
+	// testing url handler app do not support multi-thread
+	s.SkipIfMultiWorker()
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("test-buildins enable"))
+
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	transport.(*http.Transport).DisableKeepAlives = false
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Second * 30,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}}
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/test1", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertEqual(200, resp.StatusCode)
+	s.AssertEqual(false, resp.Close)
+	body, err := io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(string(body), "hello")
+	o1 := vpp.Vppctl("show session verbose proto http state ready")
+	s.Log(o1)
+	s.AssertContains(o1, "ESTABLISHED")
+
+	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	clientTrace := &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			s.AssertEqual(true, info.Reused, "connection not reused")
+		},
+	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace))
+	resp, err = client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertEqual(200, resp.StatusCode)
+	s.AssertEqual(false, resp.Close)
+	body, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(string(body), "some data")
+	s.AssertNil(err, fmt.Sprint(err))
+	o2 := vpp.Vppctl("show session verbose proto http state ready")
+	s.Log(o2)
+	s.AssertContains(o2, "ESTABLISHED")
+	s.AssertEqual(o1, o2)
+}
+
+func HttpPipeliningTest(s *NoTopoSuite) {
+	// testing url handler app do not support multi-thread
+	s.SkipIfMultiWorker()
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	s.Log(vpp.Vppctl("test-buildins enable"))
+
+	req1 := "GET /test_delayed HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
+	req2 := "GET /test1 HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
+
+	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer conn.Close()
+	err = conn.SetDeadline(time.Now().Add(time.Second * 15))
+	s.AssertNil(err, fmt.Sprint(err))
+	n, err := conn.Write([]byte(req1))
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(n, len([]rune(req1)))
+	// send second request a bit later so first is already in progress
+	time.Sleep(500 * time.Millisecond)
+	n, err = conn.Write([]byte(req2))
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(n, len([]rune(req2)))
+	reply := make([]byte, 1024)
+	n, err = conn.Read(reply)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(string(reply))
+	s.AssertContains(string(reply), "delayed data", "first request response not received")
+	s.AssertNotContains(string(reply), "hello", "second request response received")
+	// make sure response for second request is not received later
+	_, err = conn.Read(reply)
+	s.AssertMatchError(err, os.ErrDeadlineExceeded, "second request response received")
 }
 
 func HttpCliTest(s *VethsSuite) {
