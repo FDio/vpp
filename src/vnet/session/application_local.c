@@ -1350,13 +1350,21 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
   ct_main_t *cm = &ct_main;
   ct_worker_t *wrk;
 
+  if (is_en == 0)
+    return 0;
+
   cm->n_workers = vlib_num_workers ();
   cm->fwrk_thread = transport_cl_thread ();
   vec_validate (cm->wrk, vtm->n_vlib_mains);
   vec_foreach (wrk, cm->wrk)
-    clib_spinlock_init (&wrk->pending_connects_lock);
-  clib_spinlock_init (&cm->ho_reuseable_lock);
-  clib_rwlock_init (&cm->app_segs_lock);
+    {
+      if (wrk->pending_connects_lock == 0)
+	clib_spinlock_init (&wrk->pending_connects_lock);
+    }
+  if (cm->ho_reuseable_lock == 0)
+    clib_spinlock_init (&cm->ho_reuseable_lock);
+  if (cm->app_segs_lock == 0)
+    clib_rwlock_init (&cm->app_segs_lock);
   vec_validate (cm->fwrk_pending_connects, cm->n_workers);
   return 0;
 }

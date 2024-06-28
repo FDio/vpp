@@ -2073,6 +2073,63 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static f32
+session_get_memory_usage (void)
+{
+  clib_mem_heap_t *heap = clib_mem_get_per_cpu_heap ();
+  u8 *s = 0;
+  char *ss;
+  f32 used;
+
+  s = format (s, "%U\n", format_clib_mem_heap, heap, 0);
+  ss = strstr ((char *) s, "used:");
+  sscanf (ss, "used: %f", &used);
+  vec_free (s);
+  return (used);
+}
+
+static int
+session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
+{
+  u32 iteration = 100, i;
+  uword was_enabled;
+  f32 was_using, now_using;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "repeat %d", &iteration))
+	;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  was_enabled = clib_mem_trace_enable_disable (0);
+  /* warm up */
+  for (i = 0; i < 10; i++)
+    {
+      vnet_session_enable_disable (vm, 0);
+      vnet_session_enable_disable (vm, 1);
+    }
+  was_using = session_get_memory_usage ();
+
+  for (i = 0; i < iteration; i++)
+    {
+      vnet_session_enable_disable (vm, 0);
+      vnet_session_enable_disable (vm, 1);
+    }
+  now_using = session_get_memory_usage ();
+
+  clib_mem_trace_enable_disable (was_enabled);
+  SESSION_TEST ((was_using == now_using), "was using %.2fM, now using %.2fM",
+		was_using, now_using);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -2099,6 +2156,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_mq_speed (vm, input);
       else if (unformat (input, "mq-basic"))
 	res = session_test_mq_basic (vm, input);
+      else if (unformat (input, "enable-disable"))
+	res = session_test_enable_disable (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -2116,6 +2175,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_mq_speed (vm, input)))
 	    goto done;
 	  if ((res = session_test_mq_basic (vm, input)))
+	    goto done;
+	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;
 	}
       else
