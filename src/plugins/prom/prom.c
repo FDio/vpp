@@ -201,16 +201,18 @@ send_data_to_hss (hss_session_handle_t sh)
 static void
 send_data_to_hss_rpc (void *rpc_args)
 {
-  send_data_to_hss (*(hss_session_handle_t *) rpc_args);
+  hss_session_handle_t *sh = (hss_session_handle_t *) rpc_args;
+  send_data_to_hss (*sh);
+  clib_mem_free (rpc_args);
 }
 
 static uword
 prom_scraper_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 		      vlib_frame_t *f)
 {
-  uword *event_data = 0, event_type;
+  uword *event_data = 0, event_type, *sh_as_uword;
   prom_main_t *pm = &prom_main;
-  hss_session_handle_t sh;
+  hss_session_handle_t sh, *rpc_sh;
   f64 timeout = 10000.0;
 
   while (1)
@@ -223,12 +225,17 @@ prom_scraper_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	  /* timeout, do nothing */
 	  break;
 	case PROM_SCRAPER_EVT_RUN:
-	  sh.as_u64 = event_data[0];
 	  vec_reset_length (pm->stats);
 	  pm->stats = scrape_stats_segment (pm->stats, pm->stats_patterns,
 					    pm->used_only);
-	  session_send_rpc_evt_to_thread_force (sh.thread_index,
-						send_data_to_hss_rpc, &sh);
+	  vec_foreach (sh_as_uword, event_data)
+	    {
+	      sh.as_u64 = *sh_as_uword;
+	      rpc_sh = clib_mem_alloc (sizeof (sh));
+	      clib_memcpy_fast (rpc_sh, &sh, sizeof (sh));
+	      session_send_rpc_evt_to_thread_force (
+		sh.thread_index, send_data_to_hss_rpc, rpc_sh);
+	    }
 	  pm->last_scrape = vlib_time_now (vm);
 	  break;
 	default:
