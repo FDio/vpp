@@ -24,7 +24,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandler)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -201,6 +201,18 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Content-Type"), "plain")
 	s.AssertNotEqual(int64(0), resp.ContentLength)
 	_, err = io.ReadAll(resp.Body)
+}
+
+func PromConcurrentConnections(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	url := "http://" + serverAddress + ":80/stats.prom"
+
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("prom enable"))
+	time.Sleep(time.Second * 5)
+
+	s.RunBenchmark("Prom Concurrent Connections", 20, 10, httpDownloadBenchmark, url)
 }
 
 func HttpStaticFileHandler(s *NoTopoSuite) {
