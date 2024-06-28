@@ -962,6 +962,12 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   session_rule_table_add_del_args_t *table_args = &args.table_args;
   int rv = 0;
 
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
   clib_memset (&args, 0, sizeof (args));
 
   ip_prefix_decode (&mp->lcl, &table_args->lcl);
@@ -986,6 +992,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
       rv = VNET_API_ERROR_UNSPECIFIED;
     }
   vec_free (table_args->tag);
+done:
   REPLY_MACRO (VL_API_SESSION_RULE_ADD_DEL_REPLY);
 }
 
