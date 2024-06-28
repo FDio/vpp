@@ -565,6 +565,7 @@ runBenchmark creates Gomega's experiment with the passed-in name and samples the
 passing in suite context, experiment and your data.
 
 You can also instruct runBenchmark to run with multiple concurrent workers.
+Note that if running in parallel Gomega returns from Sample when spins up all samples and does not wait until all finished.
 You can record multiple named measurements (float64 or duration) within passed-in callback.
 runBenchmark then produces report to show statistical distribution of measurements.
 */
