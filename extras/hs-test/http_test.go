@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"os"
+	"sync"
 	"time"
 
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
@@ -24,7 +26,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandler)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -201,6 +203,37 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Content-Type"), "plain")
 	s.AssertNotEqual(int64(0), resp.ContentLength)
 	_, err = io.ReadAll(resp.Body)
+}
+
+func promReq(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
+	defer GinkgoRecover()
+	defer wg.Done()
+	client := NewHttpClient()
+	req, err := http.NewRequest("GET", url, nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.AssertEqual(200, resp.StatusCode)
+	_, err = io.ReadAll(resp.Body)
+}
+
+func PromConcurrentConnections(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	url := "http://" + serverAddress + ":80/stats.prom"
+
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("prom enable"))
+	time.Sleep(time.Second * 5)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go promReq(s, url, &wg)
+	}
+	wg.Wait()
+	s.Log(vpp.Vppctl("show session verbose proto http"))
 }
 
 func HttpStaticFileHandler(s *NoTopoSuite) {
