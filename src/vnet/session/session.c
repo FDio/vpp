@@ -1869,7 +1869,8 @@ session_register_update_time_fn (session_update_time_fn fn, u8 is_add)
     }
   else
     {
-      vec_del1 (smm->update_time_fns, fi_pos);
+      if (found)
+	vec_del1 (smm->update_time_fns, fi_pos);
     }
 }
 
