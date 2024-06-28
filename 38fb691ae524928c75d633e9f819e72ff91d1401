@@ -50,6 +50,24 @@
       "message": "Wonder if this is not too much in some environments.",
       "revId": "38fb691ae524928c75d633e9f819e72ff91d1401",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23038fc1_a895acf0",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-06-28T06:12:32Z",
+      "side": 1,
+      "message": "If we wait too short it might happen that server app/http layer will get both requests in \"one buffer\" (similar case as when you fit both requests in one TCP packet) and test hit different path",
+      "parentUuid": "ca295cdc_01a1003f",
+      "revId": "38fb691ae524928c75d633e9f819e72ff91d1401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
