@@ -2079,11 +2079,14 @@ session_get_memory_usage (void)
   clib_mem_heap_t *heap = clib_mem_get_per_cpu_heap ();
   u8 *s = 0;
   char *ss;
-  f32 used;
+  f32 used = 0.0;
 
   s = format (s, "%U\n", format_clib_mem_heap, heap, 0);
   ss = strstr ((char *) s, "used:");
-  sscanf (ss, "used: %f", &used);
+  if (ss)
+    sscanf (ss, "used: %f", &used);
+  else
+    clib_warning ("substring 'used:' not found from show memory");
   vec_free (s);
   return (used);
 }
