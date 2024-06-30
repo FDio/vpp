@@ -183,7 +183,7 @@ class MethodHolder(VppTestCase):
         variables and configure VPP.
         """
         super(MethodHolder, cls).setUpClass()
-        if (is_distro_ubuntu2204 == True or is_distro_debian11 == True) and not hasattr(
+        if (is_distro_debian11 == True) and not hasattr(
             cls, "vpp"
         ):
             return
