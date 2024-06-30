@@ -317,6 +317,19 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
 
     @classmethod
+    def skip_fixme_debian11(cls):
+        """if @tag_fixme_debian11 & is debian11 - mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_DEBIAN11) and is_distro_debian11== True:
+            cls = unittest.skip("Skipping @tag_fixme_debian11 tests")(cls)
+
+    @classmethod
+    def skip_fixme_ubuntu2204(cls):
+        """if @tag_fixme_ubuntu2204 & is Ubuntu22.04 - mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_UBUNTU2204) and is_distro_ubuntu2204 == True:
+            cls = unittest.skip("Skipping @tag_fixme_ubuntu2204 tests")(cls)
+
+
+    @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
         return cls.test_instance
@@ -1360,6 +1373,15 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if test.has_tag(TestCaseTag.FIXME_UBUNTU2204) and is_distro_ubuntu2204 == True:
+                test_title = colorize(f"FIXME with Ubuntu 22.04: {test_title}", RED)
+                test.skip_fixme_ubuntu2204()
+
+            if test.has_tag(TestCaseTag.FIXME_DEBIAN11) and is_distro_debian11== True:
+                test_title = colorize(f"FIXME with Debian 11: {test_title}", RED)
+                test.skip_fixme_debian11()
+
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:

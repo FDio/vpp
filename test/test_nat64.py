@@ -55,8 +55,6 @@ class TestNAT64(VppTestCase):
     def setUpClass(cls):
         super(TestNAT64, cls).setUpClass()
 
-        if is_distro_ubuntu2204 == True and not hasattr(cls, "vpp"):
-            return
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
         cls.udp_port_in = 6304
