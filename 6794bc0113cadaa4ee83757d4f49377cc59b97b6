@@ -16,6 +16,24 @@
       "message": "I missed in my previous review: why do you have CLIs as \"set macip acl-plugin ...\" ? The \"set acl-plugin macip ...\" would allow the user to discover it much easier. Thoughts ?",
       "revId": "6794bc0113cadaa4ee83757d4f49377cc59b97b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7560258_f63940ea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3102
+      },
+      "writtenOn": "2024-07-01T22:30:50Z",
+      "side": 1,
+      "message": "Yes I think this will be better. I have updated the patch",
+      "parentUuid": "e6cf9c6b_ffd8d8db",
+      "revId": "6794bc0113cadaa4ee83757d4f49377cc59b97b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
