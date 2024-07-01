@@ -22,6 +22,30 @@
       },
       "revId": "3b01b34521aeccb7a8ea400cdd288fa7a8374b2f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0c0d7363_37e8fe73",
+        "filename": "extras/hs-test/cpu_pinning_test.go",
+        "patchSetId": 9
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-07-01T12:11:52Z",
+      "side": 1,
+      "message": "Agree, I added a skip directly in SetupTest() which checks if there are enough available cpus (\u0027SkipIfNotEnoughAvailableCpus()\u0027).",
+      "parentUuid": "13b766ed_211709d0",
+      "range": {
+        "startLine": 14,
+        "startChar": 1,
+        "endLine": 14,
+        "endChar": 26
+      },
+      "revId": "3b01b34521aeccb7a8ea400cdd288fa7a8374b2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
