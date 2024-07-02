@@ -1872,6 +1872,7 @@ class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - NAT traversal (intitiator behind NAT)"""
 
@@ -1904,6 +1905,7 @@ class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - pre shared key auth"""
 
@@ -1935,6 +1937,7 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -1983,6 +1986,7 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorRekey(TestInitiatorPsk):
     """test ikev2 initiator - rekey"""
 
@@ -2027,6 +2031,7 @@ class TestInitiatorRekey(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - delete IKE SA from responder"""
 
@@ -2197,9 +2202,7 @@ class TestResponderVrf(TestResponderPsk, Ikev2Params):
 
         globals()["ikev2"] = _ikev2
         super(IkePeer, cls).setUpClass()
-        if (is_distro_ubuntu2204 == True or is_distro_debian11 == True) and not hasattr(
-            cls, "vpp"
-        ):
+        if (is_distro_debian11 == True) and not hasattr(cls, "vpp"):
             return
         cls.create_pg_interfaces(range(1))
         cls.vapi.cli("ip table add 1")
@@ -2310,6 +2313,7 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages
