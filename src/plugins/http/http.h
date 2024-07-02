@@ -369,6 +369,7 @@ typedef struct http_main_
    * Runtime config
    */
   u8 debug_level;
+  u8 is_init;
 
   /*
    * Config

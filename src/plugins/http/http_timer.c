@@ -71,8 +71,8 @@ http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *cb_fn)
   http_tw_ctx_t *twc = &http_tw_ctx;
   vlib_node_t *n;
 
-  if (twc->tw.timers)
-    return;
+  ASSERT (twc->tw.timers == 0);
+
   tw_timer_wheel_init_2t_1w_2048sl (&twc->tw, http_timer_process_expired_cb,
 				    1.0 /* timer interval */, ~0);
   clib_spinlock_init (&twc->tw_lock);

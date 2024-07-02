@@ -20,8 +20,7 @@ void
 tcp_timer_initialize_wheel (tcp_timer_wheel_t * tw,
 			    void (*expired_timer_cb) (u32 *), f64 now)
 {
-  if (tw->timers)
-    return;
+  ASSERT (tw->timers == 0);
   tw_timer_wheel_init_tcp_twsl (tw, expired_timer_cb, TCP_TIMER_TICK, ~0);
   tw->last_run_time = now;
 }
