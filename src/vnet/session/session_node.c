@@ -2163,6 +2163,8 @@ session_queue_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  session_queue_run_on_main (vm);
 	  break;
 	case SESSION_Q_PROCESS_STOP:
+	  /* Free event_data, the node will be restarted if needed */
+	  vec_free (event_data);
 	  vlib_node_set_state (vm, session_queue_process_node.index,
 			       VLIB_NODE_STATE_DISABLED);
 	  timeout = 100000.0;

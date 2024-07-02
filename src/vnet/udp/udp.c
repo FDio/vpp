@@ -590,6 +590,9 @@ udp_enable_disable (vlib_main_t *vm, u8 is_en)
 {
   udp_main_t *um = &udp_main;
 
+  if (!is_en || um->is_init)
+    return 0;
+
   /* Not ideal. The sparse vector used to map ports to next nodes assumes
    * only a few ports are ever used. When udp transport is enabled this does
    * not hold and, to make matters worse, ports are consumed in a random
@@ -610,6 +613,7 @@ udp_enable_disable (vlib_main_t *vm, u8 is_en)
 
   vec_validate (um->transport_ports_refcnt[0], 65535);
   vec_validate (um->transport_ports_refcnt[1], 65535);
+  um->is_init = 1;
 
   return 0;
 }

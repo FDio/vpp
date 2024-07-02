@@ -1392,8 +1392,6 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       return 0;
     }
 
-  vec_validate (hm->wrk, vlib_num_workers ());
-
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
@@ -1415,10 +1413,16 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   hm->app_index = a->app_index;
   vec_free (a->name);
 
+  if (hm->is_init)
+    return 0;
+
+  vec_validate (hm->wrk, vlib_num_workers ());
+
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time /* share the system clock */);
 
   http_timers_init (vm, http_conn_timeout_cb);
+  hm->is_init = 1;
 
   return 0;
 }
