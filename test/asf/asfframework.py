@@ -316,6 +316,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
 
+    # The methods for skipping on ubuntu 22.04 will live here
+
     @classmethod
     def instance(cls):
         """Return the instance of this testcase"""
