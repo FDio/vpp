@@ -2152,6 +2152,16 @@ session_node_enable_dma (u8 is_en, int n_vlibs)
     }
 }
 
+static void
+session_main_start_q_process (vlib_main_t *vm, vlib_node_state_t state)
+{
+  vlib_node_t *n;
+
+  vlib_node_set_state (vm, session_queue_process_node.index, state);
+  n = vlib_get_node (vm, session_queue_process_node.index);
+  vlib_start_process (vm, n->runtime_index);
+}
+
 void
 session_node_enable_disable (u8 is_en)
 {
@@ -2159,7 +2169,6 @@ session_node_enable_disable (u8 is_en)
   u8 state = is_en ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED;
   session_main_t *sm = &session_main;
   vlib_main_t *vm;
-  vlib_node_t *n;
   int n_vlibs, i;
 
   n_vlibs = vlib_get_n_threads ();
@@ -2173,10 +2182,7 @@ session_node_enable_disable (u8 is_en)
 	  if (is_en)
 	    {
 	      session_main_get_worker (0)->state = SESSION_WRK_INTERRUPT;
-	      vlib_node_set_state (vm, session_queue_process_node.index,
-				   state);
-	      n = vlib_get_node (vm, session_queue_process_node.index);
-	      vlib_start_process (vm, n->runtime_index);
+	      session_main_start_q_process (vm, state);
 	    }
 	  else
 	    {

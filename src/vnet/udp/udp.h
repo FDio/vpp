@@ -154,6 +154,7 @@ typedef struct
   u16 default_mtu;
   u16 msg_id_base;
   u8 csum_offload;
+  u8 is_init;
 
   u8 icmp_send_unreachable_disabled;
 } udp_main_t;

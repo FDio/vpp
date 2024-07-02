@@ -1512,6 +1512,10 @@ tcp_main_enable (vlib_main_t * vm)
   clib_error_t *error = 0;
   int thread;
 
+  /* Already initialized */
+  if (tm->wrk_ctx)
+    return 0;
+
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
