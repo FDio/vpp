@@ -836,9 +836,12 @@ app_worker_mq_wrk_is_congested (app_worker_t *app_wrk, u32 thread_index)
 void
 app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index)
 {
-  clib_atomic_fetch_add_relax (&app_wrk->mq_congested, 1);
   ASSERT (thread_index == vlib_get_thread_index ());
-  app_wrk->wrk_mq_congested[thread_index] = 1;
+  if (!app_wrk->wrk_mq_congested[thread_index])
+    {
+      clib_atomic_fetch_add_relax (&app_wrk->mq_congested, 1);
+      app_wrk->wrk_mq_congested[thread_index] = 1;
+    }
 }
 
 void
