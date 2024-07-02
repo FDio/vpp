@@ -162,8 +162,6 @@ class TestNAT44ED(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        if is_distro_ubuntu2204 == True and not hasattr(cls, "vpp"):
-            return
 
         cls.create_pg_interfaces(range(12))
         cls.interfaces = list(cls.pg_interfaces[:4])
