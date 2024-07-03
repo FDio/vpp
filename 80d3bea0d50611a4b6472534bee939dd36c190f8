@@ -16,6 +16,24 @@
       "message": "Please add space between \u0027*\u0027 and \u0027CLIB_CACHE_PREFETCH_BYTES\u0027",
       "revId": "80d3bea0d50611a4b6472534bee939dd36c190f8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2bf720d5_71b5482b",
+        "filename": "src/vppinfra/cache.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-07-03T14:20:09Z",
+      "side": 1,
+      "message": "Adding a space will fail checkstyle\n\n\nroot#:~/vpp_arm/vpp$ make checkstyle\nUbuntu clang-format version 11.1.0-6\n--- src/vppinfra/cache.h\t(before formatting)\n+++ src/vppinfra/cache.h\t(after formatting)\n@@ -76,7 +76,7 @@\n \n #define _CLIB_TARGETED_PREFETCH(n, size, type, loc)                           \\\n   if ((size) \u003e (n) *CLIB_CACHE_PREFETCH_BYTES)                                \\\n-    __builtin_prefetch (_addr + (n) * CLIB_CACHE_PREFETCH_BYTES,               \\\n+    __builtin_prefetch (_addr + (n) *CLIB_CACHE_PREFETCH_BYTES,               \\\n \t\t\tCLIB_PREFETCH_##type, CLIB_PREFETCH_TO_##loc);\n \n #define _CLIB_PREFETCH(n, size, type)                                         \\\n*******************************************************************\n* CHECKSTYLE FAILED\n* CONSULT DIFF ABOVE\n* NOTE: Running \u0027extras/scripts/checkstyle.sh --fix\u0027 *MAY* fix the issue\n*******************************************************************\nmake: *** [Makefile:771: checkstyle] Error 1",
+      "parentUuid": "06525c34_68a5c84e",
+      "revId": "80d3bea0d50611a4b6472534bee939dd36c190f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
