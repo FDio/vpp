@@ -348,6 +348,29 @@ pg_intf_mode_to_pcap_packet_type (pg_interface_mode_t mode)
     return PCAP_PACKET_TYPE_ethernet;
 }
 
+#define foreach_pg_interface_flags                                            \
+  _ (CSUM_OFFLOAD, 0)                                                         \
+  _ (GSO, 1)                                                                  \
+  _ (GRO_COALESCE, 2)
+
+typedef enum
+{
+#define _(a, b) PG_INTERFACE_FLAG_##a = (1 << b),
+  foreach_pg_interface_flags
+#undef _
+} pg_interface_flags_t;
+
+typedef struct
+{
+  u32 if_id;
+  pg_interface_mode_t mode;
+  pg_interface_flags_t flags;
+  u32 gso_size;
+  mac_address_t hw_addr;
+  u8 hw_addr_set;
+  int rv;
+} pg_interface_args_t;
+
 typedef struct
 {
   /* TX lock */
@@ -358,6 +381,8 @@ typedef struct
 
   /* Identifies stream for this interface. */
   u32 id;
+
+  mac_address_t hw_addr;
 
   u8 coalesce_enabled;
   gro_flow_table_t *flow_table;
@@ -425,9 +450,7 @@ void pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
 					   u32 tx_node_index);
 
 /* Find/create free packet-generator interface index. */
-u32 pg_interface_add_or_get (pg_main_t *pg, u32 stream_index, u8 gso_enabled,
-			     u32 gso_size, u8 coalesce_enabled,
-			     pg_interface_mode_t mode);
+u32 pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args);
 
 int pg_interface_delete (u32 sw_if_index);
 
@@ -459,6 +482,7 @@ clib_error_t *pg_capture (pg_capture_args_t * a);
 
 typedef struct
 {
+  pg_interface_mode_t mode;
   u32 buffer_index;
   vlib_buffer_t buffer;
 }
