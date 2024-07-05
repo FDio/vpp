@@ -1537,31 +1537,50 @@ pg_input_trace (pg_main_t * pg,
 }
 
 static_always_inline void
-fill_buffer_offload_flags (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
-			   u32 buffer_oflags, int gso_enabled, u32 gso_size)
+fill_buffer_offload_flags (vlib_main_t *vm, u32 next_index, u32 *buffers,
+			   u32 n_buffers, u32 buffer_oflags, int gso_enabled,
+			   u32 gso_size)
 {
   for (int i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[i]);
       u8 l4_proto = 0;
       vnet_buffer_oflags_t oflags = 0;
+      u16 ethertype;
+      u16 l2hdr_sz;
 
-      ethernet_header_t *eh =
-	(ethernet_header_t *) vlib_buffer_get_current (b0);
-      u16 ethertype = clib_net_to_host_u16 (eh->type);
-      u16 l2hdr_sz = sizeof (ethernet_header_t);
-
-      if (ethernet_frame_is_tagged (ethertype))
+      /* pg can typically injects to ethernet-input or ip4/6-input */
+      if (VNET_DEVICE_INPUT_NEXT_IP4_INPUT == next_index)
 	{
-	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+	  ethertype = ETHERNET_TYPE_IP4;
+	  l2hdr_sz = 0;
+	}
+      else if (VNET_DEVICE_INPUT_NEXT_IP6_INPUT == next_index)
+	{
+	  ethertype = ETHERNET_TYPE_IP6;
+	  l2hdr_sz = 0;
+	}
+      else
+	{
+	  /* default to ethernet */
+	  ethernet_header_t *eh =
+	    (ethernet_header_t *) vlib_buffer_get_current (b0);
+	  ethertype = clib_net_to_host_u16 (eh->type);
+	  l2hdr_sz = sizeof (ethernet_header_t);
 
-	  ethertype = clib_net_to_host_u16 (vlan->type);
-	  l2hdr_sz += sizeof (*vlan);
-	  if (ethertype == ETHERNET_TYPE_VLAN)
+	  if (ethernet_frame_is_tagged (ethertype))
 	    {
-	      vlan++;
+	      ethernet_vlan_header_t *vlan =
+		(ethernet_vlan_header_t *) (eh + 1);
+
 	      ethertype = clib_net_to_host_u16 (vlan->type);
 	      l2hdr_sz += sizeof (*vlan);
+	      if (ethertype == ETHERNET_TYPE_VLAN)
+		{
+		  vlan++;
+		  ethertype = clib_net_to_host_u16 (vlan->type);
+		  l2hdr_sz += sizeof (*vlan);
+		}
 	    }
 	}
 
@@ -1723,7 +1742,11 @@ pg_generate_packets (vlib_node_runtime_t * node,
 
       if (pi->gso_enabled || (s->buffer_flags & VNET_BUFFER_F_OFFLOAD))
 	{
-	  fill_buffer_offload_flags (vm, to_next, n_this_frame,
+	  /* we use s->next_index and not next_index on purpose here: we want
+	   * the original node set by the user (typically ethernet-input,
+	   * ip4-input or ip6-input) whereas next_index can be overwritten by
+	   * device-input features */
+	  fill_buffer_offload_flags (vm, s->next_index, to_next, n_this_frame,
 				     s->buffer_oflags, pi->gso_enabled,
 				     pi->gso_size);
 	}
