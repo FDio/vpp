@@ -105,9 +105,16 @@ format_pg_output_trace (u8 * s, va_list * va)
   s = format (s, "%Ubuffer 0x%x: %U", format_white_space, indent,
 	      t->buffer_index, format_vnet_buffer_no_chain, &t->buffer);
 
-  s = format (s, "\n%U%U", format_white_space, indent,
-	      format_ethernet_header_with_length, t->buffer.pre_data,
-	      sizeof (t->buffer.pre_data));
+  if (t->mode == PG_MODE_IP4)
+    s = format (s, "\n%U%U", format_white_space, indent, format_ip4_header,
+		t->buffer.pre_data, sizeof (t->buffer.pre_data));
+  else if (t->mode == PG_MODE_IP6)
+    s = format (s, "\n%U%U", format_white_space, indent, format_ip6_header,
+		t->buffer.pre_data, sizeof (t->buffer.pre_data));
+  else
+    s = format (s, "\n%U%U", format_white_space, indent,
+		format_ethernet_header_with_length, t->buffer.pre_data,
+		sizeof (t->buffer.pre_data));
 
   return s;
 }
@@ -245,18 +252,15 @@ VNET_HW_INTERFACE_CLASS (pg_tun_hw_interface_class) = {
 };
 
 u32
-pg_interface_add_or_get (pg_main_t *pg, u32 if_id, u8 gso_enabled,
-			 u32 gso_size, u8 coalesce_enabled,
-			 pg_interface_mode_t mode)
+pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
   pg_interface_t *pi;
   vnet_hw_interface_t *hi;
   uword *p;
   u32 i;
 
-  p = hash_get (pg->if_index_by_if_id, if_id);
+  p = hash_get (pg->if_index_by_if_id, args->if_id);
 
   if (p)
     {
@@ -264,32 +268,26 @@ pg_interface_add_or_get (pg_main_t *pg, u32 if_id, u8 gso_enabled,
     }
   else
     {
-      vnet_eth_interface_registration_t eir = {};
-      u8 hw_addr[6];
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-
       pool_get (pg->interfaces, pi);
       i = pi - pg->interfaces;
-
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-      clib_memcpy_fast (hw_addr + 2, &rnd, sizeof (rnd));
-      hw_addr[0] = 2;
-      hw_addr[1] = 0xfe;
-
-      pi->id = if_id;
-      pi->mode = mode;
+      pi->id = args->if_id;
+      pi->mode = args->mode;
 
       switch (pi->mode)
 	{
 	case PG_MODE_ETHERNET:
-	  eir.dev_class_index = pg_dev_class.index;
-	  eir.dev_instance = i;
-	  eir.address = hw_addr;
-	  eir.cb.flag_change = pg_eth_flag_change;
-	  pi->hw_if_index = vnet_eth_register_interface (vnm, &eir);
-	  break;
+	  {
+	    vnet_eth_interface_registration_t eir = { 0 };
+	    if (!args->hw_addr_set)
+	      ethernet_mac_address_generate (args->hw_addr.bytes);
+	    clib_memcpy (pi->hw_addr.bytes, args->hw_addr.bytes, 6);
+	    eir.dev_class_index = pg_dev_class.index;
+	    eir.dev_instance = i;
+	    eir.address = pi->hw_addr.bytes;
+	    eir.cb.flag_change = pg_eth_flag_change;
+	    pi->hw_if_index = vnet_eth_register_interface (vnm, &eir);
+	    break;
+	  }
 	case PG_MODE_IP4:
 	case PG_MODE_IP6:
 	  pi->hw_if_index = vnet_register_interface (
@@ -297,19 +295,19 @@ pg_interface_add_or_get (pg_main_t *pg, u32 if_id, u8 gso_enabled,
 	  break;
 	}
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
-      if (gso_enabled)
+      if (args->flags & PG_INTERFACE_FLAG_GSO)
 	{
 	  vnet_hw_if_set_caps (vnm, pi->hw_if_index, VNET_HW_IF_CAP_TCP_GSO);
 	  pi->gso_enabled = 1;
-	  pi->gso_size = gso_size;
-	  if (coalesce_enabled)
+	  pi->gso_size = args->gso_size;
+	  if (args->flags & PG_INTERFACE_FLAG_GRO_COALESCE)
 	    {
 	      pg_interface_enable_disable_coalesce (pi, 1, hi->tx_node_index);
 	    }
 	}
       pi->sw_if_index = hi->sw_if_index;
 
-      hash_set (pg->if_index_by_if_id, if_id, i);
+      hash_set (pg->if_index_by_if_id, pi->id, i);
 
       vec_validate (pg->if_index_by_sw_if_index, hi->sw_if_index);
       pg->if_index_by_sw_if_index[hi->sw_if_index] = i;
@@ -585,10 +583,16 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     vec_resize (s->buffer_indices, n);
   }
 
+  pg_interface_args_t args = {
+    .if_id = s->if_id,
+    .mode = PG_MODE_ETHERNET,
+    .flags = 0,	      /* gso_enabled and coalesce_enabled */
+    .gso_size = 0,    /* gso_size */
+    .hw_addr_set = 0, /* mac address set */
+  };
+
   /* Find an interface to use. */
-  s->pg_if_index = pg_interface_add_or_get (
-    pg, s->if_id, 0 /* gso_enabled */, 0 /* gso_size */,
-    0 /* coalesce_enabled */, PG_MODE_ETHERNET);
+  s->pg_if_index = pg_interface_add_or_get (pg, &args);
 
   if (s->sw_if_index[VLIB_RX] == ~0)
     {

@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/pg/pg.h>
 
 #include <strings.h>
@@ -663,23 +664,29 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 {
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 if_id = ~0, gso_enabled = 0, gso_size = 0, coalesce_enabled = 0;
+  pg_interface_args_t args = { 0 };
   clib_error_t *error = NULL;
-  pg_interface_mode_t mode = PG_MODE_ETHERNET;
+
+  args.if_id = ~0;
+  args.flags = 0;
+  args.rv = -1;
+  args.hw_addr_set = 0;
+  args.gso_size = 0;
+  args.mode = PG_MODE_ETHERNET;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "pg%u", &if_id))
+      if (unformat (line_input, "pg%u", &args.if_id))
 	;
       else if (unformat (line_input, "coalesce-enabled"))
-	coalesce_enabled = 1;
+	args.flags |= PG_INTERFACE_FLAG_GRO_COALESCE;
       else if (unformat (line_input, "gso-enabled"))
 	{
-	  gso_enabled = 1;
-	  if (unformat (line_input, "gso-size %u", &gso_size))
+	  args.flags |= PG_INTERFACE_FLAG_GSO;
+	  if (unformat (line_input, "gso-size %u", &args.gso_size))
 	    ;
 	  else
 	    {
@@ -687,10 +694,13 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 args.hw_addr.bytes))
+	args.hw_addr_set = 1;
       else if (unformat (line_input, "mode ip4"))
-	mode = PG_MODE_IP4;
+	args.mode = PG_MODE_IP4;
       else if (unformat (line_input, "mode ip6"))
-	mode = PG_MODE_IP6;
+	args.mode = PG_MODE_IP6;
       else
 	{
 	  error = clib_error_create ("unknown input `%U'",
@@ -699,8 +709,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size, coalesce_enabled,
-			   mode);
+  pg_interface_add_or_get (pg, &args);
 
 done:
   unformat_free (line_input);
@@ -710,9 +719,10 @@ done:
 
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .path = "create packet-generator interface",
-  .short_help = "create packet-generator interface <interface name>"
-		" [gso-enabled gso-size <size> [coalesce-enabled]]"
-		" [mode <ethernet | ip4 | ip6>]",
+  .short_help =
+    "create packet-generator interface <interface name>"
+    " [hw-addr <addr>] [gso-enabled gso-size <size> [coalesce-enabled]]"
+    " [mode <ethernet | ip4 | ip6>]",
   .function = create_pg_if_cmd_fn,
 };
 

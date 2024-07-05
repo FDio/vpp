@@ -77,6 +77,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       if (b->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  pg_output_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  t->mode = pif->mode;
 	  t->buffer_index = bi0;
 	  clib_memcpy_fast (&t->buffer, b,
 			    sizeof (b[0]) - sizeof (b->pre_data));
