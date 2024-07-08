@@ -104,6 +104,22 @@ session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type)
 }
 
 int
+session_program_rx_io_evt (session_handle_tu_t sh)
+{
+  if (sh.thread_index == vlib_get_thread_index ())
+    {
+      session_t *s = session_get_from_handle (sh);
+      return session_enqueue_notify (s);
+    }
+  else
+    {
+      return session_send_evt_to_thread ((void *) &sh.session_index, 0,
+					 (u32) sh.thread_index,
+					 SESSION_IO_EVT_BUILTIN_RX);
+    }
+}
+
+int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect, shutdown and reset */
