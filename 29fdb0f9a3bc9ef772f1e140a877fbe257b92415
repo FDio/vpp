@@ -22,6 +22,30 @@
       },
       "revId": "29fdb0f9a3bc9ef772f1e140a877fbe257b92415",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da2f6899_870d41a4",
+        "filename": "extras/hs-test/infra/suite_tap.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-08T11:50:19Z",
+      "side": 1,
+      "message": "Hm, we need to review these tests/suites. The legacy iperf linux test probably didn\u0027t go through vpp. We could have a test that goes through vpp (and vpp switches the taps) and one that just uses linux networking. But not sure it\u0027s worth wasting the cycles. \n\nOriginally this was just a dummy test to confirm infra is working and to do some basic comparison with iperf + ldp.\n\nGoing forward, we might want to have suites that use taps as opposed to veths, but the issue then is runtime configuration, since taps are crated typically from within vpp as opposed to assigning them to vpp (like we do with veths)",
+      "parentUuid": "3cd3fe14_30f233a4",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 25
+      },
+      "revId": "29fdb0f9a3bc9ef772f1e140a877fbe257b92415",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
