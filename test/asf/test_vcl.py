@@ -189,6 +189,12 @@ class VCLTestCase(VppAsfTestCase):
         self.logger.debug(self.vapi.cli("show ip fib"))
 
     def thru_host_stack_tear_down(self):
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="1", secret=1234, sw_if_index=self.loop0.sw_if_index
+        )
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="2", secret=5678, sw_if_index=self.loop1.sw_if_index
+        )
         for i in self.lo_interfaces:
             i.unconfig_ip4()
             i.set_table_ip4(0)
@@ -240,6 +246,12 @@ class VCLTestCase(VppAsfTestCase):
         self.logger.debug(self.vapi.cli("show ip6 fib"))
 
     def thru_host_stack_ipv6_tear_down(self):
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="1", secret=1234, sw_if_index=self.loop0.sw_if_index
+        )
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="2", secret=5678, sw_if_index=self.loop1.sw_if_index
+        )
         for i in self.lo_interfaces:
             i.unconfig_ip6()
             i.set_table_ip6(0)
@@ -993,6 +1005,34 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.thru_host_stack_test(
             iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args
         )
+
+
+class LDPThruHostStackIperfMss(VCLTestCase):
+    """LDP Thru Host Stack Iperf with MSS"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(LDPThruHostStackIperfMss, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(LDPThruHostStackIperfMss, cls).tearDownClass()
+
+    def setUp(self):
+        super(LDPThruHostStackIperfMss, self).setUp()
+
+        self.thru_host_stack_setup()
+        self.client_iperf3_timeout = 20
+        self.client_iperf3_args = ["-4", "-t 2", "-c", self.loop0.local_ip4]
+        self.server_iperf3_args = ["-4", "-s"]
+
+    def tearDown(self):
+        self.thru_host_stack_tear_down()
+        super(LDPThruHostStackIperfMss, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3_mss(self):
