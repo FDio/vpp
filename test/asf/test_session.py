@@ -60,6 +60,14 @@ class TestSession(VppAsfTestCase):
             i.set_table_ip4(0)
             i.admin_down()
 
+        # Unconfigure namespaces - remove our locks to the vrf tables
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="0", sw_if_index=self.loop0.sw_if_index
+        )
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="1", sw_if_index=self.loop1.sw_if_index
+        )
+
         super(TestSession, self).tearDown()
         self.vapi.session_enable_disable(is_enable=1)
 
