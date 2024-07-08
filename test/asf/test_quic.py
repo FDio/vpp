@@ -117,6 +117,18 @@ class QUICTestCase(VppAsfTestCase):
         self.logger.debug(self.vapi.cli("show ip fib"))
 
     def tearDown(self):
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0,
+            namespace_id=self.server_appns,
+            secret=self.server_appns_secret,
+            sw_if_index=self.loop0.sw_if_index,
+        )
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0,
+            namespace_id=self.client_appns,
+            secret=self.client_appns_secret,
+            sw_if_index=self.loop1.sw_if_index,
+        )
         # Delete inter-table routes
         self.ip_t01.remove_vpp_config()
         self.ip_t10.remove_vpp_config()
