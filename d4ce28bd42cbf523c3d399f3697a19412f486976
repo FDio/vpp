@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b73e41ad_3bc69a61",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-08T12:48:36Z",
+      "side": 1,
+      "message": "Thanks! Just one nit.",
+      "revId": "d4ce28bd42cbf523c3d399f3697a19412f486976",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f5da484_6c8e297f",
+        "filename": "src/plugins/prom/prom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-08T12:48:36Z",
+      "side": 1,
+      "message": "This is a uword/u64, let\u0027s just play the typical uword_to_pointer/pointer_to_uword game, to avoid mem allocations.",
+      "revId": "d4ce28bd42cbf523c3d399f3697a19412f486976",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
