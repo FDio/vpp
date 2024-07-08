@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3cd3fe14_30f233a4",
+        "filename": "extras/hs-test/infra/suite_tap.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-08T07:04:16Z",
+      "side": 1,
+      "message": "do we need to start vpp? tests just run iperf server in this container",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 25
+      },
+      "revId": "29fdb0f9a3bc9ef772f1e140a877fbe257b92415",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
