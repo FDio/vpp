@@ -1,13 +1,20 @@
 package hst
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
 
+	containerTypes "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/go-units"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -32,12 +39,14 @@ type Container struct {
 	IsOptional       bool
 	RunDetached      bool
 	Name             string
+	ID               string
 	Image            string
 	ExtraRunningArgs string
 	Volumes          map[string]Volume
 	EnvVars          map[string]string
 	VppInstance      *VppInstance
 	AllocatedCpus    []int
+	ctx              context.Context
 }
 
 func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
@@ -52,6 +61,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	container.EnvVars = make(map[string]string)
 	container.Name = containerName
 	container.Suite = suite
+	container.ctx = context.Background()
 
 	if Image, ok := yamlInput["image"]; ok {
 		container.Image = Image.(string)
@@ -133,8 +143,6 @@ func (c *Container) GetContainerWorkDir() (res string) {
 
 func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
-	c.allocateCpus()
-	args += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.AllocatedCpus[0], c.AllocatedCpus[len(c.AllocatedCpus)-1])
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	if *VppSourceFileDir != "" {
@@ -145,22 +153,50 @@ func (c *Container) getContainerArguments() string {
 	return args
 }
 
-func (c *Container) runWithRetry(cmd string) error {
-	nTries := 5
-	for i := 0; i < nTries; i++ {
-		err := exechelper.Run(cmd)
-		if err == nil {
-			return nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return fmt.Errorf("failed to run container command")
-}
-
+// Creates a container
 func (c *Container) Create() error {
-	cmd := "docker create " + c.getContainerArguments()
-	c.Suite.Log(cmd)
-	return exechelper.Run(cmd)
+	var sliceOfImageNames []string
+	images, err := c.Suite.Docker.ImageList(c.ctx, image.ListOptions{})
+	c.Suite.AssertNil(err)
+
+	for _, image := range images {
+		sliceOfImageNames = append(sliceOfImageNames, strings.Split(image.RepoTags[0], ":")[0])
+	}
+	if !slices.Contains(sliceOfImageNames, c.Image) {
+		c.Suite.PullDockerImage(c.Image, c.ctx)
+	}
+
+	c.allocateCpus()
+	cpuSet := fmt.Sprintf("%d-%d", c.AllocatedCpus[0], c.AllocatedCpus[len(c.AllocatedCpus)-1])
+	resp, err := c.Suite.Docker.ContainerCreate(
+		c.ctx,
+		&containerTypes.Config{
+			Image: c.Image,
+			Env:   c.getEnvVars(),
+			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
+		},
+		&containerTypes.HostConfig{
+			Resources: containerTypes.Resources{
+				Ulimits: []*units.Ulimit{
+					{
+						Name: "nofile",
+						Soft: 90000,
+						Hard: 90000,
+					},
+				},
+				CpusetCpus: cpuSet,
+			},
+			CapAdd:      []string{"ALL"},
+			Privileged:  true,
+			NetworkMode: "host",
+			Binds:       c.getVolumesAsSlice(),
+		},
+		nil,
+		nil,
+		c.Name,
+	)
+	c.ID = resp.ID
+	return err
 }
 
 func (c *Container) allocateCpus() {
@@ -169,10 +205,45 @@ func (c *Container) allocateCpus() {
 	c.Suite.Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 
+// Starts a container
 func (c *Container) Start() error {
-	cmd := "docker start " + c.Name
-	c.Suite.Log(cmd)
-	return c.runWithRetry(cmd)
+	var err error
+	for nTries := 0; nTries < 5; nTries++ {
+		err = c.Suite.Docker.ContainerStart(c.ctx, c.ID, containerTypes.StartOptions{})
+		if err == nil {
+			continue
+		}
+		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
+		time.Sleep(1 * time.Second)
+	}
+
+	return err
+}
+
+func (c *Container) GetOutput() (string, string) {
+	// Wait for the container to finish executing
+	statusCh, errCh := c.Suite.Docker.ContainerWait(c.ctx, c.ID, containerTypes.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		c.Suite.AssertNil(err)
+	case <-statusCh:
+	}
+
+	// Get the logs from the container
+	logOptions := containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true}
+	logReader, err := c.Suite.Docker.ContainerLogs(c.ctx, c.ID, logOptions)
+	c.Suite.AssertNil(err)
+	defer logReader.Close()
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+	// Use stdcopy.StdCopy to demultiplex the multiplexed stream
+	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, logReader)
+	c.Suite.AssertNil(err)
+
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
+	return stdout, stderr
 }
 
 func (c *Container) prepareCommand() (string, error) {
@@ -180,7 +251,7 @@ func (c *Container) prepareCommand() (string, error) {
 		return "", fmt.Errorf("run container failed: name is blank")
 	}
 
-	cmd := "docker run "
+	cmd := "docker exec "
 	if c.RunDetached {
 		cmd += " -d"
 	}
@@ -201,12 +272,10 @@ func (c *Container) CombinedOutput() (string, error) {
 	return string(byteOutput), err
 }
 
-func (c *Container) Run() error {
-	cmd, err := c.prepareCommand()
-	if err != nil {
-		return err
-	}
-	return c.runWithRetry(cmd)
+// Creates and starts a container
+func (c *Container) Run() {
+	c.Suite.AssertNil(c.Create())
+	c.Suite.AssertNil(c.Start())
 }
 
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
@@ -215,6 +284,22 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 	volume.ContainerDir = containerDir
 	volume.IsDefaultWorkDir = isDefaultWorkDir
 	c.Volumes[hostDir] = volume
+}
+
+func (c *Container) getVolumesAsSlice() []string {
+	var volumeSlice []string
+
+	if *VppSourceFileDir != "" {
+		volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", *VppSourceFileDir, *VppSourceFileDir))
+	}
+
+	if len(c.Volumes) > 0 {
+		for _, volume := range c.Volumes {
+			volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", volume.HostDir, volume.ContainerDir))
+		}
+	}
+
+	return volumeSlice
 }
 
 func (c *Container) getVolumesAsCliOption() string {
@@ -243,6 +328,18 @@ func (c *Container) getEnvVarsAsCliOption() string {
 		cliOption += fmt.Sprintf(" -e %s=%s", name, value)
 	}
 	return cliOption
+}
+
+func (c *Container) getEnvVars() []string {
+	var envVars []string
+	if len(c.EnvVars) == 0 {
+		return envVars
+	}
+
+	for name, value := range c.EnvVars {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", name, value))
+	}
+	return envVars
 }
 
 func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*VppInstance, error) {
@@ -316,18 +413,39 @@ func (c *Container) getLogDirPath() string {
 func (c *Container) saveLogs() {
 	testLogFilePath := c.getLogDirPath() + "container-" + c.Name + ".log"
 
-	cmd := exec.Command("docker", "logs", "--details", "-t", c.Name)
-	c.Suite.Log(cmd)
-	output, err := cmd.CombinedOutput()
+	// Get the logs from the container
+	logOptions := containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true}
+	logReader, err := c.Suite.Docker.ContainerLogs(c.ctx, c.ID, logOptions)
 	if err != nil {
 		c.Suite.Log(err)
+		return
 	}
+	defer logReader.Close()
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, logReader)
+	if err != nil {
+		c.Suite.Log(err)
+		return
+	}
+
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
 
 	f, err := os.Create(testLogFilePath)
 	if err != nil {
-		Fail("file create error: " + fmt.Sprint(err))
+		c.Suite.Log(err)
+		return
 	}
-	fmt.Fprint(f, string(output))
+	if !strings.Contains(stdout, "tail: cannot open") {
+		fmt.Fprintln(f, "STDOUT:")
+		fmt.Fprint(f, stdout)
+	}
+	if !strings.Contains(stderr, "tail: cannot open") {
+		fmt.Fprintln(f, "STDERR:")
+		fmt.Fprint(f, stderr)
+	}
 	f.Close()
 }
 
@@ -352,8 +470,13 @@ func (c *Container) stop() error {
 	}
 	c.VppInstance = nil
 	c.saveLogs()
-	c.Suite.Log("docker stop " + c.Name + " -t 0")
-	return exechelper.Run("docker stop " + c.Name + " -t 0")
+
+	c.Suite.Log("Stopping container " + c.Name)
+	timeout := 0
+	if err := c.Suite.Docker.ContainerStop(c.ctx, c.ID, containerTypes.StopOptions{Timeout: &timeout}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Container) CreateConfig(targetConfigName string, templateName string, values any) {

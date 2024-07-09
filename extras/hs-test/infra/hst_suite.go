@@ -2,6 +2,7 @@ package hst
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	containerTypes "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/onsi/gomega/gmeasure"
 	"gopkg.in/yaml.v3"
 
@@ -52,6 +55,7 @@ type HstSuite struct {
 	ProcessIndex      string
 	Logger            *log.Logger
 	LogFile           *os.File
+	Docker            *client.Client
 }
 
 func getTestFilename() string {
@@ -59,8 +63,16 @@ func getTestFilename() string {
 	return filepath.Base(filename)
 }
 
+func (s *HstSuite) NewDockerClient() {
+	var err error
+	s.Docker, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	s.AssertNil(err)
+	s.Log("docker client created")
+}
+
 func (s *HstSuite) SetupSuite() {
 	s.CreateLogger()
+	s.NewDockerClient()
 	s.Log("Suite Setup")
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
@@ -94,6 +106,7 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 
 func (s *HstSuite) TearDownSuite() {
 	defer s.LogFile.Close()
+	defer s.Docker.Close()
 	s.Log("Suite Teardown")
 	s.UnconfigureNetworkTopology()
 }
@@ -104,7 +117,6 @@ func (s *HstSuite) TearDownTest() {
 		return
 	}
 	s.ResetContainers()
-	s.RemoveVolumes()
 	s.Ip4AddrAllocator.DeleteIpAddresses()
 }
 
@@ -118,16 +130,7 @@ func (s *HstSuite) SetupTest() {
 	s.Log("Test Setup")
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SkipIfUnconfiguring()
-	s.SetupVolumes()
 	s.SetupContainers()
-}
-
-func (s *HstSuite) SetupVolumes() {
-	for _, volume := range s.Volumes {
-		cmd := "docker volume create --name=" + volume
-		s.Log(cmd)
-		exechelper.Run(cmd)
-	}
 }
 
 func (s *HstSuite) SetupContainers() {
@@ -211,6 +214,10 @@ func (s *HstSuite) AssertNotContains(testString, contains interface{}, msgAndArg
 	Expect(testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
+func (s *HstSuite) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
+	Expect(object).To(BeEmpty(), msgAndArgs...)
+}
+
 func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
@@ -264,15 +271,10 @@ func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
 func (s *HstSuite) ResetContainers() {
 	for _, container := range s.StartedContainers {
 		container.stop()
-		exechelper.Run("docker rm " + container.Name)
-	}
-}
-
-func (s *HstSuite) RemoveVolumes() {
-	for _, volumeName := range s.Volumes {
-		cmd := "docker volume rm " + volumeName
-		exechelper.Run(cmd)
-		os.RemoveAll(volumeName)
+		s.Log("Removing container " + container.Name)
+		if err := s.Docker.ContainerRemove(container.ctx, container.ID, containerTypes.RemoveOptions{RemoveVolumes: true}); err != nil {
+			s.Log(err)
+		}
 	}
 }
 
@@ -282,6 +284,13 @@ func (s *HstSuite) GetNetNamespaceByName(name string) string {
 
 func (s *HstSuite) GetInterfaceByName(name string) *NetInterface {
 	return s.NetInterfaces[s.ProcessIndex+name+s.Ppid]
+}
+
+func (s *HstSuite) PullDockerImage(name string, ctx context.Context) {
+	// "func (*Client) ImagePull" doesn't work, returns "No such image"
+	s.Log("Pulling image: " + name)
+	_, err := exechelper.CombinedOutput("docker pull " + name)
+	s.AssertNil(err)
 }
 
 func (s *HstSuite) GetContainerByName(name string) *Container {
