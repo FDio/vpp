@@ -66,7 +66,7 @@ func (s *NginxSuite) SetupTest() {
 	s.AssertNil(proxyVpp.createTap(serverInterface, 2))
 
 	nginxContainer := s.GetTransientContainerByName(NginxProxyContainerName)
-	nginxContainer.Create()
+	s.AssertNil(nginxContainer.Create())
 
 	values := struct {
 		Proxy  string
