@@ -151,7 +151,8 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 
   if (rv != hs->data_len)
     {
-      hs->data_offset = rv;
+      if (rv > 0)
+	hs->data_offset = rv;
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
     }
 
