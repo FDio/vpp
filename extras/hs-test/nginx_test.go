@@ -37,7 +37,7 @@ func NginxHttp3Test(s *NoTopoSuite) {
 
 	query := "index.html"
 	nginxCont := s.GetContainerByName("nginx-http3")
-	s.AssertNil(nginxCont.Run())
+	nginxCont.Run()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
@@ -47,9 +47,10 @@ func NginxHttp3Test(s *NoTopoSuite) {
 	curlCont := s.GetContainerByName("curl")
 	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.ExtraRunningArgs = args
-	o, err := curlCont.CombinedOutput()
+	curlCont.Run()
+	o, err := curlCont.GetOutput()
 	s.Log(o)
-	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEmpty(err)
 	s.AssertContains(o, "<http>", "<http> not found in the result!")
 }
 func NginxAsServerTest(s *NoTopoSuite) {
@@ -57,7 +58,7 @@ func NginxAsServerTest(s *NoTopoSuite) {
 	finished := make(chan error, 1)
 
 	nginxCont := s.GetContainerByName("nginx")
-	s.AssertNil(nginxCont.Run())
+	nginxCont.Run()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
@@ -91,7 +92,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	vpp := s.GetContainerByName("vpp").VppInstance
 
 	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
-	s.AssertNil(nginxCont.Run())
+	nginxCont.Run()
 	vpp.WaitForApp("nginx-", 5)
 
 	if ab_or_wrk == "ab" {
@@ -106,21 +107,23 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		args += " -r"
 		args += " http://" + serverAddress + ":80/64B.json"
 		abCont.ExtraRunningArgs = args
-		o, err := abCont.CombinedOutput()
+		abCont.Run()
+		o, err := abCont.GetOutput()
 		rps := parseString(o, "Requests per second:")
 		s.Log(rps)
-		s.Log(err)
-		s.AssertNil(err, "err: '%s', output: '%s'", err, o)
+		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
 		wrkCont := s.GetContainerByName("wrk")
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
 			serverAddress)
 		wrkCont.ExtraRunningArgs = args
-		o, err := wrkCont.CombinedOutput()
+		wrkCont.Run()
+		s.Log("Please wait for 30s, test is running.")
+		o, err := wrkCont.GetOutput()
 		rps := parseString(o, "requests")
 		s.Log(rps)
 		s.Log(err)
-		s.AssertNil(err, "err: '%s', output: '%s'", err, o)
+		s.AssertEmpty(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }
