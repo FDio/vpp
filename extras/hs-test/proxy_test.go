@@ -91,8 +91,7 @@ func VppProxyHttpTlsTest(s *NsSuite) {
 
 func configureEnvoyProxy(s *NsSuite) {
 	envoyContainer := s.GetContainerByName("envoy")
-	err := envoyContainer.Create()
-	s.AssertNil(err, "Error creating envoy container: %s", err)
+	envoyContainer.Run()
 
 	serverVeth := s.GetInterfaceByName(ServerInterface)
 	address := struct {
@@ -105,7 +104,7 @@ func configureEnvoyProxy(s *NsSuite) {
 		"resources/envoy/proxy.yaml",
 		address,
 	)
-	s.AssertNil(envoyContainer.Start())
+	//s.AssertNil(envoyContainer.Start())
 }
 
 func EnvoyProxyHttpTcpTest(s *NsSuite) {

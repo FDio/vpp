@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -13,11 +11,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-func getTestFilename() string {
-	_, filename, _, _ := runtime.Caller(2)
-	return filepath.Base(filename)
-}
 
 func TestHst(t *testing.T) {
 	if *IsVppDebug {
@@ -28,7 +21,6 @@ func TestHst(t *testing.T) {
 	}
 
 	output, err := os.ReadFile("/sys/devices/system/node/online")
-	fmt.Println(string(output))
 	if err == nil && strings.Contains(string(output), "-") {
 		NumaAwareCpuAlloc = true
 	}
