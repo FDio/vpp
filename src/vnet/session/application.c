@@ -968,7 +968,7 @@ application_namespace_cleanup (app_namespace_t *app_ns)
   ns_index = app_namespace_index (app_ns);
   pool_foreach (app, app_main.app_pool)
     if (app->ns_index == ns_index)
-      vec_add1 (app_indices, app->ns_index);
+      vec_add1 (app_indices, app->app_index);
 
   vec_foreach (app_index, app_indices)
     {
