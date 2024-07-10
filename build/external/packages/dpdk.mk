@@ -200,6 +200,7 @@ define dpdk_config_cmds
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
 	$(call dpdk_config,PKTMBUF_HEADROOM) && \
+	$(call dpdk_config,CACHE_LINE_SIZE) && \
 	$(call dpdk_config_def,USE_LIBBSD)
 endef
 
