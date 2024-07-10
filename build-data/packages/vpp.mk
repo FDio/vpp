@@ -40,6 +40,16 @@ ifneq (${SOURCE_DATE_EPOCH}),)
 vpp_cmake_args += -DVPP_SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)"
 endif
 
+ifeq ($(MACHINE),aarch64)
+  # Cache line size is 64B by default in Arm image,
+  # or the value can be assigned to 64 or 128 in command line.
+  ifeq (,$(filter 64 128,$(AARCH64_CACHE_LINE_SIZE)))
+    vpp_cmake_args += -DVPP_CACHE_LINE_SIZE=64
+  else
+    vpp_cmake_args += -DVPP_CACHE_LINE_SIZE=$(AARCH64_CACHE_LINE_SIZE)
+  endif
+endif
+
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
 endif

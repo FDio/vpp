@@ -37,6 +37,20 @@ endif
 ifeq ("$(V)","1")
 DPDK_MAKE_ARGS += DPDK_VERBOSE=1
 endif
+ifeq ($(MACHINE),aarch64)
+  # Cache line size is 64B by default in Arm image,
+  # or the value can be assigned to 64 or 128 in command line.
+  ifeq (,$(filter 64 128,$(AARCH64_CACHE_LINE_SIZE)))
+    DPDK_MAKE_ARGS += DPDK_CACHE_LINE_SIZE=64
+  else
+    DPDK_MAKE_ARGS += DPDK_CACHE_LINE_SIZE=$(AARCH64_CACHE_LINE_SIZE)
+  endif
+endif
+
+DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))
+ifneq ($(DPDK_MAKE_EXTRA_ARGS),)
+DPDK_MAKE_ARGS += DPDK_MAKE_EXTRA_ARGS="$(DPDK_MAKE_EXTRA_ARGS)"
+endif
 
 external_configure = echo
 
