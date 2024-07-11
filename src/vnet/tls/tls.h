@@ -102,6 +102,7 @@ typedef struct tls_ctx_
 #define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
 #define migration_ctx	       c_tls_ctx_id.migrate_ctx
 
+  u32 ts_app_index;
   tls_conn_flags_t flags;
   u8 *srv_hostname;
   u32 evt_index;
