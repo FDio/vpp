@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e56c089_605bdca5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-11T16:30:18Z",
+      "side": 1,
+      "message": "Rebase to pick up HST framework bug fix",
+      "revId": "3ff9fc8d2431e6f60ccc7f182b92cf7ced217d19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
