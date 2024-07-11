@@ -28,7 +28,7 @@ tls_disconnect_transport (tls_ctx_t * ctx)
 {
   vnet_disconnect_args_t a = {
     .handle = ctx->tls_session_handle,
-    .app_index = tls_main.app_index,
+    .app_index = ctx->ts_app_index,
   };
 
   if (vnet_disconnect_session (&a))
@@ -649,6 +649,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx = tls_ctx_half_open_get (ctx_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
+  ctx->ts_app_index = tm->app_index;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
@@ -748,6 +749,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   lctx = tls_listener_ctx_get (lctx_index);
   lctx->parent_app_wrk_index = sep->app_wrk_index;
+  lctx->ts_app_index = tm->app_index;
   lctx->tls_session_handle = tls_al_handle;
   lctx->app_session_handle = listen_session_get_handle (app_listener);
   lctx->tcp_is_ip4 = sep->is_ip4;
