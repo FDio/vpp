@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "d1ad90db347ad58ba592e028d44ade5d310783fe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "665e1b1b_105c4014",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-11T16:25:34Z",
+      "side": 1,
+      "message": "Rebasing to pick up HST bug fix",
+      "revId": "d1ad90db347ad58ba592e028d44ade5d310783fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
