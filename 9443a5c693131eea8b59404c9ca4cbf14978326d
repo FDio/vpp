@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5253d00b_a8cf1e6f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-11T16:24:10Z",
+      "side": 1,
+      "message": "Rebasing to pick up non-related testcase fixes",
+      "revId": "9443a5c693131eea8b59404c9ca4cbf14978326d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
