@@ -154,7 +154,7 @@ hts_session_tx_zc (hts_session_t *hs, session_t *ts)
     svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 
   if (svm_fifo_set_event (ts->tx_fifo))
-    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 }
 
 static void
@@ -201,7 +201,7 @@ hts_session_tx_no_zc (hts_session_t *hs, session_t *ts)
     svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 
   if (svm_fifo_set_event (ts->tx_fifo))
-    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 }
 
 static inline void
@@ -263,7 +263,7 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
   if (!msg.data.body_len)
     {
       if (svm_fifo_set_event (ts->tx_fifo))
-	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
       return;
     }
 

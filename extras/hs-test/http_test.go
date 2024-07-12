@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gmeasure"
 	"io"
 	"net"
@@ -25,7 +26,7 @@ func init() {
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpStaticFileHandler)
+		HttpHeadersTest, HttpStaticFileHandler, HttpClientTest, HttpClientErrRespTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections)
 }
 
@@ -168,6 +169,7 @@ func HttpCliTest(s *VethsSuite) {
 
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
 }
 
 func HttpCliConnectErrorTest(s *VethsSuite) {
@@ -182,6 +184,51 @@ func HttpCliConnectErrorTest(s *VethsSuite) {
 
 	s.Log(o)
 	s.AssertContains(o, "failed to connect")
+}
+
+func HttpClientTest(s *NoTopoSuite) {
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			ghttp.VerifyRequest("GET", "/test"),
+			ghttp.VerifyHeader(http.Header{"User-Agent": []string{"http_cli_client"}}),
+			ghttp.VerifyHeader(http.Header{"Accept": []string{"text / html"}}),
+			ghttp.RespondWith(http.StatusOK, "<html><body><p>Hello</p></body></html>"),
+		))
+	server.Start()
+	defer server.Close()
+	uri := "http://" + serverAddress + "/80"
+	vpp := s.GetContainerByName("vpp").VppInstance
+	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
+
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func HttpClientErrRespTest(s *NoTopoSuite) {
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			ghttp.VerifyRequest("GET", "/test"),
+			ghttp.RespondWith(http.StatusNotFound, "404: Not Found"),
+		))
+	server.Start()
+	defer server.Close()
+	uri := "http://" + serverAddress + "/80"
+	vpp := s.GetContainerByName("vpp").VppInstance
+	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
+
+	s.Log(o)
+	s.AssertContains(o, "404: Not Found", "error not found in the result!")
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {
@@ -237,8 +284,8 @@ func PromConcurrentConnections(s *NoTopoSuite) {
 }
 
 func HttpStaticFileHandler(s *NoTopoSuite) {
-	content := "<http><body><p>Hello</p></body></http>"
-	content2 := "<http><body><p>Page</p></body></http>"
+	content := "<html><body><p>Hello</p></body></html>"
+	content2 := "<html><body><p>Page</p></body></html>"
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
 	vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
@@ -317,7 +364,7 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath + "/tmp.aaa")
-	vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<http><body><p>Hello</p></body></http>")
+	vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
