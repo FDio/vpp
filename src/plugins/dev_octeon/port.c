@@ -58,6 +58,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_port_t *cp = vnet_dev_get_port_data (port);
+  u8 mac_addr[PLT_ETHER_ADDR_LEN];
   struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv;
   int rrv;
@@ -74,6 +75,22 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	port->intf.num_rx_queues, port->intf.num_tx_queues, rxq_cfg);
     }
   cp->lf_allocated = 1;
+
+  if (!roc_nix_is_vf_or_sdp (nix))
+    {
+      if ((rrv = roc_nix_npc_mac_addr_get (nix, mac_addr)))
+	{
+	  oct_port_deinit (vm, port);
+	  return oct_roc_err (dev, rrv, "roc_nix_npc_mac_addr_get failed");
+	}
+
+      /* Sync MAC address to CGX/RPM table */
+      if ((rrv = roc_nix_mac_addr_set (nix, mac_addr)))
+	{
+	  oct_port_deinit (vm, port);
+	  return oct_roc_err (dev, rrv, "roc_nix_mac_addr_set failed");
+	}
+    }
 
   if ((rrv = roc_nix_tm_init (nix)))
     {
