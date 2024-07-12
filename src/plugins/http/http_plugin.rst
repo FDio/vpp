@@ -191,10 +191,10 @@ Following example shows how to create headers section:
   http_add_header (resp_headers,
 		   http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
 		   http_token_lit ("max-age=600"));
-  http_add_header (&hs->resp_headers,
+  http_add_header (resp_headers,
 		   http_header_name_token (HTTP_HEADER_LOCATION),
 		   (const char *) redirect, vec_len (redirect));
-  headers_buf = http_serialize_headers (hs->resp_headers);
+  headers_buf = http_serialize_headers (resp_headers);
 
 The example below show how to create and send response HTTP message metadata:
 
@@ -249,3 +249,198 @@ Example above shows how to send body data by copy, alternatively you could pass 
   ASSERT (rv == sizeof (data));
 
 In this case you need to free data when you receive next request or when session is closed.
+
+
+Client application
+^^^^^^^^^^^^^^^^^^
+
+Client application opens connection with vnet URI where transport protocol is set to ``http``.
+
+Sending data
+""""""""""""""
+
+HTTP request is sent when connection is successfully established in ``session_connected_callback``.
+
+When client application sends message to HTTP layer it starts with message metadata, followed by request target, optional headers and body (if any) buffers.
+
+Application should set following items:
+
+* HTTP method
+* target form, offset and length
+* header section offset and length
+* body offset and length
+
+Application could pass headers to HTTP layer. Header list is created dynamically as vector of ``http_header_t``,
+where we store only pointers to buffers (zero copy).
+Well known header names are predefined.
+The list is serialized just before you send buffer to HTTP layer.
+
+.. note::
+    Following headers are added at protocol layer and **MUST NOT** be set by application: Host, User-Agent
+
+
+The example below shows how to create headers section:
+
+.. code-block:: C
+
+  #include <http/http.h>
+  #include <http/http_header_names.h>
+  #include <http/http_content_types.h>
+  http_header_t *req_headers = 0;
+  u8 *headers_buf = 0;
+  http_add_header (req_headers,
+		   http_header_name_token (HTTP_HEADER_ACCEPT),
+		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
+  headers_buf = http_serialize_headers (req_headers);
+  vec_free (hs->req_headers);
+
+Following example shows how to set message metadata:
+
+.. code-block:: C
+
+  http_msg_t msg;
+  msg.type = HTTP_MSG_REQUEST;
+  msg.method_type = HTTP_REQ_GET;
+  msg.data.headers_offset = 0;
+  /* request target */
+  msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
+  msg.data.target_path_offset = 0;
+  msg.data.target_path_len = vec_len (target);
+  /* custom headers */
+  msg.data.headers_offset = msg.data.target_path_len;
+  msg.data.headers_len = vec_len (headers_buf);
+  /* no request body because we are doing GET request */
+  msg.data.body_len = 0;
+  /* data type and total length */
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
+
+Finally application sends everything to HTTP layer:
+
+.. code-block:: C
+
+  svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) }, /* message metadata */
+			     { target, vec_len (target) }, /* request target */
+			     { headers_buf, vec_len (headers_buf) } }; /* serialized headers */
+  rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);
+  vec_free (headers_buf);
+  if (rv < 0 || rv != sizeof (msg) + msg.data.len)
+    {
+      clib_warning ("failed app enqueue");
+      return -1;
+    }
+  if (svm_fifo_set_event (as->tx_fifo))
+    session_send_io_evt_to_thread (as->tx_fifo, SESSION_IO_EVT_TX);
+
+Receiving data
+""""""""""""""
+
+HTTP plugin sends message header with metadata for parsing, in form of offset and length, followed by all data bytes as received from transport.
+
+Application will get pre-parsed following items:
+
+* status code
+* header section offset and length
+* body offset and length
+
+The example below reads HTTP message header in ``builtin_app_rx_callback``, which is first step application should do:
+
+.. code-block:: C
+
+  #include <http/http.h>
+  http_msg_t msg;
+  rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+
+As next step application might validate message type and status code:
+
+.. code-block:: C
+
+  if (msg.type != HTTP_MSG_REPLY)
+    {
+      /* your error handling */
+    }
+  if (msg.code != HTTP_STATUS_OK)
+    {
+      /* your error handling */
+      /* of course you can continue with steps bellow */
+      /* you might be interested in some headers or body content (if any) */
+    }
+
+Headers are parsed using a generic algorithm, independent of the individual header names.
+When header is repeated, its combined value consists of all values separated by comma, concatenated in order as received.
+Following example shows how to parse headers:
+
+.. code-block:: C
+
+  #include <http/http_header_names.h>
+  if (msg.data.headers_len)
+    {
+      u8 *headers = 0;
+      http_header_table_t *ht;
+      vec_validate (headers, msg.data.headers_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
+			  msg.data.headers_len, headers);
+      ASSERT (rv == msg.data.headers_len);
+      if (http_parse_headers (headers, &ht))
+        {
+          /* your error handling */
+        }
+      /* get Content-Type header */
+      const char *content_type = http_get_header (ht, http_header_name_str (HTTP_HEADER_CONTENT_TYPE));
+      if (content_type)
+        {
+          /* do something interesting */
+        }
+      http_free_header_table (ht);
+      vec_free (headers);
+    }
+
+Finally application reads body, which might be received in multiple pieces (depends on size), so we might need some state machine in ``builtin_app_rx_callback``.
+We will add following members to our session context structure:
+
+.. code-block:: C
+
+  typedef struct
+  {
+    /* ... */
+    u32 to_recv;
+    u8 *resp_body;
+  } session_ctx_t;
+
+First we prepare vector for response body, do it only once when you are reading metadata:
+
+.. code-block:: C
+
+  /* drop everything up to body */
+  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
+  ctx->to_recv = msg.data.body_len;
+  /* prepare vector for response body */
+  vec_validate (ctx->resp_body, msg.data.body_len - 1);
+  vec_reset_length (ctx->resp_body);
+
+Now we can start reading body content, following block of code could be executed multiple times:
+
+.. code-block:: C
+
+  /* dequeue */
+  u32 max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+  u32 n_deq = clib_min (to_recv, max_deq);
+  /* current offset */
+  u32 curr = vec_len (ctx->resp_body);
+  rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, ctx->resp_body + curr);
+  if (rv < 0 || rv != n_deq)
+    {
+      /* your error handling */
+    }
+  /* update length of the vector */
+  vec_set_len (ctx->resp_body, curr + n_deq);
+  /* update number of remaining bytes to receive */
+  ASSERT (to_recv >= rv);
+  ctx->to_recv -= rv;
+  /* check if all data received */
+  if (ctx->to_recv == 0)
+    {
+      hcc_session_disconnect (ts);
+      /* we are done, update state machine... */
+    }

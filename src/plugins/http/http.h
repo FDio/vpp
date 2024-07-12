@@ -368,7 +368,6 @@ typedef struct http_msg_
     http_req_method_t method_type;
     http_status_code_t code;
   };
-  http_content_type_t content_type;
   http_msg_data_t data;
 } http_msg_t;
 
@@ -388,6 +387,7 @@ typedef struct http_tc_
   http_conn_state_t state;
   u32 timer_handle;
   u8 *app_name;
+  u8 *host;
 
   /*
    * Current request
@@ -408,6 +408,7 @@ typedef struct http_tc_
   u32 headers_len;
   u32 body_offset;
   u32 body_len;
+  u16 status_code;
 } http_conn_t;
 
 typedef struct http_worker_
@@ -423,6 +424,7 @@ typedef struct http_main_
 
   clib_timebase_t timebase;
 
+  u16 *sc_by_u16;
   /*
    * Runtime config
    */
