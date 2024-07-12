@@ -16,11 +16,11 @@
 #include <http/http.h>
 #include <vnet/session/session.h>
 #include <http/http_timer.h>
+#include <http/http_status_codes.h>
 
 static http_main_t http_main;
 
 #define HTTP_FIFO_THRESH (16 << 10)
-#define CONTENT_LEN_STR	 "Content-Length: "
 
 /* HTTP state machine result */
 typedef enum http_sm_result_t_
@@ -30,18 +30,12 @@ typedef enum http_sm_result_t_
   HTTP_SM_ERROR = -1,
 } http_sm_result_t;
 
-const char *http_status_code_str[] = {
-#define _(c, s, str) str,
-  foreach_http_status_code
-#undef _
-};
-
 const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
 };
 
-u8 *
+static u8 *
 format_http_state (u8 *s, va_list *va)
 {
   http_state_t state = va_arg (*va, http_state_t);
@@ -388,9 +382,13 @@ static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Content-Length: %u\r\n"
 					    "%s";
 
+/**
+ * http request boilerplate
+ */
 static const char *http_request_template = "GET %s HTTP/1.1\r\n"
+					   "Host: %v\r\n"
 					   "User-Agent: %v\r\n"
-					   "Accept: */*\r\n\r\n";
+					   "%s";
 
 static u32
 http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
@@ -409,7 +407,7 @@ http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
     return offset;
 
   if (svm_fifo_set_event (ts->tx_fifo))
-    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
   return (offset + sent);
 }
@@ -655,6 +653,111 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
   return 0;
 }
 
+#define expect_char(c)                                                        \
+  if (*p++ != c)                                                              \
+    {                                                                         \
+      clib_warning ("unexpected character");                                  \
+      return -1;                                                              \
+    }
+
+#define parse_int(val, mul)                                                   \
+  do                                                                          \
+    {                                                                         \
+      if (!isdigit (*p))                                                      \
+	{                                                                     \
+	  clib_warning ("expected digit");                                    \
+	  return -1;                                                          \
+	}                                                                     \
+      val += mul * (*p++ - '0');                                              \
+    }                                                                         \
+  while (0)
+
+static int
+http_parse_status_line (http_conn_t *hc)
+{
+  int i;
+  u32 next_line_offset;
+  u8 *p, *end;
+  u16 status_code = 0;
+
+  i = v_find_index (hc->rx_buf, 0, 0, "\r\n");
+  /* status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF */
+  if (i < 0)
+    {
+      clib_warning ("status line incomplete");
+      return -1;
+    }
+  HTTP_DBG (0, "status line length: %d", i);
+  if (i < 12)
+    {
+      clib_warning ("status line too short (%d)", i);
+      return -1;
+    }
+  next_line_offset = i + 2;
+  p = hc->rx_buf;
+  end = hc->rx_buf + i;
+
+  /* there should be at least one more CRLF */
+  if (vec_len (hc->rx_buf) < (next_line_offset + 2))
+    {
+      clib_warning ("malformed message, too short");
+      return -1;
+    }
+
+  /* parse version */
+  expect_char ('H');
+  expect_char ('T');
+  expect_char ('T');
+  expect_char ('P');
+  expect_char ('/');
+  expect_char ('1');
+  expect_char ('.');
+  if (!isdigit (*p++))
+    {
+      clib_warning ("invalid HTTP minor version");
+      return -1;
+    }
+
+  /* skip space(s) */
+  if (*p != ' ')
+    {
+      clib_warning ("no space after HTTP version");
+      return -1;
+    }
+  do
+    {
+      p++;
+      if (p == end)
+	{
+	  clib_warning ("no status code");
+	  return -1;
+	}
+    }
+  while (*p == ' ');
+
+  /* parse status code */
+  if ((end - p) < 3)
+    {
+      clib_warning ("not enough characters for status code");
+      return -1;
+    }
+  parse_int (status_code, 100);
+  parse_int (status_code, 10);
+  parse_int (status_code, 1);
+  if (status_code < 100 || status_code > 599)
+    {
+      clib_warning ("invalid status code %d", status_code);
+      return -1;
+    }
+  hc->status_code = status_code;
+  HTTP_DBG (0, "status code: %d", hc->status_code);
+
+  /* set buffer offset to nex line start */
+  hc->rx_buf_offset = next_line_offset;
+
+  return 0;
+}
+
 static int
 http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
 {
@@ -692,6 +795,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   unformat_input_t input;
   int i, len;
   u8 *line;
+  u32 body_len;
 
   hc->body_len = 0;
 
@@ -733,13 +837,14 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   HTTP_DBG (0, "%v", line);
 
   unformat_init_vector (&input, line);
-  if (!unformat (&input, "%lu", &hc->body_len))
+  if (!unformat (&input, "%lu", &body_len))
     {
       clib_warning ("failed to unformat content length value");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
   unformat_free (&input);
+  hc->body_len = body_len;
 
   hc->body_offset = hc->headers_offset + hc->headers_len + 2;
   HTTP_DBG (0, "body length: %u", hc->body_len);
@@ -748,61 +853,16 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   return 0;
 }
 
-static int
-http_parse_header (http_conn_t *hc, int *content_length)
-{
-  unformat_input_t input;
-  int i, len;
-  u8 *line;
-
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, CONTENT_LEN_STR);
-  if (i < 0)
-    {
-      clib_warning ("cannot find '%s' in the header!", CONTENT_LEN_STR);
-      return -1;
-    }
-
-  hc->rx_buf_offset = i;
-
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "\n");
-  if (i < 0)
-    {
-      clib_warning ("end of line missing; incomplete data");
-      return -1;
-    }
-
-  len = i - hc->rx_buf_offset;
-  line = vec_new (u8, len);
-  clib_memcpy (line, hc->rx_buf + hc->rx_buf_offset, len);
-
-  unformat_init_vector (&input, line);
-  if (!unformat (&input, CONTENT_LEN_STR "%d", content_length))
-    {
-      clib_warning ("failed to unformat content length!");
-      return -1;
-    }
-  unformat_free (&input);
-
-  /* skip rest of the header */
-  hc->rx_buf_offset += len;
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "<html>");
-  if (i < 0)
-    {
-      clib_warning ("<html> tag not found");
-      return -1;
-    }
-  hc->rx_buf_offset = i;
-
-  return 0;
-}
-
 static http_sm_result_t
 http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
 {
-  int i, rv, content_length;
+  int rv;
   http_msg_t msg = {};
   app_worker_t *app_wrk;
   session_t *as;
+  u32 len;
+  http_status_code_t ec;
+  http_main_t *hm = &http_main;
 
   rv = http_read_message (hc);
 
@@ -813,57 +873,58 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
       return HTTP_SM_STOP;
     }
 
+  HTTP_DBG (0, "%v", hc->rx_buf);
+
   if (vec_len (hc->rx_buf) < 8)
     {
       clib_warning ("response buffer too short");
       goto error;
     }
 
-  if ((i = v_find_index (hc->rx_buf, 0, 0, "200 OK")) >= 0)
+  rv = http_parse_status_line (hc);
+  if (rv)
+    goto error;
+
+  rv = http_identify_headers (hc, &ec);
+  if (rv)
+    goto error;
+
+  rv = http_identify_message_body (hc, &ec);
+  if (rv)
+    goto error;
+
+  len = vec_len (hc->rx_buf);
+
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = hm->sc_by_u16[hc->status_code];
+  msg.data.headers_offset = hc->headers_offset;
+  msg.data.headers_len = hc->headers_len;
+  msg.data.body_offset = hc->body_offset;
+  msg.data.body_len = hc->body_len;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = len;
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
+			     { hc->rx_buf, len } };
+
+  rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
+  if (rv < 0)
     {
-      msg.type = HTTP_MSG_REPLY;
-      msg.content_type = HTTP_CONTENT_TEXT_HTML;
-      msg.code = HTTP_STATUS_OK;
-      msg.data.type = HTTP_MSG_DATA_INLINE;
-      msg.data.len = 0;
+      clib_warning ("error enqueue");
+      return HTTP_SM_ERROR;
+    }
 
-      rv = http_parse_header (hc, &content_length);
-      if (rv)
-	{
-	  clib_warning ("failed to parse http reply");
-	  goto error;
-	}
-      msg.data.len = content_length;
-      u32 dlen = vec_len (hc->rx_buf) - hc->rx_buf_offset;
-      as = session_get_from_handle (hc->h_pa_session_handle);
-      svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
-				 { &hc->rx_buf[hc->rx_buf_offset], dlen } };
+  vec_free (hc->rx_buf);
 
-      rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2,
-				      0 /* allow partial */);
-      if (rv < 0)
-	{
-	  clib_warning ("error enqueue");
-	  return HTTP_SM_ERROR;
-	}
-
-      hc->rx_buf_offset += dlen;
-      hc->to_recv = content_length - dlen;
-
-      if (hc->rx_buf_offset == vec_len (hc->rx_buf))
-	{
-	  vec_reset_length (hc->rx_buf);
-	  hc->rx_buf_offset = 0;
-	}
-
-      if (hc->to_recv == 0)
-	{
-	  hc->rx_buf_offset = 0;
-	  vec_reset_length (hc->rx_buf);
-	  http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
-	}
+  if (hc->body_len <= (len - hc->body_offset))
+    {
+      hc->to_recv = 0;
+      http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+    }
       else
 	{
+	  hc->to_recv = hc->body_len - (len - hc->body_offset);
 	  http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
 	}
 
@@ -871,12 +932,6 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
       if (app_wrk)
 	app_worker_rx_notify (app_wrk, as);
       return HTTP_SM_STOP;
-    }
-  else
-    {
-      clib_warning ("Unknown http method %v", hc->rx_buf);
-      goto error;
-    }
 
 error:
   session_transport_closing_notify (&hc->connection);
@@ -925,7 +980,6 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
-  msg.content_type = HTTP_CONTENT_TEXT_HTML;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
   msg.data.target_form = hc->target_form;
@@ -1080,7 +1134,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_msg_t msg;
   session_t *as;
-  u8 *buf = 0, *request;
+  u8 *target = 0, *request;
   u32 offset;
   int rv;
 
@@ -1107,12 +1161,47 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       clib_warning ("unsupported method %d", msg.method_type);
       goto error;
     }
+  if (msg.data.body_len != 0)
+    {
+      clib_warning ("GET request shouldn't include data");
+      goto error;
+    }
 
-  vec_validate (buf, msg.data.len - 1);
-  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.len, buf);
-  ASSERT (rv == msg.data.len);
+  /* read request target */
+  vec_validate (target, msg.data.target_path_len - 1);
+  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.target_path_len, target);
+  ASSERT (rv == msg.data.target_path_len);
 
-  request = format (0, http_request_template, buf, hc->app_name);
+  /*
+   * Add "protocol layer" headers:
+   * - host
+   * - user agent
+   */
+  request = format (0, http_request_template,
+		    /* target */
+		    target,
+		    /* Host */
+		    hc->host,
+		    /* User-Agent*/
+		    hc->app_name,
+		    /* Any headers from app? */
+		    msg.data.headers_len ? "" : "\r\n");
+
+  /* Add headers from app (if any) */
+  if (msg.data.headers_len)
+    {
+      HTTP_DBG (0, "get headers from app, len %d", msg.data.headers_len);
+      u32 orig_len = vec_len (request);
+      vec_resize (request, msg.data.headers_len + 2);
+      u8 *p = request + orig_len;
+      rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
+      ASSERT (rv == msg.data.headers_len);
+      p += msg.data.headers_len;
+      *p++ = '\r';
+      *p = '\n';
+    }
+  HTTP_DBG (0, "%v", request);
+
   offset = http_send_data (hc, request, vec_len (request), 0);
   if (offset != vec_len (request))
     {
@@ -1122,7 +1211,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 
   http_state_change (hc, HTTP_STATE_WAIT_SERVER_REPLY);
 
-  vec_free (buf);
+  vec_free (target);
   vec_free (request);
 
   return HTTP_SM_STOP;
@@ -1232,7 +1321,7 @@ http_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
   if (!http_buffer_is_drained (hb))
     {
       if (sent && svm_fifo_set_event (ts->tx_fifo))
-	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
       if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
 	{
@@ -1246,7 +1335,7 @@ http_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
   else
     {
       if (sent && svm_fifo_set_event (ts->tx_fifo))
-	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX_FLUSH);
+	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX_FLUSH);
 
       /* Finished transaction, back to HTTP_STATE_WAIT_METHOD */
       http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
@@ -1462,6 +1551,13 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
     hc->app_name = vec_dup (app->name);
   else
     hc->app_name = format (0, "VPP HTTP client");
+
+  if (sep->is_ip4)
+    hc->host = format (0, "%U:%d", format_ip4_address, &sep->ip.ip4,
+		       clib_net_to_host_u16 (sep->port));
+  else
+    hc->host = format (0, "%U:%d", format_ip6_address, &sep->ip.ip6,
+		       clib_net_to_host_u16 (sep->port));
 
   HTTP_DBG (1, "hc ho_index %x", hc_index);
 
@@ -1762,6 +1858,7 @@ static clib_error_t *
 http_transport_init (vlib_main_t *vm)
 {
   http_main_t *hm = &http_main;
+  int i;
 
   transport_register_protocol (TRANSPORT_PROTO_HTTP, &http_proto,
 			       FIB_PROTOCOL_IP4, ~0);
@@ -1773,7 +1870,26 @@ http_transport_init (vlib_main_t *vm)
   hm->first_seg_size = 32 << 20;
   hm->fifo_size = 512 << 10;
 
-  return 0;
+  /* Setup u16 to http_status_code_t map */
+  /* Unrecognized status code is equivalent to the x00 status */
+  vec_validate (hm->sc_by_u16, 599);
+  for (i = 100; i < 200; i++)
+    hm->sc_by_u16[i] = HTTP_STATUS_CONTINUE;
+  for (i = 200; i < 300; i++)
+    hm->sc_by_u16[i] = HTTP_STATUS_OK;
+  for (i = 300; i < 400; i++)
+    hm->sc_by_u16[i] = HTTP_STATUS_MULTIPLE_CHOICES;
+  for (i = 400; i < 500; i++)
+    hm->sc_by_u16[i] = HTTP_STATUS_BAD_REQUEST;
+  for (i = 500; i < 600; i++)
+    hm->sc_by_u16[i] = HTTP_STATUS_INTERNAL_ERROR;
+
+    /* Registered status codes */
+#define _(c, s, str) hm->sc_by_u16[c] = HTTP_STATUS_##s;
+  foreach_http_status_code
+#undef _
+
+    return 0;
 }
 
 VLIB_INIT_FUNCTION (http_transport_init);
