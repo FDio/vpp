@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "93df397f_a06102ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-12T15:34:20Z",
+      "side": 1,
+      "message": "Override verify -1 because CSIT vpp-device 1n-spr oper-rls2402-240304 is not updated with latest hardware configuration.",
+      "revId": "7ad2c8b3e0f8b157f570ce5958bde3220d62b1ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
