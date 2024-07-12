@@ -92,6 +92,8 @@ LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),24.04)
         DEB_DEPENDS += libssl-dev
         DEB_DEPENDS += llvm clang clang-format-14
+	# overwrite clang-format version to run `make checkstyle` successfully
+	export CLANG_FORMAT_VER=14
         LIBFFI=libffi8
         DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),22.04)
