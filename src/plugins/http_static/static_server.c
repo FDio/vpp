@@ -159,7 +159,7 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 done:
 
   if (svm_fifo_set_event (ts->tx_fifo))
-    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 }
 
 __clib_export void
@@ -619,7 +619,7 @@ hss_ts_tx_callback (session_t *ts)
     }
 
   if (svm_fifo_set_event (ts->tx_fifo))
-    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
   return 0;
 }
