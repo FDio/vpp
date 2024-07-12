@@ -16,6 +16,9 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
+#include <http/http_content_types.h>
+#include <http/http_status_codes.h>
 
 #define HCC_DEBUG 0
 
@@ -34,6 +37,7 @@ typedef struct
   u32 vpp_session_index;
   u32 to_recv;
   u8 is_closed;
+  http_header_t *req_headers;
 } hcc_session_t;
 
 typedef struct
@@ -128,6 +132,7 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   hcc_session_t *hs, *new_hs;
   hcc_worker_t *wrk;
   http_msg_t msg;
+  u8 *headers_buf;
   int rv;
 
   HCC_DBG ("hc_index: %d", hc_index);
@@ -149,24 +154,42 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
 
   hs->vpp_session_index = as->session_index;
 
+  http_add_header (&hs->req_headers,
+		   http_header_name_token (HTTP_HEADER_ACCEPT),
+		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
+  headers_buf = http_serialize_headers (hs->req_headers);
+  vec_free (hs->req_headers);
+
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = HTTP_REQ_GET;
-  msg.content_type = HTTP_CONTENT_TEXT_HTML;
+  /* request target */
+  msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
+  msg.data.target_path_offset = 0;
+  msg.data.target_path_len = vec_len (hcm->http_query);
+  /* custom headers */
+  msg.data.headers_offset = msg.data.target_path_len;
+  msg.data.headers_len = vec_len (headers_buf);
+  /* request body */
+  msg.data.body_len = 0;
+  /* data type and total length */
   msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.len = vec_len (hcm->http_query);
+  msg.data.len =
+    msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
 
-  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
-			     { hcm->http_query, vec_len (hcm->http_query) } };
+  svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) },
+			     { hcm->http_query, vec_len (hcm->http_query) },
+			     { headers_buf, vec_len (headers_buf) } };
 
-  rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 2, 0 /* allow partial */);
-  if (rv < 0 || rv != sizeof (msg) + vec_len (hcm->http_query))
+  rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);
+  vec_free (headers_buf);
+  if (rv < 0 || rv != sizeof (msg) + msg.data.len)
     {
       clib_warning ("failed app enqueue");
       return -1;
     }
 
   if (svm_fifo_set_event (as->tx_fifo))
-    session_send_io_evt_to_thread (as->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (as->handle, SESSION_IO_EVT_TX);
 
   return 0;
 }
@@ -221,17 +244,26 @@ hcc_ts_rx_callback (session_t *ts)
 
   if (hs->to_recv == 0)
     {
+      /* read the http message header */
       rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
       ASSERT (rv == sizeof (msg));
 
-      if (msg.type != HTTP_MSG_REPLY || msg.code != HTTP_STATUS_OK)
+      if (msg.type != HTTP_MSG_REPLY)
 	{
 	  clib_warning ("unexpected msg type %d", msg.type);
 	  return 0;
 	}
-      vec_validate (hcm->http_response, msg.data.len - 1);
+      /* drop everything up to body */
+      svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
+      hs->to_recv = msg.data.body_len;
+      if (msg.code != HTTP_STATUS_OK && hs->to_recv == 0)
+	{
+	  hcm->http_response = format (0, "request failed, response code: %U",
+				       format_http_status_code, msg.code);
+	  goto done;
+	}
+      vec_validate (hcm->http_response, msg.data.body_len - 1);
       vec_reset_length (hcm->http_response);
-      hs->to_recv = msg.data.len;
     }
 
   u32 max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
@@ -253,6 +285,7 @@ hcc_ts_rx_callback (session_t *ts)
   hs->to_recv -= rv;
   HCC_DBG ("app rcvd %d, remains %d", rv, hs->to_recv);
 
+done:
   if (hs->to_recv == 0)
     {
       hcc_session_disconnect (ts);
