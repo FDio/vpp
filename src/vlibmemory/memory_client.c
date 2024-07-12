@@ -406,6 +406,34 @@ vl_mem_client_is_connected (void)
 }
 
 static int
+vl_rx_thread_init_attr (pthread_attr_t *attr)
+{
+  pthread_t thread = pthread_self ();
+  int rv, policy, priority;
+  struct sched_param param;
+
+  /* If current thread has real-time scheduling policy, try to set a higher
+   * priority to rx-thread to avoid deadlocks whereby current thread spins
+   * waiting for api replies while rx-thread cannot preempt current thread
+   * to process replies */
+  rv = pthread_getschedparam (thread, &policy, &param);
+  if (rv != 0)
+    {
+      clib_warning ("pthread_getschedparam returned %d", rv);
+      return -1;
+    }
+  priority = param.sched_priority;
+  if ((policy == SCHED_FIFO) && (priority < 99))
+    {
+      pthread_attr_setschedpolicy (attr, SCHED_FIFO);
+      param.sched_priority = priority + 1;
+      pthread_attr_setschedparam (attr, &param);
+      pthread_attr_setinheritsched (attr, PTHREAD_EXPLICIT_SCHED);
+    }
+  return 0;
+}
+
+static int
 connect_to_vlib_internal (const char *svm_name,
 			  const char *client_name,
 			  int rx_queue_size, void *(*thread_fn) (void *),
@@ -414,6 +442,7 @@ connect_to_vlib_internal (const char *svm_name,
   int rv = 0;
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
   api_main_t *am = vlibapi_get_main ();
+  pthread_attr_t attr;
 
   if (do_map && (rv = vl_client_api_map (svm_name)))
     {
@@ -432,6 +461,7 @@ connect_to_vlib_internal (const char *svm_name,
 
   if (thread_fn)
     {
+      am->rx_thread_handle = 0;
       if (thread_fn == rx_thread_fn)
 	{
 	  rx_thread_fn_arg_t *arg;
@@ -441,17 +471,24 @@ connect_to_vlib_internal (const char *svm_name,
 	  thread_fn_arg = (void *) arg;
 	}
 
-      rv = pthread_create (&mm->rx_thread_handle,
-			   NULL /*attr */ , thread_fn, thread_fn_arg);
+      rv = pthread_attr_init (&attr);
+      if (rv != 0)
+	{
+	  clib_warning ("pthread_attr_init returned %d", rv);
+	  return -1;
+	}
+      if (vl_rx_thread_init_attr (&attr))
+	return -1;
+
+      rv = pthread_create (&mm->rx_thread_handle, &attr, thread_fn,
+			   thread_fn_arg);
       if (rv)
 	{
 	  clib_warning ("pthread_create returned %d", rv);
-	  am->rx_thread_handle = 0;
+	  return -1;
 	}
-      else
-	{
-	  am->rx_thread_handle = mm->rx_thread_handle;
-	}
+      am->rx_thread_handle = mm->rx_thread_handle;
+      pthread_attr_destroy (&attr);
     }
 
   mm->connected_to_vlib = 1;
