@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8a5f41e_0839409f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-12T14:54:58Z",
+      "side": 1,
+      "message": "Really nice documentation! Quick reply after a brief review",
+      "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c19379f1_50d20c62",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-12T14:54:58Z",
+      "side": 1,
+      "message": "Let\u0027s start using `session_program_tx_io_evt (as-\u003ehandle, SESSION_IO_EVT_TX);`\n\nChange instances in code as well",
+      "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6389f9b4_144fe657",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-12T14:54:58Z",
+      "side": 1,
+      "message": "Maybe make this a bit more generic, i.e., comment to close session or vnet_session_disconnect call",
+      "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
