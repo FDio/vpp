@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e76ec1b_ef06dc3e",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-15T08:19:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c19379f1_50d20c62",
+      "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6389f9b4_144fe657",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-07-12T14:54:58Z",
       "side": 1,
       "message": "Maybe make this a bit more generic, i.e., comment to close session or vnet_session_disconnect call",
+      "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f76fafe_67f950d7",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-15T08:19:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6389f9b4_144fe657",
       "revId": "0bae1734b36d0e81b8279aa4148ff79d0987616f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
