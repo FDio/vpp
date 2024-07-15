@@ -68,6 +68,24 @@
       "parentUuid": "ca295cdc_01a1003f",
       "revId": "38fb691ae524928c75d633e9f819e72ff91d1401",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cc161ad_5dac5b5b",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-15T08:25:25Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "23038fc1_a895acf0",
+      "revId": "38fb691ae524928c75d633e9f819e72ff91d1401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
