@@ -88,7 +88,13 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
     }
   if (pif->pcap_file_name != 0)
-    pcap_write (&pif->pcap_main);
+    {
+      pcap_packet_type_t pm_pt = pif->pcap_main.packet_type;
+      pif->pcap_main.packet_type =
+	pg_intf_mode_to_pcap_packet_type (pif->mode);
+      pcap_write (&pif->pcap_main);
+      pif->pcap_main.packet_type = pm_pt;
+    }
   if ((pif->pcap_main.flags & PCAP_MAIN_INIT_DONE)
       && pif->pcap_main.n_packets_captured >=
       pif->pcap_main.n_packets_to_capture)

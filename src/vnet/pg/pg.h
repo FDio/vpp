@@ -306,6 +306,15 @@ typedef enum pg_interface_mode_t_
   PG_MODE_IP6,
 } pg_interface_mode_t;
 
+always_inline pcap_packet_type_t
+pg_intf_mode_to_pcap_packet_type (pg_interface_mode_t mode)
+{
+  if (mode == PG_MODE_ETHERNET)
+    return PCAP_PACKET_TYPE_ethernet;
+  else
+    return PCAP_PACKET_TYPE_ip;
+}
+
 typedef struct
 {
   /* TX lock */
