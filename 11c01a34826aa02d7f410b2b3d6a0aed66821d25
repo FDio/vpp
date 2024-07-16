@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2265397e_2432c6e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-07-16T08:04:54Z",
+      "side": 1,
+      "message": "Good point Florin, we probably don\u0027t need additional functions for the same purpose. I was mislead by the fact they exist for ip6 but not ip4...",
+      "revId": "11c01a34826aa02d7f410b2b3d6a0aed66821d25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6988e069_a1d4212e",
