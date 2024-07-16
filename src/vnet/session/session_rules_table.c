@@ -75,6 +75,7 @@ session_rules_table_del_tag (session_rules_table_t * srt, u8 * tag, u8 is_ip4)
   ASSERT (rt);
   hash_unset_mem (srt->rules_by_tag, tag);
   hash_unset (srt->tags_by_rules, rti_key);
+  vec_free (rt->tag);
   pool_put (srt->rule_tags, rt);
 }
 
