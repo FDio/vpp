@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6988e069_a1d4212e",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-16T07:44:12Z",
+      "side": 1,
+      "message": "ip4_preflen_to_mask?",
+      "revId": "11c01a34826aa02d7f410b2b3d6a0aed66821d25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ca9b601_156de7ce",
+        "filename": "src/vnet/ip/ip4_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-16T07:44:12Z",
+      "side": 1,
+      "message": "ip4_address_normalize and compare?",
+      "revId": "11c01a34826aa02d7f410b2b3d6a0aed66821d25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
