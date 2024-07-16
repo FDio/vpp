@@ -187,7 +187,7 @@ class VppPGInterface(VppInterface):
         self.test.logger.debug(
             f"Generating testcase pg streams decode file: {pg_decode}"
         )
-        ts_opts = "-Vr"
+        ts_opts = "-Vrx"
         for p in sorted(Path(pcap_dir).glob(f"{filename_prefix}*.pcap")):
             self.test.logger.debug(f"Decoding {p}")
             with open(f"{pg_decode}", "a", buffering=1) as f:
