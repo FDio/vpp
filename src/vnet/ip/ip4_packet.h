@@ -467,6 +467,30 @@ ip4_multicast_ethernet_address (u8 * ethernet_address,
   ethernet_address[5] = d[3];
 }
 
+static_always_inline void
+ip4_address_mask_from_width (ip4_address_t *a, u32 width)
+{
+  int i, byte, bit, bitnum;
+  ASSERT (width <= 32);
+  clib_memset (a, 0, sizeof (a[0]));
+  for (i = 0; i < width; i++)
+    {
+      bitnum = (7 - (i & 7));
+      byte = i / 8;
+      bit = 1 << bitnum;
+      a->as_u8[byte] |= bit;
+    }
+}
+
+static_always_inline int
+ip4_address_is_equal_masked (const ip4_address_t *a, const ip4_address_t *b,
+			     const ip4_address_t *mask)
+{
+  const u32 a_masked = a->as_u32 & mask->as_u32;
+  const u32 b_masked = b->as_u32 & mask->as_u32;
+  return a_masked == b_masked;
+}
+
 #endif /* included_ip4_packet_h */
 
 /*

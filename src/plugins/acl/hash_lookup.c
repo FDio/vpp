@@ -949,24 +949,6 @@ make_ip6_address_mask(ip6_address_t *addr, u8 prefix_len)
   ip6_address_mask_from_width(addr, prefix_len);
 }
 
-
-/* Maybe should be moved into the core somewhere */
-always_inline void
-ip4_address_mask_from_width (ip4_address_t * a, u32 width)
-{
-  int i, byte, bit, bitnum;
-  ASSERT (width <= 32);
-  clib_memset (a, 0, sizeof (a[0]));
-  for (i = 0; i < width; i++)
-    {
-      bitnum = (7 - (i & 7));
-      byte = i / 8;
-      bit = 1 << bitnum;
-      a->as_u8[byte] |= bit;
-    }
-}
-
-
 static void
 make_ip4_address_mask(ip4_address_t *addr, u8 prefix_len)
 {
