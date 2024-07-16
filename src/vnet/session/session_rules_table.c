@@ -518,6 +518,9 @@ session_rules_table_free (session_rules_table_t *srt)
 {
   mma_rules_table_free_16 (&srt->session_rules_tables_16);
   mma_rules_table_free_40 (&srt->session_rules_tables_40);
+
+  hash_free (srt->tags_by_rules);
+  hash_free (srt->rules_by_tag);
 }
 
 void
