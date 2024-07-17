@@ -327,6 +327,9 @@ class TestDHCP(VppTestCase):
                     is_discover = True
         self.assertTrue(is_discover)
 
+        # The last option must always be the 'end' option
+        self.assertEqual(dhcp.options[-1], "end")
+
         data = self.validate_relay_options(
             pkt, src_intf, src_intf.local_ip4, vpn_id, fib_id, oui
         )

@@ -321,7 +321,8 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 		  o->length += id_len + 5;
 		}
 
-	      len = o->length + 3;
+	      /* 2 bytes for option header 82+len */
+	      len = o->length + 2;
 	      b0->current_length += len;
 	      /* Fix IP header length and checksum */
 	      old_l0 = ip0->length;
