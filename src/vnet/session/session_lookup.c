@@ -161,6 +161,13 @@ session_table_alloc_needs_sync (void)
   return !vlib_thread_is_main_w_barrier () && (vlib_num_workers () > 1);
 }
 
+void
+session_table_invalidate_table_index (u32 fib_proto, u32 fib_index)
+{
+  if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
+    fib_index_to_table_index[fib_proto][fib_index] = ~0;
+}
+
 static_always_inline u8
 session_table_is_alloced (u8 fib_proto, u32 fib_index)
 {
