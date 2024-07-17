@@ -37,6 +37,8 @@ static session_lookup_main_t sl_main;
  */
 static u32 *fib_index_to_table_index[2];
 
+static u32 *fib_index_to_lock_count[2];
+
 /* 16 octets */
 typedef CLIB_PACKED (struct {
   union
@@ -1392,6 +1394,23 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
   return rv;
 }
 
+static void
+session_lookup_fib_table_lock (u32 fib_index, u32 protocol)
+{
+  fib_table_lock (fib_index, protocol, sl_main.fib_src);
+  vec_validate (fib_index_to_lock_count[protocol], fib_index);
+  fib_index_to_lock_count[protocol][fib_index]++;
+  ASSERT (fib_index_to_lock_count[protocol][fib_index] > 0);
+}
+
+static void
+session_lookup_fib_table_unlock (u32 fib_index, u32 protocol)
+{
+  fib_table_unlock (fib_index, protocol, sl_main.fib_src);
+  ASSERT (fib_index_to_lock_count[protocol][fib_index] > 0);
+  fib_index_to_lock_count[protocol][fib_index]--;
+}
+
 /**
  * Mark (global) tables as pertaining to app ns
  */
@@ -1407,7 +1426,10 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
       fib_index = app_namespace_get_fib_index (app_ns, fp);
       st = session_table_get_or_alloc (fp, fib_index);
       if (st)
-	st->appns_index = app_namespace_index (app_ns);
+	{
+	  st->appns_index = app_namespace_index (app_ns);
+	  session_lookup_fib_table_lock (fib_index, fp);
+	}
     }
 }
 
@@ -1859,6 +1881,14 @@ session_lookup_init (void)
 
   clib_spinlock_init (&slm->st_alloc_lock);
 
+  /* We are not contributing any route to the fib. But we allocate a fib source
+   * so that when we lock the fib table, we can view that we have a lock on the
+   * particular fib table in case we wonder why the fib table is not free after
+   * "ip table del"
+   */
+  slm->fib_src = fib_source_allocate (
+    "session lookup", FIB_SOURCE_PRIORITY_LOW, FIB_SOURCE_BH_SIMPLE);
+
   /*
    * Allocate default table and map it to fib_index 0
    */
@@ -1872,6 +1902,26 @@ session_lookup_init (void)
   fib_index_to_table_index[FIB_PROTOCOL_IP6][0] = session_table_index (st);
   st->active_fib_proto = FIB_PROTOCOL_IP6;
   session_table_init (st, FIB_PROTOCOL_IP6);
+}
+
+void
+session_lookup_table_cleanup (u32 fib_proto, u32 fib_index)
+{
+  session_table_t *st;
+  u32 table_index;
+
+  session_lookup_fib_table_unlock (fib_index, fib_proto);
+  if (fib_index_to_lock_count[fib_proto][fib_index] == 0)
+    {
+      table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
+      st = session_table_get (table_index);
+      if (st)
+	{
+	  session_table_free (st, fib_proto);
+	  if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
+	    fib_index_to_table_index[fib_proto][fib_index] = ~0;
+	}
+    }
 }
 
 /*

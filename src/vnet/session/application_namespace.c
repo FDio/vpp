@@ -22,12 +22,6 @@
 #include <vppinfra/format_table.h>
 #include <vlib/unix/unix.h>
 
-/*
- * fib source when locking the fib table
- */
-static fib_source_t app_namespace_fib_src = FIB_SOURCE_INVALID;
-static u32 *fib_index_to_lock_count[FIB_PROTOCOL_IP6 + 1];
-
 /**
  * Hash table of application namespaces by app ns ids
  */
@@ -87,50 +81,6 @@ app_namespace_alloc (const u8 *ns_id)
   return app_ns;
 }
 
-static void
-app_namespace_fib_table_lock (u32 fib_index, u32 protocol)
-{
-  fib_table_lock (fib_index, protocol, app_namespace_fib_src);
-  vec_validate (fib_index_to_lock_count[protocol], fib_index);
-  fib_index_to_lock_count[protocol][fib_index]++;
-  ASSERT (fib_index_to_lock_count[protocol][fib_index] > 0);
-}
-
-static void
-app_namespace_fib_table_unlock (u32 fib_index, u32 protocol)
-{
-  fib_table_unlock (fib_index, protocol, app_namespace_fib_src);
-  ASSERT (fib_index_to_lock_count[protocol][fib_index] > 0);
-  fib_index_to_lock_count[protocol][fib_index]--;
-}
-
-static void
-app_namespace_del_global_table (app_namespace_t *app_ns)
-{
-  session_table_t *st;
-  u32 table_index;
-
-  app_namespace_fib_table_unlock (app_ns->ip4_fib_index, FIB_PROTOCOL_IP4);
-  if (fib_index_to_lock_count[FIB_PROTOCOL_IP4][app_ns->ip4_fib_index] == 0)
-    {
-      table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP4,
-						      app_ns->ip4_fib_index);
-      st = session_table_get (table_index);
-      if (st)
-	session_table_free (st, FIB_PROTOCOL_IP4);
-    }
-
-  app_namespace_fib_table_unlock (app_ns->ip6_fib_index, FIB_PROTOCOL_IP6);
-  if (fib_index_to_lock_count[FIB_PROTOCOL_IP6][app_ns->ip6_fib_index] == 0)
-    {
-      table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP6,
-						      app_ns->ip6_fib_index);
-      st = session_table_get (table_index);
-      if (st)
-	session_table_free (st, FIB_PROTOCOL_IP6);
-    }
-}
-
 session_error_t
 vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
 {
@@ -188,11 +138,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
       app_ns->sw_if_index = a->sw_if_index;
 
       app_ns->ip4_fib_index = fib_table_find (FIB_PROTOCOL_IP4, a->ip4_fib_id);
-      app_namespace_fib_table_lock (app_ns->ip4_fib_index, FIB_PROTOCOL_IP4);
-
       app_ns->ip6_fib_index = fib_table_find (FIB_PROTOCOL_IP6, a->ip6_fib_id);
-      app_namespace_fib_table_lock (app_ns->ip6_fib_index, FIB_PROTOCOL_IP6);
-
       session_lookup_set_tables_appns (app_ns);
     }
   else
@@ -216,7 +162,8 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
       if (app_ns->sock_name)
 	vec_free (app_ns->sock_name);
 
-      app_namespace_del_global_table (app_ns);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP4, app_ns->ip4_fib_index);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP6, app_ns->ip6_fib_index);
 
       app_namespace_free (app_ns);
     }
@@ -289,15 +236,6 @@ void
 app_namespaces_init (void)
 {
   u8 *ns_id = format (0, "default");
-
-  /* We are not contributing any route to the fib. But we allocate a fib source
-   * so that when we lock the fib table, we can view that we have a lock on the
-   * particular fib table in case we wonder why the fib table is not free after
-   * "ip table del"
-   */
-  if (app_namespace_fib_src == FIB_SOURCE_INVALID)
-    app_namespace_fib_src = fib_source_allocate (
-      "application namespace", FIB_SOURCE_PRIORITY_LOW, FIB_SOURCE_BH_SIMPLE);
 
   if (!app_namespace_lookup_table)
     app_namespace_lookup_table =
