@@ -61,7 +61,7 @@ session_table_get (u32 table_index)
   _(v6,halfopen,memory,(64<<20))
 
 void
-session_table_free (session_table_t *slt, u8 fib_proto)
+session_table_free (session_table_t *slt, u8 fib_proto, u32 fib_index)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
   int i;
@@ -75,11 +75,15 @@ session_table_free (session_table_t *slt, u8 fib_proto)
     {
       clib_bihash_free_16_8 (&slt->v4_session_hash);
       clib_bihash_free_16_8 (&slt->v4_half_open_hash);
+      if (fib_index != ~0)
+	session_table_invalidate_table_index (FIB_PROTOCOL_IP4, fib_index);
     }
   if (fib_proto == FIB_PROTOCOL_IP6 || all)
     {
       clib_bihash_free_48_8 (&slt->v6_session_hash);
       clib_bihash_free_48_8 (&slt->v6_half_open_hash);
+      if (fib_index != ~0)
+	session_table_invalidate_table_index (FIB_PROTOCOL_IP6, fib_index);
     }
 
   pool_put (lookup_tables, slt);

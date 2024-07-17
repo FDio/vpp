@@ -117,7 +117,7 @@ app_namespace_del_global_table (app_namespace_t *app_ns)
 						      app_ns->ip4_fib_index);
       st = session_table_get (table_index);
       if (st)
-	session_table_free (st, FIB_PROTOCOL_IP4);
+	session_table_free (st, FIB_PROTOCOL_IP4, app_ns->ip4_fib_index);
     }
 
   app_namespace_fib_table_unlock (app_ns->ip6_fib_index, FIB_PROTOCOL_IP6);
@@ -127,7 +127,7 @@ app_namespace_del_global_table (app_namespace_t *app_ns)
 						      app_ns->ip6_fib_index);
       st = session_table_get (table_index);
       if (st)
-	session_table_free (st, FIB_PROTOCOL_IP6);
+	session_table_free (st, FIB_PROTOCOL_IP6, app_ns->ip6_fib_index);
     }
 }
 
@@ -212,7 +212,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
 
       st = session_table_get (app_ns->local_table_index);
 
-      session_table_free (st, FIB_PROTOCOL_MAX);
+      session_table_free (st, FIB_PROTOCOL_MAX, ~0);
       if (app_ns->sock_name)
 	vec_free (app_ns->sock_name);
 
