@@ -13,6 +13,7 @@ var cpuPinningSoloTests = map[string][]func(s *CpuPinningSuite){}
 
 type CpuPinningSuite struct {
 	HstSuite
+	previousMaxContainerCount int
 }
 
 func RegisterCpuPinningTests(tests ...func(s *CpuPinningSuite)) {
@@ -31,12 +32,22 @@ func (s *CpuPinningSuite) SetupSuite() {
 
 func (s *CpuPinningSuite) SetupTest() {
 	// Skip if we cannot allocate 3 CPUs for test container
-	s.SkipIfNotEnoughAvailableCpus(1, 3)
-	s.CpuPerVpp = 3
+	s.previousMaxContainerCount = s.CpuAllocator.maxContainerCount
+	s.CpuCount = 3
+	s.CpuAllocator.maxContainerCount = 1
+	s.SkipIfNotEnoughAvailableCpus()
+
 	s.HstSuite.SetupTest()
 	container := s.GetContainerByName(SingleTopoContainerVpp)
 	vpp, err := container.newVppInstance(container.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
+}
+
+func (s *CpuPinningSuite) TearDownTest() {
+	// reset vars
+	s.CpuCount = *NConfiguredCpus
+	s.CpuAllocator.maxContainerCount = s.previousMaxContainerCount
+	s.HstSuite.TearDownTest()
 
 }
 
