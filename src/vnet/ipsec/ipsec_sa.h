@@ -486,7 +486,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
       return 0;
     }
 
-  if (PREDICT_TRUE (sa->seq >= window_size - 1))
+  if (PREDICT_TRUE (window_size > 0 && sa->seq >= window_size - 1))
     {
       /*
        * the last sequence number VPP received is more than one
