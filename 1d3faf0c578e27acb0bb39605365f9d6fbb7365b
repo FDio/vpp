@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2966d991_b1f2130d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-07-17T16:00:32Z",
+      "side": 1,
+      "message": "Can you pleas provide one example where tis is used, and what happens when specific code is using this macro, but it is compiled for non-arm arch.",
+      "revId": "1d3faf0c578e27acb0bb39605365f9d6fbb7365b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
