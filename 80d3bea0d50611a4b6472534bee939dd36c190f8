@@ -34,6 +34,24 @@
       "parentUuid": "06525c34_68a5c84e",
       "revId": "80d3bea0d50611a4b6472534bee939dd36c190f8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32a3450a_6c7daa75",
+        "filename": "src/vppinfra/cache.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-07-17T14:59:22Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2bf720d5_71b5482b",
+      "revId": "80d3bea0d50611a4b6472534bee939dd36c190f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
