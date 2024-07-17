@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b774b5e_15f55196",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-17T09:03:05Z",
+      "side": 1,
+      "message": "nice work! just a few minor things",
+      "revId": "587019f811294faa9188a4796a16fea30ad6f416",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad929db7_8d6562b1",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-17T09:03:05Z",
+      "side": 1,
+      "message": "we don\u0027t need to export this",
+      "revId": "587019f811294faa9188a4796a16fea30ad6f416",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9f3adac_09db90e5",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-17T09:03:05Z",
+      "side": 1,
+      "message": "please move to container.go",
+      "revId": "587019f811294faa9188a4796a16fea30ad6f416",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f174c0c_0bb43430",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-17T09:03:05Z",
+      "side": 1,
+      "message": "please remove if not needed anymore",
+      "revId": "587019f811294faa9188a4796a16fea30ad6f416",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
