@@ -69,7 +69,7 @@ fi
 docker_build () {
     tag=$1
     dockername=$2
-    set -x
+    set -ex
     # shellcheck disable=2086
     docker buildx build ${DOCKER_CACHE_ARGS}  \
       --build-arg UBUNTU_VERSION              \
@@ -78,7 +78,7 @@ docker_build () {
       --build-arg HTTP_PROXY="$HTTP_PROXY"    \
       --build-arg HTTPS_PROXY="$HTTP_PROXY"   \
       -t "$tag" -f docker/Dockerfile."$dockername" .
-    set +x
+    set +ex
 }
 
 docker_build hs-test/vpp vpp
