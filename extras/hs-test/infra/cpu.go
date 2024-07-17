@@ -39,13 +39,6 @@ func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, er
 	// indexes, not actual cores
 	var minCpu, maxCpu int
 
-	// temporary fix for CpuPinningSuite
-	if strings.Contains(CurrentSpecReport().ContainerHierarchyTexts[0], "CpuPinning") {
-		cpuAllocator.maxContainerCount = 1
-	} else {
-		cpuAllocator.maxContainerCount = 4
-	}
-
 	if c.runningInCi {
 		minCpu = ((c.buildNumber) * c.maxContainerCount * nCpus)
 		maxCpu = ((c.buildNumber + 1) * c.maxContainerCount * nCpus) - 1

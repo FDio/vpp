@@ -47,7 +47,7 @@ type HstSuite struct {
 	TestIds           map[string]string
 	CpuAllocator      *CpuAllocatorT
 	CpuContexts       []*CpuContext
-	CpuPerVpp         int
+	CpuCount          int
 	Ppid              string
 	ProcessIndex      string
 	Logger            *log.Logger
@@ -75,11 +75,11 @@ func (s *HstSuite) SetupSuite() {
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
-	s.CpuPerVpp = *NConfiguredCpus
+	s.CpuCount = *NConfiguredCpus
 }
 
 func (s *HstSuite) AllocateCpus() []int {
-	cpuCtx, err := s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuPerVpp)
+	cpuCtx, err := s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount)
 	// using Fail instead of AssertNil to make error message more readable
 	if err != nil {
 		Fail(fmt.Sprint(err))
@@ -105,7 +105,10 @@ func (s *HstSuite) TearDownTest() {
 	}
 	s.ResetContainers()
 	s.RemoveVolumes()
-	s.Ip4AddrAllocator.DeleteIpAddresses()
+
+	if s.Ip4AddrAllocator != nil {
+		s.Ip4AddrAllocator.DeleteIpAddresses()
+	}
 }
 
 func (s *HstSuite) SkipIfUnconfiguring() {
@@ -247,11 +250,17 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	}
 }
 
-func (s *HstSuite) SkipIfNotEnoughAvailableCpus(containerCount int, nCpus int) bool {
-	MaxRequestedCpu := (GinkgoParallelProcess() * containerCount * nCpus)
+func (s *HstSuite) SkipIfNotEnoughAvailableCpus() bool {
+	var MaxRequestedCpu int
+
+	if s.CpuAllocator.runningInCi {
+		MaxRequestedCpu = ((s.CpuAllocator.buildNumber + 1) * s.CpuAllocator.maxContainerCount * s.CpuCount)
+	} else {
+		MaxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
+	}
 
 	if len(s.CpuAllocator.cpus)-1 < MaxRequestedCpu {
-		s.Skip(fmt.Sprintf("test case cannot allocate requested cpus (%d cpus * %d containers)", nCpus, containerCount))
+		s.Skip(fmt.Sprintf("test case cannot allocate requested cpus (%d cpus * %d containers)", s.CpuCount, s.CpuAllocator.maxContainerCount))
 	}
 
 	return true
