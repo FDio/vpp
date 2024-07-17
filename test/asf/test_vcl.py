@@ -1006,34 +1006,6 @@ class LDPThruHostStackIperf(VCLTestCase):
             iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args
         )
 
-
-class LDPThruHostStackIperfMss(VCLTestCase):
-    """LDP Thru Host Stack Iperf with MSS"""
-
-    @classmethod
-    def setUpClass(cls):
-        super(LDPThruHostStackIperfMss, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(LDPThruHostStackIperfMss, cls).tearDownClass()
-
-    def setUp(self):
-        super(LDPThruHostStackIperfMss, self).setUp()
-
-        self.thru_host_stack_setup()
-        self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-4", "-t 2", "-c", self.loop0.local_ip4]
-        self.server_iperf3_args = ["-4", "-s"]
-
-    def tearDown(self):
-        self.thru_host_stack_tear_down()
-        super(LDPThruHostStackIperfMss, self).tearDown()
-
-    def show_commands_at_teardown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
-        self.logger.debug(self.vapi.cli("show app mq"))
-
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_thru_host_stack_iperf3_mss(self):
         """run LDP thru host stack iperf3 test with mss option"""

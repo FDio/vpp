@@ -137,6 +137,7 @@ typedef struct _session_rule_add_del_args
 
 session_error_t vnet_session_rule_add_del (session_rule_add_del_args_t *args);
 void session_lookup_set_tables_appns (app_namespace_t * app_ns);
+void session_table_invalidate_table_index (u32 proto, u32 fib_index);
 
 void session_lookup_init (void);
 

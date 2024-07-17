@@ -117,7 +117,11 @@ app_namespace_del_global_table (app_namespace_t *app_ns)
 						      app_ns->ip4_fib_index);
       st = session_table_get (table_index);
       if (st)
-	session_table_free (st, FIB_PROTOCOL_IP4);
+	{
+	  session_table_free (st, FIB_PROTOCOL_IP4);
+	  session_table_invalidate_table_index (FIB_PROTOCOL_IP4,
+						app_ns->ip4_fib_index);
+	}
     }
 
   app_namespace_fib_table_unlock (app_ns->ip6_fib_index, FIB_PROTOCOL_IP6);
@@ -127,7 +131,11 @@ app_namespace_del_global_table (app_namespace_t *app_ns)
 						      app_ns->ip6_fib_index);
       st = session_table_get (table_index);
       if (st)
-	session_table_free (st, FIB_PROTOCOL_IP6);
+	{
+	  session_table_free (st, FIB_PROTOCOL_IP6);
+	  session_table_invalidate_table_index (FIB_PROTOCOL_IP6,
+						app_ns->ip6_fib_index);
+	}
     }
 }
 
