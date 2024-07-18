@@ -463,7 +463,14 @@ func (c *Container) log(maxLines int) (string, error) {
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
 
-	return stdout + " " + stderr, err
+	if strings.Contains(stdout, "==> /dev/null <==") {
+		stdout = ""
+	}
+	if strings.Contains(stderr, "tail: cannot open") {
+		stderr = ""
+	}
+
+	return stdout + stderr, err
 }
 
 func (c *Container) stop() error {
