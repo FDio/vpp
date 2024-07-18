@@ -1665,9 +1665,9 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "appns %_%v%_", &ns_id))
 	;
       else if (unformat (input, "scope global"))
-	scope = 1;
+	scope = SESSION_RULE_SCOPE_GLOBAL;
       else if (unformat (input, "scope local"))
-	scope = 2;
+	scope = SESSION_RULE_SCOPE_LOCAL;
       else if (unformat (input, "%U/%d %d %U/%d %d", unformat_ip4_address,
 			 &lcl_ip.ip4, &lcl_plen, &lcl_port,
 			 unformat_ip4_address, &rmt_ip.ip4, &rmt_plen,
@@ -1709,7 +1709,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       app_ns = app_namespace_get_default ();
     }
 
-  if (scope == 1 || scope == 0)
+  if (scope == SESSION_RULE_SCOPE_GLOBAL || scope == 0)
     {
       fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
       fib_index = is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
@@ -1730,9 +1730,27 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "%U rules table", format_transport_proto,
 		   transport_proto);
-  srt = &st->session_rules[transport_proto];
-  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
-  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+  if (scope == SESSION_RULE_SCOPE_LOCAL)
+    {
+      srt = &st->session_rules[transport_proto];
+      session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
+      session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+    }
+  else
+    {
+      /*
+       * 2 separate session tables for global entries, 1 for ip4 and 1 for ip6
+       */
+      st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4,
+					    app_ns->ip4_fib_index);
+      srt = &st->session_rules[transport_proto];
+      session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
+
+      st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6,
+					    app_ns->ip6_fib_index);
+      srt = &st->session_rules[transport_proto];
+      session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+    }
 
   vec_free (ns_id);
   return 0;
