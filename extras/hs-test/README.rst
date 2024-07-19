@@ -307,8 +307,52 @@ It is possible to debug VPP by attaching ``gdb`` before test execution by adding
 
 If a test consists of more VPP instances then this is done for each of them.
 
+**Memory leak testing**
 
-**Eternal dependencies**
+It is possible to use VPP memory traces to diagnose if and where memory leaks happen by comparing of two traces at different point in time.
+You can do it by test like following:
+
+::
+
+    func MemLeakTest(s *NoTopoSuite) {
+    	s.SkipUnlessLeakCheck()  // test is excluded from usual test run
+    	vpp := s.GetContainerByName("vpp").VppInstance
+    	/* do your configuration here */
+    	vpp.Disconnect()  // no goVPP less noise
+    	vpp.EnableMemoryTrace()  // enable memory traces
+    	traces1, err := vpp.GetMemoryTrace()  // get first sample
+    	s.AssertNil(err, fmt.Sprint(err))
+    	vpp.Vppctl("test mem-leak")  // execute some action
+    	traces2, err := vpp.GetMemoryTrace()  // get second sample
+    	s.AssertNil(err, fmt.Sprint(err))
+    	vpp.MemLeakCheck(traces1, traces2)  // compare samples and generate report
+    }
+
+To get your memory leak report run following command:
+
+::
+
+    $ make test-leak TEST=MemLeakTest
+    ...
+    NoTopoSuiteSolo mem_leak_test.go/MemLeakTest [SOLO]
+    /home/matus/vpp/extras/hs-test/infra/suite_no_topo.go:113
+
+      Report Entries >>
+
+      SUMMARY: 112 byte(s) leaked in 1 allocation(s)
+       - /home/matus/vpp/extras/hs-test/infra/vppinstance.go:624 @ 07/19/24 15:53:33.539
+
+        leak of 112 byte(s) in 1 allocation(s) from:
+            #0 clib_mem_heap_alloc_aligned + 0x31
+            #1 _vec_alloc_internal + 0x113
+            #2 _vec_validate + 0x81
+            #3 leak_memory_fn + 0x4f
+            #4 0x7fc167815ac3
+            #5 0x7fc1678a7850
+      << Report Entries
+    ------------------------------
+
+**External dependencies**
 
 * Linux tools ``ip``, ``brctl``
 * Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
