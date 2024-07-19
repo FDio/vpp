@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6a6fccf_bb78822e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-19T18:01:52Z",
+      "side": 1,
+      "message": "LGTM. Waiting on merging until comments on the dependent patches are dealt with",
+      "revId": "501de0c14014fc2e29475856ea3124e28320bd2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
