@@ -2,6 +2,7 @@ package hst
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"go.fd.io/govpp/binapi/ethernet_types"
 	"io"
@@ -95,6 +96,13 @@ type VppCpuConfig struct {
 	PinMainCpu         bool
 	PinWorkersCorelist bool
 	SkipCores          int
+}
+
+type VppMemTrace struct {
+	Count     int      `json:"count"`
+	Size      int      `json:"bytes"`
+	Sample    string   `json:"sample"`
+	Traceback []string `json:"traceback"`
 }
 
 func (vpp *VppInstance) getSuite() *HstSuite {
@@ -534,4 +542,84 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 	}
 
 	return c.Close().ToString()
+}
+
+// EnableMemoryTrace enables memory traces of VPP main-heap
+func (vpp *VppInstance) EnableMemoryTrace() {
+	vpp.getSuite().Log(vpp.Vppctl("memory-trace on main-heap"))
+}
+
+// GetMemoryTrace dumps memory traces for analysis
+func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
+	var trace []VppMemTrace
+	vpp.getSuite().Log(vpp.Vppctl("save memory-trace trace.json"))
+	err := vpp.Container.GetFile("/tmp/trace.json", "/tmp/trace.json")
+	if err != nil {
+		return nil, err
+	}
+	fileBytes, err := os.ReadFile("/tmp/trace.json")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(fileBytes, &trace)
+	if err != nil {
+		return nil, err
+	}
+	return trace, nil
+}
+
+// memTracesSuppressCli filter out CLI related samples
+func memTracesSuppressCli(traces []VppMemTrace) []VppMemTrace {
+	var filtered []VppMemTrace
+	for i := 0; i < len(traces); i++ {
+		isCli := false
+		for j := 0; j < len(traces[i].Traceback); j++ {
+			if strings.Contains(traces[i].Traceback[j], "unix_cli") {
+				isCli = true
+				break
+			}
+		}
+		if !isCli {
+			filtered = append(filtered, traces[i])
+		}
+	}
+	return filtered
+}
+
+// MemLeakCheck compares memory traces at different point in time, analyzes if memory leaks happen and produces report
+func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
+	totalBytes := 0
+	totalCounts := 0
+	trace1 := memTracesSuppressCli(first)
+	trace2 := memTracesSuppressCli(second)
+	report := ""
+	for i := 0; i < len(trace2); i++ {
+		match := false
+		for j := 0; j < len(trace1); j++ {
+			if trace1[j].Sample == trace2[i].Sample {
+				if trace2[i].Size > trace1[j].Size {
+					deltaBytes := trace2[i].Size - trace1[j].Size
+					deltaCounts := trace2[i].Count - trace1[j].Count
+					report += fmt.Sprintf("grow %d byte(s) in %d allocation(s) from:\n", deltaBytes, deltaCounts)
+					for j := 0; j < len(trace2[i].Traceback); j++ {
+						report += fmt.Sprintf("\t#%d %s\n", j, trace2[i].Traceback[j])
+					}
+					totalBytes += deltaBytes
+					totalCounts += deltaCounts
+				}
+				match = true
+				break
+			}
+		}
+		if !match {
+			report += fmt.Sprintf("\nleak of %d byte(s) in %d allocation(s) from:\n", trace2[i].Size, trace2[i].Count)
+			for j := 0; j < len(trace2[i].Traceback); j++ {
+				report += fmt.Sprintf("\t#%d %s\n", j, trace2[i].Traceback[j])
+			}
+			totalBytes += trace2[i].Size
+			totalCounts += trace2[i].Count
+		}
+	}
+	summary := fmt.Sprintf("\nSUMMARY: %d byte(s) leaked in %d allocation(s)\n", totalBytes, totalCounts)
+	AddReportEntry(summary, report)
 }

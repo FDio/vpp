@@ -35,6 +35,7 @@ var NConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different with debug build")
 var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
+var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var NumaAwareCpuAlloc bool
 var SuiteTimeout time.Duration
 
@@ -285,6 +286,11 @@ func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
 	}
 }
 
+func (s *HstSuite) SkipUnlessLeakCheck() {
+	if !*IsLeakCheck {
+		s.Skip("leak-check tests excluded")
+	}
+}
 func (s *HstSuite) ResetContainers() {
 	for _, container := range s.StartedContainers {
 		container.stop()

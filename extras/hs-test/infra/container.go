@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/docker/go-units"
 	"os"
 	"os/exec"
 	"slices"
@@ -15,7 +16,6 @@ import (
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-units"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -380,6 +380,11 @@ func (c *Container) CreateFile(destFileName string, content string) error {
 	}
 	c.copy(f.Name(), destFileName)
 	return nil
+}
+
+func (c *Container) GetFile(sourceFileName, targetFileName string) error {
+	cmd := exec.Command("docker", "cp", c.Name+":"+sourceFileName, targetFileName)
+	return cmd.Run()
 }
 
 /*
