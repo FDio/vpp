@@ -7,8 +7,10 @@ single_test=0
 persist_set=0
 unconfigure_set=0
 debug_set=0
+leak_check_set=0
 debug_build=
 ginkgo_args=
+tc_name=
 
 for i in "$@"
 do
@@ -74,6 +76,13 @@ case "${i}" in
             args="$args -cpu0"
         fi
         ;;
+    --leak_check=*)
+        leak_check="${i#*=}"
+        if [ "$leak_check" = "true" ]; then
+            args="$args -leak_check"
+            leak_check_set=1
+        fi
+        ;;
 esac
 done
 
@@ -95,6 +104,16 @@ fi
 if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     echo "VPP debug flag is not supported while running all tests!"
     exit 1
+fi
+
+if [ $leak_check_set -eq 1 ]; then
+  if [ $single_test -eq 0 ]; then
+    echo "a single test has to be specified when leak_check is set"
+    exit 1
+  fi
+  ginkgo_args="--focus $tc_name"
+  sudo -E go run github.com/onsi/ginkgo/v2/ginkgo $ginkgo_args -- $args
+  exit 0
 fi
 
 mkdir -p summary

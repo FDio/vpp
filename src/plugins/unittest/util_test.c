@@ -101,6 +101,36 @@ VLIB_CLI_COMMAND (test_hash_command, static) =
   .function = test_hash_command_fn,
 };
 
+static void *
+leak_memory_fn (void *args)
+{
+  u8 *p = 0;
+  vec_validate (p, 100);
+  p = 0;
+  return 0;
+}
+
+static clib_error_t *
+test_mem_leak_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  /* do memory leak from thread, so no 'unix_cli' in traceback */
+  pthread_t thread;
+  int rv = pthread_create (&thread, NULL, leak_memory_fn, 0);
+  if (rv)
+    {
+      return clib_error_return (0, "pthread_create failed");
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_mem_leak_command, static) = {
+  .path = "test mem-leak",
+  .short_help = "leak some memory",
+  .function = test_mem_leak_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

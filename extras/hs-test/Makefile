@@ -62,6 +62,7 @@ help:
 	@echo "Make targets:"
 	@echo " test                     - run tests"
 	@echo " test-debug               - run tests (vpp debug image)"
+	@echo " test-leak                - run memory leak tests (vpp debug image)"
 	@echo " build                    - build test infra"
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
@@ -142,6 +143,10 @@ test-cov: .deps.ok .build.cov.ok
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0)
 	@$(MAKE) -C ../.. test-cov-post HS_TEST=1
 	@bash ./script/compress.sh
+
+.PHONY: test-leak
+test-leak: .deps.ok .build_debug.ok
+	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC)
 
 .PHONY: build-go
 build-go:
