@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f7dc5ec6_f2990b35",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-19T18:02:35Z",
+      "side": 1,
+      "message": "This is awesome! Waiting on merging until I can merge the parent patches",
+      "revId": "b371a6a20b29f5190063f21db0442c377badf29c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
