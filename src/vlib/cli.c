@@ -43,6 +43,7 @@
 #include <vppinfra/callback.h>
 #include <vppinfra/cpu.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/cJSON.h>
 #include <unistd.h>
 #include <ctype.h>
 
@@ -1112,6 +1113,112 @@ VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
   "                   [numa-heap <numa-id>]\n",
   .function = enable_disable_memory_trace,
+};
+
+static clib_error_t *
+save_memory_trace (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
+{
+  char *file, *chroot_file;
+  uword was_enabled;
+  mheap_trace_t *t, *mem_traces = 0;
+  u8 *tmp;
+  cJSON *traces, *trace, *traceback, *symbol;
+  int i;
+  FILE *fp;
+  char *json_str = 0;
+
+  cJSON_Hooks cjson_hooks = {
+    .malloc_fn = clib_mem_alloc,
+    .free_fn = clib_mem_free,
+    .realloc_fn = clib_mem_realloc,
+  };
+  cJSON_InitHooks (&cjson_hooks);
+
+  if (!unformat (input, "%s", &file))
+    {
+      vlib_cli_output (vm, "expected file name, got `%U'",
+		       format_unformat_error, input);
+      return 0;
+    }
+
+  /* It's fairly hard to get "../oopsie" through unformat; just in case */
+  if (strstr (file, "..") || index (file, '/'))
+    {
+      vlib_cli_output (vm, "illegal characters in filename '%s'", file);
+      return 0;
+    }
+  chroot_file = (char *) format (0, "/tmp/%s%c", file, 0);
+  vec_free (file);
+  fp = fopen ((char *) chroot_file, "w");
+  if (fp == NULL)
+    {
+      vlib_cli_output (vm, "couldn't open output file %s '%s'", chroot_file);
+      vec_free (chroot_file);
+      return 0;
+    }
+
+  was_enabled = clib_mem_trace_enable_disable (0);
+  vlib_cli_output (vm, "Saving trace to '%s'", chroot_file);
+  mem_traces = clib_mem_trace_dup (current_traced_heap);
+  traces = cJSON_CreateArray ();
+  vec_foreach (t, mem_traces)
+    {
+      /* Skip over free elements. */
+      if (t->n_allocations == 0)
+	continue;
+
+      trace = cJSON_CreateObject ();
+      cJSON_AddNumberToObject (trace, "count", t->n_allocations);
+      cJSON_AddNumberToObject (trace, "bytes", t->n_bytes);
+      tmp = format (0, "%p%c", t->offset, 0);
+      cJSON_AddStringToObject (trace, "sample", (char *) tmp);
+      vec_free (tmp);
+      traceback = cJSON_AddArrayToObject (trace, "traceback");
+      for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
+	{
+#if defined(CLIB_UNIX) && !defined(__APPLE__)
+	  /* $$$$ does this actually work? */
+	  tmp = format (0, "%U%c\n", format_clib_elf_symbol_with_address,
+			t->callers[i], 0);
+	  symbol = cJSON_CreateString ((char *) tmp);
+	  cJSON_AddItemToArray (traceback, symbol);
+	  vec_free (tmp);
+#else
+	  tmp = format (0, "%p%c\n", t->callers[i], 0);
+	  symbol = cJSON_CreateString ((char *) tmp);
+	  cJSON_AddItemToArray (traceback, symbol);
+	  vec_free (tmp);
+#endif
+	}
+
+      cJSON_AddItemToArray (traces, trace);
+    }
+  json_str = cJSON_PrintUnformatted (traces);
+  cJSON_Delete (traces);
+  fputs (json_str, fp);
+  fclose (fp);
+  clib_mem_free (json_str);
+
+  vec_free (mem_traces);
+  clib_mem_trace_enable_disable (was_enabled);
+
+  vec_free (chroot_file);
+
+  return 0;
+}
+
+/*?
+ * Save memory traces of the currently traced heap in JSON format to file.
+ * Only filename can be specified, path is fixed (/tmp/<filename>).
+ *
+ * @cliexpar
+ * @cliexcmd{save memory-trace mem_trace.json}
+?*/
+VLIB_CLI_COMMAND (save_memory_trace_command, static) = {
+  .path = "save memory-trace",
+  .short_help = "save memory-trace <filename>",
+  .function = save_memory_trace,
 };
 
 static clib_error_t *
