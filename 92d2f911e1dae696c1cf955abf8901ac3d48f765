@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3840ae35_1e6a5ceb",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1146,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-22T07:10:14Z",
+      "side": 1,
+      "message": "used in couple of places, will do in different patch",
+      "parentUuid": "820dd069_6d23844f",
+      "range": {
+        "startLine": 1146,
+        "startChar": 29,
+        "endLine": 1146,
+        "endChar": 34
+      },
+      "revId": "92d2f911e1dae696c1cf955abf8901ac3d48f765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b3d6f4e1_3b4a6d54",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5fef1c4d_9050b180",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1181,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-22T07:10:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b3d6f4e1_3b4a6d54",
+      "revId": "92d2f911e1dae696c1cf955abf8901ac3d48f765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e8208773_8ec72593",
@@ -54,6 +96,24 @@
       "writtenOn": "2024-07-19T18:00:57Z",
       "side": 1,
       "message": "Shouldn\u0027t this be a vec_foreach + vec_free?",
+      "revId": "92d2f911e1dae696c1cf955abf8901ac3d48f765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b392a5b_42734b1a",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1203,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-22T07:10:14Z",
+      "side": 1,
+      "message": "not needed, just vector of mheap_trace_t (list of callers is fixed size array)",
+      "parentUuid": "e8208773_8ec72593",
       "revId": "92d2f911e1dae696c1cf955abf8901ac3d48f765",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
