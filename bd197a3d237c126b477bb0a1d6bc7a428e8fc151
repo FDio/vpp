@@ -1,0 +1,135 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a625fd5_46f92eca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "Looks really good. Some comments but, given the pile of patches, I\u0027ll let you decide if you want to push some updates to the current one or handle them in a separate PR",
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed80a402_1effa9e3",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1022,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "got",
+      "range": {
+        "startLine": 1022,
+        "startChar": 20,
+        "endLine": 1022,
+        "endChar": 23
+      },
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2527c55_284b8692",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "Hm, sometimes chars sometimes vectors? This might end up being tricky. Should we distinguish between `http_header_t` used by apps and `http_header_ht_t`, the header in the `http_header_table_t`? Or whatever other names we may want.",
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93edf2be_ce123df5",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "u32/u64/uword for lengths?",
+      "range": {
+        "startLine": 866,
+        "startChar": 60,
+        "endLine": 866,
+        "endChar": 66
+      },
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00fb99a9_f133732a",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 887,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "At one point we should have a version of this function that gets as input a piece of memory and/or a buffer/fifo, to avoid lots of small allocs and frees.",
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c8e4352_f742ac35",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "Would be nice to eventually pass these as pointer. Eventually.",
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1db3f21_60dfe7cb",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-22T23:26:53Z",
+      "side": 1,
+      "message": "Interesting. If we decide to support custom headers, with custom lengths/contents, we might have more of these. Maybe another reason why we should separate user provided headers from header-table headers, i.e., we could support flags in user provided headers.",
+      "revId": "bd197a3d237c126b477bb0a1d6bc7a428e8fc151",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
