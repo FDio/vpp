@@ -198,7 +198,7 @@ unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
     return 0;
 
   /* Brain-police user path input */
-  if (strstr ((char *) filename, "..") || index ((char *) filename, '/'))
+  if (strstr ((char *) filename, "..") || strchr ((char *) filename, '/'))
     {
       vec_free (filename);
       return 0;

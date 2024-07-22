@@ -655,7 +655,7 @@ elog_save_buffer (vlib_main_t * vm,
     }
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
-  if (strstr (file, "..") || index (file, '/'))
+  if (strstr (file, "..") || strchr (file, '/'))
     {
       vlib_cli_output (vm, "illegal characters in filename '%s'", file);
       return 0;

@@ -436,7 +436,7 @@ svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
   u8 *sanitized_name = 0;
   int fd = 0;
 
-  if (strstr (filename, "..") || index (filename, '/'))
+  if (strstr (filename, "..") || strchr (filename, '/'))
     {
       error = clib_error_return (0, "Illegal characters in filename '%s'",
 				 filename);
