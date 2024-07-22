@@ -2151,7 +2151,7 @@ elog_save (vat_main_t * vam)
     }
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
-  if (strstr (file, "..") || index (file, '/'))
+  if (strstr (file, "..") || strchr (file, '/'))
     {
       errmsg ("illegal characters in filename '%s'", file);
       return 0;
