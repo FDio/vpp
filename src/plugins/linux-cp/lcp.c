@@ -161,6 +161,22 @@ lcp_get_netlink_processing_active (void)
   return lcpm->netlink_processing_active;
 }
 
+void
+lcp_set_route_no_paths (u8 is_del)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->route_no_paths = (is_del != 0);
+}
+
+u8
+lcp_get_route_no_paths (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->route_no_paths;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

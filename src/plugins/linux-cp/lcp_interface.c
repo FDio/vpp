@@ -138,6 +138,8 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
 		   lcp_get_del_static_on_link_down () ? "on" : "off");
   vlib_cli_output (vm, "lcp del-dynamic-on-link-down %s\n",
 		   lcp_get_del_dynamic_on_link_down () ? "on" : "off");
+  vlib_cli_output (vm, "lcp route-no-paths %s\n",
+		   lcp_get_route_no_paths () ? "on" : "off");
 
   if (phy_sw_if_index == ~0)
     {
@@ -579,6 +581,8 @@ lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 	lcp_set_del_static_on_link_down (1 /* is_del */);
       else if (unformat (input, "del-dynamic-on-link-down"))
 	lcp_set_del_dynamic_on_link_down (1 /* is_del */);
+      else if (unformat (input, "route-no-paths"))
+	lcp_set_route_no_paths (1 /* is_del */);
       else
 	return clib_error_return (0, "interfaces not found");
     }

@@ -1167,7 +1167,7 @@ lcp_router_route_path_add_special (struct rtnl_route *rr,
 {
   fib_route_path_t *path;
 
-  if (rtnl_route_get_type (rr) < RTN_BLACKHOLE)
+  if (rtnl_route_get_type (rr) < RTN_BLACKHOLE && !(lcp_get_route_no_paths ()))
     return;
 
   /* if it already has a path, it does not need us to add one */
@@ -1176,8 +1176,21 @@ lcp_router_route_path_add_special (struct rtnl_route *rr,
 
   vec_add2 (ctx->paths, path, 1);
 
-  path->frp_flags = FIB_ROUTE_PATH_FLAG_NONE | ctx->type_flags;
-  path->frp_sw_if_index = ~0;
+  /* If there are no paths, and `lcp param route-no-paths` is enabled
+   * we need to add an extra local path. This allows punting traffic
+   * with destinations available only via kernel */
+  if (lcp_get_route_no_paths ())
+    {
+      path->frp_flags = FIB_ROUTE_PATH_LOCAL | ctx->type_flags;
+    } else {
+      path->frp_flags = FIB_ROUTE_PATH_FLAG_NONE | ctx->type_flags;
+    }
+
+  /* Do not add interface to routes from kernel */
+  if (rtnl_route_get_protocol (rr) != RTPROT_KERNEL) {
+    path->frp_sw_if_index = ~0;
+  }
+
   path->frp_proto = fib_proto_to_dpo (ctx->route_proto);
   path->frp_preference = ctx->preference;
 
@@ -1335,7 +1348,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 
   nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
   /* Skip any kernel routes and IPv6 LL or multicast routes */
-  if (rproto == RTPROT_KERNEL ||
+  if ((rproto == RTPROT_KERNEL && !(lcp_get_route_no_paths ())) ||
       (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
        (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
 	ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6))))

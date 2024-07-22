@@ -192,6 +192,17 @@ lcp_param_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    return clib_error_return (0, "unknown input `%U'",
 				      format_unformat_error, line_input);
 	}
+      else if (unformat (line_input, "route-no-paths"))
+	{
+	  if (unformat (line_input, "on") || unformat (line_input, "enable"))
+	    lcp_set_route_no_paths (1 /* is_del */);
+	  else if (unformat (line_input, "off") ||
+		   unformat (line_input, "disable"))
+	    lcp_set_route_no_paths (0 /* is_del */);
+	  else
+	    return clib_error_return (0, "unknown input `%U'",
+				      format_unformat_error, line_input);
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, line_input);
@@ -204,7 +215,8 @@ lcp_param_command_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (lcp_param_command, static) = {
   .path = "lcp param",
   .short_help = "lcp param [del-static-on-link-down (on|enable|off|disable)] "
-		"[del-dynamic-on-link-down (on|enable|off|disable)]",
+		"[del-dynamic-on-link-down (on|enable|off|disable)] "
+		"[route-no-paths (on|enable|off|disable)]",
   .function = lcp_param_command_fn,
 };
 
