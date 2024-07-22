@@ -54,6 +54,8 @@ ip6_sas_commonlen (const ip6_address_t *a1, const ip6_address_t *a2)
 static int
 ip4_sas_commonlen (const ip4_address_t *a1, const ip4_address_t *a2)
 {
+  if (!a1 || !a2)
+    return 0;
   u64 a =
     clib_net_to_host_u32 (a1->as_u32) ^ clib_net_to_host_u32 (a2->as_u32);
   if (a == 0)
