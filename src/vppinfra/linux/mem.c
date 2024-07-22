@@ -101,11 +101,13 @@ legacy_get_log2_default_hugepage_size (void)
 void
 clib_mem_main_init (void)
 {
+  unsigned long nodemask = 0, maxnode = CLIB_MAX_NUMAS;
+  unsigned long flags = MPOL_F_MEMS_ALLOWED;
   clib_mem_main_t *mm = &clib_mem_main;
   long sysconf_page_size;
   uword page_size;
-  void *va;
-  int fd;
+  void *addr = 0;
+  int fd, mode;
 
   if (mm->log2_page_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
     return;
@@ -131,23 +133,11 @@ clib_mem_main_init (void)
   mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz;
 
   /* numa nodes */
-  va = mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
-	     MAP_ANONYMOUS, -1, 0);
-  if (va == MAP_FAILED)
-    return;
-
-  if (mlock (va, page_size))
-    goto done;
-
-  for (int i = 0; i < CLIB_MAX_NUMAS; i++)
+  if (syscall (__NR_get_mempolicy, &mode, &nodemask, maxnode, addr, flags) ==
+      0)
     {
-      int status;
-      if (syscall (__NR_move_pages, 0, 1, &va, &i, &status, 0) == 0)
-	mm->numa_node_bitmap |= 1ULL << i;
+      mm->numa_node_bitmap = nodemask;
     }
-
-done:
-  munmap (va, page_size);
 }
 
 __clib_export u64
