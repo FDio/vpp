@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "359fbfcd_1d2ebcda",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-07-23T20:47:40Z",
+      "side": 1,
+      "message": "You are right. I moved the call to session_table_free. For freeing the local table, we don\u0027t need to call invalidate.",
+      "revId": "667d3098c290c73192e140da54d081f0bf50d3cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

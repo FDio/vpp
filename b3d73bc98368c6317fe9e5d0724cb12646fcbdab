@@ -33,6 +33,24 @@
       "message": "Shouldn\u0027t we call this from all session_table_free calls? That is, wouldn\u0027t it be better if we moved it into session_table_free?",
       "revId": "b3d73bc98368c6317fe9e5d0724cb12646fcbdab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6263b9f2_07f3e085",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-07-23T20:47:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8116435e_075c452e",
+      "revId": "b3d73bc98368c6317fe9e5d0724cb12646fcbdab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
