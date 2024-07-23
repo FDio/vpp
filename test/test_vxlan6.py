@@ -258,7 +258,7 @@ class TestVxlan6(BridgeDomain, VppTestCase):
 
         reassembled = util.reassemble4(payload)
 
-        self.assertEqual(Ether(raw(frame))[IP], reassembled[IP])
+        self.assertEqual(Ether(bytes(frame))[IP], reassembled[IP])
 
     """
     Tests with default port (4789)

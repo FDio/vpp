@@ -518,6 +518,7 @@ class TestIpsecAhHandoff(TemplateIpsecAh, IpsecTun6HandoffTests, IpsecTun4Handof
     pass
 
 
+@unittest.skipIf(True, "Temporarily skip test until Scapy-2.4.5 patch is available")
 class TestIpsecAhAll(ConfigIpsecAH, IpsecTra4, IpsecTra6, IpsecTun4, IpsecTun6):
     """Ipsec AH all Algos"""
 

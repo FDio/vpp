@@ -181,9 +181,9 @@ func (c *Container) Create() error {
 		c.ctx,
 		&containerTypes.Config{
 			Hostname: c.Name,
-			Image: c.Image,
-			Env:   c.getEnvVars(),
-			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
+			Image:    c.Image,
+			Env:      c.getEnvVars(),
+			Cmd:      strings.Split(c.ExtraRunningArgs, " "),
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{

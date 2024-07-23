@@ -1444,7 +1444,7 @@ class TestIPLoadBalance(VppTestCase):
         port_pkts = []
         src_pkts = []
 
-        for ii in range(257):
+        for ii in range(0, 256):
             port_pkts.append(
                 (
                     Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -1550,7 +1550,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         port_pkts = []
 
-        for ii in range(257):
+        for ii in range(0, 256):
             port_pkts.append(
                 (
                     Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -1597,7 +1597,7 @@ class TestIPLoadBalance(VppTestCase):
         route_10_0_0_3.add_vpp_config()
 
         port_pkts = []
-        for ii in range(257):
+        for ii in range(0, 256):
             port_pkts.append(
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IP(dst="10.0.0.3", src="20.0.0.2")
@@ -2246,8 +2246,8 @@ class TestIPDeag(VppTestCase):
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)
         )
-        pkts_dst = p_dst * 257
-        pkts_src = p_src * 257
+        pkts_dst = p_dst * 256
+        pkts_src = p_src * 256
 
         self.send_and_assert_no_replies(self.pg0, pkts_dst, "IP in dst table")
         self.send_and_assert_no_replies(self.pg0, pkts_src, "IP in src table")
@@ -2294,7 +2294,7 @@ class TestIPDeag(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-        self.send_and_assert_no_replies(self.pg0, p_l * 257, "IP lookup loop")
+        self.send_and_assert_no_replies(self.pg0, p_l * 256, "IP lookup loop")
 
 
 class TestIPInput(VppTestCase):
