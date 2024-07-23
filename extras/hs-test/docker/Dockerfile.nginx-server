@@ -9,4 +9,4 @@ RUN apt-get update \
 COPY resources/nginx/nginx_server_mirroring.conf /nginx.conf
 
 
-ENTRYPOINT ["nginx", "-c", "/nginx.conf"]
+ENTRYPOINT nginx -c /nginx.conf
