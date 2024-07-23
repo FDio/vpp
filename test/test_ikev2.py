@@ -643,6 +643,7 @@ class IkePeer(VppTestCase):
 
         globals()["ikev2"] = _ikev2
         super(IkePeer, cls).setUpClass()
+        cls.vapi.cli("memory-trace main-heap api-segment stats-segment")
         cls.create_pg_interfaces(range(2))
         for i in cls.pg_interfaces:
             i.admin_up()
@@ -653,6 +654,7 @@ class IkePeer(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        cls.vapi.cli("save memory-trace mem_trace.json")
         super(IkePeer, cls).tearDownClass()
 
     def tearDown(self):
@@ -1215,7 +1217,7 @@ class TemplateInitiator(IkePeer):
         if self.no_idr_auth:
             self.assertEqual(idi.next_payload, 39)  # AUTH
         else:
-            idr = ikev2.IKEv2_payload_IDr(idi.payload)
+            idr = ikev2.IKEv2_payload_IDr(bytes(idi.payload))
             self.assertEqual(idr.load, self.sa.r_id)
         prop = idi[ikev2.IKEv2_payload_Proposal]
         c = self.sa.child_sas[0]
