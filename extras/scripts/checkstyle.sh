@@ -19,7 +19,7 @@ CLANG_FORMAT_VER_REGEX='([0-9]+)\.[0-9]+\.[0-9]+'
 CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
 
 # TODO: Remove clang-format-${CLANG_FORMAT_VER} from 'make install-deps' when
-#       CLANG_FORMAT_VER default value is upgraded
+#       CLANG_FORMAT_VER default value is upgraded to 15 after Ubuntu-20.04 is deprecated
 CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-11}
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
 GIT_DIFF_EXCLUDE_LIST=(
@@ -30,16 +30,20 @@ CLANG_FORMAT_DIFF_ARGS="-style file -p1"
 SUFFIX="-${CLANG_FORMAT_VER}"
 
 # Attempt to find clang-format to confirm Clang version.
-if command -v clang-format${SUFFIX} &> /dev/null;
+if command -v "clang-format${SUFFIX}" &> /dev/null;
 then
-    CLANG_FORMAT=clang-format${SUFFIX}
-elif command -v clang-format &> /dev/null;
-then
-    CLANG_FORMAT=clang-format
+    CLANG_FORMAT="clang-format${SUFFIX}"
+else
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE FAILED"
+    echo "* Could not locate the clang-format${SUFFIX} script"
+    echo "* Run 'make install-deps' to install it"
+    echo "*******************************************************************"
+    exit 1
 fi
 
 CLANG_FORMAT_VERSION=$(${CLANG_FORMAT} --version)
-echo $CLANG_FORMAT_VERSION
+echo "$CLANG_FORMAT_VERSION"
 
 # Confirm that Clang is the expected version.
 if [[ ! $CLANG_FORMAT_VERSION =~ $CLANG_FORMAT_VER_REGEX ]];
@@ -75,6 +79,7 @@ then
     echo "*******************************************************************"
     echo "* CHECKSTYLE FAILED"
     echo "* Could not locate the clang-format-diff script"
+    echo "* Run 'make install-deps' to install it"
     echo "*******************************************************************"
     exit 1
 fi
