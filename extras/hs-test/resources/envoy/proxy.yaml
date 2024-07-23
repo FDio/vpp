@@ -30,6 +30,8 @@ static_resources:
                   cluster: proxy_service
           http_filters:
           - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
   - name: proxy_service
     connect_timeout: 0.25s
