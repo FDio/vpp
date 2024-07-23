@@ -13,6 +13,7 @@ import (
 	"time"
 
 	containerTypes "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-units"
@@ -223,6 +224,22 @@ func (c *Container) Start() error {
 		}
 		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
 		time.Sleep(1 * time.Second)
+	}
+
+	// wait for container to start
+	time.Sleep(1 * time.Second)
+
+	// check if container exited right after startup
+	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("name", c.Name)),
+	})
+	if err != nil {
+		return err
+	}
+	if containers[0].State == "exited" {
+		c.Suite.Log("Container details: " + fmt.Sprint(containers[0]))
+		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
 	}
 
 	return err
