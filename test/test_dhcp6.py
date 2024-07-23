@@ -307,7 +307,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         return addresses.difference(self.initial_addresses)
 
     def validate_duid_ll(self, duid):
-        DUID_LL(duid)
+        DUID_LL(bytes(duid))
 
     def validate_packet(self, packet, msg_type, is_resend=False):
         try:
@@ -562,7 +562,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         return addresses.difference(self.initial_addresses)
 
     def validate_duid_ll(self, duid):
-        DUID_LL(duid)
+        DUID_LL(bytes(duid))
 
     def validate_packet(self, packet, msg_type, is_resend=False):
         try:
