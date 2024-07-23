@@ -643,6 +643,7 @@ class IkePeer(VppTestCase):
 
         globals()["ikev2"] = _ikev2
         super(IkePeer, cls).setUpClass()
+        cls.vapi.cli("memory-trace main-heap api-segment stats-segment")
         cls.create_pg_interfaces(range(2))
         for i in cls.pg_interfaces:
             i.admin_up()
@@ -653,6 +654,7 @@ class IkePeer(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        cls.vapi.cli("save memory-trace mem_trace.json")
         super(IkePeer, cls).tearDownClass()
 
     def tearDown(self):
@@ -1215,7 +1217,7 @@ class TemplateInitiator(IkePeer):
         if self.no_idr_auth:
             self.assertEqual(idi.next_payload, 39)  # AUTH
         else:
-            idr = ikev2.IKEv2_payload_IDr(idi.payload)
+            idr = ikev2.IKEv2_payload_IDr(bytes(idi.payload))
             self.assertEqual(idr.load, self.sa.r_id)
         prop = idi[ikev2.IKEv2_payload_Proposal]
         c = self.sa.child_sas[0]
@@ -2036,7 +2038,7 @@ class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - NAT traversal (intitiator behind NAT)"""
 
@@ -2069,7 +2071,7 @@ class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - pre shared key auth"""
 
@@ -2101,7 +2103,7 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -2151,7 +2153,7 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorRekey(TestInitiatorPsk):
     """test ikev2 initiator - rekey"""
 
@@ -2197,7 +2199,7 @@ class TestInitiatorRekey(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - delete IKE SA from responder"""
 
@@ -2407,7 +2409,7 @@ class TestResponderRekeySA(TestResponderPsk):
         self.verify_ike_sas()
 
 
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 @tag_fixme_debian11
 class TestResponderVrf(TestResponderPsk, Ikev2Params):
     """test ikev2 responder - non-default table id"""
@@ -2528,7 +2530,7 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
+# @tag_fixme_ubuntu2204
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages
