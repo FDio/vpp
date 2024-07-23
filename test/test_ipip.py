@@ -88,7 +88,7 @@ class TestIPIP(VppTestCase):
         self.table.remove_vpp_config()
 
     def validate(self, rx, expected):
-        self.assertEqual(rx, expected.__class__(expected))
+        self.assertTrue(rx.show2(dump=True) == expected.show2(dump=True))
 
     def generate_ip4_frags(self, payload_length, fragment_size):
         p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -764,7 +764,7 @@ class TestIPIP6(VppTestCase):
         rv = self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
 
     def validate(self, rx, expected):
-        self.assertEqual(rx, expected.__class__(expected))
+        self.assertTrue(rx.show2(dump=True) == expected.show2(dump=True))
 
     def generate_ip6_frags(self, payload_length, fragment_size):
         p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)

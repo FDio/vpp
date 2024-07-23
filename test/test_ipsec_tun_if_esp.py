@@ -4,7 +4,7 @@ import copy
 
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether, GRE, Dot1Q
-from scapy.packet import Raw, bind_layers
+from scapy.packet import Raw, bind_layers, Padding
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.contrib.mpls import MPLS

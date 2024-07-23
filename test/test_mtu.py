@@ -55,7 +55,7 @@ class TestMTU(VppTestCase):
                 i.admin_down()
 
     def validate(self, rx, expected):
-        self.assertEqual(rx, expected.__class__(expected))
+        self.assertTrue(rx.show2(dump=True) == expected.show2(dump=True))
 
     def validate_bytes(self, rx, expected):
         self.assertEqual(rx, expected)
@@ -104,13 +104,10 @@ class TestMTU(VppTestCase):
             / p_ip4
             / p_payload
         )
-        n = icmp4_reply.__class__(icmp4_reply)
         s = bytes(icmp4_reply)
         icmp4_reply = s[0:576]
         rx = self.send_and_expect_some(self.pg0, p4 * 11, self.pg0)
         for p in rx:
-            # p.show2()
-            # n.show2()
             self.validate_bytes(bytes(p[1]), icmp4_reply)
 
         self.assert_error_counter_equal("/err/ip4-input/mtu_exceeded", 11)
@@ -185,7 +182,6 @@ class TestMTU(VppTestCase):
             / p_payload
         )
         icmp6_reply[2].hlim -= 1
-        n = icmp6_reply.__class__(icmp6_reply)
         s = bytes(icmp6_reply)
         icmp6_reply_str = s[0:1280]
 

@@ -20,6 +20,8 @@ from config import config
 class TestPPPoE(VppTestCase):
     """PPPoE Test Case"""
 
+    printno = 0
+
     @classmethod
     def setUpClass(cls):
         super(TestPPPoE, cls).setUpClass()
@@ -224,7 +226,6 @@ class TestPPPoE(VppTestCase):
         )
         pppoe_if.add_vpp_config()
         pppoe_if.set_unnumbered(self.pg0.sw_if_index)
-
         #
         # Send tunneled packets that match the created tunnel and
         # are decapped and forwarded
