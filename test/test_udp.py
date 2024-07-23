@@ -633,9 +633,9 @@ class TestUdpEncap(VppTestCase):
         )
 
         rx = self.send_and_expect(self.pg0, p_4 * NUM_PKTS, self.pg0)
-        p_4 = IP(p_4["UDP"].payload)
+        p_4 = IP(bytes(p_4["UDP"].payload))
         for p in rx:
-            p = IP(p["Ether"].payload)
+            p = IP(bytes(p["Ether"].payload))
             self.validate_inner4(p, p_4, ttl=63)
 
         #
@@ -651,10 +651,10 @@ class TestUdpEncap(VppTestCase):
         )
 
         rx = self.send_and_expect(self.pg1, p_6 * NUM_PKTS, self.pg1)
-        p_6 = IPv6(p_6["UDP"].payload)
-        p = IPv6(rx[0]["Ether"].payload)
+        p_6 = IPv6(bytes(p_6["UDP"].payload))
+        p = IPv6(bytes(rx[0]["Ether"].payload))
         for p in rx:
-            p = IPv6(p["Ether"].payload)
+            p = IPv6(bytes(p["Ether"].payload))
             self.validate_inner6(p, p_6, hlim=63)
 
         #
@@ -673,9 +673,9 @@ class TestUdpEncap(VppTestCase):
         self.pg2.enable_mpls()
         rx = self.send_and_expect(self.pg2, p_mo4 * NUM_PKTS, self.pg2)
         self.pg2.disable_mpls()
-        p_mo4 = IP(MPLS(p_mo4["UDP"].payload).payload)
+        p_mo4 = IP(bytes(MPLS(bytes(p_mo4["UDP"].payload)).payload))
         for p in rx:
-            p = IP(p["Ether"].payload)
+            p = IP(bytes(p["Ether"].payload))
             self.validate_inner4(p, p_mo4, ttl=63)
 
 
