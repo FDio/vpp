@@ -90,16 +90,20 @@ DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),24.04)
-        DEB_DEPENDS += libssl-dev
-        DEB_DEPENDS += llvm clang clang-format-14
+	DEB_DEPENDS += libssl-dev
+	DEB_DEPENDS += llvm clang clang-format-15
 	# overwrite clang-format version to run `make checkstyle` successfully
-	export CLANG_FORMAT_VER=14
-        LIBFFI=libffi8
-        DEB_DEPENDS += enchant-2  # for docs
+	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to 15
+	export CLANG_FORMAT_VER=15
+	LIBFFI=libffi8
+	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),22.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += clang clang-format-11
+	DEB_DEPENDS += clang clang-format-15
+	# overwrite clang-format version to run `make checkstyle` successfully
+	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to 15
+	export CLANG_FORMAT_VER=15
 	LIBFFI=libffi7
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),20.04)
@@ -108,9 +112,6 @@ else ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += clang clang-format-11
 	LIBFFI=libffi7
 	DEB_DEPENDS += enchant-2  # for docs
-else ifeq ($(OS_VERSION_ID),20.10)
-	DEB_DEPENDS += clang clang-format-11
-	LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += virtualenv
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
@@ -119,9 +120,10 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
 	LIBFFI=libffi7
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-12)
 	DEB_DEPENDS += virtualenv
-	DEB_DEPENDS += clang-14 clang-format-14
+	DEB_DEPENDS += clang-14 clang-format-15
 	# for extras/scripts/checkstyle.sh
-	export CLANG_FORMAT_VER=14
+	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
+	export CLANG_FORMAT_VER=15
 	LIBFFI=libffi8
 else
 	DEB_DEPENDS += clang-11 clang-format-11

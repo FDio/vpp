@@ -1,4 +1,4 @@
-pip-tools==7.3.0                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
+pip-tools==7.4.1                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
 cryptography!=2.0                       # BSD/Apache-2.0
 deprecation>=2.0.6                      # Apache-2.0
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
@@ -6,7 +6,7 @@ ipaddress; python_version < '3.3'       # PSF
 parameterized>=0.6.1                    # BSD
 pexpect                                 # ISC
 psutil                                  # BSD
-scapy==2.4.3; python_version >= '2.7' or python_version >= '3.4'    # GPL2  https://github.com/secdev/scapy/blob/master/LICENSE
+scapy==2.4.5; python_version >= '3.4'    # GPL2  https://github.com/secdev/scapy/blob/master/LICENSE
 six                                     # MIT
 syslog_rfc5424_parser>=0.3.1            # ISC
 objgraph                                # MIT
