@@ -1,11 +1,13 @@
 import unittest
 import socket
 import struct
+import re
+import os
 
 from scapy.layers.inet import IP, ICMP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether
-from scapy.packet import raw, Raw
+from scapy.packet import raw, Raw, Padding
 from scapy.layers.inet6 import (
     IPv6,
     ICMPv6EchoRequest,
@@ -22,8 +24,6 @@ from vpp_papi import VppEnum
 
 from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfBinding
 from ipaddress import ip_address
-from re import search
-from os import popen
 from config import config
 
 

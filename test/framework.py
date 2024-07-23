@@ -71,6 +71,9 @@ class _PacketInfo(object):
     #: Store the copy of the former packet.
     data = None
 
+    def __repr__(self):
+        return f"_PacketInfo index:{self.index} src:{self.src} dst:{self.dst} ip:{self.ip} proto:{self.proto} data:{self.data}"
+
     def __eq__(self, other):
         index = self.index == other.index
         src = self.src == other.src
