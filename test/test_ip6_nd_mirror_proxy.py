@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from socket import inet_pton, inet_ntop
+from socket import inet_pton, inet_ntop, AF_INET6
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
@@ -59,8 +59,8 @@ class TestNDPROXY(VppTestCase):
         # will come from the VPP's own address.
         #
         addr = self.pg0.remote_ip6
-        nsma = in6_getnsma(inet_pton(socket.AF_INET6, addr))
-        d = inet_ntop(socket.AF_INET6, nsma)
+        nsma = in6_getnsma(inet_pton(AF_INET6, addr))
+        d = inet_ntop(AF_INET6, nsma)
 
         # Make pg1 un-numbered to pg0
         #

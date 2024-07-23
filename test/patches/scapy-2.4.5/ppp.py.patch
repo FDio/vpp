@@ -1,0 +1,26 @@
+diff --git a/scapy/layers/ppp.py b/scapy/layers/ppp.py
+index eb3e9875..ac31307d 100644
+--- a/scapy/layers/ppp.py
++++ b/scapy/layers/ppp.py
+@@ -297,8 +297,8 @@ class _PPPProtoField(EnumField):
+     See RFC 1661 section 2
+     <https://tools.ietf.org/html/rfc1661#section-2>
+     """
+-    def getfield(self, pkt, s):
+-        if ord(s[:1]) & 0x01:
++    def getfield(self, pkt, s, proto_field_compression = False):
++        if proto_field_compression and (ord(s[:1]) & 0x01):
+             self.fmt = "!B"
+             self.sz = 1
+         else:
+@@ -307,8 +307,8 @@ class _PPPProtoField(EnumField):
+         self.struct = struct.Struct(self.fmt)
+         return super(_PPPProtoField, self).getfield(pkt, s)
+ 
+-    def addfield(self, pkt, s, val):
+-        if val < 0x100:
++    def addfield(self, pkt, s, val, proto_field_compression = False):
++        if proto_field_compression and (val < 0x100):
+             self.fmt = "!B"
+             self.sz = 1
+         else:

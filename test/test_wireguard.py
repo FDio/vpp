@@ -261,7 +261,7 @@ class VppWgPeer(VppObject):
     def mk_cookie(self, p, tx_itf, is_resp=False, is_ip6=False):
         self.verify_header(p, is_ip6)
 
-        wg_pkt = Wireguard(p[Raw])
+        wg_pkt = Wireguard(bytes(p[Raw]))
 
         if is_resp:
             self._test.assertEqual(wg_pkt[Wireguard].message_type, 2)
@@ -310,7 +310,7 @@ class VppWgPeer(VppObject):
     def consume_cookie(self, p, is_ip6=False):
         self.verify_header(p, is_ip6)
 
-        cookie_reply = Wireguard(p[Raw])
+        cookie_reply = Wireguard(bytes(p[Raw]))
 
         self._test.assertEqual(cookie_reply[Wireguard].message_type, 3)
         self._test.assertEqual(cookie_reply[Wireguard].reserved_zero, 0)
@@ -390,7 +390,7 @@ class VppWgPeer(VppObject):
         self.noise_init(self.itf.public_key)
         self.verify_header(p, is_ip6)
 
-        init = Wireguard(p[Raw])
+        init = Wireguard(bytes(p[Raw]))
 
         self._test.assertEqual(init[Wireguard].message_type, 1)
         self._test.assertEqual(init[Wireguard].reserved_zero, 0)
@@ -438,9 +438,7 @@ class VppWgPeer(VppObject):
 
     def consume_response(self, p, is_ip6=False):
         self.verify_header(p, is_ip6)
-
-        resp = Wireguard(p[Raw])
-
+        resp = Wireguard(bytes(p[Raw]))
         self._test.assertEqual(resp[Wireguard].message_type, 2)
         self._test.assertEqual(resp[Wireguard].reserved_zero, 0)
         self._test.assertEqual(
@@ -456,7 +454,7 @@ class VppWgPeer(VppObject):
     def decrypt_transport(self, p, is_ip6=False):
         self.verify_header(p, is_ip6)
 
-        p = Wireguard(p[Raw])
+        p = Wireguard(bytes(p[Raw]))
         self._test.assertEqual(p[Wireguard].message_type, 4)
         self._test.assertEqual(p[Wireguard].reserved_zero, 0)
         self._test.assertEqual(
@@ -501,7 +499,7 @@ class VppWgPeer(VppObject):
 
 
 def is_handshake_init(p):
-    wg_p = Wireguard(p[Raw])
+    wg_p = Wireguard(bytes(p[Raw]))
 
     return wg_p[Wireguard].message_type == 1
 

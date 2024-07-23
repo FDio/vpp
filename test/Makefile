@@ -74,10 +74,10 @@ V=0
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=24.0
+PIP_VERSION=24.1.2
 # Keep in sync with requirements.txt
 PIP_TOOLS_VERSION=7.4.1
-PIP_SETUPTOOLS_VERSION=69.2.0
+PIP_SETUPTOOLS_VERSION=71.1.0
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(BR)/test-coverage
@@ -118,7 +118,7 @@ $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
 	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
-	for f in $(CURDIR)/patches/scapy-2.4.3/*.patch ; do \
+	for f in $(CURDIR)/patches/scapy-2.4.5/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
 		retCode=$$?; \
