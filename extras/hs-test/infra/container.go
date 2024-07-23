@@ -14,6 +14,7 @@ import (
 	"time"
 
 	containerTypes "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/edwarnicke/exechelper"
@@ -179,6 +180,7 @@ func (c *Container) Create() error {
 	resp, err := c.Suite.Docker.ContainerCreate(
 		c.ctx,
 		&containerTypes.Config{
+			Hostname: c.Name,
 			Image: c.Image,
 			Env:   c.getEnvVars(),
 			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
@@ -216,13 +218,34 @@ func (c *Container) allocateCpus() {
 // Starts a container
 func (c *Container) Start() error {
 	var err error
-	for nTries := 0; nTries < 5; nTries++ {
+	var nTries int
+
+	for nTries = 0; nTries < 5; nTries++ {
 		err = c.Suite.Docker.ContainerStart(c.ctx, c.ID, containerTypes.StartOptions{})
 		if err == nil {
 			continue
 		}
 		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
 		time.Sleep(1 * time.Second)
+	}
+	if nTries >= 5 {
+		return err
+	}
+
+	// wait for container to start
+	time.Sleep(1 * time.Second)
+
+	// check if container exited right after startup
+	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("name", c.Name)),
+	})
+	if err != nil {
+		return err
+	}
+	if containers[0].State == "exited" {
+		c.Suite.Log("Container details: " + fmt.Sprint(containers[0]))
+		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
 	}
 
 	return err
