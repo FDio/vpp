@@ -1215,7 +1215,7 @@ class TemplateInitiator(IkePeer):
         if self.no_idr_auth:
             self.assertEqual(idi.next_payload, 39)  # AUTH
         else:
-            idr = ikev2.IKEv2_payload_IDr(idi.payload)
+            idr = ikev2.IKEv2_payload_IDr(bytes(idi.payload))
             self.assertEqual(idr.load, self.sa.r_id)
         prop = idi[ikev2.IKEv2_payload_Proposal]
         c = self.sa.child_sas[0]

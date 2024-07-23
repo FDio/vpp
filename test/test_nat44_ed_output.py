@@ -3,6 +3,8 @@
 
 import random
 import unittest
+import struct
+import socket
 from scapy.layers.inet import Ether, IP, TCP
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS

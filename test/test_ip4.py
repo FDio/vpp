@@ -1456,7 +1456,7 @@ class TestIPLoadBalance(VppTestCase):
             src_pkts.append(
                 (
                     Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
-                    / IP(dst="1.1.1.1", src="20.0.0.%d" % ii)
+                    / IP(dst="1.1.1.1", src="20.0.0.%d" % (ii % 256))
                     / UDP(sport=1234, dport=1234)
                     / Raw(b"\xa5" * 100)
                 )

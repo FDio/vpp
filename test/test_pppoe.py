@@ -224,7 +224,6 @@ class TestPPPoE(VppTestCase):
         )
         pppoe_if.add_vpp_config()
         pppoe_if.set_unnumbered(self.pg0.sw_if_index)
-
         #
         # Send tunneled packets that match the created tunnel and
         # are decapped and forwarded
