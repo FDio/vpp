@@ -33,6 +33,23 @@
       "message": "Hello, just checking. Is there any concerns holding this request?",
       "revId": "a4f5a51616bfb23aa6a72a974fa4e037a31857de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0283568e_c5eb5d5e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2024-07-24T12:58:53Z",
+      "side": 1,
+      "message": "@damjan and others, can you kindly take a look at this patch and provide feedback in case there are any? Thanks \u0026 Regards",
+      "revId": "a4f5a51616bfb23aa6a72a974fa4e037a31857de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
