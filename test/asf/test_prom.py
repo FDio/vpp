@@ -47,10 +47,13 @@ class TestProm(VppAsfTestCase):
                 "exec",
                 "HttpStaticProm",
                 "curl",
+                "-v",
+                "-s",
                 f"10.10.1.2/stats.prom",
             ],
             capture_output=True,
         )
+        self.logger.error(process.stderr)
         self.assertIn(b"TYPE", process.stdout)
 
 
