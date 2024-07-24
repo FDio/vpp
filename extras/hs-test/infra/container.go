@@ -468,12 +468,12 @@ func (c *Container) log(maxLines int) (string, error) {
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
 
-	if strings.Contains(stdout, "==> /dev/null <==") {
-		stdout = ""
-	}
-	if strings.Contains(stderr, "tail: cannot open") {
-		stderr = ""
-	}
+	_, stdout, _ = strings.Cut(stdout, "==> /dev/null <==")
+	_, stderr, _ = strings.Cut(stderr, "tail: cannot open '' for reading: No such file or directory")
+
+	// remove empty lines after deleting the above-mentioned messages
+	stdout = strings.TrimSpace(stdout)
+	stderr = strings.TrimSpace(stderr)
 
 	return stdout + stderr, err
 }
