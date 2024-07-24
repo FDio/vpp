@@ -26,7 +26,8 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandler)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections,
+		PromMemLeakTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -205,9 +206,7 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	_, err = io.ReadAll(resp.Body)
 }
 
-func promReq(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
-	defer GinkgoRecover()
-	defer wg.Done()
+func promReq(s *NoTopoSuite, url string) {
 	client := NewHttpClient()
 	req, err := http.NewRequest("GET", url, nil)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -216,6 +215,12 @@ func promReq(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
 	defer resp.Body.Close()
 	s.AssertEqual(200, resp.StatusCode)
 	_, err = io.ReadAll(resp.Body)
+}
+
+func promReqWg(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
+	defer GinkgoRecover()
+	defer wg.Done()
+	promReq(s, url)
 }
 
 func PromConcurrentConnections(s *NoTopoSuite) {
@@ -230,10 +235,45 @@ func PromConcurrentConnections(s *NoTopoSuite) {
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
-		go promReq(s, url, &wg)
+		go promReqWg(s, url, &wg)
 	}
 	wg.Wait()
 	s.Log(vpp.Vppctl("show session verbose proto http"))
+}
+
+func PromMemLeakTest(s *NoTopoSuite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	url := "http://" + serverAddress + ":80/stats.prom"
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("prom enable"))
+	time.Sleep(time.Second * 3)
+
+	/* warmup request (FIB) */
+	promReq(s, url)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	/* collect stats couple of times */
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Second * 1)
+		promReq(s, url)
+	}
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 5)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
 }
 
 func HttpStaticFileHandler(s *NoTopoSuite) {
