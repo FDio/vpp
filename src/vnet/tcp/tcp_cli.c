@@ -24,6 +24,12 @@ const char *tcp_fsm_states[] = {
 #undef _
 };
 
+const char* tcp_cc_algorithm_type_strings[] = {
+#define _(sym,string) string,
+  foreach_tcp_cc_algo
+#undef _
+};
+
 u8 *
 format_tcp_state (u8 * s, va_list * args)
 {
@@ -823,6 +829,66 @@ VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
   .path = "show tcp punt",
   .short_help = "show tcp punt",
   .function = show_tcp_punt_fn,
+};
+
+static clib_error_t *
+show_tcp_cfg_fn (vlib_main_t * vm, unformat_input_t * input,
+		   vlib_cli_command_t * cmd)
+{
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  tcp_main_t *tm = vnet_get_tcp_main ();
+
+  vlib_cli_output (vm, "-----------");
+  vlib_cli_output (vm, "TCP Config:");
+  vlib_cli_output (vm, "-----------");
+
+  vlib_cli_output (vm, "Max RX FIFO Size: %u bytes", tm->cfg.max_rx_fifo);
+  vlib_cli_output (vm, "Min RX FIFO Size: %u bytes", tm->cfg.min_rx_fifo);
+  vlib_cli_output (vm, "Default MTU: %u bytes", tm->cfg.default_mtu);
+  vlib_cli_output (vm, "Initial CWND Multiplier: %u",
+       tm->cfg.initial_cwnd_multiplier);
+  vlib_cli_output (vm, "TX Pacing: %s",
+       tm->cfg.min_rx_fifo ? "enabled" : "disabled");
+  vlib_cli_output (vm, "TSO: %s",
+       tm->cfg.allow_tso ? "allowed" : "disallowed");
+  vlib_cli_output (vm, "Checksum Offload: %s",
+       tm->cfg.csum_offload ? "enabled" : "disabled");
+  vlib_cli_output (vm, "Congestion Control Algorithm: %s",
+       tcp_cc_algorithm_type_strings[tm->cfg.cc_algo]);
+  vlib_cli_output (vm, "Min RWND Update ACK: %u", tm->cfg.rwnd_min_update_ack);
+  vlib_cli_output (vm, "Max GSO Packet Size: %u", tm->cfg.max_gso_size);
+  vlib_cli_output (vm, "CLOSE_WAIT Time: %u sec",
+       (u32)(tm->cfg.closewait_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "TIME_WAIT Time: %u sec",
+       (u32)(tm->cfg.timewait_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "FIN_WAIT1 Time: %u sec",
+       (u32)(tm->cfg.finwait1_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "FIN_WAIT2 Time: %u sec",
+       (u32)(tm->cfg.finwait2_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "LAST_ACK Time: %u sec",
+       (u32)(tm->cfg.lastack_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "FIN_ACK Time: %u sec",
+       (u32)(tm->cfg.closing_time * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "SYN_RCVD Time: %u sec",
+       (u32)(tm->cfg.syn_rcvd_time * TCP_TICK));
+  vlib_cli_output (vm, "TCP Allocation Error Cleanup Time: %0.2f sec",
+       (f32)(tm->cfg.alloc_err_timeout * TCP_TIMER_TICK));
+  vlib_cli_output (vm, "Connection Cleanup Time: %.2f sec",
+       tm->cfg.cleanup_time);
+  vlib_cli_output (vm, "TCP Preallocated Connections: %u",
+       tm->cfg.preallocated_connections);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_tcp_cfg_command, static) =
+{
+  .path = "show tcp cfg",
+  .short_help = "show tcp config",
+  .function = show_tcp_cfg_fn,
 };
 
 static clib_error_t *
