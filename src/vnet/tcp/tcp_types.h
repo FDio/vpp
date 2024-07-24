@@ -252,6 +252,10 @@ typedef enum _tcp_cc_algorithm_type
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
 
+#define foreach_tcp_cc_algo \
+  _(TCP_CC_NEWRENO, "newreno") \
+  _(TCP_CC_CUBIC, "cubic")
+
 typedef enum _tcp_cc_ack_t
 {
   TCP_CC_ACK,
