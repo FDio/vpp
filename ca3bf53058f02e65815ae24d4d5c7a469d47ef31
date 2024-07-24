@@ -16,6 +16,24 @@
       "message": "Ternary operator?",
       "revId": "ca3bf53058f02e65815ae24d4d5c7a469d47ef31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c9f3b62_c14539dc",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-24T07:55:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c0d862bf_b81a5eb5",
+      "revId": "ca3bf53058f02e65815ae24d4d5c7a469d47ef31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
