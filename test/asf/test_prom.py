@@ -39,6 +39,7 @@ class TestProm(VppAsfTestCase):
         """Enable HTTP Static server and prometheus exporter, get stats"""
         self.vapi.cli("http static server uri tcp://0.0.0.0/80 url-handlers")
         self.vapi.cli("prom enable")
+        self.sleep(1, "wait for min-scrape-interval to expire")
 
         process = subprocess.run(
             [
