@@ -7,6 +7,6 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY resources/nginx/nginx_server_mirroring.conf /nginx.conf
+COPY script/nginx_mirroring_entrypoint.sh /usr/bin/nginx_mirroring_entrypoint.sh
 
-
-ENTRYPOINT nginx -c /nginx.conf
+ENTRYPOINT ["nginx_mirroring_entrypoint.sh"]
