@@ -250,6 +250,17 @@ format_tcp_connection_id (u8 * s, va_list * args)
 }
 
 u8 *
+format_tcp_listener_connection (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  s = format (s, " next_node %u opaque 0x%x fib_index %u sw_if_index %d\n",
+      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index,
+      tc->sw_if_index);
+  s = format (s, " cong_algo %s snd_mss %u", tc->cc_algo->name, tc->snd_mss);
+  return s;
+}
+
+u8 *
 format_tcp_connection (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
