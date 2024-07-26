@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b70ec3a_05f8f08a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-26T21:00:14Z",
+      "side": 1,
+      "message": "Looks good. Some quick comments",
+      "revId": "89ec94385aa24b8ba76dd65620eef0596f59a82a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1eb3220_f639c253",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-26T21:00:14Z",
+      "side": 1,
+      "message": "Not needed",
+      "revId": "89ec94385aa24b8ba76dd65620eef0596f59a82a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8fb20f0_c6ad7eab",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-26T21:00:14Z",
+      "side": 1,
+      "message": "Let\u0027s rely on `cc_algo-\u003ename`, to maintain consistency with `format_tcp_congestion`",
+      "range": {
+        "startLine": 852,
+        "startChar": 7,
+        "endLine": 852,
+        "endChar": 51
+      },
+      "revId": "89ec94385aa24b8ba76dd65620eef0596f59a82a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fda467e6_143e7acd",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 886,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-26T21:00:14Z",
+      "side": 1,
+      "message": "Although a dated approach, we typically declare variables at the start of the function. So maybe move `tcp_main_t *tm;` above",
+      "revId": "89ec94385aa24b8ba76dd65620eef0596f59a82a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49b270b7_b26763a0",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-26T21:00:14Z",
+      "side": 1,
+      "message": "Let\u0027s remove this and rely instead on `cc_algo-\u003ename`",
+      "revId": "89ec94385aa24b8ba76dd65620eef0596f59a82a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
