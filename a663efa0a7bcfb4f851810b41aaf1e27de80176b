@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d1174b0_ec22d283",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-07-26T22:15:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9d58cb98_1c8b5dc4",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 7
+      },
+      "revId": "a663efa0a7bcfb4f851810b41aaf1e27de80176b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d60d6a88_d766bd3c",
@@ -37,6 +61,24 @@
       "writtenOn": "2024-07-26T21:11:17Z",
       "side": 1,
       "message": "Let\u0027s add index and cfg_flags on first line, like for established connections. Probably move cong_algo and snd_mss to that line as well.",
+      "revId": "a663efa0a7bcfb4f851810b41aaf1e27de80176b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9fba64c1_7b9c5641",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-07-26T22:15:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d60d6a88_d766bd3c",
       "revId": "a663efa0a7bcfb4f851810b41aaf1e27de80176b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
