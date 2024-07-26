@@ -357,6 +357,7 @@ format_function_t format_tcp_flags;
 format_function_t format_tcp_sacks;
 format_function_t format_tcp_rcv_sacks;
 format_function_t format_tcp_connection;
+format_function_t format_tcp_listener_connection;
 format_function_t format_tcp_connection_id;
 
 #define tcp_validate_txf_size(_tc, _a) 					\
