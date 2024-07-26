@@ -879,6 +879,8 @@ format_tcp_listener_session (u8 * s, va_list * args)
   if (verbose)
     s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_tcp_state,
 		tc->state);
+  if (verbose == 2)
+    s = format (s, "\n%U", format_tcp_listener_connection, tc);
   return s;
 }
 
