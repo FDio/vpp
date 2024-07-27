@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6c507c1_4ae63937",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 856,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-07-27T19:35:49Z",
+      "side": 1,
+      "message": "typo?",
+      "range": {
+        "startLine": 856,
+        "startChar": 41,
+        "endLine": 856,
+        "endChar": 52
+      },
+      "revId": "dd4356dc97c642744e3963157ca9a5a89d63ef08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
