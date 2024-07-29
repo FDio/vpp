@@ -103,7 +103,7 @@ class VppPGInterface(VppInterface):
     @property
     def capture_cli(self):
         """CLI string to start capture on this interface"""
-        return self._capture_cli
+        return f"packet-generator capture {self.name} pcap {self.out_path}"
 
     def get_cap_name(self, worker=None):
         """return capture name for this interface and given worker"""
@@ -161,10 +161,6 @@ class VppPGInterface(VppInterface):
         self._coalesce_enabled = 0
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
-        self._capture_cli = "packet-generator capture pg%u pcap %s" % (
-            self.pg_index,
-            self.out_path,
-        )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
 
     def remove_vpp_config(self):

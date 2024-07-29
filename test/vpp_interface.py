@@ -116,6 +116,12 @@ class VppInterface(metaclass=abc.ABCMeta):
         """Name of the interface."""
         return self._name
 
+    def rename(self, test, new_name):
+        """Rename the interface."""
+        test.logger.info(f"Renaming interface {self.name} to {new_name}.")
+        test.vapi.cli(f"set interface name {self.name} {new_name}")
+        self._name = new_name
+
     @property
     def dump(self):
         """RAW result of sw_interface_dump for this interface."""
