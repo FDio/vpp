@@ -16,6 +16,24 @@
       "message": "Did I miss the place where we free this?",
       "revId": "343633ada23d53eec03535cddc37a59754bfd387",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dfa610d1_35b751ea",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1553,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-07-29T10:42:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba1e785a_e565bef8",
+      "revId": "343633ada23d53eec03535cddc37a59754bfd387",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
