@@ -7,6 +7,7 @@ import (
 	"github.com/docker/go-units"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -181,9 +182,9 @@ func (c *Container) Create() error {
 		c.ctx,
 		&containerTypes.Config{
 			Hostname: c.Name,
-			Image: c.Image,
-			Env:   c.getEnvVars(),
-			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
+			Image:    c.Image,
+			Env:      c.getEnvVars(),
+			Cmd:      strings.Split(c.ExtraRunningArgs, " "),
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{
@@ -469,7 +470,7 @@ func (c *Container) saveLogs() {
 func (c *Container) log(maxLines int) (string, error) {
 	var logOptions containerTypes.LogsOptions
 	if maxLines == 0 {
-		logOptions = containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true}
+		logOptions = containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true, Timestamps: true}
 	} else {
 		logOptions = containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true, Tail: strconv.Itoa(maxLines)}
 	}
@@ -491,12 +492,11 @@ func (c *Container) log(maxLines int) (string, error) {
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
 
-	stdout = strings.Join(strings.Split(stdout, "==> /dev/null <=="), "")
-	stderr = strings.Join(strings.Split(stderr, "tail: cannot open '' for reading: No such file or directory"), "")
+	re := regexp.MustCompile("(?m)^.*==> /dev/null <==.*$[\r\n]+")
+	stdout = re.ReplaceAllString(stdout, "")
 
-	// remove empty lines after deleting the above-mentioned messages
-	stdout = strings.TrimSpace(stdout)
-	stderr = strings.TrimSpace(stderr)
+	re = regexp.MustCompile("(?m)^.*tail: cannot open '' for reading: No such file or directory.*$[\r\n]+")
+	stderr = re.ReplaceAllString(stderr, "")
 
 	return stdout + stderr, err
 }
