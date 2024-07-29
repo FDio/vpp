@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 )
 
 func TestHst(t *testing.T) {
+	var previousSuidDumpable string
 	if *IsVppDebug {
 		// 30 minute timeout so that the framework won't timeout while debugging
 		SuiteTimeout = time.Minute * 30
@@ -31,6 +33,19 @@ func TestHst(t *testing.T) {
 	f.Write([]byte(ppid))
 	f.Close()
 
+	if *EnableCoreDump {
+		cmd := exec.Command("cat", "/proc/sys/fs/suid_dumpable")
+		out, _ := cmd.Output()
+		previousSuidDumpable = strings.TrimSpace(string(out))
+		cmd = exec.Command("/bin/sh", "-c", "echo 1 | tee /proc/sys/fs/suid_dumpable")
+		cmd.Run()
+	}
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HST")
+
+	if previousSuidDumpable != "" {
+		cmdBefore := exec.Command("/bin/sh", "-c", "echo "+previousSuidDumpable+" | tee /proc/sys/fs/suid_dumpable")
+		cmdBefore.Run()
+	}
 }
