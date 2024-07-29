@@ -852,8 +852,8 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "default mtu: %u\n", tm_cfg.default_mtu);
   s = format (s, "initial cwnd multiplier: %u\n",
 	      tm_cfg.initial_cwnd_multiplier);
-  s =
-    format (s, "tx pacing: %s\n", tm_cfg.min_rx_fifo ? "enabled" : "disabled");
+  s = format (s, "tx pacing: %s\n",
+	      tm_cfg.enable_tx_pacing ? "enabled" : "disabled");
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
