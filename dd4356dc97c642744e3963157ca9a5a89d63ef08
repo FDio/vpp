@@ -46,6 +46,30 @@
       },
       "revId": "dd4356dc97c642744e3963157ca9a5a89d63ef08",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ce91c85_e0a0f8cc",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 856,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-07-29T18:10:28Z",
+      "side": 1,
+      "message": "Thanks for catching this. Fixed the typo in https://gerrit.fd.io/r/c/vpp/+/41310",
+      "parentUuid": "d264c121_4f5349e3",
+      "range": {
+        "startLine": 856,
+        "startChar": 41,
+        "endLine": 856,
+        "endChar": 52
+      },
+      "revId": "dd4356dc97c642744e3963157ca9a5a89d63ef08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
