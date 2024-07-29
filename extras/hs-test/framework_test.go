@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	// "os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,9 @@ func TestHst(t *testing.T) {
 	f, _ := os.Create(".last_hst_ppid")
 	f.Write([]byte(ppid))
 	f.Close()
+
+	// cmd := exec.Command("/bin/sh", "-c", "echo 1 | tee /proc/sys/fs/suid_dumpable")
+	// cmd.Run()
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HST")
