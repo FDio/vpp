@@ -123,7 +123,8 @@ test: .deps.ok .build.ok
 	@# necessary so gmake won't skip executing the bash script
 	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0)
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
+		--coredump=$(COREDUMP)
 	@bash ./script/compress.sh
 
 .PHONY: test-debug
@@ -133,14 +134,14 @@ test-debug: .deps.ok .build_debug.ok
 	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0)
+		--cpu0=$(CPU0) --coredump=$(COREDUMP)
 	@bash ./script/compress.sh
 
 .PHONY: test-cov
 test-cov: .deps.ok .build.cov.ok
 	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0)
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --coredump=$(COREDUMP)
 	@$(MAKE) -C ../.. test-cov-post HS_TEST=1
 	@bash ./script/compress.sh
 
