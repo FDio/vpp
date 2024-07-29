@@ -38,6 +38,7 @@ var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different with debug build")
 var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
 var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
+var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var NumaAwareCpuAlloc bool
 var SuiteTimeout time.Duration
 
@@ -59,9 +60,37 @@ type HstSuite struct {
 	Docker            *client.Client
 }
 
+// used for colorful ReportEntry
+type StringerStruct struct {
+	Label string
+}
+
+// ColorableString for ReportEntry to use
+func (s StringerStruct) ColorableString() string {
+	return fmt.Sprintf("{{red}}%s{{/}}", s.Label)
+}
+
+// non-colorable String() is used by go's string formatting support but ignored by ReportEntry
+func (s StringerStruct) String() string {
+	return s.Label
+}
+
 func getTestFilename() string {
 	_, filename, _, _ := runtime.Caller(2)
 	return filepath.Base(filename)
+}
+
+func (s *HstSuite) getLogDirPath() string {
+	testId := s.GetTestId()
+	testName := s.GetCurrentTestName()
+	logDirPath := logDir + testName + "/" + testId + "/"
+
+	cmd := exec.Command("mkdir", "-p", logDirPath)
+	if err := cmd.Run(); err != nil {
+		Fail("mkdir error: " + fmt.Sprint(err))
+	}
+
+	return logDirPath
 }
 
 func (s *HstSuite) newDockerClient() {
@@ -117,6 +146,7 @@ func (s *HstSuite) TearDownTest() {
 	if *IsPersistent {
 		return
 	}
+	s.WaitForCoreDump()
 	s.ResetContainers()
 
 	if s.Ip4AddrAllocator != nil {
@@ -183,7 +213,7 @@ func (s *HstSuite) HstFail() {
 		out, err := container.log(20)
 		if err != nil {
 			s.Log("An error occured while obtaining '" + container.Name + "' container logs: " + fmt.Sprint(err))
-			s.Log("The container might not be running - check logs in " + container.getLogDirPath())
+			s.Log("The container might not be running - check logs in " + s.getLogDirPath())
 			continue
 		}
 		s.Log("\nvvvvvvvvvvvvvvv " +
@@ -297,6 +327,71 @@ func (s *HstSuite) SkipUnlessLeakCheck() {
 		s.Skip("leak-check tests excluded")
 	}
 }
+
+func (s *HstSuite) WaitForCoreDump() {
+	var filename string
+	var cmd *exec.Cmd
+	dir, err := os.Open(s.getLogDirPath())
+	if err != nil {
+		s.Log(err)
+		return
+	}
+	defer dir.Close()
+
+	files, err := dir.Readdirnames(0)
+	if err != nil {
+		s.Log(err)
+		return
+	}
+	for _, file := range files {
+		if strings.Contains(file, "core") {
+			filename = file
+		}
+	}
+	timeout := 60
+	waitTime := 5
+
+	if filename != "" {
+		filename := s.getLogDirPath() + filename
+		s.Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", filename))
+		for i := waitTime; i <= timeout; i += waitTime {
+			fileInfo, err := os.Stat(filename)
+			if err != nil {
+				s.Log("Error while reading file info: " + fmt.Sprint(err))
+				return
+			}
+			currSize := fileInfo.Size()
+			s.Log(fmt.Sprintf("Waiting %ds/%ds...", i, timeout))
+			time.Sleep(time.Duration(waitTime) * time.Second)
+			fileInfo, _ = os.Stat(filename)
+
+			if currSize == fileInfo.Size() {
+				if *IsDebugBuild {
+					cmd = exec.Command("sudo", "gdb", "../../build-root/build-vpp_debug-native/vpp/bin/vpp",
+						"-c", filename, "-ex", "bt", "full", "-ex", "quit")
+				} else {
+					cmd = exec.Command("sudo", "gdb", "../../build-root/build-vpp-native/vpp/bin/vpp",
+						"-c", filename, "-ex", "bt", "full", "-ex", "quit")
+				}
+
+				s.Log(cmd)
+				output, _ := cmd.Output()
+				AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
+				os.WriteFile(s.getLogDirPath()+"backtrace.log", output, os.FileMode(0644))
+				if s.CpuAllocator.runningInCi {
+					err = os.Remove(filename)
+					if err == nil {
+						s.Log("removed " + filename)
+					} else {
+						s.Log(err)
+					}
+				}
+				return
+			}
+		}
+	}
+}
+
 func (s *HstSuite) ResetContainers() {
 	for _, container := range s.StartedContainers {
 		container.stop()
