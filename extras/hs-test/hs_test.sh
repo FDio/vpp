@@ -83,6 +83,12 @@ case "${i}" in
             leak_check_set=1
         fi
         ;;
+    --coredump=*)
+        coredump="${i#*=}"
+        if [ "$coredump" = "true" ]; then
+            args="$args -coredump"
+        fi
+        ;;
 esac
 done
 
