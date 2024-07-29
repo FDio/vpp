@@ -33,17 +33,13 @@ const vppConfigTemplate = `unix {
   nodaemon
   log %[1]s%[4]s
   full-coredump
+  coredump-size unlimited
   cli-listen %[1]s%[2]s
   runtime-dir %[1]s/var/run
-  gid vpp
 }
 
 api-trace {
   on
-}
-
-api-segment {
-  gid vpp
 }
 
 socksvr {
@@ -479,7 +475,7 @@ func (vpp *VppInstance) createTap(
 }
 
 func (vpp *VppInstance) saveLogs() {
-	logTarget := vpp.Container.getLogDirPath() + "vppinstance-" + vpp.Container.Name + ".log"
+	logTarget := vpp.getSuite().getLogDirPath() + "vppinstance-" + vpp.Container.Name + ".log"
 	logSource := vpp.Container.GetHostWorkDir() + defaultLogFilePath
 	cmd := exec.Command("cp", logSource, logTarget)
 	vpp.getSuite().Log(cmd.String())
