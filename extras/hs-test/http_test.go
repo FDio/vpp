@@ -125,6 +125,8 @@ func HttpPipeliningTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.GetContainerByName("vpp").VppInstance
+	// testing
+	vpp.Vppctl("test crash")
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
@@ -176,7 +178,6 @@ func HttpCliTest(s *VethsSuite) {
 
 func HttpCliConnectErrorTest(s *VethsSuite) {
 	clientContainer := s.GetContainerByName("client-vpp")
-
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 
 	uri := "http://" + serverVeth.Ip4AddressString() + "/80"
