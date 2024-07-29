@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/onsi/gomega/gmeasure"
 	"io"
 	"net"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/onsi/gomega/gmeasure"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
@@ -173,7 +174,9 @@ func HttpCliTest(s *VethsSuite) {
 
 func HttpCliConnectErrorTest(s *VethsSuite) {
 	clientContainer := s.GetContainerByName("client-vpp")
-
+	// testing
+	// clientContainer.VppInstance.Vppctl("test crash")
+	s.AssertNil(1)
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 
 	uri := "http://" + serverVeth.Ip4AddressString() + "/80"

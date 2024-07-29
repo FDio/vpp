@@ -181,9 +181,9 @@ func (c *Container) Create() error {
 		c.ctx,
 		&containerTypes.Config{
 			Hostname: c.Name,
-			Image: c.Image,
-			Env:   c.getEnvVars(),
-			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
+			Image:    c.Image,
+			Env:      c.getEnvVars(),
+			Cmd:      strings.Split(c.ExtraRunningArgs, " "),
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{
@@ -323,13 +323,13 @@ func (c *Container) getVolumesAsSlice() []string {
 	if *VppSourceFileDir != "" {
 		volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", *VppSourceFileDir, *VppSourceFileDir))
 	}
+	volumeSlice = append(volumeSlice, c.Suite.getLogDirPath()+":"+c.Suite.getLogDirPath())
 
 	if len(c.Volumes) > 0 {
 		for _, volume := range c.Volumes {
 			volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", volume.HostDir, volume.ContainerDir))
 		}
 	}
-
 	return volumeSlice
 }
 
@@ -434,21 +434,8 @@ func (c *Container) Exec(command string, arguments ...any) string {
 	return string(byteOutput)
 }
 
-func (c *Container) getLogDirPath() string {
-	testId := c.Suite.GetTestId()
-	testName := c.Suite.GetCurrentTestName()
-	logDirPath := logDir + testName + "/" + testId + "/"
-
-	cmd := exec.Command("mkdir", "-p", logDirPath)
-	if err := cmd.Run(); err != nil {
-		Fail("mkdir error: " + fmt.Sprint(err))
-	}
-
-	return logDirPath
-}
-
 func (c *Container) saveLogs() {
-	testLogFilePath := c.getLogDirPath() + "container-" + c.Name + ".log"
+	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.Name + ".log"
 
 	logs, err := c.log(0)
 	if err != nil {
