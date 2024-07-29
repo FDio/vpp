@@ -14,6 +14,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/cilium/cilium/pkg/sysctl"
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -325,6 +326,15 @@ func (c *Container) getVolumesAsSlice() []string {
 		volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", *VppSourceFileDir, *VppSourceFileDir))
 	}
 
+	core_pattern, err := sysctl.Read("kernel.core_pattern")
+	if err == nil {
+		index := strings.LastIndex(core_pattern, "/")
+		core_pattern = core_pattern[:index]
+		volumeSlice = append(volumeSlice, c.Suite.getLogDirPath()+":"+core_pattern)
+	} else {
+		c.Suite.Log(err)
+	}
+
 	if len(c.Volumes) > 0 {
 		for _, volume := range c.Volumes {
 			volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", volume.HostDir, volume.ContainerDir))
@@ -435,21 +445,8 @@ func (c *Container) Exec(command string, arguments ...any) string {
 	return string(byteOutput)
 }
 
-func (c *Container) getLogDirPath() string {
-	testId := c.Suite.GetTestId()
-	testName := c.Suite.GetCurrentTestName()
-	logDirPath := logDir + testName + "/" + testId + "/"
-
-	cmd := exec.Command("mkdir", "-p", logDirPath)
-	if err := cmd.Run(); err != nil {
-		Fail("mkdir error: " + fmt.Sprint(err))
-	}
-
-	return logDirPath
-}
-
 func (c *Container) saveLogs() {
-	testLogFilePath := c.getLogDirPath() + "container-" + c.Name + ".log"
+	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.Name + ".log"
 
 	logs, err := c.log(0)
 	if err != nil {
