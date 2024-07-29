@@ -178,7 +178,6 @@ func HttpCliTest(s *VethsSuite) {
 
 func HttpCliConnectErrorTest(s *VethsSuite) {
 	clientContainer := s.GetContainerByName("client-vpp")
-
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 
 	uri := "http://" + serverVeth.Ip4AddressString() + "/80"
