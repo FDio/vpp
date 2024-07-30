@@ -1458,6 +1458,8 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   TCP_EVT (TCP_EVT_CC_EVT, tc, 2);
   tc->rtt_ts = 0;
 
+  tcp_worker_stats_inc (wrk, to_establish, 1);
+
   /* Active open establish timeout */
   if (tc->rto >= TCP_ESTABLISH_TIME >> 1)
     {
@@ -1506,6 +1508,8 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
   vlib_buffer_t *b;
   int n_bytes = 0;
   u8 *data;
+
+  tcp_worker_stats_inc (wrk, to_persist, 1);
 
   /* Problem already solved or worse */
   if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
