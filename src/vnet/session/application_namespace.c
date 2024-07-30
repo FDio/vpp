@@ -34,6 +34,17 @@ static app_namespace_t *app_namespace_pool;
 
 static u8 app_sapi_enabled;
 
+void
+app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx)
+{
+  app_namespace_t *app_ns;
+
+  pool_foreach (app_ns, app_namespace_pool)
+    {
+      fn (app_ns, ctx);
+    }
+}
+
 app_namespace_t *
 app_namespace_get (u32 index)
 {

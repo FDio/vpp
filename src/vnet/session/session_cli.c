@@ -482,6 +482,25 @@ session_cli_print_session_states (vlib_main_t * vm)
 #undef _
 }
 
+static u8 *
+format_rt_backend (u8 *s, va_list *args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(v, s)                                                               \
+  case RT_BACKEND_ENGINE_##v:                                                 \
+    t = (u8 *) s;                                                             \
+    break;
+      foreach_rt_engine
+#undef _
+	default : return format (s, "unknown");
+    }
+  return format (s, "%s", t);
+}
+
 static clib_error_t *
 show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
@@ -573,6 +592,11 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "%U", format_transport_protos);
 	  goto done;
 	}
+      else if (unformat (input, "rt-backend"))
+	{
+	  vlib_cli_output (vm, "%U", format_rt_backend, smm->rt_engine_type);
+	  goto done;
+	}
       else if (unformat (input, "states"))
 	{
 	  session_cli_print_session_states (vm);
@@ -654,13 +678,12 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
-{
+VLIB_CLI_COMMAND (vlib_cli_show_session_command) = {
   .path = "show session",
   .short_help = "show session [verbose [n]] [listeners <proto>] "
 		"[<session-id> [elog]] [thread <n> [index <n>] "
 		"[proto <proto>] [state <state>] [range <min> [<max>]] "
-		"[protos] [states] ",
+		"[protos] [states] [rt-backend]",
   .function = show_session_command_fn,
 };
 
@@ -829,29 +852,39 @@ static clib_error_t *
 session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
-  u8 is_en = 2;
+  session_rt_engine_t rt_engine_type = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "enable"))
-	is_en = 1;
+	{
+	  if (unformat (input, "rt-backend"))
+	    {
+	      if (unformat (input, "sdl"))
+		rt_engine_type = RT_BACKEND_ENGINE_SDL;
+	      else if (unformat (input, "rule-table"))
+		rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE;
+	      else
+		return clib_error_return (0, "unknown input `%U'",
+					  format_unformat_error, input);
+	    }
+	  else
+	    rt_engine_type = RT_BACKEND_ENGINE_NONE;
+	}
       else if (unformat (input, "disable"))
-	is_en = 0;
+	rt_engine_type = RT_BACKEND_ENGINE_DISABLE;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  if (is_en > 1)
-    return clib_error_return (0, "expected enable | disable");
-
-  return vnet_session_enable_disable (vm, is_en);
+  return vnet_session_enable_disable (vm, rt_engine_type);
 }
 
-VLIB_CLI_COMMAND (session_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (session_enable_disable_command, static) = {
   .path = "session",
-  .short_help = "session [enable|disable]",
+  .short_help =
+    "session { enable [ rt-backend sdl | rule-table ] } | { disable }",
   .function = session_enable_disable_fn,
 };
 
