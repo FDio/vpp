@@ -28,6 +28,7 @@
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
+#include <vnet/session/session_rules_table.h>
 
 static session_lookup_main_t sl_main;
 
@@ -241,7 +242,7 @@ session_table_get_for_connection (transport_connection_t * tc)
     session_table_get (fib_index_to_table_index[fib_proto][tc->fib_index]);
 }
 
-static session_table_t *
+session_table_t *
 session_table_get_for_fib_index (u32 fib_proto, u32 fib_index)
 {
   if (vec_len (fib_index_to_table_index[fib_proto]) <= fib_index)
@@ -478,10 +479,10 @@ session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
 				     ip4_address_t * lcl, u16 lcl_port,
 				     ip4_address_t * rmt, u16 rmt_port)
 {
-  session_rules_table_t *srt = &st->session_rules[proto];
   u32 action_index, app_index;
-  action_index = session_rules_table_lookup4 (srt, lcl, rmt, lcl_port,
-					      rmt_port);
+
+  action_index = session_rules_table_lookup4 (st->srtg_handle, proto, lcl, rmt,
+					      lcl_port, rmt_port);
   app_index = session_lookup_action_to_handle (action_index);
   /* Nothing sophisticated for now, action index is app index */
   return session_lookup_app_listen_session (app_index, FIB_PROTOCOL_IP4,
@@ -494,10 +495,10 @@ session_lookup_rules_table_session6 (session_table_t * st, u8 proto,
 				     ip6_address_t * lcl, u16 lcl_port,
 				     ip6_address_t * rmt, u16 rmt_port)
 {
-  session_rules_table_t *srt = &st->session_rules[proto];
   u32 action_index, app_index;
-  action_index = session_rules_table_lookup6 (srt, lcl, rmt, lcl_port,
-					      rmt_port);
+
+  action_index = session_rules_table_lookup6 (st->srtg_handle, proto, lcl, rmt,
+					      lcl_port, rmt_port);
   app_index = session_lookup_action_to_handle (action_index);
   return session_lookup_app_listen_session (app_index, FIB_PROTOCOL_IP6,
 					    proto);
@@ -517,7 +518,6 @@ u64
 session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 				  u8 use_rules)
 {
-  session_rules_table_t *srt;
   session_table_t *st;
   u32 ai;
   int rv;
@@ -537,10 +537,12 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 	return kv4.value;
       if (use_rules)
 	{
+	  if (st->srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+	    return SESSION_INVALID_HANDLE;
 	  clib_memset (&lcl4, 0, sizeof (lcl4));
-	  srt = &st->session_rules[sep->transport_proto];
-	  ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
-					    sep->port);
+	  ai =
+	    session_rules_table_lookup4 (st->srtg_handle, sep->transport_proto,
+					 &lcl4, &sep->ip.ip4, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
 	    return session_lookup_action_to_handle (ai);
 	}
@@ -558,10 +560,12 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 
       if (use_rules)
 	{
+	  if (st->srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+	    return SESSION_INVALID_HANDLE;
 	  clib_memset (&lcl6, 0, sizeof (lcl6));
-	  srt = &st->session_rules[sep->transport_proto];
-	  ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
-					    sep->port);
+	  ai =
+	    session_rules_table_lookup6 (st->srtg_handle, sep->transport_proto,
+					 &lcl6, &sep->ip.ip6, 0, sep->port);
 	  if (session_lookup_action_index_is_valid (ai))
 	    return session_lookup_action_to_handle (ai);
 	}
@@ -588,7 +592,6 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 u64
 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 {
-  session_rules_table_t *srt;
   session_table_t *st;
   u32 ai;
   int rv;
@@ -603,15 +606,18 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       session_kv4_t kv4;
       ip4_address_t lcl4;
 
-      /*
-       * Check if endpoint has special rules associated
-       */
-      clib_memset (&lcl4, 0, sizeof (lcl4));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
-					sep->port);
-      if (session_lookup_action_index_is_valid (ai))
-	return session_lookup_action_to_handle (ai);
+      if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+	{
+	  /*
+	   * Check if endpoint has special rules associated
+	   */
+	  clib_memset (&lcl4, 0, sizeof (lcl4));
+	  ai =
+	    session_rules_table_lookup4 (st->srtg_handle, sep->transport_proto,
+					 &lcl4, &sep->ip.ip4, 0, sep->port);
+	  if (session_lookup_action_index_is_valid (ai))
+	    return session_lookup_action_to_handle (ai);
+	}
 
       /*
        * Check if session endpoint is a listener
@@ -651,12 +657,15 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       session_kv6_t kv6;
       ip6_address_t lcl6;
 
-      clib_memset (&lcl6, 0, sizeof (lcl6));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
-					sep->port);
-      if (session_lookup_action_index_is_valid (ai))
-	return session_lookup_action_to_handle (ai);
+      if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+	{
+	  clib_memset (&lcl6, 0, sizeof (lcl6));
+	  ai =
+	    session_rules_table_lookup6 (st->srtg_handle, sep->transport_proto,
+					 &lcl6, &sep->ip.ip6, 0, sep->port);
+	  if (session_lookup_action_index_is_valid (ai))
+	    return session_lookup_action_to_handle (ai);
+	}
 
       make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
 			   sep->transport_proto);
@@ -984,22 +993,25 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
   if (rv == 0)
     return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
 
-  /*
-   * Check the session rules table
-   */
-  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+      /*
+       * Check the session rules table
+       */
+      action_index = session_rules_table_lookup4 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
 	{
-	  *result = SESSION_LOOKUP_RESULT_FILTERED;
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    {
+	      *result = SESSION_LOOKUP_RESULT_FILTERED;
+	      return 0;
+	    }
+	  if ((s = session_lookup_action_to_session (action_index,
+						     FIB_PROTOCOL_IP4, proto)))
+	    return transport_get_listener (proto, s->connection_index);
 	  return 0;
 	}
-      if ((s = session_lookup_action_to_session (action_index,
-						 FIB_PROTOCOL_IP4, proto)))
-	return transport_get_listener (proto, s->connection_index);
-      return 0;
     }
 
   /*
@@ -1061,19 +1073,22 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
   if (rv == 0)
     return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
 
-  /*
-   * Check the session rules table
-   */
-  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	return 0;
-      if ((s = session_lookup_action_to_session (action_index,
-						 FIB_PROTOCOL_IP4, proto)))
-	return transport_get_listener (proto, s->connection_index);
-      return 0;
+      /*
+       * Check the session rules table
+       */
+      action_index = session_rules_table_lookup4 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
+	{
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    return 0;
+	  if ((s = session_lookup_action_to_session (action_index,
+						     FIB_PROTOCOL_IP4, proto)))
+	    return transport_get_listener (proto, s->connection_index);
+	  return 0;
+	}
     }
 
   /*
@@ -1119,17 +1134,20 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
   if (rv == 0)
     return session_get_from_handle_safe (kv4.value);
 
-  /*
-   * Check the session rules table
-   */
-  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	return 0;
-      return session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
-					       proto);
+      /*
+       * Check the session rules table
+       */
+      action_index = session_rules_table_lookup4 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
+	{
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    return 0;
+	  return session_lookup_action_to_session (action_index,
+						   FIB_PROTOCOL_IP4, proto);
+	}
     }
 
   /*
@@ -1201,20 +1219,23 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
   if (rv == 0)
     return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
 
-  /* Check the session rules table */
-  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+      /* Check the session rules table */
+      action_index = session_rules_table_lookup6 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
 	{
-	  *result = SESSION_LOOKUP_RESULT_FILTERED;
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    {
+	      *result = SESSION_LOOKUP_RESULT_FILTERED;
+	      return 0;
+	    }
+	  if ((s = session_lookup_action_to_session (action_index,
+						     FIB_PROTOCOL_IP6, proto)))
+	    return transport_get_listener (proto, s->connection_index);
 	  return 0;
 	}
-      if ((s = session_lookup_action_to_session (action_index,
-						 FIB_PROTOCOL_IP6, proto)))
-	return transport_get_listener (proto, s->connection_index);
-      return 0;
     }
 
   /* If nothing is found, check if any listener is available */
@@ -1270,17 +1291,20 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
   if (rv == 0)
     return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
 
-  /* Check the session rules table */
-  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	return 0;
-      if ((s = session_lookup_action_to_session (action_index,
-						 FIB_PROTOCOL_IP6, proto)))
-	return transport_get_listener (proto, s->connection_index);
-      return 0;
+      /* Check the session rules table */
+      action_index = session_rules_table_lookup6 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
+	{
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    return 0;
+	  if ((s = session_lookup_action_to_session (action_index,
+						     FIB_PROTOCOL_IP6, proto)))
+	    return transport_get_listener (proto, s->connection_index);
+	  return 0;
+	}
     }
 
   /* If nothing is found, check if any listener is available */
@@ -1323,15 +1347,18 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   if (rv == 0)
     return session_get_from_handle_safe (kv6.value);
 
-  /* Check the session rules table */
-  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
-					      rmt, lcl_port, rmt_port);
-  if (session_lookup_action_index_is_valid (action_index))
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
     {
-      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	return 0;
-      return session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP6,
-					       proto);
+      /* Check the session rules table */
+      action_index = session_rules_table_lookup6 (st->srtg_handle, proto, lcl,
+						  rmt, lcl_port, rmt_port);
+      if (session_lookup_action_index_is_valid (action_index))
+	{
+	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	    return 0;
+	  return session_lookup_action_to_session (action_index,
+						   FIB_PROTOCOL_IP6, proto);
+	}
     }
 
   /* If nothing is found, check if any listener is available */
@@ -1357,7 +1384,6 @@ session_error_t
 vnet_session_rule_add_del (session_rule_add_del_args_t *args)
 {
   app_namespace_t *app_ns = app_namespace_get (args->appns_index);
-  session_rules_table_t *srt;
   session_table_t *st;
   u32 fib_index;
   u8 fib_proto;
@@ -1378,8 +1404,9 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       fib_proto = args->table_args.rmt.fp_proto;
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
-      srt = &st->session_rules[args->transport_proto];
-      if ((rv = session_rules_table_add_del (srt, &args->table_args)))
+      session_rules_table_init (st, fib_proto);
+      if ((rv = session_rules_table_add_del (
+	     st->srtg_handle, args->transport_proto, &args->table_args)))
 	return rv;
     }
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
@@ -1388,8 +1415,9 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       args->table_args.lcl.fp_proto = args->table_args.rmt.fp_proto;
       args->table_args.lcl_port = 0;
       st = app_namespace_get_local_table (app_ns);
-      srt = &st->session_rules[args->transport_proto];
-      rv = session_rules_table_add_del (srt, &args->table_args);
+      session_rules_table_init (st, args->table_args.rmt.fp_proto);
+      rv = session_rules_table_add_del (st->srtg_handle, args->transport_proto,
+					&args->table_args);
     }
   return rv;
 }
@@ -1523,6 +1551,9 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   session_cli_return_if_not_enabled ();
 
+  if (session_rule_table_is_enabled () == 0)
+    return clib_error_return (0, "session rule table engine is not enabled");
+
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1644,11 +1675,12 @@ session_lookup_dump_rules_table (u32 fib_index, u8 fib_proto,
 				 u8 transport_proto)
 {
   vlib_main_t *vm = vlib_get_main ();
-  session_rules_table_t *srt;
   session_table_t *st;
   st = session_table_get_for_fib_index (fib_index, fib_proto);
-  srt = &st->session_rules[transport_proto];
-  session_rules_table_cli_dump (vm, srt, fib_proto);
+  if (st == 0)
+    return;
+  session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+				fib_proto);
 }
 
 void
@@ -1656,11 +1688,12 @@ session_lookup_dump_local_rules_table (u32 table_index, u8 fib_proto,
 				       u8 transport_proto)
 {
   vlib_main_t *vm = vlib_get_main ();
-  session_rules_table_t *srt;
   session_table_t *st;
   st = session_table_get (table_index);
-  srt = &st->session_rules[transport_proto];
-  session_rules_table_cli_dump (vm, srt, fib_proto);
+  if (st == 0)
+    return;
+  session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+				fib_proto);
 }
 
 static clib_error_t *
@@ -1672,7 +1705,6 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   ip46_address_t lcl_ip, rmt_ip;
   u8 is_ip4 = 1, show_one = 0;
   app_namespace_t *app_ns;
-  session_rules_table_t *srt;
   session_table_t *st;
   u8 *ns_id = 0, fib_proto;
 
@@ -1745,11 +1777,18 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       st = app_namespace_get_local_table (app_ns);
     }
 
+  if (session_rule_table_is_enabled () == 0)
+    {
+      vlib_cli_output (vm, "session rule table engine is not enabled");
+      goto done;
+    }
+
   if (show_one)
     {
-      srt = &st->session_rules[transport_proto];
-      session_rules_table_show_rule (vm, srt, &lcl_ip, lcl_port, &rmt_ip,
-				     rmt_port, is_ip4);
+      if (st)
+	session_rules_table_show_rule (vm, st->srtg_handle, transport_proto,
+				       &lcl_ip, lcl_port, &rmt_ip, rmt_port,
+				       is_ip4);
       goto done;
     }
 
@@ -1759,9 +1798,10 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (st)
 	{
-	  srt = &st->session_rules[transport_proto];
-	  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
-	  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+	  session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+					FIB_PROTOCOL_IP4);
+	  session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+					FIB_PROTOCOL_IP6);
 	}
     }
   else
@@ -1772,18 +1812,14 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4,
 					    app_ns->ip4_fib_index);
       if (st)
-	{
-	  srt = &st->session_rules[transport_proto];
-	  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
-	}
+	session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+				      FIB_PROTOCOL_IP4);
 
       st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6,
 					    app_ns->ip6_fib_index);
       if (st)
-	{
-	  srt = &st->session_rules[transport_proto];
-	  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
-	}
+	session_rules_table_cli_dump (vm, st->srtg_handle, transport_proto,
+				      FIB_PROTOCOL_IP6);
     }
 done:
   vec_free (ns_id);
@@ -1905,6 +1941,32 @@ session_lookup_init (void)
   fib_index_to_table_index[FIB_PROTOCOL_IP6][0] = session_table_index (st);
   st->active_fib_proto = FIB_PROTOCOL_IP6;
   session_table_init (st, FIB_PROTOCOL_IP6);
+}
+
+const session_engine_vft_t *session_engine_vft;
+
+clib_error_t *
+session_rule_register_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    return 0;
+  if (session_engine_vft)
+    return clib_error_return (0, "session rule engine is already registered");
+
+  session_engine_vft = vft;
+  return 0;
+}
+
+clib_error_t *
+session_rule_deregister_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    session_engine_vft = 0;
+  else
+    return clib_error_return (
+      0, "session rule engine is not registered to this engine");
+
+  return 0;
 }
 
 void

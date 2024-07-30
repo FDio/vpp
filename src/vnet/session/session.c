@@ -24,6 +24,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vlib/stats/stats.h>
 #include <vlib/dma/dma.h>
+#include <vnet/session/session_rules_table.h>
 
 session_main_t session_main;
 
@@ -1996,13 +1997,17 @@ session_stats_collector_init (void)
 }
 
 static clib_error_t *
-session_manager_main_enable (vlib_main_t * vm)
+session_manager_main_enable (vlib_main_t *vm,
+			     session_rt_engine_t rt_engine_type)
 {
   session_main_t *smm = &session_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, preallocated_sessions_per_worker;
   session_worker_t *wrk;
   int i;
+
+  if (session_rt_backend_enable_disable (rt_engine_type))
+    return clib_error_return (0, "error on enable backend engine");
 
   /* We only initialize once and do not de-initialized on disable */
   if (smm->is_initialized)
@@ -2082,9 +2087,11 @@ done:
 }
 
 static void
-session_manager_main_disable (vlib_main_t * vm)
+session_manager_main_disable (vlib_main_t *vm,
+			      session_rt_engine_t rt_engine_type)
 {
   transport_enable_disable (vm, 0 /* is_en */ );
+  session_rt_backend_enable_disable (rt_engine_type);
 }
 
 /* in this new callback, cookie hint the index */
@@ -2221,22 +2228,38 @@ session_node_enable_disable (u8 is_en)
 }
 
 clib_error_t *
-vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
+vnet_session_enable_disable (vlib_main_t *vm,
+			     session_rt_engine_t rt_engine_type)
 {
   clib_error_t *error = 0;
-  if (is_en)
+  session_main_t *smm = &session_main;
+
+  STATIC_ASSERT (RT_BACKEND_ENGINE_DISABLE == 0, "wrong disable value");
+  STATIC_ASSERT (RT_BACKEND_ENGINE_RULE_TABLE == 1, "wrong enable value");
+
+  if (rt_engine_type < RT_BACKEND_ENGINE_DISABLE ||
+      rt_engine_type > RT_BACKEND_ENGINE_SDL)
+    return clib_error_return (0, "invalid rt-backend %d", rt_engine_type);
+
+  if (rt_engine_type != RT_BACKEND_ENGINE_DISABLE)
     {
       if (session_main.is_enabled)
-	return 0;
+	{
+	  if (rt_engine_type != smm->rt_engine_type)
+	    return clib_error_return (
+	      0, "session is already enable. Must disable first");
+	  else
+	    return 0;
+	}
 
-      error = session_manager_main_enable (vm);
-      session_node_enable_disable (is_en);
+      error = session_manager_main_enable (vm, rt_engine_type);
+      session_node_enable_disable (1);
     }
   else
     {
       session_main.is_enabled = 0;
-      session_manager_main_disable (vm);
-      session_node_enable_disable (is_en);
+      session_manager_main_disable (vm, rt_engine_type);
+      session_node_enable_disable (0);
     }
 
   return error;
@@ -2266,7 +2289,7 @@ session_main_loop_init (vlib_main_t * vm)
   if (smm->session_enable_asap)
     {
       vlib_worker_thread_barrier_sync (vm);
-      vnet_session_enable_disable (vm, 1 /* is_en */ );
+      vnet_session_enable_disable (vm, smm->rt_engine_type);
       vlib_worker_thread_barrier_release (vm);
     }
   return 0;
@@ -2356,8 +2379,22 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->port_allocator_min_src_port = tmp;
       else if (unformat (input, "max-src-port %d", &tmp))
 	smm->port_allocator_max_src_port = tmp;
+      else if (unformat (input, "enable rt-backend rule-table"))
+	{
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE;
+	  smm->session_enable_asap = 1;
+	}
+      else if (unformat (input, "enable rt-backend sdl"))
+	{
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_SDL;
+	  smm->session_enable_asap = 1;
+	}
       else if (unformat (input, "enable"))
-	smm->session_enable_asap = 1;
+	{
+	  /* enable session without rt-backend */
+	  smm->rt_engine_type = RT_BACKEND_ENGINE_NONE;
+	  smm->session_enable_asap = 1;
+	}
       else if (unformat (input, "use-app-socket-api"))
 	(void) appns_sapi_enable_disable (1 /* is_enable */);
       else if (unformat (input, "poll-main"))
