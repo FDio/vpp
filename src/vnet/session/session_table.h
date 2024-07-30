@@ -66,7 +66,8 @@ void ip4_session_table_walk (clib_bihash_16_8_t * hash,
 session_table_t *session_table_alloc (void);
 session_table_t *session_table_get (u32 table_index);
 u32 session_table_index (session_table_t * slt);
-void session_table_init (session_table_t * slt, u8 fib_proto);
+void session_table_init (session_table_t *slt, u8 fib_proto, u8 *ns_id,
+			 u32 scope);
 void session_table_free (session_table_t *slt, u8 fib_proto);
 
 u32 session_table_memory_size (session_table_t *st);
