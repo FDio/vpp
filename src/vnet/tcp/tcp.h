@@ -49,6 +49,7 @@ typedef struct _tcp_lookup_dispatch
   _(timer_expirations, u64, "timer expirations")		\
   _(rxt_segs, u64, "segments retransmitted")			\
   _(tr_events, u32, "timer retransmit events")			\
+  _(to_establish, u32, "timeout establish")			\
   _(to_closewait, u32, "timeout close-wait")			\
   _(to_closewait2, u32, "timeout close-wait w/data")		\
   _(to_finwait1, u32, "timeout fin-wait-1")			\
