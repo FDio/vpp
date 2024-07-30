@@ -45,19 +45,20 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
-#define foreach_tcp_wrk_stat					\
-  _(timer_expirations, u64, "timer expirations")		\
-  _(rxt_segs, u64, "segments retransmitted")			\
-  _(tr_events, u32, "timer retransmit events")			\
-  _(to_closewait, u32, "timeout close-wait")			\
-  _(to_closewait2, u32, "timeout close-wait w/data")		\
-  _(to_finwait1, u32, "timeout fin-wait-1")			\
-  _(to_finwait2, u32, "timeout fin-wait-2")			\
-  _(to_lastack, u32, "timeout last-ack")			\
-  _(to_closing, u32, "timeout closing")				\
-  _(tr_abort, u32, "timer retransmit abort")			\
-  _(rst_unread, u32, "reset on close due to unread data")	\
-  _(no_buffer, u32, "out of buffers")				\
+#define foreach_tcp_wrk_stat                                                  \
+  _ (timer_expirations, u64, "timer expirations")                             \
+  _ (rxt_segs, u64, "segments retransmitted")                                 \
+  _ (tr_events, u32, "timer retransmit events")                               \
+  _ (to_establish, u32, "timeout establish")                                  \
+  _ (to_closewait, u32, "timeout close-wait")                                 \
+  _ (to_closewait2, u32, "timeout close-wait w/data")                         \
+  _ (to_finwait1, u32, "timeout fin-wait-1")                                  \
+  _ (to_finwait2, u32, "timeout fin-wait-2")                                  \
+  _ (to_lastack, u32, "timeout last-ack")                                     \
+  _ (to_closing, u32, "timeout closing")                                      \
+  _ (tr_abort, u32, "timer retransmit abort")                                 \
+  _ (rst_unread, u32, "reset on close due to unread data")                    \
+  _ (no_buffer, u32, "out of buffers")
 
 typedef struct tcp_wrk_stats_
 {

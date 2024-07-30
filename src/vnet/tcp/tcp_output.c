@@ -1390,6 +1390,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       tc->rtt_ts = 0;
 
+      tcp_worker_stats_inc (wrk, to_establish, 1);
+
       /* Passive open establish timeout */
       if (tc->rto > tcp_cfg.syn_rcvd_time >> 1)
 	{
@@ -1457,6 +1459,8 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 2);
   tc->rtt_ts = 0;
+
+  tcp_worker_stats_inc (wrk, to_establish, 1);
 
   /* Active open establish timeout */
   if (tc->rto >= TCP_ESTABLISH_TIME >> 1)
