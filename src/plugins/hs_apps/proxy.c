@@ -915,7 +915,10 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  vnet_session_enable_disable (vm, 1 /* turn on session and transport */ );
+  session_enable_disable_args_type_t args = { .is_en = 1,
+					      .rt_engine_type =
+						RT_BACKEND_ENGINE_RULE_TABLE };
+  vnet_session_enable_disable (vm, &args);
 
   rv = proxy_server_create (vm);
   switch (rv)

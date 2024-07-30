@@ -1286,7 +1286,10 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   else
     {
-      vnet_session_enable_disable (vm, 1);
+      session_enable_disable_args_type_t args = {
+	.is_en = 1, .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE
+      };
+      vnet_session_enable_disable (vm, &args);
       if (openssl_engine_register (engine_name, engine_alg, async) < 0)
 	{
 	  return clib_error_return (0, "Failed to register %s polling",

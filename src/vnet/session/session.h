@@ -184,6 +184,19 @@ typedef void (*nat44_original_dst_lookup_fn) (
   u16 i2o_dst_port, ip_protocol_t proto, u32 *original_dst,
   u16 *original_dst_port);
 
+#define foreach_rt_engine                                                     \
+  _ (DISABLE, "disable")                                                      \
+  _ (RULE_TABLE, "enable with rt-backend rule table")                         \
+  _ (NONE, "enable without rt-backend")                                       \
+  _ (SDL, "enable with rt-backend sdl")
+
+typedef enum
+{
+#define _(v, s) RT_BACKEND_ENGINE_##v,
+  foreach_rt_engine
+#undef _
+} session_rt_engine_type_t;
+
 typedef struct session_main_
 {
   /** Worker contexts */
@@ -234,6 +247,9 @@ typedef struct session_main_
 
   /** Enable session manager at startup */
   u8 session_enable_asap;
+
+  /** Session engine type */
+  session_rt_engine_type_t rt_engine_type;
 
   /** Poll session node in main thread */
   u8 poll_main;
@@ -291,6 +307,12 @@ typedef enum session_q_process_evt_
   SESSION_Q_PROCESS_RUN_ON_MAIN = 1,
   SESSION_Q_PROCESS_STOP
 } session_q_process_evt_t;
+
+typedef struct session_enable_disable_args_t
+{
+  session_rt_engine_type_t rt_engine_type;
+  u8 is_en;
+} session_enable_disable_args_type_t;
 
 #define TRANSPORT_PROTO_INVALID (session_main.last_transport_proto_type + 1)
 #define TRANSPORT_N_PROTOS (session_main.last_transport_proto_type + 1)
@@ -812,7 +834,9 @@ session_wrk_update_time (session_worker_t *wrk, f64 now)
 void session_wrk_enable_adaptive_mode (session_worker_t *wrk);
 fifo_segment_t *session_main_get_wrk_mqs_segment (void);
 void session_node_enable_disable (u8 is_en);
-clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *
+vnet_session_enable_disable (vlib_main_t *vm,
+			     session_enable_disable_args_type_t *args);
 void session_wrk_handle_evts_main_rpc (void *);
 void session_wrk_program_app_wrk_evts (session_worker_t *wrk,
 				       u32 app_wrk_index);
@@ -920,6 +944,30 @@ pool_program_safe_realloc (void **p, u32 elt_size, u32 align)
       pool_get_aligned (P, E, align);                                         \
     }                                                                         \
   while (0)
+
+always_inline u8
+session_is_enabled_without_rt_backend (void)
+{
+  session_main_t *smm = vnet_get_session_main ();
+
+  return (smm->rt_engine_type == RT_BACKEND_ENGINE_NONE);
+}
+
+always_inline u8
+session_sdl_is_enabled (void)
+{
+  session_main_t *smm = vnet_get_session_main ();
+
+  return (smm->rt_engine_type == RT_BACKEND_ENGINE_SDL);
+}
+
+always_inline u8
+session_rule_table_is_enabled (void)
+{
+  session_main_t *smm = vnet_get_session_main ();
+
+  return (smm->rt_engine_type == RT_BACKEND_ENGINE_RULE_TABLE);
+}
 
 #endif /* __included_session_h__ */
 

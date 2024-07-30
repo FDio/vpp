@@ -731,7 +731,10 @@ start_server:
   if (hcm->app_index != (u32) ~0)
     return clib_error_return (0, "test http server is already running");
 
-  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  session_enable_disable_args_type_t args = { .is_en = 1,
+					      .rt_engine_type =
+						RT_BACKEND_ENGINE_RULE_TABLE };
+  vnet_session_enable_disable (vm, &args);
 
   rv = hcs_create (vm);
   switch (rv)
