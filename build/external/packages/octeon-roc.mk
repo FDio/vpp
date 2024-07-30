@@ -4,7 +4,7 @@
 
 octeon-roc_version             := 0.2
 octeon-roc_tarball             := octeon-roc-v$(octeon-roc_version).tar.gz
-octeon-roc_tarball_md5sum      := a72bb3b27fd3bbaf58aadd99514620e1
+octeon-roc_tarball_md5sum      := 3e122beb30d57d6f70ea5ee106465b3b
 
 octeon-roc_tarball_strip_dirs  := 1
 octeon-roc_url                 := https://github.com/MarvellEmbeddedProcessors/marvell-vpp/archive/refs/tags/$(octeon-roc_tarball)
