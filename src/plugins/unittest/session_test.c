@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
+#include <arpa/inet.h>
 #include <vnet/session/application_namespace.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/session/session_rules_table.h>
+#include <vnet/session/session_sdl.h>
 #include <vnet/tcp/tcp.h>
 #include <sys/epoll.h>
 
@@ -778,7 +780,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 static int
 session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 {
-  session_rules_table_t _srt, *srt = &_srt;
+  session_table_t *st = session_table_alloc ();
+  session_rules_table_t *srt;
   u16 lcl_port = 1234, rmt_port = 4321;
   u32 action_index = 1, res;
   ip4_address_t lcl_lkup, rmt_lkup;
@@ -796,8 +799,12 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  clib_memset (srt, 0, sizeof (*srt));
-  session_rules_table_init (srt);
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_RULE_TABLE);
+
+  session_table_init (st, FIB_PROTOCOL_MAX);
+  session_rules_table_init (st, FIB_PROTOCOL_MAX);
+  srt = st->session_rules;
 
   ip4_address_t lcl_ip = {
     .as_u32 = clib_host_to_net_u32 (0x01020304),
@@ -1040,6 +1047,8 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 2), "Action should be 2: %d", res);
 
+  session_table_free (st, FIB_PROTOCOL_MAX);
+
   return 0;
 }
 
@@ -1074,6 +1083,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 	  return -1;
 	}
     }
+
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_RULE_TABLE);
 
   server_sep.is_ip4 = 1;
   server_sep.port = placeholder_port;
@@ -2115,15 +2127,19 @@ session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
   /* warm up */
   for (i = 0; i < 10; i++)
     {
-      vnet_session_enable_disable (vm, 0);
-      vnet_session_enable_disable (vm, 1);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_SDL);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_RULE_TABLE);
     }
   was_using = session_get_memory_usage ();
 
   for (i = 0; i < iteration; i++)
     {
-      vnet_session_enable_disable (vm, 0);
-      vnet_session_enable_disable (vm, 1);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_SDL);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+      vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_RULE_TABLE);
     }
   now_using = session_get_memory_usage ();
 
@@ -2134,13 +2150,208 @@ session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static int
+session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_table_t *st = session_table_alloc ();
+  session_rules_table_t *srt;
+  u16 lcl_port = 0, rmt_port = 0;
+  u32 action_index = 1, res;
+  int verbose = 0, error;
+  ip4_address_t lcl_ip;
+  const char ip_str_1234[] = "1.2.3.4";
+  inet_pton (AF_INET, ip_str_1234, &lcl_ip);
+  ip4_address_t rmt_ip = {
+    .as_u32 = clib_host_to_net_u32 (0x0),
+  };
+  ip6_address_t rmt_ip6 = {
+    .as_u64 = { 0, 0 },
+  };
+  fib_prefix_t lcl_pref = {
+    .fp_addr.ip4.as_u32 = lcl_ip.as_u32,
+    .fp_len = 16,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_prefix_t rmt_pref = {
+    .fp_addr.ip4.as_u32 = rmt_ip.as_u32,
+    .fp_len = 0,
+    .fp_proto = 0,
+  };
+  session_rule_table_add_del_args_t args = {
+    .lcl = lcl_pref,
+    .rmt = rmt_pref,
+    .lcl_port = lcl_port,
+    .rmt_port = rmt_port,
+    .action_index = action_index++,
+    .is_add = 1,
+  };
+  const char ip_str_1200[] = "1.2.0.0";
+  const char ip_str_1230[] = "1.2.3.0";
+  const char ip_str_1111[] = "1.1.1.1";
+  const char ip6_str[] = "2501:0db8:85a3:0000:0000:8a2e:0371:1";
+  const char ip6_str2[] = "2501:0db8:85a3:0000:0000:8a2e:0372:1";
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_DISABLE);
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_SDL);
+
+  session_table_init (st, FIB_PROTOCOL_MAX);
+  session_rules_table_init (st, FIB_PROTOCOL_MAX);
+  srt = st->session_rules;
+
+  /* Add 1.2.0.0/16 */
+  args.lcl.fp_len = 16;
+  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add %s/%d action %d", ip_str_1200,
+		args.lcl.fp_len, action_index - 1);
+
+  /* Lookup 1.2.3.4 */
+  res =
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
+  SESSION_TEST ((res == action_index - 1),
+		"Lookup %s, action should "
+		"be 1: %d",
+		ip_str_1234, action_index - 1);
+
+  /*
+   * Add 1.2.3.0/24
+   */
+  args.lcl.fp_len = 24;
+  inet_pton (AF_INET, ip_str_1230, &args.lcl.fp_addr.ip4.as_u32);
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add %s/%d action %d", ip_str_1230,
+		args.lcl.fp_len, action_index - 1);
+
+  /* Lookup 1.2.3.4 */
+  res =
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
+  SESSION_TEST ((res == action_index - 1),
+		"Lookup %s, action should "
+		"be 2: %d",
+		ip_str_1234, action_index - 1);
+
+  /* look up 1.1.1.1, should be -1 (invalid index) */
+  inet_pton (AF_INET, ip_str_1111, &lcl_ip);
+  res =
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
+  SESSION_TEST ((res == SESSION_TABLE_INVALID_INDEX),
+		"Lookup %s, action should "
+		"be -1: %d",
+		ip_str_1111, res);
+
+  /* Add again 1.2.0.0/16, should be rejected */
+  args.lcl.fp_len = 16;
+  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == SESSION_E_IPINUSE), "Add %s/%d action %d",
+		ip_str_1200, args.lcl.fp_len, error);
+  /*
+   * Add 0.0.0.0/0, should get an error
+   */
+  args.lcl.fp_len = 0;
+  args.lcl.fp_addr.ip4.as_u32 = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == SESSION_E_IPINUSE), "Add 0.0.0.0/%d action %d",
+		args.lcl.fp_len, error);
+
+  /* delete 0.0.0.0 should be rejected */
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == SESSION_E_NOROUTE), "Del 0.0.0.0/%d action %d",
+		args.lcl.fp_len, error);
+  if (verbose)
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
+
+  /*
+   * Clean up
+   * Delete 1.2.0.0/16
+   * Delete 1.2.3.0/24
+   */
+  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
+  args.lcl.fp_len = 16;
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del %s/%d should 0: %d", ip_str_1200,
+		args.lcl.fp_len, error);
+
+  inet_pton (AF_INET, ip_str_1230, &args.lcl.fp_addr.ip4.as_u32);
+  args.lcl.fp_len = 24;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del %s/%d, should be 0: %d", ip_str_1230,
+		args.lcl.fp_len, error);
+  if (verbose)
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
+
+  /* ip6 tests */
+
+  /*
+   * Add ip6 2001:0db8:85a3:0000:0000:8a2e:0371:1/124
+   */
+  ip6_address_t lcl_lkup;
+  inet_pton (AF_INET6, ip6_str, &args.lcl.fp_addr.ip6);
+  args.lcl.fp_len = 124;
+  args.lcl.fp_proto = FIB_PROTOCOL_IP6;
+  args.action_index = action_index++;
+  args.is_add = 1;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add %s/%d action %d", ip6_str, args.lcl.fp_len,
+		action_index - 1);
+  if (verbose)
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+
+  /* Lookup 2001:0db8:85a3:0000:0000:8a2e:0371:1 */
+  res = session_rules_table_lookup6 (srt, &args.lcl.fp_addr.ip6, &rmt_ip6,
+				     lcl_port, rmt_port);
+  SESSION_TEST ((res == action_index - 1),
+		"Lookup %s action should "
+		"be 3: %d",
+		ip6_str, action_index - 1);
+
+  /* Lookup 2001:0db8:85a3:0000:0000:8a2e:0372:1 */
+  inet_pton (AF_INET6, ip6_str2, &lcl_lkup);
+  res =
+    session_rules_table_lookup6 (srt, &lcl_lkup, &rmt_ip6, lcl_port, rmt_port);
+  SESSION_TEST ((res == SESSION_TABLE_INVALID_INDEX),
+		"Lookup %s action should "
+		"be -1: %d",
+		ip6_str2, res);
+
+  /*
+   * del ip6 2001:0db8:85a3:0000:0000:8a2e:0371:1/124
+   */
+  args.is_add = 0;
+  args.lcl.fp_len = 124;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "del %s/%d, should be 0: %d", ip6_str,
+		args.lcl.fp_len, error);
+  if (verbose)
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
+
+  session_table_free (st, FIB_PROTOCOL_MAX);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
 {
   int res = 0;
 
-  vnet_session_enable_disable (vm, 1);
+  vnet_session_enable_disable (vm, RT_BACKEND_ENGINE_RULE_TABLE);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2162,6 +2373,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_mq_basic (vm, input);
       else if (unformat (input, "enable-disable"))
 	res = session_test_enable_disable (vm, input);
+      else if (unformat (input, "sdl"))
+	res = session_test_sdl (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -2179,6 +2392,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_mq_speed (vm, input)))
 	    goto done;
 	  if ((res = session_test_mq_basic (vm, input)))
+	    goto done;
+	  if ((res = session_test_sdl (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;
