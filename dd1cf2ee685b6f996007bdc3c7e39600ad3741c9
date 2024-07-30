@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a703ae26_bafb9956",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-30T23:04:29Z",
+      "side": 1,
+      "message": "Cool! Quick comments.",
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf7ecb2d_110faf4a",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-30T23:04:29Z",
+      "side": 1,
+      "message": "Hm, I\u0027m tempted to say it would be better to pass st-\u003erules_table to a session rules table init function with these params. That way we keep the \"default\" session table init simple",
+      "range": {
+        "startLine": 128,
+        "startChar": 44,
+        "endLine": 129,
+        "endChar": 33
+      },
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b296823_cd8c739e",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-30T23:04:29Z",
+      "side": 1,
+      "message": "Wonder if we can offload all this cleanup to session rules table. Maybe session_rules should be a struct and we just ask session rules table to clean it up.",
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb3ac3af_6b094973",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-30T23:04:29Z",
+      "side": 1,
+      "message": "Do we need ns_id?",
+      "range": {
+        "startLine": 99,
+        "startChar": 56,
+        "endLine": 99,
+        "endChar": 65
+      },
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7949a89e_86619146",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-07-30T23:04:29Z",
+      "side": 1,
+      "message": "Similarly, let\u0027s ask session rules table to do all the inits for us",
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
