@@ -19,6 +19,16 @@
 #include <vnet/session/mma_template.c>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/transport.h>
+#include <vnet/session/session.h>
+
+VLIB_REGISTER_LOG_CLASS (session_rt_log, static) = { .class_name = "session",
+						     .subclass_name = "rt" };
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (session_rt_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+#define log_warn(fmt, ...)                                                    \
+  vlib_log_warn (session_rt_log.class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (session_rt_log.class, fmt, __VA_ARGS__)
 
 u32
 session_rule_tag_key_index (u32 ri, u8 is_ip4)
@@ -119,13 +129,25 @@ fib_pref_normalize (fib_prefix_t * pref)
 }
 
 u8 *
+format_session_rule_tag (u8 *s, va_list *args)
+{
+  static u8 *null_tag = 0;
+  u8 *tag = va_arg (*args, u8 *);
+
+  if (!null_tag)
+    null_tag = format (0, "none");
+  s = format (s, "%v", (tag != 0) ? tag : null_tag);
+  return s;
+}
+
+u8 *
 format_session_rule4 (u8 * s, va_list * args)
 {
   session_rules_table_t *srt = va_arg (*args, session_rules_table_t *);
   mma_rule_16_t *sr = va_arg (*args, mma_rule_16_t *);
   session_mask_or_match_4_t *mask, *match;
   mma_rules_table_16_t *srt4;
-  u8 *tag = 0, *null_tag = format (0, "none");
+  u8 *tag = 0;
   u32 ri;
   int i;
 
@@ -135,20 +157,18 @@ format_session_rule4 (u8 * s, va_list * args)
   match = (session_mask_or_match_4_t *) & sr->match;
   mask = (session_mask_or_match_4_t *) & sr->mask;
 
-  s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %v", ri,
+  s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %U", ri,
 	      format_ip4_address, &match->lcl_ip,
-	      ip4_mask_to_preflen (&mask->lcl_ip),
-	      clib_net_to_host_u16 (match->lcl_port), format_ip4_address,
-	      &match->rmt_ip, ip4_mask_to_preflen (&mask->rmt_ip),
-	      clib_net_to_host_u16 (match->rmt_port), sr->action_index,
-	      tag ? tag : null_tag);
+	      ip4_mask_to_preflen (&mask->lcl_ip), match->lcl_port,
+	      format_ip4_address, &match->rmt_ip,
+	      ip4_mask_to_preflen (&mask->rmt_ip), match->rmt_port,
+	      sr->action_index, format_session_rule_tag, tag);
   if (vec_len (sr->next_indices))
     {
       s = format (s, "\n    children: ");
       for (i = 0; i < vec_len (sr->next_indices); i++)
 	s = format (s, "%d ", sr->next_indices[i]);
     }
-  vec_free (null_tag);
   return s;
 }
 
@@ -159,7 +179,7 @@ format_session_rule6 (u8 * s, va_list * args)
   mma_rule_40_t *sr = va_arg (*args, mma_rule_40_t *);
   session_mask_or_match_6_t *mask, *match;
   mma_rules_table_40_t *srt6;
-  u8 *tag = 0, *null_tag = format (0, "none");
+  u8 *tag = 0;
   u32 ri;
   int i;
 
@@ -169,20 +189,18 @@ format_session_rule6 (u8 * s, va_list * args)
   match = (session_mask_or_match_6_t *) & sr->match;
   mask = (session_mask_or_match_6_t *) & sr->mask;
 
-  s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %v", ri,
+  s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %U", ri,
 	      format_ip6_address, &match->lcl_ip,
-	      ip6_mask_to_preflen (&mask->lcl_ip),
-	      clib_net_to_host_u16 (match->lcl_port), format_ip6_address,
-	      &match->rmt_ip, ip6_mask_to_preflen (&mask->rmt_ip),
-	      clib_net_to_host_u16 (match->rmt_port), sr->action_index,
-	      tag ? tag : null_tag);
+	      ip6_mask_to_preflen (&mask->lcl_ip), match->lcl_port,
+	      format_ip6_address, &match->rmt_ip,
+	      ip6_mask_to_preflen (&mask->rmt_ip), match->rmt_port,
+	      sr->action_index, format_session_rule_tag, tag);
   if (vec_len (sr->next_indices))
     {
       s = format (s, "\n    children: ");
       for (i = 0; i < vec_len (sr->next_indices); i++)
 	s = format (s, "%d ", sr->next_indices[i]);
     }
-  vec_free (null_tag);
   return s;
 }
 
@@ -332,9 +350,9 @@ session_rules_table_lookup_rule4 (session_rules_table_t * srt,
 }
 
 u32
-session_rules_table_lookup4 (session_rules_table_t * srt,
-			     ip4_address_t * lcl_ip, ip4_address_t * rmt_ip,
-			     u16 lcl_port, u16 rmt_port)
+session_rules_table_lookup4_ (session_rules_table_t *srt,
+			      ip4_address_t *lcl_ip, ip4_address_t *rmt_ip,
+			      u16 lcl_port, u16 rmt_port)
 {
   mma_rules_table_16_t *srt4 = &srt->session_rules_tables_16;
   session_mask_or_match_4_t key = {
@@ -366,9 +384,9 @@ session_rules_table_lookup_rule6 (session_rules_table_t * srt,
 }
 
 u32
-session_rules_table_lookup6 (session_rules_table_t * srt,
-			     ip6_address_t * lcl_ip, ip6_address_t * rmt_ip,
-			     u16 lcl_port, u16 rmt_port)
+session_rules_table_lookup6_ (session_rules_table_t *srt,
+			      ip6_address_t *lcl_ip, ip6_address_t *rmt_ip,
+			      u16 lcl_port, u16 rmt_port)
 {
   mma_rules_table_40_t *srt6 = &srt->session_rules_tables_40;
   session_mask_or_match_6_t key = {
@@ -390,8 +408,8 @@ session_rules_table_lookup6 (session_rules_table_t * srt,
  * @return 0 if success, session_error_t error otherwise
  */
 session_error_t
-session_rules_table_add_del (session_rules_table_t *srt,
-			     session_rule_table_add_del_args_t *args)
+session_rules_table_add_del_ (session_rules_table_t *srt,
+			      session_rule_table_add_del_args_t *args)
 {
   u8 fib_proto = args->rmt.fp_proto, *rt;
   u32 ri_from_tag, ri;
@@ -515,49 +533,72 @@ session_rules_table_add_del (session_rules_table_t *srt,
 }
 
 void
-session_rules_table_free (session_rules_table_t *srt)
+session_rules_table_free_ (session_table_t *st, u8 fib_proto)
 {
-  mma_rules_table_free_16 (&srt->session_rules_tables_16);
-  mma_rules_table_free_40 (&srt->session_rules_tables_40);
+  session_rules_table_t *srt;
 
-  hash_free (srt->tags_by_rules);
-  hash_free (srt->rules_by_tag);
+  for (int i = 0; i < TRANSPORT_N_PROTOS; i++)
+    {
+      srt = &st->session_rules[i];
+      mma_rules_table_free_16 (&srt->session_rules_tables_16);
+      mma_rules_table_free_40 (&srt->session_rules_tables_40);
+
+      hash_free (srt->tags_by_rules);
+      hash_free (srt->rules_by_tag);
+    }
 }
 
 void
-session_rules_table_init (session_rules_table_t * srt)
+session_rules_table_init_ (session_table_t *st, u8 fib_proto)
 {
   mma_rules_table_16_t *srt4;
   mma_rules_table_40_t *srt6;
   mma_rule_16_t *rule4;
   mma_rule_40_t *rule6;
   fib_prefix_t null_prefix;
+  session_rules_table_t *srt;
 
   clib_memset (&null_prefix, 0, sizeof (null_prefix));
+  for (int i = 0; i < TRANSPORT_N_PROTOS; i++)
+    {
+      srt = &st->session_rules[i];
+      srt4 = &srt->session_rules_tables_16;
 
-  srt4 = &srt->session_rules_tables_16;
-  rule4 = session_rules_table_alloc_rule_16 (srt4, &null_prefix, 0,
-					     &null_prefix, 0);
-  rule4->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
-  srt4->root_index = mma_rules_table_rule_index_16 (srt4, rule4);
-  srt4->rule_cmp_fn = rule_cmp_16;
+      /*
+       * if the rule table is shared by more than 1 app, the 1st app already
+       * initialized the table. The 2nd app does not need to do it again.
+       */
+      if (srt4->rules == 0)
+	{
+	  rule4 = session_rules_table_alloc_rule_16 (srt4, &null_prefix, 0,
+						     &null_prefix, 0);
+	  rule4->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
+	  srt4->root_index = mma_rules_table_rule_index_16 (srt4, rule4);
+	  srt4->rule_cmp_fn = rule_cmp_16;
+	}
 
-  srt6 = &srt->session_rules_tables_40;
-  rule6 = session_rules_table_alloc_rule_40 (srt6, &null_prefix, 0,
-					     &null_prefix, 0);
-  rule6->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
-  srt6->root_index = mma_rules_table_rule_index_40 (srt6, rule6);
-  srt6->rule_cmp_fn = rule_cmp_40;
+      srt6 = &srt->session_rules_tables_40;
+      if (srt6->rules == 0)
+	{
+	  rule6 = session_rules_table_alloc_rule_40 (srt6, &null_prefix, 0,
+						     &null_prefix, 0);
+	  rule6->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
+	  srt6->root_index = mma_rules_table_rule_index_40 (srt6, rule6);
+	  srt6->rule_cmp_fn = rule_cmp_40;
+	}
 
-  srt->rules_by_tag = hash_create_vec (0, sizeof (u8), sizeof (uword));
-  srt->tags_by_rules = hash_create (0, sizeof (uword));
+      if (srt->rules_by_tag == 0)
+	srt->rules_by_tag = hash_create_vec (0, sizeof (u8), sizeof (uword));
+      if (srt->tags_by_rules == 0)
+	srt->tags_by_rules = hash_create (0, sizeof (uword));
+    }
 }
 
 void
-session_rules_table_show_rule (vlib_main_t * vm, session_rules_table_t * srt,
-			       ip46_address_t * lcl_ip, u16 lcl_port,
-			       ip46_address_t * rmt_ip, u16 rmt_port,
-			       u8 is_ip4)
+session_rules_table_show_rule_ (vlib_main_t *vm, session_rules_table_t *srt,
+				ip46_address_t *lcl_ip, u16 lcl_port,
+				ip46_address_t *rmt_ip, u16 rmt_port,
+				u8 is_ip4)
 {
   mma_rules_table_16_t *srt4;
   mma_rules_table_40_t *srt6;
@@ -599,8 +640,8 @@ session_rules_table_show_rule (vlib_main_t * vm, session_rules_table_t * srt,
 }
 
 void
-session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
-			      u8 fib_proto)
+session_rules_table_cli_dump_ (vlib_main_t *vm, session_rules_table_t *srt,
+			       u8 fib_proto)
 {
   if (fib_proto == FIB_PROTOCOL_IP4)
     {
@@ -626,6 +667,89 @@ session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
       }
 
     }
+}
+
+static const session_engine_vft_t session_rules_table_vft = {
+  .backend_engine = RT_BACKEND_ENGINE_RULE_TABLE,
+  .table_lookup4 = session_rules_table_lookup4_,
+  .table_lookup6 = session_rules_table_lookup6_,
+  .table_cli_dump = session_rules_table_cli_dump_,
+  .table_show_rule = session_rules_table_show_rule_,
+  .table_add_del = session_rules_table_add_del_,
+  .table_init = session_rules_table_init_,
+  .table_free = session_rules_table_free_,
+};
+
+static void
+session_rules_table_app_namespace_walk_disable_cb (app_namespace_t *app_ns,
+						   void *ctx)
+{
+  u32 fib_index, table_index;
+  session_table_t *st;
+
+  log_debug ("disable app_ns %s", app_ns->ns_id);
+  st = session_table_get (app_ns->local_table_index);
+  if (st)
+    session_rules_table_free (st, FIB_PROTOCOL_MAX);
+
+  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP4);
+  table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP4, fib_index);
+  st = session_table_get (table_index);
+  if (st)
+    session_rules_table_free (st, FIB_PROTOCOL_IP4);
+
+  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP6);
+  table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP6, fib_index);
+  st = session_table_get (table_index);
+  if (st)
+    session_rules_table_free (st, FIB_PROTOCOL_IP6);
+}
+
+static void
+session_rules_table_app_namespace_walk_enable_cb (app_namespace_t *app_ns,
+						  void *ctx)
+{
+  u32 fib_index, table_index;
+  session_table_t *st;
+
+  log_debug ("enable app_ns %s", app_ns->ns_id);
+  st = session_table_get (app_ns->local_table_index);
+  if (st)
+    session_rules_table_init_ (st, FIB_PROTOCOL_MAX);
+
+  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP4);
+  table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP4, fib_index);
+  st = session_table_get (table_index);
+  if (st)
+    session_rules_table_init_ (st, FIB_PROTOCOL_IP4);
+
+  fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP6);
+  table_index = session_lookup_get_index_for_fib (FIB_PROTOCOL_IP6, fib_index);
+  st = session_table_get (table_index);
+  if (st)
+    session_rules_table_init_ (st, FIB_PROTOCOL_IP6);
+}
+
+clib_error_t *
+session_rules_table_enable_disable (int enable)
+{
+  clib_error_t *error;
+
+  if (enable)
+    {
+      error = session_rule_register_engine (&session_rules_table_vft);
+      if (error == 0)
+	app_namespace_walk (session_rules_table_app_namespace_walk_enable_cb,
+			    0);
+    }
+  else
+    {
+      app_namespace_walk (session_rules_table_app_namespace_walk_disable_cb,
+			  0);
+      error = session_rule_deregister_engine (&session_rules_table_vft);
+    }
+
+  return error;
 }
 
 /*
