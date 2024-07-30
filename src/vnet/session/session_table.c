@@ -15,6 +15,7 @@
 
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
+#include <vnet/session/session_sdl.h>
 
 /**
  * Pool of session tables
@@ -66,8 +67,11 @@ session_table_free (session_table_t *slt, u8 fib_proto)
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
   int i;
 
-  for (i = 0; i < TRANSPORT_N_PROTOS; i++)
-    session_rules_table_free (&slt->session_rules[i]);
+  if (session_rule_table_is_enabled ())
+    for (i = 0; i < TRANSPORT_N_PROTOS; i++)
+      session_rules_table_free (&slt->session_rules[i], fib_proto);
+  else if (session_sdl_is_enabled ())
+    session_sdl_rules_table_free (slt, slt->session_rules, fib_proto);
 
   vec_free (slt->session_rules);
 
@@ -92,11 +96,13 @@ session_table_free (session_table_t *slt, u8 fib_proto)
  * otherwise it uses defaults above.
  */
 void
-session_table_init (session_table_t * slt, u8 fib_proto)
+session_table_init (session_table_t *slt, u8 fib_proto)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
   int i;
+  app_namespace_t *app_ns;
 
+  app_ns = app_namespace_get_if_valid (slt->appns_index);
 #define _(af,table,parm,value) 						\
   u32 configured_##af##_##table##_table_##parm = value;
   foreach_hash_table_parameter;
@@ -155,8 +161,15 @@ session_table_init (session_table_t * slt, u8 fib_proto)
     }
 
   vec_validate (slt->session_rules, TRANSPORT_N_PROTOS - 1);
-  for (i = 0; i < TRANSPORT_N_PROTOS; i++)
-    session_rules_table_init (&slt->session_rules[i]);
+  session_sdl_block_init (&slt->session_rules[0].sdl_block);
+  if (session_rule_table_is_enabled ())
+    for (i = 0; i < TRANSPORT_N_PROTOS; i++)
+      session_rules_table_init (&slt->session_rules[i], fib_proto,
+				app_ns ? app_ns->ns_id : 0, slt->is_local);
+  else if (session_sdl_is_enabled ())
+    session_sdl_rules_table_init (slt, slt->session_rules,
+				  app_ns ? app_ns->ns_id : 0, fib_proto,
+				  slt->is_local);
 }
 
 typedef struct _ip4_session_table_walk_ctx_t

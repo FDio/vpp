@@ -13,11 +13,17 @@
  * limitations under the License.
  */
 
-option version = "4.0.0";
+option version = "4.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
+
+typedef sdl_rule
+{
+  vl_api_prefix_t lcl;
+  u32 action_index;
+};
 
 enum transport_proto : u8
 {
@@ -26,6 +32,14 @@ enum transport_proto : u8
         TRANSPORT_PROTO_API_NONE,
         TRANSPORT_PROTO_API_TLS,
         TRANSPORT_PROTO_API_QUIC,
+};
+
+enum rt_backend_engine : u8
+{
+        RT_BACKEND_ENGINE_API_DISABLE = 0,
+        RT_BACKEND_ENGINE_API_RULE_TABLE,
+        RT_BACKEND_ENGINE_API_NONE,
+        RT_BACKEND_ENGINE_API_SDL,
 };
 
 /** \brief Application attach to session layer
@@ -166,9 +180,16 @@ define app_worker_add_del_reply
     @param is_enable - disable session layer if 0, enable otherwise
 */
 autoreply define session_enable_disable {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_enable [default=true];
+};
+
+autoreply define session_enable_disable_v2 {
+  u32 client_index;
+  u32 context;
+  vl_api_rt_backend_engine_t rt_engine_type;
 };
 
 /** \brief enable/disable session layer socket api
@@ -415,6 +436,15 @@ define session_rules_details
   u32 appns_index;
   vl_api_session_rule_scope_t scope;
   string tag[64];
+};
+
+autoreply define session_sdl_add_del {
+  u32 client_index;
+  u32 context;
+  u32 appns_index;
+  bool is_add;
+  u32 count;
+  vl_api_sdl_rule_t r[count];
 };
 
 /*

@@ -171,7 +171,7 @@ session_table_is_alloced (u8 fib_proto, u32 fib_index)
 }
 
 static session_table_t *
-session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
+session_table_get_or_alloc (u8 fib_proto, u32 fib_index, u32 appns_index)
 {
   session_table_t *st;
   u32 table_index;
@@ -207,6 +207,7 @@ session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
     {
       st = session_table_alloc ();
       st->active_fib_proto = fib_proto;
+      st->appns_index = appns_index;
       session_table_init (st, fib_proto);
       vec_validate_init_empty (fib_index_to_table_index[fib_proto], fib_index,
 			       ~0);
@@ -228,7 +229,7 @@ session_table_get_or_alloc_for_connection (transport_connection_t * tc)
 {
   u32 fib_proto;
   fib_proto = transport_connection_fib_proto (tc);
-  return session_table_get_or_alloc (fib_proto, tc->fib_index);
+  return session_table_get_or_alloc (fib_proto, tc->fib_index, 0);
 }
 
 static session_table_t *
@@ -241,7 +242,7 @@ session_table_get_for_connection (transport_connection_t * tc)
     session_table_get (fib_index_to_table_index[fib_proto][tc->fib_index]);
 }
 
-static session_table_t *
+session_table_t *
 session_table_get_for_fib_index (u32 fib_proto, u32 fib_index)
 {
   if (vec_len (fib_index_to_table_index[fib_proto]) <= fib_index)
@@ -261,7 +262,7 @@ u32
 session_lookup_get_or_alloc_index_for_fib (u32 fib_proto, u32 fib_index)
 {
   session_table_t *st;
-  st = session_table_get_or_alloc (fib_proto, fib_index);
+  st = session_table_get_or_alloc (fib_proto, fib_index, 0);
   return session_table_index (st);
 }
 
@@ -1424,12 +1425,10 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
   for (fp = 0; fp < ARRAY_LEN (fib_index_to_table_index); fp++)
     {
       fib_index = app_namespace_get_fib_index (app_ns, fp);
-      st = session_table_get_or_alloc (fp, fib_index);
+      st = session_table_get_or_alloc (fp, fib_index,
+				       app_namespace_index (app_ns));
       if (st)
-	{
-	  st->appns_index = app_namespace_index (app_ns);
-	  session_lookup_fib_table_lock (fib_index, fp);
-	}
+	session_lookup_fib_table_lock (fib_index, fp);
     }
 }
 
@@ -1522,6 +1521,9 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv;
 
   session_cli_return_if_not_enabled ();
+
+  if (session_rule_table_is_enabled () == 0)
+    return clib_error_return (0, "session rule table engine is not enabled");
 
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
@@ -1902,6 +1904,32 @@ session_lookup_init (void)
   fib_index_to_table_index[FIB_PROTOCOL_IP6][0] = session_table_index (st);
   st->active_fib_proto = FIB_PROTOCOL_IP6;
   session_table_init (st, FIB_PROTOCOL_IP6);
+}
+
+const session_engine_vft_t *session_engine_vft;
+
+clib_error_t *
+session_rule_register_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    return 0;
+  if (session_engine_vft)
+    return clib_error_return (0, "session rule engine is already registered");
+
+  session_engine_vft = vft;
+  return 0;
+}
+
+clib_error_t *
+session_rule_deregister_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    session_engine_vft = 0;
+  else
+    return clib_error_return (
+      0, "session rule engine is not registered to this engine");
+
+  return 0;
 }
 
 void
