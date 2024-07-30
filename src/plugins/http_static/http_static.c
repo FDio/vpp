@@ -85,7 +85,10 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   if (hsm->app_index != ~0)
     return VNET_API_ERROR_APP_ALREADY_ATTACHED;
 
-  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */);
+  session_enable_disable_args_t args = { .is_en = 1,
+					 .rt_engine_type =
+					   RT_BACKEND_ENGINE_RULE_TABLE };
+  vnet_session_enable_disable (hsm->vlib_main, &args);
 
   rv = hss_create (hsm->vlib_main);
   switch (rv)

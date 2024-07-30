@@ -18,7 +18,6 @@
 
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_48_8.h>
-#include <vnet/session/session_rules_table.h>
 
 typedef struct _session_lookup_table
 {
@@ -37,7 +36,7 @@ typedef struct _session_lookup_table
   /**
    * Per fib proto and transport proto session rules tables
    */
-  session_rules_table_t *session_rules;
+  u32 srtg_handle;
 
   /** Flag that indicates if table has local scope */
   u8 is_local;

@@ -1550,8 +1550,11 @@ tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
 {
   int res = 0;
+  session_enable_disable_args_t args = { .is_en = 1,
+					 .rt_engine_type =
+					   RT_BACKEND_ENGINE_RULE_TABLE };
 
-  vnet_session_enable_disable (vm, 1);
+  vnet_session_enable_disable (vm, &args);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

@@ -429,8 +429,11 @@ ec_init (vlib_main_t *vm)
 
   ecm->app_is_init = 1;
 
+  session_enable_disable_args_t args = { .is_en = 1,
+					 .rt_engine_type =
+					   RT_BACKEND_ENGINE_RULE_TABLE };
   vlib_worker_thread_barrier_sync (vm);
-  vnet_session_enable_disable (vm, 1 /* turn on session and transports */);
+  vnet_session_enable_disable (vm, &args);
 
   /* Turn on the builtin client input nodes */
   foreach_vlib_main ()
