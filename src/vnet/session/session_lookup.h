@@ -140,6 +140,11 @@ session_error_t vnet_session_rule_add_del (session_rule_add_del_args_t *args);
 void session_lookup_set_tables_appns (app_namespace_t * app_ns);
 
 void session_lookup_init (void);
+clib_error_t *session_rule_register_engine (const session_engine_vft_t *vft);
+clib_error_t *session_rule_deregister_engine (const session_engine_vft_t *vft);
+
+session_table_t *session_table_get_for_fib_index (u32 fib_proto,
+						  u32 fib_index);
 
 #endif /* SRC_VNET_SESSION_SESSION_LOOKUP_H_ */
 
