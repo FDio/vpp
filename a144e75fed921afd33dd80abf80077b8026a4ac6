@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a242c5f_3a4cdc04",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-30T20:42:11Z",
+      "side": 1,
+      "message": "Override verify because the CI job is using he cached version of octeon-roc-0,2 and not pulling it from github",
+      "revId": "a144e75fed921afd33dd80abf80077b8026a4ac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
