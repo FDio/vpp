@@ -241,7 +241,7 @@ session_table_get_for_connection (transport_connection_t * tc)
     session_table_get (fib_index_to_table_index[fib_proto][tc->fib_index]);
 }
 
-static session_table_t *
+session_table_t *
 session_table_get_for_fib_index (u32 fib_proto, u32 fib_index)
 {
   if (vec_len (fib_index_to_table_index[fib_proto]) <= fib_index)
@@ -1379,7 +1379,7 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       srt = &st->session_rules[args->transport_proto];
-      if ((rv = session_rules_table_add_del (srt, &args->table_args)))
+      if ((rv = session_rules_table_add_del (st, srt, &args->table_args)))
 	return rv;
     }
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
@@ -1389,7 +1389,7 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       args->table_args.lcl_port = 0;
       st = app_namespace_get_local_table (app_ns);
       srt = &st->session_rules[args->transport_proto];
-      rv = session_rules_table_add_del (srt, &args->table_args);
+      rv = session_rules_table_add_del (st, srt, &args->table_args);
     }
   return rv;
 }
@@ -1522,6 +1522,9 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv;
 
   session_cli_return_if_not_enabled ();
+
+  if (session_rule_table_is_enabled () == 0)
+    return clib_error_return (0, "session rule table engine is not enabled");
 
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
@@ -1902,6 +1905,32 @@ session_lookup_init (void)
   fib_index_to_table_index[FIB_PROTOCOL_IP6][0] = session_table_index (st);
   st->active_fib_proto = FIB_PROTOCOL_IP6;
   session_table_init (st, FIB_PROTOCOL_IP6);
+}
+
+const session_engine_vft_t *session_engine_vft;
+
+clib_error_t *
+session_rule_register_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    return 0;
+  if (session_engine_vft)
+    return clib_error_return (0, "session rule engine is already registered");
+
+  session_engine_vft = vft;
+  return 0;
+}
+
+clib_error_t *
+session_rule_deregister_engine (const session_engine_vft_t *vft)
+{
+  if (session_engine_vft == vft)
+    session_engine_vft = 0;
+  else
+    return clib_error_return (
+      0, "session rule engine is not registered to this engine");
+
+  return 0;
 }
 
 void

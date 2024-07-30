@@ -15,6 +15,7 @@
 
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
+#include <vnet/session/session_sdl.h>
 
 /**
  * Pool of session tables
@@ -64,10 +65,8 @@ void
 session_table_free (session_table_t *slt, u8 fib_proto)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
-  int i;
 
-  for (i = 0; i < TRANSPORT_N_PROTOS; i++)
-    session_rules_table_free (&slt->session_rules[i]);
+  session_rules_table_free (slt, fib_proto);
 
   vec_free (slt->session_rules);
 
@@ -92,10 +91,9 @@ session_table_free (session_table_t *slt, u8 fib_proto)
  * otherwise it uses defaults above.
  */
 void
-session_table_init (session_table_t * slt, u8 fib_proto)
+session_table_init (session_table_t *slt, u8 fib_proto)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
-  int i;
 
 #define _(af,table,parm,value) 						\
   u32 configured_##af##_##table##_table_##parm = value;
@@ -155,8 +153,7 @@ session_table_init (session_table_t * slt, u8 fib_proto)
     }
 
   vec_validate (slt->session_rules, TRANSPORT_N_PROTOS - 1);
-  for (i = 0; i < TRANSPORT_N_PROTOS; i++)
-    session_rules_table_init (&slt->session_rules[i]);
+  session_sdl_block_init (slt);
 }
 
 typedef struct _ip4_session_table_walk_ctx_t
