@@ -34,6 +34,17 @@ static app_namespace_t *app_namespace_pool;
 
 static u8 app_sapi_enabled;
 
+void
+app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx)
+{
+  app_namespace_t *app_ns;
+
+  pool_foreach (app_ns, app_namespace_pool)
+    {
+      fn (app_ns, ctx);
+    }
+}
+
 app_namespace_t *
 app_namespace_get (u32 index)
 {
@@ -114,10 +125,10 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
 	{
 	  app_ns = app_namespace_alloc (a->ns_id);
 	  st = session_table_alloc ();
-	  session_table_init (st, FIB_PROTOCOL_MAX);
 	  st->is_local = 1;
 	  st->appns_index = app_namespace_index (app_ns);
 	  app_ns->local_table_index = session_table_index (st);
+	  session_table_init (st, FIB_PROTOCOL_MAX);
 	  if (a->sock_name)
 	    {
 	      app_ns->sock_name = vec_dup (a->sock_name);
