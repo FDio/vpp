@@ -2628,23 +2628,43 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
     }
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
-  n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), time_to_wait);
-  for (i = 0; i < n_mq_evts; i++)
+
+  while (1)
     {
-      if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+      n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
+			      vec_len (wrk->mq_events), time_to_wait);
+      if (n_mq_evts < 0)
 	{
-	  vcl_api_handle_disconnect (wrk);
-	  continue;
+	  /* maybe we were interrupted by a signal handler */
+	  if (errno == EINTR)
+	    continue;
+
+	  /* break for any other errors - EBADF/EFAULT/EINVAL */
+	  VDBG (0, "epoll_wait error %u", errno);
+	  return 0;
 	}
 
-      mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
-      n_read = read (mqc->mq_fd, &buf, sizeof (buf));
-      vcl_select_handle_mq (wrk, mqc->mq, n_bits, read_map, write_map,
-			    except_map, 0, bits_set);
+      /* no file descriptors became ready during the requested timeout */
+      if (n_mq_evts == 0)
+	return 0;
+
+      for (i = 0; i < n_mq_evts; i++)
+	{
+	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	    {
+	      vcl_api_handle_disconnect (wrk);
+	      continue;
+	    }
+
+	  mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
+	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
+	  vcl_select_handle_mq (wrk, mqc->mq, n_bits, read_map, write_map,
+				except_map, 0, bits_set);
+	}
+      break;
     }
 
-  return (n_mq_evts > 0 ? (int) *bits_set : 0);
+  return (int) *bits_set;
 }
 
 int
@@ -3407,6 +3427,9 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 			      vec_len (wrk->mq_events), timeout_ms);
       if (n_mq_evts < 0)
 	{
+	  if (errno == EINTR)
+	    continue;
+
 	  VDBG (0, "epoll_wait error %u", errno);
 	  return n_evts;
 	}
