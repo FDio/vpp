@@ -22,6 +22,7 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/mma_16.h>
 #include <vnet/session/mma_40.h>
+#include <vnet/session/session_sdl.h>
 
 typedef CLIB_PACKED (struct
 {
@@ -93,30 +94,142 @@ typedef struct _session_rules_table_t
    * Hash table that maps rule indices to tags
    */
   uword *tags_by_rules;
+
+  /**
+   * sdl table
+   */
+  session_sdl_block_t sdl_block;
 } session_rules_table_t;
 
-u32 session_rules_table_lookup4 (session_rules_table_t * srt,
-				 ip4_address_t * lcl_ip,
-				 ip4_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-u32 session_rules_table_lookup6 (session_rules_table_t * srt,
-				 ip6_address_t * lcl_ip,
-				 ip6_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-void session_rules_table_cli_dump (vlib_main_t * vm,
-				   session_rules_table_t * srt, u8 fib_proto);
-void session_rules_table_show_rule (vlib_main_t * vm,
-				    session_rules_table_t * srt,
-				    ip46_address_t * lcl_ip, u16 lcl_port,
-				    ip46_address_t * rmt_ip, u16 rmt_port,
-				    u8 is_ip4);
 session_error_t
-session_rules_table_add_del (session_rules_table_t *srt,
-			     session_rule_table_add_del_args_t *args);
+session_rules_table_add_del_ (session_rules_table_t *srt,
+			      session_rule_table_add_del_args_t *args);
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
 				  u8 is_ip4);
-void session_rules_table_init (session_rules_table_t * srt);
-void session_rules_table_free (session_rules_table_t *srt);
+void session_rules_table_init_ (struct _session_lookup_table *st,
+				u8 fib_proto);
+void session_rules_table_free_ (struct _session_lookup_table *st,
+				u8 fib_proto);
+
+typedef u32 (*rules_table_lookup4) (session_rules_table_t *srt,
+				    ip4_address_t *lcl_ip,
+				    ip4_address_t *rmt_ip, u16 lcl_port,
+				    u16 rmt_port);
+typedef u32 (*rules_table_lookup6) (session_rules_table_t *srt,
+				    ip6_address_t *lcl_ip,
+				    ip6_address_t *rmt_ip, u16 lcl_port,
+				    u16 rmt_port);
+typedef void (*rules_table_cli_dump) (vlib_main_t *vm,
+				      session_rules_table_t *srt,
+				      u8 fib_proto);
+typedef void (*rules_table_show_rule) (vlib_main_t *vm,
+				       session_rules_table_t *srt,
+				       ip46_address_t *lcl_ip, u16 lcl_port,
+				       ip46_address_t *rmt_ip, u16 rmt_port,
+				       u8 is_ip4);
+typedef session_error_t (*rules_table_add_del) (
+  session_rules_table_t *srt, session_rule_table_add_del_args_t *args);
+typedef void (*rules_table_init) (struct _session_lookup_table *st,
+				  u8 fib_proto);
+typedef void (*rules_table_free) (struct _session_lookup_table *st,
+				  u8 fib_proto);
+
+#define foreach_session_engine_vft_method_name                                \
+  _ (lookup4)                                                                 \
+  _ (lookup6)                                                                 \
+  _ (cli_dump)                                                                \
+  _ (show_rule)                                                               \
+  _ (add_del)                                                                 \
+  _ (init)                                                                    \
+  _ (free)
+
+#define _(name) rules_table_##name table_##name;
+typedef struct session_engine_vft
+{
+  u32 backend_engine;
+  foreach_session_engine_vft_method_name
+} session_engine_vft_t;
+#undef _
+
+extern u8 *format_session_rule_tag (u8 *s, va_list *args);
+extern u8 *session_rules_table_rule_tag (session_rules_table_t *srt, u32 ri,
+					 u8 is_ip4);
+extern u32 session_rules_table_rule_for_tag (session_rules_table_t *srt,
+					     u8 *tag);
+extern void session_rules_table_add_tag (session_rules_table_t *srt, u8 *tag,
+					 u32 rule_index, u8 is_ip4);
+extern void session_rules_table_del_tag (session_rules_table_t *srt, u8 *tag,
+					 u8 is_ip4);
+
+extern const session_engine_vft_t *session_engine_vft;
+extern clib_error_t *session_rules_table_enable_disable (int enable);
+
+static_always_inline void
+session_rules_table_init (struct _session_lookup_table *st, u8 fib_proto)
+{
+  session_sdl_block_init (st);
+  if (!session_engine_vft)
+    return;
+  session_engine_vft->table_init (st, fib_proto);
+}
+
+static_always_inline void
+session_rules_table_free (struct _session_lookup_table *st, u8 fib_proto)
+{
+  if (!session_engine_vft)
+    return;
+  session_engine_vft->table_free (st, fib_proto);
+}
+
+static_always_inline void
+session_rules_table_show_rule (vlib_main_t *vm, session_rules_table_t *srt,
+			       ip46_address_t *lcl_ip, u16 lcl_port,
+			       ip46_address_t *rmt_ip, u16 rmt_port, u8 is_ip4)
+{
+  if (!session_engine_vft)
+    return;
+  session_engine_vft->table_show_rule (vm, srt, lcl_ip, lcl_port, rmt_ip,
+				       rmt_port, is_ip4);
+}
+
+static_always_inline u32
+session_rules_table_lookup6 (session_rules_table_t *srt, ip6_address_t *lcl_ip,
+			     ip6_address_t *rmt_ip, u16 lcl_port, u16 rmt_port)
+{
+  if (!session_engine_vft)
+    return SESSION_RULES_TABLE_INVALID_INDEX;
+  return session_engine_vft->table_lookup6 (srt, lcl_ip, rmt_ip, lcl_port,
+					    rmt_port);
+}
+
+static_always_inline void
+session_rules_table_cli_dump (vlib_main_t *vm, session_rules_table_t *srt,
+			      u8 fib_proto)
+{
+  if (!session_engine_vft)
+    return;
+  session_engine_vft->table_cli_dump (vm, srt, fib_proto);
+}
+
+static_always_inline u32
+session_rules_table_lookup4 (session_rules_table_t *srt, ip4_address_t *lcl_ip,
+			     ip4_address_t *rmt_ip, u16 lcl_port, u16 rmt_port)
+{
+  if (!session_engine_vft)
+    return SESSION_RULES_TABLE_INVALID_INDEX;
+  return session_engine_vft->table_lookup4 (srt, lcl_ip, rmt_ip, lcl_port,
+					    rmt_port);
+}
+
+static_always_inline session_error_t
+session_rules_table_add_del (session_rules_table_t *srt,
+			     session_rule_table_add_del_args_t *args)
+{
+  if (!session_engine_vft)
+    return SESSION_E_NOSUPPORT;
+  return session_engine_vft->table_add_del (srt, args);
+}
+
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
