@@ -22,6 +22,10 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/mma_16.h>
 #include <vnet/session/mma_40.h>
+#include <vnet/session/session_lookup.h>
+#include <vnet/session/session_table.h>
+
+#define SESSION_SRTG_HANDLE_INVALID ~0
 
 typedef CLIB_PACKED (struct
 {
@@ -58,29 +62,36 @@ typedef CLIB_PACKED (struct
 #define SESSION_RULES_TABLE_ACTION_DROP (MMA_TABLE_INVALID_INDEX - 1)
 #define SESSION_RULES_TABLE_ACTION_ALLOW (MMA_TABLE_INVALID_INDEX - 2)
 
-typedef struct _session_rules_table_add_del_args
-{
-  fib_prefix_t lcl;
-  fib_prefix_t rmt;
-  u16 lcl_port;
-  u16 rmt_port;
-  u32 action_index;
-  u8 *tag;
-  u8 is_add;
-} session_rule_table_add_del_args_t;
-
 typedef struct _rule_tag
 {
   u8 *tag;
 } session_rule_tag_t;
 
+typedef struct session_sdl_block
+{
+  u32 ip_table_id;
+  u32 ip6_table_id;
+  u32 ip_fib_index;
+  u32 ip6_fib_index;
+} session_sdl_block_t;
+
 typedef struct _session_rules_table_t
 {
-  /**
-   * Per fib proto session rules tables
-   */
-  mma_rules_table_16_t session_rules_tables_16;
-  mma_rules_table_40_t session_rules_tables_40;
+  union
+  {
+    /**
+     * Per fib proto session rules tables
+     */
+    struct
+    {
+      mma_rules_table_16_t session_rules_tables_16;
+      mma_rules_table_40_t session_rules_tables_40;
+    };
+    /**
+     * sdl table
+     */
+    struct session_sdl_block sdl_block;
+  };
   /**
    * Hash table that maps tags to rules
    */
@@ -95,28 +106,163 @@ typedef struct _session_rules_table_t
   uword *tags_by_rules;
 } session_rules_table_t;
 
-u32 session_rules_table_lookup4 (session_rules_table_t * srt,
-				 ip4_address_t * lcl_ip,
-				 ip4_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-u32 session_rules_table_lookup6 (session_rules_table_t * srt,
-				 ip6_address_t * lcl_ip,
-				 ip6_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-void session_rules_table_cli_dump (vlib_main_t * vm,
-				   session_rules_table_t * srt, u8 fib_proto);
-void session_rules_table_show_rule (vlib_main_t * vm,
-				    session_rules_table_t * srt,
-				    ip46_address_t * lcl_ip, u16 lcl_port,
-				    ip46_address_t * rmt_ip, u16 rmt_port,
-				    u8 is_ip4);
+typedef struct _session_rules_table_group_t
+{
+  session_rules_table_t *session_rules;
+} session_rules_table_group_t;
+
 session_error_t
-session_rules_table_add_del (session_rules_table_t *srt,
-			     session_rule_table_add_del_args_t *args);
+session_rules_table_add_del_ (u32 srtg_handle, u32 proto,
+			      session_rule_table_add_del_args_t *args);
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
 				  u8 is_ip4);
-void session_rules_table_init (session_rules_table_t * srt);
-void session_rules_table_free (session_rules_table_t *srt);
+void session_rules_table_init_ (struct _session_lookup_table *st,
+				u8 fib_proto);
+void session_rules_table_free_ (struct _session_lookup_table *st,
+				u8 fib_proto);
+
+typedef u32 (*rules_table_lookup4) (u32 srtg_handle, u32 proto,
+				    ip4_address_t *lcl_ip,
+				    ip4_address_t *rmt_ip, u16 lcl_port,
+				    u16 rmt_port);
+typedef u32 (*rules_table_lookup6) (u32 srtg_handle, u32 proto,
+				    ip6_address_t *lcl_ip,
+				    ip6_address_t *rmt_ip, u16 lcl_port,
+				    u16 rmt_port);
+typedef void (*rules_table_cli_dump) (vlib_main_t *vm, u32 srtg_handle,
+				      u32 proto, u8 fib_proto);
+typedef void (*rules_table_show_rule) (vlib_main_t *vm, u32 srtg_handle,
+				       u32 proto, ip46_address_t *lcl_ip,
+				       u16 lcl_port, ip46_address_t *rmt_ip,
+				       u16 rmt_port, u8 is_ip4);
+typedef session_error_t (*rules_table_add_del) (
+  u32 srtg_handle, u32 proto, session_rule_table_add_del_args_t *args);
+typedef void (*rules_table_init) (struct _session_lookup_table *st,
+				  u8 fib_proto);
+typedef void (*rules_table_free) (struct _session_lookup_table *st,
+				  u8 fib_proto);
+
+#define foreach_session_rt_engine_vft_method_name                             \
+  _ (lookup4)                                                                 \
+  _ (lookup6)                                                                 \
+  _ (cli_dump)                                                                \
+  _ (show_rule)                                                               \
+  _ (add_del)                                                                 \
+  _ (init)                                                                    \
+  _ (free)
+
+#define _(name) rules_table_##name table_##name;
+typedef struct session_rt_engine_vft
+{
+  u32 backend_engine;
+  foreach_session_rt_engine_vft_method_name
+} session_rt_engine_vft_t;
+#undef _
+
+extern u8 *format_session_rule_tag (u8 *s, va_list *args);
+extern u8 *session_rules_table_rule_tag (session_rules_table_t *srt, u32 ri,
+					 u8 is_ip4);
+extern u32 session_rules_table_rule_for_tag (session_rules_table_t *srt,
+					     u8 *tag);
+extern void session_rules_table_add_tag (session_rules_table_t *srt, u8 *tag,
+					 u32 rule_index, u8 is_ip4);
+extern void session_rules_table_del_tag (session_rules_table_t *srt, u8 *tag,
+					 u8 is_ip4);
+
+extern const session_rt_engine_vft_t *session_rt_engine_vft;
+extern clib_error_t *session_rules_table_enable_disable (int enable);
+extern clib_error_t *
+session_rt_backend_enable_disable (session_rt_engine_type_t rt_engine_type);
+
+static_always_inline void
+session_rules_table_init (struct _session_lookup_table *st, u8 fib_proto)
+{
+  if (!session_rt_engine_vft)
+    return;
+  if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+    return;
+  session_rt_engine_vft->table_init (st, fib_proto);
+}
+
+static_always_inline void
+session_rules_table_free (struct _session_lookup_table *st, u8 fib_proto)
+{
+  if (!session_rt_engine_vft)
+    return;
+  if (st->srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return;
+  session_rt_engine_vft->table_free (st, fib_proto);
+}
+
+static_always_inline void
+session_rules_table_show_rule (vlib_main_t *vm, u32 srtg_handle, u32 proto,
+			       ip46_address_t *lcl_ip, u16 lcl_port,
+			       ip46_address_t *rmt_ip, u16 rmt_port, u8 is_ip4)
+{
+  if (!session_rt_engine_vft)
+    return;
+  if (srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return;
+  session_rt_engine_vft->table_show_rule (vm, srtg_handle, proto, lcl_ip,
+					  lcl_port, rmt_ip, rmt_port, is_ip4);
+}
+
+static_always_inline u32
+session_rules_table_lookup6 (u32 srtg_handle, u32 proto, ip6_address_t *lcl_ip,
+			     ip6_address_t *rmt_ip, u16 lcl_port, u16 rmt_port)
+{
+  if (!session_rt_engine_vft)
+    return SESSION_RULES_TABLE_ACTION_ALLOW;
+  if (srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return SESSION_RULES_TABLE_ACTION_ALLOW;
+  return session_rt_engine_vft->table_lookup6 (srtg_handle, proto, lcl_ip,
+					       rmt_ip, lcl_port, rmt_port);
+}
+
+static_always_inline void
+session_rules_table_cli_dump (vlib_main_t *vm, u32 srtg_handle, u32 proto,
+			      u8 fib_proto)
+{
+  if (!session_rt_engine_vft)
+    return;
+  if (srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return;
+  session_rt_engine_vft->table_cli_dump (vm, srtg_handle, proto, fib_proto);
+}
+
+static_always_inline u32
+session_rules_table_lookup4 (u32 srtg_handle, u32 proto, ip4_address_t *lcl_ip,
+			     ip4_address_t *rmt_ip, u16 lcl_port, u16 rmt_port)
+{
+  if (!session_rt_engine_vft)
+    return SESSION_RULES_TABLE_ACTION_ALLOW;
+  if (srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return SESSION_RULES_TABLE_ACTION_ALLOW;
+  return session_rt_engine_vft->table_lookup4 (srtg_handle, proto, lcl_ip,
+					       rmt_ip, lcl_port, rmt_port);
+}
+
+static_always_inline session_error_t
+session_rules_table_add_del (u32 srtg_handle, u32 proto,
+			     session_rule_table_add_del_args_t *args)
+{
+  if (!session_rt_engine_vft)
+    return SESSION_E_NOSUPPORT;
+  if (srtg_handle == SESSION_SRTG_HANDLE_INVALID)
+    return SESSION_E_NOSUPPORT;
+  return session_rt_engine_vft->table_add_del (srtg_handle, proto, args);
+}
+
+clib_error_t *
+session_rule_table_register_engine (const session_rt_engine_vft_t *vft);
+clib_error_t *
+session_rule_table_deregister_engine (const session_rt_engine_vft_t *vft);
+
+extern session_rules_table_t *srtg_handle_to_srt (u32 srtg_handle, u32 proto);
+extern session_rules_table_group_t *srtg_instance_alloc (session_table_t *st,
+							 u32 n_proto);
+extern void srtg_instance_free (session_table_t *st);
+
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
