@@ -30,6 +30,105 @@
 #define REPLY_MSG_ID_BASE session_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+VLIB_REGISTER_LOG_CLASS (session_api_log, static) = { .class_name = "session",
+						      .subclass_name = "api" };
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (session_api_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+#define log_warn(fmt, ...)                                                    \
+  vlib_log_warn (session_api_log.class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)                                                     \
+  vlib_log_err (session_api_log.class, fmt, __VA_ARGS__)
+
+static int
+verify_message_len (void *mp, u64 expected_len, char *where)
+{
+  u32 supplied_len = vl_msg_api_get_msg_length (mp);
+
+  if (supplied_len < expected_len)
+    {
+      log_err ("%s: Supplied message length %d is less than expected %d",
+	       where, supplied_len, expected_len);
+      return 0;
+    }
+  else
+    {
+      return 1;
+    }
+}
+
+static void
+vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
+{
+  vl_api_session_sdl_add_del_reply_t *rmp;
+  session_rule_add_del_args_t args;
+  session_rule_table_add_del_args_t *table_args = &args.table_args;
+  int rv = 0;
+  u32 count = clib_net_to_host_u32 (mp->count);
+  u64 expected_len = sizeof (*mp) + count * sizeof (mp->r[0]);
+
+  if ((session_main.is_enabled == 0) || (session_sdl_is_enabled () == 0))
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  if (verify_message_len (mp, expected_len, "session_sdl_add_del"))
+    {
+      clib_memset (&args, 0, sizeof (args));
+      table_args->is_add = mp->is_add;
+      args.scope = SESSION_RULE_SCOPE_GLOBAL;
+      args.appns_index = clib_net_to_host_u32 (mp->appns_index);
+      for (int i = 0; i < count; i++)
+	{
+	  mp->r[i].tag[sizeof (mp->r[i].tag) - 1] = 0;
+	  table_args->tag = format (0, "%s", mp->r[i].tag);
+	  ip_prefix_decode (&mp->r[i].lcl, &table_args->lcl);
+	  /*
+	   * Need to set fp_proto for vnet_session_rule_add_del to find the
+	   * correct table
+	   */
+	  table_args->rmt.fp_proto = table_args->lcl.fp_proto;
+	  table_args->action_index =
+	    clib_net_to_host_u32 (mp->r[i].action_index);
+
+	  rv = vnet_session_rule_add_del (&args);
+	  vec_free (table_args->tag);
+	  if (rv)
+	    {
+	      log_err ("session_sdl add del returned on %U @index %d: %U",
+		       format_ip46_address, &table_args->lcl.fp_addr,
+		       IP46_TYPE_ANY, i, format_session_error, rv);
+
+	      /* roll back */
+	      table_args->is_add = !mp->is_add;
+	      for (int j = i - 1; j >= 0; j--)
+		{
+		  mp->r[j].tag[sizeof (mp->r[j].tag) - 1] = 0;
+		  table_args->tag = format (0, "%s", mp->r[j].tag);
+		  ip_prefix_decode (&mp->r[j].lcl, &table_args->lcl);
+		  table_args->rmt.fp_proto = table_args->lcl.fp_proto;
+		  table_args->action_index =
+		    clib_net_to_host_u32 (mp->r[j].action_index);
+		  int rv2 = vnet_session_rule_add_del (&args);
+		  vec_free (table_args->tag);
+		  if (rv2)
+		    log_err ("rollback session_sdl add del returned on %U "
+			     "@index %d: %U",
+			     format_ip46_address, &table_args->lcl.fp_addr,
+			     IP46_TYPE_ANY, j, format_session_error, rv2);
+		}
+	      break;
+	    }
+	}
+    }
+  else
+    rv = VNET_API_ERROR_INVALID_VALUE;
+
+done:
+  REPLY_MACRO (VL_API_SESSION_SDL_ADD_DEL_REPLY);
+}
+
 static transport_proto_t
 api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
 {
@@ -520,9 +619,45 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
   vl_api_session_enable_disable_reply_t *rmp;
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
+  session_rt_engine_t rt_engine_type;
 
-  vnet_session_enable_disable (vm, mp->is_enable);
+  if (mp->is_enable)
+    rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE;
+  else
+    rt_engine_type = RT_BACKEND_ENGINE_DISABLE;
+
+  if (vnet_session_enable_disable (vm, rt_engine_type))
+    rv = VNET_API_ERROR_INVALID_ARGUMENT;
   REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_session_enable_disable_v2_t_handler (
+  vl_api_session_enable_disable_v2_t *mp)
+{
+  vl_api_session_enable_disable_v2_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+  session_rt_engine_t rt_engine_type =
+    (session_rt_engine_t) mp->rt_engine_type;
+
+  STATIC_ASSERT ((session_rt_engine_t) RT_BACKEND_ENGINE_API_DISABLE ==
+		   RT_BACKEND_ENGINE_DISABLE,
+		 "API value mismatch");
+  STATIC_ASSERT ((session_rt_engine_t) RT_BACKEND_ENGINE_API_NONE ==
+		   RT_BACKEND_ENGINE_NONE,
+		 "API value mismatch");
+  STATIC_ASSERT ((session_rt_engine_t) RT_BACKEND_ENGINE_API_RULE_TABLE ==
+		   RT_BACKEND_ENGINE_RULE_TABLE,
+		 "API value mismatch");
+  STATIC_ASSERT ((session_rt_engine_t) RT_BACKEND_ENGINE_API_SDL ==
+		   RT_BACKEND_ENGINE_SDL,
+		 "API value mismatch");
+
+  if (vnet_session_enable_disable (vm, rt_engine_type))
+    rv = VNET_API_ERROR_INVALID_VALUE;
+
+  REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_V2_REPLY);
 }
 
 static void
@@ -1127,14 +1262,15 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
     return;
 
   session_table_foreach (st, ({
-    for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
-      {
-        send_session_rules_table_details (&st->session_rules[tp],
-                                          st->active_fib_proto, tp,
-                                          st->is_local, st->appns_index, reg,
-                                          mp->context);
-      }
-  }));
+			   if (st->session_rules)
+			     for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
+			       {
+				 send_session_rules_table_details (
+				   &st->session_rules[tp],
+				   st->active_fib_proto, tp, st->is_local,
+				   st->appns_index, reg, mp->context);
+			       }
+			 }));
 }
 
 static void
@@ -1832,11 +1968,17 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
 static clib_error_t *
 session_api_hookup (vlib_main_t *vm)
 {
+  api_main_t *am = vlibapi_get_main ();
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
 
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL_REPLY, 1);
   return 0;
 }
 
