@@ -1004,6 +1004,7 @@ screenshot
 scrollbar
 scrollbars
 sctp
+sdl
 sealert
 seatbelt
 seg

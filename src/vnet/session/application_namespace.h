@@ -15,6 +15,7 @@
 
 #include <vppinfra/socket.h>
 #include <vnet/vnet.h>
+#include <vnet/session/session_types.h>
 #include <vnet/session/session_table.h>
 
 #ifndef SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_
@@ -86,6 +87,9 @@ session_error_t
 vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a);
 u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);
 session_table_t *app_namespace_get_local_table (app_namespace_t * app_ns);
+
+typedef void (*app_namespace_walk_fn_t) (app_namespace_t *app_ns, void *ctx);
+extern void app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx);
 
 always_inline app_namespace_t *
 app_namespace_get_default (void)
