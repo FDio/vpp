@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c19f7d52_b08fc6af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-07-31T17:51:31Z",
+      "side": 1,
+      "message": "Overriding FAILURE of vpp-device jobs due to server upgrade instability.",
+      "revId": "cd30ea1ddfc320965cbf01d02bed2f370bb11504",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
