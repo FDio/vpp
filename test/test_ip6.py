@@ -4102,19 +4102,19 @@ class TestIPv6Punt(VppTestCase):
         self.assertEqual(str(punts[2].punt.nh), "::")
 
 
-class TestIP6InterfaceRx(VppTestCase):
+class TestIP6Unforwardable(VppTestCase):
     """IPv6 Interface Receive"""
 
     @classmethod
     def setUpClass(cls):
-        super(TestIP6InterfaceRx, cls).setUpClass()
+        super(TestIP6Unforwardable, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIP6InterfaceRx, cls).tearDownClass()
+        super(TestIP6Unforwardable, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIP6InterfaceRx, self).setUp()
+        super(TestIP6Unforwardable, self).setUp()
 
         self.create_pg_interfaces(range(3))
 
@@ -4138,7 +4138,7 @@ class TestIP6InterfaceRx(VppTestCase):
             i.admin_down()
             i.set_table_ip6(0)
 
-        super(TestIP6InterfaceRx, self).tearDown()
+        super(TestIP6Unforwardable, self).tearDown()
 
     def test_interface_rx(self):
         """IPv6 Interface Receive"""
@@ -4233,6 +4233,108 @@ class TestIP6InterfaceRx(VppTestCase):
         route_in_dst.add_vpp_config()
 
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
+
+
+class TestIP6Unforwardable(VppTestCase):
+    """IPv6 Interface Receive"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6Unforwardable, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6Unforwardable, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIP6Unforwardable, self).setUp()
+
+        self.create_pg_interfaces(range(3))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+        super(TestIP6Unforwardable, self).tearDown()
+
+    icmpv6_data = "\x0a" * 18
+
+    @parameterized.expand(
+        [
+            # Name, src, dst, l4proto, msg, timeout
+            (
+                "unspecified_sa",
+                "::",
+                None,
+                inet6.UDP(sport=1234, dport=1234),
+                "funky version",
+                None,
+            ),
+            (
+                "unspecified_da",
+                None,
+                "::",
+                ICMPv6EchoRequest(id=0xB, seq=5, data=icmpv6_data),
+                None,
+                0.1,
+            ),
+            (
+                "loopback_sa",
+                "::1",
+                None,
+                ICMPv6EchoRequest(id=0xB, seq=5, data=icmpv6_data),
+                None,
+                0.1,
+            ),
+            (
+                "loopback_da",
+                None,
+                "::1",
+                ICMPv6EchoRequest(id=0xB, seq=5, data=icmpv6_data),
+                None,
+                0.1,
+            ),
+            (
+                "linklocal_sa",
+                "fe80::1",
+                None,
+                ICMPv6EchoRequest(id=0xB, seq=5, data=icmpv6_data),
+                None,
+                0.1,
+            ),
+            (
+                "multicast_sa",
+                "ff08::1",
+                None,
+                ICMPv6EchoRequest(id=0xB, seq=5, data=icmpv6_data),
+                None,
+                0.1,
+            ),
+        ]
+    )
+    def test_ip6_unforwardable(self, name, src, dst, l4, msg, timeout):
+        self._testMethodDoc = "IPv6 Unforwardable - %s" % name
+
+        p_version = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(
+                src=src or self.pg0.remote_ip6,
+                dst=dst or self.pg1.remote_ip6,
+                version=3,
+            )
+            / l4
+            / Raw(b"\xa5" * 100)
+        )
+
+        self.send_and_assert_no_replies(
+            self.pg0, p_version * NUM_PKTS, remark=msg or "", timeout=timeout
+        )
 
 
 if __name__ == "__main__":
