@@ -1709,6 +1709,8 @@ interface_api_hookup (vlib_main_t * vm)
     am, REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_TAG_ADD_DEL, 1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_SET_INTERFACE_NAME, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_ADD_DEL_ADDRESS, 1);
 
   /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
   vl_api_allow_msg_replay (am, REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_DUMP,
