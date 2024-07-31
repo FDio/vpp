@@ -3329,6 +3329,12 @@ VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
   .function = unix_cli_quit,
 };
 
+VLIB_CLI_COMMAND (unix_cli_exit_command, static) = {
+  .path = "exit",
+  .short_help = "Exit CLI",
+  .function = unix_cli_quit,
+};
+
 /** CLI command to execute a VPP command script. */
 static clib_error_t *
 unix_cli_exec (vlib_main_t * vm,
