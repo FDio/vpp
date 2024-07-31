@@ -362,12 +362,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   /* open as many vhost-net fds as required and set ownership */
   num_vhost_queues = clib_max (vif->num_rxqs, vif->num_txqs);
+  const char *vhost_path =
+    args->vhost_path ? args->vhost_path : "/dev/vhost-net";
   for (i = 0; i < num_vhost_queues; i++)
     {
-      if ((vfd = open ("/dev/vhost-net", O_RDWR | O_NONBLOCK)) < 0)
+      if ((vfd = open (vhost_path, O_RDWR | O_NONBLOCK)) < 0)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
-	  args->error = clib_error_return_unix (0, "open '/dev/vhost-net'");
+	  args->error = clib_error_return_unix (0, "open '%s'", vhost_path);
 	  goto error;
 	}
       vec_add1 (vif->vhost_fds, vfd);

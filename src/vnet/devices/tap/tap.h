@@ -41,6 +41,7 @@ typedef enum
 
 typedef struct
 {
+  const char *vhost_path;
   u32 id;
   u8 mac_addr_set;
   mac_address_t mac_addr;
