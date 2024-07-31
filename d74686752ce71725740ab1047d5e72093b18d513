@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ad71286_aeb56744",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-07-31T11:49:36Z",
+      "side": 1,
+      "message": "Not sure if this is needed",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 2
+      },
+      "revId": "d74686752ce71725740ab1047d5e72093b18d513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
