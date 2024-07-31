@@ -127,10 +127,7 @@ npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
       if (!ip6_prefix_cmp (ip->src_address, binding->internal,
 			   binding->internal_plen))
 	{
-	  clib_warning (
-	    "npt66_translate: src address is not internal (%U -> %U)",
-	    format_ip6_address, &ip->src_address, format_ip6_address,
-	    &ip->dst_address);
+	  /* Packet is not for us */
 	  goto done;
 	}
       ip->src_address = ip6_prefix_copy (ip->src_address, binding->external,
@@ -144,10 +141,7 @@ npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
       if (!ip6_prefix_cmp (ip->dst_address, binding->external,
 			   binding->external_plen))
 	{
-	  clib_warning (
-	    "npt66_translate: dst address is not external (%U -> %U)",
-	    format_ip6_address, &ip->src_address, format_ip6_address,
-	    &ip->dst_address);
+	  /* Packet is not for us */
 	  goto done;
 	}
       ip->dst_address = ip6_prefix_copy (ip->dst_address, binding->internal,
@@ -162,7 +156,7 @@ done:
 static int
 npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
 		       icmp46_header_t *icmp, npt66_binding_t *binding,
-		       int dir)
+		       int dir, u32 *error)
 {
   ip6_header_t *ip = (ip6_header_t *) (icmp + 2);
   int rv = 0;
@@ -171,7 +165,7 @@ npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
   if (clib_net_to_host_u16 (outer_ip->payload_length) <
       sizeof (icmp46_header_t) + 4 + sizeof (ip6_header_t))
     {
-      clib_warning ("ICMP6 payload too short");
+      *error = NPT66_ERROR_ICMP6_TRUNCATED;
       return -1;
     }
 
@@ -181,7 +175,7 @@ npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
   sum16 = ip6_tcp_udp_icmp_compute_checksum (vm, b, outer_ip, &bogus_length);
   if (sum16 != 0 && sum16 != 0xffff)
     {
-      clib_warning ("ICMP6 checksum failed");
+      *error = NPT66_ERROR_ICMP6_CHECKSUM;
       return -1;
     }
   if (dir == VLIB_RX)
@@ -189,10 +183,7 @@ npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
       if (!ip6_prefix_cmp (ip->src_address, binding->external,
 			   binding->external_plen))
 	{
-	  clib_warning (
-	    "npt66_icmp6_translate: src address is not internal (%U -> %U)",
-	    format_ip6_address, &ip->src_address, format_ip6_address,
-	    &ip->dst_address);
+	  /* Not for us */
 	  goto done;
 	}
       ip->src_address = ip6_prefix_copy (ip->src_address, binding->internal,
@@ -206,10 +197,7 @@ npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
       if (!ip6_prefix_cmp (ip->dst_address, binding->external,
 			   binding->external_plen))
 	{
-	  clib_warning (
-	    "npt66_icmp6_translate: dst address is not external (%U -> %U)",
-	    format_ip6_address, &ip->src_address, format_ip6_address,
-	    &ip->dst_address);
+	  /* Not for us */
 	  goto done;
 	}
       ip->dst_address = ip6_prefix_copy (ip->dst_address, binding->internal,
@@ -217,8 +205,8 @@ npt66_icmp6_translate (vlib_buffer_t *b, ip6_header_t *outer_ip,
       rv = npt66_adjust_checksum (binding->internal_plen, false,
 				  binding->delta, &ip->dst_address);
     }
-done:
 
+done:
   return rv;
 }
 
@@ -243,10 +231,12 @@ npt66_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, b, n_left_from);
   npt66_binding_t *binding;
+  u32 translated = 0;
 
   /* Stage 1: build vector of flow hash (based on lookup mask) */
   while (n_left_from > 0)
     {
+      u32 error = NPT66_ERROR_TRANSLATION;
       u32 sw_if_index = vnet_buffer (b[0])->sw_if_index[dir];
       u32 iph_offset =
 	dir == VLIB_TX ? vnet_buffer (b[0])->ip.save_rewrite_length : 0;
@@ -261,28 +251,26 @@ npt66_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       icmp46_header_t *icmp = (icmp46_header_t *) (ip + 1);
       if (ip->protocol == IP_PROTOCOL_ICMP6 && icmp->type < 128)
 	{
-	  rv = npt66_icmp6_translate (b[0], ip, icmp, binding, dir);
+	  rv = npt66_icmp6_translate (b[0], ip, icmp, binding, dir, &error);
 	  if (rv < 0)
 	    {
-	      clib_warning ("ICMP6 npt66_translate failed");
 	      *next = NPT66_NEXT_DROP;
+	      b[0]->error = node->errors[error];
 	      goto next;
 	    }
 	}
-      rv = npt66_translate (ip, binding, dir);
 
+      rv = npt66_translate (ip, binding, dir);
       if (rv < 0)
 	{
-	  vlib_node_increment_counter (vm, node->node_index,
-				       NPT66_ERROR_TRANSLATION, 1);
+	  b[0]->error = node->errors[error];
 	  *next = NPT66_NEXT_DROP;
 	  goto next;
 	}
-      else if (dir == VLIB_TX)
-	vlib_node_increment_counter (vm, node->node_index, NPT66_ERROR_TX, 1);
       else
-	vlib_node_increment_counter (vm, node->node_index, NPT66_ERROR_RX, 1);
-
+	{
+	  translated++;
+	}
     next:
       next += 1;
       n_left_from -= 1;
@@ -321,6 +309,9 @@ npt66_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    break;
 	}
     }
+  vlib_node_increment_counter (
+    vm, node->node_index, dir == VLIB_TX ? NPT66_ERROR_TX : NPT66_ERROR_RX,
+    translated);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
@@ -338,17 +329,17 @@ VLIB_NODE_FN (npt66_output_node)
 }
 
 VLIB_REGISTER_NODE(npt66_input_node) = {
-    .name = "npt66-input",
-    .vector_size = sizeof(u32),
-    .format_trace = format_npt66_trace,
-    .type = VLIB_NODE_TYPE_INTERNAL,
-    .n_errors = NPT66_N_ERROR,
-    .error_counters = npt66_error_counters,
-    .n_next_nodes = NPT66_N_NEXT,
-    .next_nodes =
-        {
-            [NPT66_NEXT_DROP] = "error-drop",
-        },
+  .name = "npt66-input",
+  .vector_size = sizeof(u32),
+  .format_trace = format_npt66_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = NPT66_N_ERROR,
+  .error_counters = npt66_error_counters,
+  .n_next_nodes = NPT66_N_NEXT,
+  .next_nodes =
+    {
+      [NPT66_NEXT_DROP] = "error-drop",
+    },
 };
 
 VLIB_REGISTER_NODE (npt66_output_node) = {
