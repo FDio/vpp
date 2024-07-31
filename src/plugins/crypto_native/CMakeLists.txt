@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(VPP_FIPS_CRYPTO_NATIVE
+ "FIPS-ready crypto native plugin"
+ OFF
+)
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   list(APPEND VARIANTS "slm\;-march=silvermont -maes")
   list(APPEND VARIANTS "hsw\;-march=haswell -maes")
@@ -30,7 +35,12 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
 endif()
 
 set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c sha2.c)
+set (COMPILE_FILES_EXTERNAL aes_gcm_external.c aes_ctr_external.c)
 set (COMPILE_OPTS -Wall -fno-common)
+
+if (${VPP_FIPS_CRYPTO_NATIVE})
+  set (COMPILE_OPTS ${COMPILE_OPTS} -DCRYPTO_NATIVE_EXTERNAL)
+endif()
 
 if (NOT VARIANTS)
   return()
@@ -42,9 +52,22 @@ foreach(VARIANT ${VARIANTS})
   list(GET VARIANT 0 v)
   list(GET VARIANT 1 f)
   set(l crypto_native_${v})
+  if (${VPP_FIPS_CRYPTO_NATIVE})
+    set (MARCH_OPTS
+      -DCLIB_MARCH_VARIANT=${v}
+      )
+  endif()
   add_library(${l} OBJECT ${COMPILE_FILES})
   set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   separate_arguments(f)
-  target_compile_options(${l} PUBLIC ${f} ${COMPILE_OPTS})
+  target_compile_options(${l} PUBLIC ${f} ${COMPILE_OPTS} ${MARCH_OPTS})
   target_sources(crypto_native_plugin PRIVATE $<TARGET_OBJECTS:${l}>)
+
+  if (${VPP_FIPS_CRYPTO_NATIVE})
+    set(l2 crypto_native_external_${v})
+    add_library(${l2} OBJECT ${COMPILE_FILES_EXTERNAL})
+    set_target_properties(${l2} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_options(${l2} PUBLIC ${f} ${COMPILE_OPTS} ${MARCH_OPTS})
+    target_sources(crypto_native_plugin PRIVATE $<TARGET_OBJECTS:${l2}>)
+  endif()
 endforeach()
