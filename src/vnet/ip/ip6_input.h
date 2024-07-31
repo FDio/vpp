@@ -53,11 +53,9 @@ typedef enum
 } ip6_input_next_t;
 
 always_inline void
-ip6_input_check_x2 (vlib_main_t * vm,
-		    vlib_node_runtime_t * error_node,
-		    vlib_buffer_t * p0, vlib_buffer_t * p1,
-		    ip6_header_t * ip0, ip6_header_t * ip1,
-		    u32 * next0, u32 * next1)
+ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
+		    vlib_buffer_t *p0, vlib_buffer_t *p1, ip6_header_t *ip0,
+		    ip6_header_t *ip1, u32 *next0, u32 *next1)
 {
   u8 error0, error1;
 
@@ -65,13 +63,15 @@ ip6_input_check_x2 (vlib_main_t * vm,
 
   /* Version != 6?  Drop it. */
   error0 =
-    (clib_net_to_host_u32
-     (ip0->ip_version_traffic_class_and_flow_label) >> 28) !=
-    6 ? IP6_ERROR_VERSION : error0;
+    (clib_net_to_host_u32 (ip0->ip_version_traffic_class_and_flow_label) >>
+     28) != 6 ?
+	    IP6_ERROR_VERSION :
+	    error0;
   error1 =
-    (clib_net_to_host_u32
-     (ip1->ip_version_traffic_class_and_flow_label) >> 28) !=
-    6 ? IP6_ERROR_VERSION : error1;
+    (clib_net_to_host_u32 (ip1->ip_version_traffic_class_and_flow_label) >>
+     28) != 6 ?
+	    IP6_ERROR_VERSION :
+	    error1;
 
   /* hop limit < 1? Drop it.  for link-local broadcast packets,
    * like dhcpv6 packets from client has hop-limit 1, which should not
@@ -81,18 +81,18 @@ ip6_input_check_x2 (vlib_main_t * vm,
   error1 = ip1->hop_limit < 1 ? IP6_ERROR_TIME_EXPIRED : error1;
 
   /* L2 length must be at least minimal IP header. */
-  error0 =
-    p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;
-  error1 =
-    p1->current_length < sizeof (ip1[0]) ? IP6_ERROR_TOO_SHORT : error1;
+  error0 = p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;
+  error1 = p1->current_length < sizeof (ip1[0]) ? IP6_ERROR_TOO_SHORT : error1;
 
   if (PREDICT_FALSE (error0 != IP6_ERROR_NONE))
     {
+      p0->error = error_node->errors[error0];
+
       if (error0 == IP6_ERROR_TIME_EXPIRED)
 	{
-	  icmp6_error_set_vnet_buffer (p0, ICMP6_time_exceeded,
-				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp6_error_set_vnet_buffer (
+	    p0, ICMP6_time_exceeded,
+	    ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next0 = IP6_INPUT_NEXT_ICMP_ERROR;
 	}
       else
@@ -102,11 +102,13 @@ ip6_input_check_x2 (vlib_main_t * vm,
     }
   if (PREDICT_FALSE (error1 != IP6_ERROR_NONE))
     {
+      p1->error = error_node->errors[error0];
+
       if (error1 == IP6_ERROR_TIME_EXPIRED)
 	{
-	  icmp6_error_set_vnet_buffer (p1, ICMP6_time_exceeded,
-				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp6_error_set_vnet_buffer (
+	    p1, ICMP6_time_exceeded,
+	    ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next1 = IP6_INPUT_NEXT_ICMP_ERROR;
 	}
       else
@@ -117,9 +119,8 @@ ip6_input_check_x2 (vlib_main_t * vm,
 }
 
 always_inline void
-ip6_input_check_x1 (vlib_main_t * vm,
-		    vlib_node_runtime_t * error_node,
-		    vlib_buffer_t * p0, ip6_header_t * ip0, u32 * next0)
+ip6_input_check_x1 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
+		    vlib_buffer_t *p0, ip6_header_t *ip0, u32 *next0)
 {
   u8 error0;
 
@@ -127,9 +128,10 @@ ip6_input_check_x1 (vlib_main_t * vm,
 
   /* Version != 6?  Drop it. */
   error0 =
-    (clib_net_to_host_u32
-     (ip0->ip_version_traffic_class_and_flow_label) >> 28) !=
-    6 ? IP6_ERROR_VERSION : error0;
+    (clib_net_to_host_u32 (ip0->ip_version_traffic_class_and_flow_label) >>
+     28) != 6 ?
+	    IP6_ERROR_VERSION :
+	    error0;
 
   /* hop limit < 1? Drop it.  for link-local broadcast packets,
    * like dhcpv6 packets from client has hop-limit 1, which should not
@@ -138,16 +140,16 @@ ip6_input_check_x1 (vlib_main_t * vm,
   error0 = ip0->hop_limit < 1 ? IP6_ERROR_TIME_EXPIRED : error0;
 
   /* L2 length must be at least minimal IP header. */
-  error0 =
-    p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;
+  error0 = p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;
 
   if (PREDICT_FALSE (error0 != IP6_ERROR_NONE))
     {
+      p0->error = error_node->errors[error0];
       if (error0 == IP6_ERROR_TIME_EXPIRED)
 	{
-	  icmp6_error_set_vnet_buffer (p0, ICMP6_time_exceeded,
-				       ICMP6_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp6_error_set_vnet_buffer (
+	    p0, ICMP6_time_exceeded,
+	    ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next0 = IP6_INPUT_NEXT_ICMP_ERROR;
 	}
       else
