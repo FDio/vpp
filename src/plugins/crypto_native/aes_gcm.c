@@ -25,6 +25,31 @@
 #pragma GCC optimize("O3")
 #endif
 
+#ifdef CRYPTO_NATIVE_EXTERNAL
+int aes_gcm_internal (const u8 *src, u8 *dst, const u8 *aad, u8 *ivp, u8 *tag,
+		      u32 data_bytes, u32 aad_bytes, u8 tag_len,
+		      const aes_gcm_key_data_t *kd, int aes_rounds,
+		      aes_gcm_op_t op);
+void clib_aes_gcm_key_expand_internal (aes_gcm_key_data_t *kd, const u8 *key,
+				       aes_key_size_t ks);
+#else
+static_always_inline int
+aes_gcm_internal (const u8 *src, u8 *dst, const u8 *aad, u8 *ivp, u8 *tag,
+		  u32 data_bytes, u32 aad_bytes, u8 tag_len,
+		  const aes_gcm_key_data_t *kd, int aes_rounds,
+		  aes_gcm_op_t op)
+{
+  return aes_gcm (src, dst, aad, ivp, tag, data_bytes, aad_bytes, tag_len, kd,
+		  aes_rounds, op);
+}
+static_always_inline void
+clib_aes_gcm_key_expand_internal (aes_gcm_key_data_t *kd, const u8 *key,
+				  aes_key_size_t ks)
+{
+  clib_aes_gcm_key_expand (kd, key, ks);
+}
+#endif
+
 static_always_inline u32
 aes_ops_enc_aes_gcm (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 		     aes_key_size_t ks)
@@ -36,9 +61,9 @@ aes_ops_enc_aes_gcm (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
-  aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
-	   op->aad_len, op->tag_len, kd, AES_KEY_ROUNDS (ks),
-	   AES_GCM_OP_ENCRYPT);
+  aes_gcm_internal (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
+		    op->aad_len, op->tag_len, kd, AES_KEY_ROUNDS (ks),
+		    AES_GCM_OP_ENCRYPT);
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
   if (--n_left)
@@ -62,9 +87,9 @@ aes_ops_dec_aes_gcm (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
-  rv = aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
-		op->aad_len, op->tag_len, kd, AES_KEY_ROUNDS (ks),
-		AES_GCM_OP_DECRYPT);
+  rv = aes_gcm_internal (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag,
+			 op->len, op->aad_len, op->tag_len, kd,
+			 AES_KEY_ROUNDS (ks), AES_GCM_OP_DECRYPT);
 
   if (rv)
     {
@@ -92,7 +117,7 @@ aes_gcm_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 
   kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
 
-  clib_aes_gcm_key_expand (kd, key->data, ks);
+  clib_aes_gcm_key_expand_internal (kd, key->data, ks);
 
   return kd;
 }

@@ -12,6 +12,39 @@
 #pragma GCC optimize("O3")
 #endif
 
+#ifdef CRYPTO_NATIVE_EXTERNAL
+void clib_aes_ctr_init_internal (aes_ctr_ctx_t *ctx,
+				 const aes_ctr_key_data_t *kd, const u8 *iv,
+				 aes_key_size_t ks);
+
+void clib_aes_ctr_transform_internal (aes_ctr_ctx_t *ctx, const u8 *src,
+				      u8 *dst, u32 n_bytes, aes_key_size_t ks);
+
+void clib_aes_ctr_key_expand_internal (aes_ctr_key_data_t *kd, const u8 *key,
+				       aes_key_size_t ks);
+#else
+static_always_inline void
+clib_aes_ctr_init_internal (aes_ctr_ctx_t *ctx, const aes_ctr_key_data_t *kd,
+			    const u8 *iv, aes_key_size_t ks)
+{
+  clib_aes_ctr_init (ctx, kd, iv, ks);
+}
+
+static_always_inline void
+clib_aes_ctr_transform_internal (aes_ctr_ctx_t *ctx, const u8 *src, u8 *dst,
+				 u32 n_bytes, aes_key_size_t ks)
+{
+  clib_aes_ctr_transform (ctx, src, dst, n_bytes, ks);
+}
+
+static_always_inline void
+clib_aes_ctr_key_expand_internal (aes_ctr_key_data_t *kd, const u8 *key,
+				  aes_key_size_t ks)
+{
+  clib_aes_ctr_key_expand (kd, key, ks);
+}
+#endif
+
 static_always_inline u32
 aes_ops_aes_ctr (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 		 vnet_crypto_op_chunk_t *chunks, aes_key_size_t ks,
@@ -26,15 +59,16 @@ aes_ops_aes_ctr (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 next:
   kd = (aes_ctr_key_data_t *) cm->key_data[op->key_index];
 
-  clib_aes_ctr_init (&ctx, kd, op->iv, ks);
+  clib_aes_ctr_init_internal (&ctx, kd, op->iv, ks);
   if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
     {
       vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
       for (int j = 0; j < op->n_chunks; j++, chp++)
-	clib_aes_ctr_transform (&ctx, chp->src, chp->dst, chp->len, ks);
+	clib_aes_ctr_transform_internal (&ctx, chp->src, chp->dst, chp->len,
+					 ks);
     }
   else
-    clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
+    clib_aes_ctr_transform_internal (&ctx, op->src, op->dst, op->len, ks);
 
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
@@ -54,7 +88,7 @@ aes_ctr_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 
   kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
 
-  clib_aes_ctr_key_expand (kd, key->data, ks);
+  clib_aes_ctr_key_expand_internal (kd, key->data, ks);
 
   return kd;
 }
