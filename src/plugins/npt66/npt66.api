@@ -36,5 +36,16 @@ counters npt66 {
         units "packets";
         description "packet translation failed";
     };
-
+    icmp6_checksum {
+        severity error;
+        type counter64;
+        units "packets";
+        description "ICMP6 checksum validation failed";
+    };
+    icmp6_truncated {
+        severity error;
+        type counter64;
+        units "packets";
+        description "ICMP6 packet truncated";
+    };
 };
