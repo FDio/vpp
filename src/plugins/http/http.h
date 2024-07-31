@@ -132,6 +132,8 @@ typedef enum http_target_form_
   _ (APP_XSLX, ".xlsx",                                                       \
      "application / vnd.openxmlformats - officedocument.spreadsheetml.sheet") \
   _ (APP_XUL, ".xul", "application / vnd.mozilla.xul + xml")                  \
+  _ (APP_X_WWW_FORM_URLENCODED, ".invalid",                                   \
+     "application / x-www-form-urlencoded")                                   \
   _ (APP_ZIP, ".zip", "application / zip")                                    \
   _ (AUDIO_AAC, ".aac", "audio / aac")                                        \
   _ (AUDIO_CD, ".cda", "application / x - cdf")                               \

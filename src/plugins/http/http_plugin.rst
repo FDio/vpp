@@ -9,14 +9,14 @@ Overview
 --------
 
 This plugin adds the HTTP protocol to VPP's Host Stack.
-As a result parsing of HTTP/1 request or response is available for internal VPP applications.
+As a result parsing and serializing of HTTP/1 requests or responses are available for internal VPP applications.
 
 Usage
 -----
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
 ``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_parse_headers``, ``http_get_header``,
-``http_free_header_table``.
+``http_free_header_table``, ``http_add_header``, ``http_serialize_headers``.
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
@@ -238,12 +238,18 @@ Finally application sends response body:
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
-Example above shows how to send body data by copy, alternatively you could pass it as pointer:
+Examples above shows how to send body and headers by copy, alternatively you could pass them as pointer:
 
 .. code-block:: C
 
   msg.data.type = HTTP_MSG_DATA_PTR;
   /* code omitted for brevity */
+  if (msg.data.headers_len)
+    {
+      uword headers = pointer_to_uword (headers_buf);
+      rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (headers), (u8 *) &headers);
+      ASSERT (rv == sizeof (headers));
+    }
   uword data = pointer_to_uword (tx_buf);
   rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (data), (u8 *) &data);
   ASSERT (rv == sizeof (data));
@@ -331,6 +337,28 @@ Finally application sends everything to HTTP layer:
     }
   if (svm_fifo_set_event (as->tx_fifo))
     session_program_tx_io_evt (as->handle, SESSION_IO_EVT_TX);
+
+Examples above shows how to send buffers by copy, alternatively you could pass them as pointer:
+
+.. code-block:: C
+
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.method_type = HTTP_REQ_POST;
+  msg.data.body_len = vec_len (data);
+  /* code omitted for brevity */
+  uword target = pointer_to_uword (target);
+  uword headers = pointer_to_uword (headers_buf);
+  uword body = pointer_to_uword (data);
+  svm_fifo_seg_t segs[4] = {
+    { (u8 *) &msg, sizeof (msg) },
+    { (u8 *) &target, sizeof (target) },
+    { (u8 *) &headers, sizeof (headers) },
+    { (u8 *) &body, sizeof (body) },
+  };
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, segs, 4, 0 /* allow partial */);
+  ASSERT (rv == (sizeof (msg) + sizeof (target) + sizeof (headers) + sizeof (body)));
+
+In this case you need to free data when you receive response or when session is closed.
 
 Receiving data
 """"""""""""""

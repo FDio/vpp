@@ -173,7 +173,7 @@ buf_ptr_drain (http_buffer_t *hb, u32 len)
   bf->segs[1].data += len;
   bf->segs[0].len -= len;
 
-  HTTP_DBG (1, "drained %u left %u", len, bf->segs[1].len);
+  HTTP_DBG (1, "drained %u left %u", len, bf->segs[0].len);
 
   if (!bf->segs[0].len)
     {
