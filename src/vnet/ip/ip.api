@@ -1330,6 +1330,12 @@ counters ip6 {
     units "packets";
     description "ip6 drop";
   };
+  invalid_src_address {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid source address (::, ::1, fe80::, ff::)";
+  };
   punt {
     severity error;
     type counter64;

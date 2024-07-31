@@ -1741,9 +1741,9 @@ typedef enum
 #define IP6_MCAST_ADDR_MASK 0xffffffff
 
 always_inline void
-ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
-	       u16 adj_packet_bytes, bool is_locally_generated,
-	       u32 * next, u8 is_midchain, u32 * error)
+ip6_rewrite_check (vlib_buffer_t *b, ip6_header_t *ip, u16 packet_bytes,
+		   u16 adj_packet_bytes, bool is_locally_generated, u32 *next,
+		   u8 is_midchain, u32 *error)
 {
   if (adj_packet_bytes >= 1280 && packet_bytes > adj_packet_bytes)
     {
@@ -1764,6 +1764,15 @@ ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
 				       adj_packet_bytes);
 	  *next = IP6_REWRITE_NEXT_ICMP_ERROR;
 	}
+    }
+  if (!is_locally_generated &&
+      (ip6_address_is_unspecified (&ip->src_address) ||
+       ip6_address_is_loopback (&ip->src_address) ||
+       ip6_address_is_link_local_unicast (&ip->src_address) ||
+       ip6_address_is_multicast (&ip->src_address)))
+    {
+      *error = IP6_ERROR_INVALID_SRC_ADDRESS;
+      *next = IP6_REWRITE_NEXT_DROP;
     }
 }
 
@@ -1910,14 +1919,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  if (p1->flags & VNET_BUFFER_F_GSO)
 	    ip1_len = gso_mtu_sz (p1);
 
-	  ip6_mtu_check (p0, ip0_len,
-			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated0, &next0, is_midchain,
-			 &error0);
-	  ip6_mtu_check (p1, ip1_len,
-			 adj1[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated1, &next1, is_midchain,
-			 &error1);
+	  ip6_rewrite_check (
+	    p0, ip0, ip0_len, adj0[0].rewrite_header.max_l3_packet_bytes,
+	    is_locally_originated0, &next0, is_midchain, &error0);
+	  ip6_rewrite_check (
+	    p1, ip1, ip1_len, adj1[0].rewrite_header.max_l3_packet_bytes,
+	    is_locally_originated1, &next1, is_midchain, &error1);
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
@@ -2064,10 +2071,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  if (p0->flags & VNET_BUFFER_F_GSO)
 	    ip0_len = gso_mtu_sz (p0);
 
-	  ip6_mtu_check (p0, ip0_len,
-			 adj0[0].rewrite_header.max_l3_packet_bytes,
-			 is_locally_originated0, &next0, is_midchain,
-			 &error0);
+	  ip6_rewrite_check (
+	    p0, ip0, ip0_len, adj0[0].rewrite_header.max_l3_packet_bytes,
+	    is_locally_originated0, &next0, is_midchain, &error0);
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
