@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -27,9 +28,10 @@ func init() {
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpStaticFileHandler, HttpClientTest, HttpClientErrRespTest)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnections,
-		PromMemLeakTest)
+		HttpHeadersTest, HttpStaticFileHandlerTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
+		HttpClientPostFileTest, HttpClientPostFilePtrTest)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
+		PromMemLeakTest, HttpClientPostMemLeakTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -46,6 +48,7 @@ func httpDownloadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data in
 	defer resp.Body.Close()
 	s.AssertEqual(200, resp.StatusCode)
 	_, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 	duration := time.Since(t)
 	experiment.RecordValue("Download Speed", (float64(resp.ContentLength)/1024/1024)/duration.Seconds(), gmeasure.Units("MB/s"), gmeasure.Precision(2))
 }
@@ -114,7 +117,6 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	body, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), "some data")
-	s.AssertNil(err, fmt.Sprint(err))
 	o2 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o2)
 	s.AssertContains(o2, "ESTABLISHED")
@@ -196,6 +198,7 @@ func HttpClientTest(s *NoTopoSuite) {
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
 			ghttp.VerifyRequest("GET", "/test"),
 			ghttp.VerifyHeader(http.Header{"User-Agent": []string{"http_cli_client"}}),
 			ghttp.VerifyHeader(http.Header{"Accept": []string{"text / html"}}),
@@ -220,6 +223,7 @@ func HttpClientErrRespTest(s *NoTopoSuite) {
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
 			ghttp.VerifyRequest("GET", "/test"),
 			ghttp.RespondWith(http.StatusNotFound, "404: Not Found"),
 		))
@@ -231,6 +235,74 @@ func HttpClientErrRespTest(s *NoTopoSuite) {
 
 	s.Log(o)
 	s.AssertContains(o, "404: Not Found", "error not found in the result!")
+}
+
+func HttpClientPostFormTest(s *NoTopoSuite) {
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	body := "field1=value1&field2=value2"
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest("POST", "/test"),
+			ghttp.VerifyContentType("application / x-www-form-urlencoded"),
+			ghttp.VerifyBody([]byte(body)),
+			ghttp.RespondWith(http.StatusOK, nil),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/80"
+	vpp := s.GetContainerByName("vpp").VppInstance
+	o := vpp.Vppctl("http post uri " + uri + " target /test data " + body)
+
+	s.Log(o)
+	s.AssertNotContains(o, "error")
+}
+
+func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	vpp := s.GetContainerByName("vpp").VppInstance
+	fileName := "/tmp/test_file.txt"
+	s.Log(vpp.Container.Exec("fallocate -l " + strconv.Itoa(fileSize) + " " + fileName))
+	s.Log(vpp.Container.Exec("ls -la " + fileName))
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("POST", "/test"),
+			ghttp.VerifyHeader(http.Header{"Content-Length": []string{strconv.Itoa(fileSize)}}),
+			ghttp.VerifyContentType("application / octet - stream"),
+			ghttp.RespondWith(http.StatusOK, nil),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/80"
+	cmd := "http post uri " + uri + " target /test file " + fileName
+	if usePtr {
+		cmd += " use-ptr"
+	}
+	o := vpp.Vppctl(cmd)
+
+	s.Log(o)
+	s.AssertNotContains(o, "error")
+}
+
+func HttpClientPostFileTest(s *NoTopoSuite) {
+	httpClientPostFile(s, false, 32768)
+}
+
+func HttpClientPostFilePtrTest(s *NoTopoSuite) {
+	httpClientPostFile(s, true, 131072)
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {
@@ -252,6 +324,7 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Content-Type"), "plain")
 	s.AssertNotEqual(int64(0), resp.ContentLength)
 	_, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 func promReq(s *NoTopoSuite, url string) {
@@ -263,6 +336,7 @@ func promReq(s *NoTopoSuite, url string) {
 	defer resp.Body.Close()
 	s.AssertEqual(200, resp.StatusCode)
 	_, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 func promReqWg(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
@@ -271,7 +345,7 @@ func promReqWg(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
 	promReq(s, url)
 }
 
-func PromConcurrentConnections(s *NoTopoSuite) {
+func PromConcurrentConnectionsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	url := "http://" + serverAddress + ":80/stats.prom"
@@ -341,6 +415,9 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	/* warmup request (FIB) */
 	clientContainer.Vppctl("http cli client uri " + uri + " query /show/version")
 
+	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
+	time.Sleep(time.Second * 12)
+
 	clientContainer.EnableMemoryTrace()
 	traces1, err := clientContainer.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
@@ -355,13 +432,64 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	clientContainer.MemLeakCheck(traces1, traces2)
 }
 
-func HttpStaticFileHandler(s *NoTopoSuite) {
+func HttpClientPostMemLeakTest(s *NoTopoSuite) {
+	s.SkipUnlessLeakCheck()
+
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	body := "field1=value1&field2=value2"
+
+	uri := "http://" + serverAddress + "/80"
+	vpp := s.GetContainerByName("vpp").VppInstance
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			ghttp.VerifyRequest("POST", "/test"),
+			ghttp.RespondWith(http.StatusOK, nil),
+		),
+		ghttp.CombineHandlers(
+			ghttp.VerifyRequest("POST", "/test"),
+			ghttp.RespondWith(http.StatusOK, nil),
+		),
+	)
+	server.Start()
+	defer server.Close()
+
+	/* warmup request (FIB) */
+	vpp.Vppctl("http post uri " + uri + " target /test data " + body)
+
+	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
+	time.Sleep(time.Second * 12)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	vpp.Vppctl("http post uri " + uri + " target /test data " + body)
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 12)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	content := "<html><body><p>Hello</p></body></html>"
 	content2 := "<html><body><p>Page</p></body></html>"
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
-	vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
-	vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
+	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
+	s.AssertNil(err, fmt.Sprint(err))
+	err = vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
+	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m"))
 
@@ -377,6 +505,7 @@ func HttpStaticFileHandler(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
 	body, err := io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content)
 	o := vpp.Vppctl("show http static server cache verbose")
 	s.Log(o)
@@ -392,6 +521,7 @@ func HttpStaticFileHandler(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
 	body, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content)
 
 	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/page.html", nil)
@@ -405,6 +535,7 @@ func HttpStaticFileHandler(s *NoTopoSuite) {
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
 	s.AssertEqual(int64(len([]rune(content2))), resp.ContentLength)
 	body, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content2)
 	o = vpp.Vppctl("show http static server cache verbose")
 	s.Log(o)
@@ -416,7 +547,8 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
 	vpp.Container.Exec("mkdir -p " + "/tmp/secret_folder")
-	vpp.Container.CreateFile("/tmp/secret_folder/secret_file.txt", "secret")
+	err := vpp.Container.CreateFile("/tmp/secret_folder/secret_file.txt", "secret")
+	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
@@ -436,7 +568,8 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath + "/tmp.aaa")
-	vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
+	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
+	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
