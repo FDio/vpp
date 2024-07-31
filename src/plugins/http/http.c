@@ -385,10 +385,16 @@ static const char *http_response_template = "HTTP/1.1 %s\r\n"
 /**
  * http request boilerplate
  */
-static const char *http_request_template = "GET %s HTTP/1.1\r\n"
-					   "Host: %v\r\n"
-					   "User-Agent: %v\r\n"
-					   "%s";
+static const char *http_get_request_template = "GET %s HTTP/1.1\r\n"
+					       "Host: %v\r\n"
+					       "User-Agent: %v\r\n"
+					       "%s";
+
+static const char *http_post_request_template = "POST %s HTTP/1.1\r\n"
+						"Host: %v\r\n"
+						"User-Agent: %v\r\n"
+						"Content-Length: %u\r\n"
+						"%s";
 
 static u32
 http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
@@ -1134,9 +1140,11 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_msg_t msg;
   session_t *as;
-  u8 *target = 0, *request;
+  u8 *target_buff = 0, *request = 0, *target;
   u32 offset;
   int rv;
+  http_sm_result_t sm_result = HTTP_SM_ERROR;
+  http_state_t next_state;
 
   as = session_get_from_handle (hc->h_pa_session_handle);
 
@@ -1155,47 +1163,107 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  /* currently we support only GET method */
-  if (msg.method_type != HTTP_REQ_GET)
+  /* read request target */
+  if (msg.data.type == HTTP_MSG_DATA_PTR)
+    {
+      uword target_ptr;
+      rv = svm_fifo_dequeue (as->tx_fifo, sizeof (target_ptr),
+			     (u8 *) &target_ptr);
+      ASSERT (rv == sizeof (target_ptr));
+      target = uword_to_pointer (target_ptr, u8 *);
+    }
+  else
+    {
+      vec_validate (target_buff, msg.data.target_path_len - 1);
+      rv =
+	svm_fifo_dequeue (as->tx_fifo, msg.data.target_path_len, target_buff);
+      ASSERT (rv == msg.data.target_path_len);
+      target = target_buff;
+    }
+
+  /* currently we support only GET and POST method */
+  if (msg.method_type == HTTP_REQ_GET)
+    {
+      if (msg.data.body_len)
+	{
+	  clib_warning ("GET request shouldn't include data");
+	  goto error;
+	}
+      /*
+       * Add "protocol layer" headers:
+       * - host
+       * - user agent
+       */
+      request = format (0, http_get_request_template,
+			/* target */
+			target,
+			/* Host */
+			hc->host,
+			/* User-Agent */
+			hc->app_name,
+			/* Any headers from app? */
+			msg.data.headers_len ? "" : "\r\n");
+
+      next_state = HTTP_STATE_WAIT_SERVER_REPLY;
+      sm_result = HTTP_SM_STOP;
+    }
+  else if (msg.method_type == HTTP_REQ_POST)
+    {
+      if (!msg.data.body_len)
+	{
+	  clib_warning ("POST request should include data");
+	  goto error;
+	}
+      /*
+       * Add "protocol layer" headers:
+       * - host
+       * - user agent
+       * - content length
+       */
+      request = format (0, http_post_request_template,
+			/* target */
+			target,
+			/* Host */
+			hc->host,
+			/* User-Agent */
+			hc->app_name,
+			/* Content-Length */
+			msg.data.body_len,
+			/* Any headers from app? */
+			msg.data.headers_len ? "" : "\r\n");
+
+      http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
+			as->tx_fifo, msg.data.body_len);
+
+      next_state = HTTP_STATE_APP_IO_MORE_DATA;
+      sm_result = HTTP_SM_CONTINUE;
+    }
+  else
     {
       clib_warning ("unsupported method %d", msg.method_type);
       goto error;
     }
-  if (msg.data.body_len != 0)
-    {
-      clib_warning ("GET request shouldn't include data");
-      goto error;
-    }
-
-  /* read request target */
-  vec_validate (target, msg.data.target_path_len - 1);
-  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.target_path_len, target);
-  ASSERT (rv == msg.data.target_path_len);
-
-  /*
-   * Add "protocol layer" headers:
-   * - host
-   * - user agent
-   */
-  request = format (0, http_request_template,
-		    /* target */
-		    target,
-		    /* Host */
-		    hc->host,
-		    /* User-Agent*/
-		    hc->app_name,
-		    /* Any headers from app? */
-		    msg.data.headers_len ? "" : "\r\n");
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
     {
-      HTTP_DBG (0, "get headers from app, len %d", msg.data.headers_len);
-      u32 orig_len = vec_len (request);
-      vec_resize (request, msg.data.headers_len);
-      u8 *p = request + orig_len;
-      rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
-      ASSERT (rv == msg.data.headers_len);
+      HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
+      if (msg.data.type == HTTP_MSG_DATA_PTR)
+	{
+	  uword app_headers_ptr;
+	  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
+				 (u8 *) &app_headers_ptr);
+	  ASSERT (rv == sizeof (app_headers_ptr));
+	  vec_append (request, uword_to_pointer (app_headers_ptr, u8 *));
+	}
+      else
+	{
+	  u32 orig_len = vec_len (request);
+	  vec_resize (request, msg.data.headers_len);
+	  u8 *p = request + orig_len;
+	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
+	  ASSERT (rv == msg.data.headers_len);
+	}
     }
   HTTP_DBG (0, "%v", request);
 
@@ -1203,22 +1271,23 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   if (offset != vec_len (request))
     {
       clib_warning ("sending request failed!");
+      sm_result = HTTP_SM_ERROR;
       goto error;
     }
 
-  http_state_change (hc, HTTP_STATE_WAIT_SERVER_REPLY);
-
-  vec_free (target);
-  vec_free (request);
-
-  return HTTP_SM_STOP;
+  http_state_change (hc, next_state);
+  goto done;
 
 error:
   svm_fifo_dequeue_drop_all (as->tx_fifo);
   session_transport_closing_notify (&hc->connection);
   session_transport_closed_notify (&hc->connection);
   http_disconnect_transport (hc);
-  return HTTP_SM_ERROR;
+
+done:
+  vec_free (target_buff);
+  vec_free (request);
+  return sm_result;
 }
 
 static http_sm_result_t
@@ -1334,8 +1403,11 @@ http_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
       if (sent && svm_fifo_set_event (ts->tx_fifo))
 	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX_FLUSH);
 
-      /* Finished transaction, back to HTTP_STATE_WAIT_METHOD */
-      http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+      /* Finished transaction:
+       * server back to HTTP_STATE_WAIT_METHOD
+       * client to HTTP_STATE_WAIT_SERVER_REPLY */
+      http_state_change (hc, hc->is_server ? HTTP_STATE_WAIT_CLIENT_METHOD :
+						   HTTP_STATE_WAIT_SERVER_REPLY);
       http_buffer_free (&hc->tx_buf);
     }
 

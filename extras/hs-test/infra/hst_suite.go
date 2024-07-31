@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -561,7 +563,7 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 }
 
 /*
-runBenchmark creates Gomega's experiment with the passed-in name and samples the passed-in callback repeatedly (samplesNum times),
+RunBenchmark creates Gomega's experiment with the passed-in name and samples the passed-in callback repeatedly (samplesNum times),
 passing in suite context, experiment and your data.
 
 You can also instruct runBenchmark to run with multiple concurrent workers.
@@ -577,4 +579,20 @@ func (s *HstSuite) RunBenchmark(name string, samplesNum, parallelNum int, callba
 		callback(s, experiment, data)
 	}, gmeasure.SamplingConfig{N: samplesNum, NumParallel: parallelNum})
 	AddReportEntry(experiment.Name, experiment)
+}
+
+/*
+LogHttpReq is Gomega's ghttp server handler which logs received HTTP request.
+
+You should put it at the first place, so request is logged always.
+*/
+func (s *HstSuite) LogHttpReq(body bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		dump, err := httputil.DumpRequest(req, body)
+		if err == nil {
+			s.Log("\n> Received request (" + req.RemoteAddr + "):\n" +
+				string(dump) +
+				"\n------------------------------\n")
+		}
+	}
 }
