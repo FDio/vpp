@@ -372,6 +372,17 @@ int test_unformat_main (unformat_input_t * input);
 created circular dependency problems. */
 int test_vec_main (unformat_input_t * input);
 
+always_inline char *
+format_c_string (u8 *s, const char *fmt, ...)
+{
+  va_list args;
+  va_start (args, fmt);
+  s = format (s, fmt, args);
+  va_end (args);
+  vec_add1 (s, '\0');
+  return (char *) s;
+}
+
 #endif /* included_format_h */
 
 /*
