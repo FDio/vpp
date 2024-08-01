@@ -22,6 +22,30 @@
       },
       "revId": "d74686752ce71725740ab1047d5e72093b18d513",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2170a2c4_e7efe1db",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:19:02Z",
+      "side": 1,
+      "message": "seems it is needed, I guess because we have \"gid vpp\" in startup config (I removed it from config and seems it generate core without fs.suid_dumpable\u003d1), anyway you can also use \"sysctl fs.suid_dumpable\" and \"sysctl -w fs.suid_dumpable\u003d1\" (in this case it is not persistent)",
+      "parentUuid": "1ad71286_aeb56744",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 2
+      },
+      "revId": "d74686752ce71725740ab1047d5e72093b18d513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bdd7f20_47c76508",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 6
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:19:02Z",
+      "side": 1,
+      "message": "it would be nice to show default value",
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b0e86e6_f9e35a78",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:19:02Z",
+      "side": 1,
+      "message": "in theory you can do it without changing core_pattern, just mount path from core_pattern to c.Suite.getLogDirPath(), if path in core_pattern is just \"/tmp/\" it can make some mess since we use some subdirectories in /tmp/ inside container",
+      "range": {
+        "startLine": 166,
+        "startChar": 0,
+        "endLine": 172,
+        "endChar": 10
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8d2b869_16ea7bdc",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:19:02Z",
+      "side": 1,
+      "message": "maybe use os.ReadDir?",
+      "range": {
+        "startLine": 339,
+        "startChar": 1,
+        "endLine": 339,
+        "endChar": 78
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "579fd81f_fe026aaa",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:19:02Z",
+      "side": 1,
+      "message": "I would prefer to remove it only in CI and keep it otherwise and it would be nice to get this path and some info that crash happen in summary section if possible",
+      "range": {
+        "startLine": 371,
+        "startChar": 4,
+        "endLine": 371,
+        "endChar": 23
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
