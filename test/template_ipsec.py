@@ -1938,7 +1938,7 @@ class IpsecTra6(object):
             Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac)
             / IPv6(src=src, dst=dst)
             / IPv6ExtHdrHopByHop()
-            / IPv6ExtHdrFragment(id=2, offset=200)
+            / IPv6ExtHdrFragment(id=2, offset=0)
             / Raw(b"\xff" * 200)
             for i in range(count)
         ]
@@ -1985,7 +1985,7 @@ class IpsecTra6(object):
         tx = (
             Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.tra_if.local_ip6, dst=self.tra_if.remote_ip6)
-            / IPv6ExtHdrFragment(id=2, offset=200)
+            / IPv6ExtHdrFragment(id=2, offset=0)
             / Raw(b"\xff" * 200)
         )
 
@@ -2004,7 +2004,7 @@ class IpsecTra6(object):
             Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.tra_if.local_ip6, dst=self.tra_if.remote_ip6)
             / IPv6ExtHdrHopByHop()
-            / IPv6ExtHdrFragment(id=2, offset=200)
+            / IPv6ExtHdrFragment(id=2, offset=0)
             / Raw(b"\xff" * 200)
         )
 
@@ -2021,7 +2021,7 @@ class IpsecTra6(object):
             Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.tra_if.local_ip6, dst=self.tra_if.remote_ip6)
             / IPv6ExtHdrHopByHop()
-            / IPv6ExtHdrFragment(id=2, offset=200)
+            / IPv6ExtHdrFragment(id=2, offset=0)
             / IPv6ExtHdrDestOpt()
             / Raw(b"\xff" * 200)
         )
