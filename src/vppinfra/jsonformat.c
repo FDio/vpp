@@ -500,12 +500,13 @@ format_vl_api_mac_address_t (u8 * s, va_list * args)
                  mac->bytes[0], mac->bytes[1], mac->bytes[2],
                  mac->bytes[3], mac->bytes[4], mac->bytes[5]);
 }
-#define _(T)                                                \
-  cJSON *vl_api_ ##T## _t_tojson (vl_api_ ##T## _t *a) {   \
-  u8 *s = format(0, "%U", format_vl_api_ ##T## _t, a);      \
-  cJSON *o = cJSON_CreateString((char *)s);                 \
-  vec_free(s);                                              \
-  return o;                                                 \
+#define _(T)                                                                  \
+  cJSON *vl_api_##T##_t_tojson (vl_api_##T##_t *a)                            \
+  {                                                                           \
+    char *s = format_c_string (0, "%U", format_vl_api_##T##_t, a, 0);         \
+    cJSON *o = cJSON_CreateString (s);                                        \
+    vec_free (s);                                                             \
+    return o;                                                                 \
   }
 foreach_type_tojson
 #undef _

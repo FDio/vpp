@@ -372,6 +372,8 @@ int test_unformat_main (unformat_input_t * input);
 created circular dependency problems. */
 int test_vec_main (unformat_input_t * input);
 
+char *format_c_string (u8 *s, const char *fmt, ...);
+
 #endif /* included_format_h */
 
 /*
