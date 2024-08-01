@@ -1122,6 +1122,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #ifdef __linux
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword default_hugepage_sz, x;
+  u8 file_prefix = 0;
 #endif /* __linux__ */
   u8 *s, *tmp = 0;
   int ret, i;
@@ -1129,7 +1130,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   int eal_no_hugetlb = 0;
   u8 no_pci = 0;
   u8 no_vmbus = 0;
-  u8 file_prefix = 0;
   u8 *socket_mem = 0;
   u32 vendor, device, domain, bus, func;
   void *fmt_func;
@@ -1289,6 +1289,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         }
       foreach_eal_double_hyphen_predicate_arg
 #undef _
+#ifdef __linux__
 #define _(a)                                          \
 	else if (unformat(input, #a " %s", &s))	      \
 	  {					      \
@@ -1304,6 +1305,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  }
 	foreach_eal_double_hyphen_arg
 #undef _
+#endif	/* __linux__ */
 #define _(a,b)						\
 	  else if (unformat(input, #a " %s", &s))	\
 	    {						\
