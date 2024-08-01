@@ -421,7 +421,6 @@ class TemplateIpsecEsp(ConfigIpsecESP):
         super(TemplateIpsecEsp, self).tearDown()
 
 
-@unittest.skipIf(True, "Temporarily skip test until Scapy-2.4.5 patch is available")
 class TestIpsecEsp1(
     TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests, IpsecTra6ExtTests
 ):
