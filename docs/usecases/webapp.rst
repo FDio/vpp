@@ -19,8 +19,7 @@ why returning data in .json format tends to work out pretty well.
 ::
 
        static int
-       handle_get_status (http_builtin_method_type_t reqtype,
-                        u8 * request, http_session_t * hs)
+       handle_get_status (hss_url_handler_args_t *args)
        {
          my_main_t *mm = &my_main;
          u8 *s = 0;
@@ -34,11 +33,11 @@ why returning data in .json format tends to work out pretty well.
          s = format (s, "}}");
 
          /* And tell the static server plugin how to send the results */
-         hs->data = s;
-         hs->data_offset = 0;
-         hs->cache_pool_index = ~0;
-         hs->free_data = 1; /* free s when done with it, in the framework */
-         return 0;
+         args->data = s;
+         args->data_len = vec_len (s);
+         args->ct = HTTP_CONTENT_APP_JSON;
+         args->free_vec_data = 1; /* free s when done with it, in the framework */
+         return HSS_URL_HANDLER_OK;
        }
 
 Words to the Wise: Chrome has a very nice set of debugging tools. Select
@@ -53,7 +52,7 @@ considerable amount of time debugging .json bugs.
 Step 2: Register URL handlers with the server
 ---------------------------------------------
 
-Call http_static_server_register_builtin_handler() as shown. It’s likely
+Call ``hss_register_url_handler`` as shown. It’s likely
 but not guaranteed that the static server plugin will be available.
 
 ::
@@ -65,7 +64,7 @@ but not guaranteed that the static server plugin will be available.
 
          /* Look up the builtin URL registration handler */
          fp = vlib_get_plugin_symbol ("http_static_plugin.so",
-                          "http_static_server_register_builtin_handler");
+                          "hss_register_url_handler");
 
          if (fp == 0)
            {
@@ -259,7 +258,7 @@ above:
 
 ::
 
-       http static server www-root /myhugosite/public uri tcp://0.0.0.0/2345 cache-size 5m fifo-size 8192
+       http static server url-handlers www-root /myhugosite/public uri tcp://0.0.0.0/2345 cache-size 5m fifo-size 8192
 
 The www-root must be specified, and must correctly name the compiled
 hugo site root. If your Hugo site is located at /myhugosite, specify
