@@ -1,0 +1,11 @@
+---
+name: OSI plugin
+maintainer:
+  - community <vpp-dev@lists.fd.io>
+features:
+  - Adds support for OSI protocols (SAP types)
+  - Registered as input protocol for PPP, HDLC, and LLC
+missing:
+  - No tests for this feature currently exist
+description: ""
+state: experimental
