@@ -208,7 +208,6 @@ add_protocol (llc_main_t * pm, llc_protocol_t protocol, char *protocol_name)
 static clib_error_t *
 llc_init (vlib_main_t * vm)
 {
-  clib_error_t *error;
   llc_main_t *pm = &llc_main;
 
   clib_memset (pm, 0, sizeof (pm[0]));
@@ -220,9 +219,6 @@ llc_init (vlib_main_t * vm)
 #define _(f,n) add_protocol (pm, LLC_PROTOCOL_##f, #f);
   foreach_llc_protocol;
 #undef _
-
-  if ((error = vlib_call_init_function (vm, snap_init)))
-    return error;
 
   return vlib_call_init_function (vm, llc_input_init);
 }
