@@ -46,6 +46,30 @@
       },
       "revId": "d74686752ce71725740ab1047d5e72093b18d513",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "843a92bd_a7053859",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T12:32:30Z",
+      "side": 1,
+      "message": "there is also go package https://pkg.go.dev/github.com/cilium/cilium/pkg/sysctl",
+      "parentUuid": "2170a2c4_e7efe1db",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 2
+      },
+      "revId": "d74686752ce71725740ab1047d5e72093b18d513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
