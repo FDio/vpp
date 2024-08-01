@@ -388,8 +388,8 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/vnet/ethernet/ethernet_format_fns.h" \
 					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
 
-COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/builtinurl/*" \
-				 "*/plugins/http/*.h"
+COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/http/*.h"
+
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
 	@lcov --capture \

@@ -460,11 +460,6 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/http_static/
 
-Plugin - builtinurl
-I:	builtinurl
-M:	Dave Barach <vpp@barachs.net>
-F:	src/plugins/builtinurl/
-
 Plugin - GTPU
 I:	gtpu
 M:	Hongjun Ni <hongjun.ni@intel.com>
