@@ -833,6 +833,16 @@ done:
   return s;
 }
 
+__clib_export char *
+format_c_string (u8 *s, const char *fmt, ...)
+{
+  va_list args;
+  va_start (args, fmt);
+  s = va_format (s, fmt, &args);
+  va_end (args);
+  vec_add1 (s, '\0');
+  return (char *) s;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
