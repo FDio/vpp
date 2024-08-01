@@ -805,6 +805,7 @@ operationalize
 Optimisations
 optimised
 os
+osi
 outacl
 packagecloud
 papi
