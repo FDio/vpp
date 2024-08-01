@@ -39,6 +39,29 @@
       "message": "you will call ip6_full_reass_set again since you just break from while loop. so maybe free line input and return?",
       "revId": "8154540c0684dcaf6cded206143ace55f7f01205",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05a8ba45_b8bf55bb",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2006,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-01T13:18:26Z",
+      "side": 1,
+      "message": "check return value",
+      "range": {
+        "startLine": 2006,
+        "startChar": 2,
+        "endLine": 2006,
+        "endChar": 20
+      },
+      "revId": "8154540c0684dcaf6cded206143ace55f7f01205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
