@@ -82,6 +82,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fedad240_9b045fd9",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-01T19:04:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1b296823_cd8c739e",
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb3ac3af_6b094973",
@@ -142,6 +160,24 @@
       "writtenOn": "2024-07-30T23:04:29Z",
       "side": 1,
       "message": "Similarly, let\u0027s ask session rules table to do all the inits for us",
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ae7412e_0a7bb9d8",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-01T19:04:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7949a89e_86619146",
       "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
