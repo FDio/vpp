@@ -192,8 +192,9 @@ snap_init (vlib_main_t * vm)
   return vlib_call_init_function (vm, snap_input_init);
 }
 
-VLIB_INIT_FUNCTION (snap_init);
-
+VLIB_INIT_FUNCTION (snap_init) = {
+  .runs_after = VLIB_INITS ("llc_init"),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

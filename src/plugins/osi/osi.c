@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/osi/osi.h>
+#include <osi/osi.h>
 
 /* Global main structure. */
 osi_main_t osi_main;
@@ -169,12 +169,7 @@ add_protocol (osi_main_t * pm, osi_protocol_t protocol, char *protocol_name)
 static clib_error_t *
 osi_init (vlib_main_t * vm)
 {
-  clib_error_t *error = 0;
   osi_main_t *pm = &osi_main;
-
-  /* init order dependency: llc_init -> osi_init */
-  if ((error = vlib_call_init_function (vm, llc_init)))
-    return error;
 
   clib_memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
@@ -189,8 +184,11 @@ osi_init (vlib_main_t * vm)
   return vlib_call_init_function (vm, osi_input_init);
 }
 
-VLIB_INIT_FUNCTION (osi_init);
-
+/* init order dependency: llc_init -> osi_init -> snap_init*/
+/* Otherwise, osi_input_init will wipe out e.g. the snap init */
+VLIB_INIT_FUNCTION (osi_init) = {
+  .init_order = VLIB_INITS ("llc_init", "osi_init", "snap_init"),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
