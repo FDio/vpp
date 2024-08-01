@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "09ed0dae_2e98e37b",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-01T06:42:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bf7ecb2d_110faf4a",
+      "range": {
+        "startLine": 128,
+        "startChar": 44,
+        "endLine": 129,
+        "endChar": 33
+      },
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1b296823_cd8c739e",
@@ -71,6 +95,30 @@
       "writtenOn": "2024-07-30T23:04:29Z",
       "side": 1,
       "message": "Do we need ns_id?",
+      "range": {
+        "startLine": 99,
+        "startChar": 56,
+        "endLine": 99,
+        "endChar": 65
+      },
+      "revId": "dd1cf2ee685b6f996007bdc3c7e39600ad3741c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16b95681_a910fa7d",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-01T06:42:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fb3ac3af_6b094973",
       "range": {
         "startLine": 99,
         "startChar": 56,
