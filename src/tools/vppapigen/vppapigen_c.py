@@ -171,11 +171,11 @@ class ToJSON:
             write("    {\n")
             # What is length field doing here?
             write(
-                '    u8 *s = format(0, "0x%U", format_hex_bytes, '
+                '    char *s = format_c_string(0, "0x%U", format_hex_bytes, '
                 "&a->{n}, {lfield});\n".format(n=o.fieldname, lfield=lfield)
             )
             write(
-                '    cJSON_AddStringToObject(o, "{n}", (char *)s);\n'.format(
+                '    cJSON_AddStringToObject(o, "{n}", s);\n'.format(
                     n=o.fieldname
                 )
             )
@@ -275,8 +275,8 @@ class ToJSON:
             "(vl_api_{name}_t *a) {{\n".format(name=o.name)
         )
 
-        write('    u8 *s = format(0, "%U", format_vl_api_{}_t, a);\n'.format(o.name))
-        write("    cJSON *o = cJSON_CreateString((char *)s);\n")
+        write('    char *s = format_c_string(0, "%U", format_vl_api_{}_t, a);\n'.format(o.name))
+        write("    cJSON *o = cJSON_CreateString(s);\n")
         write("    vec_free(s);\n")
         write("    return o;\n")
         write("}\n")
