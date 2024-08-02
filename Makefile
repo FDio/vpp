@@ -73,7 +73,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += gcovr lcov chrpath autoconf libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += libffi-dev python3-ply libunwind-dev
-DEB_DEPENDS += cmake ninja-build python3-jsonschema python3-yaml
+DEB_DEPENDS += ninja-build python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev python3-pip
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
@@ -150,7 +150,6 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID),rocky)
 	RPM_DEPENDS += yum-utils
@@ -159,7 +158,7 @@ else ifeq ($(OS_ID),rocky)
 	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += infiniband-diags llvm clang cmake
+	RPM_DEPENDS += infiniband-diags llvm clang
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else ifeq ($(OS_ID),almalinux)
 	RPM_DEPENDS += yum-utils
@@ -168,14 +167,14 @@ else ifeq ($(OS_ID),almalinux)
 	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += infiniband-diags llvm clang cmake
+	RPM_DEPENDS += infiniband-diags llvm clang
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
 	RPM_DEPENDS += python2-devel python36-devel python3-ply
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += libarchive cmake
+	RPM_DEPENDS += libarchive
 	RPM_DEPENDS += infiniband-diags libibumad
 	RPM_DEPENDS += libpcap-devel llvm-toolset
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -186,7 +185,6 @@ else
 	RPM_DEPENDS += python3-devel python3-pip
 	RPM_DEPENDS += python-virtualenv python36-jsonschema
 	RPM_DEPENDS += devtoolset-9 devtoolset-9-libasan-devel
-	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
 
@@ -200,7 +198,7 @@ RPM_DEPENDS_DEBUG += zlib-debuginfo nss-softokn-debuginfo
 RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel lsb-release
@@ -391,6 +389,7 @@ else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION
 else
 	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE-leap systems")
 endif
+	$(MAKE) check_cmake
 	git config commit.template .git_commit_template.txt
 
 .PHONY: install-deps
@@ -886,3 +885,19 @@ endif
 .PHONY: check-dpdk-mlx
 check-dpdk-mlx:
 	@[ $$($(MAKE) -sC build/external dpdk-show-DPDK_MLX_DEFAULT) = y ]
+
+# Define the required CMake version
+REQUIRED_CMAKE_VERSION := 3.30.1
+
+# Check the installed version of CMake
+CURRENT_CMAKE_VERSION := $(shell cmake --version 2>/dev/null | head -n1 | awk '{print $$3}')
+.PHONY: check_cmake install_cmake build
+check_cmake:
+	@if [ "$(CURRENT_CMAKE_VERSION)" != "$(REQUIRED_CMAKE_VERSION)" ]; then \
+		$(MAKE) install_cmake; \
+	fi
+
+install_cmake:
+	@echo "Installing CMake $(REQUIRED_CMAKE_VERSION) via pip..."
+	@pip install cmake==$(REQUIRED_CMAKE_VERSION)
+	@echo "CMake $(REQUIRED_CMAKE_VERSION) installed successfully."
