@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "94516e61_e67ec81f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-08-02T14:31:28Z",
+      "side": 1,
+      "message": "The outputs loo good now: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/66/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2",
+      "revId": "89717bdd919e85424bc502dc54d87d48fb0f4e86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
