@@ -275,7 +275,7 @@ class VppPGInterface(VppInterface):
         return output
 
     def get_capture(
-        self, expected_count=None, remark=None, timeout=1, filter_out_fn=is_ipv6_misc
+        self, expected_count=None, remark=None, timeout=0.000001, filter_out_fn=is_ipv6_misc
     ):
         """Get captured packets
 
@@ -288,7 +288,7 @@ class VppPGInterface(VppInterface):
                               the filter returns True are removed from capture
         :returns: iterable packets
         """
-        remaining_time = timeout
+        remaining_time = 0.0000001
         capture = None
         name = self.name if remark is None else "%s (%s)" % (self.name, remark)
         based_on = "based on provided argument"
@@ -345,7 +345,7 @@ class VppPGInterface(VppInterface):
             raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
 
     def assert_nothing_captured(
-        self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
+        self, timeout=0.000001, remark=None, filter_out_fn=is_ipv6_misc
     ):
         """Assert that nothing unfiltered was captured on interface
 
@@ -369,12 +369,14 @@ class VppPGInterface(VppInterface):
         # also have a 5-minute timeout just in case things go terribly wrong...
         deadline = time.time() + 300
         while self.test.vapi.cli("show packet-generator").find("Yes") != -1:
+            self.test.logger.debug(self.test.vapi.cli("show busy")) 
+            self.test.logger.debug(self.test.vapi.cli("echo ayourtch show busy")) 
             self._test.sleep(0.01)  # yield
             if time.time() > deadline:
                 self.test.logger.debug("Timeout waiting for pg to stop")
                 break
 
-    def wait_for_capture_file(self, timeout=1):
+    def wait_for_capture_file(self, timeout=0.00001):
         """
         Wait until pcap capture file appears
 
@@ -384,6 +386,11 @@ class VppPGInterface(VppInterface):
         """
         self.wait_for_pg_stop()
         deadline = time.time() + timeout
+        self.test.logger.debug(self.test.vapi.cli("show busy")) 
+        self.test.logger.debug(self.test.vapi.cli("echo ayourtch show busy")) 
+        self.test.logger.debug(self.test.vapi.cli("show busy")) 
+        self.test.logger.debug(self.test.vapi.cli("echo ayourtch show busy")) 
+
         if not os.path.isfile(self.out_path):
             self.test.logger.debug(
                 f"Waiting for capture file {self.out_path} to appear, timeout is {timeout}s\n"
@@ -533,7 +540,7 @@ class VppPGInterface(VppInterface):
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
         try:
-            captured_packet = pg_interface.wait_for_packet(1)
+            captured_packet = pg_interface.wait_for_packet(0.0000001)
         except:
             self.test.logger.info("No ARP received on port %s" % pg_interface.name)
             return

@@ -146,7 +146,10 @@ class VppTestCase(VppAsfTestCase):
         # and wait a little till it's done.
         # Then clean it up  - and then be gone.
         deadline = time.time() + 300
+        cls.logger.debug(cls.vapi.cli("show busy"))
         while cls.vapi.cli("show packet-generator").find("Yes") != -1:
+            cls.logger.debug(cls.vapi.cli("show busy"))
+            cls.logger.debug(cls.vapi.cli("echo ayourtch show busy"))
             cls.sleep(0.01)  # yield
             if time.time() > deadline:
                 cls.logger.error("Timeout waiting for pg to stop")
@@ -551,6 +554,7 @@ class VppTestCase(VppAsfTestCase):
         if not n_rx:
             n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
         self.pg_send(intf, pkts, worker=worker, trace=trace)
+        self.logger.debug(self.vapi.cli("show busy"))
         rx = output.get_capture(n_rx)
         if trace:
             if msg:
@@ -560,6 +564,7 @@ class VppTestCase(VppAsfTestCase):
         if stats_diff:
             self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
 
+        self.logger.debug(self.vapi.cli("show busy"))
         return rx
 
     def send_and_expect_load_balancing(

@@ -634,6 +634,25 @@ VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
 };
 
 static clib_error_t *
+show_busy(vlib_main_t * vm,
+		   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  // f64 time_now;
+  // time_now = vlib_time_now (vm);
+
+  vlib_cli_output (vm, "nodes processed: %d vectors processed: %d\n", vm->main_loop_vectors_processed, vm->main_loop_nodes_processed);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_busy_command, static) = {
+  .path = "show busy",
+  .short_help = "Show how busy the system is",
+  .function = show_busy,
+  .is_mp_safe = 1,
+};
+
+
+static clib_error_t *
 clear_node_runtime (vlib_main_t * vm,
 		    unformat_input_t * input, vlib_cli_command_t * cmd)
 {
