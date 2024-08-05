@@ -22,6 +22,30 @@
       },
       "revId": "c841048bae69fb646a6422cc1d05e0fe64eae3a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4da3d68_78c3b491",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 2022,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-05T11:48:48Z",
+      "side": 1,
+      "message": "looks good, you can also do:\nreturn clib_error_return (0, \"ip6_full_reass_set failed, rv\u003d%d:%U\", (int)err2, format_vnet_api_errno, err2);\nbut ip6_full_reass_set return just 0 or -1 (Unspecified Error)",
+      "parentUuid": "379de4b8_d7ff5b1b",
+      "range": {
+        "startLine": 2021,
+        "startChar": 2,
+        "endLine": 2022,
+        "endChar": 46
+      },
+      "revId": "c841048bae69fb646a6422cc1d05e0fe64eae3a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
