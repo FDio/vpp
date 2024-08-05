@@ -595,7 +595,7 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 
   st = session_table_get (table_index);
   if (!st)
-    return SESSION_INVALID_INDEX;
+    return SESSION_INVALID_HANDLE;
   ASSERT (st->is_local);
 
   if (sep->is_ip4)
