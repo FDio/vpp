@@ -255,19 +255,18 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
       if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
 	{
 	  d.hdr_w1.ol3type = NIX_SENDL3TYPE_IP4_CKSUM;
-	  d.hdr_w1.ol3ptr = vnet_buffer (b)->l3_hdr_offset;
-	  d.hdr_w1.ol4ptr =
-	    vnet_buffer (b)->l3_hdr_offset + sizeof (ip4_header_t);
+	  d.hdr_w1.ol3ptr = vnet_buffer (b)->l3_hdr_offset - b->current_data;
+	  d.hdr_w1.ol4ptr = d.hdr_w1.ol3ptr + sizeof (ip4_header_t);
 	}
       if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
 	{
 	  d.hdr_w1.ol4type = NIX_SENDL4TYPE_UDP_CKSUM;
-	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset;
+	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
 	}
       else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
 	{
 	  d.hdr_w1.ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
-	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset;
+	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
 	}
     }
 
