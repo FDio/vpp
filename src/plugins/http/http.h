@@ -402,6 +402,7 @@ typedef struct http_tc_
   http_buffer_t tx_buf;
   u32 to_recv;
   u32 bytes_dequeued;
+  u32 control_data_len; /* start line + headers + empty line */
   http_target_form_t target_form;
   u32 target_path_offset;
   u32 target_path_len;

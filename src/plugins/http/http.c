@@ -431,6 +431,7 @@ http_send_error (http_conn_t *hc, http_status_code_t ec)
   now = clib_timebase_now (&hm->timebase);
   data = format (0, http_error_template, http_status_code_str[ec],
 		 format_clib_timebase_time, now);
+  HTTP_DBG (1, "%v", data);
   http_send_data (hc, data, vec_len (data), 0);
   vec_free (data);
 }
@@ -438,26 +439,48 @@ http_send_error (http_conn_t *hc, http_status_code_t ec)
 static int
 http_read_message (http_conn_t *hc)
 {
-  u32 max_deq, cursize;
+  u32 max_deq;
   session_t *ts;
   int n_read;
 
   ts = session_get_from_handle (hc->h_tc_session_handle);
 
-  cursize = vec_len (hc->rx_buf);
   max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
   if (PREDICT_FALSE (max_deq == 0))
     return -1;
 
-  vec_validate (hc->rx_buf, cursize + max_deq - 1);
-  n_read = svm_fifo_dequeue (ts->rx_fifo, max_deq, hc->rx_buf + cursize);
+  vec_validate (hc->rx_buf, max_deq - 1);
+  n_read = svm_fifo_peek (ts->rx_fifo, 0, max_deq, hc->rx_buf);
   ASSERT (n_read == max_deq);
+  HTTP_DBG (1, "read %u bytes from rx_fifo", n_read);
+
+  return 0;
+}
+
+static void
+http_read_message_drop (http_conn_t *hc, u32 len)
+{
+  session_t *ts;
+
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+  svm_fifo_dequeue_drop (ts->rx_fifo, len);
+  vec_reset_length (hc->rx_buf);
 
   if (svm_fifo_is_empty (ts->rx_fifo))
     svm_fifo_unset_event (ts->rx_fifo);
+}
 
-  vec_set_len (hc->rx_buf, cursize + n_read);
-  return 0;
+static void
+http_read_message_drop_all (http_conn_t *hc)
+{
+  session_t *ts;
+
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+  svm_fifo_dequeue_drop_all (ts->rx_fifo);
+  vec_reset_length (hc->rx_buf);
+
+  if (svm_fifo_is_empty (ts->rx_fifo))
+    svm_fifo_unset_event (ts->rx_fifo);
 }
 
 /**
@@ -575,7 +598,8 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       return -1;
     }
   HTTP_DBG (0, "request line length: %d", i);
-  next_line_offset = i + 2;
+  hc->control_data_len = i + 2;
+  next_line_offset = hc->control_data_len;
 
   /* there should be at least one more CRLF */
   if (vec_len (hc->rx_buf) < (next_line_offset + 2))
@@ -699,7 +723,8 @@ http_parse_status_line (http_conn_t *hc)
       clib_warning ("status line too short (%d)", i);
       return -1;
     }
-  next_line_offset = i + 2;
+  hc->control_data_len = i + 2;
+  next_line_offset = hc->control_data_len;
   p = hc->rx_buf;
   end = hc->rx_buf + i;
 
@@ -776,6 +801,7 @@ http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
       /* just another CRLF -> no headers */
       HTTP_DBG (0, "no headers");
       hc->headers_len = 0;
+      hc->control_data_len += 2;
       return 0;
     }
 
@@ -789,6 +815,7 @@ http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
     }
   hc->headers_offset = hc->rx_buf_offset;
   hc->headers_len = i - hc->rx_buf_offset + 2;
+  hc->control_data_len += (hc->headers_len + 2);
   HTTP_DBG (0, "headers length: %u", hc->headers_len);
   HTTP_DBG (0, "headers offset: %u", hc->headers_offset);
 
@@ -866,7 +893,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg = {};
   app_worker_t *app_wrk;
   session_t *as;
-  u32 len;
+  u32 len, max_enq;
   http_status_code_t ec;
   http_main_t *hm = &http_main;
 
@@ -899,7 +926,16 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   if (rv)
     goto error;
 
-  len = vec_len (hc->rx_buf);
+  /* send at least "control data" which is necessary minimum,
+   * if there is some space send also portion of body */
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  max_enq = svm_fifo_max_enqueue (as->rx_fifo);
+  if (max_enq < hc->control_data_len)
+    {
+      clib_warning ("not enough room for control data in app's rx fifo");
+      goto error;
+    }
+  len = clib_min (max_enq, vec_len (hc->rx_buf));
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = hm->sc_by_u16[hc->status_code];
@@ -910,36 +946,34 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
 
-  as = session_get_from_handle (hc->h_pa_session_handle);
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { hc->rx_buf, len } };
 
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
-  if (rv < 0)
-    {
-      clib_warning ("error enqueue");
-      return HTTP_SM_ERROR;
-    }
+  ASSERT (rv == (sizeof (msg) + len));
 
-  vec_free (hc->rx_buf);
+  http_read_message_drop (hc, len);
 
-  if (hc->body_len <= (len - hc->body_offset))
+  if (hc->body_len == 0)
     {
+      /* no response body, we are done */
       hc->to_recv = 0;
       http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
     }
-      else
-	{
-	  hc->to_recv = hc->body_len - (len - hc->body_offset);
-	  http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
-	}
+  else
+    {
+      /* stream response body */
+      hc->to_recv = hc->body_len;
+      http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
+    }
 
-      app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-      if (app_wrk)
-	app_worker_rx_notify (app_wrk, as);
-      return HTTP_SM_STOP;
+  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+  if (app_wrk)
+    app_worker_rx_notify (app_wrk, as);
+  return HTTP_SM_STOP;
 
 error:
+  http_read_message_drop_all (hc);
   session_transport_closing_notify (&hc->connection);
   session_transport_closed_notify (&hc->connection);
   http_disconnect_transport (hc);
@@ -954,7 +988,7 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg;
   session_t *as;
   int rv;
-  u32 len;
+  u32 len, max_enq;
 
   rv = http_read_message (hc);
 
@@ -982,7 +1016,16 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   if (rv)
     goto error;
 
-  len = vec_len (hc->rx_buf);
+  /* send "control data" and request body */
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  len = hc->control_data_len + hc->body_len;
+  max_enq = svm_fifo_max_enqueue (as->rx_fifo);
+  if (max_enq < len)
+    {
+      /* TODO stream body of large POST */
+      clib_warning ("not enough room for data in app's rx fifo");
+      goto error;
+    }
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
@@ -1001,18 +1044,11 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { hc->rx_buf, len } };
 
-  as = session_get_from_handle (hc->h_pa_session_handle);
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
-  if (rv < 0 || rv != sizeof (msg) + len)
-    {
-      clib_warning ("failed app enqueue");
-      /* This should not happen as we only handle 1 request per session,
-       * and fifo is allocated, but going forward we should consider
-       * rescheduling */
-      return HTTP_SM_ERROR;
-    }
+  ASSERT (rv == (sizeof (msg) + len));
 
-  vec_free (hc->rx_buf);
+  /* drop everything, we do not support pipelining */
+  http_read_message_drop_all (hc);
   http_state_change (hc, HTTP_STATE_WAIT_APP_REPLY);
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
@@ -1022,7 +1058,7 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   return HTTP_SM_STOP;
 
 error:
-
+  http_read_message_drop_all (hc);
   http_send_error (hc, ec);
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
@@ -1345,11 +1381,7 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
   HTTP_DBG (1, "drained %d from ts; remains %d", rv, hc->to_recv);
 
   if (hc->to_recv == 0)
-    {
-      hc->rx_buf_offset = 0;
-      vec_reset_length (hc->rx_buf);
-      http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
-    }
+    http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   if (app_wrk)
