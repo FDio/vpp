@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33c84350_3b114d5b",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 1951,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "We should probably remove those 2 lines",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ec8123e_49b77b48",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be removed?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e80c44bd_09fba4a2",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 657,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "same",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd21249c_ab4be402",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 1447,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "why the change from 257 to 256? I suspect the idea was to create a full vector + a vector of 1 packet?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa752656_75855d2a",
+        "filename": "test/test_ipip.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "maybe self.assertTrue(bytes(rx), bytes(expected)) would be better?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88247f76_6f5ca495",
+        "filename": "test/test_mtu.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "maybe self.assertTrue(bytes(rx), bytes(expected)) would be better?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b463c3b8_9230855f",
+        "filename": "test/test_pnat.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "maybe self.assertTrue(bytes(rx), bytes(expected)) would be better?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9761854c_84ffb26e",
+        "filename": "test/test_pppoe.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T16:42:24Z",
+      "side": 1,
+      "message": "is it used?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
