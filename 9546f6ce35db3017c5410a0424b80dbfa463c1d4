@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d46ce92_5851fbf0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-06T17:46:15Z",
+      "side": 1,
+      "message": "I like it, but I see you reenable tests which is great, but those tests are flaky unfortunately.\nIf you have the motivation to fix them, this can help:\nmake rebuild VPP_EXTRA_CMAKE_ARGS\u003d\"-DVPP_ENABLE_SANITIZE_ADDR\u003dON\"\nmake test-debug VPP_EXTRA_CMAKE_ARGS\u003d\"-DVPP_ENABLE_SANITIZE_ADDR\u003dON\" TEST\u003dtest_ikev2",
+      "revId": "9546f6ce35db3017c5410a0424b80dbfa463c1d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
