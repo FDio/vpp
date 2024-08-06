@@ -1707,14 +1707,17 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  show_one = 1;
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  vec_free (ns_id);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
 
   if (transport_proto == ~0)
     {
       vlib_cli_output (vm, "transport proto must be set");
-      return 0;
+      goto done;
     }
 
   if (ns_id)
@@ -1723,7 +1726,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (!app_ns)
 	{
 	  vlib_cli_output (vm, "appns %v doesn't exist", ns_id);
-	  return 0;
+	  goto done;
 	}
     }
   else
@@ -1747,7 +1750,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       srt = &st->session_rules[transport_proto];
       session_rules_table_show_rule (vm, srt, &lcl_ip, lcl_port, &rmt_ip,
 				     rmt_port, is_ip4);
-      return 0;
+      goto done;
     }
 
   vlib_cli_output (vm, "%U rules table", format_transport_proto,
@@ -1782,7 +1785,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP6);
 	}
     }
-
+done:
   vec_free (ns_id);
   return 0;
 }
