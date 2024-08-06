@@ -16,6 +16,24 @@
       "message": "can\u0027t we offload this to sessions rule table, when it initializes rules for this session table?",
       "revId": "5364e017e44933008a24ba5b2aeb4e8019ecbf7d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48ca4ffb_05f809ca",
+        "filename": "src/vnet/session/session_table.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-06T20:04:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1dcda9ff_6a2391ea",
+      "revId": "5364e017e44933008a24ba5b2aeb4e8019ecbf7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
