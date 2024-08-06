@@ -31,7 +31,7 @@ func init() {
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
 		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
-		PromMemLeakTest, HttpClientPostMemLeakTest)
+		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -499,6 +499,40 @@ func HttpClientPostMemLeakTest(s *NoTopoSuite) {
 	traces2, err := vpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	vpp.Vppctl("http cli server")
+
+	/* warmup request (FIB) */
+	_, err := TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+
+	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
+	time.Sleep(time.Second * 12)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	_, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 12)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
+
 }
 
 func HttpStaticFileHandlerTest(s *NoTopoSuite) {
