@@ -481,15 +481,14 @@ ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 int
 BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
 {
-  int r = BN_bn2bin (a, to);
+  int r = BN_num_bytes (a);
   ASSERT (tolen >= r);
   int pad = tolen - r;
   if (pad)
     {
-      vec_insert (to, pad, 0);
       clib_memset (to, 0, pad);
-      vec_dec_len (to, pad);
     }
+  BN_bn2bin (a, to + pad);
   return tolen;
 }
 #endif
