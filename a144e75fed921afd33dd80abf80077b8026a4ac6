@@ -16,6 +16,23 @@
       "message": "Override verify because the CI job is using he cached version of octeon-roc-0,2 and not pulling it from github",
       "revId": "a144e75fed921afd33dd80abf80077b8026a4ac6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db8cfff5_1a869f34",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T14:36:13Z",
+      "side": 1,
+      "message": "remerge",
+      "revId": "a144e75fed921afd33dd80abf80077b8026a4ac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
