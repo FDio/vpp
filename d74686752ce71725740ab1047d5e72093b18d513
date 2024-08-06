@@ -70,6 +70,30 @@
       },
       "revId": "d74686752ce71725740ab1047d5e72093b18d513",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb36ecf3_4a9973fb",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-06T05:26:12Z",
+      "side": 1,
+      "message": "Removed it as it\u0027s not needed when \"gid vpp\" isn\u0027t set.",
+      "parentUuid": "843a92bd_a7053859",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 42,
+        "endChar": 2
+      },
+      "revId": "d74686752ce71725740ab1047d5e72093b18d513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4869e5ce_9e15df3c",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 6
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-06T05:26:12Z",
+      "side": 1,
+      "message": "Won\u0027t be used after all",
+      "parentUuid": "4bdd7f20_47c76508",
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b0e86e6_f9e35a78",
@@ -41,6 +59,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b3ac22b_a90268d7",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-06T05:26:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9b0e86e6_f9e35a78",
+      "range": {
+        "startLine": 166,
+        "startChar": 0,
+        "endLine": 172,
+        "endChar": 10
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c8d2b869_16ea7bdc",
@@ -54,6 +96,30 @@
       "writtenOn": "2024-08-01T12:19:02Z",
       "side": 1,
       "message": "maybe use os.ReadDir?",
+      "range": {
+        "startLine": 339,
+        "startChar": 1,
+        "endLine": 339,
+        "endChar": 78
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b7f6cc4_cc42ddf8",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-06T05:26:12Z",
+      "side": 1,
+      "message": "Used an alternative.\nDone",
+      "parentUuid": "c8d2b869_16ea7bdc",
       "range": {
         "startLine": 339,
         "startChar": 1,
@@ -101,6 +167,30 @@
       "side": 1,
       "message": "Agreed",
       "parentUuid": "579fd81f_fe026aaa",
+      "range": {
+        "startLine": 371,
+        "startChar": 4,
+        "endLine": 371,
+        "endChar": 23
+      },
+      "revId": "2d3db1adf46654a38741b521eaf41c744640218f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea342de5_626d5772",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-06T05:26:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7ca40a95_ca836ce6",
       "range": {
         "startLine": 371,
         "startChar": 4,
