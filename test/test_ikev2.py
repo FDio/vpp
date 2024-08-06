@@ -23,8 +23,6 @@ from scapy.utils import long_converter
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
-    tag_fixme_ubuntu2204,
-    tag_fixme_debian11,
     is_distro_ubuntu2204,
     is_distro_debian11,
     VppTestRunner,
@@ -2036,7 +2034,6 @@ class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - NAT traversal (intitiator behind NAT)"""
 
@@ -2069,7 +2066,6 @@ class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - pre shared key auth"""
 
@@ -2101,7 +2097,6 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -2151,7 +2146,6 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorRekey(TestInitiatorPsk):
     """test ikev2 initiator - rekey"""
 
@@ -2197,7 +2191,6 @@ class TestInitiatorRekey(TestInitiatorPsk):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - delete IKE SA from responder"""
 
@@ -2407,8 +2400,6 @@ class TestResponderRekeySA(TestResponderPsk):
         self.verify_ike_sas()
 
 
-@tag_fixme_ubuntu2204
-@tag_fixme_debian11
 class TestResponderVrf(TestResponderPsk, Ikev2Params):
     """test ikev2 responder - non-default table id"""
 
@@ -2528,7 +2519,6 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages
