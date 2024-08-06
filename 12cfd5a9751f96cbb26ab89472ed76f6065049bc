@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad2b4210_4f224acb",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 1951,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33c84350_3b114d5b",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5ec8123e_49b77b48",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-08-06T16:42:24Z",
       "side": 1,
       "message": "shouldn\u0027t it be removed?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a95c9876_ce4570a1",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ec8123e_49b77b48",
       "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f5b5d2f_4278f8c8",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 657,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e80c44bd_09fba4a2",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fd21249c_ab4be402",
@@ -65,6 +119,24 @@
       "writtenOn": "2024-08-06T16:42:24Z",
       "side": 1,
       "message": "why the change from 257 to 256? I suspect the idea was to create a full vector + a vector of 1 packet?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f0966fc_752c8fbb",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 1447,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "257 generates an illegal ip address (line 1459):\n\nERROR: IP Load-Balancing\n------------------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/scratch/dwallacelf/lf/vpp.41288/build-root/test/venv/lib/python3.10/site-packages/scapy/fields.py\", line 758, in h2i\n    inet_aton(x)\nOSError: illegal IP address string passed to inet_aton\n\nI fixed line 1459 to use (ii % 256) to generate valid ip addresses and restored all of the changes I made back to 257.",
+      "parentUuid": "fd21249c_ab4be402",
       "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b2d817f_a38b62ff",
+        "filename": "test/test_ipip.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa752656_75855d2a",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "88247f76_6f5ca495",
@@ -99,6 +189,24 @@
       "writtenOn": "2024-08-06T16:42:24Z",
       "side": 1,
       "message": "maybe self.assertTrue(bytes(rx), bytes(expected)) would be better?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "859897d0_afddd380",
+        "filename": "test/test_mtu.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "88247f76_6f5ca495",
       "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b84fbe1f_5af75023",
+        "filename": "test/test_pnat.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b463c3b8_9230855f",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9761854c_84ffb26e",
@@ -133,6 +259,24 @@
       "writtenOn": "2024-08-06T16:42:24Z",
       "side": 1,
       "message": "is it used?",
+      "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5bc679e_3c614e3c",
+        "filename": "test/test_pppoe.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-08-06T19:06:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9761854c_84ffb26e",
       "revId": "12cfd5a9751f96cbb26ab89472ed76f6065049bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
