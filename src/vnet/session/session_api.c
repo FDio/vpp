@@ -43,6 +43,13 @@ api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
       return TRANSPORT_PROTO_TLS;
     case TRANSPORT_PROTO_API_QUIC:
       return TRANSPORT_PROTO_QUIC;
+    case TRANSPORT_PROTO_API_DTLS:
+      return TRANSPORT_PROTO_DTLS;
+    case TRANSPORT_PROTO_API_SRTP:
+      return TRANSPORT_PROTO_SRTP;
+    case TRANSPORT_PROTO_API_HTTP:
+      return TRANSPORT_PROTO_HTTP;
+    case TRANSPORT_PROTO_API_NONE:
     default:
       return TRANSPORT_PROTO_NONE;
     }
@@ -61,6 +68,13 @@ api_session_transport_proto_encode (const transport_proto_t tp)
       return TRANSPORT_PROTO_API_TLS;
     case TRANSPORT_PROTO_QUIC:
       return TRANSPORT_PROTO_API_QUIC;
+    case TRANSPORT_PROTO_DTLS:
+      return TRANSPORT_PROTO_API_DTLS;
+    case TRANSPORT_PROTO_SRTP:
+      return TRANSPORT_PROTO_API_SRTP;
+    case TRANSPORT_PROTO_HTTP:
+      return TRANSPORT_PROTO_API_HTTP;
+    case TRANSPORT_PROTO_NONE:
     default:
       return TRANSPORT_PROTO_API_NONE;
     }
@@ -1019,6 +1033,8 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
   ip_set (&rmt.fp_addr, &match->rmt_ip, 1);
   lcl.fp_len = ip4_mask_to_preflen (&mask->lcl_ip);
   rmt.fp_len = ip4_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP4;
+  rmt.fp_proto = FIB_PROTOCOL_IP4;
 
   ip_prefix_encode (&lcl, &rmp->lcl);
   ip_prefix_encode (&rmt, &rmp->rmt);
@@ -1061,6 +1077,8 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
   ip_set (&rmt.fp_addr, &match->rmt_ip, 0);
   lcl.fp_len = ip6_mask_to_preflen (&mask->lcl_ip);
   rmt.fp_len = ip6_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP6;
+  rmt.fp_proto = FIB_PROTOCOL_IP6;
 
   ip_prefix_encode (&lcl, &rmp->lcl);
   ip_prefix_encode (&rmt, &rmp->rmt);

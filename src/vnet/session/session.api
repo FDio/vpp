@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.0";
+option version = "4.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -26,6 +26,9 @@ enum transport_proto : u8
         TRANSPORT_PROTO_API_NONE,
         TRANSPORT_PROTO_API_TLS,
         TRANSPORT_PROTO_API_QUIC,
+        TRANSPORT_PROTO_API_DTLS,
+        TRANSPORT_PROTO_API_SRTP,
+        TRANSPORT_PROTO_API_HTTP,
 };
 
 /** \brief Application attach to session layer
@@ -346,11 +349,8 @@ enum session_rule_scope {
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol
-    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
-    @param lcl_ip - local ip
-    @param lcl_plen - local prefix length
-    @param rmt_ip - remote ip
-    @param rmt_ple - remote prefix length
+    @param lcl - local prefix
+    @param rmt - remote prefix
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to
@@ -389,11 +389,8 @@ define session_rules_dump
 /** \brief Session rules details
     @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol
-    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
-    @param lcl_ip - local ip
-    @param lcl_plen - local prefix length
-    @param rmt_ip - remote ip
-    @param rmt_ple - remote prefix length
+    @param lcl - local prefix
+    @param rmt - remote prefix
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to
