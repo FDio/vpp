@@ -16,6 +16,24 @@
       "message": "should this be parameterized?",
       "revId": "1a9a12be3d9ac6d87b1dae14c878712ee344472e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "659edce1_29bce91b",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 4329,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2024-08-07T09:06:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "57dc928b_8f4e67da",
+      "revId": "1a9a12be3d9ac6d87b1dae14c878712ee344472e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
