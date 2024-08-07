@@ -34,6 +34,24 @@
       "parentUuid": "9d46ce92_5851fbf0",
       "revId": "9546f6ce35db3017c5410a0424b80dbfa463c1d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d21cb03_351f9280",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-08-07T10:15:02Z",
+      "side": 1,
+      "message": "This is really great, I just merged the fix. Can you rebase this change on top of it?",
+      "parentUuid": "155ddc72_d4dd65fe",
+      "revId": "9546f6ce35db3017c5410a0424b80dbfa463c1d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
