@@ -1019,6 +1019,8 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
   ip_set (&rmt.fp_addr, &match->rmt_ip, 1);
   lcl.fp_len = ip4_mask_to_preflen (&mask->lcl_ip);
   rmt.fp_len = ip4_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP4;
+  rmt.fp_proto = FIB_PROTOCOL_IP4;
 
   ip_prefix_encode (&lcl, &rmp->lcl);
   ip_prefix_encode (&rmt, &rmp->rmt);
@@ -1061,6 +1063,8 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
   ip_set (&rmt.fp_addr, &match->rmt_ip, 0);
   lcl.fp_len = ip6_mask_to_preflen (&mask->lcl_ip);
   rmt.fp_len = ip6_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP6;
+  rmt.fp_proto = FIB_PROTOCOL_IP6;
 
   ip_prefix_encode (&lcl, &rmp->lcl);
   ip_prefix_encode (&rmt, &rmp->rmt);
