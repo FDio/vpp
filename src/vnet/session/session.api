@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.0";
+option version = "4.0.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -26,6 +26,9 @@ enum transport_proto : u8
         TRANSPORT_PROTO_API_NONE,
         TRANSPORT_PROTO_API_TLS,
         TRANSPORT_PROTO_API_QUIC,
+        TRANSPORT_PROTO_API_DTLS,
+        TRANSPORT_PROTO_API_SRTP,
+        TRANSPORT_PROTO_API_HTTP,
 };
 
 /** \brief Application attach to session layer
