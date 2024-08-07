@@ -96,6 +96,7 @@ For more details click on the links below or press next.
     interfacing/go/index
     interfacing/rust/index
     interfacing/libmemif/index
+    interfacing/vat2/index
 
 
 
