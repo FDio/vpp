@@ -28,7 +28,7 @@ func init() {
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpStaticFileHandlerTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
+		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
 		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
@@ -535,7 +535,23 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 
 }
 
+func HttpStaticFileHandlerDefaultMaxAgeTest(s *NoTopoSuite) {
+	HttpStaticFileHandlerTestFunction(s, "default")
+}
+
 func HttpStaticFileHandlerTest(s *NoTopoSuite) {
+	HttpStaticFileHandlerTestFunction(s, "123")
+}
+
+func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
+	var max_age_formatted string
+	if max_age == "default" {
+		max_age_formatted = ""
+		max_age = "600"
+	} else {
+		max_age_formatted = "max-age " + max_age
+	}
+
 	content := "<html><body><p>Hello</p></body></html>"
 	content2 := "<html><body><p>Page</p></body></html>"
 	vpp := s.GetContainerByName("vpp").VppInstance
@@ -545,7 +561,7 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	err = vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
 	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m"))
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m " + max_age_formatted))
 
 	client := NewHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/index.html", nil)
@@ -556,7 +572,7 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
+	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
 	body, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -572,7 +588,7 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
+	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
 	body, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -586,7 +602,7 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
+	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
 	s.AssertEqual(int64(len([]rune(content2))), resp.ContentLength)
 	body, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))

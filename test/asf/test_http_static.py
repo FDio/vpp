@@ -63,11 +63,13 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 "exec",
                 "HttpStatic",
                 "curl",
+                "-v",
                 f"10.10.1.2/{self.temp.name[5:]}",
             ],
             capture_output=True,
         )
         self.assertIn(b"Hello world", process.stdout)
+        self.assertIn(b"max-age=600", process.stderr)
 
         self.temp2.seek(0)
         process = subprocess.run(
