@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dda1654_b1af5dd9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-08T07:24:01Z",
+      "side": 1,
+      "message": "looks good, please update also API (http_static_enable)",
+      "revId": "ce3a4be6db8d397b6d05f15340113d139a51110c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
