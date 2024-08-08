@@ -189,6 +189,14 @@ oct_flow_rule_create (vnet_dev_port_t *port, struct roc_npc_action *actions,
 
   npc = &oct_port->npc;
 
+  for (int i = 0; item_info[i].type != ROC_NPC_ITEM_TYPE_END; i++)
+    {
+      log_debug (port->dev, "Flow[%d] Item[%d] type %d spec 0x%U mask 0x%U",
+		 flow->index, i, item_info[i].type, format_hex_bytes,
+		 item_info[i].spec, item_info[i].size, format_hex_bytes,
+		 item_info[i].mask, item_info[i].size);
+    }
+
   npc_flow =
     roc_npc_flow_create (npc, &attr, item_info, actions, npc->pf_func, &rv);
   if (rv)
@@ -530,6 +538,14 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
   struct roc_npc_item_info item_info[ROC_NPC_ITEM_TYPE_END] = {};
   struct roc_npc_action actions[ROC_NPC_ITEM_TYPE_END] = {};
   oct_port_t *oct_port = vnet_dev_get_port_data (port);
+  ethernet_header_t eth_spec = {}, eth_mask = {};
+  sctp_header_t sctp_spec = {}, sctp_mask = {};
+  gtpu_header_t gtpu_spec = {}, gtpu_mask = {};
+  ip4_header_t ip4_spec = {}, ip4_mask = {};
+  ip6_header_t ip6_spec = {}, ip6_mask = {};
+  udp_header_t udp_spec = {}, udp_mask = {};
+  tcp_header_t tcp_spec = {}, tcp_mask = {};
+  esp_header_t esp_spec = {}, esp_mask = {};
   u16 l4_src_port = 0, l4_dst_port = 0;
   u16 l4_src_mask = 0, l4_dst_mask = 0;
   struct roc_npc_action_rss rss_conf = {};
@@ -537,6 +553,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
   struct roc_npc_action_mark mark = {};
   struct roc_npc *npc = &oct_port->npc;
   u8 *flow_spec = 0, *flow_mask = 0;
+  u8 *drv_spec = 0, *drv_mask = 0;
   vnet_dev_rv_t rv = VNET_DEV_OK;
   int layer = 0, index = 0;
   u16 *queues = NULL;
@@ -546,7 +563,6 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
 
   if (FLOW_IS_GENERIC_TYPE (flow))
     {
-      u8 drv_item_spec[1024] = { 0 }, drv_item_mask[1024] = { 0 };
       unformat_input_t input;
       int rc;
 
@@ -562,11 +578,13 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
       unformat_user (&input, unformat_hex_string, &flow_mask);
       unformat_free (&input);
 
+      vec_validate (drv_spec, 1024);
+      vec_validate (drv_mask, 1024);
       oct_flow_parse_state pst = {
 	.nxt_proto = 0,
 	.port = port,
 	.items = item_info,
-	.oct_drv = { .spec = drv_item_spec, .mask = drv_item_mask },
+	.oct_drv = { .spec = drv_spec, .mask = drv_mask },
 	.generic = { .spec = flow_spec,
 		     .mask = flow_mask,
 		     .len = vec_len (flow_spec) },
@@ -577,6 +595,8 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
 	{
 	  vec_free (flow_spec);
 	  vec_free (flow_mask);
+	  vec_free (drv_spec);
+	  vec_free (drv_mask);
 	  return VNET_DEV_ERR_NOT_SUPPORTED;
 	}
 
@@ -585,9 +605,8 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
 
   if (FLOW_IS_ETHERNET_CLASS (flow))
     {
-      ethernet_header_t eth_spec = { .type = clib_host_to_net_u16 (
-				       flow->ethernet.eth_hdr.type) },
-			eth_mask = { .type = 0xFFFF };
+      eth_spec.type = clib_host_to_net_u16 (flow->ethernet.eth_hdr.type);
+      eth_mask.type = 0xFFFF;
 
       item_info[layer].spec = (void *) &eth_spec;
       item_info[layer].mask = (void *) &eth_mask;
@@ -600,10 +619,11 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
     {
       vnet_flow_ip4_t *ip4_hdr = &flow->ip4;
       proto = ip4_hdr->protocol.prot;
-      ip4_header_t ip4_spec = { .src_address = ip4_hdr->src_addr.addr,
-				.dst_address = ip4_hdr->dst_addr.addr },
-		   ip4_mask = { .src_address = ip4_hdr->src_addr.mask,
-				.dst_address = ip4_hdr->dst_addr.mask };
+
+      ip4_spec.src_address = ip4_hdr->src_addr.addr;
+      ip4_spec.dst_address = ip4_hdr->dst_addr.addr;
+      ip4_mask.src_address = ip4_hdr->src_addr.mask;
+      ip4_mask.dst_address = ip4_hdr->dst_addr.mask;
 
       item_info[layer].spec = (void *) &ip4_spec;
       item_info[layer].mask = (void *) &ip4_mask;
@@ -625,10 +645,11 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
     {
       vnet_flow_ip6_t *ip6_hdr = &flow->ip6;
       proto = ip6_hdr->protocol.prot;
-      ip6_header_t ip6_spec = { .src_address = ip6_hdr->src_addr.addr,
-				.dst_address = ip6_hdr->dst_addr.addr },
-		   ip6_mask = { .src_address = ip6_hdr->src_addr.mask,
-				.dst_address = ip6_hdr->dst_addr.mask };
+
+      ip6_spec.src_address = ip6_hdr->src_addr.addr;
+      ip6_spec.dst_address = ip6_hdr->dst_addr.addr;
+      ip6_mask.src_address = ip6_hdr->src_addr.mask;
+      ip6_mask.dst_address = ip6_hdr->dst_addr.mask;
 
       item_info[layer].spec = (void *) &ip6_spec;
       item_info[layer].mask = (void *) &ip6_mask;
@@ -653,16 +674,15 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
   switch (proto)
     {
     case IP_PROTOCOL_UDP:
-      item_info[layer].type = ROC_NPC_ITEM_TYPE_UDP;
-
-      udp_header_t udp_spec = { .src_port = l4_src_port,
-				.dst_port = l4_dst_port },
-		   udp_mask = { .src_port = l4_src_mask,
-				.dst_port = l4_dst_mask };
+      udp_spec.src_port = l4_src_port;
+      udp_spec.dst_port = l4_dst_port;
+      udp_mask.src_port = l4_src_mask;
+      udp_mask.dst_port = l4_dst_mask;
 
       item_info[layer].spec = (void *) &udp_spec;
       item_info[layer].mask = (void *) &udp_mask;
       item_info[layer].size = sizeof (udp_header_t);
+      item_info[layer].type = ROC_NPC_ITEM_TYPE_UDP;
       layer++;
 
       if (FLOW_IS_L4_TUNNEL_TYPE (flow))
@@ -670,14 +690,13 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
 	  switch (flow->type)
 	    {
 	    case VNET_FLOW_TYPE_IP4_GTPU:
-	      item_info[layer].type = ROC_NPC_ITEM_TYPE_GTPU;
-	      gtpu_header_t gtpu_spec = { .teid = clib_host_to_net_u32 (
-					    flow->ip4_gtpu.teid) },
-			    gtpu_mask = { .teid = 0XFFFFFFFF };
+	      gtpu_spec.teid = clib_host_to_net_u32 (flow->ip4_gtpu.teid);
+	      gtpu_mask.teid = 0XFFFFFFFF;
 
 	      item_info[layer].spec = (void *) &gtpu_spec;
 	      item_info[layer].mask = (void *) &gtpu_mask;
 	      item_info[layer].size = sizeof (gtpu_header_t);
+	      item_info[layer].type = ROC_NPC_ITEM_TYPE_GTPU;
 	      layer++;
 	      break;
 
@@ -689,42 +708,39 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
       break;
 
     case IP_PROTOCOL_TCP:
-      item_info[layer].type = ROC_NPC_ITEM_TYPE_TCP;
-
-      tcp_header_t tcp_spec = { .src_port = l4_src_port,
-				.dst_port = l4_dst_port },
-		   tcp_mask = { .src_port = l4_src_mask,
-				.dst_port = l4_dst_mask };
+      tcp_spec.src_port = l4_src_port;
+      tcp_spec.dst_port = l4_dst_port;
+      tcp_mask.src_port = l4_src_mask;
+      tcp_mask.dst_port = l4_dst_mask;
 
       item_info[layer].spec = (void *) &tcp_spec;
       item_info[layer].mask = (void *) &tcp_mask;
       item_info[layer].size = sizeof (tcp_header_t);
+      item_info[layer].type = ROC_NPC_ITEM_TYPE_TCP;
       layer++;
       break;
 
     case IP_PROTOCOL_SCTP:
-      item_info[layer].type = ROC_NPC_ITEM_TYPE_SCTP;
-
-      sctp_header_t sctp_spec = { .src_port = l4_src_port,
-				  .dst_port = l4_dst_port },
-		    sctp_mask = { .src_port = l4_src_mask,
-				  .dst_port = l4_dst_mask };
+      sctp_spec.src_port = l4_src_port;
+      sctp_spec.dst_port = l4_dst_port;
+      sctp_mask.src_port = l4_src_mask;
+      sctp_mask.dst_port = l4_dst_mask;
 
       item_info[layer].spec = (void *) &sctp_spec;
       item_info[layer].mask = (void *) &sctp_mask;
       item_info[layer].size = sizeof (sctp_header_t);
+      item_info[layer].type = ROC_NPC_ITEM_TYPE_SCTP;
       layer++;
       break;
 
     case IP_PROTOCOL_IPSEC_ESP:
-      item_info[layer].type = ROC_NPC_ITEM_TYPE_ESP;
-      esp_header_t esp_spec = { .spi = clib_host_to_net_u32 (
-				  flow->ip4_ipsec_esp.spi) },
-		   esp_mask = { .spi = 0xFFFFFFFF };
+      esp_spec.spi = clib_host_to_net_u32 (flow->ip4_ipsec_esp.spi);
+      esp_mask.spi = 0xFFFFFFFF;
 
       item_info[layer].spec = (void *) &esp_spec;
       item_info[layer].mask = (void *) &esp_mask;
       item_info[layer].size = sizeof (u32);
+      item_info[layer].type = ROC_NPC_ITEM_TYPE_ESP;
       layer++;
       break;
 
@@ -803,10 +819,10 @@ parse_flow_actions:
   if (queues)
     clib_mem_free (queues);
 
-  if (flow_spec)
-    vec_free (flow_spec);
-  if (flow_mask)
-    vec_free (flow_mask);
+  vec_free (flow_spec);
+  vec_free (flow_mask);
+  vec_free (drv_spec);
+  vec_free (drv_mask);
 
   return rv;
 }
