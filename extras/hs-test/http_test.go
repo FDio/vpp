@@ -29,7 +29,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
-		HttpClientPostFileTest, HttpClientPostFilePtrTest)
+		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest)
 }
@@ -303,6 +303,26 @@ func HttpClientPostFileTest(s *NoTopoSuite) {
 
 func HttpClientPostFilePtrTest(s *NoTopoSuite) {
 	httpClientPostFile(s, true, 131072)
+}
+
+func cliTestAuthority(s *NoTopoSuite, authority string) {
+	o := s.GetContainerByName("vpp").VppInstance.Vppctl("test http authority-form " + authority)
+	s.AssertNotContains(o, "error")
+	s.AssertContains(o, authority)
+}
+
+func cliTestAuthorityError(s *NoTopoSuite, authority string) {
+	o := s.GetContainerByName("vpp").VppInstance.Vppctl("test http authority-form " + authority)
+	s.AssertContains(o, "error")
+}
+
+func AuthorityFormTargetTest(s *NoTopoSuite) {
+	cliTestAuthority(s, "10.10.2.45:20")
+	cliTestAuthority(s, "[dead:beef::1234]:443")
+	cliTestAuthorityError(s, "example.com:80")
+	cliTestAuthorityError(s, "10.10.2.45")
+	cliTestAuthorityError(s, "1000.10.2.45:20")
+	cliTestAuthorityError(s, "[xyz0::1234]:443")
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {

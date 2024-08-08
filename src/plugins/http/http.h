@@ -921,6 +921,58 @@ http_serialize_headers (http_header_t *headers)
   return headers_buf;
 }
 
+typedef struct
+{
+  ip46_address_t ip;
+  u16 port;
+  u8 is_ip4;
+} http_uri_t;
+
+always_inline int
+http_parse_authority_form_target (u8 *target, http_uri_t *authority)
+{
+  unformat_input_t input;
+  u32 port;
+  int rv = 0;
+
+  unformat_init_vector (&input, vec_dup (target));
+  if (unformat (&input, "[%U]:%d", unformat_ip6_address, &authority->ip.ip6,
+		&port))
+    {
+      authority->port = clib_host_to_net_u16 (port);
+      authority->is_ip4 = 0;
+    }
+  else if (unformat (&input, "%U:%d", unformat_ip4_address, &authority->ip.ip4,
+		     &port))
+    {
+      authority->port = clib_host_to_net_u16 (port);
+      authority->is_ip4 = 1;
+    }
+  /* TODO reg-name resolution */
+  else
+    {
+      clib_warning ("unsupported format '%v'", target);
+      rv = -1;
+    }
+  unformat_free (&input);
+  return rv;
+}
+
+always_inline u8 *
+http_serialize_authority_form_target (http_uri_t *authority)
+{
+  u8 *s;
+
+  if (authority->is_ip4)
+    s = format (0, "%U:%d", format_ip4_address, &authority->ip.ip4,
+		clib_net_to_host_u16 (authority->port));
+  else
+    s = format (0, "[%U]:%d", format_ip6_address, &authority->ip.ip6,
+		clib_net_to_host_u16 (authority->port));
+
+  return s;
+}
+
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
 
 /*
