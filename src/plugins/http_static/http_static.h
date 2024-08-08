@@ -156,6 +156,8 @@ typedef struct
   u8 enable_url_handlers;
   /** Max cache size before LRU occurs */
   u64 cache_size;
+  /** How long a response is considered fresh (in seconds) */
+  u8 *max_age;
 
   /** hash table of file extensions to mime types string indices */
   uword *mime_type_indices_by_file_extensions;
