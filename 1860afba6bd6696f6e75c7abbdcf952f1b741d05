@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4423786_f5c8b60a",
+        "filename": "src/plugins/http/http_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-08T21:57:30Z",
+      "side": 1,
+      "message": "No strong opinion, just wondering: should we move this to unittest plugin?",
+      "revId": "1860afba6bd6696f6e75c7abbdcf952f1b741d05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
