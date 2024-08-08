@@ -475,10 +475,9 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_add_header (&hs->resp_headers,
 		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
 		   http_content_type_token (type));
-  /* TODO configurable max-age value */
-  http_add_header (&hs->resp_headers,
-		   http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
-		   http_token_lit ("max-age=600"));
+  http_add_header (
+    &hs->resp_headers, http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
+    (const char *) hsm->max_age_formatted, vec_len (hsm->max_age_formatted));
 
 done:
   vec_free (sanitized_path);
@@ -863,6 +862,8 @@ hss_create (vlib_main_t *vm)
   if (hsm->enable_url_handlers)
     hss_url_handlers_init (hsm);
 
+  hsm->max_age_formatted = format (0, "max-age=%d", hsm->max_age);
+
   return 0;
 }
 
@@ -883,6 +884,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hsm->private_segment_size = 0;
   hsm->fifo_size = 0;
   hsm->cache_size = 10 << 20;
+  hsm->max_age = 600;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -914,6 +916,8 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "url-handlers"))
 	hsm->enable_url_handlers = 1;
+      else if (unformat (line_input, "max-age %d", &hsm->max_age))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -971,8 +975,8 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
   .short_help =
     "http static server www-root <path> [prealloc-fifos <nn>]\n"
-    "[private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]\n"
-    "[ptr-thresh <nn>] [url-handlers] [debug [nn]]\n",
+    "[private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]\n"
+    "[uri <uri>] [ptr-thresh <nn>] [url-handlers] [debug [nn]]\n",
   .function = hss_create_command_fn,
 };
 
