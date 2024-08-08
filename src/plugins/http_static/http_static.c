@@ -77,6 +77,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   hsm->private_segment_size = private_segment_size;
   hsm->www_root = format (0, "%s%c", www_root, 0);
   hsm->uri = format (0, "%s%c", uri, 0);
+  hsm->max_age = 600;
 
   if (vec_len (hsm->www_root) < 2)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -116,6 +117,64 @@ static void vl_api_http_static_enable_t_handler
 		    ntohl (mp->private_segment_size), mp->www_root, mp->uri);
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
+}
+
+/** \brief API helper function for vl_api_http_static_enable_v2_t messages
+ */
+static int
+hss_enable_api_v2 (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
+		u32 private_segment_size, u8 *www_root, u8 *uri, u32 max_age)
+{
+  hss_main_t *hsm = &hss_main;
+  int rv;
+
+  hsm->fifo_size = fifo_size;
+  hsm->cache_size = cache_limit;
+  hsm->prealloc_fifos = prealloc_fifos;
+  hsm->private_segment_size = private_segment_size;
+  hsm->www_root = format (0, "%s%c", www_root, 0);
+  hsm->uri = format (0, "%s%c", uri, 0);
+  hsm->max_age = max_age;
+
+  if (vec_len (hsm->www_root) < 2)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (hsm->app_index != ~0)
+    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
+
+  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */);
+
+  rv = hss_create (hsm->vlib_main);
+  switch (rv)
+    {
+    case 0:
+      break;
+    default:
+      vec_free (hsm->www_root);
+      vec_free (hsm->uri);
+      return VNET_API_ERROR_INIT_FAILED;
+    }
+  return 0;
+}
+
+/* API message handler */
+static void vl_api_http_static_enable_v2_t_handler
+  (vl_api_http_static_enable_v2_t * mp)
+{
+  vl_api_http_static_enable_v2_reply_t *rmp;
+  hss_main_t *hsm = &hss_main;
+  int rv;
+
+  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
+  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
+
+  rv =
+    hss_enable_api_v2 (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+		    ntohl (mp->prealloc_fifos),
+		    ntohl (mp->private_segment_size), mp->www_root, mp->uri,
+        ntohl (mp->max_age));
+
+  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V2_REPLY);
 }
 
 #include <http_static/http_static.api.c>
