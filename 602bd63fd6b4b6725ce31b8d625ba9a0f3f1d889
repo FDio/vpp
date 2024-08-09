@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "51033582_fe95dbd8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-09T14:40:23Z",
+      "side": 1,
+      "message": "looks good, just two nits",
+      "revId": "602bd63fd6b4b6725ce31b8d625ba9a0f3f1d889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aeccf927_25a20ffd",
+        "filename": "src/plugins/http_static/http_static.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-09T14:40:23Z",
+      "side": 1,
+      "message": "we don\u0027t need 2 version of this function, keep only one with max_age parameter and in vl_api_http_static_enable_t_handler pass default value",
+      "revId": "602bd63fd6b4b6725ce31b8d625ba9a0f3f1d889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4190911_3b46cf82",
+        "filename": "src/plugins/http_static/http_static_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-09T14:40:23Z",
+      "side": 1,
+      "message": "this constant is used in multiple places, please create HSS_DEFAULT_MAX_AGE",
+      "range": {
+        "startLine": 141,
+        "startChar": 16,
+        "endLine": 141,
+        "endChar": 19
+      },
+      "revId": "602bd63fd6b4b6725ce31b8d625ba9a0f3f1d889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
