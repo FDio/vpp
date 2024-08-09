@@ -34,6 +34,24 @@
       "parentUuid": "c4423786_f5c8b60a",
       "revId": "1860afba6bd6696f6e75c7abbdcf952f1b741d05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f87a598_fec1e8b2",
+        "filename": "src/plugins/http/http_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-09T20:08:43Z",
+      "side": 1,
+      "message": "Sort of, but I suspect we\u0027ll have components that depend on plugins for backends. Still, good point. Let\u0027s leave it as you have it, at least for now.",
+      "parentUuid": "7f596127_a42b60f4",
+      "revId": "1860afba6bd6696f6e75c7abbdcf952f1b741d05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
