@@ -16,6 +16,24 @@
       "message": "No strong opinion, just wondering: should we move this to unittest plugin?",
       "revId": "1860afba6bd6696f6e75c7abbdcf952f1b741d05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f596127_a42b60f4",
+        "filename": "src/plugins/http/http_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-09T07:50:49Z",
+      "side": 1,
+      "message": "unittest plugin is just for infra/core stuff, isn\u0027t it? There aren\u0027t any plugin tests. Maybe create executable instead of running it within cli?",
+      "parentUuid": "c4423786_f5c8b60a",
+      "revId": "1860afba6bd6696f6e75c7abbdcf952f1b741d05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
