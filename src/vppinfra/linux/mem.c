@@ -192,6 +192,7 @@ legacy_memfd_create (u8 * name)
       vec_free (temp);
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mkdtemp");
+      abort();
       return CLIB_MEM_ERROR;
     }
 
@@ -201,6 +202,7 @@ legacy_memfd_create (u8 * name)
       rmdir ((char *) mount_dir);
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mount");
+      abort();
       return CLIB_MEM_ERROR;
     }
 
@@ -210,6 +212,7 @@ legacy_memfd_create (u8 * name)
     {
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "mkdtemp");
+      abort();
     }
 
   umount2 ((char *) mount_dir, MNT_DETACH);
@@ -237,6 +240,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   switch (log2_page_size)
     {
     case CLIB_MEM_PAGE_SZ_UNKNOWN:
+      abort();
       return CLIB_MEM_ERROR;
     case CLIB_MEM_PAGE_SZ_DEFAULT:
       memfd_flags = MFD_ALLOW_SEALING;
@@ -271,6 +275,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "memfd_create");
       vec_free (s);
+      abort();
       return CLIB_MEM_ERROR;
     }
 
@@ -282,6 +287,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, "fcntl (F_ADD_SEALS)");
       close (fd);
+      abort();
       return CLIB_MEM_ERROR;
     }
 
@@ -503,11 +509,13 @@ clib_mem_vm_unmap (void *base)
   map_unlock ();
 
   if (munmap (hdr, sys_page_sz) != 0)
+    abort();
     return CLIB_MEM_ERROR;
 
   return 0;
 out:
   map_unlock ();
+  abort();
   return CLIB_MEM_ERROR;
 }
 
@@ -626,6 +634,7 @@ clib_mem_set_numa_affinity (u8 numa_node, int force)
 	  vec_reset_length (mm->error);
 	  mm->error = clib_error_return (mm->error, "%s: numa not supported",
 					 (char *) __func__);
+          abort();
 	  return CLIB_MEM_ERROR;
 	}
       else
@@ -643,6 +652,7 @@ clib_mem_set_numa_affinity (u8 numa_node, int force)
   if (rv)
     {
       mm->error = clib_error_return_unix (mm->error, (char *) __func__);
+      abort();
       return CLIB_MEM_ERROR;
     }
 
@@ -658,6 +668,7 @@ clib_mem_set_default_numa_affinity ()
     {
       vec_reset_length (mm->error);
       mm->error = clib_error_return_unix (mm->error, (char *) __func__);
+      abort();
       return CLIB_MEM_ERROR;
     }
   return 0;
