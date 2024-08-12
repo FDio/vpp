@@ -27,6 +27,10 @@ device_attach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (!a.flags.n &&
 	       unformat (input, "flags %U", unformat_vnet_dev_flags, &a.flags))
 	;
+      else if (!a.vf_token[0] &&
+	       unformat (input, "vf-token %U", unformat_c_string_array,
+			 a.vf_token, sizeof (a.vf_token)))
+	;
       else if (!a.args && unformat (input, "args %v", &a.args))
 	;
       else
@@ -47,7 +51,7 @@ device_attach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (device_attach_cmd, static) = {
   .path = "device attach",
-  .short_help = "device attach <device-id> [driver <name>] "
+  .short_help = "device attach <device-id> [vf-token <token>] [driver <name>] "
 		"[args <dev-args>]",
   .function = device_attach_cmd_fn,
 };

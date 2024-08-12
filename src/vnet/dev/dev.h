@@ -5,6 +5,7 @@
 #ifndef _VNET_DEV_H_
 #define _VNET_DEV_H_
 
+#include <uuid/uuid.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/error_bootstrap.h>
 #include <vppinfra/format.h>
@@ -386,6 +387,7 @@ typedef struct vnet_dev
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   vnet_dev_arg_t *args;
+  uuid_t uuid;
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
