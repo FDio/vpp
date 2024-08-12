@@ -40,11 +40,13 @@ vl_api_dev_attach_t_handler (vl_api_dev_attach_t *mp)
 
   STATIC_ASSERT (sizeof (mp->device_id) == sizeof (a.device_id), "");
   STATIC_ASSERT (sizeof (mp->driver_name) == sizeof (a.driver_name), "");
+  STATIC_ASSERT (sizeof (mp->vf_token) == sizeof (a.vf_token), "");
   STATIC_ASSERT (sizeof (mp->flags) == sizeof (a.flags), "");
 
   a.flags.n = mp->flags;
   strncpy (a.device_id, (char *) mp->device_id, sizeof (a.device_id));
   strncpy (a.driver_name, (char *) mp->driver_name, sizeof (a.driver_name));
+  strncpy (a.vf_token, (char *) mp->vf_token, sizeof (a.vf_token));
   vec_add (a.args, mp->args.buf, mp->args.length);
 
   rv = vnet_dev_api_attach (vm, &a);

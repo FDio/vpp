@@ -72,7 +72,8 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
   if (vnet_dev_bus_pci_device_id_to_pci_addr (&pdd->addr, dev->device_id) == 0)
     return VNET_DEV_ERR_INVALID_DEVICE_ID;
 
-  if ((err = vlib_pci_device_open (vm, &pdd->addr, 0, &pdd->handle)))
+  if ((err = vlib_pci_device_open_with_uuid (vm, &pdd->addr, dev->uuid, 0,
+					     &pdd->handle)))
     {
       log_err (dev, "device_open: %U", format_clib_error, err);
       clib_error_free (err);

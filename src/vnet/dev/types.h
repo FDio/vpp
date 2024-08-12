@@ -5,6 +5,7 @@
 #ifndef _VNET_DEV_TYPES_H_
 #define _VNET_DEV_TYPES_H_
 
+#include <uuid/uuid.h>
 #include <vppinfra/types.h>
 #include <vnet/dev/errors.h>
 
@@ -12,6 +13,7 @@ typedef char vnet_dev_device_id_t[48];
 typedef char vnet_dev_if_name_t[32];
 typedef char vnet_dev_driver_name_t[16];
 typedef char vnet_dev_bus_name_t[8];
+typedef char vnet_dev_vf_token_t[UUID_STR_LEN];
 typedef u16 vnet_dev_port_id_t;
 typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;

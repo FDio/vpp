@@ -2,6 +2,7 @@
  * Copyright (c) 2023 Cisco Systems, Inc.
  */
 
+#include <uuid/uuid.h>
 #include "vppinfra/pool.h"
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
@@ -89,6 +90,24 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
       goto done;
     }
   dev->description = dev_desc;
+
+  uuid_clear (dev->uuid);
+  if (args->vf_token[0])
+    {
+      if (uuid_parse ((char *) args->vf_token, dev->uuid))
+	{
+	  log_err (dev, "uuid parse failed for %s", args->device_id);
+	  rv = VNET_DEV_ERR_INVALID_VALUE;
+	  goto done;
+	}
+
+      if (uuid_is_null (dev->uuid))
+	{
+	  log_err (dev, "Null uuid for %s", args->device_id);
+	  rv = VNET_DEV_ERR_INVALID_VALUE;
+	  goto done;
+	}
+    }
 
   if (driver->registration->args)
     for (vnet_dev_arg_t *a = driver->registration->args;

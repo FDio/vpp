@@ -8,12 +8,14 @@
 #include <vppinfra/clib.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/types.h>
+#include <uuid/uuid.h>
 
 typedef struct
 {
   vnet_dev_device_id_t device_id;
   vnet_dev_driver_name_t driver_name;
   vnet_dev_flags_t flags;
+  vnet_dev_vf_token_t vf_token;
   u8 *args;
 
   /* return */
