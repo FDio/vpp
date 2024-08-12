@@ -14,13 +14,25 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 };
 
 static int
-vnet_dev_bus_pci_device_id_to_pci_addr (vlib_pci_addr_t *addr, char *str)
+vnet_dev_bus_pci_device_id_to_pci_addr (vlib_pci_addr_t *addr, u8 *uuid,
+					char *str)
 {
   unformat_input_t input;
   uword rv;
+
   unformat_init_string (&input, str, strlen (str));
-  rv = unformat (&input, "pci" VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "%U",
-		 unformat_vlib_pci_addr, addr);
+
+  if ((rv = unformat (&input,
+		      "pci" VNET_DEV_DEVICE_ID_PREFIX_DELIMITER
+		      "%U" VNET_DEV_DEVICE_ID_PREFIX_DELIMITER
+		      "vf-token" VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "%U",
+		      unformat_vlib_pci_addr, addr, unformat_uuid, uuid)))
+    ;
+  else if ((rv =
+	      unformat (&input, "pci" VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "%U",
+			unformat_vlib_pci_addr, addr)))
+    ;
+
   unformat_free (&input);
   return rv;
 }
@@ -32,10 +44,11 @@ vnet_dev_bus_pci_get_device_info (vlib_main_t *vm, char *device_id)
   vlib_pci_addr_t addr = {};
   clib_error_t *err = 0;
   vlib_pci_device_info_t *di = 0;
+  u8 uuid[16];
 
   vlib_log_debug (dev_log.class, "device %s", device_id);
 
-  if (vnet_dev_bus_pci_device_id_to_pci_addr (&addr, device_id) == 0)
+  if (vnet_dev_bus_pci_device_id_to_pci_addr (&addr, uuid, device_id) == 0)
     return 0;
 
   di = vlib_pci_get_device_info (vm, &addr, &err);
@@ -69,10 +82,13 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
   clib_error_t *err = 0;
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
 
-  if (vnet_dev_bus_pci_device_id_to_pci_addr (&pdd->addr, dev->device_id) == 0)
+  clib_memset (dev->uuid, 0, 16);
+  if (vnet_dev_bus_pci_device_id_to_pci_addr (&pdd->addr, dev->uuid,
+					      dev->device_id) == 0)
     return VNET_DEV_ERR_INVALID_DEVICE_ID;
 
-  if ((err = vlib_pci_device_open (vm, &pdd->addr, 0, &pdd->handle)))
+  if ((err = vlib_pci_device_open_with_uuid (vm, &pdd->addr, dev->uuid, 0,
+					     &pdd->handle)))
     {
       log_err (dev, "device_open: %U", format_clib_error, err);
       clib_error_free (err);

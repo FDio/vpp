@@ -18,7 +18,7 @@ autoendian define dev_attach
 {
   u32 client_index;
   u32 context;
-  string device_id[48];
+  string device_id[96];
   string driver_name[16];
   vl_api_dev_flags_t flags;
   string args[];

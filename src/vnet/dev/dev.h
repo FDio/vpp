@@ -386,6 +386,7 @@ typedef struct vnet_dev
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   vnet_dev_arg_t *args;
+  u8 uuid[16];
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
