@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4c4122f_888e0219",
+        "filename": "src/plugins/http_static/http_static.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-12T10:04:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aeccf927_25a20ffd",
+      "revId": "602bd63fd6b4b6725ce31b8d625ba9a0f3f1d889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a4190911_3b46cf82",
@@ -48,6 +66,30 @@
       "writtenOn": "2024-08-09T14:40:23Z",
       "side": 1,
       "message": "this constant is used in multiple places, please create HSS_DEFAULT_MAX_AGE",
+      "range": {
+        "startLine": 141,
+        "startChar": 16,
+        "endLine": 141,
+        "endChar": 19
+      },
+      "revId": "602bd63fd6b4b6725ce31b8d625ba9a0f3f1d889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb9e6e0e_2104b261",
+        "filename": "src/plugins/http_static/http_static_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-12T10:04:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a4190911_3b46cf82",
       "range": {
         "startLine": 141,
         "startChar": 16,
