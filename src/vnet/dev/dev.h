@@ -380,7 +380,7 @@ typedef struct vnet_dev
   vnet_dev_driver_index_t driver_index;
   u32 index;
   u32 process_node_index;
-  u8 bus_data[32] __clib_aligned (16);
+  u8 bus_data[48] __clib_aligned (16);
   vnet_dev_ops_t ops;
   vnet_dev_port_t **ports;
   vnet_dev_periodic_op_t *periodic_ops;

@@ -8,7 +8,7 @@
 #include <vppinfra/types.h>
 #include <vnet/dev/errors.h>
 
-typedef char vnet_dev_device_id_t[48];
+typedef char vnet_dev_device_id_t[96];
 typedef char vnet_dev_if_name_t[32];
 typedef char vnet_dev_driver_name_t[16];
 typedef char vnet_dev_bus_name_t[8];

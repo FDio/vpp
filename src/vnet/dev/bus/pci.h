@@ -30,6 +30,7 @@ typedef struct
   vlib_pci_dev_handle_t handle;
   vnet_dev_pci_intx_handler_fn_t *intx_handler;
   vnet_dev_pci_msix_handler_fn_t **msix_handlers;
+  u8 uuid[16];
 } vnet_dev_bus_pci_device_data_t;
 
 static_always_inline vnet_dev_bus_pci_device_data_t *
