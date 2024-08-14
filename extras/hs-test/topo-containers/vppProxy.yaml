@@ -1,0 +1,26 @@
+---
+volumes:
+  - volume: &shared-vol-vpp-proxy
+      host-dir: "$HST_VOLUME_DIR/shared-vol-vpp-proxy"
+
+containers:
+  - name: "vpp-proxy"
+    volumes:
+      - <<: *shared-vol-vpp-proxy
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+  - name: "nginx-server"
+    volumes:
+      - <<: *shared-vol-vpp-proxy
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+    image: "hs-test/nginx-server"
+    is-optional: true
+  - name: "curl"
+    vars:
+      - name: LD_LIBRARY_PATH
+        value: "/usr/local/lib"
+    image: "hs-test/curl"
+    is-optional: true
+    run-detached: false
+
