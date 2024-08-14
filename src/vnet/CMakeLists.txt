@@ -1053,10 +1053,13 @@ list(APPEND VNET_API_FILES session/session.api)
 
 list(APPEND VNET_SOURCES
   tls/tls.c
+  tls/tls_record.c
 )
 
 list(APPEND VNET_HEADERS
   tls/tls.h
+  tls/tls_inlines.h
+  tls/tls_record.h
   tls/tls_test.h
 )
 
