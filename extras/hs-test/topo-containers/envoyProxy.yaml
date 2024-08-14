@@ -1,0 +1,40 @@
+---
+volumes:
+  - volume: &shared-vol-envoy-proxy
+      host-dir: "$HST_VOLUME_DIR/shared-vol-envoy-proxy"
+
+containers:
+  - name: "vpp"
+    volumes:
+      - <<: *shared-vol-envoy-proxy
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+  - name: "envoy-vcl"
+    volumes:
+      - <<: *shared-vol-envoy-proxy
+        container-dir: "/tmp/vpp-envoy"
+        is-default-work-dir: true
+      - host-dir: "$HST_DIR/resources/envoy"
+        container-dir: "/tmp"
+    vars:
+      - name: "ENVOY_UID"
+        value: "0"
+      - name: "VCL_CONFIG"
+        value: "/tmp/vcl.conf"
+    image: "envoyproxy/envoy-contrib:v1.30-latest"
+    extra-args: "--log-format [%t][%l][%g:%#]%_ --concurrency 2 -c /etc/envoy/envoy.yaml"
+    is-optional: true
+  - name: "nginx-server"
+    volumes:
+      - <<: *shared-vol-envoy-proxy
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+    image: "hs-test/nginx-server"
+    is-optional: true
+  - name: "curl"
+    vars:
+      - name: LD_LIBRARY_PATH
+        value: "/usr/local/lib"
+    image: "hs-test/curl"
+    is-optional: true
+    run-detached: false
