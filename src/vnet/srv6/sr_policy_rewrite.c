@@ -503,8 +503,9 @@ update_lb (ip6_sr_policy_t * sr_policy)
       };
 
       /* Add FIB entry for BSID */
-      fhc = fib_table_get_flow_hash_config (sr_policy->fib_table,
-					    FIB_PROTOCOL_IP6);
+      fhc = fib_table_get_flow_hash_config (
+	fib_table_find (FIB_PROTOCOL_IP6, sr_policy->fib_table),
+	FIB_PROTOCOL_IP6);
 
       dpo_set (&sr_policy->bsid_dpo, DPO_LOAD_BALANCE, DPO_PROTO_IP6,
 	       load_balance_create (0, DPO_PROTO_IP6, fhc));
