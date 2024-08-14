@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -125,4 +126,28 @@ func TcpSendReceive(address, data string) (string, error) {
 		return "", err
 	}
 	return string(reply), nil
+}
+
+func (s *HstSuite) RunCurlContainer(args string) (string, string) {
+	curlCont := s.GetContainerByName("curl")
+	cmd := fmt.Sprintf("curl -v -s %s", args)
+	s.Log(cmd)
+	curlCont.ExtraRunningArgs = cmd
+	curlCont.Run()
+	stdout, stderr := curlCont.GetOutput()
+	s.Log(stderr)
+	s.Log(stdout)
+	return stdout, stderr
+}
+
+func (s *HstSuite) CollectNginxLogs(containerName string) {
+	nginxContainer := s.GetContainerByName(containerName)
+	targetDir := nginxContainer.getLogDirPath()
+	source := nginxContainer.GetHostWorkDir() + "/" + nginxContainer.Name + "-"
+	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"access.log")
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
 }
