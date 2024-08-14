@@ -1,8 +1,0 @@
-ARG UBUNTU_VERSION
-
-FROM ubuntu:${UBUNTU_VERSION}
-
-RUN apt-get update \
- && apt-get install -y gcc git make autoconf libtool pkg-config cmake ninja-build golang \
- && rm -rf /var/lib/apt/lists/*
-
