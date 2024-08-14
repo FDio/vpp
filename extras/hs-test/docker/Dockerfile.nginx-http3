@@ -1,4 +1,10 @@
-FROM hs-test/build
+ARG UBUNTU_VERSION
+
+FROM ubuntu:${UBUNTU_VERSION}
+
+RUN apt-get update \
+ && apt-get install -y gcc git make autoconf libtool pkg-config cmake ninja-build golang \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY script/build_boringssl.sh /build_boringssl.sh
 RUN git clone https://boringssl.googlesource.com/boringssl
