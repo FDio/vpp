@@ -16,6 +16,24 @@
       "message": "Should we make a union of this and the mma_rules struct. That is, we can\u0027t have them both on at the same time",
       "revId": "3af64b03ed516f12e684ff46c09227dcc92329e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "445944cd_f4b54cce",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-15T22:58:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c46dc6d5_7c635473",
+      "revId": "3af64b03ed516f12e684ff46c09227dcc92329e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
