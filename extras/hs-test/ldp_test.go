@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest)
+	RegisterVethTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest, RedisBenchmarkTest)
 }
 
 func LDPreloadIperfVppInterruptModeTest(s *VethsSuite) {
@@ -91,4 +91,88 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 
 	// stop server
 	stopServerCh <- struct{}{}
+}
+
+func RedisBenchmarkTest(s *VethsSuite) {
+	s.SkipIfMultiWorker()
+	var clnVclConf, srvVclConf Stanza
+	envVarsCln := make(map[string]string)
+	envVarsSrv := make(map[string]string)
+
+	serverContainer := s.GetContainerByName("server-vpp")
+	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
+	defer delete(serverContainer.EnvVars, "LD_PRELOAD")
+	defer delete(serverContainer.EnvVars, "VCL_CONFIG")
+
+	clientContainer := s.GetContainerByName("client-vpp")
+	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
+	defer delete(clientContainer.EnvVars, "LD_PRELOAD")
+	defer delete(clientContainer.EnvVars, "VCL_CONFIG")
+
+	envVarsCln["LD_PRELOAD"] = "/usr/lib/libvcl_ldpreload.so"
+	envVarsSrv["LD_PRELOAD"] = "/usr/lib/libvcl_ldpreload.so"
+	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
+	runningSrv := make(chan error)
+	doneSrv := make(chan struct{})
+	clnCh := make(chan error)
+	clnRes := make(chan string, 1)
+
+	s.Log("starting VPPs")
+	// putting these VCL configs into a function doesn't work for some reason ("ERROR: ldp_constructor: failed!")
+	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		clientContainer.GetContainerWorkDir())
+	err := clnVclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(clientAppSocketApi).Close().
+		SaveToFile(clientVclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
+
+	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		serverContainer.GetContainerWorkDir())
+	err = srvVclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(serverAppSocketApi).Close().
+		SaveToFile(serverVclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
+
+	s.Log("attaching server to vpp")
+	envVarsCln["VCL_CONFIG"] = clientContainer.GetContainerWorkDir() + "/vcl_cln.conf"
+	envVarsSrv["VCL_CONFIG"] = serverContainer.GetContainerWorkDir() + "/vcl_srv.conf"
+
+	go func() {
+		defer GinkgoRecover()
+		s.StartRedisServer(serverContainer, serverVethAddress, envVarsSrv, runningSrv, doneSrv)
+	}()
+
+	err = <-runningSrv
+	s.AssertNil(err)
+	s.Log("attaching client to vpp")
+
+	go func() {
+		defer GinkgoRecover()
+		if *NConfiguredCpus == 1 {
+			s.StartRedisBenchmark(clientContainer, serverVethAddress, envVarsCln, clnCh, clnRes, "1")
+		} else {
+			s.StartRedisBenchmark(clientContainer, serverVethAddress, envVarsCln, clnCh, clnRes, fmt.Sprint(*NConfiguredCpus))
+		}
+
+	}()
+
+	s.Log(<-clnRes)
+	// wait for client's result
+	s.Log(serverContainer.VppInstance.Vppctl("show err"))
+	err = <-clnCh
+	s.AssertNil(err, fmt.Sprint(err))
+	// stop server
+	doneSrv <- struct{}{}
 }
