@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c46dc6d5_7c635473",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-15T17:17:36Z",
+      "side": 1,
+      "message": "Should we make a union of this and the mma_rules struct. That is, we can\u0027t have them both on at the same time",
+      "revId": "3af64b03ed516f12e684ff46c09227dcc92329e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
