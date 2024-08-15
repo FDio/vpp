@@ -530,6 +530,61 @@ func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan err
 	}
 }
 
+func (s *HstSuite) StartRedisServer(c *Container, ipAddress string,
+	envVarsSrv map[string]string, running chan error, done chan struct{}) {
+	for key, value := range envVarsSrv {
+		c.AddEnvVar(key, value)
+	}
+	s.Log("starting server")
+	c.ExecServer("redis-server --daemonize yes --protected-mode no --bind " + ipAddress)
+	cmd := exec.Command("docker", "exec", c.Name, "pidof", "redis-server")
+	err := cmd.Run()
+	if err != nil {
+		msg := fmt.Errorf("failed to start redis server: %v", err)
+		running <- msg
+		return
+	}
+	running <- nil
+	<-done
+}
+
+func (s *HstSuite) StartRedisBenchmark(c *Container, ipAddress string,
+	envVarsCln map[string]string, clnCh chan error, clnRes chan string, threads string) {
+	defer func() {
+		close(clnCh)
+		close(clnRes)
+	}()
+	for key, value := range envVarsCln {
+		c.AddEnvVar(key, value)
+	}
+	s.Log("starting redis-benchmark, please wait")
+
+	nTries := 0
+	for {
+		// exec.Cmd can only be used once, which is why it's in the loop
+		cmd := exec.Command("/bin/sh", "-c", "docker exec "+c.GetEnvVarsAsCliOption()+" "+
+		c.Name+" redis-benchmark --threads "+threads+" -h "+ipAddress)
+		s.Log(cmd)
+		o, err := cmd.CombinedOutput()
+		if err != nil {
+			s.Log(err)
+			if nTries > 5 {
+				s.Log("failed")
+				s.AssertNil(err, fmt.Sprint(err))
+				clnCh <- fmt.Errorf("failed to start redis-benchmark '%s'", err)
+				clnRes <- ""
+				break
+			}
+			time.Sleep(1 * time.Second)
+			nTries++
+		} else {
+			s.Log("running redis-benchmark, please wait")
+			clnRes <- fmt.Sprintf("Client output: %s", o)
+			break
+		}
+	}
+}
+
 func (s *HstSuite) StartHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
 	cmd := newCommand([]string{"./http_server", addressPort, s.Ppid, s.ProcessIndex}, netNs)
 	err := cmd.Start()
