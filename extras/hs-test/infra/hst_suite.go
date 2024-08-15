@@ -18,6 +18,7 @@ import (
 
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/edwarnicke/exechelper"
 	"github.com/onsi/gomega/gmeasure"
 	"gopkg.in/yaml.v3"
 
@@ -527,6 +528,52 @@ func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan err
 			clnRes <- fmt.Sprintf("Client output: %s", o)
 		}
 		break
+	}
+}
+
+func (s *HstSuite) StartRedisServer(c *Container, ipAddress string, envVarsSrv map[string]string, running chan error, done chan struct{}) {
+	for key, value := range envVarsSrv {
+		c.AddEnvVar(key, value)
+	}
+	s.Log("starting server")
+	c.ExecServer("redis-server --daemonize yes --protected-mode no --bind " + ipAddress)
+	err := exechelper.Run("docker exec " + c.Name + " pidof redis-server")
+	if err != nil {
+		msg := fmt.Errorf("failed to start redis server: %v", err)
+		running <- msg
+		return
+	}
+	running <- nil
+	<-done
+}
+
+func (s *HstSuite) StartRedisBenchmark(c *Container, ipAddress string, envVarsCln map[string]string, clnCh chan error, clnRes chan string, threads string) {
+	defer func() {
+		clnCh <- nil
+	}()
+	for key, value := range envVarsCln {
+		c.AddEnvVar(key, value)
+	}
+	s.Log("starting redis-benchmark, please wait")
+	cmd := "docker exec " + c.GetEnvVarsAsCliOption() + " " + c.Name + " redis-benchmark --threads " + threads + " -h " + ipAddress
+	nTries := 0
+	for {
+		s.Log(cmd)
+		o, err := exechelper.CombinedOutput(cmd)
+		if err != nil {
+			if nTries > 5 {
+				s.Log("failed")
+				s.AssertNil(err, fmt.Sprint(err))
+				clnCh <- fmt.Errorf("failed to start redis-benchmark '%s'", err)
+				break
+			}
+			time.Sleep(1 * time.Second)
+			nTries++
+		} else {
+			s.Log("running redis-benchmark, please wait")
+			clnRes <- fmt.Sprintf("Client output: %s", o)
+			break
+		}
 	}
 }
 
