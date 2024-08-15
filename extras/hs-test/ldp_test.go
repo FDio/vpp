@@ -2,86 +2,42 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	RegisterVethTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest)
+	RegisterLdpTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest, RedisBenchmarkTest)
 }
 
-func LDPreloadIperfVppInterruptModeTest(s *VethsSuite) {
+func LDPreloadIperfVppInterruptModeTest(s *LdpSuite) {
 	LDPreloadIperfVppTest(s)
 }
 
-func LDPreloadIperfVppTest(s *VethsSuite) {
-	var clnVclConf, srvVclConf Stanza
-	var ldpreload string
-
-	serverContainer := s.GetContainerByName("server-vpp")
-	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
-
+func LDPreloadIperfVppTest(s *LdpSuite) {
 	clientContainer := s.GetContainerByName("client-vpp")
-	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
-
-	if *IsDebugBuild {
-		ldpreload = "LD_PRELOAD=../../build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
-	} else {
-		ldpreload = "LD_PRELOAD=../../build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
-	}
+	serverContainer := s.GetContainerByName("server-vpp")
 
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
+	clnRes := make(chan string, 1)
 
-	s.Log("starting VPPs")
-
-	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		clientContainer.GetHostWorkDir())
-	err := clnVclConf.
-		NewStanza("vcl").
-		Append("rx-fifo-size 4000000").
-		Append("tx-fifo-size 4000000").
-		Append("app-scope-local").
-		Append("app-scope-global").
-		Append("use-mq-eventfd").
-		Append(clientAppSocketApi).Close().
-		SaveToFile(clientVclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
-
-	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		serverContainer.GetHostWorkDir())
-	err = srvVclConf.
-		NewStanza("vcl").
-		Append("rx-fifo-size 4000000").
-		Append("tx-fifo-size 4000000").
-		Append("app-scope-local").
-		Append("app-scope-global").
-		Append("use-mq-eventfd").
-		Append(serverAppSocketApi).Close().
-		SaveToFile(serverVclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
-
-	s.Log("attaching server to vpp")
-
-	srvEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+serverVclFileName)
 	go func() {
 		defer GinkgoRecover()
-		s.StartServerApp(srvCh, stopServerCh, srvEnv)
+		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid()
+		s.StartServerApp(serverContainer, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
-	err = <-srvCh
+	err := <-srvCh
 	s.AssertNil(err, fmt.Sprint(err))
 
-	s.Log("attaching client to vpp")
-	var clnRes = make(chan string, 1)
-	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clientVclFileName)
 	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.StartClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
+		cmd := "iperf3 -c " + serverVethAddress + " -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
+		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
 	s.Log(<-clnRes)
 
@@ -91,4 +47,44 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 
 	// stop server
 	stopServerCh <- struct{}{}
+}
+
+func RedisBenchmarkTest(s *LdpSuite) {
+	s.SkipIfMultiWorker()
+
+	serverContainer := s.GetContainerByName("server-vpp")
+	clientContainer := s.GetContainerByName("client-vpp")
+
+	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
+	runningSrv := make(chan error)
+	doneSrv := make(chan struct{})
+	clnCh := make(chan error)
+	clnRes := make(chan string, 1)
+
+	go func() {
+		defer GinkgoRecover()
+		cmd := "redis-server --daemonize yes --protected-mode no --bind " + serverVethAddress
+		s.StartServerApp(serverContainer, "redis-server", cmd, runningSrv, doneSrv)
+	}()
+
+	err := <-runningSrv
+	s.AssertNil(err)
+
+	go func() {
+		defer GinkgoRecover()
+		var cmd string
+		if *NConfiguredCpus == 1 {
+			cmd = "redis-benchmark --threads 1 -h " + serverVethAddress
+		} else {
+			cmd = "redis-benchmark --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
+		}
+		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
+	}()
+
+	s.Log(<-clnRes)
+	// wait for client's result
+	err = <-clnCh
+	s.AssertNil(err, fmt.Sprint(err))
+	// stop server
+	doneSrv <- struct{}{}
 }
