@@ -147,7 +147,7 @@ func (c *Container) GetContainerWorkDir() (res string) {
 func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
 	args += c.getVolumesAsCliOption()
-	args += c.getEnvVarsAsCliOption()
+	args += c.GetEnvVarsAsCliOption()
 	if *VppSourceFileDir != "" {
 		args += fmt.Sprintf(" -v %s:%s", *VppSourceFileDir, *VppSourceFileDir)
 	}
@@ -350,7 +350,7 @@ func (c *Container) AddEnvVar(name string, value string) {
 	c.EnvVars[name] = value
 }
 
-func (c *Container) getEnvVarsAsCliOption() string {
+func (c *Container) GetEnvVarsAsCliOption() string {
 	cliOption := ""
 	if len(c.EnvVars) == 0 {
 		return cliOption
@@ -417,7 +417,7 @@ func (c *Container) GetFile(sourceFileName, targetFileName string) error {
  */
 func (c *Container) ExecServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
+	containerExecCommand := "docker exec -d" + c.GetEnvVarsAsCliOption() +
 		" " + c.Name + " " + serverCommand
 	GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
@@ -426,7 +426,7 @@ func (c *Container) ExecServer(command string, arguments ...any) {
 
 func (c *Container) Exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
+	containerExecCommand := "docker exec" + c.GetEnvVarsAsCliOption() +
 		" " + c.Name + " " + cliCommand
 	GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
