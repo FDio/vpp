@@ -21,7 +21,7 @@ func LinuxIperfTest(s *TapSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		s.StartServerApp(srvCh, stopServerCh, nil)
+		s.StartIperfServerApp(srvCh, stopServerCh, nil)
 	}()
 	err := <-srvCh
 	s.AssertNil(err, fmt.Sprint(err))
@@ -30,7 +30,7 @@ func LinuxIperfTest(s *TapSuite) {
 	ipAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.StartClientApp(ipAddress, nil, clnCh, clnRes)
+		s.StartIperfClientApp(ipAddress, nil, clnCh, clnRes)
 	}()
 	s.Log("client running")
 	s.Log(<-clnRes)
