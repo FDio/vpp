@@ -517,6 +517,7 @@ func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan err
 		o, err := cmd.CombinedOutput()
 		if err != nil {
 			if nTries > 5 {
+				clnRes <- ""
 				clnCh <- fmt.Errorf("failed to start client app '%s'.\n%s", err, o)
 				return
 			}
@@ -527,6 +528,57 @@ func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan err
 			clnRes <- fmt.Sprintf("Client output: %s", o)
 		}
 		break
+	}
+}
+
+// Start a server app. 'processName' is used to check whether the app started correctly.
+func (s *HstSuite) StartServerApp_v2(c *Container, processName string, cmd string,
+	running chan error, done chan struct{}) {
+
+	s.Log("starting server")
+	c.ExecServer(cmd)
+	cmd2 := exec.Command("docker", "exec", c.Name, "pidof", processName)
+	err := cmd2.Run()
+	if err != nil {
+		msg := fmt.Errorf("failed to start redis server: %v", err)
+		running <- msg
+		<- done
+		return
+	}
+	running <- nil
+	<-done
+}
+
+func (s *HstSuite) StartClientApp_v2(c *Container, cmd string,
+	clnCh chan error, clnRes chan string) {
+	defer func() {
+		close(clnCh)
+		close(clnRes)
+	}()
+
+	s.Log("starting client app, please wait")
+
+	nTries := 0
+	for {
+		// exec.Cmd can only be used once, which is why it's in the loop
+		cmd2 := exec.Command("/bin/sh", "-c", "docker exec "+c.getEnvVarsAsCliOption()+" "+
+			c.Name + " " + cmd)
+		s.Log(cmd2)
+		o, err := cmd2.CombinedOutput()
+		if err != nil {
+			s.Log(err)
+			if nTries > 5 {
+				clnRes <- ""
+				clnCh <- fmt.Errorf("failed to start client app '%s'", err)
+				s.AssertNil(err, fmt.Sprint(err))
+				break
+			}
+			time.Sleep(1 * time.Second)
+			nTries++
+		} else {
+			clnRes <- fmt.Sprintf("Client output: %s", o)
+			break
+		}
 	}
 }
 
