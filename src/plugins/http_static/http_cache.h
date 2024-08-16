@@ -22,6 +22,9 @@ typedef struct hss_cache_entry_
 {
   /** Name of the file */
   u8 *filename;
+  /** Last modified date, format:
+   *  <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT  */
+  u8 *last_modified;
   /** Contents of the file, as a u8 * vector */
   u8 *data;
   /** Last time the cache entry was used */
@@ -58,9 +61,9 @@ typedef struct hss_cache_
 } hss_cache_t;
 
 u32 hss_cache_lookup_and_attach (hss_cache_t *hc, u8 *path, u8 **data,
-				 u64 *data_len);
+				 u64 *data_len, u8 **last_modified);
 u32 hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data,
-			      u64 *data_len);
+			      u64 *data_len, u8 **last_modified);
 void hss_cache_detach_entry (hss_cache_t *hc, u32 ce_index);
 u32 hss_cache_clear (hss_cache_t *hc);
 void hss_cache_init (hss_cache_t *hc, uword cache_size, u8 debug_level);

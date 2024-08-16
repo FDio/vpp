@@ -411,6 +411,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   u8 *path, *sanitized_path;
   u32 ce_index;
   http_content_type_t type;
+  u8 *last_modified;
 
   /* Feature not enabled */
   if (!hsm->www_root)
@@ -435,8 +436,8 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
   hs->data_offset = 0;
 
-  ce_index =
-    hss_cache_lookup_and_attach (&hsm->cache, path, &hs->data, &hs->data_len);
+  ce_index = hss_cache_lookup_and_attach (&hsm->cache, path, &hs->data,
+					  &hs->data_len, &last_modified);
   if (ce_index == ~0)
     {
       if (!file_path_is_valid (path))
@@ -455,8 +456,8 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 	  sc = try_index_file (hsm, hs, path);
 	  goto done;
 	}
-      ce_index =
-	hss_cache_add_and_attach (&hsm->cache, path, &hs->data, &hs->data_len);
+      ce_index = hss_cache_add_and_attach (&hsm->cache, path, &hs->data,
+					   &hs->data_len, &last_modified);
       if (ce_index == ~0)
 	{
 	  sc = HTTP_STATUS_INTERNAL_ERROR;
@@ -478,6 +479,9 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_add_header (
     &hs->resp_headers, http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
     (const char *) hsm->max_age_formatted, vec_len (hsm->max_age_formatted));
+  http_add_header (&hs->resp_headers,
+		   http_header_name_token (HTTP_HEADER_LAST_MODIFIED),
+		   (const char *) last_modified, vec_len (last_modified));
 
 done:
   vec_free (sanitized_path);
