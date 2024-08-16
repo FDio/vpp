@@ -22,6 +22,9 @@ typedef struct hss_cache_entry_
 {
   /** Name of the file */
   u8 *filename;
+  /** Last modified date, format:
+   *  <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT  */
+  u8 *last_modified;
   /** Contents of the file, as a u8 * vector */
   u8 *data;
   /** Last time the cache entry was used */
