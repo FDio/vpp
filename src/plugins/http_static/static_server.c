@@ -479,6 +479,10 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_add_header (&hs->resp_headers,
 		   http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
 		   http_token_lit ("max-age=600"));
+  http_add_header (&hs->resp_headers,
+		   http_header_name_token (HTTP_HEADER_LAST_MODIFIED),
+		   (const char *) hsm->cache.cache_pool->last_modified,
+		   vec_len (hsm->cache.cache_pool->last_modified));
 
 done:
   vec_free (sanitized_path);

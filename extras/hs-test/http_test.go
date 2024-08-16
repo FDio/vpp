@@ -538,6 +538,13 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	content := "<html><body><p>Hello</p></body></html>"
 	content2 := "<html><body><p>Page</p></body></html>"
+	currentDate := time.Now()
+	formattedDate := fmt.Sprintf("%s, %d %s %d",
+		currentDate.Weekday().String()[:3],
+		currentDate.Day(),
+		currentDate.Month().String()[:3],
+		currentDate.Year())
+
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
 	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
@@ -557,6 +564,7 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 	s.AssertEqual(200, resp.StatusCode)
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
+	s.AssertContains(resp.Header.Get("Last-Modified"), formattedDate)
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
 	body, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
