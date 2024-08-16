@@ -17,6 +17,8 @@
 #include <vppinfra/bihash_template.c>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
+#include <sys/stat.h>
+#include <vppinfra/time_range.h>
 
 static void
 hss_cache_lock (hss_cache_t *hc)
@@ -278,6 +280,7 @@ hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data, u64 *data_len)
   clib_error_t *error;
   u8 *file_data;
   u32 ce_index;
+  struct stat dm;
 
   hss_cache_lock (hc);
 
@@ -298,6 +301,11 @@ hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data, u64 *data_len)
   pool_get_zero (hc->cache_pool, ce);
   ce->filename = vec_dup (path);
   ce->data = file_data;
+  if (stat ((char *) path, &dm) == 0)
+    {
+      ce->last_modified =
+	format (0, "%U", format_clib_timebase_time, (f64) dm.st_mtime);
+    }
 
   /* Attach cache entry without additional lock */
   ce->inuse++;
