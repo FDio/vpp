@@ -553,6 +553,8 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 
 	content := "<html><body><p>Hello</p></body></html>"
 	content2 := "<html><body><p>Page</p></body></html>"
+	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)[:17]
+
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
 	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
@@ -568,11 +570,16 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
+	// only checking date
+	s.AssertContains(resp.Header.Get("Last-Modified"), currentDate)
+	s.AssertEqual(len(resp.Header.Get("Last-Modified")), 29)
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
+
 	body, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content)
@@ -589,6 +596,7 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
 	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
+
 	body, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content)
@@ -603,6 +611,7 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
 	s.AssertEqual(int64(len([]rune(content2))), resp.ContentLength)
+
 	body, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(string(body), content2)
@@ -828,7 +837,7 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 }
 
 func HttpStaticMacTimeTest(s *NoTopoSuite) {
-	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)
+	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)[:17]
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
@@ -848,6 +857,8 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Ip4AddressString())
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).HwAddress.String())
 	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertEqual(len(resp.Header.Get("Date")), 29)
+	// only checking date
 	s.AssertContains(resp.Header.Get("Date"), currentDate)
 }
 
