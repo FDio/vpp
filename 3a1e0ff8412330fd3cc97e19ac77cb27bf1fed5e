@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f3721b7_d91268dc",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-16T04:50:38Z",
+      "side": 1,
+      "message": "Ouch. Do we really need to make session_rules_table_app_namespace_walk_cb public? If yes, we might need think about better isolating tables, rules tables and namespaces",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 22
+      },
+      "revId": "3a1e0ff8412330fd3cc97e19ac77cb27bf1fed5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
