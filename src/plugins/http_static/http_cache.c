@@ -17,6 +17,8 @@
 #include <vppinfra/bihash_template.c>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
+#include <sys/stat.h>
+#include <vppinfra/time_range.h>
 
 static void
 hss_cache_lock (hss_cache_t *hc)
@@ -153,7 +155,7 @@ lru_update (hss_cache_t *hc, hss_cache_entry_t *ep, f64 now)
 
 static void
 hss_cache_attach_entry (hss_cache_t *hc, u32 ce_index, u8 **data,
-			u64 *data_len)
+			u64 *data_len, u8 **last_modified)
 {
   hss_cache_entry_t *ce;
 
@@ -162,6 +164,7 @@ hss_cache_attach_entry (hss_cache_t *hc, u32 ce_index, u8 **data,
   ce->inuse++;
   *data = ce->data;
   *data_len = vec_len (ce->data);
+  *last_modified = ce->last_modified;
 
   /* Update the cache entry, mark it in-use */
   lru_update (hc, ce, vlib_time_now (vlib_get_main ()));
@@ -209,16 +212,15 @@ hss_cache_lookup (hss_cache_t *hc, u8 *path)
 
 u32
 hss_cache_lookup_and_attach (hss_cache_t *hc, u8 *path, u8 **data,
-			     u64 *data_len)
+			     u64 *data_len, u8 **last_modified)
 {
   u32 ce_index;
-
   /* Make sure nobody removes the entry while we look it up */
   hss_cache_lock (hc);
 
   ce_index = hss_cache_lookup (hc, path);
   if (ce_index != ~0)
-    hss_cache_attach_entry (hc, ce_index, data, data_len);
+    hss_cache_attach_entry (hc, ce_index, data, data_len, last_modified);
 
   hss_cache_unlock (hc);
 
@@ -271,13 +273,14 @@ hss_cache_do_evictions (hss_cache_t *hc)
 }
 
 u32
-hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data, u64 *data_len)
+hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data, u64 *data_len, u8 **last_modified)
 {
   BVT (clib_bihash_kv) kv;
   hss_cache_entry_t *ce;
   clib_error_t *error;
   u8 *file_data;
   u32 ce_index;
+  struct stat dm;
 
   hss_cache_lock (hc);
 
@@ -298,11 +301,17 @@ hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data, u64 *data_len)
   pool_get_zero (hc->cache_pool, ce);
   ce->filename = vec_dup (path);
   ce->data = file_data;
+  if (stat ((char *) path, &dm) == 0)
+    {
+      ce->last_modified =
+	format (0, "%U GMT", format_clib_timebase_time, (f64) dm.st_mtime);
+    }
 
   /* Attach cache entry without additional lock */
   ce->inuse++;
   *data = file_data;
   *data_len = vec_len (file_data);
+  *last_modified = ce->last_modified;
   lru_add (hc, ce, vlib_time_now (vlib_get_main ()));
 
   hc->cache_size += vec_len (ce->data);
