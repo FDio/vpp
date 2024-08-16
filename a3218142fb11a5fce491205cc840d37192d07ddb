@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc281dfc_d72cebc4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-16T13:55:28Z",
+      "side": 1,
+      "message": "LDP logs a ton of lines -\u003e 490MB log file in the CI.",
+      "revId": "a3218142fb11a5fce491205cc840d37192d07ddb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
