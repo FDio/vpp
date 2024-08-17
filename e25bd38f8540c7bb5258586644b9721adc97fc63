@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e543039_8078bcdc",
+        "filename": "extras/hs-test/infra/suite_http_proxy.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-17T02:19:26Z",
+      "side": 1,
+      "message": "Let\u0027s rename these as something more generic and also specific to this suite as opposed to suite_nginx. \n\nAlso, should we move all nginx tests that fall within this type of topology under this new suite? And I mean all tests where vpp is proxy as opposed to nginx \u0026 envoy.\n\nWe should also properly rename nginx and envoy proxy suites",
+      "range": {
+        "startLine": 47,
+        "startChar": 41,
+        "endLine": 47,
+        "endChar": 69
+      },
+      "revId": "e25bd38f8540c7bb5258586644b9721adc97fc63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
