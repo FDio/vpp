@@ -29,6 +29,10 @@
 
 #define DTLSO_MAX_DGRAM 2000
 
+#define ossl_check_err_is_fatal(_ssl, _rv)                                    \
+  if (PREDICT_FALSE (_rv < 0 && SSL_get_error (_ssl, _rv) == SSL_ERROR_SSL))  \
+    return -1;
+
 typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
@@ -63,15 +67,20 @@ typedef struct openssl_main_
   u8 *ciphers;
   int engine_init;
   int async;
+  u32 record_size;
+  u32 record_split_size;
+  u32 max_pipelines;
 } openssl_main_t;
 
 typedef int openssl_resume_handler (tls_ctx_t * ctx, session_t * tls_session);
 
 tls_ctx_t *openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index);
-int vpp_tls_async_init_event (tls_ctx_t * ctx,
-			      openssl_resume_handler * handler,
-			      session_t * session);
-int vpp_tls_async_update_event (tls_ctx_t * ctx, int eagain);
+int vpp_tls_async_init_events (tls_ctx_t *ctx, openssl_resume_handler *handler,
+			       session_t *session);
+int vpp_tls_async_update_event (tls_ctx_t *ctx, int eagain,
+				ssl_async_evt_type_t type);
+int vpp_tls_async_enqueue_event (tls_ctx_t *ctx, int evt_type,
+				 transport_send_params_t *sp, int size);
 int tls_async_openssl_callback (SSL * s, void *evt);
 int openssl_evt_free (int event_idx, u8 thread_index);
 void openssl_polling_start (ENGINE * engine);
@@ -80,6 +89,9 @@ void openssl_async_node_enable_disable (u8 is_en);
 clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
 int tls_openssl_set_ciphers (char *ciphers);
 int vpp_openssl_is_inflight (tls_ctx_t * ctx);
+int openssl_read_from_ssl_into_fifo (svm_fifo_t *f, SSL *ssl, u32 max_len);
+void openssl_handle_handshake_failure (tls_ctx_t *ctx);
+void openssl_confirm_app_close (tls_ctx_t *ctx);
 
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_OPENSSL_H_ */
 
