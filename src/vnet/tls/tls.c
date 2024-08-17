@@ -1252,6 +1252,10 @@ tls_init (vlib_main_t * vm)
   vec_validate (tm->rx_bufs, num_threads - 1);
   vec_validate (tm->tx_bufs, num_threads - 1);
 
+  /*
+   * first_seg_size default value 32MB
+   * add_seg_size default value 256 MB
+   */
   tm->first_seg_size = 32 << 20;
   tm->add_seg_size = 256 << 20;
 
