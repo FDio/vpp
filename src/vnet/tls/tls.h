@@ -40,6 +40,14 @@
 #define TLS_DBG(_lvl, _fmt, _args...)
 #endif
 
+typedef enum ssl_async_evt_type_
+{
+  SSL_ASYNC_EVT_INIT = 1, /**< SSL_in_init async event	*/
+  SSL_ASYNC_EVT_RD = 2,	  /**< read async event		*/
+  SSL_ASYNC_EVT_WR = 3,	  /**< write async event	*/
+  SSL_ASYNC_EVT_MAX = 4	  /**< maximum async event	*/
+} ssl_async_evt_type_t;
+
 typedef struct tls_cxt_id_
 {
   session_handle_t app_session_handle;
@@ -105,9 +113,11 @@ typedef struct tls_ctx_
   u32 ts_app_index;
   tls_conn_flags_t flags;
   u8 *srv_hostname;
-  u32 evt_index;
+  u32 evt_index[SSL_ASYNC_EVT_MAX];
+  u32 total_write;
   u32 ckpair_index;
   transport_proto_t tls_type;
+  bool in_async_read;
 } tls_ctx_t;
 
 typedef struct tls_main_
