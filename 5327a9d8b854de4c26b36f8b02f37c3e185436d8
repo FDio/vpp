@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0cb89fa6_e6981d44",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-19T10:25:32Z",
+      "side": 1,
+      "message": "this is first entry in pool, you need last_modified of the specific cache entry (at ce_index)",
+      "range": {
+        "startLine": 484,
+        "startChar": 20,
+        "endLine": 484,
+        "endChar": 56
+      },
+      "revId": "5327a9d8b854de4c26b36f8b02f37c3e185436d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
