@@ -1,0 +1,590 @@
+diff --git a/scapy/arch/bpf/core.py b/scapy/arch/bpf/core.py
+index d49267cd..13b7cff7 100644
+--- a/scapy/arch/bpf/core.py
++++ b/scapy/arch/bpf/core.py
+@@ -27,7 +27,7 @@ from scapy.error import Scapy_Exception, warning
+ from scapy.interfaces import InterfaceProvider, IFACES, NetworkInterface, \
+     network_name
+ from scapy.pton_ntop import inet_ntop
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ 
+ # ctypes definitions
+diff --git a/scapy/arch/linux.py b/scapy/arch/linux.py
+index 88f0de80..8870320f 100644
+--- a/scapy/arch/linux.py
++++ b/scapy/arch/linux.py
+@@ -49,8 +49,8 @@ from scapy.packet import Packet, Padding
+ from scapy.pton_ntop import inet_ntop
+ from scapy.supersocket import SuperSocket
+ 
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ # Typing imports
+ from scapy.compat import (
+diff --git a/scapy/arch/windows/__init__.py b/scapy/arch/windows/__init__.py
+index 3e640f48..8a01681c 100755
+--- a/scapy/arch/windows/__init__.py
++++ b/scapy/arch/windows/__init__.py
+@@ -36,8 +36,8 @@ from scapy.pton_ntop import inet_ntop, inet_pton
+ from scapy.utils import atol, itom, mac2str, str2mac
+ from scapy.utils6 import construct_source_candidate_set, in6_getscope
+ from scapy.data import ARPHDR_ETHER, load_manuf
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import input, winreg
++import six
++from six.moves import input, winreg
+ from scapy.compat import plain_str
+ from scapy.supersocket import SuperSocket
+ 
+diff --git a/scapy/asn1/asn1.py b/scapy/asn1/asn1.py
+index 45eea565..a694de0d 100644
+--- a/scapy/asn1/asn1.py
++++ b/scapy/asn1/asn1.py
+@@ -18,8 +18,8 @@ from scapy.error import Scapy_Exception, warning
+ from scapy.volatile import RandField, RandIP, GeneralizedTime
+ from scapy.utils import Enum_metaclass, EnumElement, binrepr
+ from scapy.compat import plain_str, chb, orb
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ 
+ class RandASN1Object(RandField):
+diff --git a/scapy/asn1fields.py b/scapy/asn1fields.py
+index 87679b55..887dd42e 100644
+--- a/scapy/asn1fields.py
++++ b/scapy/asn1fields.py
+@@ -20,8 +20,8 @@ from scapy.base_classes import BasePacket
+ from scapy.utils import binrepr
+ from scapy import packet
+ from functools import reduce
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ 
+ class ASN1F_badsequence(Exception):
+diff --git a/scapy/base_classes.py b/scapy/base_classes.py
+index ec532110..51897d05 100644
+--- a/scapy/base_classes.py
++++ b/scapy/base_classes.py
+@@ -27,9 +27,9 @@ import warnings
+ import scapy
+ from scapy.error import Scapy_Exception
+ from scapy.consts import WINDOWS
+-import scapy.modules.six as six
++import six
+ 
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ from scapy.compat import (
+     Any,
+diff --git a/scapy/contrib/automotive/someip.py b/scapy/contrib/automotive/someip.py
+index a19e008d..136ab64c 100644
+--- a/scapy/contrib/automotive/someip.py
++++ b/scapy/contrib/automotive/someip.py
+@@ -36,7 +36,7 @@ from scapy.layers.inet import TCP, UDP
+ from scapy.layers.inet6 import IP6Field
+ from scapy.compat import raw, orb
+ from scapy.config import conf
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.packet import Packet, Raw, bind_top_down, bind_bottom_up
+ from scapy.fields import XShortField, BitEnumField, ConditionalField, \
+     BitField, XBitField, IntField, XByteField, ByteEnumField, \
+diff --git a/scapy/contrib/cansocket_python_can.py b/scapy/contrib/cansocket_python_can.py
+index 936d39cf..1a1b717d 100644
+--- a/scapy/contrib/cansocket_python_can.py
++++ b/scapy/contrib/cansocket_python_can.py
+@@ -21,7 +21,7 @@ from scapy.config import conf
+ from scapy.supersocket import SuperSocket
+ from scapy.layers.can import CAN
+ from scapy.error import warning
+-from scapy.modules.six.moves import queue
++from six.moves import queue
+ from scapy.compat import Any, List
+ from can import Message as can_Message
+ from can import CanError as can_CanError
+diff --git a/scapy/contrib/cdp.py b/scapy/contrib/cdp.py
+index fa116538..9700deba 100644
+--- a/scapy/contrib/cdp.py
++++ b/scapy/contrib/cdp.py
+@@ -43,7 +43,7 @@ from scapy.fields import (
+ from scapy.layers.inet import checksum
+ from scapy.layers.l2 import SNAP
+ from scapy.compat import orb, chb
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.config import conf
+ 
+ 
+diff --git a/scapy/contrib/diameter.py b/scapy/contrib/diameter.py
+index e99cb424..9fedca3d 100644
+--- a/scapy/contrib/diameter.py
++++ b/scapy/contrib/diameter.py
+@@ -32,8 +32,8 @@ from scapy.fields import ConditionalField, EnumField, Field, FieldLenField, \
+     XByteField, XIntField
+ from scapy.layers.inet import TCP
+ from scapy.layers.sctp import SCTPChunkData
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.compat import chb, orb, raw, bytes_hex, plain_str
+ from scapy.error import warning
+ from scapy.utils import inet_ntoa, inet_aton
+diff --git a/scapy/contrib/gtp.py b/scapy/contrib/gtp.py
+index bf369847..de3b8961 100644
+--- a/scapy/contrib/gtp.py
++++ b/scapy/contrib/gtp.py
+@@ -30,7 +30,7 @@ from scapy.fields import BitEnumField, BitField, ByteEnumField, ByteField, \
+ from scapy.layers.inet import IP, UDP
+ from scapy.layers.inet6 import IPv6, IP6Field
+ from scapy.layers.ppp import PPP
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.packet import bind_layers, bind_bottom_up, bind_top_down, \
+     Packet, Raw
+ from scapy.volatile import RandInt, RandIP, RandNum, RandString
+diff --git a/scapy/contrib/homeplugav.py b/scapy/contrib/homeplugav.py
+index 171eb7d0..92b22d16 100644
+--- a/scapy/contrib/homeplugav.py
++++ b/scapy/contrib/homeplugav.py
+@@ -44,7 +44,7 @@ from scapy.fields import (
+     XShortField,
+ )
+ from scapy.layers.l2 import Ether
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ """
+     Copyright (C) HomePlugAV Layer for Scapy by FlUxIuS (Sebastien Dudek)
+diff --git a/scapy/contrib/isis.py b/scapy/contrib/isis.py
+index b7fc222e..f68bb37d 100644
+--- a/scapy/contrib/isis.py
++++ b/scapy/contrib/isis.py
+@@ -80,7 +80,7 @@ from scapy.layers.clns import network_layer_protocol_ids, register_cln_protocol
+ from scapy.layers.inet6 import IP6ListField, IP6Field
+ from scapy.utils import fletcher16_checkbytes
+ from scapy.volatile import RandString, RandByte
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.compat import orb, hex_bytes
+ 
+ EXT_VERSION = "v0.0.3"
+diff --git a/scapy/contrib/isotp.py b/scapy/contrib/isotp.py
+index 845d566d..225c6b86 100644
+--- a/scapy/contrib/isotp.py
++++ b/scapy/contrib/isotp.py
+@@ -29,9 +29,9 @@ from scapy.fields import BitField, FlagsField, StrLenField, \
+     BitEnumField, ByteField, XByteField, BitFieldLenField, StrField
+ from scapy.compat import chb, orb
+ from scapy.layers.can import CAN, CAN_MAX_IDENTIFIER, CAN_MTU, CAN_MAX_DLEN
+-import scapy.modules.six as six
++import six
+ import scapy.automaton as automaton
+-from scapy.modules.six.moves import queue
++from six.moves import queue
+ from scapy.error import Scapy_Exception, warning, log_loading, log_runtime
+ from scapy.supersocket import SuperSocket, SO_TIMESTAMPNS
+ from scapy.config import conf
+diff --git a/scapy/contrib/ldp.py b/scapy/contrib/ldp.py
+index 25152ab7..ea8a6b83 100644
+--- a/scapy/contrib/ldp.py
++++ b/scapy/contrib/ldp.py
+@@ -27,7 +27,7 @@ from scapy.fields import BitField, IPField, IntField, ShortField, StrField, \
+     XBitField
+ from scapy.layers.inet import UDP
+ from scapy.layers.inet import TCP
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.config import conf
+ from scapy.utils import inet_aton, inet_ntoa
+ 
+diff --git a/scapy/contrib/lldp.py b/scapy/contrib/lldp.py
+index 04d37192..91b64439 100644
+--- a/scapy/contrib/lldp.py
++++ b/scapy/contrib/lldp.py
+@@ -51,7 +51,7 @@ from scapy.fields import MACField, IPField, BitField, \
+     ShortField, XStrLenField, ByteField, ConditionalField, \
+     MultipleTypeField
+ from scapy.packet import Packet, bind_layers
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.data import ETHER_TYPES
+ from scapy.compat import orb
+ 
+diff --git a/scapy/contrib/nfs.py b/scapy/contrib/nfs.py
+index 79259e39..6d6f47a1 100644
+--- a/scapy/contrib/nfs.py
++++ b/scapy/contrib/nfs.py
+@@ -12,7 +12,7 @@ from scapy.packet import Packet, bind_layers
+ from scapy.fields import IntField, IntEnumField, FieldListField, LongField, \
+     XIntField, XLongField, ConditionalField, PacketListField, StrLenField, \
+     PacketField
+-from scapy.modules.six import integer_types
++from six import integer_types
+ 
+ nfsstat3 = {
+     0: 'NFS3_OK',
+diff --git a/scapy/contrib/ppi_geotag.py b/scapy/contrib/ppi_geotag.py
+index a7cc6345..bf16ae2b 100644
+--- a/scapy/contrib/ppi_geotag.py
++++ b/scapy/contrib/ppi_geotag.py
+@@ -34,8 +34,8 @@ from scapy.fields import ByteField, ConditionalField, Field, FlagsField, \
+     UTCTimeField, XLEIntField, SignedByteField, XLEShortField
+ from scapy.layers.ppi import PPI_Hdr, PPI_Element
+ from scapy.error import warning
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ CURR_GEOTAG_VER = 2  # Major revision of specification
+ 
+diff --git a/scapy/contrib/skinny.py b/scapy/contrib/skinny.py
+index c12cb94e..f8a8be06 100644
+--- a/scapy/contrib/skinny.py
++++ b/scapy/contrib/skinny.py
+@@ -29,7 +29,7 @@ from scapy.packet import Packet, bind_layers
+ from scapy.fields import FlagsField, IPField, LEIntEnumField, LEIntField, \
+     StrFixedLenField
+ from scapy.layers.inet import TCP
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.volatile import RandShort
+ from scapy.config import conf
+ 
+diff --git a/scapy/contrib/tacacs.py b/scapy/contrib/tacacs.py
+index ed933f10..7b31f4c0 100755
+--- a/scapy/contrib/tacacs.py
++++ b/scapy/contrib/tacacs.py
+@@ -29,7 +29,7 @@ from scapy.fields import FieldLenField, ConditionalField, StrLenField
+ from scapy.layers.inet import TCP
+ from scapy.compat import chb, orb
+ from scapy.config import conf
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ SECRET = 'test'
+ 
+diff --git a/scapy/fields.py b/scapy/fields.py
+index 7448400c..5db02244 100644
+--- a/scapy/fields.py
++++ b/scapy/fields.py
+@@ -37,9 +37,9 @@ from scapy.utils6 import in6_6to4ExtractAddr, in6_isaddr6to4, \
+     in6_isaddrTeredo, in6_ptop, Net6, teredoAddrExtractInfo
+ from scapy.base_classes import Gen, Net, BasePacket, Field_metaclass
+ from scapy.error import warning
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
+-from scapy.modules.six import integer_types
++import six
++from six.moves import range
++from six import integer_types
+ 
+ # Typing imports
+ from scapy.compat import (
+diff --git a/scapy/interfaces.py b/scapy/interfaces.py
+index aae0c55a..75919bd2 100644
+--- a/scapy/interfaces.py
++++ b/scapy/interfaces.py
+@@ -17,8 +17,8 @@ from scapy.consts import WINDOWS
+ from scapy.utils import pretty_list
+ from scapy.utils6 import in6_isvalid
+ 
+-from scapy.modules.six.moves import UserDict
+-import scapy.modules.six as six
++from six.moves import UserDict
++import six
+ 
+ # Typing imports
+ import scapy
+diff --git a/scapy/layers/bluetooth4LE.py b/scapy/layers/bluetooth4LE.py
+index 40f8b0bb..d461b808 100644
+--- a/scapy/layers/bluetooth4LE.py
++++ b/scapy/layers/bluetooth4LE.py
+@@ -23,7 +23,7 @@ from scapy.contrib.ethercat import LEBitEnumField, LEBitField
+ from scapy.layers.bluetooth import EIR_Hdr, L2CAP_Hdr
+ from scapy.layers.ppi import PPI_Element, PPI_Hdr
+ 
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.utils import mac2str, str2mac
+ 
+ ####################
+diff --git a/scapy/layers/dhcp.py b/scapy/layers/dhcp.py
+index 4164d88e..ccb42e93 100644
+--- a/scapy/layers/dhcp.py
++++ b/scapy/layers/dhcp.py
+@@ -31,8 +31,8 @@ from scapy.volatile import RandBin, RandField, RandNum, RandNumExpo
+ from scapy.arch import get_if_raw_hwaddr
+ from scapy.sendrecv import srp1, sendp
+ from scapy.error import warning
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.config import conf
+ 
+ dhcpmagic = b"c\x82Sc"
+diff --git a/scapy/layers/dns.py b/scapy/layers/dns.py
+index b1c9f456..5e87ef5e 100755
+--- a/scapy/layers/dns.py
++++ b/scapy/layers/dns.py
+@@ -24,8 +24,8 @@ from scapy.sendrecv import sr1
+ from scapy.layers.inet import IP, DestIPField, IPField, UDP, TCP
+ from scapy.layers.inet6 import DestIP6Field, IP6Field
+ from scapy.error import log_runtime, warning, Scapy_Exception
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ 
+ def dns_get_str(s, pointer=0, pkt=None, _fullpacket=False):
+diff --git a/scapy/layers/inet.py b/scapy/layers/inet.py
+index 5222df51..2c411b81 100644
+--- a/scapy/layers/inet.py
++++ b/scapy/layers/inet.py
+@@ -64,8 +64,8 @@ from scapy.pton_ntop import inet_pton
+ 
+ import scapy.as_resolvers
+ 
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ ####################
+ #  IP Tools class  #
+diff --git a/scapy/layers/ipsec.py b/scapy/layers/ipsec.py
+index 8251dc14..852b3dfb 100644
+--- a/scapy/layers/ipsec.py
++++ b/scapy/layers/ipsec.py
+@@ -56,8 +56,8 @@ from scapy.fields import ByteEnumField, ByteField, IntField, PacketField, \
+     ShortField, StrField, XIntField, XStrField, XStrLenField
+ from scapy.packet import Packet, bind_layers, Raw
+ from scapy.layers.inet import IP, UDP
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.layers.inet6 import IPv6, IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, \
+     IPv6ExtHdrRouting
+ 
+diff --git a/scapy/layers/l2.py b/scapy/layers/l2.py
+index b1224208..85377b37 100644
+--- a/scapy/layers/l2.py
++++ b/scapy/layers/l2.py
+@@ -51,7 +51,7 @@ from scapy.fields import (
+     XShortEnumField,
+     XShortField,
+ )
+-from scapy.modules.six import viewitems
++from six import viewitems
+ from scapy.packet import bind_layers, Packet
+ from scapy.plist import (
+     PacketList,
+diff --git a/scapy/layers/ntp.py b/scapy/layers/ntp.py
+index 21da95c8..c705c96a 100644
+--- a/scapy/layers/ntp.py
++++ b/scapy/layers/ntp.py
+@@ -25,8 +25,8 @@ from scapy.layers.inet import UDP
+ from scapy.utils import lhex
+ from scapy.compat import orb
+ from scapy.config import conf
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ 
+ 
+ #############################################################################
+diff --git a/scapy/layers/tftp.py b/scapy/layers/tftp.py
+index 2e3077d9..11f1ed94 100644
+--- a/scapy/layers/tftp.py
++++ b/scapy/layers/tftp.py
+@@ -16,7 +16,7 @@ from scapy.fields import PacketListField, ShortEnumField, ShortField, \
+     StrNullField
+ from scapy.automaton import ATMT, Automaton
+ from scapy.layers.inet import UDP, IP
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.config import conf
+ from scapy.volatile import RandShort
+ 
+diff --git a/scapy/layers/tls/cert.py b/scapy/layers/tls/cert.py
+index b6eb0af2..293ef971 100644
+--- a/scapy/layers/tls/cert.py
++++ b/scapy/layers/tls/cert.py
+@@ -33,8 +33,8 @@ import os
+ import time
+ 
+ from scapy.config import conf, crypto_validator
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.error import warning
+ from scapy.utils import binrepr
+ from scapy.asn1.asn1 import ASN1_BIT_STRING
+diff --git a/scapy/layers/tls/crypto/prf.py b/scapy/layers/tls/crypto/prf.py
+index 210f9108..cb56f247 100644
+--- a/scapy/layers/tls/crypto/prf.py
++++ b/scapy/layers/tls/crypto/prf.py
+@@ -13,7 +13,7 @@ from scapy.utils import strxor
+ 
+ from scapy.layers.tls.crypto.hash import _tls_hash_algs
+ from scapy.layers.tls.crypto.h_mac import _tls_hmac_algs
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.compat import bytes_encode
+ 
+ 
+diff --git a/scapy/modules/krack/crypto.py b/scapy/modules/krack/crypto.py
+index a4803def..69cc678a 100644
+--- a/scapy/modules/krack/crypto.py
++++ b/scapy/modules/krack/crypto.py
+@@ -6,8 +6,8 @@ from zlib import crc32
+ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+ from cryptography.hazmat.backends import default_backend
+ 
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.compat import orb, chb
+ from scapy.layers.dot11 import Dot11TKIP
+ from scapy.utils import mac2str
+diff --git a/scapy/modules/p0f.py b/scapy/modules/p0f.py
+index 74ee9f16..5bca0bec 100644
+--- a/scapy/modules/p0f.py
++++ b/scapy/modules/p0f.py
+@@ -24,7 +24,7 @@ from scapy.error import warning, Scapy_Exception, log_runtime
+ from scapy.volatile import RandInt, RandByte, RandNum, RandShort, RandString
+ from scapy.sendrecv import sniff
+ from scapy.modules import six
+-from scapy.modules.six.moves import map, range
++from six.moves import map, range
+ if conf.route is None:
+     # unused import, only to initialize conf.route
+     import scapy.route  # noqa: F401
+diff --git a/scapy/modules/voip.py b/scapy/modules/voip.py
+index 420ed641..9aa3cceb 100644
+--- a/scapy/modules/voip.py
++++ b/scapy/modules/voip.py
+@@ -18,7 +18,7 @@ from scapy.layers.inet import IP, UDP
+ from scapy.layers.rtp import RTP
+ from scapy.consts import WINDOWS
+ from scapy.config import conf
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ 
+ sox_base = (["sox", "-t", ".ul"], ["-", "-t", "ossdsp", "/dev/dsp"])
+diff --git a/scapy/plist.py b/scapy/plist.py
+index 6e959f9b..b9ba2d47 100644
+--- a/scapy/plist.py
++++ b/scapy/plist.py
+@@ -27,8 +27,8 @@ from scapy.utils import do_graph, hexdump, make_table, make_lined_table, \
+ from scapy.extlib import plt, Line2D, \
+     MATPLOTLIB_INLINED, MATPLOTLIB_DEFAULT_PLOT_KARGS
+ from functools import reduce
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range, zip
++import six
++from six.moves import range, zip
+ 
+ # typings
+ from scapy.compat import (
+diff --git a/scapy/pton_ntop.py b/scapy/pton_ntop.py
+index ba023a77..fd3e2522 100644
+--- a/scapy/pton_ntop.py
++++ b/scapy/pton_ntop.py
+@@ -14,7 +14,7 @@ from __future__ import absolute_import
+ import socket
+ import re
+ import binascii
+-from scapy.modules.six.moves import range
++from six.moves import range
+ from scapy.compat import plain_str, hex_bytes, bytes_encode, bytes_hex
+ 
+ from scapy.compat import (
+diff --git a/scapy/scapypipes.py b/scapy/scapypipes.py
+index 1cbd43cb..e8553493 100644
+--- a/scapy/scapypipes.py
++++ b/scapy/scapypipes.py
+@@ -7,7 +7,7 @@ from __future__ import print_function
+ import socket
+ import subprocess
+ 
+-from scapy.modules.six.moves.queue import Queue, Empty
++from six.moves.queue import Queue, Empty
+ from scapy.pipetool import Source, Drain, Sink
+ from scapy.config import conf
+ from scapy.compat import raw
+diff --git a/scapy/sendrecv.py b/scapy/sendrecv.py
+index 503c6a3b..372668de 100644
+--- a/scapy/sendrecv.py
++++ b/scapy/sendrecv.py
+@@ -36,7 +36,7 @@ from scapy.plist import (
+ from scapy.error import log_runtime, log_interactive, Scapy_Exception
+ from scapy.base_classes import Gen, SetGen
+ from scapy.modules import six
+-from scapy.modules.six.moves import map
++from six.moves import map
+ from scapy.sessions import DefaultSession
+ from scapy.supersocket import SuperSocket, IterSocket
+ 
+diff --git a/scapy/tools/UTscapy.py b/scapy/tools/UTscapy.py
+index 18e01659..a045bd49 100644
+--- a/scapy/tools/UTscapy.py
++++ b/scapy/tools/UTscapy.py
+@@ -27,8 +27,8 @@ import warnings
+ import zlib
+ 
+ from scapy.consts import WINDOWS
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range
++import six
++from six.moves import range
+ from scapy.config import conf
+ from scapy.compat import base64_bytes, bytes_hex, plain_str
+ from scapy.themes import DefaultTheme, BlackAndWhite
+diff --git a/scapy/utils.py b/scapy/utils.py
+index 12747fa6..09002915 100644
+--- a/scapy/utils.py
++++ b/scapy/utils.py
+@@ -28,8 +28,8 @@ import time
+ import threading
+ import warnings
+ 
+-import scapy.modules.six as six
+-from scapy.modules.six.moves import range, input, zip_longest
++import six
++from six.moves import range, input, zip_longest
+ 
+ from scapy.config import conf
+ from scapy.consts import DARWIN, OPENBSD, WINDOWS
+diff --git a/scapy/volatile.py b/scapy/volatile.py
+index 5587c7ce..f7e1b326 100644
+--- a/scapy/volatile.py
++++ b/scapy/volatile.py
+@@ -21,7 +21,7 @@ import struct
+ from scapy.base_classes import Net
+ from scapy.compat import bytes_encode, chb, plain_str
+ from scapy.utils import corrupt_bits, corrupt_bytes
+-from scapy.modules.six.moves import range
++from six.moves import range
+ 
+ ####################
+ #  Random numbers  #
