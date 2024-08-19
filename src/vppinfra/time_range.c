@@ -264,7 +264,7 @@ format_clib_timebase_time (u8 * s, va_list * args)
 
   clib_timebase_time_to_components (now, cp);
 
-  s = format (s, "%s, %u %s %u %u:%02u:%02u",
+  s = format (s, "%s, %02u %s %u %02u:%02u:%02u",
 	      day_names_epoch_order[cp->day_name_index],
 	      cp->day,
 	      month_short_names[cp->month],
