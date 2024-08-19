@@ -166,6 +166,17 @@ def _is_distro_ubuntu2204():
 is_distro_ubuntu2204 = _is_distro_ubuntu2204()
 
 
+def _is_distro_ubuntu2404():
+    with open("/etc/os-release") as f:
+        for line in f.readlines():
+            if "noble" in line:
+                return True
+    return False
+
+
+is_distro_ubuntu2404 = _is_distro_ubuntu2404()
+
+
 def _is_distro_debian11():
     with open("/etc/os-release") as f:
         for line in f.readlines():
@@ -175,14 +186,6 @@ def _is_distro_debian11():
 
 
 is_distro_debian11 = _is_distro_debian11()
-
-
-def _is_distro_ubuntu2204():
-    with open("/etc/os-release") as f:
-        for line in f.readlines():
-            if "jammy" in line:
-                return True
-    return False
 
 
 class KeepAliveReporter(object):
@@ -236,6 +239,8 @@ class TestCaseTag(Enum):
     FIXME_DEBIAN11 = 5
     # marks suites broken on debug vpp image
     FIXME_VPP_DEBUG = 6
+    # marks suites broken on Ubuntu-24.04
+    FIXME_UBUNTU2404 = 7
 
 
 def create_tag_decorator(e):
@@ -255,6 +260,7 @@ tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_ubuntu2204 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2204)
 tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
 tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
+tag_fixme_ubuntu2404 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2404)
 
 
 class DummyVpp:
@@ -321,6 +327,12 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         """if @tag_fixme_ubuntu2204 & is Ubuntu22.04 - mark for skip"""
         if cls.has_tag(TestCaseTag.FIXME_UBUNTU2204) and is_distro_ubuntu2204 == True:
             cls = unittest.skip("Skipping @tag_fixme_ubuntu2204 tests")(cls)
+
+    @classmethod
+    def skip_fixme_ubuntu2404(cls):
+        """if @tag_fixme_ubuntu2404 & is Ubuntu24.04 - mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_UBUNTU2404) and is_distro_ubuntu2404 == True:
+            cls = unittest.skip("Skipping @tag_fixme_ubuntu2404 tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1375,6 +1387,13 @@ class VppTestResult(unittest.TestResult):
             ):
                 test_title = colorize(f"FIXME with Ubuntu 22.04: {test_title}", RED)
                 test.skip_fixme_ubuntu2204()
+
+            if (
+                test.has_tag(TestCaseTag.FIXME_UBUNTU2404)
+                and is_distro_ubuntu2404 == True
+            ):
+                test_title = colorize(f"FIXME with Ubuntu 24.04: {test_title}", RED)
+                test.skip_fixme_ubuntu2404()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
