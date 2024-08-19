@@ -37,7 +37,7 @@ class TestJsonApiTrace(VppAsfTestCase):
                 found = True
                 break
         self.assertTrue(found)
-        self.assertEquals(o["_msgname"], "show_version")
+        self.assertEqual(o["_msgname"], "show_version")
 
     def test_json_api_trace_replay(self):
         fname = "/tmp/create_loop.json"
