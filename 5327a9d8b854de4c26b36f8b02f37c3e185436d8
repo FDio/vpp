@@ -22,6 +22,30 @@
       },
       "revId": "5327a9d8b854de4c26b36f8b02f37c3e185436d8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba5c37ab_3f82b46c",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-19T12:28:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0cb89fa6_e6981d44",
+      "range": {
+        "startLine": 484,
+        "startChar": 20,
+        "endLine": 484,
+        "endChar": 56
+      },
+      "revId": "5327a9d8b854de4c26b36f8b02f37c3e185436d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
