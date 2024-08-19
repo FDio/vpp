@@ -274,7 +274,7 @@ class TestVlibFrameLeak(VppTestCase):
 
         rx = self.pg0.get_capture(1)
 
-        self.assertEquals(len(rx), 1)
+        self.assertEqual(len(rx), 1)
         rx = rx[0]
         ether = rx[Ether]
         ipv4 = rx[IP]
@@ -305,7 +305,7 @@ class TestVlibFrameLeak(VppTestCase):
 
         rx = self.pg0.get_capture(1)
 
-        self.assertEquals(len(rx), 1)
+        self.assertEqual(len(rx), 1)
         rx = rx[0]
         ether = rx[Ether]
         ipv4 = rx[IP]
