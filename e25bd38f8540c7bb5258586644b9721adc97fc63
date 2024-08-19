@@ -22,6 +22,30 @@
       },
       "revId": "e25bd38f8540c7bb5258586644b9721adc97fc63",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a38f1170_4c290d62",
+        "filename": "extras/hs-test/infra/suite_http_proxy.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-19T11:32:20Z",
+      "side": 1,
+      "message": "renamed also suite to VppProxySuite so it can be used for all vpp proxy tests, rest will be done in separate patches",
+      "parentUuid": "7e543039_8078bcdc",
+      "range": {
+        "startLine": 47,
+        "startChar": 41,
+        "endLine": 47,
+        "endChar": 69
+      },
+      "revId": "e25bd38f8540c7bb5258586644b9721adc97fc63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
