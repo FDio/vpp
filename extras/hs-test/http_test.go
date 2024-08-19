@@ -829,6 +829,7 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 }
 
 func HttpStaticMacTimeTest(s *NoTopoSuite) {
+	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
@@ -848,6 +849,7 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Ip4AddressString())
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).HwAddress.String())
 	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertContains(resp.Header.Get("Date"), currentDate)
 }
 
 func HttpInvalidRequestLineTest(s *NoTopoSuite) {
