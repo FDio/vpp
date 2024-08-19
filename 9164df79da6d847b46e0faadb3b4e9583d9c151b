@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4934a311_e6b46c0c",
+        "filename": "src/plugins/http_static/http_cache.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-19T14:49:43Z",
+      "side": 1,
+      "message": "never freed, memory leak?",
+      "range": {
+        "startLine": 307,
+        "startChar": 10,
+        "endLine": 307,
+        "endChar": 24
+      },
+      "revId": "9164df79da6d847b46e0faadb3b4e9583d9c151b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
