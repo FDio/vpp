@@ -201,7 +201,7 @@ func HttpClientTest(s *NoTopoSuite) {
 			s.LogHttpReq(true),
 			ghttp.VerifyRequest("GET", "/test"),
 			ghttp.VerifyHeader(http.Header{"User-Agent": []string{"http_cli_client"}}),
-			ghttp.VerifyHeader(http.Header{"Accept": []string{"text / html"}}),
+			ghttp.VerifyHeader(http.Header{"Accept": []string{"text/html"}}),
 			ghttp.RespondWith(http.StatusOK, "<html><body><p>Hello</p></body></html>"),
 		))
 	server.Start()
@@ -249,7 +249,7 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 		ghttp.CombineHandlers(
 			s.LogHttpReq(true),
 			ghttp.VerifyRequest("POST", "/test"),
-			ghttp.VerifyContentType("application / x-www-form-urlencoded"),
+			ghttp.VerifyContentType("application/x-www-form-urlencoded"),
 			ghttp.VerifyBody([]byte(body)),
 			ghttp.RespondWith(http.StatusOK, nil),
 		))
@@ -280,7 +280,7 @@ func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
 			s.LogHttpReq(false),
 			ghttp.VerifyRequest("POST", "/test"),
 			ghttp.VerifyHeader(http.Header{"Content-Length": []string{strconv.Itoa(fileSize)}}),
-			ghttp.VerifyContentType("application / octet - stream"),
+			ghttp.VerifyContentType("application/octet-stream"),
 			ghttp.RespondWith(http.StatusOK, nil),
 		))
 	server.Start()
@@ -1014,7 +1014,7 @@ func HttpHeadersTest(s *NoTopoSuite) {
 		"GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\nAccept:text/xml\r\nAccept:\ttext/plain\t \r\nAccept:text/html\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 200 OK")
-	s.AssertContains(resp, "Content-Type: text / plain")
+	s.AssertContains(resp, "Content-Type: text/plain")
 	s.AssertNotContains(resp, "<html>", "html content received instead of plain text")
 }
 
