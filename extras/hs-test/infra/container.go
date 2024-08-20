@@ -313,7 +313,7 @@ func (c *Container) Run() {
 
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
 	var volume Volume
-	volume.HostDir = hostDir
+	volume.HostDir = strings.Replace(hostDir, "volumes", c.Suite.GetTestId() + "/" + "volumes", 1)
 	volume.ContainerDir = containerDir
 	volume.IsDefaultWorkDir = isDefaultWorkDir
 	c.Volumes[hostDir] = volume
@@ -340,7 +340,6 @@ func (c *Container) getVolumesAsSlice() []string {
 			volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", volume.HostDir, volume.ContainerDir))
 		}
 	}
-
 	return volumeSlice
 }
 

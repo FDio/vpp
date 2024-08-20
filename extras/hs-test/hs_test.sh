@@ -122,7 +122,7 @@ fi
 
 mkdir -p summary
 # shellcheck disable=SC2086
-sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --trace --json-report=summary/report.json $ginkgo_args -- $args
+sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args
 
 jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) | "TestName: \(.LeafNodeText)\nSuite:\n\(.Failure.FailureNodeLocation.FileName)\nMessage:\n\(.Failure.Message)\n Full Stack Trace:\n\(.Failure.Location.FullStackTrace)\n"' summary/report.json > summary/failed-summary.log \
 	&& echo "Summary generated -> summary/failed-summary.log"
