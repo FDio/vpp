@@ -16,6 +16,24 @@
       "message": "Did we decide if we want to use execHelper or just exec?",
       "revId": "1cf20f5179a28734383c07ed50906a120bed6fbc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46d62aa8_4ba2c0bd",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-20T06:02:56Z",
+      "side": 1,
+      "message": "I don\u0027t think we did, should I replace it with regular exec?",
+      "parentUuid": "2ae1c1a1_ca63bd8e",
+      "revId": "1cf20f5179a28734383c07ed50906a120bed6fbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
