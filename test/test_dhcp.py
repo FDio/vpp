@@ -2,7 +2,6 @@
 
 import unittest
 import socket
-import six
 
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_run_solo
@@ -140,12 +139,12 @@ class TestDHCP(VppTestCase):
                     # The ID space is VPP internal - so no matching value
                     # scapy
                     #
-                    self.assertEqual(six.byte2int(data[0:1]), 1)
-                    self.assertEqual(six.byte2int(data[1:2]), 4)
-                    self.assertEqual(six.byte2int(data[2:3]), 0)
-                    self.assertEqual(six.byte2int(data[3:4]), 0)
-                    self.assertEqual(six.byte2int(data[4:5]), 0)
-                    self.assertEqual(six.byte2int(data[5:6]), intf._sw_if_index)
+                    self.assertEqual(data[0], 1)
+                    self.assertEqual(data[1], 4)
+                    self.assertEqual(data[2], 0)
+                    self.assertEqual(data[3], 0)
+                    self.assertEqual(data[4], 0)
+                    self.assertEqual(data[5], intf._sw_if_index)
 
                     #
                     # next sub-option is the IP address of the client side
@@ -154,8 +153,8 @@ class TestDHCP(VppTestCase):
                     #
                     claddr = socket.inet_pton(AF_INET, ip_addr)
 
-                    self.assertEqual(six.byte2int(data[6:7]), 5)
-                    self.assertEqual(six.byte2int(data[7:8]), 4)
+                    self.assertEqual(data[6], 5)
+                    self.assertEqual(data[7], 4)
                     self.assertEqual(data[8], claddr[0])
                     self.assertEqual(data[9], claddr[1])
                     self.assertEqual(data[10], claddr[2])
@@ -165,37 +164,33 @@ class TestDHCP(VppTestCase):
                         # sub-option 151 encodes vss_type 1,
                         # the 3 byte oui and the 4 byte fib_id
                         self.assertEqual(id_len, 0)
-                        self.assertEqual(six.byte2int(data[12:13]), 151)
-                        self.assertEqual(six.byte2int(data[13:14]), 8)
-                        self.assertEqual(six.byte2int(data[14:15]), 1)
-                        self.assertEqual(six.byte2int(data[15:16]), 0)
-                        self.assertEqual(six.byte2int(data[16:17]), 0)
-                        self.assertEqual(six.byte2int(data[17:18]), oui)
-                        self.assertEqual(six.byte2int(data[18:19]), 0)
-                        self.assertEqual(six.byte2int(data[19:20]), 0)
-                        self.assertEqual(six.byte2int(data[20:21]), 0)
-                        self.assertEqual(six.byte2int(data[21:22]), fib_id)
+                        self.assertEqual(data[12], 151)
+                        self.assertEqual(data[13], 8)
+                        self.assertEqual(data[14], 1)
+                        self.assertEqual(data[15], 0)
+                        self.assertEqual(data[16], 0)
+                        self.assertEqual(data[17], oui)
+                        self.assertEqual(data[18], 0)
+                        self.assertEqual(data[19], 0)
+                        self.assertEqual(data[20], 0)
+                        self.assertEqual(data[21], fib_id)
 
                         # VSS control sub-option
-                        self.assertEqual(six.byte2int(data[22:23]), 152)
-                        self.assertEqual(six.byte2int(data[23:24]), 0)
+                        self.assertEqual(data[22], 152)
+                        self.assertEqual(data[23], 0)
 
                     if id_len > 0:
                         # sub-option 151 encode vss_type of 0
                         # followerd by vpn_id in ascii
                         self.assertEqual(oui, 0)
-                        self.assertEqual(six.byte2int(data[12:13]), 151)
-                        self.assertEqual(six.byte2int(data[13:14]), id_len + 1)
-                        self.assertEqual(six.byte2int(data[14:15]), 0)
+                        self.assertEqual(data[12], 151)
+                        self.assertEqual(data[13], id_len + 1)
+                        self.assertEqual(data[14], 0)
                         self.assertEqual(data[15 : 15 + id_len].decode("ascii"), vpn_id)
 
                         # VSS control sub-option
-                        self.assertEqual(
-                            six.byte2int(data[15 + len(vpn_id) : 16 + len(vpn_id)]), 152
-                        )
-                        self.assertEqual(
-                            six.byte2int(data[16 + len(vpn_id) : 17 + len(vpn_id)]), 0
-                        )
+                        self.assertEqual(data[15 + len(vpn_id)], 152)
+                        self.assertEqual(data[16 + len(vpn_id)], 0)
 
                     found = 1
         self.assertTrue(found)
@@ -378,13 +373,13 @@ class TestDHCP(VppTestCase):
             self.assertEqual(vss.type, 1)
             # the OUI and FIB-id are really 3 and 4 bytes resp.
             # but the tested range is small
-            self.assertEqual(six.byte2int(vss.data[0:1]), 0)
-            self.assertEqual(six.byte2int(vss.data[1:2]), 0)
-            self.assertEqual(six.byte2int(vss.data[2:3]), oui)
-            self.assertEqual(six.byte2int(vss.data[3:4]), 0)
-            self.assertEqual(six.byte2int(vss.data[4:5]), 0)
-            self.assertEqual(six.byte2int(vss.data[5:6]), 0)
-            self.assertEqual(six.byte2int(vss.data[6:7]), fib_id)
+            self.assertEqual(vss.data[0], 0)
+            self.assertEqual(vss.data[1], 0)
+            self.assertEqual(vss.data[2], oui)
+            self.assertEqual(vss.data[3], 0)
+            self.assertEqual(vss.data[4], 0)
+            self.assertEqual(vss.data[5], 0)
+            self.assertEqual(vss.data[6], fib_id)
 
         if id_len > 0:
             self.assertEqual(oui, 0)
