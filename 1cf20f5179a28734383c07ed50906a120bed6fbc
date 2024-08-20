@@ -34,6 +34,24 @@
       "parentUuid": "2ae1c1a1_ca63bd8e",
       "revId": "1cf20f5179a28734383c07ed50906a120bed6fbc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "031c063f_235346c1",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-20T18:42:14Z",
+      "side": 1,
+      "message": "Unless we have an explicit reason to leverage it. Can\u0027t remember now if it provided any real advantage in these types of situations, i.e., blocking calls.",
+      "parentUuid": "46d62aa8_4ba2c0bd",
+      "revId": "1cf20f5179a28734383c07ed50906a120bed6fbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
