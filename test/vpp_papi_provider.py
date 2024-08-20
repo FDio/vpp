@@ -9,7 +9,6 @@ import os
 import socket
 import time
 import queue
-from six import moves, iteritems
 from config import config
 from vpp_papi import VPPApiClient
 from hook import Hook
@@ -333,7 +332,7 @@ class VppPapiProvider(object):
 
             # Default override
             if name in defaultmapping:
-                for k, v in iteritems(defaultmapping[name]):
+                for k, v in defaultmapping[name].items():
                     if k in d:
                         continue
                     d[k] = v
@@ -389,7 +388,7 @@ class VppPapiProvider(object):
                         api_fn.__name__,
                         as_fn_signature(api_args),
                         reply.retval,
-                        moves.reprlib.repr(reply),
+                        reprlib.repr(reply),
                     )
                 )
                 self.test_class.logger.info(msg)
