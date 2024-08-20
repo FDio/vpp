@@ -34,7 +34,6 @@ from scapy.utils6 import (
     in6_ptop,
     in6_islladdr,
 )
-from six import moves
 
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_run_solo
@@ -319,13 +318,11 @@ class TestIPv6(TestIPv6ND):
 
         pkts = [
             self.modify_packet(src_if, i, pkt_tmpl)
-            for i in moves.range(
-                self.pg_if_packet_sizes[0], self.pg_if_packet_sizes[1], 10
-            )
+            for i in range(self.pg_if_packet_sizes[0], self.pg_if_packet_sizes[1], 10)
         ]
         pkts_b = [
             self.modify_packet(src_if, i, pkt_tmpl)
-            for i in moves.range(
+            for i in range(
                 self.pg_if_packet_sizes[1] + hdr_ext,
                 self.pg_if_packet_sizes[2] + hdr_ext,
                 50,
