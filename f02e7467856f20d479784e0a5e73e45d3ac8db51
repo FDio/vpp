@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a633ade_4d6a271f",
+        "filename": "src/vnet/tls/tls_record.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-08-21T15:48:04Z",
+      "side": 1,
+      "message": "hanshake-\u003ehandshake",
+      "revId": "f02e7467856f20d479784e0a5e73e45d3ac8db51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
