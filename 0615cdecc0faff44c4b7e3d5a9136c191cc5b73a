@@ -46,6 +46,30 @@
       },
       "revId": "0615cdecc0faff44c4b7e3d5a9136c191cc5b73a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "185648f3_5661b9c0",
+        "filename": "extras/hs-test/hs_test.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-21T08:25:39Z",
+      "side": 0,
+      "message": "I get it now, it only hide stack trace during overall progress output but show stack trace for failed test(s) in the summary, in this case it is fine",
+      "parentUuid": "98f8a3bf_4b2060bb",
+      "range": {
+        "startLine": 125,
+        "startChar": 48,
+        "endLine": 125,
+        "endChar": 56
+      },
+      "revId": "0615cdecc0faff44c4b7e3d5a9136c191cc5b73a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
