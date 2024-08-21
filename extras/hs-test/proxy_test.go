@@ -8,6 +8,7 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpTcpTest, VppProxyHttpTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpTcpTest)
+	RegisterNginxProxyTests(NginxMirroringTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
@@ -38,6 +39,13 @@ func VppProxyHttpTlsTest(s *VppProxySuite) {
 }
 
 func EnvoyProxyHttpTcpTest(s *EnvoyProxySuite) {
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
+	s.CurlDownloadResource(uri)
+}
+
+// broken when CPUS > 1
+func NginxMirroringTest(s *NginxProxySuite) {
+	s.SkipIfMultiWorker()
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }
