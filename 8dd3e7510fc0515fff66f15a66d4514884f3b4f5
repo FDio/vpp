@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "465c0b9c_d49e8bf6",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-21T09:00:14Z",
+      "side": 1,
+      "message": "I know there is already stuff like start http server/wget, but I would prefer move it to utils or proposed ldp suite. And this is more or less same as above, please create something more generic, where you pass command",
+      "revId": "8dd3e7510fc0515fff66f15a66d4514884f3b4f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e03ff19_cc359a84",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-21T09:00:14Z",
+      "side": 1,
+      "message": "lot of boilerplate in both tests, might be worth to create ldp suite and put this stuff here in test setup, teardown and create some helper functions,...",
+      "revId": "8dd3e7510fc0515fff66f15a66d4514884f3b4f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
