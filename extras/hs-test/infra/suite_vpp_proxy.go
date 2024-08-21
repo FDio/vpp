@@ -15,6 +15,7 @@ import (
 
 // These correspond to names used in yaml config
 const (
+	VppProxyContainerName  = "vpp-proxy"
 	ClientTapInterfaceName = "hstcln"
 	ServerTapInterfaceName = "hstsrv"
 )
