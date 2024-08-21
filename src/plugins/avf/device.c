@@ -1290,18 +1290,33 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
-  req->calling_process_index = vlib_get_current_process_node_index (vm);
+  uword *event_data = 0, event_type;
+  f64 time_remaining;
 
+  req->calling_process_index = vlib_get_current_process_node_index (vm);
   if (req->calling_process_index != avf_process_node.index)
     {
       vlib_process_signal_event_pointer (vm, avf_process_node.index,
 					 AVF_PROCESS_EVENT_REQ, req);
 
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-      if (vlib_process_get_events (vm, &event_data) != 0)
+      time_remaining = vlib_process_wait_for_event_or_clock (vm, 5.0);
+      if (time_remaining <= 0.0)
 	clib_panic ("avf process node failed to reply in 5 seconds");
+
+      /* Put even type into a variable so it is visible in debug build locals.
+       */
+      event_type = vlib_process_get_events (vm, &event_data);
+      /* Zero is the expected event type. */
+      if (event_type == 2)
+	{
+	  clib_panic (
+	    "Got event 2, probably socket read. Fix VPP-2121 better!");
+	}
+      else if (event_type > 0)
+	{
+	  clib_panic ("Got an unknown event. Fix VPP-2121 better!");
+	}
+
       vec_free (event_data);
     }
   else
