@@ -291,6 +291,7 @@ typedef enum
 typedef struct
 {
   avf_process_req_type_t type;
+  uword one_time_type_index;
   u32 dev_instance;
   u32 calling_process_index;
   u8 eth_addr[6];
