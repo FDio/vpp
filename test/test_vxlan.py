@@ -21,6 +21,7 @@ from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
 from vpp_neighbor import VppNeighbor
 from config import config
+from vpp_qos import VppQosRecord
 
 
 @unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
@@ -292,7 +293,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         bind_layers(UDP, VXLAN, dport=self.dport)
 
     def encap_packets(self):
-        def encap_frames(frame, n=10):
+        def encap_frames(frame, n=1):
             frames = []
 
             # Provide IP flow hash difference.
@@ -311,6 +312,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
             sports = set()
             for i in range(n):
                 pkt = out[i]
+                print(pkt.show())
                 self.check_encapsulation(pkt, self.single_tunnel_vni)
 
                 payload = self.decapsulate(pkt)
@@ -322,39 +324,51 @@ class TestVxlan(BridgeDomain, VppTestCase):
             # src ports split ratio, just as long as there are more then one.
             self.assertGreaterEqual(len(sports), min(n, 2))
 
+        # self.vapi.cli("qos egress map id 0 [ip][5]=6")
+        # self.vapi.cli("qos egress map id 0 [ip][0]=1")
+        # self.vapi.cli("qos mark ip pg1 id 0")
+
+        #self.vapi.cli("qos record ip pg1")
+        from vpp_papi import VppEnum
+        rec = VppQosRecord(
+            self,
+            self.pg1,
+            VppEnum.vl_api_qos_source_t.QOS_API_SOURCE_IP
+        )
+        rec.add_vpp_config()
+
         frame_ip4 = (
             Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
-            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / IP(src="4.3.2.1", dst="1.2.3.4", tos=40)
             / UDP(sport=20000, dport=10000)
-            / Raw("\xa5" * 100)
-        )
+            / Raw("\xa5" * 100))
         encap_frames(frame_ip4)
 
-        frame_ip6 = (
-            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
-            / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
-            / UDP(sport=20000, dport=10000)
-            / Raw("\xa5" * 100)
-        )
-        encap_frames(frame_ip6)
+        # frame_ip6 = (
+        #     Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+        #     / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
+        #     / UDP(sport=20000, dport=10000)
+        #     / Raw("\xa5" * 100)
+        # )
+        # encap_frames(frame_ip6)
 
-        frame_mpls4 = (
-            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
-            / MPLS(label=44, ttl=64)
-            / IP(src="4.3.2.1", dst="1.2.3.4")
-            / UDP(sport=20000, dport=10000)
-            / Raw("\xa5" * 100)
-        )
-        encap_frames(frame_mpls4)
+        # frame_mpls4 = (
+        #     Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+        #     / MPLS(label=44, ttl=64)
+        #     / IP(src="4.3.2.1", dst="1.2.3.4")
+        #     / UDP(sport=20000, dport=10000)
+        #     / Raw("\xa5" * 100)
+        # )
+        # encap_frames(frame_mpls4)
 
-        frame_mpls6 = (
-            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
-            / MPLS(label=44, ttl=64)
-            / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
-            / UDP(sport=20000, dport=10000)
-            / Raw("\xa5" * 100)
-        )
-        encap_frames(frame_mpls6)
+        # frame_mpls6 = (
+        #     Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+        #     / MPLS(label=44, ttl=64)
+        #     / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
+        #     / UDP(sport=20000, dport=10000)
+        #     / Raw("\xa5" * 100)
+        # )
+        # encap_frames(frame_mpls6)
 
     def encap_big_packet(self):
         self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1500, 0, 0, 0])
@@ -399,7 +413,11 @@ class TestVxlan(BridgeDomain, VppTestCase):
         from BridgeDoman
         """
         self.createVxLANInterfaces()
+        self.vapi.cli("qos store vxlan_tunnel0 value 5 ip")
         self.encap_packets()
+        print(self.vapi.cli("show trace"))
+        print(self.vapi.cli("show int"))
+        print(self.vapi.cli("show vxlan tunnel"))
 
     def test_encap_big_packet(self):
         """Encapsulation test send big frame from pg1

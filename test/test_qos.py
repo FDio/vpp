@@ -108,6 +108,7 @@ class TestQOS(VppTestCase):
 
         self.assertTrue(qem7.query_vpp_config())
         self.logger.info(self.vapi.cli("sh qos eg map"))
+        # print(self.vapi.cli("show qos egress map"))
 
         #
         # Bind interface pgN to table n
@@ -126,7 +127,7 @@ class TestQOS(VppTestCase):
         ).add_vpp_config()
         self.assertTrue(qm3.query_vpp_config())
 
-        self.logger.info(self.vapi.cli("sh qos mark"))
+        print(self.vapi.cli("sh qos mark"))
 
         #
         # packets ingress on Pg0
@@ -221,7 +222,7 @@ class TestQOS(VppTestCase):
         self.logger.info(self.vapi.cli("sh qos mark"))
 
         self.assertFalse(qm3.query_vpp_config())
-        self.logger.info(self.vapi.cli("sh int feat pg2"))
+        print(self.vapi.cli("sh int feat pg2"))
 
         p_v4[IP].dst = self.pg2.remote_ip4
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg2)
@@ -257,15 +258,18 @@ class TestQOS(VppTestCase):
         #
         # enable QoS stroe instead of record
         #
+        print("STORE")
         qst1 = VppQosStore(
             self, self.pg0, self.QOS_SOURCE.QOS_API_SOURCE_IP, 5
         ).add_vpp_config()
-        self.logger.info(self.vapi.cli("sh qos store"))
+        print(self.vapi.cli("sh qos store"))
 
         p_v4[IP].dst = self.pg1.remote_ip4
+        print("TOS", p_v4[IP].tos)
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
         for p in rx:
             self.assertEqual(p[IP].tos, 250)
+        print(self.vapi.cli("show qos egress map "))
 
         #
         # disable the input storing on pg0
@@ -276,6 +280,7 @@ class TestQOS(VppTestCase):
         #
         # back to an unchanged TOS value
         #
+        print("TOS", p_v4[IP].tos)
         rx = self.send_and_expect(self.pg0, p_v4 * NUM_PKTS, self.pg1)
         for p in rx:
             self.assertEqual(p[IP].tos, 254)
