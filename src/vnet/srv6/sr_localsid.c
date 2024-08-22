@@ -1471,6 +1471,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
 	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_ext_header_t *prev0, *prev1, *prev2, *prev3;
+	  prev0 = prev1 = prev2 = prev3 = 0;
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_LOCALSID_NEXT_IP6_LOOKUP;
 	  ip6_sr_localsid_t *ls0, *ls1, *ls2, *ls3;
@@ -1779,6 +1780,7 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
 	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_ext_header_t *prev0, *prev1, *prev2, *prev3;
+	  prev0 = prev1 = prev2 = prev3 = 0;
 	  u32 next0, next1, next2, next3;
 	  next0 = next1 = next2 = next3 = SR_LOCALSID_NEXT_IP6_LOOKUP;
 	  ip6_sr_localsid_t *ls0, *ls1, *ls2, *ls3;
