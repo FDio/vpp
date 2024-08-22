@@ -1284,24 +1284,32 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
     clib_panic ("BUG: unknown avf proceess request type");
 
   if (req->calling_process_index != avf_process_node.index)
-    vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+    vlib_process_signal_event (vm, req->calling_process_index,
+			       req->one_time_type_index, 0);
 }
 
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
-  req->calling_process_index = vlib_get_current_process_node_index (vm);
+  uword **event_data = 0, type_index;
+  u32 num_events;
 
+  req->calling_process_index = vlib_get_current_process_node_index (vm);
   if (req->calling_process_index != avf_process_node.index)
     {
+      type_index =
+	vlib_process_create_one_time_event (vm, req->calling_process_index, 0);
+      req->one_time_type_index = type_index;
       vlib_process_signal_event_pointer (vm, avf_process_node.index,
 					 AVF_PROCESS_EVENT_REQ, req);
 
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-      if (vlib_process_get_events (vm, &event_data) != 0)
+      num_events = vlib_process_wait_for_one_time_event_or_clock (
+	vm, event_data, type_index, 5.0);
+      if (!num_events)
 	clib_panic ("avf process node failed to reply in 5 seconds");
+      else if (num_events > 1)
+	clib_panic ("avf_process_request got multiple ine-time events");
+
       vec_free (event_data);
     }
   else
