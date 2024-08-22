@@ -181,7 +181,7 @@ qos_store_cli (vlib_main_t * vm,
 	enable = 1;
       else if (unformat (input, "disable"))
 	enable = 0;
-      else if (unformat (input, "value &d", &value))
+      else if (unformat (input, "value %d", &value))
 	;
       else
 	break;
