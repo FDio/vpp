@@ -32,4 +32,6 @@ then
     echo "*************************** SUMMARY ***************************"
     cat "${HS_ROOT}/summary/failed-summary.log"
     exit 1
+else
+    exit $1
 fi
