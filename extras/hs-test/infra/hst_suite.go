@@ -225,39 +225,39 @@ func (s *HstSuite) HstFail() {
 }
 
 func (s *HstSuite) AssertNil(object interface{}, msgAndArgs ...interface{}) {
-	Expect(object).To(BeNil(), msgAndArgs...)
+	ExpectWithOffset(2, object).To(BeNil(), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertNotNil(object interface{}, msgAndArgs ...interface{}) {
-	Expect(object).ToNot(BeNil(), msgAndArgs...)
+	ExpectWithOffset(2, object).ToNot(BeNil(), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	Expect(actual).To(Equal(expected), msgAndArgs...)
+	ExpectWithOffset(2, actual).To(Equal(expected), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertNotEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	Expect(actual).ToNot(Equal(expected), msgAndArgs...)
+	ExpectWithOffset(2, actual).ToNot(Equal(expected), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	Expect(testString).To(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
+	ExpectWithOffset(2, testString).To(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	Expect(testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
+	ExpectWithOffset(2, testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
-	Expect(object).To(BeEmpty(), msgAndArgs...)
+	ExpectWithOffset(2, object).To(BeEmpty(), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
-	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
+	ExpectWithOffset(2, object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertMatchError(actual, expected error, msgAndArgs ...interface{}) {
-	Expect(actual).To(MatchError(expected))
+	ExpectWithOffset(2, actual).To(MatchError(expected))
 }
 
 func (s *HstSuite) CreateLogger() {
