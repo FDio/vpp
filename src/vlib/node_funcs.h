@@ -818,6 +818,14 @@ vlib_process_wait_for_one_time_event (vlib_main_t * vm,
   return vlib_process_get_events_helper (p, with_type_index, data_vector);
 }
 
+/** Suspend a cooperative multi-tasking thread
+    Waits for an event of the specified event type.
+    @param vm - vlib_main_t pointer
+    @param data_vector - pointer to vector of event arguments
+    @param with_type_opaque - the requested event type opaque
+    @returns the count of event received
+*/
+
 always_inline uword
 vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 				       uword ** data_vector,
@@ -891,6 +899,64 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
   /* Return amount of time still left to sleep.
      If <= 0 then we've been waken up by the clock (and not an event). */
   return wakeup_time - vlib_time_now (vm);
+}
+
+/** Suspend a cooperative multi-tasking thread
+    Waits for an event of the specified type index,
+    or the indicated number of seconds to elapse.
+    @param vm - vlib_main_t pointer
+    @param data_vector - pointer to vector of event arguments
+    @param type_index - the requested event type index
+    @param dt - timeout, in seconds.
+    @returns the number of events, zero on timeout
+*/
+
+always_inline u32
+vlib_process_wait_for_one_time_event_or_clock (vlib_main_t *vm,
+					       uword **data_vector,
+					       uword type_index, f64 dt)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
+  f64 wakeup_time, remaining_time;
+  uword r, *h;
+
+  p = vec_elt (nm->processes, nm->current_process_index);
+
+  if (vlib_process_suspend_time_is_zero (dt) ||
+      !clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
+    return dt;
+
+  wakeup_time = vlib_time_now (vm) + dt;
+
+  p = vec_elt (nm->processes, nm->current_process_index);
+  ASSERT (!pool_is_free_index (p->event_type_pool, type_index));
+  while (1)
+    {
+      h = clib_bitmap_get (p->non_empty_event_type_bitmap, type_index);
+      if (h)
+	return vlib_process_get_events_helper (p, h, data_vector);
+
+      /* Suspend waiting for both clock and event to occur. */
+      p->flags |= (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT |
+		   VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK);
+      r =
+	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
+      if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
+	{
+	  p->resume_clock_interval = dt * 1e5;
+	  vlib_process_start_switch_stack (vm, 0);
+	  clib_longjmp (&p->return_longjmp,
+			VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+	}
+      else
+	vlib_process_finish_switch_stack (vm);
+
+      /* Done waiting? */
+      remaining_time = wakeup_time - vlib_time_now (vm);
+      if (remaining_time < 0)
+	return 0;
+    }
 }
 
 always_inline vlib_process_event_type_t *
