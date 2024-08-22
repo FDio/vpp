@@ -156,7 +156,7 @@ where LogPrefix is set to nginxContainer.Name
 */
 func (s *HstSuite) CollectNginxLogs(containerName string) {
 	nginxContainer := s.GetContainerByName(containerName)
-	targetDir := nginxContainer.getLogDirPath()
+	targetDir := nginxContainer.Suite.getLogDirPath()
 	source := nginxContainer.GetHostWorkDir() + "/" + nginxContainer.Name + "-"
 	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"access.log")
 	s.Log(cmd.String())
@@ -174,7 +174,7 @@ where LogPrefix is set to envoyContainer.Name
 */
 func (s *HstSuite) CollectEnvoyLogs(containerName string) {
 	envoyContainer := s.GetContainerByName(containerName)
-	targetDir := envoyContainer.getLogDirPath()
+	targetDir := envoyContainer.Suite.getLogDirPath()
 	source := envoyContainer.GetHostWorkDir() + "/" + envoyContainer.Name + "-"
 	cmd := exec.Command("cp", "-t", targetDir, source+"access.log")
 	s.Log(cmd.String())
