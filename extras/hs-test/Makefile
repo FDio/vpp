@@ -119,30 +119,26 @@ build-vpp-gcov:
 
 .PHONY: test
 test: .deps.ok .build.ok
-	@# '-' ignores the exit status, it is set in compress.sh
-	@# necessary so gmake won't skip executing the bash script
-	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0)
-	@bash ./script/compress.sh
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0); \
+		./script/compress.sh $$?
+
 
 .PHONY: test-debug
 test-debug: .deps.ok .build_debug.ok
-	@# '-' ignores the exit status, it is set in compress.sh
-	@# necessary so gmake won't skip executing the bash script
-	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0)
-	@bash ./script/compress.sh
+		--cpu0=$(CPU0); \
+		./script/compress.sh $$?
 
 .PHONY: test-cov
 test-cov: .deps.ok .build.cov.ok
-	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0)
-	@$(MAKE) -C ../.. test-cov-post HS_TEST=1
-	@bash ./script/compress.sh
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0); \
+		./script/compress.sh $$?
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
