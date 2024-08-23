@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4c9443d_d0467280",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 613,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-23T17:35:23Z",
+      "side": 1,
+      "message": "Have we seen this in practice? It\u0027s a should not a must, so wondering now if it\u0027s common",
+      "revId": "ae14da3c6d83a2088dd0295d46f3f62c7628e366",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
