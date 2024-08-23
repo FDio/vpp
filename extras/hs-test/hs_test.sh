@@ -130,10 +130,14 @@ if [ $? != 0 ]; then
     \(.LeafNodeText)
 Suite:
     \(.Failure.FailureNodeLocation.FileName)
-Message:
-\(.Failure.Message)"
+Message:\n"
++(if .ReportEntries? then .ReportEntries[] | select(.Name == "VPP Backtrace") |
+"\tVPP crashed
+Full Back Trace:
+\(.Value.Representation | ltrimstr("{{red}}") | rtrimstr("{{/}}"))" else
+    "\(.Failure.Message)"
      + (if .Failure.Message == "A spec timeout occurred" then "\n" else
 "\nFull Stack Trace:
-\(.Failure.Location.FullStackTrace)\n" end)' summary/report.json > summary/failed-summary.log \
+\(.Failure.Location.FullStackTrace)\n" end) end)' summary/report.json > summary/failed-summary.log \
 	&& echo "Summary generated -> summary/failed-summary.log"
 fi

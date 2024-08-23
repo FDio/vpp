@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/edwarnicke/exechelper"
 	"io"
 	"log"
 	"net/http"
@@ -330,7 +331,6 @@ func (s *HstSuite) SkipUnlessLeakCheck() {
 
 func (s *HstSuite) WaitForCoreDump() {
 	var filename string
-	var cmd *exec.Cmd
 	dir, err := os.Open(s.getLogDirPath())
 	if err != nil {
 		s.Log(err)
@@ -352,10 +352,10 @@ func (s *HstSuite) WaitForCoreDump() {
 	waitTime := 5
 
 	if filename != "" {
-		filename := s.getLogDirPath() + filename
-		s.Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", filename))
+		corePath := s.getLogDirPath() + filename
+		s.Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", corePath))
 		for i := waitTime; i <= timeout; i += waitTime {
-			fileInfo, err := os.Stat(filename)
+			fileInfo, err := os.Stat(corePath)
 			if err != nil {
 				s.Log("Error while reading file info: " + fmt.Sprint(err))
 				return
@@ -363,25 +363,24 @@ func (s *HstSuite) WaitForCoreDump() {
 			currSize := fileInfo.Size()
 			s.Log(fmt.Sprintf("Waiting %ds/%ds...", i, timeout))
 			time.Sleep(time.Duration(waitTime) * time.Second)
-			fileInfo, _ = os.Stat(filename)
+			fileInfo, _ = os.Stat(corePath)
 
 			if currSize == fileInfo.Size() {
+				debug := ""
 				if *IsDebugBuild {
-					cmd = exec.Command("sudo", "gdb", "../../build-root/build-vpp_debug-native/vpp/bin/vpp",
-						"-c", filename, "-ex", "bt", "full", "-ex", "quit")
-				} else {
-					cmd = exec.Command("sudo", "gdb", "../../build-root/build-vpp-native/vpp/bin/vpp",
-						"-c", filename, "-ex", "bt", "full", "-ex", "quit")
+					debug = "_debug"
 				}
-
+				vppBinPath := fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
+				pluginsLibPath := fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/x86_64-linux-gnu/vpp_plugins", debug)
+				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", vppBinPath, corePath, *VppSourceFileDir, pluginsLibPath)
 				s.Log(cmd)
-				output, _ := cmd.Output()
+				output, _ := exechelper.Output(cmd)
 				AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
 				os.WriteFile(s.getLogDirPath()+"backtrace.log", output, os.FileMode(0644))
 				if s.CpuAllocator.runningInCi {
-					err = os.Remove(filename)
+					err = os.Remove(corePath)
 					if err == nil {
-						s.Log("removed " + filename)
+						s.Log("removed " + corePath)
 					} else {
 						s.Log(err)
 					}
