@@ -16,6 +16,23 @@
       "message": "perftest-3n-snr ndrpdrANDnic_*AND1cAND64bANDethip4ipsec10000tnlsw-ip4base-policy-aes256gcm !drv_af_xdp",
       "revId": "352aac369c8dd3525f7aede691aa2c25735861f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36e9e5b7_d50455a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-08-23T10:14:32Z",
+      "side": 1,
+      "message": "Oh, branch has to be master for the job to start?",
+      "revId": "352aac369c8dd3525f7aede691aa2c25735861f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
