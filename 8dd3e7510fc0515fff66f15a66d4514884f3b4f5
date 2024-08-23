@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2fd34ee_7b904a8a",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-23T12:47:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "465c0b9c_d49e8bf6",
+      "revId": "8dd3e7510fc0515fff66f15a66d4514884f3b4f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6e03ff19_cc359a84",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-08-21T09:00:14Z",
       "side": 1,
       "message": "lot of boilerplate in both tests, might be worth to create ldp suite and put this stuff here in test setup, teardown and create some helper functions,...",
+      "revId": "8dd3e7510fc0515fff66f15a66d4514884f3b4f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5605132c_73692bdf",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-23T12:47:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e03ff19_cc359a84",
       "revId": "8dd3e7510fc0515fff66f15a66d4514884f3b4f5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
