@@ -16,6 +16,24 @@
       "message": "NDRPDR tests are failing already for a different reason, testing only for MRR.\n\n\nperftest-3n-snr mrrANDnic_*AND1cAND64bANDethip4ipsec10000tnlsw-ip4base-policy-aes256gcm !drv_af_xdp",
       "revId": "75f49f1911995d5d78e4ba3913a17dbde69e2d68",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "106b917b_82833a6c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-08-23T14:26:00Z",
+      "side": 1,
+      "message": "... and 10k tests are still susceptible to CSIT-1938.\n\nperftest-3n-snr mrrANDnic_*AND1cAND64bANDethip4ipsec1000tnlsw-ip4base-policy-aes256gcm !drv_af_xdp",
+      "parentUuid": "7899f7f8_12e3e01e",
+      "revId": "75f49f1911995d5d78e4ba3913a17dbde69e2d68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
