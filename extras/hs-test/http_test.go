@@ -29,7 +29,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
-		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest)
+		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
 }
@@ -867,7 +867,19 @@ func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	vpp.Vppctl("http cli server")
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1")
+	resp, err := TcpSendReceive(serverAddress+":80", " GET / HTTP/1.1")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "\rGET / HTTP/1.1")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "\nGET / HTTP/1.1")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
 
@@ -894,6 +906,17 @@ func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP1.1' invalid http version not allowed")
+}
+
+func HttpRequestLineTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	vpp.Vppctl("http cli server")
+
+	resp, err := TcpSendReceive(serverAddress+":80", "\r\nGET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 200 OK")
+	s.AssertContains(resp, "<html>", "html content not found")
 }
 
 func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {

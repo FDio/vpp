@@ -587,10 +587,10 @@ static int
 http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
 {
   int i, target_len;
-  u32 next_line_offset;
+  u32 next_line_offset, method_offset;
 
   /* request-line = method SP request-target SP HTTP-version CRLF */
-  i = v_find_index (hc->rx_buf, 0, 0, "\r\n");
+  i = v_find_index (hc->rx_buf, 8, 0, "\r\n");
   if (i < 0)
     {
       clib_warning ("request line incomplete");
@@ -609,24 +609,40 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       return -1;
     }
 
+  /*
+   * RFC9112 2.2:
+   * In the interest of robustness, a server that is expecting to receive and
+   * parse a request-line SHOULD ignore at least one empty line (CRLF)
+   * received prior to the request-line.
+   */
+  method_offset = hc->rx_buf[0] == '\r' && hc->rx_buf[1] == '\n' ? 2 : 0;
   /* parse method */
-  if ((i = v_find_index (hc->rx_buf, 0, next_line_offset, "GET ")) >= 0)
+  if (!memcmp (hc->rx_buf + method_offset, "GET ", 4))
     {
       HTTP_DBG (0, "GET method");
       hc->method = HTTP_REQ_GET;
-      hc->target_path_offset = i + 4;
+      hc->target_path_offset = method_offset + 4;
     }
-  else if ((i = v_find_index (hc->rx_buf, 0, next_line_offset, "POST ")) >= 0)
+  else if (!memcmp (hc->rx_buf + method_offset, "POST ", 5))
     {
       HTTP_DBG (0, "POST method");
       hc->method = HTTP_REQ_POST;
-      hc->target_path_offset = i + 5;
+      hc->target_path_offset = method_offset + 5;
     }
   else
     {
-      clib_warning ("method not implemented: %8v", hc->rx_buf);
-      *ec = HTTP_STATUS_NOT_IMPLEMENTED;
-      return -1;
+      if (hc->rx_buf[method_offset] - 'A' <= 'Z' - hc->rx_buf[method_offset])
+	{
+	  clib_warning ("not method name: %8v", hc->rx_buf);
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+      else
+	{
+	  clib_warning ("method not implemented: %8v", hc->rx_buf);
+	  *ec = HTTP_STATUS_NOT_IMPLEMENTED;
+	  return -1;
+	}
     }
 
   /* find version */
