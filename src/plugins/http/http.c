@@ -1093,6 +1093,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   http_status_code_t sc;
   http_msg_t msg;
   int rv;
+  http_sm_result_t sm_result = HTTP_SM_ERROR;
 
   as = session_get_from_handle (hc->h_pa_session_handle);
 
@@ -1159,9 +1160,6 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
     }
   HTTP_DBG (0, "%v", header);
 
-  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type], as->tx_fifo,
-		    msg.data.body_len);
-
   offset = http_send_data (hc, header, vec_len (header), 0);
   if (offset != vec_len (header))
     {
@@ -1172,12 +1170,24 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
     }
   vec_free (header);
 
-  /* Start sending the actual data */
-  http_state_change (hc, HTTP_STATE_APP_IO_MORE_DATA);
+  if (msg.data.body_len)
+    {
+      /* Start sending the actual data */
+      http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
+			as->tx_fifo, msg.data.body_len);
+      http_state_change (hc, HTTP_STATE_APP_IO_MORE_DATA);
+      sm_result = HTTP_SM_CONTINUE;
+    }
+  else
+    {
+      /* No response body, we are done */
+      http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+      sm_result = HTTP_SM_STOP;
+    }
 
   ASSERT (sp->max_burst_size >= offset);
   sp->max_burst_size -= offset;
-  return HTTP_SM_CONTINUE;
+  return sm_result;
 
 error:
   http_send_error (hc, sc);

@@ -125,6 +125,13 @@ handle_get_test_delayed (hss_url_handler_args_t *args)
   return HSS_URL_HANDLER_ASYNC;
 }
 
+static hss_url_handler_rc_t
+handle_post_test3 (hss_url_handler_args_t *args)
+{
+  send_data_to_hss (args->sh, 0);
+  return HSS_URL_HANDLER_ASYNC;
+}
+
 static void
 test_builtins_init (vlib_main_t *vm)
 {
@@ -144,6 +151,7 @@ test_builtins_init (vlib_main_t *vm)
   (*fp) (handle_get_test1, "test1", HTTP_REQ_GET);
   (*fp) (handle_get_test2, "test2", HTTP_REQ_GET);
   (*fp) (handle_get_test_delayed, "test_delayed", HTTP_REQ_GET);
+  (*fp) (handle_post_test3, "test3", HTTP_REQ_POST);
 
   tbm->send_data =
     vlib_get_plugin_symbol ("http_static_plugin.so", "hss_session_send_data");
