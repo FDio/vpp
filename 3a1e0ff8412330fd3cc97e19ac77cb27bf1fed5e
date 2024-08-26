@@ -22,6 +22,30 @@
       },
       "revId": "3a1e0ff8412330fd3cc97e19ac77cb27bf1fed5e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3de9cdaa_e370cdee",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-26T19:40:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f3721b7_d91268dc",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 22
+      },
+      "revId": "3a1e0ff8412330fd3cc97e19ac77cb27bf1fed5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
