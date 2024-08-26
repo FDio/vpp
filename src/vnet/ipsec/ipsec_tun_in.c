@@ -60,8 +60,8 @@ format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
     s = format (s, "IPSec: %U seq %u",
 		format_ipsec6_tunnel_kv, &t->kv6, t->seq);
   else
-    s = format (s, "IPSec: %U seq %u sa %d",
-		format_ipsec4_tunnel_kv, &t->kv4, t->seq);
+    s =
+      format (s, "IPSec: %U seq %u", format_ipsec4_tunnel_kv, &t->kv4, t->seq);
   return s;
 }
 
