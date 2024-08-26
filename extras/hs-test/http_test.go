@@ -85,24 +85,39 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 			return http.ErrUseLastResponse
 		}}
 
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/test1", nil)
+	body := []byte("{\"sandwich\": {\"spam\": 2, \"eggs\": 1}}")
+	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test3", bytes.NewBuffer(body))
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertHttpStatus(resp, 200)
 	s.AssertEqual(false, resp.Close)
-	s.AssertHttpBody(resp, "hello")
+	s.AssertHttpContentLength(resp, int64(0))
 	o1 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o1)
 	s.AssertContains(o1, "ESTABLISHED")
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test1", nil)
+	s.AssertNil(err, fmt.Sprint(err))
 	clientTrace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			s.AssertEqual(true, info.Reused, "connection not reused")
 		},
 	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace))
+	resp, err = client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertEqual(false, resp.Close)
+	s.AssertHttpBody(resp, "hello")
+	o2 := vpp.Vppctl("show session verbose proto http state ready")
+	s.Log(o2)
+	s.AssertContains(o2, "ESTABLISHED")
+	s.AssertEqual(o1, o2)
+
+	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace))
 	resp, err = client.Do(req)
@@ -111,7 +126,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertHttpStatus(resp, 200)
 	s.AssertEqual(false, resp.Close)
 	s.AssertHttpBody(resp, "some data")
-	o2 := vpp.Vppctl("show session verbose proto http state ready")
+	o2 = vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o2)
 	s.AssertContains(o2, "ESTABLISHED")
 	s.AssertEqual(o1, o2)
