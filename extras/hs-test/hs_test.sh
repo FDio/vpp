@@ -140,4 +140,8 @@ Full Back Trace:
 "\nFull Stack Trace:
 \(.Failure.Location.FullStackTrace)\n" end) end)' summary/report.json > summary/failed-summary.log \
 	&& echo "Summary generated -> summary/failed-summary.log"
+else
+    if [ -e "summary/failed-summary.log" ]; then
+        rm summary/failed-summary.log
+    fi
 fi
