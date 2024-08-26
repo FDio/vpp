@@ -60,6 +60,18 @@ func (s *NoTopoSuite) SetupTest() {
 	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }
 
+func (s *NoTopoSuite) VppAddr() string {
+	return s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+}
+
+func (s *NoTopoSuite) VppIfName() string {
+	return s.GetInterfaceByName(TapInterfaceName).Peer.Name()
+}
+
+func (s *NoTopoSuite) HostAddr() string {
+	return s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+}
+
 var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 	var s NoTopoSuite
 	BeforeAll(func() {

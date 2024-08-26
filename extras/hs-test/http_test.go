@@ -46,7 +46,7 @@ func httpDownloadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data in
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	_, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	duration := time.Since(t)
@@ -59,7 +59,7 @@ func HttpTpsInterruptModeTest(s *NoTopoSuite) {
 
 func HttpTpsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	url := "http://" + serverAddress + ":8080/test_file_10M"
 
 	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
@@ -71,7 +71,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 
@@ -89,45 +89,40 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	s.AssertEqual(false, resp.Close)
-	body, err := io.ReadAll(resp.Body)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertEqual(string(body), "hello")
+	s.AssertHttpBody(resp, "hello")
 	o1 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o1)
 	s.AssertContains(o1, "ESTABLISHED")
 
 	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
-	s.AssertNil(err, fmt.Sprint(err))
 	clientTrace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			s.AssertEqual(true, info.Reused, "connection not reused")
 		},
 	}
+	s.AssertNil(err, fmt.Sprint(err))
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace))
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	s.AssertEqual(false, resp.Close)
-	body, err = io.ReadAll(resp.Body)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertEqual(string(body), "some data")
+	s.AssertHttpBody(resp, "some data")
 	o2 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o2)
 	s.AssertContains(o2, "ESTABLISHED")
 	s.AssertEqual(o1, o2)
+
 }
 
 func HttpPipeliningTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 
@@ -190,7 +185,7 @@ func HttpCliConnectErrorTest(s *VethsSuite) {
 }
 
 func HttpClientTest(s *NoTopoSuite) {
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	serverAddress := s.HostAddr()
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", serverAddress+":80")
 	s.AssertNil(err, fmt.Sprint(err))
@@ -215,7 +210,7 @@ func HttpClientTest(s *NoTopoSuite) {
 }
 
 func HttpClientErrRespTest(s *NoTopoSuite) {
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	serverAddress := s.HostAddr()
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", serverAddress+":80")
 	s.AssertNil(err, fmt.Sprint(err))
@@ -237,7 +232,7 @@ func HttpClientErrRespTest(s *NoTopoSuite) {
 }
 
 func HttpClientPostFormTest(s *NoTopoSuite) {
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	serverAddress := s.HostAddr()
 	body := "field1=value1&field2=value2"
 
 	server := ghttp.NewUnstartedServer()
@@ -264,7 +259,7 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 }
 
 func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	serverAddress := s.HostAddr()
 	vpp := s.GetContainerByName("vpp").VppInstance
 	fileName := "/tmp/test_file.txt"
 	s.Log(vpp.Container.Exec("fallocate -l " + strconv.Itoa(fileSize) + " " + fileName))
@@ -327,7 +322,7 @@ func AuthorityFormTargetTest(s *NoTopoSuite) {
 func HttpStaticPromTest(s *NoTopoSuite) {
 	query := "stats.prom"
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
@@ -338,10 +333,9 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, false))
-	s.AssertEqual(200, resp.StatusCode)
-	s.AssertContains(resp.Header.Get("Content-Type"), "text")
-	s.AssertContains(resp.Header.Get("Content-Type"), "plain")
-	s.AssertNotEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/plain")
+	s.AssertGreaterThan(resp.ContentLength, 0)
 	_, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 }
@@ -353,7 +347,7 @@ func promReq(s *NoTopoSuite, url string) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	_, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 }
@@ -366,7 +360,7 @@ func promReqWg(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
 
 func PromConcurrentConnectionsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	url := "http://" + serverAddress + ":80/stats.prom"
 
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
@@ -386,7 +380,7 @@ func PromMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	url := "http://" + serverAddress + ":80/stats.prom"
 
 	/* no goVPP less noise */
@@ -454,7 +448,7 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 func HttpClientPostMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	serverAddress := s.HostAddr()
 	body := "field1=value1&field2=value2"
 
 	uri := "http://" + serverAddress + "/80"
@@ -504,7 +498,7 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 
 	/* no goVPP less noise */
 	vpp.Disconnect()
@@ -543,17 +537,16 @@ func HttpStaticFileHandlerTest(s *NoTopoSuite) {
 }
 
 func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
-	var max_age_formatted string
+	var maxAgeFormatted string
 	if max_age == "default" {
-		max_age_formatted = ""
+		maxAgeFormatted = ""
 		max_age = "600"
 	} else {
-		max_age_formatted = "max-age " + max_age
+		maxAgeFormatted = "max-age " + max_age
 	}
 
 	content := "<html><body><p>Hello</p></body></html>"
 	content2 := "<html><body><p>Page</p></body></html>"
-	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)[:17]
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
@@ -561,28 +554,25 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertNil(err, fmt.Sprint(err))
 	err = vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m " + max_age_formatted))
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m " + maxAgeFormatted))
 
 	client := NewHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/index.html", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
 
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
-	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
-	// only checking date
-	s.AssertContains(resp.Header.Get("Last-Modified"), currentDate)
-	s.AssertEqual(len(resp.Header.Get("Last-Modified")), 29)
-	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
-
-	body, err := io.ReadAll(resp.Body)
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+	s.AssertHttpHeaderWithValue(resp, "Cache-Control", "max-age="+max_age)
+	parsedTime, err := time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
 	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertEqual(string(body), content)
+	s.AssertTimeEqualWithinThreshold(parsedTime, time.Now(), time.Minute*5)
+	s.AssertEqual(len(resp.Header.Get("Last-Modified")), 29)
+	s.AssertHttpContentLength(resp, int64(len([]rune(content))))
+	s.AssertHttpBody(resp, content)
 	o := vpp.Vppctl("show http static server cache verbose")
 	s.Log(o)
 	s.AssertContains(o, "index.html")
@@ -590,31 +580,23 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
-	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
-	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
-
-	body, err = io.ReadAll(resp.Body)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertEqual(string(body), content)
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+	s.AssertHttpHeaderWithValue(resp, "Cache-Control", "max-age="+max_age)
+	s.AssertHttpContentLength(resp, int64(len([]rune(content))))
+	s.AssertHttpBody(resp, content)
 
 	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/page.html", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
-	s.AssertContains(resp.Header.Get("Content-Type"), "html")
-	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age="+max_age)
-	s.AssertEqual(int64(len([]rune(content2))), resp.ContentLength)
-
-	body, err = io.ReadAll(resp.Body)
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertEqual(string(body), content2)
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+	s.AssertHttpHeaderWithValue(resp, "Cache-Control", "max-age="+max_age)
+	s.AssertHttpContentLength(resp, int64(len([]rune(content2))))
+	s.AssertHttpBody(resp, content2)
 	o = vpp.Vppctl("show http static server cache verbose")
 	s.Log(o)
 	s.AssertContains(o, "index.html")
@@ -627,7 +609,7 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	vpp.Container.Exec("mkdir -p " + "/tmp/secret_folder")
 	err := vpp.Container.CreateFile("/tmp/secret_folder/secret_file.txt", "secret")
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
 	client := NewHttpClient()
@@ -637,10 +619,10 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(404, resp.StatusCode)
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEmpty(resp.Header.Get("Cache-Control"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 404)
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpStaticMovedTest(s *NoTopoSuite) {
@@ -648,7 +630,7 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp.Container.Exec("mkdir -p " + wwwRootPath + "/tmp.aaa")
 	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
 	client := NewHttpClient()
@@ -658,17 +640,17 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(301, resp.StatusCode)
-	s.AssertEqual("http://"+serverAddress+"/tmp.aaa/index.html", resp.Header.Get("Location"))
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEmpty(resp.Header.Get("Cache-Control"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 301)
+	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+serverAddress+"/tmp.aaa/index.html")
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.Container.Exec("mkdir -p " + wwwRootPath)
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
 	client := NewHttpClient()
@@ -678,15 +660,15 @@ func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(404, resp.StatusCode)
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEmpty(resp.Header.Get("Cache-Control"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 404)
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	client := NewHttpClient()
@@ -696,15 +678,15 @@ func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(405, resp.StatusCode)
-	s.AssertNotEqual("", resp.Header.Get("Allow"), "server MUST generate an Allow header")
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 405)
+	s.AssertHttpHeaderWithValue(resp, "Allow", "GET", "server MUST generate an Allow header")
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpCliBadRequestTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	client := NewHttpClient()
@@ -714,14 +696,14 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(400, resp.StatusCode)
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 400)
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 
 	client := NewHttpClient()
@@ -731,7 +713,7 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "vpp_details")
@@ -740,12 +722,12 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	s.AssertNotContains(string(data), "build_by")
 	s.AssertNotContains(string(data), "build_host")
 	s.AssertNotContains(string(data), "build_dir")
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
 func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 
 	client := NewHttpClient()
@@ -755,7 +737,7 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "vpp_details")
@@ -764,12 +746,12 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	s.AssertContains(string(data), "build_by")
 	s.AssertContains(string(data), "build_host")
 	s.AssertContains(string(data), "build_dir")
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
 func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 
 	client := NewHttpClient()
@@ -779,17 +761,17 @@ func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "interface_list")
-	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Peer.Name())
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertContains(string(data), s.VppIfName())
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
 func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 
 	client := NewHttpClient()
@@ -799,27 +781,27 @@ func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "interface_stats")
 	s.AssertContains(string(data), "local0")
-	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Peer.Name())
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertContains(string(data), s.VppIfName())
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
 func validatePostInterfaceStats(s *NoTopoSuite, data string) {
 	s.AssertContains(data, "interface_stats")
-	s.AssertContains(data, s.GetInterfaceByName(TapInterfaceName).Peer.Name())
+	s.AssertContains(data, s.VppIfName())
 	s.AssertNotContains(data, "error")
 	s.AssertNotContains(data, "local0")
 }
 
 func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
-	body := []byte(s.GetInterfaceByName(TapInterfaceName).Peer.Name())
+	body := []byte(s.VppIfName())
 
 	client := NewHttpClient()
 	req, err := http.NewRequest("POST",
@@ -829,19 +811,18 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, string(data))
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 }
 
 func HttpStaticMacTimeTest(s *NoTopoSuite) {
-	currentDate := time.Now().In(time.FixedZone("GMT", 0)).Format(http.TimeFormat)[:17]
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
-	s.Log(vpp.Vppctl("mactime enable-disable " + s.GetInterfaceByName(TapInterfaceName).Peer.Name()))
+	s.Log(vpp.Vppctl("mactime enable-disable " + s.VppIfName()))
 
 	client := NewHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/mactime.json", nil)
@@ -850,21 +831,22 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "mactime")
-	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Ip4AddressString())
+	s.AssertContains(string(data), s.HostAddr())
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).HwAddress.String())
-	s.AssertContains(resp.Header.Get("Content-Type"), "json")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
+	parsedTime, err := time.Parse(time.RFC1123, resp.Header.Get("Date"))
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertTimeEqualWithinThreshold(parsedTime, time.Now(), time.Minute*5)
 	s.AssertEqual(len(resp.Header.Get("Date")), 29)
-	// only checking date
-	s.AssertContains(resp.Header.Get("Date"), currentDate)
 }
 
 func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(serverAddress+":80", " GET / HTTP/1.1")
@@ -910,7 +892,7 @@ func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 
 func HttpRequestLineTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(serverAddress+":80", "\r\nGET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\n\r\n")
@@ -921,7 +903,7 @@ func HttpRequestLineTest(s *NoTopoSuite) {
 
 func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
 
 	resp, err := TcpSendReceive(serverAddress+":80", "GET /interface|stats.json HTTP/1.1\r\n\r\n")
@@ -969,7 +951,7 @@ func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 
 func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length:\r\n\r\n")
@@ -988,9 +970,9 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 
 func HttpContentLengthTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
-	ifName := s.GetInterfaceByName(TapInterfaceName).Peer.Name()
+	ifName := s.VppIfName()
 
 	resp, err := TcpSendReceive(serverAddress+":80",
 		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:4\r\n\r\n"+ifName)
@@ -1010,7 +992,7 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 
 func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	client := NewHttpClient()
@@ -1020,14 +1002,14 @@ func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(501, resp.StatusCode)
-	s.AssertEmpty(resp.Header.Get("Content-Type"))
-	s.AssertEqual(int64(0), resp.ContentLength)
+	s.AssertHttpStatus(resp, 501)
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpContentLength(resp, int64(0))
 }
 
 func HttpVersionNotSupportedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(serverAddress+":80", "GET / HTTP/2\r\n\r\n")
@@ -1037,7 +1019,7 @@ func HttpVersionNotSupportedTest(s *NoTopoSuite) {
 
 func HttpUriDecodeTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	client := NewHttpClient()
@@ -1047,17 +1029,17 @@ func HttpUriDecodeTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
+	s.AssertHttpStatus(resp, 200)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotContains(string(data), "unknown input")
 	s.AssertContains(string(data), "Compiler")
-	s.AssertContains(resp.Header.Get("Content-Type"), "html")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
 }
 
 func HttpHeadersTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(
@@ -1071,7 +1053,7 @@ func HttpHeadersTest(s *NoTopoSuite) {
 
 func HttpInvalidHeadersTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	resp, err := TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nUser-Agent: test\r\n")
@@ -1109,7 +1091,7 @@ func HttpInvalidHeadersTest(s *NoTopoSuite) {
 
 func HeaderServerTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
 	client := NewHttpClient()
@@ -1119,7 +1101,7 @@ func HeaderServerTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
-	s.AssertEqual(200, resp.StatusCode)
-	s.AssertEqual("http_cli_server", resp.Header.Get("Server"))
-	s.AssertContains(resp.Header.Get("Content-Type"), "html")
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Server", "http_cli_server")
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
 }

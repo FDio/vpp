@@ -22,7 +22,7 @@ func NginxHttp3Test(s *NoTopoSuite) {
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 
 	defer func() { os.Remove(query) }()
 	curlCont := s.GetContainerByName("curl")
@@ -44,7 +44,7 @@ func NginxAsServerTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
 
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 
 	defer func() { os.Remove(query) }()
 	go func() {
@@ -68,7 +68,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	nRequests := 1000000
 	nClients := 1000
 
-	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	serverAddress := s.VppAddr()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 

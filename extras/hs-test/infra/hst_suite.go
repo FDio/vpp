@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -258,7 +259,35 @@ func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{})
 }
 
 func (s *HstSuite) AssertMatchError(actual, expected error, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).To(MatchError(expected))
+	ExpectWithOffset(2, actual).To(MatchError(expected), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertGreaterThan(actual, expected interface{}, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, actual).Should(BeNumerically(">=", expected), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertTimeEqualWithinThreshold(actual, expected time.Time, threshold time.Duration, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, actual).Should(BeTemporally("~", expected, threshold), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertHttpStatus(resp *http.Response, expectedStatus int, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, resp).To(HaveHTTPStatus(expectedStatus), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertHttpHeaderWithValue(resp *http.Response, key string, value interface{}, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue(key, value), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertHttpHeaderNotPresent(resp *http.Response, key string, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, resp.Header.Get(key)).To(BeEmpty(), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertHttpContentLength(resp *http.Response, expectedContentLen int64, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue("Content-Length", strconv.FormatInt(expectedContentLen, 10)), msgAndArgs...)
+}
+
+func (s *HstSuite) AssertHttpBody(resp *http.Response, expectedBody string, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, resp).To(HaveHTTPBody(expectedBody), msgAndArgs...)
 }
 
 func (s *HstSuite) CreateLogger() {
