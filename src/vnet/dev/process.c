@@ -240,7 +240,7 @@ vnet_dev_process_create (vlib_main_t *vm, vnet_dev_t *dev)
       vlib_node_registration_t r = {
 	.function = vnet_dev_process,
 	.type = VLIB_NODE_TYPE_PROCESS,
-	.process_log2_n_stack_bytes = 16,
+	.process_log2_n_stack_bytes = 23,
 	.runtime_data_bytes = sizeof (void *),
       };
 
