@@ -494,7 +494,7 @@ VLIB_REGISTER_NODE (vl_api_clnt_node) = {
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "api-rx-from-ring",
   .state = VLIB_NODE_STATE_DISABLED,
-  .process_log2_n_stack_bytes = 18,
+  .process_log2_n_stack_bytes = 23,
 };
 
 void
