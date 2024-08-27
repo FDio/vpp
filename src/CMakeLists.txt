@@ -156,7 +156,7 @@ set(CMAKE_C_FLAGS_DEBUG "")
 
 if (${CMAKE_BUILD_TYPE_LC} MATCHES "release")
   add_compile_options(-O3 -fstack-protector -fno-common)
-  add_compile_definitions(_FORTIFY_SOURCE=2)
+#  add_compile_definitions(_FORTIFY_SOURCE=2)
 elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "debug")
   add_compile_options(-O0 -fstack-protector -fno-common)
   add_compile_definitions(CLIB_DEBUG)

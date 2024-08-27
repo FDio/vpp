@@ -71,7 +71,7 @@
 void clib_memswap (void *_a, void *_b, uword bytes);
 
 
-static_always_inline void *
+static void *
 clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
 {
   ASSERT (dst && src &&
