@@ -22,7 +22,6 @@
 #include <vppinfra/crypto/aes_cbc.h>
 
 #if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
-#pragma GCC optimize ("O3")
 #endif
 
 #if defined(__VAES__) && defined(__AVX512F__)
