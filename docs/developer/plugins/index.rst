@@ -19,9 +19,9 @@ For more on plugins please refer to :ref:`add_plugin`.
 
     quic
     cnat
+    dev_armada
     lcp
     srv6/index
-    marvell
     lldp
     nat64
     nat44_ei_ha
