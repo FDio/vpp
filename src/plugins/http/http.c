@@ -397,25 +397,27 @@ static const char *http_post_request_template = "POST %s HTTP/1.1\r\n"
 						"%s";
 
 static u32
-http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
+http_send_data (http_conn_t *hc, u8 *data, u32 length)
 {
   const u32 max_burst = 64 << 10;
   session_t *ts;
   u32 to_send;
-  int sent;
+  int rv;
 
   ts = session_get_from_handle (hc->h_tc_session_handle);
 
-  to_send = clib_min (length - offset, max_burst);
-  sent = svm_fifo_enqueue (ts->tx_fifo, to_send, data + offset);
-
-  if (sent <= 0)
-    return offset;
+  to_send = clib_min (length, max_burst);
+  rv = svm_fifo_enqueue (ts->tx_fifo, to_send, data);
+  if (rv <= 0)
+    {
+      clib_warning ("svm_fifo_enqueue failed, rv %d", rv);
+      return 0;
+    }
 
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
-  return (offset + sent);
+  return rv;
 }
 
 static void
@@ -432,7 +434,7 @@ http_send_error (http_conn_t *hc, http_status_code_t ec)
   data = format (0, http_error_template, http_status_code_str[ec],
 		 format_clib_timebase_time, now);
   HTTP_DBG (1, "%v", data);
-  http_send_data (hc, data, vec_len (data), 0);
+  http_send_data (hc, data, vec_len (data));
   vec_free (data);
 }
 
@@ -1086,8 +1088,8 @@ static http_sm_result_t
 http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_main_t *hm = &http_main;
-  u8 *header;
-  u32 offset;
+  u8 *response;
+  u32 sent;
   f64 now;
   session_t *as;
   http_status_code_t sc;
@@ -1127,15 +1129,15 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
    * - data length
    */
   now = clib_timebase_now (&hm->timebase);
-  header = format (0, http_response_template, http_status_code_str[msg.code],
-		   /* Date */
-		   format_clib_timebase_time, now,
-		   /* Server */
-		   hc->app_name,
-		   /* Length */
-		   msg.data.body_len,
-		   /* Any headers from app? */
-		   msg.data.headers_len ? "" : "\r\n");
+  response = format (0, http_response_template, http_status_code_str[msg.code],
+		     /* Date */
+		     format_clib_timebase_time, now,
+		     /* Server */
+		     hc->app_name,
+		     /* Length */
+		     msg.data.body_len,
+		     /* Any headers from app? */
+		     msg.data.headers_len ? "" : "\r\n");
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
@@ -1147,28 +1149,28 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 	  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
 				 (u8 *) &app_headers_ptr);
 	  ASSERT (rv == sizeof (app_headers_ptr));
-	  vec_append (header, uword_to_pointer (app_headers_ptr, u8 *));
+	  vec_append (response, uword_to_pointer (app_headers_ptr, u8 *));
 	}
       else
 	{
-	  u32 orig_len = vec_len (header);
-	  vec_resize (header, msg.data.headers_len);
-	  u8 *p = header + orig_len;
+	  u32 orig_len = vec_len (response);
+	  vec_resize (response, msg.data.headers_len);
+	  u8 *p = response + orig_len;
 	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
 	  ASSERT (rv == msg.data.headers_len);
 	}
     }
-  HTTP_DBG (0, "%v", header);
+  HTTP_DBG (0, "%v", response);
 
-  offset = http_send_data (hc, header, vec_len (header), 0);
-  if (offset != vec_len (header))
+  sent = http_send_data (hc, response, vec_len (response));
+  if (sent != vec_len (response))
     {
-      clib_warning ("couldn't send response header!");
+      clib_warning ("sending status-line and headers failed!");
       sc = HTTP_STATUS_INTERNAL_ERROR;
-      vec_free (header);
+      vec_free (response);
       goto error;
     }
-  vec_free (header);
+  vec_free (response);
 
   if (msg.data.body_len)
     {
@@ -1185,8 +1187,8 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       sm_result = HTTP_SM_STOP;
     }
 
-  ASSERT (sp->max_burst_size >= offset);
-  sp->max_burst_size -= offset;
+  ASSERT (sp->max_burst_size >= sent);
+  sp->max_burst_size -= sent;
   return sm_result;
 
 error:
@@ -1203,7 +1205,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg;
   session_t *as;
   u8 *target_buff = 0, *request = 0, *target;
-  u32 offset;
+  u32 sent;
   int rv;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_state_t next_state;
@@ -1329,10 +1331,10 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
     }
   HTTP_DBG (0, "%v", request);
 
-  offset = http_send_data (hc, request, vec_len (request), 0);
-  if (offset != vec_len (request))
+  sent = http_send_data (hc, request, vec_len (request));
+  if (sent != vec_len (request))
     {
-      clib_warning ("sending request failed!");
+      clib_warning ("sending request-line and headers failed!");
       sm_result = HTTP_SM_ERROR;
       goto error;
     }
