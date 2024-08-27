@@ -16,6 +16,24 @@
       "message": "I guess redis should be removed from this line",
       "revId": "355a2ac6ceaa8e1e509797f3279b8a8699856db2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bca1c4c1_f047faeb",
+        "filename": "extras/hs-test/infra/utils.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-08-27T05:37:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1b25aee1_f3684f17",
+      "revId": "355a2ac6ceaa8e1e509797f3279b8a8699856db2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
