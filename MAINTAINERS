@@ -500,10 +500,10 @@ I:	memif
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/memif/
 
-Plugin - Marvell MUSDK device driver
-I:	marvell
+Plugin - Marvell Armada device driver
+I:	armada
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/plugins/marvell/
+F:	src/plugins/dev_armada/
 
 Plugin - performance counter
 I:	perfmon
