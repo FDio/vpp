@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de7b835d_46fa1e34",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-27T17:49:51Z",
+      "side": 1,
+      "message": "needed?",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d0de5f5_d08c84f5",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-27T17:49:51Z",
+      "side": 1,
+      "message": "~0 just for consistency?",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32de007c_8c7f0a94",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-27T17:49:51Z",
+      "side": 1,
+      "message": "Was this the solution to the circular dependency? :-)",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43a118b3_145a6bd4",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-27T17:49:51Z",
+      "side": 1,
+      "message": "Hm, torn with the name. Should we call it group or db?\n\nAlternatively we could call the block/group the session_rules_table_t and the individual tables something else.",
+      "range": {
+        "startLine": 112,
+        "startChar": 2,
+        "endLine": 112,
+        "endChar": 29
+      },
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88491687_365e758c",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-27T17:49:51Z",
+      "side": 1,
+      "message": "rtg/rtd if we rename or rtb otherwise? To clarify that this is the group not individual table.",
+      "range": {
+        "startLine": 115,
+        "startChar": 34,
+        "endLine": 115,
+        "endChar": 44
+      },
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
