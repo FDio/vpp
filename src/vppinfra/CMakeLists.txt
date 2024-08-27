@@ -69,6 +69,7 @@ set(VPPINFRA_SRCS
   bitmap.c
   bihash_all_vector.c
   cpu.c
+  devicetree.c
   dlmalloc.c
   elf.c
   elog.c
@@ -151,6 +152,7 @@ set(VPPINFRA_HEADERS
   crypto/aes_ctr.h
   crypto/aes_gcm.h
   crypto/poly1305.h
+  devicetree.h
   dlist.h
   dlmalloc.h
   elf_clib.h

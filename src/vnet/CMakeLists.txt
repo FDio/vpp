@@ -78,8 +78,8 @@ list(APPEND VNET_HEADERS
   dev/args.h
   dev/bus/pci.h
   dev/counters.h
-  dev/dev.h
   dev/dev_funcs.h
+  dev/dev.h
   dev/errors.h
   dev/log.h
   dev/mgmt.h
@@ -960,12 +960,14 @@ list(APPEND VNET_API_FILES
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 list(APPEND VNET_SOURCES
+  dev/bus/platform.c
   devices/tap/cli.c
   devices/tap/tap.c
   devices/tap/tapv2_api.c
 )
 
 list(APPEND VNET_HEADERS
+  dev/bus/platform.h
   devices/tap/tap.h
 )
 
