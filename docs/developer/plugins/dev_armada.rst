@@ -1,0 +1,1 @@
+../../../src/plugins/dev_armada/README.rst
