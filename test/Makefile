@@ -393,14 +393,14 @@ COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/http/*.h"
 
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
-	@lcov --capture \
+	@lcov --ignore-errors --capture \
 		--directory $(VPP_BUILD_DIR) \
 		--output-file $(BUILD_COV_DIR)/coverage$(HS_TEST).info
 	@test -z "$(EXTERN_COV_DIR)" || \
-		lcov --capture \
+		lcov --ignore-errors --capture \
 		--directory $(EXTERN_COV_DIR) \
 		--output-file $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info
-	@lcov --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
+	@lcov --ignore-errors --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
 		$(COV_REM_NOT_CODE) \
 		$(COV_REM_DRIVERS)  \
 		$(COV_REM_TODO_NO_TEST) \
