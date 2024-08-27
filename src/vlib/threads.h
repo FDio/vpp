@@ -49,7 +49,7 @@ typedef struct vlib_thread_registration_
   uword *coremask;
 } vlib_thread_registration_t;
 
-#define VLIB_LOG2_THREAD_STACK_SIZE (21)
+#define VLIB_LOG2_THREAD_STACK_SIZE (23)
 #define VLIB_THREAD_STACK_SIZE (1<<VLIB_LOG2_THREAD_STACK_SIZE)
 
 typedef struct
