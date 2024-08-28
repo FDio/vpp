@@ -1,14 +1,15 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
 	"time"
+
+	. "fd.io/hs-test/infra"
 )
 
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclRetryAttachTest)
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclRetryAttachTest)
 }
 
 func getVclConfig(c *Container, ns_id_optional ...string) string {
@@ -89,7 +90,7 @@ func testVclEcho(s *VethsSuite, proto string) {
 
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	srvAppCont.ExecServer("vcl_test_server " + port)
+	srvAppCont.ExecServer("vcl_test_server -p " + proto + " " + port)
 
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 	serverVethAddress := serverVeth.Ip4AddressString()
@@ -109,6 +110,10 @@ func VclEchoTcpTest(s *VethsSuite) {
 
 func VclEchoUdpTest(s *VethsSuite) {
 	testVclEcho(s, "udp")
+}
+
+func VclHttpPostTest(s *VethsSuite) {
+	testVclEcho(s, "http")
 }
 
 func VclRetryAttachTest(s *VethsSuite) {
