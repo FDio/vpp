@@ -315,7 +315,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   HTTP_DBG (1, "half-open hc index %d,  hc index %d", ho_hc_index,
 	    new_hc_index);
 
-  app_wrk = app_worker_get (hc->h_pa_wrk_index);
+  app_wrk = app_worker_get_if_valid (hc->h_pa_wrk_index);
   if (!app_wrk)
     {
       clib_warning ("no app worker");
