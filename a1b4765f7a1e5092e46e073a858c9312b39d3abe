@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5f285c0_05bea8ea",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-08-28T07:44:38Z",
+      "side": 1,
+      "message": "maybe http_req_method_t?",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 15
+      },
+      "revId": "a1b4765f7a1e5092e46e073a858c9312b39d3abe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
