@@ -978,6 +978,419 @@ static const vcl_test_proto_vft_t vcl_test_srtp = {
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_SRTP, vcl_test_srtp);
 
+static void
+vt_http_session_init (vcl_test_session_t *ts, u8 is_server)
+{
+  vcl_test_http_ctx_t *http_ctx;
+
+  http_ctx = malloc (sizeof (vcl_test_http_ctx_t));
+  memset (http_ctx, 0, sizeof (*http_ctx));
+  http_ctx->is_server = is_server;
+  ts->opaque = http_ctx;
+}
+
+static inline void
+vt_http_send_reply_msg (vcl_test_session_t *ts, http_status_code_t status)
+{
+  http_msg_t msg;
+  int rv = 0;
+
+  memset (&msg, 0, sizeof (http_msg_t));
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = status;
+
+  vppcom_data_segment_t segs[1] = { { (u8 *) &msg, sizeof (msg) } };
+
+  do
+    {
+      rv = vppcom_session_write_segments (ts->fd, segs, 1);
+
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
+	    continue;
+
+	  vterr ("vppcom_session_write()", -errno);
+	  break;
+	}
+    }
+  while (rv <= 0);
+}
+
+static inline int
+vt_process_http_server_read_msg (vcl_test_session_t *ts, void *buf,
+				 uint32_t nbytes)
+{
+  http_msg_t msg;
+  u8 *target_path = 0;
+  vcl_test_http_ctx_t *vcl_test_http_ctx = (vcl_test_http_ctx_t *) ts->opaque;
+  vcl_test_stats_t *stats = &ts->stats;
+  int rv = 0;
+
+  do
+    {
+      stats->rx_xacts++;
+      rv = vppcom_session_read (ts->fd, buf, nbytes);
+
+      if (rv <= 0)
+	{
+	  errno = -rv;
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
+	    {
+	      stats->rx_eagain++;
+	      continue;
+	    }
+
+	  vterr ("vppcom_session_read()", -errno);
+	  return 0;
+	}
+
+      if (PREDICT_TRUE (vcl_test_http_ctx->test_state ==
+			VCL_TEST_HTTP_IN_PROGRESS))
+	{
+	  vcl_test_http_ctx->rem_data -= rv;
+
+	  if (vcl_test_http_ctx->rem_data == 0)
+	    {
+	      vcl_test_http_ctx->test_state = VCL_TEST_HTTP_COMPLETED;
+	      vt_http_send_reply_msg (ts, HTTP_STATUS_OK);
+	    }
+	}
+      else if (PREDICT_FALSE (vcl_test_http_ctx->test_state ==
+			      VCL_TEST_HTTP_IDLE))
+	{
+	  msg = *(http_msg_t *) buf;
+
+	  /* verify that we have received http post request from client */
+	  if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_POST)
+	    {
+	      vt_http_send_reply_msg (ts, HTTP_STATUS_METHOD_NOT_ALLOWED);
+	      vterr ("error! only POST requests allowed from client", 0);
+	      return 0;
+	    }
+
+	  if (msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
+	    {
+	      vt_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
+	      vterr ("error! http target not in origin form", 0);
+	      return 0;
+	    }
+
+	  /* validate target path syntax */
+	  if (msg.data.target_path_len)
+	    {
+	      vec_validate (target_path, msg.data.target_path_len - 1);
+	      memcpy (target_path,
+		      buf + sizeof (msg) + msg.data.target_path_offset - 1,
+		      msg.data.target_path_len + 1);
+	      if (http_validate_abs_path_syntax (target_path, 0))
+		{
+		  vt_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
+		  vterr ("error! target path is not absolute", 0);
+		  vec_free (target_path);
+		  return 0;
+		}
+	      vec_free (target_path);
+	    }
+
+	  /* read body */
+	  if (msg.data.body_len)
+	    {
+	      vcl_test_http_ctx->rem_data = msg.data.body_len;
+	      /* | <http_msg_t> | <target> | <headers> | <body> | */
+	      vcl_test_http_ctx->rem_data -=
+		(rv - sizeof (msg) - msg.data.body_offset);
+	      vcl_test_http_ctx->test_state = VCL_TEST_HTTP_IN_PROGRESS;
+	    }
+	}
+
+      if (rv < nbytes)
+	stats->rx_incomp++;
+    }
+  while (rv <= 0);
+
+  stats->rx_bytes += rv;
+  return (rv);
+}
+
+static inline int
+vt_process_http_client_read_msg (vcl_test_session_t *ts, void *buf,
+				 uint32_t nbytes)
+{
+  http_msg_t msg;
+  int rv = 0;
+
+  do
+    {
+      rv = vppcom_session_read (ts->fd, buf, nbytes);
+
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
+	    continue;
+
+	  vterr ("vppcom_session_read()", -errno);
+	  break;
+	}
+    }
+  while (!rv);
+
+  msg = *(http_msg_t *) buf;
+
+  if (msg.type == HTTP_MSG_REPLY && msg.code == HTTP_STATUS_OK)
+    vtinf ("received 200 OK from server");
+  else
+    vterr ("received unexpected reply from server", 0);
+
+  return (rv);
+}
+
+static inline int
+vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
+				  uint32_t nbytes)
+{
+  http_msg_t msg;
+  http_header_t *req_headers = 0;
+  u8 *headers_buf = 0;
+  vcl_test_http_ctx_t *vcl_test_http_ctx = (vcl_test_http_ctx_t *) ts->opaque;
+  vcl_test_stats_t *stats = &ts->stats;
+  int rv = 0;
+
+  if (PREDICT_TRUE (vcl_test_http_ctx->test_state ==
+		    VCL_TEST_HTTP_IN_PROGRESS))
+    {
+      do
+	{
+	  rv = vppcom_session_write (
+	    ts->fd, buf, clib_min (nbytes, vcl_test_http_ctx->rem_data));
+
+	  if (rv <= 0)
+	    {
+	      errno = -rv;
+	      if (errno == EAGAIN || errno == EWOULDBLOCK)
+		{
+		  stats->tx_eagain++;
+		  continue;
+		}
+
+	      vterr ("vppcom_session_write()", -errno);
+	      return 0;
+	    }
+
+	  vcl_test_http_ctx->rem_data -= rv;
+
+	  if (vcl_test_http_ctx->rem_data == 0)
+	    {
+	      vcl_test_http_ctx->test_state = VCL_TEST_HTTP_COMPLETED;
+	      vtinf ("client finished sending %ld bytes of data",
+		     ts->cfg.total_bytes);
+	    }
+
+	  if (rv < nbytes)
+	    stats->tx_incomp++;
+	}
+      while (rv <= 0);
+    }
+
+  else if (PREDICT_FALSE (vcl_test_http_ctx->test_state == VCL_TEST_HTTP_IDLE))
+    {
+      http_add_header (
+	&req_headers, http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+	http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
+      headers_buf = http_serialize_headers (req_headers);
+      vec_free (req_headers);
+
+      memset (&msg, 0, sizeof (http_msg_t));
+      msg.type = HTTP_MSG_REQUEST;
+      msg.method_type = HTTP_REQ_POST;
+
+      /* target */
+      msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
+      vcl_test_http_ctx->target = (u8 *) "/vcl_test_http\0";
+      msg.data.target_path_len = strlen ((char *) vcl_test_http_ctx->target);
+
+      /* headers */
+      msg.data.headers_offset = msg.data.target_path_len;
+      msg.data.headers_len = vec_len (headers_buf);
+
+      /* body */
+      msg.data.body_offset = msg.data.headers_offset + msg.data.headers_len;
+      msg.data.body_len = ts->cfg.total_bytes;
+
+      msg.data.len =
+	msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
+      msg.data.type = HTTP_MSG_DATA_INLINE;
+
+      vppcom_data_segment_t segs[3] = {
+	{ (u8 *) &msg, sizeof (msg) },
+	{ vcl_test_http_ctx->target,
+	  strlen ((char *) vcl_test_http_ctx->target) },
+	{ headers_buf, vec_len (headers_buf) }
+      };
+
+      do
+	{
+	  rv = vppcom_session_write_segments (ts->fd, segs, 3);
+
+	  if (rv <= 0)
+	    {
+	      errno = -rv;
+	      if (errno == EAGAIN || errno == EWOULDBLOCK)
+		{
+		  stats->tx_eagain++;
+		  continue;
+		}
+
+	      vterr ("vppcom_session_write_segments()", -errno);
+	      vec_free (headers_buf);
+	      return 0;
+	    }
+	}
+      while (rv <= 0);
+
+      vcl_test_http_ctx->test_state = VCL_TEST_HTTP_IN_PROGRESS;
+      vcl_test_http_ctx->rem_data = ts->cfg.total_bytes;
+      vec_free (headers_buf);
+    }
+
+  stats->tx_bytes += rv;
+  return (rv);
+}
+
+static inline int
+vt_process_http_server_write_msg (vcl_test_session_t *ts, void *buf,
+				  uint32_t nbytes)
+{
+  return 0;
+}
+
+static inline int
+vt_http_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  vcl_test_http_ctx_t *vcl_test_http_ctx = (vcl_test_http_ctx_t *) ts->opaque;
+
+  if (vcl_test_http_ctx->is_server)
+    return vt_process_http_server_read_msg (ts, buf, nbytes);
+  else
+    return vt_process_http_client_read_msg (ts, buf, nbytes);
+}
+
+static inline int
+vt_http_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  vcl_test_http_ctx_t *vcl_test_http_ctx = (vcl_test_http_ctx_t *) ts->opaque;
+
+  if (vcl_test_http_ctx->is_server)
+    return vt_process_http_server_write_msg (ts, buf, nbytes);
+  else
+    return vt_process_http_client_write_msg (ts, buf, nbytes);
+}
+
+static int
+vt_http_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
+{
+  uint32_t flags, flen;
+  int rv;
+
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_HTTP, ts->noblk_connect);
+  if (ts->fd < 0)
+    {
+      vterr ("vppcom_session_create()", ts->fd);
+      return ts->fd;
+    }
+
+  rv = vppcom_session_connect (ts->fd, endpt);
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
+    {
+      vterr ("vppcom_session_connect()", rv);
+      return rv;
+    }
+
+  ts->read = vt_http_read;
+  ts->write = vt_http_write;
+
+  if (!ts->noblk_connect)
+    {
+      flags = O_NONBLOCK;
+      flen = sizeof (flags);
+      vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
+      vtinf ("Test session %d (fd %d) connected.", ts->session_index, ts->fd);
+    }
+
+  vt_http_session_init (ts, 0 /* is_server */);
+
+  return 0;
+}
+
+static int
+vt_http_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
+{
+  int rv;
+
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_HTTP, 1 /* is_nonblocking */);
+  if (ts->fd < 0)
+    {
+      vterr ("vppcom_session_create()", ts->fd);
+      return ts->fd;
+    }
+
+  rv = vppcom_session_bind (ts->fd, endpt);
+  if (rv < 0)
+    {
+      vterr ("vppcom_session_bind()", rv);
+      return rv;
+    }
+
+  rv = vppcom_session_listen (ts->fd, 10);
+  if (rv < 0)
+    {
+      vterr ("vppcom_session_listen()", rv);
+      return rv;
+    }
+
+  return 0;
+}
+
+static int
+vt_http_accept (int listen_fd, vcl_test_session_t *ts)
+{
+  int client_fd;
+
+  client_fd = vppcom_session_accept (listen_fd, &ts->endpt, 0);
+  if (client_fd < 0)
+    {
+      vterr ("vppcom_session_accept()", client_fd);
+      return client_fd;
+    }
+
+  ts->fd = client_fd;
+  ts->is_open = 1;
+  ts->read = vt_http_read;
+  ts->write = vt_http_write;
+
+  vt_http_session_init (ts, 1 /* is_server */);
+
+  return 0;
+}
+
+static int
+vt_http_close (vcl_test_session_t *ts)
+{
+  free (ts->opaque);
+  return 0;
+}
+
+static const vcl_test_proto_vft_t vcl_test_http = {
+  .open = vt_http_connect,
+  .listen = vt_http_listen,
+  .accept = vt_http_accept,
+  .close = vt_http_close,
+};
+
+VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_HTTP, vcl_test_http);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

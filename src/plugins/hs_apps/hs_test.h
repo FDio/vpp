@@ -23,7 +23,9 @@
 #define HS_TEST_CFG_CTRL_MAGIC	   0xfeedface
 #define HS_TEST_CFG_TXBUF_SIZE_DEF 8192
 #define HS_TEST_CFG_RXBUF_SIZE_DEF (64 * HS_TEST_CFG_TXBUF_SIZE_DEF)
-#define HS_TEST_CFG_NUM_WRITES_DEF 1000000
+/* updated this for vcl http test, need to reset to 1000000 after body_len in
+ * http_msg_t has been changed from u32 to u64 */
+#define HS_TEST_CFG_NUM_WRITES_DEF 500000
 
 #define VCL_TEST_TOKEN_HELP	     "#H"
 #define VCL_TEST_TOKEN_EXIT	     "#X"
