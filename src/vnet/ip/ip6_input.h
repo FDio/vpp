@@ -102,7 +102,7 @@ ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
     }
   if (PREDICT_FALSE (error1 != IP6_ERROR_NONE))
     {
-      p1->error = error_node->errors[error0];
+      p1->error = error_node->errors[error1];
 
       if (error1 == IP6_ERROR_TIME_EXPIRED)
 	{
