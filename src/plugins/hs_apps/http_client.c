@@ -16,6 +16,7 @@ typedef struct
   u32 session_index;
   u32 thread_index;
   u32 vpp_session_index;
+  u32 to_recv;
   u8 is_closed;
 } hsp_session_t;
 
@@ -41,6 +42,7 @@ typedef struct
   u8 *http_response;
   u8 is_file;
   u8 use_ptr;
+  http_req_method_t req_method;
 } hsp_main_t;
 
 typedef enum
@@ -103,7 +105,7 @@ hsp_session_connected_callback (u32 app_index, u32 hsp_session_index,
   clib_memcpy_fast (new_hsp_session, hsp_session, sizeof (*hsp_session));
   hsp_session->vpp_session_index = s->session_index;
 
-  if (hspm->is_file)
+  if (hspm->is_file && hspm->req_method == HTTP_REQ_POST)
     {
       http_add_header (
 	&headers, http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
@@ -118,15 +120,24 @@ hsp_session_connected_callback (u32 app_index, u32 hsp_session_index,
   hspm->headers_buf = http_serialize_headers (headers);
   vec_free (headers);
 
+  if (hspm->req_method == HTTP_REQ_POST)
+    {
+      msg.method_type = HTTP_REQ_POST;
+      /* request body */
+      msg.data.body_len = vec_len (hspm->data);
+    }
+  else
+    {
+      msg.method_type = HTTP_REQ_GET;
+      msg.data.body_len = 0;
+    }
+
   msg.type = HTTP_MSG_REQUEST;
-  msg.method_type = HTTP_REQ_POST;
   /* request target */
   msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
   msg.data.target_path_len = vec_len (hspm->target);
   /* custom headers */
   msg.data.headers_len = vec_len (hspm->headers_buf);
-  /* request body */
-  msg.data.body_len = vec_len (hspm->data);
   /* total length */
   msg.data.len =
     msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
@@ -246,16 +257,61 @@ hsp_rx_callback (session_t *s)
       return -1;
     }
 
-  svm_fifo_dequeue_drop_all (s->rx_fifo);
+  if (msg.data.body_len == 0)
+    {
+      svm_fifo_dequeue_drop_all (s->rx_fifo);
+      if (msg.code == HTTP_STATUS_OK)
+	hspm->http_response = format (0, "request success");
+      else
+	hspm->http_response = format (0, "request failed");
+      goto done;
+    }
 
-  if (msg.code == HTTP_STATUS_OK)
-    hspm->http_response = format (0, "request success");
-  else
-    hspm->http_response = format (0, "request failed");
+  if (hsp_session->to_recv == 0)
+    {
+      if (msg.type != HTTP_MSG_REPLY)
+	{
+	  clib_warning ("unexpected msg type %d", msg.type);
+	  return 0;
+	}
+      /* drop everything up to body */
+      svm_fifo_dequeue_drop (s->rx_fifo, msg.data.body_offset);
+      hsp_session->to_recv = msg.data.body_len;
+      if (msg.code != HTTP_STATUS_OK && hsp_session->to_recv == 0)
+	{
+	  hspm->http_response = format (0, "request failed");
+	  goto done;
+	}
+      vec_validate (hspm->http_response, msg.data.body_len - 1);
+      vec_reset_length (hspm->http_response);
+    }
 
-  hsp_session_disconnect_callback (s);
-  vlib_process_signal_event_mt (hspm->vlib_main, hspm->cli_node_index,
-				HSP_REPLY_RECEIVED, 0);
+  u32 max_deq = svm_fifo_max_dequeue (s->rx_fifo);
+
+  u32 n_deq = clib_min (hsp_session->to_recv, max_deq);
+  u32 curr = vec_len (hspm->http_response);
+  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hspm->http_response + curr);
+  if (rv < 0)
+    {
+      clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
+      return -1;
+    }
+
+  if (rv != n_deq)
+    return -1;
+
+  vec_set_len (hspm->http_response, curr + n_deq);
+  ASSERT (hsp_session->to_recv >= rv);
+  hsp_session->to_recv -= rv;
+
+done:
+  if (hsp_session->to_recv == 0)
+    {
+      hsp_session_disconnect_callback (s);
+      vlib_process_signal_event_mt (hspm->vlib_main, hspm->cli_node_index,
+				    HSP_REPLY_RECEIVED, 0);
+    }
+
   return 0;
 }
 
@@ -308,7 +364,7 @@ hsp_attach ()
   clib_memset (options, 0, sizeof (options));
 
   a->api_client_index = APP_INVALID_INDEX;
-  a->name = format (0, "http_simple_post");
+  a->name = format (0, "http_simple_client");
   a->session_cb_vft = &hsp_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -469,6 +525,12 @@ hsp_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected required arguments");
 
+  hspm->req_method =
+    (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) &&
+	unformat (line_input, "post") ?
+      HTTP_REQ_POST :
+      HTTP_REQ_GET;
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "uri %s", &hspm->uri))
@@ -499,7 +561,7 @@ hsp_command_fn (vlib_main_t *vm, unformat_input_t *input,
       err = clib_error_return (0, "target not defined");
       goto done;
     }
-  if (!hspm->data)
+  if (!hspm->data && hspm->req_method == HTTP_REQ_POST)
     {
       if (path)
 	{
@@ -549,8 +611,8 @@ done:
 }
 
 VLIB_CLI_COMMAND (hsp_command, static) = {
-  .path = "http post",
-  .short_help = "uri http://<ip-addr> target <origin-form> "
+  .path = "http client",
+  .short_help = "[post] uri http://<ip-addr> target <origin-form> "
 		"[data <form-urlencoded> | file <file-path>] [use-ptr]",
   .function = hsp_command_fn,
   .is_mp_safe = 1,
