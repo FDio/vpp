@@ -64,9 +64,7 @@ func (s *NginxProxySuite) SetupTest() {
 	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
 	s.AssertNil(vpp.createTap(serverInterface, 2))
 
-	// nginx proxy
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
-	s.AssertNil(nginxProxyContainer.Create())
+	// nginx proxy (container created in test)
 	s.proxyPort = 80
 
 	// nginx HTTP server
