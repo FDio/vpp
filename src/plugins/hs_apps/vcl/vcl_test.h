@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <vcl/vppcom.h>
+#include <http/http.h>
+#include <http/http_header_names.h>
+#include <http/http_content_types.h>
 
 #define vtfail(_fn, _rv)						\
 {									\
@@ -74,6 +77,22 @@ typedef struct
   struct timespec stop;
 } vcl_test_stats_t;
 
+typedef enum vcl_test_http_state_
+{
+  VCL_TEST_HTTP_IDLE = 0,
+  VCL_TEST_HTTP_IN_PROGRESS,
+  VCL_TEST_HTTP_COMPLETED,
+} vcl_test_http_state_t;
+
+typedef struct vcl_test_http_ctx_t
+{
+  u8 is_server;
+  vcl_test_http_state_t test_state;
+  u64 rem_data;
+  http_header_t *headers;
+  u8 *target;
+} vcl_test_http_ctx_t;
+
 typedef struct vcl_test_session
 {
   uint8_t is_done;
@@ -124,7 +143,7 @@ typedef struct
 
 typedef struct
 {
-  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_SRTP + 1];
+  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_HTTP + 1];
   uint32_t ckpair_index;
   hs_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;
