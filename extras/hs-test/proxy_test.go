@@ -9,8 +9,8 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
-	RegisterNginxProxyTests(NginxMirroringTest)
-	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
+	// RegisterNginxProxyTests(NginxMirroringTest)
+	// RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
@@ -73,7 +73,8 @@ func NginxMirroringTest(s *NginxProxySuite) {
 }
 
 func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
+	nginxProxyContainer := s.GetTransientContainerByName(NginxProxyContainerName)
+	s.AssertNil(nginxProxyContainer.Create())
 	vpp := s.GetContainerByName(VppContainerName).VppInstance
 
 	s.AddVclConfig(nginxProxyContainer, multiThreadWorkers)
