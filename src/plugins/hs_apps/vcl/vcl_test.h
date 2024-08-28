@@ -124,7 +124,7 @@ typedef struct
 
 typedef struct
 {
-  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_SRTP + 1];
+  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_HTTP + 1];
   uint32_t ckpair_index;
   hs_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;

@@ -1754,6 +1754,10 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
     *proto = VPPCOM_PROTO_SRTP;
   else if (!strcmp (proto_str, "srtp"))
     *proto = VPPCOM_PROTO_SRTP;
+  else if (!strcmp (proto_str, "HTTP"))
+    *proto = VPPCOM_PROTO_HTTP;
+  else if (!strcmp (proto_str, "http"))
+    *proto = VPPCOM_PROTO_HTTP;
   else
     return 1;
   return 0;
@@ -4707,6 +4711,9 @@ vppcom_proto_str (vppcom_proto_t proto)
       break;
     case VPPCOM_PROTO_SRTP:
       proto_str = "SRTP";
+      break;
+    case VPPCOM_PROTO_HTTP:
+      proto_str = "HTTP";
       break;
     default:
       proto_str = "UNKNOWN";
