@@ -10,6 +10,7 @@ import (
 	"net/http/httptrace"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,8 +31,8 @@ func init() {
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
-		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
+		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest,
+		HttpClientGetResponseBodyTest, HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest)
 }
@@ -165,7 +166,6 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.Log(o2)
 	s.AssertContains(o2, "ESTABLISHED")
 	s.AssertEqual(o1, o2)
-
 }
 
 func HttpPipeliningTest(s *NoTopoSuite) {
@@ -294,6 +294,7 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 			s.LogHttpReq(true),
 			ghttp.VerifyRequest("POST", "/test"),
 			ghttp.VerifyContentType("application/x-www-form-urlencoded"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
 			ghttp.VerifyBody([]byte(body)),
 			ghttp.RespondWith(http.StatusOK, nil),
 		))
@@ -302,10 +303,60 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 
 	uri := "http://" + serverAddress + "/80"
 	vpp := s.GetContainerByName("vpp").VppInstance
-	o := vpp.Vppctl("http post uri " + uri + " target /test data " + body)
+	o := vpp.Vppctl("http client post verbose header Hello:World uri " + uri + " target /test data " + body)
 
 	s.Log(o)
-	s.AssertNotContains(o, "error")
+	s.AssertContains(o, "200 OK")
+}
+
+func HttpClientGetResponseBodyTest(s *NoTopoSuite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	httpClientGet(s, response, size)
+}
+
+func HttpClientGet128kbResponseTest(s *NoTopoSuite) {
+	response := strings.Repeat("a", 128*1024)
+	size := len(response)
+	httpClientGet(s, response, size)
+}
+
+func HttpClientGetNoResponseBodyTest(s *NoTopoSuite) {
+	response := ""
+	httpClientGet(s, response, 0)
+}
+
+func httpClientGet(s *NoTopoSuite, response string, size int) {
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	vpp := s.GetContainerByName("vpp").VppInstance
+	fileName := "/tmp/test_file.txt"
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("GET", "/tmp/test_file.txt"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/80"
+	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri + " target " + fileName
+
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, response)
+	s.AssertContains(o, "200 OK")
+	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
+
+	file_contents := vpp.Container.Exec("cat /tmp/response.txt")
+	s.AssertContains(file_contents, response)
 }
 
 func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
@@ -331,14 +382,14 @@ func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
 	defer server.Close()
 
 	uri := "http://" + serverAddress + "/80"
-	cmd := "http post uri " + uri + " target /test file " + fileName
+	cmd := "http client post verbose uri " + uri + " target /test file " + fileName
 	if usePtr {
 		cmd += " use-ptr"
 	}
 	o := vpp.Vppctl(cmd)
 
 	s.Log(o)
-	s.AssertNotContains(o, "error")
+	s.AssertContains(o, "200 OK")
 }
 
 func HttpClientPostFileTest(s *NoTopoSuite) {
