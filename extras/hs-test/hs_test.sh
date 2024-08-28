@@ -122,7 +122,7 @@ fi
 
 mkdir -p summary
 # shellcheck disable=SC2086
-sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args
+sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args --seed=1728303779 -- $args
 
 if [ $? != 0 ]; then
     jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) |

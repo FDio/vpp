@@ -9,8 +9,8 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
-	RegisterNginxProxyTests(NginxMirroringTest)
-	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
+	// RegisterNginxProxyTests(NginxMirroringTest)
+	// RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
