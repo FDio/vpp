@@ -72,6 +72,9 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   clib_bitmap_t *pending_int = 0;
   int last_int = -1;
 
+  if (node_index == 0)
+    return;
+
   log_debug ("update node '%U' triggered by interface %v",
 	     format_vlib_node_name, vm, node_index, hi->name);
 
