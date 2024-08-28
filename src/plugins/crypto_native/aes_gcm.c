@@ -22,7 +22,6 @@
 #include <vppinfra/crypto/aes_gcm.h>
 
 #if __GNUC__ > 4 && !__clang__ && CLIB_DEBUG == 0
-#pragma GCC optimize("O3")
 #endif
 
 static_always_inline u32

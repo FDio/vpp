@@ -363,7 +363,7 @@ VLIB_REGISTER_NODE (startup_config_node,static) = {
     .function = startup_config_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "startup-config-process",
-    .process_log2_n_stack_bytes = 18,
+    .process_log2_n_stack_bytes = 23,
 };
 
 static clib_error_t *
