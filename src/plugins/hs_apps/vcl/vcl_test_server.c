@@ -362,6 +362,7 @@ vts_accept_ctrl (vcl_test_server_worker_t *wrk, int listen_fd)
 static vcl_test_session_t *
 vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
 {
+  vtinf ("ABASU TEST accept_client");
   vcl_test_server_main_t *vsm = &vcl_server_main;
   const vcl_test_proto_vft_t *tp;
   vcl_test_session_t *conn;
@@ -633,6 +634,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 static inline int
 vts_conn_read (vcl_test_session_t *conn)
 {
+  vtinf ("ABASU TEST vts_conn_read");
   vcl_test_server_main_t *vsm = &vcl_server_main;
   if (vsm->use_ds)
     return vcl_test_read_ds (conn);
@@ -765,6 +767,7 @@ vts_worker_loop (void *arg)
 	  if (EPOLLIN & ep_evts[i].events)
 	    {
 	    read_again:
+              vtinf ("ABASU TEST Reading client data\n");
 	      rx_bytes = vts_conn_read (conn);
 
 	      if (rx_bytes <= 0)

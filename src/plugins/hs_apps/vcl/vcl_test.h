@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <vcl/vppcom.h>
+#include <http/http.h>
+#include <http/http_header_names.h>
+#include <http/http_content_types.h>
 
 #define vtfail(_fn, _rv)						\
 {									\
@@ -59,7 +62,6 @@
 #define VCL_TEST_CTRL_LISTENER		(~0 - 1)
 #define VCL_TEST_DATA_LISTENER		(~0)
 #define VCL_TEST_DELAY_DISCONNECT	1
-
 typedef struct
 {
   uint64_t rx_xacts;
@@ -73,6 +75,15 @@ typedef struct
   struct timespec start;
   struct timespec stop;
 } vcl_test_stats_t;
+
+typedef struct vcl_test_http_ctx_t
+{
+  u8 is_server;
+  u8 in_progess;
+  u64 rem_data;
+  http_header_t *headers;
+  u8 *target;
+} vcl_test_http_ctx_t;
 
 typedef struct vcl_test_session
 {
@@ -124,7 +135,7 @@ typedef struct
 
 typedef struct
 {
-  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_SRTP + 1];
+  const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_HTTP + 1];
   uint32_t ckpair_index;
   hs_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;
