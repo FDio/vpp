@@ -650,7 +650,7 @@ tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
   vec_foreach (block, sb->trace)
   {
     s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
-		block->ack, block->snd_una_max, block->group);
+		block->ack, block->snd_nxt, block->group);
     if ((++i % 3) == 0)
       s = format (s, "\n");
   }
@@ -684,6 +684,8 @@ tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   tc = tcp_get_connection_from_transport (tconn);
+  if (!tc)
+  	return 0;
   s = tcp_scoreboard_dump_trace (s, &tc->sack_sb);
   vlib_cli_output (vm, "%v", s);
   return 0;
