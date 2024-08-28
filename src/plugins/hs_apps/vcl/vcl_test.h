@@ -420,6 +420,41 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
   return (tx_bytes);
 }
 
+static inline int
+vcl_test_write_ds (vcl_test_session_t *ts)
+{
+  vcl_test_stats_t *stats = &ts->stats;
+  int tx_bytes;
+
+  do
+    {
+      stats->tx_xacts++;
+      if (ts->ds[1].len)
+	tx_bytes = vppcom_session_write_segments (
+	  ts->fd, ts->ds, 2, ts->ds[0].len + ts->ds[1].len);
+      else
+	tx_bytes =
+	  vppcom_session_write_segments (ts->fd, ts->ds, 1, ts->ds[0].len);
+
+      if (tx_bytes < 0)
+	errno = -tx_bytes;
+      if ((tx_bytes == 0) ||
+	  ((tx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+	stats->rx_eagain++;
+    }
+  while ((tx_bytes == 0) ||
+	 ((tx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
+
+  if (tx_bytes < 0)
+    {
+      vterr ("vppcom_session_write_segments()", -errno);
+    }
+  else
+    stats->tx_bytes += tx_bytes;
+
+  return (tx_bytes);
+}
+
 static inline void
 dump_help (void)
 {
