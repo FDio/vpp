@@ -419,13 +419,8 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	      if (vcm->incremental_stats)
 		vtc_inc_stats_check (ts);
 	    }
-	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
-	      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
-	    {
-	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
-	      ts->is_done = 1;
-	      n_active_sessions--;
-	    }
+	  if (vtc_session_check_is_done (ts, check_rx))
+	    n_active_sessions -= 1;
 	}
     }
 
