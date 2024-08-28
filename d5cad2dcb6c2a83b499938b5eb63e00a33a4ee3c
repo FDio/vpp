@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae2cb1d2_614f669c",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-28T16:15:12Z",
+      "side": 1,
+      "message": "Yes, it calls a session rules table API. If this bothers you too much, I could do another around of refactoring to eliminate this include.",
+      "parentUuid": "de7b835d_46fa1e34",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d0de5f5_d08c84f5",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f15e02d7_7c2b4e9d",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-28T16:15:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d0de5f5_d08c84f5",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "32de007c_8c7f0a94",
@@ -48,6 +84,24 @@
       "writtenOn": "2024-08-27T17:49:51Z",
       "side": 1,
       "message": "Was this the solution to the circular dependency? :-)",
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d8a0188_d40e642c",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-28T16:15:12Z",
+      "side": 1,
+      "message": "A bunch of .c files just needs the session rules table API. They don\u0027t need sdl stuff. If this struct is in session_sdl.h, they would need to also include session_sdl.h. So I put this struct here to remove the extra include for those files.",
+      "parentUuid": "32de007c_8c7f0a94",
       "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -75,6 +129,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ace0ede_ee05496c",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-28T16:15:12Z",
+      "side": 1,
+      "message": "change to group",
+      "parentUuid": "43a118b3_145a6bd4",
+      "range": {
+        "startLine": 112,
+        "startChar": 2,
+        "endLine": 112,
+        "endChar": 29
+      },
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "88491687_365e758c",
@@ -88,6 +166,30 @@
       "writtenOn": "2024-08-27T17:49:51Z",
       "side": 1,
       "message": "rtg/rtd if we rename or rtb otherwise? To clarify that this is the group not individual table.",
+      "range": {
+        "startLine": 115,
+        "startChar": 34,
+        "endLine": 115,
+        "endChar": 44
+      },
+      "revId": "d5cad2dcb6c2a83b499938b5eb63e00a33a4ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "391dbaae_9c83a746",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 24
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-08-28T16:15:12Z",
+      "side": 1,
+      "message": "change to srtg_handle",
+      "parentUuid": "88491687_365e758c",
       "range": {
         "startLine": 115,
         "startChar": 34,
