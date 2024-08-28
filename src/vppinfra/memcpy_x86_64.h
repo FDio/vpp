@@ -32,13 +32,13 @@ clib_memcpy4 (void *d, void *s)
   *(u32u *) d = *(u32u *) s;
 }
 
-static_always_inline void
+static void
 clib_memcpy8 (void *d, void *s)
 {
   *(u64u *) d = *(u64u *) s;
 }
 
-static_always_inline void
+static void
 clib_memcpy16 (void *d, void *s)
 {
 #ifdef CLIB_HAVE_VEC128
@@ -269,7 +269,7 @@ clib_memcpy_x86_64_const (u8 *dst, u8 *src, size_t n)
 #endif
 }
 
-static_always_inline void *
+static void *
 clib_memcpy_x86_64 (void *restrict dst, const void *restrict src, size_t n)
 {
   u8 *d = (u8 *) dst, *s = (u8 *) src;
