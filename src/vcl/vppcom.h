@@ -259,6 +259,9 @@ extern int vppcom_session_read_segments (uint32_t session_handle,
 					 vppcom_data_segment_t * ds,
 					 uint32_t n_segments,
 					 uint32_t max_bytes);
+extern int vppcom_session_write_segments (uint32_t session_handle,
+					 vppcom_data_segment_t * ds,
+					 uint32_t n_segments);
 extern void vppcom_session_free_segments (uint32_t session_handle,
 					  uint32_t n_bytes);
 extern int vppcom_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair);

@@ -2345,6 +2345,75 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
 }
 
 int
+vppcom_session_write_segments (uint32_t session_handle,
+			       vppcom_data_segment_t *ds, uint32_t n_segments)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  int n_write = 0, n_bytes = 0, is_nonblocking;
+  vcl_session_t *s = 0;
+  svm_fifo_t *tx_fifo;
+  svm_msg_q_t *mq;
+  u8 is_ct;
+  u32 i;
+
+  if (PREDICT_FALSE (!ds))
+    return VPPCOM_EFAULT;
+
+  /* Accept zero length writes but just return */
+  if (PREDICT_FALSE (ds[0].len == 0))
+    return VPPCOM_OK;
+
+  s = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
+    return VPPCOM_EBADFD;
+
+  if (PREDICT_FALSE (!vcl_session_is_open (s)))
+    return vcl_session_closed_error (s);
+
+  if (PREDICT_FALSE (s->flags & VCL_SESSION_F_WR_SHUTDOWN))
+    return VPPCOM_EPIPE;
+
+  is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
+  is_ct = vcl_session_is_ct (s);
+  mq = wrk->app_event_queue;
+  tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
+
+  for (i = 0; i < n_segments; i++)
+    n_bytes += ds[i].len;
+
+  if (svm_fifo_max_enqueue_prod (tx_fifo) < n_bytes)
+    {
+      if (is_nonblocking)
+	{
+	  return VPPCOM_EWOULDBLOCK;
+	}
+      while (svm_fifo_max_enqueue_prod (tx_fifo) < n_bytes)
+	{
+	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+	  if (vcl_session_is_closing (s))
+	    return vcl_session_closing_error (s);
+
+	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_flush_mq_events (wrk);
+	}
+    }
+
+  n_write = svm_fifo_enqueue_segments (tx_fifo, (svm_fifo_seg_t *) ds,
+				       n_segments, 0 /* allow_partial */);
+
+  /* The underlying fifo segment can run out of memory */
+  if (PREDICT_FALSE (n_write < 0))
+    return VPPCOM_EAGAIN;
+
+  if (svm_fifo_set_event (s->tx_fifo))
+    app_send_io_evt_to_vpp (s->vpp_evt_q,
+			    s->tx_fifo->shr->master_session_index,
+			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
+
+  return n_write;
+}
+
+int
 vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
