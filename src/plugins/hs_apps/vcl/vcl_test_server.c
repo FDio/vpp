@@ -282,11 +282,7 @@ vts_server_process_rx (vcl_test_session_t *conn, int rx_bytes)
   if (conn->cfg.test == HS_TEST_TYPE_BI)
     {
       if (vsm->use_ds)
-	{
-	  (void) vcl_test_write (conn, conn->ds[0].data, conn->ds[0].len);
-	  if (conn->ds[1].len)
-	    (void) vcl_test_write (conn, conn->ds[1].data, conn->ds[1].len);
-	}
+	(void) vcl_test_write_ds (conn);
       else
 	(void) vcl_test_write (conn, conn->rxbuf, rx_bytes);
     }
