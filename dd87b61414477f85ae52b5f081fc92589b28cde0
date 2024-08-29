@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50f93885_4f4f48ec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-29T19:41:12Z",
+      "side": 1,
+      "message": "One more nit",
+      "revId": "dd87b61414477f85ae52b5f081fc92589b28cde0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "717561e8_93bf982d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2408,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-29T19:41:12Z",
+      "side": 1,
+      "message": "This should be `svm_fifo_set_event`. See the write inline above.",
+      "revId": "dd87b61414477f85ae52b5f081fc92589b28cde0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
