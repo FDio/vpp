@@ -374,6 +374,12 @@ vls_worker_get_current (void)
   return pool_elt_at_index (vlsm->workers, vls_get_worker_index ());
 }
 
+static inline u8
+vls_n_workers (void)
+{
+  return pool_elts (vlsm->workers);
+}
+
 static void
 vls_worker_alloc (void)
 {
@@ -1298,7 +1304,7 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   vcl_session_t *s;
   u32 owner_wrk;
 
-  if (vls_mt_wrk_supported ())
+  if (vls_mt_wrk_supported () && vls_n_workers () <= 1)
     return;
 
   ASSERT (wrk->wrk_index == vls->vcl_wrk_index);
