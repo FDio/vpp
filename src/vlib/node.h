@@ -297,6 +297,7 @@ typedef struct vlib_node_t
 #define VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE (1 << 7)
 #define VLIB_NODE_FLAG_TRACE_SUPPORTED (1 << 8)
 #define VLIB_NODE_FLAG_ADAPTIVE_MODE			     (1 << 9)
+#define VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES		     (1 << 10)
 
   /* State for input nodes. */
   u8 state;
