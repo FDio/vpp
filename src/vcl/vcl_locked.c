@@ -1298,9 +1298,6 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   vcl_session_t *s;
   u32 owner_wrk;
 
-  if (vls_mt_wrk_supported ())
-    return;
-
   ASSERT (wrk->wrk_index == vls->vcl_wrk_index);
   s = vcl_session_get (wrk, vls->session_index);
   switch (s->session_state)
