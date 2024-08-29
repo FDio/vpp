@@ -510,6 +510,7 @@ retry:
       avf_tail_write (txq->qtx_tail, txq->next);
       txq->n_enqueued += n_desc;
       n_left -= n_enq;
+      txq->total_packets += n_enq;
     }
 
   if (n_left)
@@ -522,6 +523,7 @@ retry:
       vlib_buffer_free (vm, buffers, n_left);
       vlib_error_count (vm, node->node_index,
 			AVF_TX_ERROR_NO_FREE_SLOTS, n_left);
+      txq->no_free_tx_count += n_left;
     }
 
   if (tf->shared_queue)

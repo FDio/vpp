@@ -180,6 +180,7 @@ typedef struct
   u8 int_mode;
   u8 buffer_pool_index;
   u32 queue_index;
+  u64 total_packets;
 } avf_rxq_t;
 
 typedef struct
@@ -198,6 +199,8 @@ typedef struct
   avf_tx_desc_t *tmp_descs;
   u32 *tmp_bufs;
   u32 queue_index;
+  u64 total_packets;
+  u64 no_free_tx_count;
 } avf_txq_t;
 
 typedef struct

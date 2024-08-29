@@ -104,6 +104,7 @@ format_avf_device (u8 * s, va_list * args)
   u8 *a = 0;
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, 0);
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, 0);
+  u32 idx = 0;
 
   s = format (s, "rx: queues %u, desc %u (min %u max %u)", ad->n_rx_queues,
 	      rxq->size, AVF_QUEUE_SZ_MIN, AVF_QUEUE_SZ_MAX);
@@ -114,6 +115,22 @@ format_avf_device (u8 * s, va_list * args)
 	      format_avf_device_flags, ad);
   s = format (s, "\n%Ucapability flags: %U", format_white_space, indent,
 	      format_avf_vf_cap_flags, ad->cap_flags);
+  s =
+    format (s, "\n%U Rx Queue: Total Packets", format_white_space, indent + 4);
+  for (idx = 0; idx < ad->n_rx_queues; idx++)
+    {
+      rxq = vec_elt_at_index (ad->rxqs, idx);
+      s = format (s, "\n%U %8u : %llu", format_white_space, indent + 4, idx,
+		  rxq->total_packets);
+    }
+  s = format (s, "\n%U Tx Queue: Total Packets\t Total Drops",
+	      format_white_space, indent + 4);
+  for (idx = 0; idx < ad->n_tx_queues; idx++)
+    {
+      txq = vec_elt_at_index (ad->txqs, idx);
+      s = format (s, "\n%U %8u : %llu\t %llu", format_white_space, indent + 4,
+		  idx, txq->total_packets, txq->no_free_tx_count);
+    }
 
   s = format (s, "\n%Unum-queue-pairs %d max-vectors %u max-mtu %u "
 	      "rss-key-size %u rss-lut-size %u", format_white_space, indent,

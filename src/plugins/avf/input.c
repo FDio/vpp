@@ -539,6 +539,8 @@ done:
   else
     avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
 
+  rxq->total_packets += n_rx_packets;
+
   return n_rx_packets;
 }
 

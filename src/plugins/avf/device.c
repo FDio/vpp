@@ -288,6 +288,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 	d->qword[0] = vlib_buffer_get_pa (vm, b);
       d++;
     }
+  rxq->total_packets = 0;
 
   return 0;
 }
@@ -336,6 +337,9 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 
   vec_validate_aligned (txq->tmp_descs, txq->size, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (txq->tmp_bufs, txq->size, CLIB_CACHE_LINE_BYTES);
+
+  txq->total_packets = 0;
+  txq->no_free_tx_count = 0;
 
   return 0;
 }
