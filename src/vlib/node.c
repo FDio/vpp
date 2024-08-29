@@ -805,7 +805,8 @@ vlib_node_main_init (vlib_main_t * vm)
 	  if (!a)
 	    continue;
 
-	  if (~0 == vlib_node_add_named_next_with_slot (vm, n->index, a, i))
+	  if (~0 == vlib_node_add_named_next_with_slot (vm, n->index, a, i) &&
+	      !(n->flags & VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES))
 	    {
 	      error = clib_error_create
 		("node `%v' refers to unknown node `%s'", n->name, a);
@@ -813,7 +814,8 @@ vlib_node_main_init (vlib_main_t * vm)
 	    }
 	}
 
-      vec_free (n->next_node_names);
+      if (!(n->flags & VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES))
+	vec_free (n->next_node_names);
     }
 
   /* Set previous node pointers. */
@@ -926,6 +928,33 @@ vlib_node_set_march_variant (vlib_main_t *vm, u32 node_index,
       fnr = fnr->next_registration;
     }
   return -1;
+}
+
+clib_error_t *
+vlib_node_main_lazy_next_update (vlib_main_t *vm)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  uword ni;
+  vlib_node_t *n;
+  for (ni = 0; ni < vec_len (nm->nodes); ni++)
+    {
+      uword nni;
+      n = vec_elt (nm->nodes, ni);
+
+      if (!(n->flags & VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES))
+	continue;
+
+      for (nni = 0; nni < vec_len (n->next_node_names); nni++)
+	{
+	  char *a = n->next_node_names[nni];
+
+	  if (!a)
+	    continue;
+
+	  vlib_node_add_named_next_with_slot (vm, n->index, a, nni);
+	}
+    }
+  return 0;
 }
 /*
  * fd.io coding-style-patch-verification: ON
