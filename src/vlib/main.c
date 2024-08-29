@@ -569,6 +569,8 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
     uword i;
     for (i = 0; i < rt->n_next_nodes; i++)
       {
+	if (n->next_nodes[i] == VLIB_INVALID_NODE_INDEX)
+	  continue;
 	nf = vlib_node_runtime_get_next_frame (vm, rt, i);
 	vec_elt (n->n_vectors_by_next_node, i) +=
 	  nf->vectors_since_last_overflow;

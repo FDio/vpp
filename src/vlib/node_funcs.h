@@ -1338,6 +1338,10 @@ void vlib_node_runtime_sync_stats_node (vlib_node_t *n, vlib_node_runtime_t *r,
 /* Node graph initialization function. */
 clib_error_t *vlib_node_main_init (vlib_main_t * vm);
 
+/* Refresh graph after the creation of a node that was potentially mentionned
+ * as a named next for a node with VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES */
+clib_error_t *vlib_node_main_lazy_next_update (vlib_main_t *vm);
+
 format_function_t format_vlib_node_graph;
 format_function_t format_vlib_node_name;
 format_function_t format_vlib_next_node_name;
