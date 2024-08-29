@@ -2228,12 +2228,16 @@ bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 	    }
 	}
 
-      bs->local_detect_mult = detect_mult;
-      bs->config_desired_min_tx_usec = desired_min_tx_usec;
-      bs->config_desired_min_tx_nsec = bfd_usec_to_nsec (desired_min_tx_usec);
-      bs->config_required_min_rx_usec = required_min_rx_usec;
-      bs->config_required_min_rx_nsec =
-	bfd_usec_to_nsec (required_min_rx_usec);
+  // TEST: make fail for 'test_bfd.py.BFDAPITestCase.test_mod_bfd'
+  // =============================================================
+  // bs->local_detect_mult = detect_mult;
+  // bs->config_desired_min_tx_usec = desired_min_tx_usec;
+  // bs->config_desired_min_tx_nsec =
+  //       bfd_usec_to_nsec (desired_min_tx_usec);
+  // bs->config_required_min_rx_usec = required_min_rx_usec;
+  // bs->config_required_min_rx_nsec =
+  //       bfd_usec_to_nsec (required_min_rx_usec);
+  //     =========================================================
       BFD_DBG ("\nChanged session params: %U", format_bfd_session, bs);
 
       vlib_log_info (bm->log_class, "changed session params: %U",
