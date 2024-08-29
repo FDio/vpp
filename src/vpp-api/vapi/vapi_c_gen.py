@@ -891,7 +891,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
     orig_stdout = sys.stdout
     sys.stdout = io
     include_guard = "__included_%s" % (
-        j.replace(".", "_")
+        f.replace(".", "_")
         .replace("/", "_")
         .replace("-", "_")
         .replace("+", "_")
