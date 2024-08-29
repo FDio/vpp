@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aea373bd_c044994d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2241,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-08-29T19:22:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3539bfe0_71092c45",
+      "revId": "cbb70ae59e3aeef559e2126b1ea045e14f8433df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fad4399c_47fb4a2e",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dea2d23e_b2e2bc93",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2250,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-08-29T19:22:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "fad4399c_47fb4a2e",
+      "revId": "cbb70ae59e3aeef559e2126b1ea045e14f8433df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c6054707_0dcb1cfe",
@@ -48,6 +84,30 @@
       "writtenOn": "2024-08-28T23:08:35Z",
       "side": 1,
       "message": "We could probably get away without n_bytes",
+      "range": {
+        "startLine": 265,
+        "startChar": 6,
+        "endLine": 265,
+        "endChar": 24
+      },
+      "revId": "cbb70ae59e3aeef559e2126b1ea045e14f8433df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "07d09933_52fc332c",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2024-08-29T19:22:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c6054707_0dcb1cfe",
       "range": {
         "startLine": 265,
         "startChar": 6,
