@@ -1,0 +1,130 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "37daf078_35929c62",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 30
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "Getting close. Thanks, Steven!",
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c51e710d_cf348736",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 2232,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "To make this easier to read, could we make it an args_t type of struct and pass in is_en and separately the type of rt engine?\n\nIt should simplify the code lower ...",
+      "range": {
+        "startLine": 2232,
+        "startChar": 8,
+        "endLine": 2232,
+        "endChar": 42
+      },
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb972177_7833bfcb",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 30
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "`session_rt_engine_type_t`? Just to avoid future rename if we decide to actually have a struct `session_rt_engine_t` to abstract away the explicit rule tables?",
+      "range": {
+        "startLine": 198,
+        "startChar": 2,
+        "endLine": 198,
+        "endChar": 21
+      },
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b1140392_40175a2b",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "Maybe switch to \n```\nif (not_good)\n  {\n    rv \u003d VNET_API_ERROR_INVALID_VALUE;\n    goto done;\n  } \n```\n\n?",
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1750642_7f7e3945",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 1949,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "session_rule_table_register_engine? Btw, shouldn\u0027t this be moved to session_rule_table.c? Is it a dependency problem?",
+      "range": {
+        "startLine": 1949,
+        "startChar": 0,
+        "endLine": 1949,
+        "endChar": 62
+      },
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09693672_1b603ca0",
+        "filename": "src/vnet/session/session_rules_table.h",
+        "patchSetId": 30
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-08-31T21:16:04Z",
+      "side": 1,
+      "message": "Don\u0027t know how I missed this for this long. Let\u0027s just call it `session_rt_engine_vft_t` or something like that",
+      "range": {
+        "startLine": 159,
+        "startChar": 2,
+        "endLine": 159,
+        "endChar": 22
+      },
+      "revId": "c9016ac0969c68161c75fca571802d19944c9b88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
