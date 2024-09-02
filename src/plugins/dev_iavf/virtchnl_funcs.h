@@ -9,7 +9,8 @@
 #include <vnet/dev/dev.h>
 #include <dev_iavf/iavf.h>
 
-#define VIRTCHNL_MSG_SZ(s, e, n) STRUCT_OFFSET_OF (s, e[(n) + 1])
+/* Message size is offset right after last index, and size is one plus max index. */
+#define VIRTCHNL_MSG_SZ(s, e, n) STRUCT_OFFSET_OF (s, e[(n)])
 
 typedef struct
 {
