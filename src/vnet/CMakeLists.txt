@@ -1146,6 +1146,7 @@ list(APPEND VNET_HEADERS
   fib/fib_sas.h
   fib/fib_source.h
   fib/fib_urpf_list.h
+  fib/fib_walk.h
 )
 
 list(APPEND VNET_API_FILES
