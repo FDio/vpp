@@ -518,7 +518,7 @@ class Flowprobe(MethodHolder):
             # flow end timestamp
             self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
             # ethernet type
-            self.assertEqual(int(binascii.hexlify(record[256]), 16), 8)
+            self.assertEqual(int(binascii.hexlify(record[256]), 16),2048)
             # src ip
             self.assertEqual(inet_ntop(socket.AF_INET, record[8]), self.pg7.remote_ip4)
             # dst ip
