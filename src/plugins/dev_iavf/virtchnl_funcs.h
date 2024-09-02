@@ -9,7 +9,8 @@
 #include <vnet/dev/dev.h>
 #include <dev_iavf/iavf.h>
 
-#define VIRTCHNL_MSG_SZ(s, e, n) STRUCT_OFFSET_OF (s, e[(n) + 1])
+/* Message size is offset right after last index, and size is one plus max index. */
+#define VIRTCHNL_MSG_SZ(s, e, n) STRUCT_OFFSET_OF (s, e[(n)])
 
 typedef struct
 {
@@ -139,7 +140,8 @@ iavf_vc_op_config_rss_key (vlib_main_t *vm, vnet_dev_t *dev,
   iavf_virtchnl_req_t vr = {
     .op = VIRTCHNL_OP_CONFIG_RSS_KEY,
     .req = req,
-    .req_sz = VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, req->key_len),
+    /* Message size from key_len would miss the mull-terminator byte. */
+    .req_sz = VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, req->key_len + 1),
   };
 
   return iavf_virtchnl_req (vm, dev, &vr);
