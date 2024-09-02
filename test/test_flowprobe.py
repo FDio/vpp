@@ -518,7 +518,7 @@ class Flowprobe(MethodHolder):
             # flow end timestamp
             self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
             # ethernet type
-            self.assertEqual(int(binascii.hexlify(record[256]), 16), 8)
+            self.assertEqual(int(binascii.hexlify(record[256]), 16), 2048)
             # src ip
             self.assertEqual(inet_ntop(socket.AF_INET, record[8]), self.pg7.remote_ip4)
             # dst ip
@@ -742,7 +742,7 @@ class DatapathTestsHolder(object):
             ipfix_decoder,
             capture,
             cflow,
-            {2: "packets", 256: 8, 61: (self.direction == "tx")},
+            {2: "packets", 256: 2048, 61: (self.direction == "tx")},
         )
         self.collector.get_capture(2)
 
@@ -831,7 +831,7 @@ class DatapathTestsHolder(object):
                 cflow,
                 {
                     2: "packets",
-                    256: 8 if ip_ver == "v4" else 56710,
+                    256: 2048 if ip_ver == "v4" else 34525,
                     4: 17,
                     7: "sport",
                     11: "dport",
@@ -860,7 +860,7 @@ class DatapathTestsHolder(object):
             ipfix_decoder,
             capture,
             cflow,
-            {2: "packets", 256: 2440, 61: (self.direction == "tx")},
+            {2: "packets", 256: 34825, 61: (self.direction == "tx")},
             field_count=tmpl_l2_field_count,
         )
 
@@ -950,7 +950,7 @@ class DatapathTestsHolder(object):
             ipfix_decoder,
             capture,
             cflow,
-            {2: "packets", 256: 8, 61: (self.direction == "tx")},
+            {2: "packets", 256: 2048, 61: (self.direction == "tx")},
         )
 
         # expected two templates and one cflow packet
@@ -1088,7 +1088,7 @@ class DatapathTestsHolder(object):
             ipfix_decoder,
             capture,
             cflow,
-            {2: "packets", 256: 56710, 61: (self.direction == "tx")},
+            {2: "packets", 256: 34525, 61: (self.direction == "tx")},
             ip_ver="v6",
         )
 
