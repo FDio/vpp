@@ -110,6 +110,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
     .reta_sz = ROC_NIX_RSS_RETA_SZ_256,
     .max_sqb_count = 512,
     .pci_dev = &cd->plt_pci_dev,
+    .hw_vlan_ins = true,
   };
 
   if ((rrv = roc_nix_dev_init (cd->nix)))
