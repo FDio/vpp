@@ -17,11 +17,12 @@ VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .subclass_name = "port",
 };
 
-static const u8 default_rss_key[] = {
-  0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23, 0xb6, 0x75, 0xea, 0x5b, 0x12,
-  0x4f, 0x9f, 0x30, 0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc, 0x4d, 0x02, 0xa0, 0x8c,
-  0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c, 0x05, 0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8,
-  0x55, 0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e, 0x81, 0x15, 0x03, 0x66,
+static const u8 default_rss_zkey[] = {
+  0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23, 0xb6, 0x75, 0xea,
+  0x5b, 0x12, 0x4f, 0x9f, 0x30, 0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc,
+  0x4d, 0x02, 0xa0, 0x8c, 0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c, 0x05,
+  0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8, 0x55, 0x7d, 0x99, 0x58, 0x3a,
+  0xe1, 0x38, 0xc9, 0x2e, 0x81, 0x15, 0x03, 0x66, 0x00,
 };
 
 const static iavf_dyn_ctl dyn_ctln_disabled = {};
@@ -78,8 +79,10 @@ iavf_port_init_rss (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
-  u16 keylen = clib_min (sizeof (default_rss_key), ap->rss_key_size);
-  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, keylen)];
+  /* The driver requires one more byte, maybe zero as terminating C string? */
+  u16 zkey_size = ap->rss_key_size + 1;
+  u16 zkeylen = clib_min (sizeof (default_rss_zkey), zkey_size);
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, zkeylen)];
   virtchnl_rss_key_t *key = (virtchnl_rss_key_t *) buffer;
 
   if (!port->attr.caps.rss)
@@ -88,10 +91,10 @@ iavf_port_init_rss (vlib_main_t *vm, vnet_dev_port_t *port)
   /* config RSS key */
   *key = (virtchnl_rss_key_t){
     .vsi_id = ap->vsi_id,
-    .key_len = keylen,
+    .key_len = zkeylen - 1,
   };
 
-  clib_memcpy (key->key, default_rss_key, sizeof (default_rss_key));
+  clib_memcpy (key->key, default_rss_zkey, zkeylen);
 
   return iavf_vc_op_config_rss_key (vm, dev, key);
 }
@@ -101,8 +104,10 @@ iavf_port_update_rss_lut (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
+  /* As with RSS key, also LUT is expected to be null-terminated in message. */
   u16 lut_size = clib_min (IAVF_MAX_RSS_LUT_SIZE, ap->rss_lut_size);
-  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_lut_t, lut, lut_size)];
+  u16 zlut_size = lut_size + 1;
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_lut_t, lut, zlut_size)];
   virtchnl_rss_lut_t *lut = (virtchnl_rss_lut_t *) buffer;
   u32 enabled_rxq_bmp = 0;
 
@@ -124,7 +129,10 @@ iavf_port_update_rss_lut (vlib_main_t *vm, vnet_dev_port_t *port)
       {
 	lut->lut[i++] = j;
 	if (i >= lut->lut_entries)
-	  break;
+	  {
+	    lut->lut[i] = 0;
+	    break;
+	  }
       }
 
   return iavf_vc_op_config_rss_lut (vm, dev, lut);
