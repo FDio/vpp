@@ -91,7 +91,7 @@ iavf_port_init_rss (vlib_main_t *vm, vnet_dev_port_t *port)
     .key_len = keylen,
   };
 
-  clib_memcpy (key->key, default_rss_key, sizeof (default_rss_key));
+  clib_memcpy (key->key, default_rss_key, keylen);
 
   return iavf_vc_op_config_rss_key (vm, dev, key);
 }
@@ -425,17 +425,20 @@ iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 			    int is_primary)
 {
   iavf_port_t *ap = vnet_dev_get_port_data (port);
-  virtchnl_ether_addr_list_t al = {
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_ether_addr_list_t, list, 1)];
+  virtchnl_ether_addr_list_t *al = (virtchnl_ether_addr_list_t *) buffer;
+
+  *al = {
     .vsi_id = ap->vsi_id,
     .num_elements = 1,
     .list[0].primary = is_primary ? 1 : 0,
     .list[0].extra = is_primary ? 0 : 1,
   };
 
-  clib_memcpy (al.list[0].addr, addr, sizeof (al.list[0].addr));
+  clib_memcpy (al->list[0].addr, addr, sizeof (al->list[0].addr));
 
-  return is_add ? iavf_vc_op_add_eth_addr (vm, port->dev, &al) :
-			iavf_vc_op_del_eth_addr (vm, port->dev, &al);
+  return is_add ? iavf_vc_op_add_eth_addr (vm, port->dev, al) :
+		  iavf_vc_op_del_eth_addr (vm, port->dev, al);
 }
 
 static vnet_dev_rv_t
