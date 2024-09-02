@@ -16,6 +16,23 @@
       "message": "thanks it worked for me on ubuntu24.04",
       "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fadead32_a84439d6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-09-02T13:37:27Z",
+      "side": 1,
+      "message": "Actually I restarted my VM I used for ubuntu24 and I can\u0027t build again, I try to point to the lines where I see the issue.",
+      "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
