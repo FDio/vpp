@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e13eebe9_a51bd7d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-09-02T13:34:32Z",
+      "side": 1,
+      "message": "Thanks, I had some time again to jump into this problem, and I fetched a coredump with (I used your patch to build vpp), please check the trace from gdb in the following pastebin:\nhttps://pastebin.com/1t8ZgwiR",
+      "revId": "c1561f28a9d046acb30cba04411c51c7a20f7fa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
