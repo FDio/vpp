@@ -216,7 +216,8 @@ flowprobe_l2_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
   offset += 6;
 
   /* ethertype */
-  clib_memcpy_fast (to_b->data + offset, &e->key.ethertype, 2);
+  u16 t = clib_host_to_net_u16 (e->key.ethertype);
+  clib_memcpy_fast (to_b->data + offset, &t, 2);
   offset += 2;
 
   return offset - start;
