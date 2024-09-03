@@ -16,6 +16,24 @@
       "message": "let\u0027s avoid new dependency. vmbus code already have some uuid handling, which can be moved to vppinfra and reused....",
       "revId": "8607397fc58bb14a1449d08fc75a1df48812e75b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1497317_d4de59f9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-09-03T18:58:37Z",
+      "side": 1,
+      "message": "removed dependency and move uuid parse/unparsing to vppinfra.",
+      "parentUuid": "56abf031_ffcccbfa",
+      "revId": "8607397fc58bb14a1449d08fc75a1df48812e75b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
