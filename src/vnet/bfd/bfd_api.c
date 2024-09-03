@@ -46,8 +46,16 @@ pub_sub_handler (bfd_events, BFD_EVENTS);
   ip_address_decode(&mp->local_addr, &local_addr);                             \
   ip_address_decode(&mp->peer_addr, &peer_addr);
 
-#define BFD_UDP_API_PARAM_FROM_MP(mp) \
-  clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
+#define BFD_UDP_API_PARAM_FROM_MP(mp)                                         \
+  mp->multihop, clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
+
+#define COND_VALIDATE_SW_IF_INDEX(mp)                                         \
+  {                                                                           \
+    if (!mp->multihop)                                                        \
+      {                                                                       \
+	VALIDATE_SW_IF_INDEX (mp)                                             \
+      }                                                                       \
+  }
 
 static void
 vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
@@ -55,7 +63,7 @@ vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
   vl_api_bfd_udp_add_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
@@ -76,7 +84,7 @@ vl_api_bfd_udp_upd_t_handler (vl_api_bfd_udp_add_t *mp)
   vl_api_bfd_udp_upd_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
@@ -97,7 +105,7 @@ vl_api_bfd_udp_mod_t_handler (vl_api_bfd_udp_mod_t * mp)
   vl_api_bfd_udp_mod_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
@@ -116,7 +124,7 @@ vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
   vl_api_bfd_udp_del_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
@@ -143,6 +151,7 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
   mp->state = clib_host_to_net_u32 (bs->local_state);
   bfd_udp_session_t *bus = &bs->udp;
   bfd_udp_key_t *key = &bus->key;
+  mp->multihop = bus->key.multihop;
   mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
   if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
       (bs->auth.is_delayed && bs->auth.next_key))
@@ -186,6 +195,7 @@ send_bfd_udp_session_event (vl_api_registration_t *reg, u32 pid,
   mp->state = clib_host_to_net_u32 (bs->local_state);
   bfd_udp_session_t *bus = &bs->udp;
   bfd_udp_key_t *key = &bus->key;
+  mp->multihop = key->multihop;
   mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
   if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
       (bs->auth.is_delayed && bs->auth.next_key))
@@ -315,7 +325,7 @@ vl_api_bfd_udp_auth_activate_t_handler (vl_api_bfd_udp_auth_activate_t * mp)
   vl_api_bfd_udp_auth_activate_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
@@ -334,7 +344,7 @@ vl_api_bfd_udp_auth_deactivate_t_handler (vl_api_bfd_udp_auth_deactivate_t *
   vl_api_bfd_udp_auth_deactivate_reply_t *rmp;
   int rv;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  COND_VALIDATE_SW_IF_INDEX (mp);
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
