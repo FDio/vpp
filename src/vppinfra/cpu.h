@@ -37,6 +37,7 @@
   _ (qdf24xx, "Qualcomm CentriqTM 2400")                                      \
   _ (cortexa72, "ARM Cortex-A72")                                             \
   _ (neoversen1, "ARM Neoverse N1")                                           \
+  _ (neoversev1, "ARM Neoverse V1")                                           \
   _ (neoversen2, "ARM Neoverse N2")
 #else
 #define foreach_march_variant
@@ -354,6 +355,7 @@ const clib_cpu_info_t *clib_get_cpu_info ();
 #define AARCH64_CPU_IMPLEMENTER_ARM 0x41
 #define AARCH64_CPU_PART_CORTEXA72  0xd08
 #define AARCH64_CPU_PART_NEOVERSEN1 0xd0c
+#define AARCH64_CPU_PART_NEOVERSEV1 0xd40
 #define AARCH64_CPU_PART_NEOVERSEN2 0xd49
 
 /*cavium */
@@ -432,6 +434,20 @@ clib_cpu_march_priority_neoversen1 ()
     return -1;
 
   if (info->aarch64.part_num == AARCH64_CPU_PART_NEOVERSEN1)
+    return 10;
+
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_neoversev1 ()
+{
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_ARM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_NEOVERSEV1)
     return 10;
 
   return -1;
