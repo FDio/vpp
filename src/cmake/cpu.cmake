@@ -210,6 +210,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
     N_PREFETCHES 6
     CACHE_PREFETCH_BYTES 64
   )
+  add_vpp_march_variant(neoversev1
+    FLAGS -march=armv8.4-a+crc+crypto -mtune=neoverse-v1
+    N_PREFETCHES 8
+    CACHE_PREFETCH_BYTES 64
+  )
   add_vpp_march_variant(neoversen2
     FLAGS -march=armv9-a+crypto -mtune=neoverse-n2
     N_PREFETCHES 6
