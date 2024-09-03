@@ -16,6 +16,24 @@
       "message": "dev infra is bus agnostic so it should not have pci-specific stuff in APIs....",
       "revId": "8cb1bb23cff8d29f8a336cce82a62250ecfbfb15",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c83afd8e_904c067e",
+        "filename": "src/vnet/dev/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-09-03T19:00:15Z",
+      "side": 1,
+      "message": "moved vf-token parsing to pci specific files.",
+      "parentUuid": "394222f4_13094f98",
+      "revId": "8cb1bb23cff8d29f8a336cce82a62250ecfbfb15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
