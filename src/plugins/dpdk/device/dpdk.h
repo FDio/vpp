@@ -241,6 +241,7 @@ typedef struct
   _ (num_rx_desc)                                                             \
   _ (num_tx_desc)                                                             \
   _ (max_lro_pkt_size)                                                        \
+  _ (disable_rxq_int)                                                         \
   _ (rss_fn)
 
 typedef enum
