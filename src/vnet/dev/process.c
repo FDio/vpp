@@ -30,7 +30,7 @@ typedef enum
 typedef struct
 {
   vnet_dev_event_t event;
-  u8 reply_needed : 1;
+  uword one_time_event_type; /* set to ~0 if process should not reply */
   u32 calling_process_index;
   union
   {
@@ -164,9 +164,9 @@ vnet_dev_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	    {
 	      vnet_dev_rv_t rv;
 	      rv = vnet_dev_process_one_event (vm, dev, ed);
-	      if (ed->reply_needed)
-		vlib_process_signal_event (vm, ed->calling_process_index,
-					   ed->event, rv);
+	      if (0 != ~ed->one_time_event_type)
+		vlib_process_signal_one_time_event (
+		  vm, ed->calling_process_index, ed->one_time_type_index, rv);
 	    }
 	  vec_reset_length (event_data);
 	}
@@ -262,6 +262,7 @@ static void
 vnet_dev_process_event_send (vlib_main_t *vm, vnet_dev_t *dev,
 			     vnet_dev_event_data_t ed)
 {
+  ed.one_time_type_index = ~((uword) 0);
   vnet_dev_event_data_t *edp = vlib_process_signal_event_data (
     vm, dev->process_node_index, 0, 1, sizeof (ed));
   *edp = ed;
@@ -271,7 +272,8 @@ static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				      vnet_dev_event_data_t ed)
 {
-  uword event, *event_data = 0;
+  u32 num_events;
+  uword one_time_type_index, *event_data = 0;
   vnet_dev_rv_t rv;
 
   ed.calling_process_index = vlib_get_current_process_node_index (vm);
@@ -279,20 +281,19 @@ vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
   if (ed.calling_process_index == dev->process_node_index)
     return vnet_dev_process_one_event (vm, dev, &ed);
 
-  ed.reply_needed = 1;
+  one_time_type_index =
+    vlib_process_create_one_time_event (vm, ed.calling_process_index, 0);
+  ed.one_time_type_index = one_time_type_index;
   vnet_dev_process_event_send (vm, dev, ed);
-  vlib_process_wait_for_event_or_clock (vm, 5.0);
-  event = vlib_process_get_events (vm, &event_data);
-  if (event != ed.event)
-    {
-      log_err (dev, "%s",
-	       event == VNET_DEV_EVENT_CLOCK ?
-		       "timeout waiting for process node to respond" :
-		       "unexpected event received");
-      rv = VNET_DEV_ERR_PROCESS_REPLY;
-    }
-  else
-    rv = event_data[0];
+  num_events = vlib_process_wait_for_one_time_event_or_clock (
+    vm, &event_data, one_time_type_index, 5.0);
+
+  rv = (1 == num_events ? event_data[0] : VNET_DEV_ERR_PROCESS_REPLY);
+  if (!num_events)
+    log_err (dev, "%s", "timeout waiting for process node to respond");
+  else if (num_events > 1)
+    log_err (dev, "%s", "got multiple one-time events");
+
   vec_free (event_data);
   return rv;
 }
