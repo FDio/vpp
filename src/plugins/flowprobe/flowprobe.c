@@ -48,7 +48,7 @@ uword flowprobe_walker_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 VNET_FEATURE_INIT (flowprobe_input_ip4_unicast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "flowprobe-input-ip4",
-  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_before = VNET_FEATURES ("ip4-lookup", "ip4-inacl"),
 };
 VNET_FEATURE_INIT (flowprobe_input_ip4_multicast, static) = {
   .arc_name = "ip4-multicast",
@@ -58,7 +58,7 @@ VNET_FEATURE_INIT (flowprobe_input_ip4_multicast, static) = {
 VNET_FEATURE_INIT (flowprobe_input_ip6_unicast, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "flowprobe-input-ip6",
-  .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_before = VNET_FEATURES ("ip6-lookup", "ip6-inacl"),
 };
 VNET_FEATURE_INIT (flowprobe_input_ip6_multicast, static) = {
   .arc_name = "ip6-multicast",
