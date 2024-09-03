@@ -71,13 +71,13 @@ typedef enum
 /**
  * hop types
  */
-#define foreach_bfd_hop(F)                     \
-  F (SINGLE, "single")                         \
-  F (MULTI,  "multi")                          \
+#define foreach_bfd_hop(F)                                                    \
+  F (SINGLE)                                                                  \
+  F (MULTI)
 
 typedef enum
 {
-#define F(sym, str) BFD_HOP_TYPE_##sym,
+#define F(sym) BFD_HOP_TYPE_##sym,
   foreach_bfd_hop (F)
 #undef F
 } bfd_hop_type_e;
@@ -318,6 +318,12 @@ typedef struct
   /** vector of callback notification functions */
   bfd_notify_fn_t *listeners;
 
+  /**
+   * true if multihop support is enabled so sw_if_index of ~0
+   * represents a multihop session
+   */
+  bool multihop_enabled;
+
   /** log class */
   vlib_log_class_t log_class;
 
@@ -449,6 +455,7 @@ vnet_api_error_t bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 
 u32 bfd_nsec_to_usec (u64 nsec);
 const char *bfd_poll_state_string (bfd_poll_state_e state);
+const char *bfd_hop_type_string (bfd_hop_type_e state);
 
 #define USEC_PER_MS (1000LL)
 #define MSEC_PER_SEC (1000LL)
@@ -482,6 +489,8 @@ typedef enum
   BFD_TX_IP6_REWRITE,
   BFD_TX_IP4_MIDCHAIN,
   BFD_TX_IP6_MIDCHAIN,
+  BFD_TX_IP4_LOOKUP,
+  BFD_TX_IP6_LOOKUP,
   BFD_TX_N_NEXT,
 } bfd_tx_next_t;
 
