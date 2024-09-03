@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e13820dc_38405661",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-09-03T11:18:42Z",
+      "side": 1,
+      "message": "Thanks this fixed my issue with the json format and the crash of VPP",
+      "revId": "545414c9255018f2499520fa73fd335edb1b080a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
