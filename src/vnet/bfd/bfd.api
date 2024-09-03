@@ -359,6 +359,16 @@ autoreply define bfd_udp_auth_deactivate
   bool is_delayed;
 };
 
+/** \brief BFD UDP - enable multihop support
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define bfd_udp_enable_multihop
+{
+  u32 client_index;
+  u32 context;
+};
+
 /* must be compatible with bfd_error_t */
 counters bfd_udp {
   none {
