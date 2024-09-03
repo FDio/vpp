@@ -30,7 +30,9 @@ typedef enum
 typedef struct
 {
   vnet_dev_event_t event;
+  vnet_dev_rv_t rv;
   u8 reply_needed : 1;
+  u8 completed : 1;
   u32 calling_process_index;
   union
   {
@@ -165,8 +167,10 @@ vnet_dev_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	      vnet_dev_rv_t rv;
 	      rv = vnet_dev_process_one_event (vm, dev, ed);
 	      if (ed->reply_needed)
-		vlib_process_signal_event (vm, ed->calling_process_index,
-					   ed->event, rv);
+		{
+		  ed->rv = rv;
+		  ed->completed = 1;
+		}
 	    }
 	  vec_reset_length (event_data);
 	}
@@ -271,8 +275,7 @@ static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				      vnet_dev_event_data_t ed)
 {
-  uword event, *event_data = 0;
-  vnet_dev_rv_t rv;
+  f64 t0, interval = 1e-5;
 
   ed.calling_process_index = vlib_get_current_process_node_index (vm);
 
@@ -281,20 +284,19 @@ vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 
   ed.reply_needed = 1;
   vnet_dev_process_event_send (vm, dev, ed);
-  vlib_process_wait_for_event_or_clock (vm, 5.0);
-  event = vlib_process_get_events (vm, &event_data);
-  if (event != ed.event)
+
+  t0 = vlib_time_now (vm);
+
+  do
     {
-      log_err (dev, "%s",
-	       event == VNET_DEV_EVENT_CLOCK ?
-		       "timeout waiting for process node to respond" :
-		       "unexpected event received");
-      rv = VNET_DEV_ERR_PROCESS_REPLY;
+      vlib_process_suspend (vm, interval);
+      if (ed.completed)
+	return ed.rv;
+      interval *= 2;
     }
-  else
-    rv = event_data[0];
-  vec_free (event_data);
-  return rv;
+  while (vlib_time_now (vm) - t0 < 5.0);
+
+  return VNET_DEV_ERR_PROCESS_REPLY;
 }
 
 void
