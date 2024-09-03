@@ -82,6 +82,7 @@ define bfd_udp_get_echo_source_reply
 /** \brief Add UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param desired_min_tx - desired min transmit interval (microseconds)
     @param required_min_rx - required min receive interval (microseconds)
@@ -97,6 +98,7 @@ autoreply define bfd_udp_add
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   u32 desired_min_tx;
   u32 required_min_rx;
@@ -111,6 +113,7 @@ define bfd_udp_upd
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   u32 desired_min_tx;
   u32 required_min_rx;
@@ -131,6 +134,7 @@ define bfd_udp_upd_reply
 /** \brief Modify UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param desired_min_tx - desired min transmit interval (microseconds)
     @param required_min_rx - required min receive interval (microseconds)
@@ -143,6 +147,7 @@ autoreply define bfd_udp_mod
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   u32 desired_min_tx;
   u32 required_min_rx;
@@ -154,6 +159,7 @@ autoreply define bfd_udp_mod
 /** \brief Delete UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
@@ -163,6 +169,7 @@ autoreply define bfd_udp_del
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
@@ -180,6 +187,7 @@ define bfd_udp_session_dump
 
 /** \brief BFD session details structure
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
@@ -195,6 +203,7 @@ define bfd_udp_session_dump
 define bfd_udp_session_details
 {
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
@@ -210,6 +219,7 @@ define bfd_udp_session_details
 /** \brief Set flags of BFD UDP session
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
@@ -220,6 +230,7 @@ autoreply define bfd_udp_session_set_flags
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
@@ -249,6 +260,7 @@ define bfd_udp_session_event
 {
   u32 client_index;
   u32 pid;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
@@ -320,6 +332,7 @@ define bfd_auth_keys_details
 /** \brief BFD UDP - activate/change authentication
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
@@ -332,6 +345,7 @@ autoreply define bfd_udp_auth_activate
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
@@ -343,6 +357,7 @@ autoreply define bfd_udp_auth_activate
 /** \brief BFD UDP - deactivate authentication
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param multihop - True if session type is multihop, otherwise singlehop
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
@@ -353,6 +368,7 @@ autoreply define bfd_udp_auth_deactivate
 {
   u32 client_index;
   u32 context;
+  bool multihop;
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local_addr;
   vl_api_address_t peer_addr;
