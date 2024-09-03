@@ -55,23 +55,19 @@ tracenode_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* enqueue b0 to the current next frame */
       vnet_feature_next_u16 (next, b[0]);
 
-      /* buffer already traced */
-      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
-	goto skip;
-
       if (is_pcap && vnet_is_packet_pcaped (pp, b[0], ~0))
 	{
 	  pcap_add_buffer (&pp->pcap_main, vm, from0[0],
 			   pp->max_bytes_per_pkt);
 	}
-      else if (!is_pcap && vlib_trace_buffer (vm, node, next[0], b[0],
-					      1 /* follow_chain */))
+      else if (!is_pcap && !(b[0]->flags & VLIB_BUFFER_IS_TRACED) &&
+	       vlib_trace_buffer (vm, node, next[0], b[0],
+				  1 /* follow_chain */))
 	{
 	  tracenode_trace_t *tr = vlib_add_trace (vm, node, b[0], sizeof *tr);
 	  tr->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	}
 
-    skip:
       b++;
       from0++;
       next++;
