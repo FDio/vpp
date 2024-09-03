@@ -230,7 +230,7 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
 
   if (m && m->endian_handler)
     {
-      m->endian_handler (tmpmem, 1);
+      m->endian_handler (tmpmem, 0 /* host endian */);
     }
 
   if (m && m->tojson_handler)
