@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ea45a6f_9a06a700",
+        "filename": "src/plugins/dev_armada/pp2/tx.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1755
+      },
+      "writtenOn": "2024-09-03T16:46:36Z",
+      "side": 1,
+      "message": "missing `mtq-\u003en_enq +\u003d n_sent ?`",
+      "revId": "62967ab8ff5c0ec143eeffc80ff93c036de24f94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
