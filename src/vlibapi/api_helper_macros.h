@@ -701,19 +701,20 @@ bad_bd_id:					\
                                                                               \
   VL_MSG_API_REAPER_FUNCTION (vl_api_want_##lca##_t_reaper);
 
-#define foreach_registration_hash               \
-_(interface_events)                             \
-_(to_netconf_server)                            \
-_(from_netconf_server)                          \
-_(to_netconf_client)                            \
-_(from_netconf_client)                          \
-_(oam_events)                                   \
-_(bfd_events)                                   \
-_(l2_arp_term_events)                           \
-_(ip6_ra_events)                                \
-_(dhcp6_pd_reply_events)                        \
-_(dhcp6_reply_events)				\
-_(vrrp_vr_events)
+#define foreach_registration_hash                                             \
+  _ (interface_events)                                                        \
+  _ (to_netconf_server)                                                       \
+  _ (from_netconf_server)                                                     \
+  _ (to_netconf_client)                                                       \
+  _ (from_netconf_client)                                                     \
+  _ (oam_events)                                                              \
+  _ (bfd_events)                                                              \
+  _ (bfd_events_v2)                                                           \
+  _ (l2_arp_term_events)                                                      \
+  _ (ip6_ra_events)                                                           \
+  _ (dhcp6_pd_reply_events)                                                   \
+  _ (dhcp6_reply_events)                                                      \
+  _ (vrrp_vr_events)
 
 typedef struct
 {

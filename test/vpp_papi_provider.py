@@ -201,6 +201,9 @@ defaultmapping = {
     "want_bfd_events": {
         "enable_disable": 1,
     },
+    "want_bfd_events_v2": {
+        "enable_disable": 1,
+    },
     "want_igmp_events": {
         "enable": 1,
     },

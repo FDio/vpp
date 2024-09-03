@@ -39,6 +39,7 @@
 
 
 pub_sub_handler (bfd_events, BFD_EVENTS);
+pub_sub_handler (bfd_events_v2, BFD_EVENTS_V2);
 
 #define BFD_UDP_API_PARAM_COMMON_CODE                                         \
   ip46_address_t local_addr;                                                  \
@@ -46,8 +47,19 @@ pub_sub_handler (bfd_events, BFD_EVENTS);
   ip_address_decode(&mp->local_addr, &local_addr);                             \
   ip_address_decode(&mp->peer_addr, &peer_addr);
 
-#define BFD_UDP_API_PARAM_FROM_MP(mp) \
-  clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
+#define BFD_UDP_API_PARAM_FROM_MP(mp)                                         \
+  0, clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
+
+#define BFD_UDP_API_PARAM_FROM_MP_V2(mp)                                      \
+  mp->multihop, clib_net_to_host_u32 (mp->sw_if_index), &local_addr, &peer_addr
+
+#define COND_VALIDATE_SW_IF_INDEX(mp)                                         \
+  {                                                                           \
+    if (!mp->multihop)                                                        \
+      {                                                                       \
+	VALIDATE_SW_IF_INDEX (mp)                                             \
+      }                                                                       \
+  }
 
 static void
 vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
@@ -68,6 +80,27 @@ vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_ADD_REPLY);
+}
+
+static void
+vl_api_bfd_udp_add_v2_t_handler (vl_api_bfd_udp_add_v2_t *mp)
+{
+  vl_api_bfd_udp_add_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_add_session (BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+			    clib_net_to_host_u32 (mp->desired_min_tx),
+			    clib_net_to_host_u32 (mp->required_min_rx),
+			    mp->detect_mult, mp->is_authenticated,
+			    clib_net_to_host_u32 (mp->conf_key_id),
+			    mp->bfd_key_id);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_ADD_V2_REPLY);
 }
 
 static void
@@ -92,6 +125,28 @@ vl_api_bfd_udp_upd_t_handler (vl_api_bfd_udp_add_t *mp)
 }
 
 static void
+vl_api_bfd_udp_upd_v2_t_handler (vl_api_bfd_udp_add_v2_t *mp)
+{
+  vl_api_bfd_udp_upd_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_upd_session (BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+			    clib_net_to_host_u32 (mp->desired_min_tx),
+			    clib_net_to_host_u32 (mp->required_min_rx),
+			    mp->detect_mult, mp->is_authenticated,
+			    clib_net_to_host_u32 (mp->conf_key_id),
+			    mp->bfd_key_id);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_BFD_UDP_UPD_V2_REPLY,
+		({ rmp->stats_index = clib_host_to_net_u32 (0); }));
+}
+
+static void
 vl_api_bfd_udp_mod_t_handler (vl_api_bfd_udp_mod_t * mp)
 {
   vl_api_bfd_udp_mod_reply_t *rmp;
@@ -111,6 +166,25 @@ vl_api_bfd_udp_mod_t_handler (vl_api_bfd_udp_mod_t * mp)
 }
 
 static void
+vl_api_bfd_udp_mod_v2_t_handler (vl_api_bfd_udp_mod_v2_t *mp)
+{
+  vl_api_bfd_udp_mod_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_mod_session (BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+			    clib_net_to_host_u32 (mp->desired_min_tx),
+			    clib_net_to_host_u32 (mp->required_min_rx),
+			    mp->detect_mult);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_MOD_V2_REPLY);
+}
+
+static void
 vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
 {
   vl_api_bfd_udp_del_reply_t *rmp;
@@ -124,6 +198,22 @@ vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_DEL_REPLY);
+}
+
+static void
+vl_api_bfd_udp_del_v2_t_handler (vl_api_bfd_udp_del_v2_t *mp)
+{
+  vl_api_bfd_udp_del_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_del_session (BFD_UDP_API_PARAM_FROM_MP_V2 (mp));
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_DEL_V2_REPLY);
 }
 
 void
@@ -164,6 +254,50 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
 
   mp->required_min_rx =
     clib_host_to_net_u32 (bs->config_required_min_rx_usec);
+  mp->desired_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
+  mp->detect_mult = bs->local_detect_mult;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+void
+send_bfd_udp_session_v2_details (vl_api_registration_t *reg, u32 context,
+				 bfd_session_t *bs)
+{
+  if (bs->transport != BFD_TRANSPORT_UDP4 &&
+      bs->transport != BFD_TRANSPORT_UDP6)
+    {
+      return;
+    }
+
+  vl_api_bfd_udp_session_v2_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_SESSION_V2_DETAILS);
+  mp->context = context;
+  mp->state = clib_host_to_net_u32 (bs->local_state);
+  bfd_udp_session_t *bus = &bs->udp;
+  bfd_udp_key_t *key = &bus->key;
+  mp->multihop = bus->key.multihop;
+  mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
+  if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
+      (bs->auth.is_delayed && bs->auth.next_key))
+    {
+      mp->is_authenticated = true;
+    }
+  if (bs->auth.is_delayed && bs->auth.next_key)
+    {
+      mp->bfd_key_id = bs->auth.next_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_key->conf_key_id);
+    }
+  else if (!bs->auth.is_delayed && bs->auth.curr_key)
+    {
+      mp->bfd_key_id = bs->auth.curr_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
+    }
+  ip_address_encode (&key->local_addr, IP46_TYPE_ANY, &mp->local_addr);
+  ip_address_encode (&key->peer_addr, IP46_TYPE_ANY, &mp->peer_addr);
+
+  mp->required_min_rx = clib_host_to_net_u32 (bs->config_required_min_rx_usec);
   mp->desired_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
   mp->detect_mult = bs->local_detect_mult;
   vl_api_send_msg (reg, (u8 *) mp);
@@ -212,6 +346,49 @@ send_bfd_udp_session_event (vl_api_registration_t *reg, u32 pid,
 }
 
 void
+send_bfd_udp_session_event_v2 (vl_api_registration_t *reg, u32 pid,
+			       bfd_session_t *bs)
+{
+  if (bs->transport != BFD_TRANSPORT_UDP4 &&
+      bs->transport != BFD_TRANSPORT_UDP6)
+    {
+      return;
+    }
+
+  vl_api_bfd_udp_session_event_v2_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_SESSION_EVENT_V2);
+  mp->pid = pid;
+  mp->state = clib_host_to_net_u32 (bs->local_state);
+  bfd_udp_session_t *bus = &bs->udp;
+  bfd_udp_key_t *key = &bus->key;
+  mp->multihop = key->multihop;
+  mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
+  if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
+      (bs->auth.is_delayed && bs->auth.next_key))
+    {
+      mp->is_authenticated = true;
+    }
+  if (bs->auth.is_delayed && bs->auth.next_key)
+    {
+      mp->bfd_key_id = bs->auth.next_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_key->conf_key_id);
+    }
+  else if (!bs->auth.is_delayed && bs->auth.curr_key)
+    {
+      mp->bfd_key_id = bs->auth.curr_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
+    }
+  ip_address_encode (&key->local_addr, IP46_TYPE_ANY, &mp->local_addr);
+  ip_address_encode (&key->peer_addr, IP46_TYPE_ANY, &mp->peer_addr);
+
+  mp->required_min_rx = clib_host_to_net_u32 (bs->config_required_min_rx_usec);
+  mp->desired_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
+  mp->detect_mult = bs->local_detect_mult;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+void
 bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 {
   vpe_api_main_t *vam = &vpe_api_main;
@@ -227,6 +404,21 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 	  /* fallthrough */
 	  case BFD_TRANSPORT_UDP6:
 	    send_bfd_udp_session_event (vl_reg, 0, bs);
+	  }
+      }
+  }
+
+  pool_foreach (reg, vam->bfd_events_v2_registrations)
+  {
+    vl_reg = vl_api_client_index_to_registration (reg->client_index);
+    if (vl_reg)
+      {
+	switch (bs->transport)
+	  {
+	  case BFD_TRANSPORT_UDP4:
+	  /* fallthrough */
+	  case BFD_TRANSPORT_UDP6:
+	    send_bfd_udp_session_event_v2 (vl_reg, 0, bs);
 	  }
       }
   }
@@ -250,6 +442,24 @@ vl_api_bfd_udp_session_dump_t_handler (vl_api_bfd_udp_session_dump_t * mp)
 }
 
 static void
+vl_api_bfd_udp_session_v2_dump_t_handler (vl_api_bfd_udp_session_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+  return;
+
+  bfd_session_t *bs = NULL;
+  pool_foreach (bs, bfd_main.sessions)
+  {
+    if (bs->transport == BFD_TRANSPORT_UDP4 ||
+	bs->transport == BFD_TRANSPORT_UDP6)
+      send_bfd_udp_session_v2_details (reg, mp->context, bs);
+  }
+}
+
+static void
 vl_api_bfd_udp_session_set_flags_t_handler (vl_api_bfd_udp_session_set_flags_t
 					    * mp)
 {
@@ -264,6 +474,22 @@ vl_api_bfd_udp_session_set_flags_t_handler (vl_api_bfd_udp_session_set_flags_t
 				  IF_STATUS_API_FLAG_ADMIN_UP);
 
   REPLY_MACRO (VL_API_BFD_UDP_SESSION_SET_FLAGS_REPLY);
+}
+
+static void
+vl_api_bfd_udp_session_set_flags_v2_t_handler (
+  vl_api_bfd_udp_session_set_flags_v2_t *mp)
+{
+  vl_api_bfd_udp_session_set_flags_v2_reply_t *rmp;
+  int rv;
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_session_set_flags (
+    vlib_get_main (), BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+    clib_net_to_host_u32 (mp->flags) & IF_STATUS_API_FLAG_ADMIN_UP);
+
+  REPLY_MACRO (VL_API_BFD_UDP_SESSION_SET_FLAGS_V2_REPLY);
 }
 
 static void
@@ -328,6 +554,25 @@ vl_api_bfd_udp_auth_activate_t_handler (vl_api_bfd_udp_auth_activate_t * mp)
 }
 
 static void
+vl_api_bfd_udp_auth_activate_v2_t_handler (
+  vl_api_bfd_udp_auth_activate_v2_t *mp)
+{
+  vl_api_bfd_udp_auth_activate_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_auth_activate (BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+			      clib_net_to_host_u32 (mp->conf_key_id),
+			      mp->bfd_key_id, mp->is_delayed);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_AUTH_ACTIVATE_V2_REPLY);
+}
+
+static void
 vl_api_bfd_udp_auth_deactivate_t_handler (vl_api_bfd_udp_auth_deactivate_t *
 					  mp)
 {
@@ -343,6 +588,24 @@ vl_api_bfd_udp_auth_deactivate_t_handler (vl_api_bfd_udp_auth_deactivate_t *
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_AUTH_DEACTIVATE_REPLY);
+}
+
+static void
+vl_api_bfd_udp_auth_deactivate_v2_t_handler (
+  vl_api_bfd_udp_auth_deactivate_v2_t *mp)
+{
+  vl_api_bfd_udp_auth_deactivate_v2_reply_t *rmp;
+  int rv;
+
+  COND_VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_auth_deactivate (BFD_UDP_API_PARAM_FROM_MP_V2 (mp),
+				mp->is_delayed);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_AUTH_DEACTIVATE_V2_REPLY);
 }
 
 static void
