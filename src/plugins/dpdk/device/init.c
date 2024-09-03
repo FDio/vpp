@@ -588,6 +588,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->max_lro_pkt_size)
 	xd->conf.max_lro_pkt_size = devconf->max_lro_pkt_size;
 
+      if (devconf->disable_rxq_int)
+	xd->conf.enable_rxq_int = 0;
+
       dpdk_device_setup (xd);
 
       /* rss queues should be configured after dpdk_device_setup() */
@@ -1005,6 +1008,10 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
 	  error = unformat_rss_fn (&sub_input, &devconf->rss_fn);
 	  if (error)
 	    break;
+	}
+      else if (unformat (input, "no-rx-interrupts"))
+	{
+	  devconf->disable_rxq_int = 1;
 	}
       else if (unformat (input, "tso on"))
 	{
