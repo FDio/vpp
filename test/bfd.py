@@ -17,6 +17,9 @@ from vpp_object import VppObject
 from util import NumericConstant
 from vpp_papi import VppEnum
 
+BFD_UDP_SH_PORT = 3784
+BFD_UDP_MH_PORT = 4784
+
 
 class BFDDiagCode(NumericConstant):
     """BFD Diagnostic Code"""
@@ -153,7 +156,8 @@ class BFD(Packet):
 
 
 # glue the BFD packet class to scapy parser
-bind_layers(UDP, BFD, dport=BFD.udp_dport)
+bind_layers(UDP, BFD, dport=BFD_UDP_SH_PORT)
+bind_layers(UDP, BFD, dport=BFD_UDP_MH_PORT)
 
 
 class BFD_vpp_echo(Packet):
@@ -248,6 +252,7 @@ class VppBFDUDPSession(VppObject):
         test,
         interface,
         peer_addr,
+        multihop=False,
         local_addr=None,
         af=AF_INET,
         desired_min_tx=300000,
@@ -258,12 +263,24 @@ class VppBFDUDPSession(VppObject):
         is_tunnel=False,
     ):
         self._test = test
+        self._multihop = multihop
         self._interface = interface
         self._af = af
+
+        if multihop:
+            self._sw_if_index = 0xFFFFFFFF
+            self.test.vapi.bfd_udp_enable_multihop()
+        else:
+            self._sw_if_index = self._interface.sw_if_index
+
         if local_addr:
             self._local_addr = local_addr
         else:
-            self._local_addr = None
+            if self.af == AF_INET:
+                self._local_addr = self.interface.local_ip4
+            else:
+                self._local_addr = self.interface.local_ip6
+
         self._peer_addr = peer_addr
         self._desired_min_tx = desired_min_tx
         self._required_min_rx = required_min_rx
@@ -312,17 +329,10 @@ class VppBFDUDPSession(VppObject):
         result = self.test.vapi.bfd_udp_session_dump()
         for s in result:
             self.test.logger.debug("session entry: %s" % str(s))
-            if s.sw_if_index == self.interface.sw_if_index:
-                if (
-                    self.af == AF_INET
-                    and self.interface.local_ip4 == str(s.local_addr)
-                    and self.interface.remote_ip4 == str(s.peer_addr)
-                ):
-                    return s
-                if (
-                    self.af == AF_INET6
-                    and self.interface.local_ip6 == str(s.local_addr)
-                    and self.interface.remote_ip6 == str(s.peer_addr)
+            multihop = s.sw_if_index == ~0
+            if multihop or s.sw_if_index == self._sw_if_index:
+                if self._local_addr == str(s.local_addr) and self._peer_addr == str(
+                    s.peer_addr
                 ):
                     return s
         return None
@@ -371,7 +381,7 @@ class VppBFDUDPSession(VppObject):
         conf_key_id = self._sha1_key.conf_key_id
         is_delayed = 1 if delayed else 0
         self.test.vapi.bfd_udp_auth_activate(
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
             bfd_key_id=self._bfd_key_id,
@@ -385,7 +395,7 @@ class VppBFDUDPSession(VppObject):
         self._sha1_key = None
         is_delayed = 1 if delayed else 0
         self.test.vapi.bfd_udp_auth_deactivate(
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
             is_delayed=is_delayed,
@@ -402,7 +412,7 @@ class VppBFDUDPSession(VppObject):
         if required_min_rx:
             self._required_min_rx = required_min_rx
         self.test.vapi.bfd_udp_mod(
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             desired_min_tx=self.desired_min_tx,
             required_min_rx=self.required_min_rx,
             detect_mult=self.detect_mult,
@@ -415,7 +425,7 @@ class VppBFDUDPSession(VppObject):
         conf_key_id = self._sha1_key.conf_key_id if self._sha1_key else None
         is_authenticated = True if self._sha1_key else False
         self.test.vapi.bfd_udp_add(
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             desired_min_tx=self.desired_min_tx,
             required_min_rx=self.required_min_rx,
             detect_mult=self.detect_mult,
@@ -440,7 +450,7 @@ class VppBFDUDPSession(VppObject):
         conf_key_id = self._sha1_key.conf_key_id if self._sha1_key else None
         is_authenticated = True if self._sha1_key else False
         self.test.vapi.bfd_udp_upd(
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             desired_min_tx=self.desired_min_tx,
             required_min_rx=self.required_min_rx,
             detect_mult=self.detect_mult,
@@ -458,14 +468,15 @@ class VppBFDUDPSession(VppObject):
 
     def remove_vpp_config(self):
         self.test.vapi.bfd_udp_del(
-            self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
         )
 
     def object_id(self):
-        return "bfd-udp-%s-%s-%s-%s" % (
-            self._interface.sw_if_index,
+        return "bfd-udp-%s-%s-%s-%s-%s" % (
+            self._multihop,
+            self._sw_if_index,
             self.local_addr,
             self.peer_addr,
             self.af,
@@ -475,7 +486,7 @@ class VppBFDUDPSession(VppObject):
         """set bfd session admin-up"""
         self.test.vapi.bfd_udp_session_set_flags(
             flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
         )
@@ -484,7 +495,7 @@ class VppBFDUDPSession(VppObject):
         """set bfd session admin-down"""
         self.test.vapi.bfd_udp_session_set_flags(
             flags=0,
-            sw_if_index=self._interface.sw_if_index,
+            sw_if_index=self._sw_if_index,
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
         )
