@@ -826,7 +826,7 @@ clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm;
-  clib_error_t *err = 0;
+  clib_error_t *err = ;
   clib_bitmap_t *bmp = 0, *bmp_has_memory = 0;
   u32 numa_node;
   vlib_buffer_pool_t *bp;
