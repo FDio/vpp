@@ -9,6 +9,10 @@
 #include <vnet/dev/dev.h>
 #include <dev_iavf/iavf.h>
 
+/* The "+ 1" fakes a trailing element, but the driver requires that.
+ * Using this "wrong" macro is the easiest solution, as long as
+ * port.c uses buffer sized by the same macro as the functions here.
+ */
 #define VIRTCHNL_MSG_SZ(s, e, n) STRUCT_OFFSET_OF (s, e[(n) + 1])
 
 typedef struct
