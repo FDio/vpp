@@ -37,44 +37,49 @@ typedef enum
 /**
  * @brief create a new bfd session
  */
-vnet_api_error_t
-bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
-		     const ip46_address_t * peer_addr,
-		     u32 desired_min_tx_usec, u32 required_min_rx_usec,
-		     u8 detect_mult, u8 is_authenticated, u32 conf_key_id,
-		     u8 bfd_key_id);
+vnet_api_error_t bfd_udp_add_session (bool multihop, u32 sw_if_index,
+				      const ip46_address_t *local_addr,
+				      const ip46_address_t *peer_addr,
+				      u32 desired_min_tx_usec,
+				      u32 required_min_rx_usec, u8 detect_mult,
+				      u8 is_authenticated, u32 conf_key_id,
+				      u8 bfd_key_id);
 
 /**
- * @brief create a new or modify and existing bfd session
+ * @brief create a new or modify an existing bfd session
  */
-vnet_api_error_t
-bfd_udp_upd_session (u32 sw_if_index, const ip46_address_t *local_addr,
-		     const ip46_address_t *peer_addr, u32 desired_min_tx_usec,
-		     u32 required_min_rx_usec, u8 detect_mult,
-		     u8 is_authenticated, u32 conf_key_id, u8 bfd_key_id);
+vnet_api_error_t bfd_udp_upd_session (bool multihop, u32 sw_if_index,
+				      const ip46_address_t *local_addr,
+				      const ip46_address_t *peer_addr,
+				      u32 desired_min_tx_usec,
+				      u32 required_min_rx_usec, u8 detect_mult,
+				      u8 is_authenticated, u32 conf_key_id,
+				      u8 bfd_key_id);
 
 /**
  * @brief modify existing session
  */
-vnet_api_error_t
-bfd_udp_mod_session (u32 sw_if_index, const ip46_address_t * local_addr,
-		     const ip46_address_t * peer_addr,
-		     u32 desired_min_tx_usec, u32 required_min_rx_usec,
-		     u8 detect_mult);
+vnet_api_error_t bfd_udp_mod_session (bool multihop, u32 sw_if_index,
+				      const ip46_address_t *local_addr,
+				      const ip46_address_t *peer_addr,
+				      u32 desired_min_tx_usec,
+				      u32 required_min_rx_usec,
+				      u8 detect_mult);
 
 /**
  * @brief delete existing session
  */
-vnet_api_error_t bfd_udp_del_session (u32 sw_if_index,
-				      const ip46_address_t * local_addr,
-				      const ip46_address_t * peer_addr);
+vnet_api_error_t bfd_udp_del_session (bool multihop, u32 sw_if_index,
+				      const ip46_address_t *local_addr,
+				      const ip46_address_t *peer_addr);
 
 /**
  * @brief set session admin down/up
  */
-vnet_api_error_t bfd_udp_session_set_flags (vlib_main_t * vm, u32 sw_if_index,
-					    const ip46_address_t * local_addr,
-					    const ip46_address_t * peer_addr,
+vnet_api_error_t bfd_udp_session_set_flags (vlib_main_t *vm, bool multihop,
+					    u32 sw_if_index,
+					    const ip46_address_t *local_addr,
+					    const ip46_address_t *peer_addr,
 					    u8 admin_up_down);
 
 /**
@@ -91,18 +96,18 @@ vnet_api_error_t bfd_auth_del_key (u32 conf_key_id);
 /**
  * @brief activate authentication for existing session
  */
-vnet_api_error_t bfd_udp_auth_activate (u32 sw_if_index,
-					const ip46_address_t * local_addr,
-					const ip46_address_t * peer_addr,
+vnet_api_error_t bfd_udp_auth_activate (bool multihop, u32 sw_if_index,
+					const ip46_address_t *local_addr,
+					const ip46_address_t *peer_addr,
 					u32 conf_key_id, u8 bfd_key_id,
 					u8 is_delayed);
 
 /**
  * @brief deactivate authentication for existing session
  */
-vnet_api_error_t bfd_udp_auth_deactivate (u32 sw_if_index,
-					  const ip46_address_t * local_addr,
-					  const ip46_address_t * peer_addr,
+vnet_api_error_t bfd_udp_auth_deactivate (bool multihop, u32 sw_if_index,
+					  const ip46_address_t *local_addr,
+					  const ip46_address_t *peer_addr,
 					  u8 is_delayed);
 
 /**

@@ -32,6 +32,9 @@ typedef CLIB_PACKED (struct {
     /** the FIB index the peer is in - multi-hop*/
     u32 fib_index;
   };
+  /** whether the session is multihop or not */
+  u32 multihop : 1;
+  u32 unused : 31;
   /** local address */
   ip46_address_t local_addr;
   /** peer address */

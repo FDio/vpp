@@ -12,6 +12,7 @@ import time
 import unittest
 from random import randint, shuffle, getrandbits
 from socket import AF_INET, AF_INET6
+from parameterized import parameterized, parameterized_class
 
 import scapy.compat
 from scapy.layers.inet import UDP, IP
@@ -20,6 +21,7 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
 from config import config
+import bfd
 from bfd import (
     VppBFDAuthKey,
     BFD,
@@ -45,6 +47,60 @@ from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
 
 USEC_IN_SEC = 1000000
+BFD_STATS_V4_SH_PATH = "/bfd/udp4/sessions"
+BFD_STATS_V6_SH_PATH = "/bfd/udp6/sessions"
+BFD_STATS_V4_MH_PATH = "/bfd/udp4/sessions_mh"
+BFD_STATS_V6_MH_PATH = "/bfd/udp6/sessions_mh"
+BFD_IPV4_REMOTE_ADDR = "2.2.2.2"
+BFD_IPV6_REMOTE_ADDR = "2::2"
+BFD_IPV4_REMOTE_ADDR2 = "3.3.3.3"
+BFD_IPV6_REMOTE_ADDR2 = "3::3"
+
+
+def set_ipv4_pfx_route_info(cls):
+    try:
+        if cls.multihop:
+            paths = []
+            # Get list of all the nextthops
+            pg_if = cls.pg0
+            for nh_host in pg_if.remote_hosts:
+                nh_host_ip = nh_host.ip4
+                paths.append(VppRoutePath(nh_host_ip, pg_if.sw_if_index))
+            cls.dst_ip_net = BFD_IPV4_REMOTE_ADDR
+            # Create a route pointing to list of next hops
+            rip = VppIpRoute(cls, cls.dst_ip_net, 32, paths)
+            rip.add_vpp_config()
+            cls.logger.info("Route via %s on %s created" % (nh_host_ip, pg_if.name))
+            cls.src_ip_net = cls.loopback0.local_ip4
+        else:
+            cls.dst_ip_net = cls.pg0.remote_ip4
+            cls.src_ip_net = cls.pg0.local_ip4
+    except BaseException:
+        self.vapi.want_bfd_events(enable_disable=0)
+        raise
+
+
+def set_ipv6_pfx_route_info(cls):
+    try:
+        if cls.multihop:
+            paths = []
+            # Get list of all the nextthops
+            pg_if = cls.pg0
+            for nh_host in pg_if.remote_hosts:
+                nh_host_ip = nh_host.ip6
+                paths.append(VppRoutePath(nh_host_ip, pg_if.sw_if_index))
+            cls.dst_ip6_net = BFD_IPV6_REMOTE_ADDR
+            # Create a route pointing to list of next hops
+            rip = VppIpRoute(cls, cls.dst_ip6_net, 128, paths)
+            rip.add_vpp_config()
+            cls.logger.info("Route via %s on %s created" % (nh_host_ip, pg_if.name))
+            cls.src_ip6_net = cls.loopback0.local_ip6
+        else:
+            cls.dst_ip6_net = cls.pg0.remote_ip6
+            cls.src_ip6_net = cls.pg0.local_ip6
+    except BaseException:
+        self.vapi.want_bfd_events(enable_disable=0)
+        raise
 
 
 class AuthKeyFactory(object):
@@ -67,18 +123,44 @@ class AuthKeyFactory(object):
         )
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 class BFDAPITestCase(VppTestCase):
-    """Bidirectional Forwarding Detection (BFD) - API"""
 
     pg0 = None
     pg1 = None
+    interface0 = None
+    interface1 = None
+    src_ip_net = ""
+    dst_ip_net = ""
+    src_ip_net2 = ""
+    dst_ip_net2 = ""
+    src_ip6_net = ""
+    dst_ip6_net = ""
+    src_ip6_net2 = ""
+    dst_ip6_net2 = ""
 
     @classmethod
     def setUpClass(cls):
         super(BFDAPITestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = (
+            f"""""Bidirectional Forwarding Detection (BFD) - API, {hoptype_str}"""
+        )
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces(range(2))
+            cls.create_loopback_interfaces(2)
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip4()
+            cls.loopback0.admin_up()
+            cls.loopback1 = cls.lo_interfaces[1]
+            cls.loopback1.config_ip4()
+            cls.loopback1.admin_up()
             for i in cls.pg_interfaces:
                 i.config_ip4()
                 i.config_ip6()
@@ -96,9 +178,38 @@ class BFDAPITestCase(VppTestCase):
         super(BFDAPITestCase, self).setUp()
         self.factory = AuthKeyFactory()
 
+        if self.multihop:
+            self.interface0 = None
+            self.interface1 = None
+            self.src_ip_net = self.loopback0.local_ip4
+            self.src_ip6_net = self.loopback0.local_ip6
+            self.dst_ip_net = BFD_IPV4_REMOTE_ADDR
+            self.dst_ip6_net = BFD_IPV6_REMOTE_ADDR
+            self.src_ip_net2 = self.loopback1.local_ip4
+            self.src_ip6_net2 = self.loopback1.local_ip6
+            self.dst_ip_net2 = BFD_IPV4_REMOTE_ADDR2
+            self.dst_ip6_net2 = BFD_IPV6_REMOTE_ADDR2
+        else:
+            self.interface0 = self.pg0
+            self.interface1 = self.pg1
+            self.src_ip_net = self.pg0.local_ip4
+            self.src_ip6_net = self.pg0.local_ip6
+            self.dst_ip_net = self.pg0.remote_ip4
+            self.dst_ip6_net = self.pg0.remote_ip6
+            self.src_ip_net2 = self.pg1.local_ip4
+            self.src_ip6_net2 = self.pg1.local_ip6
+            self.dst_ip_net2 = BFD_IPV4_REMOTE_ADDR2
+            self.dst_ip6_net2 = BFD_IPV6_REMOTE_ADDR2
+
     def test_add_bfd(self):
         """create a BFD session"""
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
         self.logger.debug("Session state is %s", session.state)
         session.remove_vpp_config()
@@ -108,7 +219,13 @@ class BFDAPITestCase(VppTestCase):
 
     def test_double_add(self):
         """create the same BFD session twice (negative case)"""
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
 
         with self.vapi.assert_negative_api_retval():
@@ -118,7 +235,14 @@ class BFDAPITestCase(VppTestCase):
 
     def test_add_bfd6(self):
         """create IPv6 BFD session"""
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip6, af=AF_INET6)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
         self.logger.debug("Session state is %s", session.state)
         session.remove_vpp_config()
@@ -130,8 +254,10 @@ class BFDAPITestCase(VppTestCase):
         """modify BFD session parameters"""
         session = VppBFDUDPSession(
             self,
-            self.pg0,
-            self.pg0.remote_ip4,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
             desired_min_tx=50000,
             required_min_rx=10000,
             detect_mult=1,
@@ -163,8 +289,10 @@ class BFDAPITestCase(VppTestCase):
         """Create/Modify w/ Update BFD session parameters"""
         session = VppBFDUDPSession(
             self,
-            self.pg0,
-            self.pg0.remote_ip4,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
             desired_min_tx=50000,
             required_min_rx=10000,
             detect_mult=1,
@@ -234,7 +362,14 @@ class BFDAPITestCase(VppTestCase):
         """create a BFD session (SHA1)"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4, sha1_key=key)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+        )
         session.add_vpp_config()
         self.logger.debug("Session state is %s", session.state)
         session.remove_vpp_config()
@@ -246,7 +381,14 @@ class BFDAPITestCase(VppTestCase):
         """create the same BFD session twice (negative case) (SHA1)"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4, sha1_key=key)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+        )
         session.add_vpp_config()
         with self.assertRaises(Exception):
             session.add_vpp_config()
@@ -255,9 +397,18 @@ class BFDAPITestCase(VppTestCase):
         """create BFD session using non-existent SHA1 (negative case)"""
         session = VppBFDUDPSession(
             self,
-            self.pg0,
-            self.pg0.remote_ip4,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
             sha1_key=self.factory.create_random_key(self),
+        )
+        self.session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
         )
         with self.assertRaises(Exception):
             session.add_vpp_config()
@@ -267,13 +418,39 @@ class BFDAPITestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         sessions = [
-            VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4, sha1_key=key),
             VppBFDUDPSession(
-                self, self.pg0, self.pg0.remote_ip6, sha1_key=key, af=AF_INET6
+                self,
+                self.interface0,
+                self.dst_ip_net,
+                local_addr=self.src_ip_net,
+                multihop=self.multihop,
+                sha1_key=key,
             ),
-            VppBFDUDPSession(self, self.pg1, self.pg1.remote_ip4, sha1_key=key),
             VppBFDUDPSession(
-                self, self.pg1, self.pg1.remote_ip6, sha1_key=key, af=AF_INET6
+                self,
+                self.interface0,
+                self.dst_ip6_net,
+                local_addr=self.src_ip6_net,
+                af=AF_INET6,
+                multihop=self.multihop,
+                sha1_key=key,
+            ),
+            VppBFDUDPSession(
+                self,
+                self.interface1,
+                self.dst_ip_net2,
+                local_addr=self.src_ip_net2,
+                multihop=self.multihop,
+                sha1_key=key,
+            ),
+            VppBFDUDPSession(
+                self,
+                self.interface1,
+                self.dst_ip6_net2,
+                local_addr=self.src_ip6_net2,
+                af=AF_INET6,
+                multihop=self.multihop,
+                sha1_key=key,
             ),
         ]
         for s in sessions:
@@ -295,7 +472,13 @@ class BFDAPITestCase(VppTestCase):
         """activate SHA1 authentication"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
         session.activate_auth(key)
 
@@ -303,7 +486,13 @@ class BFDAPITestCase(VppTestCase):
         """deactivate SHA1 authentication"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
         session.activate_auth(key)
         session.deactivate_auth()
@@ -316,12 +505,25 @@ class BFDAPITestCase(VppTestCase):
             key2 = self.factory.create_random_key(self)
         key1.add_vpp_config()
         key2.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4, sha1_key=key1)
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key1,
+        )
         session.add_vpp_config()
         session.activate_auth(key2)
 
     def test_set_del_udp_echo_source(self):
         """set/del udp echo source"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         self.create_loopback_interfaces(1)
         self.loopback0 = self.lo_interfaces[0]
         self.loopback0.admin_up()
@@ -382,6 +584,9 @@ class BFDTestSession(object):
         our_seq_number=None,
         tunnel_header=None,
         phy_interface=None,
+        multihop=False,
+        local_addr=None,
+        peer_addr=None,
     ):
         self.test = test
         self.af = af
@@ -412,6 +617,29 @@ class BFDTestSession(object):
         self.rx_packets = 0
         self.tx_packets_echo = 0
         self.rx_packets_echo = 0
+
+        if multihop:
+            self.sw_if_index = 0
+            BFD.udp_dport = bfd.BFD_UDP_MH_PORT
+        else:
+            BFD.udp_dport = bfd.BFD_UDP_SH_PORT
+            self.sw_if_index = self.interface.sw_if_index
+
+        if local_addr:
+            self.local_addr = local_addr
+        else:
+            if self.af == AF_INET:
+                self.local_addr = self.interface.local_ip4
+            else:
+                self.local_addr = self.interface.local_ip6
+
+        if peer_addr:
+            self.peer_addr = peer_addr
+        else:
+            if self.af == AF_INET:
+                self.peer_addr = self.interface.remote_ip4
+            else:
+                self.peer_addr = self.interface.remote_ip6
 
     def inc_seq_num(self):
         """increment sequence number, wrapping if needed"""
@@ -516,8 +744,8 @@ class BFDTestSession(object):
             packet = (
                 packet
                 / IPv6(
-                    src=self.interface.remote_ip6,
-                    dst=self.interface.local_ip6,
+                    src=self.peer_addr,
+                    dst=self.local_addr,
                     hlim=255,
                 )
                 / UDP(sport=self.udp_sport, dport=BFD.udp_dport)
@@ -526,9 +754,7 @@ class BFDTestSession(object):
         else:
             packet = (
                 packet
-                / IP(
-                    src=self.interface.remote_ip4, dst=self.interface.local_ip4, ttl=255
-                )
+                / IP(src=self.peer_addr, dst=self.local_addr, ttl=255)
                 / UDP(sport=self.udp_sport, dport=BFD.udp_dport)
                 / bfd
             )
@@ -709,13 +935,13 @@ def verify_ip(test, packet):
     """Verify correctness of IP layer."""
     if test.vpp_session.af == AF_INET6:
         ip = packet[IPv6]
-        local_ip = test.vpp_session.interface.local_ip6
-        remote_ip = test.vpp_session.interface.remote_ip6
+        local_ip = test.vpp_session.local_addr
+        remote_ip = test.vpp_session.peer_addr
         test.assert_equal(ip.hlim, 255, "IPv6 hop limit")
     else:
         ip = packet[IP]
-        local_ip = test.vpp_session.interface.local_ip4
-        remote_ip = test.vpp_session.interface.remote_ip4
+        local_ip = test.vpp_session.local_addr
+        remote_ip = test.vpp_session.peer_addr
         test.assert_equal(ip.ttl, 255, "IPv4 TTL")
     test.assert_equal(ip.src, local_ip, "IP source address")
     test.assert_equal(ip.dst, remote_ip, "IP destination address")
@@ -735,7 +961,7 @@ def verify_event(test, event, expected_state):
     e = event
     test.logger.debug("BFD: Event: %s" % reprlib.repr(e))
     test.assert_equal(
-        e.sw_if_index, test.vpp_session.interface.sw_if_index, "BFD interface index"
+        e.sw_if_index, test.vpp_session._sw_if_index, "BFD interface index"
     )
 
     test.assert_equal(
@@ -819,19 +1045,30 @@ def bfd_stats_diff(stats_before, stats_after):
     return BFDStats(rx, rx_echo, tx, tx_echo)
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 @tag_fixme_debian11
 class BFD4TestCase(VppTestCase):
-    """Bidirectional Forwarding Detection (BFD)"""
-
     pg0 = None
+    interface0 = None
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
+    src_ip_net = ""
+    dst_ip_net = ""
 
     @classmethod
     def setUpClass(cls):
         super(BFD4TestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = (
+            f"""""Bidirectional Forwarding Detection (BFD) - IPv4, {hoptype_str}"""
+        )
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -857,14 +1094,36 @@ class BFD4TestCase(VppTestCase):
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()
+        set_ipv4_pfx_route_info(self)
+
         try:
-            self.bfd_udp4_sessions = self.statistics["/bfd/udp4/sessions"]
-            self.bfd_udp6_sessions = self.statistics["/bfd/udp6/sessions"]
+            if self.multihop:
+                self.interface0 = None
+                self.bfd_udp4_sessions = self.statistics[BFD_STATS_V4_MH_PATH]
+                self.bfd_udp6_sessions = self.statistics[BFD_STATS_V6_MH_PATH]
+            else:
+                self.interface0 = self.pg0
+                self.bfd_udp4_sessions = self.statistics[BFD_STATS_V4_SH_PATH]
+                self.bfd_udp6_sessions = self.statistics[BFD_STATS_V6_SH_PATH]
+
             self.vapi.cli("trace add bfd-process 500")
-            self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+            self.vpp_session = VppBFDUDPSession(
+                self,
+                self.interface0,
+                self.dst_ip_net,
+                local_addr=self.src_ip_net,
+                multihop=self.multihop,
+            )
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()
-            self.test_session = BFDTestSession(self, self.pg0, AF_INET)
+            self.test_session = BFDTestSession(
+                self,
+                self.pg0,
+                AF_INET,
+                local_addr=self.src_ip_net,
+                peer_addr=self.dst_ip_net,
+                multihop=self.multihop,
+            )
         except BaseException:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
@@ -878,8 +1137,13 @@ class BFD4TestCase(VppTestCase):
     def test_session_up(self):
         """bring BFD session up"""
         bfd_session_up(self)
-        bfd_udp4_sessions = self.statistics["/bfd/udp4/sessions"]
-        bfd_udp6_sessions = self.statistics["/bfd/udp6/sessions"]
+        if self.multihop:
+            bfd_udp4_sessions = self.statistics[BFD_STATS_V4_MH_PATH]
+            bfd_udp6_sessions = self.statistics[BFD_STATS_V6_MH_PATH]
+        else:
+            bfd_udp4_sessions = self.statistics[BFD_STATS_V4_SH_PATH]
+            bfd_udp6_sessions = self.statistics[BFD_STATS_V6_SH_PATH]
+
         self.assert_equal(bfd_udp4_sessions - self.bfd_udp4_sessions, 1)
         self.assert_equal(bfd_udp6_sessions, self.bfd_udp6_sessions)
 
@@ -1020,7 +1284,12 @@ class BFD4TestCase(VppTestCase):
         """immediately honor remote required min rx reduction"""
         self.vpp_session.remove_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, desired_min_tx=10000
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            desired_min_tx=10000,
         )
         self.pg0.enable_capture()
         self.vpp_session.add_vpp_config()
@@ -1265,6 +1534,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_echo_looped_back(self):
         """echo packets looped back"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         stats_before = bfd_grab_stats_snapshot(self)
         self.pg0.enable_capture()
@@ -1329,6 +1604,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_echo(self):
         """echo function"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         stats_before = bfd_grab_stats_snapshot(self)
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
@@ -1420,6 +1701,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_echo_fail(self):
         """session goes down if echo function fails"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
@@ -1462,6 +1749,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_echo_stop(self):
         """echo function stops if peer sets required min echo rx zero"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
@@ -1492,6 +1785,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_echo_source_removed(self):
         """echo function stops if echo source is removed"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
@@ -1522,6 +1821,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_stale_echo(self):
         """stale echo packets don't keep a session up"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.vapi.bfd_udp_set_echo_source(sw_if_index=self.loopback0.sw_if_index)
@@ -1581,6 +1886,12 @@ class BFD4TestCase(VppTestCase):
 
     def test_invalid_echo_checksum(self):
         """echo packets with invalid checksum don't keep a session up"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
         self.vapi.bfd_udp_set_echo_source(sw_if_index=self.loopback0.sw_if_index)
@@ -1713,28 +2024,68 @@ class BFD4TestCase(VppTestCase):
         intf.config_ip4()
         intf.admin_up()
         sw_if_index = intf.sw_if_index
-        vpp_session = VppBFDUDPSession(self, intf, intf.remote_ip4)
+
+        # Setup routing info for multihop
+        if self.multihop:
+            paths = []
+            # Get list of all the nextthops
+            pg_if = intf
+            for nh_host in pg_if.remote_hosts:
+                nh_host_ip = nh_host.ip4
+                paths.append(VppRoutePath(nh_host_ip, pg_if.sw_if_index))
+            self.dst_ip_net = BFD_IPV4_REMOTE_ADDR2
+            # Create a route pointing to list of next hops
+            rip = VppIpRoute(self, self.dst_ip_net, 32, paths)
+            rip.add_vpp_config()
+            self.logger.info("Route via %s on %s created" % (nh_host_ip, pg_if.name))
+        else:
+            self.dst_ip_net = intf.remote_ip4
+
+        vpp_session = VppBFDUDPSession(
+            self,
+            intf,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
+
         vpp_session.add_vpp_config()
         vpp_session.admin_up()
         intf.remove_vpp_config()
-        e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
-        self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
-        self.assertFalse(vpp_session.query_vpp_config())
+
+        # BFD session is removed only for single-hop session
+        if self.multihop:
+            self.assertTrue(vpp_session.query_vpp_config())
+        else:
+            e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
+            self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
+            self.assertFalse(vpp_session.query_vpp_config())
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 @tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
-    """Bidirectional Forwarding Detection (BFD) (IPv6)"""
-
     pg0 = None
+    interface0 = None
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
+    src_ip6_net = ""
+    dst_ip6_net = ""
 
     @classmethod
     def setUpClass(cls):
         super(BFD6TestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = (
+            f"""""Bidirectional Forwarding Detection (BFD) - IPv6, {hoptype_str}"""
+        )
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -1760,21 +2111,43 @@ class BFD6TestCase(VppTestCase):
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()
+        set_ipv6_pfx_route_info(self)
+
         try:
-            self.bfd_udp4_sessions = self.statistics["/bfd/udp4/sessions"]
-            self.bfd_udp6_sessions = self.statistics["/bfd/udp6/sessions"]
+            if self.multihop:
+                self.interface0 = None
+                self.bfd_udp4_sessions = self.statistics[BFD_STATS_V4_MH_PATH]
+                self.bfd_udp6_sessions = self.statistics[BFD_STATS_V6_MH_PATH]
+            else:
+                self.interface0 = self.pg0
+                self.bfd_udp4_sessions = self.statistics[BFD_STATS_V4_SH_PATH]
+                self.bfd_udp6_sessions = self.statistics[BFD_STATS_V6_SH_PATH]
+
             self.vpp_session = VppBFDUDPSession(
-                self, self.pg0, self.pg0.remote_ip6, af=AF_INET6
+                self,
+                self.interface0,
+                self.dst_ip6_net,
+                local_addr=self.src_ip6_net,
+                af=AF_INET6,
+                multihop=self.multihop,
             )
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()
-            self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
+            self.test_session = BFDTestSession(
+                self,
+                self.pg0,
+                AF_INET6,
+                local_addr=self.src_ip6_net,
+                peer_addr=self.dst_ip6_net,
+                multihop=self.multihop,
+            )
             self.logger.debug(self.vapi.cli("show adj nbr"))
         except BaseException:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
 
     def tearDown(self):
+        self.vpp_session.remove_vpp_config()
         if not self.vpp_dead:
             self.vapi.want_bfd_events(enable_disable=0)
         self.vapi.collect_events()  # clear the event queue
@@ -1783,8 +2156,13 @@ class BFD6TestCase(VppTestCase):
     def test_session_up(self):
         """bring BFD session up"""
         bfd_session_up(self)
-        bfd_udp4_sessions = self.statistics["/bfd/udp4/sessions"]
-        bfd_udp6_sessions = self.statistics["/bfd/udp6/sessions"]
+        if self.multihop:
+            bfd_udp4_sessions = self.statistics[BFD_STATS_V4_MH_PATH]
+            bfd_udp6_sessions = self.statistics[BFD_STATS_V6_MH_PATH]
+        else:
+            bfd_udp4_sessions = self.statistics[BFD_STATS_V4_SH_PATH]
+            bfd_udp6_sessions = self.statistics[BFD_STATS_V6_SH_PATH]
+
         self.assert_equal(bfd_udp4_sessions, self.bfd_udp4_sessions)
         self.assert_equal(bfd_udp6_sessions - self.bfd_udp6_sessions, 1)
 
@@ -1828,6 +2206,12 @@ class BFD6TestCase(VppTestCase):
 
     def test_echo_looped_back(self):
         """echo packets looped back"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         bfd_session_up(self)
         stats_before = bfd_grab_stats_snapshot(self)
         self.pg0.enable_capture()
@@ -1891,6 +2275,12 @@ class BFD6TestCase(VppTestCase):
 
     def test_echo(self):
         """echo function"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         stats_before = bfd_grab_stats_snapshot(self)
         bfd_session_up(self)
         self.test_session.update(required_min_echo_rx=150000)
@@ -1988,25 +2378,66 @@ class BFD6TestCase(VppTestCase):
         intf.config_ip6()
         intf.admin_up()
         sw_if_index = intf.sw_if_index
-        vpp_session = VppBFDUDPSession(self, intf, intf.remote_ip6, af=AF_INET6)
+
+        # Setup routing info for multihop
+        if self.multihop:
+            paths = []
+            # Get list of all the nextthops
+            pg_if = intf
+            for nh_host in pg_if.remote_hosts:
+                nh_host_ip = nh_host.ip6
+                paths.append(VppRoutePath(nh_host_ip, pg_if.sw_if_index))
+            self.dst_ip6_net = BFD_IPV6_REMOTE_ADDR2
+            # Create a route pointing to list of next hops
+            rip = VppIpRoute(self, self.dst_ip6_net, 128, paths)
+            rip.add_vpp_config()
+            self.logger.info("Route via %s on %s created" % (nh_host_ip, pg_if.name))
+        else:
+            self.dst_ip6_net = intf.remote_ip6
+
+        vpp_session = VppBFDUDPSession(
+            self,
+            intf,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+        )
+
         vpp_session.add_vpp_config()
         vpp_session.admin_up()
         intf.remove_vpp_config()
-        e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
-        self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
-        self.assertFalse(vpp_session.query_vpp_config())
+
+        # BFD session is removed only for single-hop session
+        if self.multihop:
+            self.assertTrue(vpp_session.query_vpp_config())
+        else:
+            e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
+            self.assert_equal(e.sw_if_index, sw_if_index, "sw_if_index")
+            self.assertFalse(vpp_session.query_vpp_config())
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
 
     vpp_session = None
     test_session = None
+    src_ip6_net = ""
+    dst_ip6_net = ""
 
     @classmethod
     def setUpClass(cls):
         super(BFDFIBTestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = f"""""BFD-FIB interactions (IPv6) - {hoptype_str}"""
+        cls.vapi.cli("set log class bfd level debug")
 
     @classmethod
     def tearDownClass(cls):
@@ -2015,6 +2446,10 @@ class BFDFIBTestCase(VppTestCase):
     def setUp(self):
         super(BFDFIBTestCase, self).setUp()
         self.create_pg_interfaces(range(1))
+        self.create_loopback_interfaces(1)
+        self.loopback0 = self.lo_interfaces[0]
+        self.loopback0.config_ip6()
+        self.loopback0.admin_up()
 
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()
@@ -2023,6 +2458,8 @@ class BFDFIBTestCase(VppTestCase):
             i.admin_up()
             i.config_ip6()
             i.configure_ipv6_neighbors()
+
+        set_ipv6_pfx_route_info(self)
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -2056,27 +2493,44 @@ class BFDFIBTestCase(VppTestCase):
             ),
         ]
 
-        # A recursive and a non-recursive route via a next-hop that
-        # will have a BFD session
+        # Two different routes via a next-hop that will have a BFD session.
+        # One of the routes is non-recursive route only for single-hop.
+        if self.multihop:
+            intf_index = 0xFFFFFFFF
+        else:
+            intf_index = self.pg0.sw_if_index
+
         ip_2001_s_64 = VppIpRoute(
             self,
             "2001::",
             64,
-            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+            [VppRoutePath(self.dst_ip6_net, intf_index)],
         )
         ip_2002_s_64 = VppIpRoute(
-            self, "2002::", 64, [VppRoutePath(self.pg0.remote_ip6, 0xFFFFFFFF)]
+            self, "2002::", 64, [VppRoutePath(self.dst_ip6_net, 0xFFFFFFFF)]
         )
         ip_2001_s_64.add_vpp_config()
         ip_2002_s_64.add_vpp_config()
 
         # bring the session up now the routes are present
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6
+            self,
+            self.pg0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
-        self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
+        self.test_session = BFDTestSession(
+            self,
+            self.pg0,
+            AF_INET6,
+            local_addr=self.src_ip6_net,
+            peer_addr=self.dst_ip6_net,
+            multihop=self.multihop,
+        )
 
         # session is up - traffic passes
         bfd_session_up(self)
@@ -2089,7 +2543,7 @@ class BFDFIBTestCase(VppTestCase):
             )
             self.assertEqual(captured[IPv6].dst, packet[IPv6].dst)
 
-        # session is up - traffic is dropped
+        # session is down - traffic is dropped
         bfd_session_down(self)
 
         self.pg0.add_stream(p)
@@ -2192,22 +2646,35 @@ class BFDTunTestCase(VppTestCase):
         bfd_session_down(self)
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
-    """Bidirectional Forwarding Detection (BFD) (SHA1 auth)"""
-
     pg0 = None
     vpp_clock_offset = None
     vpp_session = None
     test_session = None
+    src_ip_net = ""
+    dst_ip_net = ""
 
     @classmethod
     def setUpClass(cls):
         super(BFDSHA1TestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - SHA1 auth - {hoptype_str}"""
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
+            cls.create_loopback_interfaces(1)
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip4()
+            cls.loopback0.admin_up()
             cls.pg0.config_ip4()
+            cls.pg0.configure_ipv4_neighbors()
             cls.pg0.admin_up()
             cls.pg0.resolve_arp()
 
@@ -2224,6 +2691,7 @@ class BFDSHA1TestCase(VppTestCase):
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()
+        set_ipv4_pfx_route_info(self)
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -2236,7 +2704,12 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
@@ -2244,6 +2717,9 @@ class BFDSHA1TestCase(VppTestCase):
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2254,7 +2730,12 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
@@ -2262,6 +2743,9 @@ class BFDSHA1TestCase(VppTestCase):
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2276,7 +2760,12 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self, BFDAuthType.meticulous_keyed_sha1)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
@@ -2285,6 +2774,9 @@ class BFDSHA1TestCase(VppTestCase):
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
             our_seq_number=0xFFFFFFFF - 4,
@@ -2301,13 +2793,21 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self, BFDAuthType.meticulous_keyed_sha1)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2376,12 +2876,31 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         legitimate_test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=key, bfd_key_id=vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
         )
-        rogue_test_session = BFDTestSession(self, self.pg0, AF_INET)
+        rogue_test_session = BFDTestSession(
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+        )
         self.execute_rogue_session_scenario(
             vpp_session, legitimate_test_session, rogue_test_session
         )
@@ -2391,17 +2910,36 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         # pick a different random bfd key id
         x = randint(0, 255)
         while x == vpp_session.bfd_key_id:
             x = randint(0, 255)
         legitimate_test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=key, bfd_key_id=vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
         )
         rogue_test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=key, bfd_key_id=x
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+            bfd_key_id=x,
         )
         self.execute_rogue_session_scenario(
             vpp_session, legitimate_test_session, rogue_test_session
@@ -2412,13 +2950,32 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         legitimate_test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=key, bfd_key_id=vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
         )
         rogue_test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=key, bfd_key_id=vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
         )
         self.execute_rogue_session_scenario(
             vpp_session,
@@ -2432,13 +2989,21 @@ class BFDSHA1TestCase(VppTestCase):
         key = self.factory.create_random_key(self, BFDAuthType.meticulous_keyed_sha1)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
             our_seq_number=0,
@@ -2464,10 +3029,14 @@ class BFDSHA1TestCase(VppTestCase):
         bfd_session_up(self)
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
-    """Bidirectional Forwarding Detection (BFD) (changing auth)"""
-
     pg0 = None
     vpp_session = None
     test_session = None
@@ -2475,10 +3044,17 @@ class BFDAuthOnOffTestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - changing auth - {hoptype_str}"""
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
+            cls.create_loopback_interfaces(1)
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip4()
+            cls.loopback0.admin_up()
             cls.pg0.config_ip4()
+            cls.pg0.configure_ipv4_neighbors()
             cls.pg0.admin_up()
             cls.pg0.resolve_arp()
 
@@ -2495,6 +3071,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()
+        set_ipv4_pfx_route_info(self)
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -2506,9 +3083,22 @@ class BFDAuthOnOffTestCase(VppTestCase):
         """turn auth on without disturbing session state (immediate)"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        self.vpp_session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         self.vpp_session.add_vpp_config()
-        self.test_session = BFDTestSession(self, self.pg0, AF_INET)
+        self.test_session = BFDTestSession(
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+        )
         bfd_session_up(self)
         for dummy in range(self.test_session.detect_mult * 2):
             p = wait_for_bfd_packet(self)
@@ -2529,13 +3119,21 @@ class BFDAuthOnOffTestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2564,13 +3162,21 @@ class BFDAuthOnOffTestCase(VppTestCase):
         key2 = self.factory.create_random_key(self)
         key2.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key1
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key1,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key1,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2593,9 +3199,22 @@ class BFDAuthOnOffTestCase(VppTestCase):
         """turn auth on without disturbing session state (delayed)"""
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
-        self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        self.vpp_session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         self.vpp_session.add_vpp_config()
-        self.test_session = BFDTestSession(self, self.pg0, AF_INET)
+        self.test_session = BFDTestSession(
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+        )
         bfd_session_up(self)
         for dummy in range(self.test_session.detect_mult * 2):
             wait_for_bfd_packet(self)
@@ -2620,13 +3239,21 @@ class BFDAuthOnOffTestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2657,7 +3284,12 @@ class BFDAuthOnOffTestCase(VppTestCase):
         key2 = self.factory.create_random_key(self)
         key2.add_vpp_config()
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key1
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key1,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
@@ -2665,6 +3297,9 @@ class BFDAuthOnOffTestCase(VppTestCase):
             self,
             self.pg0,
             AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
             sha1_key=key1,
             bfd_key_id=self.vpp_session.bfd_key_id,
         )
@@ -2689,6 +3324,12 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.assert_equal(len(self.vapi.collect_events()), 0, "number of bfd events")
 
 
+@parameterized_class(
+    [
+        {"multihop": False},
+        {"multihop": True},
+    ]
+)
 @tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
@@ -2698,11 +3339,22 @@ class BFDCLITestCase(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super(BFDCLITestCase, cls).setUpClass()
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = (
+            f"""""Bidirectional Forwarding Detection (BFD) - CLI - {hoptype_str}"""
+        )
         cls.vapi.cli("set log class bfd level debug")
         try:
-            cls.create_pg_interfaces((0,))
+            cls.create_pg_interfaces([0])
+            cls.create_loopback_interfaces(1)
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip4()
+            cls.loopback0.config_ip6()
+            cls.loopback0.admin_up()
             cls.pg0.config_ip4()
             cls.pg0.config_ip6()
+            cls.pg0.configure_ipv4_neighbors()
+            cls.pg0.admin_up()
             cls.pg0.resolve_arp()
             cls.pg0.resolve_ndp()
 
@@ -2718,6 +3370,13 @@ class BFDCLITestCase(VppTestCase):
         super(BFDCLITestCase, self).setUp()
         self.factory = AuthKeyFactory()
         self.pg0.enable_capture()
+        set_ipv4_pfx_route_info(self)
+        set_ipv6_pfx_route_info(self)
+
+        if self.multihop:
+            self.cli_str = "multihop"
+        else:
+            self.cli_str = "interface %s" % self.pg0.name
 
     def tearDown(self):
         try:
@@ -2748,10 +3407,22 @@ class BFDCLITestCase(VppTestCase):
             self, auth_type=BFDAuthType.meticulous_keyed_sha1
         )
         k2.add_vpp_config()
-        s1 = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        s1 = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         s1.add_vpp_config()
         s2 = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6, sha1_key=k2
+            self,
+            self.pg0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+            sha1_key=k2,
         )
         s2.add_vpp_config()
         self.logger.info(self.vapi.ppcli("show bfd keys"))
@@ -2771,11 +3442,23 @@ class BFDCLITestCase(VppTestCase):
         )
         self.assertTrue(k.query_vpp_config())
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=k
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=k,
         )
         self.vpp_session.add_vpp_config()
         self.test_session = BFDTestSession(
-            self, self.pg0, AF_INET, sha1_key=k, bfd_key_id=self.vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET,
+            local_addr=self.src_ip_net,
+            peer_addr=self.dst_ip_net,
+            multihop=self.multihop,
+            sha1_key=k,
+            bfd_key_id=self.vpp_session.bfd_key_id,
         )
         self.vapi.want_bfd_events()
         bfd_session_up(self)
@@ -2814,12 +3497,25 @@ class BFDCLITestCase(VppTestCase):
         )
         self.assertTrue(k.query_vpp_config())
         self.vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6, sha1_key=k
+            self,
+            self.pg0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+            sha1_key=k,
         )
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
-            self, self.pg0, AF_INET6, sha1_key=k, bfd_key_id=self.vpp_session.bfd_key_id
+            self,
+            self.pg0,
+            AF_INET6,
+            local_addr=self.src_ip6_net,
+            peer_addr=self.dst_ip6_net,
+            multihop=self.multihop,
+            sha1_key=k,
+            bfd_key_id=self.vpp_session.bfd_key_id,
         )
         self.vapi.want_bfd_events()
         bfd_session_up(self)
@@ -2845,16 +3541,22 @@ class BFDCLITestCase(VppTestCase):
 
     def test_add_mod_del_bfd_udp(self):
         """create/modify/delete IPv4 BFD UDP session"""
-        vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        vpp_session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         self.registry.register(vpp_session, self.logger)
         cli_add_cmd = (
-            "bfd udp session add interface %s local-addr %s "
+            "bfd udp session add %s local-addr %s "
             "peer-addr %s desired-min-tx %s required-min-rx %s "
             "detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 vpp_session.desired_min_tx,
                 vpp_session.required_min_rx,
                 vpp_session.detect_mult,
@@ -2868,30 +3570,34 @@ class BFDCLITestCase(VppTestCase):
             " failed, rv=-101:Duplicate BFD object",
         )
         verify_bfd_session_config(self, vpp_session)
+
         mod_session = VppBFDUDPSession(
             self,
             self.pg0,
-            self.pg0.remote_ip4,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
             required_min_rx=2 * vpp_session.required_min_rx,
             desired_min_tx=3 * vpp_session.desired_min_tx,
             detect_mult=4 * vpp_session.detect_mult,
         )
         self.cli_verify_no_response(
-            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "bfd udp session mod %s local-addr %s peer-addr %s "
             "desired-min-tx %s required-min-rx %s detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 mod_session.desired_min_tx,
                 mod_session.required_min_rx,
                 mod_session.detect_mult,
             )
         )
         verify_bfd_session_config(self, mod_session)
-        cli_del_cmd = (
-            "bfd udp session del interface %s local-addr %s "
-            "peer-addr %s" % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        cli_del_cmd = "bfd udp session del %s local-addr %s " "peer-addr %s" % (
+            self.cli_str,
+            self.src_ip_net,
+            self.dst_ip_net,
         )
         self.cli_verify_no_response(cli_del_cmd)
         # 2nd del is expected to fail
@@ -2902,18 +3608,83 @@ class BFDCLITestCase(VppTestCase):
         )
         self.assertFalse(vpp_session.query_vpp_config())
 
+        if self.multihop:
+            # specifying multihop and interface should fail
+            cli_add_cmd = (
+                "bfd udp session add multihop interface %s local-addr 1.1.1.1 "
+                "peer-addr 2.2.2.2 desired-min-tx 50000 required-min-rx 1000 "
+                "detect-mult 3" % (self.pg0.name)
+            )
+            self.cli_verify_response(
+                cli_add_cmd,
+                "bfd udp session add: Incompatible parameter combination, "
+                "interface cannot be specified when multihop is enabled",
+            )
+            cli_mod_cmd = (
+                "bfd udp session mod multihop interface %s local-addr 1.1.1.1 "
+                "peer-addr 2.2.2.2 desired-min-tx 50000 required-min-rx 1000 "
+                "detect-mult 3" % (self.pg0.name)
+            )
+            self.cli_verify_response(
+                cli_mod_cmd,
+                "bfd udp session mod: Incompatible parameter combination, "
+                "interface cannot be specified when multihop is enabled",
+            )
+            cli_del_cmd = (
+                "bfd udp session del multihop interface %s local-addr 1.1.1.1 "
+                "peer-addr 2.2.2.2" % (self.pg0.name)
+            )
+            self.cli_verify_response(
+                cli_del_cmd,
+                "bfd udp session del: Incompatible parameter combination, "
+                "interface cannot be specified when multihop is enabled",
+            )
+
+            # Not specifying multihop or interface should fail
+            cli_add_cmd = (
+                "bfd udp session add local-addr 1.1.1.1 peer-addr 2.2.2.2 "
+                "desired-min-tx 50000 required-min-rx 1000 detect-mult 3"
+            )
+            self.cli_verify_response(
+                cli_add_cmd,
+                "bfd udp session add: Incompatible parameter combination, "
+                "interface must be set if not multihop",
+            )
+            cli_mod_cmd = (
+                "bfd udp session mod local-addr 1.1.1.1 peer-addr 2.2.2.2 "
+                "desired-min-tx 50000 required-min-rx 1000 detect-mult 3"
+            )
+            self.cli_verify_response(
+                cli_mod_cmd,
+                "bfd udp session mod: Incompatible parameter combination, "
+                "interface must be set if not multihop",
+            )
+            cli_del_cmd = "bfd udp session del local-addr 1.1.1.1 peer-addr 2.2.2.2 "
+            self.cli_verify_response(
+                cli_del_cmd,
+                "bfd udp session del: Incompatible parameter combination, "
+                "interface must be set if not multihop",
+            )
+
     def test_add_mod_del_bfd_udp6(self):
         """create/modify/delete IPv6 BFD UDP session"""
-        vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip6, af=AF_INET6)
+        vpp_session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+        )
         self.registry.register(vpp_session, self.logger)
         cli_add_cmd = (
-            "bfd udp session add interface %s local-addr %s "
+            "bfd udp session add %s local-addr %s "
             "peer-addr %s desired-min-tx %s required-min-rx %s "
             "detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip6,
-                self.pg0.remote_ip6,
+                self.cli_str,
+                self.src_ip6_net,
+                self.dst_ip6_net,
                 vpp_session.desired_min_tx,
                 vpp_session.required_min_rx,
                 vpp_session.detect_mult,
@@ -2930,28 +3701,31 @@ class BFDCLITestCase(VppTestCase):
         mod_session = VppBFDUDPSession(
             self,
             self.pg0,
-            self.pg0.remote_ip6,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
             af=AF_INET6,
+            multihop=self.multihop,
             required_min_rx=2 * vpp_session.required_min_rx,
             desired_min_tx=3 * vpp_session.desired_min_tx,
             detect_mult=4 * vpp_session.detect_mult,
         )
         self.cli_verify_no_response(
-            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "bfd udp session mod %s local-addr %s peer-addr %s "
             "desired-min-tx %s required-min-rx %s detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip6,
-                self.pg0.remote_ip6,
+                self.cli_str,
+                self.src_ip6_net,
+                self.dst_ip6_net,
                 mod_session.desired_min_tx,
                 mod_session.required_min_rx,
                 mod_session.detect_mult,
             )
         )
         verify_bfd_session_config(self, mod_session)
-        cli_del_cmd = (
-            "bfd udp session del interface %s local-addr %s "
-            "peer-addr %s" % (self.pg0.name, self.pg0.local_ip6, self.pg0.remote_ip6)
+        cli_del_cmd = "bfd udp session del %s local-addr %s " "peer-addr %s" % (
+            self.cli_str,
+            self.src_ip6_net,
+            self.dst_ip6_net,
         )
         self.cli_verify_no_response(cli_del_cmd)
         # 2nd del is expected to fail
@@ -2967,17 +3741,22 @@ class BFDCLITestCase(VppTestCase):
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.registry.register(vpp_session, self.logger)
         cli_add_cmd = (
-            "bfd udp session add interface %s local-addr %s "
+            "bfd udp session add %s local-addr %s "
             "peer-addr %s desired-min-tx %s required-min-rx %s "
             "detect-mult %s conf-key-id %s bfd-key-id %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 vpp_session.desired_min_tx,
                 vpp_session.required_min_rx,
                 vpp_session.detect_mult,
@@ -2996,7 +3775,9 @@ class BFDCLITestCase(VppTestCase):
         mod_session = VppBFDUDPSession(
             self,
             self.pg0,
-            self.pg0.remote_ip4,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=vpp_session.bfd_key_id,
             required_min_rx=2 * vpp_session.required_min_rx,
@@ -3004,21 +3785,22 @@ class BFDCLITestCase(VppTestCase):
             detect_mult=4 * vpp_session.detect_mult,
         )
         self.cli_verify_no_response(
-            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "bfd udp session mod %s local-addr %s peer-addr %s "
             "desired-min-tx %s required-min-rx %s detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 mod_session.desired_min_tx,
                 mod_session.required_min_rx,
                 mod_session.detect_mult,
             )
         )
         verify_bfd_session_config(self, mod_session)
-        cli_del_cmd = (
-            "bfd udp session del interface %s local-addr %s "
-            "peer-addr %s" % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        cli_del_cmd = "bfd udp session del %s local-addr %s " "peer-addr %s" % (
+            self.cli_str,
+            self.src_ip_net,
+            self.dst_ip_net,
         )
         self.cli_verify_no_response(cli_del_cmd)
         # 2nd del is expected to fail
@@ -3036,17 +3818,23 @@ class BFDCLITestCase(VppTestCase):
         )
         key.add_vpp_config()
         vpp_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
+            af=AF_INET6,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         self.registry.register(vpp_session, self.logger)
         cli_add_cmd = (
-            "bfd udp session add interface %s local-addr %s "
+            "bfd udp session add %s local-addr %s "
             "peer-addr %s desired-min-tx %s required-min-rx %s "
             "detect-mult %s conf-key-id %s bfd-key-id %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip6,
-                self.pg0.remote_ip6,
+                self.cli_str,
+                self.src_ip6_net,
+                self.dst_ip6_net,
                 vpp_session.desired_min_tx,
                 vpp_session.required_min_rx,
                 vpp_session.detect_mult,
@@ -3065,8 +3853,10 @@ class BFDCLITestCase(VppTestCase):
         mod_session = VppBFDUDPSession(
             self,
             self.pg0,
-            self.pg0.remote_ip6,
+            self.dst_ip6_net,
+            local_addr=self.src_ip6_net,
             af=AF_INET6,
+            multihop=self.multihop,
             sha1_key=key,
             bfd_key_id=vpp_session.bfd_key_id,
             required_min_rx=2 * vpp_session.required_min_rx,
@@ -3074,21 +3864,22 @@ class BFDCLITestCase(VppTestCase):
             detect_mult=4 * vpp_session.detect_mult,
         )
         self.cli_verify_no_response(
-            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "bfd udp session mod %s local-addr %s peer-addr %s "
             "desired-min-tx %s required-min-rx %s detect-mult %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip6,
-                self.pg0.remote_ip6,
+                self.cli_str,
+                self.src_ip6_net,
+                self.dst_ip6_net,
                 mod_session.desired_min_tx,
                 mod_session.required_min_rx,
                 mod_session.detect_mult,
             )
         )
         verify_bfd_session_config(self, mod_session)
-        cli_del_cmd = (
-            "bfd udp session del interface %s local-addr %s "
-            "peer-addr %s" % (self.pg0.name, self.pg0.local_ip6, self.pg0.remote_ip6)
+        cli_del_cmd = "bfd udp session del %s local-addr %s " "peer-addr %s" % (
+            self.cli_str,
+            self.src_ip6_net,
+            self.dst_ip6_net,
         )
         self.cli_verify_no_response(cli_del_cmd)
         # 2nd del is expected to fail
@@ -3105,18 +3896,29 @@ class BFDCLITestCase(VppTestCase):
             self, auth_type=BFDAuthType.meticulous_keyed_sha1
         )
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         auth_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         session.add_vpp_config()
         cli_activate = (
-            "bfd udp session auth activate interface %s local-addr %s "
+            "bfd udp session auth activate %s local-addr %s "
             "peer-addr %s conf-key-id %s bfd-key-id %s"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 key.conf_key_id,
                 auth_session.bfd_key_id,
             )
@@ -3126,13 +3928,76 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(cli_activate)
         verify_bfd_session_config(self, auth_session)
         cli_deactivate = (
-            "bfd udp session auth deactivate interface %s local-addr %s "
-            "peer-addr %s " % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+            "bfd udp session auth deactivate %s local-addr %s "
+            "peer-addr %s" % (self.cli_str, self.src_ip_net, self.dst_ip_net)
         )
         self.cli_verify_no_response(cli_deactivate)
         verify_bfd_session_config(self, session)
         self.cli_verify_no_response(cli_deactivate)
         verify_bfd_session_config(self, session)
+
+        if self.multihop:
+            # specifying multihop and interface should fail
+            cli_activate = (
+                "bfd udp session auth activate multihop interface %s "
+                "local-addr %s peer-addr %s conf-key-id %s bfd-key-id %s"
+                % (
+                    self.pg0.name,
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                    key.conf_key_id,
+                    auth_session.bfd_key_id,
+                )
+            )
+            self.cli_verify_response(
+                cli_activate,
+                "bfd udp session auth activate: Incompatible parameter "
+                "combination, interface cannot be specified when multihop "
+                "is enabled",
+            )
+            cli_deactivate = (
+                "bfd udp session auth deactivate multihop interface %s "
+                "local-addr %s peer-addr %s"
+                % (
+                    self.pg0.name,
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                )
+            )
+            self.cli_verify_response(
+                cli_deactivate,
+                "bfd udp session auth deactivate: Incompatible parameter "
+                "combination, interface cannot be specified when multihop "
+                "is enabled",
+            )
+            # Not specifying multihop or interface should fail
+            cli_activate = (
+                "bfd udp session auth activate local-addr %s peer-addr %s "
+                "conf-key-id %s bfd-key-id %s"
+                % (
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                    key.conf_key_id,
+                    auth_session.bfd_key_id,
+                )
+            )
+            self.cli_verify_response(
+                cli_activate,
+                "bfd udp session auth activate: Incompatible parameter "
+                "combination, interface must be set if not multihop",
+            )
+            cli_deactivate = (
+                "bfd udp session auth deactivate local-addr %s peer-addr %s "
+                % (
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                )
+            )
+            self.cli_verify_response(
+                cli_deactivate,
+                "bfd udp session auth deactivate: Incompatible parameter "
+                "combination, interface must be set if not multihop",
+            )
 
     def test_auth_on_off_delayed(self):
         """turn authentication on and off (delayed)"""
@@ -3140,18 +4005,29 @@ class BFDCLITestCase(VppTestCase):
             self, auth_type=BFDAuthType.meticulous_keyed_sha1
         )
         key.add_vpp_config()
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         auth_session = VppBFDUDPSession(
-            self, self.pg0, self.pg0.remote_ip4, sha1_key=key
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+            sha1_key=key,
         )
         session.add_vpp_config()
         cli_activate = (
-            "bfd udp session auth activate interface %s local-addr %s "
+            "bfd udp session auth activate %s local-addr %s "
             "peer-addr %s conf-key-id %s bfd-key-id %s delayed yes"
             % (
-                self.pg0.name,
-                self.pg0.local_ip4,
-                self.pg0.remote_ip4,
+                self.cli_str,
+                self.src_ip_net,
+                self.dst_ip_net,
                 key.conf_key_id,
                 auth_session.bfd_key_id,
             )
@@ -3161,9 +4037,9 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(cli_activate)
         verify_bfd_session_config(self, auth_session)
         cli_deactivate = (
-            "bfd udp session auth deactivate interface %s local-addr %s "
+            "bfd udp session auth deactivate %s local-addr %s "
             "peer-addr %s delayed yes"
-            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+            % (self.cli_str, self.src_ip_net, self.dst_ip_net)
         )
         self.cli_verify_no_response(cli_deactivate)
         verify_bfd_session_config(self, session)
@@ -3172,23 +4048,66 @@ class BFDCLITestCase(VppTestCase):
 
     def test_admin_up_down(self):
         """put session admin-up and admin-down"""
-        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
         session.add_vpp_config()
         cli_down = (
-            "bfd udp session set-flags admin down interface %s local-addr %s "
-            "peer-addr %s " % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+            "bfd udp session set-flags admin down %s local-addr %s "
+            "peer-addr %s " % (self.cli_str, self.src_ip_net, self.dst_ip_net)
         )
         cli_up = (
-            "bfd udp session set-flags admin up interface %s local-addr %s "
-            "peer-addr %s " % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+            "bfd udp session set-flags admin up %s local-addr %s "
+            "peer-addr %s " % (self.cli_str, self.src_ip_net, self.dst_ip_net)
         )
         self.cli_verify_no_response(cli_down)
         verify_bfd_session_config(self, session, state=BFDState.admin_down)
         self.cli_verify_no_response(cli_up)
         verify_bfd_session_config(self, session, state=BFDState.down)
 
+        if self.multihop:
+            # specifying multihop and interface should fail
+            cli_up = (
+                "bfd udp session set-flags admin up multihop interface %s "
+                "local-addr %s peer-addr %s"
+                % (
+                    self.pg0.name,
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                )
+            )
+            self.cli_verify_response(
+                cli_up,
+                "bfd udp session set-flags: Incompatible parameter "
+                "combination, interface cannot be specified when multihop "
+                "is enabled",
+            )
+            # Not specifying multihop or interface should fail
+            cli_up = (
+                "bfd udp session set-flags admin up local-addr %s peer-addr %s "
+                % (
+                    self.src_ip_net,
+                    self.dst_ip_net,
+                )
+            )
+            self.cli_verify_response(
+                cli_up,
+                "bfd udp session set-flags: Incompatible parameter "
+                "combination, interface must be set if not multihop",
+            )
+
     def test_set_del_udp_echo_source(self):
         """set/del udp echo source"""
+
+        if self.multihop:
+            self.skipTest(
+                f"Skipping because echo functionality is not " "supported with multihop"
+            )
+
         self.create_loopback_interfaces(1)
         self.loopback0 = self.lo_interfaces[0]
         self.loopback0.admin_up()
