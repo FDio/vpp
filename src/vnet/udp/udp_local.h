@@ -30,6 +30,7 @@ _ (4341, lisp_gpe)                              \
 _ (4342, lisp_cp)                          	\
 _ (4500, ipsec)                                 \
 _ (4739, ipfix)                                 \
+_ (4784, bfd4_mh)					\
 _ (4789, vxlan)					\
 _ (4789, vxlan6)				\
 _ (48879, vxlan_gbp)				\
@@ -49,6 +50,7 @@ _ (3785, bfd_echo6)                             \
 _ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
 _ (48879, vxlan6_gbp)				\
+_ (4784, bfd6_mh)					\
 _ (4790, VXLAN6_GPE)                            \
 _ (6633, vpath6_3)				\
 _ (6081, geneve6)				\
