@@ -144,16 +144,48 @@ Following example shows how to parse headers:
       vec_free (headers);
     }
 
-Finally application reads body:
+Finally application reads body  (if any), which might be received in multiple pieces (depends on size), so we might need some state machine in ``builtin_app_rx_callback``.
+We will add following members to our session context structure:
 
 .. code-block:: C
 
-  u8 *body = 0;
-  if (msg.data.body_len)
+  typedef struct
+  {
+    /* ... */
+    u32 to_recv;
+    u8 *resp_body;
+  } session_ctx_t;
+
+First we prepare vector for response body, do it only once when you are reading metadata:
+
+.. code-block:: C
+
+  /* drop everything up to body */
+  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
+  ctx->to_recv = msg.data.body_len;
+  /* prepare vector for response body */
+  vec_validate (ctx->resp_body, msg.data.body_len - 1);
+  vec_reset_length (ctx->resp_body);
+
+Now we can start reading body content, following block of code could be executed multiple times:
+
+.. code-block:: C
+
+  /* dequeue */
+  u32 n_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+  /* current offset */
+  u32 curr = vec_len (ctx->resp_body);
+  rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, ctx->resp_body + curr);
+  ASSERT (rv == n_deq);
+  /* update length of the vector */
+  vec_set_len (ctx->resp_body, curr + n_deq);
+  /* update number of remaining bytes to receive */
+  ctx->to_recv -= rv;
+  /* check if all data received */
+  if (ctx->to_recv == 0)
     {
-      vec_validate (body, msg.data.body_len - 1);
-      rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, msg.data.body_len, body);
-      ASSERT (rv == msg.data.body_len);
+      /* we are done */
+      /* send 200 OK response */
     }
 
 Sending data
