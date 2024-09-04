@@ -527,13 +527,18 @@ v_find_index (u8 *vec, u32 offset, u32 num, char *str)
 static void
 http_identify_optional_query (http_conn_t *hc)
 {
-  u32 pos = vec_search (hc->rx_buf, '?');
-  if (~0 != pos)
+  int i;
+  for (i = hc->target_path_offset;
+       i < (hc->target_path_offset + hc->target_path_len); i++)
     {
-      hc->target_query_offset = pos + 1;
-      hc->target_query_len =
-	hc->target_path_offset + hc->target_path_len - hc->target_query_offset;
-      hc->target_path_len = hc->target_path_len - hc->target_query_len - 1;
+      if (hc->rx_buf[i] == '?')
+	{
+	  hc->target_query_offset = i + 1;
+	  hc->target_query_len = hc->target_path_offset + hc->target_path_len -
+				 hc->target_query_offset;
+	  hc->target_path_len = hc->target_path_len - hc->target_query_len - 1;
+	  break;
+	}
     }
 }
 
@@ -674,7 +679,9 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
     }
 
   /* parse request-target */
+  HTTP_DBG (0, "http at %d", i);
   target_len = i - hc->target_path_offset;
+  HTTP_DBG (0, "target_len %d", target_len);
   if (target_len < 1)
     {
       clib_warning ("request-target not present");
@@ -911,7 +918,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg = {};
   app_worker_t *app_wrk;
   session_t *as;
-  u32 len, max_enq;
+  u32 len, max_enq, body_sent;
   http_status_code_t ec;
   http_main_t *hm = &http_main;
 
@@ -972,16 +979,16 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
 
   http_read_message_drop (hc, len);
 
-  if (hc->body_len == 0)
+  body_sent = len - hc->control_data_len;
+  hc->to_recv = hc->body_len - body_sent;
+  if (hc->to_recv == 0)
     {
-      /* no response body, we are done */
-      hc->to_recv = 0;
+      /* all sent, we are done */
       http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
     }
   else
     {
-      /* stream response body */
-      hc->to_recv = hc->body_len;
+      /* stream rest of the response body */
       http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
     }
 
@@ -1006,7 +1013,7 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg;
   session_t *as;
   int rv;
-  u32 len, max_enq;
+  u32 len, max_enq, max_deq, body_sent;
 
   rv = http_read_message (hc);
 
@@ -1034,16 +1041,20 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   if (rv)
     goto error;
 
-  /* send "control data" and request body */
+  /* send at least "control data" which is necessary minimum,
+   * if there is some space send also portion of body */
   as = session_get_from_handle (hc->h_pa_session_handle);
-  len = hc->control_data_len + hc->body_len;
   max_enq = svm_fifo_max_enqueue (as->rx_fifo);
-  if (max_enq < len)
+  if (max_enq < hc->control_data_len)
     {
-      /* TODO stream body of large POST */
-      clib_warning ("not enough room for data in app's rx fifo");
+      clib_warning ("not enough room for control data in app's rx fifo");
+      ec = HTTP_STATUS_INTERNAL_ERROR;
       goto error;
     }
+  /* do not dequeue more than one HTTP request, we do not support pipelining */
+  max_deq =
+    clib_min (hc->control_data_len + hc->body_len, vec_len (hc->rx_buf));
+  len = clib_min (max_enq, max_deq);
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
@@ -1065,9 +1076,21 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
   ASSERT (rv == (sizeof (msg) + len));
 
-  /* drop everything, we do not support pipelining */
-  http_read_message_drop_all (hc);
-  http_state_change (hc, HTTP_STATE_WAIT_APP_REPLY);
+  body_sent = len - hc->control_data_len;
+  hc->to_recv = hc->body_len - body_sent;
+  if (hc->to_recv == 0)
+    {
+      /* drop everything, we do not support pipelining */
+      http_read_message_drop_all (hc);
+      /* all sent, we are done */
+      http_state_change (hc, HTTP_STATE_WAIT_APP_REPLY);
+    }
+  else
+    {
+      http_read_message_drop (hc, len);
+      /* stream rest of the response body */
+      http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
+    }
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   if (app_wrk)
@@ -1408,8 +1431,12 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
   hc->to_recv -= rv;
   HTTP_DBG (1, "drained %d from ts; remains %d", rv, hc->to_recv);
 
+  /* Finished transaction:
+   * server back to HTTP_STATE_WAIT_APP_REPLY
+   * client to HTTP_STATE_WAIT_APP_METHOD */
   if (hc->to_recv == 0)
-    http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+    http_state_change (hc, hc->is_server ? HTTP_STATE_WAIT_APP_REPLY :
+					   HTTP_STATE_WAIT_APP_METHOD);
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   if (app_wrk)
