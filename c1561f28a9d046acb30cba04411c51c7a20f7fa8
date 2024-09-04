@@ -34,6 +34,23 @@
       "parentUuid": "e13eebe9_a51bd7d9",
       "revId": "c1561f28a9d046acb30cba04411c51c7a20f7fa8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4980d9d6_bdb991be",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-09-04T08:51:39Z",
+      "side": 1,
+      "message": "Thanks for your help, it seems that the final fix is this one: https://gerrit.fd.io/r/c/vpp/+/41522, I am not sure if this patch is something to abort or better to sbubmit to master",
+      "revId": "c1561f28a9d046acb30cba04411c51c7a20f7fa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
