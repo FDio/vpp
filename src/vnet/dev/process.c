@@ -275,7 +275,7 @@ static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				      vnet_dev_event_data_t ed)
 {
-  f64 t0, interval = 1e-5;
+  f64 t0, interval = 1.5e-5;
 
   ed.calling_process_index = vlib_get_current_process_node_index (vm);
 
