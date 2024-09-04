@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e77142b_ff12983e",
+        "filename": "src/vnet/dev/process.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-09-04T15:37:26Z",
+      "side": 1,
+      "message": "This copies the content. So when L172 edits *edp, ed for L284 does not change.",
+      "revId": "2df0b6dab20745a357996c35d3d45a3028c4effb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
