@@ -6,6 +6,7 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gmeasure"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -30,8 +31,8 @@ func init() {
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
 		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest, PromConcurrentConnectionsTest,
-		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
+		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -53,18 +54,37 @@ func httpDownloadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data in
 	experiment.RecordValue("Download Speed", (float64(resp.ContentLength)/1024/1024)/duration.Seconds(), gmeasure.Units("MB/s"), gmeasure.Precision(2))
 }
 
-func HttpTpsInterruptModeTest(s *NoTopoSuite) {
-	HttpTpsTest(s)
+func HttpGetTpsInterruptModeTest(s *NoTopoSuite) {
+	HttpGetTpsTest(s)
 }
 
-func HttpTpsTest(s *NoTopoSuite) {
+func HttpGetTpsTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.VppAddr()
 	url := "http://" + serverAddress + ":8080/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080 debug")
 
 	s.RunBenchmark("HTTP tps 10M", 10, 0, httpDownloadBenchmark, url)
+}
+
+func HttpPostTpsTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	url := "http://" + serverAddress + ":8080/test_file_10M"
+
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080 debug")
+
+	body := make([]byte, 10485760)
+	_, err := rand.Read(body)
+	client := NewHttpClient()
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.Log(vpp.Vppctl("show http tps"))
 }
 
 func HttpPersistentConnectionTest(s *NoTopoSuite) {

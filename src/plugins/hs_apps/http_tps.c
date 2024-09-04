@@ -28,6 +28,7 @@ typedef struct
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
+  u32 to_recv;
   union
   {
     /** threshold after which connection is closed */
@@ -227,6 +228,8 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
   http_msg_t msg;
   session_t *ts;
   u8 *headers_buf = 0;
+  u32 n_segs = 1;
+  svm_fifo_seg_t seg[2];
   int rv;
 
   if (vec_len (hs->resp_headers))
@@ -235,6 +238,9 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
       vec_free (hs->resp_headers);
       msg.data.headers_offset = 0;
       msg.data.headers_len = vec_len (headers_buf);
+      seg[1].data = headers_buf;
+      seg[1].len = msg.data.headers_len;
+      n_segs = 2;
     }
   else
     {
@@ -248,17 +254,14 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
   msg.data.body_len = hs->data_len;
   msg.data.body_offset = msg.data.headers_len;
   msg.data.len = msg.data.body_len + msg.data.headers_len;
+  seg[0].data = (u8 *) &msg;
+  seg[0].len = sizeof (msg);
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
-  rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
-  ASSERT (rv == sizeof (msg));
-
-  if (msg.data.headers_len)
-    {
-      rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
-      ASSERT (rv == msg.data.headers_len);
-      vec_free (headers_buf);
-    }
+  rv = svm_fifo_enqueue_segments (ts->tx_fifo, seg, n_segs,
+				  0 /* allow partial */);
+  vec_free (headers_buf);
+  ASSERT (rv == (sizeof (msg) + msg.data.headers_len));
 
   if (!msg.data.body_len)
     {
@@ -328,49 +331,96 @@ hts_ts_rx_callback (session_t *ts)
 {
   hts_main_t *htm = &hts_main;
   hts_session_t *hs;
-  u8 *target = 0;
+  u8 *target = 0, *data = 0;
   http_msg_t msg;
   int rv;
+  u32 n_deq;
 
   hs = hts_session_get (ts->thread_index, ts->opaque);
-  hs->data_len = 0;
-  hs->resp_headers = 0;
 
-  /* Read the http message header */
-  rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
-  ASSERT (rv == sizeof (msg));
-
-  if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_GET)
+  if (hs->to_recv == 0)
     {
-      http_add_header (&hs->resp_headers,
-		       http_header_name_token (HTTP_HEADER_ALLOW),
-		       http_token_lit ("GET"));
-      hts_start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
-      goto done;
+      hs->data_len = 0;
+      hs->resp_headers = 0;
+
+      /* Read the http message header */
+      rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
+      ASSERT (rv == sizeof (msg));
+
+      if (msg.type != HTTP_MSG_REQUEST)
+	{
+	  hts_start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
+	  goto done;
+	}
+      if (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST)
+	{
+	  http_add_header (&hs->resp_headers,
+			   http_header_name_token (HTTP_HEADER_ALLOW),
+			   http_token_lit ("GET, POST"));
+	  hts_start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
+	  goto done;
+	}
+
+      if (msg.data.target_path_len == 0 ||
+	  msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
+	{
+	  hts_start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+	  goto done;
+	}
+
+      vec_validate (target, msg.data.target_path_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
+			  msg.data.target_path_len, target);
+      ASSERT (rv == msg.data.target_path_len);
+
+      if (htm->debug_level)
+	clib_warning ("%s request target: %v",
+		      msg.method_type == HTTP_REQ_GET ? "GET" : "POST",
+		      target);
+
+      if (msg.method_type == HTTP_REQ_GET)
+	{
+	  if (try_test_file (hs, target))
+	    hts_start_send_data (hs, HTTP_STATUS_NOT_FOUND);
+	}
+      else
+	{
+	  if (!msg.data.body_len)
+	    {
+	      hts_start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+	      goto done;
+	    }
+	  hs->to_recv = msg.data.body_len;
+	  n_deq = clib_min (hs->to_recv, msg.data.len - msg.data.body_offset);
+	  vec_validate (data, n_deq - 1);
+	  rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, n_deq, data);
+	  ASSERT (rv == n_deq);
+	  vec_free (data);
+	  hs->to_recv -= rv;
+
+	  if (htm->debug_level)
+	    clib_warning ("app rcvd %d, remains %d", rv, hs->to_recv);
+
+	  if (hs->to_recv == 0)
+	    hts_start_send_data (hs, HTTP_STATUS_OK);
+	}
+
+    done:
+      vec_free (target);
+      svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
+    }
+  else
+    {
+      n_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+      vec_validate (data, n_deq - 1);
+      rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
+      ASSERT (rv == n_deq);
+      vec_free (data);
+      hs->to_recv -= rv;
+      if (hs->to_recv == 0)
+	hts_start_send_data (hs, HTTP_STATUS_OK);
     }
 
-  if (msg.data.target_path_len == 0 ||
-      msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
-    {
-      hts_start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-      goto done;
-    }
-
-  vec_validate (target, msg.data.target_path_len - 1);
-  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
-		      msg.data.target_path_len, target);
-  ASSERT (rv == msg.data.target_path_len);
-
-  if (htm->debug_level)
-    clib_warning ("Request target: %v", target);
-
-  if (try_test_file (hs, target))
-    hts_start_send_data (hs, HTTP_STATUS_NOT_FOUND);
-
-  vec_free (target);
-
-done:
-  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
   return 0;
 }
 
@@ -397,6 +447,7 @@ hts_ts_accept_callback (session_t *ts)
 
   hs = hts_session_alloc (ts->thread_index);
   hs->vpp_session_index = ts->session_index;
+  hs->to_recv = 0;
 
   ts->opaque = hs->session_index;
   ts->session_state = SESSION_STATE_READY;

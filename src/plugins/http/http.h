@@ -27,7 +27,7 @@
 #include <vnet/session/application.h>
 #include <http/http_buffer.h>
 
-#define HTTP_DEBUG 0
+#define HTTP_DEBUG 1
 
 #if HTTP_DEBUG
 #define HTTP_DBG(_lvl, _fmt, _args...)                                        \
