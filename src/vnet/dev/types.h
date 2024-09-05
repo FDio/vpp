@@ -28,6 +28,7 @@ typedef enum
 
 typedef enum
 {
+  VNET_DEV_PENDING = 1,
   VNET_DEV_OK = 0,
 #define _(n, d) VNET_DEV_ERR_##n = -(VNET_DEV_ERR_MINUS_##n),
   foreach_vnet_dev_rv_type
