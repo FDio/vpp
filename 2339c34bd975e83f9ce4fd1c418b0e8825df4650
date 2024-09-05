@@ -1,5 +1,40 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c431a843_116f931e",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-05T22:31:06Z",
+      "side": 1,
+      "message": "I think a smaller change in the limit would be better. The current maximum instance is 1024. I think increasing it to 8192 and starting to allocate linux-cp taps from 4096 should be sufficient.\n\nThe reason is that if you start allocating linux-cp taps from an offset of 60k, you\u0027re going to have to have a bitmap with room for 60k bits \u003d around 8k bytes and nearly all of it will be empty. Its not the world\u0027s biggest waste of memory, but I think starting at 4096 and only wasting 512 bytes will probably be good enough.",
+      "revId": "2339c34bd975e83f9ce4fd1c418b0e8825df4650",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "edc1ec40_ff7c1b88",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-05T22:31:06Z",
+      "side": 1,
+      "message": "currently args-\u003eid \u003d\u003d ~0 indicates that you auto select an id.\nThe patch adds another knob that is also a boolean that indicates that an id should be auto selected.\n\nIt seems like it would be more straightforward to keep the current behavior: args-\u003eid \u003d\u003d ~0 indicates \"auto select\". Then add a new field like args-\u003eauto_id_offset or something like that. When args-\u003eid \u003d\u003d ~0, args-\u003eid \u003d clib_bitmap_next_clear (tm-\u003etap_ids, args-\u003eauto_id_offset % TAP_MAX_INSTANCE)). When a specific offset is passed by linux-cp, it will be used. In other cases where 0 is passed in tap_create_if() should behave like it does now.",
+      "revId": "2339c34bd975e83f9ce4fd1c418b0e8825df4650",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
