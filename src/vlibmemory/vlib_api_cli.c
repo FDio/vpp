@@ -1148,6 +1148,7 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   u32 nitems = 256 << 10;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
+  vl_api_trace_which_t which_tx = VL_API_TRACE_TX;
   api_main_t *am = vlibapi_get_main ();
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1157,7 +1158,9 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  if (unformat (input, "nitems %d", &nitems))
 	    ;
 	  vl_msg_api_trace_configure (am, which, nitems);
+	  vl_msg_api_trace_configure (am, which_tx, nitems);
 	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
+	  vl_msg_api_trace_onoff (am, which_tx, 1 /* on */ );
 	  vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
 	}
       else if (unformat (input, "save-api-table %s",
