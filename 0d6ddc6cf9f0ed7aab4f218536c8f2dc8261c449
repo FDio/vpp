@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e30c73b_1e7c196f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-09-05T14:02:45Z",
+      "side": 1,
+      "message": "this new doc page about vat2 renders well [1] and has useful information about vat2 tool with nice examples.\n\n[1] https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1/vpp-docsonly-verify-master-ubuntu2204-x86_64/228/interfacing/vat2/index.html",
+      "revId": "0d6ddc6cf9f0ed7aab4f218536c8f2dc8261c449",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
