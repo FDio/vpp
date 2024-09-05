@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f2eeb45_43b23cbe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-05T21:58:32Z",
+      "side": 1,
+      "message": "Quick nits",
+      "revId": "ef6e225b980fe870327f7eb0ff398a0fff956627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10d5017f_dbd2a747",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 2237,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-05T21:58:32Z",
+      "side": 1,
+      "message": "Can\u0027t we let session_manager_main_enable-\u003esession_rt_backend_enable_disable do these checks? We should just check if session_manager_main_enable returns error",
+      "revId": "ef6e225b980fe870327f7eb0ff398a0fff956627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cff2d085_83f679c1",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 2246,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-05T21:58:32Z",
+      "side": 1,
+      "message": "Same for this. Let session_rt_backend_enable_disable complain about this?",
+      "revId": "ef6e225b980fe870327f7eb0ff398a0fff956627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68475b33_a7216ed8",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-05T21:58:32Z",
+      "side": 1,
+      "message": "session_enable_disable_args_t ?",
+      "range": {
+        "startLine": 315,
+        "startChar": 2,
+        "endLine": 315,
+        "endChar": 36
+      },
+      "revId": "ef6e225b980fe870327f7eb0ff398a0fff956627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
