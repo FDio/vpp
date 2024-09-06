@@ -226,6 +226,7 @@ retry:
 
       buffers++;
       n_left--;
+      mq->n_packets += 1;
     }
 no_free_slots:
 
@@ -358,6 +359,7 @@ retry:
       /* next from */
       buffers++;
       n_left--;
+      mq->n_packets += 1;
     }
 no_free_slots:
 
@@ -543,6 +545,7 @@ retry:
 
       buffers++;
       n_left--;
+      mq->n_packets += 1;
     }
 no_free_slots:
 
@@ -676,8 +679,13 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
     clib_spinlock_unlock (&mq->lockp);
 
   if (n_left)
-    vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
-		      n_left);
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
+			n_left);
+      mq->no_free_tx += n_left;
+      if (n_left > mq->max_no_free_tx)
+	mq->max_no_free_tx = n_left;
+    }
 
   if ((mq->ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
     {

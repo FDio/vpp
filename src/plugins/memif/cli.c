@@ -364,6 +364,7 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   memif_queue_t *mq;
   uword i;
   int show_descr = 0;
+  int show_stats = 0;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
   u32 sock_id;
@@ -377,6 +378,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vec_add1 (hw_if_indices, hw_if_index);
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
+      else if (unformat (input, "stats"))
+	show_stats = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -457,6 +460,13 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
+	  if (show_stats)
+	    {
+	      vlib_cli_output (vm, "      packets sent: %u", mq->n_packets);
+	      vlib_cli_output (vm, "      no tx slot: %u", mq->no_free_tx);
+	      vlib_cli_output (vm, "      max no tx slot: %u",
+			       mq->max_no_free_tx);
+	    }
 	}
       vec_foreach_index (i, mif->rx_queues)
 	{
@@ -464,6 +474,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
+	  if (show_stats)
+	    vlib_cli_output (vm, "      packets received: %u", mq->n_packets);
 	}
     }
 done:
@@ -475,6 +487,68 @@ VLIB_CLI_COMMAND (memif_show_command, static) = {
   .path = "show memif",
   .short_help = "show memif [<interface>] [descriptors]",
   .function = memif_show_command_fn,
+};
+
+static clib_error_t *
+memif_clear_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  memif_main_t *mm = &memif_main;
+  memif_if_t *mif;
+  vnet_main_t *vnm = vnet_get_main ();
+  memif_queue_t *mq;
+  uword i;
+  clib_error_t *error = 0;
+  u32 hw_if_index, *hw_if_indices = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	vec_add1 (hw_if_indices, hw_if_index);
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (vec_len (hw_if_indices) == 0)
+    {
+      pool_foreach (mif, mm->interfaces)
+	vec_add1 (hw_if_indices, mif->hw_if_index);
+    }
+
+  for (hw_if_index = 0; hw_if_index < vec_len (hw_if_indices); hw_if_index++)
+    {
+      vnet_hw_interface_t *hi =
+	vnet_get_hw_interface (vnm, hw_if_indices[hw_if_index]);
+      mif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
+      vec_foreach_index (i, mif->tx_queues)
+	{
+	  mq = vec_elt_at_index (mif->tx_queues, i);
+	  mq->n_packets = 0;
+	  mq->no_free_tx = 0;
+	  mq->max_no_free_tx = 0;
+	}
+      vec_foreach_index (i, mif->rx_queues)
+	{
+	  mq = vec_elt_at_index (mif->rx_queues, i);
+	  mq->n_packets = 0;
+	  mq->no_free_tx = 0;
+	  mq->max_no_free_tx = 0;
+	}
+    }
+done:
+  vec_free (hw_if_indices);
+  return error;
+}
+
+VLIB_CLI_COMMAND (memif_clear_command, static) = {
+  .path = "clear memif",
+  .short_help = "clear memif [<interface>]",
+  .function = memif_clear_command_fn,
 };
 
 clib_error_t *
