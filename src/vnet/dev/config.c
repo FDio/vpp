@@ -13,6 +13,7 @@
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "config",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 static clib_error_t *
