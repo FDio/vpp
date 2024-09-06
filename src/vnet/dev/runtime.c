@@ -12,6 +12,7 @@
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "runtime",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 static vnet_dev_rt_op_t *rt_ops;
