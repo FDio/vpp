@@ -11,6 +11,7 @@
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 vnet_dev_main_t vnet_dev_main = { .next_rx_queue_thread = 1 };
