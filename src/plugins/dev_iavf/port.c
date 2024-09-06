@@ -15,6 +15,7 @@
 VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .class_name = "iavf",
   .subclass_name = "port",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 static const u8 default_rss_key[] = {
