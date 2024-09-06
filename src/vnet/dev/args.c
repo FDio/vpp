@@ -13,6 +13,7 @@
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "args",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 void
