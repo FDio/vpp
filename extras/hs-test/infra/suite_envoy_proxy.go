@@ -136,6 +136,12 @@ func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {
 	s.AssertContains(log, "HTTP/1.1 200")
 }
 
+func (s *EnvoyProxySuite) CurlUploadResource(uri, file string) {
+	args := fmt.Sprintf("--insecure --noproxy '*' -T %s %s", file, uri)
+	_, log := s.RunCurlContainer(args)
+	s.AssertContains(log, "HTTP/1.1 201")
+}
+
 var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {
 	var s EnvoyProxySuite
 	BeforeAll(func() {

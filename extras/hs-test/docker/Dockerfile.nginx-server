@@ -11,5 +11,6 @@ COPY script/nginx_server_entrypoint.sh /usr/bin/nginx_server_entrypoint.sh
 
 COPY resources/nginx/html/index.html /usr/share/nginx/index.html
 RUN fallocate -l 10MB /usr/share/nginx/httpTestFile
+RUN mkdir /usr/share/nginx/upl && chmod 777 /usr/share/nginx/upl
 
 ENTRYPOINT ["nginx_server_entrypoint.sh"]
