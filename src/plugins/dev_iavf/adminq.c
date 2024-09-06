@@ -19,6 +19,7 @@
 VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .class_name = "iavf",
   .subclass_name = "adminq",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 struct iavf_adminq_dma_mem
