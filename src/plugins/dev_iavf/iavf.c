@@ -17,6 +17,7 @@
 VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .class_name = "iavf",
   .subclass_name = "init",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 #define IAVF_MAX_QPAIRS 32
