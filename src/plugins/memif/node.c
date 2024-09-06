@@ -721,6 +721,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_increment_combined_counter (
     vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
     thread_index, mif->sw_if_index, ptd->n_packets, ptd->n_rx_bytes);
+  mq->n_packets += ptd->n_packets;
 
   /* refill ring with empty buffers */
 refill:
@@ -981,6 +982,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
 				   mif->sw_if_index, n_rx_packets,
 				   n_rx_bytes);
+  mq->n_packets += n_rx_packets;
 
   /* refill ring with empty buffers */
 refill:
@@ -1166,6 +1168,7 @@ CLIB_MARCH_FN (memif_dma_completion_cb, void, vlib_main_t *vm,
   vlib_increment_combined_counter (
     vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
     thread_index, mif->sw_if_index, ptd->n_packets, ptd->n_rx_bytes);
+  mq->n_packets += ptd->n_packets;
 
   mq->dma_info_head++;
   if (mq->dma_info_head == mq->dma_info_size)
