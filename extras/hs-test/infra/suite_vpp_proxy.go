@@ -18,6 +18,7 @@ const (
 	VppProxyContainerName  = "vpp-proxy"
 	ClientTapInterfaceName = "hstcln"
 	ServerTapInterfaceName = "hstsrv"
+	CurlContainerTestFile  = "/tmp/testFile"
 )
 
 type VppProxySuite struct {
@@ -102,7 +103,7 @@ func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {
 }
 
 func (s *VppProxySuite) CurlRequestViaTunnel(targetUri string, proxyUri string) (string, string) {
-	args := fmt.Sprintf("--insecure -p -x %s %s", proxyUri, targetUri)
+	args := fmt.Sprintf("--max-time 60 --insecure -p -x %s %s", proxyUri, targetUri)
 	body, log := s.RunCurlContainer(args)
 	return body, log
 }
@@ -114,11 +115,28 @@ func (s *VppProxySuite) CurlDownloadResource(uri string) {
 	s.AssertContains(log, "HTTP/1.1 200")
 }
 
+func (s *VppProxySuite) CurlUploadResource(uri, file string) {
+	args := fmt.Sprintf("--insecure --noproxy '*' -T %s %s", file, uri)
+	_, log := s.RunCurlContainer(args)
+	s.AssertContains(log, "HTTP/1.1 201")
+}
+
 func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string) {
-	args := fmt.Sprintf("--insecure -p -x %s --remote-name --output-dir /tmp %s", proxyUri, uri)
+	args := fmt.Sprintf("--max-time 180 --insecure -p -x %s --remote-name --output-dir /tmp %s", proxyUri, uri)
 	_, log := s.RunCurlContainer(args)
 	s.AssertNotContains(log, "Recv failure")
+	s.AssertNotContains(log, "Operation timed out")
+	s.AssertContains(log, "CONNECT tunnel established")
 	s.AssertContains(log, "HTTP/1.1 200")
+	s.AssertNotContains(log, "bytes remaining to read")
+}
+
+func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
+	args := fmt.Sprintf("--max-time 180 --insecure -p -x %s -T %s %s", proxyUri, file, uri)
+	_, log := s.RunCurlContainer(args)
+	s.AssertNotContains(log, "Operation timed out")
+	s.AssertContains(log, "CONNECT tunnel established")
+	s.AssertContains(log, "HTTP/1.1 201")
 }
 
 var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {

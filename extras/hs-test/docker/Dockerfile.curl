@@ -7,6 +7,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY script/build_curl.sh /build_curl.sh
+RUN fallocate -l 10MB /tmp/testFile
 RUN apt-get update && apt-get install wget
 RUN /build_curl.sh
 
