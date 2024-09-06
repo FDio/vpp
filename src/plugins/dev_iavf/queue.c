@@ -16,6 +16,7 @@
 VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .class_name = "iavf",
   .subclass_name = "queue",
+  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 vnet_dev_rv_t
