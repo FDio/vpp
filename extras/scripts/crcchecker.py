@@ -40,10 +40,13 @@ def crc_from_apigen(revision, filename):
     if returncode.returncode != 0:
         print(
             f"vppapigen failed for {revision}:{filename} with "
-            "command\n {apigen}\n error: {rv}",
-            returncode.stderr.decode("ascii"),
+            f"command:\n {apigen}\n error: {returncode.returncode}",
             file=sys.stderr,
         )
+        if returncode.stderr:
+            print(f"stderr: {returncode.stderr.decode('ascii')}", file=sys.stderr)
+        if returncode.stdout:
+            print(f"stdout: {returncode.stdout.decode('ascii')}", file=sys.stderr)
         sys.exit(-2)
 
     return json.loads(returncode.stdout)
