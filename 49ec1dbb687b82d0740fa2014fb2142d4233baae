@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ac95757_c131d539",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-09-09T17:23:24Z",
+      "side": 1,
+      "message": "This makes the ipsec policy test pass.\nWith ASAN: https://jenkins.fd.io/view/vpp/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/189/\nRelease build is #190.",
+      "revId": "49ec1dbb687b82d0740fa2014fb2142d4233baae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
