@@ -33,6 +33,24 @@
       "message": "minor issue, the indentation is wrong on this line",
       "revId": "fa1c3f1c1c1ec722ea9a5d6e950a4dad7e0c8ebc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6701852a_500b709e",
+        "filename": "src/vnet/ipsec/ipsec_tun.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 769,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-09-09T17:00:48Z",
+      "side": 1,
+      "message": "well, looks like the new formatter has some quirks",
+      "parentUuid": "9d76d515_8b4262e9",
+      "revId": "fa1c3f1c1c1ec722ea9a5d6e950a4dad7e0c8ebc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
