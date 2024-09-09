@@ -22,6 +22,30 @@
       },
       "revId": "aea40cc5ec92219282d1d3710310ba7bfec15ae0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3273d2d0_7c147f20",
+        "filename": "extras/hs-test/resources/nginx/nginx_server.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-09T06:47:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fcca9d81_6255dbd7",
+      "range": {
+        "startLine": 25,
+        "startChar": 17,
+        "endLine": 25,
+        "endChar": 20
+      },
+      "revId": "aea40cc5ec92219282d1d3710310ba7bfec15ae0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
