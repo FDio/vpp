@@ -7,7 +7,7 @@
 
 #include <http/http.h>
 
-const char *http_status_code_str[] = {
+static const char *http_status_code_str[] = {
 #define _(c, s, str) str,
   foreach_http_status_code
 #undef _
