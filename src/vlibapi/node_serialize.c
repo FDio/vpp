@@ -84,26 +84,27 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	    {
 	      vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
-	      switch (p->flags
-		      & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-			 | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
+	      switch (p->state)
 		{
 		default:
-		  if (!(p->flags & VLIB_PROCESS_IS_RUNNING))
-		    state_code = STATE_DONE;
 		  break;
 
-		case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK:
+		case VLIB_PROCESS_STATE_WAIT_FOR_CLOCK:
+		case VLIB_PROCESS_STATE_SUSPENDED:
 		  state_code = STATE_TIME_WAIT;
 		  break;
 
-		case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT:
+		case VLIB_PROCESS_STATE_WAIT_FOR_EVENT:
+		case VLIB_PROCESS_STATE_WAIT_FOR_ONE_TIME_EVENT:
 		  state_code = STATE_EVENT_WAIT;
 		  break;
 
-		case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
-		  state_code =
-		    STATE_ANY_WAIT;
+		case VLIB_PROCESS_STATE_WAIT_FOR_EVENT_OR_CLOCK:
+		  state_code = STATE_ANY_WAIT;
+		  break;
+
+		case VLIB_PROCESS_STATE_NOT_STARTED:
+		  state_code = STATE_DONE;
 		  break;
 		}
 	    }
