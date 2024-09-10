@@ -542,6 +542,23 @@ typedef struct
   uword opaque;
 } vlib_process_event_type_t;
 
+#define foreach_vlib_process_state                                            \
+  _ (0, NOT_STARTED, "not started")                                           \
+  _ (1, DISABLED, "disabled")                                                 \
+  _ (2, RUNNING, "running")                                                   \
+  _ (3, SUSPENDED, "suspended")                                               \
+  _ (4, WAIT_FOR_EVENT, "event wait")                                         \
+  _ (5, WAIT_FOR_CLOCK, "clock wait")                                         \
+  _ (6, WAIT_FOR_EVENT_OR_CLOCK, "any wait")                                  \
+  _ (7, WAIT_FOR_ONE_TIME_EVENT, "wait one time event")
+
+typedef enum
+{
+#define _(v, n, s) VLIB_PROCESS_STATE_##n = (v),
+  foreach_vlib_process_state
+#undef _
+} __clib_packed vlib_process_state_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -559,14 +576,11 @@ typedef struct
 #define VLIB_PROCESS_RESUME_LONGJMP_SUSPEND 0
 #define VLIB_PROCESS_RESUME_LONGJMP_RESUME  1
 
-  u16 flags;
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK (1 << 0)
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT (1 << 1)
-  /* Set to indicate that this process has been added to resume vector. */
-#define VLIB_PROCESS_RESUME_PENDING (1 << 2)
+  /* Process state. */
+  vlib_process_state_t state;
 
-  /* Process function is currently running. */
-#define VLIB_PROCESS_IS_RUNNING (1 << 3)
+  /* Process is added to resume list due to pending event  */
+  u8 event_resume_pending : 1;
 
   /* Size of process stack. */
   u16 log2_n_stack_bytes;

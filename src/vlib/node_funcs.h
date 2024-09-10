@@ -187,10 +187,8 @@ vlib_node_set_state (vlib_main_t * vm, u32 node_index,
       vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
       r = &p->node_runtime;
 
-      /* When disabling make sure flags are cleared. */
-      p->flags &= ~(VLIB_PROCESS_RESUME_PENDING
-		    | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-		    | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT);
+      p->state = VLIB_PROCESS_STATE_DISABLED;
+      p->event_resume_pending = 0;
     }
   else
     r = vec_elt_at_index (nm->nodes_by_type[n->type], n->runtime_index);
@@ -599,7 +597,7 @@ vlib_process_suspend (vlib_main_t * vm, f64 dt)
   if (vlib_process_suspend_time_is_zero (dt))
     return VLIB_PROCESS_RESUME_LONGJMP_RESUME;
 
-  p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK;
+  p->state = VLIB_PROCESS_STATE_SUSPENDED;
   r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
   if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
     {
@@ -773,11 +771,12 @@ vlib_process_wait_for_event (vlib_main_t * vm)
   p = vec_elt (nm->processes, nm->current_process_index);
   if (clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
     {
-      p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
+      p->state = VLIB_PROCESS_STATE_WAIT_FOR_EVENT;
       r =
 	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
 	{
+	  p->resume_clock_interval = 0;
 	  vlib_process_start_switch_stack (vm, 0);
 	  clib_longjmp (&p->return_longjmp,
 			VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
@@ -802,11 +801,12 @@ vlib_process_wait_for_one_time_event (vlib_main_t * vm,
   ASSERT (!pool_is_free_index (p->event_type_pool, with_type_index));
   while (!clib_bitmap_get (p->non_empty_event_type_bitmap, with_type_index))
     {
-      p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
+      p->state = VLIB_PROCESS_STATE_WAIT_FOR_ONE_TIME_EVENT;
       r =
 	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
 	{
+	  p->resume_clock_interval = 0;
 	  vlib_process_start_switch_stack (vm, 0);
 	  clib_longjmp (&p->return_longjmp,
 			VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
@@ -831,11 +831,12 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
   h = hash_get (p->event_type_index_by_type_opaque, with_type_opaque);
   while (!h || !clib_bitmap_get (p->non_empty_event_type_bitmap, h[0]))
     {
-      p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
+      p->state = VLIB_PROCESS_STATE_WAIT_FOR_EVENT;
       r =
 	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
 	{
+	  p->resume_clock_interval = 0;
 	  vlib_process_start_switch_stack (vm, 0);
 	  clib_longjmp (&p->return_longjmp,
 			VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
@@ -875,8 +876,7 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
   wakeup_time = vlib_time_now (vm) + dt;
 
   /* Suspend waiting for both clock and event to occur. */
-  p->flags |= (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
-	       | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK);
+  p->state = VLIB_PROCESS_STATE_WAIT_FOR_EVENT_OR_CLOCK;
 
   r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
   if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
@@ -938,7 +938,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 				  uword t,
 				  uword n_data_elts, uword n_data_elt_bytes)
 {
-  uword p_flags, add_to_pending, delete_from_wheel;
+  uword add_to_pending = 0, delete_from_wheel = 0;
   u8 *data_to_be_written_by_caller;
   vec_attr_t va = { .elt_sz = n_data_elt_bytes };
 
@@ -970,47 +970,41 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
   p->non_empty_event_type_bitmap =
     clib_bitmap_ori (p->non_empty_event_type_bitmap, t);
 
-  p_flags = p->flags;
-
-  /* Event was already signalled? */
-  add_to_pending = (p_flags & VLIB_PROCESS_RESUME_PENDING) == 0;
-
-  /* Process will resume when suspend time elapses? */
-  delete_from_wheel = 0;
-  if (p_flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
+  switch (p->state)
     {
-      /* Waiting for both event and clock? */
-      if (p_flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT)
-	{
-	  if (!TW (tw_timer_handle_is_free)
-	      ((TWT (tw_timer_wheel) *) nm->timing_wheel,
-	       p->stop_timer_handle))
-	    delete_from_wheel = 1;
-	  else
-	    /* timer just popped so process should already be on the list */
-	    add_to_pending = 0;
-	}
-      else
-	/* Waiting only for clock.  Event will be queue and may be
-	   handled when timer expires. */
-	add_to_pending = 0;
+    case VLIB_PROCESS_STATE_WAIT_FOR_EVENT:
+      add_to_pending = 1;
+      break;
+
+    case VLIB_PROCESS_STATE_WAIT_FOR_EVENT_OR_CLOCK:
+      add_to_pending = 1;
+      delete_from_wheel = 1;
+      break;
+
+    default:
+      break;
     }
+
+  if (TW (tw_timer_handle_is_free) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+				    p->stop_timer_handle))
+    delete_from_wheel = 0;
 
   /* Never add current process to pending vector since current process is
      already running. */
   add_to_pending &= nm->current_process_index != n->runtime_index;
 
-  if (add_to_pending)
+  if (add_to_pending && p->event_resume_pending == 0)
     {
       u32 x = vlib_timing_wheel_data_set_suspended_process (n->runtime_index);
-      p->flags = p_flags | VLIB_PROCESS_RESUME_PENDING;
+      p->event_resume_pending = 1;
       vec_add1 (nm->data_from_advancing_timing_wheel, x);
-      if (delete_from_wheel)
-	{
-	  TW (tw_timer_stop)
-	  ((TWT (tw_timer_wheel) *) nm->timing_wheel, p->stop_timer_handle);
-	  p->stop_timer_handle = ~0;
-	}
+    }
+
+  if (delete_from_wheel)
+    {
+      TW (tw_timer_stop)
+      ((TWT (tw_timer_wheel) *) nm->timing_wheel, p->stop_timer_handle);
+      p->stop_timer_handle = ~0;
     }
 
   return data_to_be_written_by_caller;
