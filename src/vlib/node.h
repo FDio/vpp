@@ -542,6 +542,18 @@ typedef struct
   uword opaque;
 } vlib_process_event_type_t;
 
+typedef enum
+{
+  VLIB_PROCESS_ST_NOT_STARTED = 0,
+  VLIB_PROCESS_ST_DISABLED,
+  VLIB_PROCESS_ST_RUNNING,
+  VLIB_PROCESS_ST_SUSPEND,
+  VLIB_PROCESS_ST_WAIT_FOR_EVENT,
+  VLIB_PROCESS_ST_WAIT_FOR_CLOCK,
+  VLIB_PROCESS_ST_WAIT_FOR_EVENT_OR_CLOCK,
+  VLIB_PROCESS_ST_WAIT_FOR_ONE_TIME_EVENT,
+} __clib_packed vlib_process_state_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -559,14 +571,7 @@ typedef struct
 #define VLIB_PROCESS_RESUME_LONGJMP_SUSPEND 0
 #define VLIB_PROCESS_RESUME_LONGJMP_RESUME  1
 
-  u16 flags;
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK (1 << 0)
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT (1 << 1)
-  /* Set to indicate that this process has been added to resume vector. */
-#define VLIB_PROCESS_RESUME_PENDING (1 << 2)
-
-  /* Process function is currently running. */
-#define VLIB_PROCESS_IS_RUNNING (1 << 3)
+  vlib_process_state_t state;
 
   /* Size of process stack. */
   u16 log2_n_stack_bytes;
