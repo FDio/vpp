@@ -1270,48 +1270,56 @@ avf_op_program_flow (vlib_main_t *vm, avf_device_t *ad, int is_create,
 			 status_len);
 }
 
-static void
+static clib_error_t *
 avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 {
+  clib_error_t *err = 0;
   avf_device_t *ad = avf_get_device (req->dev_instance);
 
   if (req->type == AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR)
-    req->error = avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr,
+    err = avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr,
 					  req->is_add);
   else if (req->type == AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE)
-    req->error = avf_op_config_promisc_mode (vm, ad, req->is_enable);
+    err = avf_op_config_promisc_mode (vm, ad, req->is_enable);
   else if (req->type == AVF_PROCESS_REQ_PROGRAM_FLOW)
-    req->error = avf_op_program_flow (vm, ad, req->is_add, req->vc_op,
+    err = avf_op_program_flow (vm, ad, req->is_add, req->vc_op,
 				      req->rule, req->rule_len,
 				      req->program_status, req->status_len);
   else
     clib_panic ("BUG: unknown avf proceess request type");
 
-  if (req->calling_process_index != avf_process_node.index)
-    vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+  if (req->p_error)
+    *req->p_error = err;
+  if (req->p_done)
+    *req->p_done = 1;
+  return err;
 }
 
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
-  req->calling_process_index = vlib_get_current_process_node_index (vm);
+  f64 t0, interval = 1e-6;
+  u8 done = 0;
+  clib_error_t *err = 0;
 
-  if (req->calling_process_index != avf_process_node.index)
-    {
-      vlib_process_signal_event_pointer (vm, avf_process_node.index,
+  if (vlib_get_current_process_node_index (vm) == avf_process_node.index)
+    return avf_process_handle_request (vm, req);
+
+  req->p_error = &error;
+  req->p_done = &done;
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
 					 AVF_PROCESS_EVENT_REQ, req);
 
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-      if (vlib_process_get_events (vm, &event_data) != 0)
-	clib_panic ("avf process node failed to reply in 5 seconds");
-      vec_free (event_data);
+  t0 = vlib_time_now (vm);
+  do
+    {
+      vlib_process_suspend (vm, interval);
+      if (done)
+        return *req->error;
+      interval *= 2;
     }
-  else
-    avf_process_handle_request (vm, req);
-
-  return req->error;
+  while (vlib_time_now (vm) - t0 < 5.0);
+  clib_panic ("avf process node failed to reply in 5 seconds");
 }
 
 static u32
