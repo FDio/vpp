@@ -152,7 +152,7 @@ We will add following members to our session context structure:
   typedef struct
   {
     /* ... */
-    u32 to_recv;
+    u64 to_recv;
     u8 *resp_body;
   } session_ctx_t;
 
@@ -174,7 +174,7 @@ Now we can start reading body content, following block of code could be executed
   /* dequeue */
   u32 n_deq = svm_fifo_max_dequeue (ts->rx_fifo);
   /* current offset */
-  u32 curr = vec_len (ctx->resp_body);
+  u64 curr = vec_len (ctx->resp_body);
   rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, ctx->resp_body + curr);
   ASSERT (rv == n_deq);
   /* update length of the vector */
@@ -464,7 +464,7 @@ We will add following members to our session context structure:
   typedef struct
   {
     /* ... */
-    u32 to_recv;
+    u64 to_recv;
     u8 *resp_body;
   } session_ctx_t;
 
@@ -487,7 +487,7 @@ Now we can start reading body content, following block of code could be executed
   u32 max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
   u32 n_deq = clib_min (to_recv, max_deq);
   /* current offset */
-  u32 curr = vec_len (ctx->resp_body);
+  u64 curr = vec_len (ctx->resp_body);
   rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, ctx->resp_body + curr);
   if (rv < 0 || rv != n_deq)
     {

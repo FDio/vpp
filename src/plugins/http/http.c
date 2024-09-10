@@ -379,7 +379,7 @@ static const char *http_error_template = "HTTP/1.1 %s\r\n"
 static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
 					    "Server: %v\r\n"
-					    "Content-Length: %u\r\n"
+					    "Content-Length: %llu\r\n"
 					    "%s";
 
 /**
@@ -393,7 +393,7 @@ static const char *http_get_request_template = "GET %s HTTP/1.1\r\n"
 static const char *http_post_request_template = "POST %s HTTP/1.1\r\n"
 						"Host: %v\r\n"
 						"User-Agent: %v\r\n"
-						"Content-Length: %u\r\n"
+						"Content-Length: %llu\r\n"
 						"%s";
 
 static u32
@@ -853,7 +853,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   unformat_input_t input;
   int i, len;
   u8 *line;
-  u32 body_len;
+  u64 body_len;
 
   hc->body_len = 0;
 
@@ -895,7 +895,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   HTTP_DBG (0, "%v", line);
 
   unformat_init_vector (&input, line);
-  if (!unformat (&input, "%u", &body_len))
+  if (!unformat (&input, "%llu", &body_len))
     {
       clib_warning ("failed to unformat content length value");
       *ec = HTTP_STATUS_BAD_REQUEST;
@@ -905,7 +905,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   hc->body_len = body_len;
 
   hc->body_offset = hc->headers_offset + hc->headers_len + 2;
-  HTTP_DBG (0, "body length: %u", hc->body_len);
+  HTTP_DBG (0, "body length: %llu", hc->body_len);
   HTTP_DBG (0, "body offset: %u", hc->body_offset);
 
   return 0;
@@ -1013,7 +1013,8 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg;
   session_t *as;
   int rv;
-  u32 len, max_enq, max_deq, body_sent;
+  u32 len, max_enq, body_sent;
+  u64 max_deq;
 
   rv = http_read_message (hc);
 
@@ -1429,7 +1430,7 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
       return HTTP_SM_ERROR;
     }
   hc->to_recv -= rv;
-  HTTP_DBG (1, "drained %d from ts; remains %d", rv, hc->to_recv);
+  HTTP_DBG (1, "drained %d from ts; remains %lu", rv, hc->to_recv);
 
   /* Finished transaction:
    * server back to HTTP_STATE_WAIT_APP_REPLY
