@@ -339,29 +339,16 @@ format_vlib_node_state (u8 * s, va_list * va)
   state = "active";
   if (n->type == VLIB_NODE_TYPE_PROCESS)
     {
+      char *state_str[] = {
+#define _(v, n, s) [v] = #s,
+	foreach_vlib_process_state
+      };
       vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
-      switch (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-			  | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
-	{
-	default:
-	  if (!(p->flags & VLIB_PROCESS_IS_RUNNING))
-	    state = "done";
-	  break;
-
-	case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK:
-	  state = "time wait";
-	  break;
-
-	case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT:
-	  state = "event wait";
-	  break;
-
-	case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
-	  state =
-	    "any wait";
-	  break;
-	}
+      if (p->state >= ARRAY_LEN (state_str) || state_str[p->state] == 0)
+	state = "unknown";
+      else
+	state = state_str[p->state];
     }
   else if (n->type != VLIB_NODE_TYPE_INTERNAL)
     {
