@@ -543,6 +543,45 @@ typedef struct
   uword opaque;
 } vlib_process_event_type_t;
 
+#define foreach_vlib_process_state                                            \
+  _ (NOT_STARTED, "not started")                                              \
+  _ (RUNNING, "running")                                                      \
+  _ (SUSPENDED, "suspended")                                                  \
+  _ (WAIT_FOR_EVENT, "event wait")                                            \
+  _ (WAIT_FOR_CLOCK, "clock wait")                                            \
+  _ (WAIT_FOR_EVENT_OR_CLOCK, "any wait")                                     \
+  _ (WAIT_FOR_ONE_TIME_EVENT, "one time event wait")                          \
+  _ (YIELD, "yield")
+
+typedef enum
+{
+#define _(n, s) VLIB_PROCESS_STATE_##n,
+  foreach_vlib_process_state VLIB_PROCESS_N_STATES
+#undef _
+} __clib_packed vlib_process_state_t;
+
+STATIC_ASSERT (VLIB_PROCESS_STATE_NOT_STARTED == 0, "");
+
+typedef enum
+{
+  VLIB_PROCESS_RESTORE_REASON_UNKNOWN = 0,
+  VLIB_PROCESS_RESTORE_REASON_EVENT,
+  VLIB_PROCESS_RESTORE_REASON_CLOCK,
+  VLIB_PROCESS_RESTORE_REASON_TIMED_EVENT,
+  VLIB_PROCESS_RESTORE_REASON_YIELD,
+  VLIB_PROCRSS_N_RESTORE_REASON
+} __clib_packed vlib_process_restore_reason_t;
+
+typedef struct
+{
+  vlib_process_restore_reason_t reason;
+  union
+  {
+    u32 runtime_index;
+    u32 timed_event_data_pool_index;
+  };
+} __clib_packed vlib_process_restore_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -560,14 +599,11 @@ typedef struct
 #define VLIB_PROCESS_RESUME_LONGJMP_SUSPEND 0
 #define VLIB_PROCESS_RESUME_LONGJMP_RESUME  1
 
-  u16 flags;
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK (1 << 0)
-#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT (1 << 1)
-  /* Set to indicate that this process has been added to resume vector. */
-#define VLIB_PROCESS_RESUME_PENDING (1 << 2)
+  /* Process state. */
+  vlib_process_state_t state;
 
-  /* Process function is currently running. */
-#define VLIB_PROCESS_IS_RUNNING (1 << 3)
+  /* Process is added to resume list due to pending event  */
+  u8 event_resume_pending : 1;
 
   /* Size of process stack. */
   u16 log2_n_stack_bytes;
@@ -711,8 +747,12 @@ typedef struct
 
   vlib_signal_timed_event_data_t *signal_timed_event_data_pool;
 
-  /* Opaque data vector added via timing_wheel_advance. */
-  u32 *data_from_advancing_timing_wheel;
+  /* Vector of process nodes waiting for restore */
+  vlib_process_restore_t *process_restore_current;
+
+  /* Vector of process nodes waiting for restore in next greaph scheduler run
+   */
+  vlib_process_restore_t *process_restore_next;
 
   /* CPU time of next process to be ready on timing wheel. */
   f64 time_next_process_ready;
