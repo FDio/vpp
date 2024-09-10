@@ -16,6 +16,23 @@
       "message": "perftest-3n-snr ndrpdrANDnic_*ANDdrv_avfAND1cAND64bANDethip4ipsec1000tnlsw-ip4base-policy-aes256gcm mrrANDnic_*ANDdrv_avfAND1cAND64bANDethip4-ip4base",
       "revId": "68252a612ce35fa21633a366fd8007a5ba7198c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4ac8648_08893b6d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-09-10T14:36:51Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/197/ : SUCCESS (skipped)\n\nThat confirm the fix for plugins/avf. Runs #196 (and #195) confirm for plugins/dev_iavf (production and ASAN build, respectively).",
+      "revId": "68252a612ce35fa21633a366fd8007a5ba7198c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
