@@ -237,6 +237,27 @@ done:
   return rv;
 }
 
+static uword
+unformat_ip_port (unformat_input_t *input, va_list *args)
+{
+  ip46_address_t *ip = va_arg (*args, ip46_address_t *);
+  u16 *port = va_arg (*args, u16 *);
+
+  if (unformat (input, "%U:%d", unformat_ip46_address, ip, IP46_TYPE_ANY,
+		port))
+    ;
+  else if (unformat (input, "%U", unformat_ip46_address, ip, IP46_TYPE_ANY))
+    {
+      *port = 0;
+    }
+  else
+    {
+      return 0;
+    }
+
+  return 1;
+}
+
 uword
 unformat_session (unformat_input_t * input, va_list * args)
 {
@@ -360,30 +381,80 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
     }
 }
 
-static int
-session_cli_filter_check (session_t * s, session_state_t * states,
-			  transport_proto_t tp)
+typedef enum
 {
-  if (states)
+  SESSION_CLI_FILTER_FORCE_PRINT = 1 << 0,
+} session_cli_filter_flags_t;
+
+typedef enum
+{
+  SESSION_CLI_FILTER_ENDPT_LOCAL = 1 << 0,
+  SESSION_CLI_FILTER_ENDPT_REMOTE = 1 << 1,
+} session_cli_endpt_flags_t;
+
+typedef struct session_cli_filter_
+{
+  session_cli_filter_flags_t flags;
+  struct
+  {
+    u32 start;
+    u32 end;
+  } range;
+  transport_endpoint_t endpt;
+  session_cli_endpt_flags_t endpt_flags;
+  session_state_t *states;
+  transport_proto_t transport_proto;
+  u32 thread_index;
+  u32 verbose;
+} session_cli_filter_t;
+
+static int
+session_cli_filter_check (session_t *s, session_cli_filter_t *sf)
+{
+  transport_connection_t *tc;
+
+  if (sf->states)
     {
       session_state_t *state;
-      vec_foreach (state, states) if (s->session_state == *state)
-	goto check_transport;
+      vec_foreach (state, sf->states)
+	if (s->session_state == *state)
+	  goto check_transport;
       return 0;
     }
 
 check_transport:
 
-  if (tp != TRANSPORT_PROTO_INVALID && session_get_transport_proto (s) != tp)
+  if (sf->transport_proto != TRANSPORT_PROTO_INVALID &&
+      session_get_transport_proto (s) != sf->transport_proto)
     return 0;
 
-  return 1;
+  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+    return 0;
+
+  /* No explicit ip:port match requested */
+  if (!sf->endpt_flags)
+    return 1;
+
+  tc = session_get_transport (s);
+  if (sf->endpt_flags & SESSION_CLI_FILTER_ENDPT_LOCAL)
+    {
+      if (!ip46_address_cmp (&sf->endpt.ip, &tc->lcl_ip) &&
+	  (sf->endpt.port == 0 ||
+	   sf->endpt.port == clib_net_to_host_u16 (tc->lcl_port)))
+	return 1;
+    }
+  if (sf->endpt_flags & SESSION_CLI_FILTER_ENDPT_REMOTE)
+    {
+      if (!ip46_address_cmp (&sf->endpt.ip, &tc->rmt_ip) &&
+	  (sf->endpt.port == 0 ||
+	   sf->endpt.port == clib_net_to_host_u16 (tc->rmt_port)))
+	return 1;
+    }
+  return 0;
 }
 
 static void
-session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
-				 u32 start, u32 end, session_state_t * states,
-				 transport_proto_t tp, int verbose)
+session_cli_show_session_filter (vlib_main_t *vm, session_cli_filter_t *sf)
 {
   u8 output_suppressed = 0;
   session_worker_t *wrk;
@@ -391,54 +462,62 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
   u32 count = 0, max_index;
   int i;
 
-  wrk = session_main_get_worker_if_valid (thread_index);
+  if (sf->range.end < sf->range.start)
+    {
+      vlib_cli_output (vm, "invalid range start: %u end: %u", sf->range.start,
+		       sf->range.end);
+      return;
+    }
+
+  wrk = session_main_get_worker_if_valid (sf->thread_index);
   if (!wrk)
     {
-      vlib_cli_output (vm, "invalid thread index %u", thread_index);
+      vlib_cli_output (vm, "invalid thread index %u", sf->thread_index);
       return;
     }
 
   pool = wrk->sessions;
 
-  if (tp == TRANSPORT_PROTO_INVALID && states == 0 && !verbose
-      && (start == 0 && end == ~0))
+  if (sf->transport_proto == TRANSPORT_PROTO_INVALID && sf->states == 0 &&
+      !sf->verbose && (sf->range.start == 0 && sf->range.end == ~0))
     {
-      vlib_cli_output (vm, "Thread %d: %u sessions", thread_index,
+      vlib_cli_output (vm, "Thread %d: %u sessions", sf->thread_index,
 		       pool_elts (pool));
       return;
     }
 
   max_index = pool_len (pool) ? pool_len (pool) - 1 : 0;
-  for (i = start; i <= clib_min (end, max_index); i++)
+  for (i = sf->range.start; i <= clib_min (sf->range.end, max_index); i++)
     {
       if (pool_is_free_index (pool, i))
 	continue;
 
       s = pool_elt_at_index (pool, i);
 
-      if (session_cli_filter_check (s, states, tp))
+      if (!session_cli_filter_check (s, sf))
+	continue;
+
+      count += 1;
+      if (sf->verbose)
 	{
-	  count += 1;
-	  if (verbose)
+	  if (!(sf->flags & SESSION_CLI_FILTER_FORCE_PRINT) &&
+	      (count > 50 || (sf->verbose > 1 && count > 10)))
 	    {
-	      if (count > 50 || (verbose > 1 && count > 10))
-		{
-		  output_suppressed = 1;
-		  continue;
-		}
-	      if (s->session_state < SESSION_STATE_TRANSPORT_DELETED)
-		vlib_cli_output (vm, "%U", format_session, s, verbose);
+	      output_suppressed = 1;
+	      continue;
 	    }
+	  vlib_cli_output (vm, "%U", format_session, s, sf->verbose);
 	}
     }
 
   if (!output_suppressed)
     vlib_cli_output (vm, "Thread %d: %u sessions matched filter",
-		     thread_index, count);
+		     sf->thread_index, count);
   else
-    vlib_cli_output (vm, "Thread %d: %u sessions matched filter. Not all"
-		     " shown. Use finer grained filter.", thread_index,
-		     count);
+    vlib_cli_output (vm,
+		     "Thread %d: %u sessions matched filter. Not all"
+		     " shown. Use finer grained filter.",
+		     sf->thread_index, count);
 }
 
 void
@@ -506,9 +585,9 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   u8 one_session = 0, do_listeners = 0, sst, do_elog = 0, do_filter = 0;
-  u32 track_index, thread_index = 0, start = 0, end = ~0, session_index;
+  u32 track_index, thread_index = 0, session_index;
   transport_proto_t transport_proto = TRANSPORT_PROTO_INVALID;
-  session_state_t state = SESSION_N_STATES, *states = 0;
+  session_state_t state = SESSION_N_STATES;
   session_main_t *smm = &session_main;
   clib_error_t *error = 0;
   app_worker_t *app_wrk;
@@ -517,18 +596,51 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 do_events = 0;
   int verbose = 0;
   session_t *s;
+  session_cli_filter_t sf = {
+    .transport_proto = TRANSPORT_PROTO_INVALID,
+    .range = { 0, ~0 },
+  };
 
   session_cli_return_if_not_enabled ();
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "verbose %d", &verbose))
+      /*
+       * helpers
+       */
+      if (unformat (input, "protos"))
+	{
+	  vlib_cli_output (vm, "%U", format_transport_protos);
+	  goto done;
+	}
+      else if (unformat (input, "rt-backend"))
+	{
+	  vlib_cli_output (vm, "%U", format_rt_backend, smm->rt_engine_type);
+	  goto done;
+	}
+      else if (unformat (input, "states"))
+	{
+	  session_cli_print_session_states (vm);
+	  goto done;
+	}
+      else if (unformat (input, "verbose %d", &verbose))
 	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
+      /*
+       * listeners
+       */
       else if (unformat (input, "listeners %U", unformat_transport_proto,
 			 &transport_proto))
 	do_listeners = 1;
+      /*
+       * session events
+       */
+      else if (unformat (input, "events"))
+	do_events = 1;
+      /*
+       * single session filter
+       */
       else if (unformat (input, "%U", unformat_session, &s))
 	{
 	  one_session = 1;
@@ -544,17 +656,9 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  one_session = 1;
 	}
-      else if (unformat (input, "thread %u", &thread_index))
-	{
-	  do_filter = 1;
-	}
-      else if (unformat (input, "state %U", unformat_session_state, &state))
-	{
-	  vec_add1 (states, state);
-	  do_filter = 1;
-	}
-      else if (unformat (input, "proto %U index %u", unformat_transport_proto,
-			 &transport_proto, &transport_index))
+      else if (unformat (input, "thread %u proto %U index %u", &thread_index,
+			 unformat_transport_proto, &transport_proto,
+			 &transport_index))
 	{
 	  transport_connection_t *tc;
 	  tc = transport_get_connection (transport_proto, transport_index,
@@ -575,35 +679,54 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  one_session = 1;
 	}
-      else if (unformat (input, "proto %U", unformat_transport_proto,
-			 &transport_proto))
-	do_filter = 1;
-      else if (unformat (input, "range %u %u", &start, &end))
-	do_filter = 1;
-      else if (unformat (input, "range %u", &start))
-	{
-	  end = start + 50;
-	  do_filter = 1;
-	}
       else if (unformat (input, "elog"))
 	do_elog = 1;
-      else if (unformat (input, "protos"))
+      /*
+       * session filter
+       */
+      else if (unformat (input, "thread %u", &sf.thread_index))
 	{
-	  vlib_cli_output (vm, "%U", format_transport_protos);
-	  goto done;
+	  do_filter = 1;
 	}
-      else if (unformat (input, "rt-backend"))
+      else if (unformat (input, "state %U", unformat_session_state, &state))
 	{
-	  vlib_cli_output (vm, "%U", format_rt_backend, smm->rt_engine_type);
-	  goto done;
+	  vec_add1 (sf.states, state);
+	  do_filter = 1;
 	}
-      else if (unformat (input, "states"))
+      else if (unformat (input, "proto %U", unformat_transport_proto,
+			 &sf.transport_proto))
+	do_filter = 1;
+      else if (unformat (input, "range %u %u", &sf.range.start, &sf.range.end))
+	do_filter = 1;
+      else if (unformat (input, "range %u", &sf.range.start))
 	{
-	  session_cli_print_session_states (vm);
-	  goto done;
+	  sf.range.end = sf.range.start + 50;
+	  do_filter = 1;
 	}
-      else if (unformat (input, "events"))
-	do_events = 1;
+      else if (unformat (input, "lcl %U", unformat_ip_port, &sf.endpt.ip,
+			 &sf.endpt.port))
+	{
+	  sf.endpt_flags |= SESSION_CLI_FILTER_ENDPT_LOCAL;
+	  do_filter = 1;
+	}
+      else if (unformat (input, "rmt %U", unformat_ip_port, &sf.endpt.ip,
+			 &sf.endpt.port))
+	{
+	  sf.endpt_flags |= SESSION_CLI_FILTER_ENDPT_REMOTE;
+	  do_filter = 1;
+	}
+      else if (unformat (input, "ep %U", unformat_ip_port, &sf.endpt.ip,
+			 &sf.endpt.port))
+	{
+	  sf.endpt_flags |=
+	    SESSION_CLI_FILTER_ENDPT_REMOTE | SESSION_CLI_FILTER_ENDPT_LOCAL;
+	  do_filter = 1;
+	}
+      else if (unformat (input, "force-print"))
+	{
+	  sf.flags |= SESSION_CLI_FILTER_FORCE_PRINT;
+	  do_filter = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -660,30 +783,26 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (do_filter)
     {
-      if (end < start)
-	{
-	  error = clib_error_return (0, "invalid range start: %u end: %u",
-				     start, end);
-	  goto done;
-	}
-      session_cli_show_session_filter (vm, thread_index, start, end, states,
-				       transport_proto, verbose);
+      sf.verbose = verbose;
+      session_cli_show_session_filter (vm, &sf);
       goto done;
     }
 
   session_cli_show_all_sessions (vm, verbose);
 
 done:
-  vec_free (states);
+  vec_free (sf.states);
   return error;
 }
 
 VLIB_CLI_COMMAND (vlib_cli_show_session_command) = {
   .path = "show session",
-  .short_help = "show session [verbose [n]] [listeners <proto>] "
-		"[<session-id> [elog]] [thread <n> [index <n>] "
-		"[proto <proto>] [state <state>] [range <min> [<max>]] "
-		"[protos] [states] [rt-backend]",
+  .short_help =
+    "show session [protos][states][rt-backend][verbose [n]] "
+    "[events][listeners <proto>] "
+    "[<session-id>][thread <n> [[proto <p>] index <n>]][elog] "
+    "[thread <n>][proto <proto>][state <state>][range <min> [<max>]] "
+    "[lcl|rmt|ep <ip>[:<port>]][force-print]",
   .function = show_session_command_fn,
 };
 
