@@ -444,11 +444,9 @@ policer_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = b0->data;
 
       bi1 = from[1];
       b1 = vlib_get_buffer (vm, bi1);
-      h1 = b1->data;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       table_index0 =
@@ -459,8 +457,16 @@ policer_classify_inline (vlib_main_t * vm,
 	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index1];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
+      if (t0->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
+	h0 = (void *) vlib_buffer_get_current (b0) + t0->current_data_offset;
+      else
+	h0 = b0->data;
 
       t1 = pool_elt_at_index (vcm->tables, table_index1);
+      if (t1->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
+	h1 = (void *) vlib_buffer_get_current (b1) + t1->current_data_offset;
+      else
+	h1 = b1->data;
 
       vnet_buffer (b0)->l2_classify.hash =
 	vnet_classify_hash_packet (t0, (u8 *) h0);
@@ -491,13 +497,17 @@ policer_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = b0->data;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       table_index0 =
 	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
+      if (t0->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
+	h0 = (void *) vlib_buffer_get_current (b0) + t0->current_data_offset;
+      else
+	h0 = b0->data;
+
       vnet_buffer (b0)->l2_classify.hash =
 	vnet_classify_hash_packet (t0, (u8 *) h0);
 
@@ -558,7 +568,6 @@ policer_classify_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  h0 = b0->data;
 	  table_index0 = vnet_buffer (b0)->l2_classify.table_index;
 	  e0 = 0;
 	  t0 = 0;
@@ -580,6 +589,11 @@ policer_classify_inline (vlib_main_t * vm,
 	    {
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
 	      t0 = pool_elt_at_index (vcm->tables, table_index0);
+	      if (t0->current_data_flag == CLASSIFY_FLAG_USE_CURR_DATA)
+		h0 = (void *) vlib_buffer_get_current (b0) +
+		     t0->current_data_offset;
+	      else
+		h0 = b0->data;
 	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 
 	      if (e0)
