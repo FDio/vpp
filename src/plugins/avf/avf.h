@@ -295,7 +295,7 @@ typedef struct
 {
   avf_process_req_type_t type;
   u32 dev_instance;
-  u32 calling_process_index;
+  u8 *p_done;
   u8 eth_addr[6];
   int is_add, is_enable;
   enum virthnl_adv_ops vc_op;
@@ -306,7 +306,7 @@ typedef struct
   u8 *program_status;
   u32 status_len;
 
-  clib_error_t *error;
+  clib_error_t **p_error;
 } avf_process_req_t;
 
 typedef struct
