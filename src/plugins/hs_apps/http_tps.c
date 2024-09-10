@@ -30,8 +30,8 @@ typedef struct
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
-  u32 left_recv;
-  u32 total_recv;
+  u64 left_recv;
+  u64 total_recv;
   union
   {
     /** threshold after which connection is closed */

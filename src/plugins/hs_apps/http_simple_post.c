@@ -36,7 +36,7 @@ typedef struct
   u8 *target;
   u8 *headers_buf;
   u8 *data;
-  u32 data_offset;
+  u64 data_offset;
   hsp_worker_t *wrk;
   u8 *http_response;
   u8 is_file;
@@ -86,6 +86,8 @@ hsp_session_connected_callback (u32 app_index, u32 hsp_session_index,
   hsp_worker_t *wrk;
   http_header_t *headers = 0;
   http_msg_t msg;
+  u64 to_send;
+  u32 n_enq;
   int rv;
 
   if (err)
@@ -166,8 +168,12 @@ hsp_session_connected_callback (u32 app_index, u32 hsp_session_index,
 			 hspm->headers_buf);
   ASSERT (rv == msg.data.headers_len);
 
-  rv = svm_fifo_enqueue (s->tx_fifo, vec_len (hspm->data), hspm->data);
-  if (rv != vec_len (hspm->data))
+  to_send = vec_len (hspm->data);
+  n_enq = clib_min (svm_fifo_size (s->tx_fifo), to_send);
+
+  rv = svm_fifo_enqueue (s->tx_fifo, n_enq, hspm->data);
+
+  if (rv < to_send)
     {
       hspm->data_offset = (rv > 0) ? rv : 0;
       svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -263,11 +269,14 @@ static int
 hsp_tx_callback (session_t *s)
 {
   hsp_main_t *hspm = &hsp_main;
-  u32 to_send;
+  u64 to_send;
+  u32 n_enq;
   int rv;
 
   to_send = vec_len (hspm->data) - hspm->data_offset;
-  rv = svm_fifo_enqueue (s->tx_fifo, to_send, hspm->data + hspm->data_offset);
+  n_enq = clib_min (svm_fifo_size (s->tx_fifo), to_send);
+
+  rv = svm_fifo_enqueue (s->tx_fifo, n_enq, hspm->data + hspm->data_offset);
 
   if (rv <= 0)
     {

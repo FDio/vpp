@@ -47,7 +47,7 @@ typedef struct
   /** Data length */
   u64 data_len;
   /** Current data send offset */
-  u32 data_offset;
+  u64 data_offset;
   /** Need to free data in detach_cache_entry */
   int free_data;
   /** File cache pool index */

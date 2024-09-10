@@ -358,7 +358,7 @@ typedef struct http_msg_data_
   u32 headers_offset;
   u32 headers_len;
   u32 body_offset;
-  u32 body_len;
+  u64 body_len;
   u8 data[0];
 } http_msg_data_t;
 
@@ -400,7 +400,7 @@ typedef struct http_tc_
   u8 *rx_buf;
   u32 rx_buf_offset;
   http_buffer_t tx_buf;
-  u32 to_recv;
+  u64 to_recv;
   u32 bytes_dequeued;
   u32 control_data_len; /* start line + headers + empty line */
   http_target_form_t target_form;
@@ -411,7 +411,7 @@ typedef struct http_tc_
   u32 headers_offset;
   u32 headers_len;
   u32 body_offset;
-  u32 body_len;
+  u64 body_len;
   u16 status_code;
 } http_conn_t;
 
