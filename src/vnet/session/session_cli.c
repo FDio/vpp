@@ -380,10 +380,32 @@ check_transport:
   return 1;
 }
 
+typedef enum
+{
+  SESSION_CLI_FILTER_RANGE,
+  SESSION_CLI_FILTER_ENDPT,
+} session_cli_filter_type_t;
+
+typedef struct session_cli_filter_
+{
+  session_cli_filter_type_t flags;
+  struct
+  {
+    u32 start;
+    u32 end;
+  } index_range;
+  transport_endpoint_t endpt;
+  session_state_t * states;
+  transport_proto_t transport_proto;
+  u32 thread_index;
+  u32 verbose;
+} session_cli_filter_t;
+
 static void
-session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
-				 u32 start, u32 end, session_state_t * states,
-				 transport_proto_t tp, int verbose)
+session_cli_show_session_filter (vlib_main_t *vm, session_cli_filter_t *sf,
+				 u32 thread_index, u32 start, u32 end,
+				 session_state_t *states, transport_proto_t tp,
+				 int verbose)
 {
   u8 output_suppressed = 0;
   session_worker_t *wrk;
@@ -391,17 +413,18 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
   u32 count = 0, max_index;
   int i;
 
-  wrk = session_main_get_worker_if_valid (thread_index);
+  wrk = session_main_get_worker_if_valid (sf->thread_index);
   if (!wrk)
     {
-      vlib_cli_output (vm, "invalid thread index %u", thread_index);
+      vlib_cli_output (vm, "invalid thread index %u", sf->thread_index);
       return;
     }
 
   pool = wrk->sessions;
 
-  if (tp == TRANSPORT_PROTO_INVALID && states == 0 && !verbose
-      && (start == 0 && end == ~0))
+  if (sf->transport_proto == TRANSPORT_PROTO_INVALID && sf->states == 0 &&
+      !sf->verbose &&
+      (sf->index_range.start == 0 && sf->index_range.end == ~0))
     {
       vlib_cli_output (vm, "Thread %d: %u sessions", thread_index,
 		       pool_elts (pool));
@@ -517,6 +540,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 do_events = 0;
   int verbose = 0;
   session_t *s;
+  session_cli_filter_t sf = {};
 
   session_cli_return_if_not_enabled ();
 
@@ -544,15 +568,6 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  one_session = 1;
 	}
-      else if (unformat (input, "thread %u", &thread_index))
-	{
-	  do_filter = 1;
-	}
-      else if (unformat (input, "state %U", unformat_session_state, &state))
-	{
-	  vec_add1 (states, state);
-	  do_filter = 1;
-	}
       else if (unformat (input, "proto %U index %u", unformat_transport_proto,
 			 &transport_proto, &transport_index))
 	{
@@ -575,14 +590,24 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  one_session = 1;
 	}
-      else if (unformat (input, "proto %U", unformat_transport_proto,
-			 &transport_proto))
-	do_filter = 1;
-      else if (unformat (input, "range %u %u", &start, &end))
-	do_filter = 1;
-      else if (unformat (input, "range %u", &start))
+      else if (unformat (input, "thread %u", &sf.thread_index))
 	{
-	  end = start + 50;
+	  do_filter = 1;
+	}
+      else if (unformat (input, "state %U", unformat_session_state, &state))
+	{
+	  vec_add1 (sf.states, state);
+	  do_filter = 1;
+	}
+      else if (unformat (input, "proto %U", unformat_transport_proto,
+			 &sf.transport_proto))
+	do_filter = 1;
+      else if (unformat (input, "range %u %u", &sf.index_range.start,
+			 &sf.index_range.end))
+	do_filter = 1;
+      else if (unformat (input, "range %u", &sf.index_range.start))
+	{
+	  sf.index_range.end = start + 50;
 	  do_filter = 1;
 	}
       else if (unformat (input, "elog"))
@@ -660,13 +685,14 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (do_filter)
     {
+      sf.verbose = verbose;
       if (end < start)
 	{
 	  error = clib_error_return (0, "invalid range start: %u end: %u",
 				     start, end);
 	  goto done;
 	}
-      session_cli_show_session_filter (vm, thread_index, start, end, states,
+      session_cli_show_session_filter (vm, &sf, thread_index, start, end, states,
 				       transport_proto, verbose);
       goto done;
     }
