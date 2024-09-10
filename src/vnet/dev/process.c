@@ -30,8 +30,7 @@ typedef enum
 typedef struct
 {
   vnet_dev_event_t event;
-  u8 reply_needed : 1;
-  u32 calling_process_index;
+  vnet_dev_rv_t *p_rv; /* set if calling process wants to read the result */
   union
   {
     struct
@@ -124,6 +123,8 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
     default:
       ASSERT (0);
     }
+  if (ed->p_rv)
+    *ed->p_rv = rv;
   return rv;
 }
 
@@ -161,13 +162,7 @@ vnet_dev_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	  ASSERT (event_type == 0);
 
 	  vec_foreach (ed, event_data)
-	    {
-	      vnet_dev_rv_t rv;
-	      rv = vnet_dev_process_one_event (vm, dev, ed);
-	      if (ed->reply_needed)
-		vlib_process_signal_event (vm, ed->calling_process_index,
-					   ed->event, rv);
-	    }
+	    vnet_dev_process_one_event (vm, dev, ed);
 	  vec_reset_length (event_data);
 	}
 
@@ -271,30 +266,26 @@ static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				      vnet_dev_event_data_t ed)
 {
-  uword event, *event_data = 0;
+  f64 t0, interval = 1e-6;
   vnet_dev_rv_t rv;
 
-  ed.calling_process_index = vlib_get_current_process_node_index (vm);
-
-  if (ed.calling_process_index == dev->process_node_index)
+  if (vlib_get_current_process_node_index (vm) == dev->process_node_index)
     return vnet_dev_process_one_event (vm, dev, &ed);
 
-  ed.reply_needed = 1;
+  rv = VNET_DEV_PENDING;
+  ed.p_rv = &rv;
   vnet_dev_process_event_send (vm, dev, ed);
-  vlib_process_wait_for_event_or_clock (vm, 5.0);
-  event = vlib_process_get_events (vm, &event_data);
-  if (event != ed.event)
+  t0 = vlib_time_now (vm);
+  do
     {
-      log_err (dev, "%s",
-	       event == VNET_DEV_EVENT_CLOCK ?
-		       "timeout waiting for process node to respond" :
-		       "unexpected event received");
-      rv = VNET_DEV_ERR_PROCESS_REPLY;
+      vlib_process_suspend (vm, interval);
+      if (rv != VNET_DEV_PENDING)
+	return rv;
+      interval *= 2;
     }
-  else
-    rv = event_data[0];
-  vec_free (event_data);
-  return rv;
+  while (vlib_time_now (vm) - t0 < 5.0);
+  log_err (dev, "%s", "timeout waiting for process node to respond");
+  return VNET_DEV_ERR_PROCESS_REPLY;
 }
 
 void
@@ -391,7 +382,7 @@ vnet_dev_rv_t
 vnet_dev_process_port_cfg_change_req (vlib_main_t *vm, vnet_dev_port_t *port,
 				      vnet_dev_port_cfg_change_req_t *pccr)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
       .event = VNET_DEV_EVENT_PORT_CONFIG_CHANGE_REQ,
       .port_cfg_change = {
         .port = port,
@@ -405,7 +396,7 @@ vnet_dev_process_port_cfg_change_req (vlib_main_t *vm, vnet_dev_port_t *port,
 vnet_dev_rv_t
 vnet_dev_process_call_op (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_op_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_OP,
     .call_op.op = op,
   };
@@ -417,7 +408,7 @@ vnet_dev_rv_t
 vnet_dev_process_call_op_no_rv (vlib_main_t *vm, vnet_dev_t *dev,
 				vnet_dev_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_OP_NO_RV,
     .call_op_no_rv.op = op,
   };
@@ -441,7 +432,7 @@ vnet_dev_rv_t
 vnet_dev_process_call_port_op (vlib_main_t *vm, vnet_dev_port_t *port,
 			       vnet_dev_port_op_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP,
     .call_port_op = { .op = op, .port = port },
   };
@@ -453,7 +444,7 @@ vnet_dev_rv_t
 vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm, vnet_dev_port_t *port,
 				     vnet_dev_port_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP_NO_RV,
     .call_port_op_no_rv = { .op = op, .port = port },
   };
