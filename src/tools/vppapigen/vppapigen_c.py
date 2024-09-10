@@ -1143,12 +1143,18 @@ ENDIAN_STRINGS = {
 }
 
 
-def get_endian_string(o, fieldtype):
+def get_endian_string(fieldtype):
     """Return proper endian string conversion function"""
     return ENDIAN_STRINGS[fieldtype]
 
+def get_lengthfield_type(fieldname, block):
+    """Return the type of the length field"""
+    for o in block:
+        if o.fieldname == fieldname:
+            return o.fieldtype
+    return None
 
-def endianfun_array(o):
+def endianfun_array(o, block):
     """Generate endian functions for arrays"""
     forloop = """\
     ASSERT((u32){length} <= (u32)VL_API_MAX_ARRAY_SIZE);
@@ -1167,12 +1173,16 @@ def endianfun_array(o):
     if o.fieldtype == "u8" or o.fieldtype == "string" or o.fieldtype == "bool":
         output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
     else:
-        lfield = "a->" + o.lengthfield if o.lengthfield else o.length
+        # lfield = "a->" + o.lengthfield if o.lengthfield else o.length
         if o.lengthfield:
-            output += (
-                f"    u32 count = to_net ? clib_host_to_net_u32(a->{o.lengthfield}) : "
-                f"a->{o.lengthfield};\n"
-            )
+            fieldtype = get_lengthfield_type(o.lengthfield, block)
+            if fieldtype == "u8":
+                output += f"    u32 count = a->{o.lengthfield};\n"
+            else:
+                output += (
+                    f"    u32 count = to_net ? {get_endian_string(fieldtype)}(a->{o.lengthfield}) : "
+                    f"a->{o.lengthfield};\n"
+                )
             lfield = "count"
         else:
             lfield = o.length
@@ -1180,7 +1190,7 @@ def endianfun_array(o):
         if o.fieldtype in ENDIAN_STRINGS:
             output += forloop.format(
                 length=lfield,
-                format=get_endian_string(o, o.fieldtype),
+                format=get_endian_string(o.fieldtype),
                 name=o.fieldname,
             )
         else:
@@ -1193,11 +1203,11 @@ def endianfun_array(o):
 NO_ENDIAN_CONVERSION = {"client_index": None}
 
 
-def endianfun_obj(o):
+def endianfun_obj(o, block):
     """Generate endian conversion function for type"""
     output = ""
     if o.type == "Array":
-        return endianfun_array(o)
+        return endianfun_array(o, block)
     if o.type != "Field":
         output += '    s = format(s, "\\n{} {} {} (print not implemented");\n'.format(
             o.type, o.fieldtype, o.fieldname
@@ -1208,7 +1218,7 @@ def endianfun_obj(o):
         return output
     if o.fieldtype in ENDIAN_STRINGS:
         output += "    a->{name} = {format}(a->{name});\n".format(
-            name=o.fieldname, format=get_endian_string(o, o.fieldtype)
+            name=o.fieldname, format=get_endian_string(o.fieldtype)
         )
     elif o.fieldtype.startswith("vl_api_"):
         output += "    {type}_endian(&a->{name}, to_net);\n".format(
@@ -1252,7 +1262,7 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
         if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
             output += signature.format(name=t.name)
             if t.enumtype in ENDIAN_STRINGS:
-                output += "    *a = {}(*a);\n".format(get_endian_string(t, t.enumtype))
+                output += "    *a = {}(*a);\n".format(get_endian_string(t.enumtype))
             else:
                 output += "    /* a->{name} = a->{name} (no-op) */\n".format(
                     name=t.name
@@ -1273,7 +1283,7 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
                 )
             elif t.alias["type"] in FORMAT_STRINGS:
                 output += "    *a = {}(*a);\n".format(
-                    get_endian_string(t, t.alias["type"])
+                    get_endian_string(t.alias["type"])
                 )
             else:
                 output += "    /* Not Implemented yet {} */".format(t.name)
@@ -1283,7 +1293,7 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
         output += signature.format(name=t.name)
 
         for o in t.block:
-            output += endianfun_obj(o)
+            output += endianfun_obj(o, t.block)
         output += "}\n\n"
 
     output += "\n#endif"
@@ -1349,7 +1359,7 @@ static inline uword vl_api_{name}_t_calc_size (vl_api_{name}_t *a)
                             )
                         lf = m[0]
                         if lf.fieldtype in ENDIAN_STRINGS:
-                            output += f" + {get_endian_string(b, lf.fieldtype)}(a->{b.lengthfield}) * sizeof(a->{b.fieldname}[0])"
+                            output += f" + {get_endian_string(lf.fieldtype)}(a->{b.lengthfield}) * sizeof(a->{b.fieldname}[0])"
                         elif lf.fieldtype == "u8":
                             output += (
                                 f" + a->{b.lengthfield} * sizeof(a->{b.fieldname}[0])"
