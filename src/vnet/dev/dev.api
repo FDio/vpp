@@ -2,7 +2,7 @@
  * Copyright(c) 2022 Cisco Systems, Inc.
  */
 
-option version = "0.0.1";
+option version = "1.0.0";
 
 enumflag dev_flags : u32
 {
