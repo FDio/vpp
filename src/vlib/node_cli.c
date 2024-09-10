@@ -332,13 +332,15 @@ VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
 static u8 *
 format_vlib_node_state (u8 * s, va_list * va)
 {
-  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  // FIXME vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
   char *state;
 
   state = "active";
   if (n->type == VLIB_NODE_TYPE_PROCESS)
     {
+#if 0
+      FIXME
       vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
       switch (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
@@ -362,6 +364,7 @@ format_vlib_node_state (u8 * s, va_list * va)
 	    "any wait";
 	  break;
 	}
+#endif
     }
   else if (n->type != VLIB_NODE_TYPE_INTERNAL)
     {

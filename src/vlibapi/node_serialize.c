@@ -82,6 +82,8 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 
 	  if (n->type == VLIB_NODE_TYPE_PROCESS)
 	    {
+#if 0
+	      FIXME
 	      vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
 	      switch (p->flags
@@ -106,6 +108,7 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 		    STATE_ANY_WAIT;
 		  break;
 		}
+#endif
 	    }
 	  else if (n->type != VLIB_NODE_TYPE_INTERNAL)
 	    {

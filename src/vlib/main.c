@@ -1233,6 +1233,8 @@ vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f)
   else
     vlib_process_finish_switch_stack (vm);
 
+  fformat (stderr, "vlib_process_startup: r= %u\n", r);
+
   return r;
 }
 
@@ -1240,9 +1242,7 @@ static_always_inline uword
 vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
 {
   uword r;
-  p->flags &= ~(VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-		| VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
-		| VLIB_PROCESS_RESUME_PENDING);
+  p->state = VLIB_PROCESS_ST_RUNNING;
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
     {
@@ -1265,12 +1265,13 @@ dispatch_process (vlib_main_t * vm,
   u64 t;
   uword n_vectors, is_suspend;
 
-  if (node->state != VLIB_NODE_STATE_POLLING
-      || (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-		      | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT)))
+  if (node->state != VLIB_NODE_STATE_POLLING)
     return last_time_stamp;
 
-  p->flags |= VLIB_PROCESS_IS_RUNNING;
+  if (p->state != VLIB_PROCESS_ST_NOT_STARTED)
+    return last_time_stamp;
+
+  p->state = VLIB_PROCESS_ST_RUNNING;
 
   t = last_time_stamp;
   vlib_elog_main_loop_event (vm, node_runtime->node_index, t,
@@ -1302,20 +1303,20 @@ dispatch_process (vlib_main_t * vm,
       p->n_suspends += 1;
       p->suspended_process_frame_index = pf - nm->suspended_process_frames;
 
-      if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
+      if (p->state == VLIB_PROCESS_ST_WAIT_FOR_CLOCK ||
+	  p->state == VLIB_PROCESS_ST_WAIT_FOR_EVENT_OR_CLOCK ||
+	  p->state == VLIB_PROCESS_ST_SUSPEND)
 	{
-	  TWT (tw_timer_wheel) * tw =
-	    (TWT (tw_timer_wheel) *) nm->timing_wheel;
+	  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) nm->timing_wheel;
 	  p->stop_timer_handle =
 	    TW (tw_timer_start) (tw,
-				 vlib_timing_wheel_data_set_suspended_process
-				 (node->runtime_index) /* [sic] pool idex */ ,
-				 0 /* timer_id */ ,
-				 p->resume_clock_interval);
+				 vlib_timing_wheel_data_set_suspended_process (
+				   node->runtime_index) /* [sic] pool idex */,
+				 0 /* timer_id */, p->resume_clock_interval);
 	}
     }
   else
-    p->flags &= ~VLIB_PROCESS_IS_RUNNING;
+    p->state = VLIB_PROCESS_ST_NOT_STARTED;
 
   t = clib_cpu_time_now ();
 
@@ -1357,11 +1358,9 @@ dispatch_suspended_process (vlib_main_t * vm,
   t = last_time_stamp;
 
   p = vec_elt (nm->processes, process_index);
-  if (PREDICT_FALSE (!(p->flags & VLIB_PROCESS_IS_RUNNING)))
-    return last_time_stamp;
 
-  ASSERT (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-		      | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT));
+  // FIXME if (PREDICT_FALSE (!(p->flags & VLIB_PROCESS_IS_RUNNING))) return
+  // last_time_stamp;
 
   pf = pool_elt_at_index (nm->suspended_process_frames,
 			  p->suspended_process_frame_index);
@@ -1390,7 +1389,7 @@ dispatch_suspended_process (vlib_main_t * vm,
       /* Suspend it again. */
       n_vectors = 0;
       p->n_suspends += 1;
-      if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
+      if (p->state == VLIB_PROCESS_ST_WAIT_FOR_CLOCK)
 	{
 	  p->stop_timer_handle =
 	    TW (tw_timer_start) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
@@ -1402,7 +1401,7 @@ dispatch_suspended_process (vlib_main_t * vm,
     }
   else
     {
-      p->flags &= ~VLIB_PROCESS_IS_RUNNING;
+      // p->is_running = 0;
       pool_put_index (nm->suspended_process_frames,
 		      p->suspended_process_frame_index);
       p->suspended_process_frame_index = ~0;
