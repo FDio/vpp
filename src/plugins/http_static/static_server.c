@@ -87,6 +87,8 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   http_msg_t msg;
   session_t *ts;
   u8 *headers_buf = 0;
+  u32 n_enq;
+  u64 to_send;
   int rv;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
@@ -147,9 +149,12 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   if (!msg.data.body_len)
     goto done;
 
-  rv = svm_fifo_enqueue (ts->tx_fifo, hs->data_len, hs->data);
+  to_send = hs->data_len - hs->data_offset;
+  n_enq = clib_min (svm_fifo_size (ts->tx_fifo), to_send);
 
-  if (rv != hs->data_len)
+  rv = svm_fifo_enqueue (ts->tx_fifo, n_enq, hs->data + hs->data_offset);
+
+  if (rv < to_send)
     {
       hs->data_offset = (rv > 0) ? rv : 0;
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -598,7 +603,8 @@ static int
 hss_ts_tx_callback (session_t *ts)
 {
   hss_session_t *hs;
-  u32 to_send;
+  u32 n_enq;
+  u64 to_send;
   int rv;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
@@ -606,7 +612,9 @@ hss_ts_tx_callback (session_t *ts)
     return 0;
 
   to_send = hs->data_len - hs->data_offset;
-  rv = svm_fifo_enqueue (ts->tx_fifo, to_send, hs->data + hs->data_offset);
+  n_enq = clib_min (svm_fifo_size (ts->tx_fifo), to_send);
+
+  rv = svm_fifo_enqueue (ts->tx_fifo, n_enq, hs->data + hs->data_offset);
 
   if (rv <= 0)
     {
@@ -993,7 +1001,7 @@ format_hss_session (u8 *s, va_list *args)
   hss_session_t *hs = va_arg (*args, hss_session_t *);
   int __clib_unused verbose = va_arg (*args, int);
 
-  s = format (s, "\n path %s, data length %u, data_offset %u",
+  s = format (s, "\n path %s, data length %lu, data_offset %lu",
 	      hs->path ? hs->path : (u8 *) "[none]", hs->data_len,
 	      hs->data_offset);
   return s;
