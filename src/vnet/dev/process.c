@@ -31,6 +31,8 @@ typedef struct
 {
   vnet_dev_event_t event;
   u8 reply_needed : 1;
+  u8 completed : 1;
+  vnet_dev_rv_t rv;
   u32 calling_process_index;
   union
   {
@@ -69,7 +71,7 @@ typedef struct
   };
 } vnet_dev_event_data_t;
 
-static vnet_dev_rv_t
+static void
 vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
 			    vnet_dev_event_data_t *ed)
 {
@@ -124,7 +126,8 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
     default:
       ASSERT (0);
     }
-  return rv;
+  ed->rv = rv;
+  ed->completed = 1;
 }
 
 static uword
@@ -133,7 +136,7 @@ vnet_dev_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_periodic_op_t *pop, *pops = 0;
   f64 next = CLIB_F64_MAX;
-  vnet_dev_event_data_t *event_data = 0, *new_event_data, *ed;
+  vnet_dev_event_data_t **event_data = 0, **new_event_data, **edp;
 
   vnet_dev_t *dev =
     *((vnet_dev_t **) vlib_node_get_runtime_data (vm, rt->node_index));
@@ -160,14 +163,8 @@ vnet_dev_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 
 	  ASSERT (event_type == 0);
 
-	  vec_foreach (ed, event_data)
-	    {
-	      vnet_dev_rv_t rv;
-	      rv = vnet_dev_process_one_event (vm, dev, ed);
-	      if (ed->reply_needed)
-		vlib_process_signal_event (vm, ed->calling_process_index,
-					   ed->event, rv);
-	    }
+	  vec_foreach (edp, event_data)
+	    vnet_dev_process_one_event (vm, dev, *edp);
 	  vec_reset_length (event_data);
 	}
 
@@ -260,55 +257,64 @@ vnet_dev_process_create (vlib_main_t *vm, vnet_dev_t *dev)
 
 static void
 vnet_dev_process_event_send (vlib_main_t *vm, vnet_dev_t *dev,
-			     vnet_dev_event_data_t ed)
+			     vnet_dev_event_data_t *ed)
 {
-  vnet_dev_event_data_t *edp = vlib_process_signal_event_data (
-    vm, dev->process_node_index, 0, 1, sizeof (ed));
-  *edp = ed;
+  void *p = vlib_process_signal_event_data (vm, dev->process_node_index, 0, 1,
+					    sizeof (void *));
+  *(vnet_dev_event_data_t **) p = ed;
 }
 
 static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
-				      vnet_dev_event_data_t ed)
+				      vnet_dev_event_data_t *ed)
 {
-  uword event, *event_data = 0;
-  vnet_dev_rv_t rv;
 
-  ed.calling_process_index = vlib_get_current_process_node_index (vm);
+  ed->calling_process_index = vlib_get_current_process_node_index (vm);
+  f64 t0, interval = 25e-6, max_interval = 50e-3;
 
-  if (ed.calling_process_index == dev->process_node_index)
-    return vnet_dev_process_one_event (vm, dev, &ed);
-
-  ed.reply_needed = 1;
-  vnet_dev_process_event_send (vm, dev, ed);
-  vlib_process_wait_for_event_or_clock (vm, 5.0);
-  event = vlib_process_get_events (vm, &event_data);
-  if (event != ed.event)
+  if (ed->calling_process_index == dev->process_node_index)
     {
-      log_err (dev, "%s",
-	       event == VNET_DEV_EVENT_CLOCK ?
-		       "timeout waiting for process node to respond" :
-		       "unexpected event received");
-      rv = VNET_DEV_ERR_PROCESS_REPLY;
+      vnet_dev_process_one_event (vm, dev, ed);
+      return ed->rv;
     }
-  else
-    rv = event_data[0];
-  vec_free (event_data);
-  return rv;
+
+  vnet_dev_process_event_send (vm, dev, ed);
+  vlib_process_yield (vm);
+
+  if (ed->completed)
+    return ed->rv;
+
+  t0 = vlib_time_now (vm);
+
+  do
+    {
+      vlib_process_suspend (vm, interval);
+      if (ed->completed)
+	return ed->rv;
+      if (interval < max_interval)
+	{
+	  interval *= 2;
+	  if (interval > max_interval)
+	    interval = max_interval;
+	}
+    }
+  while (vlib_time_now (vm) - t0 < 5.0);
+
+  return VNET_DEV_ERR_PROCESS_REPLY;
 }
 
 void
 vnet_dev_process_quit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   vnet_dev_event_data_t ed = { .event = VNET_DEV_EVENT_PROCESS_QUIT };
-  vnet_dev_process_event_send_and_wait (vm, dev, ed);
+  vnet_dev_process_event_send_and_wait (vm, dev, &ed);
 }
 
 static int
 _vnet_dev_poll_add (vlib_main_t *vm, vnet_dev_t *dev,
 		    vnet_dev_periodic_op_t pop)
 {
-  const vnet_dev_event_data_t ed = { .event = VNET_DEV_EVENT_PERIODIC_START };
+  vnet_dev_event_data_t ed = { .event = VNET_DEV_EVENT_PERIODIC_START };
   vnet_dev_periodic_op_t *p;
 
   pool_foreach (p, dev->periodic_ops)
@@ -318,14 +324,14 @@ _vnet_dev_poll_add (vlib_main_t *vm, vnet_dev_t *dev,
   pool_get_zero (dev->periodic_ops, p);
   *p = pop;
   if (pool_elts (dev->periodic_ops) == 1)
-    vnet_dev_process_event_send (vm, dev, ed);
+    vnet_dev_process_event_send (vm, dev, &ed);
   return 1;
 }
 
 static int
 _vnet_dev_poll_remove (vlib_main_t *vm, vnet_dev_t *dev, void *op, void *arg)
 {
-  const vnet_dev_event_data_t ed = { .event = VNET_DEV_EVENT_PERIODIC_STOP };
+  vnet_dev_event_data_t ed = { .event = VNET_DEV_EVENT_PERIODIC_STOP };
   vnet_dev_periodic_op_t *pop;
 
   pool_foreach (pop, dev->periodic_ops)
@@ -333,7 +339,7 @@ _vnet_dev_poll_remove (vlib_main_t *vm, vnet_dev_t *dev, void *op, void *arg)
       {
 	pool_put (dev->periodic_ops, pop);
 	if (pool_elts (dev->periodic_ops) == 0)
-	  vnet_dev_process_event_send (vm, dev, ed);
+	  vnet_dev_process_event_send (vm, dev, &ed);
 	return 1;
       }
   return 0;
@@ -391,7 +397,7 @@ vnet_dev_rv_t
 vnet_dev_process_port_cfg_change_req (vlib_main_t *vm, vnet_dev_port_t *port,
 				      vnet_dev_port_cfg_change_req_t *pccr)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
       .event = VNET_DEV_EVENT_PORT_CONFIG_CHANGE_REQ,
       .port_cfg_change = {
         .port = port,
@@ -399,76 +405,76 @@ vnet_dev_process_port_cfg_change_req (vlib_main_t *vm, vnet_dev_port_t *port,
       },
     };
 
-  return vnet_dev_process_event_send_and_wait (vm, port->dev, ed);
+  return vnet_dev_process_event_send_and_wait (vm, port->dev, &ed);
 }
 
 vnet_dev_rv_t
 vnet_dev_process_call_op (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_op_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_OP,
     .call_op.op = op,
   };
 
-  return vnet_dev_process_event_send_and_wait (vm, dev, ed);
+  return vnet_dev_process_event_send_and_wait (vm, dev, &ed);
 }
 
 vnet_dev_rv_t
 vnet_dev_process_call_op_no_rv (vlib_main_t *vm, vnet_dev_t *dev,
 				vnet_dev_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_OP_NO_RV,
     .call_op_no_rv.op = op,
   };
 
-  return vnet_dev_process_event_send_and_wait (vm, dev, ed);
+  return vnet_dev_process_event_send_and_wait (vm, dev, &ed);
 }
 
 void
 vnet_dev_process_call_op_no_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				  vnet_dev_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_OP_NO_WAIT,
     .call_op_no_rv.op = op,
   };
 
-  vnet_dev_process_event_send (vm, dev, ed);
+  vnet_dev_process_event_send (vm, dev, &ed);
 }
 
 vnet_dev_rv_t
 vnet_dev_process_call_port_op (vlib_main_t *vm, vnet_dev_port_t *port,
 			       vnet_dev_port_op_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP,
     .call_port_op = { .op = op, .port = port },
   };
 
-  return vnet_dev_process_event_send_and_wait (vm, port->dev, ed);
+  return vnet_dev_process_event_send_and_wait (vm, port->dev, &ed);
 }
 
 vnet_dev_rv_t
 vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm, vnet_dev_port_t *port,
 				     vnet_dev_port_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP_NO_RV,
     .call_port_op_no_rv = { .op = op, .port = port },
   };
 
-  return vnet_dev_process_event_send_and_wait (vm, port->dev, ed);
+  return vnet_dev_process_event_send_and_wait (vm, port->dev, &ed);
 }
 
 void
 vnet_dev_process_call_port_op_no_wait (vlib_main_t *vm, vnet_dev_port_t *port,
 				       vnet_dev_port_op_no_rv_t *op)
 {
-  const vnet_dev_event_data_t ed = {
+  vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP_NO_WAIT,
     .call_port_op_no_wait = { .op = op, .port = port },
   };
 
-  vnet_dev_process_event_send (vm, port->dev, ed);
+  vnet_dev_process_event_send (vm, port->dev, &ed);
 }
