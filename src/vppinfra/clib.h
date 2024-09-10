@@ -106,6 +106,13 @@
 #define CLIB_STRING_ARRAY(...)                                                \
   (char *[]) { __VA_ARGS__, 0 }
 
+#define CLIB_SWAP(a, b)                                                       \
+  {                                                                           \
+    typeof (a) __tmp = a;                                                     \
+    a = b;                                                                    \
+    b = __tmp;                                                                \
+  }
+
 /* sanitizers */
 #ifdef __has_feature
 #if __has_feature(address_sanitizer)
