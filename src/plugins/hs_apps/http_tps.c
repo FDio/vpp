@@ -30,7 +30,8 @@ typedef struct
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
-  u32 to_recv;
+  u32 left_recv;
+  u32 total_recv;
   union
   {
     /** threshold after which connection is closed */
@@ -349,16 +350,16 @@ hts_session_rx_body (hts_session_t *hs, session_t *ts)
       rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, hs->rx_buf);
       ASSERT (rv == n_deq);
     }
-  hs->to_recv -= n_deq;
+  hs->left_recv -= n_deq;
 
   if (hs->close_threshold > 0)
     {
-      if ((f64) (hs->data_len - hs->to_recv) / hs->data_len >
+      if ((f64) (hs->total_recv - hs->left_recv) / hs->total_recv >
 	  hs->close_threshold)
 	hts_disconnect_transport (hs);
     }
 
-  if (hs->to_recv == 0)
+  if (hs->left_recv == 0)
     {
       hts_start_send_data (hs, HTTP_STATUS_OK);
       vec_free (hs->rx_buf);
@@ -376,7 +377,7 @@ hts_ts_rx_callback (session_t *ts)
 
   hs = hts_session_get (ts->thread_index, ts->opaque);
 
-  if (hs->to_recv == 0)
+  if (hs->left_recv == 0)
     {
       hs->data_len = 0;
       hs->resp_headers = 0;
@@ -433,7 +434,8 @@ hts_ts_rx_callback (session_t *ts)
 	    }
 	  /* drop everything up to body */
 	  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
-	  hs->to_recv = msg.data.body_len;
+	  hs->left_recv = msg.data.body_len;
+	  hs->total_recv = msg.data.body_len;
 	  if (htm->no_zc)
 	    vec_validate (hs->rx_buf, HTS_RX_BUF_SIZE - 1);
 	  hts_session_rx_body (hs, ts);
@@ -472,7 +474,7 @@ hts_ts_accept_callback (session_t *ts)
 
   hs = hts_session_alloc (ts->thread_index);
   hs->vpp_session_index = ts->session_index;
-  hs->to_recv = 0;
+  hs->left_recv = 0;
 
   ts->opaque = hs->session_index;
   ts->session_state = SESSION_STATE_READY;
