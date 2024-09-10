@@ -35,7 +35,7 @@ typedef struct
   u32 thread_index;
   u32 rx_offset;
   u32 vpp_session_index;
-  u32 to_recv;
+  u64 to_recv;
   u8 is_closed;
   http_header_t *req_headers;
 } hcc_session_t;
@@ -261,7 +261,7 @@ hcc_ts_rx_callback (session_t *ts)
   u32 max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
 
   u32 n_deq = clib_min (hs->to_recv, max_deq);
-  u32 curr = vec_len (hcm->http_response);
+  u64 curr = vec_len (hcm->http_response);
   rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, hcm->http_response + curr);
   if (rv < 0)
     {
@@ -275,7 +275,7 @@ hcc_ts_rx_callback (session_t *ts)
   vec_set_len (hcm->http_response, curr + n_deq);
   ASSERT (hs->to_recv >= rv);
   hs->to_recv -= rv;
-  HCC_DBG ("app rcvd %d, remains %d", rv, hs->to_recv);
+  HCC_DBG ("app rcvd %d, remains %llu", rv, hs->to_recv);
 
 done:
   if (hs->to_recv == 0)
