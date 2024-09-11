@@ -1,0 +1,159 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ec0c439_1557deff",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "please add test where we try to download something big",
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "438e5153_ae9c5a94",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "maybe:\nmsg.method_type \u003d hcm-\u003ereq_method\nif (hcm-\u003ereq_method \u003d\u003d HTTP_REQ_POST)\n  msg.data.body_len \u003d vec_len (hcm-\u003edata);\nelse\n  msg.data.body_len \u003d 0;",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 0
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fda6c201_288218d1",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "3 when we are doing GET",
+      "range": {
+        "startLine": 165,
+        "startChar": 46,
+        "endLine": 165,
+        "endChar": 47
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42a41ca6_38720288",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "make sense only when we are doing POST",
+      "range": {
+        "startLine": 186,
+        "startChar": 2,
+        "endLine": 191,
+        "endChar": 5
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4753c77a_5f459362",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "something like \"invalid headers received\" is more accurate",
+      "range": {
+        "startLine": 275,
+        "startChar": 18,
+        "endLine": 275,
+        "endChar": 37
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e2be7c2_54a79594",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "this is received only once, should be inside \"if (hc_session-\u003eto_recv \u003d\u003d 0)\"",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 285,
+        "endChar": 5
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c00c296_ebccc018",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 608,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "memory leak if multiple headers in one command line input, memory allocated for all kv pairs except the last one will be definitely lost",
+      "range": {
+        "startLine": 601,
+        "startChar": 1,
+        "endLine": 608,
+        "endChar": 2
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

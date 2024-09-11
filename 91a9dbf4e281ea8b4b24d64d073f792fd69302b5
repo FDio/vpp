@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad76808b_b831c338",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "s.HostAddr()",
+      "range": {
+        "startLine": 321,
+        "startChar": 18,
+        "endLine": 321,
+        "endChar": 75
+      },
+      "revId": "91a9dbf4e281ea8b4b24d64d073f792fd69302b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "683b81df_b74a2830",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "why you need to create this file on vpp container when you are doing GET request?",
+      "range": {
+        "startLine": 323,
+        "startChar": 0,
+        "endLine": 325,
+        "endChar": 48
+      },
+      "revId": "91a9dbf4e281ea8b4b24d64d073f792fd69302b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca831035_288ee253",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T12:23:12Z",
+      "side": 1,
+      "message": "this doesn\u0027t need to be real \"file\"",
+      "range": {
+        "startLine": 334,
+        "startChar": 31,
+        "endLine": 334,
+        "endChar": 49
+      },
+      "revId": "91a9dbf4e281ea8b4b24d64d073f792fd69302b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
