@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5a72560_e3d80233",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T10:42:12Z",
+      "side": 1,
+      "message": "could you please update http_plugin.rst? some code snippets need to be updated, e.g:\n  typedef struct\n  {\n    /* ... */\n    u32 to_recv; \u003c-- should be u64 now\n    u8 *resp_body;\n  } session_ctx_t;",
+      "revId": "6e03f68e2a54a36a544c6492ab950701e7ad32ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf243ea7_10b07d73",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T10:42:12Z",
+      "side": 1,
+      "message": "here goes body_len, please update too",
+      "range": {
+        "startLine": 382,
+        "startChar": 26,
+        "endLine": 382,
+        "endChar": 28
+      },
+      "revId": "6e03f68e2a54a36a544c6492ab950701e7ad32ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c1245ce_0e4cb42c",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-11T10:42:12Z",
+      "side": 1,
+      "message": "here goes body_len, please update too",
+      "range": {
+        "startLine": 396,
+        "startChar": 23,
+        "endLine": 396,
+        "endChar": 25
+      },
+      "revId": "6e03f68e2a54a36a544c6492ab950701e7ad32ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
