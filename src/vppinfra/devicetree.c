@@ -11,8 +11,6 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-#endif
-
 static_always_inline clib_dt_node_t *
 clib_dt_node_add_child (clib_dt_main_t *dm, clib_dt_node_t *n, char *name)
 {
@@ -42,6 +40,7 @@ clib_dt_node_add_child (clib_dt_main_t *dm, clib_dt_node_t *n, char *name)
 
   return cn;
 }
+#endif
 
 void
 clib_dt_main_free (clib_dt_main_t *dm)
