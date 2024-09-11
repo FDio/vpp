@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "882490d9_014ea0e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-09-11T13:58:00Z",
+      "side": 1,
+      "message": "Does not work, currently I prefer https://gerrit.fd.io/r/c/vpp/+/41556",
+      "revId": "2df0b6dab20745a357996c35d3d45a3028c4effb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6e77142b_ff12983e",
