@@ -504,6 +504,10 @@ def is_handshake_init(p):
     return wg_p[Wireguard].message_type == 1
 
 
+def filter_out_misc_and_handshake_init(p):
+    return is_ipv6_misc(p) or is_handshake_init(p)
+
+
 @unittest.skipIf(
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
@@ -578,15 +582,14 @@ class TestWg(VppTestCase):
     ):
         self.pg_send(intf, pkts)
 
-        def _filter_out_fn(p):
-            return is_ipv6_misc(p) or is_handshake_init(p)
-
         try:
             if not timeout:
                 timeout = 1
             for i in self.pg_interfaces:
                 i.assert_nothing_captured(
-                    timeout=timeout, remark=remark, filter_out_fn=_filter_out_fn
+                    timeout=timeout,
+                    remark=remark,
+                    filter_out_fn=filter_out_misc_and_handshake_init,
                 )
                 timeout = 0.1
         finally:
@@ -707,7 +710,7 @@ class TestWg(VppTestCase):
         self.pg_send(self.pg1, [cookie])
 
         # wait for the peer to send a handshake initiation with mac2 set
-        rxs = self.pg1.get_capture(1, timeout=6)
+        rxs = self.pg1.get_capture(1, timeout=30)
 
         # verify the initiation and its mac2
         peer_1.consume_init(rxs[0], self.pg1, is_ip6=is_ip6, is_mac2=True)

@@ -2606,8 +2606,7 @@ class TestNAT44ED(VppTestCase):
             i.remove_vpp_config()
 
 
-@tag_fixme_ubuntu2204
-@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
+# @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
 
