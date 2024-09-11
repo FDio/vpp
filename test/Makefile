@@ -255,7 +255,7 @@ ifneq ($(EXTERN_APIDIR),)
 ARG17=--extern-apidir=$(EXTERN_APIDIR)
 endif
 
-ARG18=
+ARG18=--decode-pcaps=all
 ifneq ($(DECODE_PCAPS),)
 ARG18=--decode-pcaps=$(DECODE_PCAPS)
 endif
