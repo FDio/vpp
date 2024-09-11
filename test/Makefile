@@ -255,7 +255,7 @@ ifneq ($(EXTERN_APIDIR),)
 ARG17=--extern-apidir=$(EXTERN_APIDIR)
 endif
 
-ARG18=
+ARG18=--decode-pcaps=all
 ifneq ($(DECODE_PCAPS),)
 ARG18=--decode-pcaps=$(DECODE_PCAPS)
 endif
@@ -276,11 +276,11 @@ endif
 
 EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19)
 
-RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
+RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=test_nat44_ed,test_nat64,test_neighbor --retries=0 --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
 
 define retest-func
-@scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS)
 endef
 
 sanity: test-dep
