@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32a98bf5_d07e64b3",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1161,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-09-11T08:07:51Z",
+      "side": 1,
+      "message": "I am not sure if the semantics of the configure call is what you assume here. May be worth checking if a 2nd call is allowed at all, does it override the first call or adds to it. Also why we need to pass the direction to both configure and onoff.",
+      "revId": "ab7619bb1acd1aa744bf140170c14057874d13b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
