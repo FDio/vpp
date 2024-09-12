@@ -307,7 +307,7 @@ snort_deq_node_polling (vlib_main_t *vm, vlib_node_runtime_t *node,
   snort_qpair_t *qp;
   snort_instance_t *si;
 
-  vec_foreach (si, sm->instances)
+  pool_foreach (si, sm->instances)
     {
       qp = vec_elt_at_index (si->qpairs, vm->thread_index);
       u32 ready = __atomic_load_n (&qp->ready, __ATOMIC_ACQUIRE);
