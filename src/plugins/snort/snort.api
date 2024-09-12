@@ -1,0 +1,226 @@
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+define snort_instance_create {
+        u32 client_index;
+        u32 context;
+	u32 queue_size;
+	u8 drop_on_disconnect;
+	string name[];
+};
+
+define snort_instance_create_reply {
+        u32 context;
+        i32 retval;
+	u32 instance_index;
+};
+
+define snort_instance_delete {
+        u32 client_index;
+        u32 context;
+	u32 instance_index;
+};
+
+define snort_instance_delete_reply {
+        u32 context;
+	i32 retval;
+};
+
+define snort_client_disconnect {
+        u32 client_index;
+        u32 context;
+	u32 snort_client_index;
+};
+
+define snort_client_disconnect_reply {
+        u32 context;
+	i32 retval;
+};
+
+define snort_instance_disconnect {
+        u32 client_index;
+        u32 context;
+	u32 instance_index;
+};
+
+define snort_instance_disconnect_reply {
+        u32 context;
+	i32 retval;
+};
+
+define snort_interface_attach {
+        u32 client_index;
+        u32 context;
+	u32 instance_index;
+	u32 sw_if_index;
+	u8 snort_dir;
+};
+
+define snort_interface_attach_reply {
+	u32 context;
+	i32 retval;
+};
+
+define snort_interface_detach {
+        u32 client_index;
+        u32 context;
+	u32 sw_if_index;
+};
+
+define snort_interface_detach_reply {
+	u32 context;
+	i32 retval;
+};
+
+define snort_input_mode_get {
+        u32 client_index;
+        u32 context;
+};
+
+define snort_input_mode_get_reply {
+        u32 context;
+        i32 retval;
+	u32 snort_mode;
+};
+
+define snort_input_mode_set {
+        u32 client_index;
+        u32 context;
+	u8 input_mode;
+};
+
+define snort_input_mode_set_reply {
+        u32 context;
+        i32 retval;
+};
+
+service {
+  rpc snort_instance_get returns snort_instance_get_reply
+    stream snort_instance_details;
+};
+
+/** \brief Get snort instance(s).
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param instance_index - instance index (~0 for all).
+*/
+define snort_instance_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 instance_index;
+};
+
+/** \brief Reply for snort instance(s).
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_instance_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+/** \brief Details of a snort instance.
+    @param context - sender context
+    @param instance - snort instance info.
+*/
+define snort_instance_details {
+	u32 context;
+	u32 instance_index;
+	u32 shm_size;
+	u32 shm_fd;
+	u8 drop_on_disconnect;
+	u32 snort_client_index;
+	string name[];
+};
+
+service {
+  rpc snort_interface_get returns snort_interface_get_reply
+    stream snort_interface_details;
+};
+
+/** \brief Get snort interface(s).
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param sw_if_index - sw if index (~0 for all).
+*/
+define snort_interface_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 sw_if_index;
+};
+
+/** \brief Reply for snort interface(s).
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_interface_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+/** \brief Details of a snort interface.
+    @param context - sender context
+    @param sw_if_index - interface index
+    @param instance_index - snort instance the interface is attached to.
+*/
+define snort_interface_details {
+	u32 context;
+	u32 sw_if_index;
+	u32 instance_index;
+};
+
+service {
+  rpc snort_client_get returns snort_client_get_reply
+    stream snort_client_details;
+};
+
+/** \brief Get snort clients.
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context
+    @param cursor - current iterator value (all requested).
+    @param client_index (~0 for all).
+*/
+define snort_client_get
+{
+	u32 client_index;
+	u32 context;
+	u32 cursor;
+	u32 snort_client_index;
+};
+
+/** \brief Reply for snort clients.
+    @param context - sender context
+    @param retval - return code for the request.
+    @param cursor - iterator value to continue with (if there is more).
+*/
+define snort_client_get_reply
+{
+	u32 context;
+	i32 retval;
+	u32 cursor;
+};
+
+/** \brief Details of a snort client.
+    @param context - sender context
+    @param client index
+    @param instance_index - snort instance of the client.
+*/
+define snort_client_details {
+	u32 context;
+	u32 client_index;
+	u32 instance_index;
+};
