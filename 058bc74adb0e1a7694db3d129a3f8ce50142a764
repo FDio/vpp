@@ -16,6 +16,74 @@
       "message": "Hi, my plans were to implement API calls for the plugin.\nThis is a preliminary patch to provide the missing \u0027instance deletion\u0027 function and test it with the available cli suite.\nPlease review. Thanks!",
       "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4947288f_8b8f9c40",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-09-12T15:51:57Z",
+      "side": 1,
+      "message": "I didn\u0027t see anywhere (I might have missed it) that the queue pairs are drained when an instance is disconnected/deleted. Is it possible for buffers to get \"stuck\" in the queues and not dropped/dispositioned \u0026 freed?",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d114ac9_39094af5",
+        "filename": "src/plugins/snort/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-09-12T15:51:57Z",
+      "side": 1,
+      "message": "the error message is inconsistent with the \"delete instance\" command. here you have \"please specify instance name\" (so polite, by the way) where the \"delete\" command you have \"missing instance name\". Etiher is fine, but I suggest it should be consistent between the two.",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9e7f25a_2a7c3529",
+        "filename": "src/plugins/snort/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-09-12T15:51:57Z",
+      "side": 1,
+      "message": "minor nit, i personally prefer not to mix variable declarations and code statements. I don\u0027t know if this is a project wide preference but it stands out as odd to me to have this printf here instead of after the variable declarations.",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f5a7e03_f986c35c",
+        "filename": "src/plugins/snort/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-09-12T15:51:57Z",
+      "side": 1,
+      "message": "why the blank line?",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
