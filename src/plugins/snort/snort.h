@@ -7,6 +7,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/socket.h>
+#include <vppinfra/file.h>
 #include <vlib/vlib.h>
 #include <snort/daq_vpp.h>
 
@@ -78,8 +79,11 @@ typedef struct
   snort_per_thread_data_t *per_thread_data;
   u32 input_mode;
   u8 *socket_name;
+  /* API message ID base */
+  u16 msg_id_base;
 } snort_main_t;
 
+extern clib_file_main_t file_main;
 extern snort_main_t snort_main;
 extern vlib_node_registration_t snort_enq_node;
 extern vlib_node_registration_t snort_deq_node;
@@ -103,13 +107,17 @@ typedef enum
   }
 
 /* functions */
-clib_error_t *snort_instance_create (vlib_main_t *vm, char *name,
-				     u8 log2_queue_sz, u8 drop_on_disconnect);
-clib_error_t *snort_interface_enable_disable (vlib_main_t *vm,
-					      char *instance_name,
-					      u32 sw_if_index, int is_enable,
-					      snort_attach_dir_t dir);
-clib_error_t *snort_set_node_mode (vlib_main_t *vm, u32 mode);
+snort_main_t *snort_get_main ();
+snort_instance_t *snort_get_instance_by_index (u32 instance_index);
+snort_instance_t *snort_get_instance_by_name (char *name);
+int snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
+			   u8 drop_on_disconnect);
+int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
+				    u32 sw_if_index, int is_enable,
+				    snort_attach_dir_t dir);
+int snort_set_node_mode (vlib_main_t *vm, u32 mode);
+int snort_instance_delete (vlib_main_t *vm, u32 instance_index);
+int snort_instance_disconnect (vlib_main_t *vm, u32 instance_index);
 
 always_inline void
 snort_freelist_init (u32 *fl)
