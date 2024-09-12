@@ -7,6 +7,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/socket.h>
+#include <vppinfra/file.h>
 #include <vlib/vlib.h>
 #include <snort/daq_vpp.h>
 
@@ -80,6 +81,7 @@ typedef struct
   u8 *socket_name;
 } snort_main_t;
 
+extern clib_file_main_t file_main;
 extern snort_main_t snort_main;
 extern vlib_node_registration_t snort_enq_node;
 extern vlib_node_registration_t snort_deq_node;
@@ -103,13 +105,18 @@ typedef enum
   }
 
 /* functions */
+
+void snort_client_disconnect (clib_file_t *uf);
 clib_error_t *snort_instance_create (vlib_main_t *vm, char *name,
 				     u8 log2_queue_sz, u8 drop_on_disconnect);
+clib_error_t *snort_instance_delete (vlib_main_t *vm, u32 instance_index);
+
 clib_error_t *snort_interface_enable_disable (vlib_main_t *vm,
 					      char *instance_name,
 					      u32 sw_if_index, int is_enable,
 					      snort_attach_dir_t dir);
 clib_error_t *snort_set_node_mode (vlib_main_t *vm, u32 mode);
+snort_instance_t *snort_get_instance_by_name (char *name);
 
 always_inline void
 snort_freelist_init (u32 *fl)

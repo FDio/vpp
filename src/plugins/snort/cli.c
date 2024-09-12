@@ -77,6 +77,93 @@ VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
 };
 
 static clib_error_t *
+snort_disconnect_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+  u8 *name = 0;
+  snort_main_t *sm = &snort_main;
+  clib_file_main_t *fm = &file_main;
+  snort_instance_t *si;
+  snort_client_t *client;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    unformat (line_input, "%s", &name);
+
+  if (!name)
+    {
+      err = clib_error_return (0, "please specify instance name");
+      goto done;
+    }
+
+  si = snort_get_instance_by_name ((char *) name);
+  if (!si)
+    err = clib_error_return (0, "unknown instance '%s' requested", name);
+  else if (si->client_index == ~0)
+    err = clib_error_return (0, "instance '%s' is not connected", name);
+  else
+    {
+      client = pool_elt_at_index (sm->clients, si->client_index);
+      clib_file_t *uf = clib_file_get (fm, client->file_index);
+      if (uf)
+	snort_client_disconnect (uf);
+    }
+
+done:
+  vec_free (name);
+  unformat_free (line_input);
+  return err;
+}
+
+VLIB_CLI_COMMAND (snort_disconnect_instance_command, static) = {
+  .path = "snort disconnect instance",
+  .short_help = "snort disconnect instance <name>",
+  .function = snort_disconnect_instance_command_fn,
+};
+
+static clib_error_t *
+snort_delete_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+  u8 *name = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    unformat (line_input, "%s", &name);
+
+  if (!name)
+    {
+      err = clib_error_return (0, "missing instance name");
+      goto done;
+    }
+
+  snort_instance_t *si = snort_get_instance_by_name ((char *) name);
+  if (!si)
+    err = clib_error_return (0, "unknown instance '%s' requested", name);
+  else
+    err = snort_instance_delete (vm, si->index);
+
+done:
+  vec_free (name);
+  unformat_free (line_input);
+  return err;
+}
+
+VLIB_CLI_COMMAND (snort_delete_instance_command, static) = {
+  .path = "snort delete instance",
+  .short_help = "snort delete instance <name>",
+  .function = snort_delete_instance_command_fn,
+};
+
+static clib_error_t *
 snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			 vlib_cli_command_t *cmd)
 {
@@ -213,7 +300,7 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
   snort_instance_t *si;
   u32 *index;
 
-  vlib_cli_output (vm, "interface\tsnort instance");
+  vlib_cli_output (vm, "interface\t\tsnort instance");
   vec_foreach (index, sm->instance_by_sw_if_index)
     {
       if (index[0] != ~0)
@@ -237,7 +324,18 @@ snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
   snort_main_t *sm = &snort_main;
-  vlib_cli_output (vm, "number of clients: %d", pool_elts (sm->clients));
+  u32 n_clients = pool_elts (sm->clients);
+  vlib_cli_output (vm, "number of clients: %d", n_clients);
+  snort_client_t *c;
+  snort_instance_t *si;
+
+  if (n_clients)
+    vlib_cli_output (vm, "client index\tsnort instance");
+  pool_foreach (c, sm->clients)
+    {
+      si = vec_elt_at_index (sm->instances, c->instance_index);
+      vlib_cli_output (vm, "%10d\t%s", c - sm->clients, si->name);
+    }
   return 0;
 }
 

@@ -43,6 +43,7 @@ class TestSnort(VppTestCase):
             "snort mode interrupt": "",
             "snort detach interface pg0": "",
             "snort detach interface pg1": "",
+	    "snort delete instance snortTest": "",
         }
 
         for command, reply in commands_replies.items():
