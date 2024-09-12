@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b7f75a9_f1b4debf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-12T14:42:28Z",
+      "side": 1,
+      "message": "Hi, my plans were to implement API calls for the plugin.\nThis is a preliminary patch to provide the missing \u0027instance deletion\u0027 function and test it with the available cli suite.\nPlease review. Thanks!",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
