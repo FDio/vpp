@@ -3,9 +3,23 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlibapi/api_types.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <snort/snort.h>
+
+#include <snort/snort.api_enum.h>
+#include <snort/snort.api_types.h>
+
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/format_fns.h>
+
+#include <vlibapi/api_helper_macros.h>
+
+#include <vnet/vnet.h>
+
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
 
 #include <sys/eventfd.h>
 
@@ -17,6 +31,12 @@ VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
 
 #define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
 #define log_err(fmt, ...)   vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
+
+snort_main_t *
+snort_get_main ()
+{
+  return &snort_main;
+}
 
 static void
 snort_client_disconnect (clib_file_t *uf)
@@ -45,7 +65,38 @@ snort_client_disconnect (clib_file_t *uf)
   pool_put (sm->clients, c);
 }
 
-static snort_instance_t *
+int
+snort_instance_disconnect (vlib_main_t *vm, u32 instance_index)
+{
+  snort_main_t *sm = &snort_main;
+  snort_instance_t *si;
+  snort_client_t *client;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *uf = 0;
+  int rv = 0;
+
+  si = snort_get_instance_by_index (instance_index);
+  if (!si)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  if (si->client_index == ~0)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
+  client = pool_elt_at_index (sm->clients, si->client_index);
+  uf = clib_file_get (fm, client->file_index);
+  if (uf)
+    snort_client_disconnect (uf);
+  else
+    {
+      log_err ("failed to disconnect a broken client from"
+	       "instance '%s'",
+	       si->name);
+      rv = VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  return rv;
+}
+
+snort_instance_t *
 snort_get_instance_by_name (char *name)
 {
   snort_main_t *sm = &snort_main;
@@ -54,7 +105,16 @@ snort_get_instance_by_name (char *name)
     return 0;
 
   return vec_elt_at_index (sm->instances, p[0]);
-  ;
+}
+
+snort_instance_t *
+snort_get_instance_by_index (u32 instance_index)
+{
+  snort_main_t *sm = &snort_main;
+
+  if (pool_is_free_index (sm->instances, instance_index))
+    return 0;
+  return pool_elt_at_index (sm->instances, instance_index);
 }
 
 static clib_error_t *
@@ -110,6 +170,8 @@ snort_conn_fd_read_ready (clib_file_t *uf)
 	  snort_client_disconnect (uf);
 	  return 0;
 	}
+      snort_freelist_init (qp->freelist);
+      *qp->enq_head = *qp->deq_head = qp->next_desc = 0;
     }
 
   base = (u8 *) si->shm_base;
@@ -281,14 +343,13 @@ snort_listener_init (vlib_main_t *vm)
   return 0;
 }
 
-clib_error_t *
+int
 snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
 		       u8 drop_on_disconnect)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   snort_main_t *sm = &snort_main;
   snort_instance_t *si;
-  clib_error_t *err = 0;
   u32 index, i;
   u8 *base = CLIB_MEM_VM_MAP_FAILED;
   u32 size;
@@ -296,9 +357,10 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
   u32 qpair_mem_sz = 0;
   u32 qsz = 1 << log2_queue_sz;
   u8 align = CLIB_CACHE_LINE_BYTES;
+  int rv = 0;
 
   if (snort_get_instance_by_name (name))
-    return clib_error_return (0, "instance already exists");
+    return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
   /* descriptor table */
   qpair_mem_sz += round_pow2 (qsz * sizeof (daq_vpp_desc_t), align);
@@ -316,14 +378,13 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
 
   if (fd == -1)
     {
-      err = clib_error_return (0, "memory fd failure: %U", format_clib_error,
-			       clib_mem_get_last_error ());
+      rv = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto done;
     }
 
   if ((ftruncate (fd, size)) == -1)
     {
-      err = clib_error_return (0, "ftruncate failure");
+      rv = VNET_API_ERROR_SYSCALL_ERROR_2;
       goto done;
     }
 
@@ -331,7 +392,7 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
 
   if (base == CLIB_MEM_VM_MAP_FAILED)
     {
-      err = clib_error_return (0, "mmap failure");
+      rv = VNET_API_ERROR_SYSCALL_ERROR_3;
       goto done;
     }
 
@@ -399,17 +460,17 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
 			 sm->input_mode);
 
 done:
-  if (err)
+  if (rv)
     {
       if (base != CLIB_MEM_VM_MAP_FAILED)
 	clib_mem_vm_unmap (base);
       if (fd != -1)
 	close (fd);
     }
-  return err;
+  return rv;
 }
 
-clib_error_t *
+int
 snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 				u32 sw_if_index, int is_enable,
 				snort_attach_dir_t snort_dir)
@@ -417,16 +478,16 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
   snort_instance_t *si;
-  clib_error_t *err = 0;
   u64 fa_data;
   u32 index;
+  int rv = 0;
 
   if (is_enable)
     {
       if ((si = snort_get_instance_by_name (instance_name)) == 0)
 	{
-	  err = clib_error_return (0, "unknown instance '%s'", instance_name);
-	  goto done;
+	  log_err ("unknown instance '%s'", instance_name);
+	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
 
       vec_validate_init_empty (sm->instance_by_sw_if_index, sw_if_index, ~0);
@@ -434,12 +495,13 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
       index = sm->instance_by_sw_if_index[sw_if_index];
       if (index != ~0)
 	{
+	  if (index == si->index)
+	    rv = VNET_API_ERROR_FEATURE_ALREADY_ENABLED;
+	  else
+	    rv = VNET_API_ERROR_INSTANCE_IN_USE;
 	  si = vec_elt_at_index (sm->instances, index);
-	  err = clib_error_return (0,
-				   "interface %U already assgined to "
-				   "instance '%s'",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index, si->name);
+	  log_err ("interface %U already assgined to instance '%s'",
+		   format_vnet_sw_if_index_name, vnm, sw_if_index, si->name);
 	  goto done;
 	}
 
@@ -462,11 +524,9 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
       if (sw_if_index >= vec_len (sm->instance_by_sw_if_index) ||
 	  sm->instance_by_sw_if_index[sw_if_index] == ~0)
 	{
-	  err =
-	    clib_error_return (0,
-			       "interface %U is not assigned to snort "
-			       "instance!",
-			       format_vnet_sw_if_index_name, vnm, sw_if_index);
+	  rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  log_err ("interface %U is not assigned to snort instance!",
+		   format_vnet_sw_if_index_name, vnm, sw_if_index);
 	  goto done;
 	}
       index = sm->instance_by_sw_if_index[sw_if_index];
@@ -488,12 +548,66 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
     }
 
 done:
-  if (err)
-    log_err ("%U", format_clib_error, err);
-  return 0;
+  return rv;
 }
 
-clib_error_t *
+static int
+snort_strip_instance_interfaces (vlib_main_t *vm, u32 instance_index)
+{
+  snort_main_t *sm = &snort_main;
+  u32 *index;
+  int rv = 0;
+
+  vec_foreach (index, sm->instance_by_sw_if_index)
+    {
+      if (*index == instance_index)
+	rv = snort_interface_enable_disable (
+	  vm, NULL, index - sm->instance_by_sw_if_index, 0, 0);
+      if (rv)
+	break;
+    }
+
+  return rv;
+}
+
+int
+snort_instance_delete (vlib_main_t *vm, u32 instance_index)
+{
+  snort_main_t *sm = &snort_main;
+  snort_instance_t *si;
+  snort_qpair_t *qp;
+  int rv = 0;
+
+  si = snort_get_instance_by_index (instance_index);
+  if (!si)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  if (si->client_index != ~0)
+    return VNET_API_ERROR_INSTANCE_IN_USE;
+
+  if ((rv = snort_strip_instance_interfaces (vm, si->index)))
+    return rv;
+
+  hash_unset_mem (sm->instance_by_name, si->name);
+
+  clib_mem_vm_unmap (si->shm_base);
+  close (si->shm_fd);
+
+  vec_foreach (qp, si->qpairs)
+    {
+      clib_file_del_by_index (&file_main, qp->deq_fd_file_index);
+    }
+
+  log_debug ("deleting instance '%s'", si->name);
+
+  vec_free (si->qpairs);
+  vec_free (si->name);
+  pool_put (sm->instances, si);
+
+  return rv;
+}
+
+int
 snort_set_node_mode (vlib_main_t *vm, u32 mode)
 {
   int i;

@@ -133,7 +133,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   nexts, n_processed);
     }
 
-  vec_foreach (si, sm->instances)
+  pool_foreach (si, sm->instances)
     {
       u32 head, freelist_len, n_pending, n_enq, mask;
       u64 ctr = 1;
