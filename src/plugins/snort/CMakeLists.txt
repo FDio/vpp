@@ -7,6 +7,10 @@ add_vpp_plugin(snort
   dequeue.c
   main.c
   cli.c
+  snort_api.c
+
+  API_FILES
+  snort.api
 
   MULTIARCH_SOURCES
   enqueue.c
