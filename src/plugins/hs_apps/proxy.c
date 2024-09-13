@@ -368,6 +368,13 @@ proxy_rx_callback (session_t * s)
       u32 max_dequeue, ps_index;
       int actual_transfer __attribute__ ((unused));
 
+      /* maybe we were already here */
+      if (ps->active_open_establishing)
+	{
+	  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	  return 0;
+	}
+
       rx_fifo = s->rx_fifo;
       tx_fifo = s->tx_fifo;
 
