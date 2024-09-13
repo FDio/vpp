@@ -300,7 +300,8 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
 {
   u8 dwords_per_line[16], *dpl = dwords_per_line;
   u64 __attribute__ ((unused)) lmt_arg, ioaddr, n_lines;
-  u32 n_left, or_flags_16 = 0, n = 0;
+  u32 __attribute__ ((unused)) or_flags_16 = 0;
+  u32 n_left, n = 0;
   const u32 not_simple_flags =
     VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_OFFLOAD;
   lmt_line_t *l = ctx->lmt_lines;
