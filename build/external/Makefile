@@ -30,6 +30,12 @@ endif	# FreeBSD
 
 B := $(BUILD_DIR)
 I := $(INSTALL_DIR)
+ifeq ($(WORKSPACE),)
+L := $(B)
+else
+L := $(WORKSPACE)/archives/vpp-ext-deps
+$(shell rm -rf $(L) && mkdir -p $(L))
+endif
 
 ifneq ($(shell which cmake3),)
 CMAKE?=cmake3
