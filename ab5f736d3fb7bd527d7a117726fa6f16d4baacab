@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6ee04cd_7d46a61d",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-14T02:31:38Z",
+      "side": 1,
+      "message": "Do we need these outside of test protos file? If not, let\u0027s move them there",
+      "revId": "ab5f736d3fb7bd527d7a117726fa6f16d4baacab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
