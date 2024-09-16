@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b85661de_db7388e5",
+        "filename": "extras/hs-test/infra/suite_tap.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-16T07:56:56Z",
+      "side": 1,
+      "message": "If we want iperf_linux_test keep long term, as it is two containers without LDP/no VPP, we should probably consider suite (and topology?) just for this purpose, otherwise it will be confusing and we might end up loading stuff we don\u0027t need, which might make unwanted noise.",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 4
+      },
+      "revId": "4ed6ac33f4ada1ddca59aa5617340c589522b553",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
