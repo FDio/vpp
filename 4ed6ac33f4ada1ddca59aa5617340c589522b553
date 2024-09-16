@@ -22,6 +22,30 @@
       },
       "revId": "4ed6ac33f4ada1ddca59aa5617340c589522b553",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "140d7c62_c7e621ec",
+        "filename": "extras/hs-test/infra/suite_tap.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-16T08:09:27Z",
+      "side": 1,
+      "message": "I don\u0027t have a problem with that, let\u0027s wait to hear what Florin has to say.",
+      "parentUuid": "b85661de_db7388e5",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 4
+      },
+      "revId": "4ed6ac33f4ada1ddca59aa5617340c589522b553",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
