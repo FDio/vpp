@@ -46,6 +46,30 @@
       },
       "revId": "29fdb0f9a3bc9ef772f1e140a877fbe257b92415",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "675037a7_2a56a022",
+        "filename": "extras/hs-test/infra/suite_tap.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-16T07:27:28Z",
+      "side": 1,
+      "message": "Commented out SetupTest as it\u0027s not needed for now.",
+      "parentUuid": "da2f6899_870d41a4",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 25
+      },
+      "revId": "29fdb0f9a3bc9ef772f1e140a877fbe257b92415",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
