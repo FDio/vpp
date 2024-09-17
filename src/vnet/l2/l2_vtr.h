@@ -85,6 +85,8 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
   temp_8 = *((u64 *) eth);
   temp_4 = *((u32 *) (eth + 8));
 
+  CLIB_COMPILER_BARRIER();
+
   /* adjust for popped tags */
   eth += config->pop_bytes;
 
@@ -101,6 +103,8 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
 
   /* adjust for pushed tags: */
   eth -= config->push_bytes;
+
+  CLIB_COMPILER_BARRIER();
 
   /* copy the 12 dmac and smac back to the packet */
   *((u64 *) eth) = temp_8;
