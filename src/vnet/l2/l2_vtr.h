@@ -75,15 +75,13 @@ typedef struct
 always_inline u32
 l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
 {
-  u64 temp_8;
-  u32 temp_4;
   u8 *eth;
+  u8 save_macs[12];
 
   eth = vlib_buffer_get_current (b0);
 
   /* copy the 12B dmac and smac to a temporary location */
-  temp_8 = *((u64 *) eth);
-  temp_4 = *((u32 *) (eth + 8));
+  clib_memcpy_fast (save_macs, eth, sizeof (save_macs));
 
   /* adjust for popped tags */
   eth += config->pop_bytes;
@@ -95,7 +93,8 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
     }
 
   /* copy the 2 new tags to the start of the packet  */
-  *((u64 *) (eth + 12 - 8)) = config->raw_tags;
+  clib_memcpy_fast (eth + 12 - 8, &config->raw_tags,
+		    sizeof (config->raw_tags));
 
   /* TODO: set cos bits */
 
@@ -103,8 +102,7 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
   eth -= config->push_bytes;
 
   /* copy the 12 dmac and smac back to the packet */
-  *((u64 *) eth) = temp_8;
-  *((u32 *) (eth + 8)) = temp_4;
+  clib_memcpy_fast (eth, save_macs, sizeof (save_macs));
 
   /* Update l2 parameters */
   vnet_buffer (b0)->l2.l2_len +=
@@ -123,7 +121,6 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
 
   return 0;
 }
-
 
 /*
  *  Perform the egress pre-vlan tag rewrite EFP Filter check.
