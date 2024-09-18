@@ -33,6 +33,23 @@
       "message": "verified that this is the minimal change to fix the make test failure.",
       "revId": "2a73f7e5287b018ea7b6a8c1d9ee844d6737a04a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c24f1b4c_7d04b68f",
+        "filename": "src/vnet/l2/l2_vtr.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-09-18T09:12:16Z",
+      "side": 1,
+      "message": "I wonder, is it because of some unaligned load issues? Does using (u64u *) and (u32u *) casts fix the issue?",
+      "revId": "2a73f7e5287b018ea7b6a8c1d9ee844d6737a04a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
