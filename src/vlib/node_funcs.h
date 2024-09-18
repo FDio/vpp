@@ -611,6 +611,33 @@ vlib_process_suspend (vlib_main_t * vm, f64 dt)
   return r;
 }
 
+/** Suspend a vlib cooperative multi-tasking thread and put it at the end of
+ * resume queue
+    @param vm - vlib_main_t *
+    @returns VLIB_PROCESS_RESUME_LONGJMP_RESUME, routinely ignored
+*/
+
+always_inline uword
+vlib_process_yield (vlib_main_t *vm)
+{
+  uword r;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p = vec_elt (nm->processes, nm->current_process_index);
+
+  p->state = VLIB_PROCESS_STATE_YIELD;
+  r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
+  if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
+    {
+      p->resume_clock_interval = 0;
+      vlib_process_start_switch_stack (vm, 0);
+      clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+    }
+  else
+    vlib_process_finish_switch_stack (vm);
+
+  return r;
+}
+
 always_inline void
 vlib_process_free_event_type (vlib_process_t * p, uword t,
 			      uword is_one_time_event)
@@ -994,9 +1021,12 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 
   if (add_to_pending && p->event_resume_pending == 0)
     {
-      u32 x = vlib_timing_wheel_data_set_suspended_process (n->runtime_index);
+      vlib_process_restore_t restore = {
+	.runtime_index = n->runtime_index,
+	.reason = VLIB_PROCESS_RESTORE_REASON_EVENT,
+      };
       p->event_resume_pending = 1;
-      vec_add1 (nm->data_from_advancing_timing_wheel, x);
+      vec_add1 (nm->process_restore_current, restore);
     }
 
   if (delete_from_wheel)

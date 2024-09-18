@@ -550,7 +550,8 @@ typedef struct
   _ (3, WAIT_FOR_EVENT, "event wait")                                         \
   _ (4, WAIT_FOR_CLOCK, "clock wait")                                         \
   _ (5, WAIT_FOR_EVENT_OR_CLOCK, "any wait")                                  \
-  _ (6, WAIT_FOR_ONE_TIME_EVENT, "one time event wait")
+  _ (6, WAIT_FOR_ONE_TIME_EVENT, "one time event wait")                       \
+  _ (7, YIELD, "yield")
 
 typedef enum
 {
@@ -558,6 +559,25 @@ typedef enum
   foreach_vlib_process_state
 #undef _
 } __clib_packed vlib_process_state_t;
+
+typedef enum
+{
+  VLIB_PROCESS_RESTORE_REASON_UNKNOWN = 0,
+  VLIB_PROCESS_RESTORE_REASON_EVENT,
+  VLIB_PROCESS_RESTORE_REASON_CLOCK,
+  VLIB_PROCESS_RESTORE_REASON_TIMED_EVENT,
+  VLIB_PROCESS_RESTORE_REASON_YIELD,
+} __clib_packed vlib_process_restore_reason_t;
+
+typedef struct
+{
+  vlib_process_restore_reason_t reason;
+  union
+  {
+    u32 runtime_index;
+    u32 timed_event_data_pool_index;
+  };
+} __clib_packed vlib_process_restore_t;
 
 typedef struct
 {
@@ -724,8 +744,12 @@ typedef struct
 
   vlib_signal_timed_event_data_t *signal_timed_event_data_pool;
 
-  /* Opaque data vector added via timing_wheel_advance. */
-  u32 *data_from_advancing_timing_wheel;
+  /* Vector of process nodes waiting for restore */
+  vlib_process_restore_t *process_restore_current;
+
+  /* Vector of process nodes waiting for restore in next greaph scheduler run
+   */
+  vlib_process_restore_t *process_restore_next;
 
   /* CPU time of next process to be ready on timing wheel. */
   f64 time_next_process_ready;
