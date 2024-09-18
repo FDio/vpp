@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10755852_e4e0da96",
+        "filename": "src/vnet/dev/bus/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-09-18T14:46:25Z",
+      "side": 1,
+      "message": "can device id simply be \"pci/{uuid}\" ?",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b594529_48cc9ebf",
+        "filename": "src/vnet/dev/dev.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-09-18T14:46:25Z",
+      "side": 1,
+      "message": "Why storing it here and not in vnet_dev_bus_pci_device_data_t?",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
