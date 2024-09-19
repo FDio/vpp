@@ -65,26 +65,9 @@ func (s *NginxProxySuite) SetupTest() {
 	s.AssertNil(vpp.createTap(serverInterface, 2))
 
 	// nginx proxy
-	nginxProxyContainer := s.GetTransientContainerByName(NginxProxyContainerName)
+	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
 	s.AssertNil(nginxProxyContainer.Create())
 	s.proxyPort = 80
-	values := struct {
-		LogPrefix string
-		Proxy     string
-		Server    string
-		Port      uint16
-	}{
-		LogPrefix: nginxProxyContainer.Name,
-		Proxy:     clientInterface.Peer.Ip4AddressString(),
-		Server:    serverInterface.Ip4AddressString(),
-		Port:      s.proxyPort,
-	}
-	nginxProxyContainer.CreateConfig(
-		"/nginx.conf",
-		"./resources/nginx/nginx_proxy_mirroring.conf",
-		values,
-	)
-	s.AssertNil(nginxProxyContainer.Start())
 
 	// nginx HTTP server
 	nginxServerContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -104,8 +87,6 @@ func (s *NginxProxySuite) SetupTest() {
 		nginxSettings,
 	)
 	s.AssertNil(nginxServerContainer.Start())
-
-	vpp.WaitForApp("nginx-", 5)
 }
 
 func (s *NginxProxySuite) TearDownTest() {
@@ -114,6 +95,35 @@ func (s *NginxProxySuite) TearDownTest() {
 		s.CollectNginxLogs(NginxProxyContainerName)
 	}
 	s.HstSuite.TearDownTest()
+}
+
+func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThreadWorkers bool) {
+	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
+	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
+	var workers uint8
+	if multiThreadWorkers {
+		workers = 2
+	} else {
+		workers = 1
+	}
+	values := struct {
+		Workers   uint8
+		LogPrefix string
+		Proxy     string
+		Server    string
+		Port      uint16
+	}{
+		Workers:   workers,
+		LogPrefix: container.Name,
+		Proxy:     clientInterface.Peer.Ip4AddressString(),
+		Server:    serverInterface.Ip4AddressString(),
+		Port:      s.proxyPort,
+	}
+	container.CreateConfig(
+		"/nginx.conf",
+		"./resources/nginx/nginx_proxy_mirroring.conf",
+		values,
+	)
 }
 
 func (s *NginxProxySuite) ProxyPort() uint16 {
@@ -130,6 +140,31 @@ func (s *NginxProxySuite) CurlDownloadResource(uri string) {
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
+}
+
+func (s *NginxProxySuite) AddVclConfig(container *Container, multiThreadWorkers bool) {
+	var vclConf Stanza
+	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		container.GetContainerWorkDir())
+
+	vclConf.
+		NewStanza("vcl").
+		Append("heapsize 64M").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("segment-size 4000000000").
+		Append("add-segment-size 4000000000").
+		Append("event-queue-size 100000").
+		Append("use-mq-eventfd").
+		Append(appSocketApi)
+	if multiThreadWorkers {
+		vclConf.Append("multi-thread-workers")
+	}
+
+	err := vclConf.Close().SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {
