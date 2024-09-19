@@ -20,8 +20,8 @@ containers:
       - name: "ENVOY_UID"
         value: "0"
       - name: "VCL_CONFIG"
-        value: "/tmp/vcl.conf"
-    image: "envoyproxy/envoy-contrib:v1.30-latest"
+        value: /tmp/vpp-envoy/vcl.conf
+    image: "hs-test/envoy"
     extra-args: "--log-format [%t][%l][%g:%#]%_ --concurrency 2 -c /etc/envoy/envoy.yaml"
     is-optional: true
   - name: "nginx-server"

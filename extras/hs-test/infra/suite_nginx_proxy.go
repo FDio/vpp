@@ -59,6 +59,7 @@ func (s *NginxProxySuite) SetupTest() {
 
 	// nginx proxy
 	nginxProxyContainer := s.GetTransientContainerByName(NginxProxyContainerName)
+	s.AddVclConfig(nginxProxyContainer)
 	s.AssertNil(nginxProxyContainer.Create())
 	s.proxyPort = 80
 	values := struct {
@@ -120,6 +121,29 @@ func (s *NginxProxySuite) CurlDownloadResource(uri string) {
 	_, log := s.RunCurlContainer(args)
 	s.AssertNotContains(log, "Recv failure")
 	s.AssertContains(log, "HTTP/1.1 200")
+}
+
+func (s *NginxProxySuite) AddVclConfig(container *Container) {
+
+	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		container.GetContainerWorkDir())
+
+	var vclConf Stanza
+	vclConf.
+		NewStanza("vcl").
+		Append("heapsize 64M").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("segment-size 4000000000").
+		Append("add-segment-size 4000000000").
+		Append("event-queue-size 100000").
+		Append("use-mq-eventfd").
+		Append(appSocketApi)
+
+	err := vclConf.Close().SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {

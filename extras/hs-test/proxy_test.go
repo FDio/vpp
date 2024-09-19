@@ -1,13 +1,15 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
+
+	. "fd.io/hs-test/infra"
 )
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
+	RegisterEnvoyProxySoloTests(EnvoyProxyHttpGetMultiThreadTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 }
 
@@ -52,6 +54,10 @@ func VppProxyHttpPutTlsTest(s *VppProxySuite) {
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
+func EnvoyProxyHttpGetMultiThreadTest(s *EnvoyProxySuite) {
+	EnvoyProxyHttpGetTcpTest(s)
+}
+
 func EnvoyProxyHttpGetTcpTest(s *EnvoyProxySuite) {
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
@@ -62,9 +68,7 @@ func EnvoyProxyHttpPutTcpTest(s *EnvoyProxySuite) {
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
-// broken when CPUS > 1
 func NginxMirroringTest(s *NginxProxySuite) {
-	s.SkipIfMultiWorker()
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }

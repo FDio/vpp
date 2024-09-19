@@ -7,10 +7,11 @@ package hst
 
 import (
 	"fmt"
-	. "github.com/onsi/ginkgo/v2"
 	"reflect"
 	"runtime"
 	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
@@ -20,8 +21,9 @@ const (
 
 type EnvoyProxySuite struct {
 	HstSuite
-	nginxPort uint16
-	proxyPort uint16
+	nginxPort     uint16
+	proxyPort     uint16
+	multiThreaded bool
 }
 
 var envoyProxyTests = map[string][]func(s *EnvoyProxySuite){}
@@ -42,6 +44,14 @@ func (s *EnvoyProxySuite) SetupSuite() {
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "MultiThread") {
+		s.Log("**********************MULTI-THREAD TEST (2 CPUS)**********************")
+		s.multiThreaded = true
+		s.CpuCount = 2
+		s.SkipIfNotEnoughAvailableCpus()
+	} else {
+		s.multiThreaded = false
+	}
 	s.HstSuite.SetupTest()
 
 	// VPP
@@ -86,6 +96,27 @@ func (s *EnvoyProxySuite) SetupTest() {
 	// Envoy
 	envoyContainer := s.GetContainerByName(EnvoyProxyContainerName)
 	s.AssertNil(envoyContainer.Create())
+	vclFileName := envoyContainer.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		envoyContainer.GetContainerWorkDir())
+
+	var vclConf Stanza
+	vclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(appSocketApi)
+	if s.multiThreaded {
+		vclConf.Append("multi-thread-workers")
+	}
+
+	err = vclConf.Close().SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
+
 	s.proxyPort = 8080
 	envoySettings := struct {
 		LogPrefix     string
@@ -114,6 +145,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 }
 
 func (s *EnvoyProxySuite) TearDownTest() {
+	s.CpuCount = *NConfiguredCpus
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(NginxServerContainerName)
 		s.CollectEnvoyLogs(EnvoyProxyContainerName)
