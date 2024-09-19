@@ -254,6 +254,7 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 		netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
+	s.Log(string(o))
 	if err != nil {
 		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
 		return

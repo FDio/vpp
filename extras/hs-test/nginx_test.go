@@ -11,6 +11,7 @@ import (
 func init() {
 	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
+	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest)
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
@@ -18,6 +19,7 @@ func NginxHttp3Test(s *NoTopoSuite) {
 
 	query := "index.html"
 	nginxCont := s.GetContainerByName("nginx-http3")
+	s.AddNginxVclConfig()
 	nginxCont.Run()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
@@ -39,6 +41,7 @@ func NginxAsServerTest(s *NoTopoSuite) {
 	finished := make(chan error, 1)
 
 	nginxCont := s.GetContainerByName("nginx")
+	s.AddNginxVclConfig()
 	nginxCont.Run()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
@@ -73,6 +76,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	vpp := s.GetContainerByName("vpp").VppInstance
 
 	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
+	s.AddNginxVclConfig()
 	nginxCont.Run()
 	vpp.WaitForApp("nginx-", 5)
 
@@ -113,13 +117,19 @@ func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
 	NginxPerfCpsTest(s)
 }
 
-// unstable with multiple workers
+func NginxPerfCpsMultiThreadTest(s *NoTopoSuite) {
+	NginxPerfCpsTest(s)
+}
+
 func NginxPerfCpsTest(s *NoTopoSuite) {
-	s.SkipIfMultiWorker()
 	s.AssertNil(runNginxPerf(s, "cps", "ab"))
 }
 
 func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
+	NginxPerfRpsTest(s)
+}
+
+func NginxPerfRpsMultiThreadTest(s *NoTopoSuite) {
 	NginxPerfRpsTest(s)
 }
 
