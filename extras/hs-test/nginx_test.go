@@ -12,13 +12,15 @@ import (
 func init() {
 	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
+	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest)
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
 	query := "index.html"
 	nginxCont := s.GetContainerByName(NginxHttp3ContainerName)
+
 	nginxCont.Create()
-	s.CreateNginxConfig(nginxCont)
+	s.CreateNginxHttp3Config(nginxCont)
 	nginxCont.Start()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
@@ -43,7 +45,10 @@ func NginxAsServerTest(s *NoTopoSuite) {
 	finished := make(chan error, 1)
 
 	nginxCont := s.GetContainerByName("nginx")
-	nginxCont.Run()
+	nginxCont.Create()
+	s.CreateNginxConfig(nginxCont, false)
+	s.AddNginxVclConfig(false)
+	nginxCont.Start()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
@@ -68,7 +73,7 @@ func parseString(s, pattern string) string {
 	return ""
 }
 
-func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
+func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers bool) error {
 	nRequests := 1000000
 	nClients := 1000
 
@@ -77,7 +82,10 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	vpp := s.GetContainerByName("vpp").VppInstance
 
 	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
-	nginxCont.Run()
+	nginxCont.Create()
+	s.AddNginxVclConfig(multiThreadWorkers)
+	s.CreateNginxConfig(nginxCont, multiThreadWorkers)
+	nginxCont.Start()
 	vpp.WaitForApp("nginx-", 5)
 
 	if ab_or_wrk == "ab" {
@@ -92,6 +100,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		args += " -r"
 		args += " http://" + serverAddress + ":80/64B.json"
 		abCont.ExtraRunningArgs = args
+		s.Log("Test might take up to 2 minutes to finish. Please wait")
 		abCont.Run()
 		o, err := abCont.GetOutput()
 		rps := parseString(o, "Requests per second:")
@@ -117,18 +126,24 @@ func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
 	NginxPerfCpsTest(s)
 }
 
-// unstable with multiple workers
+func NginxPerfCpsMultiThreadTest(s *NoTopoSuite) {
+	s.AssertNil(runNginxPerf(s, "cps", "ab", true))
+}
+
 func NginxPerfCpsTest(s *NoTopoSuite) {
-	s.SkipIfMultiWorker()
-	s.AssertNil(runNginxPerf(s, "cps", "ab"))
+	s.AssertNil(runNginxPerf(s, "cps", "ab", false))
 }
 
 func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
 	NginxPerfRpsTest(s)
 }
 
+func NginxPerfRpsMultiThreadTest(s *NoTopoSuite) {
+	s.AssertNil(runNginxPerf(s, "rps", "ab", true))
+}
+
 func NginxPerfRpsTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "rps", "ab"))
+	s.AssertNil(runNginxPerf(s, "rps", "ab", false))
 }
 
 func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
@@ -136,5 +151,5 @@ func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
 }
 
 func NginxPerfWrkTest(s *NoTopoSuite) {
-	s.AssertNil(runNginxPerf(s, "", "wrk"))
+	s.AssertNil(runNginxPerf(s, "", "wrk", false))
 }

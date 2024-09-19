@@ -85,6 +85,7 @@ docker_build hs-test/vpp vpp
 docker_build hs-test/nginx-ldp nginx
 docker_build hs-test/nginx-server nginx-server
 docker_build hs-test/curl curl
+docker_build hs-test/envoy envoy
 docker_build hs-test/nginx-http3 nginx-http3
 
 # cleanup detached images

@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -68,6 +69,50 @@ func (s *NoTopoSuite) TearDownTest() {
 	s.HstSuite.TearDownTest()
 }
 
+func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers bool) {
+	var workers uint8
+	if multiThreadWorkers {
+		workers = 2
+	} else {
+		workers = 1
+	}
+	values := struct {
+		Workers uint8
+	}{
+		Workers: workers,
+	}
+	container.CreateConfig(
+		"/nginx.conf",
+		"./resources/nginx/nginx.conf",
+		values,
+	)
+}
+
+func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
+	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
+	vclFileName := nginxCont.GetHostWorkDir() + "/vcl.conf"
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		nginxCont.GetContainerWorkDir())
+
+	var vclConf Stanza
+	vclConf.
+		NewStanza("vcl").
+		Append("heapsize 64M").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("segment-size 4000000000").
+		Append("add-segment-size 4000000000").
+		Append("event-queue-size 100000").
+		Append("use-mq-eventfd").
+		Append(appSocketApi)
+	if multiThreadWorkers {
+		vclConf.Append("multi-thread-workers")
+	}
+
+	err := vclConf.Close().SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
+}
+
 func (s *NoTopoSuite) VppAddr() string {
 	return s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 }
@@ -80,7 +125,7 @@ func (s *NoTopoSuite) HostAddr() string {
 	return s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
 }
 
-func (s *NoTopoSuite) CreateNginxConfig(container *Container) {
+func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
 	nginxSettings := struct {
 		LogPrefix string
 	}{

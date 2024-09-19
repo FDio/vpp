@@ -322,20 +322,25 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	}
 }
 
-func (s *HstSuite) SkipIfNotEnoughAvailableCpus() bool {
-	var MaxRequestedCpu int
+func (s *HstSuite) SkipIfNotEnoughAvailableCpus() {
+	var maxRequestedCpu int
+	availableCpus := len(s.CpuAllocator.cpus) - 1
+
+	if *UseCpu0 {
+		availableCpus++
+	}
 
 	if s.CpuAllocator.runningInCi {
-		MaxRequestedCpu = ((s.CpuAllocator.buildNumber + 1) * s.CpuAllocator.maxContainerCount * s.CpuCount)
+		maxRequestedCpu = ((s.CpuAllocator.buildNumber + 1) * s.CpuAllocator.maxContainerCount * s.CpuCount)
 	} else {
-		MaxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
+		maxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
 	}
 
-	if len(s.CpuAllocator.cpus)-1 < MaxRequestedCpu {
-		s.Skip(fmt.Sprintf("test case cannot allocate requested cpus (%d cpus * %d containers)", s.CpuCount, s.CpuAllocator.maxContainerCount))
+	if availableCpus < maxRequestedCpu {
+		s.Skip(fmt.Sprintf("Test case cannot allocate requested cpus "+
+			"(%d cpus * %d containers, %d available). Try using 'CPU0=true'",
+			s.CpuCount, s.CpuAllocator.maxContainerCount, availableCpus))
 	}
-
-	return true
 }
 
 func (s *HstSuite) SkipUnlessLeakCheck() {
