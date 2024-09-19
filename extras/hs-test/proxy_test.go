@@ -10,6 +10,7 @@ func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
+	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
@@ -63,9 +64,22 @@ func EnvoyProxyHttpPutTcpTest(s *EnvoyProxySuite) {
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
-// broken when CPUS > 1
+func MirrorMultiThreadTest(s *NginxProxySuite) {
+	nginxMirroring(s, true)
+}
+
 func NginxMirroringTest(s *NginxProxySuite) {
-	s.SkipIfMultiWorker()
+	nginxMirroring(s, false)
+}
+
+func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
+	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
+	vpp := s.GetContainerByName(VppContainerName).VppInstance
+
+	s.AddVclConfig(nginxProxyContainer, multiThreadWorkers)
+	s.CreateNginxProxyConfig(nginxProxyContainer, multiThreadWorkers)
+	nginxProxyContainer.Start()
+	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }
