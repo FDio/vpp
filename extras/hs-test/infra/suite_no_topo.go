@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -19,6 +20,7 @@ var noTopoSoloTests = map[string][]func(s *NoTopoSuite){}
 
 type NoTopoSuite struct {
 	HstSuite
+	multiThreaded bool
 }
 
 func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
@@ -35,6 +37,14 @@ func (s *NoTopoSuite) SetupSuite() {
 }
 
 func (s *NoTopoSuite) SetupTest() {
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "MultiThread") {
+		s.Log("**********************MULTI-THREAD TEST (2 CPUS)**********************")
+		s.multiThreaded = true
+		s.CpuCount = 2
+		s.SkipIfNotEnoughAvailableCpus()
+	} else {
+		s.multiThreaded = false
+	}
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -58,6 +68,38 @@ func (s *NoTopoSuite) SetupTest() {
 	tapInterface := s.GetInterfaceByName(TapInterfaceName)
 
 	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
+}
+
+func (s *NoTopoSuite) TearDownTest() {
+	s.CpuCount = *NConfiguredCpus
+	s.HstSuite.TearDownTest()
+}
+
+func (s *NoTopoSuite) AddNginxVclConfig() {
+	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
+
+	vclFileName := nginxCont.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		nginxCont.GetContainerWorkDir())
+
+	var vclConf Stanza
+	vclConf.
+		NewStanza("vcl").
+		Append("heapsize 64M").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("segment-size 4000000000").
+		Append("add-segment-size 4000000000").
+		Append("event-queue-size 100000").
+		Append("use-mq-eventfd").
+		Append(appSocketApi)
+	if s.multiThreaded {
+		vclConf.Append("multi-thread-workers")
+	}
+
+	err := vclConf.Close().SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 func (s *NoTopoSuite) VppAddr() string {

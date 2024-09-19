@@ -1,14 +1,16 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
+
+	. "fd.io/hs-test/infra"
 )
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
+	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
@@ -62,9 +64,11 @@ func EnvoyProxyHttpPutTcpTest(s *EnvoyProxySuite) {
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
-// broken when CPUS > 1
+func MirrorMultiThreadTest(s *NginxProxySuite) {
+	NginxMirroringTest(s)
+}
+
 func NginxMirroringTest(s *NginxProxySuite) {
-	s.SkipIfMultiWorker()
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }
