@@ -1,0 +1,6 @@
+FROM envoyproxy/envoy-contrib:v1.31-latest
+
+RUN chmod go+r /etc/envoy/envoy.yaml
+RUN chown envoy:envoy /dev/stdout /dev/stderr
+
+ENTRYPOINT ["/bin/sh", "-c", "envoy --log-format [%t][%l][%g:%#]%_ --concurrency 2 -c /etc/envoy/envoy.yaml"]

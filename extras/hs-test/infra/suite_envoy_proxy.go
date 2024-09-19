@@ -96,6 +96,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 	// Envoy
 	envoyContainer := s.GetContainerByName(EnvoyProxyContainerName)
 	s.AssertNil(envoyContainer.Create())
+
 	s.proxyPort = 8080
 	envoySettings := struct {
 		LogPrefix     string
