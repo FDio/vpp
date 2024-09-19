@@ -428,7 +428,6 @@ VNET_FEATURE_INIT (pvti6_bypass, static) = {
 static clib_error_t *
 pvti_early_config (vlib_main_t *vm, unformat_input_t *input)
 {
-  clib_warning ("early config pvti");
   u8 *runs_before = 0;
   int rbi = 0;
   if (vec_len (vnet_feat_pvti4_bypass.runs_before) == 0)
@@ -463,7 +462,6 @@ pvti_init (vlib_main_t *vm)
 {
   pvti_main_t *pmp = &pvti_main;
   clib_error_t *error = 0;
-  clib_warning ("pvti init");
 
   pmp->vlib_main = vm;
   pmp->vnet_main = vnet_get_main ();
