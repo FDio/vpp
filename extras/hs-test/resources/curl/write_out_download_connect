@@ -1,0 +1,1 @@
+Download size: %{size_download} bytes\nDownload speed: %{speed_download} bytes per second\nCONNECT response code: %{http_connect}\nGET response code: %{response_code}\n

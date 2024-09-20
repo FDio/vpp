@@ -20,8 +20,9 @@ const (
 
 type EnvoyProxySuite struct {
 	HstSuite
-	nginxPort uint16
-	proxyPort uint16
+	nginxPort  uint16
+	proxyPort  uint16
+	maxTimeout int
 }
 
 var envoyProxyTests = map[string][]func(s *EnvoyProxySuite){}
@@ -39,6 +40,12 @@ func (s *EnvoyProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("envoyProxy")
+
+	if *IsVppDebug {
+		s.maxTimeout = 600
+	} else {
+		s.maxTimeout = 60
+	}
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
@@ -71,10 +78,12 @@ func (s *EnvoyProxySuite) SetupTest() {
 		LogPrefix string
 		Address   string
 		Port      uint16
+		Timeout   int
 	}{
 		LogPrefix: nginxContainer.Name,
 		Address:   serverInterface.Ip4AddressString(),
 		Port:      s.nginxPort,
+		Timeout:   s.maxTimeout,
 	}
 	nginxContainer.CreateConfig(
 		"/nginx.conf",
@@ -130,16 +139,18 @@ func (s *EnvoyProxySuite) ProxyAddr() string {
 }
 
 func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {
-	args := fmt.Sprintf("--insecure --noproxy '*' --remote-name --output-dir /tmp %s", uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertNotContains(log, "Recv failure")
-	s.AssertContains(log, "HTTP/1.1 200")
+	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "GET response code: 200")
+	s.AssertNotContains(log, "bytes remaining to read")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 func (s *EnvoyProxySuite) CurlUploadResource(uri, file string) {
-	args := fmt.Sprintf("--insecure --noproxy '*' -T %s %s", file, uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertContains(log, "HTTP/1.1 201")
+	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "PUT response code: 201")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {

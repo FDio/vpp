@@ -1,0 +1,1 @@
+Upload size: %{size_upload} bytes\nUpload speed: %{speed_upload} bytes per second\nCONNECT response code: %{http_connect}\nPUT response code: %{response_code}\n
