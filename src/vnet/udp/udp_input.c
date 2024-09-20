@@ -272,6 +272,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
+	      error0 = UDP_ERROR_CONNECTED;
 	      if (s0->thread_index != thread_index)
 		{
 		  /*
