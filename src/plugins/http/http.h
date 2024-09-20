@@ -27,7 +27,7 @@
 #include <vnet/session/application.h>
 #include <http/http_buffer.h>
 
-#define HTTP_DEBUG 0
+#define HTTP_DEBUG 1
 
 #if HTTP_DEBUG
 #define HTTP_DBG(_lvl, _fmt, _args...)                                        \
@@ -64,6 +64,7 @@ typedef enum http_conn_state_
   HTTP_CONN_STATE_LISTEN,
   HTTP_CONN_STATE_CONNECTING,
   HTTP_CONN_STATE_ESTABLISHED,
+  HTTP_CONN_STATE_TUNNEL,
   HTTP_CONN_STATE_TRANSPORT_CLOSED,
   HTTP_CONN_STATE_APP_CLOSED,
   HTTP_CONN_STATE_CLOSED
@@ -85,6 +86,7 @@ typedef enum http_req_method_
 {
   HTTP_REQ_GET = 0,
   HTTP_REQ_POST,
+  HTTP_REQ_CONNECT,
 } http_req_method_t;
 
 typedef enum http_msg_type_
@@ -414,6 +416,7 @@ typedef struct http_tc_
   u32 body_offset;
   u64 body_len;
   u16 status_code;
+  u8 is_tunnel;
 } http_conn_t;
 
 typedef struct http_worker_
