@@ -619,3 +619,28 @@ func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
 	summary := fmt.Sprintf("\nSUMMARY: %d byte(s) leaked in %d allocation(s)\n", totalBytes, totalCounts)
 	AddReportEntry(summary, report)
 }
+
+// CollectEventLogs saves event logs to the test execution directory
+func (vpp *VppInstance) CollectEventLogs() {
+	vpp.getSuite().Log(vpp.Vppctl("event-logger save event_log"))
+	targetDir := vpp.Container.Suite.getLogDirPath()
+	err := vpp.Container.GetFile("/tmp/event_log", targetDir+"/"+vpp.Container.Name+"-event_log")
+	if err != nil {
+		vpp.getSuite().Log(fmt.Sprint(err))
+	}
+}
+
+// EnablePcapTrace enables packet capture on all interfaces and maximum 10000 packets
+func (vpp *VppInstance) EnablePcapTrace() {
+	vpp.getSuite().Log(vpp.Vppctl("pcap trace rx tx max 10000 intfc any file vppTest.pcap"))
+}
+
+// CollectPcapTrace saves pcap trace to the test execution directory
+func (vpp *VppInstance) CollectPcapTrace() {
+	vpp.getSuite().Log(vpp.Vppctl("pcap trace off"))
+	targetDir := vpp.Container.Suite.getLogDirPath()
+	err := vpp.Container.GetFile("/tmp/vppTest.pcap", targetDir+"/"+vpp.Container.Name+".pcap")
+	if err != nil {
+		vpp.getSuite().Log(fmt.Sprint(err))
+	}
+}

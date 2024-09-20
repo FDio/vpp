@@ -293,7 +293,23 @@ Alternatively copy the executable from host system to the Docker image, similarl
 However the tests currently run under test suites which set up topology and containers before actual test is run. For the reason of saving
 test run time it is not advisable to use aforementioned skip methods and instead, just don't register the test.
 
-**Debugging a test**
+**External dependencies**
+
+* Linux tools ``ip``, ``brctl``
+* Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
+  they are reasonably up-to-date automatically
+* Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
+* ``http_server`` - homegrown application that listens on specified port and sends a test file in response
+* Non-standard Go libraries - see ``extras/hs-test/go.mod``
+
+Generally, these will be updated on a per-need basis, for example when a bug is discovered
+or a new version incompatibility issue occurs.
+
+Debugging a test
+----------------
+
+GDB
+^^^
 
 It is possible to debug VPP by attaching ``gdb`` before test execution by adding ``DEBUG=true`` like follows:
 
@@ -307,7 +323,27 @@ It is possible to debug VPP by attaching ``gdb`` before test execution by adding
 
 If a test consists of more VPP instances then this is done for each of them.
 
-**Memory leak testing**
+Utility methods
+^^^^^^^^^^^^^^^
+
+**Packet Capture**
+
+It is possible to use VPP pcap trace to capture received and sent packets.
+You just need to add ``EnablePcapTrace`` to ``SetupTest`` method in test suite and ``CollectPcapTrace`` to ``TearDownTest``.
+This way pcap trace is enabled on all interfaces and to capture maximum 10000 packets.
+Your pcap file will be located in the test execution directory.
+
+**Event Logger**
+
+``clib_warning`` is a handy way to add debugging output, but in some cases it's not appropriate for per-packet use in data plane code.
+In this case VPP event logger is better option, for example you can enable it for TCP or session layer in build time.
+To collect traces when test ends you just need to add ``CollectEventLogs`` method to ``TearDownTest`` in the test suite.
+Your event logger file will be located in the test execution directory.
+To view events you can use :ref:`G2 graphical event viewer <eventviewer>` or ``convert_evt`` tool, located in ``src/scripts/host-stack/``,
+which convert event logs to human readable text.
+
+Memory leak testing
+^^^^^^^^^^^^^^^^^^^
 
 It is possible to use VPP memory traces to diagnose if and where memory leaks happen by comparing of two traces at different point in time.
 You can do it by test like following:
@@ -351,18 +387,6 @@ To get your memory leak report run following command:
             #5 0x7fc1678a7850
       << Report Entries
     ------------------------------
-
-**External dependencies**
-
-* Linux tools ``ip``, ``brctl``
-* Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
-  they are reasonably up-to-date automatically
-* Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
-* ``http_server`` - homegrown application that listens on specified port and sends a test file in response
-* Non-standard Go libraries - see ``extras/hs-test/go.mod``
-
-Generally, these will be updated on a per-need basis, for example when a bug is discovered
-or a new version incompatibility issue occurs.
 
 
 .. _ginkgo: https://onsi.github.io/ginkgo/
