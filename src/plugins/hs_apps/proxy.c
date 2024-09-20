@@ -19,6 +19,8 @@
 #include <vnet/session/application_interface.h>
 #include <hs_apps/proxy.h>
 #include <vnet/tcp/tcp.h>
+#include <http/http.h>
+#include <http/http_header_names.h>
 
 proxy_main_t proxy_main;
 
@@ -47,6 +49,41 @@ static proxy_session_side_ctx_t *
 proxy_session_side_ctx_get (proxy_worker_t *wrk, u32 ctx_index)
 {
   return pool_elt_at_index (wrk->ctx_pool, ctx_index);
+}
+
+static void
+proxy_send_http_resp (session_t *s, http_status_code_t sc,
+		      http_header_t *resp_headers)
+{
+  http_msg_t msg;
+  int rv;
+  u8 *headers_buf = 0;
+
+  if (vec_len (resp_headers))
+    {
+      headers_buf = http_serialize_headers (resp_headers);
+      msg.data.len = msg.data.headers_len = vec_len (headers_buf);
+    }
+  else
+    msg.data.len = msg.data.headers_len = 0;
+
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = sc;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.headers_offset = 0;
+  msg.data.body_len = 0;
+  msg.data.body_offset = 0;
+  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+  if (msg.data.headers_len)
+    {
+      rv = svm_fifo_enqueue (s->tx_fifo, vec_len (headers_buf), headers_buf);
+      ASSERT (rv == vec_len (headers_buf));
+      vec_free (headers_buf);
+    }
+
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 }
 
 static void
@@ -388,6 +425,7 @@ proxy_accept_callback (session_t * s)
   proxy_session_side_ctx_t *sc;
   proxy_session_t *ps;
   proxy_worker_t *wrk;
+  transport_proto_t tp = session_get_transport_proto (s);
 
   wrk = proxy_worker_get (s->thread_index);
   sc = proxy_session_side_ctx_alloc (wrk);
@@ -403,6 +441,7 @@ proxy_accept_callback (session_t * s)
 
   ps->ao.session_handle = SESSION_INVALID_HANDLE;
   sc->ps_index = ps->ps_index;
+  sc->is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
@@ -451,6 +490,7 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
   proxy_main_t *pm = &proxy_main;
   u32 max_dequeue, ps_index;
   proxy_session_t *ps;
+  transport_proto_t tp = session_get_transport_proto (s);
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
@@ -468,20 +508,79 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
-  max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
-  if (PREDICT_FALSE (max_dequeue == 0))
-    return;
+  if (tp == TRANSPORT_PROTO_HTTP)
+    {
+      http_msg_t msg;
+      u8 *target_buf = 0;
+      http_uri_t target_uri;
+      http_header_t *resp_headers = 0;
+      session_endpoint_cfg_t target_sep = SESSION_ENDPOINT_CFG_NULL;
+      int rv;
 
-  max_dequeue = clib_min (pm->rcv_buffer_size, max_dequeue);
-  actual_transfer = svm_fifo_peek (s->rx_fifo, 0 /* relative_offset */,
-				   max_dequeue, pm->rx_buf[s->thread_index]);
+      rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
+      ASSERT (rv == sizeof (msg));
 
-  /* Expectation is that here actual data just received is parsed and based
-   * on its contents, the destination and parameters of the connect to the
-   * upstream are decided
-   */
+      if (msg.type != HTTP_MSG_REQUEST)
+	{
+	  proxy_send_http_resp (s, HTTP_STATUS_INTERNAL_ERROR, 0);
+	  return;
+	}
+      if (msg.method_type != HTTP_REQ_CONNECT)
+	{
+	  http_add_header (&resp_headers,
+			   http_header_name_token (HTTP_HEADER_ALLOW),
+			   http_token_lit ("CONNECT"));
+	  proxy_send_http_resp (s, HTTP_STATUS_METHOD_NOT_ALLOWED,
+				resp_headers);
+	  vec_free (resp_headers);
+	  return;
+	}
 
-  clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
+      if (msg.data.target_form != HTTP_TARGET_AUTHORITY_FORM ||
+	  msg.data.target_path_len == 0)
+	{
+	  proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
+	  return;
+	}
+
+      /* read target uri */
+      target_buf = vec_new (u8, msg.data.target_path_len);
+      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
+			  msg.data.target_path_len, target_buf);
+      ASSERT (rv == msg.data.target_path_len);
+      svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
+      rv = http_parse_authority_form_target (target_buf, &target_uri);
+      vec_free (target_buf);
+      if (rv)
+	{
+	  proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
+	  return;
+	}
+      target_sep.is_ip4 = target_uri.is_ip4;
+      target_sep.ip = target_uri.ip;
+      target_sep.port = target_uri.port;
+      target_sep.transport_proto = TRANSPORT_PROTO_TCP;
+      clib_memcpy (&a->sep_ext, &target_sep, sizeof (target_sep));
+    }
+  else
+    {
+      max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
+      if (PREDICT_FALSE (max_dequeue == 0))
+	return;
+
+      max_dequeue = clib_min (pm->rcv_buffer_size, max_dequeue);
+      actual_transfer =
+	svm_fifo_peek (s->rx_fifo, 0 /* relative_offset */, max_dequeue,
+		       pm->rx_buf[s->thread_index]);
+
+      /* Expectation is that here actual data just received is parsed and based
+       * on its contents, the destination and parameters of the connect to the
+       * upstream are decided
+       */
+
+      clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
+    }
+
   a->api_context = ps_index;
   a->app_index = pm->active_open_app_index;
 
@@ -664,6 +763,8 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   proxy_session_t *ps;
   proxy_worker_t *wrk;
   proxy_session_side_ctx_t *sc;
+  session_t *po_s;
+  transport_proto_t tp;
 
   /* Connection failed */
   if (err)
@@ -671,6 +772,12 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       clib_spinlock_lock_if_init (&pm->sessions_lock);
 
       ps = proxy_session_get (opaque);
+      po_s = session_get_from_handle (ps->po.session_handle);
+      tp = session_get_transport_proto (po_s);
+      if (tp == TRANSPORT_PROTO_HTTP)
+	{
+	  proxy_send_http_resp (po_s, HTTP_STATUS_BAD_GATEWAY, 0);
+	}
       ps->ao_disconnected = 1;
       proxy_session_close_po (ps);
 
@@ -700,6 +807,9 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       return -1;
     }
 
+  po_s = session_get_from_handle (ps->po.session_handle);
+  tp = session_get_transport_proto (po_s);
+
   sc = proxy_session_side_ctx_alloc (wrk);
   sc->pair = ps->po;
   sc->ps_index = ps->ps_index;
@@ -708,13 +818,21 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 
   sc->state = PROXY_SC_S_ESTABLISHED;
   s->opaque = sc->sc_index;
+  sc->is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
 
-  /*
-   * Send event for active open tx fifo
-   */
-  ASSERT (s->thread_index == vlib_get_thread_index ());
-  if (svm_fifo_set_event (s->tx_fifo))
-    session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+  if (tp == TRANSPORT_PROTO_HTTP)
+    {
+      proxy_send_http_resp (po_s, HTTP_STATUS_OK, 0);
+    }
+  else
+    {
+      /*
+       * Send event for active open tx fifo
+       */
+      ASSERT (s->thread_index == vlib_get_thread_index ());
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+    }
 
   return 0;
 }
@@ -782,11 +900,21 @@ active_open_tx_callback (session_t * ao_s)
   if (sc->state < PROXY_SC_S_ESTABLISHED)
     return 0;
 
-  /* Force ack on proxy side to update rcv wnd */
-  void *arg = uword_to_pointer (sc->pair.session_handle, void *);
-  session_send_rpc_evt_to_thread (
-    session_thread_from_handle (sc->pair.session_handle), proxy_force_ack,
-    arg);
+  if (sc->is_http)
+    {
+      /* notify HTTP transport */
+      session_t *po = session_get_from_handle (sc->pair.session_handle);
+      session_send_io_evt_to_thread_custom (
+	&po->session_index, po->thread_index, SESSION_IO_EVT_RX);
+    }
+  else
+    {
+      /* Force ack on proxy side to update rcv wnd */
+      void *arg = uword_to_pointer (sc->pair.session_handle, void *);
+      session_send_rpc_evt_to_thread (
+	session_thread_from_handle (sc->pair.session_handle), proxy_force_ack,
+	arg);
+    }
 
   return 0;
 }
@@ -962,11 +1090,6 @@ proxy_server_create (vlib_main_t * vm)
       clib_warning ("failed to attach server app");
       return -1;
     }
-  if (proxy_server_listen ())
-    {
-      clib_warning ("failed to start listening");
-      return -1;
-    }
   if (active_open_attach ())
     {
       clib_warning ("failed to attach active open app");
@@ -1043,37 +1166,44 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		    default_server_uri);
       server_uri = format (0, "%s%c", default_server_uri, 0);
     }
-  if (!client_uri)
-    {
-      clib_warning ("No client-uri provided, Using default: %s",
-		    default_client_uri);
-      client_uri = format (0, "%s%c", default_client_uri, 0);
-    }
-
   if (parse_uri ((char *) server_uri, &pm->server_sep))
     {
       error = clib_error_return (0, "Invalid server uri %v", server_uri);
       goto done;
     }
-  if (parse_uri ((char *) client_uri, &pm->client_sep))
+
+  /* http proxy get target within request */
+  if (pm->server_sep.transport_proto != TRANSPORT_PROTO_HTTP)
     {
-      error = clib_error_return (0, "Invalid client uri %v", client_uri);
-      goto done;
+      if (!client_uri)
+	{
+	  clib_warning ("No client-uri provided, Using default: %s",
+			default_client_uri);
+	  client_uri = format (0, "%s%c", default_client_uri, 0);
+	}
+      if (parse_uri ((char *) client_uri, &pm->client_sep))
+	{
+	  error = clib_error_return (0, "Invalid client uri %v", client_uri);
+	  goto done;
+	}
     }
 
-  session_enable_disable_args_t args = { .is_en = 1,
-					 .rt_engine_type =
-					   RT_BACKEND_ENGINE_RULE_TABLE };
-  vnet_session_enable_disable (vm, &args);
-
-  rv = proxy_server_create (vm);
-  switch (rv)
+  if (pm->server_app_index == APP_INVALID_INDEX)
     {
-    case 0:
-      break;
-    default:
-      error = clib_error_return (0, "server_create returned %d", rv);
+      session_enable_disable_args_t args = { .is_en = 1,
+					     .rt_engine_type =
+					       RT_BACKEND_ENGINE_RULE_TABLE };
+      vnet_session_enable_disable (vm, &args);
+      rv = proxy_server_create (vm);
+      if (rv)
+	{
+	  error = clib_error_return (0, "server_create returned %d", rv);
+	  goto done;
+	}
     }
+
+  if (proxy_server_listen ())
+    error = clib_error_return (0, "failed to start listening");
 
 done:
   unformat_free (line_input);
@@ -1082,14 +1212,13 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (proxy_create_command, static) =
-{
+VLIB_CLI_COMMAND (proxy_create_command, static) = {
   .path = "test proxy server",
-  .short_help = "test proxy server [server-uri <tcp://ip/port>]"
-      "[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
-      "[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
-      "[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
-      "[private-segment-size <mem>][private-segment-count <nn>]",
+  .short_help = "test proxy server [server-uri <proto://ip/port>]"
+		"[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
+		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
+		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
+		"[private-segment-size <mem>][private-segment-count <nn>]",
   .function = proxy_server_create_command_fn,
 };
 
@@ -1099,6 +1228,7 @@ proxy_main_init (vlib_main_t * vm)
   proxy_main_t *pm = &proxy_main;
   pm->server_client_index = ~0;
   pm->active_open_client_index = ~0;
+  pm->server_app_index = APP_INVALID_INDEX;
 
   return 0;
 }
