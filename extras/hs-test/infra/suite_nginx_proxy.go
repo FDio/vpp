@@ -22,7 +22,8 @@ var nginxProxySoloTests = map[string][]func(s *NginxProxySuite){}
 
 type NginxProxySuite struct {
 	HstSuite
-	proxyPort uint16
+	proxyPort  uint16
+	maxTimeout int
 }
 
 func RegisterNginxProxyTests(tests ...func(s *NginxProxySuite)) {
@@ -36,6 +37,12 @@ func (s *NginxProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("nginxProxy")
+
+	if *IsVppDebug {
+		s.maxTimeout = 600
+	} else {
+		s.maxTimeout = 60
+	}
 }
 
 func (s *NginxProxySuite) SetupTest() {
@@ -85,9 +92,11 @@ func (s *NginxProxySuite) SetupTest() {
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
+		Timeout   int
 	}{
 		LogPrefix: nginxServerContainer.Name,
 		Address:   serverInterface.Ip4AddressString(),
+		Timeout:   s.maxTimeout,
 	}
 	nginxServerContainer.CreateConfig(
 		"/nginx.conf",
@@ -116,10 +125,11 @@ func (s *NginxProxySuite) ProxyAddr() string {
 }
 
 func (s *NginxProxySuite) CurlDownloadResource(uri string) {
-	args := fmt.Sprintf("--insecure --noproxy '*' --remote-name --output-dir /tmp %s", uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertNotContains(log, "Recv failure")
-	s.AssertContains(log, "HTTP/1.1 200")
+	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "GET response code: 200")
+	s.AssertNotContains(log, "bytes remaining to read")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {

@@ -23,7 +23,8 @@ const (
 
 type VppProxySuite struct {
 	HstSuite
-	nginxPort uint16
+	nginxPort  uint16
+	maxTimeout int
 }
 
 var vppProxyTests = map[string][]func(s *VppProxySuite){}
@@ -41,6 +42,12 @@ func (s *VppProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("vppProxy")
+
+	if *IsVppDebug {
+		s.maxTimeout = 600
+	} else {
+		s.maxTimeout = 60
+	}
 }
 
 func (s *VppProxySuite) SetupTest() {
@@ -64,10 +71,12 @@ func (s *VppProxySuite) SetupTest() {
 		LogPrefix string
 		Address   string
 		Port      uint16
+		Timeout   int
 	}{
 		LogPrefix: nginxContainer.Name,
 		Address:   serverInterface.Ip4AddressString(),
 		Port:      s.nginxPort,
+		Timeout:   s.maxTimeout,
 	}
 	nginxContainer.CreateConfig(
 		"/nginx.conf",
@@ -78,7 +87,10 @@ func (s *VppProxySuite) SetupTest() {
 }
 
 func (s *VppProxySuite) TearDownTest() {
+	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
 	if CurrentSpecReport().Failed() {
+		s.Log(vpp.Vppctl("show session verbose 2"))
+		s.Log(vpp.Vppctl("show error"))
 		s.CollectNginxLogs(NginxServerContainerName)
 	}
 	s.HstSuite.TearDownTest()
@@ -103,40 +115,41 @@ func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {
 }
 
 func (s *VppProxySuite) CurlRequestViaTunnel(targetUri string, proxyUri string) (string, string) {
-	args := fmt.Sprintf("--max-time 60 --insecure -p -x %s %s", proxyUri, targetUri)
+	args := fmt.Sprintf("--max-time %d --insecure -p -x %s %s", s.maxTimeout, proxyUri, targetUri)
 	body, log := s.RunCurlContainer(args)
 	return body, log
 }
 
 func (s *VppProxySuite) CurlDownloadResource(uri string) {
-	args := fmt.Sprintf("--insecure --noproxy '*' --remote-name --output-dir /tmp %s", uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertNotContains(log, "Recv failure")
-	s.AssertContains(log, "HTTP/1.1 200")
+	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "GET response code: 200")
+	s.AssertNotContains(log, "bytes remaining to read")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlUploadResource(uri, file string) {
-	args := fmt.Sprintf("--insecure --noproxy '*' -T %s %s", file, uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertContains(log, "HTTP/1.1 201")
+	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "PUT response code: 201")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string) {
-	args := fmt.Sprintf("--max-time 180 --insecure -p -x %s --remote-name --output-dir /tmp %s", proxyUri, uri)
-	_, log := s.RunCurlContainer(args)
-	s.AssertNotContains(log, "Recv failure")
-	s.AssertNotContains(log, "Operation timed out")
-	s.AssertContains(log, "CONNECT tunnel established")
-	s.AssertContains(log, "HTTP/1.1 200")
+	args := fmt.Sprintf("-w @/tmp/write_out_download_connect --max-time %d --insecure -p -x %s --remote-name --output-dir /tmp %s", s.maxTimeout, proxyUri, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "CONNECT response code: 200")
+	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
+	s.AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
-	args := fmt.Sprintf("--max-time 180 --insecure -p -x %s -T %s %s", proxyUri, file, uri)
-	_, log := s.RunCurlContainer(args)
+	args := fmt.Sprintf("-w @/tmp/write_out_upload_connect --max-time %d --insecure -p -x %s -T %s %s", s.maxTimeout, proxyUri, file, uri)
+	writeOut, log := s.RunCurlContainer(args)
+	s.AssertContains(writeOut, "CONNECT response code: 200")
+	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
-	s.AssertContains(log, "CONNECT tunnel established")
-	s.AssertContains(log, "HTTP/1.1 201")
 }
 
 var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
