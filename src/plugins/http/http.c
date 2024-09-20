@@ -445,9 +445,9 @@ static const char *http_error_template = "HTTP/1.1 %s\r\n"
  */
 static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
-					    "Server: %v\r\n"
-					    "Content-Length: %llu\r\n"
-					    "%s";
+					    "Server: %v\r\n";
+
+static const char *content_len_template = "Content-Length: %llu\r\n";
 
 /**
  * http request boilerplate
@@ -703,6 +703,13 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       hc->method = HTTP_REQ_POST;
       hc->target_path_offset = method_offset + 5;
     }
+  else if (!memcmp (hc->rx_buf + method_offset, "CONNECT ", 8))
+    {
+      HTTP_DBG (0, "CONNECT method");
+      hc->method = HTTP_REQ_CONNECT;
+      hc->target_path_offset = method_offset + 8;
+      hc->is_tunnel = 1;
+    }
   else
     {
       if (hc->rx_buf[method_offset] - 'A' <= 'Z' - 'A')
@@ -926,6 +933,11 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   if (hc->headers_len == 0)
     {
       HTTP_DBG (2, "no header, no message-body");
+      return 0;
+    }
+  if (hc->is_tunnel)
+    {
+      HTTP_DBG (2, "tunnel, no message-body");
       return 0;
     }
 
@@ -1269,11 +1281,21 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 		     /* Date */
 		     format_clib_timebase_time, now,
 		     /* Server */
-		     hc->app_name,
-		     /* Length */
-		     msg.data.body_len,
-		     /* Any headers from app? */
-		     msg.data.headers_len ? "" : "\r\n");
+		     hc->app_name);
+
+  /* RFC9110 9.3.6: A server MUST NOT send Content-Length header field in a
+   * 2xx (Successful) response to CONNECT. */
+  if (hc->is_tunnel && http_status_code_str[msg.code][0] == '2')
+    {
+      ASSERT (msg.data.body_len == 0);
+      hc->state = HTTP_CONN_STATE_TUNNEL;
+      /* cleanup some stuff we don't need anymore in tunnel mode */
+      http_conn_timer_stop (hc);
+      vec_free (hc->rx_buf);
+      http_buffer_free (&hc->tx_buf);
+    }
+  else
+    response = format (response, content_len_template, msg.data.body_len);
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
@@ -1295,6 +1317,11 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
 	  ASSERT (rv == msg.data.headers_len);
 	}
+    }
+  else
+    {
+      /* No headers from app */
+      response = format (response, "\r\n");
     }
   HTTP_DBG (3, "%v", response);
 
@@ -1648,6 +1675,47 @@ http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp)
 }
 
 static int
+http_tunnel_rx (session_t *ts, http_conn_t *hc)
+{
+  u32 max_deq, max_enq, max_read, n_segs = 2;
+  svm_fifo_seg_t segs[n_segs];
+  int n_written = 0;
+  session_t *as;
+  app_worker_t *app_wrk;
+
+  HTTP_DBG (1, "tunnel received data from client");
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+
+  max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+  if (PREDICT_FALSE (max_deq == 0))
+    {
+      HTTP_DBG (1, "max_deq == 0");
+      return 0;
+    }
+  max_enq = svm_fifo_max_enqueue (as->rx_fifo);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "app's rx fifo full");
+      svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
+  max_read = clib_min (max_enq, max_deq);
+  svm_fifo_segments (ts->rx_fifo, 0, segs, &n_segs, max_read);
+  n_written = svm_fifo_enqueue_segments (as->rx_fifo, segs, n_segs, 0);
+  ASSERT (n_written > 0);
+  HTTP_DBG (1, "transfered %u bytes", n_written);
+  svm_fifo_dequeue_drop (ts->rx_fifo, n_written);
+  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+  if (app_wrk)
+    app_worker_rx_notify (app_wrk, as);
+  if (svm_fifo_max_dequeue_cons (ts->rx_fifo))
+    session_program_rx_io_evt (session_handle (ts));
+
+  return 0;
+}
+
+static int
 http_ts_rx_callback (session_t *ts)
 {
   http_conn_t *hc;
@@ -1662,6 +1730,9 @@ http_ts_rx_callback (session_t *ts)
       svm_fifo_dequeue_drop_all (ts->tx_fifo);
       return 0;
     }
+
+  if (hc->state == HTTP_CONN_STATE_TUNNEL)
+    return http_tunnel_rx (ts, hc);
 
   if (!http_state_is_rx_valid (hc))
     {
@@ -1689,6 +1760,7 @@ http_ts_builtin_tx_callback (session_t *ts)
   http_conn_t *hc;
 
   hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
+  HTTP_DBG (1, "transport connection reschedule");
   transport_connection_reschedule (&hc->connection);
 
   return 0;
@@ -1994,6 +2066,54 @@ http_transport_get_listener (u32 listener_index)
 }
 
 static int
+http_tunnel_tx (http_conn_t *hc, session_t *as, transport_send_params_t *sp)
+{
+  u32 max_deq, max_enq, max_read, n_segs = 2;
+  svm_fifo_seg_t segs[n_segs];
+  session_t *ts;
+  int n_written = 0;
+
+  HTTP_DBG (1, "tunnel received data from target");
+
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+
+  max_deq = svm_fifo_max_dequeue_cons (as->tx_fifo);
+  if (PREDICT_FALSE (max_deq == 0))
+    {
+      HTTP_DBG (1, "max_deq == 0");
+      goto check_fifo;
+    }
+  max_enq = svm_fifo_max_enqueue_prod (ts->tx_fifo);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "ts tx fifo full");
+      goto check_fifo;
+    }
+  max_read = clib_min (max_enq, max_deq);
+  max_read = clib_min (max_read, sp->max_burst_size);
+  svm_fifo_segments (as->tx_fifo, 0, segs, &n_segs, max_read);
+  n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
+  ASSERT (n_written > 0);
+  HTTP_DBG (1, "transfered %u bytes", n_written);
+  sp->bytes_dequeued += n_written;
+  sp->max_burst_size -= n_written;
+  svm_fifo_dequeue_drop (as->tx_fifo, n_written);
+  if (svm_fifo_set_event (ts->tx_fifo))
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+
+check_fifo:
+  /* Deschedule and wait for deq notification if ts fifo is almost full */
+  if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
+    {
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      transport_connection_deschedule (&hc->connection);
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+    }
+
+  return n_written > 0 ? clib_max (n_written / TRANSPORT_PACER_MIN_MSS, 1) : 0;
+}
+
+static int
 http_app_tx_callback (void *session, transport_send_params_t *sp)
 {
   session_t *as = (session_t *) session;
@@ -2003,6 +2123,13 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   HTTP_DBG (1, "hc [%u]%x", as->thread_index, as->connection_index);
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
+
+  max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
+  sp->max_burst_size = max_burst_sz;
+
+  if (hc->state == HTTP_CONN_STATE_TUNNEL)
+    return http_tunnel_tx (hc, as, sp);
+
   if (!http_state_is_tx_valid (hc))
     {
       if (hc->state != HTTP_CONN_STATE_CLOSED)
@@ -2016,9 +2143,6 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
       return 0;
     }
 
-  max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
-  sp->max_burst_size = max_burst_sz;
-
   HTTP_DBG (1, "run state machine");
   http_req_run_state_machine (hc, sp);
 
@@ -2031,6 +2155,19 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   sent = max_burst_sz - sp->max_burst_size;
 
   return sent > 0 ? clib_max (sent / TRANSPORT_PACER_MIN_MSS, 1) : 0;
+}
+
+static int
+http_app_rx_evt_cb (transport_connection_t *tc)
+{
+  http_conn_t *hc = (http_conn_t *) tc;
+  HTTP_DBG (1, "hc [%u]%x", as->thread_index, as->connection_index);
+  session_t *ts = session_get_from_handle (hc->h_tc_session_handle);
+
+  if (hc->state == HTTP_CONN_STATE_TUNNEL)
+    return http_tunnel_rx (ts, hc);
+
+  return 0;
 }
 
 static void
@@ -2089,6 +2226,9 @@ format_http_conn_state (u8 *s, va_list *args)
       break;
     case HTTP_CONN_STATE_ESTABLISHED:
       s = format (s, "ESTABLISHED");
+      break;
+    case HTTP_CONN_STATE_TUNNEL:
+      s = format (s, "TUNNEL");
       break;
     case HTTP_CONN_STATE_TRANSPORT_CLOSED:
       s = format (s, "TRANSPORT_CLOSED");
@@ -2188,6 +2328,7 @@ static const transport_proto_vft_t http_proto = {
   .close = http_transport_close,
   .cleanup_ho = http_transport_cleanup_ho,
   .custom_tx = http_app_tx_callback,
+  .app_rx_evt = http_app_rx_evt_cb,
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,
   .get_half_open = http_transport_get_ho,

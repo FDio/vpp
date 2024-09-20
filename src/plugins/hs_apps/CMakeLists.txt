@@ -16,6 +16,7 @@
 ##############################################################################
 add_vpp_plugin(hs_apps
   SOURCES
+  connect_proxy.c
   echo_client.c
   echo_server.c
   hs_apps.c

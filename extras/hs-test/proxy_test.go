@@ -7,7 +7,8 @@ import (
 )
 
 func init() {
-	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
+	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
+		VppConnectProxyGetTest, VppConnectProxyPutTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
@@ -82,4 +83,28 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
+}
+
+func VppConnectProxyGetTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
+	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
+
+	rv := vpp.Vppctl("http connect proxy uri tcp://%s/%d", s.VppProxyAddr(), proxyPort)
+	s.AssertEmpty(rv)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.NginxAddr(), s.NginxPort())
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
+	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
+}
+
+func VppConnectProxyPutTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
+	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
+
+	rv := vpp.Vppctl("http connect proxy uri tcp://%s/%d", s.VppProxyAddr(), proxyPort)
+	s.AssertEmpty(rv)
+
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.NginxAddr(), s.NginxPort())
+	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
 }
