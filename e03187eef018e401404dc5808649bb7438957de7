@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f5739f9_1819cb3b",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-20T20:04:48Z",
+      "side": 1,
+      "message": "Do we need some \"make hs-test fixstyle\" to avoid these in the future?",
+      "revId": "e03187eef018e401404dc5808649bb7438957de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a025becf_54258779",
+        "filename": "extras/hs-test/infra/suite_no_topo.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-20T20:04:48Z",
+      "side": 1,
+      "message": "Let\u0027s clarify this is for multi-threaded vcl. Also that cpu count, is it used for apps or for vpp?\n\nWondering now if this is the right approach of injecting a vcl config. Let\u0027s have a chat",
+      "revId": "e03187eef018e401404dc5808649bb7438957de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
