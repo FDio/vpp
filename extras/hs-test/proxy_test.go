@@ -7,7 +7,8 @@ import (
 )
 
 func init() {
-	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest)
+	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
+		VppConnectProxyGetTest, VppConnectProxyPutTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
@@ -15,14 +16,11 @@ func init() {
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
-	output := vppProxy.Vppctl(
-		"test proxy server server-uri %s://%s/%d client-uri tcp://%s/%d",
-		proto,
-		s.VppProxyAddr(),
-		proxyPort,
-		s.NginxAddr(),
-		s.NginxPort(),
-	)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s/%d", proto, s.VppProxyAddr(), proxyPort)
+	if proto != "http" {
+		cmd += fmt.Sprintf(" client-uri tcp://%s/%d", s.NginxAddr(), s.NginxPort())
+	}
+	output := vppProxy.Vppctl(cmd)
 	s.Log("proxy configured: " + output)
 }
 
@@ -82,4 +80,24 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
+}
+
+func VppConnectProxyGetTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
+
+	configureVppProxy(s, "http", proxyPort)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.NginxAddr(), s.NginxPort())
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
+	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
+}
+
+func VppConnectProxyPutTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
+
+	configureVppProxy(s, "http", proxyPort)
+
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.NginxAddr(), s.NginxPort())
+	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
 }

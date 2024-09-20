@@ -51,6 +51,7 @@ typedef struct proxy_session_side_ctx_
   proxy_session_side_state_t state;
   u32 sc_index;
   u32 ps_index;
+  u8 is_http;
 } proxy_session_side_ctx_t;
 
 typedef struct
