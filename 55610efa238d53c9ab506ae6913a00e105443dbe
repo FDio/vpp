@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0cb4c05d_c3a62c7f",
+        "filename": "src/plugins/snort/main.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "This two line routine (regularly called by client) resets queues to avoid processing stale buffers in the case of instance re-connection.\n\nAnswers comment https://gerrit.fd.io/r/c/vpp/+/41567/comments/4947288f_8b8f9c40",
+      "revId": "55610efa238d53c9ab506ae6913a00e105443dbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

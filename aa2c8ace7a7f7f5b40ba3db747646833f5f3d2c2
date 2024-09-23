@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "815e40ca_cef948e8",
+        "filename": "src/plugins/snort/snort.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "Left here by mistake, removing",
+      "parentUuid": "46e79896_482cdc56",
+      "revId": "aa2c8ace7a7f7f5b40ba3db747646833f5f3d2c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a58bdc23_5b219cae",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-09-23T13:45:20Z",
       "side": 1,
       "message": "This API also seems redundant with snort_instance_get",
+      "revId": "aa2c8ace7a7f7f5b40ba3db747646833f5f3d2c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "521f3318_01766b56",
+        "filename": "src/plugins/snort/snort.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "a58bdc23_5b219cae",
       "revId": "aa2c8ace7a7f7f5b40ba3db747646833f5f3d2c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

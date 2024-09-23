@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bce7fc0_fb65f049",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "Indeed, seems that some remaining buffers may appear on re-connection. \nThank you!\nFixed: https://gerrit.fd.io/r/c/vpp/+/41567/comment/0cb4c05d_c3a62c7f/",
+      "parentUuid": "4947288f_8b8f9c40",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2d114ac9_39094af5",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-09-12T15:51:57Z",
       "side": 1,
       "message": "the error message is inconsistent with the \"delete instance\" command. here you have \"please specify instance name\" (so polite, by the way) where the \"delete\" command you have \"missing instance name\". Etiher is fine, but I suggest it should be consistent between the two.",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19b75ad6_082ad383",
+        "filename": "src/plugins/snort/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "Changed",
+      "parentUuid": "2d114ac9_39094af5",
       "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e7f70df_2827cf39",
+        "filename": "src/plugins/snort/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "Changed",
+      "parentUuid": "d9e7f25a_2a7c3529",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2f5a7e03_f986c35c",
@@ -82,6 +136,24 @@
       "writtenOn": "2024-09-12T15:51:57Z",
       "side": 1,
       "message": "why the blank line?",
+      "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afae9691_d568b7c4",
+        "filename": "src/plugins/snort/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-23T17:54:52Z",
+      "side": 1,
+      "message": "By accident. Fixed",
+      "parentUuid": "2f5a7e03_f986c35c",
       "revId": "058bc74adb0e1a7694db3d129a3f8ce50142a764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
