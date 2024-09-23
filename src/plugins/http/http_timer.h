@@ -59,7 +59,10 @@ http_conn_timer_stop (http_conn_t *hc)
     return;
 
   clib_spinlock_lock (&twc->tw_lock);
-  tw_timer_stop_2t_1w_2048sl (&twc->tw, hc->timer_handle);
+  if (!tw_timer_handle_is_free_2t_1w_2048sl (&twc->tw, hc->timer_handle))
+    {
+      tw_timer_stop_2t_1w_2048sl (&twc->tw, hc->timer_handle);
+    }
   hc->timer_handle = ~0;
   clib_spinlock_unlock (&twc->tw_lock);
 }
@@ -76,7 +79,10 @@ http_conn_timer_update (http_conn_t *hc)
   timeout = HTTP_CONN_TIMEOUT;
 
   clib_spinlock_lock (&twc->tw_lock);
-  tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, timeout);
+  if (!tw_timer_handle_is_free_2t_1w_2048sl (&twc->tw, hc->timer_handle))
+    {
+      tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, timeout);
+    }
   clib_spinlock_unlock (&twc->tw_lock);
 }
 
