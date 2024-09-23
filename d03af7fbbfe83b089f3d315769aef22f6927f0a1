@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8e9c76f_a745ed3e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-09-23T14:56:55Z",
+      "side": 1,
+      "message": "In similar situations in Openstack Neutron we have a test decorator for unstable tests:\nhttps://opendev.org/openstack/neutron/src/branch/master/neutron/tests/base.py#L102\n\nWe can temporarily make it unstable and the test fails the result is skipped but it is in the logs, and the coverage is not decreased",
+      "revId": "d03af7fbbfe83b089f3d315769aef22f6927f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
