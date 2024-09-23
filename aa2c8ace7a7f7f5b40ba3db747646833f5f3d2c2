@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46e79896_482cdc56",
+        "filename": "src/plugins/snort/snort.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-23T13:45:20Z",
+      "side": 1,
+      "message": "Why is this API needed? It seems redundant with snort_instance_get",
+      "revId": "aa2c8ace7a7f7f5b40ba3db747646833f5f3d2c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a58bdc23_5b219cae",
+        "filename": "src/plugins/snort/snort.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-23T13:45:20Z",
+      "side": 1,
+      "message": "This API also seems redundant with snort_instance_get",
+      "revId": "aa2c8ace7a7f7f5b40ba3db747646833f5f3d2c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
