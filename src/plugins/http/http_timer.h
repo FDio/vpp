@@ -55,7 +55,8 @@ http_conn_timer_stop (http_conn_t *hc)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
 
-  if (hc->timer_handle == ~0)
+  if (hc->timer_handle == ~0 ||
+      tw_timer_handle_is_free_2t_1w_2048sl (&twc->tw, hc->timer_handle))
     return;
 
   clib_spinlock_lock (&twc->tw_lock);
@@ -70,7 +71,8 @@ http_conn_timer_update (http_conn_t *hc)
   http_tw_ctx_t *twc = &http_tw_ctx;
   u64 timeout;
 
-  if (hc->timer_handle == ~0)
+  if (hc->timer_handle == ~0 ||
+      tw_timer_handle_is_free_2t_1w_2048sl (&twc->tw, hc->timer_handle))
     return;
 
   timeout = HTTP_CONN_TIMEOUT;
