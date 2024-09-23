@@ -211,7 +211,7 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
 	return;
     }
 
-  if (roc_nix_is_lbk (nix))
+  if (roc_nix_is_lbk (nix) || roc_nix_is_sdp (nix))
     {
       link_info.status = 1;
       link_info.full_duplex = 1;
