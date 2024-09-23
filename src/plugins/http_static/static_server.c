@@ -58,8 +58,6 @@ hss_session_free (hss_session_t *hs)
 {
   hss_main_t *hsm = &hss_main;
 
-  pool_put (hsm->sessions[hs->thread_index], hs);
-
   if (CLIB_DEBUG)
     {
       u32 save_thread_index;
@@ -68,6 +66,8 @@ hss_session_free (hss_session_t *hs)
       memset (hs, 0xfa, sizeof (*hs));
       hs->thread_index = save_thread_index;
     }
+
+  pool_put (hsm->sessions[hs->thread_index], hs);
 }
 
 /** \brief Disconnect a session
