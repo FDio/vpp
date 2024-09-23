@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "509eb554_852c7696",
+        "filename": "src/plugins/http/http_timer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-23T17:21:38Z",
+      "side": 1,
+      "message": "Thanks for the catch! But to avoid tw main and worker races I think we should be solving this in http_timer_process_expired_cb just like we are for tcp. \n\nWe already have the spinlock there so let\u0027s do 2 iterations over expired_timers:\n- in the first, let\u0027s invalidate hc-\u003etimer_handle (as opposed to doing it in http_conn_timeout_cb) and mark the connection as having a pending timer\n- and in the second let\u0027s do the rpcs\n\nThen, in timer stop, remove the pending flag if we have one. In update, start the timer if timer_handle \u003d\u003d ~0. \n\nIn http_conn_timeout_cb we should not timeout the connection if the timer is not pending and we should avoid expiring if the timer has been rearmed (update case). That is, if we stop the timer while its handler is pending, we accept it as a stop.",
+      "revId": "b829d9b936dd70053581807aaadab9ba39a2155f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
