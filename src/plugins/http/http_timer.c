@@ -21,16 +21,16 @@ http_tw_ctx_t http_tw_ctx;
 static void
 http_timer_process_expired_cb (u32 *expired_timers)
 {
-  http_tw_ctx_t *twc = &http_tw_ctx;
   u32 hs_handle;
   int i;
+
+  extern void http_conn_timer_timeout (u32 hs_handle);
 
   for (i = 0; i < vec_len (expired_timers); i++)
     {
       /* Get session handle. The first bit is the timer id */
       hs_handle = expired_timers[i] & 0x7FFFFFFF;
-      session_send_rpc_evt_to_thread (hs_handle >> 24, twc->cb_fn,
-				      uword_to_pointer (hs_handle, void *));
+      http_conn_timer_timeout (hs_handle);
     }
 }
 
@@ -66,7 +66,7 @@ VLIB_REGISTER_NODE (http_timer_process_node) = {
 };
 
 void
-http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *cb_fn)
+http_timers_init (vlib_main_t *vm)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
   vlib_node_t *n;
@@ -76,7 +76,6 @@ http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *cb_fn)
   tw_timer_wheel_init_2t_1w_2048sl (&twc->tw, http_timer_process_expired_cb,
 				    1.0 /* timer interval */, ~0);
   clib_spinlock_init (&twc->tw_lock);
-  twc->cb_fn = cb_fn;
 
   vlib_node_set_state (vm, http_timer_process_node.index,
 		       VLIB_NODE_STATE_POLLING);

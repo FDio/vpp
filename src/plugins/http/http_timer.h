@@ -21,18 +21,15 @@
 
 #define HTTP_CONN_TIMEOUT 60
 
-typedef void (http_conn_timeout_fn) (void *);
-
 typedef struct http_tw_ctx_
 {
   tw_timer_wheel_2t_1w_2048sl_t tw;
   clib_spinlock_t tw_lock;
-  http_conn_timeout_fn *cb_fn;
 } http_tw_ctx_t;
 
 extern http_tw_ctx_t http_tw_ctx;
 
-void http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *cb_fn);
+void http_timers_init (vlib_main_t *vm);
 
 static inline void
 http_conn_timer_start (http_conn_t *hc)

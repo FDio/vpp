@@ -180,9 +180,24 @@ http_conn_timeout_cb (void *hc_handlep)
   if (!hc)
     return;
 
-  hc->timer_handle = ~0;
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
+}
+
+void
+http_conn_timer_timeout (u32 hs_handle)
+{
+  http_conn_t *hc;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  hc = http_conn_get_w_thread (hs_handle & 0x00FFFFFF, hs_handle >> 24);
+  if (!hc)
+    return;
+
+  hc->timer_handle = ~0;
+
+  session_send_rpc_evt_to_thread (hs_handle >> 24, http_conn_timeout_cb,
+				  uword_to_pointer (hs_handle, void *));
 }
 
 int
@@ -1679,7 +1694,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time /* share the system clock */);
 
-  http_timers_init (vm, http_conn_timeout_cb);
+  http_timers_init (vm);
   hm->is_init = 1;
 
   return 0;
