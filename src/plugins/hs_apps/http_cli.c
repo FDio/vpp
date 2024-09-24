@@ -30,6 +30,12 @@
 
 typedef struct
 {
+  u32 handle;
+  u8 *uri;
+} hcs_uri_map_t;
+
+typedef struct
+{
   u32 hs_index;
   u32 thread_index;
   u64 node_index;
@@ -62,6 +68,12 @@ typedef struct
   u32 fifo_size;
   u8 *uri;
   vlib_main_t *vlib_main;
+
+  /* hash table to store uri -> uri map pool index */
+  uword *index_by_uri;
+
+  /* pool of uri maps */
+  hcs_uri_map_t *uri_map_pool;
 } hcs_main_t;
 
 static hcs_main_t hcs_main;
@@ -619,15 +631,15 @@ hcs_listen ()
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   hcs_main_t *hcm = &hcs_main;
   vnet_listen_args_t _a, *a = &_a;
-  char *uri = "tcp://0.0.0.0/80";
   u8 need_crypto;
   int rv;
+  char *uri;
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hcm->app_index;
 
-  if (hcm->uri)
-    uri = (char *) hcm->uri;
+  uri = (char *) hcm->uri;
+  ASSERT (uri);
 
   if (parse_uri (uri, &sep))
     return -1;
@@ -645,9 +657,55 @@ hcs_listen ()
     }
 
   rv = vnet_listen (a);
+  if (rv == 0)
+    {
+      hcs_uri_map_t *map;
+      pool_get_zero (hcm->uri_map_pool, map);
+      map->uri = vec_dup (uri);
+      map->handle = a->handle;
+      hash_set_mem (hcm->index_by_uri, map->uri, map - hcm->uri_map_pool);
+    }
 
   if (need_crypto)
     clib_mem_free (a->sep_ext.ext_cfg);
+
+  return rv;
+}
+
+static int
+hcs_unlisten ()
+{
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  hcs_main_t *hcm = &hcs_main;
+  vnet_unlisten_args_t _a, *a = &_a;
+  char *uri;
+  int rv = 0;
+  uword *value;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->app_index = hcm->app_index;
+
+  uri = (char *) hcm->uri;
+  ASSERT (uri);
+
+  if (parse_uri (uri, &sep))
+    return -1;
+
+  value = hash_get_mem (hcm->index_by_uri, uri);
+  if (value)
+    {
+      hcs_uri_map_t *map = pool_elt_at_index (hcm->uri_map_pool, *value);
+
+      a->handle = map->handle;
+      rv = vnet_unlisten (a);
+      if (rv == 0)
+	{
+	  vec_free (map->uri);
+	  pool_put (hcm->uri_map_pool, map);
+	}
+    }
+  else
+    return -1;
 
   return rv;
 }
@@ -696,6 +754,8 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcs_main_t *hcm = &hcs_main;
   u64 seg_size;
   int rv;
+  u32 listener_add = ~0;
+  clib_error_t *error = 0;
 
   hcm->prealloc_fifos = 0;
   hcm->private_segment_size = 0;
@@ -714,13 +774,28 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->private_segment_size = seg_size;
       else if (unformat (line_input, "fifo-size %d", &hcm->fifo_size))
 	hcm->fifo_size <<= 10;
-      else if (unformat (line_input, "uri %s", &hcm->uri))
+      else if (unformat (line_input, "uri %_%v%_", &hcm->uri))
 	;
+      else if (unformat (line_input, "listener"))
+	{
+	  if (unformat (line_input, "add"))
+	    listener_add = 1;
+	  else if (unformat (line_input, "del"))
+	    listener_add = 0;
+	  else
+	    {
+	      unformat_free (line_input);
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, line_input);
+	      goto done;
+	    }
+	}
       else
 	{
 	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, line_input);
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
 
@@ -728,8 +803,39 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 start_server:
 
+  if (hcm->uri == 0)
+    hcm->uri = format (0, "tcp://0.0.0.0/80%c", 0);
+
   if (hcm->app_index != (u32) ~0)
-    return clib_error_return (0, "test http server is already running");
+    {
+      if (listener_add == 1)
+	{
+	  if (hcs_listen ())
+	    {
+	      error = clib_error_return (0, "failed to start listening %v",
+					 hcm->uri);
+	      goto done;
+	    }
+	  else
+	    goto done;
+	}
+      else if (listener_add == 0)
+	{
+	  if (hcs_unlisten () != 0)
+	    {
+	      error =
+		clib_error_return (0, "failed to stop listening %v", hcm->uri);
+	      goto done;
+	    }
+	  else
+	    goto done;
+	}
+      else
+	{
+	  error = clib_error_return (0, "test http server is already running");
+	  goto done;
+	}
+    }
 
   session_enable_disable_args_t args = { .is_en = 1,
 					 .rt_engine_type =
@@ -742,16 +848,22 @@ start_server:
     case 0:
       break;
     default:
-      return clib_error_return (0, "server_create returned %d", rv);
+      {
+	error = clib_error_return (0, "server_create returned %d", rv);
+	goto done;
+      }
     }
 
-  return 0;
+done:
+  vec_free (hcm->uri);
+  return error;
 }
 
 VLIB_CLI_COMMAND (hcs_create_command, static) = {
   .path = "http cli server",
   .short_help = "http cli server [uri <uri>] [fifo-size <nbytes>] "
-		"[private-segment-size <nMG>] [prealloc-fifos <n>]",
+		"[private-segment-size <nMG>] [prealloc-fifos <n>] "
+		"[listener <add|del>]",
   .function = hcs_create_command_fn,
 };
 
@@ -762,6 +874,7 @@ hcs_main_init (vlib_main_t *vm)
 
   hcs->app_index = ~0;
   hcs->vlib_main = vm;
+  hcs->index_by_uri = hash_create_vec (0, sizeof (u8), sizeof (uword));
   return 0;
 }
 
