@@ -34,6 +34,24 @@
       "parentUuid": "509eb554_852c7696",
       "revId": "b829d9b936dd70053581807aaadab9ba39a2155f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "776b9523_03cba933",
+        "filename": "src/plugins/http/http_timer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-24T02:15:34Z",
+      "side": 1,
+      "message": "1. It is safe to read the connection structs, it\u0027s not safe to alloc/free them (see pool_get_aligned_safe). \n2. Not sure I follow this concern. The rx events are processed typically in session_input, rpcs in session_node. All of those are handled on the worker that owns the session, hence the rpc from main. If the session timer gets updated while rpc is pending handling, we should accept it as a timely update. \n\nAnother important thing to keep in mind here is that timer handles can be reused. If a timer handle TH for http conn X expires and RPC is programmed but before handler is called 1) the timer handle TH is reused for connection Y and 2) either stop/update are called conn X for TH, it will break conn Y. \n\nSo it\u0027s critical to mark the handle as invalid ASAP on the http connection",
+      "parentUuid": "8180111d_27883141",
+      "revId": "b829d9b936dd70053581807aaadab9ba39a2155f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
