@@ -64,8 +64,13 @@ oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
   struct roc_nix_rq *rq;
   int rrv;
 
+  /* pause flow control is not supported on SDP/LBK devices */
   if (roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix))
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+    {
+      log_notice (dev,
+		  "pause flow control is not supported on SDP/LBK devices");
+      return VNET_DEV_OK;
+    }
 
   fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
   fc_cfg.rxchan_cfg.enable = true;
