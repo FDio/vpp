@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f35c2f08_957ce029",
+        "filename": "src/vnet/dev/bus/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-09-25T10:06:36Z",
+      "side": 1,
+      "message": "vf_token is required for VFs where the PF device is\nbound to vfio-pci.",
+      "parentUuid": "7700bf4c_217f504d",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b594529_48cc9ebf",
         "filename": "src/vnet/dev/dev.h",
         "patchSetId": 3
