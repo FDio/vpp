@@ -60,15 +60,18 @@ func (s *VethsSuite) SetupTest() {
 	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	s.SetupServerVpp()
-
 	// ... For client
 	clientContainer := s.GetContainerByName("client-vpp")
 
 	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
+	s.SetupServerVpp()
 	s.setupClientVpp()
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
 }
 
 func (s *VethsSuite) SetupServerVpp() {

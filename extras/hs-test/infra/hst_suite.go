@@ -41,6 +41,7 @@ var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different wit
 var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
 var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
+var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var NumaAwareCpuAlloc bool
 var SuiteTimeout time.Duration
 
@@ -60,6 +61,18 @@ type HstSuite struct {
 	Logger            *log.Logger
 	LogFile           *os.File
 	Docker            *client.Client
+}
+
+type colors struct {
+	grn string
+	pur string
+	rst string
+}
+
+var Colors = colors{
+	grn: "\033[32m",
+	pur: "\033[35m",
+	rst: "\033[0m",
 }
 
 // used for colorful ReportEntry
@@ -104,8 +117,8 @@ func (s *HstSuite) newDockerClient() {
 
 func (s *HstSuite) SetupSuite() {
 	s.CreateLogger()
+	s.Log("[* SUITE SETUP]")
 	s.newDockerClient()
-	s.Log("Suite Setup")
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
 		Fail(message, callerSkip...)
@@ -139,13 +152,16 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 func (s *HstSuite) TearDownSuite() {
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
-	s.Log("Suite Teardown")
+	if *IsPersistent || *DryRun {
+		return
+	}
+	s.Log("[* SUITE TEARDOWN]")
 	s.UnconfigureNetworkTopology()
 }
 
 func (s *HstSuite) TearDownTest() {
-	s.Log("Test Teardown")
-	if *IsPersistent {
+	s.Log("[* TEST TEARDOWN]")
+	if *IsPersistent || *DryRun {
 		return
 	}
 	s.WaitForCoreDump()
@@ -163,7 +179,7 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
-	s.Log("Test Setup")
+	s.Log("[* TEST SETUP]")
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SkipIfUnconfiguring()
 	s.SetupContainers()
@@ -302,13 +318,13 @@ func (s *HstSuite) CreateLogger() {
 
 // Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
 // to keep console tidy
-func (s *HstSuite) Log(arg any) {
-	logs := strings.Split(fmt.Sprint(arg), "\n")
+func (s *HstSuite) Log(log any, arg ...any) {
+	logs := strings.Split(fmt.Sprintf(fmt.Sprint(log), arg...), "\n")
 	for _, line := range logs {
 		s.Logger.Println(line)
 	}
 	if *IsVerbose {
-		GinkgoWriter.Println(arg)
+		GinkgoWriter.Println(fmt.Sprintf(fmt.Sprint(log), arg...))
 	}
 }
 
@@ -472,6 +488,13 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 		}
 		s.Containers[newContainer.Name] = newContainer
 	}
+
+	if *DryRun {
+		s.Log(Colors.pur + "* Containers used by this suite (some might already be running):" + Colors.rst)
+		for name := range s.Containers {
+			s.Log("%sdocker start %s && docker exec -it %s bash%s", Colors.pur, name, name, Colors.rst)
+		}
+	}
 }
 
 func (s *HstSuite) LoadNetworkTopology(topologyName string) {
@@ -559,11 +582,15 @@ func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 }
 
 func (s *HstSuite) UnconfigureNetworkTopology() {
-	if *IsPersistent {
-		return
-	}
 	for _, nc := range s.NetConfigs {
 		nc.unconfigure()
+	}
+}
+
+func (s *HstSuite) LogStartedContainers() {
+	s.Log("%s* Started containers:%s", Colors.grn, Colors.rst)
+	for _, container := range s.StartedContainers {
+		s.Log(Colors.grn + container.Name + Colors.rst)
 	}
 }
 

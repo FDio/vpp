@@ -58,11 +58,8 @@ func (s *NginxProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
 	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
 
 	// nginx proxy
 	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
@@ -81,11 +78,23 @@ func (s *NginxProxySuite) SetupTest() {
 		Address:   serverInterface.Ip4AddressString(),
 		Timeout:   s.maxTimeout,
 	}
-	nginxServerContainer.CreateConfig(
+	nginxServerContainer.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server_mirroring.conf",
 		nginxSettings,
 	)
+
+	s.AssertNil(vpp.Start())
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.ProxyPort(), Colors.rst)
+		s.Skip("Dry run mode = true")
+	}
+
+	s.AssertNil(nginxProxyContainer.Start())
 	s.AssertNil(nginxServerContainer.Start())
 }
 
@@ -119,7 +128,7 @@ func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThre
 		Server:    serverInterface.Ip4AddressString(),
 		Port:      s.proxyPort,
 	}
-	container.CreateConfig(
+	container.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,

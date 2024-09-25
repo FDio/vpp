@@ -42,6 +42,11 @@ func (s *CpuPinningSuite) SetupTest() {
 	container := s.GetContainerByName(SingleTopoContainerVpp)
 	vpp, err := container.newVppInstance(container.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
 }
 
 func (s *CpuPinningSuite) TearDownTest() {
