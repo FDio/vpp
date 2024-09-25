@@ -7,10 +7,12 @@ package hst
 
 import (
 	"fmt"
-	. "github.com/onsi/ginkgo/v2"
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
@@ -56,12 +58,8 @@ func (s *EnvoyProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
-	vppContainer.Exec("chmod 777 -R %s", vppContainer.GetContainerWorkDir())
 
 	// nginx HTTP server
 	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -81,7 +79,6 @@ func (s *EnvoyProxySuite) SetupTest() {
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
-	s.AssertNil(nginxContainer.Start())
 
 	// Envoy
 	envoyContainer := s.GetContainerByName(EnvoyProxyContainerName)
@@ -103,7 +100,43 @@ func (s *EnvoyProxySuite) SetupTest() {
 		"resources/envoy/proxy.yaml",
 		envoySettings,
 	)
-	s.AssertNil(envoyContainer.Start())
+
+	if *DryRun {
+		vpp.CreateVppConfig()
+		for name := range s.Containers {
+			s.Log("\033[36m"+"docker start %s && docker exec -it %s bash", name, name)
+		}
+		s.Log("\nvpp -c /tmp/vpp/etc/vpp/startup.conf &> /proc/1/fd/1")
+		s.Log("vppctl -s /tmp/vpp/var/run/vpp/cli.sock\n")
+		vppInterfaceConfig := fmt.Sprintf("create tap id 1 host-if-name %s\n"+
+			"set int ip addr tap1 %s\n"+
+			"set int state tap1 up\n"+
+			"create tap id 2 host-if-name %s\n"+
+			"set int ip addr tap2 %s\n"+
+			"set int state tap2 up\n",
+			clientInterface.name,
+			clientInterface.Peer.Ip4Address,
+			serverInterface.name,
+			serverInterface.Peer.Ip4Address,
+		)
+		s.AssertNil(vppContainer.CreateFileInWorkDir("vpp-config.conf", vppInterfaceConfig),
+			"cannot create file")
+
+		s.Log("This config will be loaded on VPP startup:\n%s", vppInterfaceConfig)
+
+		s.Log("sudo ip addr add " + clientInterface.Ip4Address + " dev " + clientInterface.name)
+		s.Log("sudo ip addr add " + serverInterface.Ip4Address + " dev " + serverInterface.name)
+		s.Log("Proxy: %s:%d\033[0m", s.ProxyAddr(), s.ProxyPort())
+
+		s.Skip("Dry run mode = true")
+	}
+
+	s.AssertNil(vpp.Start())
+	// wait for VPP to start
+	time.Sleep(time.Second * 1)
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
+	vppContainer.Exec(false, "chmod 777 -R %s", vppContainer.GetContainerWorkDir())
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
@@ -111,6 +144,9 @@ func (s *EnvoyProxySuite) SetupTest() {
 		serverInterface.Ip4AddressString(),
 		serverInterface.HwAddress)
 	vppContainer.VppInstance.Vppctl(arp)
+
+	s.AssertNil(nginxContainer.Start())
+	s.AssertNil(envoyContainer.Start())
 }
 
 func (s *EnvoyProxySuite) TearDownTest() {

@@ -50,11 +50,9 @@ func (s *VppProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppProxyContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
+
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
 
 	// nginx HTTP server
 	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -75,6 +73,47 @@ func (s *VppProxySuite) SetupTest() {
 		nginxSettings,
 	)
 	s.AssertNil(nginxContainer.Start())
+
+	if *DryRun {
+		vpp.CreateVppConfig()
+		uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), 8080)
+		for name := range s.Containers {
+			s.Log("\033[36m"+"docker start %s && docker exec -it %s bash", name, name)
+		}
+		s.Log("\nvpp -c /tmp/vpp/etc/vpp/startup.conf &> /proc/1/fd/1")
+		s.Log("vppctl -s /tmp/vpp/var/run/vpp/cli.sock\n")
+		startupConfig := fmt.Sprintf("create tap id 1 host-if-name %s\n"+
+			"set int ip addr tap1 %s\n"+
+			"set int state tap1 up\n"+
+			"create tap id 2 host-if-name %s\n"+
+			"set int ip addr tap2 %s\n"+
+			"set int state tap2 up\n",
+			clientInterface.name,
+			clientInterface.Peer.Ip4Address,
+			serverInterface.name,
+			serverInterface.Peer.Ip4Address,
+		)
+		s.AssertNil(vppContainer.CreateFileInWorkDir("vpp-config.conf", startupConfig),
+			"cannot create file")
+
+		s.Log("This config will be loaded on VPP startup:\n%s", startupConfig)
+
+		s.Log("test proxy server server-uri [proto]://%s/%d client-uri tcp://%s/%d\n",
+			s.VppProxyAddr(),
+			8080,
+			s.NginxAddr(),
+			s.nginxPort,
+		)
+		s.Log("docker run --rm --name curl%s hs-test/curl curl -v -s --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.Ppid, uri)
+
+		s.Log("sudo ip addr add %s dev %s", clientInterface.Ip4Address, clientInterface.name)
+		s.Log("sudo ip addr add %s dev %s\033[0m", serverInterface.Ip4Address, serverInterface.name)
+
+		s.Skip("Dry run mode = true")
+	}
+	s.AssertNil(vpp.Start())
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
 }
 
 func (s *VppProxySuite) TearDownTest() {

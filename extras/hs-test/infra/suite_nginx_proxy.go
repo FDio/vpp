@@ -51,11 +51,8 @@ func (s *NginxProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
 	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
 
 	// nginx proxy
 	nginxProxyContainer := s.GetTransientContainerByName(NginxProxyContainerName)
@@ -68,7 +65,7 @@ func (s *NginxProxySuite) SetupTest() {
 		Port      uint16
 	}{
 		LogPrefix: nginxProxyContainer.Name,
-		Proxy:     clientInterface.Peer.Ip4AddressString(),
+		Proxy:     s.ProxyAddr(),
 		Server:    serverInterface.Ip4AddressString(),
 		Port:      s.proxyPort,
 	}
@@ -77,7 +74,6 @@ func (s *NginxProxySuite) SetupTest() {
 		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,
 	)
-	s.AssertNil(nginxProxyContainer.Start())
 
 	// nginx HTTP server
 	nginxServerContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -94,6 +90,42 @@ func (s *NginxProxySuite) SetupTest() {
 		"./resources/nginx/nginx_server_mirroring.conf",
 		nginxSettings,
 	)
+
+	if *DryRun {
+		vpp.CreateVppConfig()
+
+		for name := range s.Containers {
+			s.Log("\033[36m"+"docker start %s && docker exec -it %s bash", name, name)
+		}
+		s.Log("\nvpp -c /tmp/vpp/etc/vpp/startup.conf &> /proc/1/fd/1")
+		s.Log("vppctl -s /tmp/vpp/var/run/vpp/cli.sock\n")
+		vppInterfaceConfig := fmt.Sprintf("create tap id 1 host-if-name %s\n"+
+			"set int ip addr tap1 %s\n"+
+			"set int state tap1 up\n"+
+			"create tap id 2 host-if-name %s\n"+
+			"set int ip addr tap2 %s\n"+
+			"set int state tap2 up\n",
+			clientInterface.name,
+			clientInterface.Peer.Ip4Address,
+			serverInterface.name,
+			serverInterface.Peer.Ip4Address,
+		)
+		s.AssertNil(vppContainer.CreateFileInWorkDir("vpp-config.conf", vppInterfaceConfig),
+			"cannot create file")
+
+		s.Log("This config will be loaded on VPP startup:\n%s", vppInterfaceConfig)
+
+		s.Log("sudo ip addr add " + clientInterface.Ip4Address + " dev " + clientInterface.name)
+		s.Log("sudo ip addr add " + serverInterface.Ip4Address + " dev " + serverInterface.name)
+		s.Log("Proxy: %s:%d\033[0m", s.ProxyAddr(), s.ProxyPort())
+
+		s.Skip("Dry run mode = true")
+	}
+
+	s.AssertNil(vpp.Start())
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
+	s.AssertNil(nginxProxyContainer.Start())
 	s.AssertNil(nginxServerContainer.Start())
 
 	vpp.WaitForApp("nginx-", 5)

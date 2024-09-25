@@ -65,7 +65,7 @@ func (s *NsSuite) SetupTest() {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 
-	container.Exec("chmod 777 -R %s", container.GetContainerWorkDir())
+	container.Exec(false, "chmod 777 -R %s", container.GetContainerWorkDir())
 }
 
 var _ = Describe("NsSuite", Ordered, ContinueOnFailure, func() {
