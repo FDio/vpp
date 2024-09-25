@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f1be378_a1783f35",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-09-25T13:53:54Z",
+      "side": 1,
+      "message": "Thanks for reviewing the changes.",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb9f8d7e_be15d7a8",
@@ -31,6 +48,24 @@
       "writtenOn": "2024-09-25T10:55:05Z",
       "side": 1,
       "message": "The existing counter/error can be cleared through the commands such as \"clear errors\". Any specific reason to add new counter and new commands to display/clear new counters?",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c972f642_3856815a",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-09-25T13:53:54Z",
+      "side": 1,
+      "message": "This is only clear these new memif stats.",
+      "parentUuid": "fb9f8d7e_be15d7a8",
       "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +87,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "71426dcd_4ed4db20",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 683,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-09-25T13:53:54Z",
+      "side": 1,
+      "message": "This is per memif\u0027s queue. The counters in \"show errors\" is per interface and per cpu. This counter helps to fix the tx/rx placement.",
+      "parentUuid": "370b8d49_7df3de51",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f4ce3ad2_ccbead9c",
@@ -65,6 +118,24 @@
       "writtenOn": "2024-09-25T10:55:05Z",
       "side": 1,
       "message": "If we already have a counter to track interface RX count, why do we need another counter?",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "143f363e_c5228a7b",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-09-25T13:53:54Z",
+      "side": 1,
+      "message": "Yes, this is help to monitor how the received packets distributed between the rx queues.",
+      "parentUuid": "f4ce3ad2_ccbead9c",
       "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
