@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "00078d06_acfde791",
+        "filename": "src/vnet/dev/bus/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-09-25T12:56:32Z",
+      "side": 1,
+      "message": "ok, so vf_token is just shared secret between PF and VF?\nIf yes, it should not be part of device_id, and it can be passed to dev infra trough args[] in existing API, without changing API....",
+      "parentUuid": "f35c2f08_957ce029",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b594529_48cc9ebf",
         "filename": "src/vnet/dev/dev.h",
         "patchSetId": 3
