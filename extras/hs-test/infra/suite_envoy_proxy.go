@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -64,12 +65,8 @@ func (s *EnvoyProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
-	vppContainer.Exec("chmod 777 -R %s", vppContainer.GetContainerWorkDir())
 
 	// nginx HTTP server
 	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -86,12 +83,11 @@ func (s *EnvoyProxySuite) SetupTest() {
 		Port:      s.nginxPort,
 		Timeout:   s.maxTimeout,
 	}
-	nginxContainer.CreateConfig(
+	nginxContainer.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
-	s.AssertNil(nginxContainer.Start())
 
 	// Envoy
 	envoyContainer := s.GetContainerByName(EnvoyProxyContainerName)
@@ -109,19 +105,35 @@ func (s *EnvoyProxySuite) SetupTest() {
 		ServerPort:    s.nginxPort,
 		ProxyPort:     s.proxyPort,
 	}
-	envoyContainer.CreateConfig(
+	envoyContainer.CreateConfigFromTemplate(
 		"/etc/envoy/envoy.yaml",
 		"resources/envoy/proxy.yaml",
 		envoySettings,
 	)
-	s.AssertNil(envoyContainer.Start())
+
+	s.AssertNil(vpp.Start())
+	// wait for VPP to start
+	time.Sleep(time.Second * 1)
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
+	vppContainer.Exec(false, "chmod 777 -R %s", vppContainer.GetContainerWorkDir())
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
 		serverInterface.Peer.Name(),
 		serverInterface.Ip4AddressString(),
 		serverInterface.HwAddress)
+
+	if *DryRun {
+		vpp.AppendToCliConfig(arp)
+		s.LogStartedContainers()
+		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.ProxyPort(), Colors.rst)
+		s.Skip("Dry run mode = true")
+	}
+
 	vppContainer.VppInstance.Vppctl(arp)
+	s.AssertNil(nginxContainer.Start())
+	s.AssertNil(envoyContainer.Start())
 }
 
 func (s *EnvoyProxySuite) TearDownTest() {

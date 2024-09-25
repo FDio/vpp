@@ -86,6 +86,7 @@ help:
 	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo " CPU0=[true|false]        - use cpu0"
+	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
 	@echo
 	@echo "List of all tests:"
 	@$(MAKE) list-tests
@@ -120,7 +121,8 @@ build-vpp-gcov:
 test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0); \
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
+		--dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
 
 
@@ -129,14 +131,14 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
 
 .PHONY: test-cov
 test-cov: .deps.ok .build.cov.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0); \
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
 
 .PHONY: test-leak

@@ -60,23 +60,33 @@ func (s *LdpSuite) SetupTest() {
 	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	s.SetupServerVpp()
-
 	// ... For client
 	clientContainer := s.GetContainerByName("client-vpp")
 
 	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
-	s.setupClientVpp()
-
-	serverContainer.AddEnvVar("VCL_CONFIG", serverContainer.GetContainerWorkDir()+"/vcl_srv.conf")
-	clientContainer.AddEnvVar("VCL_CONFIG", clientContainer.GetContainerWorkDir()+"/vcl_cln.conf")
+	serverContainer.AddEnvVar("VCL_CONFIG", serverContainer.GetContainerWorkDir()+"/vcl.conf")
+	clientContainer.AddEnvVar("VCL_CONFIG", clientContainer.GetContainerWorkDir()+"/vcl.conf")
 
 	for _, container := range s.StartedContainers {
 		container.AddEnvVar("LD_PRELOAD", "/usr/lib/libvcl_ldpreload.so")
 		container.AddEnvVar("LDP_DEBUG", "0")
 		container.AddEnvVar("VCL_DEBUG", "0")
+	}
+
+	s.CreateVclConfig(serverContainer)
+	s.CreateVclConfig(clientContainer)
+	s.SetupServerVpp(serverContainer)
+	s.setupClientVpp(clientContainer)
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Log("\n%s* LD_PRELOAD and VCL_CONFIG server/client paths:", Colors.grn)
+		s.Log("LD_PRELOAD=/usr/lib/libvcl_ldpreload.so")
+		s.Log("VCL_CONFIG=%s/vcl.conf", serverContainer.GetContainerWorkDir())
+		s.Log("VCL_CONFIG=%s/vcl.conf%s\n", clientContainer.GetContainerWorkDir(), Colors.rst)
+		s.Skip("Dry run mode = true")
 	}
 }
 
@@ -89,10 +99,25 @@ func (s *LdpSuite) TearDownTest() {
 
 }
 
-func (s *LdpSuite) SetupServerVpp() {
-	var srvVclConf Stanza
-	serverContainer := s.GetContainerByName("server-vpp")
-	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
+func (s *LdpSuite) CreateVclConfig(container *Container) {
+	var vclConf Stanza
+	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		container.GetContainerWorkDir())
+	err := vclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(appSocketApi).Close().
+		SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
+}
+
+func (s *LdpSuite) SetupServerVpp(serverContainer *Container) {
 	serverVpp := serverContainer.VppInstance
 	s.AssertNil(serverVpp.Start())
 
@@ -100,25 +125,9 @@ func (s *LdpSuite) SetupServerVpp() {
 	idx, err := serverVpp.createAfPacket(serverVeth)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
-
-	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		serverContainer.GetContainerWorkDir())
-	err = srvVclConf.
-		NewStanza("vcl").
-		Append("rx-fifo-size 4000000").
-		Append("tx-fifo-size 4000000").
-		Append("app-scope-local").
-		Append("app-scope-global").
-		Append("use-mq-eventfd").
-		Append(serverAppSocketApi).Close().
-		SaveToFile(serverVclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
 }
 
-func (s *LdpSuite) setupClientVpp() {
-	var clnVclConf Stanza
-	clientContainer := s.GetContainerByName("client-vpp")
-	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
+func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	clientVpp := clientContainer.VppInstance
 	s.AssertNil(clientVpp.Start())
 
@@ -126,19 +135,6 @@ func (s *LdpSuite) setupClientVpp() {
 	idx, err := clientVpp.createAfPacket(clientVeth)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
-
-	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		clientContainer.GetContainerWorkDir())
-	err = clnVclConf.
-		NewStanza("vcl").
-		Append("rx-fifo-size 4000000").
-		Append("tx-fifo-size 4000000").
-		Append("app-scope-local").
-		Append("app-scope-global").
-		Append("use-mq-eventfd").
-		Append(clientAppSocketApi).Close().
-		SaveToFile(clientVclFileName)
-	s.AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, func() {
