@@ -55,11 +55,15 @@ func (s *NoTopoSuite) SetupTest() {
 
 	container := s.GetContainerByName(SingleTopoContainerVpp)
 	vpp, _ := container.newVppInstance(container.AllocatedCpus, sessionConfig)
+
 	s.AssertNil(vpp.Start())
-
 	tapInterface := s.GetInterfaceByName(TapInterfaceName)
-
 	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
 }
 
 func (s *NoTopoSuite) TearDownTest() {
@@ -81,7 +85,7 @@ func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers
 	}{
 		Workers: workers,
 	}
-	container.CreateConfig(
+	container.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx.conf",
 		values,
@@ -131,7 +135,7 @@ func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
 	}{
 		LogPrefix: container.Name,
 	}
-	container.CreateConfig(
+	container.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_http3.conf",
 		nginxSettings,

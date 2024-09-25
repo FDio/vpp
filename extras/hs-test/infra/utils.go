@@ -270,7 +270,7 @@ func (s *HstSuite) StartServerApp(c *Container, processName string, cmd string,
 	running chan error, done chan struct{}) {
 
 	s.Log("starting server")
-	c.ExecServer(cmd)
+	c.ExecServer(true, cmd)
 	cmd2 := exec.Command("docker", "exec", c.Name, "pidof", processName)
 	err := cmd2.Run()
 	if err != nil {
