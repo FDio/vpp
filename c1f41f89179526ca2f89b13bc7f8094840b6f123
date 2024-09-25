@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1902942_26bd90e1",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-09-25T13:00:17Z",
+      "side": 1,
+      "message": "s/0/VNET_DEV_OK/",
+      "revId": "c1f41f89179526ca2f89b13bc7f8094840b6f123",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
