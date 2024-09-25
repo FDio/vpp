@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d31ba59_94c05188",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-09-25T15:42:25Z",
+      "side": 1,
+      "message": "removed",
+      "parentUuid": "8516022b_41d64405",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c96027c0_c711be36",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "99eb6ace_2f2aea0a",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-09-25T15:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c96027c0_c711be36",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "49fe3dee_7078942b",
@@ -65,6 +101,24 @@
       "writtenOn": "2024-09-25T03:27:38Z",
       "side": 1,
       "message": "\"goto error\" and have some non-zero error returned? Then do all the vec_frees there?",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "456589e6_da898569",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 788,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-09-25T15:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "49fe3dee_7078942b",
       "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
