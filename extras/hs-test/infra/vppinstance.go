@@ -37,6 +37,7 @@ const vppConfigTemplate = `unix {
   coredump-size unlimited
   cli-listen %[1]s%[2]s
   runtime-dir %[1]s/var/run
+  %[5]s
 }
 
 api-trace {
@@ -122,18 +123,27 @@ func (vpp *VppInstance) getEtcDir() string {
 	return vpp.Container.GetContainerWorkDir() + "/etc/vpp"
 }
 
-func (vpp *VppInstance) Start() error {
-	maxReconnectAttempts := 3
-	// Replace default logger in govpp with our own
-	govppLogger := logrus.New()
-	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().Logger.Writer(), GinkgoWriter))
-	core.SetLogger(govppLogger)
-	// Create folders
-	containerWorkDir := vpp.Container.GetContainerWorkDir()
+// Appends a string to '[host-work-dir]/cli-config.conf'.
+// Creates the conf file if it doesn't exist. Used for dry-run mode.
+func (vpp *VppInstance) AppendToCliConfig(vppCliConfig string) {
+	f, err := os.OpenFile(vpp.Container.GetHostWorkDir()+"/cli-config.conf", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	vpp.getSuite().AssertNil(err)
+	_, err = f.Write([]byte(vppCliConfig))
+	vpp.getSuite().AssertNil(err)
+	err = f.Close()
+	vpp.getSuite().AssertNil(err)
+}
 
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getRunDir())
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getLogDir())
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getEtcDir())
+func (vpp *VppInstance) Start() error {
+	containerWorkDir := vpp.Container.GetContainerWorkDir()
+	var cliConfig string
+	if *DryRun {
+		cliConfig = fmt.Sprintf("exec %s/cli-config.conf", containerWorkDir)
+	}
+
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getRunDir())
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getLogDir())
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getEtcDir())
 
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
@@ -142,6 +152,7 @@ func (vpp *VppInstance) Start() error {
 		defaultCliSocketFilePath,
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
+		cliConfig,
 	)
 	configContent += vpp.generateVPPCpuConfig()
 	for _, c := range vpp.AdditionalConfig {
@@ -154,7 +165,20 @@ func (vpp *VppInstance) Start() error {
 	cliContent := "#!/usr/bin/bash\nvppctl -s " + vpp.getRunDir() + "/cli.sock"
 	vppcliFileName := "/usr/bin/vppcli"
 	vpp.Container.CreateFile(vppcliFileName, cliContent)
-	vpp.Container.Exec("chmod 0755 " + vppcliFileName)
+	vpp.Container.Exec(false, "chmod 0755 "+vppcliFileName)
+
+	if *DryRun {
+		vpp.getSuite().Log("%s* Commands to start VPP and VPPCLI:", Colors.pur)
+		vpp.getSuite().Log("vpp -c %s/startup.conf", vpp.getEtcDir())
+		vpp.getSuite().Log("vppcli (= vppctl -s %s/cli.sock)%s\n", vpp.getRunDir(), Colors.rst)
+		return nil
+	}
+
+	maxReconnectAttempts := 3
+	// Replace default logger in govpp with our own
+	govppLogger := logrus.New()
+	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().Logger.Writer(), GinkgoWriter))
+	core.SetLogger(govppLogger)
 
 	vpp.getSuite().Log("starting vpp")
 	if *IsVppDebug {
@@ -168,7 +192,7 @@ func (vpp *VppInstance) Start() error {
 			cont <- true
 		}()
 
-		vpp.Container.ExecServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
+		vpp.Container.ExecServer(false, "su -c \"vpp -c "+startupFileName+" &> /proc/1/fd/1\"")
 		fmt.Println("run following command in different terminal:")
 		fmt.Println("docker exec -it " + vpp.Container.Name + " gdb -ex \"attach $(docker exec " + vpp.Container.Name + " pidof vpp)\"")
 		fmt.Println("Afterwards press CTRL+\\ to continue")
@@ -176,7 +200,7 @@ func (vpp *VppInstance) Start() error {
 		fmt.Println("continuing...")
 	} else {
 		// Start VPP
-		vpp.Container.ExecServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
+		vpp.Container.ExecServer(false, "su -c \"vpp -c "+startupFileName+" &> /proc/1/fd/1\"")
 	}
 
 	vpp.getSuite().Log("connecting to vpp")
@@ -256,6 +280,23 @@ func (vpp *VppInstance) WaitForApp(appName string, timeout int) {
 func (vpp *VppInstance) createAfPacket(
 	veth *NetInterface,
 ) (interface_types.InterfaceIndex, error) {
+	if *DryRun {
+		if ip4Address, err := veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			veth.Ip4Address = ip4Address
+		} else {
+			return 0, err
+		}
+		vppCliConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			veth.Name(),
+			veth.Name(),
+			veth.Name(), veth.Ip4Address)
+		vpp.AppendToCliConfig(vppCliConfig)
+		vpp.getSuite().Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
+		return 1, nil
+	}
 	createReq := &af_packet.AfPacketCreateV3{
 		Mode:            1,
 		UseRandomHwAddr: true,
@@ -382,14 +423,28 @@ func (vpp *VppInstance) addAppNamespace(
 	return nil
 }
 
-func (vpp *VppInstance) createTap(
-	tap *NetInterface,
-	tapId ...uint32,
-) error {
+func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
 	var id uint32 = 1
 	if len(tapId) > 0 {
 		id = tapId[0]
 	}
+
+	if *DryRun {
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s host-ip4-addr %s\n"+
+			"set int ip addr tap%d %s\n"+
+			"set int state tap%d up\n",
+			id,
+			tap.name,
+			tap.Ip4Address,
+			id,
+			tap.Peer.Ip4Address,
+			id,
+		)
+		vpp.AppendToCliConfig(vppCliConfig)
+		vpp.getSuite().Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
+		return nil
+	}
+
 	createTapReq := &tapv2.TapCreateV3{
 		ID:               id,
 		HostIfNameSet:    true,

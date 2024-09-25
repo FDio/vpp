@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [ $1 == 2 ]
+then
+    exit 1
+fi
+
 # if failed-summary.log is not empty, exit status = 1
 if [ -s "${HS_ROOT}/summary/failed-summary.log" ]
 then
