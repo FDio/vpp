@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42c3ba66_4dab3c99",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-25T13:51:37Z",
+      "side": 1,
+      "message": "The existing function snort_instance_create() returns a pointer to clib_error_t because it is currently only used by a CLI function. Instead of maintaining that behavior and having the API return the generic error code VNET_API_ERROR_UNSPECIFIED if a non-null value was returned by snort_instance_create(), snort_instance_create()  should be updated to return an int that contains a more specific error code related to the reason the function failed. E.g. -\n* if \u0027(snort_get_instance_by_name (name))\u0027 is true, return VNET_API_ERROR_ENTRY_ALREADY_EXISTS\n* if \u0027(fd \u003d\u003d -1)\u0027 is true, set rv to VNET_API_ERROR_SYSCALL_ERROR_1\n* if \u0027((ftruncate (fd, size)) \u003d\u003d -1)\u0027 is true, set rv to VNET_API_ERROR_SYSCALL_ERROR_2\n* if \u0027(base \u003d\u003d CLIB_MEM_VM_MAP_FAILED)\u0027 is true, set rv to VNET_API_ERROR_SYSCALL_ERROR_3\n\nThe CLI function snort_create_instance_command_fn() which currently calls snort_instance_create() can have a switch statement added which checks for those error codes and calls clib_error_return() with an appropriate message based on the return value of snort_intance_create(). If you want to look at an example of existing code that does this, you can look at ipip_add_tunnel(). The API handler function vl_api_ipip_add_tunnel_t_handler() calls it and uses it\u0027s return value directly in the reply message. The CLI function create_ipip_tunnel_command_fn() calls it and uses a switch statement to set different error messages using clib_error_return()",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6de2a60c_05fd0720",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-25T13:51:37Z",
+      "side": 1,
+      "message": "Same comment as for snort_instance_create().... have snort_instance_delete() return an int instead of a pointer to clib_error_t.",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6026f93e_d74a3782",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-25T13:51:37Z",
+      "side": 1,
+      "message": "Same comment as for snort_instance_create()... have snort_interface_enable_disable() return an int instead of a pointer to clib_error_t.",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "882de150_65edfe67",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-25T13:51:37Z",
+      "side": 1,
+      "message": "It would be better to replace the conditions here with \u0027if (pool_is_free_index (sm-\u003eclients, client_index))\u0027\n\npool_elts() will return the currently allocated number of pool elements (\u003d\u003d vec_len() - the number of free slots). If you allocate 2 elements from a pool they will have indexes 0 and 1. If you then put element 0 back into the pool, the element with index 1 is now the only allocated element. Now pool_elts() would return 1 so if you tried to disconnect the client with index 1, the condition (client_index \u003e\u003d pool_elts (sm-\u003eclients)) would evaluate to true and the operation would fail.",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
