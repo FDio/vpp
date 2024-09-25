@@ -503,6 +503,14 @@ dpdk_lib_init (dpdk_main_t * dm)
       else if (dr && dr->n_tx_desc)
 	xd->conf.n_tx_desc = dr->n_tx_desc;
 
+      if (xd->conf.n_tx_desc > di.tx_desc_lim.nb_max)
+	{
+	  dpdk_log_warn ("[%u] Configured number of TX descriptors (%u) is "
+			 "bigger than maximum supported (%u)",
+			 port_id, xd->conf.n_tx_desc, di.tx_desc_lim.nb_max);
+	  xd->conf.n_tx_desc = di.tx_desc_lim.nb_max;
+	}
+
       dpdk_log_debug (
 	"[%u] n_rx_queues: %u n_tx_queues: %u n_rx_desc: %u n_tx_desc: %u",
 	port_id, xd->conf.n_rx_queues, xd->conf.n_tx_queues,
