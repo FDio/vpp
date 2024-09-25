@@ -37,6 +37,7 @@ const vppConfigTemplate = `unix {
   coredump-size unlimited
   cli-listen %[1]s%[2]s
   runtime-dir %[1]s/var/run
+  %[5]s
 }
 
 api-trace {
@@ -122,18 +123,17 @@ func (vpp *VppInstance) getEtcDir() string {
 	return vpp.Container.GetContainerWorkDir() + "/etc/vpp"
 }
 
-func (vpp *VppInstance) Start() error {
-	maxReconnectAttempts := 3
-	// Replace default logger in govpp with our own
-	govppLogger := logrus.New()
-	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().Logger.Writer(), GinkgoWriter))
-	core.SetLogger(govppLogger)
+func (vpp *VppInstance) CreateVppConfig() {
 	// Create folders
 	containerWorkDir := vpp.Container.GetContainerWorkDir()
+	var startupConfig string
+	if *DryRun {
+		startupConfig = fmt.Sprintf("exec %s/vpp-config.conf", containerWorkDir)
+	}
 
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getRunDir())
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getLogDir())
-	vpp.Container.Exec("mkdir --mode=0700 -p " + vpp.getEtcDir())
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getRunDir())
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getLogDir())
+	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getEtcDir())
 
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
@@ -142,6 +142,7 @@ func (vpp *VppInstance) Start() error {
 		defaultCliSocketFilePath,
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
+		startupConfig,
 	)
 	configContent += vpp.generateVPPCpuConfig()
 	for _, c := range vpp.AdditionalConfig {
@@ -154,7 +155,24 @@ func (vpp *VppInstance) Start() error {
 	cliContent := "#!/usr/bin/bash\nvppctl -s " + vpp.getRunDir() + "/cli.sock"
 	vppcliFileName := "/usr/bin/vppcli"
 	vpp.Container.CreateFile(vppcliFileName, cliContent)
-	vpp.Container.Exec("chmod 0755 " + vppcliFileName)
+	vpp.Container.Exec(false, "chmod 0755 "+vppcliFileName)
+
+	if *DryRun {
+		vpp.getSuite().Log("%s* Commands to start VPP and VPPCLI:", Colors.pur)
+		vpp.getSuite().Log("vpp -c %s/startup.conf", vpp.getEtcDir())
+		vpp.getSuite().Log("vppcli (= vppctl -s %s/cli.sock)%s", vpp.getRunDir(), Colors.rst)
+	}
+}
+
+func (vpp *VppInstance) Start() error {
+	vpp.CreateVppConfig()
+
+	maxReconnectAttempts := 3
+	// Replace default logger in govpp with our own
+	govppLogger := logrus.New()
+	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().Logger.Writer(), GinkgoWriter))
+	core.SetLogger(govppLogger)
+	startupFileName := vpp.getEtcDir() + "/startup.conf"
 
 	vpp.getSuite().Log("starting vpp")
 	if *IsVppDebug {
@@ -168,7 +186,7 @@ func (vpp *VppInstance) Start() error {
 			cont <- true
 		}()
 
-		vpp.Container.ExecServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
+		vpp.Container.ExecServer(false, "su -c \"vpp -c "+startupFileName+" &> /proc/1/fd/1\"")
 		fmt.Println("run following command in different terminal:")
 		fmt.Println("docker exec -it " + vpp.Container.Name + " gdb -ex \"attach $(docker exec " + vpp.Container.Name + " pidof vpp)\"")
 		fmt.Println("Afterwards press CTRL+\\ to continue")
@@ -176,7 +194,7 @@ func (vpp *VppInstance) Start() error {
 		fmt.Println("continuing...")
 	} else {
 		// Start VPP
-		vpp.Container.ExecServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
+		vpp.Container.ExecServer(false, "su -c \"vpp -c "+startupFileName+" &> /proc/1/fd/1\"")
 	}
 
 	vpp.getSuite().Log("connecting to vpp")

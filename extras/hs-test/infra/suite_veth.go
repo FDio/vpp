@@ -60,15 +60,50 @@ func (s *VethsSuite) SetupTest() {
 	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	s.SetupServerVpp()
-
 	// ... For client
 	clientContainer := s.GetContainerByName("client-vpp")
 
 	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
+	if *DryRun {
+		s.LogStartedContainers()
+		serverVpp.CreateVppConfig()
+		clientVpp.CreateVppConfig()
+		serverVeth := s.GetInterfaceByName(ServerInterfaceName)
+		clientVeth := s.GetInterfaceByName(ClientInterfaceName)
+		serverVeth.Ip4Address, _ = serverVeth.Ip4AddrAllocator.NewIp4InterfaceAddress(serverVeth.Peer.NetworkNumber)
+		clientVeth.Ip4Address, _ = clientVeth.Ip4AddrAllocator.NewIp4InterfaceAddress(clientVeth.Peer.NetworkNumber)
+
+		serverStartupConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			serverVeth.Name(),
+			serverVeth.Name(),
+			serverVeth.Name(), serverVeth.Ip4Address,
+		)
+		s.AssertNil(serverContainer.CreateFileInWorkDir("vpp-config.conf", serverStartupConfig),
+			"cannot create file")
+		s.Log("\n%s* This *SERVER* config will be loaded on VPP startup:\n%s", Colors.grn, serverStartupConfig)
+
+		clientStartupConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			clientVeth.Name(),
+			clientVeth.Name(),
+			clientVeth.Name(), clientVeth.Ip4Address,
+		)
+		s.AssertNil(clientContainer.CreateFileInWorkDir("vpp-config.conf", clientStartupConfig),
+			"cannot create file")
+		s.Log("* This *CLIENT* config will be loaded on VPP startup:\n%s%s", clientStartupConfig, Colors.rst)
+
+		s.Skip("Dry run mode = true")
+	}
+	s.SetupServerVpp()
 	s.setupClientVpp()
+
 }
 
 func (s *VethsSuite) SetupServerVpp() {
