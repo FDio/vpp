@@ -58,11 +58,9 @@ func (s *VppProxySuite) SetupTest() {
 	vppContainer := s.GetContainerByName(VppProxyContainerName)
 	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	s.AssertNil(vpp.Start())
+
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	s.AssertNil(vpp.createTap(clientInterface, 1))
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-	s.AssertNil(vpp.createTap(serverInterface, 2))
 
 	// nginx HTTP server
 	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
@@ -79,12 +77,21 @@ func (s *VppProxySuite) SetupTest() {
 		Port:      s.nginxPort,
 		Timeout:   s.maxTimeout,
 	}
-	nginxContainer.CreateConfig(
+	nginxContainer.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
 	s.AssertNil(nginxContainer.Start())
+
+	s.AssertNil(vpp.Start())
+	s.AssertNil(vpp.createTap(clientInterface, 1))
+	s.AssertNil(vpp.createTap(serverInterface, 2))
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
 }
 
 func (s *VppProxySuite) TearDownTest() {

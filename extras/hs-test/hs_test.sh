@@ -5,12 +5,14 @@ source vars
 args=
 focused_test=0
 persist_set=0
+dryrun_set=0
 unconfigure_set=0
 debug_set=0
 leak_check_set=0
 debug_build=
 ginkgo_args=
 tc_names=()
+dryrun=
 
 for i in "$@"
 do
@@ -75,6 +77,13 @@ case "${i}" in
             args="$args -cpu0"
         fi
         ;;
+    --dryrun=*)
+        dryrun="${i#*=}"
+        if [ "$dryrun" = "true" ]; then
+            args="$args -dryrun"
+            dryrun_set=1
+        fi
+        ;;
     --leak_check=*)
         leak_check="${i#*=}"
         if [ "$leak_check" = "true" ]; then
@@ -85,34 +94,39 @@ case "${i}" in
 esac
 done
 
+if [ ${#tc_names[@]} -gt 1 ]
+then
+    focused_test=0
+fi
+
 for name in "${tc_names[@]}"; do
     ginkgo_args="$ginkgo_args --focus $name"
 done
 
-if [ $focused_test -eq 0 ] && [ $persist_set -eq 1 ]; then
-    echo "persist flag is not supported while running all tests!"
-    exit 1
+if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ] || [ $dryrun_set -eq 1 ]; }; then
+    echo -e "\e[1;31mpersist/dryrun flag is not supported while running all tests!\e[1;0m"
+    exit 2
 fi
 
 if [ $unconfigure_set -eq 1 ] && [ $focused_test -eq 0 ]; then
-    echo "a single test has to be specified when unconfigure is set"
-    exit 1
+    echo -e "\e[1;31ma single test has to be specified when unconfigure is set\e[1;0m"
+    exit 2
 fi
 
 if [ $persist_set -eq 1 ] && [ $unconfigure_set -eq 1 ]; then
-    echo "setting persist flag and unconfigure flag is not allowed"
-    exit 1
+    echo -e "\e[1;31msetting persist flag and unconfigure flag is not allowed\e[1;0m"
+    exit 2
 fi
 
 if [ $focused_test -eq 0 ] && [ $debug_set -eq 1 ]; then
-    echo "VPP debug flag is not supported while running all tests!"
-    exit 1
+    echo -e "\e[1;31mVPP debug flag is not supported while running all tests!\e[1;0m"
+    exit 2
 fi
 
 if [ $leak_check_set -eq 1 ]; then
   if [ $focused_test -eq 0 ]; then
-    echo "a single test has to be specified when leak_check is set"
-    exit 1
+    echo -e "\e[1;31ma single test has to be specified when leak_check is set\e[1;0m"
+    exit 2
   fi
   ginkgo_args="--focus $tc_name"
   sudo -E go run github.com/onsi/ginkgo/v2/ginkgo $ginkgo_args -- $args
