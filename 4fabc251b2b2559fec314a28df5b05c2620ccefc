@@ -16,6 +16,57 @@
       "message": "Please review ... thanks",
       "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb9f8d7e_be15d7a8",
+        "filename": "src/plugins/memif/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-09-25T10:55:05Z",
+      "side": 1,
+      "message": "The existing counter/error can be cleared through the commands such as \"clear errors\". Any specific reason to add new counter and new commands to display/clear new counters?",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "370b8d49_7df3de51",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 683,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-09-25T10:55:05Z",
+      "side": 1,
+      "message": "If we already have the counter to track no free slots error, why do we need another CLI for the same purpose?",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4ce3ad2_ccbead9c",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-09-25T10:55:05Z",
+      "side": 1,
+      "message": "If we already have a counter to track interface RX count, why do we need another counter?",
+      "revId": "4fabc251b2b2559fec314a28df5b05c2620ccefc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
