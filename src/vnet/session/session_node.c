@@ -1249,6 +1249,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	    }
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
 	  len = ctx->hdr.data_length - ctx->hdr.data_offset;
+	  ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, len);
 
 	  if (ctx->hdr.gso_size)
 	    {
