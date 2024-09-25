@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "984d7639_a52c6b53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-25T03:27:38Z",
+      "side": 1,
+      "message": "Quick nits",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8516022b_41d64405",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-25T03:27:38Z",
+      "side": 1,
+      "message": "Part of hcs_main?",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c96027c0_c711be36",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-25T03:27:38Z",
+      "side": 1,
+      "message": "hcs_uri_map_t just to avoid potential overlaps in the future?",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49fe3dee_7078942b",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 788,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-09-25T03:27:38Z",
+      "side": 1,
+      "message": "\"goto error\" and have some non-zero error returned? Then do all the vec_frees there?",
+      "revId": "e66059b4d442ac494002ed6abd6fdbc0af969af9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
