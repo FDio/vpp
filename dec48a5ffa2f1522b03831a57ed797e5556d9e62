@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7700bf4c_217f504d",
+        "filename": "src/vnet/dev/bus/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-09-25T09:32:02Z",
+      "side": 1,
+      "message": "So what\u0027s the point of making all this mess if you still need to specify BDF",
+      "parentUuid": "b94525b0_cc1ed6d6",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b594529_48cc9ebf",
         "filename": "src/vnet/dev/dev.h",
         "patchSetId": 3
