@@ -92,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "979fc626_75a230b2",
+        "filename": "src/vnet/dev/bus/pci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-09-25T15:33:20Z",
+      "side": 1,
+      "message": "It can be passed via vnet_dev_arg and used here to get uuid but then all device drivers have to define/use same format for vf_token arg if want to use this feature.",
+      "parentUuid": "00078d06_acfde791",
+      "revId": "dec48a5ffa2f1522b03831a57ed797e5556d9e62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b594529_48cc9ebf",
         "filename": "src/vnet/dev/dev.h",
         "patchSetId": 3
