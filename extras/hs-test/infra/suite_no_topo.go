@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -53,10 +54,31 @@ func (s *NoTopoSuite) SetupTest() {
 
 	container := s.GetContainerByName(SingleTopoContainerVpp)
 	vpp, _ := container.newVppInstance(container.AllocatedCpus, sessionConfig)
+
+	if *DryRun {
+		vpp.CreateVppConfig()
+		tapInterface := s.GetInterfaceByName(TapInterfaceName)
+		for name := range s.Containers {
+			s.Log("\033[36mdocker start %s && docker exec -it %s bash", name, name)
+		}
+		s.Log("vpp -c /tmp/vpp/etc/vpp/startup.conf\n")
+		s.Log("vppctl -s /tmp/vpp/var/run/vpp/cli.sock\n")
+		startupConfig := fmt.Sprintf(
+			"create tap id 0 host-if-name %s\n"+
+				"set int ip addr tap0 %s\n"+
+				"set int state tap0 up\n",
+			tapInterface.name,
+			tapInterface.Peer.Ip4Address,
+		)
+
+		container.CreateFileInWorkDir("vpp-config.conf", startupConfig)
+		s.Log("This config will be loaded on VPP startup:\n%s", startupConfig)
+		s.Log("sudo ip addr add %s dev %s\033[0m", tapInterface.Ip4Address, tapInterface.name)
+		s.Skip("Dry run mode = true")
+	}
+
 	s.AssertNil(vpp.Start())
-
 	tapInterface := s.GetInterfaceByName(TapInterfaceName)
-
 	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }
 

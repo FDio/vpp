@@ -41,6 +41,7 @@ var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different wit
 var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
 var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
+var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var NumaAwareCpuAlloc bool
 var SuiteTimeout time.Duration
 
@@ -139,13 +140,16 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 func (s *HstSuite) TearDownSuite() {
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
+	if *IsPersistent || *DryRun {
+		return
+	}
 	s.Log("Suite Teardown")
 	s.UnconfigureNetworkTopology()
 }
 
 func (s *HstSuite) TearDownTest() {
 	s.Log("Test Teardown")
-	if *IsPersistent {
+	if *IsPersistent || *DryRun {
 		return
 	}
 	s.WaitForCoreDump()
@@ -302,13 +306,13 @@ func (s *HstSuite) CreateLogger() {
 
 // Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
 // to keep console tidy
-func (s *HstSuite) Log(arg any) {
-	logs := strings.Split(fmt.Sprint(arg), "\n")
+func (s *HstSuite) Log(log any, arg ...any) {
+	logs := strings.Split(fmt.Sprintf(fmt.Sprint(log), arg...), "\n")
 	for _, line := range logs {
 		s.Logger.Println(line)
 	}
 	if *IsVerbose {
-		GinkgoWriter.Println(arg)
+		GinkgoWriter.Println(fmt.Sprintf(fmt.Sprint(log), arg...))
 	}
 }
 
@@ -568,9 +572,6 @@ func (s *HstSuite) ConfigureNetworkTopology(topologyName string) {
 }
 
 func (s *HstSuite) UnconfigureNetworkTopology() {
-	if *IsPersistent {
-		return
-	}
 	for _, nc := range s.NetConfigs {
 		nc.unconfigure()
 	}
