@@ -60,15 +60,54 @@ func (s *VethsSuite) SetupTest() {
 	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	s.SetupServerVpp()
-
 	// ... For client
 	clientContainer := s.GetContainerByName("client-vpp")
 
 	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
+	if *DryRun {
+		serverVpp.CreateVppConfig()
+		clientVpp.CreateVppConfig()
+		serverVeth := s.GetInterfaceByName(ServerInterfaceName)
+		clientVeth := s.GetInterfaceByName(ClientInterfaceName)
+		serverVeth.Ip4Address, _ = serverVeth.Ip4AddrAllocator.NewIp4InterfaceAddress(serverVeth.Peer.NetworkNumber)
+		clientVeth.Ip4Address, _ = clientVeth.Ip4AddrAllocator.NewIp4InterfaceAddress(clientVeth.Peer.NetworkNumber)
+
+		serverStartupConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			serverVeth.Name(),
+			serverVeth.Name(),
+			serverVeth.Name(), serverVeth.Ip4Address,
+		)
+		serverContainer.CreateFileInWorkDir("vpp-config.conf", serverStartupConfig)
+		s.Log("%s* This *SERVER* config will be loaded on VPP startup:\n%s", Colors.grn, serverStartupConfig)
+
+		clientStartupConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			clientVeth.Name(),
+			clientVeth.Name(),
+			clientVeth.Name(), clientVeth.Ip4Address,
+		)
+		clientContainer.CreateFileInWorkDir("vpp-config.conf", clientStartupConfig)
+		s.Log("* This *CLIENT* config will be loaded on VPP startup:\n%s", clientStartupConfig)
+
+		s.Log("%s* Start *SERVER* VPP in the container with:", Colors.pur)
+		s.Log("vpp -c /tmp/server-share/etc/vpp/startup.conf &> /proc/1/fd/1")
+		s.Log("vppctl -s /tmp/server-share/var/run/vpp/cli.sock OR vppcli\n")
+
+		s.Log("* Start *CLIENT* VPP in the container with:")
+		s.Log("vpp -c /tmp/client-share/etc/vpp/startup.conf &> /proc/1/fd/1")
+		s.Log("vppctl -s /tmp/client-share/var/run/vpp/cli.sock OR vppcli%s", Colors.rst)
+		s.Skip("Dry run mode = true")
+	}
+	s.SetupServerVpp()
 	s.setupClientVpp()
+
 }
 
 func (s *VethsSuite) SetupServerVpp() {
