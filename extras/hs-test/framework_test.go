@@ -33,4 +33,8 @@ func TestHst(t *testing.T) {
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HST")
+	if *DryRun || *IsPersistent {
+		fmt.Println("\033[36m" + "Use 'make cleanup-hst' to remove IP files, " +
+			"namespaces and containers. \nPPID: " + ppid + "\033[0m")
+	}
 }

@@ -314,8 +314,8 @@ func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
 	serverAddress := s.HostAddr()
 	vpp := s.GetContainerByName("vpp").VppInstance
 	fileName := "/tmp/test_file.txt"
-	s.Log(vpp.Container.Exec("fallocate -l " + strconv.Itoa(fileSize) + " " + fileName))
-	s.Log(vpp.Container.Exec("ls -la " + fileName))
+	s.Log(vpp.Container.Exec(false, "fallocate -l "+strconv.Itoa(fileSize)+" "+fileName))
+	s.Log(vpp.Container.Exec(false, "ls -la "+fileName))
 
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", serverAddress+":80")
@@ -615,7 +615,7 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	content2 := "<html><body><p>Page</p></body></html>"
 
 	vpp := s.GetContainerByName("vpp").VppInstance
-	vpp.Container.Exec("mkdir -p " + wwwRootPath)
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
 	s.AssertNil(err, fmt.Sprint(err))
 	err = vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
@@ -671,8 +671,8 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 
 func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	vpp.Container.Exec("mkdir -p " + wwwRootPath)
-	vpp.Container.Exec("mkdir -p " + "/tmp/secret_folder")
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	vpp.Container.Exec(false, "mkdir -p "+"/tmp/secret_folder")
 	err := vpp.Container.CreateFile("/tmp/secret_folder/secret_file.txt", "secret")
 	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.VppAddr()
@@ -693,7 +693,7 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 
 func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	vpp.Container.Exec("mkdir -p " + wwwRootPath + "/tmp.aaa")
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath+"/tmp.aaa")
 	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
 	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.VppAddr()
@@ -715,7 +715,7 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
-	vpp.Container.Exec("mkdir -p " + wwwRootPath)
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 

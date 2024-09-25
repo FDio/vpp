@@ -51,7 +51,7 @@ func testXEchoVclClient(s *VethsSuite, proto string) {
 	testClientCommand := "vcl_test_client -N 100 -p " + proto + " " + serverVeth.Ip4AddressString() + " " + port
 	s.Log(testClientCommand)
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o := echoClnContainer.Exec(testClientCommand)
+	o := echoClnContainer.Exec(true, testClientCommand)
 	s.Log(o)
 	s.AssertContains(o, "CLIENT RESULTS")
 }
@@ -72,7 +72,7 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s", proto, port)
-	srvAppCont.ExecServer(vclSrvCmd)
+	srvAppCont.ExecServer(true, vclSrvCmd)
 
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 	serverVethAddress := serverVeth.Ip4AddressString()
@@ -90,7 +90,7 @@ func testVclEcho(s *VethsSuite, proto string) {
 
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	srvAppCont.ExecServer("vcl_test_server -p " + proto + " " + port)
+	srvAppCont.ExecServer(true, "vcl_test_server -p "+proto+" "+port)
 
 	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 	serverVethAddress := serverVeth.Ip4AddressString()
@@ -100,7 +100,7 @@ func testVclEcho(s *VethsSuite, proto string) {
 
 	testClientCommand := "vcl_test_client -p " + proto + " " + serverVethAddress + " " + port
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o := echoClnContainer.Exec(testClientCommand)
+	o := echoClnContainer.Exec(true, testClientCommand)
 	s.Log(o)
 }
 
@@ -128,7 +128,7 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	echoSrvContainer.CreateFile("/vcl.conf", getVclConfig(echoSrvContainer))
 
 	echoSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	echoSrvContainer.ExecServer("vcl_test_server -p " + proto + " 12346")
+	echoSrvContainer.ExecServer(true, "vcl_test_server -p "+proto+" 12346")
 
 	s.Log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.Log("... Running first echo client test, before disconnect.")
@@ -141,14 +141,14 @@ func testRetryAttach(s *VethsSuite, proto string) {
 
 	testClientCommand := "vcl_test_client -U -p " + proto + " " + serverVethAddress + " 12346"
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o := echoClnContainer.Exec(testClientCommand)
+	o := echoClnContainer.Exec(true, testClientCommand)
 	s.Log(o)
 	s.Log("... First test ended. Stopping VPP server now.")
 
 	// Stop server-vpp-instance, start it again and then run vcl-test-client once more
 	srvVppContainer.VppInstance.Disconnect()
 	stopVppCommand := "/bin/bash -c 'ps -C vpp_main -o pid= | xargs kill -9'"
-	srvVppContainer.Exec(stopVppCommand)
+	srvVppContainer.Exec(false, stopVppCommand)
 
 	s.SetupServerVpp()
 
@@ -156,7 +156,7 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
 	s.Log("... Running second echo client test, after disconnect and re-attachment.")
-	o = echoClnContainer.Exec(testClientCommand)
+	o = echoClnContainer.Exec(true, testClientCommand)
 	s.Log(o)
 	s.Log("Done.")
 }
