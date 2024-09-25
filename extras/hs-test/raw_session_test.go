@@ -29,7 +29,7 @@ func testVppEcho(s *VethsSuite, proto string) {
 		" use-app-socket-api" +
 		" uri " + uri
 	s.Log(serverCommand)
-	echoSrvContainer.ExecServer(serverCommand)
+	echoSrvContainer.ExecServer(true, serverCommand)
 
 	echoClnContainer := s.GetContainerByName("client-app")
 
@@ -37,6 +37,6 @@ func testVppEcho(s *VethsSuite, proto string) {
 		" socket-name " + echoClnContainer.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
 		" use-app-socket-api uri " + uri
 	s.Log(clientCommand)
-	o := echoClnContainer.Exec(clientCommand)
+	o := echoClnContainer.Exec(true, clientCommand)
 	s.Log(o)
 }

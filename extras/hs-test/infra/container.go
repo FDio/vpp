@@ -416,6 +416,19 @@ func (c *Container) CreateFile(destFileName string, content string) error {
 	return nil
 }
 
+func (c *Container) CreateFileInWorkDir(fileName string, contents string) error {
+	file, err := os.Create(c.GetHostWorkDir() + "/" + fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.Write([]byte(contents))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Container) GetFile(sourceFileName, targetFileName string) error {
 	cmd := exec.Command("docker", "cp", c.Name+":"+sourceFileName, targetFileName)
 	return cmd.Run()
@@ -425,19 +438,29 @@ func (c *Container) GetFile(sourceFileName, targetFileName string) error {
  * Executes in detached mode so that the started application can continue to run
  * without blocking execution of test
  */
-func (c *Container) ExecServer(command string, arguments ...any) {
+func (c *Container) ExecServer(useEnvVars bool, command string, arguments ...any) {
+	var envVars string
 	serverCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
-		" " + c.Name + " " + serverCommand
+	if useEnvVars {
+		envVars = c.getEnvVarsAsCliOption()
+	} else {
+		envVars = ""
+	}
+	containerExecCommand := fmt.Sprintf("docker exec -d %s %s %s", envVars, c.Name, serverCommand)
 	GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
 	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) Exec(command string, arguments ...any) string {
-	cliCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
-		" " + c.Name + " " + cliCommand
+func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) string {
+	var envVars string
+	serverCommand := fmt.Sprintf(command, arguments...)
+	if useEnvVars {
+		envVars = c.getEnvVarsAsCliOption()
+	} else {
+		envVars = ""
+	}
+	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
 	GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
