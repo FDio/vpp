@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	. "github.com/onsi/ginkgo/v2"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 var CgroupPath = "/sys/fs/cgroup/"

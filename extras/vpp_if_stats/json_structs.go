@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
 	"git.fd.io/govpp.git/examples/bin_api/vpe"
 )
 

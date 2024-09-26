@@ -5,10 +5,11 @@
 package main
 
 import (
-	api "git.fd.io/govpp.git/api"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 	time "time"
+
+	api "git.fd.io/govpp.git/api"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockChannel is a mock of Channel interface

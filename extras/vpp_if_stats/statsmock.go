@@ -5,9 +5,10 @@
 package main
 
 import (
+	reflect "reflect"
+
 	adapter "git.fd.io/govpp.git/adapter"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
 // MockStatsAPI is a mock of StatsAPI interface

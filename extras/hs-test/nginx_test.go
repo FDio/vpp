@@ -1,11 +1,12 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
-	. "github.com/onsi/ginkgo/v2"
 	"os"
 	"strings"
+
+	. "fd.io/hs-test/infra"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {

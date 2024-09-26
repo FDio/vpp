@@ -1,8 +1,9 @@
 package main
 
 import (
-	. "fd.io/hs-test/infra"
 	"fmt"
+
+	. "fd.io/hs-test/infra"
 )
 
 func init() {

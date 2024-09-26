@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/docker/go-units"
 	"os"
 	"os/exec"
 	"regexp"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/docker/go-units"
 
 	"github.com/cilium/cilium/pkg/sysctl"
 	containerTypes "github.com/docker/docker/api/types/container"

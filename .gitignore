@@ -132,6 +132,7 @@ compile_commands.json
 /extras/hs-test/.build.ok
 /extras/hs-test/.build.cov.ok
 /extras/hs-test/.last_hst_ppid
+/extras/hs-test/.goimports.ok
 /extras/hs-test/summary/
 
 # ./configure

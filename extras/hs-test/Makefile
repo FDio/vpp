@@ -184,10 +184,19 @@ install-deps:
 	@apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 	@touch .deps.ok
 
+.goimports.ok:
+	@rm -f .goimports.ok
+	go install golang.org/x/tools/cmd/goimports@v0.25.0
+	@touch .goimports.ok
+
 .PHONY: checkstyle-go
-checkstyle-go:
-	@output=$$(gofmt -d $${WS_ROOT}); \
-    if [ -z "$$output" ]; then \
+checkstyle-go: .goimports.ok
+	$(eval GOPATH := $(shell go env GOPATH))
+	@output=$$($(GOPATH)/bin/goimports -d $${WS_ROOT}); \
+	status=$$?; \
+	if [ $$status -ne 0 ]; then \
+		exit $$status; \
+    elif [ -z "$$output" ]; then \
         echo "*******************************************************************"; \
         echo "Checkstyle OK."; \
         echo "*******************************************************************"; \
@@ -200,9 +209,10 @@ checkstyle-go:
     fi
 
 .PHONY: fixstyle-go
-fixstyle-go:
+fixstyle-go: .goimports.ok
+	$(eval GOPATH := $(shell go env GOPATH))
 	@echo "Modified files:"
-	@gofmt -w -l $(WS_ROOT)
+	@$(GOPATH)/bin/goimports -w -l $(WS_ROOT)
 	@go mod tidy
 	@echo "*******************************************************************"
 	@echo "Fixstyle done."
