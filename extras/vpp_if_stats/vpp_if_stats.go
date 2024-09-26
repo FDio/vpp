@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+
 	"git.fd.io/govpp.git"
 	"git.fd.io/govpp.git/adapter"
 	"git.fd.io/govpp.git/adapter/vppapiclient"
@@ -10,7 +12,6 @@ import (
 	"git.fd.io/govpp.git/core"
 	"git.fd.io/govpp.git/examples/bin_api/interfaces"
 	"git.fd.io/govpp.git/examples/bin_api/vpe"
-	"log"
 )
 
 //////////////////////////////////////

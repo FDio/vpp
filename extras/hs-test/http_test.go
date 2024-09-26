@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/onsi/gomega/ghttp"
-	"github.com/onsi/gomega/gmeasure"
 	"io"
 	"math/rand"
 	"net"
@@ -14,6 +12,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/gmeasure"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"

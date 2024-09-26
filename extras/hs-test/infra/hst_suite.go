@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/edwarnicke/exechelper"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/edwarnicke/exechelper"
 
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"

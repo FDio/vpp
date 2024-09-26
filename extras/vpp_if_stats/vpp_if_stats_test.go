@@ -1,15 +1,16 @@
 package main
 
 import (
+	"math/rand"
+	"testing"
+	"time"
+
 	"git.fd.io/govpp.git/adapter"
 	"git.fd.io/govpp.git/api"
 	"git.fd.io/govpp.git/examples/bin_api/interfaces"
 	"git.fd.io/govpp.git/examples/bin_api/vpe"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
-	"testing"
-	"time"
 )
 
 var (

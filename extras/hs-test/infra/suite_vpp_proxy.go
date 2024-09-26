@@ -7,10 +7,11 @@ package hst
 
 import (
 	"fmt"
-	. "github.com/onsi/ginkgo/v2"
 	"reflect"
 	"runtime"
 	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 // These correspond to names used in yaml config

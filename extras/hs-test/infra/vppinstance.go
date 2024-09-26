@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.fd.io/govpp/binapi/ethernet_types"
 	"io"
 	"net"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"go.fd.io/govpp/binapi/ethernet_types"
 
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
