@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9eb9618b_c82fd578",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-26T07:47:33Z",
+      "side": 1,
+      "message": "\u0027make fixstyle-go\u0027 already exists but it doesn\u0027t do much for the imports and seems to be kinda random.\nFor example, if the ginkgo import was right under \"strings\", it would put it near the top for some reason.\n\nAfter searching, it seems like \u0027goimports\u0027 fixes this issue so I\u0027ll create a new patch.",
+      "parentUuid": "8f5739f9_1819cb3b",
+      "revId": "e03187eef018e401404dc5808649bb7438957de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a025becf_54258779",
