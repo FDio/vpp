@@ -20,7 +20,10 @@
   _ (AES_192_GCM, 24, 16, 8)                                                  \
   _ (AES_192_GCM, 24, 16, 12)                                                 \
   _ (AES_256_GCM, 32, 16, 8)                                                  \
-  _ (AES_256_GCM, 32, 16, 12)
+  _ (AES_256_GCM, 32, 16, 12)                                                 \
+  _ (CHACHA20_POLY1305, 32, 16, 8)                                            \
+  _ (CHACHA20_POLY1305, 32, 16, 12)                                           \
+  _ (CHACHA20_POLY1305, 32, 16, 0)
 
 /* CRYPTO_ID, INTEG_ID, KEY_LENGTH_IN_BYTES, DIGEST_LEN */
 #define foreach_oct_crypto_link_async_alg                                     \
@@ -36,6 +39,9 @@
   _ (AES_128_CBC, SHA512, 16, 32)                                             \
   _ (AES_192_CBC, SHA512, 24, 32)                                             \
   _ (AES_256_CBC, SHA512, 32, 32)                                             \
+  _ (AES_128_CBC, MD5, 16, 12)                                                \
+  _ (AES_192_CBC, MD5, 24, 12)                                                \
+  _ (AES_256_CBC, MD5, 32, 12)                                                \
   _ (3DES_CBC, MD5, 24, 12)                                                   \
   _ (3DES_CBC, SHA1, 24, 12)                                                  \
   _ (3DES_CBC, SHA256, 24, 16)                                                \
@@ -162,10 +168,14 @@ int oct_crypto_enqueue_aead_aad_8_enc (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_12_enc (vlib_main_t *vm,
 					vnet_crypto_async_frame_t *frame);
+int oct_crypto_enqueue_aead_aad_0_enc (vlib_main_t *vm,
+				       vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_8_dec (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_12_dec (vlib_main_t *vm,
 					vnet_crypto_async_frame_t *frame);
+int oct_crypto_enqueue_aead_aad_0_dec (vlib_main_t *vm,
+				       vnet_crypto_async_frame_t *frame);
 vnet_crypto_async_frame_t *oct_crypto_frame_dequeue (vlib_main_t *vm,
 						     u32 *nb_elts_processed,
 						     u32 *enqueue_thread_idx);
