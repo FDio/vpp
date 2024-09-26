@@ -1219,6 +1219,13 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       auth_type = ROC_SE_SHA2_SHA512;
       digest_len = 32;
       break;
+    case VNET_CRYPTO_ALG_AES_128_CBC_MD5_TAG12:
+    case VNET_CRYPTO_ALG_AES_192_CBC_MD5_TAG12:
+    case VNET_CRYPTO_ALG_AES_256_CBC_MD5_TAG12:
+      enc_type = ROC_SE_AES_CBC;
+      auth_type = ROC_SE_MD5_TYPE;
+      digest_len = 12;
+      break;
     case VNET_CRYPTO_ALG_AES_128_CTR_SHA1_TAG12:
     case VNET_CRYPTO_ALG_AES_192_CTR_SHA1_TAG12:
     case VNET_CRYPTO_ALG_AES_256_CTR_SHA1_TAG12:
@@ -1318,6 +1325,10 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       sess->cpt_op = type;
       digest_len = 16;
       break;
+    case VNET_CRYPTO_ALG_CHACHA20_POLY1305:
+      enc_type = ROC_SE_CHACHA20;
+      auth_type = ROC_SE_POLY1305;
+      break;
     default:
       clib_warning (
 	"Cryptodev: Undefined cipher algo %u specified. Key index %u",
@@ -1341,6 +1352,9 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
 		    auth_type);
       return -1;
     }
+
+  if (enc_type == ROC_SE_CHACHA20)
+    sess->cpt_ctx.template_w4.s.opcode_minor |= BIT (5);
 
   return 0;
 }
@@ -1567,6 +1581,13 @@ oct_crypto_enqueue_aead_aad_12_enc (vlib_main_t *vm,
 }
 
 int
+oct_crypto_enqueue_aead_aad_0_enc (vlib_main_t *vm,
+				   vnet_crypto_async_frame_t *frame)
+{
+  return oct_crypto_enqueue_aead_aad_enc (vm, frame, 0);
+}
+
+int
 oct_crypto_enqueue_aead_aad_8_dec (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame)
 {
@@ -1578,6 +1599,13 @@ oct_crypto_enqueue_aead_aad_12_dec (vlib_main_t *vm,
 				    vnet_crypto_async_frame_t *frame)
 {
   return oct_crypto_enqueue_aead_aad_dec (vm, frame, 12);
+}
+
+int
+oct_crypto_enqueue_aead_aad_0_dec (vlib_main_t *vm,
+				   vnet_crypto_async_frame_t *frame)
+{
+  return oct_crypto_enqueue_aead_aad_dec (vm, frame, 0);
 }
 
 vnet_crypto_async_frame_t *
