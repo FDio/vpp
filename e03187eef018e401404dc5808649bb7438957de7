@@ -51,6 +51,24 @@
       "message": "Let\u0027s clarify this is for multi-threaded vcl. Also that cpu count, is it used for apps or for vpp?\n\nWondering now if this is the right approach of injecting a vcl config. Let\u0027s have a chat",
       "revId": "e03187eef018e401404dc5808649bb7438957de7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bc16699_cfe919ca",
+        "filename": "extras/hs-test/infra/suite_no_topo.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-27T10:32:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a025becf_54258779",
+      "revId": "e03187eef018e401404dc5808649bb7438957de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
