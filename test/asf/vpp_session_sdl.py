@@ -11,18 +11,18 @@ class SessionSdl:
 
     def __init__(
         self,
-        lcl,
+        rmt,
         action_index,
         tag,
     ):
 
         self.action_index = action_index
-        self.lcl = lcl
+        self.rmt = rmt
         self.tag = tag
 
     def encode(self):
         return {
-            "lcl": self.lcl,
+            "rmt": self.rmt,
             "action_index": self.action_index,
             "tag": self.tag,
         }
@@ -53,7 +53,7 @@ class VppSessionSdl(VppObject):
 
     def add_vpp_config(self, expect_error=False):
         try:
-            reply = self._test.vapi.session_sdl_add_del(
+            reply = self._test.vapi.session_sdl_add_del_v2(
                 is_add=self.is_add,
                 appns_index=self.appns_index,
                 count=self.count,

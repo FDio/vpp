@@ -63,8 +63,8 @@ class TestSessionSDL(VppTestCase):
         self.loop1.remove_vpp_config()
         super(TestSessionSDL, self).tearDown()
 
-    def create_rule(self, lcl, action_index, tag):
-        return SessionSdl(lcl=lcl, action_index=action_index, tag=tag)
+    def create_rule(self, rmt, action_index, tag):
+        return SessionSdl(rmt=rmt, action_index=action_index, tag=tag)
 
     def apply_rules(self, rules, is_add, appns_index):
         r = VppSessionSdl(self, rules, is_add=is_add, appns_index=appns_index)
@@ -110,44 +110,44 @@ class TestSessionSDL(VppTestCase):
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
 
-        # Start builtin server for ip4
+        # Start builtin server for ip4 on loop0 appns 0
         self.logger.info(self.vapi.cli(server_cmd))
 
-        # Add session filter to block loop0
+        # Add session filter to block loop1 (client on loop1 appns 1)
         rules = []
         rules.append(
-            self.create_rule(lcl=self.loop0.local_ip4 + "/32", action_index=0, tag="")
+            self.create_rule(rmt=self.loop1.local_ip4 + "/32", action_index=0, tag="")
         )
         self.apply_rules(rules, is_add=1, appns_index=0)
 
-        filter = self.vapi.session_sdl_dump()
-        self.assertEqual(filter[0].lcl, IPv4Network(self.loop0.local_ip4 + "/32"))
+        filter = self.vapi.session_sdl_v2_dump()
+        self.assertEqual(filter[0].rmt, IPv4Network(self.loop1.local_ip4 + "/32"))
 
         # irrelevant rules - add 64k entries in one API call
         rules = []
         for i in range(255):
             for j in range(255):
                 prefix = "10.1.{0}.{1}/32".format(i, j)
-                rules.append(self.create_rule(lcl=prefix, action_index=0, tag=""))
+                rules.append(self.create_rule(rmt=prefix, action_index=0, tag=""))
         self.apply_rules(rules, is_add=1, appns_index=0)
 
-        error = self.vapi.cli_return_response(server_cmd)
-        # Expecting an error because loop0 is blocked
+        error = self.vapi.cli_return_response(client_cmd)
+        # Expecting an error because loop1 is blocked
         self.assertEqual(-1, error.retval)
 
         # Remove the session filter
         rules = []
         rules.append(
-            self.create_rule(lcl=self.loop0.local_ip4 + "/32", action_index=0, tag="")
+            self.create_rule(rmt=self.loop1.local_ip4 + "/32", action_index=0, tag="")
         )
         self.apply_rules(rules, is_add=0, appns_index=0)
 
         # Not expecting an error
         self.logger.info(self.vapi.cli(client_cmd))
 
-        # Add a session filter not matching loop0
+        # Add a session filter not matching loop1
         rules = []
-        rules.append(self.create_rule(lcl="172.100.1.0/24", action_index=0, tag=""))
+        rules.append(self.create_rule(rmt="172.100.1.0/24", action_index=0, tag=""))
         self.apply_rules(rules, is_add=1, appns_index=0)
 
         # Not expecting an error
@@ -210,7 +210,7 @@ class TestSessionSDL(VppTestCase):
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
 
-        # Start builtin server for ip6
+        # Start builtin server for ip6 on loop0 appns 0
         self.logger.info(self.vapi.cli(server_cmd))
 
         # case 1: No filter
@@ -219,24 +219,23 @@ class TestSessionSDL(VppTestCase):
         self.logger.info(self.vapi.cli(client_cmd))
 
         # case 2: filter to block
-        # Add session filter to block loop0
+        # Add session filter to block loop1, client appns 1
         rules = []
         rules.append(
-            self.create_rule(lcl=self.loop0.local_ip6 + "/128", action_index=0, tag="")
+            self.create_rule(rmt=self.loop1.local_ip6 + "/128", action_index=0, tag="")
         )
         self.apply_rules(rules, is_add=1, appns_index=0)
-        filter = self.vapi.session_sdl_dump()
-        self.assertEqual(filter[0].lcl, IPv6Network(self.loop0.local_ip6 + "/128"))
+        filter = self.vapi.session_sdl_v2_dump()
+        self.assertEqual(filter[0].rmt, IPv6Network(self.loop1.local_ip6 + "/128"))
 
         error = self.vapi.cli_return_response(client_cmd)
-        # Expecting an error because loop0 is blocked
+        # Expecting an error because loop1 is blocked
         self.assertEqual(-1, error.retval)
 
-        # case 3: remove to block
-        # Add session filter to block loop0
+        # case 3: remove filter to unblock
         rules = []
         rules.append(
-            self.create_rule(lcl=self.loop0.local_ip6 + "/128", action_index=0, tag="")
+            self.create_rule(rmt=self.loop1.local_ip6 + "/128", action_index=0, tag="")
         )
         self.apply_rules(rules, is_add=0, appns_index=0)
         # Not expecting an error

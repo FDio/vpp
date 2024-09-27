@@ -87,7 +87,7 @@ session_sdl_lookup6 (u32 srtg_handle, u32 proto, ip6_address_t *lcl_ip,
 
   if (sdlb->ip6_fib_index == ~0)
     return SESSION_TABLE_INVALID_INDEX;
-  lbi = ip6_fib_table_fwding_lookup (sdlb->ip6_fib_index, lcl_ip);
+  lbi = ip6_fib_table_fwding_lookup (sdlb->ip6_fib_index, rmt_ip);
   dpo = load_balance_get_fwd_bucket (load_balance_get (lbi), 0);
   if (dpo->dpoi_type != sdl_dpo_type)
     return SESSION_TABLE_INVALID_INDEX;
@@ -105,7 +105,7 @@ session_sdl_lookup4 (u32 srtg_handle, u32 proto, ip4_address_t *lcl_ip,
 
   if (sdlb->ip_fib_index == ~0)
     return SESSION_TABLE_INVALID_INDEX;
-  lbi = ip4_fib_forwarding_lookup (sdlb->ip_fib_index, lcl_ip);
+  lbi = ip4_fib_forwarding_lookup (sdlb->ip_fib_index, rmt_ip);
   dpo = load_balance_get_fwd_bucket (load_balance_get (lbi), 0);
   if (dpo->dpoi_type != sdl_dpo_type)
     return SESSION_TABLE_INVALID_INDEX;
@@ -143,7 +143,7 @@ session_sdl6_fib_table_show_walk (fib_node_index_t fei, void *arg)
 }
 
 static void
-session_sdl_fib_table_show (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
+session_sdl_fib_table_show (u32 fei, ip46_address_t *rmt_ip, u16 fp_len,
 			    u32 action_index, u32 fp_proto, u8 *tag,
 			    void *args)
 {
@@ -151,7 +151,7 @@ session_sdl_fib_table_show (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
   u32 type = (fp_proto == FIB_PROTOCOL_IP4) ? IP46_TYPE_IP4 : IP46_TYPE_IP6;
 
   vlib_cli_output (vm, "[%d] rule: %U/%d action: %d tag %U", fei,
-		   format_ip46_address, lcl_ip, type, fp_len, action_index,
+		   format_ip46_address, rmt_ip, type, fp_len, action_index,
 		   format_session_rule_tag, tag);
 }
 
@@ -230,11 +230,11 @@ session_sdl_show_rule (vlib_main_t *vm, u32 srtg_handle, u32 proto,
 
   sdlb = &srt->sdl_block;
   if (is_ip4)
-    session_sdl4_fib_table_show_one (srt, sdlb->ip_fib_index, vm, &lcl_ip->ip4,
+    session_sdl4_fib_table_show_one (srt, sdlb->ip_fib_index, vm, &rmt_ip->ip4,
 				     32);
   else
     session_sdl6_fib_table_show_one (srt, sdlb->ip6_fib_index, vm,
-				     &lcl_ip->ip6, 128);
+				     &rmt_ip->ip6, 128);
 }
 
 static void
@@ -310,20 +310,16 @@ session_sdl_add_del (u32 srtg_handle, u32 proto,
   u32 fib_index;
   dpo_proto_t dpo_proto;
   fib_route_path_t *paths = 0;
-  fib_prefix_t pfx = args->lcl;
+  fib_prefix_t pfx = args->rmt;
   session_error_t err = SESSION_E_NONE;
   fib_node_index_t fei;
   int is_ip4;
-
-  if (!(args->lcl_port == 0 && args->rmt_port == 0 &&
-	args->rmt.fp_addr.ip4.as_u32 == 0))
-    return SESSION_E_NOSUPPORT;
 
   fei = session_rules_table_rule_for_tag (srt, args->tag);
   if (args->is_add && fei != SESSION_RULES_TABLE_INVALID_INDEX)
     return SESSION_E_INVALID;
 
-  if (args->lcl.fp_proto == FIB_PROTOCOL_IP4)
+  if (args->rmt.fp_proto == FIB_PROTOCOL_IP4)
     {
       fib_index = sdlb->ip_fib_index;
       dpo_proto = DPO_PROTO_IP4;
@@ -463,9 +459,9 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   u32 appns_index;
   app_namespace_t *app_ns;
-  u32 lcl_plen = 0, action = 0;
+  u32 rmt_plen = 0, action = 0;
   clib_error_t *error = 0;
-  ip46_address_t lcl_ip;
+  ip46_address_t rmt_ip;
   u8 conn_set = 0;
   u8 fib_proto = -1, is_add = 1, *ns_id = 0;
   u8 *tag = 0, tag_only = 0;
@@ -485,14 +481,14 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "appns %_%v%_", &ns_id))
 	;
-      else if (unformat (input, "%U/%d", unformat_ip4_address, &lcl_ip.ip4,
-			 &lcl_plen))
+      else if (unformat (input, "%U/%d", unformat_ip4_address, &rmt_ip.ip4,
+			 &rmt_plen))
 	{
 	  fib_proto = FIB_PROTOCOL_IP4;
 	  conn_set = 1;
 	}
-      else if (unformat (input, "%U/%d", unformat_ip6_address, &lcl_ip.ip6,
-			 &lcl_plen))
+      else if (unformat (input, "%U/%d", unformat_ip6_address, &rmt_ip.ip6,
+			 &rmt_plen))
 	{
 	  fib_proto = FIB_PROTOCOL_IP6;
 	  conn_set = 1;
@@ -549,9 +545,8 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   memset (&args, 0, sizeof (args));
   args.transport_proto = TRANSPORT_PROTO_TCP;
-  args.table_args.lcl.fp_addr = lcl_ip;
-  args.table_args.lcl.fp_len = lcl_plen;
-  args.table_args.lcl.fp_proto = fib_proto;
+  args.table_args.rmt.fp_addr = rmt_ip;
+  args.table_args.rmt.fp_len = rmt_plen;
   args.table_args.rmt.fp_proto = fib_proto;
   args.table_args.action_index = action;
   args.table_args.is_add = is_add;
@@ -585,7 +580,7 @@ done:
 
 VLIB_CLI_COMMAND (session_sdl_command, static) = {
   .path = "session sdl",
-  .short_help = "session sdl [add|del] [appns <ns_id>] <lcl-ip/plen> action "
+  .short_help = "session sdl [add|del] [appns <ns_id>] <rmt-ip/plen> action "
 		"<action> [tag <tag>]",
   .function = session_sdl_command_fn,
   .is_mp_safe = 1,
@@ -596,7 +591,7 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			     vlib_cli_command_t *cmd)
 {
   u32 fib_index;
-  ip46_address_t lcl_ip;
+  ip46_address_t rmt_ip;
   u8 show_one = 0;
   app_namespace_t *app_ns;
   session_table_t *st;
@@ -604,17 +599,17 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   session_cli_return_if_not_enabled ();
 
-  clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
+  clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "appns %_%s%_", &ns_id))
 	;
-      else if (unformat (input, "%U", unformat_ip4_address, &lcl_ip.ip4))
+      else if (unformat (input, "%U", unformat_ip4_address, &rmt_ip.ip4))
 	{
 	  fib_proto = FIB_PROTOCOL_IP4;
 	  show_one = 1;
 	}
-      else if (unformat (input, "%U", unformat_ip6_address, &lcl_ip.ip6))
+      else if (unformat (input, "%U", unformat_ip6_address, &rmt_ip.ip6))
 	{
 	  fib_proto = FIB_PROTOCOL_IP6;
 	  show_one = 1;
@@ -652,7 +647,7 @@ show_session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       if (st && (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID))
-	session_rules_table_show_rule (vm, st->srtg_handle, 0, &lcl_ip, 0, 0,
+	session_rules_table_show_rule (vm, st->srtg_handle, 0, &rmt_ip, 0, 0,
 				       0, (fib_proto == FIB_PROTOCOL_IP4));
       goto done;
     }
@@ -754,7 +749,7 @@ session_sdl_table_walk6 (u32 srtg_handle, session_sdl_table_walk_fn_t fn,
 
 VLIB_CLI_COMMAND (show_session_sdl_command, static) = {
   .path = "show session sdl",
-  .short_help = "show session sdl [appns <id> <lcl-ip>]",
+  .short_help = "show session sdl [appns <id> <rmt-ip>]",
   .function = show_session_sdl_command_fn,
   .is_mp_safe = 1,
 };
