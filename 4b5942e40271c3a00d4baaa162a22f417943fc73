@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fd7bba02_599026ae",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-27T05:52:13Z",
+      "side": 1,
+      "message": "Refactored core functions with VNET_API_ERROR codes. If original code also utilized clib_error_t variable for logging, a similar message is now put directly with a call to log_err().",
+      "parentUuid": "42c3ba66_4dab3c99",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6de2a60c_05fd0720",
         "filename": "src/plugins/snort/snort_api.c",
         "patchSetId": 8
@@ -31,6 +49,24 @@
       "writtenOn": "2024-09-25T13:51:37Z",
       "side": 1,
       "message": "Same comment as for snort_instance_create().... have snort_instance_delete() return an int instead of a pointer to clib_error_t.",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61487fba_b601bcae",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-27T05:52:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6de2a60c_05fd0720",
       "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7295c999_a951676e",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-27T05:52:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6026f93e_d74a3782",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "882de150_65edfe67",
@@ -65,6 +119,24 @@
       "writtenOn": "2024-09-25T13:51:37Z",
       "side": 1,
       "message": "It would be better to replace the conditions here with \u0027if (pool_is_free_index (sm-\u003eclients, client_index))\u0027\n\npool_elts() will return the currently allocated number of pool elements (\u003d\u003d vec_len() - the number of free slots). If you allocate 2 elements from a pool they will have indexes 0 and 1. If you then put element 0 back into the pool, the element with index 1 is now the only allocated element. Now pool_elts() would return 1 so if you tried to disconnect the client with index 1, the condition (client_index \u003e\u003d pool_elts (sm-\u003eclients)) would evaluate to true and the operation would fail.",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8258dea6_421f8e90",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-09-27T05:52:13Z",
+      "side": 1,
+      "message": "Fixed, thanks.",
+      "parentUuid": "882de150_65edfe67",
       "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
