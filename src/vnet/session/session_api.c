@@ -59,6 +59,72 @@ verify_message_len (void *mp, u64 expected_len, char *where)
 }
 
 static void
+vl_api_session_sdl_add_del_v2_t_handler (vl_api_session_sdl_add_del_v2_t *mp)
+{
+  vl_api_session_sdl_add_del_v2_reply_t *rmp;
+  session_rule_add_del_args_t args;
+  session_rule_table_add_del_args_t *table_args = &args.table_args;
+  int rv = 0;
+  u32 count = clib_net_to_host_u32 (mp->count);
+  u64 expected_len = sizeof (*mp) + count * sizeof (mp->r[0]);
+
+  if ((session_main.is_enabled == 0) || (session_sdl_is_enabled () == 0))
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  if (!verify_message_len (mp, expected_len, "session_sdl_add_del_v2"))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  clib_memset (&args, 0, sizeof (args));
+  table_args->is_add = mp->is_add;
+  args.scope = SESSION_RULE_SCOPE_GLOBAL;
+  args.appns_index = clib_net_to_host_u32 (mp->appns_index);
+  for (int i = 0; i < count; i++)
+    {
+      mp->r[i].tag[sizeof (mp->r[i].tag) - 1] = 0;
+      table_args->tag = format (0, "%s", mp->r[i].tag);
+      ip_prefix_decode (&mp->r[i].rmt, &table_args->rmt);
+      table_args->action_index = clib_net_to_host_u32 (mp->r[i].action_index);
+
+      rv = vnet_session_rule_add_del (&args);
+      vec_free (table_args->tag);
+      if (rv)
+	{
+	  log_err ("session_sdl add del returned on %U @index %d: %U",
+		   format_ip46_address, &table_args->rmt.fp_addr,
+		   IP46_TYPE_ANY, i, format_session_error, rv);
+
+	  /* roll back */
+	  table_args->is_add = !mp->is_add;
+	  for (int j = i - 1; j >= 0; j--)
+	    {
+	      mp->r[j].tag[sizeof (mp->r[j].tag) - 1] = 0;
+	      table_args->tag = format (0, "%s", mp->r[j].tag);
+	      ip_prefix_decode (&mp->r[j].rmt, &table_args->rmt);
+	      table_args->action_index =
+		clib_net_to_host_u32 (mp->r[j].action_index);
+	      int rv2 = vnet_session_rule_add_del (&args);
+	      vec_free (table_args->tag);
+	      if (rv2)
+		log_err ("rollback session_sdl add del returned on %U "
+			 "@index %d: %U",
+			 format_ip46_address, &table_args->rmt.fp_addr,
+			 IP46_TYPE_ANY, j, format_session_error, rv2);
+	    }
+	  break;
+	}
+    }
+
+done:
+  REPLY_MACRO (VL_API_SESSION_SDL_ADD_DEL_V2_REPLY);
+}
+
+static void
 vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
 {
   vl_api_session_sdl_add_del_reply_t *rmp;
@@ -1293,6 +1359,73 @@ typedef struct session_sdl_table_walk_ctx_
 } session_sdl_table_walk_ctx;
 
 static void
+send_session_sdl_v2_details (u32 fei, ip46_address_t *rmt_ip, u16 fp_len,
+			     u32 action_index, u32 fp_proto, u8 *tag,
+			     void *args)
+{
+  session_sdl_table_walk_ctx *ctx = args;
+  vl_api_registration_t *reg = ctx->reg;
+  u32 appns_index = ctx->appns_index;
+  u32 context = ctx->mp_context;
+  vl_api_session_sdl_v2_details_t *rmp = 0;
+  fib_prefix_t rmt;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V2_DETAILS);
+  rmp->context = context;
+
+  clib_memset (&rmt, 0, sizeof (rmt));
+  if (fp_proto == FIB_PROTOCOL_IP4)
+    ip_set (&rmt.fp_addr, &rmt_ip->ip4, 1);
+  else
+    ip_set (&rmt.fp_addr, &rmt_ip->ip6, 0);
+  rmt.fp_len = fp_len;
+  rmt.fp_proto = fp_proto,
+
+  ip_prefix_encode (&rmt, &rmp->rmt);
+  rmp->action_index = clib_host_to_net_u32 (action_index);
+  rmp->appns_index = clib_host_to_net_u32 (appns_index);
+  if (tag)
+    {
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
+      rmp->tag[vec_len (tag)] = 0;
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_session_sdl_v2_dump_t_handler (vl_api_session_sdl_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  session_table_t *st;
+  session_sdl_table_walk_ctx ctx;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ctx.reg = reg;
+  ctx.mp_context = mp->context;
+
+  session_table_foreach (
+    st, ({
+      if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+	{
+	  ctx.appns_index = st->appns_index;
+
+	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
+	    session_sdl_table_walk4 (st->srtg_handle,
+				     send_session_sdl_v2_details, &ctx);
+	  else
+	    session_sdl_table_walk6 (st->srtg_handle,
+				     send_session_sdl_v2_details, &ctx);
+	}
+    }));
+}
+
+static void
 send_session_sdl_details (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
 			  u32 action_index, u32 fp_proto, u8 *tag, void *args)
 {
@@ -1329,7 +1462,7 @@ send_session_sdl_details (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
 }
 
 static void
-vl_api_session_sdl_dump_t_handler (vl_api_session_rules_dump_t *mp)
+vl_api_session_sdl_dump_t_handler (vl_api_session_sdl_dump_t *mp)
 {
   vl_api_registration_t *reg;
   session_table_t *st;
@@ -2063,11 +2196,19 @@ session_api_hookup (vlib_main_t *vm)
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL, 1);
   vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL_V2, 1);
+  vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL_REPLY, 1);
   vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_DUMP,
 			      1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_DETAILS, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL_V2_REPLY, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V2_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V2_DETAILS, 1);
   return 0;
 }
 

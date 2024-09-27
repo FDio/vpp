@@ -366,13 +366,30 @@ api_session_sdl_add_del (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_session_sdl_add_del_v2 (vat_main_t *vam)
+{
+  return -1;
+}
+
 static void
-vl_api_session_sdl_details_t_handler (vl_api_session_rules_details_t *mp)
+vl_api_session_sdl_details_t_handler (vl_api_session_sdl_details_t *mp)
+{
+}
+
+static void
+vl_api_session_sdl_v2_details_t_handler (vl_api_session_sdl_v2_details_t *mp)
 {
 }
 
 static int
 api_session_sdl_dump (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_session_sdl_v2_dump (vat_main_t *vam)
 {
   return -1;
 }
