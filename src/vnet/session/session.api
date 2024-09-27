@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.1";
+option version = "4.0.2";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -21,7 +21,7 @@ import "vnet/ip/ip_types.api";
 
 typedef sdl_rule
 {
-  vl_api_prefix_t lcl;
+  vl_api_prefix_t rmt;
   u32 action_index;
   string tag[64];
 };
@@ -469,7 +469,7 @@ define session_sdl_dump
 define session_sdl_details
 {
   u32 context;
-  vl_api_prefix_t lcl;
+  vl_api_prefix_t rmt;
   u32 action_index;
   u32 appns_index;
   string tag[64];

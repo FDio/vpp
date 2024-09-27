@@ -88,12 +88,7 @@ vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
     {
       mp->r[i].tag[sizeof (mp->r[i].tag) - 1] = 0;
       table_args->tag = format (0, "%s", mp->r[i].tag);
-      ip_prefix_decode (&mp->r[i].lcl, &table_args->lcl);
-      /*
-       * Need to set fp_proto for vnet_session_rule_add_del to find the
-       * correct table
-       */
-      table_args->rmt.fp_proto = table_args->lcl.fp_proto;
+      ip_prefix_decode (&mp->r[i].rmt, &table_args->rmt);
       table_args->action_index = clib_net_to_host_u32 (mp->r[i].action_index);
 
       rv = vnet_session_rule_add_del (&args);
@@ -101,7 +96,7 @@ vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
       if (rv)
 	{
 	  log_err ("session_sdl add del returned on %U @index %d: %U",
-		   format_ip46_address, &table_args->lcl.fp_addr,
+		   format_ip46_address, &table_args->rmt.fp_addr,
 		   IP46_TYPE_ANY, i, format_session_error, rv);
 
 	  /* roll back */
@@ -110,8 +105,7 @@ vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
 	    {
 	      mp->r[j].tag[sizeof (mp->r[j].tag) - 1] = 0;
 	      table_args->tag = format (0, "%s", mp->r[j].tag);
-	      ip_prefix_decode (&mp->r[j].lcl, &table_args->lcl);
-	      table_args->rmt.fp_proto = table_args->lcl.fp_proto;
+	      ip_prefix_decode (&mp->r[j].rmt, &table_args->rmt);
 	      table_args->action_index =
 		clib_net_to_host_u32 (mp->r[j].action_index);
 	      int rv2 = vnet_session_rule_add_del (&args);
@@ -119,7 +113,7 @@ vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
 	      if (rv2)
 		log_err ("rollback session_sdl add del returned on %U "
 			 "@index %d: %U",
-			 format_ip46_address, &table_args->lcl.fp_addr,
+			 format_ip46_address, &table_args->rmt.fp_addr,
 			 IP46_TYPE_ANY, j, format_session_error, rv2);
 	    }
 	  break;
@@ -1293,7 +1287,7 @@ typedef struct session_sdl_table_walk_ctx_
 } session_sdl_table_walk_ctx;
 
 static void
-send_session_sdl_details (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
+send_session_sdl_details (u32 fei, ip46_address_t *rmt_ip, u16 fp_len,
 			  u32 action_index, u32 fp_proto, u8 *tag, void *args)
 {
   session_sdl_table_walk_ctx *ctx = args;
@@ -1301,22 +1295,22 @@ send_session_sdl_details (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
   u32 appns_index = ctx->appns_index;
   u32 context = ctx->mp_context;
   vl_api_session_sdl_details_t *rmp = 0;
-  fib_prefix_t lcl;
+  fib_prefix_t rmt;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_DETAILS);
   rmp->context = context;
 
-  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
   if (fp_proto == FIB_PROTOCOL_IP4)
-    ip_set (&lcl.fp_addr, &lcl_ip->ip4, 1);
+    ip_set (&rmt.fp_addr, &rmt_ip->ip4, 1);
   else
-    ip_set (&lcl.fp_addr, &lcl_ip->ip6, 0);
-  lcl.fp_len = fp_len;
-  lcl.fp_proto = fp_proto,
+    ip_set (&rmt.fp_addr, &rmt_ip->ip6, 0);
+  rmt.fp_len = fp_len;
+  rmt.fp_proto = fp_proto,
 
-  ip_prefix_encode (&lcl, &rmp->lcl);
+  ip_prefix_encode (&rmt, &rmp->rmt);
   rmp->action_index = clib_host_to_net_u32 (action_index);
   rmp->appns_index = clib_host_to_net_u32 (appns_index);
   if (tag)

@@ -11,18 +11,18 @@ class SessionSdl:
 
     def __init__(
         self,
-        lcl,
+        rmt,
         action_index,
         tag,
     ):
 
         self.action_index = action_index
-        self.lcl = lcl
+        self.rmt = rmt
         self.tag = tag
 
     def encode(self):
         return {
-            "lcl": self.lcl,
+            "rmt": self.rmt,
             "action_index": self.action_index,
             "tag": self.tag,
         }

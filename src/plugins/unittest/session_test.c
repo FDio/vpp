@@ -2189,22 +2189,22 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   u16 lcl_port = 0, rmt_port = 0;
   u32 action_index = 1, res;
   int verbose = 0, error;
-  ip4_address_t lcl_ip;
+  ip4_address_t rmt_ip;
   const char ip_str_1234[] = "1.2.3.4";
-  inet_pton (AF_INET, ip_str_1234, &lcl_ip);
-  ip4_address_t rmt_ip = {
+  inet_pton (AF_INET, ip_str_1234, &rmt_ip);
+  ip4_address_t lcl_ip = {
     .as_u32 = clib_host_to_net_u32 (0x0),
   };
-  ip6_address_t rmt_ip6 = {
+  ip6_address_t lcl_ip6 = {
     .as_u64 = { 0, 0 },
-  };
-  fib_prefix_t lcl_pref = {
-    .fp_addr.ip4.as_u32 = lcl_ip.as_u32,
-    .fp_len = 16,
-    .fp_proto = FIB_PROTOCOL_IP4,
   };
   fib_prefix_t rmt_pref = {
     .fp_addr.ip4.as_u32 = rmt_ip.as_u32,
+    .fp_len = 16,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_prefix_t lcl_pref = {
+    .fp_addr.ip4.as_u32 = lcl_ip.as_u32,
     .fp_len = 0,
     .fp_proto = 0,
   };
@@ -2241,12 +2241,12 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   session_rules_table_init (st, FIB_PROTOCOL_MAX);
 
   /* Add 1.2.0.0/16 */
-  args.lcl.fp_len = 16;
-  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
+  args.rmt.fp_len = 16;
+  inet_pton (AF_INET, ip_str_1200, &args.rmt.fp_addr.ip4.as_u32);
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == 0), "Add %s/%d action %d", ip_str_1200,
-		args.lcl.fp_len, action_index - 1);
+		args.rmt.fp_len, action_index - 1);
 
   /* Lookup 1.2.3.4 */
   res = session_rules_table_lookup4 (st->srtg_handle, TRANSPORT_PROTO_TCP,
@@ -2259,13 +2259,13 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   /*
    * Add 1.2.3.0/24
    */
-  args.lcl.fp_len = 24;
-  inet_pton (AF_INET, ip_str_1230, &args.lcl.fp_addr.ip4.as_u32);
+  args.rmt.fp_len = 24;
+  inet_pton (AF_INET, ip_str_1230, &args.rmt.fp_addr.ip4.as_u32);
   args.action_index = action_index++;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == 0), "Add %s/%d action %d", ip_str_1230,
-		args.lcl.fp_len, action_index - 1);
+		args.rmt.fp_len, action_index - 1);
 
   /* Lookup 1.2.3.4 */
   res = session_rules_table_lookup4 (st->srtg_handle, TRANSPORT_PROTO_TCP,
@@ -2276,7 +2276,7 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
 		ip_str_1234, action_index - 1);
 
   /* look up 1.1.1.1, should be -1 (invalid index) */
-  inet_pton (AF_INET, ip_str_1111, &lcl_ip);
+  inet_pton (AF_INET, ip_str_1111, &rmt_ip);
   res = session_rules_table_lookup4 (st->srtg_handle, TRANSPORT_PROTO_TCP,
 				     &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == SESSION_TABLE_INVALID_INDEX),
@@ -2285,28 +2285,28 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
 		ip_str_1111, res);
 
   /* Add again 1.2.0.0/16, should be rejected */
-  args.lcl.fp_len = 16;
-  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
+  args.rmt.fp_len = 16;
+  inet_pton (AF_INET, ip_str_1200, &args.rmt.fp_addr.ip4.as_u32);
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == SESSION_E_IPINUSE), "Add %s/%d action %d",
-		ip_str_1200, args.lcl.fp_len, error);
+		ip_str_1200, args.rmt.fp_len, error);
   /*
    * Add 0.0.0.0/0, should get an error
    */
-  args.lcl.fp_len = 0;
-  args.lcl.fp_addr.ip4.as_u32 = 0;
+  args.rmt.fp_len = 0;
+  args.rmt.fp_addr.ip4.as_u32 = 0;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == SESSION_E_IPINUSE), "Add 0.0.0.0/%d action %d",
-		args.lcl.fp_len, error);
+		args.rmt.fp_len, error);
 
   /* delete 0.0.0.0 should be rejected */
   args.is_add = 0;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == SESSION_E_NOROUTE), "Del 0.0.0.0/%d action %d",
-		args.lcl.fp_len, error);
+		args.rmt.fp_len, error);
   if (verbose)
     session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP,
 				  FIB_PROTOCOL_IP4);
@@ -2316,20 +2316,20 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
    * Delete 1.2.0.0/16
    * Delete 1.2.3.0/24
    */
-  inet_pton (AF_INET, ip_str_1200, &args.lcl.fp_addr.ip4.as_u32);
-  args.lcl.fp_len = 16;
+  inet_pton (AF_INET, ip_str_1200, &args.rmt.fp_addr.ip4.as_u32);
+  args.rmt.fp_len = 16;
   args.is_add = 0;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == 0), "Del %s/%d should 0: %d", ip_str_1200,
-		args.lcl.fp_len, error);
+		args.rmt.fp_len, error);
 
-  inet_pton (AF_INET, ip_str_1230, &args.lcl.fp_addr.ip4.as_u32);
-  args.lcl.fp_len = 24;
+  inet_pton (AF_INET, ip_str_1230, &args.rmt.fp_addr.ip4.as_u32);
+  args.rmt.fp_len = 24;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == 0), "Del %s/%d, should be 0: %d", ip_str_1230,
-		args.lcl.fp_len, error);
+		args.rmt.fp_len, error);
   if (verbose)
     session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP,
 				  FIB_PROTOCOL_IP4);
@@ -2340,14 +2340,14 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
    * Add ip6 2001:0db8:85a3:0000:0000:8a2e:0371:1/124
    */
   ip6_address_t lcl_lkup;
-  inet_pton (AF_INET6, ip6_str, &args.lcl.fp_addr.ip6);
-  args.lcl.fp_len = 124;
-  args.lcl.fp_proto = FIB_PROTOCOL_IP6;
+  inet_pton (AF_INET6, ip6_str, &args.rmt.fp_addr.ip6);
+  args.rmt.fp_len = 124;
+  args.rmt.fp_proto = FIB_PROTOCOL_IP6;
   args.action_index = action_index++;
   args.is_add = 1;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
-  SESSION_TEST ((error == 0), "Add %s/%d action %d", ip6_str, args.lcl.fp_len,
+  SESSION_TEST ((error == 0), "Add %s/%d action %d", ip6_str, args.rmt.fp_len,
 		action_index - 1);
   if (verbose)
     session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP,
@@ -2355,7 +2355,7 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
 
   /* Lookup 2001:0db8:85a3:0000:0000:8a2e:0371:1 */
   res = session_rules_table_lookup6 (st->srtg_handle, TRANSPORT_PROTO_TCP,
-				     &args.lcl.fp_addr.ip6, &rmt_ip6, lcl_port,
+				     &lcl_ip6, &args.rmt.fp_addr.ip6, lcl_port,
 				     rmt_port);
   SESSION_TEST ((res == action_index - 1),
 		"Lookup %s action should "
@@ -2365,7 +2365,7 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   /* Lookup 2001:0db8:85a3:0000:0000:8a2e:0372:1 */
   inet_pton (AF_INET6, ip6_str2, &lcl_lkup);
   res = session_rules_table_lookup6 (st->srtg_handle, TRANSPORT_PROTO_TCP,
-				     &lcl_lkup, &rmt_ip6, lcl_port, rmt_port);
+				     &lcl_ip6, &lcl_lkup, lcl_port, rmt_port);
   SESSION_TEST ((res == SESSION_TABLE_INVALID_INDEX),
 		"Lookup %s action should "
 		"be -1: %d",
@@ -2375,11 +2375,11 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
    * del ip6 2001:0db8:85a3:0000:0000:8a2e:0371:1/124
    */
   args.is_add = 0;
-  args.lcl.fp_len = 124;
+  args.rmt.fp_len = 124;
   error =
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == 0), "del %s/%d, should be 0: %d", ip6_str,
-		args.lcl.fp_len, error);
+		args.rmt.fp_len, error);
   if (verbose)
     session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP,
 				  FIB_PROTOCOL_IP6);
