@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.1";
+option version = "4.0.2";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -22,6 +22,13 @@ import "vnet/ip/ip_types.api";
 typedef sdl_rule
 {
   vl_api_prefix_t lcl;
+  u32 action_index;
+  string tag[64];
+};
+
+typedef sdl_rule_v2
+{
+  vl_api_prefix_t rmt;
   u32 action_index;
   string tag[64];
 };
@@ -440,6 +447,7 @@ define session_rules_details
 };
 
 autoreply define session_sdl_add_del {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 appns_index;
@@ -448,12 +456,22 @@ autoreply define session_sdl_add_del {
   vl_api_sdl_rule_t r[count];
 };
 
+autoreply define session_sdl_add_del_v2 {
+  u32 client_index;
+  u32 context;
+  u32 appns_index;
+  bool is_add;
+  u32 count;
+  vl_api_sdl_rule_v2_t r[count];
+};
+
 /** \brief Dump session sdl
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
  */
 define session_sdl_dump
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -468,8 +486,36 @@ define session_sdl_dump
   */
 define session_sdl_details
 {
+  option deprecated;
   u32 context;
   vl_api_prefix_t lcl;
+  u32 action_index;
+  u32 appns_index;
+  string tag[64];
+};
+
+/** \brief Dump session sdl v2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define session_sdl_v2_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Session sdl details v2
+    @param context - sender context, to match reply w/ request
+    @param rmt - remote prefix
+    @param action_index - the only action defined now is forward to
+                          application with index action_index
+    @param appns_index - application namespace where rule is to be applied to
+    @param tag - tag
+  */
+define session_sdl_v2_details
+{
+  u32 context;
+  vl_api_prefix_t rmt;
   u32 action_index;
   u32 appns_index;
   string tag[64];
