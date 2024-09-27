@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b26dfbb1_e30b44e6",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-27T12:29:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fd7bba02_599026ae",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6de2a60c_05fd0720",
@@ -137,6 +155,24 @@
       "side": 1,
       "message": "Fixed, thanks.",
       "parentUuid": "882de150_65edfe67",
+      "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "265db526_308d4d58",
+        "filename": "src/plugins/snort/snort_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-09-27T12:29:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8258dea6_421f8e90",
       "revId": "4b5942e40271c3a00d4baaa162a22f417943fc73",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
