@@ -26,7 +26,7 @@ from struct import pack, unpack
 
 import scapy.compat
 from scapy.packet import Raw, Packet
-from vpp_pg_interface import VppPGInterface
+from vpp_pg_interface import VppPGInterface, is_ipv6_misc
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_bvi_interface import VppBviInterface
@@ -547,6 +547,7 @@ class VppTestCase(VppAsfTestCase):
         trace=True,
         msg=None,
         stats_diff=None,
+        filter_out_fn=is_ipv6_misc,
     ):
         if stats_diff:
             stats_snapshot = self.snapshot_stats(stats_diff)
@@ -554,7 +555,7 @@ class VppTestCase(VppAsfTestCase):
         if not n_rx:
             n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
         self.pg_send(intf, pkts, worker=worker, trace=trace)
-        rx = output.get_capture(n_rx)
+        rx = output.get_capture(n_rx, filter_out_fn=filter_out_fn)
         if trace:
             if msg:
                 self.logger.debug(f"send_and_expect: {msg}")
