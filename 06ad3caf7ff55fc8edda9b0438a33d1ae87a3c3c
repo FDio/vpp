@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f3cb2e2_a9ec8c95",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-09-28T11:24:19Z",
+      "side": 1,
+      "message": "return oct_crypto_enqueue_enc_dec().\nupdate at other places as well.",
+      "range": {
+        "startLine": 1045,
+        "startChar": 2,
+        "endLine": 1045,
+        "endChar": 28
+      },
+      "revId": "06ad3caf7ff55fc8edda9b0438a33d1ae87a3c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
