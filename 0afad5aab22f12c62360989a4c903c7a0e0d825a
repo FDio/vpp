@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3930d69f_814a35a5",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-30T10:16:04Z",
+      "side": 1,
+      "message": "this repeat in each suite. can it be done somewhere else e.g. LoadContainerTopology?\nIt will be really helpful to prepend some text that you need to run those commands when you want to start container and to see which containers were started",
+      "range": {
+        "startLine": 106,
+        "startChar": 0,
+        "endLine": 108,
+        "endChar": 3
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6db50847_6dc5a5be",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-30T10:16:04Z",
+      "side": 1,
+      "message": "this repeat too per vpp instance in each suite. can it be done somewhere else?",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 52
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53a698cf_871e8767",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-30T10:16:04Z",
+      "side": 1,
+      "message": "this need to be run manually? it\u0027s hard to figure out what is just info related to topology (e.g. proxy addr and port, vpp startup config) and what you need to run (to start something) since it is mixed",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 90
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f561764d_bfb3eaf2",
+        "filename": "extras/hs-test/infra/suite_ns.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-30T10:16:04Z",
+      "side": 1,
+      "message": "no handling of dry run mode, is it because currently not used in any test?\nalso not handled in suite_cpu_pinning and suite suite_iperf_linux, does it mean that not supported? if so put there at least some assert",
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36b0320f_0942c102",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-09-30T10:16:04Z",
+      "side": 1,
+      "message": "remove if not needed",
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
