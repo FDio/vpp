@@ -955,6 +955,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
    * if there is some space send also portion of body */
   as = session_get_from_handle (hc->h_pa_session_handle);
   max_enq = svm_fifo_max_enqueue (as->rx_fifo);
+  max_enq -= sizeof (msg);
   if (max_enq < hc->control_data_len)
     {
       clib_warning ("not enough room for control data in app's rx fifo");
