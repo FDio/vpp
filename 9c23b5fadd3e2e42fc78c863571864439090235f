@@ -69,6 +69,24 @@
       "parentUuid": "6b14926f_5be22ed0",
       "revId": "9c23b5fadd3e2e42fc78c863571864439090235f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ee79952_db8b405d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-09-30T21:34:33Z",
+      "side": 1,
+      "message": "Hi Damjan, it was splitted into https://gerrit.fd.io/r/c/vpp/+/41615 and this one, please take a look",
+      "parentUuid": "6f5642cc_d98b018a",
+      "revId": "9c23b5fadd3e2e42fc78c863571864439090235f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
