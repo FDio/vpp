@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0372b7d7_a2ba5474",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-30T13:58:54Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "3930d69f_814a35a5",
+      "range": {
+        "startLine": 106,
+        "startChar": 0,
+        "endLine": 108,
+        "endChar": 3
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6db50847_6dc5a5be",
@@ -37,6 +61,30 @@
       "writtenOn": "2024-09-30T10:16:04Z",
       "side": 1,
       "message": "this repeat too per vpp instance in each suite. can it be done somewhere else?",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 52
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac2e2db3_be50ad6b",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-30T13:58:54Z",
+      "side": 1,
+      "message": "Not sure where else, some startup commands are a bit different depending on the suite.",
+      "parentUuid": "6db50847_6dc5a5be",
       "range": {
         "startLine": 109,
         "startChar": 0,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97a61253_3f02fb1c",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-30T13:58:54Z",
+      "side": 1,
+      "message": "I\u0027ve changed the color and added notes to commands that have to be run manually.",
+      "parentUuid": "53a698cf_871e8767",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 90
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f561764d_bfb3eaf2",
@@ -87,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "572032d3_2c0da8ac",
+        "filename": "extras/hs-test/infra/suite_ns.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-30T13:58:54Z",
+      "side": 1,
+      "message": "Correct, ns suite is removed in a different patch.\nI\u0027ve added dry run mode to cpu pinning suite but skipped iperf suite as it\u0027s not using VPP.",
+      "parentUuid": "f561764d_bfb3eaf2",
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "36b0320f_0942c102",
@@ -100,6 +190,24 @@
       "writtenOn": "2024-09-30T10:16:04Z",
       "side": 1,
       "message": "remove if not needed",
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "340bfd79_40088526",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-09-30T13:58:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36b0320f_0942c102",
       "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
