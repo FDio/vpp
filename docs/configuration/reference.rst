@@ -773,8 +773,8 @@ Enable all plugins by default and then selectively disable specific plugins
    plugin dpdk_plugin.so disable
    plugin acl_plugin.so disable
 
-Th statseg Section
-^^^^^^^^^^^^^^^^^^
+The statseg Section
+-------------------
 
 .. code-block:: console
 
