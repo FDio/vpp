@@ -49,12 +49,12 @@ AARCH64=$(filter aarch64,$(shell uname -m))
 include packages.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
-include packages/dpdk.mk
 ifneq ($(shell uname), FreeBSD)
 include packages/rdma-core.mk
 include packages/xdp-tools.mk
 include packages/octeon-roc.mk
 endif	# ! FreeBSD
+include packages/dpdk.mk
 
 .PHONY: clean
 clean:
