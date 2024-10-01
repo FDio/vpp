@@ -44,9 +44,15 @@ u8 *
 format_vnet_dev_interface_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
-  vnet_dev_port_t *port = vnet_dev_get_port_from_dev_instance (i);
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (i);
+  vnet_dev_port_sec_if_t *si;
+  vnet_dev_port_t *p = di->port;
 
-  return format (s, "%s", port->intf.name);
+  if (di->is_primary_if)
+    return format (s, "%s", p->interface->name);
+
+  si = vnet_dev_port_get_sec_if_by_index (p, di->sec_if_index);
+  return format (s, "%s/%u", di->port->interface->name, si->id);
 }
 
 u8 *
@@ -138,11 +144,12 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 		format_vnet_dev_args, port->args);
 
   s = format (s, "\n%UInterface ", format_white_space, indent);
-  if (port->interface_created)
+  if (port->interface)
     {
       s = format (s, "assigned, interface name is '%U', RX node is '%U'",
-		  format_vnet_sw_if_index_name, vnm, port->intf.sw_if_index,
-		  format_vlib_node_name, vm, port->intf.rx_node_index);
+		  format_vnet_sw_if_index_name, vnm,
+		  port->interface->sw_if_index, format_vlib_node_name, vm,
+		  port->interface->rx_node_index);
     }
   else
     s = format (s, "not assigned");

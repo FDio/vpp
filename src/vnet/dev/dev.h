@@ -29,7 +29,8 @@ typedef enum
   _ (interrupt_mode)                                                          \
   _ (rss)                                                                     \
   _ (change_max_rx_frame_size)                                                \
-  _ (mac_filter)
+  _ (mac_filter)                                                              \
+  _ (secondary_interfaces)
 
 #define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum)
 
@@ -104,6 +105,11 @@ typedef void (vnet_dev_rx_queue_op_no_rv_t) (vlib_main_t *,
 					     vnet_dev_rx_queue_t *);
 typedef void (vnet_dev_tx_queue_op_no_rv_t) (vlib_main_t *,
 					     vnet_dev_tx_queue_t *);
+typedef vnet_dev_rv_t (vnet_dev_op_with_ptr_t) (vlib_main_t *, vnet_dev_t *,
+						void *);
+typedef vnet_dev_rv_t (vnet_dev_port_op_with_ptr_t) (vlib_main_t *,
+						     vnet_dev_port_t *,
+						     void *);
 
 typedef u16 vnet_dev_queue_id_t;
 typedef u16 vnet_dev_bus_index_t;
@@ -248,6 +254,8 @@ typedef struct
   vnet_dev_port_op_no_rv_t *deinit;
   vnet_dev_port_op_no_rv_t *free;
   vnet_dev_port_op_no_rv_t *clear_counters;
+  vnet_dev_port_op_with_ptr_t *add_sec_if;
+  vnet_dev_port_op_with_ptr_t *del_sec_if;
   format_function_t *format_status;
   format_function_t *format_flow;
 } vnet_dev_port_ops_t;
@@ -263,6 +271,12 @@ typedef union
   };
   u8 as_number;
 } vnet_dev_rx_queue_rt_req_t;
+
+typedef struct
+{
+  vlib_buffer_template_t buffer_template;
+  u32 next_index;
+} vnet_dev_rx_queue_if_rt_data_t;
 
 typedef struct vnet_dev_rx_queue
 {
@@ -281,13 +295,14 @@ typedef struct vnet_dev_rx_queue
   u16 size;
   u16 next_index;
   vnet_dev_rx_queue_rt_req_t runtime_request;
+  vnet_dev_rx_queue_if_rt_data_t **sec_if_rt_data;
   CLIB_CACHE_LINE_ALIGN_MARK (runtime1);
-  vlib_buffer_template_t buffer_template;
+  vnet_dev_rx_queue_if_rt_data_t if_rt_data;
   CLIB_CACHE_LINE_ALIGN_MARK (driver_data);
   u8 data[];
 } vnet_dev_rx_queue_t;
 
-STATIC_ASSERT_SIZEOF (vnet_dev_rx_queue_t, 3 * CLIB_CACHE_LINE_BYTES);
+STATIC_ASSERT_SIZEOF (vnet_dev_rx_queue_t, 4 * CLIB_CACHE_LINE_BYTES);
 
 typedef struct vnet_dev_tx_queue
 {
@@ -309,6 +324,40 @@ typedef struct vnet_dev_tx_queue
 
 STATIC_ASSERT_SIZEOF (vnet_dev_tx_queue_t, 2 * CLIB_CACHE_LINE_BYTES);
 
+typedef struct vnet_dev_port_sec_if
+{
+  u8 interface_created : 1;
+  u32 index;
+  u32 id;
+  u32 sw_if_index;
+  u32 hw_if_index;
+  u32 dev_instance;
+  u32 tx_node_index;
+  vlib_buffer_template_t buffer_template;
+} vnet_dev_port_sec_if_t;
+
+typedef struct vnet_dev_port_intf
+{
+  vnet_dev_if_name_t name;
+  u32 dev_instance;
+  u32 rx_node_index;
+  u32 current_config_index;
+  u16 rx_next_index;
+  u16 redirect_to_node_next_index;
+  u8 feature_arc_index;
+  u8 feature_arc : 1;
+  u8 redirect_to_node : 1;
+  u8 default_is_intr_mode : 1;
+  u32 tx_node_index;
+  u32 hw_if_index;
+  u32 sw_if_index;
+  u16 num_rx_queues;
+  u16 num_tx_queues;
+  u16 txq_sz;
+  u16 rxq_sz;
+  vnet_dev_port_sec_if_t **secondary_interfaces;
+} vnet_dev_port_intf_t;
+
 typedef struct vnet_dev_port
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -319,7 +368,6 @@ typedef struct vnet_dev_port
   u8 started : 1;
   u8 link_up : 1;
   u8 promisc : 1;
-  u8 interface_created : 1;
   u8 rx_node_assigned : 1;
   vnet_dev_counter_main_t *counter_main;
   vnet_dev_queue_config_t rx_queue_config;
@@ -338,27 +386,7 @@ typedef struct vnet_dev_port
   vnet_dev_tx_queue_ops_t tx_queue_ops;
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
-
-  struct
-  {
-    vnet_dev_if_name_t name;
-    u32 dev_instance;
-    u32 rx_node_index;
-    u32 current_config_index;
-    u16 rx_next_index;
-    u16 redirect_to_node_next_index;
-    u8 feature_arc_index;
-    u8 feature_arc : 1;
-    u8 redirect_to_node : 1;
-    u8 default_is_intr_mode : 1;
-    u32 tx_node_index;
-    u32 hw_if_index;
-    u32 sw_if_index;
-    u16 num_rx_queues;
-    u16 num_tx_queues;
-    u16 txq_sz;
-    u16 rxq_sz;
-  } intf;
+  vnet_dev_port_intf_t *interface;
 
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   u8 data[];
@@ -456,10 +484,17 @@ typedef struct
 
 typedef struct
 {
+  vnet_dev_port_t *port;
+  u32 sec_if_index;
+  u8 is_primary_if : 1;
+} vnet_dev_instance_t;
+
+typedef struct
+{
   vnet_dev_bus_t *buses;
   vnet_dev_driver_t *drivers;
   vnet_dev_t **devices;
-  vnet_dev_port_t **ports_by_dev_instance;
+  vnet_dev_instance_t *dev_instances;
   vnet_dev_bus_registration_t *bus_registrations;
   vnet_dev_driver_registration_t *driver_registrations;
   void *runtime_temp_spaces;
@@ -567,28 +602,56 @@ void vnet_dev_clear_hw_interface_counters (u32);
 void vnet_dev_set_interface_next_node (vnet_main_t *, u32, u32);
 
 /* port.c */
-vnet_dev_rv_t vnet_dev_port_start (vlib_main_t *, vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_start_all_rx_queues (vlib_main_t *,
-						 vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_start_all_tx_queues (vlib_main_t *,
-						 vnet_dev_port_t *);
-void vnet_dev_port_stop (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_deinit (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_free (vlib_main_t *, vnet_dev_port_t *);
+
+typedef struct
+{
+  vnet_dev_if_name_t name;
+  u16 num_rx_queues;
+  u16 num_tx_queues;
+  u16 rxq_sz;
+  u16 txq_sz;
+  u8 default_is_intr_mode : 1;
+
+  /* return */
+  u32 sw_if_index;
+} vnet_dev_port_if_create_args_t;
+
+typedef struct
+{
+  u32 id;
+
+  /* return */
+  u32 sw_if_index;
+} vnet_dev_port_sec_if_create_args_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+} vnet_dev_port_del_sec_if_args_t;
+
+vnet_dev_port_op_t vnet_dev_port_if_remove;
+vnet_dev_port_op_t vnet_dev_port_start;
+vnet_dev_port_op_t vnet_dev_port_start_all_rx_queues;
+vnet_dev_port_op_t vnet_dev_port_start_all_tx_queues;
+vnet_dev_port_op_no_rv_t vnet_dev_port_clear_counters;
+vnet_dev_port_op_no_rv_t vnet_dev_port_deinit;
+vnet_dev_port_op_no_rv_t vnet_dev_port_free;
+vnet_dev_port_op_no_rv_t vnet_dev_port_stop;
+vnet_dev_port_op_no_rv_t vnet_dev_port_update_tx_node_runtime;
+vnet_dev_port_op_with_ptr_t vnet_dev_port_if_create;
+vnet_dev_port_op_with_ptr_t vnet_dev_port_add_sec_if;
+vnet_dev_port_op_with_ptr_t vnet_dev_port_del_sec_if;
+
 void vnet_dev_port_add_counters (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_counter_t *, u16);
-void vnet_dev_port_free_counters (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_update_tx_node_runtime (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_port_op_no_rv_t vnet_dev_port_free_counters;
 void vnet_dev_port_state_change (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_port_state_changes_t);
-void vnet_dev_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t
 vnet_dev_port_cfg_change_req_validate (vlib_main_t *, vnet_dev_port_t *,
 				       vnet_dev_port_cfg_change_req_t *);
 vnet_dev_rv_t vnet_dev_port_cfg_change (vlib_main_t *, vnet_dev_port_t *,
 					vnet_dev_port_cfg_change_req_t *);
-vnet_dev_rv_t vnet_dev_port_if_create (vlib_main_t *, vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_if_remove (vlib_main_t *, vnet_dev_port_t *);
 
 /* queue.c */
 vnet_dev_rv_t vnet_dev_rx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16);
@@ -612,6 +675,9 @@ vnet_dev_rv_t vnet_dev_process_call_op (vlib_main_t *, vnet_dev_t *,
 					vnet_dev_op_t *);
 vnet_dev_rv_t vnet_dev_process_call_op_no_rv (vlib_main_t *, vnet_dev_t *,
 					      vnet_dev_op_no_rv_t *);
+vnet_dev_rv_t vnet_dev_process_call_op_with_ptr (vlib_main_t *, vnet_dev_t *,
+						 vnet_dev_op_with_ptr_t *,
+						 void *);
 void vnet_dev_process_call_op_no_wait (vlib_main_t *, vnet_dev_t *,
 				       vnet_dev_op_no_rv_t *);
 vnet_dev_rv_t vnet_dev_process_call_port_op (vlib_main_t *, vnet_dev_port_t *,
@@ -619,6 +685,9 @@ vnet_dev_rv_t vnet_dev_process_call_port_op (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm,
 						   vnet_dev_port_t *,
 						   vnet_dev_port_op_no_rv_t *);
+vnet_dev_rv_t
+vnet_dev_process_call_port_op_with_ptr (vlib_main_t *, vnet_dev_port_t *,
+					vnet_dev_port_op_with_ptr_t *, void *);
 void vnet_dev_process_call_port_op_no_wait (vlib_main_t *, vnet_dev_port_t *,
 					    vnet_dev_port_op_no_rv_t *);
 vnet_dev_rv_t

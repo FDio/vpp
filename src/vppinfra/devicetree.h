@@ -42,6 +42,8 @@ typedef struct clib_dt_main
   uword *node_by_phandle;
 } clib_dt_main_t;
 
+__clib_export clib_dt_node_t *clib_dt_get_child_node (clib_dt_node_t *n,
+						      char *fmt, ...);
 clib_dt_node_t *clib_dt_get_node_with_path (clib_dt_main_t *dm, char *fmt,
 					    ...);
 clib_dt_property_t *clib_dt_get_node_property_by_name (clib_dt_node_t *,
@@ -68,5 +70,49 @@ clib_dt_proprerty_get_u32 (clib_dt_property_t *p)
 {
   return clib_net_to_host_u32 (*(u32u *) p->data);
 }
+
+static_always_inline char *
+clib_dt_proprerty_get_string (clib_dt_property_t *p)
+{
+  return (char *) p->data;
+}
+
+static_always_inline clib_dt_node_t *
+clib_dt_get_root_node (clib_dt_node_t *n)
+{
+  return n->dt_main->root;
+}
+
+static_always_inline clib_dt_node_t *
+foreach_clib_dt_tree_node_helper (clib_dt_node_t *first, clib_dt_node_t **prev,
+				  clib_dt_node_t *n)
+{
+  clib_dt_node_t *next;
+
+again:
+  if ((!*prev || (*prev)->parent != n) && vec_len (n->child_nodes) > 0)
+    next = n->child_nodes[0];
+  else if (n->next)
+    next = n->next;
+  else
+    {
+      next = n->parent;
+      *prev = n;
+      n = next;
+      if (n == first)
+	return 0;
+      goto again;
+    }
+
+  *prev = n;
+  return next == first ? 0 : next;
+}
+
+#define foreach_clib_dt_child_node(_cn, _n)                                   \
+  vec_foreach_pointer (_cn, (_n)->child_nodes)
+
+#define foreach_clib_dt_tree_node(_n, _first)                                 \
+  for (clib_dt_node_t *__last = 0, *(_n) = _first; _n;                        \
+       _n = foreach_clib_dt_tree_node_helper (_first, &__last, _n))
 
 #endif /* CLIB_DEVICETREE_H_ */

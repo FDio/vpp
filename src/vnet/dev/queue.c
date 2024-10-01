@@ -69,8 +69,8 @@ vnet_dev_rx_queue_alloc (vlib_main_t *vm, vnet_dev_port_t *port,
     vlib_buffer_pool_get_default_for_numa (vm, dev->numa_node);
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
 
-  rxq->buffer_template = bp->buffer_template;
-  vnet_buffer (&rxq->buffer_template)->sw_if_index[VLIB_TX] = ~0;
+  rxq->if_rt_data.buffer_template = bp->buffer_template;
+  vnet_buffer (&rxq->if_rt_data.buffer_template)->sw_if_index[VLIB_TX] = ~0;
 
   rxq->next_index = vnet_dev_default_next_index_by_port_type[port->attr.type];
 
@@ -107,7 +107,7 @@ vnet_dev_rx_queue_stop (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 {
   if (rxq->port->rx_queue_ops.stop)
     rxq->port->rx_queue_ops.stop (vm, rxq);
-  vlib_node_set_state (vm, rxq->port->intf.rx_node_index,
+  vlib_node_set_state (vm, rxq->port->interface->rx_node_index,
 		       VLIB_NODE_STATE_DISABLED);
   rxq->started = 0;
 }
