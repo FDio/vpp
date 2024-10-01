@@ -203,6 +203,21 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
+mvpp2_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_sec_if_t *sif = p;
+  log_debug (port->dev, "id %u", sif->id);
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+mvpp2_port_del_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  log_debug (port->dev, "");
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
 mvpp2_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 				vnet_dev_port_cfg_change_req_t *req)
 {

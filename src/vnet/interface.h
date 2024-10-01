@@ -774,6 +774,7 @@ typedef enum
 {
   /* A hw interface. */
   VNET_SW_INTERFACE_TYPE_HARDWARE,
+  VNET_SW_INTERFACE_TYPE_HARDWARE_SECONDARY,
 
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,

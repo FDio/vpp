@@ -107,7 +107,7 @@ vnet_dev_rx_queue_stop (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 {
   if (rxq->port->rx_queue_ops.stop)
     rxq->port->rx_queue_ops.stop (vm, rxq);
-  vlib_node_set_state (vm, rxq->port->intf.rx_node_index,
+  vlib_node_set_state (vm, rxq->port->interface->rx_node_index,
 		       VLIB_NODE_STATE_DISABLED);
   rxq->started = 0;
 }
