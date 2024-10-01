@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5039faa0_5e512f3d",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-01T08:31:51Z",
+      "side": 1,
+      "message": "we probably don\u0027t want to start redirect vpp output to docker log in this case, bit weird behavior when you run it manually since it block your terminal and you don\u0027t see any output.\nI see two options:\n1. do not redirect vpp output\n2. run vpp in interactive mode",
+      "range": {
+        "startLine": 132,
+        "startChar": 45,
+        "endLine": 132,
+        "endChar": 61
+      },
+      "revId": "e33722cb4a034083ce74391fd28ccce256a079fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

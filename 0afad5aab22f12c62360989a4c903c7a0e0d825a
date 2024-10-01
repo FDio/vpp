@@ -97,6 +97,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "11003dd2_a9ede05d",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-01T08:31:51Z",
+      "side": 1,
+      "message": "startup.conf is always in vpp.getEtcDir() and cli.sock in vpp.getRunDir()\nso maybe put it inside CreateVppConfig?\nthis way it will be less error prone, you change some path in container topo yaml or in infra and you need to update paths manually everywhere",
+      "parentUuid": "ac2e2db3_be50ad6b",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 52
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "53a698cf_871e8767",
         "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
         "patchSetId": 1
