@@ -39,6 +39,9 @@ dpdk_depends		     := $(if $(ARCH_X86_64), ipsec-mb)
 else
 dpdk_depends		     := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
 endif
+ifeq ($(rdma-core_version),)
+$(error Missing rdma-core_version)
+endif
 DPDK_MLX_DEFAULT             := $(shell if grep -q "rdma=$(rdma-core_version) dpdk=$(dpdk_version)" mlx_rdma_dpdk_matrix.txt; then echo 'y'; else echo 'n'; fi)
 DPDK_MLX4_PMD                ?= $(DPDK_MLX_DEFAULT)
 DPDK_MLX5_PMD                ?= $(DPDK_MLX_DEFAULT)
