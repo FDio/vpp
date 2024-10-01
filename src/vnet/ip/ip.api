@@ -1265,6 +1265,13 @@ counters ip4 {
     units "packets";
     description "unsupported ip protocol";
   };
+  /* FIXME */
+  stale_dpo {
+    severity error;
+    type counter64;
+    units "packets";
+    description "stale dpo";
+  };
 };
 
 /**
@@ -1510,6 +1517,13 @@ counters ip6 {
     type counter64;
     units "packets";
     description "unsupported ip protocol";
+  };
+  /* FIXME */
+  stale_dpo {
+    severity error;
+    type counter64;
+    units "packets";
+    description "stale dpo";
   };
 };
 

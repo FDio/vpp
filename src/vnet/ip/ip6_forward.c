@@ -754,6 +754,8 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
   ip6_main_t *im = &ip6_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_node_runtime_t *error_node =
+    vlib_node_get_runtime (vm, ip6_input_node.index);
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
@@ -782,6 +784,12 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
       lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       lbi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
 
+      /* FIXME: something went wrong */
+      ASSERT (lbi0 != ~0 && lbi1 != ~0);
+      if (PREDICT_FALSE (~0 == lbi0 || ~0 == lbi1))
+	break;
+
+      lb0 = load_balance_get (lbi0);
       lb0 = load_balance_get (lbi0);
       lb1 = load_balance_get (lbi1);
 
@@ -871,6 +879,16 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
       ip0 = vlib_buffer_get_current (b[0]);
       lbi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
 
+      /* FIXME: something went wrong */
+      ASSERT (lbi0 != ~0);
+      if (PREDICT_FALSE (~0 == lbi0))
+	{
+	  next[0] = 0;
+	  b[0]->error = error_node->errors[IP6_ERROR_STALE_DPO];
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = ~0;
+	  goto err;
+	}
+
       lb0 = load_balance_get (lbi0);
 
       hc0 = 0;
@@ -907,6 +925,7 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
       vlib_increment_combined_counter
 	(cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b[0]));
 
+    err:
       b += 1;
       next += 1;
       n_left -= 1;
@@ -1828,6 +1847,11 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
+	  /* FIXME: something went wrong */
+	  ASSERT (adj_index0 != ~0 && adj_index1 != ~0);
+	  if (PREDICT_FALSE (~0 == adj_index0 || ~0 == adj_index1))
+	    break;
+
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
@@ -2018,6 +2042,16 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
+	  /* FIXME: something went wrong */
+	  ASSERT (adj_index0 != ~0);
+	  if (PREDICT_FALSE (~0 == adj_index0))
+	    {
+	      next0 = 0;
+	      p0->error = error_node->errors[IP6_ERROR_STALE_DPO];
+	      vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ~0;
+	      goto err;
+	    }
+
 	  adj0 = adj_get (adj_index0);
 
 	  ip0 = vlib_buffer_get_current (p0);
@@ -2111,6 +2145,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      p0->error = error_node->errors[error0];
 	    }
 
+	err:
 	  from += 1;
 	  n_left_from -= 1;
 	  to_next += 1;
