@@ -65,4 +65,28 @@ vnet_dev_rv_t
 vnet_dev_api_remove_port_if (vlib_main_t *,
 			     vnet_dev_api_remove_port_if_args_t *);
 
+typedef struct
+{
+  u32 primary_sw_if_index;
+  u32 sec_if_id;
+  vnet_dev_if_name_t intf_name;
+  u8 *args;
+
+  /* return */
+  u32 sw_if_index;
+} vnet_dev_api_create_port_sec_if_args_t;
+
+vnet_dev_rv_t
+vnet_dev_api_create_port_sec_if (vlib_main_t *,
+				 vnet_dev_api_create_port_sec_if_args_t *);
+
+typedef struct
+{
+  u32 sw_if_index;
+} vnet_dev_api_remove_port_sec_if_args_t;
+
+vnet_dev_rv_t
+vnet_dev_api_remove_port_sec_if (vlib_main_t *,
+				 vnet_dev_api_remove_port_sec_if_args_t *);
+
 #endif /* _VNET_DEV_API_H_ */

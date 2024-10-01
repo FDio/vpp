@@ -8,6 +8,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/error_bootstrap.h>
 #include <vppinfra/format.h>
+#include <vppinfra/devicetree.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 
@@ -30,6 +31,34 @@
 #define MVPP2_MAX_THREADS      4
 #define MRVL_PP2_BUFF_BATCH_SZ 32
 
+typedef union
+{
+  struct
+  {
+    /* 1st octet */
+    u8 src_dev : 5;
+    u8 src_tagged : 1;
+    u8 one6 : 1;
+    u8 one7 : 1;
+
+    /* 2nd octet */
+    u8 cfi_or_dei : 1;
+    u8 not_used : 1;
+    u8 src_is_lag : 1;
+    u8 src_port_or_lag : 5;
+
+    /* 3rd octet */
+    u8 vid_hi : 4;
+    u8 zero : 1;
+    u8 pri : 3;
+    /* 4th  octet */
+    u8 vid_lo;
+  };
+  u32 as_u32;
+} mv_forward_dsa_tag_t;
+
+STATIC_ASSERT_SIZEOF (mv_forward_dsa_tag_t, 4);
+
 typedef struct
 {
   u8 pp_id;
@@ -49,6 +78,8 @@ typedef struct
   struct pp2_ppio *ppio;
   u8 ppio_id;
   struct pp2_ppio_link_info last_link_info;
+  clib_dt_node_t *switch_node;
+  clib_dt_node_t *switch_port_node;
 } mvpp2_port_t;
 
 typedef struct
