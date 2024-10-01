@@ -16,6 +16,24 @@
       "message": "Artem, Fan could you, please, review this gerrit change.",
       "revId": "e43af43232d9a615a099bf1590f2123c1d04ddbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71e86445_145338e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-10-01T16:57:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b5f1365e_cb44f538",
+      "revId": "e43af43232d9a615a099bf1590f2123c1d04ddbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
