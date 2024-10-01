@@ -119,6 +119,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "35eca734_cc4cf6f7",
+        "filename": "extras/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T10:28:09Z",
+      "side": 1,
+      "message": "Turns out a wrapper script with the proper socket path is created by the framework, so vppctl -s ... is not needed. I will add a log message after it\u0027s created along with vpp start cmd.",
+      "parentUuid": "11003dd2_a9ede05d",
+      "range": {
+        "startLine": 109,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 52
+      },
+      "revId": "0afad5aab22f12c62360989a4c903c7a0e0d825a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "53a698cf_871e8767",
