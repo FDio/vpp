@@ -96,7 +96,8 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_increment_combined_counter (
     vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-    thread_index, port->intf.sw_if_index, n_rx_packets, n_rx_bytes);
+    thread_index, vnet_dev_port_get_intf_sw_if_index (port), n_rx_packets,
+    n_rx_bytes);
 
   if (PREDICT_FALSE (pp2_bpool_get_num_buffs (bpool, &n_bufs)))
     {

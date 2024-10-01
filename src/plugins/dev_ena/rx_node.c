@@ -260,8 +260,8 @@ ena_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 *csi;
   uword n_rx_packets = 0, n_rx_bytes = 0;
   vlib_frame_bitmap_t head_bmp = {};
-  u32 sw_if_index = port->intf.sw_if_index;
-  u32 hw_if_index = port->intf.hw_if_index;
+  u32 sw_if_index = vnet_dev_port_get_intf_sw_if_index (port);
+  u32 hw_if_index = vnet_dev_port_get_intf_hw_if_index (port);
   u32 n_trace, n_deq, n_left;
   u32 cq_next = q->cq_next;
   u32 next_index = rxq->next_index;

@@ -255,8 +255,8 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u64 or_qw1 = 0;
   u32 *bi, *to_next, n_left_to_next;
   u32 next_index = rxq->next_index;
-  u32 sw_if_index = port->intf.sw_if_index;
-  u32 hw_if_index = port->intf.hw_if_index;
+  u32 sw_if_index = vnet_dev_port_get_intf_sw_if_index (port);
+  u32 hw_if_index = vnet_dev_port_get_intf_hw_if_index (port);
   u16 next = arq->next;
   u16 size = rxq->size;
   u16 mask = size - 1;
