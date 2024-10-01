@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "31c5d6b5_e10f2499",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6ec0c439_1557deff",
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "438e5153_ae9c5a94",
@@ -31,6 +49,30 @@
       "writtenOn": "2024-09-11T12:23:12Z",
       "side": 1,
       "message": "maybe:\nmsg.method_type \u003d hcm-\u003ereq_method\nif (hcm-\u003ereq_method \u003d\u003d HTTP_REQ_POST)\n  msg.data.body_len \u003d vec_len (hcm-\u003edata);\nelse\n  msg.data.body_len \u003d 0;",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 0
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ae5a118_601f7b74",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "438e5153_ae9c5a94",
       "range": {
         "startLine": 129,
         "startChar": 0,
@@ -64,6 +106,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "787cdabb_251993b3",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fda6c201_288218d1",
+      "range": {
+        "startLine": 165,
+        "startChar": 46,
+        "endLine": 165,
+        "endChar": 47
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "42a41ca6_38720288",
@@ -77,6 +143,30 @@
       "writtenOn": "2024-09-11T12:23:12Z",
       "side": 1,
       "message": "make sense only when we are doing POST",
+      "range": {
+        "startLine": 186,
+        "startChar": 2,
+        "endLine": 191,
+        "endChar": 5
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e52f5f8_fc0e5010",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "42a41ca6_38720288",
       "range": {
         "startLine": 186,
         "startChar": 2,
@@ -110,6 +200,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c9297cf_a008f797",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4753c77a_5f459362",
+      "range": {
+        "startLine": 275,
+        "startChar": 18,
+        "endLine": 275,
+        "endChar": 37
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8e2be7c2_54a79594",
@@ -133,6 +247,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "12660279_88f652a1",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8e2be7c2_54a79594",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 285,
+        "endChar": 5
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1c00c296_ebccc018",
@@ -146,6 +284,30 @@
       "writtenOn": "2024-09-11T12:23:12Z",
       "side": 1,
       "message": "memory leak if multiple headers in one command line input, memory allocated for all kv pairs except the last one will be definitely lost",
+      "range": {
+        "startLine": 601,
+        "startChar": 1,
+        "endLine": 608,
+        "endChar": 2
+      },
+      "revId": "d1fef2ec025e2d30630c23b3d0776ce12c3b2927",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3875e792_d8a23e20",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 608,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-01T08:00:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1c00c296_ebccc018",
       "range": {
         "startLine": 601,
         "startChar": 1,
