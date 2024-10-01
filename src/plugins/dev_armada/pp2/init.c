@@ -201,6 +201,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_rv_t rv = VNET_DEV_OK;
   vnet_dev_bus_platform_device_data_t *dd = vnet_dev_get_bus_data (dev);
   clib_dt_node_t *sc;
+  clib_dt_node_t *sw = 0;
   int pp_id = -1;
 
   if (!clib_dt_node_is_compatible (dd->node, "marvell,armada-7k-pp22"))
@@ -219,12 +220,19 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (pp_id < 0)
     return VNET_DEV_ERR_UNKNOWN_DEVICE;
 
+  foreach_clib_dt_tree_node (n, clib_dt_get_root_node (sc))
+    if (clib_dt_node_is_compatible (n, "marvell,mv88e6190"))
+      {
+	sw = n;
+	log_debug (dev, "found mv88e6190 compatible switch at %v", n->path);
+      }
+
   if ((mvpp2_global_init (vm, dev)) != VNET_DEV_OK)
     return rv;
 
   md->pp_id = pp_id;
 
-  vec_foreach_pointer (cn, dd->node->child_nodes)
+  foreach_clib_dt_child_node (cn, dd->node)
     {
       clib_dt_property_t *p;
       char netdev_name[IFNAMSIZ];
@@ -269,7 +277,30 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 
       mvpp2_port_t mvpp2_port = {
 	.ppio_id = ppio_id,
+	.is_dsa = 0,
       };
+
+      if (sw)
+	{
+	  clib_dt_node_t *ports = clib_dt_get_child_node (sw, "ports");
+	  if (ports)
+	    foreach_clib_dt_child_node (sp, ports)
+	      {
+		clib_dt_node_t *eth;
+
+		eth = clib_dt_dereference_node (sp, "ethernet");
+
+		if (cn != eth)
+		  continue;
+
+		mvpp2_port.is_dsa = 1;
+		mvpp2_port.switch_node = sw;
+		mvpp2_port.switch_port_node = sp;
+		log_debug (dev, "port is connected to switch port %v",
+			   sp->path);
+		break;
+	      }
+	}
 
       vnet_dev_port_add_args_t port_add_args = {
         .port = {
@@ -278,6 +309,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .max_rx_queues = PP2_PPIO_MAX_NUM_INQS,
             .max_tx_queues = PP2_PPIO_MAX_NUM_OUTQS,
             .max_supported_rx_frame_size = 9216,
+	    .caps.secondary_interfaces = 1,
           },
           .ops = {
             .init = mvpp2_port_init,
