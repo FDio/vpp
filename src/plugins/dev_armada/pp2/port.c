@@ -75,6 +75,9 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port %u %U", port->port_id, format_pp2_ppio_link_info, &li);
 
+  for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
+    mp->desc_ptrs[i] = mp->descs + i;
+
 done:
   if (rv != VNET_DEV_OK)
     mvpp2_port_stop (vm, port);
@@ -200,6 +203,21 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 				  });
       mp->is_enabled = 0;
     }
+}
+
+vnet_dev_rv_t
+mvpp2_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_sec_if_t *sif = p;
+  log_debug (port->dev, "id %u", sif->id);
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+mvpp2_port_del_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  log_debug (port->dev, "");
+  return VNET_DEV_OK;
 }
 
 vnet_dev_rv_t

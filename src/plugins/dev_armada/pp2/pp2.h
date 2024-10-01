@@ -8,6 +8,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/error_bootstrap.h>
 #include <vppinfra/format.h>
+#include <vppinfra/devicetree.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 
@@ -30,6 +31,38 @@
 #define MVPP2_MAX_THREADS      4
 #define MRVL_PP2_BUFF_BATCH_SZ 32
 
+#define foreach_mv_dsa_tag_field                                              \
+  _ (12, vid)                                                                 \
+  _ (1, _zero13)                                                              \
+  _ (3, pri)                                                                  \
+  _ (1, cfi_dei)                                                              \
+  _ (1, _unused17)                                                            \
+  _ (1, src_is_lag)                                                           \
+  _ (5, src_port_or_lag)                                                      \
+  _ (5, src_dev)                                                              \
+  _ (1, src_tagged)                                                           \
+  _ (1, _one30)                                                               \
+  _ (1, _one31)
+
+typedef union
+{
+  struct
+  {
+#define _(b, n) u32 (n) : (b);
+    foreach_mv_dsa_tag_field
+#undef _
+  };
+  u32 as_u32;
+} mv_dsa_tag_t;
+
+STATIC_ASSERT_SIZEOF (mv_dsa_tag_t, 4);
+
+static_always_inline mv_dsa_tag_t
+mv_dsa_tag_read (void *p)
+{
+  return (mv_dsa_tag_t){ .as_u32 = clib_net_to_host_u32 (*(u32u *) p) };
+}
+
 typedef struct
 {
   u8 pp_id;
@@ -49,6 +82,12 @@ typedef struct
   struct pp2_ppio *ppio;
   u8 ppio_id;
   struct pp2_ppio_link_info last_link_info;
+  clib_dt_node_t *switch_node;
+  clib_dt_node_t *switch_port_node;
+
+  struct pp2_ppio_desc descs[VLIB_FRAME_SIZE];
+  struct pp2_ppio_desc *desc_ptrs[VLIB_FRAME_SIZE];
+  vnet_dev_port_sec_if_t *dsa_to_sec_if[32];
 } mvpp2_port_t;
 
 typedef struct
@@ -74,12 +113,15 @@ format_function_t format_mvpp2_port_status;
 format_function_t format_mvpp2_dev_info;
 format_function_t format_mvpp2_rx_trace;
 format_function_t format_mvpp2_rx_desc;
+format_function_t format_mv_dsa_tag;
 
 /* port.c */
 vnet_dev_port_op_t mvpp2_port_init;
 vnet_dev_port_op_no_rv_t mvpp2_port_deinit;
 vnet_dev_port_op_t mvpp2_port_start;
 vnet_dev_port_op_no_rv_t mvpp2_port_stop;
+vnet_dev_port_op_with_ptr_t mvpp2_port_add_sec_if;
+vnet_dev_port_op_with_ptr_t mvpp2_port_del_sec_if;
 vnet_dev_rv_t mvpp2_port_cfg_change (vlib_main_t *, vnet_dev_port_t *,
 				     vnet_dev_port_cfg_change_req_t *);
 vnet_dev_rv_t
