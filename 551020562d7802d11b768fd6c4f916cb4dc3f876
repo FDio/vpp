@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3bab5baa_f4863472",
+        "filename": "extras/hs-test/infra/suite_no_topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-02T14:03:02Z",
+      "side": 1,
+      "message": "calling twice",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 0
+      },
+      "revId": "551020562d7802d11b768fd6c4f916cb4dc3f876",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
