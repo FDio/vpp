@@ -15,11 +15,11 @@ func init() {
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
-	s.SkipUnlessExtendedTestsBuilt()
-
 	query := "index.html"
-	nginxCont := s.GetContainerByName("nginx-http3")
-	nginxCont.Run()
+	nginxCont := s.GetContainerByName(NginxHttp3ContainerName)
+	nginxCont.Create()
+	s.CreateNginxConfig(nginxCont)
+	nginxCont.Start()
 
 	vpp := s.GetContainerByName("vpp").VppInstance
 	vpp.WaitForApp("nginx-", 5)
@@ -30,11 +30,14 @@ func NginxHttp3Test(s *NoTopoSuite) {
 	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.ExtraRunningArgs = args
 	curlCont.Run()
-	o, err := curlCont.GetOutput()
-	s.Log(o)
-	s.AssertEmpty(err)
-	s.AssertContains(o, "<http>", "<http> not found in the result!")
+	body, stats := curlCont.GetOutput()
+	s.Log(body)
+	s.Log(stats)
+	s.AssertNotContains(stats, "refused")
+	s.AssertContains(stats, "100")
+	s.AssertContains(body, "<http>", "<http> not found in the result!")
 }
+
 func NginxAsServerTest(s *NoTopoSuite) {
 	query := "return_ok"
 	finished := make(chan error, 1)
