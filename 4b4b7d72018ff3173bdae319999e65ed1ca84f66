@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e46d84a0_2bad44ba",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 16
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "87fcad94_97baf05f",
+      "range": {
+        "startLine": 330,
+        "startChar": 18,
+        "endLine": 330,
+        "endChar": 75
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f26b8216_5f0f063b",
@@ -54,6 +78,30 @@
       "writtenOn": "2024-10-01T11:58:31Z",
       "side": 1,
       "message": "u64",
+      "range": {
+        "startLine": 20,
+        "startChar": 2,
+        "endLine": 20,
+        "endChar": 6
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55070e14_cd4ebf8f",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f26b8216_5f0f063b",
       "range": {
         "startLine": 20,
         "startChar": 2,
@@ -87,6 +135,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a2e5a14_d04c3cf2",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0dd5974a_4777e4bf",
+      "range": {
+        "startLine": 121,
+        "startChar": 7,
+        "endLine": 121,
+        "endChar": 18
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0ce27154_a8b52ef3",
@@ -100,6 +172,30 @@
       "writtenOn": "2024-10-01T11:58:31Z",
       "side": 1,
       "message": "this is valid only for POST method too",
+      "range": {
+        "startLine": 126,
+        "startChar": 0,
+        "endLine": 128,
+        "endChar": 67
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8e28163_4a3ed476",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0ce27154_a8b52ef3",
       "range": {
         "startLine": 126,
         "startChar": 0,
@@ -133,6 +229,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97f962c2_2561ad4a",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "eca3c41b_9858f22e",
+      "range": {
+        "startLine": 301,
+        "startChar": 3,
+        "endLine": 301,
+        "endChar": 20
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7836a524_c883ea3d",
@@ -146,6 +266,30 @@
       "writtenOn": "2024-10-01T11:58:31Z",
       "side": 1,
       "message": "this should not happen, because you used svm_fifo_max_dequeue\ncan be replaced with ASSERT",
+      "range": {
+        "startLine": 336,
+        "startChar": 1,
+        "endLine": 337,
+        "endChar": 14
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f695a4c_22201066",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7836a524_c883ea3d",
       "range": {
         "startLine": 336,
         "startChar": 1,
@@ -179,6 +323,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7337e05e_b52bf1f3",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e30fe690_d711eda2",
+      "range": {
+        "startLine": 364,
+        "startChar": 2,
+        "endLine": 364,
+        "endChar": 57
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c4c2dc9e_9596c2dc",
@@ -192,6 +360,30 @@
       "writtenOn": "2024-10-01T11:58:31Z",
       "side": 1,
       "message": "you need to free this too",
+      "range": {
+        "startLine": 570,
+        "startChar": 28,
+        "endLine": 570,
+        "endChar": 41
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e6177d6_612c66b3",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 570,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c4c2dc9e_9596c2dc",
       "range": {
         "startLine": 570,
         "startChar": 28,
@@ -225,6 +417,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fdf22bf7_5630ba2e",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dadcfc7d_5d13fb58",
+      "range": {
+        "startLine": 614,
+        "startChar": 49,
+        "endLine": 614,
+        "endChar": 53
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2618132f_a4134420",
@@ -238,6 +454,30 @@
       "writtenOn": "2024-10-01T11:58:31Z",
       "side": 1,
       "message": "vec_add1 and new_header doesn\u0027t need to be allocated in heap (can be in stack)",
+      "range": {
+        "startLine": 632,
+        "startChar": 3,
+        "endLine": 632,
+        "endChar": 11
+      },
+      "revId": "4b4b7d72018ff3173bdae319999e65ed1ca84f66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0331bd4c_5f4ecc81",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-02T11:58:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2618132f_a4134420",
       "range": {
         "startLine": 632,
         "startChar": 3,
