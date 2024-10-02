@@ -74,7 +74,6 @@ help:
 	@echo
 	@echo "'make build' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
-	@echo " HST_EXTENDED_TESTS       - build extended tests"
 	@echo
 	@echo "'make test' arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"

@@ -12,6 +12,7 @@ const (
 	SingleTopoContainerVpp   = "vpp"
 	SingleTopoContainerNginx = "nginx"
 	TapInterfaceName         = "htaphost"
+	NginxHttp3ContainerName  = "nginx-http3"
 )
 
 var noTopoTests = map[string][]func(s *NoTopoSuite){}
@@ -60,6 +61,13 @@ func (s *NoTopoSuite) SetupTest() {
 	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }
 
+func (s *NoTopoSuite) TearDownTest() {
+	if CurrentSpecReport().Failed() {
+		s.CollectNginxLogs(NginxHttp3ContainerName)
+	}
+	s.HstSuite.TearDownTest()
+}
+
 func (s *NoTopoSuite) VppAddr() string {
 	return s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 }
@@ -70,6 +78,19 @@ func (s *NoTopoSuite) VppIfName() string {
 
 func (s *NoTopoSuite) HostAddr() string {
 	return s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+}
+
+func (s *NoTopoSuite) CreateNginxConfig(container *Container) {
+	nginxSettings := struct {
+		LogPrefix string
+	}{
+		LogPrefix: container.Name,
+	}
+	container.CreateConfig(
+		"/nginx.conf",
+		"./resources/nginx/nginx_http3.conf",
+		nginxSettings,
+	)
 }
 
 var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
