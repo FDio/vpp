@@ -33,7 +33,8 @@ func init() {
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
 		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
-		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest)
+		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
+		PromConsecutiveConnectionsTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -424,6 +425,20 @@ func PromConcurrentConnectionsTest(s *NoTopoSuite) {
 	}
 	wg.Wait()
 	s.Log(vpp.Vppctl("show session verbose proto http"))
+}
+
+func PromConsecutiveConnectionsTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	url := "http://" + serverAddress + ":80/stats.prom"
+
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("prom enable"))
+	time.Sleep(time.Second * 5)
+
+	for i := 0; i < 1000; i++ {
+		promReq(s, url)
+	}
 }
 
 func PromMemLeakTest(s *NoTopoSuite) {
