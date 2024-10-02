@@ -86,13 +86,13 @@ func (s *Stanza) SaveToFile(fileName string) error {
 }
 
 // NewHttpClient creates [http.Client] with disabled proxy and redirects, it also sets timeout to 30seconds.
-func NewHttpClient() *http.Client {
+func NewHttpClient(timeout time.Duration) *http.Client {
 	transport := http.DefaultTransport
 	transport.(*http.Transport).Proxy = nil
 	transport.(*http.Transport).DisableKeepAlives = true
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   time.Second * 30,
+		Timeout:   timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}}
