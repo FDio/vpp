@@ -833,7 +833,6 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      // 'external <addr>:<port>' 형식을 먼저 처리
       if (unformat (line_input, "external %U:%u", unformat_ip4_address,
 		    &e_addr, &e_port))
 	{
@@ -842,10 +841,8 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "external %U", unformat_ip4_address,
 			 &e_addr))
 	{
-	  // 포트가 생략되었을 경우 처리
 	  e_port_set = 0;
 	}
-      // 'local <addr>:<port>' 형식을 처리
       else if (unformat (line_input, "local %U:%u", unformat_ip4_address,
 			 &l_addr, &l_port))
 	{
@@ -854,7 +851,6 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "local %U", unformat_ip4_address,
 			 &l_addr))
 	{
-	  // 포트가 생략되었을 경우 처리
 	  l_port_set = 0;
 	}
       else if (unformat (line_input, "exact %U", unformat_ip4_address,
