@@ -338,20 +338,6 @@ func (s *HstSuite) SkipIfNotEnoughAvailableCpus() bool {
 	return true
 }
 
-func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
-	imageName := "hs-test/nginx-http3"
-
-	cmd := exec.Command("docker", "images", imageName)
-	byteOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		s.Log("error while searching for docker image")
-		return
-	}
-	if !strings.Contains(string(byteOutput), imageName) {
-		s.Skip("extended tests not built")
-	}
-}
-
 func (s *HstSuite) SkipUnlessLeakCheck() {
 	if !*IsLeakCheck {
 		s.Skip("leak-check tests excluded")
