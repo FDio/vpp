@@ -460,18 +460,19 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u32 appns_index;
   app_namespace_t *app_ns;
   u32 rmt_plen = 0, action = 0;
-  clib_error_t *error = 0;
   ip46_address_t rmt_ip;
   u8 conn_set = 0;
   u8 fib_proto = -1, is_add = 1, *ns_id = 0;
-  u8 *tag = 0, tag_only = 0;
+  u8 *tag = 0;
   int rv;
   session_rule_add_del_args_t args;
 
-  session_cli_return_if_not_enabled ();
-
   if (session_sdl_is_enabled () == 0)
-    return clib_error_return (0, "session sdl engine is not enabled");
+    {
+      vlib_cli_output (vm, "session sdl engine is not enabled");
+      unformat_skip_line (input);
+      goto done;
+    }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -499,8 +500,8 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  vlib_cli_output (vm, "unknown input `%U'", format_unformat_error,
+			   input);
 	  goto done;
 	}
     }
@@ -536,13 +537,6 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  /* Delete with only tag entered. Try v4 first and then v6 if failed */
-  if ((is_add == 0) && (fib_proto == (u8) ~0))
-    {
-      fib_proto = FIB_PROTOCOL_IP4;
-      tag_only = 1;
-    }
-
   memset (&args, 0, sizeof (args));
   args.transport_proto = TRANSPORT_PROTO_TCP;
   args.table_args.rmt.fp_addr = rmt_ip;
@@ -555,27 +549,12 @@ session_sdl_command_fn (vlib_main_t *vm, unformat_input_t *input,
   args.scope = SESSION_RULE_SCOPE_GLOBAL;
 
   if ((rv = vnet_session_rule_add_del (&args)))
-    {
-      /* Try tag only delete on v6 */
-      if (rv && tag_only)
-	{
-	  args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP6;
-	  args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP6;
-	  if ((rv = vnet_session_rule_add_del (&args)))
-	    {
-	      error = clib_error_return (0, "sdl add del returned %u", rv);
-	    }
-	}
-      else
-	{
-	  error = clib_error_return (0, "sdl add del returned %u", rv);
-	}
-    }
+    vlib_cli_output (vm, "sdl add del returned %d", rv);
 
 done:
   vec_free (ns_id);
   vec_free (tag);
-  return error;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (session_sdl_command, static) = {

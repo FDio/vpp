@@ -1540,7 +1540,6 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen = 0, rmt_plen = 0;
-  clib_error_t *error = 0;
   u32 appns_index, scope = 0;
   ip46_address_t lcl_ip, rmt_ip;
   u8 is_ip4 = 1, conn_set = 0;
@@ -1549,10 +1548,12 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_namespace_t *app_ns;
   int rv;
 
-  session_cli_return_if_not_enabled ();
-
   if (session_rule_table_is_enabled () == 0)
-    return clib_error_return (0, "session rule table engine is not enabled");
+    {
+      vlib_cli_output (vm, "session rule table engine is not enabled");
+      unformat_skip_line (input);
+      goto done;
+    }
 
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
@@ -1594,8 +1595,8 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+	  vlib_cli_output (vm, "unknown input `%U'", format_unformat_error,
+			   input);
 	  goto done;
 	}
     }
@@ -1654,12 +1655,12 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
     .scope = scope,
   };
   if ((rv = vnet_session_rule_add_del (&args)))
-    error = clib_error_return (0, "rule add del returned %u", rv);
+    vlib_cli_output (vm, "rule add del returned %d", rv);
 
 done:
   vec_free (ns_id);
   vec_free (tag);
-  return error;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (session_rule_command, static) =
