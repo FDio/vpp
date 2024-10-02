@@ -814,9 +814,8 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
-add_static_mapping_command_fn (vlib_main_t * vm,
-                               unformat_input_t * input,
-                               vlib_cli_command_t * cmd)
+add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -835,61 +834,66 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       // 'external <addr>:<port>' 형식을 먼저 처리
-      if (unformat (line_input, "external %U:%u", unformat_ip4_address, &e_addr,
-                    &e_port))
-        {
-          e_port_set = 1;
-        }
-      else if (unformat (line_input, "external %U", unformat_ip4_address, &e_addr))
-        {
-          // 포트가 생략되었을 경우 처리
-          e_port_set = 0;
-        }
+      if (unformat (line_input, "external %U:%u", unformat_ip4_address,
+		    &e_addr, &e_port))
+	{
+	  e_port_set = 1;
+	}
+      else if (unformat (line_input, "external %U", unformat_ip4_address,
+			 &e_addr))
+	{
+	  // 포트가 생략되었을 경우 처리
+	  e_port_set = 0;
+	}
       // 'local <addr>:<port>' 형식을 처리
-      else if (unformat (line_input, "local %U:%u", unformat_ip4_address, &l_addr,
-                         &l_port))
-        {
-          l_port_set = 1;
-        }
-      else if (unformat (line_input, "local %U", unformat_ip4_address, &l_addr))
-        {
-          // 포트가 생략되었을 경우 처리
-          l_port_set = 0;
-        }
-      else if (unformat (line_input, "exact %U", unformat_ip4_address, &pool_addr))
-        {
-          flags |= NAT_SM_FLAG_EXACT_ADDRESS;
-        }
+      else if (unformat (line_input, "local %U:%u", unformat_ip4_address,
+			 &l_addr, &l_port))
+	{
+	  l_port_set = 1;
+	}
+      else if (unformat (line_input, "local %U", unformat_ip4_address,
+			 &l_addr))
+	{
+	  // 포트가 생략되었을 경우 처리
+	  l_port_set = 0;
+	}
+      else if (unformat (line_input, "exact %U", unformat_ip4_address,
+			 &pool_addr))
+	{
+	  flags |= NAT_SM_FLAG_EXACT_ADDRESS;
+	}
       else if (unformat (line_input, "vrf %u", &vrf_id))
-        ;
+	;
       else if (unformat (line_input, "%U", unformat_ip_protocol, &proto))
-        ;
+	;
       else if (unformat (line_input, "self-twice-nat"))
-        {
-          flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
-        }
+	{
+	  flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+	}
       else if (unformat (line_input, "twice-nat"))
-        {
-          flags |= NAT_SM_FLAG_TWICE_NAT;
-        }
+	{
+	  flags |= NAT_SM_FLAG_TWICE_NAT;
+	}
       else if (unformat (line_input, "out2in-only"))
-        {
-          flags |= NAT_SM_FLAG_OUT2IN_ONLY;
-        }
+	{
+	  flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+	}
       else if (unformat (line_input, "del"))
-        {
-          is_add = 0;
-        }
+	{
+	  is_add = 0;
+	}
       else
-        {
-          error = clib_error_return (0, "unknown input: '%U'", format_unformat_error, line_input);
-          goto done;
-        }
+	{
+	  error = clib_error_return (0, "unknown input: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (l_port_set != e_port_set)
     {
-      error = clib_error_return (0, "Both local and external ports must be set or omitted together.");
+      error = clib_error_return (
+	0, "Both local and external ports must be set or omitted together.");
       goto done;
     }
   if (!l_port_set)
@@ -903,11 +907,14 @@ add_static_mapping_command_fn (vlib_main_t * vm,
     }
   if (is_add)
     {
-      rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto, vrf_id, sw_if_index, flags, pool_addr, 0);
+      rv =
+	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+				     vrf_id, sw_if_index, flags, pool_addr, 0);
     }
   else
     {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto, vrf_id, sw_if_index, flags);
+      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
     }
 
   switch (rv)
@@ -930,7 +937,6 @@ done:
 
   return error;
 }
-
 
 static clib_error_t *
 add_identity_mapping_command_fn (vlib_main_t * vm,
@@ -2098,22 +2104,25 @@ VLIB_CLI_COMMAND (nat44_show_interfaces_command, static) = {
  *  vpp# nat44 add static mapping tcp external 4.4.4.4:3606 local 10.0.0.3:6303
  * If not running "static mapping only" NAT plugin mode use before:
  *  vpp# nat44 add address 4.4.4.4
- * To create address only static mapping between external and local address use:
+ * To create address only static mapping between external and local address
+use:
  *  vpp# nat44 add static mapping external 4.4.4.4 local 10.0.0.3
  * To create ICMP static mapping between external and local with ICMP echo
  * identifier 10 use:
  *  vpp# nat44 add static mapping icmp external 4.4.4.4:10 local 10.0.0.3:10
  * To force use of specific pool address, vrf independent
- *  vpp# nat44 add static mapping external 10.0.2.2:1234 local 10.0.0.2:1234 twice-nat exact 10.0.1.2
+ *  vpp# nat44 add static mapping external 10.0.2.2:1234 local 10.0.0.2:1234
+twice-nat exact 10.0.1.2
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .path = "nat44 add static mapping",
   .function = add_static_mapping_command_fn,
-  .short_help =
-    "nat44 add static mapping tcp|udp|icmp external <addr>:<port|icmp-echo-id> "
-    "local <addr>:<port|icmp-echo-id> [vrf <table-id>] [twice-nat|self-twice-nat] "
-    "[out2in-only] [exact <pool-addr>] [del]",
+  .short_help = "nat44 add static mapping tcp|udp|icmp external "
+		"<addr>:<port|icmp-echo-id> "
+		"local <addr>:<port|icmp-echo-id> [vrf <table-id>] "
+		"[twice-nat|self-twice-nat] "
+		"[out2in-only] [exact <pool-addr>] [del]",
 };
 
 /*?
