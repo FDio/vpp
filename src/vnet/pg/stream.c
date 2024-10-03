@@ -325,6 +325,50 @@ pg_interface_add_or_get (pg_main_t *pg, u32 if_id, u8 gso_enabled,
   return i;
 }
 
+int
+pg_interface_delete (u32 sw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  pg_main_t *pm = &pg_main;
+  pg_interface_t *pi;
+  vnet_hw_interface_t *hw;
+  uword *p;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+  if (hw == NULL || pg_dev_class.index != hw->dev_class_index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  pi = pool_elt_at_index (pm->interfaces, hw->dev_instance);
+
+  vnet_hw_interface_set_flags (vnm, pi->hw_if_index, 0);
+  vnet_sw_interface_set_flags (vnm, pi->sw_if_index, 0);
+
+  if (pi->mode == PG_MODE_ETHERNET)
+    ethernet_delete_interface (vnm, pi->hw_if_index);
+  else
+    vnet_delete_hw_interface (vnm, pi->hw_if_index);
+
+  pi->hw_if_index = ~0;
+
+  if (pi->coalesce_enabled)
+    pg_interface_enable_disable_coalesce (pi, 0, ~0);
+
+  if (vlib_num_workers ())
+    {
+      clib_mem_free ((void *) pi->lockp);
+      pi->lockp = 0;
+    }
+
+  vec_del1 (pm->if_index_by_sw_if_index, sw_if_index);
+  p = hash_get (pm->if_index_by_if_id, pi->id);
+  if (p)
+    hash_unset (pm->if_index_by_if_id, pi->id);
+
+  clib_memset (pi, 0, sizeof (*pi));
+  pool_put (pm->interfaces, pi);
+  return 0;
+}
+
 static void
 do_edit (pg_stream_t * stream,
 	 pg_edit_group_t * g, pg_edit_t * e, uword want_commit)
