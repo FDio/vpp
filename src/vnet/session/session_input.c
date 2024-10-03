@@ -257,6 +257,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
 					    evt->as_u64[1]);
 	  break;
+	case SESSION_CTRL_EVT_RPC:
+	  ((void (*) (session_t * s)) (evt->rpc_args.fp)) (evt->rpc_args.arg);
+	  break;
 	default:
 	  clib_warning ("unexpected event: %u", evt->event_type);
 	  ASSERT (0);
