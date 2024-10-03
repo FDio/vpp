@@ -989,6 +989,24 @@ vcl_worker_rpc_handler (vcl_worker_t * wrk, void *data)
 }
 
 static void
+vcl_session_transport_attr_handler (vcl_worker_t *wrk, void *data)
+{
+  session_transport_attr_msg_t *mp = (session_transport_attr_msg_t *) data;
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
+  if (!s)
+    {
+      VDBG (0, "session transport attr with wrong handle %llx", mp->handle);
+      return;
+    }
+
+  VDBG (0, "session %u [0x%llx]: transport attr %u", s->session_index,
+	s->vpp_handle, mp->attr.type);
+  vec_add1 (s->tep_attrs, mp->attr);
+}
+
+static void
 vcl_session_transport_attr_reply_handler (vcl_worker_t *wrk, void *data)
 {
   session_transport_attr_reply_msg_t *mp;
@@ -1128,6 +1146,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY:
       vcl_session_transport_attr_reply_handler (wrk, e->data);
@@ -2603,6 +2624,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -3378,6 +3402,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
+      break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
       break;
@@ -3668,7 +3695,7 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u32 *flags = buffer;
   vppcom_endpt_t *ep = buffer;
-  transport_endpt_attr_t tea;
+  transport_endpt_attr_t tea, *tepap;
   vcl_session_t *session;
   int rv = VPPCOM_OK;
 
@@ -3809,6 +3836,25 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	}
       else
 	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_EXT_ENDPT:
+      if (PREDICT_FALSE (!buffer || !buflen || *buflen < sizeof (*ep) ||
+			 !ep->ip))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      tepap =
+	vcl_session_tep_attr_get (session, TRANSPORT_ENDPT_ATTR_EXT_ENDPT);
+      if (!tepap)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      vcl_ip_copy_to_ep (&tepap->ext_endpt.ip, ep, tepap->ext_endpt.is_ip4);
+      ep->port = tepap->ext_endpt.port;
+
       break;
 
     case VPPCOM_ATTR_SET_LCL_ADDR:

@@ -183,6 +183,7 @@ typedef struct vcl_session_
 
   u16 original_dst_port; /**< original dst port (network order) */
   u32 original_dst_ip4;	 /**< original dst ip4 (network order) */
+  transport_endpt_attr_t *tep_attrs; /**< vector of attributes */
 } vcl_session_t;
 
 typedef struct vppcom_cfg_t_
@@ -409,6 +410,7 @@ vcl_session_free (vcl_worker_t * wrk, vcl_session_t * s)
   vcl_session_detach_fifos (s);
   if (s->ext_config)
     clib_mem_free (s->ext_config);
+  vec_free (s->tep_attrs);
   pool_put (wrk->sessions, s);
 }
 
@@ -662,6 +664,18 @@ static inline void
 vcl_session_clear_attr (vcl_session_t * s, u8 attr)
 {
   s->attributes &= ~(1 << attr);
+}
+
+static inline transport_endpt_attr_t *
+vcl_session_tep_attr_get (vcl_session_t *s, transport_endpt_attr_type_t at)
+{
+  transport_endpt_attr_t *tepa;
+  vec_foreach (tepa, s->tep_attrs)
+    {
+      if (tepa->type == at)
+	return tepa;
+    }
+  return 0;
 }
 
 static inline session_evt_type_t

@@ -185,6 +185,7 @@ typedef enum
   VPPCOM_ATTR_GET_IP_PKTINFO,
   VPPCOM_ATTR_GET_ORIGINAL_DST,
   VPPCOM_ATTR_GET_NWRITEQ,
+  VPPCOM_ATTR_GET_EXT_ENDPT,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
