@@ -386,6 +386,8 @@ void app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
 			       u32 msg_len, int fd);
 void app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
 			    u32 msg_len);
+void app_worker_send_transport_endpt_attr (app_worker_t *app_wrk,
+					   transport_endpt_attr_t *tepa);
 u8 app_worker_mq_wrk_is_congested (app_worker_t *app_wrk, u32 thread_index);
 void app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index);
 void app_worker_unset_wrk_mq_congested (app_worker_t *app_wrk,

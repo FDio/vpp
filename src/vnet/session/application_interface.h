@@ -396,6 +396,7 @@ typedef struct session_accepted_msg_
   transport_endpoint_t lcl;
   transport_endpoint_t rmt;
   u8 flags;
+  /* TODO(fcoras) refactor to pass as transport attr */
   u32 original_dst_ip4;
   u16 original_dst_port;
 } __clib_packed session_accepted_msg_t;
