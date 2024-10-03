@@ -16,6 +16,74 @@
       "message": "recheck",
       "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f962848_4c73cd9b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-03T04:51:29Z",
+      "side": 1,
+      "message": "Quick comments.",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4cdba7e9_4242d9b1",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-03T04:51:29Z",
+      "side": 1,
+      "message": "This is going to be vm from main. If we want to cache it, we should move it to hc_worker_t. Alternatively, we can use vlib_get_main_by_index() in the workers (s-\u003ethread_index would be the right index)",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc123117_3bfa5e36",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-03T04:51:29Z",
+      "side": 1,
+      "message": "Can we alloc the http connection on first worker? Eventually I\u0027d like to have this work like both curl and wrk, i.e., if we wanted to we could ask for number of parallel connections to keep open, number of requests / connection and time to run. At that point we\u0027d want to ask first worker to manage/pace the connects (just like echo_client).",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f7c8729_c63f4464",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-03T04:51:29Z",
+      "side": 1,
+      "message": "Maybe make the 10s configurable. Large files or slow/lossy network will take longer to download",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
