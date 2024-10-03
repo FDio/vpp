@@ -351,10 +351,16 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 
   session->vpp_handle = mp->handle;
   session->session_state = VCL_STATE_READY;
-  if (mp->rmt.is_ip4)
+  if (mp->rmt.is_ip4 && mp->original_dst_port)
     {
-      session->original_dst_ip4 = mp->original_dst_ip4;
-      session->original_dst_port = mp->original_dst_port;
+      transport_endpt_attr_t *tep_attr;
+      vec_add2 (session->tep_attrs, tep_attr, 1);
+      /* Expecting to receive this on accepted connections
+       * and the external transport endpoint received is
+       * the local one, prior to something like nat */
+      tep_attr->type = TRANSPORT_ENDPT_ATTR_EXT_ENDPT;
+      tep_attr->ext_endpt.port = mp->original_dst_port;
+      tep_attr->ext_endpt.ip.ip4.as_u32 = mp->original_dst_ip4;
     }
   session->transport.rmt_port = mp->rmt.port;
   session->transport.is_ip4 = mp->rmt.is_ip4;
@@ -989,6 +995,24 @@ vcl_worker_rpc_handler (vcl_worker_t * wrk, void *data)
 }
 
 static void
+vcl_session_transport_attr_handler (vcl_worker_t *wrk, void *data)
+{
+  session_transport_attr_msg_t *mp = (session_transport_attr_msg_t *) data;
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
+  if (!s)
+    {
+      VDBG (0, "session transport attr with wrong handle %llx", mp->handle);
+      return;
+    }
+
+  VDBG (0, "session %u [0x%llx]: transport attr %u", s->session_index,
+	s->vpp_handle, mp->attr.type);
+  vec_add1 (s->tep_attrs, mp->attr);
+}
+
+static void
 vcl_session_transport_attr_reply_handler (vcl_worker_t *wrk, void *data)
 {
   session_transport_attr_reply_msg_t *mp;
@@ -1128,6 +1152,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY:
       vcl_session_transport_attr_reply_handler (wrk, e->data);
@@ -2607,6 +2634,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -3382,6 +3412,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       vcl_worker_rpc_handler (wrk, e->data);
       break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      vcl_session_transport_attr_handler (wrk, e->data);
+      break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
       break;
@@ -3672,7 +3705,7 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u32 *flags = buffer;
   vppcom_endpt_t *ep = buffer;
-  transport_endpt_attr_t tea;
+  transport_endpt_attr_t tea, *tepap;
   vcl_session_t *session;
   int rv = VPPCOM_OK;
 
@@ -3795,24 +3828,49 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  rv = VPPCOM_EAFNOSUPPORT;
 	  break;
 	}
-      if (PREDICT_TRUE (buffer && buflen && (*buflen >= sizeof (*ep)) &&
-			ep->ip))
+      if (PREDICT_FALSE (!buffer || !buflen || (*buflen < sizeof (*ep)) ||
+			 !ep->ip))
 	{
-	  ep->is_ip4 = session->transport.is_ip4;
-	  ep->port = session->original_dst_port;
-	  clib_memcpy_fast (ep->ip, &session->original_dst_ip4,
-			    sizeof (ip4_address_t));
-	  *buflen = sizeof (*ep);
-	  VDBG (1,
-		"VPPCOM_ATTR_GET_ORIGINAL_DST: sh %u, is_ip4 = %u, addr = %U"
-		" port %d",
-		session_handle, ep->is_ip4, vcl_format_ip4_address,
-		(ip4_address_t *) (&session->original_dst_ip4),
-		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-		clib_net_to_host_u16 (ep->port));
+	  rv = VPPCOM_EINVAL;
+	  break;
 	}
-      else
-	rv = VPPCOM_EINVAL;
+
+      tepap =
+	vcl_session_tep_attr_get (session, TRANSPORT_ENDPT_ATTR_EXT_ENDPT);
+      if (!tepap)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      vcl_ip_copy_to_ep (&tepap->ext_endpt.ip, ep, tepap->ext_endpt.is_ip4);
+      ep->port = tepap->ext_endpt.port;
+      *buflen = sizeof (*ep);
+
+      VDBG (1,
+	    "VPPCOM_ATTR_GET_ORIGINAL_DST: sh %u, is_ip4 = %u, "
+	    "addr = %U port %d",
+	    session_handle, ep->is_ip4, vcl_format_ip4_address,
+	    (ip4_address_t *) ep->ip,
+	    ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	    clib_net_to_host_u16 (ep->port));
+      break;
+
+    case VPPCOM_ATTR_GET_EXT_ENDPT:
+      if (PREDICT_FALSE (!buffer || !buflen || (*buflen < sizeof (*ep)) ||
+			 !ep->ip))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      tepap =
+	vcl_session_tep_attr_get (session, TRANSPORT_ENDPT_ATTR_EXT_ENDPT);
+      if (!tepap)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      vcl_ip_copy_to_ep (&tepap->ext_endpt.ip, ep, tepap->ext_endpt.is_ip4);
+      ep->port = tepap->ext_endpt.port;
       break;
 
     case VPPCOM_ATTR_SET_LCL_ADDR:
