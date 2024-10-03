@@ -396,6 +396,8 @@ u32 pg_interface_add_or_get (pg_main_t *pg, u32 stream_index, u8 gso_enabled,
 			     u32 gso_size, u8 coalesce_enabled,
 			     pg_interface_mode_t mode);
 
+int pg_interface_delete (u32 sw_if_index);
+
 always_inline pg_node_t *
 pg_get_node (uword node_index)
 {

@@ -672,7 +672,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "interface pg%u", &if_id))
+      if (unformat (line_input, "pg%u", &if_id))
 	;
       else if (unformat (line_input, "coalesce-enabled"))
 	coalesce_enabled = 1;
@@ -709,11 +709,58 @@ done:
 }
 
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
-  .path = "create packet-generator",
+  .path = "create packet-generator interface",
   .short_help = "create packet-generator interface <interface name>"
 		" [gso-enabled gso-size <size> [coalesce-enabled]]"
 		" [mode <ethernet | ip4 | ip6>]",
   .function = create_pg_if_cmd_fn,
+};
+
+static clib_error_t *
+delete_pg_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  int rv = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing <interface>");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
+      else
+	{
+	  return clib_error_create ("unknown input `%U'",
+				    format_unformat_error, input);
+	}
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  rv = pg_interface_delete (sw_if_index);
+  if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
+    return clib_error_return (0, "not a pg interface");
+  else if (rv != 0)
+    return clib_error_return (0, "error on deleting pg interface");
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (delete_pg_if_cmd, static) = {
+  .path = "delete packet-generator interface",
+  .short_help = "delete packet-generator interface {<interface name> | "
+		"sw_if_index <sw_idx>}",
+  .function = delete_pg_if_cmd_fn,
 };
 
 /* Dummy init function so that we can be linked in. */
