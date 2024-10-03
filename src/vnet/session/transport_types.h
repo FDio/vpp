@@ -257,7 +257,8 @@ typedef enum transport_endpt_attr_flag_
   _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
   _ (u16, mss, MSS)                                                           \
   _ (u8, flags, FLAGS)                                                        \
-  _ (u8, cc_algo, CC_ALGO)
+  _ (u8, cc_algo, CC_ALGO)                                                      \
+  _ (transport_endpoint_t, ext_endpt, EXT_ENDPT)                              \
 
 typedef enum transport_endpt_attr_type_
 {
