@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1a35f0d_980c6690",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "Generic points:\n\n1. test code duplication - please don’t duplicate test/bfd.py to test/bfd_v2.py. It’s not apparent what are the changes. Also please don’t duplicate test_bfd.py to test_bfd_v2.py. If v2 differs too much, then simply add a new test case in test_bfd.py.\n\n2. bfd_events_v2 - why? These are internal events - yes? If so, then simply update the existing bfd_event instead of introducing v2. If not, then remove bfd_events from api_helper_macros.h and update VPP code to use bfd_events_v2.\n\n3. bfd_api - why is _v2 marked as “in progress”? Are you planning to add more parameters to the API(s)?",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dfd91c16_8517e9d7",
+        "filename": "src/vnet/bfd/bfd_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "do { } while(0);",
+      "range": {
+        "startLine": 30,
+        "startChar": 2,
+        "endLine": 30,
+        "endChar": 3
+      },
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b11f58b3_9b8cfc35",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1204,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "%u",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7f897bc_1bbede72",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1363,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "%u",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ba0b999_d61b3a22",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1760,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "this will break existing clients accessing stat segment by name and should probably be subject to same update process as the API is\nin other words, don\u0027t change existing stats\nmaybe consult with Andrew Yourtchenko on what is the policy for this, but I think it should be the same",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b318882a_463e0fc4",
+        "filename": "src/vnet/bfd/bfd_udp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-03T19:17:51Z",
+      "side": 1,
+      "message": "should this be a 1-bit flag of the \n\nu32 multihop:1;\nu32 unused:31;\n\nkind?",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
