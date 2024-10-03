@@ -80,6 +80,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
   session_event_t *evt;
+  void (*fp) (void *);
   u32 n_evts = 128, i;
   session_t *s;
   int rv;
@@ -256,6 +257,10 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
 	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
 					    evt->as_u64[1]);
+	  break;
+	case SESSION_CTRL_EVT_RPC:
+	  fp = evt->rpc_args.fp;
+	  (*fp) (evt->rpc_args.arg);
 	  break;
 	default:
 	  clib_warning ("unexpected event: %u", evt->event_type);
