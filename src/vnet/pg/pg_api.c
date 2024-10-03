@@ -63,6 +63,24 @@ vl_api_pg_create_interface_v2_t_handler (vl_api_pg_create_interface_v2_t *mp)
 }
 
 static void
+vl_api_pg_delete_interface_t_handler (vl_api_pg_delete_interface_t *mp)
+{
+  vl_api_pg_delete_interface_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  pg_main_t *pg = &pg_main;
+
+  rv = pg_interface_delete (sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_PG_DELETE_INTERFACE_REPLY);
+}
+
+static void
   vl_api_pg_interface_enable_disable_coalesce_t_handler
   (vl_api_pg_interface_enable_disable_coalesce_t * mp)
 {
