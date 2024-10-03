@@ -330,8 +330,8 @@ format_transport_proto (u8 * s, va_list * args)
     case TRANSPORT_PROTO_UDP:
       s = format (s, "UDP");
       break;
-    case TRANSPORT_PROTO_NONE:
-      s = format (s, "NONE");
+    case TRANSPORT_PROTO_CT:
+      s = format (s, "CT");
       break;
     case TRANSPORT_PROTO_TLS:
       s = format (s, "TLS");

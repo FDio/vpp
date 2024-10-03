@@ -288,7 +288,7 @@ session_get_fib_proto (session_t * s)
 always_inline u8
 session_has_transport (session_t * s)
 {
-  return (session_get_transport_proto (s) != TRANSPORT_PROTO_NONE);
+  return (session_get_transport_proto (s) != TRANSPORT_PROTO_CT);
 }
 
 static inline transport_service_type_t

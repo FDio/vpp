@@ -171,7 +171,7 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
 #define foreach_transport_proto                                               \
   _ (TCP, "tcp", "T")                                                         \
   _ (UDP, "udp", "U")                                                         \
-  _ (NONE, "ct", "C")                                                         \
+  _ (CT, "ct", "C")                                                           \
   _ (TLS, "tls", "J")                                                         \
   _ (QUIC, "quic", "Q")                                                       \
   _ (DTLS, "dtls", "D")                                                       \
@@ -184,6 +184,8 @@ typedef enum _transport_proto
   foreach_transport_proto
 #undef _
 } transport_proto_t;
+
+#define TRANSPORT_PROTO_NONE TRANSPORT_PROTO_CT
 
 u8 *format_transport_proto (u8 * s, va_list * args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);

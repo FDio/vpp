@@ -710,7 +710,7 @@ ct_accept_one (u32 thread_index, u32 ho_index)
   sct->c_is_ip4 = cct->c_is_ip4;
   clib_memcpy (&sct->c_lcl_ip, &cct->c_rmt_ip, sizeof (cct->c_rmt_ip));
   sct->client_wrk = cct->client_wrk;
-  sct->c_proto = TRANSPORT_PROTO_NONE;
+  sct->c_proto = TRANSPORT_PROTO_CT;
   sct->client_opaque = cct->client_opaque;
   sct->actual_tp = cct->actual_tp;
 
@@ -723,8 +723,8 @@ ct_accept_one (u32 thread_index, u32 ho_index)
    */
   ss = session_alloc (thread_index);
   ll = listen_session_get (ll_index);
-  ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
-						     sct->c_is_ip4);
+  ss->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_CT, sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
   ss->listener_handle = listen_session_get_handle (ll);
   session_set_state (ss, SESSION_STATE_CREATED);
@@ -889,7 +889,7 @@ ct_connect (app_worker_t *client_wrk, session_t *ll,
   ho->client_opaque = sep->opaque;
   ho->client_wrk = client_wrk->wrk_index;
   ho->peer_index = ll->session_index;
-  ho->c_proto = TRANSPORT_PROTO_NONE;
+  ho->c_proto = TRANSPORT_PROTO_CT;
   ho->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (sep->ip));
   ho->flags |= CT_CONN_F_CLIENT;
@@ -1425,9 +1425,9 @@ ct_session_tx (session_t * s)
 static clib_error_t *
 ct_transport_init (vlib_main_t * vm)
 {
-  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+  transport_register_protocol (TRANSPORT_PROTO_CT, &cut_thru_proto,
 			       FIB_PROTOCOL_IP4, ~0);
-  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+  transport_register_protocol (TRANSPORT_PROTO_CT, &cut_thru_proto,
 			       FIB_PROTOCOL_IP6, ~0);
   return 0;
 }

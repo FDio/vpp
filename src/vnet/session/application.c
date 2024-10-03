@@ -175,8 +175,8 @@ app_listener_alloc_and_init (application_t * app,
     {
       session_type_t local_st;
 
-      local_st = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
-						 sep->is_ip4);
+      local_st =
+	session_type_from_proto_and_ip (TRANSPORT_PROTO_CT, sep->is_ip4);
       ls = listen_session_alloc (0, local_st);
       ls->app_wrk_index = sep->app_wrk_index;
       lh = session_handle (ls);
@@ -1430,7 +1430,7 @@ vnet_connect (vnet_connect_args_t *a)
       session_error_t rv;
 
       a->sep_ext.original_tp = a->sep_ext.transport_proto;
-      a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
+      a->sep_ext.transport_proto = TRANSPORT_PROTO_CT;
       rv = app_worker_connect_session (client_wrk, &a->sep_ext, &a->sh);
       a->sep_ext.transport_proto = a->sep_ext.original_tp;
       if (!rv || rv != SESSION_E_LOCAL_CONNECT)
