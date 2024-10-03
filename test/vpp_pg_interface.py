@@ -147,6 +147,13 @@ class VppPGInterface(VppInterface):
         )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
 
+    def remove_vpp_config(self):
+        """delete Pg interface"""
+	self.test.vapi.pg_enable_disable_capture(self.pg_index, 0)
+	self.test.vapi.pg_interface_enable_disable_coalesce(self.sw_if_index, 0)
+	self.test.vapi.pg_interface_enable_disable(self.pg_index, 0)
+	self.test.vapi.pg_delete_interface(sw_if_index=self.sw_if_index)
+
     def link_pcap_file(self, path, direction, counter):
         if not config.keep_pcaps:
             return

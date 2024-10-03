@@ -38,6 +38,7 @@ class TestPgTun(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
+            i.remove_vpp_config()
         super(TestPgTun, self).tearDown()
 
     def test_pg_tun(self):
