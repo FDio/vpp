@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d4f9fb9_0a20711a",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-03T11:57:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4cdba7e9_4242d9b1",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cc123117_3bfa5e36",
@@ -71,6 +89,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "dc284e44_54395ced",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-03T11:57:53Z",
+      "side": 1,
+      "message": "Probably, let\u0027s discuss that in the meeting",
+      "parentUuid": "cc123117_3bfa5e36",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1f7c8729_c63f4464",
         "filename": "src/plugins/hs_apps/http_client.c",
         "patchSetId": 17
@@ -82,6 +118,24 @@
       "writtenOn": "2024-10-03T04:51:29Z",
       "side": 1,
       "message": "Maybe make the 10s configurable. Large files or slow/lossy network will take longer to download",
+      "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15f7444c_e490db38",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-10-03T11:57:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1f7c8729_c63f4464",
       "revId": "7e6b5ac64f01ee400baa53d0c7167a35656cd589",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
