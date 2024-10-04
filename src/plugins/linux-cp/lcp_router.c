@@ -17,7 +17,6 @@
 #include <linux/if.h>
 #include <linux/mpls.h>
 
-//#include <vlib/vlib.h>
 #include <vlib/unix/plugin.h>
 #include <linux-cp/lcp_nl.h>
 #include <linux-cp/lcp_interface.h>
@@ -1543,12 +1542,24 @@ const nl_vft_t lcp_router_vft = {
 			     .cb = lcp_router_route_sync_end },
 };
 
+static void
+lcp_lcp_router_interface_del_cb (lcp_itf_pair_t *lip)
+{
+  lcp_router_ip6_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
+}
+
 static clib_error_t *
 lcp_router_init (vlib_main_t *vm)
 {
   lcp_router_logger = vlib_log_register_class ("linux-cp", "router");
 
   nl_register_vft (&lcp_router_vft);
+
+  lcp_itf_pair_vft_t lcp_router_interface_del_vft = {
+    .pair_del_fn = lcp_lcp_router_interface_del_cb,
+  };
+
+  lcp_itf_pair_register_vft (&lcp_router_interface_del_vft);
 
   /*
    * allocate 2 route sources. The low priority source will be for
