@@ -38,6 +38,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e0be2979_58592fca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-04T07:03:59Z",
+      "side": 1,
+      "message": "I just got an idea on how to simplify the whole API migration.\nBecause there is only a single flag being added to the APIs, let\u0027s use sw_if_index set to ~0 for that.\nTo keep backwards compatibility, we instead introduce a new API\nbfd_enable_disable_multihop_support(), which toggles accepting/not accepting ~0 sw_if_index, with the default value being off.\nSo this way, backwards compatibility is maintained, unless somebody calls in the new API bfd_enable_disable_multihop_support() to explicitly turn it on, then all the APIs reject sw_if_index ~0 as invalid and work the same way as they do now.\nWith multihop enabled, sw_if_index ~0 is then used to mark multihop sessions and replaces the 1-bit flag.\nAll the old CRUD APIs then remain as they were - no need for _v2.\nThoughs?",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "dfd91c16_8517e9d7",
         "filename": "src/vnet/bfd/bfd_cli.c",
         "patchSetId": 6
