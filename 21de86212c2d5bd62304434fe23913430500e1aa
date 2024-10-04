@@ -53,6 +53,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "82969375_c79950ea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-04T08:30:35Z",
+      "side": 1,
+      "message": "Thinking about this a bit more it\u0027s probably enough to provide bfd_enable_multihop(), no need to support disabling multihop and the added complexities arising from it.",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dfd91c16_8517e9d7",
