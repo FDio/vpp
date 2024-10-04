@@ -55,7 +55,8 @@
 typedef struct _vnet_ip_table_function_list_elt
 {
   struct _vnet_ip_table_function_list_elt *next_ip_table_function;
-  clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 table_id, u32 flags);
+  clib_error_t *(*fp) (struct vnet_main_t *vnm, u32 table_id, u8 fproto,
+		       u32 flags);
 } _vnet_ip_table_function_list_elt_t;
 
 typedef struct

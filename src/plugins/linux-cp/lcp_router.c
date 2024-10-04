@@ -37,6 +37,7 @@
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip6_link.h>
+#include <vnet/ip/ip_table.h>
 
 typedef struct lcp_router_table_t_
 {
@@ -595,6 +596,26 @@ lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_router_link_up_down);
 
+static clib_error_t *
+lcp_router_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  index_t lipi;
+
+  lipi = lcp_itf_pair_find_by_phy (sw_if_index);
+
+  if (lipi == INDEX_INVALID)
+    return (NULL);
+
+  if (!is_add)
+    {
+      lcp_router_ip6_mroutes_add_del (sw_if_index, is_add);
+    }
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (lcp_router_interface_add_del);
+
 static fib_protocol_t
 lcp_router_proto_k2f (uint32_t k)
 {
@@ -978,17 +999,37 @@ lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
 }
 
 static void
-lcp_router_table_unlock (lcp_router_table_t *nlt)
+lcp_router_table_unlock (lcp_router_table_t *nlt, u8 force)
 {
   nlt->nlt_refs--;
 
-  if (0 == nlt->nlt_refs)
+  if (0 == nlt->nlt_refs || force == 1)
     {
       if (FIB_PROTOCOL_IP4 == nlt->nlt_proto)
 	{
 	  /* Set the all 1s address in this table to punt */
 	  fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s,
 					  lcp_rt_fib_src);
+	}
+      else if (FIB_PROTOCOL_IP6 == nlt->nlt_proto)
+	{
+	  const fib_route_path_t path = {
+	    .frp_proto = DPO_PROTO_IP6,
+	    .frp_addr = zero_addr,
+	    .frp_sw_if_index = ~0,
+	    .frp_fib_index = ~0,
+	    .frp_weight = 1,
+	    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+	    .frp_flags = FIB_ROUTE_PATH_LOCAL,
+	  };
+	  int ii;
+
+	  for (ii = 0; ii < ARRAY_LEN (ip6_specials); ii++)
+	    {
+	      mfib_table_entry_path_remove (nlt->nlt_mfib_index,
+					    &ip6_specials[ii],
+					    MFIB_SOURCE_PLUGIN_LOW, &path);
+	    }
 	}
 
       fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
@@ -997,6 +1038,25 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
       pool_put (lcp_router_table_pool, nlt);
     }
 }
+
+static clib_error_t *
+lcp_router_table_add_del (vnet_main_t *vnm, u32 table_id,
+			  fib_protocol_t fproto, u32 is_add)
+{
+  lcp_router_table_t *nlt;
+
+  if (!is_add && fproto == FIB_PROTOCOL_IP6)
+    {
+      nlt = lcp_router_table_find (table_id, FIB_PROTOCOL_IP6);
+      if (nlt)
+	{
+	  lcp_router_table_unlock (nlt, 1);
+	}
+    }
+  return 0;
+}
+
+VNET_IP_TABLE_ADD_DEL_FUNCTION (lcp_router_table_add_del);
 
 static void
 lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
@@ -1290,7 +1350,7 @@ lcp_router_route_del (struct rtnl_route *rr)
 
   vec_free (np.paths);
 
-  lcp_router_table_unlock (nlt);
+  lcp_router_table_unlock (nlt, 0);
 }
 
 static fib_route_path_t *
@@ -1511,7 +1571,7 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
   vec_foreach (fib_entry_index, ctx.lrtf_entries)
     {
       fib_table_entry_delete_index (*fib_entry_index, source);
-      lcp_router_table_unlock (nlt);
+      lcp_router_table_unlock (nlt, 0);
     }
 
   vec_free (ctx.lrtf_entries);

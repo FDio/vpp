@@ -534,10 +534,9 @@ out:
 }
 
 static clib_error_t *
-call_elf_section_ip_table_callbacks (vnet_main_t * vnm, u32 table_id,
-				     u32 flags,
-				     _vnet_ip_table_function_list_elt_t **
-				     elts)
+call_elf_section_ip_table_callbacks (vnet_main_t *vnm, u32 table_id,
+				     fib_protocol_t fproto, u32 flags,
+				     _vnet_ip_table_function_list_elt_t **elts)
 {
   _vnet_ip_table_function_list_elt_t *elt;
   vnet_ip_table_function_priority_t prio;
@@ -550,7 +549,7 @@ call_elf_section_ip_table_callbacks (vnet_main_t * vnm, u32 table_id,
 
       while (elt)
 	{
-	  error = elt->fp (vnm, table_id, flags);
+	  error = elt->fp (vnm, table_id, fproto, flags);
 	  if (error)
 	    return error;
 	  elt = elt->next_ip_table_function;
@@ -583,7 +582,8 @@ ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
       mfib_index = mfib_table_find (fproto, table_id);
 
       if ((~0 != fib_index) || (~0 != mfib_index))
-	call_elf_section_ip_table_callbacks (vnm, table_id, 0 /* is_add */ ,
+	call_elf_section_ip_table_callbacks (vnm, table_id, fproto,
+					     0 /* is_add */,
 					     vnm->ip_table_add_del_functions);
 
       if (~0 != fib_index)
@@ -979,7 +979,8 @@ ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
 	mfib_index = 0;
 
       if ((~0 == fib_index) || (~0 == mfib_index))
-	call_elf_section_ip_table_callbacks (vnm, table_id, 1 /* is_add */ ,
+	call_elf_section_ip_table_callbacks (vnm, table_id, fproto,
+					     1 /* is_add */,
 					     vnm->ip_table_add_del_functions);
     }
 }
