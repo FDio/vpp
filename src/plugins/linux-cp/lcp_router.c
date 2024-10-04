@@ -595,6 +595,16 @@ lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_router_link_up_down);
 
+static clib_error_t *
+lcp_router_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  if (!is_add)
+    lcp_router_ip6_mroutes_add_del (sw_if_index, is_add);
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (lcp_router_interface_add_del);
 static fib_protocol_t
 lcp_router_proto_k2f (uint32_t k)
 {
