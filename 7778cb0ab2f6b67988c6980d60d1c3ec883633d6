@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4b85adfa_dacbbb47",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d16ebc2d_3829b344",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "49f4fca6_b11fb400",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2024-09-23T16:50:47Z",
       "side": 1,
       "message": "Unless there\u0027s good reason, let\u0027s keep the current code as is.",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "75e71105_a310aa56",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "49f4fca6_b11fb400",
       "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -71,6 +107,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9fe9a2ef_435c76e4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 617,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Ack.",
+      "parentUuid": "79e0b531_4caccf31",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "575737ff_8d172453",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -82,6 +136,24 @@
       "writtenOn": "2024-09-23T16:50:47Z",
       "side": 1,
       "message": "Again, unless there\u0027s good reason, let\u0027s keep the current logic",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5c785b29_05f20da4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "575737ff_8d172453",
       "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -105,6 +177,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "99e4368d_bd167b40",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Yes, removing this change.",
+      "parentUuid": "0265af0c_fef13851",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "17210887_d5067cb0",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
@@ -116,6 +206,24 @@
       "writtenOn": "2024-09-23T16:50:47Z",
       "side": 1,
       "message": "Again, I hope this is only for testing",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e6223de_480855f5",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 961,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Yes, removing this change.",
+      "parentUuid": "17210887_d5067cb0",
       "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -139,6 +247,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9be9a7b8_e50dd595",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1111,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "15f5c605_6fa380e2",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d00f1c62_ac6cf227",
         "filename": "src/plugins/tlsopenssl/tls_openssl.h",
         "patchSetId": 1
@@ -150,6 +276,24 @@
       "writtenOn": "2024-09-23T16:50:47Z",
       "side": 1,
       "message": "If this is to be used in async only, let\u0027s move it there. \n\nBut beyond that, any reason why not clib_warning?",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6785b807_b4e3e751",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "It adds timestamp and prints to a log file. Used this for internal debugging. \nReverting to use clib_warning.",
+      "parentUuid": "d00f1c62_ac6cf227",
       "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -173,6 +317,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bfb4fa9a_79ed142c",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1253,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Yes, init functions are called before config functions. Will remove the if checks for both first_seg_size and add_seg_size config variables.",
+      "parentUuid": "13008d0c_d3eb89f8",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1915e4eb_d676aa3a",
         "filename": "src/vnet/tls/tls.h",
         "patchSetId": 1
@@ -184,6 +346,30 @@
       "writtenOn": "2024-09-23T16:50:47Z",
       "side": 1,
       "message": "This is okay but let\u0027s use the style typically used in vpp, i.e., foreach macros. See for instance foreach_tls_conn_flags lower. Then we can build for enums and constant string arrays for formatting.",
+      "range": {
+        "startLine": 49,
+        "startChar": 2,
+        "endLine": 49,
+        "endChar": 22
+      },
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d95cfc3_36d55ef9",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-04T02:17:48Z",
+      "side": 1,
+      "message": "Updated.",
+      "parentUuid": "1915e4eb_d676aa3a",
       "range": {
         "startLine": 49,
         "startChar": 2,
