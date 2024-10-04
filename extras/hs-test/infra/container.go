@@ -329,9 +329,13 @@ func (c *Container) getVolumesAsSlice() []string {
 
 	core_pattern, err := sysctl.Read("kernel.core_pattern")
 	if err == nil {
-		index := strings.LastIndex(core_pattern, "/")
-		core_pattern = core_pattern[:index]
-		volumeSlice = append(volumeSlice, c.Suite.getLogDirPath()+":"+core_pattern)
+		if len(core_pattern) > 0 && core_pattern[0] != '|' {
+			index := strings.LastIndex(core_pattern, "/")
+			core_pattern = core_pattern[:index]
+			volumeSlice = append(volumeSlice, c.Suite.getLogDirPath()+":"+core_pattern)
+		} else {
+			c.Suite.Log(fmt.Sprintf("core_pattern \"%s\" starts with pipe, ignoring", core_pattern))
+		}
 	} else {
 		c.Suite.Log(err)
 	}
