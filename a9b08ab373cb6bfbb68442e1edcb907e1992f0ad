@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f17194cc_ccfa03f8",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-04T12:37:34Z",
+      "side": 1,
+      "message": "return oct_crypto_cpt_hmac_prep()",
+      "range": {
+        "startLine": 1158,
+        "startChar": 2,
+        "endLine": 1158,
+        "endChar": 26
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0b2adc8_2a2c26c9",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1449,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-04T12:37:34Z",
+      "side": 1,
+      "message": "handle error case and return in case of error.",
+      "range": {
+        "startLine": 1449,
+        "startChar": 0,
+        "endLine": 1449,
+        "endChar": 59
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f98ffe4_14b7f996",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1468,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-04T12:37:34Z",
+      "side": 1,
+      "message": "handle error case and return in case of error.",
+      "range": {
+        "startLine": 1468,
+        "startChar": 3,
+        "endLine": 1468,
+        "endChar": 28
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
