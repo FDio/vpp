@@ -117,6 +117,15 @@ http_conn_get_w_thread (u32 hc_index, u32 thread_index)
   return pool_elt_at_index (wrk->conn_pool, hc_index);
 }
 
+static inline http_conn_t *
+http_conn_get_w_thread_if_valid (u32 hc_index, u32 thread_index)
+{
+  http_worker_t *wrk = http_worker_get (thread_index);
+  if (pool_is_free_index (wrk->conn_pool, hc_index))
+    return 0;
+  return pool_elt_at_index (wrk->conn_pool, hc_index);
+}
+
 void
 http_conn_free (http_conn_t *hc)
 {
@@ -195,20 +204,47 @@ http_disconnect_transport (http_conn_t *hc)
 }
 
 static void
+http_conn_invalidate_timer_cb (u32 hs_handle)
+{
+  http_conn_t *hc;
+
+  hc =
+    http_conn_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
+
+  HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
+  if (!hc)
+    {
+      HTTP_DBG (1, "already deleted");
+      return;
+    }
+
+  hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
+  hc->pending_timer = 1;
+}
+
+static void
 http_conn_timeout_cb (void *hc_handlep)
 {
   http_conn_t *hc;
   uword hs_handle;
 
   hs_handle = pointer_to_uword (hc_handlep);
-  hc = http_conn_get_w_thread (hs_handle & 0x00FFFFFF, hs_handle >> 24);
+  hc =
+    http_conn_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
 
-  HTTP_DBG (1, "terminate thread %d index %d hs %llx", hs_handle >> 24,
-	    hs_handle & 0x00FFFFFF, hc);
+  HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
   if (!hc)
-    return;
+    {
+      HTTP_DBG (1, "already deleted");
+      return;
+    }
 
-  hc->timer_handle = ~0;
+  if (!hc->pending_timer)
+    {
+      HTTP_DBG (1, "timer not pending");
+      return;
+    }
+
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
 }
@@ -228,6 +264,7 @@ http_ts_accept_callback (session_t *ts)
   hc_index = http_conn_alloc_w_thread (ts->thread_index);
   hc = http_conn_get_w_thread (hc_index, ts->thread_index);
   clib_memcpy_fast (hc, lhc, sizeof (*lhc));
+  hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
   hc->h_hc_index = hc_index;
 
@@ -320,6 +357,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
 
+  hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
   hc->h_tc_session_handle = session_handle (ts);
   hc->c_c_index = new_hc_index;
@@ -341,8 +379,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   as->session_type = session_type_from_proto_and_ip (
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
 
-  HTTP_DBG (1, "half-open hc index %d,  hc index %d", ho_hc_index,
-	    new_hc_index);
+  HTTP_DBG (1, "half-open hc index %x,  hc [%u]%x", ho_hc_index,
+	    ts->thread_index, new_hc_index);
 
   app_wrk = app_worker_get (hc->h_pa_wrk_index);
   if (!app_wrk)
@@ -462,7 +500,7 @@ http_send_error (http_conn_t *hc, http_status_code_t ec)
   now = clib_timebase_now (&hm->timebase);
   data = format (0, http_error_template, http_status_code_str[ec],
 		 format_clib_timebase_time, now);
-  HTTP_DBG (1, "%v", data);
+  HTTP_DBG (3, "%v", data);
   http_send_data (hc, data, vec_len (data));
   vec_free (data);
 }
@@ -633,7 +671,7 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  HTTP_DBG (0, "request line length: %d", i);
+  HTTP_DBG (2, "request line length: %d", i);
   hc->control_data_len = i + 2;
   next_line_offset = hc->control_data_len;
 
@@ -708,9 +746,9 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
     }
 
   /* parse request-target */
-  HTTP_DBG (0, "http at %d", i);
+  HTTP_DBG (2, "http at %d", i);
   target_len = i - hc->target_path_offset;
-  HTTP_DBG (0, "target_len %d", target_len);
+  HTTP_DBG (2, "target_len %d", target_len);
   if (target_len < 1)
     {
       clib_warning ("request-target not present");
@@ -726,10 +764,10 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  HTTP_DBG (0, "request-target path length: %u", hc->target_path_len);
-  HTTP_DBG (0, "request-target path offset: %u", hc->target_path_offset);
-  HTTP_DBG (0, "request-target query length: %u", hc->target_query_len);
-  HTTP_DBG (0, "request-target query offset: %u", hc->target_query_offset);
+  HTTP_DBG (2, "request-target path length: %u", hc->target_path_len);
+  HTTP_DBG (2, "request-target path offset: %u", hc->target_path_offset);
+  HTTP_DBG (2, "request-target query length: %u", hc->target_query_len);
+  HTTP_DBG (2, "request-target query offset: %u", hc->target_query_offset);
 
   /* set buffer offset to nex line start */
   hc->rx_buf_offset = next_line_offset;
@@ -771,7 +809,7 @@ http_parse_status_line (http_conn_t *hc)
       clib_warning ("status line incomplete");
       return -1;
     }
-  HTTP_DBG (0, "status line length: %d", i);
+  HTTP_DBG (2, "status line length: %d", i);
   if (i < 12)
     {
       clib_warning ("status line too short (%d)", i);
@@ -853,7 +891,7 @@ http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
       (hc->rx_buf[hc->rx_buf_offset + 1] == '\n'))
     {
       /* just another CRLF -> no headers */
-      HTTP_DBG (0, "no headers");
+      HTTP_DBG (2, "no headers");
       hc->headers_len = 0;
       hc->control_data_len += 2;
       return 0;
@@ -870,8 +908,8 @@ http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
   hc->headers_offset = hc->rx_buf_offset;
   hc->headers_len = i - hc->rx_buf_offset + 2;
   hc->control_data_len += (hc->headers_len + 2);
-  HTTP_DBG (0, "headers length: %u", hc->headers_len);
-  HTTP_DBG (0, "headers offset: %u", hc->headers_offset);
+  HTTP_DBG (2, "headers length: %u", hc->headers_len);
+  HTTP_DBG (2, "headers offset: %u", hc->headers_offset);
 
   return 0;
 }
@@ -888,7 +926,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
 
   if (hc->headers_len == 0)
     {
-      HTTP_DBG (0, "no header, no message-body");
+      HTTP_DBG (2, "no header, no message-body");
       return 0;
     }
 
@@ -899,7 +937,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
 		    "Content-Length:");
   if (i < 0)
     {
-      HTTP_DBG (0, "Content-Length header not present, no message-body");
+      HTTP_DBG (2, "Content-Length header not present, no message-body");
       return 0;
     }
   hc->rx_buf_offset = i + 15;
@@ -921,7 +959,7 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
 
   line = vec_new (u8, len);
   clib_memcpy (line, hc->rx_buf + hc->rx_buf_offset, len);
-  HTTP_DBG (0, "%v", line);
+  HTTP_DBG (3, "%v", line);
 
   unformat_init_vector (&input, line);
   if (!unformat (&input, "%llu", &body_len))
@@ -934,8 +972,8 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   hc->body_len = body_len;
 
   hc->body_offset = hc->headers_offset + hc->headers_len + 2;
-  HTTP_DBG (0, "body length: %llu", hc->body_len);
-  HTTP_DBG (0, "body offset: %u", hc->body_offset);
+  HTTP_DBG (2, "body length: %llu", hc->body_len);
+  HTTP_DBG (2, "body offset: %u", hc->body_offset);
 
   return 0;
 }
@@ -960,7 +998,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
       return HTTP_SM_STOP;
     }
 
-  HTTP_DBG (0, "%v", hc->rx_buf);
+  HTTP_DBG (3, "%v", hc->rx_buf);
 
   if (vec_len (hc->rx_buf) < 8)
     {
@@ -1052,7 +1090,7 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   if (rv)
     return HTTP_SM_STOP;
 
-  HTTP_DBG (0, "%v", hc->rx_buf);
+  HTTP_DBG (3, "%v", hc->rx_buf);
 
   if (vec_len (hc->rx_buf) < 8)
     {
@@ -1214,7 +1252,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 	  ASSERT (rv == msg.data.headers_len);
 	}
     }
-  HTTP_DBG (0, "%v", response);
+  HTTP_DBG (3, "%v", response);
 
   sent = http_send_data (hc, response, vec_len (response));
   if (sent != vec_len (response))
@@ -1383,7 +1421,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 	  ASSERT (rv == msg.data.headers_len);
 	}
     }
-  HTTP_DBG (0, "%v", request);
+  HTTP_DBG (3, "%v", request);
 
   sent = http_send_data (hc, request, vec_len (request));
   if (sent != vec_len (request))
@@ -1570,11 +1608,15 @@ http_ts_rx_callback (session_t *ts)
 {
   http_conn_t *hc;
 
+  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, ts->opaque);
+
   hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
-  if (!hc)
+
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
-      clib_warning ("http connection not found (ts %d)", ts->opaque);
-      return -1;
+      HTTP_DBG (1, "conn closed");
+      svm_fifo_dequeue_drop_all (ts->tx_fifo);
+      return 0;
     }
 
   if (!http_state_is_rx_valid (hc))
@@ -1617,17 +1659,15 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
     return;
 
   hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
-  if (!hc)
-    {
-      clib_warning ("no http connection for %u", ts->session_index);
-      return;
-    }
-  HTTP_DBG (1, "going to free session %x", ts->opaque);
+
+  HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, ts->opaque);
 
   vec_free (hc->rx_buf);
 
   http_buffer_free (&hc->tx_buf);
-  http_conn_timer_stop (hc);
+
+  if (hc->pending_timer == 0)
+    http_conn_timer_stop (hc);
 
   session_transport_delete_notify (&hc->connection);
 
@@ -1720,7 +1760,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time /* share the system clock */);
 
-  http_timers_init (vm, http_conn_timeout_cb);
+  http_timers_init (vm, http_conn_timeout_cb, http_conn_invalidate_timer_cb);
   hm->is_init = 1;
 
   return 0;
@@ -1866,7 +1906,7 @@ http_transport_close (u32 hc_index, u32 thread_index)
   session_t *as;
   http_conn_t *hc;
 
-  HTTP_DBG (1, "App disconnecting %x", hc_index);
+  HTTP_DBG (1, "App disconnecting [%u]%x", thread_index, hc_index);
 
   hc = http_conn_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_CONNECTING)
@@ -1916,14 +1956,18 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   u32 max_burst_sz, sent;
   http_conn_t *hc;
 
-  HTTP_DBG (1, "app session conn index %x", as->connection_index);
+  HTTP_DBG (1, "hc [%u]%x", as->thread_index, as->connection_index);
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
   if (!http_state_is_tx_valid (hc))
     {
       if (hc->state != HTTP_CONN_STATE_CLOSED)
-	clib_warning ("app data req state '%U' session state %u",
-		      format_http_state, hc->http_state, hc->state);
+	{
+	  clib_warning ("hc [%u]%x invalid tx state http state "
+			"'%U', session state %u",
+			as->thread_index, as->connection_index,
+			format_http_state, hc->http_state, hc->state);
+	}
       svm_fifo_dequeue_drop_all (as->tx_fifo);
       return 0;
     }
