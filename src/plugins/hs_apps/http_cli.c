@@ -74,6 +74,10 @@ typedef struct
 
   /* pool of uri maps */
   hcs_uri_map_t *uri_map_pool;
+
+  /* for appns */
+  u8 *appns_id;
+  u64 appns_secret;
 } hcs_main_t;
 
 static hcs_main_t hcs_main;
@@ -597,6 +601,11 @@ hcs_attach ()
     hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hcm->prealloc_fifos;
+  if (hcm->appns_id)
+    {
+      a->namespace_id = hcm->appns_id;
+      a->options[APP_OPTIONS_NAMESPACE_SECRET] = hcm->appns_secret;
+    }
 
   if (vnet_application_attach (a))
     {
@@ -672,10 +681,20 @@ hcs_listen ()
   return rv;
 }
 
+static void
+hcs_detach ()
+{
+  vnet_app_detach_args_t _a, *a = &_a;
+  hcs_main_t *hcm = &hcs_main;
+  a->app_index = hcm->app_index;
+  a->api_client_index = APP_INVALID_INDEX;
+  hcm->app_index = ~0;
+  vnet_application_detach (a);
+}
+
 static int
 hcs_unlisten ()
 {
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   hcs_main_t *hcm = &hcs_main;
   vnet_unlisten_args_t _a, *a = &_a;
   char *uri;
@@ -688,9 +707,6 @@ hcs_unlisten ()
   uri = (char *) hcm->uri;
   ASSERT (uri);
 
-  if (parse_uri (uri, &sep))
-    return -1;
-
   value = hash_get_mem (hcm->index_by_uri, uri);
   if (value)
     {
@@ -700,25 +716,17 @@ hcs_unlisten ()
       rv = vnet_unlisten (a);
       if (rv == 0)
 	{
+	  hash_unset_mem (hcm->index_by_uri, uri);
 	  vec_free (map->uri);
 	  pool_put (hcm->uri_map_pool, map);
+	  if (pool_elts (hcm->uri_map_pool) == 0)
+	    hcs_detach ();
 	}
     }
   else
     return -1;
 
   return rv;
-}
-
-static void
-hcs_detach ()
-{
-  vnet_app_detach_args_t _a, *a = &_a;
-  hcs_main_t *hcm = &hcs_main;
-  a->app_index = hcm->app_index;
-  a->api_client_index = APP_INVALID_INDEX;
-  hcm->app_index = ~0;
-  vnet_application_detach (a);
 }
 
 static int
@@ -776,6 +784,10 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->fifo_size <<= 10;
       else if (unformat (line_input, "uri %_%v%_", &hcm->uri))
 	;
+      else if (unformat (line_input, "appns %_%v%_", &hcm->appns_id))
+	;
+      else if (unformat (line_input, "secret %lu", &hcm->appns_secret))
+	;
       else if (unformat (line_input, "listener"))
 	{
 	  if (unformat (line_input, "add"))
@@ -808,27 +820,26 @@ start_server:
 
   if (hcm->app_index != (u32) ~0)
     {
+      if (hcm->appns_id && (listener_add != ~0))
+	{
+	  error = clib_error_return (
+	    0, "appns must not be specified for listener add/del");
+	  goto done;
+	}
       if (listener_add == 1)
 	{
 	  if (hcs_listen ())
-	    {
-	      error = clib_error_return (0, "failed to start listening %v",
-					 hcm->uri);
-	      goto done;
-	    }
-	  else
-	    goto done;
+	    error =
+	      clib_error_return (0, "failed to start listening %v", hcm->uri);
+	  goto done;
 	}
       else if (listener_add == 0)
 	{
-	  if (hcs_unlisten () != 0)
-	    {
-	      error =
-		clib_error_return (0, "failed to stop listening %v", hcm->uri);
-	      goto done;
-	    }
-	  else
-	    goto done;
+	  rv = hcs_unlisten ();
+	  if (rv != 0)
+	    error = clib_error_return (
+	      0, "failed to stop listening %v, rv = %d", hcm->uri, rv);
+	  goto done;
 	}
       else
 	{
@@ -855,6 +866,7 @@ start_server:
     }
 
 done:
+  vec_free (hcm->appns_id);
   vec_free (hcm->uri);
   return error;
 }
@@ -863,7 +875,7 @@ VLIB_CLI_COMMAND (hcs_create_command, static) = {
   .path = "http cli server",
   .short_help = "http cli server [uri <uri>] [fifo-size <nbytes>] "
 		"[private-segment-size <nMG>] [prealloc-fifos <n>] "
-		"[listener <add|del>]",
+		"[listener <add|del>] [appns <app-ns> secret <appns-secret>]",
   .function = hcs_create_command_fn,
 };
 
