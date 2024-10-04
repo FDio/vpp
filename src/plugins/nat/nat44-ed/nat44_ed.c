@@ -2282,10 +2282,11 @@ test_key_calc_split ()
 }
 
 static clib_error_t *
-nat_ip_table_add_del (vnet_main_t * vnm, u32 table_id, u32 is_add)
+nat_ip_table_add_del (vnet_main_t *vnm, u32 table_id, fib_protocol_t fproto,
+		      u32 is_add)
 {
   u32 fib_index;
-  if (!is_add)
+  if (!is_add && fproto == FIB_PROTOCOL_IP4)
     {
       fib_index = ip4_fib_index_from_table_id (table_id);
       if (fib_index != ~0)
