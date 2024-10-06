@@ -1378,3 +1378,5 @@ zoomout
 zx
 µs
 oflags
+sflow
+sFlow
