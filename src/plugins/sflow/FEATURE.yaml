@@ -1,0 +1,16 @@
+---
+name: sFlow
+maintainer: Neil McKee <neil.mckee@inmon.com>
+
+description: |-
+       This plugin implements the random packet-sampling and interface
+       telemetry streaming required to support standard sFlow export
+       on Linux platforms. The overhead incurred by this monitoring is
+       minimal, so that detailed, real-time traffic analysis can be
+       achieved even under high load conditions, with visibility into
+       any fields that appear in the packet headers. If the linux-cp
+       plugin is running then interfaces will be mapped to their
+       equivalent Linux tap ports.
+
+state: experimental
+properties: [CLI, MULTITHREAD]
