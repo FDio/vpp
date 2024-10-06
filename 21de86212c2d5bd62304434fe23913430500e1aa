@@ -72,6 +72,42 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "10ca69ac_de45458a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-06T22:43:39Z",
+      "side": 1,
+      "message": "This is a good suggestion. This will avoid us from having v2 APIs and having a more complicated test code. I will make the changes to take sf_if_index of 0xFFFFFFFF (or ~0) as an indication of multihop. Will also send event to client using the same sw_if_index if the session is multihop.",
+      "parentUuid": "e0be2979_58592fca",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d7b14e7_a570979c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-06T22:43:39Z",
+      "side": 1,
+      "message": "No need for all this since there are no v2 APIs anymore.",
+      "parentUuid": "36068a4e_61883b8d",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "dfd91c16_8517e9d7",
         "filename": "src/vnet/bfd/bfd_cli.c",
         "patchSetId": 6
