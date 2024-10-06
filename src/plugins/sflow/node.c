@@ -1,0 +1,358 @@
+/*
+ * Copyright (c) 2024 InMon Corp.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <vlib/vlib.h>
+#include <vlibmemory/api.h>
+#include <vnet/vnet.h>
+#include <vnet/pg/pg.h>
+#include <vppinfra/error.h>
+#include <sflow/sflow.h>
+
+typedef struct
+{
+  u32 next_index;
+  u32 sw_if_index;
+  u8 new_src_mac[6];
+  u8 new_dst_mac[6];
+} sflow_trace_t;
+
+#ifndef CLIB_MARCH_VARIANT
+static u8 *
+my_format_mac_address (u8 *s, va_list *args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x", a[0], a[1], a[2], a[3],
+		 a[4], a[5]);
+}
+
+/* packet trace format function */
+static u8 *
+format_sflow_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  sflow_trace_t *t = va_arg (*args, sflow_trace_t *);
+
+  s = format (s, "SFLOW: sw_if_index %d, next index %d\n", t->sw_if_index,
+	      t->next_index);
+  s = format (s, "  src %U -> dst %U", my_format_mac_address, t->new_src_mac,
+	      my_format_mac_address, t->new_dst_mac);
+  return s;
+}
+
+vlib_node_registration_t sflow_node;
+
+#endif /* CLIB_MARCH_VARIANT */
+
+#ifndef CLIB_MARCH_VARIANT
+static char *sflow_error_strings[] = {
+#define _(sym, string) string,
+  foreach_sflow_error
+#undef _
+};
+#endif /* CLIB_MARCH_VARIANT */
+
+typedef enum
+{
+  SFLOW_NEXT_ETHERNET_INPUT,
+  SFLOW_N_NEXT,
+} sflow_next_t;
+
+VLIB_NODE_FN (sflow_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next;
+  sflow_next_t next_index;
+  u32 pkts_sampled = 0, pkts_dropped = 0;
+
+  sflow_main_t *smp = &sflow_main;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  uword thread_index = os_get_thread_index ();
+  sflow_per_thread_data_t *sfwk =
+    vec_elt_at_index (smp->per_thread_data, thread_index);
+
+  u32 pkts = n_left_from;
+  if (sfwk->skip >= pkts)
+    {
+      /* skip the whole frame-vector */
+      sfwk->skip -= pkts;
+      sfwk->pool += pkts;
+    }
+  else
+    {
+      while (pkts > sfwk->skip)
+	{
+	  /* reach in to get the one we want. */
+	  vlib_buffer_t *bN = vlib_get_buffer (vm, from[sfwk->skip]);
+
+	  /* Sample this packet header. */
+	  u32 hdr = bN->current_length;
+	  if (hdr > smp->headerB)
+	    hdr = smp->headerB;
+
+	  ethernet_header_t *en = vlib_buffer_get_current (bN);
+	  u32 if_index = vnet_buffer (bN)->sw_if_index[VLIB_RX];
+	  vnet_hw_interface_t *hw =
+	    vnet_get_sup_hw_interface (smp->vnet_main, if_index);
+	  if (hw)
+	    if_index = hw->hw_if_index;
+	  else
+	    {
+	      // TODO: can we get interfaces that have no hw interface?
+	      // If so,  should we ignore the sample?
+	    }
+	  sflow_sample_t sample = {
+	    .samplingN = sfwk->smpN,
+	    .input_if_index = if_index,
+	    .sampled_packet_size =
+	      bN->current_length + bN->total_length_not_including_first_buffer,
+	    .header_bytes = hdr
+	  };
+	  pkts_sampled++;
+
+	  // TODO: we end up copying the header twice here. Consider allowing
+	  // the enqueue to be just a little more complex.  Like this:
+	  // if(!sflow_fifo_enqueue(&sfwk->fifo, &sample, en, hdr).
+	  // With headerB==128 that would be memcpy(,,24) plus memcpy(,,128)
+	  // instead of the memcpy(,,128) plus memcpy(,,24+256) that we do
+	  // here. (We also know that it could be done as a multiple of 8
+	  // (aligned) bytes because the sflow_sample_t fields are (6xu32) and
+	  // the headerB setting is quantized to the nearest 32 bytes, so there
+	  // may be ways to make it even easier for the compiler.)
+	  memcpy (sample.header, en, hdr);
+	  if (!sflow_fifo_enqueue (&sfwk->fifo, &sample))
+	    pkts_dropped++;
+
+	  pkts -= sfwk->skip;
+	  sfwk->pool += sfwk->skip;
+	  sfwk->skip = sflow_next_random_skip (sfwk);
+	}
+    }
+
+  /* the rest of this is boilerplate code just to make sure
+   * that packets are passed on the same way as they would
+   * have been if this node were not enabled.
+   *
+   * Not sure at all if this is right.
+   * There has got to be an easier way?
+   */
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from >= 8 && n_left_to_next >= 4)
+	{
+	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT;
+	  u32 next1 = SFLOW_NEXT_ETHERNET_INPUT;
+	  u32 next2 = SFLOW_NEXT_ETHERNET_INPUT;
+	  u32 next3 = SFLOW_NEXT_ETHERNET_INPUT;
+	  ethernet_header_t *en0, *en1, *en2, *en3;
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p4, *p5, *p6, *p7;
+
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
+
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
+
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  }
+
+	  /* speculatively enqueue b0-b3 to the current next frame */
+	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
+
+	  /* do this to always pass on to the next node on feature arc */
+	  vnet_feature_next (&next0, b0);
+	  vnet_feature_next (&next1, b1);
+	  vnet_feature_next (&next2, b2);
+	  vnet_feature_next (&next3, b3);
+
+	  ASSERT (b0->current_data == 0);
+	  ASSERT (b1->current_data == 0);
+	  ASSERT (b2->current_data == 0);
+	  ASSERT (b3->current_data == 0);
+
+	  en0 = vlib_buffer_get_current (b0);
+	  en1 = vlib_buffer_get_current (b1);
+	  en2 = vlib_buffer_get_current (b2);
+	  en3 = vlib_buffer_get_current (b3);
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sflow_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->next_index = next0;
+	      clib_memcpy (t->new_src_mac, en0->src_address,
+			   sizeof (t->new_src_mac));
+	      clib_memcpy (t->new_dst_mac, en0->dst_address,
+			   sizeof (t->new_dst_mac));
+	    }
+
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sflow_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	      t->next_index = next1;
+	      clib_memcpy (t->new_src_mac, en1->src_address,
+			   sizeof (t->new_src_mac));
+	      clib_memcpy (t->new_dst_mac, en1->dst_address,
+			   sizeof (t->new_dst_mac));
+	    }
+
+	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sflow_trace_t *t = vlib_add_trace (vm, node, b2, sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	      t->next_index = next2;
+	      clib_memcpy (t->new_src_mac, en2->src_address,
+			   sizeof (t->new_src_mac));
+	      clib_memcpy (t->new_dst_mac, en2->dst_address,
+			   sizeof (t->new_dst_mac));
+	    }
+
+	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sflow_trace_t *t = vlib_add_trace (vm, node, b3, sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b3)->sw_if_index[VLIB_RX];
+	      t->next_index = next3;
+	      clib_memcpy (t->new_src_mac, en3->src_address,
+			   sizeof (t->new_src_mac));
+	      clib_memcpy (t->new_dst_mac, en3->dst_address,
+			   sizeof (t->new_dst_mac));
+	    }
+
+	  /* verify speculative enqueues, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
+	}
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT;
+	  ethernet_header_t *en0;
+
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  /* do this to always pass on to the next node on feature arc */
+	  vnet_feature_next (&next0, b0);
+
+	  /*
+	   * Direct from the driver, we should be at offset 0
+	   * aka at &b0->data[0]
+	   */
+	  ASSERT (b0->current_data == 0);
+
+	  en0 = vlib_buffer_get_current (b0);
+
+	  // Are we supposed to tweak this buffer metadata?
+	  // clib_warning("TX ifIndex currently=%u",
+	  // vnet_buffer(b0)->sw_if_index[VLIB_TX]);
+	  // vnet_buffer(b0)->sw_if_index[VLIB_TX] = ~0; // sw_if_index0;
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      sflow_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->next_index = next0;
+	      clib_memcpy (t->new_src_mac, en0->src_address,
+			   sizeof (t->new_src_mac));
+	      clib_memcpy (t->new_dst_mac, en0->dst_address,
+			   sizeof (t->new_dst_mac));
+	    }
+
+	  /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  if (pkts_sampled)
+    vlib_node_increment_counter (vm, sflow_node.index, SFLOW_ERROR_SAMPLED,
+				 pkts_sampled);
+  if (pkts_dropped)
+    {
+      vlib_node_increment_counter (vm, sflow_node.index, SFLOW_ERROR_DROPPED,
+				   pkts_dropped);
+      sfwk->drop += pkts_dropped;
+    }
+  return frame->n_vectors;
+}
+
+#ifndef CLIB_MARCH_VARIANT
+VLIB_REGISTER_NODE (sflow_node) =
+{
+  .name = "sflow",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sflow_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(sflow_error_strings),
+  .error_strings = sflow_error_strings,
+  .n_next_nodes = SFLOW_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [SFLOW_NEXT_ETHERNET_INPUT] = "ethernet-input",
+  },
+};
+#endif /* CLIB_MARCH_VARIANT */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
