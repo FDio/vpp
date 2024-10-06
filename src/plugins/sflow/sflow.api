@@ -1,0 +1,100 @@
+/*
+ * Copyright (c) 2024 InMon Corp.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file sflow.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane binary API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/* Version and type recitations */
+
+option version = "0.1.0";
+import "vnet/interface_types.api";
+
+
+/** @brief API to enable / disable sflow
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 to enable, 0 to disable the feature
+    @param sw_if_index - interface handle
+*/
+
+autoreply define sflow_enable_disable {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Enable / disable the feature */
+    bool enable_disable;
+
+    /* Interface handle */
+    vl_api_interface_index_t sw_if_index;
+};
+
+/** @brief API to set sflow sampling-rate
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sampling_N - 1-in-N random sampling rate
+*/
+
+autoreply define sflow_sampling_rate {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Sampling_N */
+    u32 sampling_N [default=10000];
+};
+
+/** @brief API to set sflow polling-interval
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param polling_S - polling interval in seconds
+*/
+
+autoreply define sflow_polling_interval {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Polling_S */
+    u32 polling_S [default=20];
+};
+
+/** @brief API to set sflow header-bytes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param header_B - max header length in bytes
+*/
+
+autoreply define sflow_header_bytes {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* header_B */
+    u32 header_B [default=128];
+};
