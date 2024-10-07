@@ -66,13 +66,13 @@ static void
 vl_api_pg_delete_interface_t_handler (vl_api_pg_delete_interface_t *mp)
 {
   vl_api_pg_delete_interface_reply_t *rmp;
+  pg_main_t *pg = &pg_main;
+  u32 sw_if_index = ~0;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  pg_main_t *pg = &pg_main;
+  sw_if_index = ntohl (mp->sw_if_index);
 
   rv = pg_interface_delete (sw_if_index);
 
@@ -85,14 +85,14 @@ static void
   (vl_api_pg_interface_enable_disable_coalesce_t * mp)
 {
   vl_api_pg_interface_enable_disable_coalesce_reply_t *rmp;
+  pg_main_t *pg = &pg_main;
+  vnet_main_t *vnm = vnet_get_main ();
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  pg_main_t *pg = &pg_main;
-  vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw =
     vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
 
