@@ -37,7 +37,7 @@ nat44_ed_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
-  nat44_confinat44 add static mappingg_t c = { 0 };
+  nat44_config_t c = { 0 };
   u8 enable_set = 0, enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -812,13 +812,11 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   return 0;
 }
-
 static clib_error_t *
 add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr, pool_addr;
   u32 l_port = 0, e_port = 0, vrf_id = ~0;
@@ -892,6 +890,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	0, "Both local and external ports must be set or omitted together.");
       goto done;
     }
+
   if (!l_port_set)
     {
       flags |= NAT_SM_FLAG_ADDR_ONLY;
@@ -901,6 +900,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       l_port = clib_host_to_net_u16 (l_port);
       e_port = clib_host_to_net_u16 (e_port);
     }
+
   if (is_add)
     {
       rv =
