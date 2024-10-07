@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "478af635_c052b66a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-10-07T17:15:35Z",
+      "side": 1,
+      "message": "Hello Matthew,\nCould you help me with my issue described in [0]? There\u0027s 2 issues right now with lcp + ipv6 enabled on the host:\n1. we rely on getting netlink messages to assign/remove ipv6 on the interface but don\u0027t respect interface removal (in this case we don\u0027t receive a message until the tap interface is removed. it might be that we won\u0027t receive RTM_DELLINK for ipv6 at all, but I haven\u0027t checked TBH). \n\nTherefore, we might get DELETED entries in ipv6 mfib.\n\n2. On VRF creation we lock and assign some settings for a given table and on removal we hit the assertion ROUTES_NUM \u003d\u003d 0. this one is not that crucial IMO except that it breaks some usecases like mine: e.g. running regression testing in debug mode.\n\nI wanted to ask your opinion on suggested ways to \"fix\" it (if it should be fixed in your opinion).\n\nThanks, \nStan \n\n[0] https://lists.fd.io/g/vpp-dev/topic/linux_cp_ip6_ll_cleanup/108819740",
+      "revId": "b7abcd84c05f47094653ac641acacc862b471d20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
