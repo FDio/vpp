@@ -833,28 +833,23 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "external %U:%u", unformat_ip4_address,
-		    &e_addr, &e_port))
+      if (unformat (line_input, "external %U:%u", unformat_ip4_address, &e_addr, &e_port))
 	{
 	  e_port_set = 1;
 	}
-      else if (unformat (line_input, "external %U", unformat_ip4_address,
-			 &e_addr))
+      else if (unformat (line_input, "external %U", unformat_ip4_address, &e_addr))
 	{
 	  e_port_set = 0;
 	}
-      else if (unformat (line_input, "local %U:%u", unformat_ip4_address,
-			 &l_addr, &l_port))
+      else if (unformat (line_input, "local %U:%u", unformat_ip4_address, &l_addr, &l_port))
 	{
 	  l_port_set = 1;
 	}
-      else if (unformat (line_input, "local %U", unformat_ip4_address,
-			 &l_addr))
+      else if (unformat (line_input, "local %U", unformat_ip4_address, &l_addr))
 	{
 	  l_port_set = 0;
 	}
-      else if (unformat (line_input, "exact %U", unformat_ip4_address,
-			 &pool_addr))
+      else if (unformat (line_input, "exact %U", unformat_ip4_address, &pool_addr))
 	{
 	  flags |= NAT_SM_FLAG_EXACT_ADDRESS;
 	}
@@ -888,8 +883,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (l_port_set != e_port_set)
     {
-      error = clib_error_return (
-	0, "Both local and external ports must be set or omitted together.");
+      error = clib_error_return (0, "Both local and external ports must be set or omitted together.");
       goto done;
     }
   if (!l_port_set)
@@ -904,13 +898,11 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (is_add)
     {
       rv =
-	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-				     vrf_id, sw_if_index, flags, pool_addr, 0);
+	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto, vrf_id, sw_if_index, flags, pool_addr, 0);
     }
   else
     {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
+      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto, vrf_id, sw_if_index, flags);
     }
 
   switch (rv)
