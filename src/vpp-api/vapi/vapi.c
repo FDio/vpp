@@ -927,6 +927,7 @@ vapi_sock_client_disconnect (vapi_ctx_t ctx)
     }
 
   clib_socket_close (&ctx->client_socket);
+  clib_socket_free (&ctx->client_socket);
   vapi_api_name_and_crc_free (ctx);
   return VAPI_OK;
 }
@@ -1358,6 +1359,7 @@ vapi_sock_disconnect (vapi_ctx_t ctx)
     }
 fail:
   clib_socket_close (&ctx->client_socket);
+  clib_socket_free (&ctx->client_socket);
   vapi_api_name_and_crc_free (ctx);
 
   ctx->connected = false;
