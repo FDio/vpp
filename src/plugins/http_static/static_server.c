@@ -747,7 +747,7 @@ hss_attach ()
   hss_main_t *hsm = &hss_main;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
-  u32 segment_size = 128 << 20;
+  u64 segment_size = 128 << 20;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
