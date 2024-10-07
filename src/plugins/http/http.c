@@ -232,6 +232,7 @@ http_ts_accept_callback (session_t *ts)
   if ((rv = app_worker_init_accepted (as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
+      hc->h_pa_session_handle = SESSION_INVALID_HANDLE;
       session_free (as);
       return rv;
     }
