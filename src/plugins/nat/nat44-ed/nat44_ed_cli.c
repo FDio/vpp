@@ -812,7 +812,6 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   return 0;
 }
-
 static clib_error_t *
 add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
@@ -892,6 +891,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	0, "Both local and external ports must be set or omitted together.");
       goto done;
     }
+
   if (!l_port_set)
     {
       flags |= NAT_SM_FLAG_ADDR_ONLY;
@@ -901,6 +901,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       l_port = clib_host_to_net_u16 (l_port);
       e_port = clib_host_to_net_u16 (e_port);
     }
+
   if (is_add)
     {
       rv =
