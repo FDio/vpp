@@ -66,13 +66,13 @@ static void
 vl_api_pg_delete_interface_t_handler (vl_api_pg_delete_interface_t *mp)
 {
   vl_api_pg_delete_interface_reply_t *rmp;
+  pg_main_t *pg = &pg_main;
+  u32 sw_if_index = ~0;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  pg_main_t *pg = &pg_main;
+  sw_if_index = ntohl (mp->sw_if_index);
 
   rv = pg_interface_delete (sw_if_index);
 
