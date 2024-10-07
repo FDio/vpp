@@ -148,11 +148,15 @@ func (s *HstSuite) TearDownTest() {
 	if *IsPersistent {
 		return
 	}
-	s.WaitForCoreDump()
+	coreDump := s.WaitForCoreDump()
 	s.ResetContainers()
 
 	if s.Ip4AddrAllocator != nil {
 		s.Ip4AddrAllocator.DeleteIpAddresses()
+	}
+
+	if coreDump {
+		Fail("VPP crashed")
 	}
 }
 
@@ -349,19 +353,19 @@ func (s *HstSuite) SkipUnlessLeakCheck() {
 	}
 }
 
-func (s *HstSuite) WaitForCoreDump() {
+func (s *HstSuite) WaitForCoreDump() bool {
 	var filename string
 	dir, err := os.Open(s.getLogDirPath())
 	if err != nil {
 		s.Log(err)
-		return
+		return false
 	}
 	defer dir.Close()
 
 	files, err := dir.Readdirnames(0)
 	if err != nil {
 		s.Log(err)
-		return
+		return false
 	}
 	for _, file := range files {
 		if strings.Contains(file, "core") {
@@ -378,7 +382,7 @@ func (s *HstSuite) WaitForCoreDump() {
 			fileInfo, err := os.Stat(corePath)
 			if err != nil {
 				s.Log("Error while reading file info: " + fmt.Sprint(err))
-				return
+				return true
 			}
 			currSize := fileInfo.Size()
 			s.Log(fmt.Sprintf("Waiting %ds/%ds...", i, timeout))
@@ -405,10 +409,11 @@ func (s *HstSuite) WaitForCoreDump() {
 						s.Log(err)
 					}
 				}
-				return
+				return true
 			}
 		}
 	}
+	return false
 }
 
 func (s *HstSuite) ResetContainers() {
