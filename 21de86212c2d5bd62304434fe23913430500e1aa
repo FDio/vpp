@@ -291,6 +291,24 @@
       "parentUuid": "b318882a_463e0fc4",
       "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfd2462c_b260eb40",
+        "filename": "src/vnet/bfd/bfd_udp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "I read the change again - may I ask you to shave 1 bit of above u32 indexes to use for multihop? There is no reason to enlarge the key/waste memory here.\n\n31 bits for sw_if_index/fib_index is still plenty enough.\n\nAlternatively, 16 bits for sw_if_index/fib_index is still enough. In that case, dropping multihop flag and replacing the test by ~0 \u003d\u003d sw_if_index could be enough.",
+      "parentUuid": "a0b699b2_560764f1",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -1,0 +1,186 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9dc3e379_d75b23ef",
+        "filename": "test/bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "pg1 argument looks unused",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3df24d8e_46dc76f7",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "from bfd import BFD_UDP_SH_PORT, ...",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64c01f91_14676c32",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "This looks like it should be a class method instead. Is there a reason why it can\u0027t be?",
+      "range": {
+        "startLine": 60,
+        "startChar": 28,
+        "endLine": 60,
+        "endChar": 31
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fdd6625_bbc8f247",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "This is possibly unbound, same in ipv6 version",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8adbea0a_d8cfcddb",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "s/self/cls ?",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "918ab0f2_a67d2b01",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "Same comments apply to ipv6 as apply to ipv4 version",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fae31388_cb55e6fe",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "this extra space should be removed to allow easier grep\nsame change throughout the file\n\n\u0027black\u0027 formatter used by (checkstyle|fixstyle)-python keeps strings on one line for grep-ability\n\nI suggest not splitting (any) strings manually and letting black take care of it.",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2732226_2ce2f419",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2031,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "s/nextthops/next hops",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36c983b7_8f4b365e",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2040,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "this looks like one of the functions near the top of the file - why not use it?",
+      "range": {
+        "startLine": 2030,
+        "startChar": 12,
+        "endLine": 2040,
+        "endChar": 41
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7248de7_256605f5",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2382,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-07T09:43:44Z",
+      "side": 1,
+      "message": "same here - why not use one of the functions near top?",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
