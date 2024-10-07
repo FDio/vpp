@@ -804,7 +804,7 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 start_server:
 
   if (hcm->uri == 0)
-    hcm->uri = format (0, "tcp://0.0.0.0/80%c", 0);
+    hcm->uri = format (0, "tcp://0.0.0.0/80");
 
   if (hcm->app_index != (u32) ~0)
     {
