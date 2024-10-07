@@ -456,8 +456,7 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline bool
-ip6_sv_reass_verify_upper_layer_present (vlib_node_runtime_t *node,
-					 vlib_buffer_t *b,
+ip6_sv_reass_verify_upper_layer_present (vlib_buffer_t *b,
 					 ip6_ext_hdr_chain_t *hc)
 {
   int nh = hc->eh[hc->length - 1].protocol;
@@ -467,7 +466,6 @@ ip6_sv_reass_verify_upper_layer_present (vlib_node_runtime_t *node,
       icmp6_error_set_vnet_buffer (
 	b, ICMP6_parameter_problem,
 	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
-      b->error = node->errors[IP6_ERROR_REASS_MISSING_UPPER];
       return false;
     }
   return true;
@@ -618,9 +616,10 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (0 == ip6_frag_hdr_offset (frag_hdr))
 	    {
 	      // first fragment - verify upper-layer is present
-	      if (!ip6_sv_reass_verify_upper_layer_present (node, b0,
-							    &hdr_chain))
+	      if (!ip6_sv_reass_verify_upper_layer_present (b0, &hdr_chain))
 		{
+		  error0 = IP6_ERROR_REASS_MISSING_UPPER;
+		  b0->error = node->errors[error0];
 		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
 		  goto packet_enqueue;
 		}
@@ -628,6 +627,8 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (!ip6_sv_reass_verify_fragment_multiple_8 (vm, b0, frag_hdr) ||
 	      !ip6_sv_reass_verify_packet_size_lt_64k (vm, b0, frag_hdr))
 	    {
+	      error0 = IP6_ERROR_REASS_INVALID_FRAG_LEN;
+	      b0->error = node->errors[error0];
 	      next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
 	      goto packet_enqueue;
 	    }
@@ -776,7 +777,8 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 	  if ((a.is_feature || a.is_output_feature) &&
-	      IP6_ERROR_NONE == error0)
+	      IP6_ERROR_NONE == error0 &&
+	      IP6_SV_REASSEMBLY_NEXT_HANDOFF != next0)
 	    {
 	      b0 = vlib_get_buffer (vm, bi0);
 	      vnet_feature_next (&next0, b0);
