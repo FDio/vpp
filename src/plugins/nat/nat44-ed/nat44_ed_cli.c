@@ -812,10 +812,10 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   return 0;
 }
-
 static clib_error_t *
-add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			       vlib_cli_command_t *cmd)
+add_static_mapping_command_fn (vlib_main_t * vm,
+                               unformat_input_t * input,
+                               vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -832,89 +832,86 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
     return clib_error_return (0, "Expected arguments.");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat (line_input, "external %U:%u", unformat_ip4_address, &e_addr, &e_port))
     {
-      if (unformat (line_input, "external %U:%u", unformat_ip4_address,
-		    &e_addr, &e_port))
-	{
-	  e_port_set = 1;
-	}
-      else if (unformat (line_input, "external %U", unformat_ip4_address,
-			 &e_addr))
-	{
-	  e_port_set = 0;
-	}
-      else if (unformat (line_input, "local %U:%u", unformat_ip4_address,
-			 &l_addr, &l_port))
-	{
-	  l_port_set = 1;
-	}
-      else if (unformat (line_input, "local %U", unformat_ip4_address,
-			 &l_addr))
-	{
-	  l_port_set = 0;
-	}
-      else if (unformat (line_input, "exact %U", unformat_ip4_address,
-			 &pool_addr))
-	{
-	  flags |= NAT_SM_FLAG_EXACT_ADDRESS;
-	}
-      else if (unformat (line_input, "vrf %u", &vrf_id))
-	;
-      else if (unformat (line_input, "%U", unformat_ip_protocol, &proto))
-	;
-      else if (unformat (line_input, "self-twice-nat"))
-	{
-	  flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
-	}
-      else if (unformat (line_input, "twice-nat"))
-	{
-	  flags |= NAT_SM_FLAG_TWICE_NAT;
-	}
-      else if (unformat (line_input, "out2in-only"))
-	{
-	  flags |= NAT_SM_FLAG_OUT2IN_ONLY;
-	}
-      else if (unformat (line_input, "del"))
-	{
-	  is_add = 0;
-	}
-      else
-	{
-	  error = clib_error_return (0, "unknown input: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+      e_port_set = 1;
     }
-
-  if (l_port_set != e_port_set)
+    else if (unformat (line_input, "external %U", unformat_ip4_address, &e_addr))
     {
-      error = clib_error_return (
-	0, "Both local and external ports must be set or omitted together.");
+      e_port_set = 0;
+    }
+    else if (unformat (line_input, "local %U:%u", unformat_ip4_address, &l_addr, &l_port))
+    {
+      l_port_set = 1;
+    }
+    else if (unformat (line_input, "local %U", unformat_ip4_address, &l_addr))
+    {
+      l_port_set = 0;
+    }
+    else if (unformat (line_input, "exact %U", unformat_ip4_address, &pool_addr))
+    {
+      flags |= NAT_SM_FLAG_EXACT_ADDRESS;
+    }
+    else if (unformat (line_input, "vrf %u", &vrf_id))
+      ;
+    else if (unformat (line_input, "%U", unformat_ip_protocol, &proto))
+      ;
+    else if (unformat (line_input, "self-twice-nat"))
+    {
+      flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+    }
+    else if (unformat (line_input, "twice-nat"))
+    {
+      flags |= NAT_SM_FLAG_TWICE_NAT;
+    }
+    else if (unformat (line_input, "out2in-only"))
+    {
+      flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+    }
+    else if (unformat (line_input, "del"))
+    {
+      is_add = 0;
+    }
+    else
+    {
+      error = clib_error_return (0, "unknown input: '%U'",
+                                 format_unformat_error, line_input);
       goto done;
     }
+  }
+
+  if (l_port_set != e_port_set)
+  {
+    error = clib_error_return (0, "Both local and external ports must be set or omitted together.");
+    goto done;
+  }
+  
   if (!l_port_set)
-    {
-      flags |= NAT_SM_FLAG_ADDR_ONLY;
-    }
+  {
+    flags |= NAT_SM_FLAG_ADDR_ONLY;
+  }
   else
-    {
-      l_port = clib_host_to_net_u16 (l_port);
-      e_port = clib_host_to_net_u16 (e_port);
-    }
+  {
+    l_port = clib_host_to_net_u16 (l_port);
+    e_port = clib_host_to_net_u16 (e_port);
+  }
+
   if (is_add)
-    {
-      rv =
-	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-				     vrf_id, sw_if_index, flags, pool_addr, 0);
-    }
+  {
+    rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+                                      vrf_id, sw_if_index, flags, pool_addr, 0);
+
+  }
   else
-    {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
-    }
+  {
+    rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+                                      vrf_id, sw_if_index, flags);
+
+  }
 
   switch (rv)
-    {
+  {
     case VNET_API_ERROR_UNSUPPORTED:
       error = clib_error_return (0, "Plugin disabled.");
       break;
@@ -926,7 +923,7 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       break;
     default:
       break;
-    }
+  }
 
 done:
   unformat_free (line_input);
