@@ -73,7 +73,8 @@ func NginxMirroringTest(s *NginxProxySuite) {
 }
 
 func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
+	nginxProxyContainer := s.GetTransientContainerByName(NginxProxyContainerName)
+	s.AssertNil(nginxProxyContainer.Create())
 	vpp := s.GetContainerByName(VppContainerName).VppInstance
 
 	s.AddVclConfig(nginxProxyContainer, multiThreadWorkers)
