@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5c65088_bee92bb6",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-08T15:14:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f17194cc_ccfa03f8",
+      "range": {
+        "startLine": 1158,
+        "startChar": 2,
+        "endLine": 1158,
+        "endChar": 26
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f0b2adc8_2a2c26c9",
@@ -47,6 +71,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2de9f01_8f5e5f87",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1449,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-08T15:14:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f0b2adc8_2a2c26c9",
+      "range": {
+        "startLine": 1449,
+        "startChar": 0,
+        "endLine": 1449,
+        "endChar": 59
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3f98ffe4_14b7f996",
@@ -60,6 +108,30 @@
       "writtenOn": "2024-10-04T12:37:34Z",
       "side": 1,
       "message": "handle error case and return in case of error.",
+      "range": {
+        "startLine": 1468,
+        "startChar": 3,
+        "endLine": 1468,
+        "endChar": 28
+      },
+      "revId": "a9b08ab373cb6bfbb68442e1edcb907e1992f0ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "414d9bcf_0a858d07",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1468,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-10-08T15:14:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3f98ffe4_14b7f996",
       "range": {
         "startLine": 1468,
         "startChar": 3,
