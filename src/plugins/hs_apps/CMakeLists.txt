@@ -21,7 +21,7 @@ add_vpp_plugin(hs_apps
   hs_apps.c
   http_cli.c
   http_client_cli.c
-  http_simple_post.c
+  http_client.c
   http_tps.c
   proxy.c
   test_builtins.c
