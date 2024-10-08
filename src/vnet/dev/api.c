@@ -156,6 +156,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
 {
   vnet_dev_t *dev = vnet_dev_by_index (args->dev_index);
   vnet_dev_port_t *port = 0;
+  vnet_dev_port_if_create_args_t a = {};
   u16 n_threads = vlib_get_n_threads ();
   int default_is_intr_mode;
   vnet_dev_rv_t rv;
@@ -181,7 +182,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   if (!port)
     return VNET_DEV_ERR_INVALID_DEVICE_ID;
 
-  if (port->interface_created)
+  if (port->interfaces)
     return VNET_DEV_ERR_ALREADY_EXISTS;
 
   if (args->args)
@@ -202,45 +203,87 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
     {
       if (args->num_rx_queues > port->attr.max_rx_queues)
 	return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
-      port->intf.num_rx_queues = args->num_rx_queues;
+      a.num_rx_queues = args->num_rx_queues;
     }
   else
-    port->intf.num_rx_queues = clib_min (port->attr.max_tx_queues, 1);
+    a.num_rx_queues = clib_min (port->attr.max_tx_queues, 1);
 
   if (args->num_tx_queues)
     {
       if (args->num_tx_queues > port->attr.max_tx_queues)
 	return VNET_DEV_ERR_INVALID_NUM_TX_QUEUES;
-      port->intf.num_tx_queues = args->num_tx_queues;
+      a.num_tx_queues = args->num_tx_queues;
     }
   else
-    port->intf.num_tx_queues = clib_min (port->attr.max_tx_queues, n_threads);
+    a.num_tx_queues = clib_min (port->attr.max_tx_queues, n_threads);
 
   if (args->rx_queue_size)
     {
       if (!_vnet_dev_queue_size_validate (args->rx_queue_size,
 					  port->rx_queue_config))
 	return VNET_DEV_ERR_INVALID_RX_QUEUE_SIZE;
-      port->intf.rxq_sz = args->rx_queue_size;
+      a.rxq_sz = args->rx_queue_size;
     }
   else
-    port->intf.rxq_sz = port->rx_queue_config.default_size;
+    a.rxq_sz = port->rx_queue_config.default_size;
 
   if (args->tx_queue_size)
     {
       if (!_vnet_dev_queue_size_validate (args->tx_queue_size,
 					  port->tx_queue_config))
 	return VNET_DEV_ERR_INVALID_TX_QUEUE_SIZE;
-      port->intf.txq_sz = args->tx_queue_size;
+      a.txq_sz = args->tx_queue_size;
     }
   else
-    port->intf.txq_sz = port->tx_queue_config.default_size;
+    a.txq_sz = port->tx_queue_config.default_size;
 
-  clib_memcpy (port->intf.name, args->intf_name, sizeof (port->intf.name));
-  port->intf.default_is_intr_mode = default_is_intr_mode;
+  clib_memcpy (a.name, args->intf_name, sizeof (a.name));
+  a.default_is_intr_mode = default_is_intr_mode;
 
-  rv = vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_create);
-  args->sw_if_index = (rv == VNET_DEV_OK) ? port->intf.sw_if_index : ~0;
+  rv = vnet_dev_process_call_port_op_with_ptr (vm, port,
+					       vnet_dev_port_if_create, &a);
+  args->sw_if_index = (rv == VNET_DEV_OK) ? a.sw_if_index : ~0;
+
+  return rv;
+}
+
+vnet_dev_rv_t
+vnet_dev_api_port_add_sec_if (vlib_main_t *vm,
+			      vnet_dev_api_port_add_sec_if_args_t *args)
+{
+  vnet_dev_port_t *port = 0;
+  vnet_dev_t *dev = 0;
+  vnet_dev_port_sec_if_create_args_t a = {};
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+
+  port = vnet_dev_get_port_from_sw_if_index (args->primary_sw_if_index);
+  if (port == 0)
+    return VNET_DEV_ERR_NOT_FOUND;
+
+  log_debug (dev,
+	     "create_port_if: primary_sw_if_index %u id %u intf_name '%s' "
+	     "args '%v'",
+	     args->primary_sw_if_index, args->sec_if_id, args->intf_name,
+	     args->args);
+
+  if (args->args)
+    {
+      rv = vnet_dev_arg_parse (vm, dev, port->args, args->args);
+      if (rv != VNET_DEV_OK)
+	return rv;
+    }
+
+  if (port->interfaces == 0)
+    return VNET_DEV_ERR_PRIMARY_INTERFACE_MISSING;
+
+  pool_foreach_pointer (si, port->interfaces->secondary_interfaces)
+    if (si->id == args->sec_if_id)
+      return VNET_DEV_ERR_ALREADY_EXISTS;
+
+  a.id = args->sec_if_id;
+  rv = vnet_dev_process_call_port_op_with_ptr (vm, port,
+					       vnet_dev_port_add_sec_if, &a);
+  args->sw_if_index = (rv == VNET_DEV_OK) ? a.sw_if_index : ~0;
 
   return rv;
 }
@@ -249,9 +292,23 @@ vnet_dev_rv_t
 vnet_dev_api_remove_port_if (vlib_main_t *vm,
 			     vnet_dev_api_remove_port_if_args_t *args)
 {
+  vnet_dev_port_t *port;
+
+  port = vnet_dev_get_port_from_sw_if_index (args->sw_if_index);
+
+  if (port == 0)
+    return VNET_DEV_ERR_UNKNOWN_INTERFACE;
+
+  return vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_remove);
+}
+
+vnet_dev_rv_t
+vnet_dev_api_port_del_sec_if (vlib_main_t *vm,
+			      vnet_dev_api_port_del_sec_if_args_t *args)
+{
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t *si;
+  vnet_sw_interface_t *si, *sup_si;
   vnet_hw_interface_t *hi;
   vnet_dev_port_t *port;
 
@@ -259,17 +316,26 @@ vnet_dev_api_remove_port_if (vlib_main_t *vm,
   if (!si)
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
-  hi = vnet_get_hw_interface_or_null (vnm, si->hw_if_index);
+  if (si->sup_sw_if_index == si->sw_if_index)
+    return VNET_DEV_ERR_UNKNOWN_INTERFACE;
+
+  sup_si = vnet_get_sw_interface_or_null (vnm, si->sup_sw_if_index);
+  if (!sup_si)
+    return VNET_DEV_ERR_UNKNOWN_INTERFACE;
+
+  hi = vnet_get_hw_interface_or_null (vnm, sup_si->hw_if_index);
   if (!hi)
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
-  if (pool_is_free_index (dm->ports_by_dev_instance, hi->dev_instance))
+  if (pool_is_free_index (dm->dev_instances, hi->dev_instance))
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
   port = vnet_dev_get_port_from_dev_instance (hi->dev_instance);
 
-  if (port->intf.hw_if_index != si->hw_if_index)
+  if (port->interfaces->primary_interface.hw_if_index != si->hw_if_index)
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
-  return vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_remove);
+  return vnet_dev_process_call_port_op_with_ptr (
+    vm, port, vnet_dev_port_del_sec_if,
+    &(vnet_dev_port_del_sec_if_args_t){ .sw_if_index = args->sw_if_index });
 }
