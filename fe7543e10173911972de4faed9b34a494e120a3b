@@ -240,6 +240,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f21671c1_110e1556",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T06:31:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "fae31388_cb55e6fe",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f2732226_2ce2f419",
@@ -253,6 +271,24 @@
       "writtenOn": "2024-10-07T09:43:44Z",
       "side": 1,
       "message": "s/nextthops/next hops",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0197eea_60a7a540",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2031,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T06:31:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f2732226_2ce2f419",
       "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
