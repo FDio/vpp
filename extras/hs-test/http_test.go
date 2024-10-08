@@ -31,7 +31,8 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
-		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest)
+		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest,
+		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -592,6 +593,39 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
 
+}
+
+func runWrkPerf(s *NoTopoSuite) {
+	nConnections := 1000
+	serverAddress := s.VppAddr()
+
+	wrkCont := s.GetContainerByName("wrk")
+	args := fmt.Sprintf("-c %d -t 2 -d 30s http://%s:80/64B", nConnections, serverAddress)
+	wrkCont.ExtraRunningArgs = args
+	wrkCont.Run()
+	s.Log("Please wait for 30s, test is running.")
+	o, err := wrkCont.GetOutput()
+	s.Log(o)
+	s.AssertEmpty(err, "err: '%s'", err)
+}
+
+func HttpStaticFileHandlerWrkTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	vpp.Container.Exec("mkdir -p " + wwwRootPath)
+	content := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	err := vpp.Container.CreateFile(wwwRootPath+"/64B", content)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 private-segment-size 256m"))
+	runWrkPerf(s)
+}
+
+func HttpStaticUrlHandlerWrkTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers private-segment-size 256m"))
+	s.Log(vpp.Vppctl("test-url-handler enable"))
+	runWrkPerf(s)
 }
 
 func HttpStaticFileHandlerDefaultMaxAgeTest(s *NoTopoSuite) {
