@@ -16,6 +16,23 @@
       "message": "Hello Klement,\nCould you review this patch, please?",
       "revId": "9f9b6c4bfa73142c948203dea8805b0f7cf720d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b416d94_5b3e4ddd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-10-08T11:36:29Z",
+      "side": 1,
+      "message": "Hello Ole,\nDo you mind reviewing this little patch?",
+      "revId": "9f9b6c4bfa73142c948203dea8805b0f7cf720d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
