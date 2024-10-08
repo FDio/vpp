@@ -705,16 +705,16 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
     }
   else
     {
-      if (hc->rx_buf[method_offset] - 'A' <= 'Z' - hc->rx_buf[method_offset])
+      if (hc->rx_buf[method_offset] - 'A' <= 'Z' - 'A')
 	{
-	  clib_warning ("not method name: %8v", hc->rx_buf);
-	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  clib_warning ("method not implemented: %8v", hc->rx_buf);
+	  *ec = HTTP_STATUS_NOT_IMPLEMENTED;
 	  return -1;
 	}
       else
 	{
-	  clib_warning ("method not implemented: %8v", hc->rx_buf);
-	  *ec = HTTP_STATUS_NOT_IMPLEMENTED;
+	  clib_warning ("not method name: %8v", hc->rx_buf);
+	  *ec = HTTP_STATUS_BAD_REQUEST;
 	  return -1;
 	}
     }
@@ -917,10 +917,9 @@ http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
 static int
 http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
 {
-  unformat_input_t input;
-  int i, len;
-  u8 *line;
-  u64 body_len;
+  int i, value_len;
+  u8 *end, *p, *value_start;
+  u64 body_len = 0, digit;
 
   hc->body_len = 0;
 
@@ -949,26 +948,71 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  len = i - hc->rx_buf_offset;
-  if (len < 1)
+  value_len = i - hc->rx_buf_offset;
+  if (value_len < 1)
     {
       clib_warning ("invalid header, content length value missing");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
 
-  line = vec_new (u8, len);
-  clib_memcpy (line, hc->rx_buf + hc->rx_buf_offset, len);
-  HTTP_DBG (3, "%v", line);
-
-  unformat_init_vector (&input, line);
-  if (!unformat (&input, "%llu", &body_len))
+  end = hc->rx_buf + hc->rx_buf_offset + value_len;
+  p = hc->rx_buf + hc->rx_buf_offset;
+  /* skip leading whitespace */
+  while (1)
     {
-      clib_warning ("failed to unformat content length value");
+      if (p == end)
+	{
+	  clib_warning ("value not found");
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+      else if (*p != ' ' && *p != '\t')
+	{
+	  break;
+	}
+      p++;
+      value_len--;
+    }
+  value_start = p;
+  /* skip trailing whitespace */
+  p = value_start + value_len - 1;
+  while (*p == ' ' || *p == '\t')
+    {
+      p--;
+      value_len--;
+    }
+
+  if (value_len < 1)
+    {
+      clib_warning ("value not found");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  unformat_free (&input);
+
+  p = value_start;
+  for (i = 0; i < value_len; i++)
+    {
+      /* check for digit */
+      if (!isdigit (*p))
+	{
+	  clib_warning ("expected digit");
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+      digit = *p - '0';
+      u64 new_body_len = body_len * 10 + digit;
+      /* check for overflow */
+      if (new_body_len < body_len)
+	{
+	  clib_warning ("too big number, overflow");
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+      body_len = new_body_len;
+      p++;
+    }
+
   hc->body_len = body_len;
 
   hc->body_offset = hc->headers_offset + hc->headers_len + 2;
