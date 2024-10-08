@@ -37,9 +37,12 @@
   _ (TIMEOUT, "timeout")                                                      \
   _ (UNKNOWN_DEVICE, "unknown device")                                        \
   _ (UNKNOWN_INTERFACE, "unknown interface")                                  \
+  _ (NOT_PRIMARY_INTERFACE, "not primary interface")                          \
+  _ (PRIMARY_INTERFACE_MISSING, "primary interface missing")                  \
   _ (UNSUPPORTED_CONFIG, "unsupported config")                                \
   _ (UNSUPPORTED_DEVICE, "unsupported device")                                \
   _ (UNSUPPORTED_DEVICE_VER, "unsupported device version")                    \
+  _ (UNSUPPORTED_INTERFACE, "unsupported interface")                          \
   _ (ALREADY_DONE, "already done")                                            \
   _ (NO_SUCH_INTERFACE, "no such interface")                                  \
   _ (INIT_FAILED, "init failed")
