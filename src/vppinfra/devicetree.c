@@ -192,9 +192,16 @@ done:
 }
 #endif
 
-clib_dt_node_t *
-clib_dt_get_child_node (clib_dt_node_t *n, char *name)
+__clib_export clib_dt_node_t *
+clib_dt_get_child_node (clib_dt_node_t *n, char *fmt, ...)
 {
+  u8 *s;
+  va_list va;
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
+  vec_add1 (s, 0);
+
   vec_foreach_pointer (cn, n->child_nodes)
     {
       u8 *p = cn->path + vec_len (cn->path) - 1;
@@ -206,15 +213,17 @@ clib_dt_get_child_node (clib_dt_node_t *n, char *name)
       if (p[-1] != '/')
 	continue;
 
-      while (p[i] == name[i] && name[i] != 0)
+      while (p[i] == s[i] && s[i] != 0)
 	i++;
 
-      if (name[i] != 0)
+      if (s[i] != 0)
 	continue;
 
+      vec_free (s);
       return cn;
     }
 
+  vec_free (s);
   return 0;
 }
 
