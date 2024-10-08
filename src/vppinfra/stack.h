@@ -17,6 +17,7 @@ typedef struct
   u8 is_signal_frame;
 } clib_stack_frame_t;
 
+int clib_stack_frame_get_raw (void **sf, int n, int skip);
 clib_stack_frame_t *clib_stack_frame_get (clib_stack_frame_t *);
 
 #define foreach_clib_stack_frame(sf)                                          \

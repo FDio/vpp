@@ -17,7 +17,30 @@
 static __thread unw_cursor_t cursor;
 static __thread unw_context_t context;
 
-#endif
+#endif /* HAVE_LIBUNWIND */
+
+__clib_export int
+clib_stack_frame_get_raw (void **sf, int n, int skip)
+{
+#if HAVE_LIBUNWIND == 1
+  void *sf__[20];
+  int n__;
+
+  /* Also skip current frame. */
+  skip++;
+  n__ = unw_backtrace (sf__, clib_min (ARRAY_LEN (sf__), n + skip));
+
+  if (n__ <= skip)
+    return 0;
+  else if (n__ - skip < n)
+    n = n__ - skip;
+
+  clib_memcpy_fast (&sf[0], &sf__[skip], n * sizeof (sf[0]));
+  return n;
+#else  /* HAVE_LIBUNWIND */
+  return 0;
+#endif /* HAVE_LIBUNWIND */
+}
 
 __clib_export clib_stack_frame_t *
 clib_stack_frame_get (clib_stack_frame_t *sf)

@@ -302,7 +302,7 @@ void clib_mem_exit (void);
 typedef struct
 {
   /* Address of callers: outer first, inner last. */
-  uword callers[12];
+  void *callers[12];
 
   /* Count of allocations with this traceback. */
   u32 n_allocations;
