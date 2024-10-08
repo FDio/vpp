@@ -232,7 +232,6 @@ http_ts_accept_callback (session_t *ts)
   if ((rv = app_worker_init_accepted (as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
-      hc->h_pa_session_handle = SESSION_INVALID_HANDLE;
       session_free (as);
       return rv;
     }
@@ -277,13 +276,18 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   ho_hc = http_conn_get_w_thread (ho_hc_index, 0);
   ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
 
+  app_wrk = app_worker_get_if_valid (ho_hc->h_pa_wrk_index);
+  if (!app_wrk)
+    {
+      clib_warning ("no app worker");
+      return -1;
+    }
+
   if (err)
     {
       clib_warning ("half-open hc index %d, error: %U", ho_hc_index,
 		    format_session_error, err);
-      app_wrk = app_worker_get_if_valid (ho_hc->h_pa_wrk_index);
-      if (app_wrk)
-	app_worker_connect_notify (app_wrk, 0, err, ho_hc->h_pa_app_api_ctx);
+      app_worker_connect_notify (app_wrk, 0, err, ho_hc->h_pa_app_api_ctx);
       return 0;
     }
 
@@ -315,13 +319,6 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 
   HTTP_DBG (1, "half-open hc index %d,  hc index %d", ho_hc_index,
 	    new_hc_index);
-
-  app_wrk = app_worker_get (hc->h_pa_wrk_index);
-  if (!app_wrk)
-    {
-      clib_warning ("no app worker");
-      return -1;
-    }
 
   if ((rv = app_worker_init_connected (app_wrk, as)))
     {
