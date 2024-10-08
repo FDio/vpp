@@ -44,9 +44,15 @@ u8 *
 format_vnet_dev_interface_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
-  vnet_dev_port_t *port = vnet_dev_get_port_from_dev_instance (i);
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (i);
+  vnet_dev_port_interface_t *si;
+  vnet_dev_port_t *p = di->port;
 
-  return format (s, "%s", port->intf.name);
+  if (di->is_primary_if)
+    return format (s, "%s", p->interfaces->primary_interface.name);
+
+  si = vnet_dev_port_get_sec_if_by_index (p, di->sec_if_index);
+  return format (s, "%s", si->name);
 }
 
 u8 *
@@ -138,12 +144,22 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 		format_vnet_dev_args, port->args);
 
   s = format (s, "\n%UInterface ", format_white_space, indent);
-  if (port->interface_created)
+  if (port->interfaces)
     {
-      s = format (s, "assigned, interface name is '%U', RX node is '%U'",
-		  format_vnet_sw_if_index_name, vnm, port->intf.sw_if_index,
-		  format_vlib_node_name, vm,
-		  vnet_dev_get_port_rx_node_index (port));
+      s = format (
+	s, "assigned, primary interface name is '%U', RX node is '%U'",
+	format_vnet_sw_if_index_name, vnm,
+	port->interfaces->primary_interface.sw_if_index, format_vlib_node_name,
+	vm, vnet_dev_get_port_rx_node_index (port));
+      pool_foreach_pointer (sif, port->interfaces->secondary_interfaces)
+	{
+	  s = format (s, "\n%USecondary interface '%U'", format_white_space,
+		      indent, format_vnet_sw_if_index_name, vnm,
+		      sif->sw_if_index);
+	  if (sif->args)
+	    s = format (s, "\n%U args '%U", format_white_space, indent,
+			format_vnet_dev_args, sif->args);
+	}
     }
   else
     s = format (s, "not assigned");
