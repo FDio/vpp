@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <errno.h>
 #include <sys/epoll.h>
 
@@ -521,6 +522,7 @@ vpp_daq_msg_receive_one (VPP_Context_t *vc, VPPQueuePair *qp,
 {
   uint32_t n_recv, n_left;
   uint32_t head, next, mask = qp->queue_size - 1;
+  struct timeval tv;
 
   if (max_recv == 0)
     return 0;
@@ -535,11 +537,14 @@ vpp_daq_msg_receive_one (VPP_Context_t *vc, VPPQueuePair *qp,
       n_left = n_recv = max_recv;
     }
 
+  gettimeofday (&tv, NULL);
   while (n_left--)
     {
       uint32_t desc_index = qp->enq_ring[next & mask];
       daq_vpp_desc_t *d = qp->descs + desc_index;
       VPPDescData *dd = qp->desc_data + desc_index;
+      dd->pkthdr.ts.tv_sec = tv.tv_sec;
+      dd->pkthdr.ts.tv_usec = tv.tv_usec;
       dd->pkthdr.pktlen = d->length;
       dd->pkthdr.address_space_id = d->address_space_id;
       dd->msg.data = vc->bpools[d->buffer_pool].base + d->offset;
