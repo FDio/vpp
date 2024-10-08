@@ -223,6 +223,90 @@ VLIB_CLI_COMMAND (device_remove_if_cmd, static) = {
 };
 
 static clib_error_t *
+device_create_sec_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
+{
+  vnet_dev_api_port_add_sec_if_args_t a = {};
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_dev_rv_t rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &a.primary_sw_if_index))
+	;
+      else if (unformat (input, "sw-if-index %u", &a.primary_sw_if_index))
+	;
+      else if (unformat (input, "id %u", &a.sec_if_id))
+	;
+      else if (!a.args && unformat (input, "args %v", &a.args))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  rv = vnet_dev_api_port_add_sec_if (vm, &a);
+
+  vec_free (a.args);
+
+  if (rv != VNET_DEV_OK)
+    return clib_error_return (0, "unable to create secondary interface: %U",
+			      format_vnet_dev_rv, rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (device_create_sec_if_cmd, static) = {
+  .path = "device create-secondary-interface",
+  .short_help = "device create-secondary-interface [<interface-name> | "
+		"sw-if-index <n>] id <n> [args <sec-if-args>]",
+  .function = device_create_sec_if_cmd_fn,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
+device_remove_sec_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
+{
+  vnet_dev_api_port_del_sec_if_args_t a = { .sw_if_index = ~0 };
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_dev_rv_t rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &a.sw_if_index))
+	;
+      else if (unformat (input, "sw-if-index %u", &a.sw_if_index))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (a.sw_if_index == ~0)
+    return clib_error_return (
+      0, "please specify existing secondary interface name");
+
+  rv = vnet_dev_api_port_del_sec_if (vm, &a);
+
+  if (rv != VNET_DEV_OK)
+    return clib_error_return (0, "unable to remove secondary interface: %U",
+			      format_vnet_dev_rv, rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (device_remove_sec_if_cmd, static) = {
+  .path = "device remove-secondary-interface",
+  .short_help =
+    "device remove-secondary-interface [<interface-name> | sw-if-index <n>]",
+  .function = device_remove_sec_if_cmd_fn,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
 show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		     vlib_cli_command_t *cmd)
 {
