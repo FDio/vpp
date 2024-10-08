@@ -309,6 +309,24 @@
       "parentUuid": "a0b699b2_560764f1",
       "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a0c0b0e_a89ff6f1",
+        "filename": "src/vnet/bfd/bfd_udp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "I\u0027ll just switch to 16 bit each for sw_if_index and fib_index and remove the union. This way sw_if_index value of 0xFFFF can indicate multihop. For now fib_index will only be used for multihop and stay at 0. I\u0027ll leave the internal APIs with multihop parameter so we don\u0027t have to do check against sw_if_index in many of the internal functions.",
+      "parentUuid": "cfd2462c_b260eb40",
+      "revId": "21de86212c2d5bd62304434fe23913430500e1aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

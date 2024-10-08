@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "493cd661_73babc5d",
+        "filename": "test/bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9dc3e379_d75b23ef",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3df24d8e_46dc76f7",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-10-07T09:43:44Z",
       "side": 1,
       "message": "from bfd import BFD_UDP_SH_PORT, ...",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2777084_8a5beb01",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3df24d8e_46dc76f7",
       "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -60,6 +96,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a5fc5004_0e156864",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "It\u0027s a utility function used by more than one class. Same for ipv6.",
+      "parentUuid": "64c01f91_14676c32",
+      "range": {
+        "startLine": 60,
+        "startChar": 28,
+        "endLine": 60,
+        "endChar": 31
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4fdd6625_bbc8f247",
         "filename": "test/test_bfd.py",
         "patchSetId": 7
@@ -71,6 +131,24 @@
       "writtenOn": "2024-10-07T09:43:44Z",
       "side": 1,
       "message": "This is possibly unbound, same in ipv6 version",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "69265fe0_9bd0e6b0",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4fdd6625_bbc8f247",
       "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -92,6 +170,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b999810e_57f79713",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8adbea0a_d8cfcddb",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "918ab0f2_a67d2b01",
@@ -105,6 +201,24 @@
       "writtenOn": "2024-10-07T09:43:44Z",
       "side": 1,
       "message": "Same comments apply to ipv6 as apply to ipv4 version",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b3ce545_437157e4",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "918ab0f2_a67d2b01",
       "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -168,6 +282,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bc38ba05_413cff13",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2040,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "it\u0027s slightly different because it uses different dest address and doesn\u0027t set source address. I have changed the utility function to accept these parameters.",
+      "parentUuid": "36c983b7_8f4b365e",
+      "range": {
+        "startLine": 2030,
+        "startChar": 12,
+        "endLine": 2040,
+        "endChar": 41
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f7248de7_256605f5",
         "filename": "test/test_bfd.py",
         "patchSetId": 7
@@ -179,6 +317,24 @@
       "writtenOn": "2024-10-07T09:43:44Z",
       "side": 1,
       "message": "same here - why not use one of the functions near top?",
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3a534af_0529822c",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2382,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-08T03:06:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f7248de7_256605f5",
       "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
