@@ -51,13 +51,27 @@ vnet_dev_get_port_by_index (vnet_dev_t *dev, u32 index)
   return pool_elt_at_index (dev->ports, index)[0];
 }
 
+static_always_inline vnet_dev_instance_t *
+vnet_dev_get_dev_instance (u32 dev_instance)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  if (pool_is_free_index (dm->dev_instances, dev_instance))
+    return 0;
+  return pool_elt_at_index (dm->dev_instances, dev_instance);
+}
+
+static_always_inline vnet_dev_port_sec_if_t *
+vnet_dev_port_get_sec_if_by_index (vnet_dev_port_t *p, u32 index)
+{
+  return *pool_elt_at_index (p->interface->secondary_interfaces, index);
+}
+
 static_always_inline vnet_dev_port_t *
 vnet_dev_get_port_from_dev_instance (u32 dev_instance)
 {
-  vnet_dev_main_t *dm = &vnet_dev_main;
-  if (pool_is_free_index (dm->ports_by_dev_instance, dev_instance))
-    return 0;
-  return pool_elt_at_index (dm->ports_by_dev_instance, dev_instance)[0];
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (dev_instance);
+
+  return di ? di->port : 0;
 }
 
 static_always_inline vnet_dev_port_t *
@@ -68,7 +82,7 @@ vnet_dev_get_port_from_hw_if_index (u32 hw_if_index)
   hw = vnet_get_hw_interface (vnet_get_main (), hw_if_index);
   port = vnet_dev_get_port_from_dev_instance (hw->dev_instance);
 
-  if (!port || port->intf.hw_if_index != hw_if_index)
+  if (!port || !port->interface || port->interface->hw_if_index != hw_if_index)
     return 0;
 
   return port;
@@ -77,19 +91,32 @@ vnet_dev_get_port_from_hw_if_index (u32 hw_if_index)
 static_always_inline u32
 vnet_dev_get_rx_queue_if_sw_if_index (vnet_dev_rx_queue_t *rxq)
 {
-  return rxq->port->intf.sw_if_index;
+  return rxq->port->interface->sw_if_index;
 }
 
 static_always_inline u32
 vnet_dev_get_rx_queue_if_hw_if_index (vnet_dev_rx_queue_t *rxq)
 {
-  return rxq->port->intf.hw_if_index;
+  return rxq->port->interface->hw_if_index;
 }
 
 static_always_inline u32
 vnet_dev_get_port_rx_node_idex (vnet_dev_port_t *port)
 {
-  return port->intf.rx_node_index;
+  return port->interface->rx_node_index;
+}
+
+static_always_inline vnet_dev_port_t *
+vnet_dev_get_port_from_sw_if_index (u32 sw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
+  if (!si)
+    return 0;
+
+  return vnet_dev_get_port_from_hw_if_index (si->hw_if_index);
 }
 
 static_always_inline vnet_dev_t *
@@ -211,22 +238,49 @@ vnet_dev_tx_queue_unlock_if_needed (vnet_dev_tx_queue_t *txq)
   __atomic_store_n (&txq->lock, 0, __ATOMIC_RELEASE);
 }
 
+static_always_inline vnet_dev_rx_queue_if_rt_data_t *
+vnet_dev_get_rx_queue_if_rt_data (vnet_dev_rx_queue_t *rxq)
+{
+  return &rxq->if_rt_data;
+}
+
+static_always_inline vnet_dev_rx_queue_if_rt_data_t *
+vnet_dev_get_rx_queue_sec_if_rt_data (vnet_dev_rx_queue_t *rxq,
+				      u32 sec_if_index)
+{
+  return rxq->sec_if_rt_data[sec_if_index];
+}
+
 static_always_inline vlib_buffer_template_t
 vnet_dev_get_rx_queue_if_buffer_template (vnet_dev_rx_queue_t *rxq)
 {
-  return rxq->buffer_template;
+  return rxq->if_rt_data.buffer_template;
+}
+
+static_always_inline vlib_buffer_template_t
+vnet_dev_get_rx_queue_sec_if_buffer_template (vnet_dev_rx_queue_t *rxq,
+					      u32 sec_if_index)
+{
+  return rxq->sec_if_rt_data[sec_if_index]->buffer_template;
 }
 
 static_always_inline u16
 vnet_dev_get_rx_queue_if_next_index (vnet_dev_rx_queue_t *rxq)
 {
-  return rxq->next_index;
+  return rxq->if_rt_data.next_index;
+}
+
+static_always_inline u16
+vnet_dev_get_rx_queue_sec_if_next_index (vnet_dev_rx_queue_t *rxq,
+					 u32 sec_if_index)
+{
+  return rxq->sec_if_rt_data[sec_if_index]->next_index;
 }
 
 static_always_inline u8
 vnet_dev_get_rx_queue_buffer_pool_index (vnet_dev_rx_queue_t *rxq)
 {
-  return rxq->buffer_template.buffer_pool_index;
+  return rxq->if_rt_data.buffer_template.buffer_pool_index;
 }
 
 static_always_inline u32
@@ -261,8 +315,8 @@ static_always_inline vnet_dev_rx_queue_t *
 foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
 					  vnet_dev_rx_queue_t *rxq)
 {
-  vnet_dev_port_t *port;
   vnet_dev_rx_queue_rt_req_t req;
+  vnet_dev_port_intf_t *intf;
 
   if (rxq == 0)
     rxq = vnet_dev_get_rx_node_runtime (node)->first_rx_queue;
@@ -279,15 +333,31 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
   req.as_number =
     __atomic_exchange_n (&rxq->runtime_request.as_number, 0, __ATOMIC_ACQUIRE);
 
-  port = rxq->port;
+  intf = rxq->port->interface;
   if (req.update_next_index)
-    rxq->next_index = port->intf.rx_next_index;
+    {
+      vnet_dev_port_sec_if_t **si = rxq->port->interface->secondary_interfaces;
+      rxq->if_rt_data.next_index = intf->rx_next_index;
+      vec_foreach_pointer (rtd, rxq->sec_if_rt_data)
+	if (rtd)
+	  rtd->next_index = si[rtd->sec_if_index]->next_index;
+    }
 
   if (req.update_feature_arc)
     {
-      vlib_buffer_template_t *bt = &rxq->buffer_template;
-      bt->current_config_index = port->intf.current_config_index;
-      vnet_buffer (bt)->feature_arc_index = port->intf.feature_arc_index;
+      vnet_dev_port_sec_if_t **si = rxq->port->interface->secondary_interfaces;
+      vlib_buffer_template_t *bt = &rxq->if_rt_data.buffer_template;
+      bt->current_config_index = intf->current_config_index;
+      vnet_buffer (bt)->feature_arc_index = intf->feature_arc_index;
+      vec_foreach_pointer (rtd, rxq->sec_if_rt_data)
+	if (rtd)
+	  {
+	    vlib_buffer_template_t *bt = &rtd->buffer_template;
+	    bt->current_config_index =
+	      si[rtd->sec_if_index]->current_config_index;
+	    vnet_buffer (bt)->feature_arc_index =
+	      si[rtd->sec_if_index]->feature_arc_index;
+	  }
     }
 
   if (req.suspend_on)
