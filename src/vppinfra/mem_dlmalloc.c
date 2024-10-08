@@ -53,7 +53,7 @@ mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
   mheap_trace_t *t;
   uword i, trace_index, *p;
   mheap_trace_t trace = {};
-  int index;
+  int n_callers;
 
   if (heap != tm->current_traced_mheap || mheap_trace_thread_disable)
     return;
@@ -67,19 +67,10 @@ mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
   /* Turn off tracing for this thread to avoid embarrassment... */
   mheap_trace_thread_disable = 1;
 
-  index = -2; /* skip first 2 stack frames */
-  foreach_clib_stack_frame (sf)
-    {
-      if (index >= 0)
-	{
-	  if (index == ARRAY_LEN (trace.callers))
-	    break;
-	  trace.callers[index] = sf->ip;
-	}
-      index++;
-    }
-
-  if (index < 1)
+  /* Skip our frame and mspace_get_aligned's frame */
+  n_callers =
+    clib_stack_frame_get_raw (trace.callers, ARRAY_LEN (trace.callers), 2);
+  if (n_callers == 0)
     goto out;
 
   if (!tm->trace_by_callers)
