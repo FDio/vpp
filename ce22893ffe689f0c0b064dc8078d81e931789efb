@@ -16,6 +16,24 @@
       "message": "Hm, we need cleanup_ho handler in http\u0027s transport_proto_vft_t. Whenever app_worker is cleaned up, its active opens should be forcefully closed, so these notifications should stop bubbling up.\n\nLet\u0027s try a quick fix and if that doesn\u0027t work. We go with the workaround until we have time to properly look at this.",
       "revId": "ce22893ffe689f0c0b064dc8078d81e931789efb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c43f40e4_6b7a8405",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-08T07:27:21Z",
+      "side": 1,
+      "message": "I\u0027ve checked if cleanup_ho (and another cbs too) is called but no, only connected cb was called after app detach",
+      "parentUuid": "fcd27368_9861e728",
+      "revId": "ce22893ffe689f0c0b064dc8078d81e931789efb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
