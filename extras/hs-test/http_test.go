@@ -612,7 +612,7 @@ func runWrkPerf(s *NoTopoSuite) {
 func HttpStaticFileHandlerWrkTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.VppAddr()
-	vpp.Container.Exec("mkdir -p " + wwwRootPath)
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	content := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	err := vpp.Container.CreateFile(wwwRootPath+"/64B", content)
 	s.AssertNil(err, fmt.Sprint(err))
