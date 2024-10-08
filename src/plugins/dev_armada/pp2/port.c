@@ -46,11 +46,11 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     },
   };
 
-  foreach_vnet_dev_port_rx_queue (q, port)
+  foreach_vnet_dev_port_tx_queue (q, port)
     {
       struct pp2_ppio_outqs_params *oqs = &ppio_params.outqs_params;
-      oqs->outqs_params[0].weight = 1;
-      oqs->outqs_params[0].size = q->size;
+      oqs->outqs_params[q->queue_id].weight = 1;
+      oqs->outqs_params[q->queue_id].size = q->size;
       oqs->num_outqs++;
     }
 
