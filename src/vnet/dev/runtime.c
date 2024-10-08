@@ -23,7 +23,7 @@ _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
   vnet_dev_rx_queue_t *previous = 0, *first = 0;
   vnet_dev_rx_node_runtime_t *rtd;
   vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
-  u32 node_index = port->intf.rx_node_index;
+  u32 node_index = vnet_dev_get_port_rx_node_idex (port);
 
   rtd = vlib_node_get_runtime_data (vm, node_index);
 
@@ -47,7 +47,7 @@ _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
     }
 
   rtd->first_rx_queue = first;
-  vlib_node_set_state (vm, port->intf.rx_node_index, state);
+  vlib_node_set_state (vm, node_index, state);
   __atomic_store_n (&op->completed, 1, __ATOMIC_RELEASE);
 }
 

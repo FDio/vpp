@@ -130,7 +130,7 @@ vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_validate (vm, dev);
 
   foreach_vnet_dev_port (p, dev)
-    ASSERT (p->interface_created == 0);
+    ASSERT (p->interfaces == 0);
 
   if (dev->ops.deinit)
     dev->ops.deinit (vm, dev);
@@ -188,7 +188,7 @@ void
 vnet_dev_detach (vlib_main_t *vm, vnet_dev_t *dev)
 {
   foreach_vnet_dev_port (p, dev)
-    if (p->interface_created)
+    if (p->interfaces)
       vnet_dev_port_if_remove (vm, p);
   vnet_dev_deinit (vm, dev);
   vnet_dev_free (vm, dev);
@@ -260,6 +260,8 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
   vnet_feature_config_main_t *cm;
   vnet_dev_main_t *vdm = &vnet_dev_main;
   vnet_dev_port_t *port;
+  vnet_dev_port_interface_t *intf;
+  vnet_dev_instance_t *di;
   vnet_hw_interface_t *hw;
   u32 current_config_index = ~0;
   u32 next_index = ~0;
@@ -269,9 +271,15 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
     return;
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  port = vnet_dev_get_port_from_dev_instance (hw->dev_instance);
+  di = vnet_dev_get_dev_instance (hw->dev_instance);
 
-  if (port == 0 || port->intf.sw_if_index != sw_if_index)
+  intf = di->is_primary_if ?
+	   vnet_dev_port_get_primary_if (di->port) :
+	   vnet_dev_port_get_sec_if_by_index (di->port, di->sec_if_index);
+
+  port = di->port;
+
+  if (port == 0 || intf->sw_if_index != sw_if_index)
     return;
 
   if (vnet_have_features (arc_index, sw_if_index))
@@ -281,28 +289,27 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       vnet_get_config_data (&cm->config_main, &current_config_index,
 			    &next_index, 0);
-      if (port->intf.feature_arc == 0 ||
-	  port->intf.rx_next_index != next_index ||
-	  port->intf.current_config_index != current_config_index)
+      if (intf->feature_arc == 0 || intf->rx_next_index != next_index ||
+	  intf->current_config_index != current_config_index)
 	{
-	  port->intf.current_config_index = current_config_index;
-	  port->intf.rx_next_index = next_index;
-	  port->intf.feature_arc_index = arc_index;
-	  port->intf.feature_arc = 1;
+	  intf->current_config_index = current_config_index;
+	  intf->rx_next_index = next_index;
+	  intf->feature_arc_index = arc_index;
+	  intf->feature_arc = 1;
 	  update_runtime = 1;
 	}
     }
   else
     {
-      if (port->intf.feature_arc)
+      if (intf->feature_arc)
 	{
-	  port->intf.current_config_index = 0;
-	  port->intf.rx_next_index =
-	    port->intf.redirect_to_node ?
-		    port->intf.redirect_to_node_next_index :
-		    vnet_dev_default_next_index_by_port_type[port->attr.type];
-	  port->intf.feature_arc_index = 0;
-	  port->intf.feature_arc = 0;
+	  intf->current_config_index = 0;
+	  intf->rx_next_index =
+	    intf->redirect_to_node ?
+	      intf->redirect_to_node_next_index :
+	      vnet_dev_default_next_index_by_port_type[port->attr.type];
+	  intf->feature_arc_index = 0;
+	  intf->feature_arc = 0;
 	  update_runtime = 1;
 	}
     }
