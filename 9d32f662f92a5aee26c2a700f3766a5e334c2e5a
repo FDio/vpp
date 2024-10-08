@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9c9d24e_177a6d11",
+        "filename": "src/vppinfra/devicetree.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-10-08T20:59:07Z",
+      "side": 1,
+      "message": "spelling, \"property\"",
+      "revId": "9d32f662f92a5aee26c2a700f3766a5e334c2e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
