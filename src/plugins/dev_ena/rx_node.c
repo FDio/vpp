@@ -260,13 +260,13 @@ ena_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 *csi;
   uword n_rx_packets = 0, n_rx_bytes = 0;
   vlib_frame_bitmap_t head_bmp = {};
-  u32 sw_if_index = port->intf.sw_if_index;
-  u32 hw_if_index = port->intf.hw_if_index;
+  u32 sw_if_index = vnet_dev_port_get_intf_sw_if_index (port);
+  u32 hw_if_index = vnet_dev_port_get_intf_hw_if_index (port);
   u32 n_trace, n_deq, n_left;
   u32 cq_next = q->cq_next;
-  u32 next_index = rxq->next_index;
+  u32 next_index = vnet_dev_get_rx_queue_if_next_index (rxq);
   vlib_frame_t *next_frame;
-  vlib_buffer_template_t bt = rxq->buffer_template;
+  vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
   u32 *bi;
   int maybe_chained;
 
