@@ -263,7 +263,7 @@ avf_msix_n_handler (vlib_main_t *vm, vnet_dev_t *dev, u16 line)
 
   iavf_reg_write (ad, IAVF_VFINT_DYN_CTLN (line), dyn_ctln_enabled.as_u32);
   vlib_node_set_interrupt_pending (vlib_get_main_by_index (line),
-				   port->intf.rx_node_index);
+				   vnet_dev_get_port_rx_node_idex (port));
 }
 
 vnet_dev_rv_t
