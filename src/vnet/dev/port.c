@@ -371,7 +371,7 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
     {
       if (req->all_queues == 0)
 	{
-	  rxq = vnet_dev_port_get_rx_queue_by_id (port, req->queue_id);
+	  rxq = vnet_dev_get_port_rx_queue_by_id (port, req->queue_id);
 	  if (rxq == 0)
 	    return VNET_DEV_ERR_BUG;
 	}

@@ -74,6 +74,24 @@ vnet_dev_get_port_from_hw_if_index (u32 hw_if_index)
   return port;
 }
 
+static_always_inline u32
+vnet_dev_get_rx_queue_if_sw_if_index (vnet_dev_rx_queue_t *rxq)
+{
+  return rxq->port->intf.sw_if_index;
+}
+
+static_always_inline u32
+vnet_dev_get_rx_queue_if_hw_if_index (vnet_dev_rx_queue_t *rxq)
+{
+  return rxq->port->intf.hw_if_index;
+}
+
+static_always_inline u32
+vnet_dev_get_port_rx_node_idex (vnet_dev_port_t *port)
+{
+  return port->intf.rx_node_index;
+}
+
 static_always_inline vnet_dev_t *
 vnet_dev_by_index (u32 index)
 {
@@ -128,12 +146,6 @@ vnet_dev_port_validate (vlib_main_t *vm, vnet_dev_port_t *port)
   ASSERT (vm->thread_index == 0);
 }
 
-static_always_inline u32
-vnet_dev_port_get_sw_if_index (vnet_dev_port_t *port)
-{
-  return port->intf.sw_if_index;
-}
-
 static_always_inline vnet_dev_port_t *
 vnet_dev_get_port_by_id (vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 {
@@ -144,7 +156,7 @@ vnet_dev_get_port_by_id (vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 }
 
 static_always_inline vnet_dev_rx_queue_t *
-vnet_dev_port_get_rx_queue_by_id (vnet_dev_port_t *port,
+vnet_dev_get_port_rx_queue_by_id (vnet_dev_port_t *port,
 				  vnet_dev_queue_id_t queue_id)
 {
   foreach_vnet_dev_port_rx_queue (q, port)
@@ -154,7 +166,7 @@ vnet_dev_port_get_rx_queue_by_id (vnet_dev_port_t *port,
 }
 
 static_always_inline vnet_dev_tx_queue_t *
-vnet_dev_port_get_tx_queue_by_id (vnet_dev_port_t *port,
+vnet_dev_get_port_tx_queue_by_id (vnet_dev_port_t *port,
 				  vnet_dev_queue_id_t queue_id)
 {
   foreach_vnet_dev_port_tx_queue (q, port)
@@ -197,6 +209,18 @@ vnet_dev_tx_queue_unlock_if_needed (vnet_dev_tx_queue_t *txq)
   if (!txq->lock_needed)
     return;
   __atomic_store_n (&txq->lock, 0, __ATOMIC_RELEASE);
+}
+
+static_always_inline vlib_buffer_template_t
+vnet_dev_get_rx_queue_if_buffer_template (vnet_dev_rx_queue_t *rxq)
+{
+  return rxq->buffer_template;
+}
+
+static_always_inline u16
+vnet_dev_get_rx_queue_if_next_index (vnet_dev_rx_queue_t *rxq)
+{
+  return rxq->next_index;
 }
 
 static_always_inline u8

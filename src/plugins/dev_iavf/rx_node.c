@@ -249,14 +249,14 @@ iavf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 thr_idx = vlib_get_thread_index ();
   iavf_rt_data_t *rtd = vnet_dev_get_rt_temp_space (vm);
   iavf_rxq_t *arq = vnet_dev_get_rx_queue_data (rxq);
-  vlib_buffer_template_t bt = rxq->buffer_template;
+  vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
   u32 n_trace, n_rx_packets = 0, n_rx_bytes = 0;
   u16 n_tail_desc = 0;
   u64 or_qw1 = 0;
   u32 *bi, *to_next, n_left_to_next;
-  u32 next_index = rxq->next_index;
-  u32 sw_if_index = port->intf.sw_if_index;
-  u32 hw_if_index = port->intf.hw_if_index;
+  u32 next_index = vnet_dev_get_rx_queue_if_next_index (rxq);
+  u32 sw_if_index = vnet_dev_get_rx_queue_if_sw_if_index (rxq);
+  u32 hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq);
   u16 next = arq->next;
   u16 size = rxq->size;
   u16 mask = size - 1;
