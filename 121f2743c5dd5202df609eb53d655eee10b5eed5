@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91c78935_34aee59f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2024-10-08T16:02:31Z",
+      "side": 1,
+      "message": "I brought the plugin up at community meeting and the question that was raised, which I tend to agree with: \nfrom a 1000-foot view: what is the CI testing strategy to\n ensure the changes here don’t break things ?\n \n i.e. there’s no Python test files that I can see, so \n we can’t run a CI to ensure an unrelated change doesn’t break it ?",
+      "revId": "121f2743c5dd5202df609eb53d655eee10b5eed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
