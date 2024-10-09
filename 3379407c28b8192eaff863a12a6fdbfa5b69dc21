@@ -39,6 +39,30 @@
       },
       "revId": "3379407c28b8192eaff863a12a6fdbfa5b69dc21",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d507c76_b37a37fe",
+        "filename": "extras/scripts/crcchecker.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2024-10-09T10:47:59Z",
+      "side": 1,
+      "message": "The crcchecker should write anything coming from vppapigen to stderr.",
+      "parentUuid": "682f2a0d_9bef10af",
+      "range": {
+        "startLine": 49,
+        "startChar": 71,
+        "endLine": 49,
+        "endChar": 82
+      },
+      "revId": "3379407c28b8192eaff863a12a6fdbfa5b69dc21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
