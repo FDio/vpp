@@ -988,7 +988,7 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
 
   if (use_uds)
     {
-      if (vapi_sock_client_connect (ctx, (char *) path, name) < 0)
+      if (vapi_sock_client_connect (ctx, (char *) path, name) != VAPI_OK)
 	{
 	  return VAPI_ECON_FAIL;
 	}
