@@ -124,6 +124,34 @@ http_conn_free (http_conn_t *hc)
   pool_put (wrk->conn_pool, hc);
 }
 
+static inline http_conn_t *
+http_ho_conn_get (u32 ho_hc_index)
+{
+  http_main_t *hm = &http_main;
+  return pool_elt_at_index (hm->ho_conn_pool, ho_hc_index);
+}
+
+void
+http_ho_conn_free (http_conn_t *ho_hc)
+{
+  http_main_t *hm = &http_main;
+  pool_put (hm->ho_conn_pool, ho_hc);
+}
+
+static inline u32
+http_ho_conn_alloc (void)
+{
+  http_main_t *hm = &http_main;
+  http_conn_t *hc;
+
+  pool_get_aligned_safe (hm->ho_conn_pool, hc, CLIB_CACHE_LINE_BYTES);
+  clib_memset (hc, 0, sizeof (*hc));
+  hc->h_hc_index = hc - hm->ho_conn_pool;
+  hc->h_pa_session_handle = SESSION_INVALID_HANDLE;
+  hc->h_tc_session_handle = SESSION_INVALID_HANDLE;
+  return hc->h_hc_index;
+}
+
 static u32
 http_listener_alloc (void)
 {
@@ -274,7 +302,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   app_worker_t *app_wrk;
   int rv;
 
-  ho_hc = http_conn_get_w_thread (ho_hc_index, 0);
+  ho_hc = http_ho_conn_get (ho_hc_index);
   ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
 
   if (err)
@@ -1611,6 +1639,16 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
   http_conn_free (hc);
 }
 
+static void
+http_ts_ho_cleanup_callback (session_t *ts)
+{
+  http_conn_t *ho_hc;
+  HTTP_DBG (1, "half open: %x", ts->opaque);
+  ho_hc = http_ho_conn_get (ts->opaque);
+  session_half_open_delete_notify (&ho_hc->connection);
+  http_ho_conn_free (ho_hc);
+}
+
 int
 http_add_segment_callback (u32 client_index, u64 segment_handle)
 {
@@ -1630,6 +1668,7 @@ static session_cb_vft_t http_app_cb_vft = {
   .session_connected_callback = http_ts_connected_callback,
   .session_reset_callback = http_ts_reset_callback,
   .session_cleanup_callback = http_ts_cleanup_callback,
+  .half_open_cleanup_callback = http_ts_ho_cleanup_callback,
   .add_segment_callback = http_add_segment_callback,
   .del_segment_callback = http_del_segment_callback,
   .builtin_app_rx_callback = http_ts_rx_callback,
@@ -1697,6 +1736,7 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   http_conn_t *hc;
   int error;
   u32 hc_index;
+  session_t *ho;
   app_worker_t *app_wrk = app_worker_get (sep->app_wrk_index);
 
   clib_memset (cargs, 0, sizeof (*cargs));
@@ -1706,8 +1746,8 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   app = application_get (app_wrk->app_index);
   cargs->sep_ext.ns_index = app->ns_index;
 
-  hc_index = http_conn_alloc_w_thread (0 /* ts->thread_index */);
-  hc = http_conn_get_w_thread (hc_index, 0);
+  hc_index = http_ho_conn_alloc ();
+  hc = http_ho_conn_get (hc_index);
   hc->h_pa_wrk_index = sep->app_wrk_index;
   hc->h_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
@@ -1731,6 +1771,15 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
 
   if ((error = vnet_connect (cargs)))
     return error;
+
+  ho = session_alloc_for_half_open (&hc->connection);
+  ho->app_wrk_index = app_wrk->wrk_index;
+  ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
+  ho->opaque = sep->opaque;
+  ho->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, sep->is_ip4);
+  hc->h_tc_session_handle = cargs->sh;
+  hc->c_s_index = ho->session_index;
 
   return 0;
 }
@@ -2004,18 +2053,60 @@ format_http_transport_listener (u8 *s, va_list *args)
   return s;
 }
 
+static u8 *
+format_http_transport_half_open (u8 *s, va_list *args)
+{
+  u32 ho_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  u32 __clib_unused verbose = va_arg (*args, u32);
+  http_conn_t *ho_hc;
+  session_t *tcp_ho;
+
+  ho_hc = http_ho_conn_get (ho_index);
+  tcp_ho = session_get_from_handle (ho_hc->h_tc_session_handle);
+
+  s = format (s, "[%d:%d][H] half-open app_wrk %u ts %d:%d",
+	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->h_pa_wrk_index,
+	      tcp_ho->thread_index, tcp_ho->session_index);
+  return s;
+}
+
+static transport_connection_t *
+http_transport_get_ho (u32 ho_hc_index)
+{
+  http_conn_t *ho_hc;
+
+  HTTP_DBG (1, "half open: %x", ho_hc_index);
+  ho_hc = http_ho_conn_get (ho_hc_index);
+  return &ho_hc->connection;
+}
+
+static void
+http_transport_cleanup_ho (u32 ho_hc_index)
+{
+  http_conn_t *ho_hc;
+
+  HTTP_DBG (1, "half open: %x", ho_hc_index);
+  ho_hc = http_ho_conn_get (ho_hc_index);
+  session_cleanup_half_open (ho_hc->h_tc_session_handle);
+  http_ho_conn_free (ho_hc);
+}
+
 static const transport_proto_vft_t http_proto = {
   .enable = http_transport_enable,
   .connect = http_transport_connect,
   .start_listen = http_start_listen,
   .stop_listen = http_stop_listen,
   .close = http_transport_close,
+  .cleanup_ho = http_transport_cleanup_ho,
   .custom_tx = http_app_tx_callback,
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,
+  .get_half_open = http_transport_get_ho,
   .get_transport_endpoint = http_transport_get_endpoint,
   .format_connection = format_http_transport_connection,
   .format_listener = format_http_transport_listener,
+  .format_half_open = format_http_transport_half_open,
   .transport_options = {
     .name = "http",
     .short_name = "H",
