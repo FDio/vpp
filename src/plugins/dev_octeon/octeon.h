@@ -21,7 +21,14 @@
 #include <base/roc_api.h>
 #include <dev_octeon/hw_defs.h>
 
+#define OCT_NPA_MAX_POOLS	   128
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
+
+typedef enum
+{
+  OCT_DRV_ARG_NPA_MAX_POOLS = 1,
+  OCT_DRV_ARG_END,
+} oct_drv_args_t;
 
 typedef enum
 {
@@ -122,6 +129,14 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   struct roc_nix_sq sq;
 } oct_txq_t;
+
+typedef struct
+{
+  u8 is_config_done;
+  u32 npa_max_pools;
+} oct_main_t;
+
+extern oct_main_t oct_main;
 
 /* format.c */
 format_function_t format_oct_port_status;
