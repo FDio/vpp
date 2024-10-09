@@ -16,6 +16,24 @@
       "message": "if it doesn\u0027t apply to locally_generated, then it only applies to transit, so why not make this an ip6_input check and so drop earlier?",
       "revId": "a258e17c1af2bc34d93a50674a9b6b0659663e8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ddb2ce3_b676d562",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1768,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2024-10-09T10:50:00Z",
+      "side": 1,
+      "message": "You do want to receive packets from the unspecified source and from link-local addresses.",
+      "parentUuid": "740daf20_d1ff9134",
+      "revId": "a258e17c1af2bc34d93a50674a9b6b0659663e8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
