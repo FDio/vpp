@@ -297,6 +297,13 @@ VNET_DEV_REGISTER_DRIVER (octeon) = {
   },
 };
 
+static int
+oct_npa_max_pools_set_cb (struct plt_pci_device *pci_dev)
+{
+  roc_idev_npa_maxpools_set (OCT_NPA_MAX_POOLS);
+  return 0;
+}
+
 static clib_error_t *
 oct_plugin_init (vlib_main_t *vm)
 {
@@ -310,6 +317,9 @@ oct_plugin_init (vlib_main_t *vm)
   rv = roc_model_init (&oct_model);
   if (rv)
     return clib_error_return (0, "roc_model_init failed");
+
+  roc_npa_lf_init_cb_register (oct_npa_max_pools_set_cb);
+
   return 0;
 }
 

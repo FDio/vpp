@@ -21,6 +21,7 @@
 #include <base/roc_api.h>
 #include <dev_octeon/hw_defs.h>
 
+#define OCT_NPA_MAX_POOLS	   8192
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
 
 typedef enum
