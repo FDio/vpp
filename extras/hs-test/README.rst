@@ -27,7 +27,7 @@ Anatomy of a test case
 **Action flow when running a test case**:
 
 #. It starts with running ``make test``. Optional arguments are VERBOSE, PERSIST (topology configuration isn't cleaned up after test run, use ``make cleanup-hst`` to clean up),
-   TEST=<test-name> to run a specific test and PARALLEL=[n-cpus].
+   TEST=<test-name> to run a specific test and PARALLEL=[n-cpus]. If you want to run multiple specific tests, separate their names with a comma.
 #. ``make list-tests`` (or ``make help``) shows all tests.
 #. ``Ginkgo`` looks for a spec suite in the current directory and then compiles it to a .test binary.
 #. The Ginkgo test framework runs each function that was registered manually using ``Register[SuiteName]Test()``. Each of these functions correspond to a suite.
