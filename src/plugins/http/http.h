@@ -424,6 +424,7 @@ typedef struct http_main_
 {
   http_worker_t *wrk;
   http_conn_t *listener_pool;
+  http_conn_t *ho_conn_pool;
   u32 app_index;
 
   clib_timebase_t timebase;
