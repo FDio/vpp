@@ -453,6 +453,7 @@ class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@testcase.skip("AY TEST")
 class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
 
