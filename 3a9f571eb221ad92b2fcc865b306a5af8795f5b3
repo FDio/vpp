@@ -33,6 +33,24 @@
       "message": "rebuild request",
       "revId": "3a9f571eb221ad92b2fcc865b306a5af8795f5b3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "79923be6_ac6e4b63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-10-10T17:57:28Z",
+      "side": 1,
+      "message": "recheck",
+      "parentUuid": "c1acc9ef_fda2324e",
+      "revId": "3a9f571eb221ad92b2fcc865b306a5af8795f5b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
