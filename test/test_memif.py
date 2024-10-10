@@ -17,7 +17,6 @@ from vpp_papi import VppEnum
 from config import config
 
 
-@tag_run_solo
 @tag_fixme_debian11
 @unittest.skipIf("memif" in config.excluded_plugins, "Exclude Memif plugin tests")
 class TestMemif(VppTestCase):

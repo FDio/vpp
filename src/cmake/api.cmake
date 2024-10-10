@@ -57,7 +57,7 @@ set(COMMON_ARGS
   COMMENT "Generating API header ${output_name}"
 )
 
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.20")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "93.20")
   add_custom_command (
     ${COMMON_ARGS}
     DEPFILE ${dependency_file}

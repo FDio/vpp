@@ -481,7 +481,6 @@ class TestSessionRuleTableTests(VppAsfTestCase):
         )
 
 
-@tag_run_solo
 class TestSegmentManagerTests(VppAsfTestCase):
     """SVM Fifo Unit Tests Case"""
 
@@ -508,7 +507,6 @@ class TestSegmentManagerTests(VppAsfTestCase):
         super(TestSegmentManagerTests, self).tearDown()
 
 
-@tag_run_solo
 class TestSvmFifoUnitTests(VppAsfTestCase):
     """SVM Fifo Unit Tests Case"""
 

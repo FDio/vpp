@@ -40,7 +40,6 @@ DHCP6_CLIENT_PORT = 547
 DHCP6_SERVER_PORT = 546
 
 
-@tag_run_solo
 @unittest.skipIf("dhcp" in config.excluded_plugins, "Exclude DHCP plugin tests")
 class TestDHCP(VppTestCase):
     """DHCP Test Case"""

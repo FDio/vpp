@@ -1056,7 +1056,6 @@ def bfd_stats_diff(stats_before, stats_after):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 @tag_fixme_debian11
 class BFD4TestCase(VppTestCase):
     pg0 = None
@@ -2060,7 +2059,6 @@ class BFD4TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 @tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
     pg0 = None
@@ -2402,7 +2400,6 @@ class BFD6TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
 
@@ -2631,7 +2628,6 @@ class BFDTunTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
     vpp_clock_offset = None
@@ -3014,7 +3010,6 @@ class BFDSHA1TestCase(VppTestCase):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
     vpp_session = None
@@ -3309,7 +3304,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         {"multihop": True},
     ]
 )
-@tag_run_solo
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
 

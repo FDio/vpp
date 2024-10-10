@@ -511,7 +511,6 @@ def filter_out_misc_and_handshake_init(p):
 @unittest.skipIf(
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
-@tag_run_solo
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2913,7 +2912,6 @@ class WireguardHandoffTests(TestWg):
 @unittest.skipIf(
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
-@tag_run_solo
 class TestWgFIB(VppTestCase):
     """Wireguard FIB Test Case"""
 

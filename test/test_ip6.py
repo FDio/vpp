@@ -208,7 +208,6 @@ class TestIPv6ND(VppTestCase):
         return self.statistics["/net/ip6-nd/tx/replies"][:, itf.sw_if_index].sum()
 
 
-@tag_run_solo
 class TestIPv6(TestIPv6ND):
     """IPv6 Test Case"""
 

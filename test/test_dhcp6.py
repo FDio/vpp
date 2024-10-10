@@ -245,7 +245,6 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.vapi.dhcp6_clients_enable_disable(enable=0)
 
 
-@tag_run_solo
 @unittest.skipIf("dhcp" in config.excluded_plugins, "Exclude DHCP plugin tests")
 class TestDHCPv6IANAControlPlane(VppTestCase):
     """DHCPv6 IA NA Control Plane Test Case"""

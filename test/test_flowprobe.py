@@ -379,7 +379,6 @@ class MethodHolder(VppTestCase):
         return p
 
 
-@tag_run_solo
 @tag_fixme_vpp_workers
 @tag_fixme_debian11
 @unittest.skipIf(
