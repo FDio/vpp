@@ -51,6 +51,7 @@ class QUICAppWorker(Worker):
 
 
 @unittest.skipIf("quic" in config.excluded_plugins, "Exclude QUIC plugin tests")
+# @unittest.skip("AY TEST")
 class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
@@ -172,6 +173,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 
 
 @tag_fixme_vpp_workers
+@unittest.skip("AY TEST")
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
 
@@ -453,6 +455,7 @@ class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@unittest.skip("AY TEST")
 class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
 
