@@ -272,6 +272,8 @@ def set_logging(test_data_dir, test_name):
     filename = "{0}/{1}".format(test_data_dir, log_file)
     Path(filename).touch()
     logging.basicConfig(filename=filename, level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG,
+                   format='%(asctime)s - PID:%(process)d - %(name)s - %(levelname)s - %(message)s')
 
 
 def run_tests_in_venv(
