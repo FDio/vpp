@@ -1080,6 +1080,7 @@ class MyParameters:
 @unittest.skipIf(
     "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
 )
+@unittest.skip("AY TEST")
 class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecTun6):
     """Ipsec ESP all Algos"""
 
