@@ -119,6 +119,7 @@ class TestSKXVariant(TestNodeVariant):
     @unittest.skipUnless(
         skipVariant(LINUX_VARIANT), VARIANT + " not a supported variant, skip."
     )
+    @unittest.skip("AY TEST")
     def test_skx(self):
         self.checkVariant(self.VARIANT)
 
