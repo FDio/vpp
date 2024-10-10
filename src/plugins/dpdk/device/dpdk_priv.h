@@ -54,8 +54,10 @@ dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
 {
   int ret;
   int i;
-  if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
+  if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)) {
+    dpdk_log_err("device is not admin up %s", xd->name);
     return;
+  }
 
   ret = rte_eth_xstats_get (xd->port_id, xd->xstats, vec_len (xd->xstats));
   if (ret < 0)
@@ -102,6 +104,8 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();
+
+  dpdk_log_warn("dpdk_update_counters at %.4f", now);
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
   clib_memcpy_fast (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));

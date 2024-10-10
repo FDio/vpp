@@ -1621,16 +1621,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     dpdk_update_link_state (xd, now);
   }
 
-  f64 timeout =
-    clib_min (dm->link_state_poll_interval, dm->stat_poll_interval);
-
+  f64 timeout = dm->stat_poll_interval;
   while (1)
     {
-      f64 min_wait = clib_max (timeout, DPDK_MIN_POLL_INTERVAL);
-      vlib_process_wait_for_event_or_clock (vm, min_wait);
-
-      timeout =
-	clib_min (dm->link_state_poll_interval, dm->stat_poll_interval);
+      vlib_process_wait_for_event_or_clock (vm, timeout);
 
       if (dm->admin_up_down_in_progress)
 	/* skip the poll if an admin up down is in progress (on any interface) */
@@ -1638,22 +1632,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
       vec_foreach (xd, dm->devices)
       {
-	f64 now = vlib_time_now (vm);
-	if ((now - xd->time_last_stats_update) >= dm->stat_poll_interval)
-	  dpdk_update_counters (xd, now);
-	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
-	  dpdk_update_link_state (xd, now);
-
+        dpdk_update_counters (xd, now);
+        dpdk_update_link_state (xd, now);
       }
-
-      now = vlib_time_now (vm);
-      vec_foreach (xd, dm->devices)
-	{
-	  timeout = clib_min (timeout, xd->time_last_stats_update +
-					 dm->stat_poll_interval - now);
-	  timeout = clib_min (timeout, xd->time_last_link_update +
-					 dm->link_state_poll_interval - now);
-	}
     }
   return 0;
 }
