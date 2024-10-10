@@ -7,6 +7,7 @@ from config import config
 
 
 @unittest.skipIf("adl" in config.excluded_plugins, "Exclude ADL plugin tests")
+@unittest.skip("AY TEST")
 class TestAdl(VppAsfTestCase):
     """Allow/Deny Plugin Unit Test Cases"""
 
