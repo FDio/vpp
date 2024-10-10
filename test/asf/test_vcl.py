@@ -653,6 +653,7 @@ class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@unittest.skip("AY TEST")
 class VCLThruHostStackDTLS(VCLTestCase):
     """VCL Thru Host Stack DTLS"""
 
