@@ -1,6 +1,7 @@
+.git/
+.venv/
 *~
 *.sw[op]
-
 /build-root/.ccache
 /build-root/build-*/
 /build-root/install-*/
