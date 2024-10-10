@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "682e64d7_cde7b290",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2024-10-10T15:59:56Z",
+      "side": 1,
+      "message": "Hello, \nThis commit adds printing a timestamp into DAQ_PktHdr_t header when a packet is enqueued with libdaq. Without this change multiple snort alert formats (except possibly alert_syslog, that goes with syslog\u0027s own TS) would display 0s timestamp for every recorded packet.\n\nAnother change in snort_api.c file fixes disabling interface\u0027s feature when interface gets detached from instance (wrong enum value used)",
+      "revId": "3a9f571eb221ad92b2fcc865b306a5af8795f5b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
