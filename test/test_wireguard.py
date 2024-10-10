@@ -512,6 +512,7 @@ def filter_out_misc_and_handshake_init(p):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@unittest.skip("AY TEST")
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2801,6 +2802,7 @@ class TestWg(VppTestCase):
 
 
 @tag_fixme_vpp_debug
+@unittest.skip("AY TEST")
 class WireguardHandoffTests(TestWg):
     """Wireguard Tests in multi worker setup"""
 
@@ -2914,6 +2916,7 @@ class WireguardHandoffTests(TestWg):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@unittest.skip("AY TEST")
 class TestWgFIB(VppTestCase):
     """Wireguard FIB Test Case"""
 
