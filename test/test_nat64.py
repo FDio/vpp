@@ -12,7 +12,6 @@ from config import config
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
-    tag_fixme_ubuntu2204,
     is_distro_ubuntu2204,
     VppTestRunner,
 )
@@ -40,7 +39,6 @@ from config import config
 
 
 @tag_fixme_vpp_workers
-@tag_fixme_ubuntu2204
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT64(VppTestCase):
     """NAT64 Test Cases"""

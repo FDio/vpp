@@ -7,7 +7,7 @@ from random import randint, choice
 import re
 import scapy.compat
 from framework import VppTestCase, VppLoInterface
-from asfframework import VppTestRunner, tag_fixme_ubuntu2204, is_distro_ubuntu2204
+from asfframework import VppTestRunner, is_distro_ubuntu2204
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -2606,7 +2606,6 @@ class TestNAT44ED(VppTestCase):
             i.remove_vpp_config()
 
 
-@tag_fixme_ubuntu2204
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
