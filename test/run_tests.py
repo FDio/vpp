@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
+import logging
+
 import shutil
 import os
 import fnmatch
@@ -10,9 +12,8 @@ import threading
 import traceback
 import signal
 import re
+from unix_queuemanager import UnixSocketManager
 from multiprocessing import Process, Pipe, get_context
-from multiprocessing.queues import Queue
-from multiprocessing.managers import BaseManager
 from config import config, num_cpus, available_cpus, max_vpp_cpus
 from vpp_papi import VPPApiJSONFiles
 from asfframework import (
@@ -45,24 +46,10 @@ from util import check_core_path, get_core_path, is_core_present
 # the child
 core_timeout = 3
 
-
-class StreamQueue(Queue):
-    def write(self, msg):
-        self.put(msg)
-
-    def flush(self):
-        sys.__stdout__.flush()
-        sys.__stderr__.flush()
-
-    def fileno(self):
-        return self._writer.fileno()
-
-
-class StreamQueueManager(BaseManager):
-    pass
-
-
-StreamQueueManager.register("StreamQueue", StreamQueue)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - PID:%(process)d - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 class TestResult(dict):
@@ -147,7 +134,12 @@ def test_runner_wrapper(
     suite, keep_alive_pipe, stdouterr_queue, finished_pipe, result_pipe, logger
 ):
     sys.stdout = stdouterr_queue
-    sys.stderr = stdouterr_queue
+    # sys.stderr = stdouterr_queue
+    mylog = logging.getLogger("AYLOG")
+    pid = os.getpid()
+    mylog.debug(f"START WRAPPER pid {pid}")
+    mylog.debug(f"START WRAPPER for  {suite}")
+
     VppTestCase.parallel_handler = logger.handlers[0]
     result = VppTestRunner(
         keep_alive_pipe=keep_alive_pipe,
@@ -157,6 +149,7 @@ def test_runner_wrapper(
         failfast=config.failfast,
         print_summary=False,
     ).run(suite)
+    mylog.debug(f"END WRAPPER for {suite} pid {pid}")
     finished_pipe.send(result.wasSuccessful())
     finished_pipe.close()
     keep_alive_pipe.close()
@@ -164,24 +157,31 @@ def test_runner_wrapper(
 
 class TestCaseWrapper(object):
     def __init__(self, testcase_suite, manager):
+        pid = os.getpid()
         self.keep_alive_parent_end, self.keep_alive_child_end = Pipe(duplex=False)
         self.finished_parent_end, self.finished_child_end = Pipe(duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
         self.testcase_suite = testcase_suite
-        self.stdouterr_queue = manager.StreamQueue(ctx=get_context())
+        self.stdouterr_queue = manager.StreamQueue()
         self.logger = get_parallel_logger(self.stdouterr_queue)
+        client_queue = self.stdouterr_queue.client_queue()
+        mylog = logging.getLogger("AYLOG")
+        mylog.debug(f"START PROCESS for  {testcase_suite}")
         self.child = Process(
             target=test_runner_wrapper,
             args=(
                 testcase_suite,
                 self.keep_alive_child_end,
-                self.stdouterr_queue,
+                # self.stdouterr_queue,
+                client_queue,
                 self.finished_child_end,
                 self.result_child_end,
                 self.logger,
             ),
         )
+        mylog.debug(f"START PROCESS result  {testcase_suite}: {self.child} mypid {pid}")
         self.child.start()
+        mylog.debug(f"START PROCESS child started my {pid}")
         self.last_test_temp_dir = None
         self.last_test_vpp_binary = None
         self._last_test = None
@@ -194,6 +194,7 @@ class TestCaseWrapper(object):
         for testcase in self.testcase_suite:
             self.testcases_by_id[testcase.id()] = testcase
         self.result = TestResult(testcase_suite, self.testcases_by_id)
+        mylog.debug(f"RESULT for  {testcase_suite}")
 
     @property
     def last_test(self):
@@ -252,21 +253,34 @@ def stdouterr_reader_wrapper(
     unread_testcases, finished_unread_testcases, read_testcases
 ):
     read_testcase = None
+    mylog = logging.getLogger("AYLOG")
+    mylog.debug("READING TESTCASE")
     while read_testcases.is_set() or unread_testcases:
+        did_work = False
+        mylog.debug("READING TESTCASE")
+        time.sleep(0.1)
         if finished_unread_testcases:
+            mylog.debug("POP A TESTCASE")
             read_testcase = finished_unread_testcases.pop()
             unread_testcases.remove(read_testcase)
+            did_work = True
         elif unread_testcases:
             read_testcase = unread_testcases.pop()
+            did_work = True
         if read_testcase:
             data = ""
             while data is not None:
                 sys.stdout.write(data)
+                ### AYXX
                 data = read_testcase.stdouterr_queue.get()
-
+            # read_testcase.stdouterr_queue.send_to_remote(None)
             read_testcase.stdouterr_queue.close()
             finished_unread_testcases.discard(read_testcase)
             read_testcase = None
+            did_work = True
+        if did_work == False:
+            mylog.debug("SLEEP FOR A SEC - no work was done")
+            time.sleep(1)
 
 
 def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
@@ -374,9 +388,8 @@ def run_forked(testcase_suites):
     results = []
     unread_testcases = set()
     finished_unread_testcases = set()
-    manager = StreamQueueManager()
-    manager.start()
     tests_running = 0
+    manager = UnixSocketManager()
     free_cpus = list(available_cpus)
 
     def on_suite_start(tc):
@@ -409,6 +422,7 @@ def run_forked(testcase_suites):
         )
 
     while free_cpus and testcase_suites:
+        work_done = False
         a_suite = testcase_suites[0]
         if a_suite.is_tagged_run_solo:
             a_suite = testcase_suites.pop(0)
@@ -434,10 +448,15 @@ def run_forked(testcase_suites):
 
     failed_wrapped_testcases = set()
     stop_run = False
+    mylog = logging.getLogger("AYLOG")
 
     try:
         while wrapped_testcase_suites or testcase_suites:
             finished_testcase_suites = set()
+            mylog.debug(
+                "CHECKING IF SOMETHING TO DO pid %d tests running %d max concurrent %d"
+                % (os.getpid(), tests_running, max_concurrent_tests)
+            )
             for wrapped_testcase_suite in wrapped_testcase_suites:
                 while wrapped_testcase_suite.result_parent_end.poll():
                     wrapped_testcase_suite.result.process_result(
@@ -471,10 +490,13 @@ def run_forked(testcase_suites):
                 fail = False
                 if wrapped_testcase_suite.last_heard + config.timeout < time.time():
                     fail = True
+                    # fail = False # single-threaded case, SKIPped test, not a failure
                     wrapped_testcase_suite.logger.critical(
                         "Child test runner process timed out "
+                        "after %d seconds"
                         "(last test running was `%s' in `%s')!"
                         % (
+                            config.timeout,
                             wrapped_testcase_suite.last_test,
                             wrapped_testcase_suite.last_test_temp_dir,
                         )
@@ -550,8 +572,12 @@ def run_forked(testcase_suites):
                     )
                 finished_testcase.close_pipes()
                 wrapped_testcase_suites.remove(finished_testcase)
+                mylog = logging.getLogger("AYLOG")
+                mylog.debug("FINISHED TESTCASE UNREAD %d" % os.getpid())
                 finished_unread_testcases.add(finished_testcase)
                 finished_testcase.stdouterr_queue.put(None)
+                # mylog.debug("WAITING FOR ACK for None on %d" % os.getpid())
+                # finished_testcase.stdouterr_queue.get()
                 on_suite_finish(finished_testcase)
                 if stop_run:
                     while testcase_suites:
@@ -571,7 +597,7 @@ def run_forked(testcase_suites):
                 if solo_testcase_suites and tests_running == 0:
                     a_suite = solo_testcase_suites.pop(0)
                     run_suite(a_suite)
-            time.sleep(0.1)
+            time.sleep(1)
     except Exception:
         for wrapped_testcase_suite in wrapped_testcase_suites:
             wrapped_testcase_suite.child.terminate()
