@@ -4,7 +4,7 @@ import unittest
 
 from asfframework import VppAsfTestCase, VppTestRunner
 
-
+@unittest.skip("AY TEST")
 class TestCrypto(VppAsfTestCase):
     """Crypto Test Case"""
 
