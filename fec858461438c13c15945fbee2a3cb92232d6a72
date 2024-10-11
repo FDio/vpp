@@ -16,6 +16,24 @@
       "message": "s/init/crypto/",
       "revId": "fec858461438c13c15945fbee2a3cb92232d6a72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbef53c1_36726cf6",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 3076
+      },
+      "writtenOn": "2024-10-11T12:34:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f3c373bc_e93e1cf8",
+      "revId": "fec858461438c13c15945fbee2a3cb92232d6a72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -16,6 +16,24 @@
       "message": "If this code execuded on worker thread vlib_log should not be used.",
       "revId": "b23887235c526775d045432ea0ee60337077414c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c56d617a_b47448fb",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 3076
+      },
+      "writtenOn": "2024-10-11T12:34:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07a1657d_a2848a75",
+      "revId": "b23887235c526775d045432ea0ee60337077414c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
