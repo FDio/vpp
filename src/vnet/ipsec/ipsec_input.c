@@ -428,11 +428,12 @@ ipsec_ah_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
 
 always_inline void
 ipsec_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
-			  esp_header_t *esp0, u32 thread_index,
-			  ipsec_spd_t *spd0, vlib_buffer_t **b,
-			  vlib_node_runtime_t *node, u64 *ipsec_bypassed,
-			  u64 *ipsec_dropped, u64 *ipsec_matched,
-			  u64 *ipsec_unprocessed, u16 *next)
+			  udp_header_t *udp0, esp_header_t *esp0,
+			  u32 thread_index, ipsec_spd_t *spd0,
+			  vlib_buffer_t **b, vlib_node_runtime_t *node,
+			  u64 *ipsec_bypassed, u64 *ipsec_dropped,
+			  u64 *ipsec_matched, u64 *ipsec_unprocessed,
+			  u16 *next, bool is_udp)
 
 {
   ipsec_policy_t *p0 = NULL;
@@ -445,17 +446,35 @@ ipsec_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
 
   /* if flow cache is enabled, first search through flow cache for a
    * policy match for either protect, bypass or discard rules, in that
-   * order. if no match is found search_flow_cache is set to false (1)
+   * order. if no match is found search_flow_cache is set to false (0)
    * and we revert back to linear search
    */
-
   search_flow_cache = im->input_flow_cache_flag;
+
 udp_or_esp:
 
-  if (esp0->spi == 0)
+  /* RFC5996 Section 2.23: "To tunnel IKE packets over UDP port 4500, the IKE
+   * header has four octets of zero prepended and the result immediately
+   * follows the UDP header. To tunnel ESP packets over UDP port 4500, the ESP
+   * header immediately follows the UDP header. Since the first four octets of
+   * the ESP header contain the SPI, and the SPI cannot validly be zero, it is
+   * always possible to distinguish ESP and IKE messages."
+   */
+
+  /* RFC3948 Section 2.1 UDP-Encapsulated ESP Header Format:
+   * "The UDP header is a standard [RFC0768] header, where
+   * - the Source Port and Destination Port MUST be the same as that used
+   *   by IKE traffic,
+   * - the IPv4 UDP Checksum SHOULD be transmitted as a zero value, and
+   * - receivers MUST NOT depend on the UDP checksum being a zero value.
+   * The SPI field in the ESP header MUST NOT be a zero value."
+   */
+  if ((((is_udp == true) && (udp0->checksum == 0)) || (is_udp == false)) &&
+      (esp0->spi == 0))
     {
-      /* RFC 4303, section 2.1: The SPI value of zero (0 is reserved for
-       * local, implementation-specific use and MUST NOT be sent on the wire.
+      /* RFC4303 Section 2.1: "The SPI value of zero (0 is reserved for
+       * local, implementation-specific use and MUST NOT be sent on the
+       * wire."
        */
       *ipsec_unprocessed += 1;
       next[0] = IPSEC_INPUT_NEXT_DROP;
@@ -703,27 +722,30 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  udp_header_t *udp0 = NULL;
 	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
-	  /* RFC5996 Section 2.23 "Port 4500 is reserved for
+	  /* RFC5996 Section 2.23: "Port 4500 is reserved for
 	   * UDP-encapsulated ESP and IKE."
+	   * RFC5996 Section 3.1: "IKE messages use UDP ports 500 and/or 4500"
 	   */
-	  if (clib_host_to_net_u16 (4500) == udp0->dst_port)
-	    {
-	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
+	  if ((clib_host_to_net_u16 (500) == udp0->dst_port) ||
+	      (clib_host_to_net_u16 (4500) == udp0->dst_port))
+	  {
+	    esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
 
-	      ipsec_esp_packet_process (vm, im, ip0, esp0, thread_index, spd0,
-					b, node, &ipsec_bypassed,
-					&ipsec_dropped, &ipsec_matched,
-					&ipsec_unprocessed, next);
-	      if (ipsec_bypassed > 0)
-		goto ipsec_bypassed;
-	    }
+	    ipsec_esp_packet_process (vm, im, ip0, udp0, esp0, thread_index,
+				      spd0, b, node, &ipsec_bypassed,
+				      &ipsec_dropped, &ipsec_matched,
+				      &ipsec_unprocessed, next, true);
+	    if (ipsec_bypassed > 0)
+	      goto ipsec_bypassed;
+	  }
 	}
       else if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_ESP))
 	{
 	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	  ipsec_esp_packet_process (vm, im, ip0, esp0, thread_index, spd0, b,
-				    node, &ipsec_bypassed, &ipsec_dropped,
-				    &ipsec_matched, &ipsec_unprocessed, next);
+	  ipsec_esp_packet_process (vm, im, ip0, NULL, esp0, thread_index,
+				    spd0, b, node, &ipsec_bypassed,
+				    &ipsec_dropped, &ipsec_matched,
+				    &ipsec_unprocessed, next, false);
 	  if (ipsec_bypassed > 0)
 	    goto ipsec_bypassed;
 	}
