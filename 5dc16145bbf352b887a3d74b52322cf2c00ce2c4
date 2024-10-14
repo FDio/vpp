@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1576b3cf_4c817313",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-10-14T19:39:10Z",
+      "side": 1,
+      "message": "These comments don\u0027t help me understand the problem. In this case, it would be better to summarize what the code is doing, and point to the relevant sections in the RFC rather than quoting the text which is pretty verbose.",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f7fcbf4_aee24b65",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-10-14T19:39:10Z",
+      "side": 1,
+      "message": "Why use a new \"is_udp\" flag? The packet is UDP is udp0 is !\u003d NULL.",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efd79dec_957d4d56",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-10-14T19:39:10Z",
+      "side": 1,
+      "message": "Instead of all these comments, why not comment with something like:\n\n  Do not process UDP packets with checksum \u003d\u003d 0 or\n  ESP packets with SPI \u003d\u003d 0 because \u003cbrief explanation\u003e\n\nIt\u0027s not clear to me why you try to distinguish UDP packets with checksum \u003d\u003d 0 when you\u0027ve already determined that this is a UDP-ESP packet because of the port numbers, and the checksum can be zero or non-zero for valid packets.",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
