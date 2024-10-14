@@ -515,7 +515,8 @@ __clib_export void
 clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 			 uword n_pages, clib_mem_page_stats_t * stats)
 {
-  int i, *status = 0;
+  int *status = 0;
+  uword i;
   void **ptr = 0;
   unsigned char incore;
 
