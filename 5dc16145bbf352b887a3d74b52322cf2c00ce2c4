@@ -50,6 +50,24 @@
       "message": "Instead of all these comments, why not comment with something like:\n\n  Do not process UDP packets with checksum \u003d\u003d 0 or\n  ESP packets with SPI \u003d\u003d 0 because \u003cbrief explanation\u003e\n\nIt\u0027s not clear to me why you try to distinguish UDP packets with checksum \u003d\u003d 0 when you\u0027ve already determined that this is a UDP-ESP packet because of the port numbers, and the checksum can be zero or non-zero for valid packets.",
       "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8111b2fd_6ffa9208",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-10-14T23:34:25Z",
+      "side": 1,
+      "message": "you need to distinguish between UDP-ESP and UDP-IKEv2 both come on same port numbers, but for ESP checksum is 0 while in case of UDP-IKEv2 checksum is !\u003d 0. ESP cannot have SPI \u003d\u003d 0, but IKEv2 have SPI \u003d\u003d 0.",
+      "parentUuid": "efd79dec_957d4d56",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
