@@ -139,6 +139,24 @@
       "parentUuid": "58ae7ad0_0a3330f4",
       "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0bf6e38b_3fa6c080",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2024-10-15T13:31:10Z",
+      "side": 1,
+      "message": "\u003e UDP-IKEV2 has: UDP protocol, checksum !\u003d 0, SPI \u003d\u003d 0 and with port 500/4500\n\u003e UDP-ESP   has: UDP protocol, checksum \u003d\u003d 0, SPI !\u003d 0 and with port 4500\n\ncan we add this info in the comments",
+      "parentUuid": "00c98ba7_75faa50c",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
