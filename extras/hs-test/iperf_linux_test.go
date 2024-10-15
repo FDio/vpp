@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
@@ -41,8 +42,6 @@ func IperfLinuxTest(s *IperfSuite) {
 			" -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
-
+	s.AssertChannelClosed(time.Minute*3, clnCh)
 	s.Log(<-clnRes)
-	err = <-clnCh
-	s.AssertNil(err, "err: '%s'", err)
 }
