@@ -41,8 +41,16 @@ typedef struct
   u32 po_thread_index;
 } proxy_session_t;
 
+typedef struct proxy_worker_
+{
+  clib_spinlock_t pending_connects_lock;
+  vnet_connect_args_t *pending_connects;
+  vnet_connect_args_t *burst_connects;
+} proxy_worker_t;
+
 typedef struct
 {
+  proxy_worker_t *workers;		/**< per-thread data */
   proxy_session_t *sessions;		/**< session pool, shared */
   clib_spinlock_t sessions_lock;	/**< lock for session pool */
   u8 **rx_buf;				/**< intermediate rx buffers */
@@ -74,6 +82,13 @@ typedef struct
 } proxy_main_t;
 
 extern proxy_main_t proxy_main;
+
+static inline proxy_worker_t *
+proxy_worker_get (u32 thread_index)
+{
+  proxy_main_t *pm = &proxy_main;
+  return vec_elt_at_index (pm->workers, thread_index);
+}
 
 #endif /* __included_proxy_h__ */
 
