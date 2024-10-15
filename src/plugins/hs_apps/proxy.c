@@ -24,45 +24,78 @@ proxy_main_t proxy_main;
 
 #define TCP_MSS 1460
 
-typedef struct
-{
-  session_endpoint_cfg_t sep;
-  u32 app_index;
-  u32 api_context;
-} proxy_connect_args_t;
-
 static void
-proxy_cb_fn (void *data, u32 data_len)
+proxy_do_connect (vnet_connect_args_t *a)
 {
-  proxy_connect_args_t *pa = (proxy_connect_args_t *) data;
-  vnet_connect_args_t a;
-
-  clib_memset (&a, 0, sizeof (a));
-  a.api_context = pa->api_context;
-  a.app_index = pa->app_index;
-  clib_memcpy (&a.sep_ext, &pa->sep, sizeof (pa->sep));
-  vnet_connect (&a);
-  if (a.sep_ext.ext_cfg)
-    clib_mem_free (a.sep_ext.ext_cfg);
+  vnet_connect (a);
+  if (a->sep_ext.ext_cfg)
+    clib_mem_free (a->sep_ext.ext_cfg);
 }
 
 static void
-proxy_call_main_thread (vnet_connect_args_t * a)
+proxy_handle_connects_rpc (void *args)
 {
-  if (vlib_get_thread_index () == 0)
+  u32 thread_index = pointer_to_uword (args), n_connects = 0, n_pending;
+  proxy_worker_t *wrk;
+  u32 max_connects;
+
+  wrk = proxy_worker_get (thread_index);
+
+  clib_spinlock_lock (&wrk->pending_connects_lock);
+
+  n_pending = clib_fifo_elts (wrk->pending_connects);
+  max_connects = clib_min (32, n_pending);
+  vec_validate (wrk->burst_connects, max_connects);
+
+  while (n_connects < max_connects)
+    clib_fifo_sub1 (wrk->pending_connects, wrk->burst_connects[n_connects++]);
+
+  clib_spinlock_unlock (&wrk->pending_connects_lock);
+
+  /* Do connects without locking pending_connects */
+  n_connects = 0;
+  while (n_connects < max_connects)
     {
-      vnet_connect (a);
-      if (a->sep_ext.ext_cfg)
-	clib_mem_free (a->sep_ext.ext_cfg);
+      proxy_do_connect (&wrk->burst_connects[n_connects]);
+      n_connects += 1;
     }
-  else
+
+  /* More work to do, program rpc */
+  if (max_connects < n_pending)
+    session_send_rpc_evt_to_thread_force (
+      transport_cl_thread (), proxy_handle_connects_rpc,
+      uword_to_pointer ((uword) thread_index, void *));
+}
+
+static void
+proxy_program_connect (vnet_connect_args_t *a)
+{
+  u32 connects_thread = transport_cl_thread (), thread_index, n_pending;
+  proxy_worker_t *wrk;
+
+  thread_index = vlib_get_thread_index ();
+
+  /* If already on first worker, handle request */
+  if (thread_index == connects_thread)
     {
-      proxy_connect_args_t args;
-      args.api_context = a->api_context;
-      args.app_index = a->app_index;
-      clib_memcpy (&args.sep, &a->sep_ext, sizeof (a->sep_ext));
-      vl_api_rpc_call_main_thread (proxy_cb_fn, (u8 *) & args, sizeof (args));
+      proxy_do_connect (a);
+      return;
     }
+
+  /* If not on first worker, queue request */
+  wrk = proxy_worker_get (thread_index);
+
+  clib_spinlock_lock (&wrk->pending_connects_lock);
+
+  clib_fifo_add1 (wrk->pending_connects, *a);
+  n_pending = vec_len (wrk->pending_connects);
+
+  clib_spinlock_unlock (&wrk->pending_connects_lock);
+
+  if (n_pending == 1)
+    session_send_rpc_evt_to_thread_force (
+      connects_thread, proxy_handle_connects_rpc,
+      uword_to_pointer ((uword) thread_index, void *));
 }
 
 static proxy_session_t *
@@ -415,7 +448,7 @@ proxy_rx_callback (session_t * s)
 	  a->sep_ext.ext_cfg->crypto.ckpair_index = pm->ckpair_index;
 	}
 
-      proxy_call_main_thread (a);
+      proxy_program_connect (a);
     }
 
   return 0;
