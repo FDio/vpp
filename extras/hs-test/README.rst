@@ -167,8 +167,8 @@ Modifying the framework
 
                         // Add custom setup code here
 
-                        s.ConfigureNetworkTopology("myTopology")
-                        s.LoadContainerTopology("2peerVeth")
+                        s.ConfigureNetworkTopology("myNetworkTopology")
+                        s.LoadContainerTopology("myContainerTopology")
                 }
 
 #. In suite file, implement ``SetupTest`` method which gets executed before each test. Starting containers and
@@ -216,7 +216,7 @@ Modifying the framework
         			It(testName, func(ctx SpecContext) {
         				s.Log(testName + ": BEGIN")
         				test(&s)
-        			}, SpecTimeout(SuiteTimeout))
+        			}, SpecTimeout(TestTimeout))
         		}
         	}
                 })
@@ -237,7 +237,7 @@ Modifying the framework
                         It(testName, Label("SOLO"), func(ctx SpecContext) {
                                 s.Log(testName + ": BEGIN")
 			        test(&s)
-		        }, SpecTimeout(time.Minute*5))
+		        }, SpecTimeout(TestTimeout))
                 })
 
 #. Next step is to add test cases to the suite. For that, see section `Adding a test case`_ above

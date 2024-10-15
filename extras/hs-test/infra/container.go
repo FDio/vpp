@@ -328,7 +328,6 @@ func (c *Container) getVolumesAsSlice() []string {
 	}
 
 	core_pattern, err := sysctl.Read("kernel.core_pattern")
-	core_pattern = strings.ReplaceAll(core_pattern, "%", "%%")
 	if err == nil {
 		if len(core_pattern) > 0 && core_pattern[0] != '|' {
 			index := strings.LastIndex(core_pattern, "/")

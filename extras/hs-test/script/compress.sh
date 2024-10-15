@@ -11,7 +11,7 @@ then
     if [ -n "${WORKSPACE}" ]
     then
         echo -n "Copying docker logs..."
-        dirs=$(jq -r '.[0] | .SpecReports[] | select(.State == "failed") | .LeafNodeText | split("/")[1]' ${HS_ROOT}/summary/report.json)
+        dirs=$(jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | .LeafNodeText | split("/")[1]' ${HS_ROOT}/summary/report.json)
         for dirName in $dirs; do
             logDir=/tmp/hs-test/$dirName
             if [ -d "$logDir" ]; then
