@@ -54,6 +54,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "30897824_5b5872ad",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2024-10-15T13:20:27Z",
+      "side": 1,
+      "message": "In this patch this checksum it will be checked if received packages were UDP protocol with port 500/4500.",
+      "parentUuid": "f646d418_05626529",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "efd79dec_957d4d56",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 1
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "What was the ip0-\u003eprotocol value when UDP-IKEV2 packet was received? It was not UDP?",
       "parentUuid": "8111b2fd_6ffa9208",
+      "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00c98ba7_75faa50c",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2024-10-15T13:20:27Z",
+      "side": 1,
+      "message": "UDP-IKEV2 has: UDP protocol, checksum !\u003d 0, SPI \u003d\u003d 0 and with port 500/4500\nUDP-ESP   has: UDP protocol, checksum \u003d\u003d 0, SPI !\u003d 0 and with port 4500",
+      "parentUuid": "58ae7ad0_0a3330f4",
       "revId": "5dc16145bbf352b887a3d74b52322cf2c00ce2c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
