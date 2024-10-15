@@ -83,7 +83,7 @@ var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
 			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(SuiteTimeout))
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })
@@ -112,7 +112,7 @@ var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, func
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(SuiteTimeout))
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })

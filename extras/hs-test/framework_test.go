@@ -15,9 +15,9 @@ import (
 func TestHst(t *testing.T) {
 	if *IsVppDebug {
 		// 30 minute timeout so that the framework won't timeout while debugging
-		SuiteTimeout = time.Minute * 30
+		TestTimeout = time.Minute * 30
 	} else {
-		SuiteTimeout = time.Minute * 5
+		TestTimeout = time.Minute * 5
 	}
 
 	output, err := os.ReadFile("/sys/devices/system/node/online")

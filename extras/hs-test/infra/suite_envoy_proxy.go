@@ -191,7 +191,7 @@ var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {
 			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(SuiteTimeout))
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })
@@ -220,7 +220,7 @@ var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, func() {
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(SuiteTimeout))
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })

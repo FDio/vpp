@@ -24,6 +24,10 @@ func LDPreloadIperfVppTest(s *LdpSuite) {
 	clnCh := make(chan error)
 	clnRes := make(chan string, 1)
 
+	defer func() {
+		stopServerCh <- struct{}{}
+	}()
+
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid()
@@ -39,14 +43,9 @@ func LDPreloadIperfVppTest(s *LdpSuite) {
 		cmd := "iperf3 -c " + serverVethAddress + " -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
+
+	s.AssertChannelClosed(TestTimeout, clnCh)
 	s.Log(<-clnRes)
-
-	// wait for client's result
-	err = <-clnCh
-	s.AssertNil(err, fmt.Sprint(err))
-
-	// stop server
-	stopServerCh <- struct{}{}
 }
 
 func RedisBenchmarkTest(s *LdpSuite) {
@@ -60,6 +59,10 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
 	clnRes := make(chan string, 1)
+
+	defer func() {
+		doneSrv <- struct{}{}
+	}()
 
 	go func() {
 		defer GinkgoRecover()
@@ -79,12 +82,9 @@ func RedisBenchmarkTest(s *LdpSuite) {
 			cmd = "redis-benchmark --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
 		}
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
+
 	}()
 
+	s.AssertChannelClosed(TestTimeout, clnCh)
 	s.Log(<-clnRes)
-	// wait for client's result
-	err = <-clnCh
-	s.AssertNil(err, fmt.Sprint(err))
-	// stop server
-	doneSrv <- struct{}{}
 }

@@ -43,7 +43,7 @@ var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var NumaAwareCpuAlloc bool
-var SuiteTimeout time.Duration
+var TestTimeout time.Duration
 
 type HstSuite struct {
 	Containers        map[string]*Container
@@ -310,6 +310,10 @@ func (s *HstSuite) AssertHttpBody(resp *http.Response, expectedBody string, msgA
 	ExpectWithOffset(2, resp).To(HaveHTTPBody(expectedBody), msgAndArgs...)
 }
 
+func (s *HstSuite) AssertChannelClosed(timeout time.Duration, channel chan error) {
+	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
+}
+
 func (s *HstSuite) CreateLogger() {
 	suiteName := s.GetCurrentSuiteName()
 	var err error
@@ -323,12 +327,19 @@ func (s *HstSuite) CreateLogger() {
 // Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
 // to keep console tidy
 func (s *HstSuite) Log(log any, arg ...any) {
-	logs := strings.Split(fmt.Sprintf(fmt.Sprint(log), arg...), "\n")
+	var logStr string
+	if len(arg) == 0 {
+		logStr = fmt.Sprint(log)
+	} else {
+		logStr = fmt.Sprintf(fmt.Sprint(log), arg...)
+	}
+	logs := strings.Split(logStr, "\n")
+
 	for _, line := range logs {
 		s.Logger.Println(line)
 	}
 	if *IsVerbose {
-		GinkgoWriter.Println(fmt.Sprintf(fmt.Sprint(log), arg...))
+		GinkgoWriter.Println(logStr)
 	}
 }
 

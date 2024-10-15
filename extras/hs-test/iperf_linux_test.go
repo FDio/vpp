@@ -41,8 +41,6 @@ func IperfLinuxTest(s *IperfSuite) {
 			" -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
-
+	s.AssertChannelClosed(TestTimeout, clnCh)
 	s.Log(<-clnRes)
-	err = <-clnCh
-	s.AssertNil(err, "err: '%s'", err)
 }
