@@ -910,17 +910,58 @@ typedef struct app_sapi_msg_
 } __clib_packed app_sapi_msg_t;
 
 static inline void
-session_endpoint_alloc_ext_cfg (session_endpoint_cfg_t *sep_ext,
-				transport_endpt_ext_cfg_type_t type)
+session_endpoint_init_ext_cfgs (session_endpoint_cfg_t *sep_ext)
 {
-  transport_endpt_ext_cfg_t *cfg;
-  u32 cfg_size;
+  sep_ext->ext_cfgs.len = TRANSPORT_ENDPT_EXT_CFGS_CHUNK_SIZE;
+  sep_ext->ext_cfgs.data =
+    clib_mem_alloc (TRANSPORT_ENDPT_EXT_CFGS_CHUNK_SIZE);
+  clib_memset (sep_ext->ext_cfgs.data, 0, sep_ext->ext_cfgs.len);
+}
 
-  cfg_size = sizeof (transport_endpt_ext_cfg_t);
-  cfg = clib_mem_alloc (cfg_size);
-  clib_memset (cfg, 0, cfg_size);
-  cfg->type = type;
-  sep_ext->ext_cfg = cfg;
+static inline transport_endpt_ext_cfg_t *
+session_endpoint_add_ext_cfg (session_endpoint_cfg_t *sep_ext,
+			      transport_endpt_ext_cfg_type_t type, u16 len)
+{
+  transport_endpt_ext_cfg_t *ext_cfg;
+  ASSERT (sep_ext->ext_cfgs.tail_offset + len < sep_ext->ext_cfgs.len);
+  ext_cfg = (transport_endpt_ext_cfg_t *) sep_ext->ext_cfgs.data +
+	    sep_ext->ext_cfgs.tail_offset;
+  ext_cfg->len = len;
+  ext_cfg->type = type;
+  sep_ext->ext_cfgs.tail_offset += len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
+  return ext_cfg;
+}
+
+static inline transport_endpt_ext_cfg_t *
+session_endpoint_get_ext_cfg (session_endpoint_cfg_t *sep_ext,
+			      transport_endpt_ext_cfg_type_t type)
+{
+  transport_endpt_ext_cfg_t *ext_cfg;
+
+  if (!sep_ext->ext_cfgs.len)
+    return 0;
+
+  ext_cfg = (transport_endpt_ext_cfg_t *) sep_ext->ext_cfgs.data;
+  while ((u8 *) ext_cfg <
+	 sep_ext->ext_cfgs.data + sep_ext->ext_cfgs.tail_offset)
+    {
+      if (ext_cfg->type == type)
+	return ext_cfg;
+      ext_cfg = (transport_endpt_ext_cfg_t *) sep_ext->ext_cfgs.data +
+		ext_cfg->len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
+    }
+  return 0;
+}
+
+static inline void
+session_endpoint_free_ext_cfgs (session_endpoint_cfg_t *sep_ext)
+{
+  if (!sep_ext->ext_cfgs.len)
+    return;
+  clib_mem_free (sep_ext->ext_cfgs.data);
+  sep_ext->ext_cfgs.len = 0;
+  sep_ext->ext_cfgs.tail_offset = 0;
+  sep_ext->ext_cfgs.data = 0;
 }
 
 #endif /* __included_uri_h__ */

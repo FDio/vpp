@@ -136,7 +136,14 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   a->sep_ext.transport_flags = mp->flags;
 
   if (mp->ext_config)
-    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+    {
+      transport_endpt_ext_cfg_t *ext_cfg =
+	session_mq_get_ext_config (app, mp->ext_config);
+      a->sep_ext.ext_cfgs.data = (u8 *) ext_cfg;
+      a->sep_ext.ext_cfgs.len =
+	ext_cfg->len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
+      a->sep_ext.ext_cfgs.tail_offset = a->sep_ext.ext_cfgs.len;
+    }
 
   if ((rv = vnet_listen (a)))
     session_worker_stat_error_inc (wrk, rv, 1);
@@ -213,7 +220,14 @@ session_mq_connect_one (session_connect_msg_t *mp)
   a->wrk_map_index = mp->wrk_index;
 
   if (mp->ext_config)
-    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+    {
+      transport_endpt_ext_cfg_t *ext_cfg =
+	session_mq_get_ext_config (app, mp->ext_config);
+      a->sep_ext.ext_cfgs.data = (u8 *) ext_cfg;
+      a->sep_ext.ext_cfgs.len =
+	ext_cfg->len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
+      a->sep_ext.ext_cfgs.tail_offset = a->sep_ext.ext_cfgs.len;
+    }
 
   if ((rv = vnet_connect (a)))
     {

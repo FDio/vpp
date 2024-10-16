@@ -1332,14 +1332,16 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   quic_ctx_t *ctx;
   app_worker_t *app_wrk;
   application_t *app;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int error;
 
-  if (!sep->ext_cfg)
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (!ext_cfg)
     return SESSION_E_NOEXTCFG;
 
   /* Use pool on thread 1 if we have workers because of UDP */
   thread_index = transport_cl_thread ();
-  ccfg = &sep->ext_cfg->crypto;
+  ccfg = &ext_cfg->crypto;
 
   clib_memset (cargs, 0, sizeof (*cargs));
   ctx_index = quic_ctx_alloc (thread_index);
@@ -1475,13 +1477,15 @@ quic_start_listen (u32 quic_listen_session_index,
   quic_ctx_t *lctx;
   u32 lctx_index;
   app_listener_t *app_listener;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
-  if (!sep->ext_cfg)
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (!ext_cfg)
     return SESSION_E_NOEXTCFG;
 
-  ccfg = &sep->ext_cfg->crypto;
+  ccfg = &ext_cfg->crypto;
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);

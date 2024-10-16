@@ -822,15 +822,17 @@ hss_listen (void)
 
   if (need_crypto)
     {
-      session_endpoint_alloc_ext_cfg (&a->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      a->sep_ext.ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
+      session_endpoint_init_ext_cfgs (&a->sep_ext);
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
     }
 
   rv = vnet_listen (a);
 
   if (need_crypto)
-    clib_mem_free (a->sep_ext.ext_cfg);
+    session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
 }
