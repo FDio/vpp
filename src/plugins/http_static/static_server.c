@@ -804,6 +804,7 @@ hss_listen (void)
   vnet_listen_args_t _a, *a = &_a;
   char *uri = "tcp://0.0.0.0/80";
   u8 need_crypto;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -822,15 +823,15 @@ hss_listen (void)
 
   if (need_crypto)
     {
-      session_endpoint_alloc_ext_cfg (&a->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      a->sep_ext.ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
+      ext_cfg = session_endpoint_alloc_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
     }
 
   rv = vnet_listen (a);
 
   if (need_crypto)
-    clib_mem_free (a->sep_ext.ext_cfg);
+    session_endpoint_free_ext_cfg (&a->sep_ext);
 
   return rv;
 }

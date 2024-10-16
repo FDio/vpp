@@ -300,6 +300,7 @@ typedef struct transport_endpt_ext_cfg_
   union
   {
     transport_endpt_crypto_cfg_t crypto;
+    u32 opaque; /**< For general use */
     u8 data[0];
   };
 } transport_endpt_ext_cfg_t;

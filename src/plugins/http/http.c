@@ -1876,11 +1876,12 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   http_main_t *hm = &http_main;
   session_endpoint_cfg_t *sep;
   app_worker_t *app_wrk;
-  transport_proto_t tp;
+  transport_proto_t tp = TRANSPORT_PROTO_TCP;
   app_listener_t *al;
   application_t *app;
   http_conn_t *lhc;
   u32 lhc_index;
+  transport_endpt_ext_cfg_t *ext_cfg;
 
   sep = (session_endpoint_cfg_t *) tep;
 
@@ -1890,7 +1891,10 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   args->app_index = hm->app_index;
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
-  tp = sep->ext_cfg ? TRANSPORT_PROTO_TLS : TRANSPORT_PROTO_TCP;
+
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (ext_cfg)
+    tp = TRANSPORT_PROTO_TLS;
   args->sep_ext.transport_proto = tp;
 
   if (vnet_listen (args))

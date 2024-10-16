@@ -54,8 +54,7 @@ proxy_do_connect (vnet_connect_args_t *a)
 {
   ASSERT (session_vlib_thread_is_cl_thread ());
   vnet_connect (a);
-  if (a->sep_ext.ext_cfg)
-    clib_mem_free (a->sep_ext.ext_cfg);
+  session_endpoint_free_ext_cfg (&a->sep_ext);
 }
 
 static void
@@ -487,9 +486,9 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
 
   if (proxy_transport_needs_crypto (a->sep.transport_proto))
     {
-      session_endpoint_alloc_ext_cfg (&a->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      a->sep_ext.ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_alloc_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      ext_cfg->crypto.ckpair_index = pm->ckpair_index;
     }
 
   proxy_program_connect (a);
@@ -895,22 +894,23 @@ proxy_server_listen ()
 {
   proxy_main_t *pm = &proxy_main;
   vnet_listen_args_t _a, *a = &_a;
-  int rv;
+  int rv, need_crypto;
 
   clib_memset (a, 0, sizeof (*a));
 
   a->app_index = pm->server_app_index;
   clib_memcpy (&a->sep_ext, &pm->server_sep, sizeof (pm->server_sep));
-  if (proxy_transport_needs_crypto (a->sep.transport_proto))
+  need_crypto = proxy_transport_needs_crypto (a->sep.transport_proto);
+  if (need_crypto)
     {
-      session_endpoint_alloc_ext_cfg (&a->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      a->sep_ext.ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_alloc_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      ext_cfg->crypto.ckpair_index = pm->ckpair_index;
     }
 
   rv = vnet_listen (a);
-  if (a->sep_ext.ext_cfg)
-    clib_mem_free (a->sep_ext.ext_cfg);
+  if (need_crypto)
+    session_endpoint_free_ext_cfg (&a->sep_ext);
 
   return rv;
 }
