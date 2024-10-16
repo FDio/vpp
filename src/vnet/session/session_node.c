@@ -115,6 +115,7 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   session_listen_msg_t *mp;
   app_worker_t *app_wrk;
   application_t *app;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   app_check_thread_and_barrier (wrk, elt);
@@ -136,7 +137,12 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   a->sep_ext.transport_flags = mp->flags;
 
   if (mp->ext_config)
-    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+    {
+      ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+      u8 *data = session_endpoint_alloc_ext_cfg2 (&a->sep_ext, ext_cfg->type,
+						  ext_cfg->len);
+      clib_memcpy_fast (data, ext_cfg->data, ext_cfg->len);
+    }
 
   if ((rv = vnet_listen (a)))
     session_worker_stat_error_inc (wrk, rv, 1);
@@ -145,7 +151,10 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   app_worker_listened_notify (app_wrk, a->handle, mp->context, rv);
 
   if (mp->ext_config)
-    session_mq_free_ext_config (app, mp->ext_config);
+    {
+      session_mq_free_ext_config (app, mp->ext_config);
+      session_endpoint_free_ext_cfg (&a->sep_ext);
+    }
 
   /* Make sure events are flushed before releasing barrier, to avoid
    * potential race with accept. */
@@ -185,6 +194,7 @@ session_mq_connect_one (session_connect_msg_t *mp)
   app_worker_t *app_wrk;
   session_worker_t *wrk;
   application_t *app;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   app = application_lookup (mp->client_index);
@@ -213,7 +223,12 @@ session_mq_connect_one (session_connect_msg_t *mp)
   a->wrk_map_index = mp->wrk_index;
 
   if (mp->ext_config)
-    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+    {
+      ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+      u8 *data = session_endpoint_alloc_ext_cfg2 (&a->sep_ext, ext_cfg->type,
+						  ext_cfg->len);
+      clib_memcpy_fast (data, ext_cfg->data, ext_cfg->len);
+    }
 
   if ((rv = vnet_connect (a)))
     {
@@ -224,7 +239,10 @@ session_mq_connect_one (session_connect_msg_t *mp)
     }
 
   if (mp->ext_config)
-    session_mq_free_ext_config (app, mp->ext_config);
+    {
+      session_mq_free_ext_config (app, mp->ext_config);
+      session_endpoint_free_ext_cfg (&a->sep_ext);
+    }
 }
 
 static void

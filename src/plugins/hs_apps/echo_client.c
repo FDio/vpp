@@ -946,15 +946,15 @@ ec_connect_rpc (void *args)
       a->api_context = ci;
       if (needs_crypto)
 	{
-	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
-					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-	  a->sep_ext.ext_cfg->crypto.ckpair_index = ecm->ckpair_index;
+	  transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_alloc_ext_cfg (
+	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+	  ext_cfg->crypto.ckpair_index = ecm->ckpair_index;
 	}
 
       rv = vnet_connect (a);
 
       if (needs_crypto)
-	clib_mem_free (a->sep_ext.ext_cfg);
+	session_endpoint_free_ext_cfg (&a->sep_ext);
 
       if (rv)
 	{

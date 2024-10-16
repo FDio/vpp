@@ -909,18 +909,58 @@ typedef struct app_sapi_msg_
   };
 } __clib_packed app_sapi_msg_t;
 
-static inline void
+static inline transport_endpt_ext_cfg_t *
 session_endpoint_alloc_ext_cfg (session_endpoint_cfg_t *sep_ext,
 				transport_endpt_ext_cfg_type_t type)
 {
   transport_endpt_ext_cfg_t *cfg;
-  u32 cfg_size;
 
-  cfg_size = sizeof (transport_endpt_ext_cfg_t);
-  cfg = clib_mem_alloc (cfg_size);
-  clib_memset (cfg, 0, cfg_size);
+  vec_add2 (sep_ext->ext_cfgs, cfg, 1);
   cfg->type = type;
-  sep_ext->ext_cfg = cfg;
+  return cfg;
+}
+
+static inline void *
+session_endpoint_alloc_ext_cfg2 (session_endpoint_cfg_t *sep_ext,
+				 transport_endpt_ext_cfg_type_t type, u16 len)
+{
+  transport_endpt_ext_cfg_t *cfg;
+
+  vec_add2 (sep_ext->ext_cfgs, cfg, 1 + len / sizeof (*cfg));
+  cfg->type = type;
+  cfg->len = len;
+  return cfg->data;
+}
+
+always_inline transport_endpt_ext_cfg_t *
+session_endpoint_get_ext_cfg_next (transport_endpt_ext_cfg_t *cfg)
+{
+  return cfg + 1 + (cfg->len / sizeof (*cfg));
+}
+
+static inline transport_endpt_ext_cfg_t *
+session_endpoint_get_ext_cfg (session_endpoint_cfg_t *sep_ext,
+			      transport_endpt_ext_cfg_type_t type)
+{
+  transport_endpt_ext_cfg_t *cfg, *rv = 0;
+
+  cfg = sep_ext->ext_cfgs;
+  while (cfg < vec_end (sep_ext->ext_cfgs))
+    {
+      if (cfg->type == type)
+	{
+	  rv = cfg;
+	  break;
+	}
+      cfg = session_endpoint_get_ext_cfg_next (cfg);
+    }
+  return rv;
+}
+
+static inline void
+session_endpoint_free_ext_cfg (session_endpoint_cfg_t *sep_ext)
+{
+  vec_free (sep_ext->ext_cfgs);
 }
 
 #endif /* __included_uri_h__ */

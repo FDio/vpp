@@ -77,7 +77,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u64 parent_handle;
   session_endpoint_cfg_flags_t flags;
-  transport_endpt_ext_cfg_t *ext_cfg;
+  transport_endpt_ext_cfg_t *ext_cfgs;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -112,7 +112,7 @@ typedef struct _session_endpoint_cfg
     .peer = TRANSPORT_ENDPOINT_NULL, .transport_proto = 0,                    \
     .app_wrk_index = ENDPOINT_INVALID_INDEX,                                  \
     .opaque = ENDPOINT_INVALID_INDEX,                                         \
-    .parent_handle = SESSION_INVALID_HANDLE, .ext_cfg = 0,                    \
+    .parent_handle = SESSION_INVALID_HANDLE, .ext_cfgs = 0,                   \
   }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)

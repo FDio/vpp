@@ -641,15 +641,15 @@ hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri,
 
   if (need_crypto)
     {
-      session_endpoint_alloc_ext_cfg (&a->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      a->sep_ext.ext_cfg->crypto.ckpair_index = htm->ckpair_index;
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_alloc_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      ext_cfg->crypto.ckpair_index = htm->ckpair_index;
     }
 
   rv = vnet_listen (a);
 
   if (need_crypto)
-    clib_mem_free (a->sep_ext.ext_cfg);
+    session_endpoint_free_ext_cfg (&a->sep_ext);
 
   if (rv)
     return rv;
