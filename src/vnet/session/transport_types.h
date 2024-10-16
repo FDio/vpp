@@ -300,9 +300,26 @@ typedef struct transport_endpt_ext_cfg_
   union
   {
     transport_endpt_crypto_cfg_t crypto;
+    u32 opaque; /**< For general use */
     u8 data[0];
   };
 } transport_endpt_ext_cfg_t;
+
+#define TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE 4
+
+typedef struct transport_endpt_ext_cfgs_
+{
+  u32 len;	   /**< length of config data chunk */
+  u32 tail_offset; /**< current tail in config data chunk */
+  u8 *data;	   /**< start of config data chunk */
+} transport_endpt_ext_cfgs_t;
+
+#define TRANSPORT_ENDPT_EXT_CFGS_CHUNK_SIZE 4096
+
+#define TRANSPORT_ENDPT_EXT_CFGS_NULL                                         \
+  {                                                                           \
+    .len = 0, .tail_offset = 0, .data = 0,                                    \
+  }
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 

@@ -591,6 +591,7 @@ echo_server_listen ()
   i32 rv;
   echo_server_main_t *esm = &echo_server_main;
   vnet_listen_args_t _args = {}, *args = &_args;
+  int needs_crypto;
 
   if ((rv = parse_uri (esm->server_uri, &args->sep_ext)))
     {
@@ -598,11 +599,15 @@ echo_server_listen ()
     }
   args->app_index = esm->app_index;
   args->sep_ext.port = hs_make_data_port (args->sep_ext.port);
-  if (echo_client_transport_needs_crypto (args->sep_ext.transport_proto))
+  needs_crypto =
+    echo_client_transport_needs_crypto (args->sep_ext.transport_proto);
+  if (needs_crypto)
     {
-      session_endpoint_alloc_ext_cfg (&args->sep_ext,
-				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
-      args->sep_ext.ext_cfg->crypto.ckpair_index = esm->ckpair_index;
+      session_endpoint_init_ext_cfgs (&args->sep_ext);
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = esm->ckpair_index;
     }
 
   if (args->sep_ext.transport_proto == TRANSPORT_PROTO_UDP)
@@ -612,8 +617,8 @@ echo_server_listen ()
 
   rv = vnet_listen (args);
   esm->listener_handle = args->handle;
-  if (args->sep_ext.ext_cfg)
-    clib_mem_free (args->sep_ext.ext_cfg);
+  if (needs_crypto)
+    session_endpoint_free_ext_cfgs (&args->sep_ext);
   return rv;
 }
 
