@@ -56,6 +56,30 @@
       },
       "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2bb37b82_46ce0dfc",
+        "filename": "src/plugins/crypto_ipsecmb/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-10-16T16:03:09Z",
+      "side": 1,
+      "message": "This should be fixed by https://gerrit.fd.io/r/c/vpp/+/41661\nRebasing patch to pick this up.",
+      "parentUuid": "d64f381e_ca9b363d",
+      "range": {
+        "startLine": 40,
+        "startChar": 1,
+        "endLine": 40,
+        "endChar": 49
+      },
+      "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
