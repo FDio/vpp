@@ -118,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c5b5b05_6de773b8",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-16T16:23:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a5fc5004_0e156864",
+      "range": {
+        "startLine": 60,
+        "startChar": 28,
+        "endLine": 60,
+        "endChar": 31
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4fdd6625_bbc8f247",
@@ -330,6 +354,30 @@
       "side": 1,
       "message": "it\u0027s slightly different because it uses different dest address and doesn\u0027t set source address. I have changed the utility function to accept these parameters.",
       "parentUuid": "36c983b7_8f4b365e",
+      "range": {
+        "startLine": 2030,
+        "startChar": 12,
+        "endLine": 2040,
+        "endChar": 41
+      },
+      "revId": "fe7543e10173911972de4faed9b34a494e120a3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05c0d232_c5191595",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2040,
+      "author": {
+        "id": 3146
+      },
+      "writtenOn": "2024-10-16T16:23:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bc38ba05_413cff13",
       "range": {
         "startLine": 2030,
         "startChar": 12,
