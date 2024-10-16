@@ -628,16 +628,18 @@ tls_connect (transport_endpoint_cfg_t * tep)
   application_t *app;
   tls_ctx_t *ctx;
   u32 ctx_index;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
-  if (!sep->ext_cfg)
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (!ext_cfg)
     return SESSION_E_NOEXTCFG;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
 
-  ccfg = &sep->ext_cfg->crypto;
+  ccfg = &ext_cfg->crypto;
   engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
@@ -709,16 +711,18 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   app_listener_t *al;
   tls_ctx_t *lctx;
   u32 lctx_index;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
-  if (!sep->ext_cfg)
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (!ext_cfg)
     return SESSION_E_NOEXTCFG;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
 
-  ccfg = &sep->ext_cfg->crypto;
+  ccfg = &ext_cfg->crypto;
   engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
@@ -1115,16 +1119,18 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   application_t *app;
   tls_ctx_t *ctx;
   u32 ctx_handle;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
-  if (!sep->ext_cfg)
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (!ext_cfg)
     return -1;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
 
-  ccfg = &sep->ext_cfg->crypto;
+  ccfg = &ext_cfg->crypto;
   engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
