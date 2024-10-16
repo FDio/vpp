@@ -16,6 +16,24 @@
       "message": "Klement I see you +1 but there are still 5 unresolved comments, are we good to merge?",
       "revId": "17a918133ba056851c848cbd95dcd241b900cd3d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da3593ae_342aca62",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-10-16T09:45:45Z",
+      "side": 1,
+      "message": "Yes, good to merge from my POV.",
+      "parentUuid": "9c37f1f1_c102b696",
+      "revId": "17a918133ba056851c848cbd95dcd241b900cd3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
