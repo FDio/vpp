@@ -4395,7 +4395,8 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  break;
 	}
       vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_NONE,
-				 *buflen + sizeof (u32));
+				 *buflen +
+				   TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE);
       clib_memcpy (session->ext_config->data, buffer, *buflen);
       session->ext_config->len = *buflen;
       break;
