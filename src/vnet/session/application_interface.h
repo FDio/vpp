@@ -953,9 +953,7 @@ session_endpoint_get_ext_cfg (session_endpoint_cfg_t *sep_ext,
     {
       if (ext_cfg->type == type)
 	return ext_cfg;
-      ext_cfg =
-	(transport_endpt_ext_cfg_t *) (sep_ext->ext_cfgs.data + ext_cfg->len +
-				       TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE);
+      ext_cfg = (transport_endpt_ext_cfg_t *) (ext_cfg->data + ext_cfg->len);
     }
   return 0;
 }
