@@ -380,12 +380,18 @@ hcc_connect ()
   hcc_main_t *hcm = &hcc_main;
   hcc_worker_t *wrk;
   hcc_session_t *hs;
+  transport_endpt_ext_cfg_t *ext_cfg;
 
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
 
   clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
   a->app_index = hcm->app_index;
+
+  session_endpoint_init_ext_cfgs (&a->sep_ext);
+  ext_cfg = session_endpoint_add_ext_cfg (
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
+  ext_cfg->opaque = 10;
 
   /* allocate http session on main thread */
   wrk = hcc_worker_get (0);
