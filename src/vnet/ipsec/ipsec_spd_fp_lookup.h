@@ -96,9 +96,7 @@ single_rule_out_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 static_always_inline int
 single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 {
-
-  u32 da = clib_net_to_host_u32 (match->laddr.as_u32);
-  u32 sa = clib_net_to_host_u32 (match->raddr.as_u32);
+  u32 da, sa;
 
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
@@ -109,26 +107,104 @@ single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 
       if (ipsec_sa_is_set_IS_TUNNEL (s))
 	{
-	  if (da != clib_net_to_host_u32 (s->tunnel.t_dst.ip.ip4.as_u32))
-	    return (0);
+	  if (!policy->is_ipv6)
+	    {
+	      da = clib_net_to_host_u32 (match->laddr.as_u32);
+	      sa = clib_net_to_host_u32 (match->raddr.as_u32);
 
-	  if (sa != clib_net_to_host_u32 (s->tunnel.t_src.ip.ip4.as_u32))
-	    return (0);
+	      if (da != clib_net_to_host_u32 (s->tunnel.t_dst.ip.ip4.as_u32))
+		return (0);
+
+	      if (sa != clib_net_to_host_u32 (s->tunnel.t_src.ip.ip4.as_u32))
+		return (0);
+	    }
+	  else
+	    {
+	      if (ip6_address_compare (&match->ip6_laddr,
+				       &s->tunnel.t_dst.ip.ip6) != 0)
+		return (0);
+
+	      if (ip6_address_compare (&match->ip6_raddr,
+				       &s->tunnel.t_src.ip.ip6) != 0)
+		return (0);
+	    }
+	}
+      else
+	{
+	  if (!policy->is_ipv6)
+	    {
+	      da = clib_net_to_host_u32 (match->laddr.as_u32);
+	      sa = clib_net_to_host_u32 (match->raddr.as_u32);
+
+	      if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
+		return (0);
+
+	      if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
+		return (0);
+
+	      if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
+		return (0);
+
+	      if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
+		return (0);
+	    }
+	  else
+	    {
+	      if (ip6_address_compare (&match->ip6_laddr,
+				       &policy->laddr.start.ip6) < 0)
+		return (0);
+
+	      if (ip6_address_compare (&policy->laddr.stop.ip6,
+				       &match->ip6_laddr) < 0)
+		return (0);
+
+	      if (ip6_address_compare (&match->ip6_raddr,
+				       &policy->raddr.start.ip6) < 0)
+		return (0);
+
+	      if (ip6_address_compare (&policy->raddr.stop.ip6,
+				       &match->ip6_raddr) < 0)
+		return (0);
+	    }
 	}
     }
   else
     {
-      if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
-	return (0);
+      if (!policy->is_ipv6)
+	{
+	  da = clib_net_to_host_u32 (match->laddr.as_u32);
+	  sa = clib_net_to_host_u32 (match->raddr.as_u32);
 
-      if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
-	return (0);
+	  if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
+	    return (0);
 
-      if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
-	return (0);
+	  if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
+	    return (0);
 
-      if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
-	return (0);
+	  if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
+	    return (0);
+
+	  if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
+	    return (0);
+	}
+      else
+	{
+	  if (ip6_address_compare (&match->ip6_laddr,
+				   &policy->laddr.start.ip6) < 0)
+	    return (0);
+
+	  if (ip6_address_compare (&policy->laddr.stop.ip6,
+				   &match->ip6_laddr) < 0)
+	    return (0);
+
+	  if (ip6_address_compare (&match->ip6_raddr,
+				   &policy->raddr.start.ip6) < 0)
+	    return (0);
+
+	  if (ip6_address_compare (&policy->raddr.stop.ip6,
+				   &match->ip6_raddr) < 0)
+	    return (0);
+	}
     }
   return (1);
 }
