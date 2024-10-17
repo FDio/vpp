@@ -34,6 +34,24 @@
       "parentUuid": "740daf20_d1ff9134",
       "revId": "a258e17c1af2bc34d93a50674a9b6b0659663e8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dd0afae_f60bd1d8",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1768,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-10-17T05:15:08Z",
+      "side": 1,
+      "message": "for my edification, what\u0027s the use-case for receiving from the unspecified. I assume we should never receive from the mcast and loopback?\n\ni agree a router shouldn\u0027t forward these, but is it every transit router\u0027s responsibility to always verify this? Why, or when, does the responsibility not lie with the originating host.\nisn\u0027t checking for these addresses more like an optional uRPF function?\n\nmy concern is that every check here is a performance cost on every IPv6 packet VPP forwards.",
+      "parentUuid": "7ddb2ce3_b676d562",
+      "revId": "a258e17c1af2bc34d93a50674a9b6b0659663e8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
