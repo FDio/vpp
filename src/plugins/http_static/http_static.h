@@ -162,6 +162,8 @@ typedef struct
   u32 max_age;
   /** Formatted max_age: "max-age=xyz" */
   u8 *max_age_formatted;
+  /** Timeout during which client connection will stay open */
+  u32 keepalive_timeout;
 
   /** hash table of file extensions to mime types string indices */
   uword *mime_type_indices_by_file_extensions;
