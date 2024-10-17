@@ -211,6 +211,7 @@ mvpp2_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
+    case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
       break;
@@ -244,6 +245,19 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       else
 	log_debug (port->dev, "pp2_ppio_set_promisc: promisc %u",
 		   req->promisc);
+      break;
+
+    case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
+      clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
+      mrv = pp2_ppio_set_mac_addr (mp->ppio, addr);
+      if (mrv)
+	{
+	  log_err (port->dev, "pp2_ppio_set_mac_addr: failed, rv %d", mrv);
+	  rv = VNET_DEV_ERR_INTERNAL;
+	}
+      else
+	log_debug (port->dev, "pp2_ppio_set_mac_addr: %U added",
+		   format_ethernet_address, &addr);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
