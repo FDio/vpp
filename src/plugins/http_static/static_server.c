@@ -804,6 +804,7 @@ hss_listen (void)
   vnet_listen_args_t _a, *a = &_a;
   char *uri = "tcp://0.0.0.0/80";
   u8 need_crypto;
+  transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -820,9 +821,13 @@ hss_listen (void)
   sep.transport_proto = TRANSPORT_PROTO_HTTP;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
 
+  ext_cfg = session_endpoint_add_ext_cfg (
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
+  ext_cfg->opaque = hsm->keepalive_timeout;
+
   if (need_crypto)
     {
-      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+      ext_cfg = session_endpoint_add_ext_cfg (
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
@@ -898,6 +903,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hsm->fifo_size = 0;
   hsm->cache_size = 10 << 20;
   hsm->max_age = HSS_DEFAULT_MAX_AGE;
+  hsm->keepalive_timeout = 60;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -921,6 +927,9 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "uri %s", &hsm->uri))
 	;
       else if (unformat (line_input, "debug %d", &hsm->debug_level))
+	;
+      else if (unformat (line_input, "keepalive-timeout %d",
+			 &hsm->keepalive_timeout))
 	;
       else if (unformat (line_input, "debug"))
 	hsm->debug_level = 1;
@@ -985,14 +994,16 @@ done:
  * http static server www-root /tmp/www uri tcp://0.0.0.0/80 cache-size 2m
  * @cliend
  * @cliexcmd{http static server www-root <path> [prealloc-fios <nn>]
- *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]}
+ *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]
+ *   [keepalive-timeout <nn>]}
 ?*/
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
   .short_help =
     "http static server www-root <path> [prealloc-fifos <nn>]\n"
     "[private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]\n"
-    "[uri <uri>] [ptr-thresh <nn>] [url-handlers] [debug [nn]]\n",
+    "[uri <uri>] [ptr-thresh <nn>] [url-handlers] [debug [nn]]\n"
+    "[keepalive-timeout <nn>]\n",
   .function = hss_create_command_fn,
 };
 
