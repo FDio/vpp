@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -90,6 +91,7 @@ func NewHttpClient(timeout time.Duration) *http.Client {
 	transport := http.DefaultTransport
 	transport.(*http.Transport).Proxy = nil
 	transport.(*http.Transport).DisableKeepAlives = true
+	transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   timeout,
