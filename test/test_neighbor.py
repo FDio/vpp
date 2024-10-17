@@ -1284,10 +1284,11 @@ class ARPTestCase(VppTestCase):
         )
 
         self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
+        # self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_zmq_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg2.get_zmq_capture(1)
         self.verify_arp_req(
             rx[0], self.pg2.local_mac, self.pg2.local_ip4, self.pg2._remote_hosts[1].ip4
         )
@@ -1303,10 +1304,10 @@ class ARPTestCase(VppTestCase):
         #  when the ARP entry resolves
         #
         self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_zmq_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg2.get_zmq_capture(1)
         self.verify_ip_o_mpls(
             rx[0],
             self.pg2.local_mac,

@@ -334,6 +334,9 @@ typedef struct
   char *pcap_file_name;
   pg_interface_mode_t mode;
 
+  void *zmq_context;
+  void *zmq_socket;
+
   mac_address_t *allowed_mcast_macs;
 } pg_interface_t;
 
@@ -367,6 +370,8 @@ typedef struct pg_main_t
   pg_node_t *nodes;
 
   u16 msg_id_base;
+
+  vlib_log_class_t log_class;
 } pg_main_t;
 
 /* Global main structure. */
@@ -420,6 +425,7 @@ typedef struct
   u8 is_enabled;
   char *pcap_file_name;
   u32 count;
+  char *zmq_endpoint;
 } pg_capture_args_t;
 
 clib_error_t *pg_capture (pg_capture_args_t * a);

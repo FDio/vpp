@@ -28,6 +28,8 @@ from scapy.layers.inet6 import (
 from util import ppp, ppc, UnexpectedPacketError
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 
+import zmq
+
 
 class CaptureTimeoutError(Exception):
     """Exception raised if capture or packet doesn't appear within timeout"""
@@ -77,6 +79,11 @@ class VppPGInterface(VppInterface):
         return "coalesce-enabled"
 
     @property
+    def endpoint(self):
+        """ZeroMQ socket endpoint - PULL captured packets"""
+        return "tcp://localhost:%u" % self._endpoint_port
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
@@ -86,6 +93,14 @@ class VppPGInterface(VppInterface):
         if worker is not None:
             return "%s/pg%u_wrk%u_in.pcap" % (self.test.tempdir, self.pg_index, worker)
         return "%s/pg%u_in.pcap" % (self.test.tempdir, self.pg_index)
+
+    @property
+    def capture_zmq_cli(self):
+        """CLI string to start capture via PULL ZeroMQ on this interface"""
+        return "packet-generator zmq-push pg%u endpoint %s" % (
+            self.pg_index,
+            self.endpoint,
+        )
 
     @property
     def capture_cli(self):
@@ -146,6 +161,7 @@ class VppPGInterface(VppInterface):
             self.out_path,
         )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
+        self._endpoint_port = 0
 
     def remove_vpp_config(self):
         """delete Pg interface"""
@@ -199,6 +215,39 @@ class VppPGInterface(VppInterface):
                 print(f"tshark {ts_opts} {p}", file=f)
                 tshark(ts_opts, f"{p}", _out=f)
                 print("", file=f)
+
+    def enable_zmq_capture(self, port=5555):
+        """Enable ZeroMQ capture on the specified port.
+
+        :param port: The port to connect to for ZeroMQ capture.
+        """
+        try:
+            self._endpoint_port = port
+            self.test.vapi.cli(self.capture_zmq_cli)
+
+            context = zmq.Context()
+            self.zmq_socket = context.socket(zmq.PULL)
+
+            # Attempt to connect to the endpoint
+            self.zmq_socket.connect(self.endpoint)
+            self.test.logger.info(f"Connected to ZeroMQ endpoint at {self.endpoint}")
+        
+        except zmq.ZMQError as e:
+            # Handle ZMQ-specific errors
+            self.test.logger.error(f"ZeroMQ error occurred: {e}")
+            raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+        except Exception as e:
+            # Handle any other generic errors
+            self.test.logger.error(f"Unexpected error: {e}")
+            raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+        finally:
+            # Additional checks or warnings if needed
+            if not self.zmq_socket:
+                self.test.logger.warning(f"ZMQ socket not properly initialized on port {port}")
+
+            self.test.logger.debug("ZeroMQ capture setup complete.")
 
     def enable_capture(self):
         """Enable capture on this packet-generator interface
@@ -347,6 +396,123 @@ class VppPGInterface(VppInterface):
         else:
             if 0 == expected_count:
                 return
+            raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+
+
+    def _get_zmq_capture(self, timeout, filter_out_fn=None):
+        """Helper method to capture and filter packets via ZeroMQ."""
+        capture = []
+
+        try:
+            self.zmq_socket.setsockopt(zmq.RCVTIMEO, int(timeout * 1000))
+            
+            while True:
+                try:
+                    # Receive raw packet data from the ZeroMQ PULL socket
+                    packet_data = self.zmq_socket.recv()
+
+                    # Convert raw packet data into a Scapy packet (Ethernet frame assumed)
+                    packet = Ether(packet_data)
+
+                    if filter_out_fn and filter_out_fn(packet):
+                        continue
+
+                    # Add to capture
+                    capture.append(packet)
+                
+                except zmq.error.Again:
+                    # Timeout reached, stop capturing
+                    break
+
+            self.test.logger.debug(f"Capture has {len(capture)} packets")
+        except Exception as e:
+            self.test.logger.debug(
+                f"Exception while capturing via ZeroMQ: {str(e)}"
+            )
+            return None
+
+        # Apply filter function to remove unwanted packets
+        if filter_out_fn:
+            before = len(capture)
+            capture = [p for p in capture if not filter_out_fn(p)]
+            removed = before - len(capture)
+            if removed:
+                self.test.logger.debug(
+                    f"Filtered out {removed} packets from capture (returning {len(capture)})"
+                )
+
+        return capture
+
+    def get_zmq_capture(self, expected_count=None, remark=None, timeout=1, filter_out_fn=None):
+        """Get captured packets using ZeroMQ
+
+        :param expected_count: expected number of packets to capture
+        :param remark: remark printed into debug logs
+        :param timeout: how long to wait for packets
+        :param filter_out_fn: filter applied to each packet; packets filtered out will be discarded
+        :returns: list of captured packets
+        """
+        remaining_time = timeout
+        capture = None
+        name = self.name if remark is None else "%s (%s)" % (self.name, remark)
+        based_on = "based on provided argument"
+        
+        # Determine expected packet count
+        if expected_count is None:
+            expected_count = self.test.get_packet_count_for_if_idx(self.sw_if_index)
+            based_on = "based on stored packet_infos"
+            if expected_count == 0:
+                raise Exception(f"Internal error, expected packet count for {name} is 0!")
+
+        self.test.logger.debug(
+            f"Expecting to capture {expected_count} ({based_on}) packets on {name}"
+        )
+
+        while remaining_time > 0:
+            before = time.time()
+            
+            # Capture packets using ZeroMQ
+            capture = self._get_zmq_capture(remaining_time, filter_out_fn)
+            elapsed_time = time.time() - before
+
+            # Check the captured packet count
+            if capture:
+                if len(capture) == expected_count:
+                    # Correct number of packets captured
+                    return capture
+                elif len(capture) > expected_count:
+                    self.test.logger.error(
+                        ppc(
+                            f"Unexpected packets captured, got {len(capture)}, expected {expected_count}:",
+                            capture,
+                        )
+                    )
+                    break
+                else:
+                    self.test.logger.debug(
+                        f"Partial capture containing {len(capture)} packets doesn't match expected "
+                        f"count {expected_count} (yet?)"
+                    )
+            elif expected_count == 0:
+                # Expected no packets, return an empty list
+                return []
+
+            remaining_time -= elapsed_time
+
+        # Handle mismatches or no packets captured
+        if capture:
+            self.generate_debug_aid("count-mismatch")
+            if len(capture) > 0 and expected_count == 0:
+                rem = f"\n{remark}" if remark else ""
+                raise UnexpectedPacketError(
+                    capture[0],
+                    f"\n({len(capture)} packets captured in total){rem} on {name}",
+                )
+            msg = f"Captured packets mismatch, captured {len(capture)} packets, expected {expected_count} packets on {name}:"
+            raise Exception(f"{ppc(msg, capture)}")
+        else:
+            if expected_count == 0:
+                return []
             raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
 
     def assert_nothing_captured(

@@ -24,3 +24,4 @@ black                                   # MIT https://github.com/psf/black
 pycryptodome                            # BSD, Public Domain
 sh                                      # MIT https://github.com/amoffat/sh
 sysctl; platform_system == "FreeBSD"	# BSD
+pyzmq>=22.0.0                           # MIT

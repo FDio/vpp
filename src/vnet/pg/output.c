@@ -43,6 +43,47 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gro_func.h>
+#include <zmq.h>
+
+static clib_error_t *
+zmq_send_packet (pg_interface_t * pif, vlib_main_t * vm)
+{
+    clib_error_t *error = 0;
+    u8 *packet_data;
+    int rc;
+
+    if (!pif->zmq_socket)
+    {
+        error = clib_error_return(0, "ZeroMQ socket is not initialized");
+        return error;
+    }
+
+    while (vec_len(pif->pcap_main.pcap_data) > pif->pcap_main.n_pcap_data_written)
+    {
+        i64 n_left = vec_len(pif->pcap_main.pcap_data) - pif->pcap_main.n_pcap_data_written;
+        packet_data = vec_elt_at_index(pif->pcap_main.pcap_data, pif->pcap_main.n_pcap_data_written);
+
+        rc = zmq_send(pif->zmq_socket, packet_data, n_left, 0);
+        if (rc == -1)
+        {
+            error = clib_error_return(0, "Failed to send packet via ZeroMQ");
+            goto done;
+        }
+
+        // Track how much data was sent
+        pif->pcap_main.n_pcap_data_written += rc;
+    }
+
+    // If all packets have been sent, reset the packet buffer
+    if (pif->pcap_main.n_pcap_data_written >= vec_len(pif->pcap_main.pcap_data))
+    {
+        vec_reset_length(pif->pcap_main.pcap_data);
+        pif->pcap_main.n_pcap_data_written = 0;
+    }
+
+done:
+    return error;
+}
 
 uword
 pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -86,6 +127,10 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       if (pif->pcap_file_name != 0)
 	pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
+    }
+  if (pif->zmq_socket != 0)
+    {
+      zmq_send_packet(pif, vm);
     }
   if (pif->pcap_file_name != 0)
     {

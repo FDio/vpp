@@ -115,6 +115,22 @@ class VppTestCase(VppAsfTestCase):
         super(VppTestCase, cls).tearDownClass()
 
     @classmethod
+    def pg_enable_zmq_capture(cls, interfaces=None):
+        """
+        Enable ZeroMQ PULL capture on packet-generator interfaces
+
+        :param interfaces: iterable interface indexes (if None,
+                           use self.pg_interfaces)
+
+        """
+        port_counter = 5555
+        if interfaces is None:
+            interfaces = cls.pg_interfaces
+        for i in interfaces:
+            i.enable_zmq_capture(port=port_counter)
+            port_counter += 1
+
+    @classmethod
     def pg_enable_capture(cls, interfaces=None):
         """
         Enable capture on packet-generator interfaces
