@@ -67,7 +67,7 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 #define DBG(...)
 #endif /* MEMIF_DBG */
 
-#ifndef HAS_LIB_BSD
+#ifndef HAVE_STRLCPY
 static inline size_t
 strlcpy (char *dest, const char *src, size_t len)
 {
@@ -90,8 +90,6 @@ strlcpy (char *dest, const char *src, size_t len)
 
   return (s - src - 1);
 }
-#else
-#include <bsd/string.h>
 #endif
 
 typedef enum
