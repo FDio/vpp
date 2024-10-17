@@ -1842,6 +1842,28 @@ done:
   return error;
 }
 
+static clib_error_t *
+nat44_ed_clear_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  nat44_ed_sessions_clear ();
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{clear nat44 ei sessions}
+ * To clear all NAT44 sessions
+ *  vpp# clear nat44 ei sessions
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_ed_clear_sessions_command, static) = {
+  .path = "clear nat44 ed sessions",
+  .short_help = "clear nat44 ed sessions",
+  .function = nat44_ed_clear_sessions_command_fn,
+};
+
 /*?
  * @cliexpar
  * @cliexstart{nat44}
