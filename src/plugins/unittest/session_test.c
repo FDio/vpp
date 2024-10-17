@@ -2389,6 +2389,50 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static int
+session_test_ext_cfg (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  transport_endpt_ext_cfg_t *ext_cfg;
+
+  ext_cfg = session_endpoint_add_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_HTTP,
+					  sizeof (ext_cfg->opaque));
+  ext_cfg->opaque = 60;
+
+  ext_cfg =
+    session_endpoint_add_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+				  sizeof (transport_endpt_crypto_cfg_t));
+  ext_cfg->crypto.ckpair_index = 1;
+
+  ext_cfg = session_endpoint_add_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_NONE,
+					  sizeof (ext_cfg->opaque));
+  ext_cfg->opaque = 345;
+
+  ext_cfg = session_endpoint_get_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
+  SESSION_TEST ((ext_cfg != 0),
+		"TRANSPORT_ENDPT_EXT_CFG_HTTP should be present");
+  SESSION_TEST ((ext_cfg->opaque == 60),
+		"TRANSPORT_ENDPT_EXT_CFG_HTTP opaque value should be 60: %u",
+		ext_cfg->opaque);
+  ext_cfg =
+    session_endpoint_get_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  SESSION_TEST ((ext_cfg != 0),
+		"TRANSPORT_ENDPT_EXT_CFG_CRYPTO should be present");
+  SESSION_TEST (
+    (ext_cfg->crypto.ckpair_index == 1),
+    "TRANSPORT_ENDPT_EXT_CFG_HTTP ckpair_index value should be 1: %u",
+    ext_cfg->crypto.ckpair_index);
+  ext_cfg = session_endpoint_get_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_NONE);
+  SESSION_TEST ((ext_cfg != 0),
+		"TRANSPORT_ENDPT_EXT_CFG_NONE should be present");
+  SESSION_TEST ((ext_cfg->opaque == 345),
+		"TRANSPORT_ENDPT_EXT_CFG_HTTP opaque value should be 345: %u",
+		ext_cfg->opaque);
+  session_endpoint_free_ext_cfgs (&sep);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -2419,6 +2463,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_enable_disable (vm, input);
       else if (unformat (input, "sdl"))
 	res = session_test_sdl (vm, input);
+      else if (unformat (input, "ext-cfg"))
+	res = session_test_ext_cfg (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -2438,6 +2484,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_mq_basic (vm, input)))
 	    goto done;
 	  if ((res = session_test_sdl (vm, input)))
+	    goto done;
+	  if ((res = session_test_ext_cfg (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;

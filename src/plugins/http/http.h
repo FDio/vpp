@@ -388,6 +388,7 @@ typedef struct http_tc_
 
   http_conn_state_t state;
   u32 timer_handle;
+  u32 timeout;
   u8 pending_timer;
   u8 *app_name;
   u8 *host;
