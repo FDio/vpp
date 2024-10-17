@@ -80,6 +80,30 @@
       },
       "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6aebef7d_469a3e2b",
+        "filename": "src/plugins/crypto_ipsecmb/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-10-17T16:15:10Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "2bb37b82_46ce0dfc",
+      "range": {
+        "startLine": 40,
+        "startChar": 1,
+        "endLine": 40,
+        "endChar": 49
+      },
+      "revId": "df7d76ef79a83301a2c1dcad920ee26927194213",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
