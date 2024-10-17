@@ -284,6 +284,7 @@ typedef enum transport_endpt_ext_cfg_type_
 {
   TRANSPORT_ENDPT_EXT_CFG_NONE,
   TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+  TRANSPORT_ENDPT_EXT_CFG_HTTP,
 } transport_endpt_ext_cfg_type_t;
 
 typedef struct transport_endpt_crypto_cfg_

@@ -158,6 +158,7 @@ http_ho_conn_alloc (void)
   hc->h_hc_index = hc - hm->ho_conn_pool;
   hc->h_pa_session_handle = SESSION_INVALID_HANDLE;
   hc->h_tc_session_handle = SESSION_INVALID_HANDLE;
+  hc->timeout = HTTP_CONN_TIMEOUT;
   return hc->h_hc_index;
 }
 
@@ -169,6 +170,7 @@ http_listener_alloc (void)
 
   pool_get_zero (hm->listener_pool, lhc);
   lhc->c_c_index = lhc - hm->listener_pool;
+  lhc->timeout = HTTP_CONN_TIMEOUT;
   return lhc->c_c_index;
 }
 
@@ -1821,6 +1823,7 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   int error;
   u32 hc_index;
   session_t *ho;
+  transport_endpt_ext_cfg_t *ext_cfg;
   app_worker_t *app_wrk = app_worker_get (sep->app_wrk_index);
 
   clib_memset (cargs, 0, sizeof (*cargs));
@@ -1836,6 +1839,13 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->h_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
   cargs->api_context = hc_index;
+
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
+  if (ext_cfg)
+    {
+      HTTP_DBG (1, "app set timeout %u", ext_cfg->opaque);
+      hc->timeout = ext_cfg->opaque;
+    }
 
   hc->is_server = 0;
 
@@ -1902,6 +1912,13 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   lhc_index = http_listener_alloc ();
   lhc = http_listener_get (lhc_index);
+
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
+  if (ext_cfg)
+    {
+      HTTP_DBG (1, "app set timeout %u", ext_cfg->opaque);
+      lhc->timeout = ext_cfg->opaque;
+    }
 
   /* Grab transport connection listener and link to http listener */
   lhc->h_tc_session_handle = args->handle;
