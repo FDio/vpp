@@ -17,7 +17,7 @@ project(memif)
 set(CMAKE_C_STANDARD 11)
 
 include(CheckCCompilerFlag)
-include(CheckFunctionExists)
+include(CheckSymbolExists)
 find_package(Git REQUIRED)
 
 include(ExternalProject)
@@ -26,7 +26,9 @@ set(UNITY unity_project)
 ExternalProject_Add(
     unity_project
     GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
-    GIT_TAG cf949f45ca6d172a177b00da21310607b97bc7a7
+    # TODO: bump to the stable version as soon as it's available,
+    # current 2.6.0 couldn't be compiled with the modern compilers
+    GIT_TAG 73237c5d224169c7b4d2ec8321f9ac92e8071708
     PREFIX ${PROJECT_BINARY_DIR}/external/${UNITY}
     INSTALL_COMMAND cmake --install . --prefix ${PROJECT_BINARY_DIR}
 
@@ -72,9 +74,15 @@ endif()
 message(STATUS "System Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "Libmemif Cacheline Size: ${LIBMEMIF_CACHELINE_SIZE}")
 
-check_function_exists(memfd_create HAVE_MEMFD_CREATE)
+list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
+check_symbol_exists(memfd_create "sys/mman.h" HAVE_MEMFD_CREATE)
 if(${HAVE_MEMFD_CREATE})
   add_definitions(-DHAVE_MEMFD_CREATE)
+endif()
+
+check_symbol_exists(strlcpy "string.h" HAVE_STRLCPY)
+if(${HAVE_STRLCPY})
+  add_definitions(-DHAVE_STRLCPY)
 endif()
 
 include_directories(src)
