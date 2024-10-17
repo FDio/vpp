@@ -32,7 +32,7 @@ func init() {
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest,
 		HttpClientPostFileTest, HttpClientPostFilePtrTest, AuthorityFormTargetTest, HttpRequestLineTest,
-		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest)
+		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -804,10 +804,10 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/80 url-handlers debug"))
 
 	client := NewHttpClient(defaultHttpTimeout)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json", nil)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+":80/version.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1204,4 +1204,34 @@ func HeaderServerTest(s *NoTopoSuite) {
 	s.AssertHttpStatus(resp, 200)
 	s.AssertHttpHeaderWithValue(resp, "Server", "http_cli_server")
 	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+}
+
+func HttpConnTimeoutTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug keepalive-timeout 2"))
+
+	req := "GET /version.json HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
+	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer conn.Close()
+	err = conn.SetDeadline(time.Now().Add(time.Second * 30))
+	s.AssertNil(err, fmt.Sprint(err))
+	_, err = conn.Write([]byte(req))
+	s.AssertNil(err, fmt.Sprint(err))
+	reply := make([]byte, 1024)
+	_, err = conn.Read(reply)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(string(reply), "HTTP/1.1 200 OK")
+	s.Log(vpp.Vppctl("show session verbose 2"))
+
+	s.Log("waiting for close on the server side")
+	time.Sleep(time.Second * 5)
+	s.Log(vpp.Vppctl("show session verbose 2"))
+
+	_, err = conn.Write([]byte(req))
+	s.AssertNil(err, fmt.Sprint(err))
+	reply = make([]byte, 1024)
+	_, err = conn.Read(reply)
+	s.AssertMatchError(err, io.EOF, "connection not closed by server")
 }
