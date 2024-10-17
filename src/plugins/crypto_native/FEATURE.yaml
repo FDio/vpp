@@ -4,6 +4,9 @@ maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - CBC(128, 192, 256)
   - GCM(128, 192, 256)
+  - CTR(128, 192, 256)
+  - SHA(224, 256)
+  - HMAC-SHA(224, 256)
 
 description: "An implementation of a native crypto-engine"
 state: production
