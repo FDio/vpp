@@ -129,6 +129,10 @@ static dpdk_driver_t dpdk_drivers[] = {
   {
     .drivers = DPDK_DRIVERS ({ "net_gve", "Google vNIC" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "net_sfc_efx", "Solarflare SFN7042Q" }),
+    .interface_name_prefix = "FortyGigabitEthernet",
   }
 };
 
