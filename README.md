@@ -90,6 +90,13 @@ For this to work you will need a working installation of Vagrant. Instructions
 for this can be found [on the Setting up Vagrant wiki page]
 (https://wiki.fd.io/view/DEV/Setting_Up_Vagrant).
 
+### Quick-start: FreeBSD
+
+VPP is packaged in the FreeBSD ports system. Binary packages are available and
+can be installed with the following command:
+
+    # pkg install vpp
+
 
 ## More information
 
