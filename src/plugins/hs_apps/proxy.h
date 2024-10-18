@@ -26,23 +26,54 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
+#define foreach_proxy_session_side_state                                      \
+  _ (CREATED, "created")                                                      \
+  _ (CONNECTING, "connecting")                                                \
+  _ (ESTABLISHED, "establiehed")                                              \
+  _ (CLOSED, "closed")
+
+typedef enum proxy_session_side_state_
+{
+#define _(sym, str) PROXY_SC_S_##sym,
+  foreach_proxy_session_side_state
+#undef _
+} proxy_session_side_state_t;
+typedef struct proxy_session_side_
+{
+  session_handle_t session_handle;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
+} proxy_session_side_t;
+
+typedef struct proxy_session_side_ctx_
+{
+  proxy_session_side_t pair;
+  proxy_session_side_state_t state;
+  u32 sc_index;
+  u32 ps_index;
+} proxy_session_side_ctx_t;
+
 typedef struct
 {
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  proxy_session_side_t po; /**< passive open side */
+  proxy_session_side_t ao; /**< active open side */
 
-  session_handle_t vpp_server_handle;
-  session_handle_t vpp_active_open_handle;
+  //   svm_fifo_t *server_rx_fifo;
+  //   svm_fifo_t *server_tx_fifo;
+
+  //   session_handle_t vpp_server_handle;
+  //   session_handle_t vpp_active_open_handle;
   volatile int active_open_establishing;
   volatile int po_disconnected;
   volatile int ao_disconnected;
 
   u32 ps_index;
-  u32 po_thread_index;
+  //   u32 po_thread_index;
 } proxy_session_t;
 
 typedef struct proxy_worker_
 {
+  proxy_session_side_ctx_t *ctx_pool;
   clib_spinlock_t pending_connects_lock;
   vnet_connect_args_t *pending_connects;
   vnet_connect_args_t *burst_connects;
