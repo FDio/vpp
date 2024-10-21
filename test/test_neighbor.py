@@ -1284,10 +1284,11 @@ class ARPTestCase(VppTestCase):
         )
 
         self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
+        # self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_zmq_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg2.get_zmq_capture(1)
         self.verify_arp_req(
             rx[0], self.pg2.local_mac, self.pg2.local_ip4, self.pg2._remote_hosts[1].ip4
         )
@@ -1303,10 +1304,10 @@ class ARPTestCase(VppTestCase):
         #  when the ARP entry resolves
         #
         self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_zmq_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg2.get_zmq_capture(1)
         self.verify_ip_o_mpls(
             rx[0],
             self.pg2.local_mac,
@@ -2330,7 +2331,6 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@tag_fixme_ubuntu2204
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
@@ -2402,7 +2402,7 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # start listening on all interfaces
         #
-        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_zmq_capture(self.pg_interfaces)
 
         #
         # Verify neighbor configuration defaults
@@ -2488,7 +2488,7 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # expect probes from all these ARP entries as they age
         # 3 probes for each neighbor 3*200 = 600
-        rxs = self.pg0.get_capture(600, timeout=2)
+        rxs = self.pg0.get_zmq_capture(600, timeout=2)
 
         for ii in range(3):
             for jj in range(200):

@@ -28,6 +28,8 @@ from scapy.layers.inet6 import (
 from util import ppp, ppc, UnexpectedPacketError
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 
+import zmq
+
 
 class CaptureTimeoutError(Exception):
     """Exception raised if capture or packet doesn't appear within timeout"""
@@ -77,6 +79,11 @@ class VppPGInterface(VppInterface):
         return "coalesce-enabled"
 
     @property
+    def endpoint(self):
+        """ZeroMQ socket endpoint - PULL captured packets"""
+        return "tcp://localhost:%u" % self._endpoint_port
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
@@ -86,6 +93,14 @@ class VppPGInterface(VppInterface):
         if worker is not None:
             return "%s/pg%u_wrk%u_in.pcap" % (self.test.tempdir, self.pg_index, worker)
         return "%s/pg%u_in.pcap" % (self.test.tempdir, self.pg_index)
+
+    @property
+    def capture_zmq_cli(self):
+        """CLI string to start capture via PULL ZeroMQ on this interface"""
+        return "packet-generator zmq-push pg%u endpoint %s" % (
+            self.pg_index,
+            self.endpoint,
+        )
 
     @property
     def capture_cli(self):
@@ -146,6 +161,7 @@ class VppPGInterface(VppInterface):
             self.out_path,
         )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
+        self._endpoint_port = 0
 
     def link_pcap_file(self, path, direction, counter):
         if not config.keep_pcaps:
@@ -194,6 +210,47 @@ class VppPGInterface(VppInterface):
                 print(f"tshark {ts_opts} {p}", file=f)
                 tshark(ts_opts, f"{p}", _out=f)
                 print("", file=f)
+
+
+    def enable_zmq_capture(self, port=5555):
+        """Enable ZeroMQ capture on the specified port.
+
+        :param port: The port to connect to for ZeroMQ capture.
+        """
+        try:
+            r = self.test.vapi.pg_zmq_capture(self.pg_index)
+            if r.port:
+                self._endpoint_port = r.port
+                # self.test.vapi.cli(self.capture_zmq_cli)
+
+                context = zmq.Context()
+                self.zmq_socket = context.socket(zmq.PULL)
+
+                # Attempt to connect to the endpoint
+                self.zmq_socket.connect(self.endpoint)
+                self.test.logger.info(f"Connected to ZeroMQ endpoint at {self.endpoint}")
+            else:
+                self.test.logger.error(f"Can't find ZeroMQ endpoint for pg{self.pg_index}")
+
+        
+        except zmq.ZMQError as e:
+            # Handle ZMQ-specific errors
+            self.test.logger.error(f"ZeroMQ error occurred: {e}")
+            raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+        except Exception as e:
+            # Handle any other generic errors
+            self.test.logger.error(f"Unexpected error: {e}")
+            raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+        finally:
+            # Additional checks or warnings if needed
+            if not self.zmq_socket:
+                self.test.logger.warning(f"ZMQ socket not properly initialized on port {port}")
+
+            self.test.logger.debug("ZeroMQ capture setup complete.")
+
+        
 
     def enable_capture(self):
         """Enable capture on this packet-generator interface
@@ -343,6 +400,114 @@ class VppPGInterface(VppInterface):
             if 0 == expected_count:
                 return
             raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+
+
+    def _get_zmq_capture(self, timeout, filter_out_fn=None):
+        """Helper method to capture and filter packets via ZeroMQ."""
+        capture = []
+
+        try:
+            # self.zmq_socket.setsockopt(zmq.RCVTIMEO, int(timeout * 1000))
+            
+            while True:
+                try:
+                    # Receive raw packet data from the ZeroMQ PULL socket
+                    packet_data = self.zmq_socket.recv()
+
+                    # Convert raw packet data into a Scapy packet (Ethernet frame assumed)
+                    packet = Ether(packet_data)
+
+                    if filter_out_fn and filter_out_fn(packet):
+                        continue
+
+                    # Add to capture
+                    capture.append(packet)
+                
+                except zmq.error.Again:
+                    self.test.logger.error(f"")
+                    # Timeout reached, stop capturing
+                    break
+
+            self.test.logger.debug(f"Capture has {len(capture)} packets")
+        except Exception as e:
+            self.test.logger.debug(
+                f"Exception while capturing via ZeroMQ: {str(e)}"
+            )
+            return None
+
+        # Apply filter function to remove unwanted packets
+        if filter_out_fn:
+            before = len(capture)
+            capture = [p for p in capture if not filter_out_fn(p)]
+            removed = before - len(capture)
+            if removed:
+                self.test.logger.debug(
+                    f"Filtered out {removed} packets from capture (returning {len(capture)})"
+                )
+
+        return capture
+
+    def get_zmq_capture(self, expected_count=None, remark=None, timeout=1, filter_out_fn=None):
+        """Get captured packets using ZeroMQ
+
+        :param expected_count: expected number of packets to capture
+        :param remark: remark printed into debug logs
+        :param timeout: how long to wait for packets in sec
+        :param filter_out_fn: filter applied to each packet; packets filtered out will be discarded
+        :returns: list of captured packets
+        """
+        remaining_time = timeout
+        capture = []
+        name = self.name if remark is None else "%s (%s)" % (self.name, remark)
+        based_on = "based on provided argument"
+        
+        # Determine expected packet count
+        if expected_count is None:
+            expected_count = self.test.get_packet_count_for_if_idx(self.sw_if_index)
+            based_on = "based on stored packet_infos"
+            if expected_count == 0:
+                raise Exception(f"Internal error, expected packet count for {name} is 0!")
+
+        self.test.logger.debug(
+            f"Expecting to capture {expected_count} ({based_on}) packets on {name}"
+        )
+
+        self.zmq_socket.setsockopt(zmq.RCVTIMEO, int(timeout * 1000))
+
+        try:
+            while len(capture) < expected_count:
+                try:
+                    packet_data = self.zmq_socket.recv()  # Attempt to receive a packet
+                    if packet_data:
+                        packet = Ether(packet_data)  # Convert raw data to an Ethernet packet
+                        capture.append(packet)  # Add to the list of captured packets
+                except zmq.error.Again:
+                    # Handle the timeout case
+                    self.test.logger.debug("Timeout while waiting for packets")
+                    break
+        except Exception as e:
+            raise Exception(f"Error during capture: {e}")
+
+        # Handle packet count mismatches
+        if not capture:
+            if 0 == expected_count:
+                return
+            raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+        elif len(capture) < expected_count:
+            # Not enough packets received
+            self.generate_debug_aid("count-mismatch", capture)
+            msg = (f"Captured packets mismatch, captured {len(capture)} packets, "
+                f"expected {expected_count} packets on {name}:")
+            raise Exception(msg)
+        elif len(capture) > expected_count:
+            # More packets than expected received (could be problematic in specific tests)
+            self.generate_debug_aid("count-mismatch", capture)
+            msg = (f"Unexpected packets captured, got {len(capture)} packets, "
+                f"expected {expected_count} on {name}:")
+            raise Exception(msg)
+        
+        return capture
+
 
     def assert_nothing_captured(
         self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc

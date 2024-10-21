@@ -51,6 +51,8 @@ pg_init (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads = 1 /* main thread */  + vtm->n_threads;
 
+  pg->log_class = vlib_log_register_class ("pg", 0);
+
   pg->if_index_by_if_id = hash_create (0, sizeof (uword));
 
   if ((error = vlib_call_init_function (vm, vnet_main_init)))

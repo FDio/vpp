@@ -536,7 +536,7 @@ serialize_function_t serialize_vnet_interface_state,
  * @param n_bytes_in_trace - u32
  *
  */
-static inline void
+static inline void*
 pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
 		 u32 n_bytes_in_trace)
 {
@@ -545,12 +545,14 @@ pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
   i32 n_left = clib_min (n_bytes_in_trace, n);
   f64 time_now = vlib_time_now (vm);
   void *d;
+  void *ret_d = 0;
 
   if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
     {
       time_now += vm->clib_time.init_reference_time;
       clib_spinlock_lock_if_init (&pm->lock);
       d = pcap_add_packet (pm, time_now, n_left, n);
+      ret_d = d;
       while (1)
 	{
 	  u32 copy_length = clib_min ((u32) n_left, b->current_length);
@@ -564,6 +566,7 @@ pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
 	}
       clib_spinlock_unlock_if_init (&pm->lock);
     }
+  return ret_d;
 }
 
 typedef struct

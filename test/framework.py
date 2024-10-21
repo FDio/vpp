@@ -129,6 +129,20 @@ class VppTestCase(VppAsfTestCase):
             i.enable_capture()
 
     @classmethod
+    def pg_enable_zmq_capture(cls, interfaces=None):
+        """
+        Enable ZeroMQ PULL capture on packet-generator interfaces
+
+        :param interfaces: iterable interface indexes (if None,
+                           use self.pg_interfaces)
+
+        """
+        if interfaces is None:
+            interfaces = cls.pg_interfaces
+        for i in interfaces:
+            i.enable_zmq_capture()
+
+    @classmethod
     def register_pcap(cls, intf, worker):
         """Register a pcap in the testclass"""
         # add to the list of captures with current timestamp
