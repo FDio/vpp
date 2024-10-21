@@ -46,10 +46,9 @@ static u8 icmp_to_icmp6_updater_pointer_table[] =
  * @returns Port number on success, 0 otherwise.
  */
 always_inline u16
-ip4_get_port (ip4_header_t * ip, u8 sender)
+ip4_get_port (ip4_header_t *ip, u8 sender)
 {
-  if (ip->ip_version_and_header_length != 0x45 ||
-      ip4_get_fragment_offset (ip))
+  if (ip->ip_version_and_header_length != 0x45 || ip4_get_fragment_offset (ip))
     return 0;
 
   if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
@@ -65,22 +64,36 @@ ip4_get_port (ip4_header_t * ip, u8 sender)
 	{
 	  return *((u16 *) (icmp + 1));
 	}
-      else if (clib_net_to_host_u16 (ip->length) >= 64)
+      /*
+       * Original IP header + ICMP header + inner IP header.
+       */
+      else
 	{
-	  ip = (ip4_header_t *) (icmp + 2);
-	  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
-			    (ip->protocol == IP_PROTOCOL_UDP)))
+	  u16 outer_ip_length = clib_net_to_host_u16 (ip->length);
+	  if (outer_ip_length >=
+	      2 * sizeof (ip4_header_t) + 2 * sizeof (icmp46_header_t))
 	    {
-	      udp_header_t *udp = (void *) (ip + 1);
-	      return (sender) ? udp->dst_port : udp->src_port;
-	    }
-	  else if (ip->protocol == IP_PROTOCOL_ICMP)
-	    {
-	      icmp46_header_t *icmp = (void *) (ip + 1);
-	      if (icmp->type == ICMP4_echo_request ||
-		  icmp->type == ICMP4_echo_reply)
+	      ip = (ip4_header_t *) (icmp + 2);
+	      if (PREDICT_TRUE (outer_ip_length >=
+				  2 * sizeof (ip4_header_t) +
+				    2 * sizeof (icmp46_header_t) +
+				    sizeof (udp_header_t) &&
+				((ip->protocol == IP_PROTOCOL_TCP) ||
+				 (ip->protocol == IP_PROTOCOL_UDP))))
 		{
-		  return *((u16 *) (icmp + 1));
+		  udp_header_t *udp = (void *) (ip + 1);
+		  return (sender) ? udp->dst_port : udp->src_port;
+		}
+	      else if (outer_ip_length >= 2 * sizeof (ip4_header_t) +
+					    3 * sizeof (icmp46_header_t) &&
+		       ip->protocol == IP_PROTOCOL_ICMP)
+		{
+		  icmp46_header_t *icmp = (void *) (ip + 1);
+		  if (icmp->type == ICMP4_echo_request ||
+		      icmp->type == ICMP4_echo_reply)
+		    {
+		      return *((u16 *) (icmp + 1));
+		    }
 		}
 	    }
 	}
