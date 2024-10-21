@@ -38,6 +38,8 @@
  */
 
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
@@ -45,6 +47,9 @@
 #include <strings.h>
 #include <vppinfra/pcap.h>
 
+#include <vlib/log.h>
+
+#include <czmq.h>
 
 /* Root of all packet generator cli commands. */
 VLIB_CLI_COMMAND (vlib_cli_pg_command, static) = {
@@ -71,6 +76,186 @@ pg_enable_disable (u32 stream_index, int is_enable)
       s = pool_elt_at_index (pg->streams, stream_index);
       pg_stream_enable_disable (pg, s, is_enable);
     }
+}
+
+clib_error_t *
+pg_init_unix_socket (pg_interface_t *pi)
+{
+  pg_main_t *pg = &pg_main;
+  pi->unix_sock_fd = socket (AF_UNIX, SOCK_DGRAM, 0);
+  u32 count = ~0;
+
+  if (pi->unix_sock_fd == -1)
+    {
+      pi->unix_sock_fd = 0;
+      return clib_error_return (0,
+				"Failed to create Unix Domain Socket socket");
+    }
+
+  struct sockaddr_un addr;
+  memset (&addr, 0, sizeof (addr));
+  addr.sun_family = AF_UNIX;
+  strncpy (addr.sun_path, pi->unix_socket_path, sizeof (addr.sun_path) - 1);
+
+  // Bind the socket
+  unlink (pi->unix_socket_path);
+  if (bind (pi->unix_sock_fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+    {
+      close (pi->unix_sock_fd);
+      return clib_error_return (0, "Failed to bind Unix Domain Socket");
+    }
+
+  pi->pcap_main.n_packets_to_capture = count;
+  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+  pi->pcap_main.flags &= ~PCAP_MAIN_INIT_DONE;
+  pi->pcap_main.file_descriptor = -1;
+
+  vlib_log_info (pg->log_class, "binded to Unix Domain Socket: %s",
+		 pi->unix_socket_path);
+
+  return 0;
+
+  // if (a->is_enabled == 1 && pi->unix_sock_fd)
+  //   return clib_error_return (0, "unix socket already exists for interface
+  //   %d.",
+  // 		      a->hw_if_index);
+
+  // vec_free (pi->pcap_file_name);
+  // if ((pi->pcap_main.flags & PCAP_MAIN_INIT_DONE))
+  //   pcap_close (&pi->pcap_main);
+  // clib_memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  // pi->pcap_main.file_descriptor = -1;
+
+  // if (a->is_enabled == 0)
+  //   return 0;
+
+  // if (pi->unix_sock_fd < 0) {
+  //     return clib_error_return(0, "Failed to create Unix Domain Socket");
+  // }
+
+  // pi->unix_socket_path = a->unix_socket_path;
+  // pi->pcap_main.n_packets_to_capture = ~0;
+  // pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+}
+
+clib_error_t *
+pg_add_zmq_socket (pg_interface_t *pi)
+{
+  pg_main_t *pg = &pg_main;
+  pi->zmq_socket = zsock_new (ZMQ_PUSH);
+  u32 count = ~0;
+
+  if (pi->zmq_socket == 0)
+    return clib_error_return (0, "Failed to create CZMQ socket");
+
+  int sock_port = zsock_bind (pi->zmq_socket, "tcp://127.0.0.1:*[60000-]");
+  if (sock_port == -1)
+    {
+      zsock_destroy (&pi->zmq_socket);
+      return clib_error_return (0, "Failed to bind ZeroMQ socket");
+    }
+  pi->zmq_socket_port = sock_port;
+  pi->pcap_main.n_packets_to_capture = count;
+  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+  pi->pcap_main.flags &= ~PCAP_MAIN_INIT_DONE;
+  pi->pcap_main.file_descriptor = -1;
+
+  vlib_log_info (pg->log_class,
+		 "connected to ZeroMQ endpoint tcp://127.0.0.1:%d", sock_port);
+
+  return 0;
+}
+
+clib_error_t *
+pg_cleanup_unix_socket (pg_interface_t *pi)
+{
+  pg_main_t *pg = &pg_main;
+
+  // Check if the socket is initialized
+  if (!pi->unix_sock_fd)
+    return 0;
+
+  close (pi->unix_sock_fd);
+  unlink (pi->unix_socket_path);
+
+  vlib_log_info (pg->log_class, "Unlinked Unix Domain Socket from %s",
+		 pi->unix_socket_path);
+
+  pi->unix_sock_fd = 0;
+  vec_free (pi->unix_socket_path);
+
+  return 0;
+}
+
+clib_error_t *
+pg_delete_zmq_socket (pg_interface_t *pi)
+{
+  pg_main_t *pg = &pg_main;
+
+  // Check if the socket is initialized
+  if (!pi->zmq_socket && !pi->zmq_socket_port)
+    return 0;
+
+  // Log the disconnection for debugging
+  char endpoint[32];
+  snprintf (endpoint, sizeof (endpoint), "tcp://127.0.0.1:%d",
+	    pi->zmq_socket_port);
+  vlib_log_info (pg->log_class,
+		 "disconnecting ZeroMQ endpoint tcp://127.0.0.1:%d",
+		 pi->zmq_socket_port);
+
+  if (zsock_unbind (pi->zmq_socket, "%s", endpoint) == -1)
+    vlib_log_warn (pg->log_class, "Failed to unbind ZeroMQ socket from %s",
+		   endpoint);
+  else
+    vlib_log_info (pg->log_class, "Unbound ZeroMQ socket from %s", endpoint);
+
+  // Destroy the ZeroMQ socket and reset the port information
+  zsock_destroy (&pi->zmq_socket);
+  pi->zmq_socket = 0;
+  pi->zmq_socket_port = -1;
+
+  return 0;
+}
+
+clib_error_t *
+pg_zmq_capture (pg_capture_args_t *a)
+{
+  pg_main_t *pg = &pg_main;
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
+
+  if (a->is_enabled == 1 && pi->zmq_socket)
+    return clib_error_return (0, "zmq socket already exists for interface %d.",
+			      a->hw_if_index);
+
+  vec_free (pi->pcap_file_name);
+  if ((pi->pcap_main.flags & PCAP_MAIN_INIT_DONE))
+    pcap_close (&pi->pcap_main);
+  clib_memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  pi->pcap_main.file_descriptor = -1;
+
+  if (a->is_enabled == 0)
+    return 0;
+
+  pi->zmq_socket = zsock_new (ZMQ_PUSH);
+
+  if (pi->zmq_socket == 0)
+    return clib_error_return (0, "Failed to create CZMQ socket");
+
+  int sock_port = zsock_bind (pi->zmq_socket, "tcp://127.0.0.1:*");
+  if (sock_port == -1)
+    {
+      zsock_destroy (&pi->zmq_socket);
+      return clib_error_return (0, "Failed to bind ZeroMQ socket");
+    }
+  pi->zmq_socket_port = sock_port;
+  pi->pcap_main.n_packets_to_capture = ~0;
+  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+
+  vlib_log_info (pg->log_class,
+		 "connected to ZeroMQ endpoint tcp://127.0.0.1:%d", sock_port);
+
+  return 0;
 }
 
 clib_error_t *
@@ -655,6 +840,68 @@ VLIB_CLI_COMMAND (pg_capture_cmd, static) = {
   .path = "packet-generator capture",
   .short_help = "packet-generator capture <interface name> pcap <filename> [count <n>]",
   .function = pg_capture_cmd_fn,
+};
+
+static clib_error_t *
+pg_zmq_push_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_hw_interface_t *hi = 0;
+  u32 hw_if_index;
+  u32 is_disable = 0;
+  u32 count = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	{
+	  hi = vnet_get_hw_interface (vnm, hw_if_index);
+	}
+      else if (unformat (line_input, "count %u", &count))
+	;
+      else if (unformat (line_input, "disable"))
+	is_disable = 1;
+      else
+	{
+	  error = clib_error_create ("Unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!hi)
+    {
+      error = clib_error_return (0, "Please specify interface name");
+      goto done;
+    }
+
+  if (is_disable == 0)
+    {
+      pg_capture_args_t _a, *a = &_a;
+
+      a->hw_if_index = hw_if_index;
+      a->dev_instance = hi->dev_instance;
+      a->is_enabled = !is_disable;
+      a->count = count;
+      error = pg_zmq_capture (a);
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (pg_zmq_push_cmd, static) = {
+  .path = "packet-generator zmq-push",
+  .short_help = "packet-generator zmq-push <interface name> [count <n>]",
+  .function = pg_zmq_push_cmd_fn,
 };
 
 static clib_error_t *

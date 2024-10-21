@@ -18,7 +18,7 @@ FIB control plane graph all inherit from a single base class; *fib_node_t*. A *f
 identifies the object's index and its associated virtual function table provides the
 parent a mechanism to visit that object during the walk. The reason for a back-walk
 is to inform all children that the state of the parent has changed in some way, and
-that the child may itself need to update.
+that the child may itself need to update [#f14]_.
 
 To support the many to one, child to parent, relationship a parent must maintain a
 list of its children. The requirements of this list are;

@@ -47,6 +47,7 @@
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/gso/gro.h>
+#include <czmq.h>
 
 extern vnet_device_class_t pg_dev_class;
 
@@ -338,7 +339,13 @@ typedef struct
   char *pcap_file_name;
   pg_interface_mode_t mode;
 
+  zsock_t *zmq_socket;
+  u16 zmq_socket_port;
+
   mac_address_t *allowed_mcast_macs;
+
+  int unix_sock_fd;
+  char *unix_socket_path;
 } pg_interface_t;
 
 /* Per VLIB node data. */
@@ -371,6 +378,8 @@ typedef struct pg_main_t
   pg_node_t *nodes;
 
   u16 msg_id_base;
+
+  vlib_log_class_t log_class;
 } pg_main_t;
 
 /* Global main structure. */
@@ -424,9 +433,15 @@ typedef struct
   u8 is_enabled;
   char *pcap_file_name;
   u32 count;
+  char *unix_socket_path;
 } pg_capture_args_t;
 
+clib_error_t *pg_cleanup_unix_socket (pg_interface_t *pi);
+clib_error_t *pg_delete_zmq_socket (pg_interface_t *pi);
+clib_error_t *pg_add_zmq_socket (pg_interface_t *pi);
+clib_error_t *pg_init_unix_socket (pg_interface_t *pi);
 clib_error_t *pg_capture (pg_capture_args_t * a);
+clib_error_t *pg_zmq_capture (pg_capture_args_t *a);
 
 typedef struct
 {

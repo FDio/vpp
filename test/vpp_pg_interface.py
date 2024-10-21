@@ -27,6 +27,8 @@ from scapy.layers.inet6 import (
 )
 from util import ppp, ppc, UnexpectedPacketError
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
+import zmq
+import socket
 
 
 class CaptureTimeoutError(Exception):
@@ -77,9 +79,19 @@ class VppPGInterface(VppInterface):
         return "coalesce-enabled"
 
     @property
+    def endpoint(self):
+        """ZeroMQ socket endpoint - PULL captured packets"""
+        return "tcp://localhost:%u" % self._endpoint_port
+
+    @property
     def out_path(self):
         """pcap file path - captured packets"""
         return self._out_path
+
+    @property
+    def out_sock_path(self):
+        """unix domain socket path - captured packets"""
+        return self._out_sock_path
 
     def get_in_path(self, worker):
         """pcap file path - injected packets"""
@@ -146,6 +158,9 @@ class VppPGInterface(VppInterface):
             self.out_path,
         )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
+        self._endpoint_port = 0
+        self._out_sock = "pg%u_out.sock" % self.pg_index
+        self._out_sock_path = self.test.tempdir + "/" + self._out_sock
 
     def remove_vpp_config(self):
         """delete Pg interface"""
@@ -208,12 +223,63 @@ class VppPGInterface(VppInterface):
         # disable the capture to flush the capture
         self.disable_capture()
         self.remove_old_pcap_file(self.out_path)
-        # FIXME this should be an API, but no such exists atm
-        self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
 
+        if config.packet_flow == "pcap":
+            # FIXME this should be an API, but no such exists atm
+            self.test.vapi.cli(self.capture_cli)
+        elif config.packet_flow == "zmq":
+            try:
+                r = self.test.vapi.pg_zmq_capture(self.pg_index)
+                if r.port:
+                    self._endpoint_port = r.port
+
+                    context = zmq.Context()
+                    self.zmq_socket = context.socket(zmq.PULL)
+                    self.zmq_socket.connect(self.endpoint)
+                    self.test.logger.info(
+                        f"Connected to ZeroMQ endpoint at {self.endpoint}"
+                    )
+                else:
+                    self.test.logger.error(
+                        f"Can't find ZeroMQ endpoint for pg{self.pg_index}"
+                    )
+            except zmq.ZMQError as e:
+                # Handle ZMQ-specific errors
+                self.test.logger.error(f"ZeroMQ error occurred: {e}")
+                raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+            except Exception as e:
+                # Handle any other generic errors
+                self.test.logger.error(f"Unexpected error: {e}")
+                raise RuntimeError(f"Failed to enable ZeroMQ capture: {e}")
+
+            finally:
+                # Additional checks or warnings if needed
+                if not self.zmq_socket:
+                    self.test.logger.warning(
+                        f"ZMQ socket not properly initialized for pg{self.pg_index}"
+                    )
+            self.test.logger.debug("ZeroMQ capture setup complete.")
+        else:
+            self.test.vapi.pg_unix_sock_capture(
+                interface_id=self.pg_index, unix_socket_path=self.out_sock_path
+            )
+            self.unix_sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            self.unix_sock.connect(self.out_sock_path)
+            self.test.logger.info(
+                f"Connected to Unix Domain Socket endpoint at {self.out_sock_path}"
+            )
+
     def disable_capture(self):
-        self.test.vapi.cli("%s disable" % self.capture_cli)
+        if config.packet_flow == "pcap":
+            self.test.vapi.cli("%s disable" % self.capture_cli)
+        elif config.packet_flow == "zmq":
+            self.test.vapi.pg_zmq_capture(interface_id=self.pg_index, is_enabled=0)
+        else:
+            self.test.vapi.pg_unix_sock_capture(
+                interface_id=self.pg_index, is_enabled=0
+            )
 
     def coalesce_enable(self):
         """Enable packet coalesce on this packet-generator interface"""
@@ -279,6 +345,28 @@ class VppPGInterface(VppInterface):
             )
         return output
 
+    def _get_zmq_capture(self, timeout, filter_out_fn=is_ipv6_misc):
+        """Helper method to get capture packet via ZMQ socket and filter it"""
+        if not self.zmq_socket:
+            self.test.logger.error(f"ZMQ socket is not initialized")
+            return None
+        if not timeout:
+            self.test.logger.debug(f"Invalid timeout parameter value: {timeout}")
+
+        packet = None
+        try:
+            if self.zmq_socket.poll(1000 * timeout, zmq.POLLIN):
+                packet = Ether(
+                    self.zmq_socket.recv(flags=zmq.NOBLOCK, copy=False).bytes
+                )
+                if filter_out_fn and filter_out_fn(packet):
+                    packet = None
+                    self.test.logger.debug("Filtered out packet from zmq capture")
+        except zmq.ZMQError as e:
+            self.test.logger.debug(f"ZeroMQ Error: {e}")
+
+        return packet
+
     def get_capture(
         self, expected_count=None, remark=None, timeout=1, filter_out_fn=is_ipv6_misc
     ):
@@ -308,46 +396,89 @@ class VppPGInterface(VppInterface):
             "Expecting to capture %s (%s) packets on %s"
             % (expected_count, based_on, name)
         )
-        while remaining_time > 0:
-            before = time.time()
-            capture = self._get_capture(remaining_time, filter_out_fn)
-            elapsed_time = time.time() - before
-            if capture:
-                if len(capture.res) == expected_count:
-                    # bingo, got the packets we expected
-                    return capture
-                elif len(capture.res) > expected_count:
-                    self.test.logger.error(
-                        ppc(
-                            f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
-                            capture,
+
+        if config.packet_flow == "pcap":
+            while remaining_time > 0:
+                before = time.time()
+                capture = self._get_capture(remaining_time, filter_out_fn)
+                elapsed_time = time.time() - before
+                if capture:
+                    if len(capture.res) == expected_count:
+                        # bingo, got the packets we expected
+                        return capture
+                    elif len(capture.res) > expected_count:
+                        self.test.logger.error(
+                            ppc(
+                                f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
+                                capture,
+                            )
                         )
+                        break
+                    else:
+                        self.test.logger.debug(
+                            "Partial capture containing %s "
+                            "packets doesn't match expected "
+                            "count %s (yet?)" % (len(capture.res), expected_count)
+                        )
+                elif expected_count == 0:
+                    # bingo, got None as we expected - return empty capture
+                    return PacketList()
+                remaining_time -= elapsed_time
+            if capture:
+                self.generate_debug_aid("count-mismatch")
+                if len(capture) > 0 and 0 == expected_count:
+                    rem = f"\n{remark}" if remark else ""
+                    raise UnexpectedPacketError(
+                        capture[0],
+                        f"\n({len(capture)} packets captured in total){rem} on {name}",
                     )
+                msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
+                raise Exception(f"{ppc(msg, capture)}")
+            else:
+                if 0 == expected_count:
+                    return
+                raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+
+        ### ZeroMQ packet receiving ###
+        capture = []
+        deadline = time.time() + timeout
+        if self.zmq_socket.poll(int(timeout * 1000), zmq.POLLIN):
+            while len(capture) < expected_count:
+                try:
+                    packet = None
+                    if config.packet_flow == "zmq":
+                        packet = Ether(
+                            self.zmq_socket.recv(flags=zmq.NOBLOCK, copy=False).bytes
+                        )
+                    else:
+                        packet_data, _ = self.sock.recvfrom(2048)
+                        packet = Ether(packet_data)
+                    if not (filter_out_fn and filter_out_fn(packet)):
+                        capture.append(packet)
+                except zmq.Again:
+                    time.sleep(0.1)
+                    if time.time() >= deadline:
+                        print("Timeout reached without receiving all packets.")
+                        break  # Exit if timeout is exceeded
+                except zmq.ZMQError as e:
+                    print(f"ZeroMQ Error: {e}")
                     break
-                else:
-                    self.test.logger.debug(
-                        "Partial capture containing %s "
-                        "packets doesn't match expected "
-                        "count %s (yet?)" % (len(capture.res), expected_count)
-                    )
-            elif expected_count == 0:
-                # bingo, got None as we expected - return empty capture
-                return PacketList()
-            remaining_time -= elapsed_time
-        if capture:
-            self.generate_debug_aid("count-mismatch")
-            if len(capture) > 0 and 0 == expected_count:
-                rem = f"\n{remark}" if remark else ""
-                raise UnexpectedPacketError(
-                    capture[0],
-                    f"\n({len(capture)} packets captured in total){rem} on {name}",
-                )
-            msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
-            raise Exception(f"{ppc(msg, capture)}")
-        else:
+
+        # Handle packet count mismatches
+        if not capture:
             if 0 == expected_count:
                 return
             raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
+        elif len(capture) < expected_count:
+            # Not enough packets received
+            # TODO: rewrite self.generate_debug_aid("count-mismatch")
+            msg = (
+                f"Captured packets mismatch, captured {len(capture)} packets, "
+                f"expected {expected_count} packets on {name}:"
+            )
+            raise Exception(msg)
+
+        return capture
 
     def assert_nothing_captured(
         self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
@@ -448,6 +579,24 @@ class VppPGInterface(VppInterface):
         :raises Exception: if no packet arrives within timeout
         """
         deadline = time.time() + timeout
+
+        if config.packet_flow == "zmq":
+            self.test.logger.debug("Waiting for packet via ZMQ")
+            packet = self._get_zmq_capture(timeout, filter_out_fn)
+            packet.time = time.time()
+            if not packet:
+                self.test.logger.debug(
+                    f"Timeout ({timeout}) - no packets received via ZMQ"
+                )
+                raise CaptureTimeoutError(
+                    f"Packet didn't arrive within timeout ({timeout})"
+                )
+            self.test.logger.debug(
+                "Packet received via ZMQ after %fs"
+                % (time.time() - (deadline - timeout))
+            )
+            return packet
+
         if self._pcap_reader is None:
             if not self.wait_for_capture_file(timeout):
                 raise CaptureTimeoutError(
