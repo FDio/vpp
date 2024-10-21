@@ -90,6 +90,34 @@ autoreply define pg_interface_enable_disable_coalesce
   option status="in_progress";
 };
 
+/** \brief PacketGenerator capture packets via ZeroMQ on given interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param interface_id - pg interface index
+    @param is_enabled - 1 if enabling streams, 0 if disabling
+    @param count - number of packets to be captured
+*/
+define pg_zmq_capture
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t interface_id;
+  bool is_enabled [default=true];
+  u32 count;
+};
+
+/** \brief PacketGenerator capture packets via ZeroMQ on given interface response
+    @param port - ZeroMQ socket endpoint port, tcp://127.0.0.1:<port>
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define pg_zmq_capture_reply
+{
+  u32 context;
+  i32 retval;
+  u16 port;
+};
+
 /** \brief PacketGenerator capture packets on given interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
