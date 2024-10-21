@@ -116,6 +116,99 @@ static void
 }
 
 static void
+vl_api_pg_zmq_capture_t_handler (vl_api_pg_zmq_capture_t * mp)
+{
+  pg_main_t *pg = &pg_main;
+  vl_api_pg_zmq_capture_reply_t *rmp;
+  int rv = 0;
+  u16 socket_port = 0;
+
+  u32 pg_if_id = pg_interface_add_or_get (
+    pg, ntohl (mp->interface_id), 0 /* gso_enabled */, 0 /* gso_size */,
+    0 /* coalesce_enabled */, PG_MODE_ETHERNET);
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
+  clib_error_t *error = pg_add_zmq_socket (pi);
+
+  if (error)
+	{
+	  clib_error_report (error);
+	  rv = VNET_API_ERROR_CANNOT_CREATE_PCAP_FILE;
+	}
+
+  socket_port = pi->zmq_socket_port;
+  REPLY_MACRO2 (VL_API_PG_ZMQ_CAPTURE_REPLY, ({
+    rmp->port = ntohs(socket_port);
+  }));
+  // vnet_main_t *vnm = vnet_get_main ();
+  // vnet_hw_interface_t *hi = vnet_get_hw_interface(vnm, ntohl(mp->interface_id));
+  // pg_capture_args_t _a, *a = &_a;
+
+  // a->hw_if_index = ntohl (mp->interface_id);
+  // a->dev_instance = hi->dev_instance;
+  // a->is_enabled = mp->is_enabled;
+  // a->count = ntohl (mp->count);
+
+  // clib_error_t *error = pg_zmq_capture (a);
+  
+  // if (error)
+	// {
+	//   clib_error_report (error);
+	//   rv = VNET_API_ERROR_CANNOT_CREATE_PCAP_FILE;
+	// }
+
+  /* Find an interface to use. */
+  // u32 pg_if_id = pg_interface_add_or_get (
+  //   pg, ntohl (mp->interface_id), 0 /* gso_enabled */, 0 /* gso_size */,
+  //   0 /* coalesce_enabled */, PG_MODE_ETHERNET);
+  // pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
+  // socket_port = pi->zmq_socket_port;
+
+  // REPLY_MACRO2 (VL_API_PG_ZMQ_CAPTURE_REPLY, ({
+  //   rmp->port = ntohs(socket_port);
+  // }));
+
+  // vnet_interface_main_t *im = &vnm->interface_main;
+
+  // u8 *intf_name = format (0, "pg%d", ntohl (mp->interface_id), 0);
+  // vec_terminate_c_string (intf_name);
+  // u32 hw_if_index = ~0;
+  // uword *p = hash_get_mem (im->hw_interface_by_name, intf_name);
+  // if (p) {
+  //   hw_if_index = *p;
+  // }
+  // else {
+  //   socket_port = ntohl (mp->interface_id);
+  // }
+
+  // vec_free (intf_name);
+
+  // if (hw_if_index != ~0)
+  //   {
+  //     pg_capture_args_t _a, *a = &_a;
+
+  //     hi = vnet_get_sup_hw_interface (vnm, hw_if_index);
+  //     a->hw_if_index = hw_if_index;
+  //     a->dev_instance = hi->dev_instance;
+  //     a->is_enabled = mp->is_enabled;
+  //     a->count = ntohl (mp->count);
+
+  //     clib_error_t *e = pg_zmq_capture (a);
+  //     if (e)
+	// {
+	//   clib_error_report (e);
+	//   rv = VNET_API_ERROR_CANNOT_CREATE_PCAP_FILE;
+	// }
+  //     // pg_interface_t *pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
+  //     // socket_port = pi->zmq_socket_port;
+  //     socket_port = 2;
+
+  //   }
+  // REPLY_MACRO2 (VL_API_PG_ZMQ_CAPTURE_REPLY, ({
+  //   rmp->port = ntohs(socket_port);
+  // }));
+}
+
+static void
 vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
 {
   pg_main_t *pg = &pg_main;
