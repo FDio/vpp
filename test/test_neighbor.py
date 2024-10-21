@@ -1938,7 +1938,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0.get_capture(1)
 
         #
         # how many we get is going to be dependent on the time for packet
@@ -1973,7 +1973,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0.get_capture(1)
 
         #
         # how many we get is going to be dependent on the time for packet
@@ -2330,7 +2330,6 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@tag_fixme_ubuntu2204
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
