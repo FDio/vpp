@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "bd20fe198dd64004d919a5629537283731f10f39",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2413699_ab758044",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-10-21T08:58:34Z",
+      "side": 1,
+      "message": "I still don\u0027t think dropping the packet because udp not NULL \u0026\u0026 checksum is 0 is a right move. RFC3948 Section 2.1 clearly states that for UDP encapsulated ESP:\n\"\n   o  the IPv4 UDP Checksum SHOULD be transmitted as a zero value, and\n   o  receivers MUST NOT depend on the UDP checksum being a zero value.\n\"",
+      "revId": "bd20fe198dd64004d919a5629537283731f10f39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
