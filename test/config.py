@@ -418,6 +418,28 @@ parser.add_argument(
     help=f"if set, decode all pcap files from a test run (default: {default_decode_pcaps})",
 )
 
+default_packet_flow = "pcap"
+packet_flow_help_string = f"""\
+Specify the packet flow method for capturing packets.
+
+zmq       - Use ZeroMQ for capturing and sending packets. This mode
+            allows real-time transmission of packets between VPP and
+            the test framework over a socket connection.
+pcap      - Use PCAP files for packet capture. Packet data will be
+            written to and read from PCAP files in the /tmp/...
+            directory.
+
+Default: {default_packet_flow}
+"""
+parser.add_argument(
+    "--packet-flow",
+    dest="packet_flow",
+    action="store",
+    choices=["pcap", "zmq"],
+    default=default_packet_flow,
+    help=packet_flow_help_string,
+)
+
 config = parser.parse_args()
 
 ws = config.vpp_ws_dir
