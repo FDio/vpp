@@ -340,6 +340,8 @@ pg_interface_delete (u32 sw_if_index)
 
   pi = pool_elt_at_index (pm->interfaces, hw->dev_instance);
 
+  pg_delete_zmq_socket(pi);
+
   vnet_hw_interface_set_flags (vnm, pi->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, pi->sw_if_index, 0);
 
