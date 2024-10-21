@@ -116,6 +116,36 @@ static void
 }
 
 static void
+vl_api_pg_zmq_capture_t_handler (vl_api_pg_zmq_capture_t *mp)
+{
+  pg_main_t *pg = &pg_main;
+  vl_api_pg_zmq_capture_reply_t *rmp;
+  int rv = 0;
+  u16 socket_port = 0;
+  clib_error_t *error = 0;
+
+  u32 pg_if_id = pg_interface_add_or_get (
+    pg, ntohl (mp->interface_id), 0 /* gso_enabled */, 0 /* gso_size */,
+    0 /* coalesce_enabled */, PG_MODE_ETHERNET);
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
+
+  if (mp->is_enabled)
+    error = pg_add_zmq_socket (pi);
+  else
+    error = pg_delete_zmq_socket (pi);
+
+  if (error)
+    {
+      clib_error_report (error);
+      rv = VNET_API_ERROR_CANNOT_CREATE_PCAP_FILE;
+    }
+
+  socket_port = pi->zmq_socket_port;
+  REPLY_MACRO2 (VL_API_PG_ZMQ_CAPTURE_REPLY,
+		({ rmp->port = ntohs (socket_port); }));
+}
+
+static void
 vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
 {
   pg_main_t *pg = &pg_main;

@@ -1426,12 +1426,25 @@ list(APPEND VNET_API_FILES
 # VNET Library
 ##############################################################################
 
+# Find CZMQ header and library
+vpp_find_path(CZMQ_INCLUDE_DIR PATH_SUFFIXES czmq NAMES czmq.h)
+vpp_plugin_find_library(czmq CZMQ_LIB "libczmq.so")
+
+# Check if CZMQ headers were found
+if (NOT CZMQ_INCLUDE_DIR)
+  message(WARNING "-- CZMQ headers not found - CZMQ support disabled")
+  return()
+endif()
+
+# Include the ZeroMQ directory
+include_directories(${CZMQ_INCLUDE_DIR})
+
 add_vpp_library(vnet
   SOURCES ${VNET_SOURCES}
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
-  LINK_LIBRARIES vppinfra svm vlib
+  LINK_LIBRARIES vppinfra svm vlib ${CZMQ_LIB}
   DEPENDS vpp_version_h api_headers
 )
 

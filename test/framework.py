@@ -572,7 +572,7 @@ class VppTestCase(VppAsfTestCase):
         self.pg_send(input, pkts, worker=worker, trace=trace)
         rxs = []
         for oo in outputs:
-            rx = oo._get_capture(1)
+            rx = oo.get_capture(1)
             self.assertNotEqual(0, len(rx), f"0 != len(rx) ({len(rx)})")
             rxs.append(rx)
         if trace:
@@ -581,7 +581,7 @@ class VppTestCase(VppAsfTestCase):
 
     def send_and_expect_some(self, intf, pkts, output, worker=None, trace=True):
         self.pg_send(intf, pkts, worker=worker, trace=trace)
-        rx = output._get_capture(1)
+        rx = output.get_capture(1)
         if trace:
             self.logger.debug(self.vapi.cli("show trace"))
         self.assertTrue(len(rx) > 0)
