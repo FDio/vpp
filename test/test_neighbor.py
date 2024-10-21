@@ -1938,7 +1938,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0.get_capture(1)
 
         #
         # how many we get is going to be dependent on the time for packet
@@ -1973,7 +1973,7 @@ class ARPTestCase(VppTestCase):
         self.pg1.add_stream(p1 * 257)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = self.pg0._get_capture(1)
+        rx = self.pg0.get_capture(1)
 
         #
         # how many we get is going to be dependent on the time for packet
@@ -2049,7 +2049,6 @@ class ARPTestCase(VppTestCase):
                 pdst=self.pg1.local_ip4,
                 psrc=self.pg1.remote_hosts[n].ip4,
             )
-
             self.send_and_assert_no_replies(self.pg1, p1, "ARP reply")
 
         self.logger.info(self.vapi.cli("sh ip neighbors"))
@@ -2330,7 +2329,6 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@tag_fixme_ubuntu2204
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
@@ -2488,7 +2486,7 @@ class NeighborAgeTestCase(VppTestCase):
         #
         # expect probes from all these ARP entries as they age
         # 3 probes for each neighbor 3*200 = 600
-        rxs = self.pg0.get_capture(600, timeout=2)
+        rxs = self.pg0.get_capture(600, timeout=3)
 
         for ii in range(3):
             for jj in range(200):
