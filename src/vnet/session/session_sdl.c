@@ -402,7 +402,7 @@ session_sdl_fib_init (void)
     dpo_register_new_type (&session_sdl_dpo_vft, session_sdl_dpo_nodes);
 }
 
-static void
+static app_ns_walk_rc_t
 session_sdl_app_namespace_walk_cb (app_namespace_t *app_ns, void *ctx)
 {
   u32 fib_index, table_index;
@@ -421,6 +421,7 @@ session_sdl_app_namespace_walk_cb (app_namespace_t *app_ns, void *ctx)
   st = session_table_get (table_index);
   if (st)
     session_rules_table_free (st, FIB_PROTOCOL_IP6);
+  return APP_NS_WALK_CONTINUE;
 }
 
 clib_error_t *

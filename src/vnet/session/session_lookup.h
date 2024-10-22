@@ -149,6 +149,14 @@ typedef struct _session_rule_add_del_args
   u8 transport_proto;
 } session_rule_add_del_args_t;
 
+typedef struct
+{
+  u32 fib_proto;       /* IN */
+  u32 fib_index;       /* IN */
+  u32 in_appns_index;  /* IN */
+  u32 out_appns_index; /* OUT */
+} session_lookup_app_namespace_walk_t;
+
 session_error_t vnet_session_rule_add_del (session_rule_add_del_args_t *args);
 void session_lookup_set_tables_appns (app_namespace_t * app_ns);
 

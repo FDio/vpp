@@ -223,6 +223,7 @@ format_session_table (u8 *s, va_list *args)
 {
   session_table_t *st = va_arg (*args, session_table_t *);
 
+  s = format (s, "appns index: %d\n", st->appns_index);
   if (clib_bihash_is_initialised_16_8 (&st->v4_session_hash))
     {
       s = format (s, "%U", format_bihash_16_8, &st->v4_session_hash, 0);

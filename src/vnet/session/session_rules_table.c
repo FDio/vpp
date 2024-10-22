@@ -726,7 +726,7 @@ static const session_rt_engine_vft_t session_rules_table_vft = {
   .table_free = session_rules_table_free_,
 };
 
-static void
+static app_ns_walk_rc_t
 session_rules_table_app_namespace_walk_cb (app_namespace_t *app_ns, void *ctx)
 {
   u32 fib_index, table_index;
@@ -748,6 +748,7 @@ session_rules_table_app_namespace_walk_cb (app_namespace_t *app_ns, void *ctx)
   st = session_table_get (table_index);
   if (st)
     session_rules_table_free (st, FIB_PROTOCOL_IP6);
+  return APP_NS_WALK_CONTINUE;
 }
 
 clib_error_t *

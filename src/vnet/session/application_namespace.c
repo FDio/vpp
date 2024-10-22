@@ -41,7 +41,8 @@ app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx)
 
   pool_foreach (app_ns, app_namespace_pool)
     {
-      fn (app_ns, ctx);
+      if (fn (app_ns, ctx) == APP_NS_WALK_STOP)
+	break;
     }
 }
 
@@ -173,8 +174,10 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
       if (app_ns->sock_name)
 	vec_free (app_ns->sock_name);
 
-      session_lookup_table_cleanup (FIB_PROTOCOL_IP4, app_ns->ip4_fib_index);
-      session_lookup_table_cleanup (FIB_PROTOCOL_IP6, app_ns->ip6_fib_index);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP4, app_ns->ip4_fib_index,
+				    ns_index);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP6, app_ns->ip6_fib_index,
+				    ns_index);
 
       app_namespace_free (app_ns);
     }

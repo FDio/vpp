@@ -77,7 +77,7 @@ session_table_t *_get_session_tables ();
 #define session_table_foreach(VAR, BODY)		\
   pool_foreach (VAR, _get_session_tables ()) BODY
 
-void session_lookup_table_cleanup (u32 fib_proto, u32 fib_index);
+void session_lookup_table_cleanup (u32 fib_proto, u32 fib_index, u32 ns_index);
 
 #endif /* SRC_VNET_SESSION_SESSION_TABLE_H_ */
 /*
