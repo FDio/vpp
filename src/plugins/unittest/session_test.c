@@ -825,6 +825,8 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   session_test_enable_rule_table_engine (vm);
 
   session_table_init (st, FIB_PROTOCOL_MAX);
+  vec_add1 (st->appns_index,
+	    app_namespace_index (app_namespace_get_default ()));
   session_rules_table_init (st, FIB_PROTOCOL_MAX);
 
   ip4_address_t lcl_ip = {
@@ -2238,6 +2240,8 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   session_test_enable_sdl_engine (vm);
 
   session_table_init (st, FIB_PROTOCOL_MAX);
+  vec_add1 (st->appns_index,
+	    app_namespace_index (app_namespace_get_default ()));
   session_rules_table_init (st, FIB_PROTOCOL_MAX);
 
   /* Add 1.2.0.0/16 */

@@ -244,13 +244,17 @@ session_sdl_table_init (session_table_t *st, u8 fib_proto)
   session_sdl_block_t *sdlb;
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
   char name[80];
-  app_namespace_t *app_ns = app_namespace_get (st->appns_index);
+  u32 appns_index;
+  app_namespace_t *app_ns;
   session_rules_table_group_t *srtg;
 
   /* Don't support local table */
   if (st->is_local == 1)
     return;
 
+  appns_index =
+    *vec_elt_at_index (st->appns_index, vec_len (st->appns_index) - 1);
+  app_ns = app_namespace_get (appns_index);
   srtg = srtg_instance_alloc (st, 0);
   srt = srtg->session_rules;
   sdlb = &srt->sdl_block;
