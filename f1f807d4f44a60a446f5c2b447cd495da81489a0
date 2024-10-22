@@ -16,6 +16,24 @@
       "message": "Because of vcl, let\u0027s pretend attributes are part of a linked list? Then we can just pass a pointer in the fifo segment to listen/connect within session node? \n\nFor vpp internal attributes we could still use a vector to allocate the elements / keep them contiguous in memory. In fact, we could do that for vcl as well, as long as they fit in a fifo chunk.",
       "revId": "f1f807d4f44a60a446f5c2b447cd495da81489a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d12cc78c_9ba24850",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 938,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-22T12:32:59Z",
+      "side": 1,
+      "message": "Keep it as both, vector and linked list, might not work since vector resize can move vector into different address and in that case links are no more valid.\nI will try to use a vector to allocate memory for vcl",
+      "parentUuid": "dd232dde_4bfba21f",
+      "revId": "f1f807d4f44a60a446f5c2b447cd495da81489a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
