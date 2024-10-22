@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1ce67a3a_09cad5e7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-22T11:59:32Z",
+      "side": 1,
+      "message": "Thanks for your reviewing and providing the comments. We are seeing 2-4x performance improvement with different file sizes(64K, 128K, 2M, 4M) with the CPT accelerator.",
+      "parentUuid": "2b58e8c0_441a505b",
+      "revId": "7778cb0ab2f6b67988c6980d60d1c3ec883633d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d16ebc2d_3829b344",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 1
