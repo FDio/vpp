@@ -127,7 +127,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
 	  st = session_table_alloc ();
 	  session_table_init (st, FIB_PROTOCOL_MAX);
 	  st->is_local = 1;
-	  st->appns_index = app_namespace_index (app_ns);
+	  vec_add1 (st->appns_index, app_namespace_index (app_ns));
 	  app_ns->local_table_index = session_table_index (st);
 	  if (a->sock_name)
 	    {
@@ -173,8 +173,10 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
       if (app_ns->sock_name)
 	vec_free (app_ns->sock_name);
 
-      session_lookup_table_cleanup (FIB_PROTOCOL_IP4, app_ns->ip4_fib_index);
-      session_lookup_table_cleanup (FIB_PROTOCOL_IP6, app_ns->ip6_fib_index);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP4, app_ns->ip4_fib_index,
+				    ns_index);
+      session_lookup_table_cleanup (FIB_PROTOCOL_IP6, app_ns->ip6_fib_index,
+				    ns_index);
 
       app_namespace_free (app_ns);
     }
