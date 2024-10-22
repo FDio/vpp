@@ -1455,7 +1455,7 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
       st = session_table_get_or_alloc (fp, fib_index);
       if (st)
 	{
-	  st->appns_index = app_namespace_index (app_ns);
+	  vec_add1 (st->appns_index, app_namespace_index (app_ns));
 	  session_lookup_fib_table_lock (fib_index, fp);
 	}
     }
@@ -1945,23 +1945,30 @@ session_lookup_init (void)
 }
 
 void
-session_lookup_table_cleanup (u32 fib_proto, u32 fib_index)
+session_lookup_table_cleanup (u32 fib_proto, u32 fib_index, u32 ns_index)
 {
   session_table_t *st;
-  u32 table_index;
+  u32 table_index, appns_index;
+  int i;
 
   session_lookup_fib_table_unlock (fib_index, fib_proto);
+  table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
+  st = session_table_get (table_index);
+  if (st == 0)
+    return;
   if (fib_index_to_lock_count[fib_proto][fib_index] == 0)
     {
-      table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
-      st = session_table_get (table_index);
-      if (st)
-	{
-	  session_table_free (st, fib_proto);
-	  if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
-	    fib_index_to_table_index[fib_proto][fib_index] = ~0;
-	}
+      session_table_free (st, fib_proto);
+      if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
+	fib_index_to_table_index[fib_proto][fib_index] = ~0;
     }
+  else
+    vec_foreach_index (i, st->appns_index)
+      {
+	appns_index = *vec_elt_at_index (st->appns_index, i);
+	if (ns_index == appns_index)
+	  vec_del1 (st->appns_index, i);
+      }
 }
 
 /*
