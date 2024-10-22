@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.2";
+option version = "4.0.3";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -446,6 +446,49 @@ define session_rules_details
   string tag[64];
 };
 
+/** \brief Dump session rules
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define session_rules_v2_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Session rules details
+    @param context - sender context, to match reply w/ request
+    @param transport_proto - transport protocol
+    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
+    @param lcl_ip - local ip
+    @param lcl_plen - local prefix length
+    @param rmt_ip - remote ip
+    @param rmt_ple - remote prefix length
+    @param lcl_port - local port
+    @param rmt_port - remote port
+    @param action_index - the only action defined now is forward to
+                          application with index action_index
+    @param scope - enum that indicates scope of the rule: global or local.
+                   If 0, default is global, 1 is global 2 is local, 3 is both
+    @param tag - tag
+    @param count - count of the number of appns_index
+    @param appns_index - application namespaces where rule is to be applied to
+  */
+define session_rules_v2_details
+{
+  u32 context;
+  vl_api_transport_proto_t transport_proto;
+  vl_api_prefix_t lcl;
+  vl_api_prefix_t rmt;
+  u16 lcl_port;
+  u16 rmt_port;
+  u32 action_index;
+  vl_api_session_rule_scope_t scope;
+  string tag[64];
+  u32 count;
+  u32 appns_index[count];
+};
+
 autoreply define session_sdl_add_del {
   option deprecated;
   u32 client_index;
@@ -500,6 +543,7 @@ define session_sdl_details
  */
 define session_sdl_v2_dump
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -514,11 +558,41 @@ define session_sdl_v2_dump
   */
 define session_sdl_v2_details
 {
+  option deprecated;
   u32 context;
   vl_api_prefix_t rmt;
   u32 action_index;
   u32 appns_index;
   string tag[64];
+};
+
+/** \brief Dump session sdl v3
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define session_sdl_v3_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Session sdl details v3
+    @param context - sender context, to match reply w/ request
+    @param rmt - remote prefix
+    @param action_index - the only action defined now is forward to
+                          application with index action_index
+    @param tag - tag
+    @param count - count of the number of appns_index
+    @param appns_index - application namespaces where rule is to be applied to
+  */
+define session_sdl_v3_details
+{
+  u32 context;
+  vl_api_prefix_t rmt;
+  u32 action_index;
+  string tag[64];
+  u32 count;
+  u32 appns_index[count];
 };
 
 /*

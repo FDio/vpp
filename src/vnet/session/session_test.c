@@ -382,6 +382,11 @@ vl_api_session_sdl_v2_details_t_handler (vl_api_session_sdl_v2_details_t *mp)
 {
 }
 
+static void
+vl_api_session_sdl_v3_details_t_handler (vl_api_session_sdl_v3_details_t *mp)
+{
+}
+
 static int
 api_session_sdl_dump (vat_main_t *vam)
 {
@@ -390,6 +395,24 @@ api_session_sdl_dump (vat_main_t *vam)
 
 static int
 api_session_sdl_v2_dump (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_session_sdl_v3_dump (vat_main_t *vam)
+{
+  return -1;
+}
+
+static void
+vl_api_session_rules_v2_details_t_handler (
+  vl_api_session_rules_v2_details_t *mp)
+{
+}
+
+static int
+api_session_rules_v2_dump (vat_main_t *vam)
 {
   return -1;
 }

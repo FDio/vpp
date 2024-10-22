@@ -71,7 +71,7 @@ class TestSession(VppAsfTestCase):
         )
 
         super(TestSession, self).tearDown()
-        self.vapi.session_enable_disable(is_enable=1)
+        self.vapi.session_enable_disable(is_enable=0)
 
     def test_segment_manager_alloc(self):
         """Session Segment Manager Multiple Segment Allocation"""
@@ -120,6 +120,89 @@ class TestSession(VppAsfTestCase):
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
+
+@tag_fixme_vpp_workers
+class TestApplicationNamespace(VppAsfTestCase):
+    """Application Namespacee"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestApplicationNamespace, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestApplicationNamespace, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestApplicationNamespace, self).setUp()
+        self.create_loopback_interfaces(1)
+
+    def tearDown(self):
+        super(TestApplicationNamespace, self).tearDown()
+        self.vapi.session_enable_disable_v2(
+            rt_engine_type=VppEnum.vl_api_rt_backend_engine_t.RT_BACKEND_ENGINE_API_DISABLE
+        )
+
+    def test_application_namespace(self):
+        """Application Namespace Create"""
+
+        self.vapi.session_enable_disable_v2(
+            rt_engine_type=VppEnum.vl_api_rt_backend_engine_t.RT_BACKEND_ENGINE_API_RULE_TABLE
+        )
+
+        # Configure 2 namespaces, sharing the same interface
+        app0 = self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index
+        )
+        app1 = self.vapi.app_namespace_add_del_v4(
+            namespace_id="1", sw_if_index=self.loop0.sw_if_index
+        )
+
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="172.100.1.1/32",
+            rmt="172.100.1.2/32",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=app0.appns_index,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=1,
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        # session table should contain 3 appns's indices (default, app0, and app1)
+        self.assertEqual(len(dump[1].appns_index), 3)
+        self.assertEqual(dump[1].count, 3)
+        self.assertEqual(dump[1].appns_index[0], 0)
+        self.assertEqual(dump[1].appns_index[1], app0.appns_index)
+        self.assertEqual(dump[1].appns_index[2], app1.appns_index)
+
+        # remove the last namespace
+        self.vapi.app_namespace_add_del_v4(
+            namespace_id="1", sw_if_index=self.loop0.sw_if_index, is_add=0
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        # session table should contain the remainging appns's index
+        self.assertEqual(len(dump[1].appns_index), 2)
+        self.assertEqual(dump[1].count, 2)
+        self.assertEqual(dump[1].appns_index[0], 0)
+        self.assertEqual(dump[1].appns_index[1], app0.appns_index)
+
+        self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=0
+        )
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="172.100.1.1/32",
+            rmt="172.100.1.2/32",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=app0.appns_index,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=0,
+        )
 
 
 @tag_fixme_vpp_workers
