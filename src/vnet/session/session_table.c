@@ -222,7 +222,17 @@ u8 *
 format_session_table (u8 *s, va_list *args)
 {
   session_table_t *st = va_arg (*args, session_table_t *);
+  u32 appns_index, i;
 
+  s = format (s, "appns index: ");
+  vec_foreach_index (i, st->appns_index)
+    {
+      appns_index = *vec_elt_at_index (st->appns_index, i);
+      if (i > 0)
+	s = format (s, ", ");
+      s = format (s, "%d", appns_index);
+    }
+  s = format (s, "\n");
   if (clib_bihash_is_initialised_16_8 (&st->v4_session_hash))
     {
       s = format (s, "%U", format_bihash_16_8, &st->v4_session_hash, 0);

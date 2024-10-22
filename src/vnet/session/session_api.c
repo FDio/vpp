@@ -1333,6 +1333,7 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
   vl_api_registration_t *reg;
   session_table_t *st;
   u8 tp;
+  u32 appns_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -1344,9 +1345,12 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
 			       {
 				 session_rules_table_t *srt =
 				   srtg_handle_to_srt (st->srtg_handle, tp);
+				 appns_index = *vec_elt_at_index (
+				   st->appns_index,
+				   vec_len (st->appns_index) - 1);
 				 send_session_rules_table_details (
 				   srt, st->active_fib_proto, tp, st->is_local,
-				   st->appns_index, reg, mp->context);
+				   appns_index, reg, mp->context);
 			       }
 			 }));
 }
@@ -1413,8 +1417,8 @@ vl_api_session_sdl_v2_dump_t_handler (vl_api_session_sdl_v2_dump_t *mp)
     st, ({
       if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
 	{
-	  ctx.appns_index = st->appns_index;
-
+	  ctx.appns_index =
+	    *vec_elt_at_index (st->appns_index, vec_len (st->appns_index) - 1);
 	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
 	    session_sdl_table_walk4 (st->srtg_handle,
 				     send_session_sdl_v2_details, &ctx);
@@ -1479,8 +1483,8 @@ vl_api_session_sdl_dump_t_handler (vl_api_session_sdl_dump_t *mp)
     st, ({
       if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
 	{
-	  ctx.appns_index = st->appns_index;
-
+	  ctx.appns_index =
+	    *vec_elt_at_index (st->appns_index, vec_len (st->appns_index) - 1);
 	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
 	    session_sdl_table_walk4 (st->srtg_handle, send_session_sdl_details,
 				     &ctx);
