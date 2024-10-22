@@ -16,6 +16,24 @@
       "message": "Hi Piotr, nice work! the patch looks ok to me but can you update the tests for ipv6 fp?",
       "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee3e67d3_412ee646",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-10-22T07:43:11Z",
+      "side": 1,
+      "message": "Sure we can update tests for covering ipv6 fast path.",
+      "parentUuid": "f608867f_96411367",
+      "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
