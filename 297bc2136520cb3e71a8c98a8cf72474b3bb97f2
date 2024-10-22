@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "37898983_c57afc3d",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-22T11:55:10Z",
+      "side": 1,
+      "message": "Yes, we can call tls_notify_app_io_error.",
+      "parentUuid": "506bb5b4_e042d113",
+      "revId": "297bc2136520cb3e71a8c98a8cf72474b3bb97f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "009b858e_6a12f395",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 2
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c807e328_6eb40869",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-22T11:55:10Z",
+      "side": 1,
+      "message": "Removed.",
+      "parentUuid": "009b858e_6a12f395",
+      "revId": "297bc2136520cb3e71a8c98a8cf72474b3bb97f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6cfc4b74_01fe14fd",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 2
@@ -48,6 +84,24 @@
       "writtenOn": "2024-10-07T23:03:24Z",
       "side": 1,
       "message": "Since these (write one as well) are memcpy related, I was thinking we should be moving them into the read/write functions like openssl_read_from_ssl_into_fifo and handle them in the error case where we can actually check the error. \n\nWe can either get tls_session from f-\u003eshr-\u003esession_index and f-\u003ethread_index and from it the context or just pass in the context. \n\nWe can probably do the in_async_read check there as well.",
+      "revId": "297bc2136520cb3e71a8c98a8cf72474b3bb97f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "641bb553_39784449",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-22T11:55:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6cfc4b74_01fe14fd",
       "revId": "297bc2136520cb3e71a8c98a8cf72474b3bb97f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

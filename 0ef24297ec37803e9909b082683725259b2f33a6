@@ -16,6 +16,24 @@
       "message": "`max_len` is the maximum burst that we\u0027re willing to try to enqueue. It serves several purposes, including limiting the maximum number of chunks we provision and the amount of crypto work we\u0027re willing to do for this session before yielding the cpu. \n\nSo what is the reason for the change?",
       "revId": "0ef24297ec37803e9909b082683725259b2f33a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de9eec11_5d2965d7",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-22T11:55:10Z",
+      "side": 0,
+      "message": "We did this change and tested with 22.10 branch. With this change also we did not observe any issues. As the max_len was fixed (to 128KB) in the calling function, instead we used retun value of \"svm_fifo_max_enqueue_prod\" chunks.",
+      "parentUuid": "625215a4_d2cbb3f0",
+      "revId": "0ef24297ec37803e9909b082683725259b2f33a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
