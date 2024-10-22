@@ -1333,6 +1333,7 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
   vl_api_registration_t *reg;
   session_table_t *st;
   u8 tp;
+  u32 appns_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -1344,7 +1345,182 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
 			       {
 				 session_rules_table_t *srt =
 				   srtg_handle_to_srt (st->srtg_handle, tp);
+				 appns_index = *vec_elt_at_index (
+				   st->appns_index,
+				   vec_len (st->appns_index) - 1);
 				 send_session_rules_table_details (
+				   srt, st->active_fib_proto, tp, st->is_local,
+				   appns_index, reg, mp->context);
+			       }
+			 }));
+}
+
+/*
+ * session_rules_v2_dunp handler
+ */
+static void
+send_session_rule_v2_details4 (mma_rule_16_t *rule, u8 is_local,
+			       u8 transport_proto, u32 *appns_index, u8 *tag,
+			       vl_api_registration_t *reg, u32 context)
+{
+  vl_api_session_rules_v2_details_t *rmp = 0;
+  session_mask_or_match_4_t *match =
+    (session_mask_or_match_4_t *) &rule->match;
+  session_mask_or_match_4_t *mask = (session_mask_or_match_4_t *) &rule->mask;
+  fib_prefix_t lcl, rmt;
+  u32 i, appns_index_count = vec_len (appns_index);
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) +
+			  appns_index_count * sizeof (*appns_index));
+  if (!rmp)
+    return;
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_RULES_V2_DETAILS);
+  rmp->context = context;
+
+  rmp->count = clib_host_to_net_u32 (appns_index_count);
+  vec_foreach_index (i, appns_index)
+    {
+      u32 index = *vec_elt_at_index (appns_index, i);
+      rmp->appns_index[i] = clib_host_to_net_u32 (index);
+    }
+
+  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
+  ip_set (&lcl.fp_addr, &match->lcl_ip, 1);
+  ip_set (&rmt.fp_addr, &match->rmt_ip, 1);
+  lcl.fp_len = ip4_mask_to_preflen (&mask->lcl_ip);
+  rmt.fp_len = ip4_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP4;
+  rmt.fp_proto = FIB_PROTOCOL_IP4;
+
+  ip_prefix_encode (&lcl, &rmp->lcl);
+  ip_prefix_encode (&rmt, &rmp->rmt);
+  rmp->lcl_port = clib_host_to_net_u16 (match->lcl_port);
+  rmp->rmt_port = clib_host_to_net_u16 (match->rmt_port);
+  rmp->action_index = clib_host_to_net_u32 (rule->action_index);
+  rmp->scope =
+    is_local ? SESSION_RULE_SCOPE_API_LOCAL : SESSION_RULE_SCOPE_API_GLOBAL;
+  rmp->transport_proto = api_session_transport_proto_encode (transport_proto);
+  if (tag)
+    {
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
+      rmp->tag[vec_len (tag)] = 0;
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+send_session_rule_v2_details6 (mma_rule_40_t *rule, u8 is_local,
+			       u8 transport_proto, u32 *appns_index, u8 *tag,
+			       vl_api_registration_t *reg, u32 context)
+{
+  vl_api_session_rules_v2_details_t *rmp = 0;
+  session_mask_or_match_6_t *match =
+    (session_mask_or_match_6_t *) &rule->match;
+  session_mask_or_match_6_t *mask = (session_mask_or_match_6_t *) &rule->mask;
+  fib_prefix_t lcl, rmt;
+  u32 i, appns_index_count = vec_len (appns_index);
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) +
+			  appns_index_count * sizeof (*appns_index));
+  if (!rmp)
+    return;
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_RULES_V2_DETAILS);
+  rmp->context = context;
+
+  rmp->count = clib_host_to_net_u32 (appns_index_count);
+  vec_foreach_index (i, appns_index)
+    {
+      u32 index = *vec_elt_at_index (appns_index, i);
+      rmp->appns_index[i] = clib_host_to_net_u32 (index);
+    }
+
+  clib_memset (&lcl, 0, sizeof (lcl));
+  clib_memset (&rmt, 0, sizeof (rmt));
+  ip_set (&lcl.fp_addr, &match->lcl_ip, 0);
+  ip_set (&rmt.fp_addr, &match->rmt_ip, 0);
+  lcl.fp_len = ip6_mask_to_preflen (&mask->lcl_ip);
+  rmt.fp_len = ip6_mask_to_preflen (&mask->rmt_ip);
+  lcl.fp_proto = FIB_PROTOCOL_IP6;
+  rmt.fp_proto = FIB_PROTOCOL_IP6;
+
+  ip_prefix_encode (&lcl, &rmp->lcl);
+  ip_prefix_encode (&rmt, &rmp->rmt);
+  rmp->lcl_port = clib_host_to_net_u16 (match->lcl_port);
+  rmp->rmt_port = clib_host_to_net_u16 (match->rmt_port);
+  rmp->action_index = clib_host_to_net_u32 (rule->action_index);
+  rmp->scope =
+    is_local ? SESSION_RULE_SCOPE_API_LOCAL : SESSION_RULE_SCOPE_API_GLOBAL;
+  rmp->transport_proto = api_session_transport_proto_encode (transport_proto);
+  if (tag)
+    {
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
+      rmp->tag[vec_len (tag)] = 0;
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+send_session_rules_table_v2_details (session_rules_table_t *srt, u8 fib_proto,
+				     u8 tp, u8 is_local, u32 *appns_index,
+				     vl_api_registration_t *reg, u32 context)
+{
+  mma_rule_16_t *rule16;
+  mma_rule_40_t *rule40;
+  mma_rules_table_16_t *srt16;
+  mma_rules_table_40_t *srt40;
+  u32 ri;
+
+  if (is_local || fib_proto == FIB_PROTOCOL_IP4)
+    {
+      u8 *tag = 0;
+      srt16 = &srt->session_rules_tables_16;
+      pool_foreach (rule16, srt16->rules)
+      {
+	ri = mma_rules_table_rule_index_16 (srt16, rule16);
+	tag = session_rules_table_rule_tag (srt, ri, 1);
+	send_session_rule_v2_details4 (rule16, is_local, tp, appns_index, tag,
+				       reg, context);
+      }
+    }
+  if (is_local || fib_proto == FIB_PROTOCOL_IP6)
+    {
+      u8 *tag = 0;
+      srt40 = &srt->session_rules_tables_40;
+      pool_foreach (rule40, srt40->rules)
+      {
+	ri = mma_rules_table_rule_index_40 (srt40, rule40);
+	tag = session_rules_table_rule_tag (srt, ri, 1);
+	send_session_rule_v2_details6 (rule40, is_local, tp, appns_index, tag,
+				       reg, context);
+      }
+    }
+}
+
+static void
+vl_api_session_rules_v2_dump_t_handler (vl_api_session_rules_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  session_table_t *st;
+  u8 tp;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  session_table_foreach (st, ({
+			   if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+			     for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
+			       {
+				 session_rules_table_t *srt =
+				   srtg_handle_to_srt (st->srtg_handle, tp);
+				 send_session_rules_table_v2_details (
 				   srt, st->active_fib_proto, tp, st->is_local,
 				   st->appns_index, reg, mp->context);
 			       }
@@ -1355,7 +1531,7 @@ typedef struct session_sdl_table_walk_ctx_
 {
   vl_api_registration_t *reg;
   u32 mp_context;
-  u32 appns_index;
+  u32 *appns_index;
 } session_sdl_table_walk_ctx;
 
 static void
@@ -1365,7 +1541,8 @@ send_session_sdl_v2_details (u32 fei, ip46_address_t *rmt_ip, u16 fp_len,
 {
   session_sdl_table_walk_ctx *ctx = args;
   vl_api_registration_t *reg = ctx->reg;
-  u32 appns_index = ctx->appns_index;
+  u32 appns_index =
+    *vec_elt_at_index (ctx->appns_index, vec_len (ctx->appns_index) - 1);
   u32 context = ctx->mp_context;
   vl_api_session_sdl_v2_details_t *rmp = 0;
   fib_prefix_t rmt;
@@ -1414,7 +1591,6 @@ vl_api_session_sdl_v2_dump_t_handler (vl_api_session_sdl_v2_dump_t *mp)
       if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
 	{
 	  ctx.appns_index = st->appns_index;
-
 	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
 	    session_sdl_table_walk4 (st->srtg_handle,
 				     send_session_sdl_v2_details, &ctx);
@@ -1426,12 +1602,90 @@ vl_api_session_sdl_v2_dump_t_handler (vl_api_session_sdl_v2_dump_t *mp)
 }
 
 static void
+send_session_sdl_v3_details (u32 fei, ip46_address_t *rmt_ip, u16 fp_len,
+			     u32 action_index, u32 fp_proto, u8 *tag,
+			     void *args)
+{
+  session_sdl_table_walk_ctx *ctx = args;
+  vl_api_registration_t *reg = ctx->reg;
+  u32 context = ctx->mp_context;
+  vl_api_session_sdl_v3_details_t *rmp = 0;
+  fib_prefix_t rmt;
+  u32 appns_index_count, appns_index, i;
+
+  appns_index_count = vec_len (ctx->appns_index);
+  rmp = vl_msg_api_alloc (sizeof (*rmp) +
+			  appns_index_count * sizeof (appns_index));
+  if (!rmp)
+    return;
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V3_DETAILS);
+  rmp->context = context;
+
+  rmp->count = clib_host_to_net_u32 (appns_index_count);
+  vec_foreach_index (i, ctx->appns_index)
+    {
+      appns_index = *vec_elt_at_index (ctx->appns_index, i);
+      rmp->appns_index[i] = clib_host_to_net_u32 (appns_index);
+    }
+
+  clib_memset (&rmt, 0, sizeof (rmt));
+  if (fp_proto == FIB_PROTOCOL_IP4)
+    ip_set (&rmt.fp_addr, &rmt_ip->ip4, 1);
+  else
+    ip_set (&rmt.fp_addr, &rmt_ip->ip6, 0);
+  rmt.fp_len = fp_len;
+  rmt.fp_proto = fp_proto,
+
+  ip_prefix_encode (&rmt, &rmp->rmt);
+  rmp->action_index = clib_host_to_net_u32 (action_index);
+
+  if (tag)
+    {
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
+      rmp->tag[vec_len (tag)] = 0;
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_session_sdl_v3_dump_t_handler (vl_api_session_sdl_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  session_table_t *st;
+  session_sdl_table_walk_ctx ctx;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ctx.reg = reg;
+  ctx.mp_context = mp->context;
+
+  session_table_foreach (
+    st, ({
+      if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
+	{
+	  ctx.appns_index = st->appns_index;
+	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
+	    session_sdl_table_walk4 (st->srtg_handle,
+				     send_session_sdl_v3_details, &ctx);
+	  else
+	    session_sdl_table_walk6 (st->srtg_handle,
+				     send_session_sdl_v3_details, &ctx);
+	}
+    }));
+}
+
+static void
 send_session_sdl_details (u32 fei, ip46_address_t *lcl_ip, u16 fp_len,
 			  u32 action_index, u32 fp_proto, u8 *tag, void *args)
 {
   session_sdl_table_walk_ctx *ctx = args;
   vl_api_registration_t *reg = ctx->reg;
-  u32 appns_index = ctx->appns_index;
+  u32 appns_index =
+    *vec_elt_at_index (ctx->appns_index, vec_len (ctx->appns_index) - 1);
   u32 context = ctx->mp_context;
   vl_api_session_sdl_details_t *rmp = 0;
   fib_prefix_t lcl;
@@ -1480,7 +1734,6 @@ vl_api_session_sdl_dump_t_handler (vl_api_session_sdl_dump_t *mp)
       if (st->srtg_handle != SESSION_SRTG_HANDLE_INVALID)
 	{
 	  ctx.appns_index = st->appns_index;
-
 	  if (st->active_fib_proto == FIB_PROTOCOL_IP4)
 	    session_sdl_table_walk4 (st->srtg_handle, send_session_sdl_details,
 				     &ctx);
@@ -2209,6 +2462,10 @@ session_api_hookup (vlib_main_t *vm)
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V2_DUMP, 1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V2_DETAILS, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V3_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_V3_DETAILS, 1);
   return 0;
 }
 

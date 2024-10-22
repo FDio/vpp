@@ -78,10 +78,10 @@ class TestSessionSDL(VppTestCase):
         )
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del_v4(
+        app0 = self.vapi.app_namespace_add_del_v4(
             namespace_id="0", sw_if_index=self.loop0.sw_if_index
         )
-        self.vapi.app_namespace_add_del_v4(
+        app1 = self.vapi.app_namespace_add_del_v4(
             namespace_id="1", sw_if_index=self.loop1.sw_if_index
         )
 
@@ -120,8 +120,12 @@ class TestSessionSDL(VppTestCase):
         )
         self.apply_rules(rules, is_add=1, appns_index=0)
 
-        filter = self.vapi.session_sdl_v2_dump()
+        filter = self.vapi.session_sdl_v3_dump()
         self.assertEqual(filter[0].rmt, IPv4Network(self.loop1.local_ip4 + "/32"))
+        self.assertEqual(len(filter[0].appns_index), 2)
+        self.assertEqual(filter[0].count, 2)
+        self.assertEqual(filter[0].appns_index[0], 0)
+        self.assertEqual(filter[0].appns_index[1], app0.appns_index)
 
         # irrelevant rules - add 64k entries in one API call
         rules = []
@@ -158,6 +162,11 @@ class TestSessionSDL(VppTestCase):
         self.vapi.app_namespace_add_del_v4(
             is_add=0, namespace_id="0", sw_if_index=self.loop0.sw_if_index
         )
+        filter = self.vapi.session_sdl_v3_dump()
+        self.assertEqual(len(filter[0].appns_index), 1)
+        self.assertEqual(filter[0].count, 1)
+        self.assertEqual(filter[0].appns_index[0], 0)
+
         self.vapi.app_namespace_add_del_v4(
             is_add=0, namespace_id="1", sw_if_index=self.loop1.sw_if_index
         )
