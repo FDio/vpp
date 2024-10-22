@@ -88,7 +88,16 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a);
 u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);
 session_table_t *app_namespace_get_local_table (app_namespace_t * app_ns);
 
-typedef void (*app_namespace_walk_fn_t) (app_namespace_t *app_ns, void *ctx);
+/**
+ * Walk return code
+ */
+typedef enum app_ns_walk_rc_t_
+{
+  APP_NS_WALK_STOP,
+  APP_NS_WALK_CONTINUE,
+} app_ns_walk_rc_t;
+typedef app_ns_walk_rc_t (*app_namespace_walk_fn_t) (app_namespace_t *app_ns,
+						     void *ctx);
 extern void app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx);
 
 always_inline app_namespace_t *

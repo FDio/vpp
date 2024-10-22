@@ -1944,22 +1944,59 @@ session_lookup_init (void)
   session_table_init (st, FIB_PROTOCOL_IP6);
 }
 
+static app_ns_walk_rc_t
+session_lookup_app_namespace_walk_cb (app_namespace_t *app_ns, void *ctx)
+{
+  u32 fib_index, table_index;
+  session_table_t *st;
+  session_lookup_app_namespace_walk_t *ct = ctx;
+
+  fib_index = app_namespace_get_fib_index (app_ns, ct->fib_proto);
+  table_index = session_lookup_get_index_for_fib (ct->fib_proto, fib_index);
+  st = session_table_get (table_index);
+  if (st && (st != ct->st))
+    {
+      ct->appns_index = st->appns_index;
+      return APP_NS_WALK_STOP;
+    }
+  return APP_NS_WALK_CONTINUE;
+}
+
 void
 session_lookup_table_cleanup (u32 fib_proto, u32 fib_index)
 {
   session_table_t *st;
   u32 table_index;
+  session_lookup_app_namespace_walk_t ctx;
+  app_namespace_t *app_ns;
 
   session_lookup_fib_table_unlock (fib_index, fib_proto);
+  table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
+  st = session_table_get (table_index);
+  if (st == 0)
+    return;
   if (fib_index_to_lock_count[fib_proto][fib_index] == 0)
     {
-      table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
-      st = session_table_get (table_index);
-      if (st)
+      session_table_free (st, fib_proto);
+      if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
+	fib_index_to_table_index[fib_proto][fib_index] = ~0;
+    }
+  else
+    {
+      app_ns = app_namespace_get (st->appns_index);
+      if (app_namespace_index (app_ns) == st->appns_index)
 	{
-	  session_table_free (st, fib_proto);
-	  if (vec_len (fib_index_to_table_index[fib_proto]) > fib_index)
-	    fib_index_to_table_index[fib_proto][fib_index] = ~0;
+	  /*
+	   * The appns is going away and the session table holds its
+	   * appns_index. This happens when multiple appns's share the same
+	   * session table. Look for the appns_index from the remaining appns's
+	   * to replace the session table's current appns_index.
+	   */
+	  memset (&ctx, 0, sizeof (ctx));
+	  ctx.fib_proto = fib_proto;
+	  ctx.st = st;
+	  app_namespace_walk (session_lookup_app_namespace_walk_cb, &ctx);
+	  st->appns_index = ctx.appns_index;
 	}
     }
 }

@@ -41,7 +41,8 @@ app_namespace_walk (app_namespace_walk_fn_t fn, void *ctx)
 
   pool_foreach (app_ns, app_namespace_pool)
     {
-      fn (app_ns, ctx);
+      if (fn (app_ns, ctx) == APP_NS_WALK_STOP)
+	break;
     }
 }
 
