@@ -263,7 +263,7 @@ vnet_dev_api_remove_port_if (vlib_main_t *vm,
   if (!hi)
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
-  if (pool_is_free_index (dm->ports_by_dev_instance, hi->dev_instance))
+  if (pool_is_free_index (dm->dev_instances, hi->dev_instance))
     return VNET_DEV_ERR_UNKNOWN_INTERFACE;
 
   port = vnet_dev_get_port_from_dev_instance (hi->dev_instance);

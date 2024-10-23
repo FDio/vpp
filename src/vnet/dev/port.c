@@ -517,7 +517,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
   u16 n_threads = vlib_get_n_threads ();
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_t *dev = port->dev;
-  vnet_dev_port_t **pp;
+  vnet_dev_instance_t *di;
   vnet_dev_rv_t rv;
   u16 ti = 0;
 
@@ -563,10 +563,9 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
 	break;
     }
 
-  /* pool of port pointers helps us to assign unique dev_instance */
-  pool_get (dm->ports_by_dev_instance, pp);
-  port->intf.dev_instance = pp - dm->ports_by_dev_instance;
-  pp[0] = port;
+  pool_get (dm->dev_instances, di);
+  port->intf.dev_instance = di - dm->dev_instances;
+  di->port = port;
 
   if (port->attr.type == VNET_DEV_PORT_TYPE_ETHERNET)
     {
@@ -709,7 +708,7 @@ vnet_dev_port_if_remove (vlib_main_t *vm, vnet_dev_port_t *port)
       vlib_worker_thread_barrier_sync (vm);
       vnet_delete_hw_interface (vnm, port->intf.hw_if_index);
       vlib_worker_thread_barrier_release (vm);
-      pool_put_index (dm->ports_by_dev_instance, port->intf.dev_instance);
+      pool_put_index (dm->dev_instances, port->intf.dev_instance);
       port->interface_created = 0;
     }
 

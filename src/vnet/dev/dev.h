@@ -461,10 +461,15 @@ typedef struct
 
 typedef struct
 {
+  vnet_dev_port_t *port;
+} vnet_dev_instance_t;
+
+typedef struct
+{
   vnet_dev_bus_t *buses;
   vnet_dev_driver_t *drivers;
   vnet_dev_t **devices;
-  vnet_dev_port_t **ports_by_dev_instance;
+  vnet_dev_instance_t *dev_instances;
   vnet_dev_bus_registration_t *bus_registrations;
   vnet_dev_driver_registration_t *driver_registrations;
   void *runtime_temp_spaces;
