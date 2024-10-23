@@ -12,6 +12,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_dev_tx_node_runtime_t *rt = vnet_dev_get_tx_node_runtime (node);
+  vnet_dev_instance_t *ins = vnet_dev_get_dev_instance (rt->dev_instance);
   vnet_dev_tx_queue_t *txq = rt->tx_queue;
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
@@ -27,6 +28,24 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   struct pp2_ppio_desc descs[VLIB_FRAME_SIZE], *d = descs;
   u16 sz = txq->size;
   u16 mask = sz - 1;
+  i16 len_adj = 0;
+
+  if (ins->is_primary_if == 0)
+    {
+      u32 id = vnet_dev_port_get_sec_if_by_index (port, ins->sec_if_index)->id;
+      mv_dsa_tag_t tag = {
+	.tag_type = MV_DSA_TAG_TYPE_FROM_CPU,
+	.src_port_or_lag = id,
+      };
+      for (u32 i = 0; i < n_vectors; i++)
+	{
+	  vlib_buffer_t *b = vlib_get_buffer (vm, buffers[i]);
+	  u8 *start = vlib_buffer_get_current (b);
+	  clib_memmove (start - 4, start, 12);
+	  mv_dsa_tag_write (start + 8, tag);
+	}
+      len_adj = 4;
+    }
 
   if (mtq->n_enq)
     {
@@ -51,9 +70,9 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
       u64 paddr = vlib_buffer_get_pa (vm, b0);
 
       pp2_ppio_outq_desc_reset (d);
-      pp2_ppio_outq_desc_set_phys_addr (d, paddr + b0->current_data);
+      pp2_ppio_outq_desc_set_phys_addr (d, paddr + b0->current_data - len_adj);
       pp2_ppio_outq_desc_set_pkt_offset (d, 0);
-      pp2_ppio_outq_desc_set_pkt_len (d, b0->current_length);
+      pp2_ppio_outq_desc_set_pkt_len (d, b0->current_length + len_adj);
     }
 
   buffers = vlib_frame_vector_args (frame);
