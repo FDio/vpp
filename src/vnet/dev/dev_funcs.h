@@ -51,13 +51,21 @@ vnet_dev_get_port_by_index (vnet_dev_t *dev, u32 index)
   return pool_elt_at_index (dev->ports, index)[0];
 }
 
+static_always_inline vnet_dev_instance_t *
+vnet_dev_get_dev_instance (u32 dev_instance)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  if (pool_is_free_index (dm->dev_instances, dev_instance))
+    return 0;
+  return pool_elt_at_index (dm->dev_instances, dev_instance);
+}
+
 static_always_inline vnet_dev_port_t *
 vnet_dev_get_port_from_dev_instance (u32 dev_instance)
 {
-  vnet_dev_main_t *dm = &vnet_dev_main;
-  if (pool_is_free_index (dm->ports_by_dev_instance, dev_instance))
-    return 0;
-  return pool_elt_at_index (dm->ports_by_dev_instance, dev_instance)[0];
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (dev_instance);
+
+  return di ? di->port : 0;
 }
 
 static_always_inline vnet_dev_port_t *
