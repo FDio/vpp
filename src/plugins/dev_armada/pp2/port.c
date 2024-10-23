@@ -23,6 +23,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  vnet_dev_rx_queue_t *rxq0 = 0;
   struct pp2_ppio_link_info li;
   char match[16];
   int mrv;
@@ -30,6 +31,13 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (port->dev, "");
 
   snprintf (match, sizeof (match), "ppio-%d:%d", md->pp_id, port->port_id);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->queue_id == 0)
+      {
+	rxq0 = q;
+	break;
+      }
 
   struct pp2_ppio_params ppio_params = {
     .match = match,
@@ -41,7 +49,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
         .pkt_offset = 0,
 	.num_in_qs = 1,
 	.inqs_params = &(struct pp2_ppio_inq_params) { .size = 512 },
-	.pools[0][0] = md->thread[0].bpool,
+	.pools[0][0] = md->thread[rxq0->rx_thread_index].bpool,
       },
     },
   };
@@ -74,6 +82,9 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
 
   log_debug (dev, "port %u %U", port->port_id, format_pp2_ppio_link_info, &li);
+
+  for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
+    mp->desc_ptrs[i] = mp->descs + i;
 
   mvpp2_port_add_counters (vm, port);
 
@@ -203,6 +214,34 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 				  });
       mp->is_enabled = 0;
     }
+}
+
+vnet_dev_rv_t
+mvpp2_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_interface_t *sif = p;
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+
+  log_debug (port->dev, "id %u", sif->id);
+
+  if (sif->id >= MV_DSA_N_SRC || mp->is_dsa == 0)
+    return VNET_DEV_ERR_NOT_SUPPORTED;
+
+  mp->valid_dsa_src_bitmap |= 1 << sif->id;
+  mp->dsa_to_sec_if[sif->id] = sif->index;
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+mvpp2_port_del_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_interface_t *sif = p;
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+
+  log_debug (port->dev, "id %u", sif->id);
+
+  mp->valid_dsa_src_bitmap &= ~(1 << sif->id);
+  return VNET_DEV_OK;
 }
 
 vnet_dev_rv_t
