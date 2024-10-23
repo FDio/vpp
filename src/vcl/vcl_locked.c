@@ -135,6 +135,9 @@ typedef struct vls_main_
   clib_spinlock_t worker_rpc_lock;     /**< lock for inter-worker rpcs */
 } vls_main_t;
 
+/* Tracks pthread NOT worker index */
+__thread uword __vls_pthread_index = ~0;
+
 vls_main_t *vlsm;
 
 typedef enum
@@ -288,6 +291,7 @@ typedef enum
 static void
 vls_mt_add (void)
 {
+  __vls_pthread_index = vlsl->vls_mt_n_threads;
   vlsl->vls_mt_n_threads += 1;
 
   /* If multi-thread workers are supported, for each new thread register a new
@@ -557,6 +561,22 @@ vlsh_to_session_index (vls_handle_t vlsh)
   vcl_session_handle_t sh;
   sh = vlsh_to_sh (vlsh);
   return vppcom_session_index (sh);
+}
+
+int
+vlsh_to_worker_index (vls_handle_t vlsh)
+{
+  vcl_locked_session_t *vls;
+  u32 wrk_index;
+
+  vls = vls_get_w_dlock (vlsh);
+  if (!vls)
+    wrk_index = INVALID_SESSION_ID;
+  else
+    wrk_index = vls->vcl_wrk_index;
+  vls_dunlock (vls);
+
+  return wrk_index;
 }
 
 vls_handle_t
@@ -1799,7 +1819,7 @@ vls_app_fork_child_handler (void)
   vls_worker_alloc ();
 
   /* Reset number of threads and set wrk index */
-  vlsl->vls_mt_n_threads = 0;
+  vlsl->vls_mt_n_threads = 1;
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->select_mp_check = 0;
   clib_rwlock_init (&vlsl->vls_pool_lock);
@@ -1969,6 +1989,8 @@ vls_app_create (char *app_name)
 {
   int rv;
 
+  __vls_pthread_index = 0;
+
   if ((rv = vppcom_app_create (app_name)))
     return rv;
 
@@ -1983,9 +2005,11 @@ vls_app_create (char *app_name)
   atexit (vls_app_exit);
   vls_worker_alloc ();
   vlsl->vls_wrk_index = vcl_get_worker_index ();
+  vlsl->vls_mt_n_threads = 1;
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
+
   return VPPCOM_OK;
 }
 
@@ -2014,6 +2038,12 @@ void
 vls_register_vcl_worker (void)
 {
   vls_mt_add ();
+}
+
+int
+vls_pthread_index (void)
+{
+  return __vls_pthread_index;
 }
 
 /*

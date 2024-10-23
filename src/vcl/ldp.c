@@ -71,6 +71,7 @@
 /* from <linux/netfilter_ipv4.h> */
 #define SO_ORIGINAL_DST 80
 #endif
+
 typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
@@ -102,7 +103,6 @@ typedef struct ldp_worker_ctx_
   u8 epoll_wait_vcl;
   u8 mq_epfd_added;
   int vcl_mq_epfd;
-
 } ldp_worker_ctx_t;
 
 /* clib_bitmap_t, fd_mask and vcl_si_set are used interchangeably. Make sure
@@ -154,7 +154,8 @@ static ldp_main_t *ldp = &ldp_main;
 static inline ldp_worker_ctx_t *
 ldp_worker_get_current (void)
 {
-  return (ldp->workers + vppcom_worker_index ());
+  //   return (ldp->workers + vppcom_worker_index ());
+  return (ldp->workers + vls_pthread_index ());
 }
 
 /*
@@ -674,6 +675,8 @@ ldp_select_init_maps (fd_set * __restrict original,
     vlsh = ldp_fd_to_vlsh (fd);
     if (vlsh == VLS_INVALID_HANDLE)
       clib_bitmap_set_no_check (*libcb, fd, 1);
+    else if (vlsh_to_worker_index (vlsh) != vppcom_worker_index ())
+      clib_warning ("migration currently not supported");
     else
       *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
   }
@@ -731,10 +734,10 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	     const __sigset_t * __restrict sigmask)
 {
   u32 minbits = clib_max (nfds, BITS (uword)), n_bytes;
-  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   struct timespec libc_tspec = { 0 };
   f64 time_out, vcl_timeout = 0;
   uword si_bits, libc_bits;
+  ldp_worker_ctx_t *ldpw;
   int rv, bits_set = 0;
 
   if (nfds < 0)
@@ -742,6 +745,11 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       errno = EINVAL;
       return -1;
     }
+
+  if (PREDICT_FALSE (vppcom_worker_index () == ~0))
+    vls_register_vcl_worker ();
+
+  ldpw = ldp_worker_get_current ();
 
   if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
     clib_time_init (&ldpw->clib_time);
