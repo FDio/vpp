@@ -234,10 +234,10 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 
       p = clib_dt_get_node_property_by_name (cn, "port-id");
 
-      if (!clib_dt_proprerty_is_u32 (p))
+      if (!clib_dt_property_is_u32 (p))
 	continue;
 
-      ppio_id = clib_dt_proprerty_get_u32 (p);
+      ppio_id = clib_dt_property_get_u32 (p);
       log_debug (dev, "found port with ppio id %u", ppio_id);
 
       if (pp2_ppio_available (md->pp_id, ppio_id) == 0)
