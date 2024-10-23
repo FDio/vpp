@@ -559,6 +559,22 @@ vlsh_to_session_index (vls_handle_t vlsh)
   return vppcom_session_index (sh);
 }
 
+int
+vlsh_to_worker_index (vls_handle_t vlsh)
+{
+  vcl_locked_session_t *vls;
+  u32 wrk_index;
+
+  vls = vls_get_w_dlock (vlsh);
+  if (!vls)
+    wrk_index = INVALID_SESSION_ID;
+  else
+    wrk_index = vls->vcl_wrk_index;
+  vls_dunlock (vls);
+
+  return wrk_index;
+}
+
 vls_handle_t
 vls_si_wi_to_vlsh (u32 session_index, u32 vcl_wrk_index)
 {
@@ -1799,7 +1815,7 @@ vls_app_fork_child_handler (void)
   vls_worker_alloc ();
 
   /* Reset number of threads and set wrk index */
-  vlsl->vls_mt_n_threads = 0;
+  vlsl->vls_mt_n_threads = 1;
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->select_mp_check = 0;
   clib_rwlock_init (&vlsl->vls_pool_lock);
@@ -1983,9 +1999,11 @@ vls_app_create (char *app_name)
   atexit (vls_app_exit);
   vls_worker_alloc ();
   vlsl->vls_wrk_index = vcl_get_worker_index ();
+  vlsl->vls_mt_n_threads = 1;
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
+
   return VPPCOM_OK;
 }
 
