@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "32cf86e1_888e05ce",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-10-23T05:19:09Z",
+      "side": 1,
+      "message": "After removing this CI job is failing.\nhttps://jenkins.fd.io/job/vpp-verify-master-ubuntu2004-aarch64/10730/console\nReverting this change.",
+      "parentUuid": "c807e328_6eb40869",
+      "revId": "297bc2136520cb3e71a8c98a8cf72474b3bb97f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6cfc4b74_01fe14fd",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 2
