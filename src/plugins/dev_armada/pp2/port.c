@@ -76,6 +76,9 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port %u %U", port->port_id, format_pp2_ppio_link_info, &li);
 
+  for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
+    mp->desc_ptrs[i] = mp->descs + i;
+
   mvpp2_port_add_counters (vm, port);
 
 done:
@@ -204,6 +207,68 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 				  });
       mp->is_enabled = 0;
     }
+}
+
+vnet_dev_rv_t
+mvpp2_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_interface_t *sif = p;
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  u32 port_id = CLIB_U32_MAX, switch_id = 0, index;
+
+  if (mp->is_dsa == 0)
+    return VNET_DEV_ERR_NOT_SUPPORTED;
+
+  foreach_vnet_dev_args (a, sif)
+    {
+      switch (a->id)
+	{
+	case MVPP2_SEC_IF_ARG_DSA_PORT:
+	  if (a->val_set)
+	    port_id = vnet_dev_arg_get_uint32 (a);
+	  break;
+	case MVPP2_SEC_IF_ARG_DSA_SWITCH:
+	  switch_id = vnet_dev_arg_get_uint32 (a);
+	  break;
+	default:
+	  break;
+	}
+    }
+
+  if (port_id == CLIB_U32_MAX)
+    {
+      log_err (port->dev, "missing dsa_port argument");
+      return VNET_DEV_ERR_INVALID_ARG;
+    }
+
+  log_debug (port->dev, "switch %u port %u", switch_id, port_id);
+
+  mv_dsa_tag_t tag = {
+    .tag_type = MV_DSA_TAG_TYPE_FROM_CPU,
+    .src_port_or_lag = port_id,
+    .src_dev = switch_id,
+  };
+
+  index = switch_id << 5 | port_id;
+
+  sif->user_data = tag.as_u32;
+  uword_bitmap_set_bits_at_index (mp->valid_dsa_src_bitmap, index, 1);
+  mp->dsa_to_sec_if[index] = sif->index;
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+mvpp2_port_del_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *p)
+{
+  vnet_dev_port_interface_t *sif = p;
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  mv_dsa_tag_t tag = { .as_u32 = sif->user_data };
+  u32 index = tag.src_dev << 5 | tag.src_port_or_lag;
+
+  log_debug (port->dev, "switch %u port %u", tag.src_dev, tag.src_port_or_lag);
+
+  uword_bitmap_clear_bits_at_index (mp->valid_dsa_src_bitmap, index, 1);
+  return VNET_DEV_OK;
 }
 
 vnet_dev_rv_t
