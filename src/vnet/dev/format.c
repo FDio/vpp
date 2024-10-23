@@ -142,7 +142,8 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
     {
       s = format (s, "assigned, interface name is '%U', RX node is '%U'",
 		  format_vnet_sw_if_index_name, vnm, port->intf.sw_if_index,
-		  format_vlib_node_name, vm, port->intf.rx_node_index);
+		  format_vlib_node_name, vm,
+		  vnet_dev_get_port_rx_node_index (port));
     }
   else
     s = format (s, "not assigned");

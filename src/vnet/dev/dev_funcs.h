@@ -87,7 +87,7 @@ vnet_dev_get_rx_queue_if_hw_if_index (vnet_dev_rx_queue_t *rxq)
 }
 
 static_always_inline u32
-vnet_dev_get_port_rx_node_idex (vnet_dev_port_t *port)
+vnet_dev_get_port_rx_node_index (vnet_dev_port_t *port)
 {
   return port->intf.rx_node_index;
 }
