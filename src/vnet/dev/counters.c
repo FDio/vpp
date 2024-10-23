@@ -89,6 +89,8 @@ format_vnet_dev_counter_name (u8 *s, va_list *va)
   char *units[] = {
     [VNET_DEV_CTR_UNIT_BYTES] = "bytes",
     [VNET_DEV_CTR_UNIT_PACKETS] = "packets",
+    [VNET_DEV_CTR_UNIT_DESCRIPTORS] = "descriptors",
+    [VNET_DEV_CTR_UNIT_BUFFERS] = "buffers",
   };
 
   if (c->type == VNET_DEV_CTR_TYPE_VENDOR)
