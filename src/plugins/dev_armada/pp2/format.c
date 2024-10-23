@@ -152,7 +152,22 @@ format_mvpp2_rx_desc (u8 *s, va_list *args)
     s = format (s, " ");
 
   foreach_pp2_rx_desc_field;
+#undef _
   return s;
+}
+
+u8 *
+format_mv_dsa_tag (u8 *s, va_list *args)
+{
+  mv_dsa_tag_t *tag = va_arg (*args, mv_dsa_tag_t *);
+  u32 cnt = 0;
+
+#define _(b, n)                                                               \
+  if (#n[0] != '_')                                                           \
+    s = format (s, "%s" #n " %u", cnt++ ? " " : "", tag->n);
+  foreach_mv_dsa_tag_field
+#undef _
+    return s;
 }
 
 u8 *
@@ -162,15 +177,22 @@ format_mvpp2_rx_trace (u8 *s, va_list *args)
   vlib_node_t *node = va_arg (*args, vlib_node_t *);
   mvpp2_rx_trace_t *t = va_arg (*args, mvpp2_rx_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = t->rxq->port->intf.hw_if_index;
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   u32 indent = format_get_indent (s);
   struct pp2_ppio_desc *d = &t->desc;
 
-  s = format (s, "pp2: %v (%d) next-node %U", hi->name, hw_if_index,
-	      format_vlib_next_node_name, vm, node->index, t->rxq->next_index);
+  if (t->sw_if_index != CLIB_U32_MAX)
+    s = format (s, "pp2: %U (%d) next-node %U", format_vnet_sw_if_index_name,
+		vnm, t->sw_if_index, t->sw_if_index,
+		format_vlib_next_node_name, vm, node->index, t->next_index);
+  else
+    s = format (s, "pp2: next-node %U", format_vlib_next_node_name, vm,
+		node->index, t->next_index);
+
   s = format (s, "\n%U%U", format_white_space, indent + 2,
 	      format_mvpp2_rx_desc, d);
+  if (t->dsa_tag.as_u32)
+    s = format (s, "\n%Udsa tag: %U", format_white_space, indent + 2,
+		format_mv_dsa_tag, &t->dsa_tag);
 
   return s;
 }
