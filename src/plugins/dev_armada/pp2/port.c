@@ -75,6 +75,8 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port %u %U", port->port_id, format_pp2_ppio_link_info, &li);
 
+  mvpp2_port_add_counters (vm, port);
+
 done:
   if (rv != VNET_DEV_OK)
     mvpp2_port_stop (vm, port);
@@ -145,12 +147,13 @@ mvpp2_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
 	}
     }
 
-  if (changes.change.any == 0)
-    return;
+  if (changes.change.any)
+    {
+      mp->last_link_info = li;
+      vnet_dev_port_state_change (vm, port, changes);
+    }
 
-  mp->last_link_info = li;
-
-  vnet_dev_port_state_change (vm, port, changes);
+  mvpp2_port_get_stats (vm, port);
 }
 
 vnet_dev_rv_t
