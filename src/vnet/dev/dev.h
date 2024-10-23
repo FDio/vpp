@@ -104,6 +104,11 @@ typedef void (vnet_dev_rx_queue_op_no_rv_t) (vlib_main_t *,
 					     vnet_dev_rx_queue_t *);
 typedef void (vnet_dev_tx_queue_op_no_rv_t) (vlib_main_t *,
 					     vnet_dev_tx_queue_t *);
+typedef vnet_dev_rv_t (vnet_dev_op_with_ptr_t) (vlib_main_t *, vnet_dev_t *,
+						void *);
+typedef vnet_dev_rv_t (vnet_dev_port_op_with_ptr_t) (vlib_main_t *,
+						     vnet_dev_port_t *,
+						     void *);
 
 typedef u16 vnet_dev_queue_id_t;
 typedef u16 vnet_dev_bus_index_t;
@@ -612,6 +617,9 @@ vnet_dev_rv_t vnet_dev_process_call_op (vlib_main_t *, vnet_dev_t *,
 					vnet_dev_op_t *);
 vnet_dev_rv_t vnet_dev_process_call_op_no_rv (vlib_main_t *, vnet_dev_t *,
 					      vnet_dev_op_no_rv_t *);
+vnet_dev_rv_t vnet_dev_process_call_op_with_ptr (vlib_main_t *, vnet_dev_t *,
+						 vnet_dev_op_with_ptr_t *,
+						 void *);
 void vnet_dev_process_call_op_no_wait (vlib_main_t *, vnet_dev_t *,
 				       vnet_dev_op_no_rv_t *);
 vnet_dev_rv_t vnet_dev_process_call_port_op (vlib_main_t *, vnet_dev_port_t *,
@@ -619,6 +627,9 @@ vnet_dev_rv_t vnet_dev_process_call_port_op (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm,
 						   vnet_dev_port_t *,
 						   vnet_dev_port_op_no_rv_t *);
+vnet_dev_rv_t
+vnet_dev_process_call_port_op_with_ptr (vlib_main_t *, vnet_dev_port_t *,
+					vnet_dev_port_op_with_ptr_t *, void *);
 void vnet_dev_process_call_port_op_no_wait (vlib_main_t *, vnet_dev_port_t *,
 					    vnet_dev_port_op_no_rv_t *);
 vnet_dev_rv_t
