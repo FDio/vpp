@@ -16,6 +16,7 @@ set(MUSDK_LINK_FLAGS "-Wl,--whole-archive,${MUSDK_LIB_DIR}/libmusdk.a,--no-whole
 add_vpp_plugin(dev_armada
   SOURCES
   plugin.c
+  pp2/counters.c
   pp2/init.c
   pp2/format.c
   pp2/port.c

@@ -68,6 +68,13 @@ typedef struct
   vnet_dev_rx_queue_t *rxq;
 } mvpp2_rx_trace_t;
 
+/* counters.c */
+void mvpp2_port_add_counters (vlib_main_t *, vnet_dev_port_t *);
+void mvpp2_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
+void mvpp2_rxq_clear_counters (vlib_main_t *, vnet_dev_rx_queue_t *);
+void mvpp2_txq_clear_counters (vlib_main_t *, vnet_dev_tx_queue_t *);
+vnet_dev_rv_t mvpp2_port_get_stats (vlib_main_t *, vnet_dev_port_t *);
+
 /* format.c */
 format_function_t format_pp2_ppio_link_info;
 format_function_t format_mvpp2_port_status;

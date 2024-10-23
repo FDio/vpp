@@ -287,6 +287,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .config_change = mvpp2_port_cfg_change,
             .config_change_validate = mvpp2_port_cfg_change_validate,
             .format_status = format_mvpp2_port_status,
+	    .clear_counters = mvpp2_port_clear_counters,
           },
           .data_size = sizeof (mvpp2_port_t),
           .initial_data = &mvpp2_port,
@@ -302,6 +303,9 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_size = 4096,
 	.size_is_power_of_two = 1,
       },
+      .ops = {
+	  .clear_counters = mvpp2_rxq_clear_counters,
+      },
     },
     .tx_queue = {
       .config = {
@@ -315,6 +319,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
       .ops = {
 	  .alloc = mvpp2_txq_alloc,
 	  .free = mvpp2_txq_free,
+	  .clear_counters = mvpp2_txq_clear_counters,
       },
         },
       };
