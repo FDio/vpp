@@ -50,12 +50,14 @@ int vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
 		vcl_si_set * except_map, double wait_for_time);
 vcl_session_handle_t vlsh_to_sh (vls_handle_t vlsh);
 vcl_session_handle_t vlsh_to_session_index (vls_handle_t vlsh);
+int vlsh_to_worker_index (vls_handle_t vlsh);
 vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
 unsigned char vls_mt_wrk_supported (void);
 int vls_use_real_epoll (void);
 void vls_register_vcl_worker (void);
+int vls_pthread_index (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */
 
