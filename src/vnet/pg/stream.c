@@ -615,11 +615,17 @@ void
 pg_stream_del (pg_main_t * pg, uword index)
 {
   pg_stream_t *s;
+  pg_buffer_index_t *bi;
 
   s = pool_elt_at_index (pg->streams, index);
 
   pg_stream_enable_disable (pg, s, /* want_enabled */ 0);
   hash_unset_mem (pg->stream_index_by_name, s->name);
+
+  vec_foreach (bi, s->buffer_indices)
+  {
+    clib_fifo_free (bi->buffer_fifo);
+  }
 
   pg_stream_free (s);
   pool_put (pg->streams, s);

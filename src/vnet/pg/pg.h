@@ -184,11 +184,7 @@ typedef struct pg_stream_t
 always_inline void
 pg_buffer_index_free (pg_buffer_index_t * bi)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  word n_alloc;
   vec_free (bi->edits);
-  n_alloc = clib_fifo_elts (bi->buffer_fifo);
-  vlib_buffer_free (vm, bi->buffer_fifo, n_alloc);
   clib_fifo_free (bi->buffer_fifo);
 }
 
