@@ -46,10 +46,9 @@ static u8 icmp_to_icmp6_updater_pointer_table[] =
  * @returns Port number on success, 0 otherwise.
  */
 always_inline u16
-ip4_get_port (ip4_header_t * ip, u8 sender)
+ip4_get_port (ip4_header_t *ip, u8 sender)
 {
-  if (ip->ip_version_and_header_length != 0x45 ||
-      ip4_get_fragment_offset (ip))
+  if (ip->ip_version_and_header_length != 0x45 || ip4_get_fragment_offset (ip))
     return 0;
 
   if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
@@ -65,7 +64,15 @@ ip4_get_port (ip4_header_t * ip, u8 sender)
 	{
 	  return *((u16 *) (icmp + 1));
 	}
-      else if (clib_net_to_host_u16 (ip->length) >= 64)
+      /*
+       * Minimum length here consists of:
+       *  - outer IP header length
+       *  - outer ICMP header length (2*sizeof (icmp46_header_t))
+       *  - inner IP header length
+       *  - first 8 bytes of payload of original packet in case of ICMP error
+       */
+      else if (clib_net_to_host_u16 (ip->length) >=
+	       2 * sizeof (ip4_header_t) + 2 * sizeof (icmp46_header_t) + 8)
 	{
 	  ip = (ip4_header_t *) (icmp + 2);
 	  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
