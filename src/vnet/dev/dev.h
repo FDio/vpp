@@ -541,11 +541,11 @@ format_function_t format_vnet_dev_args;
 /* dev.c */
 vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t,
 			    vnet_dev_driver_t *);
-void vnet_dev_free (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t vnet_dev_init (vlib_main_t *, vnet_dev_t *);
-void vnet_dev_deinit (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t vnet_dev_reset (vlib_main_t *, vnet_dev_t *);
-void vnet_dev_detach (vlib_main_t *, vnet_dev_t *);
+vnet_dev_op_no_rv_t vnet_dev_free;
+vnet_dev_op_t vnet_dev_init;
+vnet_dev_op_no_rv_t vnet_dev_deinit;
+vnet_dev_op_t vnet_dev_reset;
+vnet_dev_op_no_rv_t vnet_dev_detach;
 vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *,
 				 vnet_dev_port_id_t,
 				 vnet_dev_port_add_args_t *);
@@ -577,47 +577,45 @@ void vnet_dev_clear_hw_interface_counters (u32);
 void vnet_dev_set_interface_next_node (vnet_main_t *, u32, u32);
 
 /* port.c */
-vnet_dev_rv_t vnet_dev_port_start (vlib_main_t *, vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_start_all_rx_queues (vlib_main_t *,
-						 vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_start_all_tx_queues (vlib_main_t *,
-						 vnet_dev_port_t *);
-void vnet_dev_port_stop (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_deinit (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_free (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_port_op_t vnet_dev_port_start;
+vnet_dev_port_op_t vnet_dev_port_start_all_rx_queues;
+vnet_dev_port_op_t vnet_dev_port_start_all_tx_queues;
+vnet_dev_port_op_no_rv_t vnet_dev_port_stop;
+vnet_dev_port_op_no_rv_t vnet_dev_port_deinit;
+vnet_dev_port_op_no_rv_t vnet_dev_port_free;
 void vnet_dev_port_add_counters (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_counter_t *, u16);
-void vnet_dev_port_free_counters (vlib_main_t *, vnet_dev_port_t *);
-void vnet_dev_port_update_tx_node_runtime (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_port_op_no_rv_t vnet_dev_port_free_counters;
+vnet_dev_port_op_no_rv_t vnet_dev_port_update_tx_node_runtime;
 void vnet_dev_port_state_change (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_port_state_changes_t);
-void vnet_dev_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_port_op_no_rv_t vnet_dev_port_clear_counters;
 vnet_dev_rv_t
 vnet_dev_port_cfg_change_req_validate (vlib_main_t *, vnet_dev_port_t *,
 				       vnet_dev_port_cfg_change_req_t *);
 vnet_dev_rv_t vnet_dev_port_cfg_change (vlib_main_t *, vnet_dev_port_t *,
 					vnet_dev_port_cfg_change_req_t *);
-vnet_dev_rv_t vnet_dev_port_if_create (vlib_main_t *, vnet_dev_port_t *);
-vnet_dev_rv_t vnet_dev_port_if_remove (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_port_op_t vnet_dev_port_if_create;
+vnet_dev_port_op_t vnet_dev_port_if_remove;
 
 /* queue.c */
 vnet_dev_rv_t vnet_dev_rx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16);
 vnet_dev_rv_t vnet_dev_tx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16);
-void vnet_dev_rx_queue_free (vlib_main_t *, vnet_dev_rx_queue_t *);
-void vnet_dev_tx_queue_free (vlib_main_t *, vnet_dev_tx_queue_t *);
+vnet_dev_rx_queue_op_no_rv_t vnet_dev_rx_queue_free;
+vnet_dev_tx_queue_op_no_rv_t vnet_dev_tx_queue_free;
 void vnet_dev_rx_queue_add_counters (vlib_main_t *, vnet_dev_rx_queue_t *,
 				     vnet_dev_counter_t *, u16);
-void vnet_dev_rx_queue_free_counters (vlib_main_t *, vnet_dev_rx_queue_t *);
+vnet_dev_rx_queue_op_no_rv_t vnet_dev_rx_queue_free_counters;
 void vnet_dev_tx_queue_add_counters (vlib_main_t *, vnet_dev_tx_queue_t *,
 				     vnet_dev_counter_t *, u16);
-void vnet_dev_tx_queue_free_counters (vlib_main_t *, vnet_dev_tx_queue_t *);
-vnet_dev_rv_t vnet_dev_rx_queue_start (vlib_main_t *, vnet_dev_rx_queue_t *);
-vnet_dev_rv_t vnet_dev_tx_queue_start (vlib_main_t *, vnet_dev_tx_queue_t *);
-void vnet_dev_rx_queue_stop (vlib_main_t *, vnet_dev_rx_queue_t *);
-void vnet_dev_tx_queue_stop (vlib_main_t *, vnet_dev_tx_queue_t *);
+vnet_dev_tx_queue_op_no_rv_t vnet_dev_tx_queue_free_counters;
+vnet_dev_rx_queue_op_t vnet_dev_rx_queue_start;
+vnet_dev_tx_queue_op_t vnet_dev_tx_queue_start;
+vnet_dev_rx_queue_op_no_rv_t vnet_dev_rx_queue_stop;
+vnet_dev_tx_queue_op_no_rv_t vnet_dev_tx_queue_stop;
 
 /* process.c */
-vnet_dev_rv_t vnet_dev_process_create (vlib_main_t *, vnet_dev_t *);
+vnet_dev_op_t vnet_dev_process_create;
 vnet_dev_rv_t vnet_dev_process_call_op (vlib_main_t *, vnet_dev_t *,
 					vnet_dev_op_t *);
 vnet_dev_rv_t vnet_dev_process_call_op_no_rv (vlib_main_t *, vnet_dev_t *,
@@ -640,7 +638,7 @@ void vnet_dev_process_call_port_op_no_wait (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t
 vnet_dev_process_port_cfg_change_req (vlib_main_t *, vnet_dev_port_t *,
 				      vnet_dev_port_cfg_change_req_t *);
-void vnet_dev_process_quit (vlib_main_t *, vnet_dev_t *);
+vnet_dev_op_no_rv_t vnet_dev_process_quit;
 void vnet_dev_poll_dev_add (vlib_main_t *, vnet_dev_t *, f64,
 			    vnet_dev_op_no_rv_t *);
 void vnet_dev_poll_dev_remove (vlib_main_t *, vnet_dev_t *,
