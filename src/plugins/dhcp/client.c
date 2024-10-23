@@ -1153,7 +1153,9 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->sw_if_index = sw_if_index;
   a->hostname = hostname;
-  a->client_identifier = format (0, "vpp 1.1%c", 0);
+  a->client_identifier =
+    format (0, "%U", format_ethernet_address,
+	    vnet_sw_interface_get_hw_address (vnet_get_main (), sw_if_index));
   a->set_broadcast_flag = set_broadcast_flag;
 
   /*
