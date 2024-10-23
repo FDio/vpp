@@ -56,6 +56,7 @@ unsigned char vls_use_eventfd (void);
 unsigned char vls_mt_wrk_supported (void);
 int vls_use_real_epoll (void);
 void vls_register_vcl_worker (void);
+int vls_pthread_index (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */
 

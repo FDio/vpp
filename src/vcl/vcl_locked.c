@@ -135,6 +135,9 @@ typedef struct vls_main_
   clib_spinlock_t worker_rpc_lock;     /**< lock for inter-worker rpcs */
 } vls_main_t;
 
+/* Tracks pthread NOT worker index */
+__thread uword __vls_pthread_index = ~0;
+
 vls_main_t *vlsm;
 
 typedef enum
@@ -288,6 +291,7 @@ typedef enum
 static void
 vls_mt_add (void)
 {
+  __vls_pthread_index = vlsl->vls_mt_n_threads;
   vlsl->vls_mt_n_threads += 1;
 
   /* If multi-thread workers are supported, for each new thread register a new
@@ -1799,7 +1803,7 @@ vls_app_fork_child_handler (void)
   vls_worker_alloc ();
 
   /* Reset number of threads and set wrk index */
-  vlsl->vls_mt_n_threads = 0;
+  vlsl->vls_mt_n_threads = 1;
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->select_mp_check = 0;
   clib_rwlock_init (&vlsl->vls_pool_lock);
@@ -1983,9 +1987,12 @@ vls_app_create (char *app_name)
   atexit (vls_app_exit);
   vls_worker_alloc ();
   vlsl->vls_wrk_index = vcl_get_worker_index ();
+  vlsl->vls_mt_n_threads = 1;
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
+  __vls_pthread_index = 0;
+
   return VPPCOM_OK;
 }
 
@@ -2014,6 +2021,12 @@ void
 vls_register_vcl_worker (void)
 {
   vls_mt_add ();
+}
+
+int
+vls_pthread_index (void)
+{
+  return __vls_pthread_index;
 }
 
 /*
