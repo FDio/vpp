@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "088c4c2e331c6992d9e6b13ae2350b5808856729",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "439f9c7d_2829ae71",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-24T02:13:43Z",
+      "side": 1,
+      "message": "Should we avoid toil on consumers and just init ext_cfgs here if it\u0027s null?",
+      "revId": "088c4c2e331c6992d9e6b13ae2350b5808856729",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
