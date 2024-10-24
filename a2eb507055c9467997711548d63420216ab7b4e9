@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afab8eff_261fd5d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3156
+      },
+      "writtenOn": "2024-10-24T05:18:43Z",
+      "side": 1,
+      "message": "The wiki page documentation is not updated to reflect the new cahnges done for https://gerrit.fd.io/r/c/vpp/+/36188 . This will cause some confusion for new users following the wiki. https://wiki.fd.io/view/VPP/How_To_Use_The_C_API#Sending_and_Waiting_on_Messages.",
+      "revId": "a2eb507055c9467997711548d63420216ab7b4e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -34,6 +34,24 @@
       "parentUuid": "cbe84d4d_1d3250c0",
       "revId": "12ef60adbcbb7b3aebcfcc3f33f7c5849ebbb1b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ae1e3c5_500efad4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3156
+      },
+      "writtenOn": "2024-10-24T05:18:43Z",
+      "side": 1,
+      "message": "The wiki page documentation is not updated to reflect the new cahnges. This will cause some confusion for new users following the wiki. https://wiki.fd.io/view/VPP/How_To_Use_The_C_API#Sending_and_Waiting_on_Messages.",
+      "parentUuid": "4d2f9f2b_89126dde",
+      "revId": "12ef60adbcbb7b3aebcfcc3f33f7c5849ebbb1b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
