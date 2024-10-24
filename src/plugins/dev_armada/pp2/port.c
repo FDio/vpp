@@ -23,6 +23,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  vnet_dev_rx_queue_t *rxq0 = 0;
   struct pp2_ppio_link_info li;
   char match[16];
   int mrv;
@@ -30,6 +31,13 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (port->dev, "");
 
   snprintf (match, sizeof (match), "ppio-%d:%d", md->pp_id, port->port_id);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->queue_id == 0)
+      {
+	rxq0 = q;
+	break;
+      }
 
   struct pp2_ppio_params ppio_params = {
     .match = match,
@@ -41,7 +49,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
         .pkt_offset = 0,
 	.num_in_qs = 1,
 	.inqs_params = &(struct pp2_ppio_inq_params) { .size = 512 },
-	.pools[0][0] = md->thread[0].bpool,
+	.pools[0][0] = md->thread[rxq0->rx_thread_index].bpool,
       },
     },
   };
