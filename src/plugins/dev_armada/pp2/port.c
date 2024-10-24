@@ -23,6 +23,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  vnet_dev_rx_queue_t *rxq0 = vnet_dev_get_port_rx_queue_by_id (port, 0);
   struct pp2_ppio_link_info li;
   char match[16];
   int mrv;
@@ -40,8 +41,8 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       .tcs_params[0] = {
         .pkt_offset = 0,
 	.num_in_qs = 1,
-	.inqs_params = &(struct pp2_ppio_inq_params) { .size = 512 },
-	.pools[0][0] = md->thread[0].bpool,
+	.inqs_params = &(struct pp2_ppio_inq_params) { .size = rxq0->size },
+	.pools[0][0] = md->thread[rxq0->rx_thread_index].bpool,
       },
     },
   };
