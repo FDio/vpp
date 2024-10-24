@@ -416,22 +416,6 @@ static void
 vcl_test_init_endpoint_addr (vcl_test_server_main_t * vsm)
 {
   struct sockaddr_storage *servaddr = &vsm->servaddr;
-  memset (servaddr, 0, sizeof (*servaddr));
-
-  if (vsm->server_cfg.address_ip6)
-    {
-      struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) servaddr;
-      server_addr->sin6_family = AF_INET6;
-      server_addr->sin6_addr = in6addr_any;
-      server_addr->sin6_port = htons (vsm->server_cfg.port);
-    }
-  else
-    {
-      struct sockaddr_in *server_addr = (struct sockaddr_in *) servaddr;
-      server_addr->sin_family = AF_INET;
-      server_addr->sin_addr.s_addr = htonl (INADDR_ANY);
-      server_addr->sin_port = htons (vsm->server_cfg.port);
-    }
 
   if (vsm->server_cfg.address_ip6)
     {
@@ -450,15 +434,39 @@ vcl_test_init_endpoint_addr (vcl_test_server_main_t * vsm)
 }
 
 static void
+vcl_test_clear_endpoint_addr (vcl_test_server_main_t *vsm)
+{
+  struct sockaddr_storage *servaddr = &vsm->servaddr;
+
+  memset (&vsm->servaddr, 0, sizeof (vsm->servaddr));
+
+  if (vsm->server_cfg.address_ip6)
+    {
+      struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) servaddr;
+      server_addr->sin6_family = AF_INET6;
+      server_addr->sin6_addr = in6addr_any;
+      server_addr->sin6_port = htons (vsm->server_cfg.port);
+    }
+  else
+    {
+      struct sockaddr_in *server_addr = (struct sockaddr_in *) servaddr;
+      server_addr->sin_family = AF_INET;
+      server_addr->sin_addr.s_addr = htonl (INADDR_ANY);
+      server_addr->sin_port = htons (vsm->server_cfg.port);
+    }
+}
+
+static void
 vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 			      char **argv)
 {
   int v, c;
 
   vsm->server_cfg.proto = VPPCOM_PROTO_TCP;
+  vcl_test_clear_endpoint_addr (vsm);
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6DLsw:hp:S")) != -1)
+  while ((c = getopt (argc, argv, "6DLsw:hp:SB:")) != -1)
     switch (c)
       {
       case '6':
@@ -469,7 +477,22 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 	if (vppcom_unformat_proto (&vsm->server_cfg.proto, optarg))
 	  vtwrn ("Invalid vppcom protocol %s, defaulting to TCP", optarg);
 	break;
-
+      case 'B':
+	if (vsm->server_cfg.address_ip6)
+	  {
+	    if (inet_pton (
+		  AF_INET6, optarg,
+		  &((struct sockaddr_in6 *) &vsm->servaddr)->sin6_addr) != 1)
+	      vtwrn ("couldn't parse ipv6 addr %s", optarg);
+	  }
+	else
+	  {
+	    if (inet_pton (
+		  AF_INET, optarg,
+		  &((struct sockaddr_in *) &vsm->servaddr)->sin_addr) != 1)
+	      vtwrn ("couldn't parse ipv4 addr %s", optarg);
+	  }
+	break;
       case 'D':
 	vsm->server_cfg.proto = VPPCOM_PROTO_UDP;
 	break;
