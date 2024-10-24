@@ -33,6 +33,41 @@
       "message": "Should we avoid toil on consumers and just init ext_cfgs here if it\u0027s null?",
       "revId": "088c4c2e331c6992d9e6b13ae2350b5808856729",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "154c4b09_5e398455",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-24T02:23:48Z",
+      "side": 1,
+      "message": "Actually, let\u0027s have session_endpoint_init_ext_cfgs take len as param and here init with len TRANSPORT_ENDPT_EXT_CFGS_CHUNK_SIZE",
+      "parentUuid": "439f9c7d_2829ae71",
+      "revId": "088c4c2e331c6992d9e6b13ae2350b5808856729",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b072e2a8_af66b566",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-24T02:23:48Z",
+      "side": 1,
+      "message": "Thinking that this might have some impact on tls CPS perf, and given comment regarding init function, let\u0027s maybe drop this lower to 512 (which is almost 2 x sizeof(transport_endpt_ext_cfg_t)) unless http needs more.\n\nIf consumers need more, they can explicitly call session_endpoint_init_ext_cfgs with larger size. Someday I\u0027ll regret asking for this .. :-)",
+      "revId": "088c4c2e331c6992d9e6b13ae2350b5808856729",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
