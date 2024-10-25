@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2eebbe9_633dcbad",
+        "filename": "src/plugins/hs_apps/http_client_cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-25T18:46:05Z",
+      "side": 1,
+      "message": "10 seconds http timeout (in this toy app it is just response timeout)",
+      "parentUuid": "30efe191_b19a7d2f",
+      "revId": "c875ef14ef1e4ffb653b198928f10be1ba61c54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a2405fdf_bfc6f768",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-10-25T18:14:35Z",
       "side": 1,
       "message": "just asking, should this get updated too?",
+      "revId": "c875ef14ef1e4ffb653b198928f10be1ba61c54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85c96018_8027761a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 997,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-25T18:46:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a2405fdf_bfc6f768",
       "revId": "c875ef14ef1e4ffb653b198928f10be1ba61c54a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
