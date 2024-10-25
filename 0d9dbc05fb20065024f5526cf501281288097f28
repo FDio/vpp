@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08166869_6e3e2a88",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-25T16:31:47Z",
+      "side": 1,
+      "message": "Can we move here:\n```\nif (openssl_main.async \u0026\u0026 SSL_want_async (oc-\u003essl))\n  {\n    ctx-\u003ein_async_read \u003d true;\n    openssl_handle_want_async (ctx, SSL_ASYNC_EVT_RD, NULL, 0);\n    return 0;\n  }\n```\nFor this to work, let\u0027s pass in oc which can be cast to ctx. Does that not work because of \n\n```\nif ((SSL_pending (oc-\u003essl) \u003e 0) ||\n  svm_fifo_max_dequeue_cons (tls_session-\u003erx_fifo))\n```\n\nat the end of `openssl_ctx_read_tls`? If yes, maybe we need to improve this if.\n\nI\u0027m thinking that it would be good to consolidate everything that has to do with read/writes to ssl objects into our 2 functions that deal with these operations.",
+      "revId": "0d9dbc05fb20065024f5526cf501281288097f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16f14c6d_8c1dca79",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-10-25T16:31:47Z",
+      "side": 1,
+      "message": "No need for this change",
+      "revId": "0d9dbc05fb20065024f5526cf501281288097f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
