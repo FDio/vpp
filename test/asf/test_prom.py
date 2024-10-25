@@ -2,11 +2,15 @@ from config import config
 from asfframework import VppAsfTestCase, VppTestRunner
 import unittest
 import subprocess
+import random
+import string
 from vpp_qemu_utils import (
     create_host_interface,
     delete_host_interfaces,
     create_namespace,
     delete_namespace,
+    generate_unique_namespace_name,
+    generate_unique_host_interface_name,
 )
 
 
@@ -22,17 +26,22 @@ class TestProm(VppAsfTestCase):
     def setUpClass(cls):
         super(TestProm, cls).setUpClass()
 
-        create_namespace("HttpStaticProm")
-        create_host_interface("vppHost", "vppOut", "HttpStaticProm", "10.10.1.1/24")
+        cls.ns_name = generate_unique_namespace_name()
+        cls.host_name = generate_unique_host_interface_name()
+        out_suffix = "".join(random.choices(string.digits, k=7))
+        out_name = f"vppOut{out_suffix}"
 
-        cls.vapi.cli("create host-interface name vppOut")
-        cls.vapi.cli("set int state host-vppOut up")
-        cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
+        create_namespace(cls.ns_name)
+        create_host_interface(cls.host_name, out_name, cls.ns_name, "10.10.1.1/24")
+
+        cls.vapi.cli(f"create host-interface name {out_name}")
+        cls.vapi.cli(f"set int state host-{out_name} up")
+        cls.vapi.cli(f"set int ip address host-{out_name} 10.10.1.2/24")
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace(["HttpStaticProm"])
-        delete_host_interfaces("vppHost")
+        delete_namespace([cls.ns_name])
+        delete_host_interfaces(cls.host_name)
         super(TestProm, cls).tearDownClass()
 
     def test_prom(self):
@@ -46,7 +55,7 @@ class TestProm(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStaticProm",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/stats.prom",
             ],
