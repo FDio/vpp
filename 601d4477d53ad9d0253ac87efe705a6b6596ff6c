@@ -51,6 +51,24 @@
       "parentUuid": "e63e4caa_f722f690",
       "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0cb203d9_fad1771e",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 957,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-10-25T16:08:18Z",
+      "side": 1,
+      "message": "ok. but looks like your test for keepalive isn\u0027t using tls?\nhere, should you set next ext_cfg from current one instead of from start?",
+      "parentUuid": "106b1953_68492f10",
+      "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
