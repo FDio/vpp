@@ -33,6 +33,24 @@
       "message": "i\u0027m not sure, but is this right? and i\u0027m just asking but is there no easy way to add a unit test that actually adds multiple configs and tries to get the second one?",
       "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "106b1953_68492f10",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 957,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-25T05:30:00Z",
+      "side": 1,
+      "message": "code is tested in my followup patch, where I’ve added http timeout to extended config https://gerrit.fd.io/r/c/vpp/+/41718 in HttpStaticBuildInUrlGetVersionTest http static server adds http timeout value and as second crypto config, if it is broken server is configured without tls and client receive http response to https request",
+      "parentUuid": "e63e4caa_f722f690",
+      "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
