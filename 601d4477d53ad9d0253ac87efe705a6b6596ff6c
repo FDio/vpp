@@ -87,6 +87,24 @@
       "parentUuid": "0cb203d9_fad1771e",
       "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a359dab_723bc6ba",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 957,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-10-25T17:29:03Z",
+      "side": 1,
+      "message": "fixed in https://gerrit.fd.io/r/c/vpp/+/41718/9 since this one was already merged",
+      "parentUuid": "6671624f_47037b7b",
+      "revId": "601d4477d53ad9d0253ac87efe705a6b6596ff6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
