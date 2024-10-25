@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "30efe191_b19a7d2f",
+        "filename": "src/plugins/hs_apps/http_client_cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-10-25T18:14:35Z",
+      "side": 1,
+      "message": "what does 10 signify?",
+      "revId": "c875ef14ef1e4ffb653b198928f10be1ba61c54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2405fdf_bfc6f768",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 997,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-10-25T18:14:35Z",
+      "side": 1,
+      "message": "just asking, should this get updated too?",
+      "revId": "c875ef14ef1e4ffb653b198928f10be1ba61c54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
