@@ -69,3 +69,4 @@ fi
 
 eval set -- $items
 $ws_dir/test/scripts/setsid_wrapper.sh $ws_dir/test/scripts/run_in_venv_with_cleanup.sh $ff $venv_dir/bin/activate python3 $python_opts $ws_dir/test/run_tests.py $extra_args $*
+$ws_dir/test/scripts/tmp_compress_all_tests.sh
