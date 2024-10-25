@@ -3955,12 +3955,11 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
     case VPPCOM_ATTR_GET_TX_FIFO_LEN:
       if (buffer && buflen && (*buflen >= sizeof (u32)))
 	{
-
 	  /* VPP-TBD */
-	  *(size_t *) buffer = (session->sndbuf_size ? session->sndbuf_size :
-				session->tx_fifo ?
-				svm_fifo_size (session->tx_fifo) :
-				vcm->cfg.tx_fifo_size);
+	  *(u32 *) buffer =
+	    (session->sndbuf_size ? session->sndbuf_size :
+	     session->tx_fifo	  ? svm_fifo_size (session->tx_fifo) :
+				    vcm->cfg.tx_fifo_size);
 	  *buflen = sizeof (u32);
 
 	  VDBG (2, "VPPCOM_ATTR_GET_TX_FIFO_LEN: %u (0x%x), buflen %d,"
