@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7766f0da_7b4ba7dd",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1856,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-10-25T11:52:02Z",
+      "side": 1,
+      "message": "nit: ei or ed?\neven the commit message or the help string here is not correct (or the help text below)",
+      "range": {
+        "startLine": 1856,
+        "startChar": 27,
+        "endLine": 1856,
+        "endChar": 29
+      },
+      "revId": "632ee499be7fc1dbab5271dbd1c9dcabc866d745",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
