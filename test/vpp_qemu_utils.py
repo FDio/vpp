@@ -35,9 +35,13 @@ def create_namespace(ns):
         namespaces = ns
     try:
         for namespace in namespaces:
-            result = subprocess.run(["ip", "netns", "add", namespace])
+            result = subprocess.run(
+                ["ip", "netns", "add", namespace], capture_output=True, text=True
+            )
             if result.returncode != 0:
-                raise Exception(f"Error while creating namespace {namespace}")
+                raise Exception(
+                    f"Error while creating namespace {namespace}: {result.stderr}"
+                )
     except subprocess.CalledProcessError as e:
         raise Exception("Error creating namespace:", e.output)
 
