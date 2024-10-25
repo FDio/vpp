@@ -35,11 +35,11 @@ class TestHttpStaticVapi(VppAsfTestCase):
             delete_namespace("HttpStatic")
             create_namespace("HttpStatic")
 
-        create_host_interface("vppHost", "vppOut", "HttpStatic", "10.10.1.1/24")
+        create_host_interface("vppHost", "vppOut1", "HttpStatic", "10.10.1.1/24")
 
-        cls.vapi.cli("create host-interface name vppOut")
-        cls.vapi.cli("set int state host-vppOut up")
-        cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
+        cls.vapi.cli("create host-interface name vppOut1")
+        cls.vapi.cli("set int state host-vppOut1 up")
+        cls.vapi.cli("set int ip address host-vppOut1 10.10.1.2/24")
 
     @classmethod
     def tearDownClass(cls):
