@@ -359,6 +359,32 @@ VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .function = cli_show_trace_buffer,
 };
 
+static clib_error_t *
+cli_show_trace_nodes (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
+{
+
+  u32 ni;
+  vlib_node_t *n;
+
+  vlib_cli_output (vm, "The following nodes support 'trace add':");
+
+  for (ni = 0; ni < vec_len (vm->node_main.nodes); ni++)
+    {
+      n = vlib_get_node (vm, ni);
+      if ((n->flags & VLIB_NODE_FLAG_TRACE_SUPPORTED) != 0)
+	vlib_cli_output (vm, "%U", format_vlib_node_name, vm, n->index);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_trace_nodes_cli, static) = {
+  .path = "show trace nodes",
+  .short_help = "show trace nodes",
+  .function = cli_show_trace_nodes,
+};
+
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
 
 int
