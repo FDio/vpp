@@ -2225,6 +2225,9 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 						adj0->ia_cfg_index);
 
 	  next[0] = next_index;
+	  if (is_midchain)
+	    vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */,
+					0 /* is_ip6 */);
 	}
       else
 	{
@@ -2247,6 +2250,9 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 						&next_index, b[1],
 						adj1->ia_cfg_index);
 	  next[1] = next_index;
+	  if (is_midchain)
+	    vnet_calc_checksums_inline (vm, b[1], 1 /* is_ip4 */,
+					0 /* is_ip6 */);
 	}
       else
 	{
@@ -2396,6 +2402,8 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (is_midchain)
 	    {
+	      vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */,
+					  0 /* is_ip6 */);
 	      /* Guess we are only writing on ipv4 header. */
 	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
 	    }
@@ -2499,6 +2507,8 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (is_midchain)
 	    {
+	      vnet_calc_checksums_inline (vm, b[0], 1 /* is_ip4 */,
+					  0 /* is_ip6 */);
 	      /* Guess we are only writing on ipv4 header. */
 	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
 	    }
