@@ -505,3 +505,32 @@ Now we can start reading body content, following block of code could be executed
       /* close the session if you don't want to send another request */
       /* and update state machine... */
     }
+
+HTTP timeout
+^^^^^^^^^^^^
+
+HTTP plugin sets session inactivity timeout by default to 60 seconds.
+Client and server applications can pass custom timeout value (in seconds) using extended configuration when doing connect or start listening respectively.
+You just need to add extended configuration to session endpoint configuration which is part of ``vnet_connect_args_t`` and ``vnet_listen_args_t``.
+HTTP plugin use ``opaque`` member of ``transport_endpt_ext_cfg_t``, unsigned 32bit integer seems to be sufficient (allowing the timeout to be set up to 136 years).
+
+The example below sets HTTP session timeout to 30 seconds (server application):
+
+.. code-block:: C
+
+    vnet_listen_args_t _a, *a = &_a;
+    session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+    transport_endpt_ext_cfg_t *ext_cfg;
+    int rv;
+    clib_memset (a, 0, sizeof (*a));
+    clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+    /* add new extended config entry */
+    ext_cfg = session_endpoint_add_ext_cfg (
+        &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
+    /* your custom timeout value in seconds */
+    ext_cfg->opaque = 30;
+    /* rest of the settings omitted for brevity */
+    rv = vnet_listen (a);
+    /* don't forget to free extended config */
+    session_endpoint_free_ext_cfgs (&a->sep_ext);
+    /* ... */
