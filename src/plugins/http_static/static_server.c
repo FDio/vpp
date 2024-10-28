@@ -835,8 +835,7 @@ hss_listen (void)
 
   rv = vnet_listen (a);
 
-  if (need_crypto)
-    session_endpoint_free_ext_cfgs (&a->sep_ext);
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
 }
