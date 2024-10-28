@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "56202825_31c67eb2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2024-10-28T10:38:28Z",
+      "side": 1,
+      "message": "realized I forgot the placeholder text :-) will fix the generator script on Wednesday.",
+      "revId": "c773484eb2864ccd0c2e4f9a2f66542db254490a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
