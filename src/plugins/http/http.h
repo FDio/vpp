@@ -447,9 +447,10 @@ typedef struct http_main_
 } http_main_t;
 
 always_inline int
-_validate_target_syntax (u8 *target, int is_query, int *is_encoded)
+_validate_target_syntax (u8 *target, u32 len, int is_query, int *is_encoded)
 {
-  int i, encoded = 0;
+  int encoded = 0;
+  u32 i;
 
   static uword valid_chars[4] = {
     /* !$&'()*+,-./0123456789:;= */
@@ -460,7 +461,7 @@ _validate_target_syntax (u8 *target, int is_query, int *is_encoded)
     0x0000000000000000,
   };
 
-  for (i = 0; i < vec_len (target); i++)
+  for (i = 0; i < len; i++)
     {
       if (clib_bitmap_get_no_check (valid_chars, target[i]))
 	continue;
@@ -471,7 +472,7 @@ _validate_target_syntax (u8 *target, int is_query, int *is_encoded)
       /* pct-encoded = "%" HEXDIG HEXDIG */
       if (target[i] == '%')
 	{
-	  if ((i + 2) > vec_len (target))
+	  if ((i + 2) >= len)
 	    return -1;
 	  if (!isxdigit (target[i + 1]) || !isxdigit (target[i + 2]))
 	    return -1;
@@ -490,7 +491,7 @@ _validate_target_syntax (u8 *target, int is_query, int *is_encoded)
 /**
  * An "absolute-path" rule validation (RFC9110 section 4.1).
  *
- * @param path       Target path to validate.
+ * @param path       Vector of target path to validate.
  * @param is_encoded Return flag that indicates if percent-encoded (optional).
  *
  * @return @c 0 on success.
@@ -498,13 +499,13 @@ _validate_target_syntax (u8 *target, int is_query, int *is_encoded)
 always_inline int
 http_validate_abs_path_syntax (u8 *path, int *is_encoded)
 {
-  return _validate_target_syntax (path, 0, is_encoded);
+  return _validate_target_syntax (path, vec_len (path), 0, is_encoded);
 }
 
 /**
  * A "query" rule validation (RFC3986 section 2.1).
  *
- * @param query      Target query to validate.
+ * @param query      Vector of target query to validate.
  * @param is_encoded Return flag that indicates if percent-encoded (optional).
  *
  * @return @c 0 on success.
@@ -512,7 +513,7 @@ http_validate_abs_path_syntax (u8 *path, int *is_encoded)
 always_inline int
 http_validate_query_syntax (u8 *query, int *is_encoded)
 {
-  return _validate_target_syntax (query, 1, is_encoded);
+  return _validate_target_syntax (query, vec_len (query), 1, is_encoded);
 }
 
 #define htoi(x) (isdigit (x) ? (x - '0') : (tolower (x) - 'a' + 10))
@@ -975,6 +976,171 @@ http_serialize_authority_form_target (http_uri_t *authority)
 		clib_net_to_host_u16 (authority->port));
 
   return s;
+}
+
+typedef enum http_url_scheme_
+{
+  HTTP_URL_SCHEME_HTTP,
+  HTTP_URL_SCHEME_HTTPS,
+} http_url_scheme_t;
+
+typedef struct
+{
+  http_url_scheme_t scheme;
+  u16 port;
+  u32 host_offset;
+  u32 host_len;
+  u32 path_offset;
+  u32 path_len;
+  u8 host_is_ip6;
+} http_url_t;
+
+/**
+ * An "absolute-form" URL parsing.
+ *
+ * @param url    Vector of target URL to validate.
+ * @param parsed Parsed URL metadata in case of success.
+ *
+ * @return @c 0 on success.
+ */
+always_inline int
+http_parse_absolute_form (u8 *url, http_url_t *parsed)
+{
+  u8 *token_start, *token_end, *end;
+  int is_encoded = 0;
+
+  static uword valid_chars[4] = {
+    /* -.0123456789 */
+    0x03ff600000000000,
+    /* ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz */
+    0x07fffffe07fffffe,
+    0x0000000000000000,
+    0x0000000000000000,
+  };
+
+  if (vec_len (url) < 9)
+    {
+      clib_warning ("uri too short");
+      return -1;
+    }
+
+  end = url + vec_len (url);
+
+  /* parse scheme */
+  if (!memcmp (url, "http:// ", 7))
+    {
+      parsed->scheme = HTTP_URL_SCHEME_HTTP;
+      parsed->port = clib_host_to_net_u16 (80);
+      parsed->host_offset = 7;
+    }
+  else if (!memcmp (url, "https:// ", 8))
+    {
+      parsed->scheme = HTTP_URL_SCHEME_HTTPS;
+      parsed->port = clib_host_to_net_u16 (443);
+      parsed->host_offset = 8;
+    }
+  else
+    {
+      clib_warning ("invalid scheme");
+      return -1;
+    }
+  token_start = url + parsed->host_offset;
+
+  /* parse host */
+  parsed->host_len = 0;
+  if (*token_start == '[')
+    /* IPv6 address */
+    {
+      parsed->host_is_ip6 = 1;
+      parsed->host_offset++;
+      token_end = ++token_start;
+      while (1)
+	{
+	  if (token_end == end)
+	    {
+	      clib_warning ("invalid host, IPv6 addr not terminated with ']'");
+	      return -1;
+	    }
+	  else if (*token_end == ']')
+	    {
+	      parsed->host_len = token_end - token_start;
+	      token_start = token_end + 1;
+	      break;
+	    }
+	  else if (*token_end != ':' && *token_end != '.' &&
+		   !isxdigit (*token_end))
+	    {
+	      clib_warning ("invalid character '%u'", *token_end);
+	      return -1;
+	    }
+	  token_end++;
+	}
+    }
+  else
+    {
+      parsed->host_is_ip6 = 0;
+      token_end = token_start;
+      while (token_end != end && *token_end != ':' && *token_end != '/')
+	{
+	  if (!clib_bitmap_get_no_check (valid_chars, *token_end))
+	    {
+	      clib_warning ("invalid character '%u'", *token_end);
+	      return -1;
+	    }
+	  token_end++;
+	}
+      parsed->host_len = token_end - token_start;
+      token_start = token_end;
+    }
+
+  if (!parsed->host_len)
+    {
+      clib_warning ("zero length host");
+      return -1;
+    }
+
+  /* parse port, if any */
+  if (token_start != end && *token_start == ':')
+    {
+      u32 port = 0;
+      token_end = ++token_start;
+      while (token_end != end && *token_end != '/')
+	{
+	  if (isdigit (*token_end))
+	    {
+	      port = port * 10 + *token_end - '0';
+	      if (port > 65535)
+		{
+		  clib_warning ("invalid port number");
+		  return -1;
+		}
+	    }
+	  else
+	    {
+	      clib_warning ("expected digit '%u'", *token_end);
+	      return -1;
+	    }
+	  token_end++;
+	}
+      parsed->port = clib_host_to_net_u16 ((u16) port);
+      token_start = token_end;
+    }
+
+  if (token_start == end)
+    {
+      parsed->path_len = 0;
+      return 0;
+    }
+
+  token_start++; /* drop leading slash */
+  parsed->path_offset = token_start - url;
+  parsed->path_len = end - token_start;
+
+  if (parsed->path_len)
+    return _validate_target_syntax (token_start, parsed->path_len, 0,
+				    &is_encoded);
+
+  return 0;
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */

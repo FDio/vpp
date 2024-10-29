@@ -13,6 +13,7 @@ COPY \
    $DIR/af_packet_plugin.so \
    $DIR/hs_apps_plugin.so \
    $DIR/http_plugin.so \
+   $DIR/http_unittest_plugin.so \
    $DIR/unittest_plugin.so \
    $DIR/quic_plugin.so \
    $DIR/http_static_plugin.so \

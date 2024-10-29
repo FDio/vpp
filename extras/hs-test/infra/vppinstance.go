@@ -60,6 +60,7 @@ plugins {
   plugin af_packet_plugin.so { enable }
   plugin hs_apps_plugin.so { enable }
   plugin http_plugin.so { enable }
+  plugin http_unittest_plugin.so { enable }
   plugin http_static_plugin.so { enable }
   plugin prom_plugin.so { enable }
   plugin tlsopenssl_plugin.so { enable }
