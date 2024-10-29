@@ -720,6 +720,105 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 }
 
 static void
+active_open_migrate_po_fixup_rpc (void *arg)
+{
+  u32 ps_index = pointer_to_uword (arg);
+  proxy_session_side_ctx_t *po_sc;
+  proxy_main_t *pm = &proxy_main;
+  session_handle_t po_sh;
+  proxy_worker_t *wrk;
+  proxy_session_t *ps;
+  session_t *po_s;
+
+  wrk = proxy_worker_get (vlib_get_thread_index ());
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (ps_index);
+
+  po_s = session_get_from_handle (ps->po.session_handle);
+  po_s->rx_fifo = ps->po.rx_fifo;
+  po_s->tx_fifo = ps->po.tx_fifo;
+
+  po_sc = proxy_session_side_ctx_get (wrk, po_s->opaque);
+  po_sc->pair = ps->ao;
+  po_sh = ps->po.session_handle;
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  session_program_tx_io_evt (po_sh, SESSION_IO_EVT_TX);
+}
+
+static void
+active_open_migrate_rpc (void *arg)
+{
+  u32 ps_index = pointer_to_uword (arg);
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_side_ctx_t *sc;
+  proxy_worker_t *wrk;
+  proxy_session_t *ps;
+  session_t *s;
+
+  wrk = proxy_worker_get (vlib_get_thread_index ());
+  sc = proxy_session_side_ctx_alloc (wrk);
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (ps_index);
+  sc->ps_index = ps->ps_index;
+
+  s = session_get_from_handle (ps->ao.session_handle);
+  s->opaque = sc->sc_index;
+  s->flags &= ~SESSION_F_IS_MIGRATING;
+
+  /* Fixup passive open session because of migration and zc */
+  ps->ao.rx_fifo = ps->po.tx_fifo = s->rx_fifo;
+  ps->ao.tx_fifo = ps->po.rx_fifo = s->tx_fifo;
+
+  ps->po.tx_fifo->shr->master_session_index =
+    session_index_from_handle (ps->po.session_handle);
+  ps->po.tx_fifo->master_thread_index =
+    session_thread_from_handle (ps->po.session_handle);
+
+  sc->pair = ps->po;
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  session_send_rpc_evt_to_thread (
+    session_thread_from_handle (sc->pair.session_handle),
+    active_open_migrate_po_fixup_rpc, uword_to_pointer (sc->ps_index, void *));
+}
+
+static void
+active_open_migrate_callback (session_t *s, session_handle_t new_sh)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_side_ctx_t *sc;
+  proxy_session_t *ps;
+  proxy_worker_t *wrk;
+
+  wrk = proxy_worker_get (s->thread_index);
+  sc = proxy_session_side_ctx_get (wrk, s->opaque);
+
+  /* NOTE: this is just an example. ZC makes this migration rather
+   * tedious. Probably better approaches could be found */
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (sc->ps_index);
+  ps->ao.session_handle = new_sh;
+  ps->ao.rx_fifo = 0;
+  ps->ao.tx_fifo = 0;
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  session_send_rpc_evt_to_thread (session_thread_from_handle (new_sh),
+				  active_open_migrate_rpc,
+				  uword_to_pointer (sc->ps_index, void *));
+
+  proxy_session_side_ctx_free (wrk, sc);
+}
+
+static void
 active_open_reset_callback (session_t * s)
 {
   proxy_try_close_session (s, 1 /* is_active_open */ );
@@ -803,6 +902,7 @@ active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
 static session_cb_vft_t active_open_clients = {
   .session_reset_callback = active_open_reset_callback,
   .session_connected_callback = active_open_connected_callback,
+  .session_migrate_callback = active_open_migrate_callback,
   .session_accept_callback = active_open_create_callback,
   .session_disconnect_callback = active_open_disconnect_callback,
   .session_cleanup_callback = active_open_cleanup_callback,
@@ -901,6 +1001,8 @@ proxy_server_listen ()
 
   a->app_index = pm->server_app_index;
   clib_memcpy (&a->sep_ext, &pm->server_sep, sizeof (pm->server_sep));
+  /* Make sure listener is marked connected for transports like udp */
+  a->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
   need_crypto = proxy_transport_needs_crypto (a->sep.transport_proto);
   if (need_crypto)
     {
