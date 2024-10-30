@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d1bc7d8_014fe3ab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-10-30T01:33:22Z",
+      "side": 1,
+      "message": "Added VPP port to FreeBSD in 24.10 Release notes Features list in patch set 3.",
+      "revId": "cfa0953251cbab435307baf3dcd249fd95afaf1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
