@@ -182,13 +182,30 @@ typedef struct pg_stream_t
 } pg_stream_t;
 
 always_inline void
-pg_buffer_index_free (pg_buffer_index_t * bi)
+pg_free_buffers (pg_buffer_index_t *bi)
 {
   vlib_main_t *vm = vlib_get_main ();
-  word n_alloc;
+  uword n_elts, head, len;
+  n_elts = clib_fifo_elts (bi->buffer_fifo);
+  if (n_elts)
+    {
+      len = clib_fifo_len (bi->buffer_fifo);
+      head = clib_fifo_head_index (bi->buffer_fifo);
+
+      if (head + n_elts <= len)
+	vlib_buffer_free (vm, &bi->buffer_fifo[head], n_elts);
+      else
+	{
+	  vlib_buffer_free (vm, &bi->buffer_fifo[head], len - head);
+	  vlib_buffer_free (vm, bi->buffer_fifo, n_elts - (len - head));
+	}
+    }
+}
+
+always_inline void
+pg_buffer_index_free (pg_buffer_index_t * bi)
+{
   vec_free (bi->edits);
-  n_alloc = clib_fifo_elts (bi->buffer_fifo);
-  vlib_buffer_free (vm, bi->buffer_fifo, n_alloc);
   clib_fifo_free (bi->buffer_fifo);
 }
 
@@ -222,6 +239,9 @@ pg_stream_free (pg_stream_t * s)
 
   {
     pg_buffer_index_t *bi;
+    // We only need to free the buffers from the first array, as the buffers
+    // are chained when packet-generator enable is issued.
+    pg_free_buffers (s->buffer_indices);
     vec_foreach (bi, s->buffer_indices) pg_buffer_index_free (bi);
     vec_free (s->buffer_indices);
   }
