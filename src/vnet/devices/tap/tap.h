@@ -22,15 +22,16 @@
 #define MIN(x,y) (((x)<(y))?(x):(y))
 #endif
 
-#define foreach_tapv2_flags  \
-  _ (GSO, 0)                 \
-  _ (CSUM_OFFLOAD, 1)        \
-  _ (PERSIST, 2)             \
-  _ (ATTACH, 3)              \
-  _ (TUN, 4)                 \
-  _ (GRO_COALESCE, 5)        \
-  _ (PACKED, 6)              \
-  _ (IN_ORDER, 7)
+#define foreach_tapv2_flags                                                   \
+  _ (GSO, 0)                                                                  \
+  _ (CSUM_OFFLOAD, 1)                                                         \
+  _ (PERSIST, 2)                                                              \
+  _ (ATTACH, 3)                                                               \
+  _ (TUN, 4)                                                                  \
+  _ (GRO_COALESCE, 5)                                                         \
+  _ (PACKED, 6)                                                               \
+  _ (IN_ORDER, 7)                                                             \
+  _ (CONSISTENT_QP, 8)
 
 typedef enum
 {

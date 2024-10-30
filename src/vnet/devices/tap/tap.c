@@ -212,6 +212,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
+  if (args->tap_flags & TAP_FLAG_CONSISTENT_QP)
+    vif->consistent_qp = 1;
+
   /* if namespace is specified, all further netlink messages should be executed
    * after we change our net namespace */
   if (args->host_namespace)
