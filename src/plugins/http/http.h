@@ -522,18 +522,19 @@ http_validate_query_syntax (u8 *query, int *is_encoded)
  * Decode percent-encoded data.
  *
  * @param src Data to decode.
+ * @param len Length of data to decode.
  *
  * @return New vector with decoded data.
  *
  * The caller is always responsible to free the returned vector.
  */
 always_inline u8 *
-http_percent_decode (u8 *src)
+http_percent_decode (u8 *src, u32 len)
 {
-  int i;
+  u32 i;
   u8 *decoded_uri = 0;
 
-  for (i = 0; i < vec_len (src); i++)
+  for (i = 0; i < len; i++)
     {
       if (src[i] == '%')
 	{
@@ -995,6 +996,31 @@ typedef struct
   u8 host_is_ip6;
 } http_url_t;
 
+always_inline int
+_parse_port (u8 **pos, u8 *end, u16 *port)
+{
+  u32 value = 0;
+  u8 *p = *pos;
+
+  if (!isdigit (*p))
+    return -1;
+  value = *p - '0';
+  p++;
+
+  while (p != end)
+    {
+      if (!isdigit (*p))
+	break;
+      value = value * 10 + *p - '0';
+      if (value > CLIB_U16_MAX)
+	return -1;
+      p++;
+    }
+  *pos = p;
+  *port = clib_host_to_net_u16 ((u16) value);
+  return 0;
+}
+
 /**
  * An "absolute-form" URL parsing.
  *
@@ -1102,27 +1128,12 @@ http_parse_absolute_form (u8 *url, http_url_t *parsed)
   /* parse port, if any */
   if (token_start != end && *token_start == ':')
     {
-      u32 port = 0;
       token_end = ++token_start;
-      while (token_end != end && *token_end != '/')
+      if (_parse_port (&token_end, end, &parsed->port))
 	{
-	  if (isdigit (*token_end))
-	    {
-	      port = port * 10 + *token_end - '0';
-	      if (port > 65535)
-		{
-		  clib_warning ("invalid port number");
-		  return -1;
-		}
-	    }
-	  else
-	    {
-	      clib_warning ("expected digit '%u'", *token_end);
-	      return -1;
-	    }
-	  token_end++;
+	  clib_warning ("invalid port");
+	  return -1;
 	}
-      parsed->port = clib_host_to_net_u16 ((u16) port);
       token_start = token_end;
     }
 
@@ -1136,6 +1147,61 @@ http_parse_absolute_form (u8 *url, http_url_t *parsed)
   if (parsed->path_len)
     return _validate_target_syntax (token_start, parsed->path_len, 0,
 				    &is_encoded);
+
+  return 0;
+}
+
+/**
+ * Parse target host and port of UDP tunnel over HTTP.
+ *
+ * @param path     Path in format "{target_host}/{target_port}/".
+ * @param path_len Length of given path.
+ * @param parsed   Parsed target in case of success..
+ *
+ * @return @c 0 on success.
+ *
+ * @note Only IPv4 literals and IPv6 literals supported.
+ */
+always_inline int
+http_parse_masque_host_port (u8 *path, u32 path_len, http_uri_t *parsed)
+{
+  u8 *p, *end, *decoded_host;
+  u32 host_len;
+  unformat_input_t input;
+
+  p = path;
+  end = path + path_len;
+  clib_memset (parsed, 0, sizeof (*parsed));
+
+  while (p != end && *p != '/')
+    p++;
+
+  host_len = p - path;
+  if (!host_len || (host_len == path_len) || (host_len + 1 == path_len))
+    return -1;
+  decoded_host = http_percent_decode (path, host_len);
+  unformat_init_vector (&input, decoded_host);
+  if (unformat (&input, "%U", unformat_ip4_address, &parsed->ip.ip4))
+    parsed->is_ip4 = 1;
+  else if (unformat (&input, "%U", unformat_ip6_address, &parsed->ip.ip6))
+    parsed->is_ip4 = 0;
+  else
+    {
+      unformat_free (&input);
+      clib_warning ("unsupported target_host format");
+      return -1;
+    }
+  unformat_free (&input);
+
+  p++;
+  if (_parse_port (&p, end, &parsed->port))
+    {
+      clib_warning ("invalid port");
+      return -1;
+    }
+
+  if (p == end || *p != '/')
+    return -1;
 
   return 0;
 }

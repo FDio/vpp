@@ -16,7 +16,8 @@ Usage
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
 ``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_parse_headers``, ``http_get_header``,
-``http_free_header_table``, ``http_add_header``, ``http_serialize_headers``.
+``http_free_header_table``, ``http_add_header``, ``http_serialize_headers``, ``http_parse_authority_form_target``,
+``http_serialize_authority_form_target``, ``http_parse_absolute_form``, ``http_parse_masque_host_port``.
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
@@ -82,7 +83,7 @@ Example bellow validates "absolute-path" rule, as described in RFC9110 section 4
         }
       if (is_encoded)
         {
-          u8 *decoded = http_percent_decode (target_path);
+          u8 *decoded = http_percent_decode (target_path, vec_len (target_path));
           vec_free (target_path);
           target_path = decoded;
         }
