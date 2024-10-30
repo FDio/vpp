@@ -84,10 +84,6 @@ http_test_absolute_form (vlib_main_t *vm)
   int rv;
 
   url = format (0, "https://example.org/.well-known/masque/udp/1.2.3.4/123/");
-  clib_warning (
-    "strlen %u vec_len %u",
-    strlen ("https://example.org/.well-known/masque/udp/1.2.3.4/123/"),
-    vec_len (url));
   rv = http_parse_absolute_form (url, &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTPS),
@@ -251,6 +247,74 @@ http_test_absolute_form (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_parse_masque_host_port (vlib_main_t *vm)
+{
+  u8 *path = 0;
+  http_uri_t target;
+  int rv;
+
+  path = format (0, "10.10.2.45/443/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", path);
+  HTTP_TEST ((target.is_ip4 == 1), "is_ip4=%d should be 1", target.is_ip4);
+  HTTP_TEST ((clib_net_to_host_u16 (target.port) == 443),
+	     "port=%u should be 443", clib_net_to_host_u16 (target.port));
+  HTTP_TEST ((target.ip.ip4.data[0] == 10 && target.ip.ip4.data[1] == 10 &&
+	      target.ip.ip4.data[2] == 2 && target.ip.ip4.data[3] == 45),
+	     "target.ip=%U should be 10.10.2.45", format_ip4_address,
+	     &target.ip.ip4);
+  vec_free (path);
+
+  path = format (0, "dead%%3Abeef%%3A%%3A1234/80/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", path);
+  HTTP_TEST ((target.is_ip4 == 0), "is_ip4=%d should be 0", target.is_ip4);
+  HTTP_TEST ((clib_net_to_host_u16 (target.port) == 80),
+	     "port=%u should be 80", clib_net_to_host_u16 (target.port));
+  HTTP_TEST ((clib_net_to_host_u16 (target.ip.ip6.as_u16[0]) == 0xdead &&
+	      clib_net_to_host_u16 (target.ip.ip6.as_u16[1]) == 0xbeef &&
+	      target.ip.ip6.as_u16[2] == 0 && target.ip.ip6.as_u16[3] == 0 &&
+	      target.ip.ip6.as_u16[4] == 0 && target.ip.ip6.as_u16[5] == 0 &&
+	      target.ip.ip6.as_u16[6] == 0 &&
+	      clib_net_to_host_u16 (target.ip.ip6.as_u16[7]) == 0x1234),
+	     "target.ip=%U should be dead:beef::1234", format_ip6_address,
+	     &target.ip.ip6);
+  vec_free (path);
+
+  path = format (0, "example.com/443/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' reg-name not supported", path);
+  vec_free (path);
+
+  path = format (0, "10.10.2.45/443443/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
+  vec_free (path);
+
+  path = format (0, "/443/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
+  vec_free (path);
+
+  path = format (0, "10.10.2.45/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
+  vec_free (path);
+
+  path = format (0, "10.10.2.45");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
+  vec_free (path);
+
+  path = format (0, "10.10.2.45/443");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
+  vec_free (path);
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -262,11 +326,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_authority_form (vm);
       else if (unformat (input, "absolute-form"))
 	res = http_test_absolute_form (vm);
+      else if (unformat (input, "parse-masque-host-port"))
+	res = http_test_parse_masque_host_port (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_authority_form (vm)))
 	    goto done;
 	  if ((res = http_test_absolute_form (vm)))
+	    goto done;
+	  if ((res = http_test_parse_masque_host_port (vm)))
 	    goto done;
 	}
       else

@@ -406,7 +406,7 @@ hcs_ts_rx_callback (session_t *ts)
     }
   if (is_encoded)
     {
-      u8 *decoded = http_percent_decode (args.buf);
+      u8 *decoded = http_percent_decode (args.buf, vec_len (args.buf));
       vec_free (args.buf);
       args.buf = decoded;
     }
