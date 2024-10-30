@@ -1418,9 +1418,10 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   if (args->virtio_flags & VIRTIO_FLAG_PACKED)
     vif->is_packed = 1;
 
-  if ((error =
-       vlib_pci_device_open (vm, (vlib_pci_addr_t *) & vif->pci_addr,
-			     virtio_pci_device_ids, &h)))
+  if (args->virtio_flags & VIRTIO_FLAG_CONSISTENT_QP)
+    vif->consistent_qp = 1;
+  if ((error = vlib_pci_device_open (vm, (vlib_pci_addr_t *) &vif->pci_addr,
+				     virtio_pci_device_ids, &h)))
     {
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =

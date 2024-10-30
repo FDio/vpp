@@ -213,6 +213,7 @@ typedef struct
   };
   const virtio_pci_func_t *virtio_pci_func;
   int is_packed;
+  int consistent_qp : 1;
 } virtio_if_t;
 
 typedef struct

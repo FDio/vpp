@@ -283,7 +283,8 @@ typedef struct _virtio_pci_func
   _ (PACKED, 3)                                                               \
   _ (IN_ORDER, 4)                                                             \
   _ (BUFFERING, 5)                                                            \
-  _ (RSS, 6)
+  _ (RSS, 6)                                                                  \
+  _ (CONSISTENT_QP, 7)
 
 typedef enum
 {
