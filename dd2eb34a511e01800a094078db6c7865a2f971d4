@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d6d720e_527e5316",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-10-30T02:28:28Z",
+      "side": 1,
+      "message": "Please review this fix for the issue \u0027Cannot create namespace.\u0027",
+      "revId": "dd2eb34a511e01800a094078db6c7865a2f971d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
