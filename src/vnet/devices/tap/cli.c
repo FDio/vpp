@@ -105,6 +105,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.tap_flags |= TAP_FLAG_PACKED;
 	  else if (unformat (line_input, "in-order"))
 	    args.tap_flags |= TAP_FLAG_IN_ORDER;
+	  else if (unformat (line_input, "consistent-qp"))
+	    args.tap_flags |= TAP_FLAG_CONSISTENT_QP;
 	  else if (unformat (line_input, "hw-addr %U",
 			     unformat_ethernet_address, args.mac_addr.bytes))
 	    args.mac_addr_set = 1;

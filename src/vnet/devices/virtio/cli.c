@@ -64,6 +64,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.bind = VIRTIO_BIND_DEFAULT;
       else if (unformat (line_input, "rss-enabled"))
 	args.rss_enabled = 1;
+      else if (unformat (line_input, "consistent-qp"))
+	args.virtio_flags |= VIRTIO_FLAG_CONSISTENT_QP;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
