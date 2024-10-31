@@ -29,22 +29,22 @@ class TestHttpStaticVapi(VppAsfTestCase):
         cls.temp2.write(b"Hello world2")
 
         try:
-            create_namespace("HttpStatic")
+            cls.ns_name = create_namespace()
         except Exception:
             cls.logger.warning("Unable to create a namespace, retrying.")
-            delete_namespace("HttpStatic")
-            create_namespace("HttpStatic")
+            delete_namespace(cls.ns_name)
+            cls.ns_name = create_namespace()
 
-        create_host_interface("vppHost", "vppOut", "HttpStatic", "10.10.1.1/24")
+        create_host_interface("vppOut1", cls.ns_name, "10.10.1.1/24")
 
-        cls.vapi.cli("create host-interface name vppOut")
-        cls.vapi.cli("set int state host-vppOut up")
-        cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
+        cls.vapi.cli("create host-interface name vppOut1")
+        cls.vapi.cli("set int state host-vppOut1 up")
+        cls.vapi.cli("set int ip address host-vppOut1 10.10.1.2/24")
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace("HttpStatic")
-        delete_host_interfaces("vppHost")
+        delete_namespace(cls.ns_name)
+        delete_host_interfaces("vppHost1")
         cls.temp.close()
         cls.temp2.close()
         super(TestHttpStaticVapi, cls).tearDownClass()
@@ -61,7 +61,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStatic",
+                self.ns_name,
                 "curl",
                 "-v",
                 f"10.10.1.2/{self.temp.name[5:]}",
@@ -77,7 +77,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStatic",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/{self.temp2.name[5:]}",
             ],
@@ -104,13 +104,13 @@ class TestHttpStaticCli(VppAsfTestCase):
         cls.temp2.write(b"Hello world2")
 
         try:
-            create_namespace("HttpStatic2")
+            cls.ns_name = create_namespace()
         except Exception:
             cls.logger.warning("Unable to create namespace, retrying.")
-            delete_namespace("HttpStatic2")
-            create_namespace("HttpStatic2")
+            delete_namespace(cls.ns_name)
+            cls.ns_name = create_namespace()
 
-        create_host_interface("vppHost2", "vppOut2", "HttpStatic2", "10.10.1.1/24")
+        create_host_interface("vppOut2", cls.ns_name, "10.10.1.1/24")
 
         cls.vapi.cli("create host-interface name vppOut2")
         cls.vapi.cli("set int state host-vppOut2 up")
@@ -118,7 +118,7 @@ class TestHttpStaticCli(VppAsfTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace("HttpStatic2")
+        delete_namespace(cls.ns_name)
         delete_host_interfaces("vppHost2")
         cls.temp.close()
         cls.temp2.close()
@@ -135,7 +135,7 @@ class TestHttpStaticCli(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStatic2",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/{self.temp.name[5:]}",
             ],
@@ -149,7 +149,7 @@ class TestHttpStaticCli(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStatic2",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/{self.temp2.name[5:]}",
             ],
