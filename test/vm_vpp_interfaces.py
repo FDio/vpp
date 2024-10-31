@@ -261,8 +261,6 @@ class TestVPPInterfacesQemu:
         for client_if_type in client_if_types:
             if client_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_client_host_interface_on_linux,
-                    self.iprf_client_host_interface_on_vpp,
                     self.client_namespace,
                     (
                         layer2["client_ip4_prefix"]
@@ -274,6 +272,8 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip6_prefix"]
                     ),
+                    self.iprf_client_host_interface_on_vpp,
+                    self.iprf_client_host_interface_on_linux,
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -352,11 +352,11 @@ class TestVPPInterfacesQemu:
         for server_if_type in server_if_types:
             if server_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_server_host_interface_on_linux,
-                    self.iprf_server_host_interface_on_vpp,
                     self.server_namespace,
                     server_ip4_prefix,
                     server_ip6_prefix,
+                    self.iprf_server_host_interface_on_vpp,
+                    self.iprf_server_host_interface_on_linux,
                 )
                 self.egress_if_idx = self.create_af_packet(
                     version=server_if_version,
