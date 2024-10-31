@@ -105,6 +105,8 @@ typedef struct ldp_worker_ctx_
   int vcl_mq_epfd;
 } ldp_worker_ctx_t;
 
+__thread ldp_worker_ctx_t _ldp_worker = {};
+
 /* clib_bitmap_t, fd_mask and vcl_si_set are used interchangeably. Make sure
  * they are the same size */
 STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
@@ -114,7 +116,6 @@ STATIC_ASSERT (sizeof (vcl_si_set) == sizeof (fd_mask),
 
 typedef struct
 {
-  ldp_worker_ctx_t *workers;
   int init;
   char app_name[LDP_APP_NAME_MAX];
   u32 vlsh_bit_val;
@@ -154,7 +155,7 @@ static ldp_main_t *ldp = &ldp_main;
 static inline ldp_worker_ctx_t *
 ldp_worker_get_current (void)
 {
-  return (ldp->workers + vppcom_worker_index ());
+  return &_ldp_worker;
 }
 
 /*
@@ -188,14 +189,6 @@ ldp_fd_to_vlsh (int fd)
     return VLS_INVALID_HANDLE;
 
   return (fd - ldp->vlsh_bit_val);
-}
-
-static void
-ldp_alloc_workers (void)
-{
-  if (ldp->workers)
-    return;
-  ldp->workers = vec_new (ldp_worker_ctx_t, LDP_MAX_NWORKERS);
 }
 
 static void
@@ -285,7 +278,6 @@ ldp_init_cfg (void)
 static int
 ldp_init (void)
 {
-  ldp_worker_ctx_t *ldpw;
   int rv;
 
   if (ldp->init)
@@ -311,10 +303,6 @@ ldp_init (void)
       return rv;
     }
   ldp->vcl_needs_real_epoll = 0;
-  ldp_alloc_workers ();
-
-  vec_foreach (ldpw, ldp->workers)
-    clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
 
   LDBG (0, "LDP initialization: done!");
 
@@ -2397,14 +2385,9 @@ epoll_create1 (int flags)
 
   if (ldp->vcl_needs_real_epoll || vls_use_real_epoll ())
     {
-      /* Make sure workers have been allocated */
-      if (!ldp->workers)
-	{
-	  ldp_alloc_workers ();
-	  ldpw = ldp_worker_get_current ();
-	}
       rv = libc_epoll_create1 (flags);
       ldp->vcl_needs_real_epoll = 0;
+      /* Assume this is a request to create the mq epfd */
       ldpw->vcl_mq_epfd = rv;
       LDBG (0, "created vcl epfd %u", rv);
       return rv;
@@ -2665,6 +2648,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   if (PREDICT_FALSE (!ldpw->mq_epfd_added))
     {
       struct epoll_event e = { 0 };
+      ldpw->vcl_mq_epfd = vppcom_mq_epoll_fd ();
       e.events = EPOLLIN;
       e.data.fd = ldpw->vcl_mq_epfd;
       if (libc_epoll_ctl (libc_epfd, EPOLL_CTL_ADD, ldpw->vcl_mq_epfd, &e) <
