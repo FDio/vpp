@@ -226,6 +226,7 @@ class TestVPPInterfacesQemu:
         # prevent conflicts when TEST_JOBS > 1
         self.client_namespace = test_config["client_namespace"] + str(test["id"])
         self.server_namespace = test_config["server_namespace"] + str(test["id"])
+        delete_namespace([self.client_namespace, self.server_namespace])
         create_namespace([self.client_namespace, self.server_namespace])
         # Set a unique iPerf port for parallel server and client runs
         self.iperf_port = 5000 + test["id"]
@@ -258,11 +259,15 @@ class TestVPPInterfacesQemu:
             "iprf_server_interface_on_vpp"
         ] + str(test["id"])
         # Handle client interface types
+        delete_host_interfaces(
+            self.iprf_client_host_interface_on_linux,
+            self.iprf_server_host_interface_on_linux,
+            self.iprf_client_host_interface_on_vpp,
+            self.iprf_server_host_interface_on_vpp,
+        )
         for client_if_type in client_if_types:
             if client_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_client_host_interface_on_linux,
-                    self.iprf_client_host_interface_on_vpp,
                     self.client_namespace,
                     (
                         layer2["client_ip4_prefix"]
@@ -274,6 +279,8 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip6_prefix"]
                     ),
+                    vpp_if_name=self.iprf_client_host_interface_on_vpp,
+                    host_if_name=self.iprf_client_host_interface_on_linux,
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -352,11 +359,11 @@ class TestVPPInterfacesQemu:
         for server_if_type in server_if_types:
             if server_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_server_host_interface_on_linux,
-                    self.iprf_server_host_interface_on_vpp,
                     self.server_namespace,
                     server_ip4_prefix,
                     server_ip6_prefix,
+                    vpp_if_name=self.iprf_server_host_interface_on_vpp,
+                    host_if_name=self.iprf_server_host_interface_on_linux,
                 )
                 self.egress_if_idx = self.create_af_packet(
                     version=server_if_version,
