@@ -22,17 +22,19 @@ class TestProm(VppAsfTestCase):
     def setUpClass(cls):
         super(TestProm, cls).setUpClass()
 
-        create_namespace("HttpStaticProm")
-        create_host_interface("vppHost", "vppOut", "HttpStaticProm", "10.10.1.1/24")
+        cls.ns_name = create_namespace()
+        cls.host_if_name, cls.vpp_if_name = create_host_interface(
+            cls.ns_name, "10.10.1.1/24"
+        )
 
-        cls.vapi.cli("create host-interface name vppOut")
-        cls.vapi.cli("set int state host-vppOut up")
-        cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
+        cls.vapi.cli(f"create host-interface name {cls.vpp_if_name}")
+        cls.vapi.cli(f"set int state host-{cls.vpp_if_name} up")
+        cls.vapi.cli(f"set int ip address host-{cls.vpp_if_name} 10.10.1.2/24")
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace(["HttpStaticProm"])
-        delete_host_interfaces("vppHost")
+        delete_namespace([cls.ns_name])
+        delete_host_interfaces(cls.host_if_name)
         super(TestProm, cls).tearDownClass()
 
     def test_prom(self):
@@ -46,7 +48,7 @@ class TestProm(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStaticProm",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/stats.prom",
             ],
