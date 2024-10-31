@@ -3,9 +3,9 @@ import unittest
 from ipaddress import ip_address, ip_interface
 from vpp_qemu_utils import (
     create_namespace,
-    delete_namespace,
+    delete_all_namespaces,
     create_host_interface,
-    delete_host_interfaces,
+    delete_all_host_interfaces,
     set_interface_mtu,
     disable_interface_gso,
     add_namespace_route,
@@ -18,6 +18,7 @@ from config import config
 from vpp_papi import VppEnum
 import time
 import sys
+import os
 from vm_test_config import test_config
 
 #
@@ -226,7 +227,17 @@ class TestVPPInterfacesQemu:
         # prevent conflicts when TEST_JOBS > 1
         self.client_namespace = test_config["client_namespace"] + str(test["id"])
         self.server_namespace = test_config["server_namespace"] + str(test["id"])
-        create_namespace([self.client_namespace, self.server_namespace])
+        # FIXME: get these values from get_tempdir(), VppAsfTestCase
+        self.ns_history_file = (
+            f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_ns.txt"
+        )
+        self.if_history_file = (
+            f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_if.txt"
+        )
+        delete_all_namespaces(self.ns_history_file)
+        create_namespace(
+            self.ns_history_file, ns=[self.client_namespace, self.server_namespace]
+        )
         # Set a unique iPerf port for parallel server and client runs
         self.iperf_port = 5000 + test["id"]
         # IPerf client & server ingress/egress interface indexes in VPP
@@ -258,11 +269,11 @@ class TestVPPInterfacesQemu:
             "iprf_server_interface_on_vpp"
         ] + str(test["id"])
         # Handle client interface types
+        delete_all_host_interfaces(self.if_history_file)
         for client_if_type in client_if_types:
             if client_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_client_host_interface_on_linux,
-                    self.iprf_client_host_interface_on_vpp,
+                    self.if_history_file,
                     self.client_namespace,
                     (
                         layer2["client_ip4_prefix"]
@@ -274,6 +285,8 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip6_prefix"]
                     ),
+                    vpp_if_name=self.iprf_client_host_interface_on_vpp,
+                    host_if_name=self.iprf_client_host_interface_on_linux,
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -352,11 +365,12 @@ class TestVPPInterfacesQemu:
         for server_if_type in server_if_types:
             if server_if_type == "af_packet":
                 create_host_interface(
-                    self.iprf_server_host_interface_on_linux,
-                    self.iprf_server_host_interface_on_vpp,
+                    self.if_history_file,
                     self.server_namespace,
                     server_ip4_prefix,
                     server_ip6_prefix,
+                    vpp_if_name=self.iprf_server_host_interface_on_vpp,
+                    host_if_name=self.iprf_server_host_interface_on_linux,
                 )
                 self.egress_if_idx = self.create_af_packet(
                     version=server_if_version,
@@ -480,12 +494,7 @@ class TestVPPInterfacesQemu:
         except Exception:
             pass
         try:
-            delete_host_interfaces(
-                self.iprf_client_host_interface_on_linux,
-                self.iprf_server_host_interface_on_linux,
-                self.iprf_client_host_interface_on_vpp,
-                self.iprf_server_host_interface_on_vpp,
-            )
+            delete_all_host_interfaces(self.if_history_file)
         except Exception:
             pass
         try:
@@ -506,12 +515,7 @@ class TestVPPInterfacesQemu:
         except Exception:
             pass
         try:
-            delete_namespace(
-                [
-                    self.client_namespace,
-                    self.server_namespace,
-                ]
-            )
+            delete_all_namespaces(self.ns_history_file)
         except Exception:
             pass
         try:
