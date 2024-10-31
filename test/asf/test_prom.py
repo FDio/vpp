@@ -2,11 +2,15 @@ from config import config
 from asfframework import VppAsfTestCase, VppTestRunner
 import unittest
 import subprocess
+import tempfile
+import os
 from vpp_qemu_utils import (
     create_host_interface,
     delete_host_interfaces,
+    delete_host_interfaces_from_file,
     create_namespace,
     delete_namespace,
+    delete_namespaces_from_file,
 )
 
 
@@ -22,17 +26,41 @@ class TestProm(VppAsfTestCase):
     def setUpClass(cls):
         super(TestProm, cls).setUpClass()
 
-        create_namespace("HttpStaticProm")
-        create_host_interface("vppHost", "vppOut", "HttpStaticProm", "10.10.1.1/24")
+        cls.ns_file_name = os.path.join(tempfile.gettempdir(), f"{cls.__name__}_ns.txt")
+        cls.if_file_name = os.path.join(tempfile.gettempdir(), f"{cls.__name__}_if.txt")
 
-        cls.vapi.cli("create host-interface name vppOut")
-        cls.vapi.cli("set int state host-vppOut up")
-        cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
+        try:
+            # CleanUp
+            delete_namespaces_from_file(cls.ns_file_name)
+            delete_host_interfaces_from_file(cls.if_file_name)
+
+            cls.ns_name = create_namespace()
+
+            with open(cls.ns_file_name, "a") as ns_file:
+                ns_file.write(f"{cls.ns_name}\n")
+
+            cls.host_if_name, cls.vpp_if_name = create_host_interface(
+                cls.ns_name, "10.10.1.1/24"
+            )
+
+            with open(cls.if_file_name, "a") as if_file:
+                if_file.write(f"{cls.host_if_name}\n")
+        except Exception as e:
+            cls.logger.warning("Unable to complete setup: {e}")
+            raise unittest.SkipTest("Skipping tests due to setup failure.")
+
+        cls.vapi.cli(f"create host-interface name {cls.vpp_if_name}")
+        cls.vapi.cli(f"set int state host-{cls.vpp_if_name} up")
+        cls.vapi.cli(f"set int ip address host-{cls.vpp_if_name} 10.10.1.2/24")
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace(["HttpStaticProm"])
-        delete_host_interfaces("vppHost")
+        delete_namespace(cls.ns_name)
+        delete_namespaces_from_file(cls.ns_file_name)
+
+        delete_host_interfaces(cls.host_if_name)
+        delete_host_interfaces_from_file(cls.if_file_name)
+
         super(TestProm, cls).tearDownClass()
 
     def test_prom(self):
@@ -46,7 +74,7 @@ class TestProm(VppAsfTestCase):
                 "ip",
                 "netns",
                 "exec",
-                "HttpStaticProm",
+                self.ns_name,
                 "curl",
                 f"10.10.1.2/stats.prom",
             ],
