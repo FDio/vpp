@@ -507,6 +507,10 @@ vapi_sock_recv_internal (vapi_ctx_t ctx, u8 **vec_msg, u32 timeout)
 	  vec_validate (sock->rx_buffer, sizeof (*mbp) - 1);
 	  n = recv (sock->fd, sock->rx_buffer + current_rx_index,
 		    sizeof (*mbp) - current_rx_index, MSG_DONTWAIT);
+
+	  if (n == 0)
+	    return VAPI_ECONNRESET;
+
 	  if (n < 0)
 	    {
 	      if (errno == EAGAIN && clib_time_now (&ctx->time) >= deadline)
@@ -776,15 +780,19 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
 	{
 	  qstatus = vapi_sock_recv_internal (ctx, &msg, 0);
 
-	  if (qstatus == 0)
+	  if (qstatus == VAPI_OK)
 	    goto read_one_msg;
+
+	  if (qstatus != VAPI_EAGAIN)
+	    return VAPI_ECON_FAIL;
+
 	  ts.tv_sec = 0;
 	  ts.tv_nsec = 10000 * 1000; /* 10 ms */
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
 	}
       /* Timeout... */
-      return -1;
+      return VAPI_ECON_FAIL;
 
     read_one_msg:
       if (vec_len (msg) == 0)
@@ -1338,8 +1346,13 @@ vapi_sock_disconnect (vapi_ctx_t ctx)
 	  rv = VAPI_ENORESP;
 	  goto fail;
 	}
-      if (vapi_sock_recv_internal (ctx, &msg, 0) < 0)
+
+      rv = vapi_sock_recv_internal (ctx, &msg, 0);
+      if (rv == VAPI_EAGAIN)
 	continue;
+
+      if (rv != VAPI_OK)
+	goto fail;
 
       if (vec_len (msg) == 0)
 	continue;
