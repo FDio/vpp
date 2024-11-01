@@ -1917,7 +1917,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc = http_listener_get (lhc_index);
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
-  if (ext_cfg)
+  if (ext_cfg && ext_cfg->opaque)
     {
       HTTP_DBG (1, "app set timeout %u", ext_cfg->opaque);
       lhc->timeout = ext_cfg->opaque;
