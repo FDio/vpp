@@ -75,6 +75,8 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   mqc->mq_fd = mq_fd;
   mqc->mq = mq;
 
+  fcntl (mq_fd, F_SETFL, O_NONBLOCK);
+
   e.events = EPOLLIN;
   e.data.u32 = mqc_index;
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
@@ -226,6 +228,15 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 
   vec_free (seg_indices);
   hash_free (seg_indices_map);
+}
+
+void
+vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
+			    vcl_worker_wait_mq_fn post_wait)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  wrk->pre_wait_fn = pre_wait;
+  wrk->post_wait_fn = post_wait;
 }
 
 vcl_worker_t *
