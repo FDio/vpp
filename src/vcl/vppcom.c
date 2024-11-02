@@ -1263,6 +1263,50 @@ vcl_flush_mq_events (void)
   vcl_worker_flush_mq_events (vcl_worker_get_current ());
 }
 
+// static inline int
+// vcl_worker_wait_mq_timed (vcl_worker_t *wrk, u8 wait_type, f64 time_to_wait)
+// {
+//   int rv = 0;
+
+//   if (time_to_wait && wrk->pre_wait_fn)
+//     wrk->pre_wait_fn ();
+
+//   rv = epoll_wait (wrk->mqs_epfd, wrk->mq_events, vec_len (wrk->mq_events),
+// 		   time_to_wait);
+
+//   if (time_to_wait && wrk->post_wait_fn)
+//     wrk->post_wait_fn ();
+
+//   return rv;
+// }
+
+static inline void
+vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle, u8 wait_type)
+{
+  vcl_session_t *s;
+
+  if (wrk->pre_wait_fn)
+    wrk->pre_wait_fn (session_handle);
+
+  if (session_handle != VCL_INVALID_SESSION_INDEX)
+    {
+      s = vcl_session_get_w_handle (wrk, session_handle);
+      if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	return;
+    }
+
+  /* TODO use mq pings via VPP? Timeout value influences perf */
+  //   svm_msg_q_wait (wrk->app_event_queue, wait_type);
+  //   svm_msg_q_timedwait (wrk->app_event_queue, 1e-3);
+  f64 timeout = clib_time_now (&wrk->clib_time) + 1e-6;
+  while (svm_msg_q_is_empty (wrk->app_event_queue) &&
+	 (clib_time_now (&wrk->clib_time) < timeout))
+    ;
+
+  if (wrk->post_wait_fn)
+    wrk->post_wait_fn (session_handle);
+}
+
 static int
 vppcom_session_unbind (u32 session_handle)
 {
@@ -1831,7 +1875,8 @@ again:
       if (svm_msg_q_is_empty (wrk->app_event_queue) && is_nonblocking)
 	return VPPCOM_EAGAIN;
 
-      svm_msg_q_wait (wrk->app_event_queue, SVM_MQ_WAIT_EMPTY);
+      //       svm_msg_q_wait (wrk->app_event_queue, SVM_MQ_WAIT_EMPTY);
+      vcl_worker_wait_mq (wrk, -1, SVM_MQ_WAIT_EMPTY);
       vcl_worker_flush_mq_events (wrk);
       goto again;
     }
@@ -2047,7 +2092,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
   session_event_t *e;
-  svm_msg_q_t *mq;
+  //   svm_msg_q_t *mq;
   u8 is_ct;
 
   if (PREDICT_FALSE (!buf))
@@ -2079,7 +2124,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
+  //   mq = wrk->app_event_queue;
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
@@ -2098,12 +2143,16 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
+	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	    return vcl_session_closed_error (s);
 
 	  if (is_ct)
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, SVM_MQ_WAIT_EMPTY);
+
+	  //   svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2188,7 +2237,7 @@ vppcom_session_read_segments (uint32_t session_handle,
   int n_read = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
-  svm_msg_q_t *mq;
+  //   svm_msg_q_t *mq;
   u8 is_ct;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
@@ -2200,7 +2249,7 @@ vppcom_session_read_segments (uint32_t session_handle,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
+  //   mq = wrk->app_event_queue;
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
@@ -2224,7 +2273,8 @@ vppcom_session_read_segments (uint32_t session_handle,
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, SVM_MQ_WAIT_EMPTY);
+	  //   svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2289,7 +2339,7 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
   int n_write, is_nonblocking;
   session_evt_type_t et;
   svm_fifo_t *tx_fifo;
-  svm_msg_q_t *mq;
+  //   svm_msg_q_t *mq;
   u8 is_ct;
 
   /* Accept zero length writes but just return */
@@ -2326,7 +2376,7 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
 
-  mq = wrk->app_event_queue;
+  //   mq = wrk->app_event_queue;
   if (!vcl_fifo_is_writeable (tx_fifo, n, is_dgram))
     {
       if (is_nonblocking)
@@ -2339,7 +2389,8 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, vcl_session_handle (s), SVM_MQ_WAIT_EMPTY);
+	  //   svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2383,7 +2434,7 @@ vppcom_session_write_segments (uint32_t session_handle,
   int n_write = 0, n_bytes = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *tx_fifo;
-  svm_msg_q_t *mq;
+  //   svm_msg_q_t *mq;
   u8 is_ct;
   u32 i;
 
@@ -2406,7 +2457,7 @@ vppcom_session_write_segments (uint32_t session_handle,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
+  //   mq = wrk->app_event_queue;
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
 
   for (i = 0; i < n_segments; i++)
@@ -2424,7 +2475,8 @@ vppcom_session_write_segments (uint32_t session_handle,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, SVM_MQ_WAIT_EMPTY);
+	  //   svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2661,6 +2713,7 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       if (!time_to_wait)
 	return 0;
       else if (time_to_wait < 0)
+	// vcl_worker_wait_mq (wrk, SVM_MQ_WAIT_EMPTY);
 	svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
       else
 	{
@@ -2737,8 +2790,10 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
 
   do
     {
-      n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			      vec_len (wrk->mq_events), time_to_wait);
+      n_mq_evts =
+	// vcl_worker_wait_mq_timed (wrk, SVM_MQ_WAIT_EPOLL, time_to_wait);
+	epoll_wait (wrk->mqs_epfd, wrk->mq_events, vec_len (wrk->mq_events),
+		    time_to_wait);
       if (n_mq_evts < 0)
 	{
 	  if (errno == EINTR)
@@ -3457,6 +3512,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
       if (!wait_for_time)
 	return 0;
       else if (wait_for_time < 0)
+	// vcl_worker_wait_mq (wrk, SVM_MQ_WAIT_EMPTY);
 	svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
       else
 	{
@@ -3534,6 +3590,8 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
     {
       n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
 			      vec_len (wrk->mq_events), timeout_ms);
+      //       n_mq_evts =
+      // 	vcl_worker_wait_mq_timed (wrk, SVM_MQ_WAIT_EPOLL, timeout_ms);
       if (n_mq_evts < 0)
 	{
 	  if (errno == EINTR)
