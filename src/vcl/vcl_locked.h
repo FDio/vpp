@@ -52,6 +52,9 @@ int vls_poll (vcl_poll_t *vp, uint32_t n_sids, double wait_for_time);
 vcl_session_handle_t vlsh_to_sh (vls_handle_t vlsh);
 vcl_session_handle_t vlsh_to_session_index (vls_handle_t vlsh);
 int vlsh_to_worker_index (vls_handle_t vlsh);
+void vlsh_to_session_and_worker_index (vls_handle_t vlsh,
+				       uint32_t *session_index,
+				       uint32_t *wrk_index);
 vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
