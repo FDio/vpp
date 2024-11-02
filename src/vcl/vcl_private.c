@@ -228,6 +228,15 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
   hash_free (seg_indices_map);
 }
 
+void
+vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
+			    vcl_worker_wait_mq_fn post_wait)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  wrk->pre_wait_fn = pre_wait;
+  wrk->post_wait_fn = post_wait;
+}
+
 vcl_worker_t *
 vcl_worker_alloc_and_init ()
 {
