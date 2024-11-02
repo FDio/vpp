@@ -103,6 +103,7 @@ typedef struct vcl_locked_session_
   u32 shared_data_index;   /**< shared data index if any */
   u32 owner_vcl_wrk_index; /**< vcl wrk of the vls wrk at alloc */
   uword *vcl_wrk_index_to_session_index; /**< map vcl wrk to session */
+  u32 flags;				 /**< vls flags */
 } vcl_locked_session_t;
 
 typedef struct vls_worker_
@@ -285,23 +286,6 @@ typedef enum
   VLS_MT_LOCK_SPOOL = 1 << 1
 } vls_mt_lock_type_t;
 
-static void
-vls_mt_add (void)
-{
-  vlsl->vls_mt_n_threads += 1;
-
-  /* If multi-thread workers are supported, for each new thread register a new
-   * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
-   * update the vcl worker's thread local worker index variable */
-  if (vls_mt_wrk_supported ())
-    {
-      if (vppcom_worker_register () != VPPCOM_OK)
-	VERR ("failed to register worker");
-    }
-  else
-    vcl_set_worker_index (vlsl->vls_wrk_index);
-}
-
 static inline void
 vls_mt_mq_lock (void)
 {
@@ -333,6 +317,23 @@ vls_mt_locks_init (void)
   pthread_mutex_init (&vlsl->vls_mt_spool_mlock, NULL);
 }
 
+static void
+vls_mt_add (void)
+{
+  vlsl->vls_mt_n_threads += 1;
+
+  /* If multi-thread workers are supported, for each new thread register a new
+   * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
+   * update the vcl worker's thread local worker index variable */
+  if (vls_mt_wrk_supported ())
+    {
+      if (vppcom_worker_register () != VPPCOM_OK)
+	VERR ("failed to register worker");
+    }
+  else
+    vcl_set_worker_index (vlsl->vls_wrk_index);
+}
+
 u8
 vls_is_shared (vcl_locked_session_t * vls)
 {
@@ -345,6 +346,15 @@ vls_lock (vcl_locked_session_t * vls)
   if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
     clib_spinlock_lock (&vls->lock);
 }
+
+// static inline u8
+// vls_is_locked (vcl_locked_session_t * vls)
+// {
+//   if (!((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls)))
+//     return 0;
+
+//   return CLIB_SPINLOCK_IS_LOCKED (&vls->lock);
+// }
 
 static inline void
 vls_unlock (vcl_locked_session_t * vls)
@@ -1427,6 +1437,49 @@ vls_mt_session_cleanup (vcl_locked_session_t * vls)
   hash_free (vls->vcl_wrk_index_to_session_index);
 }
 
+// static int
+// vls_cleanup (vls_handle_t vlsh)
+// {
+//   vcl_locked_session_t *vls;
+//   u8 need_mq_lock = !vls_mt_wrk_supported () && vlsl->vls_mt_n_threads > 1;
+
+//   vls_mt_pool_wlock ();
+
+//   if (need_mq_lock)
+//     vls_mt_mq_lock ();
+
+//   vls = vls_get_and_lock (vlsh);
+//   vls_free (vls);
+
+//   if (need_mq_lock)
+//     vls_mt_mq_unlock ();
+
+//   vls_mt_pool_wunlock ();
+
+//   return 0;
+// }
+
+int
+vls_closing (vls_handle_t vlsh)
+{
+  vcl_locked_session_t *vls;
+
+  vls_mt_detect ();
+  vls_mt_pool_rlock ();
+
+  vls = vls_get (vlsh);
+  if (!vls)
+    {
+      vls_mt_pool_runlock ();
+      return VPPCOM_EBADFD;
+    }
+  vls->flags = 1;
+
+  vls_mt_pool_runlock ();
+
+  return 0;
+}
+
 int
 vls_close (vls_handle_t vlsh)
 {
@@ -1434,14 +1487,16 @@ vls_close (vls_handle_t vlsh)
   int rv;
 
   vls_mt_detect ();
-  vls_mt_pool_wlock ();
+  vls_mt_pool_rlock ();
 
-  vls = vls_get_and_lock (vlsh);
+  vls = vls_get (vlsh);
   if (!vls)
     {
-      vls_mt_pool_wunlock ();
+      vls_mt_pool_runlock ();
       return VPPCOM_EBADFD;
     }
+  vls->flags = 1;
+  vls_lock (vls);
 
   vls_mt_guard (vls, VLS_MT_OP_SPOOL);
 
@@ -1453,10 +1508,18 @@ vls_close (vls_handle_t vlsh)
   if (vls_mt_wrk_supported ())
     vls_mt_session_cleanup (vls);
 
-  vls_free (vls);
   vls_mt_unguard ();
+  vls_unlock (vls);
+  vls_mt_pool_runlock ();
+
+  vls_mt_pool_wlock ();
+
+  vls = vls_get_and_lock (vlsh);
+  vls_free (vls);
 
   vls_mt_pool_wunlock ();
+
+  //   vls_cleanup (vlsh);
 
   return rv;
 }
@@ -1980,6 +2043,64 @@ vls_send_session_cleanup_rpc (vcl_worker_t * wrk,
 	dst_wrk_index, msg->session_index, msg->origin_vcl_wrk, ret);
 }
 
+static inline void
+vls_mt_mq_wait_lock (vcl_session_handle_t vcl_sh)
+{
+  vls_worker_t *wrk = vls_worker_get_current ();
+  vcl_locked_session_t *vls;
+  uword *vlshp;
+
+  if (!(vls_mt_wrk_supported () || (vlsl->vls_mt_n_threads > 1)))
+    return;
+
+  /* Expect pool lock to not be held */
+  vls_mt_pool_rlock ();
+
+  vlshp = vls_sh_to_vlsh_table_get (wrk, vcl_sh);
+  if (vlshp)
+    {
+      vls = vls_get (*vlshp);
+      if (vls->flags == 1)
+	{
+	  vcl_session_t *s;
+	  s = vcl_session_get_w_handle (vcl_worker_get_current (), vcl_sh);
+	  /* XXX need to send close to vpp and this masks it */
+	  s->flags |= VCL_SESSION_F_APP_CLOSING;
+	  //   s->session_state = VCL_STATE_CLOSED;
+	  vls_mt_pool_runlock ();
+	  return;
+	}
+      // vls_unlock (vls);
+    }
+
+  //   vls_mt_pool_runlock ();
+  vls_mt_mq_unlock ();
+}
+
+static inline void
+vls_mt_mq_wait_unlock (vcl_session_handle_t vcl_sh)
+{
+  //   vls_worker_t *wrk = vls_worker_get_current ();
+  //   vcl_locked_session_t *vls;
+  //   uword *vlshp;
+
+  if (!(vls_mt_wrk_supported () || (vlsl->vls_mt_n_threads > 1)))
+    return;
+
+  vls_mt_mq_lock ();
+
+  //   /* Expect mt_pool lock to BE held. Acquired by wait. */
+  //   vlshp = vls_sh_to_vlsh_table_get (wrk, vcl_sh);
+  //   if (vlshp)
+  //     {
+  //       vls = vls_get (*vlshp);
+  //       vls_lock (vls);
+  //     }
+
+  /* writers can grab lock now */
+  vls_mt_pool_runlock ();
+}
+
 int
 vls_app_create (char *app_name)
 {
@@ -2003,6 +2124,8 @@ vls_app_create (char *app_name)
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
+  //   vcl_worker_set_wait_mq_fns (vls_mt_mq_unlock, vls_mt_mq_lock);
+  vcl_worker_set_wait_mq_fns (vls_mt_mq_wait_lock, vls_mt_mq_wait_unlock);
 
   return VPPCOM_OK;
 }
