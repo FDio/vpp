@@ -75,6 +75,8 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   mqc->mq_fd = mq_fd;
   mqc->mq = mq;
 
+  fcntl (mq_fd, F_SETFL, O_NONBLOCK);
+
   e.events = EPOLLIN;
   e.data.u32 = mqc_index;
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
@@ -228,6 +230,15 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
   hash_free (seg_indices_map);
 }
 
+void
+vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
+			    vcl_worker_wait_mq_fn post_wait)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  wrk->pre_wait_fn = pre_wait;
+  wrk->post_wait_fn = post_wait;
+}
+
 vcl_worker_t *
 vcl_worker_alloc_and_init ()
 {
@@ -336,7 +347,7 @@ vcl_session_read_ready (vcl_session_t * s)
 	  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
 	  if (max_deq <= SESSION_CONN_HDR_LEN)
 	    return 0;
-	  if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
+	  if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) &ph) < 0)
 	    return 0;
 	  if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
 	    return 0;
@@ -355,6 +366,39 @@ vcl_session_read_ready (vcl_session_t * s)
     {
       return (s->session_state == VCL_STATE_DISCONNECT) ?
 	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+    }
+}
+
+/**
+ * Used as alternative to vcl_session_read_ready to avoid peeking udp sessions.
+ * Multi-threaded applications could select the same session from multiple
+ * threads */
+int
+vcl_session_read_ready2 (vcl_session_t *s)
+{
+  if (vcl_session_is_open (s))
+    {
+      if (vcl_session_is_ct (s))
+	return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
+
+      if (s->is_dgram)
+	{
+	  if (svm_fifo_max_dequeue_cons (s->rx_fifo) <= SESSION_CONN_HDR_LEN)
+	    return 0;
+
+	  /* Return 1 even if not yet sure if a full datagram was received */
+	  return 1;
+	}
+
+      return svm_fifo_max_dequeue_cons (s->rx_fifo);
+    }
+  else if (s->session_state == VCL_STATE_LISTEN)
+    {
+      return clib_fifo_elts (s->accept_evts_fifo);
+    }
+  else
+    {
+      return 1;
     }
 }
 
