@@ -28,6 +28,8 @@ typedef int vls_handle_t;
 vls_handle_t vls_create (uint8_t proto, uint8_t is_nonblocking);
 int vls_shutdown (vls_handle_t vlsh, int how);
 int vls_close (vls_handle_t vlsh);
+/* Should be removed if we can store vls/ldp attr in vls instead of vcl */
+int vls_closing (vls_handle_t vlsh);
 int vls_bind (vls_handle_t vlsh, vppcom_endpt_t * ep);
 int vls_listen (vls_handle_t vlsh, int q_len);
 int vls_connect (vls_handle_t vlsh, vppcom_endpt_t * server_ep);
