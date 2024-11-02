@@ -1263,6 +1263,50 @@ vcl_flush_mq_events (void)
   vcl_worker_flush_mq_events (vcl_worker_get_current ());
 }
 
+static inline void
+vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle,
+		    vcl_worker_wait_type_t wait)
+{
+  vcl_session_t *s = 0;
+  u32 sleeps = 0;
+
+  if (wrk->pre_wait_fn)
+    wrk->pre_wait_fn (session_handle);
+
+  if (session_handle != VCL_INVALID_SESSION_INDEX)
+    {
+      s = vcl_session_get_w_handle (wrk, session_handle);
+      /* Session might've been closed by another thread if multi-threaded
+       * as opposed to multi-worker app */
+      if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	return;
+    }
+
+  /* Short sleeps waiting on mq notifications. Note that we drop mq lock
+   * for multi-thread apps so we may be getting spurious notifications.
+   * If waiting on session io events, return if session is ready. Otherwis
+   * return if mq has event */
+  while (svm_msg_q_timedwait (wrk->app_event_queue, 1e-3))
+    {
+      if (s)
+	{
+	  if ((wait == VCL_WRK_WAIT_IO_RX && vcl_session_read_ready (s)) ||
+	      (wait == VCL_WRK_WAIT_IO_TX && vcl_session_write_ready (s)))
+	    break;
+	}
+      else
+	{
+	  if (!svm_msg_q_is_empty (wrk->app_event_queue))
+	    break;
+	}
+      if (++sleeps > 200)
+	break;
+    }
+
+  if (wrk->post_wait_fn)
+    wrk->post_wait_fn (session_handle);
+}
+
 static int
 vppcom_session_unbind (u32 session_handle)
 {
@@ -1831,7 +1875,7 @@ again:
       if (svm_msg_q_is_empty (wrk->app_event_queue) && is_nonblocking)
 	return VPPCOM_EAGAIN;
 
-      svm_msg_q_wait (wrk->app_event_queue, SVM_MQ_WAIT_EMPTY);
+      vcl_worker_wait_mq (wrk, -1, VCL_WRK_WAIT_CTRL);
       vcl_worker_flush_mq_events (wrk);
       goto again;
     }
@@ -2047,7 +2091,6 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
   session_event_t *e;
-  svm_msg_q_t *mq;
   u8 is_ct;
 
   if (PREDICT_FALSE (!buf))
@@ -2079,7 +2122,6 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
@@ -2098,12 +2140,14 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
+	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	    return vcl_session_closed_error (s);
 
 	  if (is_ct)
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2188,7 +2232,6 @@ vppcom_session_read_segments (uint32_t session_handle,
   int n_read = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *rx_fifo;
-  svm_msg_q_t *mq;
   u8 is_ct;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
@@ -2200,7 +2243,6 @@ vppcom_session_read_segments (uint32_t session_handle,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 
@@ -2219,12 +2261,14 @@ vppcom_session_read_segments (uint32_t session_handle,
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
+	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	    return vcl_session_closed_error (s);
 
 	  if (is_ct)
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2289,7 +2333,6 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
   int n_write, is_nonblocking;
   session_evt_type_t et;
   svm_fifo_t *tx_fifo;
-  svm_msg_q_t *mq;
   u8 is_ct;
 
   /* Accept zero length writes but just return */
@@ -2326,7 +2369,6 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
 
-  mq = wrk->app_event_queue;
   if (!vcl_fifo_is_writeable (tx_fifo, n, is_dgram))
     {
       if (is_nonblocking)
@@ -2338,8 +2380,10 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
+	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	    return vcl_session_closed_error (s);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, vcl_session_handle (s), VCL_WRK_WAIT_IO_TX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2383,7 +2427,6 @@ vppcom_session_write_segments (uint32_t session_handle,
   int n_write = 0, n_bytes = 0, is_nonblocking;
   vcl_session_t *s = 0;
   svm_fifo_t *tx_fifo;
-  svm_msg_q_t *mq;
   u8 is_ct;
   u32 i;
 
@@ -2406,7 +2449,6 @@ vppcom_session_write_segments (uint32_t session_handle,
 
   is_nonblocking = vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = wrk->app_event_queue;
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
 
   for (i = 0; i < n_segments; i++)
@@ -2423,8 +2465,10 @@ vppcom_session_write_segments (uint32_t session_handle,
 	  svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
+	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	    return vcl_session_closed_error (s);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_TX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
