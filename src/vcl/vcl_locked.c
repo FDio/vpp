@@ -285,23 +285,6 @@ typedef enum
   VLS_MT_LOCK_SPOOL = 1 << 1
 } vls_mt_lock_type_t;
 
-static void
-vls_mt_add (void)
-{
-  vlsl->vls_mt_n_threads += 1;
-
-  /* If multi-thread workers are supported, for each new thread register a new
-   * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
-   * update the vcl worker's thread local worker index variable */
-  if (vls_mt_wrk_supported ())
-    {
-      if (vppcom_worker_register () != VPPCOM_OK)
-	VERR ("failed to register worker");
-    }
-  else
-    vcl_set_worker_index (vlsl->vls_wrk_index);
-}
-
 static inline void
 vls_mt_mq_lock (void)
 {
@@ -331,6 +314,23 @@ vls_mt_locks_init (void)
 {
   pthread_mutex_init (&vlsl->vls_mt_mq_mlock, NULL);
   pthread_mutex_init (&vlsl->vls_mt_spool_mlock, NULL);
+}
+
+static void
+vls_mt_add (void)
+{
+  vlsl->vls_mt_n_threads += 1;
+
+  /* If multi-thread workers are supported, for each new thread register a new
+   * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
+   * update the vcl worker's thread local worker index variable */
+  if (vls_mt_wrk_supported ())
+    {
+      if (vppcom_worker_register () != VPPCOM_OK)
+	VERR ("failed to register worker");
+    }
+  else
+    vcl_set_worker_index (vlsl->vls_wrk_index);
 }
 
 u8
@@ -2003,6 +2003,7 @@ vls_app_create (char *app_name)
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
+  vcl_worker_set_wait_mq_fns (vls_mt_mq_unlock, vls_mt_mq_lock);
 
   return VPPCOM_OK;
 }
