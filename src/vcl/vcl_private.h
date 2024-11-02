@@ -143,6 +143,7 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_PENDING_DISCONNECT = 1 << 6,
   VCL_SESSION_F_PENDING_FREE = 1 << 7,
   VCL_SESSION_F_PENDING_LISTEN = 1 << 8,
+  VCL_SESSION_F_APP_CLOSING = 1 << 9,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct vcl_session_
@@ -229,6 +230,7 @@ typedef struct vcl_mq_evt_conn_
   int mq_fd;
 } vcl_mq_evt_conn_t;
 
+typedef void (*vcl_worker_wait_mq_fn) (u32 vcl_sh);
 typedef struct vcl_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -312,6 +314,10 @@ typedef struct vcl_worker_
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
   volatile int rpc_done;
+
+  /* functions to be called pre/post wait if vcl managed by vls */
+  vcl_worker_wait_mq_fn pre_wait_fn;
+  vcl_worker_wait_mq_fn post_wait_fn;
 } vcl_worker_t;
 
 STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
@@ -385,6 +391,8 @@ extern vppcom_main_t _vppcom_main;
 #define VCL_INVALID_SESSION_HANDLE ((u64)~0)
 #define VCL_INVALID_SEGMENT_INDEX ((u32)~0)
 #define VCL_INVALID_SEGMENT_HANDLE ((u64)~0)
+
+#define SVM_MQ_WAIT_EPOLL (SVM_MQ_WAIT_FULL + 1)
 
 void vcl_session_detach_fifos (vcl_session_t *s);
 
@@ -783,6 +791,8 @@ svm_fifo_chunk_t *vcl_segment_alloc_chunk (uword segment_handle,
 int vcl_session_share_fifos (vcl_session_t *s, svm_fifo_t *rxf,
 			     svm_fifo_t *txf);
 void vcl_worker_detach_sessions (vcl_worker_t *wrk);
+void vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
+				 vcl_worker_wait_mq_fn post_wait);
 
 /*
  * VCL Binary API
