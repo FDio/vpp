@@ -645,6 +645,7 @@ ldp_select_init_maps (fd_set * __restrict original,
 		      u32 n_bytes, uword * si_bits, uword * libc_bits)
 {
   uword si_bits_set, libc_bits_set;
+  u32 session_index, wrk_index;
   vls_handle_t vlsh;
   int fd;
 
@@ -660,10 +661,14 @@ ldp_select_init_maps (fd_set * __restrict original,
     vlsh = ldp_fd_to_vlsh (fd);
     if (vlsh == VLS_INVALID_HANDLE)
       clib_bitmap_set_no_check (*libcb, fd, 1);
-    else if (vlsh_to_worker_index (vlsh) != vppcom_worker_index ())
-      clib_warning ("migration currently not supported");
     else
-      *vclb = clib_bitmap_set (*vclb, vlsh_to_session_index (vlsh), 1);
+      {
+	  vlsh_to_session_and_worker_index (vlsh, &session_index, &wrk_index);
+	  if (wrk_index != vppcom_worker_index ())
+	    clib_warning ("migration currently not supported");
+	  else
+	    *vclb = clib_bitmap_set (*vclb, session_index, 1);
+      }
   }
 
   si_bits_set = clib_bitmap_last_set (*vclb) + 1;
@@ -686,7 +691,8 @@ ldp_select_vcl_map_to_libc (clib_bitmap_t * vclb, fd_set * __restrict libcb)
 
   clib_bitmap_foreach (si, vclb)  {
     vlsh = vls_session_index_to_vlsh (si);
-    ASSERT (vlsh != VLS_INVALID_HANDLE);
+    if (vlsh == VLS_INVALID_HANDLE)
+      continue;
     fd = ldp_vlsh_to_fd (vlsh);
     if (PREDICT_FALSE (fd < 0))
       {

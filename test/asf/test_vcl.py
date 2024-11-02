@@ -7,7 +7,7 @@ import subprocess
 import signal
 import glob
 from config import config
-from asfframework import VppAsfTestCase, VppTestRunner, Worker, tag_fixme_ubuntu2404
+from asfframework import VppAsfTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -311,7 +311,6 @@ class VCLTestCase(VppAsfTestCase):
         self.assert_equal(worker_client.result, 0, "Binary test return code")
 
 
-@tag_fixme_ubuntu2404
 class LDPCutThruTestCase(VCLTestCase):
     """LDP Cut Thru Tests"""
 
@@ -1024,7 +1023,6 @@ class VCLThruHostStackNsock(VCLTestCase):
         )
 
 
-@tag_fixme_ubuntu2404
 class LDPThruHostStackIperf(VCLTestCase):
     """LDP Thru Host Stack Iperf"""
 
@@ -1072,7 +1070,6 @@ class LDPThruHostStackIperf(VCLTestCase):
         )
 
 
-@tag_fixme_ubuntu2404
 class LDPThruHostStackIperfUdp(VCLTestCase):
     """LDP Thru Host Stack Iperf UDP"""
 
@@ -1118,7 +1115,6 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
         )
 
 
-@tag_fixme_ubuntu2404
 class LDPIpv6CutThruTestCase(VCLTestCase):
     """LDP IPv6 Cut Thru Tests"""
 
