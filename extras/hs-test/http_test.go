@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/http/httptrace"
 	"os"
 	"strconv"
@@ -34,7 +35,7 @@ func init() {
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
-		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest)
+		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest, HttpClientGetRepeat)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -328,6 +329,34 @@ func HttpClientGet128kbResponseTest(s *NoTopoSuite) {
 func HttpClientGetNoResponseBodyTest(s *NoTopoSuite) {
 	response := ""
 	httpClientGet(s, response, 0)
+}
+
+func HttpClientGetRepeat(s *NoTopoSuite) {
+	var err error
+	serverAddress := s.HostAddr()
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello")
+	}))
+	server.Listener, err = net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, "Error while creating listener.")
+
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/80"
+	cmd := "http client use-ptr repeat 1000 header Hello:World uri " + uri + " target /test"
+
+	o := s.GetContainerByName("vpp").VppInstance.Vppctl(cmd)
+	outputLen := len(o)
+	if outputLen > 500 {
+		s.Log(o[:500])
+		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
+	} else {
+		s.Log(o)
+	}
+	s.AssertNotNil(o)
+	s.AssertNotContains(o, "error")
 }
 
 func httpClientGet(s *NoTopoSuite, response string, size int) {
