@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/http/httptrace"
 	"os"
 	"strconv"
@@ -34,7 +35,8 @@ func init() {
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
-		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest)
+		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
+		HttpClientGetRepeat, HttpClientPostRepeat)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -366,6 +368,80 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 
 	file_contents := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	s.AssertContains(file_contents, response)
+}
+
+func startSimpleServer(s *NoTopoSuite, replyCount *int, serverAddress string) (server *httptest.Server) {
+	var err error
+	server = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello")
+		*replyCount++
+	}))
+	server.Listener, err = net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, "Error while creating listener.")
+
+	server.Start()
+
+	return server
+}
+
+func HttpClientGetRepeat(s *NoTopoSuite) {
+	httpClientRepeat(s, "")
+}
+
+func HttpClientPostRepeat(s *NoTopoSuite) {
+	httpClientRepeat(s, "post")
+}
+
+func httpClientRepeat(s *NoTopoSuite, requestMethod string) {
+	replyCount := 0
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.HostAddr()
+	repeatAmount := 10000
+	server := startSimpleServer(s, &replyCount, serverAddress)
+	defer server.Close()
+
+	if requestMethod == "post" {
+		fileName := "/tmp/test_file.txt"
+		s.Log(vpp.Container.Exec(false, "fallocate -l 64 "+fileName))
+		s.Log(vpp.Container.Exec(false, "ls -la "+fileName))
+		requestMethod += " file /tmp/test_file.txt"
+	}
+
+	uri := "http://" + serverAddress + "/80"
+	cmd := fmt.Sprintf("http client %s use-ptr duration 10 header Hello:World uri %s target /index.html",
+		requestMethod, uri)
+
+	s.Log("Duration 10s")
+	o := vpp.Vppctl(cmd)
+	outputLen := len(o)
+	if outputLen > 500 {
+		s.Log(o[:500])
+		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
+	} else {
+		s.Log(o)
+	}
+	s.Log("Server response count: %d", replyCount)
+	s.AssertNotNil(o)
+	s.AssertNotContains(o, "error")
+	s.AssertGreaterThan(replyCount, 15000)
+
+	cmd = fmt.Sprintf("http client %s use-ptr repeat %d header Hello:World uri %s target /index.html",
+		requestMethod, repeatAmount, uri)
+
+	replyCount = 0
+	s.Log("Repeat %d", repeatAmount)
+	o = vpp.Vppctl(cmd)
+	outputLen = len(o)
+	if outputLen > 500 {
+		s.Log(o[:500])
+		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
+	} else {
+		s.Log(o)
+	}
+	s.Log("Server response count: %d", replyCount)
+	s.AssertNotNil(o)
+	s.AssertNotContains(o, "error")
+	s.AssertEqual(repeatAmount, replyCount)
 }
 
 func HttpClientGetTimeout(s *NoTopoSuite) {
