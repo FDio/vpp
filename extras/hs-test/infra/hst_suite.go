@@ -447,7 +447,7 @@ func (s *HstSuite) ResetContainers() {
 	for _, container := range s.StartedContainers {
 		container.stop()
 		s.Log("Removing container " + container.Name)
-		if err := s.Docker.ContainerRemove(container.ctx, container.ID, containerTypes.RemoveOptions{RemoveVolumes: true}); err != nil {
+		if err := s.Docker.ContainerRemove(container.ctx, container.ID, containerTypes.RemoveOptions{RemoveVolumes: true, Force: true}); err != nil {
 			s.Log(err)
 		}
 	}
