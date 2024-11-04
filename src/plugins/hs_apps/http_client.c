@@ -50,16 +50,32 @@ typedef struct
   bool verbose;
   f64 timeout;
   http_req_method_t req_method;
+  u64 repeat_count;
+  hc_session_t *full_hc_session;
+  session_t *sessiont;
+  f64 duration;
 } hc_main_t;
+
+typedef struct
+{
+  bool repeat;
+  u64 request_count;
+  u64 failed_count;
+  f64 start, end;
+  f64 elapsed_time;
+} hc_stats_t;
 
 typedef enum
 {
   HC_CONNECT_FAILED = 1,
   HC_TRANSPORT_CLOSED,
   HC_REPLY_RECEIVED,
+  HC_NOT_SUPPORTED,
+  HC_GENERIC_ERR,
 } hc_cli_signal_t;
 
 static hc_main_t hc_main;
+static hc_stats_t hc_stats;
 
 static inline hc_worker_t *
 hc_worker_get (u32 thread_index)
@@ -95,12 +111,10 @@ hc_session_alloc (hc_worker_t *wrk)
 }
 
 static int
-hc_session_connected_callback (u32 app_index, u32 hc_session_index,
-			       session_t *s, session_error_t err)
+hc_request (u32 app_index, u32 hc_session_index, session_t *s,
+	    session_error_t err)
 {
   hc_main_t *hcm = &hc_main;
-  hc_session_t *hc_session, *new_hc_session;
-  hc_worker_t *wrk;
   http_msg_t msg;
   u64 to_send;
   u32 n_enq;
@@ -108,31 +122,6 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   int rv;
   http_header_ht_t *header;
   http_header_t *req_headers = 0;
-  u32 new_hc_index;
-
-  HTTP_DBG (1, "ho hc_index: %d", hc_session_index);
-
-  if (err)
-    {
-      clib_warning ("hc_session_index[%d] connected error: %U",
-		    hc_session_index, format_session_error, err);
-      vlib_process_signal_event_mt (hcm->wrk->vlib_main, hcm->cli_node_index,
-				    HC_CONNECT_FAILED, 0);
-      return -1;
-    }
-
-  hc_session = hc_session_get (hc_session_index, 0);
-  wrk = hc_worker_get (s->thread_index);
-  new_hc_session = hc_session_alloc (wrk);
-  new_hc_index = new_hc_session->session_index;
-  clib_memcpy_fast (new_hc_session, hc_session, sizeof (*hc_session));
-  hc_session->vpp_session_index = s->session_index;
-
-  new_hc_session->session_index = new_hc_index;
-  new_hc_session->thread_index = s->thread_index;
-  new_hc_session->vpp_session_index = s->session_index;
-  HTTP_DBG (1, "new hc_index: %d", new_hc_session->session_index);
-  s->opaque = new_hc_index;
 
   if (hcm->req_method == HTTP_REQ_POST)
     {
@@ -224,18 +213,64 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
 
 done:
   if (svm_fifo_set_event (s->tx_fifo))
-    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
-
+    {
+      session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+    }
   return 0;
+}
+
+static int
+hc_session_connected_callback (u32 app_index, u32 hc_session_index,
+			       session_t *s, session_error_t err)
+{
+  hc_stats_t *stats = &hc_stats;
+  hc_main_t *hcm = &hc_main;
+  hcm->sessiont = s;
+  hc_session_t *hc_session, *new_hc_session = vec_new (hc_session_t, 1);
+  hc_worker_t *wrk;
+  hc_session = hc_session_get (hc_session_index, 0);
+  u32 new_hc_index;
+  HTTP_DBG (1, "ho hc_index: %d", hc_session_index);
+
+  if (err)
+    {
+      clib_warning ("hc_session_index[%d] connected error: %U",
+		    hc_session_index, format_session_error, err);
+      vlib_process_signal_event_mt (vlib_get_main_by_index (s->thread_index),
+				    hcm->cli_node_index, HC_CONNECT_FAILED, 0);
+      return -1;
+    }
+
+  hc_session = hc_session_get (hc_session_index, 0);
+  wrk = hc_worker_get (s->thread_index);
+  new_hc_session = hc_session_alloc (wrk);
+  new_hc_index = new_hc_session->session_index;
+  clib_memcpy_fast (new_hc_session, hc_session, sizeof (*hc_session));
+  new_hc_session->session_index = new_hc_index;
+  new_hc_session->thread_index = s->thread_index;
+  new_hc_session->vpp_session_index = s->session_index;
+  hcm->full_hc_session = new_hc_session;
+  HTTP_DBG (1, "new hc_index: %d", new_hc_session->session_index);
+  s->opaque = new_hc_index;
+
+  stats->start = vlib_time_now (vlib_get_main_by_index (s->thread_index));
+
+  return hc_request (app_index, hc_session_index, s, err);
 }
 
 static void
 hc_session_disconnect_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
+  hc_stats_t *stats = &hc_stats;
+  if (stats->repeat && stats->request_count != ~0)
+    {
+      HTTP_DBG (1, "request repeating is on, skipping disconnect");
+      return;
+    }
+  HTTP_DBG (1, "disconnecting");
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   int rv;
-
   a->handle = session_handle (s);
   a->app_index = hcm->app_index;
   if ((rv = vnet_disconnect_session (a)))
@@ -252,10 +287,10 @@ hc_session_transport_closed_callback (session_t *s)
 }
 
 static void
-hc_ho_cleanup_callback (session_t *ts)
+hc_ho_cleanup_callback (session_t *s)
 {
-  HTTP_DBG (1, "ho hc_index: %d:", ts->opaque);
-  hc_ho_session_free (ts->opaque);
+  HTTP_DBG (1, "ho hc_index: %d:", s->opaque);
+  hc_ho_session_free (s->opaque);
 }
 
 static void
@@ -280,6 +315,7 @@ static int
 hc_rx_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
+  hc_stats_t *stats = &hc_stats;
   hc_session_t *hc_session;
   http_msg_t msg;
   int rv;
@@ -300,28 +336,51 @@ hc_rx_callback (session_t *s)
       if (msg.type != HTTP_MSG_REPLY)
 	{
 	  clib_warning ("unexpected msg type %d", msg.type);
+	  vlib_process_signal_event_mt (
+	    hcm->wrk->vlib_main, hcm->cli_node_index, HC_GENERIC_ERR, 0);
 	  return -1;
 	}
 
       if (msg.data.headers_len)
 	{
+	  vec_validate (hcm->response_status, msg.data.headers_offset - 1);
+	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_offset,
+				 hcm->response_status);
+	  HTTP_DBG (1, (char *) hcm->response_status);
+
 	  http_header_table_t *ht;
 	  vec_validate (hcm->resp_headers, msg.data.headers_len - 1);
-	  rv = svm_fifo_peek (s->rx_fifo, msg.data.headers_offset,
-			      msg.data.headers_len, hcm->resp_headers);
+	  vec_set_len (hcm->resp_headers, msg.data.headers_len);
+	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
+				 hcm->resp_headers);
 
 	  ASSERT (rv == msg.data.headers_len);
-	  HTTP_DBG (1, (char *) hcm->resp_headers);
-
+	  HTTP_DBG (1, (char *) format (0, "%v", hcm->resp_headers));
 	  if (http_parse_headers (hcm->resp_headers, &ht))
 	    {
 	      clib_warning ("invalid headers received");
+	      vlib_process_signal_event_mt (
+		hcm->wrk->vlib_main, hcm->cli_node_index, HC_GENERIC_ERR, 0);
 	      return -1;
 	    }
 	  http_free_header_table (ht);
+	  msg.data.body_offset -=
+	    msg.data.headers_len + msg.data.headers_offset;
+	}
 
-	  hcm->response_status =
-	    format (0, "%U", format_http_status_code, msg.code);
+      if ((strstr ((char *) hcm->response_status, "1.0") &&
+	   !strstr ((char *) hcm->resp_headers, "Connection: keep-alive")) &&
+	  stats->request_count)
+	{
+	  stats->request_count = ~0;
+	}
+
+      if (hcm->repeat_count && stats->request_count != ~0 &&
+	  strstr ((char *) hcm->resp_headers, "Connection: close"))
+	{
+	  hcm->repeat_count = 0;
+	  hcm->duration = 0;
+	  clib_warning ("received 'Connection: close' header");
 	}
 
       if (msg.data.body_len == 0)
@@ -342,13 +401,19 @@ hc_rx_callback (session_t *s)
     }
 
   u32 max_deq = svm_fifo_max_dequeue (s->rx_fifo);
-
+  if (!max_deq)
+    {
+      goto done;
+    }
   u32 n_deq = clib_min (hc_session->to_recv, max_deq);
   u32 curr = vec_len (hcm->http_response);
   rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hcm->http_response + curr);
   if (rv < 0)
     {
       clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
+      stats->request_count = ~0;
+      vlib_process_signal_event_mt (hcm->wrk->vlib_main, hcm->cli_node_index,
+				    HC_GENERIC_ERR, 0);
       return -1;
     }
 
@@ -360,9 +425,23 @@ hc_rx_callback (session_t *s)
 done:
   if (hc_session->to_recv == 0)
     {
+      if (((stats->repeat) && (stats->elapsed_time >= hcm->duration)) &&
+	  (stats->request_count >= hcm->repeat_count))
+	{
+	  hcm->repeat_count = 0;
+	  hcm->duration = 0;
+	}
       hc_session_disconnect_callback (s);
-      vlib_process_signal_event_mt (hcm->wrk->vlib_main, hcm->cli_node_index,
-				    HC_REPLY_RECEIVED, 0);
+      if (stats->request_count == ~0)
+	{
+	  vlib_process_signal_event_mt (
+	    hcm->wrk->vlib_main, hcm->cli_node_index, HC_NOT_SUPPORTED, 0);
+	}
+      else
+	{
+	  vlib_process_signal_event_mt (
+	    hcm->wrk->vlib_main, hcm->cli_node_index, HC_REPLY_RECEIVED, 0);
+	}
     }
 
   return 0;
@@ -472,45 +551,56 @@ hc_connect ()
 }
 
 static clib_error_t *
-hc_run (vlib_main_t *vm)
+hc_get_event (vlib_main_t *vm)
 {
   hc_main_t *hcm = &hc_main;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads;
-  hc_worker_t *wrk;
+  hc_stats_t *stats = &hc_stats;
   uword event_type, *event_data = 0;
-  clib_error_t *err;
+  clib_error_t *err = NULL;
   FILE *file_ptr;
+  session_error_t session_err = 0;
+  int send_err = 0;
 
-  num_threads = 1 /* main thread */ + vtm->n_threads;
-  vec_validate (hcm->wrk, num_threads - 1);
-  vec_foreach (wrk, hcm->wrk)
-    wrk->thread_index = wrk - hcm->wrk;
-
-  if ((err = hc_attach ()))
-    return clib_error_return (0, "http client attach: %U", format_clib_error,
-			      err);
-
-  hc_connect ();
-
+repeat:
   vlib_process_wait_for_event_or_clock (vm, hcm->timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
       err = clib_error_return (0, "error: timeout");
+      if (stats->repeat)
+	{
+	  // TODO: reconnect on timeout
+	  stats->failed_count++;
+	  hcm->repeat_count--;
+	  stats->request_count = ~0;
+	}
       break;
     case HC_CONNECT_FAILED:
+      stats->request_count = ~0;
+      stats->failed_count++;
       err = clib_error_return (0, "error: failed to connect");
       break;
     case HC_TRANSPORT_CLOSED:
+      stats->request_count = ~0;
+      stats->failed_count++;
       err = clib_error_return (0, "error: transport closed");
       break;
+    case HC_GENERIC_ERR:
+      stats->request_count = ~0;
+      stats->failed_count++;
+      err = clib_error_return (0, "error: unknown");
+      break;
+    case HC_NOT_SUPPORTED:
+      if (stats->repeat)
+	vlib_cli_output (vm, "Received an HTTP/1.0 response without "
+			     "'Connection: keep-alive' header");
     case HC_REPLY_RECEIVED:
+      stats->request_count++;
       if (hcm->filename)
 	{
 	  file_ptr =
-	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "w");
+	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "a");
 	  if (file_ptr == NULL)
 	    {
 	      vlib_cli_output (vm, "couldn't open file %v", hcm->filename);
@@ -523,19 +613,75 @@ hc_run (vlib_main_t *vm)
 	      vlib_cli_output (vm, "file saved (/tmp/%v)", hcm->filename);
 	    }
 	}
-      if (hcm->verbose)
-	vlib_cli_output (vm, "< %v\n< %v", hcm->response_status,
-			 hcm->resp_headers);
-      vlib_cli_output (vm, "<\n%v", hcm->http_response);
-
+      if (!stats->repeat)
+	{
+	  if (hcm->verbose)
+	    vlib_cli_output (vm, "< %v< %v", hcm->response_status,
+			     hcm->resp_headers);
+	  vlib_cli_output (vm, "\n%v\n", hcm->http_response);
+	}
       break;
     default:
       err = clib_error_return (0, "error: unexpected event %d", event_type);
+      stats->request_count = ~0;
       break;
+    }
+
+  stats->end = vlib_time_now (vm);
+  stats->elapsed_time = stats->end - stats->start;
+
+  if (stats->repeat && stats->request_count != ~0 &&
+      (stats->elapsed_time <= hcm->duration ||
+       (stats->request_count <= hcm->repeat_count)))
+    {
+      send_err =
+	hc_request (hcm->app_index, hcm->full_hc_session->session_index,
+		    hcm->sessiont, session_err);
+      if (send_err)
+	clib_warning ("failed to send request, error %d", send_err);
+      goto repeat;
+    }
+
+  if (stats->repeat)
+    {
+      vlib_cli_output (vm,
+		       "< %d request(s) in %.6fs (%d failed)\n< avg latency "
+		       "%.4fms\n< %.2f req/sec",
+		       stats->request_count, stats->elapsed_time,
+		       stats->failed_count,
+		       (stats->elapsed_time / stats->request_count) * 1000,
+		       stats->request_count / stats->elapsed_time);
+      stats->repeat = false;
+      HTTP_DBG (1, "setting repeat to false");
+      if (stats->request_count != ~0)
+	hc_session_disconnect_callback (hcm->sessiont);
     }
 
   vec_free (event_data);
   return err;
+}
+
+static clib_error_t *
+hc_run (vlib_main_t *vm)
+{
+  hc_main_t *hcm = &hc_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
+  hc_worker_t *wrk;
+  clib_error_t *err;
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+  vec_validate (hcm->wrk, num_threads - 1);
+  vec_foreach (wrk, hcm->wrk)
+    wrk->thread_index = wrk - hcm->wrk;
+
+  if ((err = hc_attach ()))
+    return clib_error_return (0, "http client attach: %U", format_clib_error,
+			      err);
+
+  hc_connect ();
+
+  return hc_get_event (vm);
 }
 
 static int
@@ -566,6 +712,7 @@ hcc_worker_cleanup (hc_worker_t *wrk)
 static void
 hc_cleanup ()
 {
+  HTTP_DBG (1, "cleanup");
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk;
   http_header_ht_t *header;
@@ -595,6 +742,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	       vlib_cli_command_t *cmd)
 {
   hc_main_t *hcm = &hc_main;
+  hc_stats_t *stats = &hc_stats;
   clib_error_t *err = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *path = 0;
@@ -604,11 +752,14 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 *value;
   int rv;
   hcm->timeout = 10;
+  hcm->repeat_count = 0;
+  hcm->duration = 0;
+  stats->repeat = false;
+  stats->failed_count = 0;
+  stats->request_count = 0;
 
   if (hcm->attached)
     return clib_error_return (0, "failed: already running!");
-
-  hcm->use_ptr = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -652,6 +803,13 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->verbose = true;
       else if (unformat (line_input, "timeout %f", &hcm->timeout))
 	;
+      else if (unformat (line_input, "repeat %d", &hcm->repeat_count))
+	{
+	  hcm->repeat_count--;
+	  stats->repeat = true;
+	}
+      else if (unformat (line_input, "duration %f", &hcm->duration))
+	stats->repeat = true;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -685,6 +843,12 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  goto done;
 	}
     }
+  if (hcm->duration && hcm->repeat_count)
+    {
+      err = clib_error_return (
+	0, "combining duration and repeat is not supported");
+      goto done;
+    }
 
   if ((rv = parse_uri ((char *) hcm->uri, &hcm->connect_sep)))
     {
@@ -692,6 +856,9 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	clib_error_return (0, "URI parse error: %U", format_session_error, rv);
       goto done;
     }
+
+  if (stats->repeat)
+    vlib_cli_output (vm, "Running, please wait...");
 
   session_enable_disable_args_t args = { .is_en = 1,
 					 .rt_engine_type =
@@ -701,7 +868,6 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vlib_worker_thread_barrier_release (vm);
 
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
-
   err = hc_run (vm);
 
   if ((rv = hc_detach ()))
@@ -724,10 +890,11 @@ done:
 
 VLIB_CLI_COMMAND (hc_command, static) = {
   .path = "http client",
-  .short_help = "[post] uri http://<ip-addr> target <origin-form> "
-		"[data <form-urlencoded> | file <file-path>] [use-ptr] "
-		"[save-to <filename>] [header <Key:Value>] [verbose] "
-		"[timeout <seconds> (default = 10)]",
+  .short_help =
+    "[post] uri http://<ip-addr> target <origin-form> "
+    "[data <form-urlencoded> | file <file-path>] [use-ptr] "
+    "[save-to <filename>] [header <Key:Value>] [verbose] "
+    "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
