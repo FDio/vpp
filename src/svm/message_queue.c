@@ -18,7 +18,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/time.h>
 #include <sys/eventfd.h>
-#include <sys/socket.h>
+#include <poll.h>
 
 static inline svm_msg_q_ring_t *
 svm_msg_q_ring_inline (svm_msg_q_t * mq, u32 ring_index)
@@ -629,25 +629,29 @@ svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
     }
   else
     {
-      struct timeval tv;
+      struct pollfd fds = { .fd = mq->q.evtfd, .events = POLLIN };
       u64 buf;
       int rv;
 
-      tv.tv_sec = (u64) timeout;
-      tv.tv_usec = ((u64) timeout - (u64) timeout) * 1e9;
-      rv = setsockopt (mq->q.evtfd, SOL_SOCKET, SO_RCVTIMEO,
-		       (const char *) &tv, sizeof tv);
+      rv = poll (&fds, 1, timeout * 1e3 /* ms */);
       if (rv < 0)
 	{
-	  clib_unix_warning ("setsockopt");
+	  clib_unix_warning ("poll");
 	  return -1;
+	}
+      else if (rv == 0)
+	{
+	  /* timeout occured */
+	  return 0;
 	}
 
       rv = read (mq->q.evtfd, &buf, sizeof (buf));
-      if (rv < 0)
-	clib_warning ("read %u", errno);
-
-      return rv < 0 ? errno : 0;
+      if (rv < 0 && errno != EAGAIN)
+	{
+	  clib_warning ("read %u", errno);
+	  return -2;
+	}
+      return 0;
     }
 }
 
