@@ -300,7 +300,7 @@ def run_tests_in_venv(
         f"--filter={test}",
         f"--jobs={jobs}",
         f"--log-dir={log_dir}",
-        f"--tmp-dir={log_dir}",
+        # f"--tmp-dir={log_dir}",
         f"--cache-vpp-output",
     ]
     if running_vpp:

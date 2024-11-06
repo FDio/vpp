@@ -356,7 +356,7 @@ parser.add_argument(
 parser.add_argument(
     "--tmp-dir",
     action="store",
-    default="/tmp",
+    default="/run",
     type=directory_verify_or_create,
     help="directory where to store test temporary directories",
 )

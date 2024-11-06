@@ -2330,7 +2330,6 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@tag_fixme_ubuntu2204
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
