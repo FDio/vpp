@@ -12,6 +12,7 @@ enumflag dev_flags : u32
 enumflag dev_port_flags : u32
 {
   VL_API_DEV_PORT_FLAG_INTERRUPT_MODE = 0x1,
+  VL_API_DEV_PORT_FLAG_CONSISTENT_QP = 0x2,
 };
 
 autoendian define dev_attach
