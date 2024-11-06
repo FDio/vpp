@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright(c) 2021 Cisco Systems, Inc.
+ * Copyright(c) 2024 Arm Limited
  */
 
 #include <vlib/vlib.h>
@@ -94,6 +95,38 @@ snort_instance_disconnect (vlib_main_t *vm, u32 instance_index)
     }
 
   return rv;
+}
+
+const char *
+snort_get_direction_name_by_enum (snort_attach_dir_t dir)
+{
+  switch (dir)
+    {
+    case SNORT_INPUT:
+      return "input";
+    case SNORT_OUTPUT:
+      return "output";
+    case SNORT_INOUT:
+      return "inout";
+    default:
+      return "none";
+    }
+}
+
+/* Returns SNORT_INVALID if the instance is not attached */
+snort_attach_dir_t
+snort_get_instance_direction (u32 instance_index,
+			      snort_interface_data_t *interface)
+{
+  snort_attach_dir_t direction = SNORT_INVALID;
+  int i;
+  i = vec_search (interface->input_instance_indices, instance_index);
+  if (i != ~0)
+    direction = direction | SNORT_INPUT;
+  i = vec_search (interface->output_instance_indices, instance_index);
+  if (i != ~0)
+    direction = direction | SNORT_OUTPUT;
+  return direction;
 }
 
 snort_instance_t *
@@ -470,6 +503,30 @@ done:
   return rv;
 }
 
+static void
+snort_vnet_feature_enable_disable (snort_attach_dir_t snort_dir,
+				   u32 sw_if_index, int is_enable)
+{
+  u32 fa_data;
+  switch (snort_dir)
+    {
+    case SNORT_INPUT:
+      fa_data = SNORT_INPUT;
+      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
+				   is_enable, &fa_data, sizeof (fa_data));
+      break;
+    case SNORT_OUTPUT:
+      fa_data = SNORT_OUTPUT;
+      vnet_feature_enable_disable ("ip4-output", "snort-enq", sw_if_index,
+				   is_enable, &fa_data, sizeof (fa_data));
+      break;
+    default:
+      vlib_log_err (snort_log.class,
+		    "Invalid direction given to enable/disable snort");
+      break;
+    }
+}
+
 int
 snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 				u32 sw_if_index, int is_enable,
@@ -477,74 +534,191 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 {
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
-  snort_instance_t *si;
-  u64 fa_data;
-  u32 index;
+  vnet_sw_interface_t *software_interface =
+    vnet_get_sw_interface (vnm, sw_if_index);
+  snort_interface_data_t *interface_data;
+  snort_instance_t *instance;
+  u32 **instance_indices;
+  u32 instance_index;
+  const snort_attach_dir_t dirs[2] = { SNORT_INPUT, SNORT_OUTPUT };
   int rv = 0;
+  int index, i;
 
-  if (is_enable)
+  /* If interface is up, do not allow modifying attached instances */
+  if (software_interface->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     {
-      if ((si = snort_get_instance_by_name (instance_name)) == 0)
-	{
-	  log_err ("unknown instance '%s'", instance_name);
-	  return VNET_API_ERROR_NO_SUCH_ENTRY;
-	}
-
-      vec_validate_init_empty (sm->instance_by_sw_if_index, sw_if_index, ~0);
-
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      if (index != ~0)
-	{
-	  if (index == si->index)
-	    rv = VNET_API_ERROR_FEATURE_ALREADY_ENABLED;
-	  else
-	    rv = VNET_API_ERROR_INSTANCE_IN_USE;
-	  si = vec_elt_at_index (sm->instances, index);
-	  log_err ("interface %U already assgined to instance '%s'",
-		   format_vnet_sw_if_index_name, vnm, sw_if_index, si->name);
-	  goto done;
-	}
-
-      index = sm->instance_by_sw_if_index[sw_if_index] = si->index;
-      if (snort_dir & SNORT_INPUT)
-	{
-	  fa_data = (u64) index;
-	  vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
-				       1, &fa_data, sizeof (fa_data));
-	}
-      if (snort_dir & SNORT_OUTPUT)
-	{
-	  fa_data = (1LL << 32 | index);
-	  vnet_feature_enable_disable ("ip4-output", "snort-enq", sw_if_index,
-				       1, &fa_data, sizeof (fa_data));
-	}
+      rv = VNET_API_ERROR_INSTANCE_IN_USE;
+      log_err ("interface '%U' is currently up", format_vnet_sw_if_index_name,
+	       vnm, sw_if_index);
+      goto done;
     }
-  else
+
+  /* Check if provided instance name exists */
+  instance = snort_get_instance_by_name (instance_name);
+  if (instance == NULL)
     {
-      if (sw_if_index >= vec_len (sm->instance_by_sw_if_index) ||
-	  sm->instance_by_sw_if_index[sw_if_index] == ~0)
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      log_err ("unknown instance '%s'", instance_name);
+      goto done;
+    }
+
+  /* Check if interface is attached before unnecessarily increasing size of
+   * vector */
+  if (!is_enable && vec_len (sm->interfaces) <= sw_if_index)
+    {
+      rv = VNET_API_ERROR_INVALID_INTERFACE;
+      log_err ("interface %U is not assigned to snort instance %s!",
+	       format_vnet_sw_if_index_name, vnm, sw_if_index, instance->name);
+      goto done;
+    }
+
+  /* vec_validate initialises empty space to 0s, which corresponds to null
+   * pointers (i.e. empty vectors) in the snort_interface_data_t structs which
+   * is precisely what we need */
+  vec_validate (sm->interfaces, sw_if_index);
+
+  interface_data = vec_elt_at_index (sm->interfaces, sw_if_index);
+  instance_index = instance->index;
+
+  /* When detaching with direction SNORT_INOUT choose currently attached
+   * directions */
+  if (!is_enable)
+    {
+      snort_dir =
+	snort_get_instance_direction (instance_index, interface_data);
+      /* If snort_dir is SNORT_INVALID then the instance is not attached */
+      if (snort_dir == SNORT_INVALID)
 	{
 	  rv = VNET_API_ERROR_INVALID_INTERFACE;
-	  log_err ("interface %U is not assigned to snort instance!",
-		   format_vnet_sw_if_index_name, vnm, sw_if_index);
+	  log_err ("interface %U is not assigned to snort instance %s!",
+		   format_vnet_sw_if_index_name, vnm, sw_if_index,
+		   instance->name);
 	  goto done;
 	}
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      si = vec_elt_at_index (sm->instances, index);
+    }
 
-      sm->instance_by_sw_if_index[sw_if_index] = ~0;
-      if (snort_dir & SNORT_INPUT)
+  /* Error if direction is invalid */
+  if (snort_dir == SNORT_INVALID)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      vlib_log_err (snort_log.class,
+		    "cannot attach/detach with invalid direction ");
+      goto done;
+    }
+
+  /* Loop evaluates input instances and then output instances */
+  for (i = 0; i < 2; i++)
+    {
+      if (!(snort_dir & dirs[i]))
+	continue;
+
+      instance_indices = (dirs[i] == SNORT_INPUT) ?
+			   &(interface_data->input_instance_indices) :
+			   &(interface_data->output_instance_indices);
+      index = vec_search (*instance_indices, instance_index);
+
+      if (is_enable)
 	{
-	  fa_data = (u64) index;
-	  vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
-				       0, &fa_data, sizeof (fa_data));
+	  /* Error if instance is already attached when trying to attach */
+	  if (index != ~0)
+	    {
+	      rv = VNET_API_ERROR_FEATURE_ALREADY_ENABLED;
+	      log_err ("interface %U already assgined to instance '%s' on "
+		       "direction '%s'",
+		       format_vnet_sw_if_index_name, vnm, sw_if_index,
+		       instance->name,
+		       snort_get_direction_name_by_enum (dirs[i]));
+	      goto done;
+	    }
 	}
-      if (snort_dir & SNORT_OUTPUT)
+      else
 	{
-	  fa_data = (1LL << 32 | index);
-	  vnet_feature_enable_disable ("ip4-output", "snort-enq", sw_if_index,
-				       0, &fa_data, sizeof (fa_data));
+	  /* Error if instance is not attached when trying to detach */
+	  if (index == ~0)
+	    {
+	      rv = VNET_API_ERROR_INVALID_INTERFACE;
+	      log_err ("interface %U is not assigned to snort instance %s on "
+		       "direction '%s'!",
+		       format_vnet_sw_if_index_name, vnm, sw_if_index,
+		       instance->name,
+		       snort_get_direction_name_by_enum (dirs[i]));
+	      goto done;
+	    }
 	}
+
+      if (is_enable)
+	{
+	  /* Enable feature if not previously enabled */
+	  if (vec_len (*instance_indices) == 0)
+	    {
+	      snort_vnet_feature_enable_disable (dirs[i], sw_if_index,
+						 1 /* is_enable */);
+	    }
+	  vec_add1 (*instance_indices, instance_index);
+	}
+      else
+	{
+	  /* Disable feature when removing last instance */
+	  if (vec_len (*instance_indices) == 1)
+	    {
+	      snort_vnet_feature_enable_disable (dirs[i], sw_if_index,
+						 0 /* is_enable */);
+	    }
+	  vec_del1 (*instance_indices, index);
+	}
+    }
+done:
+  return rv;
+}
+
+int
+snort_interface_disable_all (vlib_main_t *vm, u32 sw_if_index)
+{
+  snort_main_t *sm = &snort_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *software_interface =
+    vnet_get_sw_interface (vnm, sw_if_index);
+  snort_interface_data_t *interface_data;
+  int rv = 0;
+
+  if (software_interface->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    {
+      rv = VNET_API_ERROR_INSTANCE_IN_USE;
+      log_err ("interface '%U' is currently up", format_vnet_sw_if_index_name,
+	       vnm, sw_if_index);
+      goto done;
+    }
+
+  if (vec_len (sm->interfaces) <= sw_if_index)
+    {
+      rv = VNET_API_ERROR_INVALID_INTERFACE;
+      log_err ("no instances attached to interface %U",
+	       format_vnet_sw_if_index_name, vnm, sw_if_index);
+      goto done;
+    }
+
+  interface_data = vec_elt_at_index (sm->interfaces, sw_if_index);
+
+  if (vec_len (interface_data->input_instance_indices) == 0 &&
+      vec_len (interface_data->output_instance_indices) == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_INTERFACE;
+      log_err ("no instances attached to interface %U",
+	       format_vnet_sw_if_index_name, vnm, sw_if_index);
+      goto done;
+    }
+
+  if (vec_len (interface_data->input_instance_indices) > 0)
+    {
+      snort_vnet_feature_enable_disable (SNORT_INPUT, sw_if_index,
+					 0 /* is_enable */);
+      vec_free (interface_data->input_instance_indices);
+    }
+  if (vec_len (interface_data->output_instance_indices) > 0)
+    {
+      snort_vnet_feature_enable_disable (SNORT_OUTPUT, sw_if_index,
+					 0 /* is_enable */);
+      vec_free (interface_data->output_instance_indices);
     }
 
 done:
@@ -552,17 +726,24 @@ done:
 }
 
 static int
-snort_strip_instance_interfaces (vlib_main_t *vm, u32 instance_index)
+snort_strip_instance_interfaces (vlib_main_t *vm, snort_instance_t *instance)
 {
   snort_main_t *sm = &snort_main;
-  u32 *index;
+  snort_interface_data_t *interface;
+  snort_attach_dir_t direction;
+  int i;
   int rv = 0;
 
-  vec_foreach (index, sm->instance_by_sw_if_index)
+  /* Find all interfaces containing the given snort instance to disable */
+  vec_foreach_index (i, sm->interfaces)
     {
-      if (*index == instance_index)
-	rv = snort_interface_enable_disable (
-	  vm, NULL, index - sm->instance_by_sw_if_index, 0, 0);
+      /* Check if the snort_instance is attached by checking if the direction
+       * is SNORT_INVALID */
+      interface = vec_elt_at_index (sm->interfaces, i);
+      direction = snort_get_instance_direction (instance->index, interface);
+      if (direction != SNORT_INVALID)
+	rv = snort_interface_enable_disable (vm, (char *) instance->name, i,
+					     0 /* is_enable */, direction);
       if (rv)
 	break;
     }
@@ -585,7 +766,7 @@ snort_instance_delete (vlib_main_t *vm, u32 instance_index)
   if (si->client_index != ~0)
     return VNET_API_ERROR_INSTANCE_IN_USE;
 
-  if ((rv = snort_strip_instance_interfaces (vm, si->index)))
+  if ((rv = snort_strip_instance_interfaces (vm, si)))
     return rv;
 
   hash_unset_mem (sm->instance_by_name, si->name);

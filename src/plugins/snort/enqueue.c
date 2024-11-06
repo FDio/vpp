@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright(c) 2021 Cisco Systems, Inc.
+ * Copyright(c) 2024 Arm Limited
  */
 
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip4_packet.h>
 #include <vlib/vlib.h>
 #include <vnet/feature/feature.h>
 #include <snort/snort.h>
@@ -56,6 +59,33 @@ static char *snort_enq_error_strings[] = {
 #undef _
 };
 
+static_always_inline u32
+get_snort_instance_index_ip4 (snort_main_t *sm, vlib_buffer_t *b, u32 fa_data)
+{
+  u32 hash;
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  ip4_header_t *ip = NULL;
+  u32 *instances = (fa_data == SNORT_INPUT) ?
+		     sm->interfaces[sw_if_index].input_instance_indices :
+		     sm->interfaces[sw_if_index].output_instance_indices;
+  int n_instances = vec_len (instances);
+
+  if (n_instances == 1)
+    {
+      return instances[0];
+    }
+  ip = vlib_buffer_get_current (b);
+  hash = ip4_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT);
+  return instances[hash % n_instances];
+}
+
+static_always_inline snort_instance_t *
+get_snort_instance (snort_main_t *sm, vlib_buffer_t *b, u32 fa_data)
+{
+  u32 instance_index = get_snort_instance_index_ip4 (sm, b, fa_data);
+  return snort_get_instance_by_index (instance_index);
+}
+
 static_always_inline uword
 snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vlib_frame_t *frame, int with_trace)
@@ -66,26 +96,24 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 thread_index = vm->thread_index;
   u32 n_left = frame->n_vectors;
   u32 n_trace = 0;
-  u32 total_enq = 0, n_processed = 0;
+  u32 total_enq = 0, n_unprocessed = 0;
   u32 *from = vlib_frame_vector_args (frame);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  u32 unprocessed_bufs[VLIB_FRAME_SIZE];
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
   while (n_left)
     {
-      u64 fa_data;
-      u32 instance_index, next_index, n;
-      u32 l3_offset;
-
-      fa_data =
-	*(u64 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u64));
-
-      instance_index = (u32) (fa_data & 0xffffffff);
-      l3_offset =
-	(fa_data >> 32) ? vnet_buffer (b[0])->ip.save_rewrite_length : 0;
-      si = vec_elt_at_index (sm->instances, instance_index);
+      u32 next_index, n;
+      /* fa_data is either SNORT_INPUT or SNORT_OUTPUT */
+      u32 fa_data =
+	*(u32 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u32));
+      u32 l3_offset = (fa_data == SNORT_INPUT) ?
+			0 :
+			vnet_buffer (b[0])->ip.save_rewrite_length;
+      si = get_snort_instance (sm, b[0], fa_data);
 
       /* if client isn't connected skip enqueue and take default action */
       if (PREDICT_FALSE (si->client_index == ~0))
@@ -95,7 +123,8 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else
 	    next[0] = next_index;
 	  next++;
-	  n_processed++;
+	  unprocessed_bufs[n_unprocessed] = from[0];
+	  n_unprocessed++;
 	}
       else
 	{
@@ -108,7 +137,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  vlib_buffer_chain_linearize (vm, b[0]);
 
-	  /* If this pkt is traced, snapshoot the data */
+	  /* If this pkt is traced, snapshot the data */
 	  if (with_trace && b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    n_trace++;
 
@@ -125,12 +154,12 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       b++;
     }
 
-  if (n_processed)
+  if (n_unprocessed)
     {
       vlib_node_increment_counter (vm, snort_enq_node.index,
-				   SNORT_ENQ_ERROR_NO_INSTANCE, n_processed);
-      vlib_buffer_enqueue_to_next (vm, node, vlib_frame_vector_args (frame),
-				   nexts, n_processed);
+				   SNORT_ENQ_ERROR_NO_INSTANCE, n_unprocessed);
+      vlib_buffer_enqueue_to_next (vm, node, unprocessed_bufs, nexts,
+				   n_unprocessed);
     }
 
   pool_foreach (si, sm->instances)
