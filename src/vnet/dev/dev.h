@@ -356,6 +356,7 @@ typedef struct vnet_dev_port
     u8 feature_arc : 1;
     u8 redirect_to_node : 1;
     u8 default_is_intr_mode : 1;
+    u8 consistent_qp : 1;
     u32 tx_node_index;
     u32 hw_if_index;
     u32 sw_if_index;
