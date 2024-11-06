@@ -319,7 +319,7 @@ unformat_vnet_dev_port_flags (unformat_input_t *input, va_list *args)
 #undef _
   };
   u64 flag_values[] = {
-#define _(b, n, d) 1ull << (b)
+#define _(b, n, d) 1ull << (b),
     foreach_vnet_dev_port_flag
 #undef _
   };
@@ -395,7 +395,7 @@ format_vnet_dev_port_flags (u8 *s, va_list *args)
 #undef _
   };
   u64 flag_values[] = {
-#define _(b, n, d) 1ull << (b)
+#define _(b, n, d) 1ull << (b),
     foreach_vnet_dev_port_flag
 #undef _
   };

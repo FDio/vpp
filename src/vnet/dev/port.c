@@ -520,6 +520,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_instance_t *di;
   vnet_dev_rv_t rv;
   u16 ti = 0;
+  u8 is_consistent_qp = port->intf.consistent_qp;
 
   if (port->intf.name[0] == 0)
     {
@@ -556,9 +557,12 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_tx_queue (q, port)
     {
-      q->assigned_threads = clib_bitmap_set (q->assigned_threads, ti, 1);
+      /* if consistent_qp is enabled, we start by assigning queues to workers
+       * and we end with main */
+      u16 real_ti = (ti + is_consistent_qp) % n_threads;
+      q->assigned_threads = clib_bitmap_set (q->assigned_threads, real_ti, 1);
       log_debug (dev, "port %u tx queue %u assigned to thread %u",
-		 port->port_id, q->queue_id, ti);
+		 port->port_id, q->queue_id, real_ti);
       if (++ti >= n_threads)
 	break;
     }
