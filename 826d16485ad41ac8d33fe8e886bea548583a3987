@@ -16,6 +16,24 @@
       "message": "Let\u0027s keep a vector of appns_indices in st, so we won\u0027t have to search for them. Hopefully it simplifies the code",
       "revId": "826d16485ad41ac8d33fe8e886bea548583a3987",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "537f3b6d_6746f189",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1953,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-11-06T17:59:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d8d3a229_5597b155",
+      "revId": "826d16485ad41ac8d33fe8e886bea548583a3987",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
