@@ -185,7 +185,8 @@ vl_api_snort_interface_get_t_handler (vl_api_snort_interface_get_t *mp)
   snort_main_t *sm = snort_get_main ();
   vl_api_snort_interface_get_reply_t *rmp;
   u32 sw_if_index;
-  u32 *index;
+  u32 *instances;
+  u32 index;
   int rv = 0;
 
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
@@ -193,7 +194,7 @@ vl_api_snort_interface_get_t_handler (vl_api_snort_interface_get_t *mp)
   if (sw_if_index == INDEX_INVALID)
     {
       /* clang-format off */
-      if (vec_len (sm->instance_by_sw_if_index) == 0)
+      if (vec_len (sm->interfaces) == 0)
 	{
 	  REPLY_MACRO2 (VL_API_SNORT_INTERFACE_GET_REPLY, ({ rmp->cursor = ~0; }));
 	  return;
@@ -201,17 +202,36 @@ vl_api_snort_interface_get_t_handler (vl_api_snort_interface_get_t *mp)
 
       REPLY_AND_DETAILS_VEC_MACRO(
 	VL_API_SNORT_INTERFACE_GET_REPLY,
-	sm->instance_by_sw_if_index,
+	sm->interfaces,
 	mp, rmp, rv, ({
-          index = vec_elt_at_index (sm->instance_by_sw_if_index, cursor);
-          send_snort_interface_details (cursor, *index, rp, mp->context);
+          instances = vec_len(sm->interfaces[cursor].input_instance_indices) ?
+           sm->interfaces[cursor].input_instance_indices : sm->interfaces[cursor].output_instance_indices;
+          if (vec_len(instances) == 0)
+          {
+            index = ~0;
+          }
+          else {
+            index = instances[0];
+          }
+          send_snort_interface_details (cursor, index, rp, mp->context);
 	}))
       /* clang-format on */
     }
   else
     {
-      index = vec_elt_at_index (sm->instance_by_sw_if_index, sw_if_index);
-      if (snort_get_instance_by_index (index[0]))
+      instances =
+	vec_len (sm->interfaces[sw_if_index].input_instance_indices) ?
+	  sm->interfaces[sw_if_index].input_instance_indices :
+	  sm->interfaces[sw_if_index].output_instance_indices;
+      if (vec_len (instances) == 0)
+	{
+	  index = ~0;
+	}
+      else
+	{
+	  index = instances[0];
+	}
+      if (snort_get_instance_by_index (index))
 	{
 	  vl_api_registration_t *rp =
 	    vl_api_client_index_to_registration (mp->client_index);
@@ -221,7 +241,8 @@ vl_api_snort_interface_get_t_handler (vl_api_snort_interface_get_t *mp)
 	      return;
 	    }
 
-	  send_snort_interface_details (sw_if_index, *index, rp, mp->context);
+	  send_snort_interface_details (sw_if_index, *instances, rp,
+					mp->context);
 	}
       else
 	{
@@ -352,11 +373,9 @@ vl_api_snort_interface_detach_t_handler (vl_api_snort_interface_detach_t *mp)
   vlib_main_t *vm = vlib_get_main ();
   vl_api_snort_interface_detach_reply_t *rmp;
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
-  int rv = VNET_API_ERROR_NO_MATCHING_INTERFACE;
+  int rv;
 
-  if (sw_if_index != INDEX_INVALID)
-    rv = snort_interface_enable_disable (vm, NULL, sw_if_index,
-					 0 /* is_enable */, SNORT_INOUT);
+  rv = snort_interface_disable_all (vm, sw_if_index);
 
   REPLY_MACRO (VL_API_SNORT_INTERFACE_DETACH_REPLY);
 }
