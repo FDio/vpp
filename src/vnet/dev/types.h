@@ -50,7 +50,8 @@ typedef union
 
 /* do not change bit assignments - API dependency */
 #define foreach_vnet_dev_port_flag                                            \
-  _ (0, INTERRUPT_MODE, "enable interrupt mode")
+  _ (0, INTERRUPT_MODE, "enable interrupt mode")                              \
+  _ (1, CONSISTENT_QP, "consistent queue pairs")
 
 typedef union
 {
