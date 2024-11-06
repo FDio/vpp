@@ -189,9 +189,6 @@ class TestApplicationNamespace(VppAsfTestCase):
         self.assertEqual(dump[1].appns_index[0], 0)
         self.assertEqual(dump[1].appns_index[1], app0.appns_index)
 
-        self.vapi.app_namespace_add_del_v4(
-            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=0
-        )
         self.vapi.session_rule_add_del(
             transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
             lcl="172.100.1.1/32",
@@ -203,6 +200,24 @@ class TestApplicationNamespace(VppAsfTestCase):
             scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
             is_add=0,
         )
+        self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=0
+        )
+
+        # test bad appns index for the API
+        with self.vapi.assert_negative_api_retval():
+            rv = self.vapi.session_rule_add_del(
+                transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+                lcl="172.100.1.1/32",
+                rmt="172.100.1.2/32",
+                lcl_port=5000,
+                rmt_port=5000,
+                action_index=1,
+                appns_index=10,
+                scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+                is_add=1,
+            )
+        self.assertEqual(rv.retval, -1)
 
 
 @tag_fixme_vpp_workers

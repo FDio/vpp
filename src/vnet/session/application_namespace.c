@@ -52,6 +52,14 @@ app_namespace_get (u32 index)
 }
 
 app_namespace_t *
+app_namespace_get_if_valid (u32 index)
+{
+  if (pool_is_free_index (app_namespace_pool, index))
+    return 0;
+  return pool_elt_at_index (app_namespace_pool, index);
+}
+
+app_namespace_t *
 app_namespace_get_from_id (const u8 *ns_id)
 {
   u32 index = app_namespace_index_from_id (ns_id);
