@@ -77,6 +77,7 @@ typedef struct _vnet_app_namespace_add_del_args
 
 app_namespace_t *app_namespace_alloc (const u8 *ns_id);
 app_namespace_t *app_namespace_get (u32 index);
+app_namespace_t *app_namespace_get_if_valid (u32 index);
 app_namespace_t *app_namespace_get_from_id (const u8 *ns_id);
 u32 app_namespace_index (app_namespace_t * app_ns);
 const u8 *app_namespace_id (app_namespace_t * app_ns);

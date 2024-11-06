@@ -1383,7 +1383,7 @@ session_lookup_connection (u32 fib_index, ip46_address_t * lcl,
 session_error_t
 vnet_session_rule_add_del (session_rule_add_del_args_t *args)
 {
-  app_namespace_t *app_ns = app_namespace_get (args->appns_index);
+  app_namespace_t *app_ns = app_namespace_get_if_valid (args->appns_index);
   session_table_t *st;
   u32 fib_index;
   u8 fib_proto;
@@ -1404,6 +1404,8 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       fib_proto = args->table_args.rmt.fp_proto;
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
+      if (!st)
+	return SESSION_E_INVALID;
       session_rules_table_init (st, fib_proto);
       if ((rv = session_rules_table_add_del (
 	     st->srtg_handle, args->transport_proto, &args->table_args)))
