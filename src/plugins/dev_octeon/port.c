@@ -429,6 +429,7 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
   struct roc_nix *nix = cd->nix;
   struct roc_nix_eeprom_info eeprom_info = {};
   vnet_dev_rv_t rv;
@@ -452,6 +453,12 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       goto done;
     }
 
+  if ((rrv = roc_npc_mcam_enable_all_entries (&cp->npc, true)))
+    {
+      rv = oct_roc_err (dev, rrv, "roc_npc_mcam_enable_all_entries() failed");
+      goto done;
+    }
+
   vnet_dev_poll_port_add (vm, port, 0.5, oct_port_poll);
 
   if (roc_nix_eeprom_info_get (nix, &eeprom_info) == 0)
@@ -470,12 +477,21 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
   struct roc_nix *nix = cd->nix;
   int rrv;
 
   log_debug (port->dev, "port stop: port %u", port->port_id);
 
   vnet_dev_poll_port_remove (vm, port, oct_port_poll);
+
+  /* Disable all the NPC entries */
+  rrv = roc_npc_mcam_enable_all_entries (&cp->npc, false);
+  if (rrv)
+    {
+      oct_roc_err (dev, rrv, "roc_npc_mcam_enable_all_entries() failed");
+      return;
+    }
 
   rrv = roc_nix_npc_rx_ena_dis (nix, false);
   if (rrv)
@@ -576,6 +592,10 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 		  rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_set() failed");
 		}
 	    }
+
+	  rrv = roc_nix_rss_default_setup (nix, default_rss_flowkey);
+	  if (rrv)
+	    rv = oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
 	}
     }
 
