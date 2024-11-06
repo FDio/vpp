@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ipsec-mb_version             := 1.5
+ipsec-mb_version             := 2.0
 ipsec-mb_patch_version       := 0
 ipsec-mb_version_str         := $(ipsec-mb_version).$(ipsec-mb_patch_version)
 ipsec-mb_tarball             := v$(ipsec-mb_version).tar.gz
@@ -21,6 +21,7 @@ ipsec-mb_tarball_md5sum_1.2  := f551d9c208893a436c1f5c146a615bd6
 ipsec-mb_tarball_md5sum_1.3  := d8692db9efe32a263b61f12ac0dca950
 ipsec-mb_tarball_md5sum_1.4  := fddba2611f822296ddd82d1c31d22b24
 ipsec-mb_tarball_md5sum_1.5  := f18680f8dd43208a15a19a494423bdb9
+ipsec-mb_tarball_md5sum_2.0  := c0207b0a2136920461cc56aad06072a8
 
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
