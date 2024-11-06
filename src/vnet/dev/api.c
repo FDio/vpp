@@ -238,6 +238,8 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
 
   clib_memcpy (port->intf.name, args->intf_name, sizeof (port->intf.name));
   port->intf.default_is_intr_mode = default_is_intr_mode;
+  port->intf.consistent_qp =
+    (args->flags.n & VNET_DEV_PORT_F_CONSISTENT_QP) != 0;
 
   rv = vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_create);
   args->sw_if_index = (rv == VNET_DEV_OK) ? port->intf.sw_if_index : ~0;
