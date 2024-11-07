@@ -16,6 +16,63 @@
       "message": "Ready for review",
       "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f02503c_f195d0d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 27
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-07T02:52:56Z",
+      "side": 1,
+      "message": "Normal execution looks good, however, abort/killing of testcase causes one or more namespaces to be leaked (i.e. are never cleaned up).  Not sure if this causes problems during subsequent testcase execution and/or persistent loss of system resources.\n\nAlso, have you tested these changes with testcase errors and/or testcase failures?",
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19eef6c9_a980eddc",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-07T02:52:56Z",
+      "side": 1,
+      "message": "tearDownClass is not guaranteed to be run (e.g. ctrl-c in a development workspace, or OOMKiller in the CI).  Does tearDownClass get run on a testcase ERROR or FAILURE?\n\nThere either needs to be a clean up callback for exceptions or namespace clean up from a previous run should occur during test setup.",
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b491ca16_20f56106",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-07T02:52:56Z",
+      "side": 1,
+      "message": "I\u0027m seeing this message for all vm testcases:\n\nInterface hostintclient23 does not exist or is already deleted.\nInterface hostintserver23 does not exist or is already deleted.\nSuccessfully deleted host interface: vppclientout23\nSuccessfully deleted host interface: vppserverout23\ntest_id_23_client_af_packet_v2_gso_1_gro_0_checksum_0_to_server_af_packet_v2_gso_1_gro_0_checksum_0_mtu_1500_mode_L2_tcp_ipv4 (test_vm_af_packet_gso_l2.TestVPPInterfacesQemuAfPacketGsoL2.test_id_23_client_af_packet_v2_gso_1_gro_0_checksum_0_to_server_af_packet_v2_gso_1_gro_0_checksum_0_mtu_1500_mode_L2_tcp_ipv4) 2.71 OK\n\nIf this is correct behavior, then this message should be suppressed behind a verbose output or debug flag.  Otherwise, the error message should indicate how to fix the problem.",
+      "range": {
+        "startLine": 107,
+        "startChar": 20,
+        "endLine": 109,
+        "endChar": 21
+      },
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
