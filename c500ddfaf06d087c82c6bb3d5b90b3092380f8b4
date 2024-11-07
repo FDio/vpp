@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ae5ba4e1_b654f575",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 27
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-07T15:15:33Z",
+      "side": 1,
+      "message": "1. It seems that need to clean up (based on prefix name \u0027vpp_ns_\u0027 and \u0027host_if_\u0027) previous namespaces and host interfaces at the begin in setUpClass function. The same approach is used for pcap files.\n\n2. One more approach: write so-called logging journal in tmp folder about list of created (but not deleted) namespaces or host interfaces and read this log in setUpClass if it\u0027s not empty then clean up based on the names in a log file.",
+      "parentUuid": "2f02503c_f195d0d7",
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "19eef6c9_a980eddc",
         "filename": "test/asf/test_prom.py",
         "patchSetId": 27
@@ -54,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1bb65bb4_90923d17",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-07T15:15:33Z",
+      "side": 1,
+      "message": "You are right need to add handling, clean up in test setup can be similar to pcap files approach.",
+      "parentUuid": "19eef6c9_a980eddc",
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b491ca16_20f56106",
         "filename": "test/vpp_qemu_utils.py",
         "patchSetId": 27
@@ -65,6 +101,30 @@
       "writtenOn": "2024-11-07T02:52:56Z",
       "side": 1,
       "message": "I\u0027m seeing this message for all vm testcases:\n\nInterface hostintclient23 does not exist or is already deleted.\nInterface hostintserver23 does not exist or is already deleted.\nSuccessfully deleted host interface: vppclientout23\nSuccessfully deleted host interface: vppserverout23\ntest_id_23_client_af_packet_v2_gso_1_gro_0_checksum_0_to_server_af_packet_v2_gso_1_gro_0_checksum_0_mtu_1500_mode_L2_tcp_ipv4 (test_vm_af_packet_gso_l2.TestVPPInterfacesQemuAfPacketGsoL2.test_id_23_client_af_packet_v2_gso_1_gro_0_checksum_0_to_server_af_packet_v2_gso_1_gro_0_checksum_0_mtu_1500_mode_L2_tcp_ipv4) 2.71 OK\n\nIf this is correct behavior, then this message should be suppressed behind a verbose output or debug flag.  Otherwise, the error message should indicate how to fix the problem.",
+      "range": {
+        "startLine": 107,
+        "startChar": 20,
+        "endLine": 109,
+        "endChar": 21
+      },
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c16f1096_46ba6f54",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-07T15:15:33Z",
+      "side": 1,
+      "message": "I\u0027ll remove all print messages. If name is already deleted or doesn\u0027t exist, then do nothing with this name (like a function \u0027free(NULL)\u0027 in C). If ns/host name exists but we have a problem with deleting then we use exception with message.",
+      "parentUuid": "b491ca16_20f56106",
       "range": {
         "startLine": 107,
         "startChar": 20,
