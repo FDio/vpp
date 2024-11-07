@@ -3997,6 +3997,22 @@ class TestIPFibSource(VppTestCase):
 
         self.send_and_expect(self.pg0, [p], self.pg1)
 
+        # the API route is still dumpable by its source even though the
+        # BGP source wins the FIB source election
+        routes = self.vapi.ip_route_v2_dump(0, True, src=api_source.id)
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(str(routes[0].route.prefix), str(r1.prefix))
+        self.assertEqual(routes[0].route.src, api_source.id)
+        self.assertEqual(routes[0].route.n_paths, 1)
+        self.assertEqual(routes[0].route.paths[0].sw_if_index, self.pg0.sw_if_index)
+
+        routes = self.vapi.ip_route_v2_dump(0, True, src=bgp_source.id)
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(str(routes[0].route.prefix), str(r2.prefix))
+        self.assertEqual(routes[0].route.src, bgp_source.id)
+        self.assertEqual(routes[0].route.n_paths, 1)
+        self.assertEqual(routes[0].route.paths[0].sw_if_index, self.pg1.sw_if_index)
+
         r2.remove_vpp_config()
         r1.remove_vpp_config()
 
