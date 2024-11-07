@@ -255,6 +255,16 @@ define ip_route_dump
   u32 context;
   vl_api_ip_table_t table;
 };
+/** \brief Dump IP routes from a table, filtered on the best source
+    A non-zero src selects the entries whose best source is src. The
+    details describe the forwarding state of those entries, i.e. their
+    best paths and best source.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param src The entity adding the route. either 0 for default
+               or a value returned from fib_source_sdd.
+    @param table - The table from which to dump routes (ony ID an AF are needed)
+*/
 define ip_route_v2_dump
 {
   option in_progress;
@@ -262,6 +272,29 @@ define ip_route_v2_dump
   u32 context;
   /* vl_api_fib_source_t src; */
   u8 src;
+  vl_api_ip_table_t table;
+};
+/** \brief Dump IP routes from a table, with an explicit source selector
+    A non-zero src selects the entries sourced by src. By default only
+    entries whose best source is src are dumped, and their details
+    describe the forwarding state. If include_non_best is set, every
+    entry sourced by src is dumped, encoding the paths of src even when
+    it is not the best source. include_non_best is ignored when src is 0.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param src The entity adding the route. either 0 for default
+               or a value returned from fib_source_sdd.
+    @param include_non_best Include entries where src is not the best source
+    @param table - The table from which to dump routes (ony ID an AF are needed)
+*/
+define ip_route_v3_dump
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  /* vl_api_fib_source_t src; */
+  u8 src;
+  bool include_non_best [default=false];
   vl_api_ip_table_t table;
 };
 
@@ -274,6 +307,12 @@ define ip_route_details
   vl_api_ip_route_t route;
 };
 define ip_route_v2_details
+{
+  option in_progress;
+  u32 context;
+  vl_api_ip_route_v2_t route;
+};
+define ip_route_v3_details
 {
   option in_progress;
   u32 context;

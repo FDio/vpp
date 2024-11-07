@@ -1274,6 +1274,7 @@ typedef struct fib_table_walk_w_src_ctx_t_
     fib_table_walk_fn_t fn;
     void *data;
     fib_source_t src;
+    bool include_non_best;
 } fib_table_walk_w_src_cxt_t;
 
 static fib_table_walk_rc_t
@@ -1281,8 +1282,14 @@ fib_table_walk_w_src_cb (fib_node_index_t fei,
                          void *arg)
 {
     fib_table_walk_w_src_cxt_t *ctx = arg;
+    int match;
 
-    if (ctx->src == fib_entry_get_best_source(fei))
+    if (ctx->include_non_best)
+        match = fib_entry_is_sourced(fei, ctx->src);
+    else
+        match = (ctx->src == fib_entry_get_best_source(fei));
+
+    if (match)
     {
         return (ctx->fn(fei, ctx->data));
     }
@@ -1293,12 +1300,14 @@ void
 fib_table_walk_w_src (u32 fib_index,
                       fib_protocol_t proto,
                       fib_source_t src,
+                      bool include_non_best,
                       fib_table_walk_fn_t fn,
                       void *data)
 {
     fib_table_walk_w_src_cxt_t ctx = {
         .fn = fn,
         .src = src,
+        .include_non_best = include_non_best,
         .data = data,
     };
 

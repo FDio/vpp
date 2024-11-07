@@ -940,13 +940,19 @@ __clib_export extern void fib_table_walk(u32 fib_index,
                            void *ctx);
 
 /**
- * @brief Walk all entries in a FIB table
+ * @brief Walk all entries in a FIB table that are sourced by 'src'
+ *
+ * By default only entries for which 'src' is the best source are visited.
+ * If 'include_non_best' is set, every entry that has 'src' as one of its
+ * sources is visited, including entries where 'src' is not contributing.
+ *
  * N.B: This is NOT safe to deletes. If you need to delete walk the whole
  * table and store elements in a vector, then delete the elements
  */
 extern void fib_table_walk_w_src(u32 fib_index,
                                  fib_protocol_t proto,
                                  fib_source_t src,
+                                 bool include_non_best,
                                  fib_table_walk_fn_t fn,
                                  void *ctx);
 

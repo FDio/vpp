@@ -187,8 +187,8 @@ send_ip_route_details (vpe_api_main_t * am,
 }
 
 static void
-send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg,
-			  u32 context, fib_node_index_t fib_entry_index)
+send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg, u32 context,
+			  fib_node_index_t fib_entry_index)
 {
   fib_route_path_t *rpaths, *rpath;
   vl_api_ip_route_v2_details_t *mp;
@@ -213,6 +213,50 @@ send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg,
     fib_entry_get_fib_index (fib_entry_index), pfx->fp_proto));
   mp->route.n_paths = path_count;
   mp->route.src = fib_entry_get_best_source (fib_entry_index);
+  mp->route.stats_index =
+    htonl (fib_table_entry_get_stats_index (fib_entry_get_fib_index (fib_entry_index), pfx));
+
+  fp = mp->route.paths;
+  vec_foreach (rpath, rpaths)
+    {
+      fib_api_path_encode (rpath, fp);
+      fp++;
+    }
+
+  vl_api_send_msg (reg, (u8 *) mp);
+  vec_free (rpaths);
+}
+
+static void
+send_ip_route_v3_details (vpe_api_main_t *am, vl_api_registration_t *reg, u32 context,
+			  fib_node_index_t fib_entry_index, fib_source_t src, bool include_non_best)
+{
+  fib_route_path_t *rpaths, *rpath;
+  vl_api_ip_route_v3_details_t *mp;
+  const fib_prefix_t *pfx;
+  vl_api_fib_path_t *fp;
+  int path_count;
+  bool by_src;
+
+  by_src = (0 != src && include_non_best);
+  rpaths = NULL;
+  pfx = fib_entry_get_prefix (fib_entry_index);
+  rpaths =
+    by_src ? fib_entry_encode_src (fib_entry_index, src) : fib_entry_encode (fib_entry_index);
+
+  path_count = vec_len (rpaths);
+  mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
+  if (!mp)
+    return;
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_V3_DETAILS);
+  mp->context = context;
+
+  ip_prefix_encode (pfx, &mp->route.prefix);
+  mp->route.table_id =
+    htonl (fib_table_get_table_id (fib_entry_get_fib_index (fib_entry_index), pfx->fp_proto));
+  mp->route.n_paths = path_count;
+  mp->route.src = by_src ? src : fib_entry_get_best_source (fib_entry_index);
   mp->route.stats_index = htonl (fib_table_entry_get_stats_index (
     fib_entry_get_fib_index (fib_entry_index), pfx));
 
@@ -291,14 +335,53 @@ vl_api_ip_route_v2_dump_t_handler (vl_api_ip_route_v2_dump_t *mp)
     return;
 
   if (src)
-    fib_table_walk_w_src (fib_index, fproto, src, vl_api_ip_fib_dump_walk,
-			  &ctx);
+    fib_table_walk_w_src (fib_index, fproto, src, false, vl_api_ip_fib_dump_walk, &ctx);
   else
     fib_table_walk (fib_index, fproto, vl_api_ip_fib_dump_walk, &ctx);
 
   vec_foreach (fib_entry_index, ctx.feis)
     {
       send_ip_route_v2_details (am, reg, mp->context, *fib_entry_index);
+    }
+
+  vec_free (ctx.feis);
+}
+
+static void
+vl_api_ip_route_v3_dump_t_handler (vl_api_ip_route_v3_dump_t *mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  fib_node_index_t *fib_entry_index;
+  vl_api_registration_t *reg;
+  fib_protocol_t fproto;
+  fib_source_t src;
+  u32 fib_index;
+  bool include_non_best;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vl_api_ip_fib_dump_walk_ctx_t ctx = {
+    .feis = NULL,
+  };
+
+  fproto = (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  fib_index = fib_table_find (fproto, ntohl (mp->table.table_id));
+  src = mp->src;
+  include_non_best = mp->include_non_best;
+
+  if (INDEX_INVALID == fib_index)
+    return;
+
+  if (src)
+    fib_table_walk_w_src (fib_index, fproto, src, include_non_best, vl_api_ip_fib_dump_walk, &ctx);
+  else
+    fib_table_walk (fib_index, fproto, vl_api_ip_fib_dump_walk, &ctx);
+
+  vec_foreach (fib_entry_index, ctx.feis)
+    {
+      send_ip_route_v3_details (am, reg, mp->context, *fib_entry_index, src, include_non_best);
     }
 
   vec_free (ctx.feis);

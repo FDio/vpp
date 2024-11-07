@@ -596,6 +596,11 @@ vl_api_ip_route_v2_details_t_handler (vl_api_ip_route_v2_details_t *mp)
 }
 
 static void
+vl_api_ip_route_v3_details_t_handler (vl_api_ip_route_v3_details_t *mp)
+{
+}
+
+static void
 vl_api_ip_route_add_del_reply_t_handler (vl_api_ip_route_add_del_reply_t *mp)
 {
   vat_main_t *vam = ip_test_main.vat_main;
@@ -1492,6 +1497,12 @@ api_ip_path_mtu_get (vat_main_t *vat)
 
 static int
 api_ip_route_v2_dump (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
+api_ip_route_v3_dump (vat_main_t *vat)
 {
   return -1;
 }
