@@ -1808,6 +1808,35 @@ fib_entry_encode (fib_node_index_t fib_entry_index)
     return (ctx.rpaths);
 }
 
+fib_route_path_t *
+fib_entry_encode_src (fib_node_index_t fib_entry_index, fib_source_t src)
+{
+    fib_path_ext_list_t *ext_list;
+    fib_path_encode_ctx_t ctx = {
+        .rpaths = NULL,
+    };
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *s = 0;
+
+    ext_list = NULL;
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    vec_foreach (s, fib_entry->fe_srcs)
+  {
+    if (s->fes_src != src)
+      continue;
+
+    ext_list = &s->fes_path_exts;
+
+    fib_path_list_walk_w_ext(s->fes_pl,
+                             ext_list,
+                             fib_path_encode,
+                             &ctx);
+  }
+
+    return (ctx.rpaths);
+}
+
 const fib_prefix_t *
 fib_entry_get_prefix (fib_node_index_t fib_entry_index)
 {

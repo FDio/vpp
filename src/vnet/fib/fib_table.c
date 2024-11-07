@@ -1292,7 +1292,7 @@ fib_table_walk_w_src_cb (fib_node_index_t fei,
 {
     fib_table_walk_w_src_cxt_t *ctx = arg;
 
-    if (ctx->src == fib_entry_get_best_source(fei))
+    if (fib_entry_is_sourced(fei, ctx->src))
     {
         return (ctx->fn(fei, ctx->data));
     }
