@@ -199,7 +199,8 @@ send_ip_route_details (vpe_api_main_t * am,
 
 static void
 send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg,
-			  u32 context, fib_node_index_t fib_entry_index)
+			  u32 context, fib_node_index_t fib_entry_index,
+			  u32 src)
 {
   fib_route_path_t *rpaths, *rpath;
   vl_api_ip_route_v2_details_t *mp;
@@ -209,7 +210,8 @@ send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg,
 
   rpaths = NULL;
   pfx = fib_entry_get_prefix (fib_entry_index);
-  rpaths = fib_entry_encode (fib_entry_index);
+  rpaths = src != 0 ? fib_entry_encode_src (fib_entry_index, src) :
+		      fib_entry_encode (fib_entry_index);
 
   path_count = vec_len (rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
@@ -223,7 +225,7 @@ send_ip_route_v2_details (vpe_api_main_t *am, vl_api_registration_t *reg,
   mp->route.table_id = htonl (fib_table_get_table_id (
     fib_entry_get_fib_index (fib_entry_index), pfx->fp_proto));
   mp->route.n_paths = path_count;
-  mp->route.src = fib_entry_get_best_source (fib_entry_index);
+  mp->route.src = src != 0 ? src : fib_entry_get_best_source (fib_entry_index);
   mp->route.stats_index = htonl (fib_table_entry_get_stats_index (
     fib_entry_get_fib_index (fib_entry_index), pfx));
 
@@ -309,7 +311,7 @@ vl_api_ip_route_v2_dump_t_handler (vl_api_ip_route_v2_dump_t *mp)
 
   vec_foreach (fib_entry_index, ctx.feis)
     {
-      send_ip_route_v2_details (am, reg, mp->context, *fib_entry_index);
+		send_ip_route_v2_details (am, reg, mp->context, *fib_entry_index, src);
     }
 
   vec_free (ctx.feis);
