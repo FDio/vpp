@@ -346,8 +346,6 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
       /* Passive open already cleaned up */
       if (ps->po.session_handle == SESSION_INVALID_HANDLE)
 	{
-	  ASSERT (s->rx_fifo->refcnt == 1);
-
 	  /* The two sides of the proxy on different threads */
 	  if (ps->po.tx_fifo->master_thread_index != s->thread_index)
 	    {
@@ -357,7 +355,10 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
 	      proxy_session_postponed_free (ps);
 	    }
 	  else
-	    proxy_session_free (ps);
+	    {
+	      ASSERT (s->rx_fifo->refcnt == 1);
+	      proxy_session_free (ps);
+	    }
 	}
     }
   else
