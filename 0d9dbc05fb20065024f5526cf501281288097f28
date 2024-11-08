@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cf707e6b_8da3f5ff",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-08T14:37:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "08166869_6e3e2a88",
+      "revId": "0d9dbc05fb20065024f5526cf501281288097f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "16f14c6d_8c1dca79",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 4
@@ -31,6 +49,24 @@
       "writtenOn": "2024-10-25T16:31:47Z",
       "side": 1,
       "message": "No need for this change",
+      "revId": "0d9dbc05fb20065024f5526cf501281288097f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c887989_b2e2d282",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-08T14:37:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "16f14c6d_8c1dca79",
       "revId": "0d9dbc05fb20065024f5526cf501281288097f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
