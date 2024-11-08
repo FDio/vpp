@@ -1404,6 +1404,8 @@ vnet_session_rule_add_del (session_rule_add_del_args_t *args)
       fib_proto = args->table_args.rmt.fp_proto;
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
+      if (!st)
+	return SESSION_E_INVALID;
       session_rules_table_init (st, fib_proto);
       if ((rv = session_rules_table_add_del (
 	     st->srtg_handle, args->transport_proto, &args->table_args)))
@@ -1452,6 +1454,8 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
   for (fp = 0; fp < ARRAY_LEN (fib_index_to_table_index); fp++)
     {
       fib_index = app_namespace_get_fib_index (app_ns, fp);
+      if (fib_index == ~0)
+	continue;
       st = session_table_get_or_alloc (fp, fib_index);
       if (st)
 	{
@@ -1951,6 +1955,8 @@ session_lookup_table_cleanup (u32 fib_proto, u32 fib_index, u32 ns_index)
   u32 table_index, appns_index;
   int i;
 
+  if (fib_index == ~0)
+    return;
   session_lookup_fib_table_unlock (fib_index, fib_proto);
   table_index = session_lookup_get_index_for_fib (fib_proto, fib_index);
   st = session_table_get (table_index);
