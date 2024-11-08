@@ -122,7 +122,6 @@ class TestSession(VppAsfTestCase):
         ip_t10.remove_vpp_config()
 
 
-@tag_fixme_vpp_workers
 class TestApplicationNamespace(VppAsfTestCase):
     """Application Namespacee"""
 
@@ -218,6 +217,164 @@ class TestApplicationNamespace(VppAsfTestCase):
                 is_add=1,
             )
         self.assertEqual(rv.retval, -1)
+
+        self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=0
+        )
+
+    def test_application_namespace_binding(self):
+        """Application Namespace Interface Binding"""
+
+        self.vapi.session_enable_disable_v2(
+            rt_engine_type=VppEnum.vl_api_rt_backend_engine_t.RT_BACKEND_ENGINE_API_RULE_TABLE
+        )
+
+        table_id = 99
+
+        # Bad ip4_fib_id
+        with self.vapi.assert_negative_api_retval():
+            rv = self.vapi.app_namespace_add_del_v4(
+                is_add=1, namespace_id="2", ip4_fib_id=table_id, ip6_fib_id=0
+            )
+        self.assertEqual(rv.retval, -19)
+
+        # Bad ip6_fib_id
+        with self.vapi.assert_negative_api_retval():
+            rv = self.vapi.app_namespace_add_del_v4(
+                is_add=1, namespace_id="2", ip4_fib_id=0, ip6_fib_id=table_id
+            )
+        self.assertEqual(rv.retval, -19)
+
+        tbl = VppIpTable(self, table_id)
+        tbl.add_vpp_config()
+
+        tbl6 = VppIpTable(self, table_id, is_ip6=1)
+        tbl6.add_vpp_config()
+
+        # Not expecting an error with valid table_id's
+        self.vapi.app_namespace_add_del_v4(
+            is_add=1, namespace_id="2", ip4_fib_id=table_id, ip6_fib_id=table_id
+        )
+        # delete
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="2", ip4_fib_id=table_id, ip6_fib_id=table_id
+        )
+
+        # ip4 only
+        self.vapi.app_namespace_add_del_v4(
+            is_add=1, namespace_id="2", ip4_fib_id=table_id, ip6_fib_id=0xFFFFFFFF
+        )
+        # delete
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="2", ip4_fib_id=table_id, ip6_fib_id=0xFFFFFFFF
+        )
+
+        # ip6 only
+        self.vapi.app_namespace_add_del_v4(
+            is_add=1, namespace_id="2", ip4_fib_id=0xFFFFFFFF, ip6_fib_id=table_id
+        )
+        # delete
+        self.vapi.app_namespace_add_del_v4(
+            is_add=0, namespace_id="2", ip4_fib_id=0xFFFFFFFF, ip6_fib_id=table_id
+        )
+
+        app0 = self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=1
+        )
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="172.100.1.1/32",
+            rmt="172.100.1.2/32",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=app0.appns_index,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=1,
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        self.assertEqual(len(dump[1].appns_index), 2)
+        self.assertEqual(dump[1].count, 2)
+
+        # move the interface to vrf 99
+        self.vapi.sw_interface_set_table(
+            sw_if_index=self.loop0.sw_if_index,
+            is_ipv6=0,
+            vrf_id=table_id,
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        self.assertEqual(len(dump[1].appns_index), 1)
+        self.assertEqual(dump[1].count, 1)
+
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="172.100.1.1/32",
+            rmt="172.100.1.2/32",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=0,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=0,
+        )
+
+        # move the interface to vrf 0
+        self.vapi.sw_interface_set_table(
+            sw_if_index=self.loop0.sw_if_index,
+            is_ipv6=0,
+            vrf_id=0,
+        )
+
+        # try it with ip6
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="2001::1/128",
+            rmt="2002::1/128",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=app0.appns_index,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=1,
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        self.assertEqual(len(dump[1].appns_index), 2)
+        self.assertEqual(dump[1].count, 2)
+
+        self.vapi.sw_interface_set_table(
+            sw_if_index=self.loop0.sw_if_index,
+            is_ipv6=1,
+            vrf_id=table_id,
+        )
+        dump = self.vapi.session_rules_v2_dump()
+        self.assertEqual(len(dump[1].appns_index), 2)
+        self.assertEqual(dump[1].count, 2)
+
+        # move back to 0
+        self.vapi.sw_interface_set_table(
+            sw_if_index=self.loop0.sw_if_index,
+            is_ipv6=1,
+            vrf_id=0,
+        )
+
+        self.vapi.session_rule_add_del(
+            transport_proto=VppEnum.vl_api_transport_proto_t.TRANSPORT_PROTO_API_TCP,
+            lcl="2001::1/128",
+            rmt="2002::1/128",
+            lcl_port=5000,
+            rmt_port=5000,
+            action_index=1,
+            appns_index=0,
+            scope=VppEnum.vl_api_session_rule_scope_t.SESSION_RULE_SCOPE_API_GLOBAL,
+            is_add=0,
+        )
+
+        self.vapi.app_namespace_add_del_v4(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index, is_add=0
+        )
+
+        tbl.remove_vpp_config()
+        tbl6.remove_vpp_config()
 
 
 @tag_fixme_vpp_workers

@@ -191,6 +191,22 @@ static __clib_unused void * __clib_unused_##f = f;
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(f,p)     	\
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,sw_interface_admin_up_down, p)
 
+#define VNET_SW_INTERFACE_TABLE_BIND_V4_CB(f)                                 \
+  {                                                                           \
+    ip4_table_bind_callback_t cb = {                                          \
+      .function = f,                                                          \
+    };                                                                        \
+    vec_add1 (ip4_main.table_bind_callbacks, cb);                             \
+  }
+
+#define VNET_SW_INTERFACE_TABLE_BIND_V6_CB(f)                                 \
+  {                                                                           \
+    ip6_table_bind_callback_t cb = {                                          \
+      .function = f,                                                          \
+    };                                                                        \
+    vec_add1 (ip6_main.table_bind_callbacks, cb);                             \
+  }
+
 /**
  * Tunnel description parameters
  */
