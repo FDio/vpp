@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1a7a094d_781a9f93",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:51:54Z",
+      "side": 1,
+      "message": "No, the problem is that GCC fails to compile due to the macro expansion of SSL_CTX_set_ecdh_auto() generating an unused-value warning (-Werror is a default compiler cmdline option)  :/\n\nClang doesn\u0027t throw the warning...",
+      "parentUuid": "8d368759_ddef2780",
+      "revId": "d8e6979bc9d0156cf01820ab8c4bdfb078de04f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b5b1855_c1c6bee0",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 28
