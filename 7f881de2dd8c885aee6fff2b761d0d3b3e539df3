@@ -1,0 +1,481 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "686dcf8c_9093ba07",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming -\u003e ns_history_file",
+      "range": {
+        "startLine": 32,
+        "startChar": 12,
+        "endLine": 32,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f38f2489_a34efe45",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Please use get_testcase_dirname() from asfframework.py:1127",
+      "range": {
+        "startLine": 32,
+        "startChar": 40,
+        "endLine": 32,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "644a3703_424e1a7e",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Please use get_testcase_dirname() from asfframework.py:1127",
+      "range": {
+        "startLine": 33,
+        "startChar": 40,
+        "endLine": 33,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "878aa225_ed22c75e",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming -\u003e if_history_file",
+      "range": {
+        "startLine": 33,
+        "startChar": 12,
+        "endLine": 33,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc4045ef_0b8689e6",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "It would be cleaner to move this code into create_namespace() and pass cls.ns_name as a parameter to create_namespace() rather than replicating this code after every call to create_namespace().",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 49
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5589d2e_2b8ed573",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "It would be cleaner to move this code into create_host_interface() and pass cls.if_file_name as a parameter to create_host_interface() rather than replicating this code after every call to create_host_interface().",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 54
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b2133ef_63712008",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming -\u003e ns_history_file",
+      "range": {
+        "startLine": 27,
+        "startChar": 12,
+        "endLine": 27,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae11869f_a3a40c13",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Please use get_testcase_dirname() from asfframework.py:1127",
+      "range": {
+        "startLine": 27,
+        "startChar": 40,
+        "endLine": 27,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5885289b_a604fead",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming -\u003e if_history_file",
+      "range": {
+        "startLine": 28,
+        "startChar": 12,
+        "endLine": 28,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "533cff2c_33e1d770",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Please use get_testcase_dirname() from asfframework.py:1127",
+      "range": {
+        "startLine": 28,
+        "startChar": 40,
+        "endLine": 28,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c9ae19a_c69c4f20",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Same comment as test_http_static.py",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 49
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05bfccf0_90cc51fb",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Same comment as test_http_static.py",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 54
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40c604f0_8eabb893",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Should this be using a namespace history file in the same manner as the prometheus and http_static testcases?",
+      "range": {
+        "startLine": 229,
+        "startChar": 0,
+        "endLine": 230,
+        "endChar": 72
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73cd1d81_53ad8340",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Should this be using a host_interface history file in the same manner as the prometheus and http_static testcases?",
+      "range": {
+        "startLine": 262,
+        "startChar": 0,
+        "endLine": 267,
+        "endChar": 9
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15b28002_834a4547",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Per previous comment, rename -\u003e create_namespace(history_file, ns\u003dNone)",
+      "range": {
+        "startLine": 31,
+        "startChar": 4,
+        "endLine": 31,
+        "endChar": 29
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f2ca084_3530538e",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Being a bit paranoid, I think that \u0027random.choices(string.hexdigits, k\u003d8)\u0027 would ensure that the collision rate is at most 1, with the collision rate being 0 nearly all of the time without adding much cost in execution time.\n\nIn general, I don\u0027t trust pseudo-random number generators to be reliably random ;)",
+      "range": {
+        "startLine": 40,
+        "startChar": 33,
+        "endLine": 40,
+        "endChar": 67
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad5d1c0c_aecc93bb",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming this to\n\ndelete_all_host_interfaces(history_file):",
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffb7afdd_285cc61e",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "the history file",
+      "range": {
+        "startLine": 93,
+        "startChar": 65,
+        "endLine": 93,
+        "endChar": 73
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92289fec_efa43859",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Per previous comment, add the parameter history_file:\n\nhistory_file, host_namespace, *host_ip_prefixes, vpp_if_name\u003dNone, host_if_name\u003dNone",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 74
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3725614f_7301ad82",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Suggest improving self documentation by renaming this to\n\ndelete_all_namespaces(history_file):",
+      "range": {
+        "startLine": 287,
+        "startChar": 4,
+        "endLine": 287,
+        "endChar": 42
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc1dcc63_f09f74d3",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "the history file",
+      "range": {
+        "startLine": 288,
+        "startChar": 60,
+        "endLine": 288,
+        "endChar": 68
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

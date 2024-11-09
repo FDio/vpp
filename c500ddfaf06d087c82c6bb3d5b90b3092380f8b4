@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bc8a155_29f9367a",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1bb65bb4_90923d17",
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b491ca16_20f56106",
@@ -125,6 +143,30 @@
       "side": 1,
       "message": "I\u0027ll remove all print messages. If name is already deleted or doesn\u0027t exist, then do nothing with this name (like a function \u0027free(NULL)\u0027 in C). If ns/host name exists but we have a problem with deleting then we use exception with message.",
       "parentUuid": "b491ca16_20f56106",
+      "range": {
+        "startLine": 107,
+        "startChar": 20,
+        "endLine": 109,
+        "endChar": 21
+      },
+      "revId": "c500ddfaf06d087c82c6bb3d5b90b3092380f8b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "506c6b4d_b8db6ada",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 27
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T04:40:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c16f1096_46ba6f54",
       "range": {
         "startLine": 107,
         "startChar": 20,
