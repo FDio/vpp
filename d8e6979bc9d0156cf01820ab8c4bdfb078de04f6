@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8d368759_ddef2780",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-09T01:43:04Z",
+      "side": 1,
+      "message": "Maybe I\u0027m missing something, I thought the complaint here is that we\u0027re not using the return valued from `SSL_CTX_set_ecdh_auto`. That is, function wants for user to do error checking. Is that not the error?",
+      "parentUuid": "5cc76526_82df6403",
+      "revId": "d8e6979bc9d0156cf01820ab8c4bdfb078de04f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b5b1855_c1c6bee0",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 28
