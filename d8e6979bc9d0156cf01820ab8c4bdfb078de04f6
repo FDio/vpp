@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5cc76526_82df6403",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-09T01:38:19Z",
+      "side": 1,
+      "message": "Not sure I understand -- wrapping in a runtime \u0027if\u0027 statement does not eliminate the compiler error when building using GCC.\n\nWrapping in a compiler time \u0027#ifdef CC \u003d\u003d GCC\u0027 doesn\u0027t change the current behavior as clang ignores the \u0027#pragma GCC diagnostic\u0027 statements.",
+      "parentUuid": "f4119e93_c722beea",
+      "revId": "d8e6979bc9d0156cf01820ab8c4bdfb078de04f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b5b1855_c1c6bee0",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 28
