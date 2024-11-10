@@ -2551,7 +2551,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 				   thread_index);
-	  if (tc->state != TCP_STATE_TIME_WAIT)
+	  if (!tc || tc->state != TCP_STATE_TIME_WAIT)
 	    {
 	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
