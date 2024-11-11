@@ -103,7 +103,7 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
 	      vnet_dev_rx_queue_t *rxq, u32 n)
 {
   oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
-  vlib_buffer_template_t bt = rxq->buffer_template;
+  vlib_buffer_template_t bt = vnet_dev_get_rx_queue_if_buffer_template (rxq);
   u32 b0_err_flags = 0, b1_err_flags = 0;
   u32 b2_err_flags = 0, b3_err_flags = 0;
   u32 n_left, err_flags = 0;
@@ -347,9 +347,9 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   oct_nix_rx_cqe_desc_t *descs = crq->cq.desc_base;
   oct_nix_lf_cq_op_status_t status;
   oct_rx_node_ctx_t _ctx = {
-    .next_index = rxq->next_index,
-    .sw_if_index = port->intf.sw_if_index,
-    .hw_if_index = port->intf.hw_if_index,
+    .next_index = vnet_dev_get_rx_queue_if_next_index(rxq),
+    .sw_if_index = vnet_dev_get_rx_queue_if_sw_if_index (rxq),
+    .hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq),
   }, *ctx = &_ctx;
 
   /* get head and tail from NIX_LF_CQ_OP_STATUS */

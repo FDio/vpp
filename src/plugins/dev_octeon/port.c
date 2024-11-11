@@ -129,6 +129,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_port_t *cp = vnet_dev_get_port_data (port);
+  vnet_dev_port_interfaces_t *ifs = port->interfaces;
   u8 mac_addr[PLT_ETHER_ADDR_LEN];
   struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv;
@@ -136,14 +137,14 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port init: port %u", port->port_id);
 
-  if ((rrv = roc_nix_lf_alloc (nix, port->intf.num_rx_queues,
-			       port->intf.num_tx_queues, rxq_cfg)))
+  if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,
+			       rxq_cfg)))
     {
       oct_port_deinit (vm, port);
       return oct_roc_err (
 	dev, rrv,
 	"roc_nix_lf_alloc(nb_rxq = %u, nb_txq = %d, rxq_cfg=0x%lx) failed",
-	port->intf.num_rx_queues, port->intf.num_tx_queues, rxq_cfg);
+	ifs->num_rx_queues, ifs->num_tx_queues, rxq_cfg);
     }
   cp->lf_allocated = 1;
 

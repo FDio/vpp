@@ -131,6 +131,7 @@ oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
 			  vnet_dev_port_cfg_type_t type, u32 flow_index,
 			  uword *priv_data)
 {
+  vnet_dev_port_interfaces_t *ifs = port->interfaces;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
   u32 last_queue;
   u32 qid;
@@ -151,11 +152,11 @@ oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
   if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
     {
       qid = flow->redirect_queue;
-      if (qid > port->intf.num_rx_queues - 1 || qid < 0)
+      if (qid > ifs->num_rx_queues - 1 || qid < 0)
 	{
 	  log_err (port->dev,
 		   "Given Q(%d) is invalid, supported range is %d-%d", qid, 0,
-		   port->intf.num_rx_queues - 1);
+		   ifs->num_rx_queues - 1);
 	  return VNET_DEV_ERR_NOT_SUPPORTED;
 	}
     }
@@ -163,12 +164,12 @@ oct_flow_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
   if (flow->actions & VNET_FLOW_ACTION_RSS)
     {
       last_queue = flow->queue_index + flow->queue_num;
-      if (last_queue > port->intf.num_rx_queues - 1)
+      if (last_queue > ifs->num_rx_queues - 1)
 	{
 	  log_err (port->dev,
 		   "Given Q range(%d-%d) is invalid, supported range is %d-%d",
 		   flow->queue_index, flow->queue_index + flow->queue_num, 0,
-		   port->intf.num_rx_queues - 1);
+		   ifs->num_rx_queues - 1);
 	  return VNET_DEV_ERR_NOT_SUPPORTED;
 	}
     }
@@ -538,6 +539,7 @@ oct_flow_add (vlib_main_t *vm, vnet_dev_port_t *port, vnet_flow_t *flow,
   struct roc_npc_item_info item_info[ROC_NPC_ITEM_TYPE_END] = {};
   struct roc_npc_action actions[ROC_NPC_ITEM_TYPE_END] = {};
   oct_port_t *oct_port = vnet_dev_get_port_data (port);
+  vnet_dev_port_interfaces_t *ifs = port->interfaces;
   ethernet_header_t eth_spec = {}, eth_mask = {};
   sctp_header_t sctp_spec = {}, sctp_mask = {};
   gtpu_header_t gtpu_spec = {}, gtpu_mask = {};
@@ -775,7 +777,7 @@ parse_flow_actions:
 	  log_err (port->dev, "RSS action has no queues");
 	  return VNET_DEV_ERR_NOT_SUPPORTED;
 	}
-      queues = clib_mem_alloc (sizeof (u16) * port->intf.num_rx_queues);
+      queues = clib_mem_alloc (sizeof (u16) * ifs->num_rx_queues);
 
       for (index = 0; index < flow->queue_num; index++)
 	queues[index] = flow->queue_index++;
