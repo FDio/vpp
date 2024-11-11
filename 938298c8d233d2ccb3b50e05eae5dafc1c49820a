@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ee80781_e45941bd",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T13:37:35Z",
+      "side": 1,
+      "message": "this is used for repeated requests too, in this case you should consider to reuse all allocated stuff (like serialized headers), maybe even http metadata (msg variable)",
+      "revId": "938298c8d233d2ccb3b50e05eae5dafc1c49820a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5a792b3_5ca9dc87",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T13:37:35Z",
+      "side": 1,
+      "message": "to avoid this situation when request is sent to HTTP/1.0 server, maybe we should consider to send \"Connection: keep-alive\" in request always (since server HTTP version is unknown to our client app)?",
+      "range": {
+        "startLine": 371,
+        "startChar": 0,
+        "endLine": 376,
+        "endChar": 2
+      },
+      "revId": "938298c8d233d2ccb3b50e05eae5dafc1c49820a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
