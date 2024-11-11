@@ -16,6 +16,109 @@
       "message": "recheck",
       "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "641fa710_72efc27c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T11:57:51Z",
+      "side": 1,
+      "message": "unused parameters",
+      "range": {
+        "startLine": 114,
+        "startChar": 12,
+        "endLine": 114,
+        "endChar": 47
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5299a828_87b707a5",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T11:57:51Z",
+      "side": 1,
+      "message": "you should use hc_session_alloc for this too, not good when we want parallel connections in the future",
+      "range": {
+        "startLine": 231,
+        "startChar": 28,
+        "endLine": 231,
+        "endChar": 71
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c54ff2d_94b99155",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T11:57:51Z",
+      "side": 1,
+      "message": "not good idea when this is called as callback within session layer",
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23fa091a_e02bef66",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T11:57:51Z",
+      "side": 1,
+      "message": "this work most likely fine, but there might be multiple spaces or tab after \u0027:\u0027, so rather use http_get_header",
+      "range": {
+        "startLine": 381,
+        "startChar": 3,
+        "endLine": 381,
+        "endChar": 59
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4020b418_7d4b85ec",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-11T11:57:51Z",
+      "side": 1,
+      "message": "you are calling this from main thread but session might be on worker thread",
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
