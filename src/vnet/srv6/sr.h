@@ -45,7 +45,8 @@
 #define SR_BEHAVIOR_DT4 9
 #define SR_BEHAVIOR_END_UN_PERF 10
 #define SR_BEHAVIOR_END_UN 11
-#define SR_BEHAVIOR_LAST 12	/* Must always be the last one */
+#define SR_BEHAVIOR_UA		12
+#define SR_BEHAVIOR_LAST	13 /* Must always be the last one */
 
 #define SR_STEER_L2 2
 #define SR_STEER_IPV4 4

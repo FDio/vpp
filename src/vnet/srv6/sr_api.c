@@ -39,6 +39,8 @@ static void vl_api_sr_localsid_add_del_t_handler
 {
   vl_api_sr_localsid_add_del_reply_t *rmp;
   int rv = 0;
+  int usid_len = 0;
+  u16 localsid_prefix_len = 128;
   ip46_address_t prefix;
   ip6_address_t localsid;
 /*
@@ -46,21 +48,31 @@ static void vl_api_sr_localsid_add_del_t_handler
  *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
  *  ip46_address_t *nh_addr, void *ls_plugin_mem)
  */
-  if (mp->behavior == SR_BEHAVIOR_X ||
-      mp->behavior == SR_BEHAVIOR_DX6 ||
-      mp->behavior == SR_BEHAVIOR_DX4 || mp->behavior == SR_BEHAVIOR_DX2)
+  if (mp->behavior == SR_BEHAVIOR_X || mp->behavior == SR_BEHAVIOR_UA ||
+      mp->behavior == SR_BEHAVIOR_DX6 || mp->behavior == SR_BEHAVIOR_DX4 ||
+      mp->behavior == SR_BEHAVIOR_DX2)
     VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->behavior == SR_BEHAVIOR_END_UN_PERF ||
+      mp->behavior == SR_BEHAVIOR_END_UN)
+    {
+      usid_len = 16;
+      localsid_prefix_len = 48;
+    }
+
+  if (mp->behavior == SR_BEHAVIOR_UA)
+    {
+      usid_len = 16;
+      localsid_prefix_len = 64;
+    }
 
   ip6_address_decode (mp->localsid, &localsid);
   ip_address_decode (&mp->nh_addr, &prefix);
 
-  rv = sr_cli_localsid (mp->is_del,
-			&localsid, 128,
-			mp->end_psp,
-			mp->behavior,
-			ntohl (mp->sw_if_index),
-			ntohl (mp->vlan_index),
-			ntohl (mp->fib_table), &prefix, 0, NULL);
+  rv = sr_cli_localsid (mp->is_del, &localsid, localsid_prefix_len,
+			mp->end_psp, mp->behavior, ntohl (mp->sw_if_index),
+			ntohl (mp->vlan_index), ntohl (mp->fib_table), &prefix,
+			usid_len, NULL);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
