@@ -61,6 +61,7 @@ autoreply define sr_localsid_add_del
   u32 vlan_index;
   u32 fib_table;
   vl_api_address_t nh_addr;
+  option in_progress;
 };
 
 /** \brief IPv6 SR policy add
@@ -138,7 +139,7 @@ autoreply define sr_policy_add_v2
   u32 fib_table;
   vl_api_srv6_sid_list_t sids;
   vl_api_ip6_address_t encap_src;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IPv6 SR policy modification
@@ -165,7 +166,7 @@ autoreply define sr_policy_mod_v2
   u32 weight;
   vl_api_srv6_sid_list_t sids;
   vl_api_ip6_address_t encap_src;
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief IPv6 SR policy deletion
@@ -252,6 +253,7 @@ define sr_localsids_details
   u32 vlan_index;
   vl_api_address_t xconnect_nh_addr;
   u32 xconnect_iface_or_vrf_table;
+  option in_progress;
 };
 
 
@@ -263,7 +265,7 @@ define sr_localsids_with_packet_stats_dump
 {
   u32 client_index;
   u32 context;
-  option status="in_progress";
+  option in_progress;
 };
 
 define sr_localsids_with_packet_stats_details
@@ -280,7 +282,7 @@ define sr_localsids_with_packet_stats_details
   u64 good_traffic_pkt_count;
   u64 bad_traffic_bytes;
   u64 bad_traffic_pkt_count;
-  option status="in_progress";
+  option in_progress;
 };
 
 
@@ -339,7 +341,7 @@ define sr_policies_with_sl_index_dump
 {
   u32 client_index;
   u32 context;
-  option status="in_progress";
+  option in_progress;
 };
 
 
@@ -352,7 +354,7 @@ define sr_policies_with_sl_index_details
   u32 fib_table;
   u8 num_sid_lists;
   vl_api_srv6_sid_list_with_sl_index_t sid_lists[num_sid_lists];
-  option status="in_progress";
+  option in_progress;
 };
 
 /** \brief Dump the steering policies
