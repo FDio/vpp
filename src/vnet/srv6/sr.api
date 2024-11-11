@@ -61,6 +61,7 @@ autoreply define sr_localsid_add_del
   u32 vlan_index;
   u32 fib_table;
   vl_api_address_t nh_addr;
+  option in_progress;
 };
 
 /** \brief IPv6 SR policy add
@@ -252,6 +253,7 @@ define sr_localsids_details
   u32 vlan_index;
   vl_api_address_t xconnect_nh_addr;
   u32 xconnect_iface_or_vrf_table;
+  option in_progress;
 };
 
 
