@@ -354,8 +354,7 @@ ip4_show_fib (vlib_main_t * vm,
 	else if (unformat (input, "mtrie"))
 	    mtrie = 1;
 
-        else if (unformat (input, "mem") ||
-                 unformat (input, "memory"))
+        else if (unformat (input, "memory") || unformat (input, "mem"))
 	    memory = 1;
 
 	else if (unformat (input, "%U/%d",
@@ -620,7 +619,7 @@ ip4_show_fib (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show ip fib",
-    .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie] [detail]",
+    .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie] [detail] [memory]",
     .function = ip4_show_fib,
 };
 
