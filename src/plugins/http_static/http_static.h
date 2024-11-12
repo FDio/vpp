@@ -24,6 +24,7 @@
 #include <http_static/http_cache.h>
 
 #define HSS_DEFAULT_MAX_AGE 600
+#define HSS_DEFAULT_KEEPALIVE_TIMEOUT 60
 
 /** @file http_static.h
  * Static http server definitions

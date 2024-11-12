@@ -66,7 +66,8 @@ hss_register_url_handler (hss_url_handler_fn fp, const char *url,
  */
 static int
 hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
-		u32 private_segment_size, u8 *www_root, u8 *uri, u32 max_age)
+		u32 private_segment_size, u8 *www_root, u8 *uri, u32 max_age,
+		u32 keepalive_timeout)
 {
   hss_main_t *hsm = &hss_main;
   int rv;
@@ -78,6 +79,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   hsm->www_root = format (0, "%s%c", www_root, 0);
   hsm->uri = format (0, "%s%c", uri, 0);
   hsm->max_age = max_age;
+  hsm->keepalive_timeout = keepalive_timeout;
 
   if (vec_len (hsm->www_root) < 2)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -104,25 +106,6 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
 }
 
 /* API message handler */
-static void vl_api_http_static_enable_t_handler
-  (vl_api_http_static_enable_t * mp)
-{
-  vl_api_http_static_enable_reply_t *rmp;
-  hss_main_t *hsm = &hss_main;
-  int rv;
-
-  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
-  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
-
-  rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
-		       ntohl (mp->prealloc_fifos),
-		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
-		       HSS_DEFAULT_MAX_AGE);
-
-  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
-}
-
-/* API message handler */
 static void
 vl_api_http_static_enable_v2_t_handler (vl_api_http_static_enable_v2_t *mp)
 {
@@ -136,9 +119,28 @@ vl_api_http_static_enable_v2_t_handler (vl_api_http_static_enable_v2_t *mp)
   rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
 		       ntohl (mp->prealloc_fifos),
 		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
-		       ntohl (mp->max_age));
+		       ntohl (mp->max_age), HSS_DEFAULT_KEEPALIVE_TIMEOUT);
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V2_REPLY);
+}
+
+/* API message handler */
+static void
+vl_api_http_static_enable_v3_t_handler (vl_api_http_static_enable_v3_t *mp)
+{
+  vl_api_http_static_enable_v3_reply_t *rmp;
+  hss_main_t *hsm = &hss_main;
+  int rv;
+
+  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
+  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
+
+  rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+		       ntohl (mp->prealloc_fifos),
+		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
+		       ntohl (mp->max_age), ntohl (mp->keepalive_timeout));
+
+  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V3_REPLY);
 }
 
 #include <http_static/http_static.api.c>
