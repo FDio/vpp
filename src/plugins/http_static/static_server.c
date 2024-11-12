@@ -902,7 +902,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hsm->fifo_size = 0;
   hsm->cache_size = 10 << 20;
   hsm->max_age = HSS_DEFAULT_MAX_AGE;
-  hsm->keepalive_timeout = 60;
+  hsm->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
