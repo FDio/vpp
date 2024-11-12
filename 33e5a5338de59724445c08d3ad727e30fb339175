@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96eef68f_fa4ca111",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-11-12T09:28:13Z",
+      "side": 1,
+      "message": "Not allowed, see details in https://github.com/FDio/vpp/blob/master/src/tools/vppapigen/VPPAPI.rst#api-change-process",
+      "range": {
+        "startLine": 64,
+        "startChar": 2,
+        "endLine": 64,
+        "endChar": 21
+      },
+      "revId": "33e5a5338de59724445c08d3ad727e30fb339175",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0524245d_8c410651",
+        "filename": "src/vnet/srv6/sr_types.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-11-12T09:28:13Z",
+      "side": 1,
+      "message": "For this specific case of adding enum values, there is a workaround using [backwards_compatible] tag. Not sure where it is documented, but here is an example: https://gerrit.fd.io/r/c/vpp/+/40109/5/src/vnet/devices/virtio/virtio.api#66",
+      "range": {
+        "startLine": 39,
+        "startChar": 2,
+        "endLine": 39,
+        "endChar": 30
+      },
+      "revId": "33e5a5338de59724445c08d3ad727e30fb339175",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
