@@ -35,7 +35,10 @@ enum sr_behavior : u8
   SR_BEHAVIOR_API_DX4 = 7,
   SR_BEHAVIOR_API_DT6 = 8,
   SR_BEHAVIOR_API_DT4 = 9,
-  SR_BEHAVIOR_API_LAST = 10,	/* Must always be the last one */
+  SR_BEHAVIOR_API_LAST = 10,	/* Not used. Kept not to break the API */
+  SR_BEHAVIOR_API_END_UN_PERF = 11 [backwards_compatible],
+  SR_BEHAVIOR_API_END_UN	= 12 [backwards_compatible],
+  SR_BEHAVIOR_API_UA = 13 [backwards_compatible],
 };
 
 enum sr_steer : u8
