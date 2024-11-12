@@ -315,6 +315,67 @@ http_test_parse_masque_host_port (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_udp_payload_datagram (vlib_main_t *vm)
+{
+  int rv;
+  u8 payload_offset;
+  u64 payload_len;
+
+  /* Type = 0x00, Len = 15293,  Context ID = 0x00 */
+  u8 valid_input[] = { 0x00, 0x7B, 0xBD, 0x00, 0x12, 0x34, 0x56 };
+  rv = http_decap_udp_payload_datagram (valid_input, sizeof (valid_input),
+					&payload_offset, &payload_len);
+  HTTP_TEST ((rv == 0), "'%U' should be valid", format_hex_bytes, valid_input,
+	     sizeof (valid_input));
+  HTTP_TEST ((payload_len == 15292), "payload_len=%llu should be 15292",
+	     payload_len);
+  HTTP_TEST ((payload_offset == 4), "payload_offset=%u should be 4",
+	     payload_offset);
+
+  u8 invalid_input[] = { 0x00, 0x7B };
+  rv = http_decap_udp_payload_datagram (invalid_input, sizeof (invalid_input),
+					&payload_offset, &payload_len);
+  HTTP_TEST ((rv == -1), "'%U' should be invalid", format_hex_bytes,
+	     invalid_input, sizeof (invalid_input));
+
+  /* Type = 0x00, Len = 494878333,  Context ID = 0x00 */
+  u8 long_payload_input[] = { 0x00, 0x9D, 0x7F, 0x3E, 0x7D, 0x00, 0x12 };
+  rv = http_decap_udp_payload_datagram (long_payload_input,
+					sizeof (long_payload_input),
+					&payload_offset, &payload_len);
+  HTTP_TEST (
+    (rv == -1), "'%U' should be invalid (payload exceeded maximum value)",
+    format_hex_bytes, long_payload_input, sizeof (long_payload_input));
+
+  /* Type = 0x01, Len = 37,  Context ID = 0x00 */
+  u8 unknown_type_input[] = { 0x01, 0x25, 0x00, 0x12, 0x34, 0x56, 0x78 };
+  rv = http_decap_udp_payload_datagram (unknown_type_input,
+					sizeof (unknown_type_input),
+					&payload_offset, &payload_len);
+  HTTP_TEST ((rv == 1), "'%U' should be skipped (unknown capsule type)",
+	     format_hex_bytes, unknown_type_input,
+	     sizeof (unknown_type_input));
+  HTTP_TEST ((payload_len == 39), "payload_len=%llu should be 39",
+	     payload_len);
+
+  u8 *buffer = 0, *ret;
+  vec_validate (buffer, HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD + 2);
+  ret = http_encap_udp_payload_datagram (buffer, 15292);
+  payload_offset = ret - buffer;
+  HTTP_TEST ((payload_offset == 4), "payload_offset=%u should be 4",
+	     payload_offset);
+  HTTP_TEST ((buffer[0] == HTTP_CAPSULE_TYPE_DATAGRAM),
+	     "capsule_type=%u should be %u", buffer[0],
+	     HTTP_CAPSULE_TYPE_DATAGRAM);
+  HTTP_TEST ((buffer[1] == 0x7B && buffer[2] == 0xBD),
+	     "capsule_len=0x%x%x should be 0x7bbd", buffer[1], buffer[2]);
+  HTTP_TEST ((buffer[3] == 0), "context_id=%u should be 0", buffer[3]);
+  vec_free (buffer);
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -328,6 +389,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_absolute_form (vm);
       else if (unformat (input, "parse-masque-host-port"))
 	res = http_test_parse_masque_host_port (vm);
+      else if (unformat (input, "udp-payload-datagram"))
+	res = http_test_udp_payload_datagram (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_authority_form (vm)))
@@ -335,6 +398,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_absolute_form (vm)))
 	    goto done;
 	  if ((res = http_test_parse_masque_host_port (vm)))
+	    goto done;
+	  if ((res = http_test_udp_payload_datagram (vm)))
 	    goto done;
 	}
       else
