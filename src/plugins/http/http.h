@@ -1219,6 +1219,206 @@ http_parse_masque_host_port (u8 *path, u32 path_len, http_uri_t *parsed)
   return 0;
 }
 
+#define HTTP_INVALID_VARINT			 ((u64) ~0)
+#define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 5
+#define HTTP_UDP_PAYLOAD_MAX_LEN		 65527
+
+#define foreach_http_capsule_type _ (0, DATAGRAM)
+
+typedef enum http_capsule_type_
+{
+#define _(n, s) HTTP_CAPSULE_TYPE_##s = n,
+  foreach_http_capsule_type
+#undef _
+} __clib_packed http_capsule_type_t;
+
+/* variable-length integer (RFC9000 section 16) */
+always_inline u64
+_http_decode_varint (u8 **pos, u8 *end)
+{
+  u8 first_byte, bytes_left, *p;
+  u64 value;
+
+  p = *pos;
+
+  ASSERT (p < end);
+
+  first_byte = *p;
+  p++;
+
+  if (first_byte <= 0x3F)
+    {
+      *pos = p;
+      return first_byte;
+    }
+
+  /* remove length bits, encoded in the first two bits of the first byte */
+  value = first_byte & 0x3F;
+  bytes_left = (1 << (first_byte >> 6)) - 1;
+
+  if (PREDICT_FALSE ((end - p) < bytes_left))
+    return HTTP_INVALID_VARINT;
+
+  do
+    {
+      value = (value << 8) | *p;
+      p++;
+    }
+  while (--bytes_left);
+
+  *pos = p;
+  return value;
+}
+
+always_inline u8 *
+_http_encode_varint (u8 *dst, u64 value)
+{
+  ASSERT (value <= 0x3FFFFFFFFFFFFFFF);
+  if (value <= 0x3f)
+    {
+      *dst++ = (u8) value;
+      return dst;
+    }
+  else if (value <= 0x3FFF)
+    {
+      *dst++ = (0b01 << 6) | (u8) (value >> 8);
+      *dst++ = (u8) value;
+      return dst;
+    }
+  else if (value <= 0x3FFFFFFF)
+    {
+      *dst++ = (0b10 << 6) | (u8) (value >> 24);
+      *dst++ = (u8) (value >> 16);
+      *dst++ = (u8) (value >> 8);
+      *dst++ = (u8) value;
+      return dst;
+    }
+  else
+    {
+      *dst++ = (0b11 << 6) | (u8) (value >> 56);
+      *dst++ = (u8) (value >> 48);
+      *dst++ = (u8) (value >> 40);
+      *dst++ = (u8) (value >> 32);
+      *dst++ = (u8) (value >> 24);
+      *dst++ = (u8) (value >> 16);
+      *dst++ = (u8) (value >> 8);
+      *dst++ = (u8) value;
+      return dst;
+    }
+}
+
+always_inline int
+_http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
+		     u64 *value_len)
+{
+  u64 capsule_type, capsule_value_len;
+  u8 *p = data;
+  u8 *end = data + len;
+
+  capsule_type = _http_decode_varint (&p, end);
+  if (capsule_type == HTTP_INVALID_VARINT)
+    {
+      clib_warning ("failed to parse capsule type");
+      return -1;
+    }
+
+  capsule_value_len = _http_decode_varint (&p, end);
+  if (capsule_value_len == HTTP_INVALID_VARINT)
+    {
+      clib_warning ("failed to parse capsule length");
+      return -1;
+    }
+
+  *type = capsule_type;
+  *value_offset = p - data;
+  *value_len = capsule_value_len;
+  return 0;
+}
+
+/**
+ * Decapsulate UDP payload from datagram capsule.
+ *
+ * @param data           Input buffer.
+ * @param len            Length of given buffer.
+ * @param payload_offset Offset of the UDP proxying payload (ignore if capsule
+ *                       should be skipped).
+ * @param payload_len    Length of the UDP proxying payload (or number of bytes
+ *                       to skip).
+ *
+ * @return @c -1 if capsule datagram is invalid (session need to be aborted)
+ * @return @c 0 if capsule contains UDP payload
+ * @return @c 1 if capsule should be skipped
+ */
+always_inline int
+http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
+				 u64 *payload_len)
+{
+  int rv;
+  u8 *p = data;
+  u8 *end = data + len;
+  u64 capsule_type, value_len, context_id;
+  u8 value_offset;
+
+  rv = _http_parse_capsule (p, len, &capsule_type, &value_offset, &value_len);
+  if (rv)
+    return rv;
+
+  /* skip unknown capsule type or empty capsule */
+  if ((capsule_type != HTTP_CAPSULE_TYPE_DATAGRAM) || (value_len == 0))
+    {
+      *payload_len = value_len + value_offset;
+      return 1;
+    }
+
+  p += value_offset;
+
+  /* context ID field should be zero (RFC9298 section 4) */
+  context_id = _http_decode_varint (&p, end);
+  if (context_id != 0)
+    {
+      *payload_len = value_len + value_offset;
+      return 1;
+    }
+
+  *payload_offset = p - data;
+  *payload_len = value_len - 1;
+
+  /* payload longer than 65527 is considered as error (RFC9298 section 5) */
+  if (*payload_len > HTTP_UDP_PAYLOAD_MAX_LEN)
+    {
+      clib_warning ("UDP payload length too long");
+      return -1;
+    }
+
+  return 0;
+}
+
+/**
+ * Encapsulate UDP payload to datagram capsule.
+ *
+ * @param buf         Capsule buffer under construction.
+ * @param payload_len Length of the UDP proxying payload.
+ *
+ * @return Pointer to the UDP payload in capsule buffer.
+ *
+ * @note Capsule buffer need extra @c HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD
+ * bytes to be allocated.
+ */
+always_inline u8 *
+http_encap_udp_payload_datagram (u8 *buf, u64 payload_len)
+{
+  /* capsule type */
+  *buf++ = HTTP_CAPSULE_TYPE_DATAGRAM;
+
+  /* capsule length */
+  buf = _http_encode_varint (buf, payload_len + 1);
+
+  /* context ID */
+  *buf++ = 0;
+
+  return buf;
+}
+
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
 
 /*
