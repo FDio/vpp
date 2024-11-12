@@ -100,10 +100,10 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	{
 	  /* Retrieve localsid */
 	  ls = pool_elt_at_index (sm->localsids, p[0]);
-	  if (ls->behavior >= SR_BEHAVIOR_LAST)
+	  if (ls->behavior >= SR_BEHAVIOR_CURRENT_LAST)
 	    {
-	      plugin = pool_elt_at_index (sm->plugin_functions,
-					  ls->behavior - SR_BEHAVIOR_LAST);
+	      plugin = pool_elt_at_index (
+		sm->plugin_functions, ls->behavior - SR_BEHAVIOR_CURRENT_LAST);
 	      pref_length = plugin->prefix_length;
 	    }
 
@@ -130,7 +130,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	      || ls->behavior == SR_BEHAVIOR_DX4)
 	    adj_unlock (ls->nh_adj);
 
-	  if (ls->behavior >= SR_BEHAVIOR_LAST)
+	  if (ls->behavior >= SR_BEHAVIOR_CURRENT_LAST)
 	    {
 	      /* Callback plugin removal function */
 	      rv = plugin->removal (ls);
@@ -149,13 +149,13 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   if (is_del)
     return -2;
 
-  if (behavior >= SR_BEHAVIOR_LAST)
-    {
-      sr_localsid_fn_registration_t *plugin = 0;
-      plugin =
-	pool_elt_at_index (sm->plugin_functions, behavior - SR_BEHAVIOR_LAST);
-      pref_length = plugin->prefix_length;
-    }
+  if (behavior >= SR_BEHAVIOR_CURRENT_LAST)
+  {
+    sr_localsid_fn_registration_t *plugin = 0;
+    plugin = pool_elt_at_index (sm->plugin_functions,
+				behavior - SR_BEHAVIOR_CURRENT_LAST);
+    pref_length = plugin->prefix_length;
+  }
 
   if (localsid_prefix_len != 0)
     {
@@ -294,14 +294,14 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	   ls->behavior == SR_BEHAVIOR_UA)
     dpo_set (&dpo, sr_localsid_un_perf_dpo_type, DPO_PROTO_IP6,
 	     ls - sm->localsids);
-  else if (ls->behavior > SR_BEHAVIOR_D_FIRST
-	   && ls->behavior < SR_BEHAVIOR_LAST)
+  else if (ls->behavior > SR_BEHAVIOR_D_FIRST &&
+	   ls->behavior < SR_BEHAVIOR_CURRENT_LAST)
     dpo_set (&dpo, sr_localsid_d_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
-  else if (ls->behavior >= SR_BEHAVIOR_LAST)
+  else if (ls->behavior >= SR_BEHAVIOR_CURRENT_LAST)
     {
       sr_localsid_fn_registration_t *plugin = 0;
       plugin = pool_elt_at_index (sm->plugin_functions,
-				  ls->behavior - SR_BEHAVIOR_LAST);
+				  ls->behavior - SR_BEHAVIOR_CURRENT_LAST);
       /* Copy the unformat memory result */
       ls->plugin_mem = ls_plugin_mem;
       /* Callback plugin creation function */
@@ -672,11 +672,10 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 						   FIB_PROTOCOL_IP4));
 	  break;
 	default:
-	  if (ls->behavior >= SR_BEHAVIOR_LAST)
+	  if (ls->behavior >= SR_BEHAVIOR_CURRENT_LAST)
 	    {
-	      sr_localsid_fn_registration_t *plugin =
-		pool_elt_at_index (sm->plugin_functions,
-				   ls->behavior - SR_BEHAVIOR_LAST);
+	      sr_localsid_fn_registration_t *plugin = pool_elt_at_index (
+		sm->plugin_functions, ls->behavior - SR_BEHAVIOR_CURRENT_LAST);
 
 	      vlib_cli_output (vm, "\tAddress: \t%U/%u\n"
 			       "\tBehavior: \t%s (%s)\n\t%U",
@@ -2404,7 +2403,7 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
   clib_memset (plugin, 0, sizeof (*plugin));
 
   plugin->sr_localsid_function_number = (plugin - sm->plugin_functions);
-  plugin->sr_localsid_function_number += SR_BEHAVIOR_LAST;
+  plugin->sr_localsid_function_number += SR_BEHAVIOR_CURRENT_LAST;
   plugin->prefix_length = prefix_length;
   plugin->ls_format = ls_format;
   plugin->ls_unformat = ls_unformat;

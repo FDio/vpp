@@ -43,10 +43,22 @@
 #define SR_BEHAVIOR_DX4 7
 #define SR_BEHAVIOR_DT6 8
 #define SR_BEHAVIOR_DT4 9
-#define SR_BEHAVIOR_END_UN_PERF 10
-#define SR_BEHAVIOR_END_UN 11
-#define SR_BEHAVIOR_UA		12
-#define SR_BEHAVIOR_LAST	13 /* Must always be the last one */
+/**
+ * SR_BEHAVIOR_LAST
+ * Not used anymore. Kept not to break the API.
+ * We use SR_BEHAVIOR_CURRENT_LAST going forward
+ * */
+#define SR_BEHAVIOR_LAST	10
+#define SR_BEHAVIOR_END_UN_PERF 11
+#define SR_BEHAVIOR_END_UN	12
+#define SR_BEHAVIOR_UA		13
+
+/**
+ * SR_BEHAVIOR_CURRENT_LAST
+ * MUST be updated everytime we add new behaviors.
+ * MUST be set to value of last added behavior + 1.
+ * */
+#define SR_BEHAVIOR_CURRENT_LAST 14
 
 #define SR_STEER_L2 2
 #define SR_STEER_IPV4 4
@@ -165,7 +177,8 @@ typedef int (sr_plugin_callback_t) (ip6_sr_localsid_t * localsid);
  */
 typedef struct
 {
-  u16 sr_localsid_function_number;			/**< SR LocalSID plugin function (>SR_BEHAVIOR_LAST) */
+  u16 sr_localsid_function_number; /**< SR LocalSID plugin function
+				      (>SR_BEHAVIOR_CURRENT_LAST) */
 
   u8 *function_name;							/**< Function name. (key). */
 
