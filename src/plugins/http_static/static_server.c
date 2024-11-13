@@ -126,6 +126,9 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 	  ASSERT (rv == sizeof (headers));
 	}
 
+      if (!msg.data.body_len)
+	goto done;
+
       uword data = pointer_to_uword (hs->data);
       rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (data), (u8 *) &data);
       ASSERT (rv == sizeof (data));
