@@ -21,10 +21,10 @@
 #include <stdbool.h> /* for bool in .api */
 #include <vnet/vnet.h>
 
-extern int mssc_enable_disable (u32 sw_if_index, u8 dir4, u8 dir6, u16 mss4,
-				u16 mss6);
-extern int mssc_get_mss (u32 sw_if_index, u8 *dir4, u8 *dir6, u16 *mss4,
-			 u16 *mss6);
+__clib_export int mssc_enable_disable (u32 sw_if_index, u8 dir4, u8 dir6,
+				       u16 mss4, u16 mss6);
+__clib_export int mssc_get_mss (u32 sw_if_index, u8 *dir4, u8 *dir6, u16 *mss4,
+				u16 *mss6);
 
 typedef struct
 {
