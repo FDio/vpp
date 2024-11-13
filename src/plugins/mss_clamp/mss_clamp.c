@@ -46,7 +46,7 @@ mssc_enable_disable_feat (u32 sw_if_index, u8 dir4, u8 dir6, int enable)
 				 sw_if_index, enable, 0, 0);
 }
 
-int
+__clib_export int
 mssc_enable_disable (u32 sw_if_index, u8 dir4, u8 dir6, u16 mss4, u16 mss6)
 {
   mssc_main_t *cm = &mssc_main;
@@ -81,7 +81,7 @@ mssc_enable_disable (u32 sw_if_index, u8 dir4, u8 dir6, u16 mss4, u16 mss6)
   return rv;
 }
 
-int
+__clib_export int
 mssc_get_mss (u32 sw_if_index, u8 *dir4, u8 *dir6, u16 *mss4, u16 *mss6)
 {
   mssc_main_t *cm = &mssc_main;
