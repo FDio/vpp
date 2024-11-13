@@ -59,28 +59,38 @@ typedef struct
 
 #define http_token_lit(s) (s), sizeof (s) - 1
 
+#define foreach_http_conn_state                                               \
+  _ (LISTEN, "listen")                                                        \
+  _ (CONNECTING, "connecting")                                                \
+  _ (ESTABLISHED, "established")                                              \
+  _ (TRANSPORT_CLOSED, "transport-closed")                                    \
+  _ (APP_CLOSED, "app-closed")                                                \
+  _ (CLOSED, "closed")
+
 typedef enum http_conn_state_
 {
-  HTTP_CONN_STATE_LISTEN,
-  HTTP_CONN_STATE_CONNECTING,
-  HTTP_CONN_STATE_ESTABLISHED,
-  HTTP_CONN_STATE_TUNNEL,
-  HTTP_CONN_STATE_TRANSPORT_CLOSED,
-  HTTP_CONN_STATE_APP_CLOSED,
-  HTTP_CONN_STATE_CLOSED
+#define _(s, str) HTTP_CONN_STATE_##s,
+  foreach_http_conn_state
+#undef _
 } http_conn_state_t;
 
-typedef enum http_state_
+#define foreach_http_req_state                                                \
+  _ (0, IDLE, "idle")                                                         \
+  _ (1, WAIT_APP_METHOD, "wait app method")                                   \
+  _ (2, WAIT_TRANSPORT_REPLY, "wait transport reply")                         \
+  _ (3, TRANSPORT_IO_MORE_DATA, "transport io more data")                     \
+  _ (4, WAIT_TRANSPORT_METHOD, "wait transport method")                       \
+  _ (5, WAIT_APP_REPLY, "wait app reply")                                     \
+  _ (6, APP_IO_MORE_DATA, "app io more data")                                 \
+  _ (7, TUNNEL, "tunnel")
+
+typedef enum http_req_state_
 {
-  HTTP_STATE_IDLE = 0,
-  HTTP_STATE_WAIT_APP_METHOD,
-  HTTP_STATE_WAIT_CLIENT_METHOD,
-  HTTP_STATE_WAIT_SERVER_REPLY,
-  HTTP_STATE_WAIT_APP_REPLY,
-  HTTP_STATE_CLIENT_IO_MORE_DATA,
-  HTTP_STATE_APP_IO_MORE_DATA,
-  HTTP_N_STATES,
-} http_state_t;
+#define _(n, s, str) HTTP_REQ_STATE_##s = n,
+  foreach_http_req_state
+#undef _
+    HTTP_REQ_N_STATES
+} http_req_state_t;
 
 typedef enum http_req_method_
 {
@@ -399,7 +409,7 @@ typedef struct http_tc_
   /*
    * Current request
    */
-  http_state_t http_state;
+  http_req_state_t req_state;
   http_req_method_t method;
   u8 *rx_buf;
   u32 rx_buf_offset;

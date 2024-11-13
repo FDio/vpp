@@ -36,57 +36,52 @@ const http_buffer_type_t msg_to_buf_type[] = {
 };
 
 static u8 *
-format_http_state (u8 *s, va_list *va)
+format_http_req_state (u8 *s, va_list *va)
 {
-  http_state_t state = va_arg (*va, http_state_t);
+  http_req_state_t state = va_arg (*va, http_req_state_t);
+  u8 *t = 0;
 
   switch (state)
     {
-    case HTTP_STATE_IDLE:
-      return format (s, "idle");
-    case HTTP_STATE_WAIT_APP_METHOD:
-      return format (s, "wait app method");
-    case HTTP_STATE_WAIT_SERVER_REPLY:
-      return format (s, "wait server reply");
-    case HTTP_STATE_CLIENT_IO_MORE_DATA:
-      return format (s, "client io more data");
-    case HTTP_STATE_WAIT_CLIENT_METHOD:
-      return format (s, "wait client method");
-    case HTTP_STATE_WAIT_APP_REPLY:
-      return format (s, "wait app reply");
-    case HTTP_STATE_APP_IO_MORE_DATA:
-      return format (s, "app io more data");
-    default:
-      break;
+#define _(n, s, str)                                                          \
+  case HTTP_REQ_STATE_##s:                                                    \
+    t = (u8 *) str;                                                           \
+    break;
+      foreach_http_req_state
+#undef _
+	default : return format (s, "unknown");
     }
-  return format (s, "unknown");
+  return format (s, "%s", t);
 }
 
-#define http_state_change(_hc, _state)                                        \
+#define http_req_state_change(_hc, _state)                                    \
   do                                                                          \
     {                                                                         \
-      HTTP_DBG (1, "changing http state %U -> %U", format_http_state,         \
-		(_hc)->http_state, format_http_state, _state);                \
-      (_hc)->http_state = _state;                                             \
+      HTTP_DBG (1, "changing http req state: %U -> %U",                       \
+		format_http_req_state, (_hc)->req_state,                      \
+		format_http_req_state, _state);                               \
+      ASSERT ((_hc)->req_state != HTTP_REQ_STATE_TUNNEL);                     \
+      (_hc)->req_state = _state;                                              \
     }                                                                         \
   while (0)
 
-static inline int
-http_state_is_tx_valid (http_conn_t *hc)
+static u8 *
+format_http_conn_state (u8 *s, va_list *args)
 {
-  http_state_t state = hc->http_state;
-  return (state == HTTP_STATE_APP_IO_MORE_DATA ||
-	  state == HTTP_STATE_WAIT_APP_REPLY ||
-	  state == HTTP_STATE_WAIT_APP_METHOD);
-}
+  http_conn_t *hc = va_arg (*args, http_conn_t *);
+  u8 *t = 0;
 
-static inline int
-http_state_is_rx_valid (http_conn_t *hc)
-{
-  http_state_t state = hc->http_state;
-  return (state == HTTP_STATE_WAIT_SERVER_REPLY ||
-	  state == HTTP_STATE_CLIENT_IO_MORE_DATA ||
-	  state == HTTP_STATE_WAIT_CLIENT_METHOD);
+  switch (hc->state)
+    {
+#define _(s, str)                                                             \
+  case HTTP_CONN_STATE_##s:                                                   \
+    t = (u8 *) str;                                                           \
+    break;
+      foreach_http_conn_state
+#undef _
+	default : return format (s, "unknown");
+    }
+  return format (s, "%s", t);
 }
 
 static inline http_worker_t *
@@ -274,7 +269,7 @@ http_ts_accept_callback (session_t *ts)
   hc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
-  http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+  http_req_state_change (hc, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
 
   ts->session_state = SESSION_STATE_READY;
   ts->opaque = hc_index;
@@ -365,7 +360,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc->c_c_index = new_hc_index;
   hc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
-  http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+  http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_METHOD);
 
   ts->session_state = SESSION_STATE_READY;
   ts->opaque = new_hc_index;
@@ -428,7 +423,7 @@ http_ts_reset_callback (session_t *ts)
 
   hc->state = HTTP_CONN_STATE_CLOSED;
   http_buffer_free (&hc->tx_buf);
-  http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+  http_req_state_change (hc, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
   session_transport_reset_notify (&hc->connection);
 
   http_disconnect_transport (hc);
@@ -1037,7 +1032,8 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
 }
 
 static http_sm_result_t
-http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_wait_transport_reply (http_conn_t *hc,
+				     transport_send_params_t *sp)
 {
   int rv;
   http_msg_t msg = {};
@@ -1110,12 +1106,12 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   if (hc->to_recv == 0)
     {
       /* all sent, we are done */
-      http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+      http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_METHOD);
     }
   else
     {
       /* stream rest of the response body */
-      http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
+      http_req_state_change (hc, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
     }
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
@@ -1132,7 +1128,8 @@ error:
 }
 
 static http_sm_result_t
-http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_wait_transport_method (http_conn_t *hc,
+				      transport_send_params_t *sp)
 {
   http_status_code_t ec;
   app_worker_t *app_wrk;
@@ -1210,13 +1207,13 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
       /* drop everything, we do not support pipelining */
       http_read_message_drop_all (hc);
       /* all sent, we are done */
-      http_state_change (hc, HTTP_STATE_WAIT_APP_REPLY);
+      http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_REPLY);
     }
   else
     {
       http_read_message_drop (hc, len);
       /* stream rest of the response body */
-      http_state_change (hc, HTTP_STATE_CLIENT_IO_MORE_DATA);
+      http_req_state_change (hc, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
     }
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
@@ -1235,7 +1232,7 @@ error:
 }
 
 static http_sm_result_t
-http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_main_t *hm = &http_main;
   u8 *response;
@@ -1246,6 +1243,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg;
   int rv;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
+  http_req_state_t next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD;
 
   as = session_get_from_handle (hc->h_pa_session_handle);
 
@@ -1290,7 +1288,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   if (hc->is_tunnel && http_status_code_str[msg.code][0] == '2')
     {
       ASSERT (msg.data.body_len == 0);
-      hc->state = HTTP_CONN_STATE_TUNNEL;
+      next_state = HTTP_REQ_STATE_TUNNEL;
       /* cleanup some stuff we don't need anymore in tunnel mode */
       http_conn_timer_stop (hc);
       vec_free (hc->rx_buf);
@@ -1342,15 +1340,16 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       /* Start sending the actual data */
       http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
 			as->tx_fifo, msg.data.body_len);
-      http_state_change (hc, HTTP_STATE_APP_IO_MORE_DATA);
+      next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
     }
   else
     {
       /* No response body, we are done */
-      http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
       sm_result = HTTP_SM_STOP;
     }
+
+  http_req_state_change (hc, next_state);
 
   ASSERT (sp->max_burst_size >= sent);
   sp->max_burst_size -= sent;
@@ -1358,14 +1357,13 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 
 error:
   http_send_error (hc, sc);
-  http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
   return HTTP_SM_STOP;
 }
 
 static http_sm_result_t
-http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_msg_t msg;
   session_t *as;
@@ -1373,7 +1371,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   u32 sent;
   int rv;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
-  http_state_t next_state;
+  http_req_state_t next_state;
 
   as = session_get_from_handle (hc->h_pa_session_handle);
 
@@ -1433,7 +1431,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 			/* Any headers from app? */
 			msg.data.headers_len ? "" : "\r\n");
 
-      next_state = HTTP_STATE_WAIT_SERVER_REPLY;
+      next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
       sm_result = HTTP_SM_STOP;
     }
   else if (msg.method_type == HTTP_REQ_POST)
@@ -1464,7 +1462,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
 			as->tx_fifo, msg.data.body_len);
 
-      next_state = HTTP_STATE_APP_IO_MORE_DATA;
+      next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
     }
   else
@@ -1504,7 +1502,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  http_state_change (hc, next_state);
+  http_req_state_change (hc, next_state);
   goto done;
 
 error:
@@ -1520,7 +1518,8 @@ done:
 }
 
 static http_sm_result_t
-http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_transport_io_more_data (http_conn_t *hc,
+				       transport_send_params_t *sp)
 {
   session_t *as, *ts;
   app_worker_t *app_wrk;
@@ -1567,18 +1566,18 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
       clib_warning ("http protocol error: received more data than expected");
       session_transport_closing_notify (&hc->connection);
       http_disconnect_transport (hc);
-      http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+      http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_METHOD);
       return HTTP_SM_ERROR;
     }
   hc->to_recv -= rv;
   HTTP_DBG (1, "drained %d from ts; remains %lu", rv, hc->to_recv);
 
   /* Finished transaction:
-   * server back to HTTP_STATE_WAIT_APP_REPLY
-   * client to HTTP_STATE_WAIT_APP_METHOD */
+   * server back to HTTP_REQ_STATE_WAIT_APP_REPLY
+   * client to HTTP_REQ_STATE_WAIT_APP_METHOD */
   if (hc->to_recv == 0)
-    http_state_change (hc, hc->is_server ? HTTP_STATE_WAIT_APP_REPLY :
-					   HTTP_STATE_WAIT_APP_METHOD);
+    http_req_state_change (hc, hc->is_server ? HTTP_REQ_STATE_WAIT_APP_REPLY :
+					       HTTP_REQ_STATE_WAIT_APP_METHOD);
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   if (app_wrk)
@@ -1591,7 +1590,7 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 }
 
 static http_sm_result_t
-http_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
+http_req_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 {
   u32 max_send = 64 << 10, n_segs;
   http_buffer_t *hb = &hc->tx_buf;
@@ -1633,74 +1632,43 @@ http_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX_FLUSH);
 
       /* Finished transaction:
-       * server back to HTTP_STATE_WAIT_METHOD
-       * client to HTTP_STATE_WAIT_SERVER_REPLY */
-      http_state_change (hc, hc->is_server ? HTTP_STATE_WAIT_CLIENT_METHOD :
-						   HTTP_STATE_WAIT_SERVER_REPLY);
+       * server back to HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD
+       * client to HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY */
+      http_req_state_change (hc, hc->is_server ?
+				   HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD :
+				   HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
       http_buffer_free (&hc->tx_buf);
     }
 
   return HTTP_SM_STOP;
 }
 
-typedef http_sm_result_t (*http_sm_handler) (http_conn_t *,
-					     transport_send_params_t *sp);
-
-static http_sm_handler state_funcs[HTTP_N_STATES] = {
-  0, /* idle state */
-  http_state_wait_app_method,
-  http_state_wait_client_method,
-  http_state_wait_server_reply,
-  http_state_wait_app_reply,
-  http_state_client_io_more_data,
-  http_state_app_io_more_data,
-};
-
-static void
-http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp)
-{
-  http_sm_result_t res;
-
-  do
-    {
-      res = state_funcs[hc->http_state](hc, sp);
-      if (res == HTTP_SM_ERROR)
-	{
-	  HTTP_DBG (1, "error in state machine %d", res);
-	  return;
-	}
-    }
-  while (res == HTTP_SM_CONTINUE);
-
-  /* Reset the session expiration timer */
-  http_conn_timer_update (hc);
-}
-
-static int
-http_tunnel_rx (session_t *ts, http_conn_t *hc)
+static http_sm_result_t
+http_req_state_tunnel_rx (http_conn_t *hc, transport_send_params_t *sp)
 {
   u32 max_deq, max_enq, max_read, n_segs = 2;
   svm_fifo_seg_t segs[n_segs];
   int n_written = 0;
-  session_t *as;
+  session_t *as, *ts;
   app_worker_t *app_wrk;
 
   HTTP_DBG (1, "tunnel received data from client");
 
   as = session_get_from_handle (hc->h_pa_session_handle);
+  ts = session_get_from_handle (hc->h_tc_session_handle);
 
   max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
   if (PREDICT_FALSE (max_deq == 0))
     {
       HTTP_DBG (1, "max_deq == 0");
-      return 0;
+      return HTTP_SM_STOP;
     }
   max_enq = svm_fifo_max_enqueue (as->rx_fifo);
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
       svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
-      return 0;
+      return HTTP_SM_STOP;
     }
   max_read = clib_min (max_enq, max_deq);
   svm_fifo_segments (ts->rx_fifo, 0, segs, &n_segs, max_read);
@@ -1714,7 +1682,117 @@ http_tunnel_rx (session_t *ts, http_conn_t *hc)
   if (svm_fifo_max_dequeue_cons (ts->rx_fifo))
     session_program_rx_io_evt (session_handle (ts));
 
-  return 0;
+  return HTTP_SM_STOP;
+}
+
+static http_sm_result_t
+http_req_state_tunnel_tx (http_conn_t *hc, transport_send_params_t *sp)
+{
+  u32 max_deq, max_enq, max_read, n_segs = 2;
+  svm_fifo_seg_t segs[n_segs];
+  session_t *as, *ts;
+  int n_written = 0;
+
+  HTTP_DBG (1, "tunnel received data from target");
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+
+  max_deq = svm_fifo_max_dequeue_cons (as->tx_fifo);
+  if (PREDICT_FALSE (max_deq == 0))
+    {
+      HTTP_DBG (1, "max_deq == 0");
+      goto check_fifo;
+    }
+  max_enq = svm_fifo_max_enqueue_prod (ts->tx_fifo);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "ts tx fifo full");
+      goto check_fifo;
+    }
+  max_read = clib_min (max_enq, max_deq);
+  max_read = clib_min (max_read, sp->max_burst_size);
+  svm_fifo_segments (as->tx_fifo, 0, segs, &n_segs, max_read);
+  n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
+  ASSERT (n_written > 0);
+  HTTP_DBG (1, "transfered %u bytes", n_written);
+  sp->bytes_dequeued += n_written;
+  sp->max_burst_size -= n_written;
+  svm_fifo_dequeue_drop (as->tx_fifo, n_written);
+  if (svm_fifo_set_event (ts->tx_fifo))
+    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+
+check_fifo:
+  /* Deschedule and wait for deq notification if ts fifo is almost full */
+  if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
+    {
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      transport_connection_deschedule (&hc->connection);
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+    }
+
+  return HTTP_SM_STOP;
+}
+
+typedef http_sm_result_t (*http_sm_handler) (http_conn_t *,
+					     transport_send_params_t *sp);
+
+static http_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
+  0, /* idle */
+  http_req_state_wait_app_method,
+  0, /* wait transport reply */
+  0, /* transport io more data */
+  0, /* wait transport method */
+  http_req_state_wait_app_reply,
+  http_req_state_app_io_more_data,
+  http_req_state_tunnel_tx,
+};
+
+static_always_inline int
+http_req_state_is_tx_valid (http_conn_t *hc)
+{
+  return tx_state_funcs[hc->req_state] ? 1 : 0;
+}
+
+static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
+  0, /* idle */
+  0, /* wait app method */
+  http_req_state_wait_transport_reply,
+  http_req_state_transport_io_more_data,
+  http_req_state_wait_transport_method,
+  0, /* wait app reply */
+  0, /* app io more data */
+  http_req_state_tunnel_rx,
+};
+
+static_always_inline int
+http_req_state_is_rx_valid (http_conn_t *hc)
+{
+  return rx_state_funcs[hc->req_state] ? 1 : 0;
+}
+
+static_always_inline void
+http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp,
+			    u8 is_tx)
+{
+  http_sm_result_t res;
+
+  do
+    {
+      if (is_tx)
+	res = tx_state_funcs[hc->req_state](hc, sp);
+      else
+	res = rx_state_funcs[hc->req_state](hc, sp);
+      if (res == HTTP_SM_ERROR)
+	{
+	  HTTP_DBG (1, "error in state machine %d", res);
+	  return;
+	}
+    }
+  while (res == HTTP_SM_CONTINUE);
+
+  /* Reset the session expiration timer */
+  http_conn_timer_update (hc);
 }
 
 static int
@@ -1729,24 +1807,22 @@ http_ts_rx_callback (session_t *ts)
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
       HTTP_DBG (1, "conn closed");
-      svm_fifo_dequeue_drop_all (ts->tx_fifo);
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
       return 0;
     }
 
-  if (hc->state == HTTP_CONN_STATE_TUNNEL)
-    return http_tunnel_rx (ts, hc);
-
-  if (!http_state_is_rx_valid (hc))
+  if (!http_req_state_is_rx_valid (hc))
     {
-      if (hc->state != HTTP_CONN_STATE_CLOSED)
-	clib_warning ("app data req state '%U' session state %u",
-		      format_http_state, hc->http_state, hc->state);
-      svm_fifo_dequeue_drop_all (ts->tx_fifo);
+      clib_warning ("hc [%u]%x invalid rx state: http req state "
+		    "'%U', session state '%U'",
+		    ts->thread_index, ts->opaque, format_http_req_state,
+		    hc->req_state, format_http_conn_state, hc);
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
       return 0;
     }
 
   HTTP_DBG (1, "run state machine");
-  http_req_run_state_machine (hc, 0);
+  http_req_run_state_machine (hc, 0, 0);
 
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
     {
@@ -2090,54 +2166,6 @@ http_transport_get_listener (u32 listener_index)
 }
 
 static int
-http_tunnel_tx (http_conn_t *hc, session_t *as, transport_send_params_t *sp)
-{
-  u32 max_deq, max_enq, max_read, n_segs = 2;
-  svm_fifo_seg_t segs[n_segs];
-  session_t *ts;
-  int n_written = 0;
-
-  HTTP_DBG (1, "tunnel received data from target");
-
-  ts = session_get_from_handle (hc->h_tc_session_handle);
-
-  max_deq = svm_fifo_max_dequeue_cons (as->tx_fifo);
-  if (PREDICT_FALSE (max_deq == 0))
-    {
-      HTTP_DBG (1, "max_deq == 0");
-      goto check_fifo;
-    }
-  max_enq = svm_fifo_max_enqueue_prod (ts->tx_fifo);
-  if (max_enq == 0)
-    {
-      HTTP_DBG (1, "ts tx fifo full");
-      goto check_fifo;
-    }
-  max_read = clib_min (max_enq, max_deq);
-  max_read = clib_min (max_read, sp->max_burst_size);
-  svm_fifo_segments (as->tx_fifo, 0, segs, &n_segs, max_read);
-  n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
-  ASSERT (n_written > 0);
-  HTTP_DBG (1, "transfered %u bytes", n_written);
-  sp->bytes_dequeued += n_written;
-  sp->max_burst_size -= n_written;
-  svm_fifo_dequeue_drop (as->tx_fifo, n_written);
-  if (svm_fifo_set_event (ts->tx_fifo))
-    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
-
-check_fifo:
-  /* Deschedule and wait for deq notification if ts fifo is almost full */
-  if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
-    {
-      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
-      transport_connection_deschedule (&hc->connection);
-      sp->flags |= TRANSPORT_SND_F_DESCHED;
-    }
-
-  return n_written > 0 ? clib_max (n_written / TRANSPORT_PACER_MIN_MSS, 1) : 0;
-}
-
-static int
 http_app_tx_callback (void *session, transport_send_params_t *sp)
 {
   session_t *as = (session_t *) session;
@@ -2151,24 +2179,19 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
   sp->max_burst_size = max_burst_sz;
 
-  if (hc->state == HTTP_CONN_STATE_TUNNEL)
-    return http_tunnel_tx (hc, as, sp);
-
-  if (!http_state_is_tx_valid (hc))
+  if (!http_req_state_is_tx_valid (hc))
     {
-      if (hc->state != HTTP_CONN_STATE_CLOSED)
-	{
-	  clib_warning ("hc [%u]%x invalid tx state http state "
-			"'%U', session state %u",
-			as->thread_index, as->connection_index,
-			format_http_state, hc->http_state, hc->state);
-	}
+      clib_warning ("hc [%u]%x invalid tx state: http req state "
+		    "'%U', session state '%U'",
+		    as->thread_index, as->connection_index,
+		    format_http_req_state, hc->req_state,
+		    format_http_conn_state, hc);
       svm_fifo_dequeue_drop_all (as->tx_fifo);
       return 0;
     }
 
   HTTP_DBG (1, "run state machine");
-  http_req_run_state_machine (hc, sp);
+  http_req_run_state_machine (hc, sp, 1);
 
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     {
@@ -2186,10 +2209,9 @@ http_app_rx_evt_cb (transport_connection_t *tc)
 {
   http_conn_t *hc = (http_conn_t *) tc;
   HTTP_DBG (1, "hc [%u]%x", vlib_get_thread_index (), hc->h_hc_index);
-  session_t *ts = session_get_from_handle (hc->h_tc_session_handle);
 
-  if (hc->state == HTTP_CONN_STATE_TUNNEL)
-    return http_tunnel_rx (ts, hc);
+  if (hc->req_state == HTTP_REQ_STATE_TUNNEL)
+    http_req_state_tunnel_rx (hc, 0);
 
   return 0;
 }
@@ -2231,39 +2253,6 @@ format_http_listener (u8 *s, va_list *args)
   s = format (s, "[%d:%d][H] app_wrk %u ts %d:%d", lhc->c_thread_index,
 	      lhc->c_s_index, lhc->h_pa_wrk_index, lts->thread_index,
 	      lts->session_index);
-
-  return s;
-}
-
-static u8 *
-format_http_conn_state (u8 *s, va_list *args)
-{
-  http_conn_t *hc = va_arg (*args, http_conn_t *);
-
-  switch (hc->state)
-    {
-    case HTTP_CONN_STATE_LISTEN:
-      s = format (s, "LISTEN");
-      break;
-    case HTTP_CONN_STATE_CONNECTING:
-      s = format (s, "CONNECTING");
-      break;
-    case HTTP_CONN_STATE_ESTABLISHED:
-      s = format (s, "ESTABLISHED");
-      break;
-    case HTTP_CONN_STATE_TUNNEL:
-      s = format (s, "TUNNEL");
-      break;
-    case HTTP_CONN_STATE_TRANSPORT_CLOSED:
-      s = format (s, "TRANSPORT_CLOSED");
-      break;
-    case HTTP_CONN_STATE_APP_CLOSED:
-      s = format (s, "APP_CLOSED");
-      break;
-    case HTTP_CONN_STATE_CLOSED:
-      s = format (s, "CLOSED");
-      break;
-    }
 
   return s;
 }
