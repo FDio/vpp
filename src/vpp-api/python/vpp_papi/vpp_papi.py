@@ -29,7 +29,8 @@ import fnmatch
 import weakref
 import atexit
 import time
-import pkg_resources
+import importlib.resources as resources
+
 from .vpp_format import verify_enum_hint
 from .vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType, VPPUnionType
 from .vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
@@ -502,10 +503,10 @@ class VPPApiClient:
                     raise e
         else:
             # Bootstrap the API (memclnt.api bundled with VPP PAPI)
-            resource_path = "/".join(("data", "memclnt.api.json"))
-            file_content = pkg_resources.resource_string(__name__, resource_path)
+            with resources.open_text("vpp_papi.data", "memclnt.api.json") as f:
+                resource_content = f.read()
             self.messages, self.services = VPPApiJSONFiles.process_json_str(
-                file_content
+                resource_content
             )
 
         # Basic sanity check
