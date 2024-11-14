@@ -1140,6 +1140,13 @@ proxy_server_listen ()
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = pm->ckpair_index;
     }
+  /* set http timeout for connect-proxy */
+  if (pm->server_sep.transport_proto == TRANSPORT_PROTO_HTTP)
+    {
+      transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
+      ext_cfg->opaque = pm->idle_timeout;
+    }
 
   rv = vnet_listen (a);
   if (need_crypto)
@@ -1257,6 +1264,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vec_add1 (server_uri, 0);
       else if (unformat (line_input, "client-uri %s", &client_uri))
 	vec_add1 (client_uri, 0);
+      else if (unformat (line_input, "idle-timeout %d", &pm->idle_timeout))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1323,7 +1332,8 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 		"[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
 		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
 		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
-		"[private-segment-size <mem>][private-segment-count <nn>]",
+		"[private-segment-size <mem>][private-segment-count <nn>]"
+		"[idle-timeout <nn>]",
   .function = proxy_server_create_command_fn,
 };
 
@@ -1334,6 +1344,7 @@ proxy_main_init (vlib_main_t * vm)
   pm->server_client_index = ~0;
   pm->active_open_client_index = ~0;
   pm->server_app_index = APP_INVALID_INDEX;
+  pm->idle_timeout = 600; /* connect-proxy default idle timeout 10 minutes */
 
   return 0;
 }
