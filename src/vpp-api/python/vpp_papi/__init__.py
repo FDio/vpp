@@ -10,9 +10,10 @@ from .vpp_serializer import BaseTypes  # noqa: F401
 from .vpp_serializer import VPPEnumType, VPPType, VPPTypeAlias  # noqa: F401
 from .vpp_serializer import VPPMessage, VPPUnionType  # noqa: F401
 
-import pkg_resources  # part of setuptools
+import importlib.metadata as metadata
 
 try:
-    __version__ = pkg_resources.get_distribution("vpp_papi").version
-except pkg_resources.DistributionNotFound:
-    """Can't find vpp_papi via setuptools"""
+    __version__ = metadata.version("vpp_papi")
+except metadata.PackageNotFoundError:
+    # Can't find vpp_papi via importlib.metadata
+    __version__ = "0.0.0"
