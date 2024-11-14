@@ -3,13 +3,12 @@ ARG UBUNTU_VERSION
 FROM ubuntu:${UBUNTU_VERSION}
 
 RUN apt-get update \
- && apt-get install -y gcc git make autoconf libtool pkg-config cmake ninja-build golang \
+ && apt-get install -y xz-utils wget \
  && rm -rf /var/lib/apt/lists/*
 
 COPY script/build_curl.sh /build_curl.sh
 COPY resources/curl/* /tmp/
 RUN fallocate -l 10MB /tmp/testFile
-RUN apt-get update && apt-get install wget
 RUN /build_curl.sh
 
 CMD ["/bin/sh"]
