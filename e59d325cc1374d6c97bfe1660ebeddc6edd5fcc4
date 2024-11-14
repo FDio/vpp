@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6187f25_21e3fb97",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-11-14T14:28:17Z",
+      "side": 1,
+      "message": "add help?",
+      "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a5f9471_ea839b67",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 670,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-11-14T14:28:17Z",
+      "side": 1,
+      "message": "tries is 0 if you get a port first time?",
+      "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
