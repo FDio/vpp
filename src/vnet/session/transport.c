@@ -35,6 +35,7 @@ typedef struct transport_main_
   local_endpoint_t *local_endpoints;
   u32 *lcl_endpts_freelist;
   u32 port_allocator_seed;
+  u16 port_alloc_max_tries;
   u16 port_allocator_min_src_port;
   u16 port_allocator_max_src_port;
   u8 lcl_endpts_cleanup_pending;
@@ -212,11 +213,36 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
 u8 *
 format_transport_protos (u8 * s, va_list * args)
 {
+  u32 indent = format_get_indent (s) + 1;
   transport_proto_vft_t *tp_vft;
 
   vec_foreach (tp_vft, tp_vfts)
-    s = format (s, "%s\n", tp_vft->transport_options.name);
+    if (tp_vft->transport_options.name)
+      s = format (s, "%U%s\n", format_white_space, indent,
+		  tp_vft->transport_options.name);
 
+  return s;
+}
+
+u8 *
+format_transport_state (u8 *s, va_list *args)
+{
+  transport_main_t *tm = &tp_main;
+
+  s = format (s, "registered protos:\n%U", format_transport_protos);
+
+  s = format (s, "configs:\n");
+  s =
+    format (s, " min_lcl_port: %u max_lcl_port: %u\n",
+	    tm->port_allocator_min_src_port, tm->port_allocator_max_src_port);
+
+  s = format (s, "state:\n");
+  s = format (s, " lcl ports alloced: %u\n lcl ports freelist: %u \n",
+	      pool_elts (tm->local_endpoints),
+	      vec_len (tm->lcl_endpts_freelist));
+  s =
+    format (s, " port_alloc_max_tries: %u\n lcl_endpts_cleanup_pending: %u\n",
+	    tm->port_alloc_max_tries, tm->lcl_endpts_cleanup_pending);
   return s;
 }
 
@@ -606,7 +632,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
   transport_main_t *tm = &tp_main;
   u16 min = tm->port_allocator_min_src_port;
   u16 max = tm->port_allocator_max_src_port;
-  int tries, limit;
+  int tries, limit, port = -1;
 
   limit = max - min;
 
@@ -616,8 +642,6 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
   /* Search for first free slot */
   for (tries = 0; tries < limit; tries++)
     {
-      u16 port = 0;
-
       /* Find a port in the specified range */
       while (1)
 	{
@@ -630,7 +654,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 	}
 
       if (!transport_endpoint_mark_used (proto, lcl_addr, port))
-	return port;
+	break;
 
       /* IP:port pair already in use, check if 6-tuple available */
       if (session_lookup_connection (rmt->fib_index, lcl_addr, &rmt->ip, port,
@@ -640,9 +664,26 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
       /* 6-tuple is available so increment lcl endpoint refcount */
       transport_share_local_endpoint (proto, lcl_addr, port);
 
-      return port;
+      break;
     }
-  return -1;
+
+  tm->port_alloc_max_tries = clib_max (tm->port_alloc_max_tries, tries);
+
+  return port;
+}
+
+u16
+transport_port_alloc_max_tries ()
+{
+  transport_main_t *tm = &tp_main;
+  return tm->port_alloc_max_tries;
+}
+
+void
+transport_clear_stats ()
+{
+  transport_main_t *tm = &tp_main;
+  tm->port_alloc_max_tries = 0;
 }
 
 static session_error_t

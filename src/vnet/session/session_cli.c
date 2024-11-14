@@ -613,6 +613,11 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, "%U", format_transport_protos);
 	goto done;
 	}
+      else if (unformat (input, "transport"))
+	{
+	vlib_cli_output (vm, "%U", format_transport_state);
+	goto done;
+	}
       else if (unformat (input, "rt-backend"))
 	{
 	vlib_cli_output (vm, "%U", format_rt_backend, smm->rt_engine_type);
@@ -799,7 +804,7 @@ VLIB_CLI_COMMAND (vlib_cli_show_session_command) = {
   .path = "show session",
   .short_help =
     "show session [protos][states][rt-backend][verbose [n]] "
-    "[events][listeners <proto>] "
+    "[transport][events][listeners <proto>] "
     "[<session-id>][thread <n> [[proto <p>] index <n>]][elog] "
     "[thread <n>][proto <proto>][state <state>][range <min> [<max>]] "
     "[lcl|rmt|ep <ip>[:<port>]][force-print]",
@@ -1061,6 +1066,7 @@ clear_session_stats_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
     }
+  transport_clear_stats ();
 
   return 0;
 }
