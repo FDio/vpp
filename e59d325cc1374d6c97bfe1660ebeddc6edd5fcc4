@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "061aa1f7_14972c93",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-14T18:19:20Z",
+      "side": 1,
+      "message": "Done. Thanks :-)",
+      "parentUuid": "e6187f25_21e3fb97",
+      "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5a5f9471_ea839b67",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-11-14T14:28:17Z",
       "side": 1,
       "message": "tries is 0 if you get a port first time?",
+      "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25c615d7_0ac47737",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 670,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-14T18:19:20Z",
+      "side": 1,
+      "message": "yes, but that\u0027s just by current convention. If we want this to be 1, we can change it.",
+      "parentUuid": "5a5f9471_ea839b67",
       "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
