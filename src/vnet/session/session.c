@@ -1981,11 +1981,14 @@ session_stats_collector_fn (vlib_stats_collector_data_t *d)
     }
 
   vlib_stats_set_gauge (d->private_data, n_sessions);
+  vlib_stats_set_gauge (smm->stats_seg_idx.tp_port_alloc_max_tries,
+			transport_port_alloc_max_tries ());
 }
 
 static void
 session_stats_collector_init (void)
 {
+  session_main_t *smm = &session_main;
   vlib_stats_collector_reg_t reg = {};
 
   reg.entry_index =
@@ -1994,6 +1997,10 @@ session_stats_collector_init (void)
   reg.collect_fn = session_stats_collector_fn;
   vlib_stats_register_collector_fn (&reg);
   vlib_stats_validate (reg.entry_index, 0, vlib_get_n_threads ());
+
+  smm->stats_seg_idx.tp_port_alloc_max_tries =
+    vlib_stats_add_gauge ("/sys/session/transport_port_alloc_max_tries");
+  vlib_stats_set_gauge (smm->stats_seg_idx.tp_port_alloc_max_tries, 0);
 }
 
 static clib_error_t *
