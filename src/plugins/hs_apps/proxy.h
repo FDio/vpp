@@ -97,6 +97,7 @@ typedef struct
   u32 private_segment_count;		/**< Number of private fifo segs */
   u64 segment_size;			/**< size of fifo segs */
   u8 prealloc_fifos;			/**< Request fifo preallocation */
+  u32 idle_timeout; /**< connect-proxy timeout for idle connections */
   int rcv_buffer_size;
   session_endpoint_cfg_t server_sep;
   session_endpoint_cfg_t client_sep;
