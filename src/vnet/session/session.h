@@ -197,6 +197,11 @@ typedef enum
 #undef _
 } session_rt_engine_type_t;
 
+typedef struct session_stats_seg_indices_
+{
+  u32 tp_port_alloc_max_tries;
+} session_stats_segs_indicies_t;
+
 typedef struct session_main_
 {
   /** Worker contexts */
@@ -294,6 +299,7 @@ typedef struct session_main_
 
   /** Query nat44-ed session to get original dst ip4 & dst port. */
   nat44_original_dst_lookup_fn original_dst_lookup;
+  session_stats_segs_indicies_t stats_seg_idx;
 } session_main_t;
 
 extern session_main_t session_main;

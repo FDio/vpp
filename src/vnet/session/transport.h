@@ -252,6 +252,7 @@ void transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip,
 				     u16 port);
 int transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip,
 				      u16 port);
+u16 transport_port_alloc_max_tries ();
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 void transport_init (void);
 

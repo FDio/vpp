@@ -610,8 +610,13 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
        */
       if (unformat (input, "protos"))
 	{
-	vlib_cli_output (vm, "%U", format_transport_protos);
-	goto done;
+	  vlib_cli_output (vm, "%U", format_transport_protos);
+	  goto done;
+	}
+      else if (unformat (input, "transport"))
+	{
+	  vlib_cli_output (vm, "%U", format_transport_state);
+	  goto done;
 	}
       else if (unformat (input, "rt-backend"))
 	{
