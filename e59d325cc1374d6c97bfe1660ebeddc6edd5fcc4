@@ -69,6 +69,24 @@
       "parentUuid": "5a5f9471_ea839b67",
       "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "94b04e52_914481d1",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 670,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-11-14T21:02:24Z",
+      "side": 1,
+      "message": "i guess i don\u0027t care for this. seems like a strange convention tho.",
+      "parentUuid": "25c615d7_0ac47737",
+      "revId": "e59d325cc1374d6c97bfe1660ebeddc6edd5fcc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
