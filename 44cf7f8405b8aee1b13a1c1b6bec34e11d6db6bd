@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf5bae4d_3fb8917c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "unused",
+      "range": {
+        "startLine": 36,
+        "startChar": 2,
+        "endLine": 37,
+        "endChar": 23
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63502974_b3c8a0dd",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "you can do this once in hc_session_connected_callback",
+      "range": {
+        "startLine": 131,
+        "startChar": 6,
+        "endLine": 131,
+        "endChar": 45
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c85a5b8e_4a79bb2c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "you can do this once in hc_session_connected_callback",
+      "range": {
+        "startLine": 151,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 61
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c546e82_23b1714d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "alloc after if(err)",
+      "range": {
+        "startLine": 196,
+        "startChar": 46,
+        "endLine": 196,
+        "endChar": 63
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c852b630_0ec768e2",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "it doesn\u0027t make much sense to just store stats pointer in worker context you can use hc_main or directly access global variable. thread safe solution is to alloc (and init) this for each worker (in hc_run?) and do sum in HC_REPEAT_DONE handler, but this is needed only when you want to do parallel session on multiple workers",
+      "range": {
+        "startLine": 211,
+        "startChar": 2,
+        "endLine": 211,
+        "endChar": 21
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eeb01973_307039de",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "do you need this? never used",
+      "range": {
+        "startLine": 217,
+        "startChar": 2,
+        "endLine": 217,
+        "endChar": 22
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a92e8eaa_33235cbe",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:24:46Z",
+      "side": 1,
+      "message": "please revert back to:\nhcm-\u003eresponse_status \u003d format (0, \"%U\", format_http_status_code, msg.code);",
+      "range": {
+        "startLine": 345,
+        "startChar": 0,
+        "endLine": 348,
+        "endChar": 47
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
