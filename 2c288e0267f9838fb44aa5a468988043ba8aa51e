@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "239c875e_801aa07d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1755
+      },
+      "writtenOn": "2024-11-15T14:47:46Z",
+      "side": 1,
+      "message": "Note: I think we can remove `next_index` from `vnet_dev_port_interface_t`",
+      "revId": "2c288e0267f9838fb44aa5a468988043ba8aa51e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
