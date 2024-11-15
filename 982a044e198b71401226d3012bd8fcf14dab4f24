@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2fdbd59_3720b5ad",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "641fa710_72efc27c",
+      "range": {
+        "startLine": 114,
+        "startChar": 12,
+        "endLine": 114,
+        "endChar": 47
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5299a828_87b707a5",
@@ -54,6 +78,30 @@
       "writtenOn": "2024-11-11T11:57:51Z",
       "side": 1,
       "message": "you should use hc_session_alloc for this too, not good when we want parallel connections in the future",
+      "range": {
+        "startLine": 231,
+        "startChar": 28,
+        "endLine": 231,
+        "endChar": 71
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "17c8b9ac_d9188b82",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5299a828_87b707a5",
       "range": {
         "startLine": 231,
         "startChar": 28,
@@ -81,6 +129,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfc382d5_38a64534",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "9c54ff2d_94b99155",
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "23fa091a_e02bef66",
@@ -104,6 +170,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c59379f_3a21d95d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "23fa091a_e02bef66",
+      "range": {
+        "startLine": 381,
+        "startChar": 3,
+        "endLine": 381,
+        "endChar": 59
+      },
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4020b418_7d4b85ec",
@@ -117,6 +207,24 @@
       "writtenOn": "2024-11-11T11:57:51Z",
       "side": 1,
       "message": "you are calling this from main thread but session might be on worker thread",
+      "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f31bd21_a94bb352",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4020b418_7d4b85ec",
       "revId": "982a044e198b71401226d3012bd8fcf14dab4f24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

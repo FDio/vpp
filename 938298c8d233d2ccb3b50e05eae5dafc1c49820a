@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "05d7b1b3_83b3c01b",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ee80781_e45941bd",
+      "revId": "938298c8d233d2ccb3b50e05eae5dafc1c49820a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f5a792b3_5ca9dc87",
@@ -55,6 +73,30 @@
       "side": 1,
       "message": "maybe not so good idea https://www.rfc-editor.org/rfc/rfc9112.html#name-keep-alive-connections\n\nanyway connection management (persistent or short lived) should be handled in http transport layer, app don\u0027t need to be aware of http version",
       "parentUuid": "f5a792b3_5ca9dc87",
+      "range": {
+        "startLine": 371,
+        "startChar": 0,
+        "endLine": 376,
+        "endChar": 2
+      },
+      "revId": "938298c8d233d2ccb3b50e05eae5dafc1c49820a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "859bc5ee_21034eb7",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-15T11:19:29Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "c712a19d_664d647e",
       "range": {
         "startLine": 371,
         "startChar": 0,
