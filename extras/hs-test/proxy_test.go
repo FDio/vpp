@@ -9,6 +9,7 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest)
+	RegisterVppUdpProxyTests(VppProxyUdpTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
@@ -100,4 +101,19 @@ func VppConnectProxyPutTest(s *VppProxySuite) {
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
 	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.NginxAddr(), s.NginxPort())
 	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
+}
+
+func VppProxyUdpTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.GetContainerByName(VppUdpProxyContainerName).VppInstance
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	b := make([]byte, 1500)
+	n, err := s.ClientSendReceive([]byte("hello"), b)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual([]byte("hello"), b[:n])
 }
