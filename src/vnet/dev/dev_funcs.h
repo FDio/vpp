@@ -348,7 +348,7 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
       rxq->if_rt_data.next_index = ifs->primary_interface.rx_next_index;
       vec_foreach_pointer (rtd, rxq->sec_if_rt_data)
 	if (rtd)
-	  rtd->next_index = si[rtd->sec_if_index]->next_index;
+	  rtd->next_index = si[rtd->sec_if_index]->rx_next_index;
     }
 
   if (req.update_feature_arc)
