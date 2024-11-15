@@ -118,6 +118,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "04a10862_15fd115d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-15T12:49:31Z",
+      "side": 1,
+      "message": "FYI: thread-safe counters are implemented in vlib/counter.h",
+      "parentUuid": "c852b630_0ec768e2",
+      "range": {
+        "startLine": 211,
+        "startChar": 2,
+        "endLine": 211,
+        "endChar": 21
+      },
+      "revId": "44cf7f8405b8aee1b13a1c1b6bec34e11d6db6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "eeb01973_307039de",
         "filename": "src/plugins/hs_apps/http_client.c",
         "patchSetId": 7
