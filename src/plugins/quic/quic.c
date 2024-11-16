@@ -250,7 +250,6 @@ quic_init_crypto_context (crypto_context_t * crctx, quic_ctx_t * ctx)
   ptls_ctx->cipher_suites = qm->quic_ciphers[ctx->crypto_engine];
   ptls_ctx->certificates.list = NULL;
   ptls_ctx->certificates.count = 0;
-  ptls_ctx->esni = NULL;
   ptls_ctx->on_client_hello = NULL;
   ptls_ctx->emit_certificate = NULL;
   ptls_ctx->sign_certificate = NULL;
@@ -718,7 +717,6 @@ quic_send_packets (quic_ctx_t * ctx)
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
-  quicly_address_t dest, src;
   u32 n_sent = 0;
   int err = 0;
 
@@ -744,7 +742,7 @@ quic_send_packets (quic_ctx_t * ctx)
 	break;
 
       num_packets = max_packets;
-      if ((err = quicly_send (conn, &dest, &src, packets, &num_packets, buf,
+      if ((err = quicly_send (conn, &ctx->rmt_ip, &ctx->lcl_ip, packets, &num_packets, buf,
 			      sizeof (buf))))
 	goto quicly_error;
 
@@ -752,7 +750,7 @@ quic_send_packets (quic_ctx_t * ctx)
 	{
 
 	  if ((err =
-		 quic_send_datagram (udp_session, &packets[i], &dest, &src)))
+		 quic_send_datagram (udp_session, &packets[i], &ctx->rmt_ip, &ctx->lcl_ip)))
 	    goto quicly_error;
 
 	}
@@ -1851,7 +1849,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   ret = quicly_connect (&ctx->conn, quicly_ctx, (char *) ctx->srv_hostname,
 			sa, NULL, &quic_main.wrk_ctx[thread_index].next_cid,
 			ptls_iovec_init (NULL, 0), &quic_main.hs_properties,
-			NULL);
+			NULL, NULL);
   ++quic_main.wrk_ctx[thread_index].next_cid.master_id;
   /*  Save context handle in quicly connection */
   quic_store_conn_ctx (ctx->conn, ctx);
@@ -2106,7 +2104,7 @@ quic_accept_connection (quic_rx_packet_ctx_t * pctx)
   if ((rv = quicly_accept (&conn, quicly_ctx, NULL, &pctx->sa,
 			   &pctx->packet, NULL,
 			   &quic_main.wrk_ctx[pctx->thread_index].next_cid,
-			   NULL)))
+			   NULL, NULL)))
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
@@ -2192,12 +2190,8 @@ quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
   packet.iov_len = payload_len;
   packet.iov_base = payload;
 
-  struct _st_quicly_conn_public_t *conn =
-    (struct _st_quicly_conn_public_t *) qctx->conn;
-
   udp_session = session_get_from_handle (udp_session_handle);
-  rv = quic_send_datagram (udp_session, &packet, &conn->remote.address,
-			   &conn->local.address);
+  rv = quic_send_datagram (udp_session, &packet, &qctx->rmt_ip, &qctx->lcl_ip);
   quic_set_udp_tx_evt (udp_session);
   return rv;
 }
