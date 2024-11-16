@@ -179,6 +179,8 @@ typedef struct quic_ctx_
     ptls_aead_context_t *aead_ctx;
   } ingress_keys;
   int key_phase_ingress;
+  quicly_address_t rmt_ip;
+  quicly_address_t lcl_ip;
 
 } quic_ctx_t;
 
