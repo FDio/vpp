@@ -47,6 +47,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b40fe8ed_65d7d40f",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "686dcf8c_9093ba07",
+      "range": {
+        "startLine": 32,
+        "startChar": 12,
+        "endLine": 32,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2105157b_4cc2fdea",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f38f2489_a34efe45",
+      "range": {
+        "startLine": 32,
+        "startChar": 40,
+        "endLine": 32,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "644a3703_424e1a7e",
@@ -93,6 +141,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "04811d3d_912b363f",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "878aa225_ed22c75e",
+      "range": {
+        "startLine": 33,
+        "startChar": 12,
+        "endLine": 33,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f80809ae_97360513",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "644a3703_424e1a7e",
+      "range": {
+        "startLine": 33,
+        "startChar": 40,
+        "endLine": 33,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dc4045ef_0b8689e6",
@@ -116,6 +212,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "46c42af2_3c86e000",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dc4045ef_0b8689e6",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 49
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a5589d2e_2b8ed573",
@@ -129,6 +249,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "It would be cleaner to move this code into create_host_interface() and pass cls.if_file_name as a parameter to create_host_interface() rather than replicating this code after every call to create_host_interface().",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 54
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd4d7d1c_fb3d9d70",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a5589d2e_2b8ed573",
       "range": {
         "startLine": 49,
         "startChar": 0,
@@ -185,6 +329,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "27b88c6f_d3b178ae",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ae11869f_a3a40c13",
+      "range": {
+        "startLine": 27,
+        "startChar": 40,
+        "endLine": 27,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1308add_4f0a00aa",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b2133ef_63712008",
+      "range": {
+        "startLine": 27,
+        "startChar": 12,
+        "endLine": 27,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5885289b_a604fead",
@@ -231,6 +423,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fdd8d1e_74d67fcb",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5885289b_a604fead",
+      "range": {
+        "startLine": 28,
+        "startChar": 12,
+        "endLine": 28,
+        "endChar": 24
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "758ade4f_d8cf9694",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "533cff2c_33e1d770",
+      "range": {
+        "startLine": 28,
+        "startChar": 40,
+        "endLine": 28,
+        "endChar": 61
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1c9ae19a_c69c4f20",
@@ -244,6 +484,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "Same comment as test_http_static.py",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 49
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f96e4225_aa64823f",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1c9ae19a_c69c4f20",
       "range": {
         "startLine": 36,
         "startChar": 0,
@@ -277,6 +541,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cc1e5ec_0683eb98",
+        "filename": "test/asf/test_prom.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "05bfccf0_90cc51fb",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 54
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "40c604f0_8eabb893",
@@ -290,6 +578,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "Should this be using a namespace history file in the same manner as the prometheus and http_static testcases?",
+      "range": {
+        "startLine": 229,
+        "startChar": 0,
+        "endLine": 230,
+        "endChar": 72
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d55493d_c0f42715",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "40c604f0_8eabb893",
       "range": {
         "startLine": 229,
         "startChar": 0,
@@ -323,6 +635,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "390da619_2c3ea2cf",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "73cd1d81_53ad8340",
+      "range": {
+        "startLine": 262,
+        "startChar": 0,
+        "endLine": 267,
+        "endChar": 9
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "15b28002_834a4547",
@@ -336,6 +672,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "Per previous comment, rename -\u003e create_namespace(history_file, ns\u003dNone)",
+      "range": {
+        "startLine": 31,
+        "startChar": 4,
+        "endLine": 31,
+        "endChar": 29
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be6792b4_746a9c2b",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "15b28002_834a4547",
       "range": {
         "startLine": 31,
         "startChar": 4,
@@ -369,6 +729,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e9fbb22_eee6f96b",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9f2ca084_3530538e",
+      "range": {
+        "startLine": 40,
+        "startChar": 33,
+        "endLine": 40,
+        "endChar": 67
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ad5d1c0c_aecc93bb",
@@ -386,6 +770,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7077e164_5948a280",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ad5d1c0c_aecc93bb",
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ffb7afdd_285cc61e",
@@ -399,6 +801,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "the history file",
+      "range": {
+        "startLine": 93,
+        "startChar": 65,
+        "endLine": 93,
+        "endChar": 73
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4222e22_5ef36c0d",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ffb7afdd_285cc61e",
       "range": {
         "startLine": 93,
         "startChar": 65,
@@ -432,6 +858,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e33630b_ad07bd11",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "92289fec_efa43859",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 74
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3725614f_7301ad82",
@@ -455,6 +905,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9823b10e_cf985e09",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3725614f_7301ad82",
+      "range": {
+        "startLine": 287,
+        "startChar": 4,
+        "endLine": 287,
+        "endChar": 42
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cc1dcc63_f09f74d3",
@@ -468,6 +942,30 @@
       "writtenOn": "2024-11-09T04:40:48Z",
       "side": 1,
       "message": "the history file",
+      "range": {
+        "startLine": 288,
+        "startChar": 60,
+        "endLine": 288,
+        "endChar": 68
+      },
+      "revId": "7f881de2dd8c885aee6fff2b761d0d3b3e539df3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9c3de78_7c2b0ac4",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 30
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2024-11-18T21:40:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc1dcc63_f09f74d3",
       "range": {
         "startLine": 288,
         "startChar": 60,
