@@ -597,6 +597,20 @@ define session_sdl_v3_details
   u32 appns_index[count];
 };
 
+/** \brief Session auto sdl
+    @param client_index - opaque cookie to identify the sender
+    @param threshold - number of times to hit for an auto SDL entry is created
+    @param remove_timeout - timeout value for the auto SDL entries after they are created
+    @param enable - enable/disable
+  */
+autoreply define session_auto_sdl {
+  u32 client_index;
+  u32 context;
+  u32 threshold [default=5];
+  u32 remove_timeout [default=300];
+  bool enable;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

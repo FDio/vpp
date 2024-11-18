@@ -1282,6 +1282,32 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tcp_recovery_on (tc);
 }
 
+static void
+tcp_check_syn_flood (tcp_connection_t *tc)
+{
+  tcp_main_t *tm = &tcp_main;
+  session_auto_sdl_track_prefix_args_t args = {};
+
+  if (tm->sdl_cb == 0)
+    return;
+
+  args.prefix.fp_addr = tc->c_rmt_ip;
+  if (tc->c_is_ip4)
+    {
+      args.prefix.fp_proto = FIB_PROTOCOL_IP4;
+      args.prefix.fp_len = 32;
+    }
+  else
+    {
+      args.prefix.fp_proto = FIB_PROTOCOL_IP6;
+      args.prefix.fp_len = 128;
+    }
+  args.fib_index = tc->c_fib_index;
+  args.action_index = 0;
+  args.tag = 0;
+  tm->sdl_cb (&args);
+}
+
 void
 tcp_timer_retransmit_handler (tcp_connection_t * tc)
 {
@@ -1397,6 +1423,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  tcp_connection_timers_reset (tc);
 	  tcp_program_cleanup (wrk, tc);
 	  tcp_worker_stats_inc (wrk, tr_abort, 1);
+
+	  tcp_check_syn_flood (tc);
 	  return;
 	}
 
