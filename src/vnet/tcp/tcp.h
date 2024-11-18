@@ -25,6 +25,7 @@
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_cc.h>
+#include <vnet/tcp/tcp_sdl.h>
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
@@ -265,6 +266,8 @@ typedef struct _tcp_main
 
   /** message ID base for API */
   u16 msg_id_base;
+
+  tcp_sdl_cb_fn_t sdl_cb;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
