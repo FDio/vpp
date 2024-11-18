@@ -16,6 +16,22 @@
 #ifndef SRC_VNET_SESSION_SESSION_SDL_H_
 #define SRC_VNET_SESSION_SESSION_SDL_H_
 
+#include <vnet/fib/fib_types.h>
+#include <vnet/fib/fib_source.h>
+#include <vnet/dpo/dpo.h>
+#include <plugins/auto_sdl/auto_sdl.h>
+
+typedef struct session_sdl_main
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  fib_source_t fib_src;
+  dpo_type_t dpo_type;
+  u8 sdl_inited;
+#define _(name) auto_sdl_##name##_fn_t name;
+  foreach_auto_sdl_plugin_exported_method_name
+#undef _
+} session_sdl_main_t;
+
 clib_error_t *session_sdl_enable_disable (int enable);
 
 typedef void (*session_sdl_table_walk_fn_t) (u32 fei, ip46_address_t *lcl_ip,
@@ -25,6 +41,8 @@ void session_sdl_table_walk4 (u32 srtg_handle, session_sdl_table_walk_fn_t fn,
 			      void *args);
 void session_sdl_table_walk6 (u32 srtg_handle, session_sdl_table_walk_fn_t fn,
 			      void *args);
+int session_sdl_register_callbacks (void);
+void session_sdl_deregister_callbacks (void);
 
 #endif /* SRC_VNET_SESSION_SESSION_SDL_H_ */
 /*
