@@ -18,6 +18,7 @@
 #include <vnet/session/session.h>
 #include <sys/epoll.h>
 #include <vnet/session/session_rules_table.h>
+#include <vnet/session/session_sdl.h>
 
 #define SESSION_TEST_I(_cond, _comment, _args...)		\
 ({								\
@@ -2504,8 +2505,7 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (session_test_command, static) = {
   .path = "test session",
   .short_help = "internal session unit tests",
   .function = session_test,
