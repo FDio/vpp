@@ -459,6 +459,11 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 "{",
                 "enable",
                 "}",
+                "plugin",
+                "auto_sdl_unittest_plugin.so",
+                "{",
+                "enable",
+                "}",
             ]
             + cls.extra_vpp_plugin_config
             + [
