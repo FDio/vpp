@@ -1616,6 +1616,14 @@ tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
     tm->punt_unknown6 = is_add;
 }
 
+void
+tcp_sdl_enable_disable (tcp_sdl_cb_fn_t fp)
+{
+  tcp_main_t *tm = &tcp_main;
+
+  tm->sdl_cb = fp;
+}
+
 /**
  * Initialize default values for tcp parameters
  */

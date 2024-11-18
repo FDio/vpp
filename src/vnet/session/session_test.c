@@ -417,6 +417,12 @@ api_session_rules_v2_dump (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_session_auto_sdl (vat_main_t *vam)
+{
+  return -1;
+}
+
 #include <vnet/session/session.api_test.c>
 
 /*
