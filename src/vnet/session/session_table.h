@@ -46,7 +46,7 @@ typedef struct _session_lookup_table
 
   /** For global tables only one fib proto is active. This is a
    * byproduct of fib table ids not necessarily being the same for
-   * identical fib idices of v4 and v6 fib protos */
+   * identical fib indices of v4 and v6 fib protos */
   u8 active_fib_proto;
   /* Required for pool_get_aligned(...) */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
