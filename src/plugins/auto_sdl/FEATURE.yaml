@@ -1,0 +1,12 @@
+---
+name: Auto SDL
+maintainer: Steven Luong <sluong@cisco.com>
+features:
+  - Auto SDL
+description: "Automatically create a Source Deny List (SDL) entry when the
+	     traffic arrived meets the specified threshold. An example usage
+	     is in TCP -- when TCP is flooded with SYN packets by the same
+	     source that exceed the threshold, an SDL entry is automatically
+	     created to deny a new TCP session to be created."
+state: production
+properties: [API, CLI, MULTITHREAD]
