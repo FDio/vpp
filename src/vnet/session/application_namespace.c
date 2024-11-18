@@ -152,6 +152,19 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a)
 		return rv;
 	    }
 	}
+      else
+	{
+	  /*
+	   * Not creating a new app_ns. We are just changing the binding of an
+	   * existing app_ns to different fib tables. Clean up the old session
+	   * table that was bound to these fib indices.
+	   */
+	  ns_index = app_namespace_index (app_ns);
+	  session_lookup_table_cleanup (FIB_PROTOCOL_IP4,
+					app_ns->ip4_fib_index, ns_index);
+	  session_lookup_table_cleanup (FIB_PROTOCOL_IP6,
+					app_ns->ip6_fib_index, ns_index);
+	}
 
       app_ns->ns_secret = a->secret;
       app_ns->sw_if_index = a->sw_if_index;
