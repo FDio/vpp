@@ -1,0 +1,25 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Cisco Systems, Inc.
+ */
+
+option version = "1.0.0";
+
+/** \brief auto sdl config
+    @param client_index - opaque cookie to identify the sender
+    @param threshold - number of times to hit for an auto SDL entry is created
+    @param remove_timeout - timeout value for the auto SDL entries after they are created
+    @param enable - enable/disable
+  */
+autoreply define auto_sdl_config {
+  u32 client_index;
+  u32 context;
+  u32 threshold [default=5];
+  u32 remove_timeout [default=300];
+  bool enable;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
