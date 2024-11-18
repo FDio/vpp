@@ -125,6 +125,28 @@ done:
 }
 
 static void
+vl_api_session_auto_sdl_t_handler (vl_api_session_auto_sdl_t *mp)
+{
+  vl_api_session_auto_sdl_reply_t *rmp;
+  session_auto_sdl_config_args_t args;
+  int rv = 0;
+
+  if ((session_sdl_is_enabled () == 0))
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  args.threshold = clib_host_to_net_u32 (mp->threshold);
+  args.remove_timeout = clib_host_to_net_u32 (mp->remove_timeout);
+  args.enable = mp->enable;
+  session_auto_sdl_config (&args);
+
+done:
+  REPLY_MACRO (VL_API_SESSION_AUTO_SDL_REPLY);
+}
+
+static void
 vl_api_session_sdl_add_del_t_handler (vl_api_session_sdl_add_del_t *mp)
 {
   vl_api_session_sdl_add_del_reply_t *rmp;
@@ -2446,6 +2468,10 @@ session_api_hookup (vlib_main_t *vm)
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
 
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_SESSION_AUTO_SDL,
+			      1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_SESSION_AUTO_SDL_REPLY, 1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_SESSION_SDL_ADD_DEL, 1);
   vl_api_set_msg_thread_safe (

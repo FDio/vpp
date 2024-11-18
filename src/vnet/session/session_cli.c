@@ -976,7 +976,7 @@ static clib_error_t *
 session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
-  session_enable_disable_args_t args;
+  session_enable_disable_args_t args = {};
   session_main_t *smm = &session_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1009,6 +1009,9 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
     if (args.rt_engine_type != smm->rt_engine_type)
       return clib_error_return (
 	0, "session is already enable. Must disable first");
+
+  if ((smm->is_enabled == 0) && (args.is_en == 0))
+    return clib_error_return (0, "session is already disable");
 
   return vnet_session_enable_disable (vm, &args);
 }
