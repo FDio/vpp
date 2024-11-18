@@ -2504,8 +2504,7 @@ done:
   return 0;
 }
 
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (session_test_command, static) = {
   .path = "test session",
   .short_help = "internal session unit tests",
   .function = session_test,

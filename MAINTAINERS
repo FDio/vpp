@@ -857,6 +857,12 @@ I:	cjson
 M:	Ole Troan <ot@cisco.com>
 F:	src/vppinfra/cJSON.[ch]
 
+Auto SDL
+I:	auto_sdl
+Y:	src/plugins/auto_sdl/FEATURE.yaml
+M:	Steven Luong <sluong@cisco.com>
+F:	src/plugins/auto_sdl
+
 VAT2
 I:	vat2
 M:	Ole Troan <ot@cisco.com>
