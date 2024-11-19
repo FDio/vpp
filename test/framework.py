@@ -428,7 +428,7 @@ class VppTestCase(VppAsfTestCase):
                 "packet checksum on layer #%d: %s" % (layer, temp[layer].name),
             )
             self.logger.debug(
-                "Checksum field `%s` on `%s` layer has correct value `%s`"
+                "Checksum field `%s` on `%s` layer has correct value `%x`"
                 % (cf, temp[layer].name, calc_sum)
             )
 
