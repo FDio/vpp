@@ -149,6 +149,8 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  dhcp_option_t *o, *end;
 	  u32 len = 0;
 	  u8 is_discover = 0;
+	  u8 is_request = 0;
+	  ip4_address_t dhcp_server_Identifier = { 0 };
 	  int space_left;
 
 	  bi0 = from[0];
@@ -230,12 +232,44 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, -(sizeof (*ip0)));
 	  ip0 = vlib_buffer_get_current (b0);
 
+	  o = h0->options;
+	  end = (void *) vlib_buffer_get_tail (b0);
+
+	  /* TLVs are not performance-friendly... */
+	  while (o->option != DHCP_PACKET_OPTION_END && o < end)
+	    {
+	      if (DHCP_PACKET_OPTION_MSG_TYPE == o->option)
+		{
+		  if (DHCP_PACKET_DISCOVER == o->data[0])
+		    {
+		      is_discover = 1;
+		    }
+		  else if (DHCP_PACKET_REQUEST == o->data[0])
+		    {
+		      is_request = 1;
+		    }
+		}
+	      else if (DHCP_PACKET_OPTION_SERVER_IDENTIFIER == o->option)
+		{
+		  dhcp_server_Identifier.as_u32 = o->data_as_u32[0];
+		}
+	      o = (dhcp_option_t *) (o->data + o->length);
+	    }
+
 	  /* disable UDP checksum */
 	  u0->checksum = 0;
 	  sum0 = ip0->checksum;
 	  old0 = ip0->dst_address.as_u32;
-	  new0 = server->dhcp_server.ip4.as_u32;
-	  ip0->dst_address.as_u32 = server->dhcp_server.ip4.as_u32;
+	  if (is_request)
+	    {
+	      new0 = dhcp_server_Identifier.as_u32;
+	      ip0->dst_address.as_u32 = dhcp_server_Identifier.as_u32;
+	    }
+	  else
+	    {
+	      new0 = server->dhcp_server.ip4.as_u32;
+	      ip0->dst_address.as_u32 = server->dhcp_server.ip4.as_u32;
+	    }
 	  sum0 = ip_csum_update (sum0, old0, new0,
 				 ip4_header_t /* structure */ ,
 				 dst_address /* changed member */ );
@@ -255,22 +289,6 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
 	  h0->gateway_ip_address.as_u32 = ia0->as_u32;
 	  pkts_to_server++;
-
-	  o = h0->options;
-	  end = (void *) vlib_buffer_get_tail (b0);
-
-	  /* TLVs are not performance-friendly... */
-	  while (o->option != DHCP_PACKET_OPTION_END && o < end)
-	    {
-	      if (DHCP_PACKET_OPTION_MSG_TYPE == o->option)
-		{
-		  if (DHCP_PACKET_DISCOVER == o->data[0])
-		    {
-		      is_discover = 1;
-		    }
-		}
-	      o = (dhcp_option_t *) (o->data + o->length);
-	    }
 
 	  if (o->option == DHCP_PACKET_OPTION_END && o <= end)
 	    {
