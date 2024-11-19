@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5dbdfe01_18a8b886",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-19T06:06:19Z",
+      "side": 1,
+      "message": "One more minor comment, otherwise LGTM.",
+      "revId": "c40b2e48fc4272ca423c52900f51b63f4fb67ad5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c18ae484_fd1f183e",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 46
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-19T06:06:19Z",
+      "side": 1,
+      "message": "Please delete this comment which is no longer necessary due to the side effects contained in get_tempdir().",
+      "range": {
+        "startLine": 230,
+        "startChar": 8,
+        "endLine": 230,
+        "endChar": 68
+      },
+      "revId": "c40b2e48fc4272ca423c52900f51b63f4fb67ad5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
