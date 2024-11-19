@@ -67,6 +67,7 @@ extern u8 *format_dhcp_packet_type (u8 * s, va_list * args);
 typedef enum dhcp_packet_option_t_
 {
   DHCP_PACKET_OPTION_MSG_TYPE = 53,
+  DHCP_PACKET_OPTION_SERVER_IDENTIFIER = 54,
   DHCP_PACKET_OPTION_END = 0xff,
 } dhcp_packet_option_t;
 
