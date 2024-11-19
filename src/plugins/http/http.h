@@ -385,6 +385,45 @@ typedef struct http_msg_
   http_msg_data_t data;
 } http_msg_t;
 
+typedef struct http_req_
+{
+  http_req_state_t state; /* state-machine state */
+
+  http_buffer_t tx_buf; /* message body from app to be sent */
+
+  /*
+   * for parsing of incoming message from transport
+   */
+  u8 *rx_buf;		/* this should hold at least control data */
+  u32 rx_buf_offset;	/* current offset during parsing */
+  u32 control_data_len; /* start line + headers + empty line */
+
+  u64 to_recv; /* remaining bytes of message body to receive from transport */
+
+  u8 is_tunnel;
+
+  /*
+   * parsed metadata for app
+   */
+  union
+  {
+    http_status_code_t status_code;
+    http_req_method_t method;
+  };
+
+  http_target_form_t target_form;
+  u32 target_path_offset;
+  u32 target_path_len;
+  u32 target_query_offset;
+  u32 target_query_len;
+
+  u32 headers_offset;
+  u32 headers_len;
+
+  u32 body_offset;
+  u64 body_len;
+} http_req_t;
+
 typedef struct http_tc_
 {
   union
@@ -406,28 +445,7 @@ typedef struct http_tc_
   u8 *host;
   u8 is_server;
 
-  /*
-   * Current request
-   */
-  http_req_state_t req_state;
-  http_req_method_t method;
-  u8 *rx_buf;
-  u32 rx_buf_offset;
-  http_buffer_t tx_buf;
-  u64 to_recv;
-  u32 bytes_dequeued;
-  u32 control_data_len; /* start line + headers + empty line */
-  http_target_form_t target_form;
-  u32 target_path_offset;
-  u32 target_path_len;
-  u32 target_query_offset;
-  u32 target_query_len;
-  u32 headers_offset;
-  u32 headers_len;
-  u32 body_offset;
-  u64 body_len;
-  u16 status_code;
-  u8 is_tunnel;
+  http_req_t req;
 } http_conn_t;
 
 typedef struct http_worker_
