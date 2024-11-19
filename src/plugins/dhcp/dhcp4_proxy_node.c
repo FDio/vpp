@@ -140,6 +140,9 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  u32 sw_if_index = 0;
 	  u32 original_sw_if_index = 0;
 	  u32 fib_index;
+	  vnet_main_t *vnm = vnet_get_main ();
+	  ip4_address_t _ia0, *ia0 = &_ia0;
+	  vnet_sw_interface_t *swif;
 	  dhcp_proxy_t *proxy;
 	  dhcp_server_t *server;
 	  u32 rx_sw_if_index;
@@ -205,6 +208,24 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	      goto do_trace;
 	    }
 
+	  original_sw_if_index = sw_if_index = rx_sw_if_index;
+	  swif = vnet_get_sw_interface (vnm, sw_if_index);
+	  if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+	    sw_if_index = swif->unnumbered_sw_if_index;
+
+	  /*
+	   * Get the first ip4 address on the [client-side]
+	   * RX interface, if not unnumbered. otherwise use
+	   * the loopback interface's ip address.
+	   */
+	  ia0 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
+	  if (ia0 == 0)
+	    {
+	      error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
+	      next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
+	      pkts_no_interface_address++;
+	      goto do_trace;
+	    }
 	  server = &proxy->dhcp_servers[0];
 	  vlib_buffer_advance (b0, -(sizeof (*ip0)));
 	  ip0 = vlib_buffer_get_current (b0);
@@ -222,7 +243,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
 	  sum0 = ip0->checksum;
 	  old0 = ip0->src_address.as_u32;
-	  new0 = proxy->dhcp_src_address.ip4.as_u32;
+	  new0 = ia0->as_u32;
 	  ip0->src_address.as_u32 = new0;
 	  sum0 = ip_csum_update (sum0, old0, new0,
 				 ip4_header_t /* structure */ ,
@@ -232,7 +253,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  /* Send to DHCP server via the configured FIB */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = server->server_fib_index;
 
-	  h0->gateway_ip_address = proxy->dhcp_src_address.ip4;
+	  h0->gateway_ip_address.as_u32 = ia0->as_u32;
 	  pkts_to_server++;
 
 	  o = h0->options;
@@ -253,32 +274,8 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
 	  if (o->option == DHCP_PACKET_OPTION_END && o <= end)
 	    {
-	      vnet_main_t *vnm = vnet_get_main ();
 	      u16 old_l0, new_l0;
-	      ip4_address_t _ia0, *ia0 = &_ia0;
 	      dhcp_vss_t *vss;
-	      vnet_sw_interface_t *swif;
-
-	      original_sw_if_index = sw_if_index =
-		vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      swif = vnet_get_sw_interface (vnm, sw_if_index);
-	      if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
-		sw_if_index = swif->unnumbered_sw_if_index;
-
-	      /*
-	       * Get the first ip4 address on the [client-side]
-	       * RX interface, if not unnumbered. otherwise use
-	       * the loopback interface's ip address.
-	       */
-	      ia0 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
-
-	      if (ia0 == 0)
-		{
-		  error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
-		  next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-		  pkts_no_interface_address++;
-		  goto do_trace;
-		}
 
 	      /* Add option 82 */
 	      o->option = 82;	/* option 82 */
