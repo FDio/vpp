@@ -58,10 +58,10 @@ format_http_req_state (u8 *s, va_list *va)
   do                                                                          \
     {                                                                         \
       HTTP_DBG (1, "changing http req state: %U -> %U",                       \
-		format_http_req_state, (_hc)->req_state,                      \
+		format_http_req_state, (_hc)->req.state,                      \
 		format_http_req_state, _state);                               \
-      ASSERT ((_hc)->req_state != HTTP_REQ_STATE_TUNNEL);                     \
-      (_hc)->req_state = _state;                                              \
+      ASSERT ((_hc)->req.state != HTTP_REQ_STATE_TUNNEL);                     \
+      (_hc)->req.state = _state;                                              \
     }                                                                         \
   while (0)
 
@@ -422,7 +422,7 @@ http_ts_reset_callback (session_t *ts)
   hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
 
   hc->state = HTTP_CONN_STATE_CLOSED;
-  http_buffer_free (&hc->tx_buf);
+  http_buffer_free (&hc->req.tx_buf);
   http_req_state_change (hc, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
   session_transport_reset_notify (&hc->connection);
 
@@ -515,8 +515,8 @@ http_read_message (http_conn_t *hc)
   if (PREDICT_FALSE (max_deq == 0))
     return -1;
 
-  vec_validate (hc->rx_buf, max_deq - 1);
-  n_read = svm_fifo_peek (ts->rx_fifo, 0, max_deq, hc->rx_buf);
+  vec_validate (hc->req.rx_buf, max_deq - 1);
+  n_read = svm_fifo_peek (ts->rx_fifo, 0, max_deq, hc->req.rx_buf);
   ASSERT (n_read == max_deq);
   HTTP_DBG (1, "read %u bytes from rx_fifo", n_read);
 
@@ -530,7 +530,7 @@ http_read_message_drop (http_conn_t *hc, u32 len)
 
   ts = session_get_from_handle (hc->h_tc_session_handle);
   svm_fifo_dequeue_drop (ts->rx_fifo, len);
-  vec_reset_length (hc->rx_buf);
+  vec_reset_length (hc->req.rx_buf);
 
   if (svm_fifo_is_empty (ts->rx_fifo))
     svm_fifo_unset_event (ts->rx_fifo);
@@ -543,7 +543,7 @@ http_read_message_drop_all (http_conn_t *hc)
 
   ts = session_get_from_handle (hc->h_tc_session_handle);
   svm_fifo_dequeue_drop_all (ts->rx_fifo);
-  vec_reset_length (hc->rx_buf);
+  vec_reset_length (hc->req.rx_buf);
 
   if (svm_fifo_is_empty (ts->rx_fifo))
     svm_fifo_unset_event (ts->rx_fifo);
@@ -589,64 +589,66 @@ v_find_index (u8 *vec, u32 offset, u32 num, char *str)
 }
 
 static void
-http_identify_optional_query (http_conn_t *hc)
+http_identify_optional_query (http_req_t *req)
 {
   int i;
-  for (i = hc->target_path_offset;
-       i < (hc->target_path_offset + hc->target_path_len); i++)
+  for (i = req->target_path_offset;
+       i < (req->target_path_offset + req->target_path_len); i++)
     {
-      if (hc->rx_buf[i] == '?')
+      if (req->rx_buf[i] == '?')
 	{
-	  hc->target_query_offset = i + 1;
-	  hc->target_query_len = hc->target_path_offset + hc->target_path_len -
-				 hc->target_query_offset;
-	  hc->target_path_len = hc->target_path_len - hc->target_query_len - 1;
+	  req->target_query_offset = i + 1;
+	  req->target_query_len = req->target_path_offset +
+				  req->target_path_len -
+				  req->target_query_offset;
+	  req->target_path_len =
+	    req->target_path_len - req->target_query_len - 1;
 	  break;
 	}
     }
 }
 
 static int
-http_get_target_form (http_conn_t *hc)
+http_get_target_form (http_req_t *req)
 {
   int i;
 
   /* "*" */
-  if ((hc->rx_buf[hc->target_path_offset] == '*') &&
-      (hc->target_path_len == 1))
+  if ((req->rx_buf[req->target_path_offset] == '*') &&
+      (req->target_path_len == 1))
     {
-      hc->target_form = HTTP_TARGET_ASTERISK_FORM;
+      req->target_form = HTTP_TARGET_ASTERISK_FORM;
       return 0;
     }
 
   /* 1*( "/" segment ) [ "?" query ] */
-  if (hc->rx_buf[hc->target_path_offset] == '/')
+  if (req->rx_buf[req->target_path_offset] == '/')
     {
       /* drop leading slash */
-      hc->target_path_len--;
-      hc->target_path_offset++;
-      hc->target_form = HTTP_TARGET_ORIGIN_FORM;
-      http_identify_optional_query (hc);
+      req->target_path_len--;
+      req->target_path_offset++;
+      req->target_form = HTTP_TARGET_ORIGIN_FORM;
+      http_identify_optional_query (req);
       return 0;
     }
 
   /* scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
-  i = v_find_index (hc->rx_buf, hc->target_path_offset, hc->target_path_len,
+  i = v_find_index (req->rx_buf, req->target_path_offset, req->target_path_len,
 		    "://");
   if (i > 0)
     {
-      hc->target_form = HTTP_TARGET_ABSOLUTE_FORM;
-      http_identify_optional_query (hc);
+      req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
+      http_identify_optional_query (req);
       return 0;
     }
 
   /* host ":" port */
-  for (i = hc->target_path_offset;
-       i < (hc->target_path_offset + hc->target_path_len); i++)
+  for (i = req->target_path_offset;
+       i < (req->target_path_offset + req->target_path_len); i++)
     {
-      if ((hc->rx_buf[i] == ':') && (isdigit (hc->rx_buf[i + 1])))
+      if ((req->rx_buf[i] == ':') && (isdigit (req->rx_buf[i + 1])))
 	{
-	  hc->target_form = HTTP_TARGET_AUTHORITY_FORM;
+	  req->target_form = HTTP_TARGET_AUTHORITY_FORM;
 	  return 0;
 	}
     }
@@ -655,13 +657,13 @@ http_get_target_form (http_conn_t *hc)
 }
 
 static int
-http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
+http_parse_request_line (http_req_t *req, http_status_code_t *ec)
 {
   int i, target_len;
   u32 next_line_offset, method_offset;
 
   /* request-line = method SP request-target SP HTTP-version CRLF */
-  i = v_find_index (hc->rx_buf, 8, 0, "\r\n");
+  i = v_find_index (req->rx_buf, 8, 0, "\r\n");
   if (i < 0)
     {
       clib_warning ("request line incomplete");
@@ -669,11 +671,11 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       return -1;
     }
   HTTP_DBG (2, "request line length: %d", i);
-  hc->control_data_len = i + 2;
-  next_line_offset = hc->control_data_len;
+  req->control_data_len = i + 2;
+  next_line_offset = req->control_data_len;
 
   /* there should be at least one more CRLF */
-  if (vec_len (hc->rx_buf) < (next_line_offset + 2))
+  if (vec_len (req->rx_buf) < (next_line_offset + 2))
     {
       clib_warning ("malformed message, too short");
       *ec = HTTP_STATUS_BAD_REQUEST;
@@ -686,45 +688,45 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
    * parse a request-line SHOULD ignore at least one empty line (CRLF)
    * received prior to the request-line.
    */
-  method_offset = hc->rx_buf[0] == '\r' && hc->rx_buf[1] == '\n' ? 2 : 0;
+  method_offset = req->rx_buf[0] == '\r' && req->rx_buf[1] == '\n' ? 2 : 0;
   /* parse method */
-  if (!memcmp (hc->rx_buf + method_offset, "GET ", 4))
+  if (!memcmp (req->rx_buf + method_offset, "GET ", 4))
     {
       HTTP_DBG (0, "GET method");
-      hc->method = HTTP_REQ_GET;
-      hc->target_path_offset = method_offset + 4;
+      req->method = HTTP_REQ_GET;
+      req->target_path_offset = method_offset + 4;
     }
-  else if (!memcmp (hc->rx_buf + method_offset, "POST ", 5))
+  else if (!memcmp (req->rx_buf + method_offset, "POST ", 5))
     {
       HTTP_DBG (0, "POST method");
-      hc->method = HTTP_REQ_POST;
-      hc->target_path_offset = method_offset + 5;
+      req->method = HTTP_REQ_POST;
+      req->target_path_offset = method_offset + 5;
     }
-  else if (!memcmp (hc->rx_buf + method_offset, "CONNECT ", 8))
+  else if (!memcmp (req->rx_buf + method_offset, "CONNECT ", 8))
     {
       HTTP_DBG (0, "CONNECT method");
-      hc->method = HTTP_REQ_CONNECT;
-      hc->target_path_offset = method_offset + 8;
-      hc->is_tunnel = 1;
+      req->method = HTTP_REQ_CONNECT;
+      req->target_path_offset = method_offset + 8;
+      req->is_tunnel = 1;
     }
   else
     {
-      if (hc->rx_buf[method_offset] - 'A' <= 'Z' - 'A')
+      if (req->rx_buf[method_offset] - 'A' <= 'Z' - 'A')
 	{
-	  clib_warning ("method not implemented: %8v", hc->rx_buf);
+	  clib_warning ("method not implemented: %8v", req->rx_buf);
 	  *ec = HTTP_STATUS_NOT_IMPLEMENTED;
 	  return -1;
 	}
       else
 	{
-	  clib_warning ("not method name: %8v", hc->rx_buf);
+	  clib_warning ("not method name: %8v", req->rx_buf);
 	  *ec = HTTP_STATUS_BAD_REQUEST;
 	  return -1;
 	}
     }
 
   /* find version */
-  i = v_find_index (hc->rx_buf, next_line_offset - 11, 11, " HTTP/");
+  i = v_find_index (req->rx_buf, next_line_offset - 11, 11, " HTTP/");
   if (i < 0)
     {
       clib_warning ("HTTP version not present");
@@ -732,26 +734,27 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       return -1;
     }
   /* verify major version */
-  if (isdigit (hc->rx_buf[i + 6]))
+  if (isdigit (req->rx_buf[i + 6]))
     {
-      if (hc->rx_buf[i + 6] != '1')
+      if (req->rx_buf[i + 6] != '1')
 	{
 	  clib_warning ("HTTP major version '%c' not supported",
-			hc->rx_buf[i + 6]);
+			req->rx_buf[i + 6]);
 	  *ec = HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED;
 	  return -1;
 	}
     }
   else
     {
-      clib_warning ("HTTP major version '%c' is not digit", hc->rx_buf[i + 6]);
+      clib_warning ("HTTP major version '%c' is not digit",
+		    req->rx_buf[i + 6]);
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
 
   /* parse request-target */
   HTTP_DBG (2, "http at %d", i);
-  target_len = i - hc->target_path_offset;
+  target_len = i - req->target_path_offset;
   HTTP_DBG (2, "target_len %d", target_len);
   if (target_len < 1)
     {
@@ -759,22 +762,22 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  hc->target_path_len = target_len;
-  hc->target_query_offset = 0;
-  hc->target_query_len = 0;
-  if (http_get_target_form (hc))
+  req->target_path_len = target_len;
+  req->target_query_offset = 0;
+  req->target_query_len = 0;
+  if (http_get_target_form (req))
     {
       clib_warning ("invalid target");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  HTTP_DBG (2, "request-target path length: %u", hc->target_path_len);
-  HTTP_DBG (2, "request-target path offset: %u", hc->target_path_offset);
-  HTTP_DBG (2, "request-target query length: %u", hc->target_query_len);
-  HTTP_DBG (2, "request-target query offset: %u", hc->target_query_offset);
+  HTTP_DBG (2, "request-target path length: %u", req->target_path_len);
+  HTTP_DBG (2, "request-target path offset: %u", req->target_path_offset);
+  HTTP_DBG (2, "request-target query length: %u", req->target_query_len);
+  HTTP_DBG (2, "request-target query offset: %u", req->target_query_offset);
 
   /* set buffer offset to nex line start */
-  hc->rx_buf_offset = next_line_offset;
+  req->rx_buf_offset = next_line_offset;
 
   return 0;
 }
@@ -799,14 +802,15 @@ http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
   while (0)
 
 static int
-http_parse_status_line (http_conn_t *hc)
+http_parse_status_line (http_req_t *req)
 {
   int i;
   u32 next_line_offset;
   u8 *p, *end;
   u16 status_code = 0;
+  http_main_t *hm = &http_main;
 
-  i = v_find_index (hc->rx_buf, 0, 0, "\r\n");
+  i = v_find_index (req->rx_buf, 0, 0, "\r\n");
   /* status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF */
   if (i < 0)
     {
@@ -819,13 +823,13 @@ http_parse_status_line (http_conn_t *hc)
       clib_warning ("status line too short (%d)", i);
       return -1;
     }
-  hc->control_data_len = i + 2;
-  next_line_offset = hc->control_data_len;
-  p = hc->rx_buf;
-  end = hc->rx_buf + i;
+  req->control_data_len = i + 2;
+  next_line_offset = req->control_data_len;
+  p = req->rx_buf;
+  end = req->rx_buf + i;
 
   /* there should be at least one more CRLF */
-  if (vec_len (hc->rx_buf) < (next_line_offset + 2))
+  if (vec_len (req->rx_buf) < (next_line_offset + 2))
     {
       clib_warning ("malformed message, too short");
       return -1;
@@ -876,63 +880,63 @@ http_parse_status_line (http_conn_t *hc)
       clib_warning ("invalid status code %d", status_code);
       return -1;
     }
-  hc->status_code = status_code;
-  HTTP_DBG (0, "status code: %d", hc->status_code);
+  req->status_code = hm->sc_by_u16[status_code];
+  HTTP_DBG (0, "status code: %d", status_code);
 
   /* set buffer offset to nex line start */
-  hc->rx_buf_offset = next_line_offset;
+  req->rx_buf_offset = next_line_offset;
 
   return 0;
 }
 
 static int
-http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
+http_identify_headers (http_req_t *req, http_status_code_t *ec)
 {
   int i;
 
   /* check if we have any header */
-  if ((hc->rx_buf[hc->rx_buf_offset] == '\r') &&
-      (hc->rx_buf[hc->rx_buf_offset + 1] == '\n'))
+  if ((req->rx_buf[req->rx_buf_offset] == '\r') &&
+      (req->rx_buf[req->rx_buf_offset + 1] == '\n'))
     {
       /* just another CRLF -> no headers */
       HTTP_DBG (2, "no headers");
-      hc->headers_len = 0;
-      hc->control_data_len += 2;
+      req->headers_len = 0;
+      req->control_data_len += 2;
       return 0;
     }
 
   /* find empty line indicating end of header section */
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "\r\n\r\n");
+  i = v_find_index (req->rx_buf, req->rx_buf_offset, 0, "\r\n\r\n");
   if (i < 0)
     {
       clib_warning ("cannot find header section end");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  hc->headers_offset = hc->rx_buf_offset;
-  hc->headers_len = i - hc->rx_buf_offset + 2;
-  hc->control_data_len += (hc->headers_len + 2);
-  HTTP_DBG (2, "headers length: %u", hc->headers_len);
-  HTTP_DBG (2, "headers offset: %u", hc->headers_offset);
+  req->headers_offset = req->rx_buf_offset;
+  req->headers_len = i - req->rx_buf_offset + 2;
+  req->control_data_len += (req->headers_len + 2);
+  HTTP_DBG (2, "headers length: %u", req->headers_len);
+  HTTP_DBG (2, "headers offset: %u", req->headers_offset);
 
   return 0;
 }
 
 static int
-http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
+http_identify_message_body (http_req_t *req, http_status_code_t *ec)
 {
   int i, value_len;
   u8 *end, *p, *value_start;
   u64 body_len = 0, digit;
 
-  hc->body_len = 0;
+  req->body_len = 0;
 
-  if (hc->headers_len == 0)
+  if (req->headers_len == 0)
     {
       HTTP_DBG (2, "no header, no message-body");
       return 0;
     }
-  if (hc->is_tunnel)
+  if (req->is_tunnel)
     {
       HTTP_DBG (2, "tunnel, no message-body");
       return 0;
@@ -941,23 +945,23 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
   /* TODO check for chunked transfer coding */
 
   /* try to find Content-Length header */
-  i = v_find_index (hc->rx_buf, hc->headers_offset, hc->headers_len,
+  i = v_find_index (req->rx_buf, req->headers_offset, req->headers_len,
 		    "Content-Length:");
   if (i < 0)
     {
       HTTP_DBG (2, "Content-Length header not present, no message-body");
       return 0;
     }
-  hc->rx_buf_offset = i + 15;
+  req->rx_buf_offset = i + 15;
 
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, hc->headers_len, "\r\n");
+  i = v_find_index (req->rx_buf, req->rx_buf_offset, req->headers_len, "\r\n");
   if (i < 0)
     {
       clib_warning ("end of line missing");
       *ec = HTTP_STATUS_BAD_REQUEST;
       return -1;
     }
-  value_len = i - hc->rx_buf_offset;
+  value_len = i - req->rx_buf_offset;
   if (value_len < 1)
     {
       clib_warning ("invalid header, content length value missing");
@@ -965,8 +969,8 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
       return -1;
     }
 
-  end = hc->rx_buf + hc->rx_buf_offset + value_len;
-  p = hc->rx_buf + hc->rx_buf_offset;
+  end = req->rx_buf + req->rx_buf_offset + value_len;
+  p = req->rx_buf + req->rx_buf_offset;
   /* skip leading whitespace */
   while (1)
     {
@@ -1022,11 +1026,11 @@ http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
       p++;
     }
 
-  hc->body_len = body_len;
+  req->body_len = body_len;
 
-  hc->body_offset = hc->headers_offset + hc->headers_len + 2;
-  HTTP_DBG (2, "body length: %llu", hc->body_len);
-  HTTP_DBG (2, "body offset: %u", hc->body_offset);
+  req->body_offset = req->headers_offset + req->headers_len + 2;
+  HTTP_DBG (2, "body length: %llu", req->body_len);
+  HTTP_DBG (2, "body offset: %u", req->body_offset);
 
   return 0;
 }
@@ -1041,7 +1045,6 @@ http_req_state_wait_transport_reply (http_conn_t *hc,
   session_t *as;
   u32 len, max_enq, body_sent;
   http_status_code_t ec;
-  http_main_t *hm = &http_main;
 
   rv = http_read_message (hc);
 
@@ -1052,23 +1055,23 @@ http_req_state_wait_transport_reply (http_conn_t *hc,
       return HTTP_SM_STOP;
     }
 
-  HTTP_DBG (3, "%v", hc->rx_buf);
+  HTTP_DBG (3, "%v", hc->req.rx_buf);
 
-  if (vec_len (hc->rx_buf) < 8)
+  if (vec_len (hc->req.rx_buf) < 8)
     {
       clib_warning ("response buffer too short");
       goto error;
     }
 
-  rv = http_parse_status_line (hc);
+  rv = http_parse_status_line (&hc->req);
   if (rv)
     goto error;
 
-  rv = http_identify_headers (hc, &ec);
+  rv = http_identify_headers (&hc->req, &ec);
   if (rv)
     goto error;
 
-  rv = http_identify_message_body (hc, &ec);
+  rv = http_identify_message_body (&hc->req, &ec);
   if (rv)
     goto error;
 
@@ -1077,33 +1080,33 @@ http_req_state_wait_transport_reply (http_conn_t *hc,
   as = session_get_from_handle (hc->h_pa_session_handle);
   max_enq = svm_fifo_max_enqueue (as->rx_fifo);
   max_enq -= sizeof (msg);
-  if (max_enq < hc->control_data_len)
+  if (max_enq < hc->req.control_data_len)
     {
       clib_warning ("not enough room for control data in app's rx fifo");
       goto error;
     }
-  len = clib_min (max_enq, vec_len (hc->rx_buf));
+  len = clib_min (max_enq, vec_len (hc->req.rx_buf));
 
   msg.type = HTTP_MSG_REPLY;
-  msg.code = hm->sc_by_u16[hc->status_code];
-  msg.data.headers_offset = hc->headers_offset;
-  msg.data.headers_len = hc->headers_len;
-  msg.data.body_offset = hc->body_offset;
-  msg.data.body_len = hc->body_len;
+  msg.code = hc->req.status_code;
+  msg.data.headers_offset = hc->req.headers_offset;
+  msg.data.headers_len = hc->req.headers_len;
+  msg.data.body_offset = hc->req.body_offset;
+  msg.data.body_len = hc->req.body_len;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
-			     { hc->rx_buf, len } };
+			     { hc->req.rx_buf, len } };
 
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
   ASSERT (rv == (sizeof (msg) + len));
 
   http_read_message_drop (hc, len);
 
-  body_sent = len - hc->control_data_len;
-  hc->to_recv = hc->body_len - body_sent;
-  if (hc->to_recv == 0)
+  body_sent = len - hc->req.control_data_len;
+  hc->req.to_recv = hc->req.body_len - body_sent;
+  if (hc->req.to_recv == 0)
     {
       /* all sent, we are done */
       http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_METHOD);
@@ -1145,23 +1148,23 @@ http_req_state_wait_transport_method (http_conn_t *hc,
   if (rv)
     return HTTP_SM_STOP;
 
-  HTTP_DBG (3, "%v", hc->rx_buf);
+  HTTP_DBG (3, "%v", hc->req.rx_buf);
 
-  if (vec_len (hc->rx_buf) < 8)
+  if (vec_len (hc->req.rx_buf) < 8)
     {
       ec = HTTP_STATUS_BAD_REQUEST;
       goto error;
     }
 
-  rv = http_parse_request_line (hc, &ec);
+  rv = http_parse_request_line (&hc->req, &ec);
   if (rv)
     goto error;
 
-  rv = http_identify_headers (hc, &ec);
+  rv = http_identify_headers (&hc->req, &ec);
   if (rv)
     goto error;
 
-  rv = http_identify_message_body (hc, &ec);
+  rv = http_identify_message_body (&hc->req, &ec);
   if (rv)
     goto error;
 
@@ -1169,40 +1172,40 @@ http_req_state_wait_transport_method (http_conn_t *hc,
    * if there is some space send also portion of body */
   as = session_get_from_handle (hc->h_pa_session_handle);
   max_enq = svm_fifo_max_enqueue (as->rx_fifo);
-  if (max_enq < hc->control_data_len)
+  if (max_enq < hc->req.control_data_len)
     {
       clib_warning ("not enough room for control data in app's rx fifo");
       ec = HTTP_STATUS_INTERNAL_ERROR;
       goto error;
     }
   /* do not dequeue more than one HTTP request, we do not support pipelining */
-  max_deq =
-    clib_min (hc->control_data_len + hc->body_len, vec_len (hc->rx_buf));
+  max_deq = clib_min (hc->req.control_data_len + hc->req.body_len,
+		      vec_len (hc->req.rx_buf));
   len = clib_min (max_enq, max_deq);
 
   msg.type = HTTP_MSG_REQUEST;
-  msg.method_type = hc->method;
+  msg.method_type = hc->req.method;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
-  msg.data.target_form = hc->target_form;
-  msg.data.target_path_offset = hc->target_path_offset;
-  msg.data.target_path_len = hc->target_path_len;
-  msg.data.target_query_offset = hc->target_query_offset;
-  msg.data.target_query_len = hc->target_query_len;
-  msg.data.headers_offset = hc->headers_offset;
-  msg.data.headers_len = hc->headers_len;
-  msg.data.body_offset = hc->body_offset;
-  msg.data.body_len = hc->body_len;
+  msg.data.target_form = hc->req.target_form;
+  msg.data.target_path_offset = hc->req.target_path_offset;
+  msg.data.target_path_len = hc->req.target_path_len;
+  msg.data.target_query_offset = hc->req.target_query_offset;
+  msg.data.target_query_len = hc->req.target_query_len;
+  msg.data.headers_offset = hc->req.headers_offset;
+  msg.data.headers_len = hc->req.headers_len;
+  msg.data.body_offset = hc->req.body_offset;
+  msg.data.body_len = hc->req.body_len;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
-			     { hc->rx_buf, len } };
+			     { hc->req.rx_buf, len } };
 
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
   ASSERT (rv == (sizeof (msg) + len));
 
-  body_sent = len - hc->control_data_len;
-  hc->to_recv = hc->body_len - body_sent;
-  if (hc->to_recv == 0)
+  body_sent = len - hc->req.control_data_len;
+  hc->req.to_recv = hc->req.body_len - body_sent;
+  if (hc->req.to_recv == 0)
     {
       /* drop everything, we do not support pipelining */
       http_read_message_drop_all (hc);
@@ -1285,14 +1288,14 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 
   /* RFC9110 9.3.6: A server MUST NOT send Content-Length header field in a
    * 2xx (Successful) response to CONNECT. */
-  if (hc->is_tunnel && http_status_code_str[msg.code][0] == '2')
+  if (hc->req.is_tunnel && http_status_code_str[msg.code][0] == '2')
     {
       ASSERT (msg.data.body_len == 0);
       next_state = HTTP_REQ_STATE_TUNNEL;
       /* cleanup some stuff we don't need anymore in tunnel mode */
       http_conn_timer_stop (hc);
-      vec_free (hc->rx_buf);
-      http_buffer_free (&hc->tx_buf);
+      vec_free (hc->req.rx_buf);
+      http_buffer_free (&hc->req.tx_buf);
     }
   else
     response = format (response, content_len_template, msg.data.body_len);
@@ -1338,7 +1341,7 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   if (msg.data.body_len)
     {
       /* Start sending the actual data */
-      http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
+      http_buffer_init (&hc->req.tx_buf, msg_to_buf_type[msg.data.type],
 			as->tx_fifo, msg.data.body_len);
       next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
@@ -1459,7 +1462,7 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 			/* Any headers from app? */
 			msg.data.headers_len ? "" : "\r\n");
 
-      http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type],
+      http_buffer_init (&hc->req.tx_buf, msg_to_buf_type[msg.data.type],
 			as->tx_fifo, msg.data.body_len);
 
       next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
@@ -1561,7 +1564,7 @@ http_req_state_transport_io_more_data (http_conn_t *hc,
     }
 
   svm_fifo_dequeue_drop (ts->rx_fifo, rv);
-  if (rv > hc->to_recv)
+  if (rv > hc->req.to_recv)
     {
       clib_warning ("http protocol error: received more data than expected");
       session_transport_closing_notify (&hc->connection);
@@ -1569,13 +1572,13 @@ http_req_state_transport_io_more_data (http_conn_t *hc,
       http_req_state_change (hc, HTTP_REQ_STATE_WAIT_APP_METHOD);
       return HTTP_SM_ERROR;
     }
-  hc->to_recv -= rv;
-  HTTP_DBG (1, "drained %d from ts; remains %lu", rv, hc->to_recv);
+  hc->req.to_recv -= rv;
+  HTTP_DBG (1, "drained %d from ts; remains %lu", rv, hc->req.to_recv);
 
   /* Finished transaction:
    * server back to HTTP_REQ_STATE_WAIT_APP_REPLY
    * client to HTTP_REQ_STATE_WAIT_APP_METHOD */
-  if (hc->to_recv == 0)
+  if (hc->req.to_recv == 0)
     http_req_state_change (hc, hc->is_server ? HTTP_REQ_STATE_WAIT_APP_REPLY :
 					       HTTP_REQ_STATE_WAIT_APP_METHOD);
 
@@ -1593,7 +1596,7 @@ static http_sm_result_t
 http_req_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 {
   u32 max_send = 64 << 10, n_segs;
-  http_buffer_t *hb = &hc->tx_buf;
+  http_buffer_t *hb = &hc->req.tx_buf;
   svm_fifo_seg_t *seg;
   session_t *ts;
   int sent = 0;
@@ -1637,7 +1640,7 @@ http_req_state_app_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
       http_req_state_change (hc, hc->is_server ?
 				   HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD :
 				   HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
-      http_buffer_free (&hc->tx_buf);
+      http_buffer_free (hb);
     }
 
   return HTTP_SM_STOP;
@@ -1751,7 +1754,7 @@ static http_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
 static_always_inline int
 http_req_state_is_tx_valid (http_conn_t *hc)
 {
-  return tx_state_funcs[hc->req_state] ? 1 : 0;
+  return tx_state_funcs[hc->req.state] ? 1 : 0;
 }
 
 static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1768,7 +1771,7 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
 static_always_inline int
 http_req_state_is_rx_valid (http_conn_t *hc)
 {
-  return rx_state_funcs[hc->req_state] ? 1 : 0;
+  return rx_state_funcs[hc->req.state] ? 1 : 0;
 }
 
 static_always_inline void
@@ -1780,9 +1783,9 @@ http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp,
   do
     {
       if (is_tx)
-	res = tx_state_funcs[hc->req_state](hc, sp);
+	res = tx_state_funcs[hc->req.state](hc, sp);
       else
-	res = rx_state_funcs[hc->req_state](hc, sp);
+	res = rx_state_funcs[hc->req.state](hc, sp);
       if (res == HTTP_SM_ERROR)
 	{
 	  HTTP_DBG (1, "error in state machine %d", res);
@@ -1816,7 +1819,7 @@ http_ts_rx_callback (session_t *ts)
       clib_warning ("hc [%u]%x invalid rx state: http req state "
 		    "'%U', session state '%U'",
 		    ts->thread_index, ts->opaque, format_http_req_state,
-		    hc->req_state, format_http_conn_state, hc);
+		    hc->req.state, format_http_conn_state, hc);
       svm_fifo_dequeue_drop_all (ts->rx_fifo);
       return 0;
     }
@@ -1856,9 +1859,9 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, ts->opaque);
 
-  vec_free (hc->rx_buf);
+  vec_free (hc->req.rx_buf);
 
-  http_buffer_free (&hc->tx_buf);
+  http_buffer_free (&hc->req.tx_buf);
 
   if (hc->pending_timer == 0)
     http_conn_timer_stop (hc);
@@ -2184,7 +2187,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
       clib_warning ("hc [%u]%x invalid tx state: http req state "
 		    "'%U', session state '%U'",
 		    as->thread_index, as->connection_index,
-		    format_http_req_state, hc->req_state,
+		    format_http_req_state, hc->req.state,
 		    format_http_conn_state, hc);
       svm_fifo_dequeue_drop_all (as->tx_fifo);
       return 0;
@@ -2210,7 +2213,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
   http_conn_t *hc = (http_conn_t *) tc;
   HTTP_DBG (1, "hc [%u]%x", vlib_get_thread_index (), hc->h_hc_index);
 
-  if (hc->req_state == HTTP_REQ_STATE_TUNNEL)
+  if (hc->req.state == HTTP_REQ_STATE_TUNNEL)
     http_req_state_tunnel_rx (hc, 0);
 
   return 0;
