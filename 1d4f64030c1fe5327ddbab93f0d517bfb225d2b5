@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2117b9db_cd783144",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1233,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-19T07:14:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "671a3632_6061522e",
+      "revId": "1d4f64030c1fe5327ddbab93f0d517bfb225d2b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9d9d4e79_522cbe02",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-11-18T21:14:41Z",
       "side": 1,
       "message": "Quick comment explaining this",
+      "revId": "1d4f64030c1fe5327ddbab93f0d517bfb225d2b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c99828c7_c11826ef",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1245,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-11-19T07:14:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d9d4e79_522cbe02",
       "revId": "1d4f64030c1fe5327ddbab93f0d517bfb225d2b5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
