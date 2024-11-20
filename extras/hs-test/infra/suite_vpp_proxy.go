@@ -189,7 +189,7 @@ var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, func() {
+var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	var s VppProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
