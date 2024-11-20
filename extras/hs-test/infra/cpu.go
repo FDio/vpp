@@ -35,7 +35,7 @@ func iterateAndAppend(start int, end int, slice []int) []int {
 
 var cpuAllocator *CpuAllocatorT = nil
 
-func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, error) {
+func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int, offset int) (*CpuContext, error) {
 	var cpuCtx CpuContext
 	// indexes, not actual cores
 	var minCpu, maxCpu int
@@ -57,13 +57,43 @@ func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, er
 	if containerCount == 1 {
 		cpuCtx.cpus = c.cpus[minCpu : minCpu+nCpus]
 	} else if containerCount > 1 && containerCount <= c.maxContainerCount {
-		cpuCtx.cpus = c.cpus[minCpu+(nCpus*(containerCount-1)) : minCpu+(nCpus*containerCount)]
+		cpuCtx.cpus = c.cpus[offset+minCpu+(nCpus*(containerCount-1)) : offset+minCpu+(nCpus*containerCount)]
 	} else {
 		return nil, fmt.Errorf("too many containers; CPU allocation for >%d containers is not implemented", c.maxContainerCount)
 	}
 	cpuCtx.cpuAllocator = c
 	return &cpuCtx, nil
 }
+
+// func (c *CpuAllocatorT) AllocateVppMultiWorker(containerCount int, nCpus int, offset int) (*CpuContext, error) {
+// 	var cpuCtx CpuContext
+// 	// indexes, not actual cores
+// 	var minCpu, maxCpu int
+
+// 	if c.runningInCi {
+// 		minCpu = ((c.buildNumber) * c.maxContainerCount * nCpus) + offset
+// 		maxCpu = ((c.buildNumber + 1) * c.maxContainerCount * nCpus) - 1 + offset
+// 	} else {
+// 		minCpu = ((GinkgoParallelProcess() - 1) * c.maxContainerCount * nCpus) + offset
+// 		maxCpu = (GinkgoParallelProcess() * c.maxContainerCount * nCpus) - 1 + offset
+// 	}
+
+// 	if len(c.cpus)-1 < maxCpu {
+// 		err := fmt.Errorf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
+// 			"available cores: %v", nCpus*containerCount, len(c.cpus), minCpu, maxCpu, len(c.cpus)-1, c.cpus)
+// 		return nil, err
+// 	}
+
+// 	if containerCount == 1 {
+// 		cpuCtx.cpus = c.cpus[minCpu : minCpu+nCpus]
+// 	} else if containerCount > 1 && containerCount <= c.maxContainerCount {
+// 		cpuCtx.cpus = c.cpus[minCpu+(nCpus*(containerCount-1)) : minCpu+(nCpus*containerCount)]
+// 	} else {
+// 		return nil, fmt.Errorf("too many containers; CPU allocation for >%d containers is not implemented", c.maxContainerCount)
+// 	}
+// 	cpuCtx.cpuAllocator = c
+// 	return &cpuCtx, nil
+// }
 
 func (c *CpuAllocatorT) readCpus() error {
 	var first, second, third, fourth int
