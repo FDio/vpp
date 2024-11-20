@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9de74b47_f6dfea64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-11-20T04:06:26Z",
+      "side": 1,
+      "message": "Noticed this while investigating failure of debug job [0] run against gerrit 41846. \n\n[0] https://jenkins.fd.io/view/vpp/job/vpp-debug-verify-master-ubuntu2204-x86_64/6635/",
+      "revId": "fc77c50549f7a36864d85330e96919a221d27358",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
