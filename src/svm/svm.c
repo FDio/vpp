@@ -943,7 +943,8 @@ svm_region_find_or_create (svm_map_region_args_t * a)
     {
       if (clib_bitmap_get_no_check (root_rp->bitmap, index) == 0)
 	{
-	  for (i = 0; i < (need_nbits - 1) && (index + i < root_rp->bitmap_size); i++)
+	  for (i = 0;
+	       i < (need_nbits - 1) && (index + i < root_rp->bitmap_size); i++)
 	    {
 	      if (clib_bitmap_get_no_check (root_rp->bitmap, index + i) == 1)
 		{
