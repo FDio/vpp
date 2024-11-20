@@ -892,7 +892,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
   svm_main_region_t *mp;
   svm_region_t *rp;
   uword need_nbits;
-  int index, i;
+  int index;
   void *oldheap;
   uword *p;
   u8 *name;
@@ -933,39 +933,31 @@ svm_region_find_or_create (svm_map_region_args_t * a)
 
   need_nbits = a->size / MMAP_PAGESIZE;
 
-  index = 1;			/* $$$ fixme, figure out how many bit to really skip */
-
   /*
    * Scan the virtual space allocation bitmap, looking for a large
    * enough chunk
    */
-  do
+  index = 0;
+  for (;;)
     {
-      if (clib_bitmap_get_no_check (root_rp->bitmap, index) == 0)
+      index = clib_bitmap_next_clear (root_rp->bitmap, index);
+      uword n = clib_bitmap_next_set (root_rp->bitmap, index + 1);
+      /* if we reach the end of the bitmap, clib_bitmap_next_set() returns ~0
+       * in that case, check the remaining is enough */
+      if (~0 == n &&
+	  vec_len (root_rp->bitmap) * BITS (root_rp->bitmap[0]) - index <
+	    need_nbits)
 	{
-	  for (i = 0; i < (need_nbits - 1); i++)
-	    {
-	      if (clib_bitmap_get_no_check (root_rp->bitmap, index + i) == 1)
-		{
-		  index = index + i;
-		  goto next;
-		}
-	    }
-	  break;
+	  clib_warning ("region %s: not enough VM to allocate 0x%llx (%lld)",
+			root_rp->region_name, a->size, a->size);
+	  svm_pop_heap (oldheap);
+	  region_unlock (root_rp);
+	  return 0;
 	}
-      index++;
-    next:;
-    }
-  while (index < root_rp->bitmap_size);
-
-  /* Completely out of VM? */
-  if (index >= root_rp->bitmap_size)
-    {
-      clib_warning ("region %s: not enough VM to allocate 0x%llx (%lld)",
-		    root_rp->region_name, a->size, a->size);
-      svm_pop_heap (oldheap);
-      region_unlock (root_rp);
-      return 0;
+      if (n - index >= need_nbits)
+	break; /* found */
+      /* continue looking for next */
+      index = n + 1;
     }
 
   /*
@@ -974,11 +966,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
 #if CLIB_DEBUG > 1
   clib_warning ("set %d bits at index %d", need_nbits, index);
 #endif
-
-  for (i = 0; i < need_nbits; i++)
-    {
-      clib_bitmap_set_no_check (root_rp->bitmap, index + i, 1);
-    }
+  clib_bitmap_set_region (root_rp->bitmap, index, 1, need_nbits);
 
   /* Place this region where it goes... */
   a->baseva = root_rp->virtual_base + index * MMAP_PAGESIZE;
