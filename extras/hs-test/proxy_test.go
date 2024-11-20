@@ -9,6 +9,7 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest)
+	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
@@ -25,6 +26,10 @@ func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 	s.Log("proxy configured: " + output)
 }
 
+func VppProxyHttpGetTcpMTTest(s *VppProxySuite) {
+	VppProxyHttpGetTcpTest(s)
+}
+
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
 	configureVppProxy(s, "tcp", proxyPort)
@@ -37,6 +42,10 @@ func VppProxyHttpGetTlsTest(s *VppProxySuite) {
 	configureVppProxy(s, "tls", proxyPort)
 	uri := fmt.Sprintf("https://%s:%d/httpTestFile", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResource(uri)
+}
+
+func VppProxyHttpPutTcpMTTest(s *VppProxySuite) {
+	VppProxyHttpPutTcpTest(s)
 }
 
 func VppProxyHttpPutTcpTest(s *VppProxySuite) {
