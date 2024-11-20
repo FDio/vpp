@@ -35,17 +35,17 @@ func iterateAndAppend(start int, end int, slice []int) []int {
 
 var cpuAllocator *CpuAllocatorT = nil
 
-func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, error) {
+func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int, offset int) (*CpuContext, error) {
 	var cpuCtx CpuContext
 	// indexes, not actual cores
 	var minCpu, maxCpu int
 
 	if c.runningInCi {
-		minCpu = ((c.buildNumber) * c.maxContainerCount * nCpus)
-		maxCpu = ((c.buildNumber + 1) * c.maxContainerCount * nCpus) - 1
+		minCpu = ((c.buildNumber) * c.maxContainerCount * nCpus) + offset
+		maxCpu = ((c.buildNumber + 1) * c.maxContainerCount * nCpus) - 1 + offset
 	} else {
-		minCpu = ((GinkgoParallelProcess() - 1) * c.maxContainerCount * nCpus)
-		maxCpu = (GinkgoParallelProcess() * c.maxContainerCount * nCpus) - 1
+		minCpu = ((GinkgoParallelProcess() - 1) * c.maxContainerCount * nCpus) + offset
+		maxCpu = (GinkgoParallelProcess() * c.maxContainerCount * nCpus) - 1 + offset
 	}
 
 	if len(c.cpus)-1 < maxCpu {
