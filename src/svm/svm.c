@@ -943,7 +943,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
     {
       if (clib_bitmap_get_no_check (root_rp->bitmap, index) == 0)
 	{
-	  for (i = 0; i < (need_nbits - 1); i++)
+	  for (i = 0; i < (need_nbits - 1) && (index + i < root_rp->bitmap_size); i++)
 	    {
 	      if (clib_bitmap_get_no_check (root_rp->bitmap, index + i) == 1)
 		{
@@ -959,7 +959,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
   while (index < root_rp->bitmap_size);
 
   /* Completely out of VM? */
-  if (index >= root_rp->bitmap_size)
+  if (index + i >= root_rp->bitmap_size)
     {
       clib_warning ("region %s: not enough VM to allocate 0x%llx (%lld)",
 		    root_rp->region_name, a->size, a->size);
