@@ -160,6 +160,8 @@ ct_session_get_peer (session_t * s)
   ct_connection_t *ct, *peer_ct;
   ct = ct_connection_get (s->connection_index, s->thread_index);
   peer_ct = ct_connection_get (ct->peer_index, s->thread_index);
+  if (!peer_ct)
+    return 0;
   return session_get (peer_ct->c_s_index, s->thread_index);
 }
 
