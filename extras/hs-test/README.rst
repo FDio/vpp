@@ -68,6 +68,10 @@ For adding a new suite, please see `Modifying the framework`_ below.
 Assumed are two docker containers, each with its own VPP instance running. One VPP then pings the other.
 This can be put in file ``extras/hs-test/my_test.go`` and run with command ``make test TEST=MyTest``.
 
+To add a multi-worker test, name it ``[name]MTTest``. Doing this, the framework will allocate 3 CPUs to a VPP container, no matter what ``CPUS`` is set to.
+Only a single multi-worker VPP container is supported for now. Please register multi-worker tests as Solo tests to avoid reusing the same cores
+when running in parallel.
+
 ::
 
         package main
@@ -77,7 +81,12 @@ This can be put in file ``extras/hs-test/my_test.go`` and run with command ``mak
         )
 
         func init(){
-                RegisterMySuiteTest(MyTest)
+                RegisterMySuiteTests(MyTest)
+                RegisterSoloMySuiteTests(MyMTTest)
+        }
+
+        func MyMTTest(s *MySuite){
+                MyTest(s)
         }
 
         func MyTest(s *MySuite) {
@@ -86,8 +95,8 @@ This can be put in file ``extras/hs-test/my_test.go`` and run with command ``mak
                 serverVethAddress := s.NetInterfaces["server-iface"].Ip4AddressString()
 
                 result := clientVpp.Vppctl("ping " + serverVethAddress)
-                s.Log(result)
                 s.AssertNotNil(result)
+                s.Log(result)
         }
 
 
@@ -100,6 +109,7 @@ The framework allows us to filter test cases in a few different ways, using ``ma
         * File name
         * Test name
         * All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
+        * Multiple tests/suites: ``make test TEST=HttpClient,LdpSuite``
 
 **Names are case sensitive!**
 
@@ -307,6 +317,12 @@ or a new version incompatibility issue occurs.
 
 Debugging a test
 ----------------
+
+DRYRUN
+^^^^^^
+
+``make test TEST=[name] DRYRUN=true`` will setup and start most of the containers, but won't run any tests or start VPP. VPP and interfaces will be
+configured automatically once you start VPP with the generated startup.conf file.
 
 GDB
 ^^^
