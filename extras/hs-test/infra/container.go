@@ -214,7 +214,7 @@ func (c *Container) Create() error {
 
 func (c *Container) allocateCpus() {
 	c.Suite.StartedContainers = append(c.Suite.StartedContainers, c)
-	c.AllocatedCpus = c.Suite.AllocateCpus()
+	c.AllocatedCpus = c.Suite.AllocateCpus(c.Name)
 	c.Suite.Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 
