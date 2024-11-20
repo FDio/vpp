@@ -234,7 +234,7 @@ class TestSessionSDL(VppTestCase):
             self.create_rule(rmt=self.loop1.local_ip6 + "/128", action_index=0, tag="")
         )
         self.apply_rules(rules, is_add=1, appns_index=0)
-        filter = self.vapi.session_sdl_v2_dump()
+        filter = self.vapi.session_sdl_v3_dump()
         self.assertEqual(filter[0].rmt, IPv6Network(self.loop1.local_ip6 + "/128"))
 
         error = self.vapi.cli_return_response(client_cmd)
