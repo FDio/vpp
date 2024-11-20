@@ -61,8 +61,12 @@ endif
 
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux anolis,$(OS_ID)),$(OS_ID))
 PKG=rpm
+endif
+
+ifeq ($(filter anolis,$(OS_ID)),$(OS_ID))
+OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2 -d= | sed -e 's/\"//g' | cut -d. -f1)
 endif
 
 # +libganglia1-dev if building the gmond plugin
@@ -179,6 +183,14 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += libarchive cmake
 	RPM_DEPENDS += infiniband-diags libibumad
+	RPM_DEPENDS += libpcap-devel llvm-toolset
+	RPM_DEPENDS_GROUPS = 'Development Tools'
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),anolis-8)
+	RPM_DEPENDS += yum-utils
+	RPM_DEPENDS += compat-openssl10 openssl-devel
+	RPM_DEPENDS += python2-devel python36-devel python3-ply
+	RPM_DEPENDS += python3-virtualenv python3-jsonschema
+	RPM_DEPENDS += libarchive cmake
 	RPM_DEPENDS += libpcap-devel llvm-toolset
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else
@@ -387,6 +399,12 @@ else ifeq ($(OS_ID),fedora)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 endif
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),anolis-8)
+	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
+	@sudo -E dnf config-manager --set-enabled \
+          $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1|grep -v source)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install --skip-broken $(CONFIRM) $(RPM_DEPENDS)
 else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION_ID)),$(OS_ID)-$(OS_VERSION_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
