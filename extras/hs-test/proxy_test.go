@@ -9,6 +9,7 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest)
+	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
@@ -23,6 +24,10 @@ func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 	}
 	output := vppProxy.Vppctl(cmd)
 	s.Log("proxy configured: " + output)
+}
+
+func VppProxyHttpGetTcpMTTest(s *VppProxySuite) {
+	VppProxyHttpGetTcpTest(s)
 }
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {

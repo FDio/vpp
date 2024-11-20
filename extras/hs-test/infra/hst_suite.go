@@ -135,12 +135,25 @@ func (s *HstSuite) SetupSuite() {
 	s.CpuCount = *NConfiguredCpus
 }
 
-func (s *HstSuite) AllocateCpus() []int {
-	cpuCtx, err := s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount)
-	// using Fail instead of AssertNil to make error message more readable
-	if err != nil {
-		Fail(fmt.Sprint(err))
+func (s *HstSuite) AllocateCpus(containerName string) []int {
+	var cpuCtx *CpuContext
+	var err error
+	currentTestName := CurrentSpecReport().LeafNodeText
+
+	if strings.Contains(currentTestName, "MTTest") {
+		prevContainerCount := s.CpuAllocator.maxContainerCount
+		if strings.Contains(containerName, "vpp") {
+			s.CpuAllocator.maxContainerCount = 1
+			cpuCtx, err = s.CpuAllocator.Allocate(1, 3, 0)
+			s.CpuAllocator.maxContainerCount = prevContainerCount
+		} else {
+			cpuCtx, err = s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount, 2)
+		}
+	} else {
+		cpuCtx, err = s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount, 0)
 	}
+
+	s.AssertNil(err)
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
 }
@@ -369,8 +382,8 @@ func (s *HstSuite) SkipIfNotEnoughAvailableCpus() {
 
 	if availableCpus < maxRequestedCpu {
 		s.Skip(fmt.Sprintf("Test case cannot allocate requested cpus "+
-			"(%d cpus * %d containers, %d available). Try using 'CPU0=true'",
-			s.CpuCount, s.CpuAllocator.maxContainerCount, availableCpus))
+			"(%d containers * %d cpus, %d available). Try using 'CPU0=true'",
+			s.CpuAllocator.maxContainerCount, s.CpuCount, availableCpus))
 	}
 }
 
