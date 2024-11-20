@@ -564,6 +564,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
   vnet_dev_port_if_create_args_t *a = ptr;
   vnet_dev_port_interfaces_t *ifs = port->interfaces;
   vnet_dev_instance_t *di;
+  vnet_dev_tx_queue_t *txq, **qp;
   vnet_dev_rv_t rv;
   u16 ti = 0;
 
@@ -614,16 +615,19 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
     if ((rv = vnet_dev_tx_queue_alloc (vm, port, ifs->txq_sz)) != VNET_DEV_OK)
       goto error;
 
-  foreach_vnet_dev_port_tx_queue (q, port)
+  for (ti = 0; ti < n_threads; ti++)
     {
       /* if consistent_qp is enabled, we start by assigning queues to workers
        * and we end with main */
       u16 real_ti = (ti + a->consistent_qp) % n_threads;
-      q->assigned_threads = clib_bitmap_set (q->assigned_threads, real_ti, 1);
+      qp = pool_elt_at_index (port->tx_queues, ti % ifs->num_tx_queues);
+      txq = qp[0];
+      txq->assigned_threads =
+	clib_bitmap_set (txq->assigned_threads, real_ti, 1);
       log_debug (dev, "port %u tx queue %u assigned to thread %u",
-		 port->port_id, q->queue_id, real_ti);
-      if (++ti >= n_threads)
-	break;
+		 port->port_id, txq->queue_id, real_ti);
+      if (clib_bitmap_count_set_bits (txq->assigned_threads) > 1)
+	txq->lock_needed = 1;
     }
 
   pool_get (dm->dev_instances, di);
