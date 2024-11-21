@@ -344,7 +344,6 @@ hc_rx_callback (session_t *s)
 	    format (0, "%U", format_http_status_code, msg.code);
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
-	  http_header_table_t *ht;
 	  vec_validate (hcm->resp_headers, msg.data.headers_len - 1);
 	  vec_set_len (hcm->resp_headers, msg.data.headers_len);
 	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
@@ -352,14 +351,6 @@ hc_rx_callback (session_t *s)
 
 	  ASSERT (rv == msg.data.headers_len);
 	  HTTP_DBG (1, (char *) format (0, "%v", hcm->resp_headers));
-	  if (http_parse_headers (hcm->resp_headers, &ht))
-	    {
-	      clib_warning ("invalid headers received");
-	      vlib_process_signal_event_mt (
-		wrk->vlib_main, hcm->cli_node_index, HC_GENERIC_ERR, 0);
-	      return -1;
-	    }
-	  http_free_header_table (ht);
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
 	}
