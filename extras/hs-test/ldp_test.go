@@ -9,17 +9,35 @@ import (
 )
 
 func init() {
-	RegisterLdpTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest, RedisBenchmarkTest)
+	RegisterLdpTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest, RedisBenchmarkTest, LDPreloadIperfTlsTcpTest)
 }
 
 func LDPreloadIperfVppInterruptModeTest(s *LdpSuite) {
-	LDPreloadIperfVppTest(s)
+	ldPreloadIperfVpp(s, true)
+}
+
+func LDPreloadIperfTlsTcpTest(s *LdpSuite) {
+	for _, c := range s.Containers {
+		c.Exec(false, "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.key -out crt.crt -subj \"/CN=test\"")
+		c.AddEnvVar("LDP_TRANSPARENT_TLS", "1")
+		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
+		c.AddEnvVar("LDP_TLS_KEY_FILE", "/key.key")
+	}
+	ldPreloadIperfVpp(s, false)
 }
 
 func LDPreloadIperfVppTest(s *LdpSuite) {
+	ldPreloadIperfVpp(s, true)
+}
+
+func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
+	protocol := ""
+	if useUdp {
+		protocol = " -u "
+	}
 	clientContainer := s.GetContainerByName("client-vpp")
 	serverContainer := s.GetContainerByName("server-vpp")
-
+	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
@@ -38,10 +56,9 @@ func LDPreloadIperfVppTest(s *LdpSuite) {
 	err := <-srvCh
 	s.AssertNil(err, fmt.Sprint(err))
 
-	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -c " + serverVethAddress + " -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
+		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -p " + s.GetPortFromPpid() + protocol
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
 
