@@ -36,7 +36,7 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat)
+		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -1227,12 +1227,12 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 	validatePostInterfaceStats(s, resp)
 
 	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\n Content-Length:  4 \r\n\r\n"+ifName)
+		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:  4 \r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 
 	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\n\tContent-Length:\t\t4\r\n\r\n"+ifName)
+		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 }
@@ -1289,13 +1289,42 @@ func HttpHeadersTest(s *NoTopoSuite) {
 	serverAddress := s.VppAddr()
 	vpp.Vppctl("http cli server")
 
-	resp, err := TcpSendReceive(
-		serverAddress+":80",
-		"GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\nAccept:text/xml\r\nAccept:\ttext/plain\t \r\nAccept:text/html\r\n\r\n")
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	transport.(*http.Transport).DisableKeepAlives = false
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Second * 30,
+	}
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
 	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertContains(resp, "HTTP/1.1 200 OK")
-	s.AssertContains(resp, "Content-Type: text/plain")
-	s.AssertNotContains(resp, "<html>", "html content received instead of plain text")
+	req.Header.Add("Accept", "text/xml")
+	req.Header.Add("Accept-Language", "*")
+	req.Header.Add("Accept", "text/plain")
+	req.Header.Add("Accept", "text/html")
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/plain")
+	data, err := io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertNotContains(string(data), "<html>", "html content received instead of plain text")
+
+	req2, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	req2.Header.Add("Accept", "text/html")
+	resp2, err := client.Do(req2)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp2.Body.Close()
+	s.Log(DumpHttpResp(resp2, true))
+	s.AssertHttpStatus(resp2, 200)
+	s.AssertHttpHeaderWithValue(resp2, "Content-Type", "text/html")
+	data2, err := io.ReadAll(resp2.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(string(data2), "<html>", "html content not received")
 }
 
 func HttpInvalidHeadersTest(s *NoTopoSuite) {
@@ -1381,4 +1410,29 @@ func HttpConnTimeoutTest(s *NoTopoSuite) {
 	reply = make([]byte, 1024)
 	_, err = conn.Read(reply)
 	s.AssertMatchError(err, io.EOF, "connection not closed by server")
+}
+
+func HttpIgnoreH2UpgradeTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	transport.(*http.Transport).DisableKeepAlives = false
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Second * 30,
+	}
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	req.Header.Add("Connection", "Upgrade")
+	req.Header.Add("Upgrade", "HTTP/2.0")
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderNotPresent(resp, "Upgrade")
 }

@@ -352,11 +352,35 @@ typedef enum http_header_name_
 #undef _
 } http_header_name_t;
 
+#define HTTP_BOOLEAN_TRUE "?1"
+
+#define foreach_http_upgrade_proto                                            \
+  _ (CONNECT_UDP, "connect-udp")                                              \
+  _ (CONNECT_IP, "connect-ip")                                                \
+  _ (WEBSOCKET, "websocket")
+
+typedef enum http_upgrade_proto_
+{
+  HTTP_UPGRADE_PROTO_NA =
+    0, /* indicating standard CONNECT where protocol is omitted */
+#define _(sym, str) HTTP_UPGRADE_PROTO_##sym,
+  foreach_http_upgrade_proto
+#undef _
+} http_upgrade_proto_t;
+
 typedef enum http_msg_data_type_
 {
   HTTP_MSG_DATA_INLINE,
   HTTP_MSG_DATA_PTR
 } http_msg_data_type_t;
+
+typedef struct http_field_line_
+{
+  u32 name_offset;
+  u32 name_len;
+  u32 value_offset;
+  u32 value_len;
+} http_field_line_t;
 
 typedef struct http_msg_data_
 {
@@ -371,6 +395,8 @@ typedef struct http_msg_data_
   u32 headers_len;
   u32 body_offset;
   u64 body_len;
+  uword headers_ctx;
+  http_upgrade_proto_t upgrade_proto;
   u8 data[0];
 } http_msg_data_t;
 
@@ -422,6 +448,13 @@ typedef struct http_req_
 
   u32 body_offset;
   u64 body_len;
+
+  http_field_line_t *headers;
+  uword content_len_header_index;
+  uword connection_header_index;
+  uword upgrade_header_index;
+
+  http_upgrade_proto_t upgrade_proto;
 } http_req_t;
 
 typedef struct http_tc_
@@ -476,6 +509,27 @@ typedef struct http_main_
   u64 add_seg_size;
   u32 fifo_size;
 } http_main_t;
+
+always_inline u8 *
+format_http_bytes (u8 *s, va_list *va)
+{
+  u8 *bytes = va_arg (*va, u8 *);
+  int n_bytes = va_arg (*va, int);
+  uword i;
+
+  if (n_bytes == 0)
+    return s;
+
+  for (i = 0; i < n_bytes; i++)
+    {
+      if (isprint (bytes[i]))
+	s = format (s, "%c", bytes[i]);
+      else
+	s = format (s, "\\x%02x", bytes[i]);
+    }
+
+  return s;
+}
 
 always_inline int
 _validate_target_syntax (u8 *target, u32 len, int is_query, int *is_encoded)
@@ -767,21 +821,93 @@ _parse_field_value (u8 **pos, u8 *end, u8 **field_value_start,
 
 typedef struct
 {
-  u8 *name;
-  u8 *value;
-} http_header_ht_t;
-
-typedef struct
-{
   http_token_t name;
   http_token_t value;
 } http_header_t;
 
 typedef struct
 {
-  http_header_ht_t *headers;
+  http_header_t *headers;
   uword *value_by_name;
+  u8 *buf;
+  char **concatenated_values;
 } http_header_table_t;
+
+#define HTTP_HEADER_TABLE_NULL                                                \
+  {                                                                           \
+    .headers = 0, .value_by_name = 0, .buf = 0, .concatenated_values = 0,     \
+  }
+
+always_inline u8
+http_token_is (const char *actual, uword actual_len, const char *expected,
+	       uword expected_len)
+{
+  ASSERT (actual != 0);
+  if (actual_len != expected_len)
+    return 0;
+  return memcmp (actual, expected, expected_len) == 0 ? 1 : 0;
+}
+
+always_inline u8
+http_token_is_case (const char *actual, uword actual_len, const char *expected,
+		    uword expected_len)
+{
+  uword i;
+  ASSERT (actual != 0);
+  if (actual_len != expected_len)
+    return 0;
+  for (i = 0; i < expected_len; i++)
+    {
+      if (tolower (actual[i]) != expected[i])
+	return 0;
+    }
+  return 1;
+}
+
+always_inline u8
+http_token_contains (const char *haystack, uword haystack_len,
+		     const char *needle, uword needle_len)
+{
+  uword end_index, i;
+  ASSERT (haystack != 0);
+  if (haystack_len < needle_len)
+    return 0;
+  end_index = haystack_len - needle_len;
+  for (i = 0; i <= end_index; i++)
+    {
+      if (!memcmp (haystack + i, needle, needle_len))
+	return 1;
+    }
+  return 0;
+}
+
+/**
+ * Reset header table before reuse.
+ *
+ * @param ht Header table to reset.
+ */
+always_inline void
+http_reset_header_table (http_header_table_t *ht)
+{
+  int i;
+  for (i = 0; i < vec_len (ht->concatenated_values); i++)
+    vec_free (ht->concatenated_values[i]);
+  vec_reset_length (ht->concatenated_values);
+  vec_reset_length (ht->headers);
+  vec_reset_length (ht->buf);
+  hash_free (ht->value_by_name);
+}
+
+/**
+ * Initialize header table input buffer.
+ * @param ht  Header table.
+ * @param msg HTTP transport message metadata.
+ */
+always_inline void
+http_init_header_table_buf (http_header_table_t *ht, http_msg_t msg)
+{
+  vec_validate (ht->buf, msg.data.headers_len - 1);
+}
 
 /**
  * Free header table's memory.
@@ -791,86 +917,88 @@ typedef struct
 always_inline void
 http_free_header_table (http_header_table_t *ht)
 {
-  http_header_ht_t *header;
-  vec_foreach (header, ht->headers)
-    {
-      vec_free (header->name);
-      vec_free (header->value);
-    }
+  int i;
+  for (i = 0; i < vec_len (ht->concatenated_values); i++)
+    vec_free (ht->concatenated_values[i]);
+  vec_free (ht->concatenated_values);
   vec_free (ht->headers);
+  vec_free (ht->buf);
   hash_free (ht->value_by_name);
   clib_mem_free (ht);
 }
 
-/**
- * Parse headers in given vector.
- *
- * @param headers Vector to parse.
- * @param [out] header_table Parsed headers in case of success.
- *
- * @return @c 0 on success.
- *
- * The caller is responsible to free the returned @c header_table
- * using @c http_free_header_table .
- */
-always_inline int
-http_parse_headers (u8 *headers, http_header_table_t **header_table)
+static uword
+_http_ht_hash_key_sum (hash_t *h, uword key)
 {
-  u8 *pos, *end, *name_start, *value_start, *name;
-  u32 name_len, value_len;
-  int rv;
-  http_header_ht_t *header;
-  http_header_table_t *ht;
+  http_token_t *name = uword_to_pointer (key, http_token_t *);
+  return hash_memory (name->base, name->len, 0);
+}
+
+static uword
+_http_ht_hash_key_equal (hash_t *h, uword key1, uword key2)
+{
+  http_token_t *name1 = uword_to_pointer (key1, http_token_t *);
+  http_token_t *name2 = uword_to_pointer (key2, http_token_t *);
+  return name1 && name2 &&
+	 http_token_is (name1->base, name1->len, name2->base, name2->len);
+}
+
+/**
+ * Build header table.
+ *
+ * @param header_table Header table with loaded buffer.
+ * @param msg HTTP transport message metadata.
+ *
+ * @note If reusing already allocated header table use
+ * @c http_reset_header_table first.
+ */
+always_inline void
+http_build_header_table (http_header_table_t *ht, http_msg_t msg)
+{
+  http_token_t name;
+  http_header_t *header;
+  http_field_line_t *field_lines, *field_line;
   uword *p;
 
-  end = headers + vec_len (headers);
-  pos = headers;
+  ASSERT (ht);
+  field_lines = uword_to_pointer (msg.data.headers_ctx, http_field_line_t *);
+  ht->value_by_name =
+    hash_create2 (0, 0, sizeof (uword), _http_ht_hash_key_sum,
+		  _http_ht_hash_key_equal, 0, 0);
 
-  ht = clib_mem_alloc (sizeof (*ht));
-  ht->value_by_name = hash_create_string (0, sizeof (uword));
-  ht->headers = 0;
-  do
+  vec_foreach (field_line, field_lines)
     {
-      rv = _parse_field_name (&pos, end, &name_start, &name_len);
-      if (rv != 0)
-	{
-	  http_free_header_table (ht);
-	  return rv;
-	}
-      rv = _parse_field_value (&pos, end, &value_start, &value_len);
-      if (rv != 0)
-	{
-	  http_free_header_table (ht);
-	  return rv;
-	}
-      name = vec_new (u8, name_len);
-      clib_memcpy (name, name_start, name_len);
-      vec_terminate_c_string (name);
+      name.base = (char *) (ht->buf + field_line->name_offset);
+      name.len = field_line->name_len;
       /* check if header is repeated */
-      p = hash_get_mem (ht->value_by_name, name);
+      p = hash_get_mem (ht->value_by_name, &name);
       if (p)
 	{
-	  /* if yes combine values */
+	  char *new_value = 0;
 	  header = vec_elt_at_index (ht->headers, p[0]);
-	  vec_pop (header->value); /* drop null byte */
-	  header->value = format (header->value, ", %U%c", format_ascii_bytes,
-				  value_start, value_len, 0);
-	  vec_free (name);
+	  u32 new_len = header->value.len + field_line->value_len + 2;
+	  vec_validate (new_value, new_len - 1);
+	  clib_memcpy (new_value, header->value.base, header->value.len);
+	  new_value[header->value.len] = ',';
+	  new_value[header->value.len + 1] = ' ';
+	  clib_memcpy (new_value + header->value.len + 2,
+		       ht->buf + field_line->value_offset,
+		       field_line->value_len);
+	  vec_add1 (ht->concatenated_values, new_value);
+	  header->value.base = new_value;
+	  header->value.len = new_len;
 	  continue;
 	}
       /* or create new record */
-      vec_add2 (ht->headers, header, sizeof (*header));
-      header->name = name;
-      header->value = vec_new (u8, value_len);
-      clib_memcpy (header->value, value_start, value_len);
-      vec_terminate_c_string (header->value);
-      hash_set_mem (ht->value_by_name, header->name, header - ht->headers);
+      vec_add2 (ht->headers, header, 1);
+      header->name.base = name.base;
+      header->name.len = name.len;
+      header->value.base = (char *) (ht->buf + field_line->value_offset);
+      header->value.len = field_line->value_len;
+      HTTP_DBG (1, "value: %U", format_http_bytes, header->value.base,
+		header->value.len);
+      hash_set_mem (ht->value_by_name, &header->name, header - ht->headers);
     }
-  while (pos != end);
-
-  *header_table = ht;
-
-  return 0;
 }
 
 /**
@@ -881,17 +1009,19 @@ http_parse_headers (u8 *headers, http_header_table_t **header_table)
  *
  * @return Header's value in case of success, @c 0 otherwise.
  */
-always_inline const char *
-http_get_header (http_header_table_t *header_table, const char *name)
+always_inline const http_header_t *
+http_get_header (http_header_table_t *header_table, const char *name,
+		 uword name_len)
 {
   uword *p;
-  http_header_ht_t *header;
+  http_header_t *header;
+  http_token_t name_token = { (char *) name, name_len };
 
-  p = hash_get_mem (header_table->value_by_name, name);
+  p = hash_get_mem (header_table->value_by_name, &name_token);
   if (p)
     {
       header = vec_elt_at_index (header_table->headers, p[0]);
-      return (const char *) header->value;
+      return header;
     }
 
   return 0;

@@ -40,6 +40,12 @@ typedef struct
 
 typedef struct
 {
+  u8 *name;
+  u8 *value;
+} hc_http_header_t;
+
+typedef struct
+{
   u32 app_index;
   u32 cli_node_index;
   u8 attached;
@@ -52,7 +58,7 @@ typedef struct
   u8 *resp_headers;
   u8 *http_response;
   u8 *response_status;
-  http_header_ht_t *custom_header;
+  hc_http_header_t *custom_header;
   u8 is_file;
   u8 use_ptr;
   u8 *filename;
@@ -181,7 +187,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk;
   u32 new_hc_index;
-  http_header_ht_t *header;
+  hc_http_header_t *header;
   HTTP_DBG (1, "ho hc_index: %d", hc_session_index);
 
   if (err)
@@ -344,7 +350,6 @@ hc_rx_callback (session_t *s)
 	    format (0, "%U", format_http_status_code, msg.code);
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
-	  http_header_table_t *ht;
 	  vec_validate (hcm->resp_headers, msg.data.headers_len - 1);
 	  vec_set_len (hcm->resp_headers, msg.data.headers_len);
 	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
@@ -352,14 +357,6 @@ hc_rx_callback (session_t *s)
 
 	  ASSERT (rv == msg.data.headers_len);
 	  HTTP_DBG (1, (char *) format (0, "%v", hcm->resp_headers));
-	  if (http_parse_headers (hcm->resp_headers, &ht))
-	    {
-	      clib_warning ("invalid headers received");
-	      vlib_process_signal_event_mt (
-		wrk->vlib_main, hcm->cli_node_index, HC_GENERIC_ERR, 0);
-	      return -1;
-	    }
-	  http_free_header_table (ht);
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
 	}
@@ -666,7 +663,7 @@ hc_cleanup ()
   HTTP_DBG (1, "cleanup");
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk;
-  http_header_ht_t *header;
+  hc_http_header_t *header;
 
   vec_foreach (wrk, hcm->wrk)
     hcc_worker_cleanup (wrk);
@@ -696,7 +693,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *path = 0;
   u8 *file_data;
-  http_header_ht_t new_header;
+  hc_http_header_t new_header;
   u8 *name;
   u8 *value;
   int rv;
