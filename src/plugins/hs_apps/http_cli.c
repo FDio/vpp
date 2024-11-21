@@ -51,6 +51,7 @@ typedef struct
   u8 *tx_buf;
   u32 tx_offset;
   u32 vpp_session_index;
+  http_header_table_t req_headers;
   http_header_t *resp_headers;
 } hcs_session_t;
 
@@ -177,7 +178,7 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
   if (vec_len (hs->resp_headers))
     {
       headers_buf = http_serialize_headers (hs->resp_headers);
-      vec_free (hs->resp_headers);
+      vec_reset_length (hs->resp_headers);
       msg.data.headers_offset = 0;
       msg.data.headers_len = vec_len (headers_buf);
     }
@@ -370,7 +371,8 @@ hcs_ts_rx_callback (session_t *ts)
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
   hs->tx_buf = 0;
-  hs->resp_headers = 0;
+  vec_reset_length (hs->resp_headers);
+  http_reset_header_table (&hs->req_headers);
 
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -413,30 +415,22 @@ hcs_ts_rx_callback (session_t *ts)
 
   if (msg.data.headers_len)
     {
-      u8 *headers = 0;
-      http_header_table_t *ht;
-      vec_validate (headers, msg.data.headers_len - 1);
+      http_init_header_table_buf (&hs->req_headers, msg);
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
-			  msg.data.headers_len, headers);
+			  msg.data.headers_len, hs->req_headers.buf);
       ASSERT (rv == msg.data.headers_len);
-      if (http_parse_headers (headers, &ht))
+      http_build_header_table (&hs->req_headers, msg);
+      const http_header_t *accept = http_get_header (
+	&hs->req_headers, http_header_name_token (HTTP_HEADER_ACCEPT));
+      if (accept)
 	{
-	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-	  vec_free (args.buf);
-	  vec_free (headers);
-	  goto done;
-	}
-      const char *accept_value =
-	http_get_header (ht, http_header_name_str (HTTP_HEADER_ACCEPT));
-      if (accept_value)
-	{
-	  HCS_DBG ("client accept: %s", accept_value);
+	  HCS_DBG ("client accept: %U", format_http_bytes, accept->value.base,
+		   accept->value.len);
 	  /* just for testing purpose, we don't care about precedence */
-	  if (strstr (accept_value, "text/plain"))
+	  if (http_token_contains (accept->value.base, accept->value.len,
+				   http_token_lit ("text/plain")))
 	    args.plain_text = 1;
 	}
-      http_free_header_table (ht);
-      vec_free (headers);
     }
 
   args.hs_index = hs->session_index;
@@ -547,6 +541,8 @@ hcs_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     return;
 
   vec_free (hs->tx_buf);
+  vec_free (hs->resp_headers);
+  http_free_header_table (&hs->req_headers);
   hcs_session_free (hs);
 }
 
