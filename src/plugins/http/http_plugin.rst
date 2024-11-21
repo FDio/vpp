@@ -15,9 +15,11 @@ Usage
 -----
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
-``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_parse_headers``, ``http_get_header``,
-``http_free_header_table``, ``http_add_header``, ``http_serialize_headers``, ``http_parse_authority_form_target``,
-``http_serialize_authority_form_target``, ``http_parse_absolute_form``, ``http_parse_masque_host_port``.
+``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_build_header_table``, ``http_alloc_header_table``,
+``http_get_header``, ``http_reset_header_table``, ``http_free_header_table``, ``http_add_header``,
+``http_serialize_headers``, ``http_parse_authority_form_target``, ``http_serialize_authority_form_target``,
+``http_parse_absolute_form``, ``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``,
+``http_encap_udp_payload_datagram``.
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
@@ -131,10 +133,8 @@ Following example shows how to parse headers:
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, headers);
       ASSERT (rv == msg.data.headers_len);
-      if (http_parse_headers (headers, &ht))
-        {
-          /* your error handling */
-        }
+      ht = http_alloc_header_table ();
+      http_build_header_table (headers, msg.data.headers_ctx, ht);
       /* get Accept header */
       const char *accept_value = http_get_header (ht, http_header_name_str (HTTP_HEADER_ACCEPT));
       if (accept_value)
@@ -142,6 +142,52 @@ Following example shows how to parse headers:
           /* do something interesting */
         }
       http_free_header_table (ht);
+      vec_free (headers);
+    }
+
+Allocated header table memory can be reused, you just need to reset it using ``http_reset_header_table`` before reuse.
+We will add following member to our session context structure:
+
+.. code-block:: C
+
+  typedef struct
+  {
+    /* ... */
+    u8 *ht;
+  } session_ctx_t;
+
+In ``session_accept_callback`` we allocate header table memory:
+
+.. code-block:: C
+
+  ctx->ht = http_alloc_header_table ();
+
+And in ``session_cleanup_callback`` we free header table memory:
+
+.. code-block:: C
+
+  http_free_header_table (ctx->ht);
+
+Modified example above:
+
+.. code-block:: C
+
+  #include <http/http_header_names.h>
+  if (msg.data.headers_len)
+    {
+      u8 *headers = 0;
+      vec_validate (headers, msg.data.headers_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
+			  msg.data.headers_len, headers);
+      ASSERT (rv == msg.data.headers_len);
+      http_reset_header_table (ctx->ht);
+      http_build_header_table (headers, msg.data.headers_ctx, ht);
+      /* get Accept header */
+      const char *accept_value = http_get_header (ht, http_header_name_str (HTTP_HEADER_ACCEPT));
+      if (accept_value)
+        {
+          /* do something interesting */
+        }
       vec_free (headers);
     }
 
@@ -443,10 +489,8 @@ Following example shows how to parse headers:
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, headers);
       ASSERT (rv == msg.data.headers_len);
-      if (http_parse_headers (headers, &ht))
-        {
-          /* your error handling */
-        }
+      ht = http_alloc_header_table ();
+      http_build_header_table (headers, msg.data.headers_ctx, ht));
       /* get Content-Type header */
       const char *content_type = http_get_header (ht, http_header_name_str (HTTP_HEADER_CONTENT_TYPE));
       if (content_type)
