@@ -736,6 +736,10 @@ vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
   dns_pending_request_t *pr;
   int count;
 
+  /* In case of disable but access, will lead to parse error node. */
+  if (dm && !dm->is_enabled)
+    return VNET_ERR_NAME_RESOLUTION_NOT_ENABLED;
+
   now = vlib_time_now (vm);
 
   /* In case we can't actually answer the question right now... */
