@@ -36,7 +36,7 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat)
+		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest)
@@ -1227,12 +1227,12 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 	validatePostInterfaceStats(s, resp)
 
 	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\n Content-Length:  4 \r\n\r\n"+ifName)
+		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:  4 \r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 
 	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\n\tContent-Length:\t\t4\r\n\r\n"+ifName)
+		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 }
@@ -1381,4 +1381,29 @@ func HttpConnTimeoutTest(s *NoTopoSuite) {
 	reply = make([]byte, 1024)
 	_, err = conn.Read(reply)
 	s.AssertMatchError(err, io.EOF, "connection not closed by server")
+}
+
+func HttpIgnoreH2UpgradeTest(s *NoTopoSuite) {
+	vpp := s.GetContainerByName("vpp").VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	transport.(*http.Transport).DisableKeepAlives = false
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Second * 30,
+	}
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	req.Header.Add("Connection", "Upgrade")
+	req.Header.Add("Upgrade", "HTTP/2.0")
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertHttpHeaderNotPresent(resp, "Upgrade")
 }

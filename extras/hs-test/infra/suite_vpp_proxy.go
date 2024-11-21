@@ -150,6 +150,7 @@ func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri strin
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
+	s.AssertNotContains(log, "Upgrade:")
 }
 
 func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
@@ -158,6 +159,7 @@ func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) 
 	s.AssertContains(writeOut, "CONNECT response code: 200")
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
+	s.AssertNotContains(log, "Upgrade:")
 }
 
 var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {

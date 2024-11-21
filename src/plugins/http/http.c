@@ -17,6 +17,7 @@
 #include <vnet/session/session.h>
 #include <http/http_timer.h>
 #include <http/http_status_codes.h>
+#include <http/http_header_names.h>
 
 static http_main_t http_main;
 
@@ -33,6 +34,12 @@ typedef enum http_sm_result_t_
 const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
+};
+
+const char *http_upgrade_proto_str[] = { "",
+#define _(sym, str) str,
+					 foreach_http_upgrade_proto
+#undef _
 };
 
 static u8 *
@@ -446,6 +453,9 @@ static const char *http_response_template = "HTTP/1.1 %s\r\n"
 
 static const char *content_len_template = "Content-Length: %llu\r\n";
 
+static const char *connection_upgrade_template = "Connection: upgrade\r\n"
+						 "Upgrade: %s\r\n";
+
 /**
  * http request boilerplate
  */
@@ -706,6 +716,7 @@ http_parse_request_line (http_req_t *req, http_status_code_t *ec)
     {
       HTTP_DBG (0, "CONNECT method");
       req->method = HTTP_REQ_CONNECT;
+      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
       req->target_path_offset = method_offset + 8;
       req->is_tunnel = 1;
     }
@@ -892,7 +903,17 @@ http_parse_status_line (http_req_t *req)
 static int
 http_identify_headers (http_req_t *req, http_status_code_t *ec)
 {
-  int i;
+  int rv;
+  u8 *p, *end, *name_start, *value_start;
+  u32 name_len, value_len;
+  http_field_line_t *field_line;
+  uword header_index;
+
+  vec_reset_length (req->headers);
+  req->content_len_header_index = ~0;
+  req->connection_header_index = ~0;
+  req->upgrade_header_index = ~0;
+  req->headers_offset = req->rx_buf_offset;
 
   /* check if we have any header */
   if ((req->rx_buf[req->rx_buf_offset] == '\r') &&
@@ -905,16 +926,53 @@ http_identify_headers (http_req_t *req, http_status_code_t *ec)
       return 0;
     }
 
-  /* find empty line indicating end of header section */
-  i = v_find_index (req->rx_buf, req->rx_buf_offset, 0, "\r\n\r\n");
-  if (i < 0)
+  end = req->rx_buf + vec_len (req->rx_buf);
+  p = req->rx_buf + req->rx_buf_offset;
+
+  while (1)
     {
-      clib_warning ("cannot find header section end");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
+      rv = _parse_field_name (&p, end, &name_start, &name_len);
+      if (rv != 0)
+	{
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+      rv = _parse_field_value (&p, end, &value_start, &value_len);
+      if (rv != 0 || (end - p) < 2)
+	{
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return -1;
+	}
+
+      vec_add2 (req->headers, field_line, 1);
+      field_line->name_offset =
+	(name_start - req->rx_buf) - req->headers_offset;
+      field_line->name_len = name_len;
+      field_line->value_offset =
+	(value_start - req->rx_buf) - req->headers_offset;
+      field_line->value_len = value_len;
+      header_index = field_line - req->headers;
+
+      /* find headers that will be used later in preprocessing */
+      if (req->content_len_header_index == ~0 &&
+	  http_token_is ((const char *) name_start, name_len,
+			 http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
+	req->content_len_header_index = header_index;
+      else if (req->connection_header_index == ~0 &&
+	       http_token_is ((const char *) name_start, name_len,
+			      http_header_name_token (HTTP_HEADER_CONNECTION)))
+	req->connection_header_index = header_index;
+      else if (req->upgrade_header_index == ~0 &&
+	       http_token_is ((const char *) name_start, name_len,
+			      http_header_name_token (HTTP_HEADER_UPGRADE)))
+	req->upgrade_header_index = header_index;
+
+      /* are we done? */
+      if (*p == '\r' && *(p + 1) == '\n')
+	break;
     }
-  req->headers_offset = req->rx_buf_offset;
-  req->headers_len = i - req->rx_buf_offset + 2;
+
+  req->headers_len = p - (req->rx_buf + req->headers_offset);
   req->control_data_len += (req->headers_len + 2);
   HTTP_DBG (2, "headers length: %u", req->headers_len);
   HTTP_DBG (2, "headers offset: %u", req->headers_offset);
@@ -925,9 +983,10 @@ http_identify_headers (http_req_t *req, http_status_code_t *ec)
 static int
 http_identify_message_body (http_req_t *req, http_status_code_t *ec)
 {
-  int i, value_len;
-  u8 *end, *p, *value_start;
+  int i;
+  u8 *p;
   u64 body_len = 0, digit;
+  http_field_line_t *field_line;
 
   req->body_len = 0;
 
@@ -944,67 +1003,15 @@ http_identify_message_body (http_req_t *req, http_status_code_t *ec)
 
   /* TODO check for chunked transfer coding */
 
-  /* try to find Content-Length header */
-  i = v_find_index (req->rx_buf, req->headers_offset, req->headers_len,
-		    "Content-Length:");
-  if (i < 0)
+  if (req->content_len_header_index == ~0)
     {
       HTTP_DBG (2, "Content-Length header not present, no message-body");
       return 0;
     }
-  req->rx_buf_offset = i + 15;
+  field_line = vec_elt_at_index (req->headers, req->content_len_header_index);
 
-  i = v_find_index (req->rx_buf, req->rx_buf_offset, req->headers_len, "\r\n");
-  if (i < 0)
-    {
-      clib_warning ("end of line missing");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  value_len = i - req->rx_buf_offset;
-  if (value_len < 1)
-    {
-      clib_warning ("invalid header, content length value missing");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-
-  end = req->rx_buf + req->rx_buf_offset + value_len;
-  p = req->rx_buf + req->rx_buf_offset;
-  /* skip leading whitespace */
-  while (1)
-    {
-      if (p == end)
-	{
-	  clib_warning ("value not found");
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
-	}
-      else if (*p != ' ' && *p != '\t')
-	{
-	  break;
-	}
-      p++;
-      value_len--;
-    }
-  value_start = p;
-  /* skip trailing whitespace */
-  p = value_start + value_len - 1;
-  while (*p == ' ' || *p == '\t')
-    {
-      p--;
-      value_len--;
-    }
-
-  if (value_len < 1)
-    {
-      clib_warning ("value not found");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-
-  p = value_start;
-  for (i = 0; i < value_len; i++)
+  p = req->rx_buf + req->headers_offset + field_line->value_offset;
+  for (i = 0; i < field_line->value_len; i++)
     {
       /* check for digit */
       if (!isdigit (*p))
@@ -1095,6 +1102,7 @@ http_req_state_wait_transport_reply (http_conn_t *hc,
   msg.data.body_len = hc->req.body_len;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
+  msg.data.headers_ctx = pointer_to_uword (hc->req.headers);
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { hc->req.rx_buf, len } };
@@ -1128,6 +1136,49 @@ error:
   session_transport_closed_notify (&hc->connection);
   http_disconnect_transport (hc);
   return HTTP_SM_ERROR;
+}
+
+#define http_field_line_value_token(_fl, _req)                                \
+  (const char *) ((_req)->rx_buf + (_req)->headers_offset +                   \
+		  (_fl)->value_offset),                                       \
+    (_fl)->value_len
+
+static void
+http_check_connection_upgrade (http_req_t *req)
+{
+  http_field_line_t *connection, *upgrade;
+  u8 skip;
+
+  skip = (req->method != HTTP_REQ_GET) + (req->connection_header_index == ~0) +
+	 (req->upgrade_header_index == ~0);
+  if (skip)
+    return;
+
+  connection = vec_elt_at_index (req->headers, req->connection_header_index);
+  /* connection options are case-insensitive (RFC9110 7.6.1) */
+  if (http_token_is_case (http_field_line_value_token (connection, req),
+			  http_token_lit ("upgrade")))
+    {
+      upgrade = vec_elt_at_index (req->headers, req->upgrade_header_index);
+
+      /* check upgrade protocol, we want to ignore something like upgrade to
+       * newer HTTP version, only tunnels are supported */
+      if (0)
+	;
+#define _(sym, str)                                                           \
+  else if (http_token_is (http_field_line_value_token (upgrade, req),         \
+			  http_token_lit (str))) req->upgrade_proto =         \
+    HTTP_UPGRADE_PROTO_##sym;
+      foreach_http_upgrade_proto
+#undef _
+	else return;
+
+      HTTP_DBG (1, "connection upgrade: %U", format_http_bytes,
+		req->rx_buf + req->headers_offset + upgrade->value_offset,
+		upgrade->value_len);
+      req->is_tunnel = 1;
+      req->method = HTTP_REQ_CONNECT;
+    }
 }
 
 static http_sm_result_t
@@ -1164,6 +1215,8 @@ http_req_state_wait_transport_method (http_conn_t *hc,
   if (rv)
     goto error;
 
+  http_check_connection_upgrade (&hc->req);
+
   rv = http_identify_message_body (&hc->req, &ec);
   if (rv)
     goto error;
@@ -1196,6 +1249,8 @@ http_req_state_wait_transport_method (http_conn_t *hc,
   msg.data.headers_len = hc->req.headers_len;
   msg.data.body_offset = hc->req.body_offset;
   msg.data.body_len = hc->req.body_len;
+  msg.data.headers_ctx = pointer_to_uword (hc->req.headers);
+  msg.data.upgrade_proto = hc->req.upgrade_proto;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { hc->req.rx_buf, len } };
@@ -1286,15 +1341,21 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 		     /* Server */
 		     hc->app_name);
 
-  /* RFC9110 9.3.6: A server MUST NOT send Content-Length header field in a
-   * 2xx (Successful) response to CONNECT. */
-  if (hc->req.is_tunnel && http_status_code_str[msg.code][0] == '2')
+  /* RFC9110 8.6: A server MUST NOT send Content-Length header field in a
+   * 2xx (Successful) response to CONNECT or with a status code of 101
+   * (Switching Protocols). */
+  if (hc->req.is_tunnel && (http_status_code_str[msg.code][0] == '2' ||
+			    msg.code == HTTP_STATUS_SWITCHING_PROTOCOLS))
     {
       ASSERT (msg.data.body_len == 0);
       next_state = HTTP_REQ_STATE_TUNNEL;
+      if (hc->req.upgrade_proto > HTTP_UPGRADE_PROTO_NA)
+	response = format (response, connection_upgrade_template,
+			   http_upgrade_proto_str[hc->req.upgrade_proto]);
       /* cleanup some stuff we don't need anymore in tunnel mode */
       http_conn_timer_stop (hc);
       vec_free (hc->req.rx_buf);
+      vec_free (hc->req.headers);
       http_buffer_free (&hc->req.tx_buf);
     }
   else
@@ -1860,6 +1921,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, ts->opaque);
 
   vec_free (hc->req.rx_buf);
+  vec_free (hc->req.headers);
 
   http_buffer_free (&hc->req.tx_buf);
 
