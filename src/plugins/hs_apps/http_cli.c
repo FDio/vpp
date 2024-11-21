@@ -419,13 +419,7 @@ hcs_ts_rx_callback (session_t *ts)
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, headers);
       ASSERT (rv == msg.data.headers_len);
-      if (http_parse_headers (headers, &ht))
-	{
-	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-	  vec_free (args.buf);
-	  vec_free (headers);
-	  goto done;
-	}
+      http_build_header_table (headers, msg.data.headers_ctx, &ht);
       const char *accept_value =
 	http_get_header (ht, http_header_name_str (HTTP_HEADER_ACCEPT));
       if (accept_value)
