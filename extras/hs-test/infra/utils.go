@@ -303,6 +303,7 @@ func (s *HstSuite) StartClientApp(c *Container, cmd string,
 		o, err := cmd2.CombinedOutput()
 		if err != nil {
 			s.Log(err)
+			s.Log(string(o))
 			if nTries > 5 {
 				clnRes <- ""
 				clnCh <- fmt.Errorf("failed to start client app '%s'", err)
