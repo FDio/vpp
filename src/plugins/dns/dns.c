@@ -2304,6 +2304,87 @@ VLIB_CLI_COMMAND (dns_cache_add_del_command) =
   .function = dns_cache_add_del_command_fn,
 };
 
+static clib_error_t *
+dns_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
+{
+  dns_main_t *dm = &dns_main;
+  u32 enable_disable;
+  int rv;
+
+  enable_disable = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	enable_disable = 1;
+      else if (unformat (input, "disable"))
+	enable_disable = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  rv = dns_enable_disable (vm, dm, enable_disable);
+  if (rv)
+    return clib_error_return (0, "%U", format_vnet_api_errno, rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (dns_enable_disable_command) = {
+  .path = "dns",
+  .short_help = "dns [enable][disable]",
+  .function = dns_enable_disable_command_fn,
+};
+
+static clib_error_t *
+dns_name_server_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
+{
+  dns_main_t *dm = &dns_main;
+  u8 is_add = 1;
+  ip6_address_t ip6_server;
+  ip4_address_t ip4_server;
+  int ip6_set = 0;
+  int ip4_set = 0;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_ip6_address, &ip6_server))
+	ip6_set = 1;
+      else if (unformat (input, "%U", unformat_ip4_address, &ip4_server))
+	ip4_set = 1;
+      else if (unformat (input, "del"))
+	is_add = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (ip4_set && ip6_set)
+    return clib_error_return (0, "Only one server address configed");
+  if ((ip4_set + ip6_set) == 0)
+    return clib_error_return (0, "Server address required");
+
+  if (ip6_set)
+    rv = dns6_name_server_add_del (dm, ip6_server.as_u8, is_add);
+  else
+    rv = dns4_name_server_add_del (dm, ip4_server.as_u8, is_add);
+
+  if (rv)
+    return clib_error_return (0, "%U", format_vnet_api_errno, rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (dns_name_server_add_del_command) = {
+  .path = "dns name-server",
+  .short_help = "dns name-server <ip-address> [del]",
+  .function = dns_name_server_add_del_command_fn,
+};
+
 #define DNS_FORMAT_TEST 1
 
 #if DNS_FORMAT_TEST > 0
