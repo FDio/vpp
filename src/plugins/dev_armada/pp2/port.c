@@ -104,6 +104,7 @@ mvpp2_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
 void
 mvpp2_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_t *dev = port->dev;
   vnet_dev_port_state_changes_t changes = {};
@@ -117,8 +118,8 @@ mvpp2_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
       log_debug (dev, "pp2_ppio_get_link_info: failed, rv %d", mrv);
       return;
     }
-
-  if (mp->last_link_info.up != li.up)
+  if (vnet_hw_interface_is_link_up (
+	vnm, port->interfaces->primary_interface.hw_if_index) != (li.up != 0))
     {
       changes.change.link_state = 1;
       changes.link_state = li.up != 0;
