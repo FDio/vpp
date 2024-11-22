@@ -74,6 +74,26 @@ static void
 }
 
 static void
+vl_api_sw_interface_ip4_enable_disable_t_handler (
+  vl_api_sw_interface_ip4_enable_disable_t *mp)
+{
+  vl_api_sw_interface_ip4_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX_END (mp);
+
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled",
+			       mp->sw_if_index, mp->enable, 0, 0);
+
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
+			       mp->sw_if_index, mp->enable, 0, 0);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO_END (VL_API_SW_INTERFACE_IP4_ENABLE_DISABLE_REPLY);
+}
+
+static void
 send_ip_table_details (vpe_api_main_t * am,
 		       vl_api_registration_t * reg,
 		       u32 context, const fib_table_t * table)
