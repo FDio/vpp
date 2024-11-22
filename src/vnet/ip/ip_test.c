@@ -1325,6 +1325,11 @@ api_sw_interface_ip6_enable_disable (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_ip4_enable_disable (vat_main_t *vam)
+{
+  return -1;
+}
+static int
 api_set_ip_flow_hash_v2 (vat_main_t *vat)
 {
   return -1;
