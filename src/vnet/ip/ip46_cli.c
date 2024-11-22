@@ -292,6 +292,45 @@ VLIB_CLI_COMMAND (set_reassembly_command, static) = {
     .function = set_reassembly_command_fn,
 };
 
+static clib_error_t *
+enable_ip4_interface_cmd (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = NULL;
+  u32 sw_if_index;
+
+  sw_if_index = ~0;
+
+  if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled",
+				   sw_if_index, 1, 0, 0);
+
+      vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
+				   sw_if_index, 1, 0, 0);
+    }
+  else
+    {
+      error = clib_error_return (0, "unknown interface\n'",
+				 format_unformat_error, input);
+    }
+  return error;
+}
+
+/*?
+ * This command is used to enable IPv4 on a given interface.
+ *
+ * @cliexpar
+ * Example of how enable IPv4 on a given interface:
+ * @cliexcmd{enable ip4 interface GigabitEthernet2/0/0}
+?*/
+VLIB_CLI_COMMAND (enable_ip4_interface_command, static) = {
+  .path = "enable ip4 interface",
+  .function = enable_ip4_interface_cmd,
+  .short_help = "enable ip4 interface <interface>",
+};
+
 /* Dummy init function to get us linked in. */
 static clib_error_t *
 ip4_cli_init (vlib_main_t * vm)
