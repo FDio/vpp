@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dec0e383_5dbd7e37",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "Looks really good, just a couple of nits/quick questions.",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7bb58605_8dfdc4e0",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "Just curious, is this on purpose read to completion?",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a0070f9_9e2b8716",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 715,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "Openssl limitation or is it the framework?",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68e29599_aba631f3",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 945,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "Is this still used? Also, is there a way to get events out of openssl via something like an eventfd? We could eventually make the input node run in interrupt mode",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c8a81e7_19c3df3f",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "async_total_write, or total_async_write, just to know what this is tracking?",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ebfe7d8_1e520e97",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-22T08:16:02Z",
+      "side": 1,
+      "message": "Any reason why not to add it to tls_conn_flags_t?",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
