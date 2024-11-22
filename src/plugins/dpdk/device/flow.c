@@ -229,10 +229,10 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   else if (FLOW_IS_IPV6_CLASS (f))
     flow_class = FLOW_IPV6_CLASS;
   else
-    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+    return VNET_FLOW_ERROR_DEBUG_1;
 
   if (f->actions & (~xd->supported_flow_actions))
-    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+    return VNET_FLOW_ERROR_DEBUG_2;
 
   /* Match items */
   /* Layer 2, Ethernet */
@@ -548,7 +548,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 #undef fill_inner_ip4_with_outer_ipv
 	break;
     default:
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      rv = VNET_FLOW_ERROR_DEBUG_3;
       goto done;
     }
 
@@ -654,7 +654,7 @@ pattern_end:
       if ((rss.func = dpdk_flow_convert_rss_func (f->rss_fun)) ==
 	  RTE_ETH_HASH_FUNCTION_MAX)
 	{
-	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  rv = VNET_FLOW_ERROR_DEBUG_4;
 	  goto done;
 	}
 
@@ -690,7 +690,7 @@ pattern_end:
   if (rv)
     {
       if (rv == -EINVAL)
-	rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	rv = VNET_FLOW_ERROR_DEBUG_5;
       else if (rv == -EEXIST)
 	rv = VNET_FLOW_ERROR_ALREADY_EXISTS;
       else
@@ -703,7 +703,7 @@ pattern_end:
 				&xd->last_flow_error);
 
   if (!fe->handle)
-    rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+    rv = VNET_FLOW_ERROR_DEBUG_6;
 
 done:
   vec_free (items);
@@ -759,14 +759,14 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     }
 
   if (op != VNET_FLOW_DEV_OP_ADD_FLOW)
-    return VNET_FLOW_ERROR_NOT_SUPPORTED;
+    return VNET_FLOW_ERROR_DEBUG_7;
 
   pool_get (xd->flow_entries, fe);
   fe->flow_index = flow->index;
 
   if (flow->actions == 0)
     {
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      rv = VNET_FLOW_ERROR_DEBUG_8;
       goto done;
     }
 
@@ -826,7 +826,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 	goto done;
       break;
     default:
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+      rv = VNET_FLOW_ERROR_DEBUG_9;
       goto done;
     }
 

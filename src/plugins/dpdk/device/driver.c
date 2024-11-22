@@ -93,6 +93,7 @@ static dpdk_driver_t dpdk_drivers[] = {
   {
     .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" },
 			     { "net_enic", "Cisco VIC" }),
+    .supported_flow_actions = supported_flow_actions_intel,
     .use_intel_phdr_cksum = 1,
   },
   {
