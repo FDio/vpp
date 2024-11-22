@@ -94,6 +94,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7216724b_4d48556b",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1047,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2024-11-22T15:04:21Z",
+      "side": 1,
+      "message": "we need openssl_async_polling() call as well. Because, it will poll the engine for any completions",
+      "range": {
+        "startLine": 1047,
+        "startChar": 6,
+        "endLine": 1047,
+        "endChar": 37
+      },
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6c8a81e7_19c3df3f",
         "filename": "src/vnet/tls/tls.h",
         "patchSetId": 6
