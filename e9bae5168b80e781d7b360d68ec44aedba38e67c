@@ -37,6 +37,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c50909c5_1dc002a5",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2024-11-22T14:36:16Z",
+      "side": 1,
+      "message": "should this be  if (svm_fifo_needs_deq_ntf (app_tx_fifo, wrote_sum)) ?",
+      "range": {
+        "startLine": 618,
+        "startChar": 0,
+        "endLine": 618,
+        "endChar": 51
+      },
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1a0070f9_9e2b8716",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 6
