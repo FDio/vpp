@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3bd42499_a335ff7c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-11-22T16:01:50Z",
+      "side": 1,
+      "message": "Ok, I am convinced the NIC really does not have those capabilities.\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3na-spr/9/csit_current/0/log.html.gz#s1-s1-s1-s1",
+      "revId": "f1194d820fc4ebefff53a19552fa77a4ce6ee6dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
