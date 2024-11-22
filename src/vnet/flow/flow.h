@@ -175,6 +175,15 @@ typedef enum
   _( -3, ALREADY_EXISTS, "already exists")			\
   _( -4, NO_SUCH_ENTRY, "no such entry")			\
   _( -5, NO_SUCH_INTERFACE, "no such interface")		\
+  _( -11, DEBUG_1, "debug 1")					\
+  _( -12, DEBUG_2, "debug 2")					\
+  _( -13, DEBUG_3, "debug 3")					\
+  _( -14, DEBUG_4, "debug 4")					\
+  _( -15, DEBUG_5, "debug 5")					\
+  _( -16, DEBUG_6, "debug 6")					\
+  _( -17, DEBUG_7, "debug 7")					\
+  _( -18, DEBUG_8, "debug 8")					\
+  _( -19, DEBUG_9, "debug 9")					\
   _( -6, INTERNAL, "internal error")
 
 #define foreach_flow_rss_types                                                \
