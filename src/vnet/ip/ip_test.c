@@ -1325,85 +1325,81 @@ api_sw_interface_ip6_enable_disable (vat_main_t *vam)
 }
 
 static int
-api_set_ip_flow_hash_v2 (vat_main_t *vat)
+api_sw_interface_ip4_enable_disable (vat_main_t *vam)
 {
   return -1;
 }
+  static int api_set_ip_flow_hash_v2 (vat_main_t * vat) { return -1; }
 
-static int
-api_set_ip_flow_hash_v3 (vat_main_t *vat)
-{
-  return -1;
-}
+  static int api_set_ip_flow_hash_v3 (vat_main_t * vat) { return -1; }
 
-static int
-api_ip_mroute_add_del (vat_main_t *vam)
-{
-  unformat_input_t *i = vam->input;
-  u8 path_set = 0, prefix_set = 0, is_add = 1;
-  vl_api_ip_mroute_add_del_t *mp;
-  mfib_entry_flags_t eflags = 0;
-  vl_api_mfib_path_t path;
-  vl_api_mprefix_t pfx = {};
-  u32 vrf_id = 0;
-  int ret;
+  static int api_ip_mroute_add_del (vat_main_t * vam)
+  {
+    unformat_input_t *i = vam->input;
+    u8 path_set = 0, prefix_set = 0, is_add = 1;
+    vl_api_ip_mroute_add_del_t *mp;
+    mfib_entry_flags_t eflags = 0;
+    vl_api_mfib_path_t path;
+    vl_api_mprefix_t pfx = {};
+    u32 vrf_id = 0;
+    int ret;
 
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", unformat_vl_api_mprefix, &pfx))
-	{
-	  prefix_set = 1;
-	  pfx.grp_address_length = htons (pfx.grp_address_length);
-	}
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "add"))
-	is_add = 1;
-      else if (unformat (i, "vrf %d", &vrf_id))
-	;
-      else if (unformat (i, "%U", unformat_mfib_itf_flags, &path.itf_flags))
-	path.itf_flags = htonl (path.itf_flags);
-      else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
-	;
-      else if (unformat (i, "via %U", unformat_fib_path, vam, &path.path))
-	path_set = 1;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+      {
+	if (unformat (i, "%U", unformat_vl_api_mprefix, &pfx))
+	  {
+	    prefix_set = 1;
+	    pfx.grp_address_length = htons (pfx.grp_address_length);
+	  }
+	else if (unformat (i, "del"))
+	  is_add = 0;
+	else if (unformat (i, "add"))
+	  is_add = 1;
+	else if (unformat (i, "vrf %d", &vrf_id))
+	  ;
+	else if (unformat (i, "%U", unformat_mfib_itf_flags, &path.itf_flags))
+	  path.itf_flags = htonl (path.itf_flags);
+	else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
+	  ;
+	else if (unformat (i, "via %U", unformat_fib_path, vam, &path.path))
+	  path_set = 1;
+	else
+	  {
+	    clib_warning ("parse error '%U'", format_unformat_error, i);
+	    return -99;
+	  }
+      }
 
-  if (prefix_set == 0)
-    {
-      errmsg ("missing addresses\n");
-      return -99;
-    }
-  if (path_set == 0)
-    {
-      errmsg ("missing path\n");
-      return -99;
-    }
+    if (prefix_set == 0)
+      {
+	errmsg ("missing addresses\n");
+	return -99;
+      }
+    if (path_set == 0)
+      {
+	errmsg ("missing path\n");
+	return -99;
+      }
 
-  /* Construct the API message */
-  M (IP_MROUTE_ADD_DEL, mp);
+    /* Construct the API message */
+    M (IP_MROUTE_ADD_DEL, mp);
 
-  mp->is_add = is_add;
-  mp->is_multipath = 1;
+    mp->is_add = is_add;
+    mp->is_multipath = 1;
 
-  clib_memcpy (&mp->route.prefix, &pfx, sizeof (pfx));
-  mp->route.table_id = htonl (vrf_id);
-  mp->route.n_paths = 1;
-  mp->route.entry_flags = htonl (eflags);
+    clib_memcpy (&mp->route.prefix, &pfx, sizeof (pfx));
+    mp->route.table_id = htonl (vrf_id);
+    mp->route.n_paths = 1;
+    mp->route.entry_flags = htonl (eflags);
 
-  clib_memcpy (&mp->route.paths, &path, sizeof (path));
+    clib_memcpy (&mp->route.paths, &path, sizeof (path));
 
-  /* send it... */
-  S (mp);
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
+    /* send it... */
+    S (mp);
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
 }
 
 static void
