@@ -11,6 +11,15 @@
   _ (BUFFER_ALLOC_FAIL, "packet buffer allocation failure")                   \
   _ (BUG, "bug")                                                              \
   _ (BUS, "bus error")                                                        \
+  _ (DEBUG_1, "debug 1")                                                      \
+  _ (DEBUG_2, "debug 2")                                                      \
+  _ (DEBUG_3, "debug 3")                                                      \
+  _ (DEBUG_4, "debug 4")                                                      \
+  _ (DEBUG_5, "debug 5")                                                      \
+  _ (DEBUG_6, "debug 6")                                                      \
+  _ (DEBUG_7, "debug 7")                                                      \
+  _ (DEBUG_8, "debug 8")                                                      \
+  _ (DEBUG_9, "debug 9")                                                      \
   _ (DEVICE_NO_REPLY, "no reply from device")                                 \
   _ (DMA_MEM_ALLOC_FAIL, "DMA memory allocation error")                       \
   _ (DRIVER_NOT_AVAILABLE, "driver not available")                            \
