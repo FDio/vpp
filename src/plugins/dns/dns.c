@@ -38,6 +38,79 @@
 
 dns_main_t dns_main;
 
+#define POSEUDO_BYTES 2
+
+typedef struct
+{
+  ip6_address_t src_ip, dst_ip;
+  u16 zero_and_protocol;
+  u16 udp_length;
+  udp_header_t udp;
+} ip6_udp_pseudo_header_t;
+
+void
+swap_high_low (u16 *arr, int length)
+{
+  for (int i = 0; i < length; i++)
+    {
+      u16 value = arr[i];
+      u16 high = (value & 0xFF00) >> 8;
+      u16 low = (value & 0x00FF) << 8;
+      arr[i] = high | low;
+    }
+}
+
+u16
+checksum (unsigned short *buf, int nword)
+{
+  u32 sum;
+  for (sum = 0; nword > 0; nword--)
+    {
+      sum += *buf++;
+      sum = (sum >> 16) + (sum & 0xffff);
+    }
+  return ~sum;
+}
+
+u16
+ip6_udp_checksum (ip6_header_t *ih, udp_header_t *udp, u8 *payload)
+{
+  u8 *buffer_payload = 0;
+  u16 *buffer = 0;
+  ip6_udp_pseudo_header_t *pht;
+  u32 pseudo_header_length, payload_length;
+
+  payload_length = vec_len (payload);
+  buffer_payload = vec_dup (payload);
+  if (PREDICT_FALSE (payload_length & 1))
+    {
+      /* Prepend a 0 byte to maintain 2-byte checksum alignment */
+      payload_length++;
+      vec_add1 (buffer_payload, 0);
+    }
+
+  vec_insert (buffer_payload, sizeof (ip6_udp_pseudo_header_t), 0);
+
+  /* ip pseudo-header + udp + payload and 2bytes align, not enough add 0x0 */
+  pht = (ip6_udp_pseudo_header_t *) buffer_payload;
+
+  clib_memset (pht, 0, sizeof (ip6_udp_pseudo_header_t));
+  ip6_address_copy (&pht->src_ip, &ih->src_address);
+  ip6_address_copy (&pht->dst_ip, &ih->dst_address);
+  pht->zero_and_protocol = 0x00ff & ih->protocol;
+  pht->udp_length = clib_host_to_net_u16 (ih->payload_length);
+  clib_memcpy (&pht->udp, udp, sizeof (udp_header_t));
+
+  buffer = (u16 *) (buffer_payload);
+  swap_high_low (buffer, sizeof (ip6_address_t));
+  swap_high_low (buffer + sizeof (ip6_udp_pseudo_header_t) / 2,
+		 payload_length);
+
+  pseudo_header_length = vec_len (buffer) / 2;
+
+  return checksum (buffer, pseudo_header_length);
+}
+
 /* the cache hashtable expects a NULL-terminated C-string but everywhere else
  * expects a non-NULL terminated vector... The pattern of adding \0 but hiding
  * it away drives AddressSanitizer crazy, this helper tries to bring some of
@@ -282,6 +355,7 @@ vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
 
   /* The actual DNS request */
   clib_memcpy (dns_request, ep->dns_request, vec_len (ep->dns_request));
+  udp->checksum = ip4_tcp_udp_compute_checksum (vlib_get_main (), b, ip);
 
   /* Ship it to ip4_lookup */
   f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
@@ -301,7 +375,7 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   u32 bi;
   vlib_buffer_t *b;
   ip6_header_t *ip;
-  udp_header_t *udp;
+  udp_header_t *udp, udp1;
   ip6_address_t src_address;
   u8 *dns_request;
   vlib_frame_t *f;
@@ -346,10 +420,15 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   /* UDP header */
   udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_dns_reply);
   udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_dns);
-  udp->length = clib_host_to_net_u16 (sizeof (udp_header_t) +
-				      vec_len (ep->dns_request));
+  udp->length =
+    clib_host_to_net_u16 (sizeof (udp_header_t) + vec_len (ep->dns_request));
   udp->checksum = 0;
-  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &junk);
+
+  udp1.src_port = UDP_DST_PORT_dns_reply;
+  udp1.dst_port = UDP_DST_PORT_dns;
+  udp1.length = sizeof (udp_header_t) + vec_len (ep->dns_request);
+  udp->checksum =
+    clib_host_to_net_u16 (ip6_udp_checksum (ip, &udp1, ep->dns_request));
 
   /* The actual DNS request */
   clib_memcpy (dns_request, ep->dns_request, vec_len (ep->dns_request));
@@ -359,6 +438,7 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
 
   ep->retry_timer = now + 2.0;
 }
