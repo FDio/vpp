@@ -475,7 +475,6 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
        * per label is 63, enforce that.
        */
       request = name_to_labels (ep->name);
-      name_copy = vec_dup (request);
       qp_offset = vec_len (request);
 
       /*
@@ -486,18 +485,12 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
        */
 
       /* Add space for the query header */
-      vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
+      vec_validate (request, qp_offset + sizeof (dns_query_t) - 1);
 
       qp = (dns_query_t *) (request + qp_offset);
 
       qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
-      qp++;
-      clib_memcpy (qp, name_copy, vec_len (name_copy));
-      qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
-      vec_free (name_copy);
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
       qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
       /* Punch in space for the dns_header_t */
@@ -511,7 +504,7 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
       /* Ask for a recursive lookup */
       tmp = DNS_RD | DNS_OPCODE_QUERY;
       h->flags = clib_host_to_net_u16 (tmp);
-      h->qdcount = clib_host_to_net_u16 (2);
+      h->qdcount = clib_host_to_net_u16 (1);
       h->nscount = 0;
       h->arcount = 0;
 
@@ -523,21 +516,46 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
   /* Retry using current server */
   if (ep->retry_count++ < DNS_RETRIES_PER_SERVER)
     {
-      if (ep->server_af == 1 /* ip6 */ )
+      if (vec_len (dm->ip6_name_servers))
 	{
-	  if (vec_len (dm->ip6_name_servers))
-	    {
-	      vnet_dns_send_dns6_request
-		(vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
-	      goto out;
-	    }
-	  else
-	    ep->server_af = 0;
+	  if (ep->server_rotor >= vec_len (dm->ip6_name_servers))
+	    ep->server_rotor = 0;
+
+	  qp = (dns_query_t *) (ep->dns_request + sizeof (dns_header_t));
+	  name_copy = name_to_labels (ep->name);
+	  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  vnet_dns_send_dns6_request (vm, dm, ep,
+				      dm->ip6_name_servers + ep->server_rotor);
+
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  vnet_dns_send_dns6_request (vm, dm, ep,
+				      dm->ip6_name_servers + ep->server_rotor);
+	  vec_free (name_copy);
+	  goto out;
 	}
+
       if (vec_len (dm->ip4_name_servers))
 	{
-	  vnet_dns_send_dns4_request
-	    (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	  if (ep->server_rotor >= vec_len (dm->ip4_name_servers))
+	    ep->server_rotor = 0;
+
+	  qp = (dns_query_t *) (ep->dns_request + sizeof (dns_header_t));
+	  name_copy = name_to_labels (ep->name);
+	  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+
+	  // send A type
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  vnet_dns_send_dns4_request (vm, dm, ep,
+				      dm->ip4_name_servers + ep->server_rotor);
+
+	  // send AAAA type
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  vnet_dns_send_dns4_request (vm, dm, ep,
+				      dm->ip4_name_servers + ep->server_rotor);
+
+	  vec_free (name_copy);
 	  goto out;
 	}
     }
@@ -545,30 +563,52 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
     {
       ep->retry_count = 1;
       ep->server_rotor++;
-      if (ep->server_af == 1 /* ip6 */ )
-	{
-	  if (ep->server_rotor >= vec_len (dm->ip6_name_servers))
-	    {
-	      ep->server_rotor = 0;
-	      ep->server_af = vec_len (dm->ip4_name_servers) > 0 ? 0 : 1;
-	    }
-	}
-      else
-	{
-	  if (ep->server_rotor >= vec_len (dm->ip4_name_servers))
-	    {
-	      ep->server_rotor = 0;
-	      ep->server_af = vec_len (dm->ip6_name_servers) > 0 ? 1 : 0;
-	    }
-	}
     }
 
-  if (ep->server_af == 1 /* ip6 */ )
-    vnet_dns_send_dns6_request
-      (vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
+  if (ep->server_af == 1 /* ip6 */)
+    {
+      if (vec_len (dm->ip6_name_servers))
+	{
+	  if (ep->server_rotor >= vec_len (dm->ip6_name_servers))
+	    ep->server_rotor = 0;
+
+	  qp = (dns_query_t *) (ep->dns_request + sizeof (dns_header_t));
+	  name_copy = name_to_labels (ep->name);
+	  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  vnet_dns_send_dns6_request (vm, dm, ep,
+				      dm->ip6_name_servers + ep->server_rotor);
+
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  vnet_dns_send_dns6_request (vm, dm, ep,
+				      dm->ip6_name_servers + ep->server_rotor);
+	  vec_free (name_copy);
+	}
+    }
   else
-    vnet_dns_send_dns4_request
-      (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
+    {
+      if (vec_len (dm->ip4_name_servers))
+	{
+	  if (ep->server_rotor >= vec_len (dm->ip4_name_servers))
+	    ep->server_rotor = 0;
+
+	  qp = (dns_query_t *) (ep->dns_request + sizeof (dns_header_t));
+	  name_copy = name_to_labels (ep->name);
+	  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+
+	  // send A type
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  vnet_dns_send_dns4_request (vm, dm, ep,
+				      dm->ip4_name_servers + ep->server_rotor);
+
+	  // send AAAA type
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  vnet_dns_send_dns4_request (vm, dm, ep,
+				      dm->ip4_name_servers + ep->server_rotor);
+	  vec_free (name_copy);
+	}
+    }
 
 out:
 
