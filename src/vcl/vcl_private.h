@@ -165,7 +165,6 @@ typedef struct vcl_session_
   int n_accepted_sessions;	/**< sessions accepted by this listener */
   vppcom_epoll_t vep;
   u32 attributes;		/**< see @ref vppcom_session_attr_t */
-  int libc_epfd;
   u32 vrf;
   u16 gso_size;
 
