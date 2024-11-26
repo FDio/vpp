@@ -31,7 +31,6 @@
 #include <vlibapi/api.h>
 
 #include <nat/lib/lib.h>
-#include <nat/lib/inlines.h>
 
 /* default number of worker handoff frame queue elements */
 #define NAT_FQ_NELTS_DEFAULT 64

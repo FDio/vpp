@@ -22,7 +22,6 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/atomics.h>
 #include <nat/lib/ipfix_logging.h>
-#include <nat/lib/inlines.h>
 
 vlib_node_registration_t nat_ipfix_flush_node;
 nat_ipfix_logging_main_t nat_ipfix_logging_main;
