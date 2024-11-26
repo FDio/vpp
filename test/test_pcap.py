@@ -75,11 +75,13 @@ class TestPcap(VppTestCase):
             "pa en",
             "pcap dispatch trace off",
             "pcap trace rx tx max 1000 intfc any",
+            "pcap trace status",
             "pa en",
             "pcap trace status",
             "pcap trace rx tx off",
             "classify filter pcap mask l3 ip4 src match l3 ip4 src 11.22.33.44",
             "pcap trace rx tx max 1000 intfc any file filt.pcap filter",
+            "pcap trace status",
             "show cla t verbose 2",
             "show cla t verbose",
             "show cla t",
@@ -122,6 +124,21 @@ class TestPcap(VppTestCase):
         )
         self.pg_send(self.pg0, pkt * 10)
         self.vapi.pcap_trace_off()
+
+        # Launching trace with filter & no classifier table specified
+        # should result in no packet capture
+        self.vapi.pcap_trace_on(
+            capture_rx=True,
+            capture_tx=True,
+            max_packets=1000,
+            filter=True,
+            sw_if_index=0,
+            filename="trace_any_invalid_filter.pcap",
+        )
+        self.pg_send(self.pg0, pkt * 10)
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.pcap_trace_off()
+        self.assertFalse(os.path.exists("/tmp/trace_any_invalid_filter.pcap"))
 
         self.vapi.cli(
             f"classify filter pcap mask l3 ip4 src match l3 ip4 src {self.pg0.local_ip4}"
