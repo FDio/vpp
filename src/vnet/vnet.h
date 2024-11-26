@@ -66,7 +66,7 @@ typedef struct
   u8 pcap_tx_enable;
   /* Trace drop pkts */
   u8 pcap_drop_enable;
-  u8 pad1;
+  u8 pcap_filter_enable;
   u32 max_bytes_per_pkt;
   u32 pcap_sw_if_index;
   pcap_main_t pcap_main;
