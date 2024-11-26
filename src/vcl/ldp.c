@@ -327,19 +327,17 @@ close (int fd)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      epfd = vls_attr (vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+      epfd = vls_get_libc_epfd (vlsh);
       if (epfd > 0)
 	{
 	  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-	  u32 size = sizeof (epfd);
 
 	  LDBG (0, "fd %d: calling libc_close: epfd %u", fd, epfd);
 
 	  libc_close (epfd);
 	  ldpw->mq_epfd_added = 0;
 
-	  epfd = 0;
-	  (void) vls_attr (vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &epfd, &size);
+	  vls_set_libc_epfd (vlsh, 0);
 	}
       else if (PREDICT_FALSE (epfd < 0))
 	{
@@ -2460,9 +2458,8 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
   else
     {
       int libc_epfd;
-      u32 size = sizeof (epfd);
 
-      libc_epfd = vls_attr (vep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+      libc_epfd = vls_get_libc_epfd (vep_vlsh);
       if (!libc_epfd)
 	{
 	  LDBG (1, "epfd %d, vep_vlsh %d calling libc_epoll_create1: "
@@ -2475,8 +2472,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 	      goto done;
 	    }
 
-	  rv = vls_attr (vep_vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &libc_epfd,
-			 &size);
+	  rv = vls_set_libc_epfd (vep_vlsh, libc_epfd);
 	  if (rv < 0)
 	    {
 	      errno = -rv;
@@ -2538,7 +2534,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
   max_time = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
-  libc_epfd = vls_attr (ep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+  libc_epfd = vls_get_libc_epfd (ep_vlsh);
   if (PREDICT_FALSE (libc_epfd < 0))
     {
       errno = -libc_epfd;
@@ -2616,11 +2612,9 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       return -1;
     }
 
-  libc_epfd = vls_attr (ep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+  libc_epfd = vls_get_libc_epfd (ep_vlsh);
   if (PREDICT_FALSE (!libc_epfd))
     {
-      u32 size = sizeof (epfd);
-
       LDBG (1, "epfd %d, vep_vlsh %d calling libc_epoll_create1: "
 	    "EPOLL_CLOEXEC", epfd, ep_vlsh);
       libc_epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
@@ -2630,7 +2624,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 	  goto done;
 	}
 
-      rv = vls_attr (ep_vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &libc_epfd, &size);
+      rv = vls_set_libc_epfd (ep_vlsh, libc_epfd);
       if (rv < 0)
 	{
 	  errno = -rv;
