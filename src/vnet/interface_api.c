@@ -1653,6 +1653,7 @@ vl_api_pcap_trace_on_t_handler (vl_api_pcap_trace_on_t *mp)
   unformat_init_cstring (&drop_err_name, (char *) mp->error);
   unformat_user (&drop_err_name, unformat_vlib_error, vlib_get_main (),
 		 &capture_args.drop_err);
+  unformat_free (&drop_err_name);
 
   rv = vnet_pcap_dispatch_trace_configure (&capture_args);
 
@@ -1660,7 +1661,6 @@ vl_api_pcap_trace_on_t_handler (vl_api_pcap_trace_on_t *mp)
 
 out:
   unformat_free (&filename);
-  unformat_free (&drop_err_name);
 
   REPLY_MACRO (VL_API_PCAP_TRACE_ON_REPLY);
 }

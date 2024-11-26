@@ -163,6 +163,16 @@ class TestPcap(VppTestCase):
         os.remove("/tmp/trace_any_filter.pcap")
         os.remove("/tmp/trace_drop_err.pcap")
 
+        # Attempting to start a trace with no filename should return an error
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.pcap_trace_on(
+                capture_rx=True,
+                capture_tx=True,
+                filter=True,
+                max_packets=1000,
+                sw_if_index=0,
+            )
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
