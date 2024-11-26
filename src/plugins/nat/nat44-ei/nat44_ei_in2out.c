@@ -21,6 +21,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/fib/ip4_fib.h>

@@ -168,7 +168,19 @@ ip6_get_port (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6,
 	  if (dst_port)
 	    *dst_port = ((u16 *) (icmp))[2];
 	}
-      else if (clib_net_to_host_u16 (ip6->payload_length) >= 64)
+      /*
+       * if there is enough data and ICMP type indicates ICMP error, then parse
+       * inner packet
+       *
+       * ICMP6 errors are:
+       *   1 - destination_unreachable
+       *   2 - packet_too_big
+       *   3 - time_exceeded
+       *   4 - parameter_problem
+       */
+      else if (clib_net_to_host_u16 (ip6->payload_length) >= 64 &&
+	       icmp->type >= ICMP6_destination_unreachable &&
+	       icmp->type <= ICMP6_parameter_problem)
 	{
 	  u16 ip6_pay_len;
 	  ip6_header_t *inner_ip6;
