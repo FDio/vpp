@@ -56,6 +56,8 @@ int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
 unsigned char vls_mt_wrk_supported (void);
 int vls_use_real_epoll (void);
+int vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd);
+int vls_get_libc_epfd (vls_handle_t ep_vlsh);
 void vls_register_vcl_worker (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */

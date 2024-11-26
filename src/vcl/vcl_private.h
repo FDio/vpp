@@ -163,9 +163,8 @@ typedef struct vcl_session_
   session_handle_t parent_handle;
   u32 listener_index;		/**< index of parent listener (if any) */
   int n_accepted_sessions;	/**< sessions accepted by this listener */
-  vppcom_epoll_t vep;
+  vppcom_epoll_t vep;		/**< epoll context */
   u32 attributes;		/**< see @ref vppcom_session_attr_t */
-  int libc_epfd;
   u32 vrf;
   u16 gso_size;
 
