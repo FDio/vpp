@@ -16,6 +16,24 @@
       "message": "Disabled for now?",
       "revId": "1494808063f7cc53a7cbe1cc7f5cd1a17c76a951",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c2cb2172_1321c23d",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1165,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-11-26T02:47:04Z",
+      "side": 1,
+      "message": "Missed the formatting ...",
+      "parentUuid": "ba331214_0b7e764e",
+      "revId": "1494808063f7cc53a7cbe1cc7f5cd1a17c76a951",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
