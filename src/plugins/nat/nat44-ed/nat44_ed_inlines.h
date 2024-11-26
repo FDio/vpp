@@ -27,6 +27,7 @@
 #include <nat/lib/log.h>
 #include <nat/lib/ipfix_logging.h>
 #include <nat/nat44-ed/nat44_ed.h>
+#include <vnet/ip/ip4_to_ip6.h>
 
 always_inline void
 init_ed_k (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,

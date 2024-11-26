@@ -21,6 +21,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
@@ -29,7 +30,6 @@
 #include <nat/det44/det44_inlines.h>
 
 #include <nat/lib/lib.h>
-#include <nat/lib/inlines.h>
 #include <nat/lib/nat_inlines.h>
 
 typedef enum

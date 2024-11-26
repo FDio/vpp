@@ -22,7 +22,6 @@
 
 #include <nat/lib/lib.h>
 #include <nat/lib/alloc.h>
-#include <nat/lib/inlines.h>
 
 typedef struct
 {

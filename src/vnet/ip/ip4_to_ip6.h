@@ -37,6 +37,20 @@ static u8 icmp_to_icmp6_updater_pointer_table[] =
 
 #define frag_id_4to6(id) (id)
 
+always_inline u64
+icmp_type_is_error_message (u8 icmp_type)
+{
+  int bmp = 0;
+  bmp |= 1 << ICMP4_destination_unreachable;
+  bmp |= 1 << ICMP4_time_exceeded;
+  bmp |= 1 << ICMP4_parameter_problem;
+  bmp |= 1 << ICMP4_source_quench;
+  bmp |= 1 << ICMP4_redirect;
+  bmp |= 1 << ICMP4_alternate_host_address;
+
+  return (1ULL << icmp_type) & bmp;
+}
+
 /**
  * @brief Get TCP/UDP port number or ICMP id from IPv4 packet.
  *
@@ -70,9 +84,14 @@ ip4_get_port (ip4_header_t *ip, u8 sender)
        *  - outer ICMP header length (2*sizeof (icmp46_header_t))
        *  - inner IP header length
        *  - first 8 bytes of payload of original packet in case of ICMP error
+       *
+       * Also make sure we only attempt to parse payload as IP packet if it's
+       * an ICMP error.
        */
       else if (clib_net_to_host_u16 (ip->length) >=
-	       2 * sizeof (ip4_header_t) + 2 * sizeof (icmp46_header_t) + 8)
+		 2 * sizeof (ip4_header_t) + 2 * sizeof (icmp46_header_t) +
+		   8 &&
+	       icmp_type_is_error_message (icmp->type))
 	{
 	  ip = (ip4_header_t *) (icmp + 2);
 	  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
