@@ -46,7 +46,7 @@ vnet_is_packet_pcaped (vnet_pcap_t *pp, vlib_buffer_t *b, u32 sw_if_index)
   if (pcap_error_index != (vlib_error_t) ~0 && pcap_error_index != b->error)
     return 0; /* wrong error */
 
-  if (filter_classify_table_index != ~0 &&
+  if (pp->pcap_filter_enable &&
       pp->current_filter_function (b, filter_classify_table_index,
 				   0 /* full classify */) != 1)
     return 0; /* not matching the filter, skip */

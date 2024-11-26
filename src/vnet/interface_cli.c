@@ -2041,6 +2041,12 @@ format_vnet_pcap (u8 * s, va_list * args)
 	  s = format (s, "drop");
 	  printed = 1;
 	}
+
+      if (printed && pp->pcap_filter_enable)
+	{
+	  s = format (s, "with filter");
+	  printed = 1;
+	}
       return s;
     }
   s = format (s, "unknown type %d!", type);
@@ -2091,12 +2097,6 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       && (a->rx_enable + a->tx_enable + a->drop_enable)
       && (pm->n_packets_to_capture != a->packets_to_capture))
     return VNET_API_ERROR_INVALID_VALUE_2;
-
-  /* Classify filter specified, but no classify filter configured */
-  if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter &&
-      (!cm->classify_table_index_by_sw_if_index ||
-       cm->classify_table_index_by_sw_if_index[0] == ~0))
-    return VNET_API_ERROR_NO_SUCH_LABEL;
 
   if (a->rx_enable + a->tx_enable + a->drop_enable)
     {
@@ -2151,11 +2151,13 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	}
       pm->n_packets_to_capture = a->packets_to_capture;
       pp->pcap_sw_if_index = a->sw_if_index;
-      if (a->filter)
+      if (a->filter && cm->classify_table_index_by_sw_if_index &&
+	  cm->classify_table_index_by_sw_if_index[0] != ~0)
 	pp->filter_classify_table_index =
 	  cm->classify_table_index_by_sw_if_index[0];
       else
 	pp->filter_classify_table_index = ~0;
+      pp->pcap_filter_enable = a->filter;
       pp->pcap_error_index = a->drop_err;
       pp->pcap_rx_enable = a->rx_enable;
       pp->pcap_tx_enable = a->tx_enable;
@@ -2164,6 +2166,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
     }
   else
     {
+      pp->pcap_filter_enable = 0;
       pp->pcap_rx_enable = 0;
       pp->pcap_tx_enable = 0;
       pp->pcap_drop_enable = 0;
@@ -2311,10 +2314,6 @@ pcap_trace_command_fn (vlib_main_t * vm,
     case VNET_API_ERROR_INVALID_MEMORY_SIZE:
       return clib_error_return (0,
 				"Max bytes per pkt must be > 32, < 9000...");
-
-    case VNET_API_ERROR_NO_SUCH_LABEL:
-      return clib_error_return
-	(0, "No classify filter configured, see 'classify filter...'");
 
     default:
       vlib_cli_output (vm, "WARNING: trace configure returned %d", rv);
