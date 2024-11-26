@@ -1,5 +1,7 @@
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from vpp_papi_provider import CliFailedCommandError
+import os
 import unittest
 from config import config
 from scapy.layers.l2 import Ether
@@ -77,6 +79,17 @@ class TestBpfTraceFilter(VppTestCase):
             "Unexpected packets in the trace buffer",
         )
 
+        # verify that bpf trace filter has been selected for pcap
+        self.vapi.cli("set pcap filter function bpf_trace_filter")
+        self.vapi.cli("pcap trace rx tx max 1000 intfc any filter")
+
+        # verify that packets are filtered in not captured in pcap
+        self.pg0.add_stream(packets)
+        self.pg_start()
+
+        with self.assertRaises(CliFailedCommandError):
+            self.vapi.cli("pcap trace rx tx off")
+
         reply = self.vapi.cli("show bpf trace filter")
         self.assertIn("(000)", reply, "Unexpected bpf filter dump")
 
@@ -102,6 +115,29 @@ class TestBpfTraceFilter(VppTestCase):
             reply,
             "Unexpected packets in the trace buffer",
         )
+
+        # verify that bpf trace filter has been selected for pcap
+        self.vapi.pcap_set_filter_function(filter_function_name="bpf_trace_filter")
+        reply = self.vapi.cli("show pcap filter function")
+        self.assertIn(
+            "(*) name:bpf_trace_filter",
+            reply,
+            "BPF Trace filter is not selected for Pcap",
+        )
+
+        # verify that packets are filtered in not captured in pcap
+        self.vapi.pcap_trace_on(
+            capture_rx=True,
+            capture_tx=True,
+            max_packets=1000,
+            filter=True,
+            sw_if_index=0,
+            filename="bpf_trace.pcap",
+        )
+        self.pg0.add_stream(packets)
+        self.pg_start()
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.pcap_trace_off()
 
     def test_bpf_trace_filter_vapi_v2(self):
         """BPF Trace filter test [VAPI v2]"""
@@ -130,6 +166,30 @@ class TestBpfTraceFilter(VppTestCase):
             reply,
             "Unexpected packets in the trace buffer",
         )
+
+        # verify that bpf trace filter has been selected for pcap
+        self.vapi.pcap_set_filter_function(filter_function_name="bpf_trace_filter")
+        reply = self.vapi.cli("show pcap filter function")
+        self.assertIn(
+            "(*) name:bpf_trace_filter",
+            reply,
+            "BPF Trace filter is not selected for Pcap",
+        )
+
+        # verify that packets are captured in pcap with filter
+        self.vapi.pcap_trace_on(
+            capture_rx=True,
+            capture_tx=True,
+            max_packets=1000,
+            filter=True,
+            sw_if_index=0,
+            filename="bpf_trace.pcap",
+        )
+        self.pg0.add_stream(packets)
+        self.pg_start()
+        self.vapi.pcap_trace_off()
+        self.assertTrue(os.path.exists("/tmp/bpf_trace.pcap"))
+        os.remove("/tmp/bpf_trace.pcap")
 
 
 if __name__ == "__main__":
