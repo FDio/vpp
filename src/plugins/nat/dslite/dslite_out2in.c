@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <vnet/ip/ip4_to_ip6.h>
 #include <nat/dslite/dslite.h>
 
 typedef enum

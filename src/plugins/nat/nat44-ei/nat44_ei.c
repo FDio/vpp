@@ -21,6 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip4.h>
+#include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/ip/ip_table.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/fib/fib_table.h>

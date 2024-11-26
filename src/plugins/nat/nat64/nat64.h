@@ -30,7 +30,6 @@
 #include <vnet/ip/reass/ip4_sv_reass.h>
 
 #include <nat/lib/lib.h>
-#include <nat/lib/inlines.h>
 #include <nat/lib/nat_inlines.h>
 
 #include <nat/nat64/nat64_db.h>

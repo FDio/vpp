@@ -38,7 +38,6 @@
 #include <vnet/ip/reass/ip4_sv_reass.h>
 
 #include <nat/lib/lib.h>
-#include <nat/lib/inlines.h>
 #include <nat/lib/ipfix_logging.h>
 #include <nat/lib/nat_proto.h>
 

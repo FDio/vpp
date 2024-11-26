@@ -21,7 +21,6 @@
 #include <vnet/syslog/syslog.h>
 
 #include <nat/lib/nat_syslog.h>
-#include <nat/lib/inlines.h>
 
 #include <nat/lib/nat_syslog_constants.h>
 

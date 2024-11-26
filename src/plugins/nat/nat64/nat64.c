@@ -15,6 +15,7 @@
 
 #include <vppinfra/crc32.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/ip/ip4_to_ip6.h>
 
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
