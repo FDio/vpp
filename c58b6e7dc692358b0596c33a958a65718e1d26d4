@@ -16,6 +16,24 @@
       "message": "this will now brake logic using s.ProcessIndex (GinkgoParallelProcess is 1..N) when running in parallel, isn\u0027t it?",
       "revId": "c58b6e7dc692358b0596c33a958a65718e1d26d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ee2651f_cdf4b2b7",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 686,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-11-27T08:52:56Z",
+      "side": 1,
+      "message": "correct, fixed",
+      "parentUuid": "cb55221d_ac5a76c3",
+      "revId": "c58b6e7dc692358b0596c33a958a65718e1d26d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
