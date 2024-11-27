@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +74,29 @@ var Colors = colors{
 	grn: "\033[32m",
 	pur: "\033[35m",
 	rst: "\033[0m",
+}
+
+// ../../src/vnet/udp/udp_local.h:foreach_udp4_dst_port
+var reservedPorts = []string{
+	"53",
+	"67",
+	"68",
+	"500",
+	"2152",
+	"3784",
+	"3785",
+	"4341",
+	"4342",
+	"4500",
+	"4739",
+	"4784",
+	"4789",
+	"4789",
+	"48879",
+	"4790",
+	"6633",
+	"6081",
+	"53053",
 }
 
 // used for colorful ReportEntry
@@ -658,13 +682,23 @@ func (s *HstSuite) GetCurrentSuiteName() string {
 	return CurrentSpecReport().ContainerHierarchyTexts[0]
 }
 
-// Returns last 3 digits of PID + Ginkgo process index as the 4th digit
+// Returns last 3 digits of PID + Ginkgo process index as the 4th digit. If the port is in the 'reservedPorts' slice,
+// increment port number by one and check again.
 func (s *HstSuite) GetPortFromPpid() string {
 	port := s.Ppid
+	var err error
+	var portInt int
 	for len(port) < 3 {
 		port += "0"
 	}
-	return port[len(port)-3:] + s.ProcessIndex
+	port = port[len(port)-3:] + s.ProcessIndex
+	for slices.Contains(reservedPorts, port) {
+		portInt, err = strconv.Atoi(port)
+		s.AssertNil(err)
+		portInt++
+		port = fmt.Sprintf("%d", portInt)
+	}
+	return port
 }
 
 /*
