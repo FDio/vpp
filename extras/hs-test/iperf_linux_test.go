@@ -9,10 +9,10 @@ import (
 )
 
 func init() {
-	RegisterIperfTests(IperfLinuxTest)
+	RegisterIperfTests(IperfUdpLinuxTest)
 }
 
-func IperfLinuxTest(s *IperfSuite) {
+func IperfUdpLinuxTest(s *IperfSuite) {
 	serverContainer := s.GetContainerByName(ServerIperfContainerName)
 	serverIpAddress := s.GetInterfaceByName(ServerIperfInterfaceName).Ip4AddressString()
 	clientContainer := s.GetContainerByName(ClientIperfContainerName)

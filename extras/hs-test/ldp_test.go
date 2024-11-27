@@ -9,15 +9,18 @@ import (
 )
 
 func init() {
-	RegisterLdpTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest, RedisBenchmarkTest, LDPreloadIperfTlsTcpTest)
+	RegisterLdpTests(LdpIperfUdpVppTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpVppTest)
 }
 
-func LDPreloadIperfVppInterruptModeTest(s *LdpSuite) {
+func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 	ldPreloadIperfVpp(s, true)
 }
 
-func LDPreloadIperfTlsTcpTest(s *LdpSuite) {
+func LdpIperfTlsTcpTest(s *LdpSuite) {
 	for _, c := range s.Containers {
+		defer delete(c.EnvVars, "LDP_TRANSPARENT_TLS")
+		defer delete(c.EnvVars, "LDP_TLS_CERT_FILE")
+		defer delete(c.EnvVars, "LDP_TLS_KEY_FILE")
 		c.Exec(false, "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.key -out crt.crt -subj \"/CN=test\"")
 		c.AddEnvVar("LDP_TRANSPARENT_TLS", "1")
 		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
@@ -26,7 +29,11 @@ func LDPreloadIperfTlsTcpTest(s *LdpSuite) {
 	ldPreloadIperfVpp(s, false)
 }
 
-func LDPreloadIperfVppTest(s *LdpSuite) {
+func LdpIperfTcpVppTest(s *LdpSuite) {
+	ldPreloadIperfVpp(s, false)
+}
+
+func LdpIperfUdpVppTest(s *LdpSuite) {
 	ldPreloadIperfVpp(s, true)
 }
 
