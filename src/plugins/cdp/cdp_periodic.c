@@ -16,7 +16,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/pcap.h>
 #include <vnet/srp/srp.h>
-#include <vnet/ppp/ppp.h>
+#include <plugins/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/srp/packet.h>
 

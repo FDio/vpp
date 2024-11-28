@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/ppp/ppp.h>
+#include <plugins/ppp/ppp.h>
 #include <vppinfra/sparse_vec.h>
 
 #define foreach_ppp_input_next			\
@@ -323,7 +323,6 @@ ppp_setup_node (vlib_main_t *vm, u32 node_index)
 static clib_error_t *
 ppp_input_init (vlib_main_t * vm)
 {
-
   {
     clib_error_t *error = vlib_call_init_function (vm, ppp_init);
     if (error)
@@ -339,9 +338,9 @@ ppp_input_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (ppp_input_init);
 VLIB_WORKER_INIT_FUNCTION (ppp_input_runtime_init);
 
-void
-ppp_register_input_protocol (vlib_main_t * vm,
-			     ppp_protocol_t protocol, u32 node_index)
+__clib_export void
+ppp_register_input_protocol (vlib_main_t *vm, ppp_protocol_t protocol,
+			     u32 node_index)
 {
   ppp_main_t *em = &ppp_main;
   ppp_protocol_info_t *pi;
