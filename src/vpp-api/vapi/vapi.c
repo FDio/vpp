@@ -298,7 +298,7 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
 }
 
 vapi_error_e
-vapi_ctx_alloc (vapi_ctx_t * result)
+vapi_ctx_alloc (vapi_ctx_t *result, bool use_uds)
 {
   vapi_ctx_t ctx = calloc (1, sizeof (struct vapi_ctx_s));
   if (!ctx)
@@ -323,7 +323,10 @@ vapi_ctx_alloc (vapi_ctx_t * result)
     }
   pthread_mutex_init (&ctx->requests_mutex, NULL);
   *result = ctx;
-  clib_time_init (&ctx->time);
+  if (use_uds)
+    {
+      clib_time_init (&ctx->time);
+    }
   return VAPI_OK;
 fail:
   vapi_ctx_free (ctx);
