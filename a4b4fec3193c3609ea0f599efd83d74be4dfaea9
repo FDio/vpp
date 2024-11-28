@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "112a2f8f_a44f0d64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-11-28T17:56:31Z",
+      "side": 1,
+      "message": "Please review this fix for binapi using shared memory running on KVM Windriver Platform. \n\nThanks",
+      "revId": "a4b4fec3193c3609ea0f599efd83d74be4dfaea9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
