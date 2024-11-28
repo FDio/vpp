@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2023 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -41,14 +41,14 @@
 #define included_ppp_h
 
 #include <vnet/vnet.h>
-#include <vnet/ppp/packet.h>
+#include <ppp/packet.h>
 
 extern vnet_hw_interface_class_t ppp_hw_interface_class;
 
 typedef enum
 {
 #define ppp_error(n,s) PPP_ERROR_##n,
-#include <vnet/ppp/error.def>
+#include <ppp/error.def>
 #undef ppp_error
   PPP_N_ERROR,
 } ppp_error_t;
@@ -105,9 +105,9 @@ unformat_function_t unformat_ppp_protocol_net_byte_order;
 unformat_function_t unformat_ppp_header;
 unformat_function_t unformat_pg_ppp_header;
 
-void
-ppp_register_input_protocol (vlib_main_t * vm,
-			     ppp_protocol_t protocol, u32 node_index);
+__clib_export void ppp_register_input_protocol (vlib_main_t *vm,
+						ppp_protocol_t protocol,
+						u32 node_index);
 
 #endif /* included_ppp_h */
 
