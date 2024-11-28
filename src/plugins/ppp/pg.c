@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/ppp/ppp.h>
+#include <ppp/ppp.h>
 
 typedef struct
 {
