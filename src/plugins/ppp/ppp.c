@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2024 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/ppp/ppp.h>
+#include <ppp/ppp.h>
 
 /* Global main structure. */
 ppp_main_t ppp_main;
@@ -226,9 +226,19 @@ static clib_error_t *
 ppp_init (vlib_main_t * vm)
 {
   ppp_main_t *pm = &ppp_main;
+  clib_error_t *error;
 
   clib_memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
+
+  if ((error = vlib_call_init_function (vm, ip_main_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip4_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip6_init)))
+    return error;
 
   pm->protocol_info_by_name = hash_create_string (0, sizeof (uword));
   pm->protocol_info_by_protocol = hash_create (0, sizeof (uword));

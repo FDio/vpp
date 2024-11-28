@@ -40,9 +40,10 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <osi/osi.h>
-#include <vnet/ppp/ppp.h>
+#include <ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/llc/llc.h>
+#include <vnet/plugin/plugin.h>
 
 #define foreach_osi_input_next			\
   _ (PUNT, "error-punt")			\
@@ -271,11 +272,24 @@ osi_setup_node (vlib_main_t *vm, u32 node_index)
   pn->unformat_edit = unformat_pg_osi_header;
 }
 
+typedef void (*ppp_register_input_protocol_fn) (vlib_main_t *vm,
+						ppp_protocol_t protocol,
+						u32 node_index);
+
 static clib_error_t *
 osi_input_init (vlib_main_t * vm)
 {
   clib_error_t *error = 0;
   osi_main_t *lm = &osi_main;
+  ppp_register_input_protocol_fn ppp_register_input_protocol_fn_ptr;
+
+  ppp_register_input_protocol_fn_ptr =
+    vlib_get_plugin_symbol ("ppp_plugin.so", "ppp_register_input_protocol");
+  if (ppp_register_input_protocol_fn_ptr == 0)
+    {
+      error = clib_error_return (0, "ppp_plugin.so is not loaded");
+      return error;
+    }
 
   if ((error = vlib_call_init_function (vm, osi_init)))
     return error;
@@ -288,7 +302,8 @@ osi_input_init (vlib_main_t * vm)
       lm->input_next_by_protocol[i] = OSI_INPUT_NEXT_DROP;
   }
 
-  ppp_register_input_protocol (vm, PPP_PROTOCOL_osi, osi_input_node.index);
+  ppp_register_input_protocol_fn_ptr (vm, PPP_PROTOCOL_osi,
+				      osi_input_node.index);
   hdlc_register_input_protocol (vm, HDLC_PROTOCOL_osi, osi_input_node.index);
   llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer1,
 			       osi_input_node.index);
