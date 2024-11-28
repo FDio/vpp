@@ -163,8 +163,8 @@ public:
     vapi_error_e rv = VAPI_OK;
     if (!vapi_ctx)
       {
-        if (VAPI_OK != (rv = vapi_ctx_alloc (&vapi_ctx)))
-          {
+	if (VAPI_OK != (rv = vapi_ctx_alloc (&vapi_ctx, false)))
+	  {
             throw std::bad_alloc ();
           }
       }
