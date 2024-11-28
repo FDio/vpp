@@ -29,7 +29,7 @@ static vapi_ctx_t
 connect_to_vpp (void)
 {
   vapi_ctx_t ctx;
-  if (vapi_ctx_alloc (&ctx) != VAPI_OK)
+  if (vapi_ctx_alloc (&ctx, false) != VAPI_OK)
     {
       clib_warning ("ctx_alloc failed");
       return 0;

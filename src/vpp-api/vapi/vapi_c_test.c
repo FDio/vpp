@@ -60,7 +60,7 @@ static const int response_queue_size = 32;
 START_TEST (test_invalid_values)
 {
   vapi_ctx_t ctx;
-  vapi_error_e rv = vapi_ctx_alloc (&ctx);
+  vapi_error_e rv = vapi_ctx_alloc (&ctx, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   vapi_msg_show_version *sv = vapi_alloc_show_version (ctx);
   ck_assert_ptr_eq (NULL, sv);
@@ -367,7 +367,7 @@ loopback_delete_cb (vapi_ctx_t ctx, void *caller_ctx,
 START_TEST (test_connect)
 {
   vapi_ctx_t ctx;
-  vapi_error_e rv = vapi_ctx_alloc (&ctx);
+  vapi_error_e rv = vapi_ctx_alloc (&ctx, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   rv =
     vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
@@ -385,7 +385,7 @@ vapi_ctx_t ctx;
 void
 setup_blocking (void)
 {
-  vapi_error_e rv = vapi_ctx_alloc (&ctx);
+  vapi_error_e rv = vapi_ctx_alloc (&ctx, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   rv =
     vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
@@ -396,7 +396,7 @@ setup_blocking (void)
 void
 setup_nonblocking (void)
 {
-  vapi_error_e rv = vapi_ctx_alloc (&ctx);
+  vapi_error_e rv = vapi_ctx_alloc (&ctx, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
 			response_queue_size, VAPI_MODE_NONBLOCKING, true,
