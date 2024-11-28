@@ -39,7 +39,6 @@
 
 #include <vnet/ip/ip6_input.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/pg/pg.h>
 
@@ -242,7 +241,6 @@ static clib_error_t *
 ip6_init (vlib_main_t * vm)
 {
   ethernet_register_input_type (vm, ETHERNET_TYPE_IP6, ip6_input_node.index);
-  ppp_register_input_protocol (vm, PPP_PROTOCOL_ip6, ip6_input_node.index);
   hdlc_register_input_protocol (vm, HDLC_PROTOCOL_ip6, ip6_input_node.index);
 
   {

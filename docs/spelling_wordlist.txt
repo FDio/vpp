@@ -868,6 +868,7 @@ Pollable
 portranges
 poweroff
 ppc
+ppp
 pppoe
 pps
 pre

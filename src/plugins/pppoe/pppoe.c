@@ -27,7 +27,7 @@
 #include <vnet/dpo/interface_tx_dpo.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
-#include <vnet/ppp/packet.h>
+#include <ppp/packet.h>
 #include <pppoe/pppoe.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_mcast.h>

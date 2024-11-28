@@ -16,7 +16,7 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/ppp/packet.h>
+#include <ppp/packet.h>
 #include <pppoe/pppoe.h>
 
 typedef struct {

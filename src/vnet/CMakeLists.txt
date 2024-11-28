@@ -269,21 +269,6 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
-# Layer 2 protocol: PPP
-##############################################################################
-list(APPEND VNET_SOURCES
-  ppp/node.c
-  ppp/pg.c
-  ppp/ppp.c
-)
-
-list(APPEND VNET_HEADERS
-  ppp/error.def
-  ppp/ppp.h
-  ppp/packet.h
-)
-
-##############################################################################
 # Layer 2 protocol: HDLC
 ##############################################################################
 list(APPEND VNET_SOURCES
