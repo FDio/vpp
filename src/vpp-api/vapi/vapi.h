@@ -75,7 +75,7 @@ void vapi_msg_free (vapi_ctx_t ctx, void *msg);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_ctx_alloc (vapi_ctx_t *result);
+vapi_error_e vapi_ctx_alloc (vapi_ctx_t *result, bool use_uds);
 
 /**
  * @brief free vapi context
