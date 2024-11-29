@@ -178,6 +178,7 @@ tx_burst_vector_internal (vlib_main_t *vm, dpdk_device_t *xd,
       n_retry--;
       n_left -= n_sent;
       mb += n_sent;
+      n_retry--;
     }
   while (n_sent && n_left && (n_retry > 0));
 
