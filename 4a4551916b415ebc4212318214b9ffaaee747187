@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "4a4551916b415ebc4212318214b9ffaaee747187",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd42f2e3_4e9a95fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-11-29T08:17:25Z",
+      "side": 1,
+      "message": "We need to understand why clib_time_init() would crash on this platform. There is no reason it should be, and the fact that it does is probably a symptom of something else.",
+      "revId": "4a4551916b415ebc4212318214b9ffaaee747187",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
