@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <limits.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
