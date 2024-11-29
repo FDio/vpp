@@ -9,6 +9,18 @@ containers:
       - <<: *shared-vol
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
+  - name: "iperfB"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+    is-optional: true
+  - name: "iperfA"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+    is-optional: true
   - name: "nginx-server"
     volumes:
       - <<: *shared-vol
