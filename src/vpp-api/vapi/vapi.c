@@ -300,6 +300,10 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
 vapi_error_e
 vapi_ctx_alloc (vapi_ctx_t * result)
 {
+  if (!clib_mem_get_per_cpu_heap () && !clib_mem_init (0, 1024L * 1024 * 32))
+    {
+      return VAPI_ENOMEM;
+    }
   vapi_ctx_t ctx = calloc (1, sizeof (struct vapi_ctx_s));
   if (!ctx)
     {
@@ -966,11 +970,6 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
   if (response_queue_size <= 0 || max_outstanding_requests <= 0)
     {
       return VAPI_EINVAL;
-    }
-
-  if (!clib_mem_get_per_cpu_heap () && !clib_mem_init (0, 1024L * 1024 * 32))
-    {
-      return VAPI_ENOMEM;
     }
 
   ctx->requests_size = max_outstanding_requests;
