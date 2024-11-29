@@ -62,8 +62,29 @@ func (s *VppProxySuite) SetupTest() {
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
 
-	// nginx HTTP server
+	s.AssertNil(vpp.Start())
+	s.AssertNil(vpp.CreateTap(clientInterface, 1, 1))
+	s.AssertNil(vpp.CreateTap(serverInterface, 1, 2))
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
+}
+
+func (s *VppProxySuite) TearDownTest() {
+	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
+	if CurrentSpecReport().Failed() {
+		s.Log(vpp.Vppctl("show session verbose 2"))
+		s.Log(vpp.Vppctl("show error"))
+		s.CollectNginxLogs(NginxServerContainerName)
+	}
+	s.HstSuite.TearDownTest()
+}
+
+func (s *VppProxySuite) SetupNginxServer() {
 	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
+	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
 	s.AssertNil(nginxContainer.Create())
 	s.nginxPort = 80
 	nginxSettings := struct {
@@ -83,25 +104,6 @@ func (s *VppProxySuite) SetupTest() {
 		nginxSettings,
 	)
 	s.AssertNil(nginxContainer.Start())
-
-	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.createTap(clientInterface, 1))
-	s.AssertNil(vpp.createTap(serverInterface, 2))
-
-	if *DryRun {
-		s.LogStartedContainers()
-		s.Skip("Dry run mode = true")
-	}
-}
-
-func (s *VppProxySuite) TearDownTest() {
-	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
-	if CurrentSpecReport().Failed() {
-		s.Log(vpp.Vppctl("show session verbose 2"))
-		s.Log(vpp.Vppctl("show error"))
-		s.CollectNginxLogs(NginxServerContainerName)
-	}
-	s.HstSuite.TearDownTest()
 }
 
 func (s *VppProxySuite) NginxPort() uint16 {
