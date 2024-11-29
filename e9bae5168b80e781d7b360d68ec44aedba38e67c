@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "09a47086_95c1d848",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Yes, as you suggested we will change this logic to read in seperate loop/function.",
+      "parentUuid": "7bb58605_8dfdc4e0",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c50909c5_1dc002a5",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 6
@@ -48,6 +66,30 @@
       "writtenOn": "2024-11-22T14:36:16Z",
       "side": 1,
       "message": "should this be  if (svm_fifo_needs_deq_ntf (app_tx_fifo, wrote_sum)) ?",
+      "range": {
+        "startLine": 618,
+        "startChar": 0,
+        "endLine": 618,
+        "endChar": 51
+      },
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a2dde85_2910afeb",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c50909c5_1dc002a5",
       "range": {
         "startLine": 618,
         "startChar": 0,
@@ -77,6 +119,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6313340c_fa8290f0",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 715,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Its framework limitation.",
+      "parentUuid": "1a0070f9_9e2b8716",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "68e29599_aba631f3",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 6
@@ -88,6 +148,24 @@
       "writtenOn": "2024-11-22T08:16:02Z",
       "side": 1,
       "message": "Is this still used? Also, is there a way to get events out of openssl via something like an eventfd? We could eventually make the input node run in interrupt mode",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88298acd_1b1cae96",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 945,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Its required to send the POLL command to the engine.",
+      "parentUuid": "68e29599_aba631f3",
       "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -117,6 +195,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1ad4a467_f084557d",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1047,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7216724b_4d48556b",
+      "range": {
+        "startLine": 1047,
+        "startChar": 6,
+        "endLine": 1047,
+        "endChar": 37
+      },
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6c8a81e7_19c3df3f",
         "filename": "src/vnet/tls/tls.h",
         "patchSetId": 6
@@ -134,6 +236,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a21256fb_cefd86a3",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6c8a81e7_19c3df3f",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2ebfe7d8_1e520e97",
         "filename": "src/vnet/tls/tls.h",
         "patchSetId": 6
@@ -145,6 +265,24 @@
       "writtenOn": "2024-11-22T08:16:02Z",
       "side": 1,
       "message": "Any reason why not to add it to tls_conn_flags_t?",
+      "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b470a943_a561e3de",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2024-11-29T16:04:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2ebfe7d8_1e520e97",
       "revId": "e9bae5168b80e781d7b360d68ec44aedba38e67c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
