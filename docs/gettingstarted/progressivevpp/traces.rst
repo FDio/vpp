@@ -66,6 +66,13 @@ The following list of nodes are supported under trace add:
 * virtio-input
 * vmxnet3-input
 
+To display the full list:
+
+.. code-block:: console
+
+  vpp# show graph trace_supported
+
+
 Ping from Host to VPP
 ----------------------
 
