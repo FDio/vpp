@@ -100,7 +100,7 @@ typedef struct
   u32 idle_timeout; /**< connect-proxy timeout for idle connections */
   int rcv_buffer_size;
   session_endpoint_cfg_t server_sep;
-  session_endpoint_cfg_t client_sep;
+  session_endpoint_cfg_t *client_sep;
 
   /*
    * Flags

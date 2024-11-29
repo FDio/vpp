@@ -16,15 +16,17 @@ import (
 
 // These correspond to names used in yaml config
 const (
-	VppProxyContainerName  = "vpp-proxy"
-	ClientTapInterfaceName = "hstcln"
-	ServerTapInterfaceName = "hstsrv"
-	CurlContainerTestFile  = "/tmp/testFile"
+	VppProxyContainerName    = "vpp-proxy"
+	ClientTapInterfaceName   = "hstcln"
+	ServerTapInterfaceName   = "hstsrv"
+	IperfServerContainerName = "iperfA"
+	IperfClientContainerName = "iperfB"
+	CurlContainerTestFile    = "/tmp/testFile"
 )
 
 type VppProxySuite struct {
 	HstSuite
-	nginxPort  uint16
+	serverPort uint16
 	maxTimeout int
 }
 
@@ -44,6 +46,7 @@ func (s *VppProxySuite) SetupSuite() {
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("vppProxy")
 
+	s.serverPort = 80
 	if *IsVppDebug {
 		s.maxTimeout = 600
 	} else {
@@ -62,31 +65,9 @@ func (s *VppProxySuite) SetupTest() {
 	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
 	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
 
-	// nginx HTTP server
-	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
-	s.AssertNil(nginxContainer.Create())
-	s.nginxPort = 80
-	nginxSettings := struct {
-		LogPrefix string
-		Address   string
-		Port      uint16
-		Timeout   int
-	}{
-		LogPrefix: nginxContainer.Name,
-		Address:   serverInterface.Ip4AddressString(),
-		Port:      s.nginxPort,
-		Timeout:   s.maxTimeout,
-	}
-	nginxContainer.CreateConfigFromTemplate(
-		"/nginx.conf",
-		"./resources/nginx/nginx_server.conf",
-		nginxSettings,
-	)
-	s.AssertNil(nginxContainer.Start())
-
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.createTap(clientInterface, 1))
-	s.AssertNil(vpp.createTap(serverInterface, 2))
+	s.AssertNil(vpp.CreateTap(clientInterface, 1, 1))
+	s.AssertNil(vpp.CreateTap(serverInterface, 1, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -104,16 +85,43 @@ func (s *VppProxySuite) TearDownTest() {
 	s.HstSuite.TearDownTest()
 }
 
-func (s *VppProxySuite) NginxPort() uint16 {
-	return s.nginxPort
+func (s *VppProxySuite) SetupNginxServer() {
+	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
+	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
+	s.AssertNil(nginxContainer.Create())
+	nginxSettings := struct {
+		LogPrefix string
+		Address   string
+		Port      uint16
+		Timeout   int
+	}{
+		LogPrefix: nginxContainer.Name,
+		Address:   serverInterface.Ip4AddressString(),
+		Port:      s.serverPort,
+		Timeout:   s.maxTimeout,
+	}
+	nginxContainer.CreateConfigFromTemplate(
+		"/nginx.conf",
+		"./resources/nginx/nginx_server.conf",
+		nginxSettings,
+	)
+	s.AssertNil(nginxContainer.Start())
 }
 
-func (s *VppProxySuite) NginxAddr() string {
+func (s *VppProxySuite) ServerPort() uint16 {
+	return s.serverPort
+}
+
+func (s *VppProxySuite) ServerAddr() string {
 	return s.GetInterfaceByName(ServerTapInterfaceName).Ip4AddressString()
 }
 
 func (s *VppProxySuite) VppProxyAddr() string {
 	return s.GetInterfaceByName(ClientTapInterfaceName).Peer.Ip4AddressString()
+}
+
+func (s *VppProxySuite) ClientAddr() string {
+	return s.GetInterfaceByName(ClientTapInterfaceName).Ip4AddressString()
 }
 
 func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {
