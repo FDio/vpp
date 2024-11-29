@@ -58,7 +58,7 @@ func (s *NoTopoSuite) SetupTest() {
 
 	s.AssertNil(vpp.Start())
 	tapInterface := s.GetInterfaceByName(TapInterfaceName)
-	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
+	s.AssertNil(vpp.CreateTap(tapInterface, 1, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()

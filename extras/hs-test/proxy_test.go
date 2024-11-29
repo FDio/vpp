@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest)
-	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest)
+	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
@@ -20,7 +23,7 @@ func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s/%d", proto, s.VppProxyAddr(), proxyPort)
 	if proto != "http" {
-		cmd += fmt.Sprintf(" client-uri tcp://%s/%d", s.NginxAddr(), s.NginxPort())
+		cmd += fmt.Sprintf(" client-uri tcp://%s/%d", s.ServerAddr(), s.ServerPort())
 	}
 	output := vppProxy.Vppctl(cmd)
 	s.Log("proxy configured: " + output)
@@ -30,8 +33,58 @@ func VppProxyHttpGetTcpMTTest(s *VppProxySuite) {
 	VppProxyHttpGetTcpTest(s)
 }
 
+func VppProxyTcpIperfMTTest(s *VppProxySuite) {
+	iperfServer := s.GetContainerByName(IperfServerContainerName)
+	iperfClient := s.GetContainerByName(IperfClientContainerName)
+	iperfServer.Run()
+	iperfClient.Run()
+	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
+	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
+	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
+	proxyPort, err := strconv.Atoi(s.GetPortFromPpid())
+	s.AssertNil(err)
+
+	// tap interfaces are created on test setup with 1 rx-queue,
+	// need to recreate them with 2 + consistent-qp
+	s.AssertNil(vppProxy.DeleteTap(serverInterface))
+	s.AssertNil(vppProxy.CreateTap(serverInterface, 2, uint32(serverInterface.Peer.Index), 256))
+
+	s.AssertNil(vppProxy.DeleteTap(clientInterface))
+	s.AssertNil(vppProxy.CreateTap(clientInterface, 2, uint32(clientInterface.Peer.Index), 256))
+
+	configureVppProxy(s, "tcp", uint16(proxyPort))
+
+	stopServerCh := make(chan struct{}, 1)
+	srvCh := make(chan error, 1)
+	clnCh := make(chan error)
+	clnRes := make(chan string, 1)
+
+	defer func() {
+		stopServerCh <- struct{}{}
+	}()
+
+	go func() {
+		defer GinkgoRecover()
+		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s", s.ServerAddr(), fmt.Sprint(s.ServerPort()))
+		s.StartServerApp(iperfServer, "iperf3", cmd, srvCh, stopServerCh)
+	}()
+
+	err = <-srvCh
+	s.AssertNil(err, fmt.Sprint(err))
+
+	go func() {
+		defer GinkgoRecover()
+		cmd := fmt.Sprintf("iperf3 -c %s -P 4 -p %d -B %s", s.VppProxyAddr(), proxyPort, s.ClientAddr())
+		s.StartClientApp(iperfClient, cmd, clnCh, clnRes)
+	}()
+
+	s.AssertChannelClosed(time.Minute*4, clnCh)
+	s.Log(<-clnRes)
+}
+
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
+	s.SetupNginxServer()
 	configureVppProxy(s, "tcp", proxyPort)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResource(uri)
@@ -39,6 +92,7 @@ func VppProxyHttpGetTcpTest(s *VppProxySuite) {
 
 func VppProxyHttpGetTlsTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
+	s.SetupNginxServer()
 	configureVppProxy(s, "tls", proxyPort)
 	uri := fmt.Sprintf("https://%s:%d/httpTestFile", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResource(uri)
@@ -50,6 +104,7 @@ func VppProxyHttpPutTcpMTTest(s *VppProxySuite) {
 
 func VppProxyHttpPutTcpTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
+	s.SetupNginxServer()
 	configureVppProxy(s, "tcp", proxyPort)
 	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.VppProxyAddr(), proxyPort)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
@@ -57,6 +112,7 @@ func VppProxyHttpPutTcpTest(s *VppProxySuite) {
 
 func VppProxyHttpPutTlsTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
+	s.SetupNginxServer()
 	configureVppProxy(s, "tls", proxyPort)
 	uri := fmt.Sprintf("https://%s:%d/upload/testFile", s.VppProxyAddr(), proxyPort)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
@@ -94,21 +150,21 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 
 func VppConnectProxyGetTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
-
+	s.SetupNginxServer()
 	configureVppProxy(s, "http", proxyPort)
 
-	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.NginxAddr(), s.NginxPort())
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.ServerPort())
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
 }
 
 func VppConnectProxyPutTest(s *VppProxySuite) {
 	var proxyPort uint16 = 8080
-
+	s.SetupNginxServer()
 	configureVppProxy(s, "http", proxyPort)
 
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
-	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.NginxAddr(), s.NginxPort())
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.ServerPort())
 	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
 }
 
