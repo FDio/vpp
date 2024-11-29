@@ -424,7 +424,7 @@ func (vpp *VppInstance) addAppNamespace(
 	return nil
 }
 
-func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
+func (vpp *VppInstance) CreateTap(tap *NetInterface, numRxQueues uint16, tapId ...uint32) error {
 	var id uint32 = 1
 	if len(tapId) > 0 {
 		id = tapId[0]
@@ -452,6 +452,7 @@ func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
 		HostIfName:       tap.Name(),
 		HostIP4PrefixSet: true,
 		HostIP4Prefix:    tap.Ip4AddressWithPrefix(),
+		NumRxQueues:      numRxQueues,
 	}
 
 	vpp.getSuite().Log("create tap interface " + tap.Name())
@@ -528,6 +529,25 @@ func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
 		tap.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 	}
 
+	return nil
+}
+
+func (vpp *VppInstance) DeleteTap(tapInterface *NetInterface) error {
+	deleteReq := &tapv2.TapDeleteV2{
+		SwIfIndex: tapInterface.Peer.Index,
+	}
+	vpp.getSuite().Log("delete tap interface " + tapInterface.Name())
+	if err := vpp.ApiStream.SendMsg(deleteReq); err != nil {
+		return err
+	}
+	replymsg, err := vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply := replymsg.(*tapv2.TapDeleteV2Reply)
+	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
+		return err
+	}
 	return nil
 }
 
