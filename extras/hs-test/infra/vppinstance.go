@@ -80,6 +80,7 @@ const (
 	defaultCliSocketFilePath = "/var/run/vpp/cli.sock"
 	defaultApiSocketFilePath = "/var/run/vpp/api.sock"
 	defaultLogFilePath       = "/var/log/vpp/vpp.log"
+	Consistent_qp            = 256
 )
 
 type VppInstance struct {
@@ -424,22 +425,28 @@ func (vpp *VppInstance) addAppNamespace(
 	return nil
 }
 
-func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
-	var id uint32 = 1
-	if len(tapId) > 0 {
-		id = tapId[0]
+func (vpp *VppInstance) CreateTap(tap *NetInterface, numRxQueues uint16, tapId uint32, flags ...uint32) error {
+	var tapFlags uint32 = 0
+	if len(flags) > 0 {
+		tapFlags = flags[0]
 	}
 
 	if *DryRun {
-		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s host-ip4-addr %s\n"+
+		flagsCli := ""
+		if tapFlags == Consistent_qp {
+			flagsCli = "consistent-qp"
+		}
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s host-ip4-addr %s num-rx-queues %d %s\n"+
 			"set int ip addr tap%d %s\n"+
 			"set int state tap%d up\n",
-			id,
+			tapId,
 			tap.name,
 			tap.Ip4Address,
-			id,
+			numRxQueues,
+			flagsCli,
+			tapId,
 			tap.Peer.Ip4Address,
-			id,
+			tapId,
 		)
 		vpp.AppendToCliConfig(vppCliConfig)
 		vpp.getSuite().Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
@@ -447,11 +454,13 @@ func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
 	}
 
 	createTapReq := &tapv2.TapCreateV3{
-		ID:               id,
+		ID:               tapId,
 		HostIfNameSet:    true,
 		HostIfName:       tap.Name(),
 		HostIP4PrefixSet: true,
 		HostIP4Prefix:    tap.Ip4AddressWithPrefix(),
+		NumRxQueues:      numRxQueues,
+		TapFlags:         tapv2.TapFlags(tapFlags),
 	}
 
 	vpp.getSuite().Log("create tap interface " + tap.Name())
@@ -528,6 +537,25 @@ func (vpp *VppInstance) createTap(tap *NetInterface, tapId ...uint32) error {
 		tap.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 	}
 
+	return nil
+}
+
+func (vpp *VppInstance) DeleteTap(tapInterface *NetInterface) error {
+	deleteReq := &tapv2.TapDeleteV2{
+		SwIfIndex: tapInterface.Peer.Index,
+	}
+	vpp.getSuite().Log("delete tap interface " + tapInterface.Name())
+	if err := vpp.ApiStream.SendMsg(deleteReq); err != nil {
+		return err
+	}
+	replymsg, err := vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply := replymsg.(*tapv2.TapDeleteV2Reply)
+	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
+		return err
+	}
 	return nil
 }
 
