@@ -150,6 +150,11 @@ typedef struct
   u16 dma_info_size;
   u8 dma_info_full;
 
+  /* packets received or sent */
+  u64 n_packets;
+  u64 no_free_tx;
+  u32 max_no_free_tx;
+
   /* interrupts */
   int int_fd;
   uword int_clib_file_index;

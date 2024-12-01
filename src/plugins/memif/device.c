@@ -67,12 +67,37 @@ format_memif_device (u8 * s, va_list * args)
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
   u32 indent = format_get_indent (s);
+  memif_main_t *mm = &memif_main;
+  memif_queue_t *mq;
+  uword i;
 
   s = format (s, "MEMIF interface");
   if (verbose)
     {
       s = format (s, "\n%U instance %u", format_white_space, indent + 2,
 		  dev_instance);
+
+      memif_if_t *mif = pool_elt_at_index (mm->interfaces, dev_instance);
+      vec_foreach_index (i, mif->tx_queues)
+	{
+	  mq = vec_elt_at_index (mif->tx_queues, i);
+	  s = format (s, "\n%U master-to-slave ring %u", format_white_space,
+		      indent + 4, i);
+	  s = format (s, "\n%U packets sent: %u", format_white_space,
+		      indent + 6, mq->n_packets);
+	  s = format (s, "\n%U no tx slot: %u", format_white_space, indent + 6,
+		      mq->no_free_tx);
+	  s = format (s, "\n%U max no tx slot: %u", format_white_space,
+		      indent + 6, mq->max_no_free_tx);
+	}
+      vec_foreach_index (i, mif->rx_queues)
+	{
+	  mq = vec_elt_at_index (mif->rx_queues, i);
+	  s = format (s, "\n%U slave-to-master ring %u", format_white_space,
+		      indent + 4, i);
+	  s = format (s, "\n%U packets received: %u", format_white_space,
+		      indent + 6, mq->n_packets);
+	}
     }
   return s;
 }
@@ -111,6 +136,7 @@ memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   memif_region_index_t last_region = ~0;
   void *last_region_shm = 0;
   u16 head, tail;
+  u64 local_n_packets = 0;
 
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
@@ -226,7 +252,9 @@ retry:
 
       buffers++;
       n_left--;
+      local_n_packets++;
     }
+  mq->n_packets += local_n_packets;
 no_free_slots:
 
   /* copy data */
@@ -358,6 +386,7 @@ retry:
       /* next from */
       buffers++;
       n_left--;
+      mq->n_packets += 1;
     }
 no_free_slots:
 
@@ -543,6 +572,7 @@ retry:
 
       buffers++;
       n_left--;
+      mq->n_packets += 1;
     }
 no_free_slots:
 
@@ -676,8 +706,13 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
     clib_spinlock_unlock (&mq->lockp);
 
   if (n_left)
-    vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
-		      n_left);
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
+			n_left);
+      mq->no_free_tx += n_left;
+      if (n_left > mq->max_no_free_tx)
+	mq->max_no_free_tx = n_left;
+    }
 
   if ((mq->ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
     {
@@ -721,7 +756,23 @@ memif_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 static void
 memif_clear_hw_interface_counters (u32 instance)
 {
-  /* Nothing for now */
+  memif_main_t *mm = &memif_main;
+  memif_queue_t *mq;
+  uword i;
+
+  memif_if_t *mif = pool_elt_at_index (mm->interfaces, instance);
+  vec_foreach_index (i, mif->tx_queues)
+    {
+      mq = vec_elt_at_index (mif->tx_queues, i);
+      mq->n_packets = 0;
+      mq->no_free_tx = 0;
+      mq->max_no_free_tx = 0;
+    }
+  vec_foreach_index (i, mif->rx_queues)
+    {
+      mq = vec_elt_at_index (mif->rx_queues, i);
+      mq->n_packets = 0;
+    }
 }
 
 static clib_error_t *
