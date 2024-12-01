@@ -85,7 +85,7 @@ crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
 	     &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT];
   u64 head = current_queue->head;
 
-  if (current_queue->jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK])
+  if (current_queue->jobs[head & cm->crypto_sw_scheduler_queue_mask])
     {
       u32 n_elts = frame->n_elts, i;
       for (i = 0; i < n_elts; i++)
@@ -93,7 +93,7 @@ crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
       return -1;
     }
 
-  current_queue->jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = frame;
+  current_queue->jobs[head & cm->crypto_sw_scheduler_queue_mask] = frame;
   head += 1;
   CLIB_MEMORY_STORE_BARRIER ();
   current_queue->head = head;
@@ -487,13 +487,13 @@ run_next_queues:
 	   * Prior to that, the largest possible value of head is
 	   * (queue size - 2).
 	   */
-	  if ((tail > head) && (head >= CRYPTO_SW_SCHEDULER_QUEUE_MASK))
+	  if ((tail > head) && (head >= cm->crypto_sw_scheduler_queue_mask))
 	    goto skip_queue;
 
 	  for (j = tail; j != head; j++)
 	    {
 
-	      f = current_queue->jobs[j & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
+	      f = current_queue->jobs[j & cm->crypto_sw_scheduler_queue_mask];
 
 	      if (!f)
 		continue;
@@ -553,7 +553,7 @@ run_next_queues:
       ptd->last_return_queue = 1;
     }
 
-  tail = current_queue->tail & CRYPTO_SW_SCHEDULER_QUEUE_MASK;
+  tail = current_queue->tail & cm->crypto_sw_scheduler_queue_mask;
 
   if (current_queue->jobs[tail] &&
       current_queue->jobs[tail]->state >= VNET_CRYPTO_FRAME_STATE_SUCCESS)
@@ -686,36 +686,7 @@ clib_error_t *
 crypto_sw_scheduler_init (vlib_main_t * vm)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   clib_error_t *error = 0;
-  crypto_sw_scheduler_per_thread_data_t *ptd;
-  u32 i;
-
-  vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  for (i = 0; i < tm->n_vlib_mains; i++)
-    {
-      ptd = cm->per_thread_data + i;
-      ptd->self_crypto_enabled = i > 0 || vlib_num_workers () < 1;
-
-      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].head = 0;
-      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].tail = 0;
-
-      vec_validate_aligned (
-	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
-
-      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].head = 0;
-      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].tail = 0;
-
-      ptd->last_serve_encrypt = 0;
-      ptd->last_return_queue = 0;
-
-      vec_validate_aligned (
-	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
-    }
 
   cm->crypto_engine_index =
     vnet_crypto_register_engine (vm, "sw_scheduler", 100,
@@ -749,9 +720,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
       vnet_crypto_register_dequeue_handler (vm, cm->crypto_engine_index,
 					    crypto_sw_scheduler_dequeue);
 
-  if (error)
-    vec_free (cm->per_thread_data);
-
   return error;
 }
 
@@ -763,6 +731,73 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SW Scheduler Crypto Async Engine plugin",
 };
+
+static clib_error_t *
+crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
+  u32 crypto_sw_scheduler_queue_size = CRYPTO_SW_SCHEDULER_QUEUE_SIZE;
+  clib_error_t *error = 0;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  crypto_sw_scheduler_per_thread_data_t *ptd;
+  u32 i;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "crypto-sw-scheduler-queue-size %d",
+		    &crypto_sw_scheduler_queue_size))
+	{
+	  if (!is_pow2 (crypto_sw_scheduler_queue_size))
+	    {
+	      return clib_error_return (0, "input %d is not pow2",
+					format_unformat_error,
+					crypto_sw_scheduler_queue_size);
+	    }
+	}
+      else
+	{
+	  cm->crypto_sw_scheduler_queue_mask =
+	    crypto_sw_scheduler_queue_size - 1;
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
+    }
+
+  cm->crypto_sw_scheduler_queue_mask = crypto_sw_scheduler_queue_size - 1;
+
+  vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    {
+      ptd = cm->per_thread_data + i;
+      ptd->self_crypto_enabled = i > 0 || vlib_num_workers () < 1;
+
+      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].head = 0;
+      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].tail = 0;
+
+      vec_validate_aligned (
+	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].jobs,
+	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+
+      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].head = 0;
+      ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].tail = 0;
+
+      ptd->last_serve_encrypt = 0;
+      ptd->last_return_queue = 0;
+
+      vec_validate_aligned (
+	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].jobs,
+	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+    }
+
+  if (error)
+    vec_free (cm->per_thread_data);
+
+  return error;
+}
+
+VLIB_CONFIG_FUNCTION (crypto_sw_scheduler_config, "crypto_sw_scheduler");
 
 /*
  * fd.io coding-style-patch-verification: ON
