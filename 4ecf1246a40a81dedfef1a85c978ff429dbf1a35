@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19a9145d_cf4bf487",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-02T13:25:04Z",
+      "side": 1,
+      "message": "this is bit messy. you already modified CreateTap, I understand that consistent-qp flag is not defined in \"enum tap_flags\" (tapv2.api) and in that case is missing in govpp, so either we will switch to use cli when creating tap or you will create suite for mt proxy tests where you use cli instead of \"createTap\" method. or you can try to set TapFlags in createTap to value 256, I guess it should work, not nice but... and create another patch where you update tap_flags (it is backwards compatible change)",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 41
+      },
+      "revId": "4ecf1246a40a81dedfef1a85c978ff429dbf1a35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
