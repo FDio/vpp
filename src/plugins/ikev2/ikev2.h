@@ -444,6 +444,8 @@ uword unformat_ikev2_transform_esn_type (unformat_input_t * input,
 
 clib_error_t *ikev2_set_liveness_params (u32 period, u32 max_retries);
 
+clib_error_t *ikev2_set_sleep_interval (f64 interval);
+
 #endif /* __included_ikev2_h__ */
 
 

@@ -894,6 +894,34 @@ static void vl_api_ikev2_plugin_get_version_reply_t_handler
 }
 
 static int
+api_ikev2_plugin_set_sleep_interval (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_plugin_set_sleep_interval_t *mp;
+  f64 timeout = 0.0; /* Default value for timeout */
+  int ret;
+
+  /* Parse input arguments */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!unformat (i, "timeout %lf", &timeout))
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_PLUGIN_SET_SLEEP_INTERVAL, mp);
+
+  mp->timeout = clib_host_to_net_f64 (timeout);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ikev2_profile_set_ipsec_udp_port (vat_main_t * vam)
 {
   return 0;

@@ -22,8 +22,6 @@ from scapy.packet import raw, Raw
 from scapy.utils import long_converter
 from framework import VppTestCase
 from asfframework import (
-    tag_fixme_vpp_workers,
-    tag_fixme_ubuntu2404,
     VppTestRunner,
 )
 from vpp_ikev2 import Profile, IDType, AuthMethod
@@ -2322,7 +2320,6 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
-@tag_fixme_ubuntu2404
 class TestResponderRekeyRepeat(TestResponderRekey):
     """test ikev2 responder - rekey repeat"""
 
@@ -2330,6 +2327,7 @@ class TestResponderRekeyRepeat(TestResponderRekey):
 
     def test_responder(self):
         super(TestResponderRekeyRepeat, self).test_responder()
+        self.vapi.ikev2_plugin_set_sleep_interval(timeout=0.1)
         # rekey request is not accepted until old IPsec SA is expired
         capture = self.send_rekey_from_initiator()
         ih = self.get_ike_header(capture[0])
@@ -2357,7 +2355,6 @@ class TestResponderRekeyKEX(TestResponderRekey):
     vpp_worker_count = 2
 
 
-@tag_fixme_ubuntu2404
 class TestResponderRekeyRepeatKEX(TestResponderRekeyRepeat):
     """test ikev2 responder - rekey repeat with key exchange"""
 
