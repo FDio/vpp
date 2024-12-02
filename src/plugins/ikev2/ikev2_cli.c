@@ -716,6 +716,60 @@ VLIB_CLI_COMMAND (set_ikev2_liveness_command, static) = {
 };
 
 static clib_error_t *
+set_ikev2_sleep_interval_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *r = 0;
+  f64 interval = 0.0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%lf", &interval))
+	{
+	  r = ikev2_set_sleep_interval (interval);
+	  goto done;
+	}
+      else
+	break;
+    }
+
+  r = clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			 line_input);
+
+done:
+  unformat_free (line_input);
+  return r;
+}
+
+VLIB_CLI_COMMAND (set_ikev2_sleep_interval, static) = {
+  .path = "ikev2 set sleep interval",
+  .short_help = "ikev2 set sleep interval <timeout>",
+  .function = set_ikev2_sleep_interval_fn,
+};
+
+static clib_error_t *
+show_ikev2_sleep_interval_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  f64 sleep_interval = ikev2_get_sleep_interval ();
+
+  vlib_cli_output (vm, "IKEv2 Manager sleep interval: %.2f seconds",
+		   sleep_interval);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ikev2_sleep_interval_command, static) = {
+  .path = "show ikev2 sleep interval",
+  .short_help = "show ikev2 sleep interval",
+  .function = show_ikev2_sleep_interval_command_fn,
+};
+
+static clib_error_t *
 set_ikev2_local_key_command_fn (vlib_main_t * vm,
 				unformat_input_t * input,
 				vlib_cli_command_t * cmd)

@@ -33,6 +33,7 @@
 
 #define IKEV2_LIVENESS_RETRIES 3
 #define IKEV2_LIVENESS_PERIOD_CHECK 30
+#define IKEV2_SLEEP_INTERVAL	    2.0
 
 ikev2_main_t ikev2_main;
 
@@ -5139,6 +5140,8 @@ ikev2_init (vlib_main_t * vm)
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
 
+  km->sleep_interval = IKEV2_SLEEP_INTERVAL;
+
   km->liveness_period = IKEV2_LIVENESS_PERIOD_CHECK;
   km->liveness_max_retries = IKEV2_LIVENESS_RETRIES;
 
@@ -5300,6 +5303,25 @@ ikev2_set_liveness_params (u32 period, u32 max_retries)
   km->liveness_period = period;
   km->liveness_max_retries = max_retries;
   return 0;
+}
+
+clib_error_t *
+ikev2_set_sleep_interval (f64 interval)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  if (interval == 0.0)
+    return clib_error_return (0, "invalid arg");
+
+  km->sleep_interval = interval;
+  return 0;
+}
+
+f64
+ikev2_get_sleep_interval ()
+{
+  ikev2_main_t *km = &ikev2_main;
+  return km->sleep_interval;
 }
 
 clib_error_t *
@@ -5539,7 +5561,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 2);
+      vlib_process_wait_for_event_or_clock (vm, km->sleep_interval);
       vlib_process_get_events (vm, NULL);
 
       /* process ike child sas */

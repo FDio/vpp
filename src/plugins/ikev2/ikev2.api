@@ -42,6 +42,38 @@ define ikev2_plugin_get_version_reply
   u32 minor;
 };
 
+/** \brief IKEv2: Set sleep interval for ikev2_manager_process node
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param timeout - sleep timeout duration in seconds
+*/
+autoreply define ikev2_plugin_set_sleep_interval
+{
+  u32 client_index;
+  u32 context;
+
+  f64 timeout;
+};
+
+/** \brief IKEv2: Get the current sleep interval for the ikev2_manager_process
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply with request
+*/
+define ikev2_get_sleep_interval {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief IKEv2: Reply with the current sleep interval
+    @param context - sender context, to match reply with request
+    @param sleep_interval - current sleep interval in seconds
+*/
+define ikev2_get_sleep_interval_reply {
+    u32 context;
+    i32 retval;
+    f64 sleep_interval;
+};
+
 /** \brief Dump all profiles
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
