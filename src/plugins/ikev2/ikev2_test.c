@@ -894,6 +894,72 @@ static void vl_api_ikev2_plugin_get_version_reply_t_handler
 }
 
 static int
+api_ikev2_plugin_set_sleep_interval (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_plugin_set_sleep_interval_t *mp;
+  f64 timeout = 0.0; /* Default value for timeout */
+  int ret;
+
+  /* Parse input arguments */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!unformat (i, "timeout %lf", &timeout))
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_PLUGIN_SET_SLEEP_INTERVAL, mp);
+
+  mp->timeout = clib_host_to_net_f64 (timeout);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
+api_ikev2_get_sleep_interval (vat_main_t *vam)
+{
+  ikev2_test_main_t *sm = &ikev2_test_main;
+  vl_api_ikev2_get_sleep_interval_t *mp;
+  u32 msg_size = sizeof (*mp);
+  int ret;
+
+  vam->result_ready = 0;
+
+  /* Allocate and initialize the message */
+  mp = vl_msg_api_alloc_as_if_client (msg_size);
+  clib_memset (mp, 0, msg_size);
+  mp->_vl_msg_id = ntohs (VL_API_IKEV2_GET_SLEEP_INTERVAL + sm->msg_id_base);
+  mp->client_index = vam->my_client_index;
+
+  /* Send the message */
+  S (mp);
+
+  /* Wait for a reply */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ikev2_get_sleep_interval_reply_t_handler (
+  vl_api_ikev2_get_sleep_interval_reply_t *mp)
+{
+  vat_main_t *vam = ikev2_test_main.vat_main;
+
+  /* Output the sleep interval */
+  clib_warning ("IKEv2 Manager Sleep Interval: %.2f seconds",
+		clib_net_to_host_f64 (mp->sleep_interval));
+
+  /* Mark the result as ready */
+  vam->result_ready = 1;
+}
+
+static int
 api_ikev2_profile_set_ipsec_udp_port (vat_main_t * vam)
 {
   return 0;
