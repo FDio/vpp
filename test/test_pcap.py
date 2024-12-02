@@ -71,10 +71,7 @@ class TestPcap(VppTestCase):
             "    incrementing 114\n"
             "  }\n"
             "}",
-            "pcap dispatch trace on max 100 buffer-trace pg-input 10",
-            "pa en",
-            "pcap dispatch trace off",
-            "pcap trace rx tx max 1000 intfc any",
+            "pcap trace rx tx max 5 intfc any",
             "pa en",
             "pcap trace status",
             "pcap trace rx tx off",

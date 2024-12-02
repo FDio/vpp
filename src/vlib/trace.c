@@ -359,6 +359,185 @@ VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .function = cli_show_trace_buffer,
 };
 
+// TODO: Handle potential cases where path length exceeds 32
+typedef struct cache_entry_paths
+{
+  u32 path_hash;
+  u32 path_length;
+  u32 path_indices[32];
+  u32 counter;
+} cache_entry_paths_t;
+
+static u8 *
+format_path_list (u8 *s, va_list *va)
+{
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  cache_entry_paths_t *p = va_arg (*va, cache_entry_paths_t *);
+  u32 index;
+  vlib_node_t *node, *prev_node;
+
+  prev_node = 0;
+  for (index = 0; index < p->path_length; index++)
+    {
+      node = vlib_get_node (vm, p->path_indices[index]);
+      if (node != prev_node)
+	{
+	  if (index == p->path_length - 1)
+	    s = format (s, "%v", node->name);
+	  else
+	    s = format (s, "%v,", node->name);
+	}
+      prev_node = node;
+    }
+
+  return s;
+}
+
+static int
+trace_path_sort (void *v1, void *v2)
+{
+  cache_entry_paths_t *t_path1 = (cache_entry_paths_t *) v1;
+  cache_entry_paths_t *t_path2 = (cache_entry_paths_t *) v2;
+
+  return (t_path2->counter - t_path1->counter);
+}
+
+static u32
+get_path_hash (u32 path_len, u32 *path_list)
+{
+  return clib_crc32c ((u8 *) path_list, sizeof (u32) * path_len);
+}
+
+static cache_entry_paths_t
+get_path_entry (vlib_trace_header_t *h)
+{
+  vlib_trace_header_t *e = vec_end (h);
+  u32 path_length = 0;
+  cache_entry_paths_t cache_path_entry = { 0 };
+
+  while (h < e)
+    {
+      cache_path_entry.path_indices[path_length] = h->node_index;
+      path_length++;
+      h = vlib_trace_header_next (h);
+    }
+
+  if (path_length)
+    {
+      cache_path_entry.counter = 1;
+      cache_path_entry.path_length = path_length;
+      cache_path_entry.path_hash =
+	get_path_hash (path_length, cache_path_entry.path_indices);
+    }
+
+  return cache_path_entry;
+}
+
+static clib_error_t *
+show_trace_paths (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
+{
+  vlib_trace_main_t *tm;
+  vlib_trace_header_t **h, **traces;
+  cache_entry_paths_t *cache;
+  u32 i, index = 0;
+  char *fmt;
+  u8 *s = 0;
+
+  foreach_vlib_main ()
+    {
+      fmt = "------------------- Start of thread %d %s -------------------\n";
+      s = format (s, fmt, index, vlib_worker_threads[index].name);
+
+      tm = &this_vlib_main->trace_main;
+
+      traces = 0;
+      cache = 0;
+      pool_foreach (h, tm->trace_buffer_pool)
+	{
+	  vec_add1 (traces, h[0]);
+	}
+
+      if (vec_len (traces) == 0)
+	{
+	  s = format (s, "No packets in trace buffer\n");
+	  goto done;
+	}
+
+      for (i = 0; i < vec_len (traces); i++)
+	{
+
+	  // TODO: Following code implements uses a vector to store path
+	  // entries Using a hash-based data structure could be more efficient
+	  // ?
+
+	  // TODO: If a new entry is detected, store its edges in a suitable
+	  // data structure (ideally graph or adjacency list) to be able to
+	  // display the top N paths in graphviz
+	  cache_entry_paths_t cache_path_entry = get_path_entry (traces[i]);
+
+	  if (!cache)
+	    {
+	      vec_add1 (cache, cache_path_entry);
+	    }
+	  else
+	    {
+	      cache_entry_paths_t *cache_path_entry_ptr;
+	      u32 exists = 0;
+
+	      vec_foreach (cache_path_entry_ptr, cache)
+		{
+		  if (cache_path_entry_ptr->path_hash ==
+		      cache_path_entry.path_hash)
+		    {
+		      exists = 1;
+		      cache_path_entry_ptr->counter++;
+		    }
+		}
+
+	      if (!exists)
+		{
+		  vec_add1 (cache, cache_path_entry);
+		}
+	    }
+	}
+
+      cache_entry_paths_t *cache_path_entry_ptr;
+      u32 indexInner = 0;
+
+      /* Sort cache entries by increasing pkt counter. */
+      vec_sort_with_function (cache, trace_path_sort);
+      vec_foreach (cache_path_entry_ptr, cache)
+	{
+	  s = format (s, "Path #%d, Count: %d, Length: %d, Hash: %x,[%U]\n",
+		      indexInner, cache_path_entry_ptr->counter,
+		      cache_path_entry_ptr->path_length,
+		      cache_path_entry_ptr->path_hash, format_path_list, vm,
+		      cache_path_entry_ptr);
+	  indexInner++;
+	}
+
+      // TODO: Implement a way to display the top N paths in graphviz
+
+    done:
+      vec_free (traces);
+      vec_free (cache);
+
+      index++;
+    }
+
+  vlib_cli_output (vm, "%v", s);
+  vec_free (s);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_trace_graphviz_command, static) = {
+  .path = "show trace paths",
+  .short_help = "show trace paths",
+  .function = show_trace_paths,
+  // TODO: Make CLI command mp safe
+};
+
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
 
 int

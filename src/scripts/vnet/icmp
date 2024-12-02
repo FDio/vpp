@@ -10,6 +10,21 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
 ip route 5.6.7.8/32 via local
 ip route 1.2.3.4/32 via local
+
+packet-generator new {						\
+  name x1							\
+  limit 1							\
+  node ip6-input						\
+  size 64-64							\
+  data {							\
+    ICMP6: ::1 -> ::2						\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
+}
+
+ip route ::1/128 via local
+ip route ::2/128 via local
+trace add pg-input 100
