@@ -22,8 +22,6 @@ from scapy.packet import raw, Raw
 from scapy.utils import long_converter
 from framework import VppTestCase
 from asfframework import (
-    tag_fixme_vpp_workers,
-    tag_fixme_ubuntu2404,
     VppTestRunner,
 )
 from vpp_ikev2 import Profile, IDType, AuthMethod
@@ -2322,7 +2320,6 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
-@tag_fixme_ubuntu2404
 class TestResponderRekeyRepeat(TestResponderRekey):
     """test ikev2 responder - rekey repeat"""
 
@@ -2330,6 +2327,22 @@ class TestResponderRekeyRepeat(TestResponderRekey):
 
     def test_responder(self):
         super(TestResponderRekeyRepeat, self).test_responder()
+
+        # The sleep interval for this test is set to 0.1 seconds instead of the default 2 seconds.
+        # This change is necessary because the test verifies the expiration of old IPsec SAs
+        # (self.fail("old IPsec SA not expired")) within a strict timeframe. A longer sleep
+        # interval, such as 2 seconds, would significantly delay the loop iterations, reducing
+        # the granularity of checks for SA expiration and increasing the risk of false failures.
+        #
+        # By setting the sleep interval to 0.1 seconds:
+        # - The test can perform frequent checks for the status of IPsec SAs, ensuring timely
+        #   detection of their expiration.
+        # - It reduces the likelihood of the test prematurely failing due to missing an SA
+        #   expiration event caused by coarse-grained timing checks.
+        #
+        # This adjustment enhances test stability and ensures accurate validation of the
+        # expiration behavior under the conditions specified by the test.
+        self.vapi.ikev2_plugin_set_sleep_interval(timeout=0.1)
         # rekey request is not accepted until old IPsec SA is expired
         capture = self.send_rekey_from_initiator()
         ih = self.get_ike_header(capture[0])
@@ -2357,7 +2370,6 @@ class TestResponderRekeyKEX(TestResponderRekey):
     vpp_worker_count = 2
 
 
-@tag_fixme_ubuntu2404
 class TestResponderRekeyRepeatKEX(TestResponderRekeyRepeat):
     """test ikev2 responder - rekey repeat with key exchange"""
 
