@@ -5539,7 +5539,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 2);
+      vlib_process_wait_for_event_or_clock (vm, 1);
       vlib_process_get_events (vm, NULL);
 
       /* process ike child sas */
