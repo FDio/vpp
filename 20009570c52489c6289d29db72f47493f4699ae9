@@ -67,6 +67,40 @@
       "message": "you should use is_pow2()",
       "revId": "20009570c52489c6289d29db72f47493f4699ae9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2d16640_8824956f",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 762,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-12-02T15:59:04Z",
+      "side": 1,
+      "message": "Looks like if t he configuration item is not present, the crypto scheduler queues will not be initialized.",
+      "revId": "20009570c52489c6289d29db72f47493f4699ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0070e09d_30c3eff7",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 768,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-12-02T15:59:04Z",
+      "side": 1,
+      "message": "Any reason why the queue cannot be smaller than 64? Even enough reason is given behind this enforced minimum queue size, there should be a warning message for this update.",
+      "revId": "20009570c52489c6289d29db72f47493f4699ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
