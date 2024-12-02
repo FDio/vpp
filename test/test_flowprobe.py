@@ -18,7 +18,6 @@ from asfframework import (
     tag_fixme_vpp_workers,
     tag_fixme_debian11,
     tag_run_solo,
-    is_distro_ubuntu2204,
     is_distro_debian11,
     VppTestRunner,
 )

@@ -12,7 +12,6 @@ from config import config
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
-    is_distro_ubuntu2204,
     VppTestRunner,
 )
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder

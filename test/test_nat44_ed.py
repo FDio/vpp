@@ -7,7 +7,7 @@ from random import randint, choice
 import re
 import scapy.compat
 from framework import VppTestCase, VppLoInterface
-from asfframework import VppTestRunner, is_distro_ubuntu2204
+from asfframework import VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
