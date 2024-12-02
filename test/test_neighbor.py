@@ -3,8 +3,9 @@
 import unittest
 import os
 
+from config import config
 from framework import VppTestCase
-from asfframework import VppTestRunner, tag_fixme_vpp_workers, tag_fixme_ubuntu2204
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import (
     VppIpRoute,
@@ -2330,7 +2331,7 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@tag_fixme_ubuntu2204
+@unittest.skipUnless(config.extended, "part of extended tests")
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
