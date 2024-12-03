@@ -39,6 +39,30 @@
       },
       "revId": "e8cd56dd461c1ad07e761071121f4910bf5e88e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81001b4d_26a83ef8",
+        "filename": "src/plugins/osi/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 3164
+      },
+      "writtenOn": "2024-12-03T19:55:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a0d34e2_9b4fbf07",
+      "range": {
+        "startLine": 43,
+        "startChar": 9,
+        "endLine": 43,
+        "endChar": 20
+      },
+      "revId": "e8cd56dd461c1ad07e761071121f4910bf5e88e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
