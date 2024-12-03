@@ -22,6 +22,30 @@
       },
       "revId": "6b224de844539bde50913575305cddda09f3b2a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "897f1c38_ebd6e185",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 3164
+      },
+      "writtenOn": "2024-12-03T02:25:38Z",
+      "side": 0,
+      "message": "Hi Florin,\nYes, the calls to ppp_register_input_protocol for ip4_init and ip6_init have been moved to PPP\u0027s initialization `ppp_input_init` in node.c. There, the calls are now made:\n\n  ppp_register_input_protocol (vm, PPP_PROTOCOL_ip4, ip4_input_node-\u003eindex);\n  ppp_register_input_protocol (vm, PPP_PROTOCOL_ip6, ip6_input_node-\u003eindex);\n\nThis is to remove the dependency of the core vnet code from the PPP plugin, but also ensure that if PPP is enabled, this functionality remains.",
+      "parentUuid": "8a57b769_74050093",
+      "range": {
+        "startLine": 414,
+        "startChar": 1,
+        "endLine": 414,
+        "endChar": 75
+      },
+      "revId": "6b224de844539bde50913575305cddda09f3b2a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
