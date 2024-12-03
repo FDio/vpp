@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c2595ddf_e91352aa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-12-03T15:21:25Z",
+      "side": 1,
+      "message": "Thank you for the patch. Left a small comment.",
+      "revId": "e8cd56dd461c1ad07e761071121f4910bf5e88e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a0d34e2_9b4fbf07",
+        "filename": "src/plugins/osi/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-12-03T15:21:25Z",
+      "side": 1,
+      "message": "I think it would be clearer if the #include path is updated to show that the header file is from a separate plugin e.g. \"#include \u003cplugins/ppp/ppp.h\u003e\".\n\nThis could also apply for other plugins including ppp e.g. cdp, pppoe",
+      "range": {
+        "startLine": 43,
+        "startChar": 9,
+        "endLine": 43,
+        "endChar": 20
+      },
+      "revId": "e8cd56dd461c1ad07e761071121f4910bf5e88e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
