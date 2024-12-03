@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b310659_cd788d37",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-03T11:57:02Z",
+      "side": 1,
+      "message": "please make this a constant",
+      "range": {
+        "startLine": 50,
+        "startChar": 88,
+        "endLine": 50,
+        "endChar": 91
+      },
+      "revId": "6cd963a96eadb07721aeb3deb2c1c9ac9dcc9365",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
