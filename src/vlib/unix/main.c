@@ -481,6 +481,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "pidfile %s", &um->pidfile))
 	;
+      else if (unformat (input, "simulated-time"))
+	; // Accept parameter, action was taken in main function already
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

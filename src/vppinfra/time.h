@@ -78,7 +78,7 @@ format_function_t format_clib_time;
 /* Return CPU time stamp as 64bit number. */
 #if defined(__x86_64__) || defined(i386)
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u32 a, d;
   asm volatile ("rdtsc":"=a" (a), "=d" (d));
@@ -88,7 +88,7 @@ clib_cpu_time_now (void)
 #elif defined (__powerpc64__)
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u64 t;
   asm volatile ("mftb %0":"=r" (t));
@@ -98,7 +98,7 @@ clib_cpu_time_now (void)
 #elif defined (__SPU__)
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
 #ifdef _XLC
   return spu_rdch (0x8);
@@ -110,7 +110,7 @@ clib_cpu_time_now (void)
 #elif defined (__powerpc__)
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u32 hi1, hi2, lo;
   asm volatile ("1:\n"
@@ -124,7 +124,7 @@ clib_cpu_time_now (void)
 
 #elif defined (__aarch64__)
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u64 vct;
   /* User access to cntvct_el0 is enabled in Linux kernel since 3.12. */
@@ -135,7 +135,8 @@ clib_cpu_time_now (void)
 #elif defined (__arm__)
 #if defined(__ARM_ARCH_8A__)
 always_inline u64
-clib_cpu_time_now (void)	/* We may run arm64 in aarch32 mode, to leverage 64bit counter */
+__clib_cpu_time_now (
+  void) /* We may run arm64 in aarch32 mode, to leverage 64bit counter */
 {
   u64 tsc;
   asm volatile ("mrrc p15, 0, %Q0, %R0, c9":"=r" (tsc));
@@ -143,7 +144,7 @@ clib_cpu_time_now (void)	/* We may run arm64 in aarch32 mode, to leverage 64bit 
 }
 #elif defined(__ARM_ARCH_7A__)
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u32 tsc;
   asm volatile ("mrc p15, 0, %0, c9, c13, 0":"=r" (tsc));
@@ -151,7 +152,7 @@ clib_cpu_time_now (void)
 }
 #else
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u32 lo;
   asm volatile ("mrc p15, 0, %[lo], c15, c12, 1":[lo] "=r" (lo));
@@ -163,7 +164,7 @@ clib_cpu_time_now (void)
 
 /* Stub for now. */
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   return 0;
 }
@@ -171,7 +172,7 @@ clib_cpu_time_now (void)
 #elif defined (__TMS320C6X__)
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u32 l, h;
 
@@ -185,7 +186,7 @@ clib_cpu_time_now (void)
 #elif defined(_mips) && __mips == 64
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u64 result;
   asm volatile ("rdhwr %0,$31\n":"=r" (result));
@@ -195,7 +196,7 @@ clib_cpu_time_now (void)
 #elif defined(__riscv)
 
 always_inline u64
-clib_cpu_time_now (void)
+__clib_cpu_time_now (void)
 {
   u64 result;
   asm volatile("rdcycle %0\n" : "=r"(result));
@@ -205,6 +206,51 @@ clib_cpu_time_now (void)
 #error "don't know how to read CPU time stamp"
 
 #endif
+
+// callback type to get time from simulated time owner
+typedef f64 (*clib_simtime_get_time_cb_t) (void);
+
+typedef struct
+{
+  u8 is_enabled;	 // Simulated time is enabled
+  u8 too_late_to_enable; // One clib_main_t has been initialized already
+  f64 current_time;	 // Current simulated time
+  clib_simtime_get_time_cb_t
+    get_time_cb; // Callback to get time from simulated time owner
+} clib_simtime_main_t;
+
+extern clib_simtime_main_t clib_simtime_main;
+
+static inline void
+clib_simtime_set_get_time_cb (clib_simtime_get_time_cb_t cb)
+{
+  ASSERT (clib_simtime_main.get_time_cb == 0);
+  clib_simtime_main.get_time_cb = cb;
+}
+int clib_simtime_enable ();
+u64 clib_cpu_simtime_now ();
+f64 clib_simtime_now (clib_time_t *c);
+void clib_simtime_set_time (f64 t);
+
+always_inline int
+clib_simtime_is_enabled ()
+{
+#ifdef VPP_SIMTIME
+  return clib_simtime_main.is_enabled;
+#else
+  return 0;
+#endif
+}
+
+always_inline u64
+clib_cpu_time_now (void)
+{
+  if (PREDICT_FALSE (clib_simtime_is_enabled ()))
+    {
+      return clib_cpu_simtime_now ();
+    }
+  return __clib_cpu_time_now ();
+}
 
 void clib_time_verify_frequency (clib_time_t * c);
 
@@ -218,6 +264,10 @@ typedef u64 clib_us_time_t;
 always_inline f64
 clib_time_now_internal (clib_time_t * c, u64 n)
 {
+  if (PREDICT_FALSE (clib_simtime_is_enabled ()))
+    {
+      return clib_simtime_now (c);
+    }
   u64 l = c->last_cpu_time;
   u64 t = c->total_cpu_time;
   f64 rv;
@@ -238,7 +288,7 @@ clib_time_now_internal (clib_time_t * c, u64 n)
 always_inline f64
 clib_time_now (clib_time_t * c)
 {
-  return clib_time_now_internal (c, clib_cpu_time_now ());
+  return clib_time_now_internal (c, __clib_cpu_time_now ());
 }
 
 always_inline void
