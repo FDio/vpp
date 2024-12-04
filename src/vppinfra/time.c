@@ -47,6 +47,10 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
+// From time_simulated.c (not in time.h because they are private)
+void clib_simtime_update_maybe (void);
+void clib_simtime_init (clib_time_t *c);
+
 /* Not very accurate way of determining cpu clock frequency
    for unix.  Better to use /proc/cpuinfo on linux. */
 static f64
@@ -204,6 +208,14 @@ os_cpu_clock_frequency (void)
 __clib_export void
 clib_time_init (clib_time_t * c)
 {
+  clib_simtime_main.too_late_to_enable =
+    1; // Cannot enable after first clib_time_init called.
+  if (clib_simtime_main.is_enabled)
+    {
+      clib_simtime_init (c);
+      return;
+    }
+
   clib_memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
   /*
@@ -248,6 +260,7 @@ clib_time_init (clib_time_t * c)
 __clib_export void
 clib_time_verify_frequency (clib_time_t * c)
 {
+  ASSERT (!clib_simtime_main.is_enabled);
   f64 now_reference, delta_reference, delta_reference_max;
   f64 delta_clock_in_seconds;
   u64 now_clock, delta_clock;

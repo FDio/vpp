@@ -82,3 +82,27 @@ VLIB_CLI_COMMAND (vlib_time_virtual_command) = {
   .short_help = "set clock adjust <nn>",
   .function = vlib_time_virtual_adjust_command_fn,
 };
+
+static clib_error_t *
+show_simtime_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
+{
+#ifndef VPP_SIMTIME
+  vlib_cli_output (vm, "Simulated time is not supported in this build");
+#else
+  clib_simtime_main_t *sm = &clib_simtime_main;
+  vlib_cli_output (vm, "Simulated time is %s",
+		   sm->is_enabled ? "enabled" : "disabled");
+  if (sm->is_enabled)
+    {
+      vlib_cli_output (vm, "  Current time is %.6f", sm->current_time);
+    }
+#endif
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_simtime_status_command) = {
+  .path = "show simtime status",
+  .short_help = "show simtime status",
+  .function = show_simtime_status_command_fn,
+};

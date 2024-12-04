@@ -23,6 +23,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/cpu.h>
 #include <vppinfra/bitmap.h>
+#include <vppinfra/time.h>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -282,6 +283,8 @@ main (int argc, char *argv[])
 	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
       else if (!strncmp (argv[i], "nosyslog", 8))
 	unix_main.flags |= UNIX_FLAG_NOSYSLOG;
+      else if (!strncmp (argv[i], "simulated-time", 14))
+	clib_simtime_enable ();
     }
 defaulted:
 
