@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3a395d4_51449d20",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-12-05T18:31:30Z",
+      "side": 1,
+      "message": "Thanks for the comments. Changes have been updated.",
+      "revId": "a81bb042504754a2ccad32aa2ff34a147c69bebc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "38de73ff_d8be3205",
@@ -14,6 +31,24 @@
       "writtenOn": "2024-12-05T17:32:37Z",
       "side": 1,
       "message": "this should be set to 0 after retry: to handle the retry case, right?",
+      "revId": "a81bb042504754a2ccad32aa2ff34a147c69bebc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c55a10ec_cddf013a",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-12-05T18:31:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38de73ff_d8be3205",
       "revId": "a81bb042504754a2ccad32aa2ff34a147c69bebc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
