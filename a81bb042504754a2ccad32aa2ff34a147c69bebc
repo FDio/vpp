@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38de73ff_d8be3205",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-12-05T17:32:37Z",
+      "side": 1,
+      "message": "this should be set to 0 after retry: to handle the retry case, right?",
+      "revId": "a81bb042504754a2ccad32aa2ff34a147c69bebc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
