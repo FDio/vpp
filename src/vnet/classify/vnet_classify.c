@@ -21,8 +21,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vppinfra/lock.h>
 #include <vnet/classify/trace_classify.h>
-
-
+#include <plugins/geneve/geneve_packet.h>
 
 /**
  * @file
@@ -888,6 +887,36 @@ unformat_udp_mask (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+uword
+unformat_gen_mask (unformat_input_t *input, va_list *args)
+{
+  u8 **maskp = va_arg (*args, u8 **);
+  u32 genopt_len = 0;
+  geneve_header_t *genhdr;
+  u32 gen_len;
+  u32 vni = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "vni"))
+	vni = 0x00FFFFFF;
+      else if (unformat (input, "opt-len %d", &genopt_len))
+	;
+      else if (unformat (input, "hex %U", unformat_hex_string, maskp))
+	return 1;
+      else
+	break;
+    }
+
+  u8 *mask = 0;
+  gen_len = genopt_len + sizeof (geneve_header_t);
+  vec_validate (mask, gen_len - 1);
+  genhdr = (geneve_header_t *) mask;
+  genhdr->vni_rsvd = vni;
+  *maskp = mask;
+  return 1;
+}
+
 typedef struct
 {
   u16 src_port, dst_port;
@@ -946,7 +975,6 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
 #undef _
   u8 version = 0;
   u8 hdr_length = 0;
-
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1234,6 +1262,15 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
   u8 *l3 = 0;
   u8 *l4 = 0;
   u8 add_l2 = 1;
+  u8 *genhdr = 0;
+  u8 *genl2 = 0;
+  u8 *genl3 = 0;
+  u8 *genl4 = 0;
+  u8 add_g2 = 1;
+  u8 **pl2 = &l2;
+  u8 **pl3 = &l3;
+  u8 **pl4 = &l4;
+  u8 *padd_l2 = &add_l2;
   int i;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1242,23 +1279,34 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
 	;
       else if (unformat (input, "l2 none"))
 	/* Don't add the l2 header in the mask */
-	add_l2 = 0;
-      else if (unformat (input, "l2 %U", unformat_l2_mask, &l2))
+	*padd_l2 = 0;
+      else if (unformat (input, "l2 %U", unformat_l2_mask, pl2))
 	;
-      else if (unformat (input, "l3 %U", unformat_l3_mask, &l3))
+      else if (unformat (input, "l3 %U", unformat_l3_mask, pl3))
 	;
-      else if (unformat (input, "l4 %U", unformat_l4_mask, &l4))
+      else if (unformat (input, "l4 %U", unformat_l4_mask, pl4))
 	;
+      else if (unformat (input, "geneve %U", unformat_gen_mask, &genhdr))
+	{
+	  padd_l2 = &add_g2;
+	  pl2 = &genl2;
+	  pl3 = &genl3;
+	  pl4 = &genl4;
+	}
       else
 	break;
     }
 
-  if (l2 && !add_l2)
+  if ((l2 && !add_l2) || (genl2 && !add_g2))
     {
       vec_free (mask);
       vec_free (l2);
       vec_free (l3);
       vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
       return 0;
     }
 
@@ -1267,12 +1315,28 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
       vec_free (mask);
       vec_free (l2);
       vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
       return 0;
     }
 
-  if (mask || l2 || l3 || l4)
+  if (genl4 && !genl3)
     {
-      if (l2 || l3 || l4)
+      vec_free (mask);
+      vec_free (l2);
+      vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
+      return 0;
+    }
+
+  if (mask || l2 || l3 || l4 || genhdr || genl2 || genl3 || genl4)
+    {
+      if (l2 || l3 || l4 || genhdr || genl2 || genl3 || genl4)
 	{
 	  if (add_l2)
 	    {
@@ -1288,10 +1352,53 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
 	    }
 	  else
 	    mask = l3;
+
 	  if (l4)
 	    {
 	      vec_append (mask, l4);
 	      vec_free (l4);
+	    }
+
+	  if (genhdr)
+	    {
+	      if (l3 == 0)
+		{
+		  vec_validate (l3, 19);
+		  vec_append (mask, l3);
+		  vec_free (l3);
+		}
+
+	      if (l4 == 0)
+		{
+		  vec_validate (l4, 7);
+		  vec_append (mask, l4);
+		  vec_free (l4);
+		}
+
+	      vec_append (mask, genhdr);
+	      vec_free (genhdr);
+	    }
+
+	  if (add_g2)
+	    {
+	      if (genl2 == 0)
+		{
+		  vec_validate (genl2, 13);
+		}
+	      vec_append (mask, genl2);
+	      vec_free (genl2);
+	    }
+
+	  if (genl3)
+	    {
+	      vec_append (mask, genl3);
+	      vec_free (genl3);
+	    }
+
+	  if (genl4)
+	    {
+	      vec_append (mask, genl4);
+	      vec_free (genl4);
 	    }
 	}
 
@@ -2085,6 +2192,8 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  *
  * <udp-mask> src_port dst_port
  *
+ * geneve opt-len
+ *
  * To construct matches, add the values to match after the indicated keywords:
  * in the match syntax. For example:
  * mask l3 ip4 src -> match l3 ip4 src 192.168.1.11
@@ -2106,6 +2215,12 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * Configure a filter for use with the vpp packet tracer:
  * @cliexcmd{classify filter trace mask l3 ip4 src dst match l3 ip4 src
  * 192.168.1.10 dst 192.168.2.10}
+ * <b><em>trace add dpdk-input 100 filter</em></b>
+ *
+ * Configure a geneve package filter
+ *
+ * @cliexcmd{classify filter trace mask geneve opt-len 56 l3 ip4 src dst
+ * match geneve opt-len 56 l3 ip4 src 192.168.1.10 dst 192.168.2.10}
  * <b><em>trace add dpdk-input 100 filter</em></b>
  *
  * Clear classifier filters
@@ -2306,6 +2421,38 @@ VLIB_CLI_COMMAND (show_classify_table_command, static) = {
   .short_help = "show classify tables [index <nn>]",
   .function = show_classify_tables_command_fn,
 };
+
+uword
+unformat_gen_match (unformat_input_t *input, va_list *args)
+{
+  u8 **matchp = va_arg (*args, u8 **);
+
+  u32 genopt_len = 0;
+  u32 vni = 0;
+  geneve_header_t *genhdr;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "vni %d", &vni))
+	;
+      else if (unformat (input, "opt-len %d", &genopt_len))
+	;
+      else if (unformat (input, "hex %U", unformat_hex_string, matchp))
+	return 1;
+      else
+	break;
+    }
+
+  u8 *proto_header = 0;
+  u32 gen_len = genopt_len + sizeof (geneve_header_t);
+  vec_validate (proto_header, gen_len - 1);
+  genhdr = (geneve_header_t *) proto_header;
+  genhdr->vni_rsvd = vni;
+
+  *matchp = proto_header;
+
+  return 1;
+}
 
 uword
 unformat_l4_match (unformat_input_t * input, va_list * args)
@@ -2687,6 +2834,15 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
   u8 *l3 = 0;
   u8 *l4 = 0;
   u8 add_l2 = 1;
+  u8 *genhdr = 0;
+  u8 *genl2 = 0;
+  u8 *genl3 = 0;
+  u8 *genl4 = 0;
+  u8 add_g2 = 1;
+  u8 **pl2 = &l2;
+  u8 **pl3 = &l3;
+  u8 **pl4 = &l4;
+  u8 *padd_l2 = &add_l2;
 
   if (pool_is_free_index (cm->tables, table_index))
     return 0;
@@ -2699,23 +2855,34 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 	;
       else if (unformat (input, "l2 none"))
 	/* Don't add the l2 header in the mask */
-	add_l2 = 0;
-      else if (unformat (input, "l2 %U", unformat_l2_match, &l2))
+	*padd_l2 = 0;
+      else if (unformat (input, "l2 %U", unformat_l2_match, pl2))
 	;
-      else if (unformat (input, "l3 %U", unformat_l3_match, &l3))
+      else if (unformat (input, "l3 %U", unformat_l3_match, pl3))
 	;
-      else if (unformat (input, "l4 %U", unformat_l4_match, &l4))
+      else if (unformat (input, "l4 %U", unformat_l4_match, pl4))
 	;
+      else if (unformat (input, "geneve %U", unformat_gen_match, &genhdr))
+	{
+	  padd_l2 = &add_g2;
+	  pl2 = &genl2;
+	  pl3 = &genl3;
+	  pl4 = &genl4;
+	}
       else
 	break;
     }
 
-  if (l2 && !add_l2)
+  if ((l2 && !add_l2) || (genl2 && !add_g2))
     {
       vec_free (match);
       vec_free (l2);
       vec_free (l3);
       vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
       return 0;
     }
 
@@ -2724,12 +2891,28 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
       vec_free (match);
       vec_free (l2);
       vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
       return 0;
     }
 
-  if (match || l2 || l3 || l4)
+  if (genl4 && !genl3)
     {
-      if (l2 || l3 || l4)
+      vec_free (match);
+      vec_free (l2);
+      vec_free (l4);
+      vec_free (genhdr);
+      vec_free (genl2);
+      vec_free (genl3);
+      vec_free (genl4);
+      return 0;
+    }
+
+  if (match || l2 || l3 || l4 || genhdr || genl2 || genl3 || genl4)
+    {
+      if (l2 || l3 || l4 || genhdr || genl2 || genl3 || genl4)
 	{
 	  if (add_l2)
 	    {
@@ -2749,6 +2932,42 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 	    {
 	      vec_append_aligned (match, l4, sizeof (u32x4));
 	      vec_free (l4);
+	    }
+	  if (genhdr)
+	    {
+	      if (l3 == 0)
+		{
+		  vec_validate_aligned (l3, 19, sizeof (u32x4));
+		  vec_append_aligned (match, l3, sizeof (u32x4));
+		  vec_free (l3);
+		}
+	      if (l4 == 0)
+		{
+		  vec_validate_aligned (l4, 7, sizeof (u32x4));
+		  vec_append_aligned (match, l4, sizeof (u32x4));
+		  vec_free (l4);
+		}
+	      vec_append_aligned (match, genhdr, sizeof (u32x4));
+	      vec_free (genhdr);
+	    }
+	  if (add_g2)
+	    {
+	      if (genl2 == 0)
+		{
+		  vec_validate_aligned (genl2, 13, sizeof (u32x4));
+		}
+	      vec_append_aligned (match, genl2, sizeof (u32x4));
+	      vec_free (genl2);
+	    }
+	  if (genl3)
+	    {
+	      vec_append_aligned (match, genl3, sizeof (u32x4));
+	      vec_free (genl3);
+	    }
+	  if (genl4)
+	    {
+	      vec_append_aligned (match, genl4, sizeof (u32x4));
+	      vec_free (genl4);
 	    }
 	}
 
