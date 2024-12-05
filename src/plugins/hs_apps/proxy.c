@@ -577,8 +577,7 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
        * on its contents, the destination and parameters of the connect to the
        * upstream are decided
        */
-
-      clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
+      clib_memcpy (&a->sep_ext, &pm->client_sep[tp], sizeof (*pm->client_sep));
     }
 
   a->api_context = ps_index;
@@ -1295,7 +1294,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			default_client_uri);
 	  client_uri = format (0, "%s%c", default_client_uri, 0);
 	}
-      if (parse_uri ((char *) client_uri, &pm->client_sep))
+      if (parse_uri ((char *) client_uri,
+		     &pm->client_sep[pm->server_sep.transport_proto]))
 	{
 	  error = clib_error_return (0, "Invalid client uri %v", client_uri);
 	  goto done;
@@ -1345,6 +1345,7 @@ proxy_main_init (vlib_main_t * vm)
   pm->active_open_client_index = ~0;
   pm->server_app_index = APP_INVALID_INDEX;
   pm->idle_timeout = 600; /* connect-proxy default idle timeout 10 minutes */
+  vec_validate (pm->client_sep, TRANSPORT_N_PROTOS - 1);
 
   return 0;
 }
