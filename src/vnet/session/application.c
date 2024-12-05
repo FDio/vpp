@@ -18,6 +18,7 @@
 #include <vnet/session/application_namespace.h>
 #include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
+#include <vnet/session/segment_manager.h>
 
 static app_main_t app_main;
 
@@ -1084,6 +1085,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
       return rv;
     }
   sm->first_is_protected = 1;
+  sm->flags |= SEG_MANAGER_F_CONNECTS;
 
   /*
    * Setup app worker
@@ -1848,6 +1850,9 @@ format_application (u8 * s, va_list * args)
   const u8 *app_ns_name, *app_name;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
+  segment_manager_t *sm;
+  u64 handle;
+  u32 sm_index;
 
   if (app == 0)
     {
@@ -1876,6 +1881,17 @@ format_application (u8 * s, va_list * args)
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
       s = format (s, "%U", format_app_worker, app_wrk);
+      if (verbose > 1)
+	{
+	  sm = segment_manager_get (app_wrk->connects_seg_manager);
+	  s = format (s, "segment manager\n %U", format_segment_manager, sm,
+		      1 /* verbose */);
+	  hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
+			  sm = segment_manager_get (sm_index);
+			  s = format (s, " %U\n", format_segment_manager, sm,
+				      1 /* verbose */);
+			}));
+	}
   }
 
   return s;
@@ -2034,7 +2050,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (!app)
 	return clib_error_return (0, "No app with index %u", app_index);
 
-      vlib_cli_output (vm, "%U", format_application, app, /* verbose */ 1);
+      vlib_cli_output (vm, "%U", format_application, app, ++verbose);
       return 0;
     }
 
