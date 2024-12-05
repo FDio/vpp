@@ -47,6 +47,7 @@ typedef enum seg_manager_flag_
 {
   SEG_MANAGER_F_DETACHED = 1 << 0,
   SEG_MANAGER_F_DETACHED_LISTENER = 1 << 1,
+  SEG_MANAGER_F_LISTENER = 1 << 2,
 } seg_manager_flag_t;
 
 typedef struct _segment_manager
@@ -195,6 +196,8 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
   *sm_index = (segment_handle >> 32) & 0xFFFFFF;
   *segment_index = segment_handle & 0xFFFFFFFF;
 }
+
+extern u8 *format_segment_manager (u8 *s, va_list *args);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
