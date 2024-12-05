@@ -18,6 +18,7 @@
 #include <vnet/session/application_namespace.h>
 #include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
+#include <vnet/session/segment_manager.h>
 
 static app_main_t app_main;
 
@@ -1848,6 +1849,7 @@ format_application (u8 * s, va_list * args)
   const u8 *app_ns_name, *app_name;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
+  segment_manager_t *sm;
 
   if (app == 0)
     {
@@ -1876,6 +1878,13 @@ format_application (u8 * s, va_list * args)
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
       s = format (s, "%U", format_app_worker, app_wrk);
+      if (verbose > 1)
+	{
+	  sm = segment_manager_get_if_valid (app_wrk->connects_seg_manager);
+	  if (sm)
+	    s = format (s, "segment manager\n%U", format_segment_manager, sm,
+			1 /* verbose */, 1 /* indent */);
+	}
   }
 
   return s;
@@ -2034,7 +2043,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (!app)
 	return clib_error_return (0, "No app with index %u", app_index);
 
-      vlib_cli_output (vm, "%U", format_application, app, /* verbose */ 1);
+      vlib_cli_output (vm, "%U", format_application, app, ++verbose);
       return 0;
     }
 

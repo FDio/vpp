@@ -252,6 +252,7 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 
   /* Once the first segment is mapped, don't remove it until unlisten */
   sm->first_is_protected = 1;
+  sm->flags |= SEG_MANAGER_F_LISTENER;
 
   /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
