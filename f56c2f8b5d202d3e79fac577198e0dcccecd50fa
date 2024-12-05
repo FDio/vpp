@@ -34,6 +34,24 @@
       "parentUuid": "f608867f_96411367",
       "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a0f59be_c47cfb86",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-12-05T15:44:16Z",
+      "side": 1,
+      "message": "Hi Piotr, any plan to add ipv6 fast path test into this patch soon?",
+      "parentUuid": "ee3e67d3_412ee646",
+      "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
