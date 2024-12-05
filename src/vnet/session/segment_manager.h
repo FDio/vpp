@@ -43,10 +43,17 @@ typedef struct _segment_manager_props
   u8 huge_page;				/**< use hugepage */
 } segment_manager_props_t;
 
+#define foreach_seg_manager_flag                                              \
+  _ (0, DETACHED, detached)                                                   \
+  _ (1, DETACHED_LISTENER, detached_listener)                                 \
+  _ (2, LISTENER, listener)                                                   \
+  _ (3, CONNECTS, connects)
+
 typedef enum seg_manager_flag_
 {
-  SEG_MANAGER_F_DETACHED = 1 << 0,
-  SEG_MANAGER_F_DETACHED_LISTENER = 1 << 1,
+#define _(b, v, s) SEG_MANAGER_F_##v = (1 << b),
+  foreach_seg_manager_flag
+#undef _
 } seg_manager_flag_t;
 
 typedef struct _segment_manager
@@ -195,6 +202,8 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
   *sm_index = (segment_handle >> 32) & 0xFFFFFF;
   *segment_index = segment_handle & 0xFFFFFFFF;
 }
+
+extern u8 *format_segment_manager (u8 *s, va_list *args);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
