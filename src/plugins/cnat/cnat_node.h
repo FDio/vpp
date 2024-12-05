@@ -334,6 +334,10 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
       cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* flags */);
       tcp->checksum = ip_csum_fold (inner_l4_sum);
+
+      /* TCP checksum changed */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
+			    checksum);
     }
   else if (ip4->protocol == IP_PROTOCOL_UDP)
     {
@@ -341,13 +345,39 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
       cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* flags */);
       udp->checksum = ip_csum_fold (inner_l4_sum);
+
+      /* UDP checksum changed */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
+			    checksum);
+    }
+  else if (ip4->protocol == IP_PROTOCOL_ICMP)
+    {
+      icmp46_header_t *icmp = (icmp46_header_t *) udp;
+      if (icmp_type_is_echo (icmp->type))
+	{
+	  u16 old_port;
+	  cnat_echo_header_t *echo = (cnat_echo_header_t *) (icmp + 1);
+	  inner_l4_old_sum = inner_l4_sum = icmp->checksum;
+
+	  old_port = echo->identifier;
+	  echo->identifier = new_port[VLIB_RX];
+
+	  inner_l4_sum = ip_csum_update (
+	    inner_l4_sum, old_port, new_port[VLIB_RX], udp_header_t, src_port);
+
+	  icmp->checksum = ip_csum_fold (inner_l4_sum);
+
+	  sum = ip_csum_update (sum, old_port, new_port[VLIB_RX], udp_header_t,
+				src_port);
+	  /* checksum changed */
+	  sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum,
+				ip4_header_t, checksum);
+	}
+      old_port[VLIB_TX] = 0;
+      old_port[VLIB_RX] = 0;
     }
   else
     return;
-
-  /* UDP/TCP checksum changed */
-  sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum,
-			ip4_header_t, checksum);
 
   /* UDP/TCP Ports changed */
   if (old_port[VLIB_TX] && new_port[VLIB_TX])
@@ -569,6 +599,17 @@ cnat_translation_icmp6_error (ip6_header_t * outer_ip6,
       cnat_ip6_translate_l4 (ip6, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* oflags */);
       tcp->checksum = ip_csum_fold (inner_l4_sum);
+
+      /* TCP checksum changed */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
+			    checksum);
+
+      /* TCP Ports changed */
+      sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			    tcp_header_t, dst_port);
+
+      sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			    tcp_header_t, src_port);
     }
   else if (ip6->protocol == IP_PROTOCOL_UDP)
     {
@@ -576,20 +617,60 @@ cnat_translation_icmp6_error (ip6_header_t * outer_ip6,
       cnat_ip6_translate_l4 (ip6, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* oflags */);
       udp->checksum = ip_csum_fold (inner_l4_sum);
+
+      /* UDP checksum changed */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
+			    checksum);
+
+      /* UDP Ports changed */
+      sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
+			    udp_header_t, dst_port);
+
+      sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
+			    udp_header_t, src_port);
+    }
+  else if (ip6->protocol == IP_PROTOCOL_ICMP6)
+    {
+      /* Update ICMP6 checksum */
+      icmp46_header_t *inner_icmp = (icmp46_header_t *) udp;
+      inner_l4_old_sum = inner_l4_sum = inner_icmp->checksum;
+      if (icmp6_type_is_echo (inner_icmp->type))
+	{
+	  cnat_echo_header_t *echo = (cnat_echo_header_t *) (inner_icmp + 1);
+	  u16 old_port = echo->identifier;
+	  echo->identifier = new_port[VLIB_RX];
+	  inner_l4_sum = ip_csum_update (
+	    inner_l4_sum, old_port, new_port[VLIB_RX], udp_header_t, src_port);
+
+	  sum = ip_csum_update (sum, old_port, new_port[VLIB_RX], udp_header_t,
+				src_port);
+	}
+
+      inner_l4_sum =
+	ip_csum_add_even (inner_l4_sum, new_addr[VLIB_TX].as_u64[0]);
+      inner_l4_sum =
+	ip_csum_add_even (inner_l4_sum, new_addr[VLIB_TX].as_u64[1]);
+      inner_l4_sum =
+	ip_csum_sub_even (inner_l4_sum, ip6->dst_address.as_u64[0]);
+      inner_l4_sum =
+	ip_csum_sub_even (inner_l4_sum, ip6->dst_address.as_u64[1]);
+
+      inner_l4_sum =
+	ip_csum_add_even (inner_l4_sum, new_addr[VLIB_RX].as_u64[0]);
+      inner_l4_sum =
+	ip_csum_add_even (inner_l4_sum, new_addr[VLIB_RX].as_u64[1]);
+      inner_l4_sum =
+	ip_csum_sub_even (inner_l4_sum, ip6->src_address.as_u64[0]);
+      inner_l4_sum =
+	ip_csum_sub_even (inner_l4_sum, ip6->src_address.as_u64[1]);
+      inner_icmp->checksum = ip_csum_fold (inner_l4_sum);
+
+      /* Update ICMP6 checksum change */
+      sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
+			    checksum);
     }
   else
     return;
-
-  /* UDP/TCP checksum changed */
-  sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
-			checksum);
-
-  /* UDP/TCP Ports changed */
-  sum = ip_csum_update (sum, old_port[VLIB_TX], new_port[VLIB_TX],
-			udp_header_t, dst_port);
-
-  sum = ip_csum_update (sum, old_port[VLIB_RX], new_port[VLIB_RX],
-			udp_header_t, src_port);
 
   cnat_ip6_translate_l3 (ip6, new_addr);
   /* IP src/dst addr changed */
@@ -677,15 +758,35 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
 	  if (icmp_type_is_error_message (icmp->type))
 	    {
 	      ip4 = (ip4_header_t *) (icmp + 2);	/* Use inner packet */
-	      udp = (udp_header_t *) (ip4 + 1);
-	      /* Swap dst & src for search as ICMP payload is reversed */
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
-				    &ip4->dst_address);
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
-				    &ip4->src_address);
-	      session->key.cs_proto = ip4->protocol;
-	      session->key.cs_port[VLIB_TX] = udp->src_port;
-	      session->key.cs_port[VLIB_RX] = udp->dst_port;
+	      if (PREDICT_FALSE (ip4->protocol == IP_PROTOCOL_ICMP))
+		{
+		  icmp = (icmp46_header_t *) (ip4 + 1);
+		  if (icmp_type_is_echo (icmp->type))
+		    {
+		      cnat_echo_header_t *echo =
+			(cnat_echo_header_t *) (icmp + 1);
+		      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+					    &ip4->dst_address);
+		      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+					    &ip4->src_address);
+		      session->key.cs_proto = ip4->protocol;
+		      session->key.cs_port[VLIB_TX] = echo->identifier;
+		      session->key.cs_port[VLIB_RX] = echo->identifier;
+		    }
+		}
+	      else
+		{
+		  udp = (udp_header_t *) (ip4 + 1);
+		  /* Swap dst & src for search as ICMP payload is reversed
+		   */
+		  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+					&ip4->dst_address);
+		  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+					&ip4->src_address);
+		  session->key.cs_proto = ip4->protocol;
+		  session->key.cs_port[VLIB_TX] = udp->src_port;
+		  session->key.cs_port[VLIB_RX] = udp->dst_port;
+		}
 	    }
 	  else if (icmp_type_is_echo (icmp->type))
 	    {
@@ -738,15 +839,35 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
 	  if (icmp6_type_is_error_message (icmp->type))
 	    {
 	      ip6 = (ip6_header_t *) (icmp + 2);	/* Use inner packet */
-	      udp = (udp_header_t *) (ip6 + 1);
-	      /* Swap dst & src for search as ICMP payload is reversed */
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
-				    &ip6->dst_address);
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
-				    &ip6->src_address);
-	      session->key.cs_proto = ip6->protocol;
-	      session->key.cs_port[VLIB_TX] = udp->src_port;
-	      session->key.cs_port[VLIB_RX] = udp->dst_port;
+	      if (PREDICT_FALSE (ip6->protocol == IP_PROTOCOL_ICMP6))
+		{
+		  icmp = (icmp46_header_t *) (ip6 + 1);
+		  if (icmp6_type_is_echo (icmp->type))
+		    {
+		      cnat_echo_header_t *echo =
+			(cnat_echo_header_t *) (icmp + 1);
+		      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+					    &ip6->dst_address);
+		      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+					    &ip6->src_address);
+		      session->key.cs_proto = ip6->protocol;
+		      session->key.cs_port[VLIB_TX] = echo->identifier;
+		      session->key.cs_port[VLIB_RX] = echo->identifier;
+		    }
+		}
+	      else
+		{
+		  udp = (udp_header_t *) (ip6 + 1);
+		  /* Swap dst & src for search as ICMP payload is reversed
+		   */
+		  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+					&ip6->dst_address);
+		  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+					&ip6->src_address);
+		  session->key.cs_proto = ip6->protocol;
+		  session->key.cs_port[VLIB_TX] = udp->src_port;
+		  session->key.cs_port[VLIB_RX] = udp->dst_port;
+		}
 	    }
 	  else if (icmp6_type_is_echo (icmp->type))
 	    {
