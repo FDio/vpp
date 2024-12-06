@@ -92,10 +92,9 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
   map_domain_t *d = pool_elt_at_index (mm->domains, map_domain_index);
 
   /* Make sure every field is initiated (or don't skip the clib_memset()) */
-  map_domain_extra_t *de =
-    vec_elt_at_index (mm->domain_extras, map_domain_index);
-  int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
-
+  map_domain_extra_t *de = 0;
+  if (mm->domain_extras)
+    de = vec_elt_at_index (mm->domain_extras, map_domain_index);
   REPLY_MACRO_DETAILS4(VL_API_MAP_DOMAIN_DETAILS, rp, context,
   ({
     rmp->domain_index = htonl (map_domain_index);
@@ -113,8 +112,16 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons (d->mtu);
-    memcpy (rmp->tag, de->tag, tag_len - 1);
-    rmp->tag[tag_len - 1] = '\0';
+    if (de)
+      {
+	int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
+	clib_memcpy (rmp->tag, de->tag, tag_len - 1);
+	rmp->tag[tag_len - 1] = '\0';
+      }
+    else
+      {
+	clib_memset (rmp->tag, 0, sizeof (rmp->tag));
+      }
   }));
 }
 
