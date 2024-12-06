@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e0a05f3_fb922e19",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T05:09:43Z",
+      "side": 1,
+      "message": "Was just about to merge but noticed this. Since async support is currently tightly coupled with tlsopenssl, could we move this into `openssl_ctx_t`? \n\nIdeally at one point we\u0027ll pull the async engine and add it to the framework. But until then, these 2 just increase `tls_ctx_t` size for all other engines for no benefit.",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 123,
+        "endChar": 24
+      },
+      "revId": "66f483ee68900c4c507a6e712c586169fc27fdd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
