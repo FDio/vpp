@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8bbc31d4_d0890e91",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T05:36:36Z",
+      "side": 1,
+      "message": "display",
+      "range": {
+        "startLine": 7,
+        "startChar": 17,
+        "endLine": 7,
+        "endChar": 25
+      },
+      "revId": "6a5a9c0ff5d60ff1b61a2de07bbbff7fc14a695f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34b4deab_6c1ed505",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1886,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T05:36:36Z",
+      "side": 1,
+      "message": "Let\u0027s also grab listeners and try to print their segment managers, if any",
+      "revId": "6a5a9c0ff5d60ff1b61a2de07bbbff7fc14a695f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5205a10_f55bce94",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T05:36:36Z",
+      "side": 1,
+      "message": "Hm, could we instead use format_get_indent (s), to simplify app for consumers?",
+      "revId": "6a5a9c0ff5d60ff1b61a2de07bbbff7fc14a695f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
