@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0dbdc57_edc3a09a",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:55:21Z",
+      "side": 1,
+      "message": "nice :-)",
+      "revId": "2ad7075f73df33a9b61dec87f8daee16dd117a37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b38e2626_aa1e6f34",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:55:21Z",
+      "side": 1,
+      "message": "Consumed in other places that we know of?",
+      "revId": "2ad7075f73df33a9b61dec87f8daee16dd117a37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31b66293_18e9399b",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:55:21Z",
+      "side": 1,
+      "message": "Hm, any reason why we don\u0027t force this on caller as it may decide to used some cached memory for this?",
+      "revId": "2ad7075f73df33a9b61dec87f8daee16dd117a37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
