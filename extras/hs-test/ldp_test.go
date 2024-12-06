@@ -48,7 +48,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
-	clnRes := make(chan string, 1)
+	clnRes := make(chan []byte, 1)
 
 	defer func() {
 		stopServerCh <- struct{}{}
@@ -65,12 +65,15 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -p " + s.GetPortFromPpid() + protocol
+		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.GetPortFromPpid() + protocol
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
 
 	s.AssertChannelClosed(time.Minute*3, clnCh)
-	s.Log(<-clnRes)
+	output := <-clnRes
+	result := s.ParseJsonIperfOutput(output)
+	s.LogJsonIperfOutput(result)
+	s.AssertIperfMinTransfer(result, 800)
 }
 
 func RedisBenchmarkTest(s *LdpSuite) {
@@ -83,7 +86,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	runningSrv := make(chan error)
 	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
-	clnRes := make(chan string, 1)
+	clnRes := make(chan []byte, 1)
 
 	defer func() {
 		doneSrv <- struct{}{}
@@ -112,5 +115,5 @@ func RedisBenchmarkTest(s *LdpSuite) {
 
 	// 4.5 minutes
 	s.AssertChannelClosed(time.Second*270, clnCh)
-	s.Log(<-clnRes)
+	s.Log(string(<-clnRes))
 }

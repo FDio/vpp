@@ -364,6 +364,15 @@ func (s *HstSuite) AssertChannelClosed(timeout time.Duration, channel chan error
 	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
 }
 
+// Pass the parsed result struct and the minimum amount of data transferred in MB
+func (s *HstSuite) AssertIperfMinTransfer(result IPerfResult, minTransferred int) {
+	if result.Start.Details.Protocol == "TCP" {
+		s.AssertGreaterThan(result.End.TcpReceived.MBytes, minTransferred)
+	} else {
+		s.AssertGreaterThan(result.End.Udp.MBytes, minTransferred)
+	}
+}
+
 func (s *HstSuite) CreateLogger() {
 	suiteName := s.GetCurrentSuiteName()
 	var err error
