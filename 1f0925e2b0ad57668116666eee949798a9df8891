@@ -112,6 +112,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "73174e62_e5295a16",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1014,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-12-06T18:56:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "369ff6d5_fe5d7515",
+      "range": {
+        "startLine": 1014,
+        "startChar": 53,
+        "endLine": 1014,
+        "endChar": 60
+      },
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1dcb82b7_b895f4a8",
@@ -202,6 +226,30 @@
       "side": 1,
       "message": "sure.",
       "parentUuid": "7a99e833_f7f7027c",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 3
+      },
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "698d5fdf_903ea501",
+        "filename": "src/vnet/tcp/tcp_sdl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-12-06T18:56:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e63710c3_a0650abf",
       "range": {
         "startLine": 1,
         "startChar": 0,
