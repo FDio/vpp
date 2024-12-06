@@ -149,6 +149,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "94a32803_8246665c",
+        "filename": "src/vnet/session/session_sdl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1060,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T17:17:42Z",
+      "side": 1,
+      "message": "Let\u0027s have a chat about it to see how hard it would be. I think it would be good to separate adsl from sdl, as it\u0027s just a consumer",
+      "parentUuid": "69f5826f_4a3beb60",
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7a99e833_f7f7027c",
         "filename": "src/vnet/tcp/tcp_sdl.h",
         "patchSetId": 5
