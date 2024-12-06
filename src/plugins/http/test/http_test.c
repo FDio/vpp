@@ -333,11 +333,26 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   HTTP_TEST ((payload_offset == 4), "payload_offset=%u should be 4",
 	     payload_offset);
 
+  /* Type = 0x00, Len = incomplete */
   u8 invalid_input[] = { 0x00, 0x7B };
   rv = http_decap_udp_payload_datagram (invalid_input, sizeof (invalid_input),
 					&payload_offset, &payload_len);
-  HTTP_TEST ((rv == -1), "'%U' should be invalid", format_hex_bytes,
-	     invalid_input, sizeof (invalid_input));
+  HTTP_TEST ((rv == -1), "'%U' should be invalid (length incomplete)",
+	     format_hex_bytes, invalid_input, sizeof (invalid_input));
+
+  /* Type = 0x00, Len = missing */
+  u8 invalid_input2[] = { 0x00 };
+  rv = http_decap_udp_payload_datagram (
+    invalid_input2, sizeof (invalid_input2), &payload_offset, &payload_len);
+  HTTP_TEST ((rv == -1), "'%U' should be invalid (length missing)",
+	     format_hex_bytes, invalid_input2, sizeof (invalid_input2));
+
+  /* Type = 0x00, Len = 15293,  Context ID = missing */
+  u8 invalid_input3[] = { 0x00, 0x7B, 0xBD };
+  rv = http_decap_udp_payload_datagram (
+    invalid_input3, sizeof (invalid_input3), &payload_offset, &payload_len);
+  HTTP_TEST ((rv == -1), "'%U' should be invalid (context id missing)",
+	     format_hex_bytes, invalid_input3, sizeof (invalid_input3));
 
   /* Type = 0x00, Len = 494878333,  Context ID = 0x00 */
   u8 long_payload_input[] = { 0x00, 0x9D, 0x7F, 0x3E, 0x7D, 0x00, 0x12 };
@@ -408,7 +423,9 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 done:
   if (res)
-    return clib_error_return (0, "HTTP unit test failed");
+    return clib_error_return (0, "FAILED");
+
+  vlib_cli_output (vm, "SUCCESS");
   return 0;
 }
 

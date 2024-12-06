@@ -1340,6 +1340,12 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
       return -1;
     }
 
+  if (p == end)
+    {
+      clib_warning ("capsule length missing");
+      return -1;
+    }
+
   capsule_value_len = _http_decode_varint (&p, end);
   if (capsule_value_len == HTTP_INVALID_VARINT)
     {
@@ -1389,6 +1395,11 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
     }
 
   p += value_offset;
+  if (p == end)
+    {
+      clib_warning ("context ID missing");
+      return -1;
+    }
 
   /* context ID field should be zero (RFC9298 section 4) */
   context_id = _http_decode_varint (&p, end);
