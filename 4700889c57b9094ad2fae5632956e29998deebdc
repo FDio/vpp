@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e85232d8_585111cf",
+        "filename": "test/test_pg_stream.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-12-06T10:35:17Z",
+      "side": 1,
+      "message": "maybe 5min is a bit long for a timeout? Surely it should execute in a few sec, so maybe 30s is enough?",
+      "revId": "4700889c57b9094ad2fae5632956e29998deebdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
