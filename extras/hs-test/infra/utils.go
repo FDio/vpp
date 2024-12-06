@@ -293,28 +293,18 @@ func (s *HstSuite) StartClientApp(c *Container, cmd string,
 	}()
 
 	s.Log("starting client app, please wait")
+	cmd2 := exec.Command("/bin/sh", "-c", "docker exec "+c.getEnvVarsAsCliOption()+" "+
+		c.Name+" "+cmd)
+	s.Log(cmd2)
+	o, err := cmd2.CombinedOutput()
 
-	nTries := 0
-	for {
-		// exec.Cmd can only be used once, which is why it's in the loop
-		cmd2 := exec.Command("/bin/sh", "-c", "docker exec "+c.getEnvVarsAsCliOption()+" "+
-			c.Name+" "+cmd)
-		s.Log(cmd2)
-		o, err := cmd2.CombinedOutput()
-		if err != nil {
-			s.Log(err)
-			s.Log(string(o))
-			if nTries > 5 {
-				clnRes <- ""
-				clnCh <- fmt.Errorf("failed to start client app '%s'", err)
-				s.AssertNil(err, fmt.Sprint(err))
-				break
-			}
-			time.Sleep(1 * time.Second)
-			nTries++
-		} else {
-			clnRes <- fmt.Sprintf("Client output: %s", o)
-			break
-		}
+	if err != nil {
+		s.Log(err)
+		s.Log(string(o))
+		clnRes <- ""
+		clnCh <- fmt.Errorf("failed to start client app '%s'", err)
+		s.AssertNil(err, fmt.Sprint(err))
+	} else {
+		clnRes <- fmt.Sprintf("Client output: %s", o)
 	}
 }
