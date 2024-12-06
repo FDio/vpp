@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d035746_df389a2d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:32:37Z",
+      "side": 1,
+      "message": "Quick review",
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "077dfbc2_c6062937",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:32:37Z",
+      "side": 1,
+      "message": "Separate patch?",
+      "range": {
+        "startLine": 157,
+        "startChar": 0,
+        "endLine": 167,
+        "endChar": 2
+      },
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5c2e3c1_f7f53382",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1014,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:32:37Z",
+      "side": 1,
+      "message": "disabled?",
+      "range": {
+        "startLine": 1014,
+        "startChar": 53,
+        "endLine": 1014,
+        "endChar": 60
+      },
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1dcb82b7_b895f4a8",
+        "filename": "src/vnet/session/session_sdl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1060,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:32:37Z",
+      "side": 1,
+      "message": "How hard would it be to move auto sdl to a separate plugin?",
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a99e833_f7f7027c",
+        "filename": "src/vnet/tcp/tcp_sdl.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-06T06:32:37Z",
+      "side": 1,
+      "message": "Should we use the SPDX version of this? It\u0027s shorter",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 3
+      },
+      "revId": "1f0925e2b0ad57668116666eee949798a9df8891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
