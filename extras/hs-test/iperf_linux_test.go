@@ -21,7 +21,7 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	clnCh := make(chan error)
 	stopServerCh := make(chan struct{})
 	srvCh := make(chan error, 1)
-	clnRes := make(chan string, 1)
+	clnRes := make(chan []byte, 1)
 
 	defer func() {
 		stopServerCh <- struct{}{}
@@ -39,9 +39,12 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -c " + serverIpAddress + " -B " + clientIpAddress +
-			" -u -l 1460 -b 10g -p " + s.GetPortFromPpid()
+			" -u -l 1460 -b 10g -J -p " + s.GetPortFromPpid()
 		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
 	}()
 	s.AssertChannelClosed(time.Minute*3, clnCh)
-	s.Log(<-clnRes)
+	output := <-clnRes
+	result := s.ParseJsonIperfOutput(output)
+	s.LogJsonIperfOutput(result)
+	s.AssertIperfMinTransfer(result, 800)
 }
