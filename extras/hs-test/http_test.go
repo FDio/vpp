@@ -516,7 +516,7 @@ func HttpUnitTest(s *NoTopoSuite) {
 	vpp := s.GetContainerByName("vpp").VppInstance
 	o := vpp.Vppctl("test http all")
 	s.Log(o)
-	s.AssertNotContains(o, "FAIL")
+	s.AssertContains(o, "SUCCESS")
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {
