@@ -16,6 +16,24 @@
       "message": "maybe 5min is a bit long for a timeout? Surely it should execute in a few sec, so maybe 30s is enough?",
       "revId": "4700889c57b9094ad2fae5632956e29998deebdc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b858d0f_b3f344c2",
+        "filename": "test/test_pg_stream.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-12-06T10:51:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e85232d8_585111cf",
+      "revId": "4700889c57b9094ad2fae5632956e29998deebdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
