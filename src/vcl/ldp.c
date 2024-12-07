@@ -2020,10 +2020,14 @@ getsockopt (int fd, int level, int optname,
 			     optval, optlen);
 	      break;
 	    case TCP_INFO:
-	      if (optval && optlen && (*optlen == sizeof (struct tcp_info)))
+	      /* Note: tcp_info in netinet/tcp.h and linux/tcp.h have
+	       * different lenghts but overlap. Accept both for now */
+	      if (optval && optlen)
 		{
-		  LDBG (1, "fd %d: vlsh %u SOL_TCP, TCP_INFO, optval %p, "
-			"optlen %d: #LDP-NOP#", fd, vlsh, optval, *optlen);
+		  LDBG (1,
+			"fd %d: vlsh %u SOL_TCP, TCP_INFO, optval %p, "
+			"optlen %d: #LDP-NOP#",
+			fd, vlsh, optval, *optlen);
 		  memset (optval, 0, *optlen);
 		  rv = VPPCOM_OK;
 		}
