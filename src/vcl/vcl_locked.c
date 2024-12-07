@@ -306,6 +306,8 @@ typedef enum
 static inline void
 vls_mt_mq_lock (void)
 {
+  /* Allow controlled cancelation of thread before grabbing mutex */
+  pthread_testcancel ();
   pthread_mutex_lock (&vlsl->vls_mt_mq_mlock);
 }
 
@@ -355,6 +357,11 @@ vls_mt_add (void)
     }
   else
     vcl_set_worker_index (vlsl->vls_wrk_index);
+
+  /* Only allow new thread to be cancled in vls_mt_mq_lock */
+  int old_state;
+  if (vlsl->vls_mt_n_threads >= 2)
+    pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, &old_state);
 }
 
 u8
