@@ -3464,7 +3464,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	    return 0;
 	}
     }
-  ASSERT (maxevents > *num_ev);
+  ASSERT (maxevents >= *num_ev);
   vcl_mq_dequeue_batch (wrk, mq, ~0);
 
 handle_dequeued:
