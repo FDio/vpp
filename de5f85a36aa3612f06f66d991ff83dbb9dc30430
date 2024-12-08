@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc64d15c_eb488f7e",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1041,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-08T23:20:04Z",
+      "side": 1,
+      "message": "Cute :-). Maybe if we add more flags we should consider walking the flags, instead of the array, with something like get_lowest_set_bit_index and clear_lowest_set_bit. But probably not for this ..",
+      "revId": "de5f85a36aa3612f06f66d991ff83dbb9dc30430",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
