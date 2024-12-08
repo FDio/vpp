@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f1583fb_4a267a48",
+        "filename": "extras/hs-test/docker/Dockerfile.curl",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-08T23:08:10Z",
+      "side": 1,
+      "message": "Can we make this an env variable or store it in a when we setup test environment? Just to avoid modifying all our docker files when we move to newer versions. \n\nAlso, wonder if we should be jumping straight to 24.04 once iperf is fixed",
+      "range": {
+        "startLine": 1,
+        "startChar": 19,
+        "endLine": 1,
+        "endChar": 24
+      },
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "718b2651_b15151b0",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-08T23:08:10Z",
+      "side": 1,
+      "message": "Any idea what could be wrong?",
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "178c652f_ed42d1d4",
+        "filename": "extras/hs-test/script/build_hst.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-08T23:08:10Z",
+      "side": 1,
+      "message": "Oh cool, all apps in containers now?",
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
