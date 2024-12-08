@@ -78,6 +78,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 
 func RedisBenchmarkTest(s *LdpSuite) {
 	s.SkipIfMultiWorker()
+	s.SkipIfArm()
 
 	serverContainer := s.GetContainerByName("server-vpp")
 	clientContainer := s.GetContainerByName("client-vpp")

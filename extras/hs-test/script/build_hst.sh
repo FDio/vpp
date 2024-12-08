@@ -5,18 +5,6 @@ if [ "$(lsb_release -is)" != Ubuntu ]; then
 	exit 1
 fi
 
-if [ -z "$(which ab)" ]; then
-	echo "Host stack test framework requires apache2-utils to be installed"
-	echo "It is recommended to run 'sudo make install-dep'"
-	exit 1
-fi
-
-if [ -z "$(which wrk)" ]; then
-	echo "Host stack test framework requires wrk to be installed"
-	echo "It is recommended to run 'sudo make install-dep'"
-	exit 1
-fi
-
 export VPP_WS=../..
 OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
@@ -73,6 +61,7 @@ docker_build () {
     # shellcheck disable=2086
     docker buildx build ${DOCKER_CACHE_ARGS}  \
       --build-arg UBUNTU_VERSION              \
+      --build-arg OS_ARCH="$OS_ARCH"          \
       --build-arg http_proxy="$HTTP_PROXY"    \
       --build-arg https_proxy="$HTTP_PROXY"   \
       --build-arg HTTP_PROXY="$HTTP_PROXY"    \
@@ -87,6 +76,8 @@ docker_build hs-test/nginx-server nginx-server
 docker_build hs-test/curl curl
 docker_build hs-test/envoy envoy
 docker_build hs-test/nginx-http3 nginx-http3
+docker_build hs-test/ab ab
+docker_build hs-test/wrk wrk
 
 # cleanup detached images
 images=$(docker images --filter "dangling=true" -q --no-trunc)

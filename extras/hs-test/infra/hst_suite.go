@@ -439,6 +439,12 @@ func (s *HstSuite) SkipUnlessLeakCheck() {
 	}
 }
 
+func (s *HstSuite) SkipIfArm() {
+	if runtime.GOARCH == "arm64" {
+		s.Skip("test case not supported on arm")
+	}
+}
+
 func (s *HstSuite) WaitForCoreDump() bool {
 	var filename string
 	dir, err := os.Open(s.getLogDirPath())
