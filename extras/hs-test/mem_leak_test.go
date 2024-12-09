@@ -12,7 +12,7 @@ func init() {
 
 func MemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
-	vpp := s.GetContainerByName("vpp").VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 	/* no goVPP less noise */
 	vpp.Disconnect()
 	vpp.EnableMemoryTrace()

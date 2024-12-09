@@ -47,7 +47,7 @@ var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 
 type HstSuite struct {
-	Containers        map[string]*Container
+	AllContainers     map[string]*Container
 	StartedContainers []*Container
 	Volumes           []string
 	NetConfigs        []NetConfig
@@ -240,7 +240,7 @@ func (s *HstSuite) SetupTest() {
 }
 
 func (s *HstSuite) SetupContainers() {
-	for _, container := range s.Containers {
+	for _, container := range s.AllContainers {
 		if !container.IsOptional {
 			container.Run()
 		}
@@ -527,7 +527,7 @@ func (s *HstSuite) GetInterfaceByName(name string) *NetInterface {
 }
 
 func (s *HstSuite) GetContainerByName(name string) *Container {
-	return s.Containers[s.ProcessIndex+name+s.Ppid]
+	return s.AllContainers[s.ProcessIndex+name+s.Ppid]
 }
 
 /*
@@ -535,7 +535,7 @@ func (s *HstSuite) GetContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) GetTransientContainerByName(name string) *Container {
-	containerCopy := *s.Containers[s.ProcessIndex+name+s.Ppid]
+	containerCopy := *s.AllContainers[s.ProcessIndex+name+s.Ppid]
 	return &containerCopy
 }
 
@@ -559,7 +559,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 		s.Volumes = append(s.Volumes, hostDir)
 	}
 
-	s.Containers = make(map[string]*Container)
+	s.AllContainers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
 		newContainer.Suite = s
@@ -567,12 +567,12 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 		if err != nil {
 			Fail("container config error: " + fmt.Sprint(err))
 		}
-		s.Containers[newContainer.Name] = newContainer
+		s.AllContainers[newContainer.Name] = newContainer
 	}
 
 	if *DryRun {
 		s.Log(Colors.pur + "* Containers used by this suite (some might already be running):" + Colors.rst)
-		for name := range s.Containers {
+		for name := range s.AllContainers {
 			s.Log("%sdocker start %s && docker exec -it %s bash%s", Colors.pur, name, name, Colors.rst)
 		}
 	}

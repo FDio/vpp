@@ -11,12 +11,17 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-const VppUdpProxyContainerName = "vpp"
-
 type VppUdpProxySuite struct {
 	HstSuite
 	proxyPort  int
 	serverPort int
+	Interfaces struct {
+		Client *NetInterface
+		Server *NetInterface
+	}
+	Containers struct {
+		VppProxy *Container
+	}
 }
 
 var vppUdpProxyTests = map[string][]func(s *VppUdpProxySuite){}
@@ -34,30 +39,29 @@ func (s *VppUdpProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("single")
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
+	s.Containers.VppProxy = s.GetContainerByName("vpp")
 }
 
 func (s *VppUdpProxySuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// VPP proxy
-	vppContainer := s.GetContainerByName(VppUdpProxyContainerName)
-	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus)
+	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
-	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(clientInterface, 1, 1))
-	s.AssertNil(vpp.CreateTap(serverInterface, 1, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 1, 1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 1, 2))
 
 	s.proxyPort = 8080
 	s.serverPort = 80
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		serverInterface.Peer.Name(),
-		serverInterface.Ip4AddressString(),
-		serverInterface.HwAddress)
+		s.Interfaces.Server.Peer.Name(),
+		s.Interfaces.Server.Ip4AddressString(),
+		s.Interfaces.Server.HwAddress)
 	vpp.Vppctl(arp)
 
 	if *DryRun {
@@ -67,7 +71,7 @@ func (s *VppUdpProxySuite) SetupTest() {
 }
 
 func (s *VppUdpProxySuite) TearDownTest() {
-	vpp := s.GetContainerByName(VppUdpProxyContainerName).VppInstance
+	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
 		s.Log(vpp.Vppctl("show error"))
@@ -76,7 +80,7 @@ func (s *VppUdpProxySuite) TearDownTest() {
 }
 
 func (s *VppUdpProxySuite) VppProxyAddr() string {
-	return s.GetInterfaceByName(ClientTapInterfaceName).Peer.Ip4AddressString()
+	return s.Interfaces.Client.Peer.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) ProxyPort() int {
@@ -84,7 +88,7 @@ func (s *VppUdpProxySuite) ProxyPort() int {
 }
 
 func (s *VppUdpProxySuite) ServerAddr() string {
-	return s.GetInterfaceByName(ServerTapInterfaceName).Ip4AddressString()
+	return s.Interfaces.Server.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) ServerPort() int {
@@ -92,7 +96,7 @@ func (s *VppUdpProxySuite) ServerPort() int {
 }
 
 func (s *VppUdpProxySuite) ClientAddr() string {
-	return s.GetInterfaceByName(ClientTapInterfaceName).Ip4AddressString()
+	return s.Interfaces.Client.Ip4AddressString()
 }
 
 func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {

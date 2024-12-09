@@ -20,7 +20,7 @@ func init() {
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
-	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
+	vppProxy := s.Containers.VppProxy.VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s/%d", proto, s.VppProxyAddr(), proxyPort)
 	if proto != "http" && proto != "udp" {
 		proto = "tcp"
@@ -46,23 +46,19 @@ func VppProxyUdpIperfMTTest(s *VppProxySuite) {
 }
 
 func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
-	iperfServer := s.GetContainerByName(IperfServerContainerName)
-	iperfClient := s.GetContainerByName(IperfClientContainerName)
-	iperfServer.Run()
-	iperfClient.Run()
-	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
+	s.Containers.IperfC.Run()
+	s.Containers.IperfS.Run()
+	vppProxy := s.Containers.VppProxy.VppInstance
 	proxyPort, err := strconv.Atoi(s.GetPortFromPpid())
 	s.AssertNil(err)
 
 	// tap interfaces are created on test setup with 1 rx-queue,
 	// need to recreate them with 2 + consistent-qp
-	s.AssertNil(vppProxy.DeleteTap(serverInterface))
-	s.AssertNil(vppProxy.CreateTap(serverInterface, 2, uint32(serverInterface.Peer.Index), Consistent_qp))
+	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Server))
+	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Server, 2, uint32(s.Interfaces.Server.Peer.Index), Consistent_qp))
 
-	s.AssertNil(vppProxy.DeleteTap(clientInterface))
-	s.AssertNil(vppProxy.CreateTap(clientInterface, 2, uint32(clientInterface.Peer.Index), Consistent_qp))
+	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
+	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
 	configureVppProxy(s, "tcp", uint16(proxyPort))
 	if proto == "udp" {
@@ -84,7 +80,7 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s", s.ServerAddr(), fmt.Sprint(s.ServerPort()))
-		s.StartServerApp(iperfServer, "iperf3", cmd, srvCh, stopServerCh)
+		s.StartServerApp(s.Containers.IperfS, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
 	err = <-srvCh
@@ -93,7 +89,7 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s", s.VppProxyAddr(), proxyPort, s.ClientAddr(), proto)
-		s.StartClientApp(iperfClient, cmd, clnCh, clnRes)
+		s.StartClientApp(s.Containers.IperfC, cmd, clnCh, clnRes)
 	}()
 
 	s.AssertChannelClosed(time.Minute*4, clnCh)
@@ -157,12 +153,11 @@ func NginxMirroringTest(s *NginxProxySuite) {
 }
 
 func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
-	vpp := s.GetContainerByName(VppContainerName).VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 
-	s.AddVclConfig(nginxProxyContainer, multiThreadWorkers)
-	s.CreateNginxProxyConfig(nginxProxyContainer, multiThreadWorkers)
-	nginxProxyContainer.Start()
+	s.AddVclConfig(s.Containers.NginxProxy, multiThreadWorkers)
+	s.CreateNginxProxyConfig(s.Containers.NginxProxy, multiThreadWorkers)
+	s.Containers.NginxProxy.Start()
 	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
@@ -192,7 +187,7 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
-	vppProxy := s.GetContainerByName(VppUdpProxyContainerName).VppInstance
+	vppProxy := s.Containers.VppProxy.VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
 	s.Log(vppProxy.Vppctl(cmd))

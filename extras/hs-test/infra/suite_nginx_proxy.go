@@ -9,14 +9,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-// These correspond to names used in yaml config
-const (
-	NginxProxyContainerName      = "nginx-proxy"
-	NginxServerContainerName     = "nginx-server"
-	MirroringClientInterfaceName = "hstcln"
-	MirroringServerInterfaceName = "hstsrv"
-)
-
 var nginxProxyTests = map[string][]func(s *NginxProxySuite){}
 var nginxProxySoloTests = map[string][]func(s *NginxProxySuite){}
 
@@ -24,6 +16,16 @@ type NginxProxySuite struct {
 	HstSuite
 	proxyPort  uint16
 	maxTimeout int
+	Interfaces struct {
+		Server *NetInterface
+		Client *NetInterface
+	}
+	Containers struct {
+		NginxProxy           *Container
+		NginxServerTransient *Container
+		Vpp                  *Container
+		Curl                 *Container
+	}
 }
 
 func RegisterNginxProxyTests(tests ...func(s *NginxProxySuite)) {
@@ -43,6 +45,12 @@ func (s *NginxProxySuite) SetupSuite() {
 	} else {
 		s.maxTimeout = 60
 	}
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
+	s.Containers.NginxProxy = s.GetContainerByName("nginx-proxy")
+	s.Containers.NginxServerTransient = s.GetTransientContainerByName("nginx-server")
+	s.Containers.Vpp = s.GetContainerByName("vpp")
+	s.Containers.Curl = s.GetContainerByName("curl")
 }
 
 func (s *NginxProxySuite) SetupTest() {
@@ -55,38 +63,33 @@ func (s *NginxProxySuite) SetupTest() {
 		Append("enable").
 		Append("use-app-socket-api")
 
-	vppContainer := s.GetContainerByName(VppContainerName)
-	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
+	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
-	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
 
 	// nginx proxy
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
-	s.AssertNil(nginxProxyContainer.Create())
+	s.AssertNil(s.Containers.NginxProxy.Create())
 	s.proxyPort = 80
 
 	// nginx HTTP server
-	nginxServerContainer := s.GetTransientContainerByName(NginxServerContainerName)
-	s.AssertNil(nginxServerContainer.Create())
+	s.AssertNil(s.Containers.NginxServerTransient.Create())
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
 		Timeout   int
 	}{
-		LogPrefix: nginxServerContainer.Name,
-		Address:   serverInterface.Ip4AddressString(),
+		LogPrefix: s.Containers.NginxServerTransient.Name,
+		Address:   s.Interfaces.Server.Ip4AddressString(),
 		Timeout:   s.maxTimeout,
 	}
-	nginxServerContainer.CreateConfigFromTemplate(
+	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server_mirroring.conf",
 		nginxSettings,
 	)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(clientInterface, 1, 1))
-	s.AssertNil(vpp.CreateTap(serverInterface, 1, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 1, 1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 1, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -94,21 +97,19 @@ func (s *NginxProxySuite) SetupTest() {
 		s.Skip("Dry run mode = true")
 	}
 
-	s.AssertNil(nginxProxyContainer.Start())
-	s.AssertNil(nginxServerContainer.Start())
+	s.AssertNil(s.Containers.NginxProxy.Start())
+	s.AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
 func (s *NginxProxySuite) TearDownTest() {
 	if CurrentSpecReport().Failed() {
-		s.CollectNginxLogs(NginxServerContainerName)
-		s.CollectNginxLogs(NginxProxyContainerName)
+		s.CollectNginxLogs(s.Containers.NginxProxy)
+		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
 	s.HstSuite.TearDownTest()
 }
 
 func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThreadWorkers bool) {
-	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
-	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
 	var workers uint8
 	if multiThreadWorkers {
 		workers = 2
@@ -124,8 +125,8 @@ func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThre
 	}{
 		Workers:   workers,
 		LogPrefix: container.Name,
-		Proxy:     clientInterface.Peer.Ip4AddressString(),
-		Server:    serverInterface.Ip4AddressString(),
+		Proxy:     s.Interfaces.Client.Peer.Ip4AddressString(),
+		Server:    s.Interfaces.Server.Ip4AddressString(),
 		Port:      s.proxyPort,
 	}
 	container.CreateConfigFromTemplate(
@@ -140,12 +141,12 @@ func (s *NginxProxySuite) ProxyPort() uint16 {
 }
 
 func (s *NginxProxySuite) ProxyAddr() string {
-	return s.GetInterfaceByName(MirroringClientInterfaceName).Peer.Ip4AddressString()
+	return s.Interfaces.Client.Peer.Ip4AddressString()
 }
 
 func (s *NginxProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
