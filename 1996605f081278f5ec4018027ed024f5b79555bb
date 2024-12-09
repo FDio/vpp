@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b366dd1_717770a3",
+        "filename": "extras/hs-test/docker/Dockerfile.curl",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-09T08:18:19Z",
+      "side": 1,
+      "message": "this is just default value (if env variable not set) to suppress docker warning:\nWARN: InvalidDefaultArgInFrom: Default value for ARG ubuntu:${UBUNTU_VERSION} results in empty or invalid base image name (line 3)",
+      "parentUuid": "8f1583fb_4a267a48",
+      "range": {
+        "startLine": 1,
+        "startChar": 19,
+        "endLine": 1,
+        "endChar": 24
+      },
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "718b2651_b15151b0",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bac34c3d_6493ac0a",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-09T08:18:19Z",
+      "side": 1,
+      "message": "redis client was not able to connect, nothing in vpp logs nor crashing or some error from redis server, need to investigate more",
+      "parentUuid": "718b2651_b15151b0",
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "178c652f_ed42d1d4",
@@ -54,6 +96,24 @@
       "writtenOn": "2024-12-08T23:08:10Z",
       "side": 1,
       "message": "Oh cool, all apps in containers now?",
+      "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02175ced_bf030d6e",
+        "filename": "extras/hs-test/script/build_hst.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-09T08:18:19Z",
+      "side": 1,
+      "message": "they (ab, wrk) were containers before, but we used images from docker hub which were not working on arm and were not updated for couple of years, just image size was bit smaller",
+      "parentUuid": "178c652f_ed42d1d4",
       "revId": "1996605f081278f5ec4018027ed024f5b79555bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
