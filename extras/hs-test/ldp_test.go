@@ -17,7 +17,7 @@ func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 }
 
 func LdpIperfTlsTcpTest(s *LdpSuite) {
-	for _, c := range s.Containers {
+	for _, c := range s.StartedContainers {
 		defer delete(c.EnvVars, "LDP_TRANSPARENT_TLS")
 		defer delete(c.EnvVars, "LDP_TLS_CERT_FILE")
 		defer delete(c.EnvVars, "LDP_TLS_KEY_FILE")
@@ -42,9 +42,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 	if useUdp {
 		protocol = " -u "
 	}
-	clientContainer := s.GetContainerByName("client-vpp")
-	serverContainer := s.GetContainerByName("server-vpp")
-	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
@@ -57,7 +55,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid()
-		s.StartServerApp(serverContainer, "iperf3", cmd, srvCh, stopServerCh)
+		s.StartServerApp(s.Containers.ServerVpp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
 	err := <-srvCh
@@ -66,7 +64,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.GetPortFromPpid() + protocol
-		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
+		s.StartClientApp(s.Containers.ClientVpp, cmd, clnCh, clnRes)
 	}()
 
 	s.AssertChannelClosed(time.Minute*3, clnCh)
@@ -80,10 +78,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	s.SkipIfMultiWorker()
 	s.SkipIfArm()
 
-	serverContainer := s.GetContainerByName("server-vpp")
-	clientContainer := s.GetContainerByName("client-vpp")
-
-	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	runningSrv := make(chan error)
 	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
@@ -96,7 +91,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "redis-server --daemonize yes --protected-mode no --bind " + serverVethAddress
-		s.StartServerApp(serverContainer, "redis-server", cmd, runningSrv, doneSrv)
+		s.StartServerApp(s.Containers.ServerVpp, "redis-server", cmd, runningSrv, doneSrv)
 	}()
 
 	err := <-runningSrv
@@ -110,7 +105,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 		} else {
 			cmd = "redis-benchmark --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
 		}
-		s.StartClientApp(clientContainer, cmd, clnCh, clnRes)
+		s.StartClientApp(s.Containers.ClientVpp, cmd, clnCh, clnRes)
 
 	}()
 

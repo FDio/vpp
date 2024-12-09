@@ -17,7 +17,7 @@ func init() {
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
-	vppProxy := s.GetContainerByName(VppProxyContainerName).VppInstance
+	vppProxy := s.Containers.VppProxy.VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s/%d", proto, s.VppProxyAddr(), proxyPort)
 	if proto != "http" {
 		cmd += fmt.Sprintf(" client-uri tcp://%s/%d", s.NginxAddr(), s.NginxPort())
@@ -81,12 +81,11 @@ func NginxMirroringTest(s *NginxProxySuite) {
 }
 
 func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
-	nginxProxyContainer := s.GetContainerByName(NginxProxyContainerName)
-	vpp := s.GetContainerByName(VppContainerName).VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 
-	s.AddVclConfig(nginxProxyContainer, multiThreadWorkers)
-	s.CreateNginxProxyConfig(nginxProxyContainer, multiThreadWorkers)
-	nginxProxyContainer.Start()
+	s.AddVclConfig(s.Containers.NginxProxy, multiThreadWorkers)
+	s.CreateNginxProxyConfig(s.Containers.NginxProxy, multiThreadWorkers)
+	s.Containers.NginxProxy.Start()
 	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
@@ -116,7 +115,7 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
-	vppProxy := s.GetContainerByName(VppUdpProxyContainerName).VppInstance
+	vppProxy := s.Containers.VppProxy.VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
 	s.Log(vppProxy.Vppctl(cmd))
