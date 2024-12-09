@@ -16,6 +16,24 @@
       "message": "Low iperf performance, 4.2 Mbits/sec - UDP test",
       "revId": "2faeceb269d37b7a34274226309ad814a8471003",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbfc0cf0_f75fbccb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-12-09T09:36:45Z",
+      "side": 1,
+      "message": "Iperf settings were wrong, fixed",
+      "parentUuid": "ff4b1275_287d52b7",
+      "revId": "2faeceb269d37b7a34274226309ad814a8471003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
