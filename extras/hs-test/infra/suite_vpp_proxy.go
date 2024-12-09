@@ -14,18 +14,25 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-// These correspond to names used in yaml config
 const (
-	VppProxyContainerName  = "vpp-proxy"
-	ClientTapInterfaceName = "hstcln"
-	ServerTapInterfaceName = "hstsrv"
-	CurlContainerTestFile  = "/tmp/testFile"
+	CurlContainerTestFile = "/tmp/testFile"
 )
 
 type VppProxySuite struct {
 	HstSuite
 	nginxPort  uint16
 	maxTimeout int
+	Interfaces struct {
+		Client *NetInterface
+		Server *NetInterface
+	}
+	Containers struct {
+		VppProxy             *Container
+		Curl                 *Container
+		NginxServerTransient *Container
+		IperfS               *Container
+		IperfC               *Container
+	}
 }
 
 var vppProxyTests = map[string][]func(s *VppProxySuite){}
@@ -49,22 +56,22 @@ func (s *VppProxySuite) SetupSuite() {
 	} else {
 		s.maxTimeout = 60
 	}
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
+	s.Containers.NginxServerTransient = s.GetContainerByName("nginx-server")
+	s.Containers.VppProxy = s.GetContainerByName("vpp-proxy")
+	s.Containers.Curl = s.GetContainerByName("curl")
 }
 
 func (s *VppProxySuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// VPP HTTP connect-proxy
-	vppContainer := s.GetContainerByName(VppProxyContainerName)
-	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus)
+	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
-	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
-
 	// nginx HTTP server
-	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
-	s.AssertNil(nginxContainer.Create())
+	s.AssertNil(s.Containers.NginxServerTransient.Create())
 	s.nginxPort = 80
 	nginxSettings := struct {
 		LogPrefix string
@@ -72,21 +79,21 @@ func (s *VppProxySuite) SetupTest() {
 		Port      uint16
 		Timeout   int
 	}{
-		LogPrefix: nginxContainer.Name,
-		Address:   serverInterface.Ip4AddressString(),
+		LogPrefix: s.Containers.NginxServerTransient.Name,
+		Address:   s.Interfaces.Server.Ip4AddressString(),
 		Port:      s.nginxPort,
 		Timeout:   s.maxTimeout,
 	}
-	nginxContainer.CreateConfigFromTemplate(
+	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
-	s.AssertNil(nginxContainer.Start())
+	s.AssertNil(s.Containers.NginxServerTransient.Start())
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.createTap(clientInterface, 1))
-	s.AssertNil(vpp.createTap(serverInterface, 2))
+	s.AssertNil(vpp.createTap(s.Interfaces.Client, 1))
+	s.AssertNil(vpp.createTap(s.Interfaces.Server, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -95,11 +102,11 @@ func (s *VppProxySuite) SetupTest() {
 }
 
 func (s *VppProxySuite) TearDownTest() {
-	vpp := s.GetContainerByName(VppProxyContainerName).VppInstance
+	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
 		s.Log(vpp.Vppctl("show error"))
-		s.CollectNginxLogs(NginxServerContainerName)
+		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
 	s.HstSuite.TearDownTest()
 }
@@ -109,28 +116,28 @@ func (s *VppProxySuite) NginxPort() uint16 {
 }
 
 func (s *VppProxySuite) NginxAddr() string {
-	return s.GetInterfaceByName(ServerTapInterfaceName).Ip4AddressString()
+	return s.Interfaces.Server.Ip4AddressString()
 }
 
 func (s *VppProxySuite) VppProxyAddr() string {
-	return s.GetInterfaceByName(ClientTapInterfaceName).Peer.Ip4AddressString()
+	return s.Interfaces.Client.Peer.Ip4AddressString()
 }
 
 func (s *VppProxySuite) CurlRequest(targetUri string) (string, string) {
 	args := fmt.Sprintf("--insecure --noproxy '*' %s", targetUri)
-	body, log := s.RunCurlContainer(args)
+	body, log := s.RunCurlContainer(s.Containers.Curl, args)
 	return body, log
 }
 
 func (s *VppProxySuite) CurlRequestViaTunnel(targetUri string, proxyUri string) (string, string) {
 	args := fmt.Sprintf("--max-time %d --insecure -p -x %s %s", s.maxTimeout, proxyUri, targetUri)
-	body, log := s.RunCurlContainer(args)
+	body, log := s.RunCurlContainer(s.Containers.Curl, args)
 	return body, log
 }
 
 func (s *VppProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
@@ -138,14 +145,14 @@ func (s *VppProxySuite) CurlDownloadResource(uri string) {
 
 func (s *VppProxySuite) CurlUploadResource(uri, file string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
 }
 
 func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download_connect --max-time %d --insecure -p -x %s --remote-name --output-dir /tmp %s", s.maxTimeout, proxyUri, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "CONNECT response code: 200")
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
@@ -154,7 +161,7 @@ func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri strin
 
 func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_upload_connect --max-time %d --insecure -p -x %s -T %s %s", s.maxTimeout, proxyUri, file, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "CONNECT response code: 200")
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")

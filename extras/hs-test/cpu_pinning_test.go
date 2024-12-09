@@ -11,7 +11,7 @@ func init() {
 // TODO: Add more CPU configuration tests
 
 func DefaultCpuConfigurationTest(s *CpuPinningSuite) {
-	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 	s.AssertNil(vpp.Start())
 }
 
@@ -23,7 +23,7 @@ func SkipCoresTest(s *CpuPinningSuite) {
 		SkipCores:          1,
 	}
 
-	vpp := s.GetContainerByName(SingleTopoContainerVpp).VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 	vpp.CpuConfig = skipCoresConfiguration
 
 	s.AssertNil(vpp.Start())
