@@ -15,6 +15,12 @@ var cpuPinningSoloTests = map[string][]func(s *CpuPinningSuite){}
 type CpuPinningSuite struct {
 	HstSuite
 	previousMaxContainerCount int
+	Interfaces                struct {
+		Tap *NetInterface
+	}
+	Containers struct {
+		Vpp *Container
+	}
 }
 
 func RegisterCpuPinningTests(tests ...func(s *CpuPinningSuite)) {
@@ -29,6 +35,8 @@ func (s *CpuPinningSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("singleCpuPinning")
+	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Containers.Vpp = s.GetContainerByName("vpp")
 }
 
 func (s *CpuPinningSuite) SetupTest() {
@@ -39,8 +47,7 @@ func (s *CpuPinningSuite) SetupTest() {
 	s.SkipIfNotEnoughAvailableCpus()
 
 	s.HstSuite.SetupTest()
-	container := s.GetContainerByName(SingleTopoContainerVpp)
-	vpp, err := container.newVppInstance(container.AllocatedCpus)
+	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
 	if *DryRun {

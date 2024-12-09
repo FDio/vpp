@@ -174,8 +174,7 @@ RunCurlContainer execute curl command with given args.
 Container with name "curl" must be available.
 Curl runs in verbose mode and progress meter switch off by default.
 */
-func (s *HstSuite) RunCurlContainer(args string) (string, string) {
-	curlCont := s.GetContainerByName("curl")
+func (s *HstSuite) RunCurlContainer(curlCont *Container, args string) (string, string) {
 	cmd := fmt.Sprintf("curl -v -s %s", args)
 	s.Log(cmd)
 	curlCont.ExtraRunningArgs = cmd
@@ -195,8 +194,7 @@ Nginx logging need to be set following way:
 
 where LogPrefix is set to nginxContainer.Name
 */
-func (s *HstSuite) CollectNginxLogs(containerName string) {
-	nginxContainer := s.GetContainerByName(containerName)
+func (s *HstSuite) CollectNginxLogs(nginxContainer *Container) {
 	targetDir := nginxContainer.Suite.getLogDirPath()
 	source := nginxContainer.GetHostWorkDir() + "/" + nginxContainer.Name + "-"
 	cmd := exec.Command("cp", "-t", targetDir, source+"error.log", source+"access.log")
@@ -213,8 +211,7 @@ Envoy access log path need to be set following way:
 <default-work-dir>/{{.LogPrefix}}-access.log
 where LogPrefix is set to envoyContainer.Name
 */
-func (s *HstSuite) CollectEnvoyLogs(containerName string) {
-	envoyContainer := s.GetContainerByName(containerName)
+func (s *HstSuite) CollectEnvoyLogs(envoyContainer *Container) {
 	targetDir := envoyContainer.Suite.getLogDirPath()
 	source := envoyContainer.GetHostWorkDir() + "/" + envoyContainer.Name + "-"
 	cmd := exec.Command("cp", "-t", targetDir, source+"access.log")

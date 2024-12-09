@@ -15,16 +15,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-const (
-	VppContainerName        = "vpp"
-	EnvoyProxyContainerName = "envoy-vcl"
-)
-
 type EnvoyProxySuite struct {
 	HstSuite
 	nginxPort  uint16
 	proxyPort  uint16
 	maxTimeout int
+	Interfaces struct {
+		Server *NetInterface
+		Client *NetInterface
+	}
+	Containers struct {
+		EnvoyProxy           *Container
+		NginxServerTransient *Container
+		Vpp                  *Container
+		Curl                 *Container
+	}
 }
 
 var envoyProxyTests = map[string][]func(s *EnvoyProxySuite){}
@@ -48,6 +53,12 @@ func (s *EnvoyProxySuite) SetupSuite() {
 	} else {
 		s.maxTimeout = 60
 	}
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
+	s.Containers.NginxServerTransient = s.GetTransientContainerByName("nginx-server")
+	s.Containers.Vpp = s.GetContainerByName("vpp")
+	s.Containers.EnvoyProxy = s.GetContainerByName("envoy-vcl")
+	s.Containers.Curl = s.GetContainerByName("curl")
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
@@ -62,15 +73,11 @@ func (s *EnvoyProxySuite) SetupTest() {
 		Append("evt_qs_memfd_seg").
 		Append("event-queue-length 100000")
 
-	vppContainer := s.GetContainerByName(VppContainerName)
-	vpp, err := vppContainer.newVppInstance(vppContainer.AllocatedCpus, sessionConfig)
+	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
-	clientInterface := s.GetInterfaceByName(ClientTapInterfaceName)
-	serverInterface := s.GetInterfaceByName(ServerTapInterfaceName)
 
 	// nginx HTTP server
-	nginxContainer := s.GetTransientContainerByName(NginxServerContainerName)
-	s.AssertNil(nginxContainer.Create())
+	s.AssertNil(s.Containers.NginxServerTransient.Create())
 	s.nginxPort = 80
 	nginxSettings := struct {
 		LogPrefix string
@@ -78,20 +85,19 @@ func (s *EnvoyProxySuite) SetupTest() {
 		Port      uint16
 		Timeout   int
 	}{
-		LogPrefix: nginxContainer.Name,
-		Address:   serverInterface.Ip4AddressString(),
+		LogPrefix: s.Containers.NginxServerTransient.Name,
+		Address:   s.Interfaces.Server.Ip4AddressString(),
 		Port:      s.nginxPort,
 		Timeout:   s.maxTimeout,
 	}
-	nginxContainer.CreateConfigFromTemplate(
+	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx_server.conf",
 		nginxSettings,
 	)
 
 	// Envoy
-	envoyContainer := s.GetContainerByName(EnvoyProxyContainerName)
-	s.AssertNil(envoyContainer.Create())
+	s.AssertNil(s.Containers.EnvoyProxy.Create())
 
 	s.proxyPort = 8080
 	envoySettings := struct {
@@ -100,12 +106,12 @@ func (s *EnvoyProxySuite) SetupTest() {
 		ServerPort    uint16
 		ProxyPort     uint16
 	}{
-		LogPrefix:     envoyContainer.Name,
-		ServerAddress: serverInterface.Ip4AddressString(),
+		LogPrefix:     s.Containers.EnvoyProxy.Name,
+		ServerAddress: s.Interfaces.Server.Ip4AddressString(),
 		ServerPort:    s.nginxPort,
 		ProxyPort:     s.proxyPort,
 	}
-	envoyContainer.CreateConfigFromTemplate(
+	s.Containers.EnvoyProxy.CreateConfigFromTemplate(
 		"/etc/envoy/envoy.yaml",
 		"resources/envoy/proxy.yaml",
 		envoySettings,
@@ -114,15 +120,15 @@ func (s *EnvoyProxySuite) SetupTest() {
 	s.AssertNil(vpp.Start())
 	// wait for VPP to start
 	time.Sleep(time.Second * 1)
-	s.AssertNil(vpp.CreateTap(clientInterface, 1, 1))
-	s.AssertNil(vpp.CreateTap(serverInterface, 1, 2))
-	vppContainer.Exec(false, "chmod 777 -R %s", vppContainer.GetContainerWorkDir())
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 1, 1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 1, 2))
+	s.Containers.Vpp.Exec(false, "chmod 777 -R %s", s.Containers.Vpp.GetContainerWorkDir())
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
-		serverInterface.Peer.Name(),
-		serverInterface.Ip4AddressString(),
-		serverInterface.HwAddress)
+		s.Interfaces.Server.Peer.Name(),
+		s.Interfaces.Server.Ip4AddressString(),
+		s.Interfaces.Server.HwAddress)
 
 	if *DryRun {
 		vpp.AppendToCliConfig(arp)
@@ -131,15 +137,15 @@ func (s *EnvoyProxySuite) SetupTest() {
 		s.Skip("Dry run mode = true")
 	}
 
-	vppContainer.VppInstance.Vppctl(arp)
-	s.AssertNil(nginxContainer.Start())
-	s.AssertNil(envoyContainer.Start())
+	s.Containers.Vpp.VppInstance.Vppctl(arp)
+	s.AssertNil(s.Containers.NginxServerTransient.Start())
+	s.AssertNil(s.Containers.EnvoyProxy.Start())
 }
 
 func (s *EnvoyProxySuite) TearDownTest() {
 	if CurrentSpecReport().Failed() {
-		s.CollectNginxLogs(NginxServerContainerName)
-		s.CollectEnvoyLogs(EnvoyProxyContainerName)
+		s.CollectNginxLogs(s.Containers.NginxServerTransient)
+		s.CollectEnvoyLogs(s.Containers.EnvoyProxy)
 	}
 	s.HstSuite.TearDownTest()
 }
@@ -149,12 +155,12 @@ func (s *EnvoyProxySuite) ProxyPort() uint16 {
 }
 
 func (s *EnvoyProxySuite) ProxyAddr() string {
-	return s.GetInterfaceByName(ClientTapInterfaceName).Peer.Ip4AddressString()
+	return s.Interfaces.Client.Peer.Ip4AddressString()
 }
 
 func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_download --max-time %d --insecure --noproxy '*' --remote-name --output-dir /tmp %s", s.maxTimeout, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
@@ -162,7 +168,7 @@ func (s *EnvoyProxySuite) CurlDownloadResource(uri string) {
 
 func (s *EnvoyProxySuite) CurlUploadResource(uri, file string) {
 	args := fmt.Sprintf("-w @/tmp/write_out_upload --max-time %d --insecure --noproxy '*' -T %s %s", s.maxTimeout, file, uri)
-	writeOut, log := s.RunCurlContainer(args)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
 }

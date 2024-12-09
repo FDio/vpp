@@ -9,18 +9,22 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-const (
-	SingleTopoContainerVpp   = "vpp"
-	SingleTopoContainerNginx = "nginx"
-	TapInterfaceName         = "htaphost"
-	NginxHttp3ContainerName  = "nginx-http3"
-)
-
 var noTopoTests = map[string][]func(s *NoTopoSuite){}
 var noTopoSoloTests = map[string][]func(s *NoTopoSuite){}
 
 type NoTopoSuite struct {
 	HstSuite
+	Interfaces struct {
+		Tap *NetInterface
+	}
+	Containers struct {
+		Vpp        *Container
+		Nginx      *Container
+		NginxHttp3 *Container
+		Wrk        *Container
+		Curl       *Container
+		Ab         *Container
+	}
 }
 
 func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
@@ -34,6 +38,13 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("single")
+	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
+	s.Containers.Vpp = s.GetContainerByName("vpp")
+	s.Containers.Nginx = s.GetContainerByName("nginx")
+	s.Containers.NginxHttp3 = s.GetContainerByName("nginx-http3")
+	s.Containers.Wrk = s.GetContainerByName("wrk")
+	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Containers.Ab = s.GetContainerByName("ab")
 }
 
 func (s *NoTopoSuite) SetupTest() {
@@ -53,12 +64,10 @@ func (s *NoTopoSuite) SetupTest() {
 		sessionConfig.Close()
 	}
 
-	container := s.GetContainerByName(SingleTopoContainerVpp)
-	vpp, _ := container.newVppInstance(container.AllocatedCpus, sessionConfig)
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
 	s.AssertNil(vpp.Start())
-	tapInterface := s.GetInterfaceByName(TapInterfaceName)
-	s.AssertNil(vpp.CreateTap(tapInterface, 1, 1), "failed to create tap interface")
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, 1, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -68,7 +77,7 @@ func (s *NoTopoSuite) SetupTest() {
 
 func (s *NoTopoSuite) TearDownTest() {
 	if CurrentSpecReport().Failed() {
-		s.CollectNginxLogs(NginxHttp3ContainerName)
+		s.CollectNginxLogs(s.Containers.NginxHttp3)
 	}
 	s.HstSuite.TearDownTest()
 }
@@ -93,10 +102,9 @@ func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers
 }
 
 func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
-	nginxCont := s.GetContainerByName(SingleTopoContainerNginx)
-	vclFileName := nginxCont.GetHostWorkDir() + "/vcl.conf"
+	vclFileName := s.Containers.Nginx.GetHostWorkDir() + "/vcl.conf"
 	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		nginxCont.GetContainerWorkDir())
+		s.Containers.Nginx.GetContainerWorkDir())
 
 	var vclConf Stanza
 	vclConf.
@@ -118,15 +126,15 @@ func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
 }
 
 func (s *NoTopoSuite) VppAddr() string {
-	return s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	return s.Interfaces.Tap.Peer.Ip4AddressString()
 }
 
 func (s *NoTopoSuite) VppIfName() string {
-	return s.GetInterfaceByName(TapInterfaceName).Peer.Name()
+	return s.Interfaces.Tap.Peer.Name()
 }
 
 func (s *NoTopoSuite) HostAddr() string {
-	return s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
+	return s.Interfaces.Tap.Ip4AddressString()
 }
 
 func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {

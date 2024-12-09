@@ -9,13 +9,13 @@ containers:
       - <<: *shared-vol
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
-  - name: "iperfB"
+  - name: "iperfC"
     volumes:
       - <<: *shared-vol
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
     is-optional: true
-  - name: "iperfA"
+  - name: "iperfS"
     volumes:
       - <<: *shared-vol
         container-dir: "/tmp/vpp"

@@ -20,23 +20,20 @@ func VppEchoTcpTest(s *VethsSuite) {
 }
 
 func testVppEcho(s *VethsSuite, proto string) {
-	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	uri := proto + "://" + serverVethAddress + "/12344"
 
-	echoSrvContainer := s.GetContainerByName("server-app")
 	serverCommand := "vpp_echo server TX=RX" +
-		" socket-name " + echoSrvContainer.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
+		" socket-name " + s.Containers.ServerApp.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
 		" use-app-socket-api" +
 		" uri " + uri
 	s.Log(serverCommand)
-	echoSrvContainer.ExecServer(true, serverCommand)
-
-	echoClnContainer := s.GetContainerByName("client-app")
+	s.Containers.ServerApp.ExecServer(true, serverCommand)
 
 	clientCommand := "vpp_echo client" +
-		" socket-name " + echoClnContainer.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
+		" socket-name " + s.Containers.ClientApp.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
 		" use-app-socket-api uri " + uri
 	s.Log(clientCommand)
-	o := echoClnContainer.Exec(true, clientCommand)
+	o := s.Containers.ClientApp.Exec(true, clientCommand)
 	s.Log(o)
 }

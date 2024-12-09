@@ -11,14 +11,15 @@ import (
 
 type IperfSuite struct {
 	HstSuite
+	Interfaces struct {
+		Server *NetInterface
+		Client *NetInterface
+	}
+	Containers struct {
+		Server *Container
+		Client *Container
+	}
 }
-
-const (
-	ServerIperfContainerName string = "server"
-	ServerIperfInterfaceName string = "hstsrv"
-	ClientIperfContainerName string = "client"
-	ClientIperfInterfaceName string = "hstcln"
-)
 
 var iperfTests = map[string][]func(s *IperfSuite){}
 var iperfSoloTests = map[string][]func(s *IperfSuite){}
@@ -35,6 +36,10 @@ func (s *IperfSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2taps")
 	s.LoadContainerTopology("2containers")
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
+	s.Containers.Server = s.GetContainerByName("server")
+	s.Containers.Client = s.GetContainerByName("client")
 }
 
 var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, func() {

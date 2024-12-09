@@ -10,17 +10,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-// These correspond to names used in yaml config
-const (
-	ServerInterfaceName = "srv"
-	ClientInterfaceName = "cln"
-)
-
 var vethTests = map[string][]func(s *VethsSuite){}
 var vethSoloTests = map[string][]func(s *VethsSuite){}
 
 type VethsSuite struct {
 	HstSuite
+	Interfaces struct {
+		Server *NetInterface
+		Client *NetInterface
+	}
+	Containers struct {
+		ServerVpp *Container
+		ClientVpp *Container
+		ServerApp *Container
+		ClientApp *Container
+	}
 }
 
 func RegisterVethTests(tests ...func(s *VethsSuite)) {
@@ -35,6 +39,12 @@ func (s *VethsSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2peerVeth")
 	s.LoadContainerTopology("2peerVeth")
+	s.Interfaces.Client = s.GetInterfaceByName("cln")
+	s.Interfaces.Server = s.GetInterfaceByName("srv")
+	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
+	s.Containers.ClientVpp = s.GetContainerByName("client-vpp")
+	s.Containers.ServerApp = s.GetContainerByName("server-app")
+	s.Containers.ClientApp = s.GetContainerByName("client-app")
 }
 
 func (s *VethsSuite) SetupTest() {
@@ -55,15 +65,11 @@ func (s *VethsSuite) SetupTest() {
 	}
 
 	// ... For server
-	serverContainer := s.GetContainerByName("server-vpp")
-
-	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
+	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
-	clientContainer := s.GetContainerByName("client-vpp")
-
-	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
+	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
@@ -75,11 +81,10 @@ func (s *VethsSuite) SetupTest() {
 }
 
 func (s *VethsSuite) SetupServerVpp() {
-	serverVpp := s.GetContainerByName("server-vpp").VppInstance
+	serverVpp := s.Containers.ServerVpp.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
-	idx, err := serverVpp.createAfPacket(serverVeth)
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
@@ -88,8 +93,7 @@ func (s *VethsSuite) setupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	clientVeth := s.GetInterfaceByName(ClientInterfaceName)
-	idx, err := clientVpp.createAfPacket(clientVeth)
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }

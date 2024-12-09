@@ -10,17 +10,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-// These correspond to names used in yaml config
-const (
-	ServerLdpInterfaceName = "srv"
-	ClientLdpInterfaceName = "cln"
-)
-
 var ldpTests = map[string][]func(s *LdpSuite){}
 var ldpSoloTests = map[string][]func(s *LdpSuite){}
 
 type LdpSuite struct {
 	HstSuite
+	Interfaces struct {
+		Server *NetInterface
+		Client *NetInterface
+	}
+	Containers struct {
+		ServerVpp *Container
+		ClientVpp *Container
+		ServerApp *Container
+		ClientApp *Container
+	}
 }
 
 func RegisterLdpTests(tests ...func(s *LdpSuite)) {
@@ -35,6 +39,12 @@ func (s *LdpSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2peerVeth")
 	s.LoadContainerTopology("2peerVethLdp")
+	s.Interfaces.Client = s.GetInterfaceByName("cln")
+	s.Interfaces.Server = s.GetInterfaceByName("srv")
+	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
+	s.Containers.ClientVpp = s.GetContainerByName("client-vpp")
+	s.Containers.ServerApp = s.GetContainerByName("server-app")
+	s.Containers.ClientApp = s.GetContainerByName("client-app")
 }
 
 func (s *LdpSuite) SetupTest() {
@@ -55,19 +65,15 @@ func (s *LdpSuite) SetupTest() {
 	}
 
 	// ... For server
-	serverContainer := s.GetContainerByName("server-vpp")
-
-	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
+	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
-	clientContainer := s.GetContainerByName("client-vpp")
-
-	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
+	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
-	serverContainer.AddEnvVar("VCL_CONFIG", serverContainer.GetContainerWorkDir()+"/vcl.conf")
-	clientContainer.AddEnvVar("VCL_CONFIG", clientContainer.GetContainerWorkDir()+"/vcl.conf")
+	s.Containers.ServerVpp.AddEnvVar("VCL_CONFIG", s.Containers.ServerVpp.GetContainerWorkDir()+"/vcl.conf")
+	s.Containers.ClientVpp.AddEnvVar("VCL_CONFIG", s.Containers.ClientVpp.GetContainerWorkDir()+"/vcl.conf")
 
 	for _, container := range s.StartedContainers {
 		container.AddEnvVar("LD_PRELOAD", "/usr/lib/libvcl_ldpreload.so")
@@ -75,17 +81,17 @@ func (s *LdpSuite) SetupTest() {
 		container.AddEnvVar("VCL_DEBUG", "0")
 	}
 
-	s.CreateVclConfig(serverContainer)
-	s.CreateVclConfig(clientContainer)
-	s.SetupServerVpp(serverContainer)
-	s.setupClientVpp(clientContainer)
+	s.CreateVclConfig(s.Containers.ServerVpp)
+	s.CreateVclConfig(s.Containers.ClientVpp)
+	s.SetupServerVpp(s.Containers.ServerVpp)
+	s.setupClientVpp(s.Containers.ClientVpp)
 
 	if *DryRun {
 		s.LogStartedContainers()
 		s.Log("\n%s* LD_PRELOAD and VCL_CONFIG server/client paths:", Colors.grn)
 		s.Log("LD_PRELOAD=/usr/lib/libvcl_ldpreload.so")
-		s.Log("VCL_CONFIG=%s/vcl.conf", serverContainer.GetContainerWorkDir())
-		s.Log("VCL_CONFIG=%s/vcl.conf%s\n", clientContainer.GetContainerWorkDir(), Colors.rst)
+		s.Log("VCL_CONFIG=%s/vcl.conf", s.Containers.ServerVpp.GetContainerWorkDir())
+		s.Log("VCL_CONFIG=%s/vcl.conf%s\n", s.Containers.ClientVpp.GetContainerWorkDir(), Colors.rst)
 		s.Skip("Dry run mode = true")
 	}
 }
@@ -121,8 +127,7 @@ func (s *LdpSuite) SetupServerVpp(serverContainer *Container) {
 	serverVpp := serverContainer.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
-	idx, err := serverVpp.createAfPacket(serverVeth)
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
@@ -131,8 +136,7 @@ func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	clientVpp := clientContainer.VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	clientVeth := s.GetInterfaceByName(ClientInterfaceName)
-	idx, err := clientVpp.createAfPacket(clientVeth)
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
