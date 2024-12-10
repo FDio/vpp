@@ -1577,6 +1577,9 @@ session_close (session_t * s)
    * transport initiated closes, use a flag. */
   s->flags |= SESSION_F_APP_CLOSED;
 
+  /* Disable fifo tuning when app closes */
+  s->flags &= ~SESSION_F_CUSTOM_FIFO_TUNING;
+
   if (s->session_state >= SESSION_STATE_CLOSING)
     {
       /* Session will only be removed once both app and transport
