@@ -22,6 +22,30 @@
       },
       "revId": "7c5ffbc25d3440dd5f94423f0c13ad9fa1fcb4fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f835a92_23af2d67",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 13
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-12-10T13:20:48Z",
+      "side": 1,
+      "message": "Probably not, tests would become too bloated.\n\nWe could do that, but we\u0027re most likely going to have a test with a single queue anyway so I don\u0027t see the point, but it\u0027s up to you.",
+      "parentUuid": "9aa65a32_ad4ef4ef",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 103
+      },
+      "revId": "7c5ffbc25d3440dd5f94423f0c13ad9fa1fcb4fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
