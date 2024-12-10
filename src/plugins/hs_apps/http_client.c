@@ -508,6 +508,7 @@ hc_connect_rpc (void *rpc_args)
   if (rv > 0)
     clib_warning (0, "connect returned: %U", format_session_error, rv);
 
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);
   return rv;
 }
@@ -520,6 +521,7 @@ hc_connect ()
   hc_worker_t *wrk;
   hc_session_t *hc_session;
   transport_endpt_ext_cfg_t *ext_cfg;
+  transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0 };
 
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
@@ -528,8 +530,8 @@ hc_connect ()
   a->app_index = hcm->app_index;
 
   ext_cfg = session_endpoint_add_ext_cfg (
-    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
-  ext_cfg->opaque = hcm->timeout;
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   /* allocate http session on main thread */
   wrk = hc_worker_get (0);

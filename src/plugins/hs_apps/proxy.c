@@ -19,12 +19,15 @@
 #include <vnet/session/application_interface.h>
 #include <hs_apps/proxy.h>
 #include <vnet/tcp/tcp.h>
-#include <http/http.h>
 #include <http/http_header_names.h>
 
 proxy_main_t proxy_main;
 
 #define TCP_MSS 1460
+
+static const char masque_udp_uri_prefix[] = ".well-known/masque/udp/";
+#define MASQUE_UDP_URI_PREFIX_LEN (sizeof (masque_udp_uri_prefix) - 1)
+#define MASQUE_UDP_URI_MIN_LEN	  (MASQUE_UDP_URI_PREFIX_LEN + 10)
 
 #define PROXY_DEBUG 0
 
@@ -59,37 +62,33 @@ proxy_session_side_ctx_get (proxy_worker_t *wrk, u32 ctx_index)
   return pool_elt_at_index (wrk->ctx_pool, ctx_index);
 }
 
-static void
-proxy_send_http_resp (session_t *s, http_status_code_t sc,
-		      http_header_t *resp_headers)
+static_always_inline void
+proxy_send_http_resp (session_t *s, http_status_code_t sc, u8 *headers_buf)
 {
   http_msg_t msg;
   int rv;
-  u8 *headers_buf = 0;
+  uword headers_ptr;
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
-  if (vec_len (resp_headers))
-    {
-      headers_buf = http_serialize_headers (resp_headers);
-      msg.data.len = msg.data.headers_len = vec_len (headers_buf);
-    }
-  else
-    msg.data.len = msg.data.headers_len = 0;
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = sc;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.data.headers_len = vec_len (headers_buf);
+  msg.data.len = msg.data.headers_len;
   msg.data.headers_offset = 0;
   msg.data.body_len = 0;
   msg.data.body_offset = 0;
-  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (msg), (u8 *) &msg);
-  ASSERT (rv == sizeof (msg));
-  if (msg.data.headers_len)
-    {
-      rv = svm_fifo_enqueue (s->tx_fifo, vec_len (headers_buf), headers_buf);
-      ASSERT (rv == vec_len (headers_buf));
-      vec_free (headers_buf);
-    }
+
+  headers_ptr = pointer_to_uword (headers_buf);
+  svm_fifo_seg_t seg[2] = {
+    { (u8 *) &msg, sizeof (msg) },
+    { (u8 *) &headers_ptr, sizeof (headers_ptr) },
+  };
+
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, seg, msg.data.len ? 2 : 1,
+				  0 /* allow partial */);
+  ASSERT (rv == (sizeof (msg) + (msg.data.len ? sizeof (headers_ptr) : 0)));
 
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
@@ -504,6 +503,145 @@ proxy_transport_needs_crypto (transport_proto_t proto)
 }
 
 static void
+proxy_http_connect (session_t *s, vnet_connect_args_t *a)
+{
+  proxy_main_t *pm = &proxy_main;
+  http_msg_t msg;
+  http_uri_t target_uri;
+  session_endpoint_cfg_t target_sep = SESSION_ENDPOINT_CFG_NULL;
+  int rv;
+  u8 *rx_buf = pm->rx_buf[s->thread_index];
+  http_header_table_t req_headers = pm->req_headers[s->thread_index];
+  u32 target_offset, target_len;
+
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+
+  ASSERT (msg.type == HTTP_MSG_REQUEST);
+
+  if (PREDICT_FALSE (msg.method_type != HTTP_REQ_CONNECT))
+    {
+      PROXY_DBG ("invalid method");
+      goto bad_req;
+    }
+  if (msg.data.upgrade_proto == HTTP_UPGRADE_PROTO_NA)
+    {
+      /* TCP tunnel (RFC9110 section 9.3.6) */
+      PROXY_DBG ("CONNECT");
+      if (msg.data.target_form != HTTP_TARGET_AUTHORITY_FORM)
+	{
+	  PROXY_DBG ("CONNECT target not authority form");
+	  goto bad_req;
+	}
+
+      /* get tunnel target */
+      ASSERT (msg.data.target_path_len <= pm->rcv_buffer_size);
+      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
+			  msg.data.target_path_len, rx_buf);
+      ASSERT (rv == msg.data.target_path_len);
+      rv = http_parse_authority_form_target (rx_buf, msg.data.target_path_len,
+					     &target_uri);
+      if (rv)
+	{
+	  PROXY_DBG ("target parsing failed");
+	  goto bad_req;
+	}
+      target_sep.transport_proto = TRANSPORT_PROTO_TCP;
+    }
+  else if (msg.data.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP)
+    {
+      /* UDP tunnel (RFC9298) */
+      PROXY_DBG ("CONNECT-UDP");
+      /* get tunnel target */
+      if (msg.data.target_form == HTTP_TARGET_ORIGIN_FORM)
+	{
+	  if (msg.data.target_path_len < MASQUE_UDP_URI_MIN_LEN)
+	    {
+	      PROXY_DBG ("target too short");
+	      goto bad_req;
+	    }
+	  rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
+			      msg.data.target_path_len, rx_buf);
+	  ASSERT (rv == msg.data.target_path_len);
+	  target_offset = 0;
+	  target_len = msg.data.target_path_len;
+	}
+      else if (msg.data.target_form == HTTP_TARGET_ABSOLUTE_FORM)
+	{
+	  http_url_t target_url;
+	  ASSERT (msg.data.target_path_len <= pm->rcv_buffer_size);
+	  rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
+			      msg.data.target_path_len, rx_buf);
+	  ASSERT (rv == msg.data.target_path_len);
+	  rv = http_parse_absolute_form (rx_buf, msg.data.target_path_len,
+					 &target_url);
+	  if (rv || target_url.path_len < MASQUE_UDP_URI_MIN_LEN)
+	    {
+	      PROXY_DBG ("target parsing failed");
+	      goto bad_req;
+	    }
+	  target_offset = target_url.path_offset;
+	  target_len = target_url.path_len;
+	}
+      else
+	{
+	  PROXY_DBG ("invalid target form");
+	  goto bad_req;
+	}
+      if (memcmp (rx_buf + target_offset, masque_udp_uri_prefix,
+		  MASQUE_UDP_URI_PREFIX_LEN))
+	{
+	  PROXY_DBG ("uri prefix not match");
+	  goto bad_req;
+	}
+      rv = http_parse_masque_host_port (
+	rx_buf + target_offset + MASQUE_UDP_URI_PREFIX_LEN,
+	target_len - MASQUE_UDP_URI_PREFIX_LEN, &target_uri);
+      if (rv)
+	{
+	  PROXY_DBG ("masque host/port parsing failed");
+	  goto bad_req;
+	}
+
+      /* Capsule-Protocol header is optional, but need to have true value */
+      http_reset_header_table (&req_headers);
+      http_init_header_table_buf (&req_headers, msg);
+      rv = svm_fifo_peek (s->rx_fifo, msg.data.headers_offset,
+			  msg.data.headers_len, req_headers.buf);
+      ASSERT (rv == msg.data.headers_len);
+      http_build_header_table (&req_headers, msg);
+      const http_header_t *capsule_protocol = http_get_header (
+	&req_headers, http_header_name_token (HTTP_HEADER_CAPSULE_PROTOCOL));
+      if (capsule_protocol)
+	{
+	  PROXY_DBG ("Capsule-Protocol header present");
+	  if (!http_token_is (capsule_protocol->value.base,
+			      capsule_protocol->value.len,
+			      http_token_lit (HTTP_BOOLEAN_TRUE)))
+	    {
+	      PROXY_DBG ("Capsule-Protocol invalid value");
+	      goto bad_req;
+	    }
+	}
+      target_sep.transport_proto = TRANSPORT_PROTO_UDP;
+    }
+  else
+    {
+    bad_req:
+      proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
+      svm_fifo_dequeue_drop_all (s->rx_fifo);
+      return;
+    }
+  PROXY_DBG ("proxy target %U:%u", format_ip46_address, &target_uri.ip,
+	     target_uri.is_ip4, clib_net_to_host_u16 (target_uri.port));
+  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
+  target_sep.is_ip4 = target_uri.is_ip4;
+  target_sep.ip = target_uri.ip;
+  target_sep.port = target_uri.port;
+  clib_memcpy (&a->sep_ext, &target_sep, sizeof (target_sep));
+}
+
+static void
 proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
 {
   int actual_transfer __attribute__ ((unused));
@@ -530,59 +668,7 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
   if (tp == TRANSPORT_PROTO_HTTP)
-    {
-      http_msg_t msg;
-      u8 *target_buf = 0;
-      http_uri_t target_uri;
-      http_header_t *resp_headers = 0;
-      session_endpoint_cfg_t target_sep = SESSION_ENDPOINT_CFG_NULL;
-      int rv;
-
-      rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
-      ASSERT (rv == sizeof (msg));
-
-      if (msg.type != HTTP_MSG_REQUEST)
-	{
-	  proxy_send_http_resp (s, HTTP_STATUS_INTERNAL_ERROR, 0);
-	  return;
-	}
-      if (msg.method_type != HTTP_REQ_CONNECT)
-	{
-	  http_add_header (&resp_headers,
-			   http_header_name_token (HTTP_HEADER_ALLOW),
-			   http_token_lit ("CONNECT"));
-	  proxy_send_http_resp (s, HTTP_STATUS_METHOD_NOT_ALLOWED,
-				resp_headers);
-	  vec_free (resp_headers);
-	  return;
-	}
-
-      if (msg.data.target_form != HTTP_TARGET_AUTHORITY_FORM ||
-	  msg.data.target_path_len == 0)
-	{
-	  proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
-	  return;
-	}
-
-      /* read target uri */
-      target_buf = vec_new (u8, msg.data.target_path_len);
-      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
-			  msg.data.target_path_len, target_buf);
-      ASSERT (rv == msg.data.target_path_len);
-      svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
-      rv = http_parse_authority_form_target (target_buf, &target_uri);
-      vec_free (target_buf);
-      if (rv)
-	{
-	  proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
-	  return;
-	}
-      target_sep.is_ip4 = target_uri.is_ip4;
-      target_sep.ip = target_uri.ip;
-      target_sep.port = target_uri.port;
-      target_sep.transport_proto = TRANSPORT_PROTO_TCP;
-      clib_memcpy (&a->sep_ext, &target_sep, sizeof (target_sep));
-    }
+    proxy_http_connect (s, a);
   else
     {
       max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
@@ -786,18 +872,35 @@ active_open_send_http_resp_rpc (void *arg)
   u32 ps_index = pointer_to_uword (arg);
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps;
-  http_status_code_t sc;
   session_t *po_s;
+  transport_proto_t ao_tp;
+  int connect_failed;
+
+  PROXY_DBG ("ps[%xlu] going to send connect response", ps_index);
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_get (ps_index);
   po_s = session_get_from_handle (ps->po.session_handle);
-  sc = ps->ao_disconnected ? HTTP_STATUS_BAD_GATEWAY : HTTP_STATUS_OK;
+  connect_failed = ps->ao_disconnected;
+
+  if (!connect_failed)
+    {
+      ao_tp = session_get_transport_proto (
+	session_get_from_handle (ps->ao.session_handle));
+      if (ao_tp == TRANSPORT_PROTO_UDP)
+	proxy_send_http_resp (po_s, HTTP_STATUS_SWITCHING_PROTOCOLS,
+			      pm->capsule_proto_header);
+      else
+	proxy_send_http_resp (po_s, HTTP_STATUS_OK, 0);
+    }
+  else
+    {
+      proxy_send_http_resp (po_s, HTTP_STATUS_BAD_GATEWAY, 0);
+      proxy_session_close_po (ps);
+    }
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
-
-  proxy_send_http_resp (po_s, sc, 0);
 }
 
 static int
@@ -817,6 +920,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       clib_spinlock_lock_if_init (&pm->sessions_lock);
 
       ps = proxy_session_get (opaque);
+      PROXY_DBG ("ps[%lu] connect failed: %d", opaque, err);
       ps->ao_disconnected = 1;
       if (ps->po.is_http)
 	{
@@ -825,7 +929,8 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 	    active_open_send_http_resp_rpc,
 	    uword_to_pointer (ps->ps_index, void *));
 	}
-      proxy_session_close_po (ps);
+      else
+	proxy_session_close_po (ps);
 
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
@@ -935,6 +1040,7 @@ active_open_migrate_rpc (void *arg)
 
   ps = proxy_session_get (ps_index);
   sc->ps_index = ps->ps_index;
+  sc->state = PROXY_SC_S_ESTABLISHED;
 
   s = session_get_from_handle (ps->ao.session_handle);
   s->opaque = sc->sc_index;
@@ -1188,14 +1294,15 @@ proxy_server_listen ()
   /* set http timeout for connect-proxy */
   if (pm->server_sep.transport_proto == TRANSPORT_PROTO_HTTP)
     {
+      transport_endpt_cfg_http_t http_cfg = { pm->idle_timeout,
+					      HTTP_UDP_TUNNEL_DGRAM };
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
-      ext_cfg->opaque = pm->idle_timeout;
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+      clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
     }
 
   rv = vnet_listen (a);
-  if (need_crypto)
-    session_endpoint_free_ext_cfgs (&a->sep_ext);
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
 }
@@ -1224,12 +1331,14 @@ proxy_server_create (vlib_main_t * vm)
   proxy_worker_t *wrk;
   u32 num_threads;
   int i;
+  http_header_table_t empty_ht = HTTP_HEADER_TABLE_NULL;
 
   if (vlib_num_workers ())
     clib_spinlock_init (&pm->sessions_lock);
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (pm->rx_buf, num_threads - 1);
+  vec_validate_init_empty (pm->req_headers, num_threads - 1, empty_ht);
 
   for (i = 0; i < num_threads; i++)
     vec_validate (pm->rx_buf[i], pm->rcv_buffer_size);
@@ -1386,12 +1495,20 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 clib_error_t *
 proxy_main_init (vlib_main_t * vm)
 {
+  http_header_t *headers = 0;
+
   proxy_main_t *pm = &proxy_main;
   pm->server_client_index = ~0;
   pm->active_open_client_index = ~0;
   pm->server_app_index = APP_INVALID_INDEX;
   pm->idle_timeout = 600; /* connect-proxy default idle timeout 10 minutes */
   vec_validate (pm->client_sep, TRANSPORT_N_PROTOS - 1);
+
+  http_add_header (&headers,
+		   http_header_name_token (HTTP_HEADER_CAPSULE_PROTOCOL),
+		   http_token_lit (HTTP_BOOLEAN_TRUE));
+  pm->capsule_proto_header = http_serialize_headers (headers);
+  vec_free (headers);
 
   return 0;
 }
