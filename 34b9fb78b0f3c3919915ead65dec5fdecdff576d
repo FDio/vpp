@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4df0f1f5_3b294b80",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-12-10T19:02:58Z",
+      "side": 1,
+      "message": "Please review the new update. Thanks!",
+      "revId": "34b9fb78b0f3c3919915ead65dec5fdecdff576d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ad640ff1_c2c788b8",
@@ -31,6 +48,24 @@
       "writtenOn": "2024-12-10T15:15:19Z",
       "side": 1,
       "message": "It seems like [at most] very minor changes in unformat_l[234]_mask plus the addition of unformat_gen_mask at this level would handle the problem. As the patch stands, I would wonder about simultaneous use of \"l2 ...\" and \"g2 ...\" etc. and the added if-then-else complexity isn\u0027t a feature.",
+      "revId": "34b9fb78b0f3c3919915ead65dec5fdecdff576d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddcf1202_c75859f2",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1272,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-12-10T19:02:58Z",
+      "side": 1,
+      "message": "Thanks for the suggestion !\n\nThe unformat_l[234]_mask returns the parse results to the local variable l2/genl2.\nModify these functions won\u0027t help right ? Are you suggesting to reuse the keywword \"l2\", \"l3\", \"l4\" for the inner packet ?\n\nI\u0027m trying to make sure that the filter can filter out both inner and outer l2/l3/l4.\n\nAnyhow, I updated to remove the g2,g3,g4. Do you thinks new update is better ?\n\nThanks.",
+      "parentUuid": "ad640ff1_c2c788b8",
       "revId": "34b9fb78b0f3c3919915ead65dec5fdecdff576d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
