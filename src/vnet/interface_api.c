@@ -1628,8 +1628,6 @@ vl_api_pcap_trace_on_t_handler (vl_api_pcap_trace_on_t *mp)
   vnet_pcap_dispatch_trace_args_t capture_args;
   int rv = 0;
 
-  VALIDATE_SW_IF_INDEX (mp);
-
   unformat_init_cstring (&filename, (char *) mp->filename);
   if (!unformat_user (&filename, unformat_vlib_tmpfile,
 		      &capture_args.filename))
@@ -1637,6 +1635,8 @@ vl_api_pcap_trace_on_t_handler (vl_api_pcap_trace_on_t *mp)
       rv = VNET_API_ERROR_ILLEGAL_NAME;
       goto out;
     }
+
+  VALIDATE_SW_IF_INDEX (mp);
 
   capture_args.rx_enable = mp->capture_rx;
   capture_args.tx_enable = mp->capture_tx;

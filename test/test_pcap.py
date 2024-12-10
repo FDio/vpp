@@ -190,6 +190,16 @@ class TestPcap(VppTestCase):
                 sw_if_index=0,
             )
 
+        # Attempting to start a trace with an invalid sw_if_index should return an error
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.pcap_trace_on(
+                capture_rx=True,
+                capture_tx=True,
+                filter=True,
+                max_packets=1000,
+                sw_if_index=0xFFFFFF,
+            )
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
