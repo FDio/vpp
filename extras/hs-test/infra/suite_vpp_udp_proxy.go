@@ -5,6 +5,7 @@ import (
 	"net"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ type VppUdpProxySuite struct {
 	HstSuite
 	proxyPort  int
 	serverPort int
+	MaxTimeout time.Duration
 	Interfaces struct {
 		Client *NetInterface
 		Server *NetInterface
@@ -42,6 +44,12 @@ func (s *VppUdpProxySuite) SetupSuite() {
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
 	s.Containers.VppProxy = s.GetContainerByName("vpp")
+
+	if *IsVppDebug {
+		s.MaxTimeout = time.Second * 600
+	} else {
+		s.MaxTimeout = time.Second * 10
+	}
 }
 
 func (s *VppUdpProxySuite) SetupTest() {
@@ -114,7 +122,7 @@ func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {
 			}
 		}
 	}()
-	s.Log("started")
+	s.Log("* started udp echo server " + s.ServerAddr() + ":" + strconv.Itoa(s.ServerPort()))
 	return conn
 }
 
@@ -127,7 +135,7 @@ func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (i
 	}
 	defer proxiedConn.Close()
 
-	err = proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 5))
+	err = proxiedConn.SetReadDeadline(time.Now().Add(s.MaxTimeout))
 	if err != nil {
 		return 0, err
 	}

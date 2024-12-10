@@ -1,0 +1,136 @@
+package hst
+
+import (
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/quicvarint"
+)
+
+type ConnectUdpClient struct {
+	log   bool
+	suite *HstSuite
+	Conn  net.Conn
+}
+
+func (s *HstSuite) NewConnectUdpClient(log bool) *ConnectUdpClient {
+	client := &ConnectUdpClient{log: log, suite: s}
+	return client
+}
+
+func writeConnectUdpReq(target string) []byte {
+	var b bytes.Buffer
+
+	fmt.Fprintf(&b, "GET %s HTTP/1.1\r\n", target)
+	u, _ := url.Parse(target)
+	fmt.Fprintf(&b, "Host: %s\r\n", u.Host)
+	fmt.Fprintf(&b, "User-Agent: hs-test\r\n")
+	fmt.Fprintf(&b, "Connection: Upgrade\r\n")
+	fmt.Fprintf(&b, "Upgrade: connect-udp\r\n")
+	fmt.Fprintf(&b, "Capsule-Protocol: ?1\r\n")
+	io.WriteString(&b, "\r\n")
+
+	return b.Bytes()
+}
+
+func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string, timeout time.Duration) error {
+	req := writeConnectUdpReq(targetUri)
+	conn, err := net.DialTimeout("tcp", proxyAddress, timeout)
+	if err != nil {
+		return err
+	}
+	err = conn.SetDeadline(time.Now().Add(timeout))
+	if err != nil {
+		return err
+	}
+
+	if c.log {
+		c.suite.Log("* Connected to proxy")
+	}
+
+	_, err = conn.Write(req)
+	if err != nil {
+		return err
+	}
+
+	r := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(r, nil)
+	if err != nil {
+		return err
+	}
+
+	if c.log {
+		c.suite.Log(DumpHttpResp(resp, true))
+	}
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		return errors.New("request failed: " + resp.Status)
+	}
+	if resp.Header.Get("Connection") != "upgrade" || resp.Header.Get("Upgrade") != "connect-udp" || resp.Header.Get("Capsule-Protocol") != "?1" {
+		return errors.New("invalid response")
+	}
+
+	if c.log {
+		c.suite.Log("* CONNECT-UDP tunnel established")
+	}
+	c.Conn = conn
+	return nil
+}
+
+func (c *ConnectUdpClient) Close() error {
+	return c.Conn.Close()
+}
+
+func (c *ConnectUdpClient) WriteCapsule(capsuleType http3.CapsuleType, payload []byte) error {
+	var buf bytes.Buffer
+	err := http3.WriteCapsule(&buf, capsuleType, payload)
+	if err != nil {
+		return err
+	}
+	n, err := c.Conn.Write(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	if n != buf.Len() {
+		return errors.New("not all bytes written")
+	}
+	return nil
+}
+
+func (c *ConnectUdpClient) WriteDgramCapsule(payload []byte) error {
+	b := make([]byte, 0)
+	b = quicvarint.Append(b, 0)
+	b = append(b, payload...)
+	return c.WriteCapsule(0, b)
+}
+
+func (c *ConnectUdpClient) ReadDgramCapsule() ([]byte, error) {
+	r := bufio.NewReader(c.Conn)
+	capsuleType, payloadReader, err := http3.ParseCapsule(r)
+	if err != nil {
+		return nil, err
+	}
+	if capsuleType != 0 {
+		return nil, errors.New("capsule type should be 0")
+	}
+	b := make([]byte, 1024)
+	n, err := payloadReader.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	if n < 3 {
+		return nil, errors.New("response payload too short")
+	}
+	if b[0] != 0 {
+		return nil, errors.New("context id should be 0")
+	}
+	return b[1:n], nil
+}
