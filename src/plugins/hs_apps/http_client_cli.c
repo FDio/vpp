@@ -409,9 +409,10 @@ hcc_connect ()
   a->app_index = hcm->app_index;
 
   /* set http (response) timeout to 10 seconds */
+  transport_endpt_cfg_http_t http_cfg = { 10, 0 };
   ext_cfg = session_endpoint_add_ext_cfg (
-    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
-  ext_cfg->opaque = 10;
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   /* allocate http session on main thread */
   wrk = hcc_worker_get (0);
