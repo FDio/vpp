@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9aa65a32_ad4ef4ef",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 13
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-10T04:58:42Z",
+      "side": 1,
+      "message": "Not pretty, but should be okay. I guess this is just a limitation of interfaces in vpp. But even we think about solving this generally, I guess our only option is to select network topologies from tests dynamically. Not sure we want to go there ..\n\nBut on a different note, any reason why we shouldn\u0027t just configure 2 queues (or more) + consistent_qp always, even for single threaded tests?",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 103
+      },
+      "revId": "7c5ffbc25d3440dd5f94423f0c13ad9fa1fcb4fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
