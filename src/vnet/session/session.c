@@ -1575,7 +1575,10 @@ session_close (session_t * s)
    * and transport initiated state transitions can hide app closes. Instead
    * of extending the state machine to support separate tracking of app and
    * transport initiated closes, use a flag. */
-  s->flags |= SESSION_F_APP_CLOSED;
+  s->flags = s->flags | SESSION_F_APP_CLOSED;
+
+  /* Disable fifo tuning when app closes */
+  s->flags &= ~SESSION_F_CUSTOM_FIFO_TUNING;
 
   if (s->session_state >= SESSION_STATE_CLOSING)
     {
