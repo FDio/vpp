@@ -128,17 +128,22 @@ Following example shows how to parse headers:
   if (msg.data.headers_len)
     {
       http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
+      /* initialize header table buffer */
       http_init_header_table_buf (&ht, msg);
+      /* read raw headers into buffer */
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, ht.buf);
       ASSERT (rv == msg.data.headers_len);
+      /* build header table */
       http_build_header_table (&ht, msg);
       /* get Accept header */
-      const http_header_t *accept = http_get_header (&ht, http_header_name_token (HTTP_HEADER_ACCEPT));
+      const http_header_t *accept = http_get_header (&ht,
+        http_header_name_token (HTTP_HEADER_ACCEPT));
       if (accept_value)
         {
           /* do something interesting */
         }
+      /* free header table */
       http_free_header_table (&ht);
     }
 
@@ -166,17 +171,22 @@ Modified example above:
 .. code-block:: C
 
   #include <http/http_header_names.h>
+  /* reset header table before reuse */
   http_reset_header_table (&ctx->ht);
   /* ... */
   if (msg.data.headers_len)
     {
+      /* initialize header table buffer */
       http_init_header_table_buf (&ctx->ht, msg);
+      /* read raw headers into buffer */
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, ctx->ht.buf);
       ASSERT (rv == msg.data.headers_len);
+      /* build header table */
       http_build_header_table (&ctx->ht, msg);
       /* get Accept header */
-      const http_header_t *accept = http_get_header (&ctx->ht, http_header_name_token (HTTP_HEADER_ACCEPT));
+      const http_header_t *accept = http_get_header (&ctx->ht,
+        http_header_name_token (HTTP_HEADER_ACCEPT));
       if (accept_value)
         {
           /* do something interesting */
@@ -245,7 +255,7 @@ Well known header names are predefined.
 The list is serialized just before you send buffer to HTTP layer.
 
 .. note::
-    Following headers are added at protocol layer and **MUST NOT** be set by application: Date, Server, Content-Length
+    Following headers are added at protocol layer and **MUST NOT** be set by application: Date, Server, Content-Length, Connection, Upgrade
 
 Following example shows how to create headers section:
 
@@ -476,17 +486,22 @@ Following example shows how to parse headers:
   if (msg.data.headers_len)
     {
       http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
+      /* initialize header table buffer */
       http_init_header_table_buf (&ht, msg);
+      /* read raw headers into buffer */
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.headers_offset,
 			  msg.data.headers_len, ht.buf);
       ASSERT (rv == msg.data.headers_len);
+      /* build header table */
       http_build_header_table (&ht, msg);
       /* get Content-Type header */
-      const http_header_t *content_type = http_get_header (&ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
+      const http_header_t *content_type = http_get_header (&ht,
+        http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
       if (content_type)
         {
           /* do something interesting */
         }
+      /* free header table */
       http_free_header_table (&ht);
     }
 
@@ -546,23 +561,23 @@ HTTP timeout
 HTTP plugin sets session inactivity timeout by default to 60 seconds.
 Client and server applications can pass custom timeout value (in seconds) using extended configuration when doing connect or start listening respectively.
 You just need to add extended configuration to session endpoint configuration which is part of ``vnet_connect_args_t`` and ``vnet_listen_args_t``.
-HTTP plugin use ``opaque`` member of ``transport_endpt_ext_cfg_t``, unsigned 32bit integer seems to be sufficient (allowing the timeout to be set up to 136 years).
+HTTP plugin use ``timeout`` member of ``transport_endpt_cfg_http_t``, unsigned 32bit integer seems to be sufficient (allowing the timeout to be set up to 136 years).
 
 The example below sets HTTP session timeout to 30 seconds (server application):
 
 .. code-block:: C
 
     vnet_listen_args_t _a, *a = &_a;
-    session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
     transport_endpt_ext_cfg_t *ext_cfg;
     int rv;
     clib_memset (a, 0, sizeof (*a));
     clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+    /* your custom timeout value in seconds, unused parameters are set to zero */
+    transport_endpt_cfg_http_t http_cfg = { 30, 0 };
     /* add new extended config entry */
     ext_cfg = session_endpoint_add_ext_cfg (
-        &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
-    /* your custom timeout value in seconds */
-    ext_cfg->opaque = 30;
+        &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+    clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
     /* rest of the settings omitted for brevity */
     rv = vnet_listen (a);
     /* don't forget to free extended config */

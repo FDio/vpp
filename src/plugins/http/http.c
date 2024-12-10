@@ -954,17 +954,21 @@ http_identify_headers (http_req_t *req, http_status_code_t *ec)
       header_index = field_line - req->headers;
 
       /* find headers that will be used later in preprocessing */
+      /* names are case-insensitive (RFC9110 section 5.1) */
       if (req->content_len_header_index == ~0 &&
-	  http_token_is ((const char *) name_start, name_len,
-			 http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
+	  http_token_is_case (
+	    (const char *) name_start, name_len,
+	    http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
 	req->content_len_header_index = header_index;
       else if (req->connection_header_index == ~0 &&
-	       http_token_is ((const char *) name_start, name_len,
-			      http_header_name_token (HTTP_HEADER_CONNECTION)))
+	       http_token_is_case (
+		 (const char *) name_start, name_len,
+		 http_header_name_token (HTTP_HEADER_CONNECTION)))
 	req->connection_header_index = header_index;
       else if (req->upgrade_header_index == ~0 &&
-	       http_token_is ((const char *) name_start, name_len,
-			      http_header_name_token (HTTP_HEADER_UPGRADE)))
+	       http_token_is_case (
+		 (const char *) name_start, name_len,
+		 http_header_name_token (HTTP_HEADER_UPGRADE)))
 	req->upgrade_header_index = header_index;
 
       /* are we done? */
@@ -1166,8 +1170,8 @@ http_check_connection_upgrade (http_req_t *req)
       if (0)
 	;
 #define _(sym, str)                                                           \
-  else if (http_token_is (http_field_line_value_token (upgrade, req),         \
-			  http_token_lit (str))) req->upgrade_proto =         \
+  else if (http_token_is_case (http_field_line_value_token (upgrade, req),    \
+			       http_token_lit (str))) req->upgrade_proto =    \
     HTTP_UPGRADE_PROTO_##sym;
       foreach_http_upgrade_proto
 #undef _
@@ -1350,13 +1354,18 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       ASSERT (msg.data.body_len == 0);
       next_state = HTTP_REQ_STATE_TUNNEL;
       if (hc->req.upgrade_proto > HTTP_UPGRADE_PROTO_NA)
-	response = format (response, connection_upgrade_template,
-			   http_upgrade_proto_str[hc->req.upgrade_proto]);
+	{
+	  response = format (response, connection_upgrade_template,
+			     http_upgrade_proto_str[hc->req.upgrade_proto]);
+	  if (hc->req.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	    next_state = HTTP_REQ_STATE_UDP_TUNNEL;
+	}
       /* cleanup some stuff we don't need anymore in tunnel mode */
-      http_conn_timer_stop (hc);
       vec_free (hc->req.rx_buf);
       vec_free (hc->req.headers);
       http_buffer_free (&hc->req.tx_buf);
+      hc->req.to_skip = 0;
     }
   else
     response = format (response, content_len_template, msg.data.body_len);
@@ -1798,6 +1807,196 @@ check_fifo:
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http_req_state_udp_tunnel_rx (http_conn_t *hc, transport_send_params_t *sp)
+{
+  http_main_t *hm = &http_main;
+  u32 to_deq, capsule_size, dgram_size, n_written = 0;
+  int rv, n_read;
+  session_t *as, *ts;
+  app_worker_t *app_wrk;
+  u8 payload_offset;
+  u64 payload_len;
+  session_dgram_hdr_t hdr;
+  u8 *buf = 0;
+
+  HTTP_DBG (1, "udp tunnel received data from client");
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+  buf = hm->rx_bufs[hc->c_thread_index];
+  to_deq = svm_fifo_max_dequeue_cons (ts->rx_fifo);
+
+  while (to_deq > 0)
+    {
+      /* some bytes remaining to skip? */
+      if (PREDICT_FALSE (hc->req.to_skip))
+	{
+	  if (hc->req.to_skip >= to_deq)
+	    {
+	      svm_fifo_dequeue_drop (ts->rx_fifo, to_deq);
+	      hc->req.to_skip -= to_deq;
+	      goto done;
+	    }
+	  else
+	    {
+	      svm_fifo_dequeue_drop (ts->rx_fifo, hc->req.to_skip);
+	      hc->req.to_skip = 0;
+	    }
+	}
+      n_read =
+	svm_fifo_peek (ts->rx_fifo, 0, HTTP_CAPSULE_HEADER_MAX_SIZE, buf);
+      ASSERT (n_read > 0);
+      rv = http_decap_udp_payload_datagram (buf, n_read, &payload_offset,
+					    &payload_len);
+      HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
+		payload_offset, payload_len);
+      if (PREDICT_FALSE (rv != 0))
+	{
+	  if (rv < 0)
+	    {
+	      /* capsule datagram is invalid (session need to be aborted) */
+	      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+	      session_transport_closing_notify (&hc->connection);
+	      session_transport_closed_notify (&hc->connection);
+	      http_disconnect_transport (hc);
+	      return HTTP_SM_STOP;
+	    }
+	  else
+	    {
+	      /* unknown capsule should be skipped */
+	      if (payload_len <= to_deq)
+		{
+		  svm_fifo_dequeue_drop (ts->rx_fifo, payload_len);
+		  to_deq -= payload_len;
+		  continue;
+		}
+	      else
+		{
+		  svm_fifo_dequeue_drop (ts->rx_fifo, to_deq);
+		  hc->req.to_skip = payload_len - to_deq;
+		  goto done;
+		}
+	    }
+	}
+      capsule_size = payload_offset + payload_len;
+      /* check if we have the full capsule */
+      if (PREDICT_FALSE (to_deq < capsule_size))
+	{
+	  HTTP_DBG (1, "capsule not complete");
+	  goto done;
+	}
+
+      dgram_size = sizeof (hdr) + payload_len;
+      if (svm_fifo_max_enqueue_prod (as->rx_fifo) < dgram_size)
+	{
+	  HTTP_DBG (1, "app's rx fifo full");
+	  svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+	  goto done;
+	}
+
+      /* read capsule payload */
+      rv = svm_fifo_peek (ts->rx_fifo, payload_offset, payload_len, buf);
+      ASSERT (rv == payload_len);
+      svm_fifo_dequeue_drop (ts->rx_fifo, capsule_size);
+
+      hdr.data_length = payload_len;
+      hdr.data_offset = 0;
+
+      /* send datagram header and payload */
+      svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+				 { buf, payload_len } };
+      rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0);
+      ASSERT (rv > 0);
+
+      n_written += dgram_size;
+      to_deq -= capsule_size;
+    }
+
+done:
+  HTTP_DBG (1, "written %lu bytes", n_written);
+
+  if (n_written)
+    {
+      app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+      if (app_wrk)
+	app_worker_rx_notify (app_wrk, as);
+    }
+  if (svm_fifo_max_dequeue_cons (ts->rx_fifo))
+    session_program_rx_io_evt (session_handle (ts));
+
+  return HTTP_SM_STOP;
+}
+
+static http_sm_result_t
+http_req_state_udp_tunnel_tx (http_conn_t *hc, transport_send_params_t *sp)
+{
+  http_main_t *hm = &http_main;
+  u32 to_deq, capsule_size, dgram_size, n_written = 0;
+  session_t *as, *ts;
+  int rv;
+  session_dgram_pre_hdr_t hdr;
+  u8 *buf;
+  u8 *payload;
+
+  HTTP_DBG (1, "udp tunnel received data from target");
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+  buf = hm->tx_bufs[hc->c_thread_index];
+  to_deq = svm_fifo_max_dequeue_cons (as->tx_fifo);
+
+  while (to_deq > 0)
+    {
+      /* read datagram header */
+      rv = svm_fifo_peek (as->tx_fifo, 0, sizeof (hdr), (u8 *) &hdr);
+      ASSERT (rv == sizeof (hdr) &&
+	      hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
+      ASSERT (to_deq >= hdr.data_length + SESSION_CONN_HDR_LEN);
+      dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
+
+      if (svm_fifo_max_enqueue_prod (ts->tx_fifo) <
+	  (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
+	{
+	  HTTP_DBG (1, "ts tx fifo full");
+	  goto done;
+	}
+
+      /* create capsule header */
+      payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
+      capsule_size = (payload - buf) + hdr.data_length;
+      /* read payload */
+      rv = svm_fifo_peek (as->tx_fifo, SESSION_CONN_HDR_LEN, hdr.data_length,
+			  payload);
+      ASSERT (rv == hdr.data_length);
+      svm_fifo_dequeue_drop (as->tx_fifo, dgram_size);
+      /* send capsule */
+      rv = svm_fifo_enqueue (ts->tx_fifo, capsule_size, buf);
+      ASSERT (rv == capsule_size);
+
+      n_written += capsule_size;
+      to_deq -= dgram_size;
+    }
+
+done:
+  HTTP_DBG (1, "written %lu bytes", n_written);
+  if (n_written)
+    {
+      if (svm_fifo_set_event (ts->tx_fifo))
+	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+    }
+
+  /* Deschedule and wait for deq notification if ts fifo is almost full */
+  if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
+    {
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      transport_connection_deschedule (&hc->connection);
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+    }
+
+  return HTTP_SM_STOP;
+}
+
 typedef http_sm_result_t (*http_sm_handler) (http_conn_t *,
 					     transport_send_params_t *sp);
 
@@ -1810,6 +2009,7 @@ static http_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http_req_state_wait_app_reply,
   http_req_state_app_io_more_data,
   http_req_state_tunnel_tx,
+  http_req_state_udp_tunnel_tx,
 };
 
 static_always_inline int
@@ -1827,6 +2027,7 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait app reply */
   0, /* app io more data */
   http_req_state_tunnel_rx,
+  http_req_state_udp_tunnel_rx,
 };
 
 static_always_inline int
@@ -1977,10 +2178,12 @@ static session_cb_vft_t http_app_cb_vft = {
 static clib_error_t *
 http_transport_enable (vlib_main_t *vm, u8 is_en)
 {
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_app_detach_args_t _da, *da = &_da;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   http_main_t *hm = &http_main;
+  u32 num_threads, i;
 
   if (!is_en)
     {
@@ -1989,6 +2192,8 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       vnet_application_detach (da);
       return 0;
     }
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -2014,7 +2219,18 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   if (hm->is_init)
     return 0;
 
-  vec_validate (hm->wrk, vlib_num_workers ());
+  vec_validate (hm->wrk, num_threads - 1);
+  vec_validate (hm->rx_bufs, num_threads - 1);
+  vec_validate (hm->tx_bufs, num_threads - 1);
+  for (i = 0; i < num_threads; i++)
+    {
+      vec_validate (hm->rx_bufs[i],
+		    HTTP_UDP_PAYLOAD_MAX_LEN +
+		      HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+      vec_validate (hm->tx_bufs[i],
+		    HTTP_UDP_PAYLOAD_MAX_LEN +
+		      HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+    }
 
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time /* share the system clock */);
@@ -2056,8 +2272,10 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
   if (ext_cfg)
     {
-      HTTP_DBG (1, "app set timeout %u", ext_cfg->opaque);
-      hc->timeout = ext_cfg->opaque;
+      transport_endpt_cfg_http_t *http_cfg =
+	(transport_endpt_cfg_http_t *) ext_cfg->data;
+      HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
+      hc->timeout = http_cfg->timeout;
     }
 
   hc->is_server = 0;
@@ -2132,8 +2350,11 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
   if (ext_cfg && ext_cfg->opaque)
     {
-      HTTP_DBG (1, "app set timeout %u", ext_cfg->opaque);
-      lhc->timeout = ext_cfg->opaque;
+      transport_endpt_cfg_http_t *http_cfg =
+	(transport_endpt_cfg_http_t *) ext_cfg->data;
+      HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
+      lhc->timeout = http_cfg->timeout;
+      lhc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
     }
 
   /* Grab transport connection listener and link to http listener */
