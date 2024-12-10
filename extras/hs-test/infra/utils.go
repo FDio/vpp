@@ -1,22 +1,28 @@
 package hst
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/quic-go/quic-go/quicvarint"
 )
 
 const networkTopologyDir string = "topo-network/"
 const containerTopologyDir string = "topo-containers/"
+const HttpCapsuleTypeDatagram = uint64(0)
 
 type Stanza struct {
 	content string
@@ -406,4 +412,68 @@ func (s *HstSuite) LogJsonIperfOutput(result IPerfResult) {
 			result.End.Udp.LostPercent)
 	}
 	s.Log("*******************************************\n")
+}
+
+func WriteConnectUdpReq(target string) []byte {
+	var b bytes.Buffer
+
+	fmt.Fprintf(&b, "GET %s HTTP/1.1\r\n", target)
+	u, _ := url.Parse(target)
+	fmt.Fprintf(&b, "Host: %s\r\n", u.Host)
+	fmt.Fprintf(&b, "User-Agent: hs-test\r\n")
+	fmt.Fprintf(&b, "Connection: Upgrade\r\n")
+	fmt.Fprintf(&b, "Upgrade: connect-udp\r\n")
+	fmt.Fprintf(&b, "Capsule-Protocol: ?1\r\n")
+	io.WriteString(&b, "\r\n")
+
+	return b.Bytes()
+}
+
+func WriteCapsule(conn net.Conn, capsuleType uint64, payload []byte) error {
+	b := make([]byte, 0, 16)
+	b = quicvarint.Append(b, capsuleType)
+	b = quicvarint.Append(b, uint64(len(payload)+1))
+	b = quicvarint.Append(b, 0)
+	b = append(b, payload...)
+	n, err := conn.Write(b)
+	if err != nil {
+		return err
+	}
+	if n != len(b) {
+		return errors.New("not all bytes written")
+	}
+	return nil
+}
+
+func ReadCapsule(conn net.Conn, payload []byte) (uint64, int, error) {
+	var invalidCapsuleType uint64 = math.MaxUint64
+	b := make([]byte, 1024)
+	n, err := conn.Read(b)
+	if err != nil {
+		return invalidCapsuleType, 0, err
+	}
+	r := bytes.NewReader(b[:n])
+	capsuleType, err := quicvarint.Read(r)
+	if err != nil {
+		return invalidCapsuleType, 0, err
+	}
+	l, err := quicvarint.Read(r)
+	if err != nil {
+		return invalidCapsuleType, 0, err
+	}
+	if uint64(r.Len()) != l {
+		return invalidCapsuleType, 0, errors.New("invalid payload length")
+	}
+	contextId, err := quicvarint.Read(r)
+	if err != nil {
+		return invalidCapsuleType, 0, err
+	}
+	if contextId != 0 {
+		return invalidCapsuleType, 0, errors.New("context id should be zero")
+	}
+	payloadLen, err := r.Read(payload)
+	if err != nil {
+		return invalidCapsuleType, 0, err
+	}
+	return capsuleType, payloadLen, nil
 }

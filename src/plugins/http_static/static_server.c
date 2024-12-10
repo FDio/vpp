@@ -809,6 +809,7 @@ hss_listen (void)
   u8 need_crypto;
   transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
+  transport_endpt_cfg_http_t http_cfg = { hsm->keepalive_timeout, 0 };
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
@@ -825,8 +826,8 @@ hss_listen (void)
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
 
   ext_cfg = session_endpoint_add_ext_cfg (
-    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (ext_cfg->opaque));
-  ext_cfg->opaque = hsm->keepalive_timeout;
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   if (need_crypto)
     {
