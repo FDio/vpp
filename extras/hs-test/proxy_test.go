@@ -1,8 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"math/rand"
 	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -13,7 +19,8 @@ func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest)
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest, VppProxyUdpIperfMTTest)
-	RegisterVppUdpProxyTests(VppProxyUdpTest)
+	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
+		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpTortureTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
@@ -196,4 +203,202 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	n, err := s.ClientSendReceive([]byte("hello"), b)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual([]byte("hello"), b[:n])
+}
+
+func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
+	c := s.NewConnectUdpClient(true)
+	err := c.Dial(proxyAddress, targetUri, s.MaxTimeout)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer c.Close()
+
+	data := []byte("hello")
+
+	err = c.WriteDgramCapsule(data)
+	s.AssertNil(err, fmt.Sprint(err))
+	payload, err := c.ReadDgramCapsule()
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(data, payload)
+}
+
+func VppConnectUdpInvalidCapsuleTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
+	c := s.NewConnectUdpClient(true)
+	err := c.Dial(proxyAddress, targetUri, s.MaxTimeout)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer c.Close()
+
+	capsule := []byte{0x00, 0x9D, 0x7F, 0x3E, 0x7D, 0x00, 0x4B, 0x6E, 0x69, 0x67, 0x68, 0x74, 0x73, 0x20, 0x6F, 0x66, 0x20, 0x4E, 0x69}
+	n, err := c.Conn.Write(capsule)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(n, len(capsule))
+	b := make([]byte, 1)
+	_, err = c.Conn.Read(b)
+	s.AssertMatchError(err, io.EOF, "connection not closed by proxy")
+}
+
+func VppConnectUdpUnknownCapsuleTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
+	c := s.NewConnectUdpClient(true)
+	err := c.Dial(proxyAddress, targetUri, s.MaxTimeout)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer c.Close()
+
+	err = c.WriteCapsule(0x4040, []byte("None shall pass"))
+	s.AssertNil(err, fmt.Sprint(err))
+
+	data := []byte("hello")
+	err = c.WriteDgramCapsule(data)
+	s.AssertNil(err, fmt.Sprint(err))
+	payload, err := c.ReadDgramCapsule()
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(data, payload)
+}
+
+func VppConnectUdpClientCloseTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
+	c := s.NewConnectUdpClient(true)
+	err := c.Dial(proxyAddress, targetUri, s.MaxTimeout)
+	s.AssertNil(err, fmt.Sprint(err))
+
+	err = c.Close()
+	s.AssertNil(err, fmt.Sprint(err))
+	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.ProxyPort(), s.ClientAddr())
+	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Peer.Ip4AddressString())
+	for nTries := 0; nTries < 10; nTries++ {
+		o := vppProxy.Vppctl("show session verbose 2")
+		if !strings.Contains(o, proxyClientConn) {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	sessions := vppProxy.Vppctl("show session verbose 2")
+	s.Log(sessions)
+	s.AssertNotContains(sessions, proxyClientConn, "client-proxy session not closed")
+	s.AssertNotContains(sessions, proxyTargetConn, "proxy-server session not closed")
+}
+
+func VppConnectUdpTortureTest(s *VppUdpProxySuite) {
+	var (
+		connectError, ioError, invalidData, total atomic.Uint32
+		wg                                        sync.WaitGroup
+	)
+
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
+
+	// warm-up
+	warmUp := s.NewConnectUdpClient(false)
+	err := warmUp.Dial(proxyAddress, targetUri, s.MaxTimeout)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer warmUp.Close()
+	data := []byte("Our chief weapon is surprise...")
+	err = warmUp.WriteDgramCapsule(data)
+	s.AssertNil(err, fmt.Sprint(err))
+	payload, err := warmUp.ReadDgramCapsule()
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(data, payload)
+	warmUp.Close()
+
+	stop := make(chan struct{})
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+		restart:
+			c := s.NewConnectUdpClient(false)
+			e := c.Dial(proxyAddress, targetUri, s.MaxTimeout)
+			if e != nil {
+				connectError.Add(1)
+				return
+			}
+			defer c.Close()
+
+			req := make([]byte, 64)
+			rand.Read(req)
+
+			for {
+				select {
+				default:
+					total.Add(1)
+					e = c.WriteDgramCapsule(req)
+					if e != nil {
+						ioError.Add(1)
+						continue
+					}
+					resp, e := c.ReadDgramCapsule()
+					if e != nil {
+						ioError.Add(1)
+						continue
+					}
+					if bytes.Compare(req, resp) != 0 {
+						invalidData.Add(1)
+						c.Close()
+						goto restart
+					}
+				case <-stop:
+					return
+				}
+			}
+		}()
+	}
+	for i := 0; i < 30; i++ {
+		GinkgoWriter.Print(".")
+		time.Sleep(time.Second)
+	}
+	GinkgoWriter.Print("\n")
+	close(stop) // tell clients to stop
+	wg.Wait()   // wait until clients finish
+	s.Log("total: %d", total.Load())
+	s.Log("lost:  %d", ioError.Load())
+	s.Log(vppProxy.Vppctl("show session"))
+	s.Log(vppProxy.Vppctl("show error"))
+	s.Log(vppProxy.Vppctl("show interface"))
+	s.AssertEqual(uint32(0), connectError.Load())
+	s.AssertEqual(uint32(0), invalidData.Load())
 }
