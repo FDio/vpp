@@ -36,7 +36,7 @@ http_test_authority_form (vlib_main_t *vm)
   int rv;
 
   target = format (0, "10.10.2.45:20");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv == 0), "'%v' should be valid", target);
   formated_target = http_serialize_authority_form_target (&authority);
   rv = vec_cmp (target, formated_target);
@@ -45,7 +45,7 @@ http_test_authority_form (vlib_main_t *vm)
   vec_free (formated_target);
 
   target = format (0, "[dead:beef::1234]:443");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv == 0), "'%v' should be valid", target);
   formated_target = http_serialize_authority_form_target (&authority);
   rv = vec_cmp (target, formated_target);
@@ -54,22 +54,22 @@ http_test_authority_form (vlib_main_t *vm)
   vec_free (formated_target);
 
   target = format (0, "example.com:80");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv != 0), "'%v' reg-name not supported", target);
   vec_free (target);
 
   target = format (0, "10.10.2.45");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
   vec_free (target);
 
   target = format (0, "1000.10.2.45:20");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
   vec_free (target);
 
   target = format (0, "[xyz0::1234]:443");
-  rv = http_parse_authority_form_target (target, &authority);
+  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
   vec_free (target);
 
@@ -84,7 +84,7 @@ http_test_absolute_form (vlib_main_t *vm)
   int rv;
 
   url = format (0, "https://example.org/.well-known/masque/udp/1.2.3.4/123/");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTPS),
 	     "scheme should be https");
@@ -108,7 +108,7 @@ http_test_absolute_form (vlib_main_t *vm)
   vec_free (url);
 
   url = format (0, "http://vpp-example.org");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
 	     "scheme should be http");
@@ -127,7 +127,7 @@ http_test_absolute_form (vlib_main_t *vm)
   vec_free (url);
 
   url = format (0, "http://1.2.3.4:8080/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
 	     "scheme should be http");
@@ -149,7 +149,7 @@ http_test_absolute_form (vlib_main_t *vm)
   vec_free (url);
 
   url = format (0, "https://[dead:beef::1234]/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTPS),
 	     "scheme should be https");
@@ -171,7 +171,7 @@ http_test_absolute_form (vlib_main_t *vm)
   vec_free (url);
 
   url = format (0, "http://[::ffff:192.0.2.128]:8080/");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv == 0), "'%v' should be valid", url);
   HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
 	     "scheme should be http");
@@ -190,57 +190,57 @@ http_test_absolute_form (vlib_main_t *vm)
   vec_free (url);
 
   url = format (0, "http://[dead:beef::1234/abc");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://[dead|beef::1234]/abc");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http:example.org:8080/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "htt://example.org:8080/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http:///abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://example.org:808080/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://example.org/a%%3Xbcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://example.org/a%%3");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://example.org/a[b]cd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
   url = format (0, "http://exa[m]ple.org/abcd");
-  rv = http_parse_absolute_form (url, &parsed_url);
+  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
   HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
   vec_free (url);
 
