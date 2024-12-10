@@ -26,6 +26,8 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
+#include <http/http.h>
+
 #define foreach_proxy_session_side_state                                      \
   _ (CREATED, "created")                                                      \
   _ (CONNECTING, "connecting")                                                \
@@ -80,12 +82,15 @@ typedef struct
   proxy_session_t *sessions;		/**< session pool, shared */
   clib_spinlock_t sessions_lock;	/**< lock for session pool */
   u8 **rx_buf;				/**< intermediate rx buffers */
+  http_header_table_t *req_headers;	/**< HTTP request headers */
 
   u32 server_client_index;		/**< server API client handle */
   u32 server_app_index;			/**< server app index */
   u32 active_open_client_index;		/**< active open API client handle */
   u32 active_open_app_index;		/**< active open index after attach */
   u32 ckpair_index;			/**< certkey pair index for tls */
+
+  u8 *capsule_proto_header;
 
   /*
    * Configuration params
