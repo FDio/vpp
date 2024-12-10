@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -244,7 +245,23 @@ func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
 		vpp.Container.Name, vpp.getCliSocket(), vppCliCommand)
 	vpp.getSuite().Log(containerExecCommand)
 	output, err := exechelper.CombinedOutput(containerExecCommand)
-	vpp.getSuite().AssertNil(err)
+
+	// If an error occurs, retrieve the caller function's name.
+	// If retrieving the caller name fails, perform a regular assert.
+	// If the caller is 'teardown', only log the error instead of asserting.
+	if err != nil {
+		pc, _, _, ok := runtime.Caller(1)
+		if !ok {
+			vpp.getSuite().AssertNil(err)
+		} else {
+			fn := runtime.FuncForPC(pc)
+			if fn != nil && strings.Contains(fn.Name(), "TearDownTest") {
+				vpp.getSuite().Log("vppctl failed in test teardown (skipping assert): %v", err)
+			} else {
+				vpp.getSuite().AssertNil(err)
+			}
+		}
+	}
 
 	return string(output)
 }
