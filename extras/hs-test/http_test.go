@@ -1325,6 +1325,16 @@ func HttpHeadersTest(s *NoTopoSuite) {
 	data2, err := io.ReadAll(resp2.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data2), "<html>", "html content not received")
+
+	/* test cleanup */
+	client.CloseIdleConnections()
+	for nTries := 0; nTries < 10; nTries++ {
+		o := vpp.Vppctl("show session verbose 2")
+		if !strings.Contains(o, serverAddress+":80->"+s.HostAddr()) {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func HttpInvalidHeadersTest(s *NoTopoSuite) {
