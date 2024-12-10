@@ -17,6 +17,7 @@ import (
 
 const networkTopologyDir string = "topo-network/"
 const containerTopologyDir string = "topo-containers/"
+const HttpCapsuleTypeDatagram = uint64(0)
 
 type Stanza struct {
 	content string
