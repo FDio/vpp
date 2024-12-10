@@ -46,6 +46,30 @@
       },
       "revId": "7c5ffbc25d3440dd5f94423f0c13ad9fa1fcb4fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec973a3a_988e83cd",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 13
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-10T23:10:57Z",
+      "side": 1,
+      "message": "Let\u0027s go with this for now. We can revisit later.",
+      "parentUuid": "9f835a92_23af2d67",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 103
+      },
+      "revId": "7c5ffbc25d3440dd5f94423f0c13ad9fa1fcb4fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
