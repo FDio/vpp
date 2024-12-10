@@ -924,7 +924,6 @@ http_free_header_table (http_header_table_t *ht)
   vec_free (ht->headers);
   vec_free (ht->buf);
   hash_free (ht->value_by_name);
-  clib_mem_free (ht);
 }
 
 static uword
