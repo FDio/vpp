@@ -37,6 +37,18 @@
 #define HTTP_DBG(_lvl, _fmt, _args...)
 #endif
 
+typedef enum http_udp_tunnel_mode_
+{
+  HTTP_UDP_TUNNEL_CAPSULE,
+  HTTP_UDP_TUNNEL_DGRAM
+} http_udp_tunnel_mode_t;
+
+typedef struct transport_endpt_cfg_http
+{
+  u32 timeout;
+  http_udp_tunnel_mode_t udp_tunnel_mode;
+} transport_endpt_cfg_http_t;
+
 typedef struct http_conn_id_
 {
   union
@@ -82,7 +94,8 @@ typedef enum http_conn_state_
   _ (4, WAIT_TRANSPORT_METHOD, "wait transport method")                       \
   _ (5, WAIT_APP_REPLY, "wait app reply")                                     \
   _ (6, APP_IO_MORE_DATA, "app io more data")                                 \
-  _ (7, TUNNEL, "tunnel")
+  _ (7, TUNNEL, "tunnel")                                                     \
+  _ (8, UDP_TUNNEL, "udp tunnel")
 
 typedef enum http_req_state_
 {
@@ -424,7 +437,11 @@ typedef struct http_req_
   u32 rx_buf_offset;	/* current offset during parsing */
   u32 control_data_len; /* start line + headers + empty line */
 
-  u64 to_recv; /* remaining bytes of message body to receive from transport */
+  union
+  {
+    u64 to_recv; /* remaining bytes of body to receive from transport */
+    u64 to_skip; /* remaining bytes of capsule to skip */
+  };
 
   u8 is_tunnel;
 
@@ -477,6 +494,7 @@ typedef struct http_tc_
   u8 *app_name;
   u8 *host;
   u8 is_server;
+  http_udp_tunnel_mode_t udp_tunnel_mode;
 
   http_req_t req;
 } http_conn_t;
@@ -492,6 +510,9 @@ typedef struct http_main_
   http_conn_t *listener_pool;
   http_conn_t *ho_conn_pool;
   u32 app_index;
+
+  u8 **rx_bufs;
+  u8 **tx_bufs;
 
   clib_timebase_t timebase;
 
@@ -1095,13 +1116,17 @@ typedef struct
 } http_uri_t;
 
 always_inline int
-http_parse_authority_form_target (u8 *target, http_uri_t *authority)
+http_parse_authority_form_target (u8 *target, u32 target_len,
+				  http_uri_t *authority)
 {
   unformat_input_t input;
+  u8 *tmp = 0;
   u32 port;
   int rv = 0;
 
-  unformat_init_vector (&input, vec_dup (target));
+  vec_validate (tmp, target_len - 1);
+  vec_copy (tmp, target);
+  unformat_init_vector (&input, tmp);
   if (unformat (&input, "[%U]:%d", unformat_ip6_address, &authority->ip.ip6,
 		&port))
     {
@@ -1190,7 +1215,7 @@ _parse_port (u8 **pos, u8 *end, u16 *port)
  * @return @c 0 on success.
  */
 always_inline int
-http_parse_absolute_form (u8 *url, http_url_t *parsed)
+http_parse_absolute_form (u8 *url, u32 url_len, http_url_t *parsed)
 {
   u8 *token_start, *token_end, *end;
   int is_encoded = 0;
@@ -1204,7 +1229,7 @@ http_parse_absolute_form (u8 *url, http_url_t *parsed)
     0x0000000000000000,
   };
 
-  if (vec_len (url) < 9)
+  if (url_len < 9)
     {
       clib_warning ("uri too short");
       return -1;
@@ -1212,7 +1237,7 @@ http_parse_absolute_form (u8 *url, http_url_t *parsed)
 
   clib_memset (parsed, 0, sizeof (*parsed));
 
-  end = url + vec_len (url);
+  end = url + url_len;
 
   /* parse scheme */
   if (!memcmp (url, "http:// ", 7))
@@ -1367,6 +1392,7 @@ http_parse_masque_host_port (u8 *path, u32 path_len, http_uri_t *parsed)
 }
 
 #define HTTP_INVALID_VARINT			 ((u64) ~0)
+#define HTTP_CAPSULE_HEADER_MAX_SIZE		 8
 #define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 5
 #define HTTP_UDP_PAYLOAD_MAX_LEN		 65527
 

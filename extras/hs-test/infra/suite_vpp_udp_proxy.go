@@ -1,10 +1,14 @@
 package hst
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +21,7 @@ type VppUdpProxySuite struct {
 	HstSuite
 	proxyPort  int
 	serverPort int
+	MaxTimeout time.Duration
 }
 
 var vppUdpProxyTests = map[string][]func(s *VppUdpProxySuite){}
@@ -34,6 +39,12 @@ func (s *VppUdpProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("single")
+
+	if *IsVppDebug {
+		s.MaxTimeout = time.Second * 600
+	} else {
+		s.MaxTimeout = time.Second * 10
+	}
 }
 
 func (s *VppUdpProxySuite) SetupTest() {
@@ -110,7 +121,7 @@ func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {
 			}
 		}
 	}()
-	s.Log("started")
+	s.Log("* started udp echo server " + s.ServerAddr() + ":" + strconv.Itoa(s.ServerPort()))
 	return conn
 }
 
@@ -123,7 +134,7 @@ func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (i
 	}
 	defer proxiedConn.Close()
 
-	err = proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 5))
+	err = proxiedConn.SetReadDeadline(time.Now().Add(s.MaxTimeout))
 	if err != nil {
 		return 0, err
 	}
@@ -138,6 +149,41 @@ func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (i
 		return 0, err
 	}
 	return n, nil
+}
+
+func (s *VppUdpProxySuite) OpenConnectUdpTunnel(proxyAddress, targetUri string) (net.Conn, error) {
+	req := WriteConnectUdpReq(targetUri)
+	conn, err := net.DialTimeout("tcp", proxyAddress, s.MaxTimeout)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.SetDeadline(time.Now().Add(s.MaxTimeout))
+	if err != nil {
+		return nil, err
+	}
+
+	s.Log("* Connected to proxy (" + s.VppProxyAddr() + ":" + strconv.Itoa(s.ProxyPort()) + ")")
+
+	_, err = conn.Write(req)
+	if err != nil {
+		return nil, err
+	}
+
+	r := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(r, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.Log(DumpHttpResp(resp, true))
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		return nil, errors.New("request failed")
+	}
+	if resp.Header.Get("Connection") != "upgrade" || resp.Header.Get("Upgrade") != "connect-udp" || resp.Header.Get("Capsule-Protocol") != "?1" {
+		return nil, errors.New("invalid response")
+	}
+
+	s.Log("* CONNECT-UDP tunnel established (" + s.ServerAddr() + ":" + strconv.Itoa(s.ServerPort()) + ")")
+	return conn, nil
 }
 
 var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, func() {
