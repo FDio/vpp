@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "578d42a4_cb99c551",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-12-11T00:43:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2f14b485_3b6388b8",
+      "revId": "9e47ac59232959d6273047102558b260420712cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1bedec16_b13166a1",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-12-09T22:54:45Z",
       "side": 1,
       "message": "Interface name is not a null-terminated string, so `strlen` here causes buffer overrun and crashes with address sanitizer.\n\nMost of the time `u8*` hints that it is a non-null-terminated vector, while `char*` is used for null-terminated cstrings in VPP.",
+      "revId": "9e47ac59232959d6273047102558b260420712cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c093902_a206c92a",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-12-11T00:43:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1bedec16_b13166a1",
       "revId": "9e47ac59232959d6273047102558b260420712cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "44c37d0f_384bf77f",
+        "filename": "src/plugins/sflow/sflow_psample.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-12-11T00:43:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dbef741b_1793994d",
+      "revId": "9e47ac59232959d6273047102558b260420712cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9e925a3f_217243bb",
@@ -82,6 +136,24 @@
       "writtenOn": "2024-12-09T22:54:45Z",
       "side": 1,
       "message": "Hi, Pim, unfortunately, this code causes a buffer overrun with address sanitizer, as `sizeof` includes a terminating null-byte and `+ 1` is not necessary here",
+      "revId": "9e47ac59232959d6273047102558b260420712cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3bf758fd_7d8ca35c",
+        "filename": "src/plugins/sflow/sflow_psample.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-12-11T00:43:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9e925a3f_217243bb",
       "revId": "9e47ac59232959d6273047102558b260420712cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
