@@ -14,6 +14,9 @@
 # Scripts require non-POSIX parts of bash
 SHELL := $(shell which bash)
 
+ifneq ($(NOMAD_TASK_NAME),)
+WORKSPACE ?= $(shell dirname $(shell dirname $(CURDIR)))
+endif
 DL_CACHE_DIR = $(HOME)/Downloads
 MAKE_ARGS ?= -j
 BUILD_DIR        ?= $(CURDIR)/_build
@@ -34,7 +37,7 @@ D := $(DOWNLOAD_DIR)
 ifeq ($(WORKSPACE),)
 L := $(B)
 else
-L := $(WORKSPACE)/archives/vpp-ext-deps
+L := $(WORKSPACE)/archives/install-deps-logs
 $(shell rm -rf $(L) && mkdir -p $(L))
 endif
 
