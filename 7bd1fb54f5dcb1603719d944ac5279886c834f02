@@ -16,6 +16,23 @@
       "message": "The platforms in the CSIT as well as in the new generation of Arm Server class platforms, a 64B cache line is the most common. With this change we make it a default build option. But for backward compatibility, we have ensured to support older 128B cache line build option for who need it.",
       "revId": "7bd1fb54f5dcb1603719d944ac5279886c834f02",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db5bff38_ded9eded",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2024-12-11T13:33:26Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "7bd1fb54f5dcb1603719d944ac5279886c834f02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
