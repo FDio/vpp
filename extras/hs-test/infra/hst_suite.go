@@ -104,6 +104,19 @@ type StringerStruct struct {
 	Label string
 }
 
+var testCounter uint16
+var startTime time.Time = time.Now()
+
+func testCounterFunc() {
+	if ParallelTotal.Value.String() != "1" {
+		return
+	}
+	testCounter++
+	fmt.Printf("Test counter: %d\n"+
+		"Time elapsed: %.2fs\n",
+		testCounter, time.Since(startTime).Seconds())
+}
+
 // ColorableString for ReportEntry to use
 func (s StringerStruct) ColorableString() string {
 	return fmt.Sprintf("{{red}}%s{{/}}", s.Label)
@@ -233,6 +246,7 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
+	testCounterFunc()
 	s.Log("[* TEST SETUP]")
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SkipIfUnconfiguring()
