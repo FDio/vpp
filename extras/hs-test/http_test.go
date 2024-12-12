@@ -1413,7 +1413,7 @@ func HttpConnTimeoutTest(s *NoTopoSuite) {
 }
 
 func HttpIgnoreH2UpgradeTest(s *NoTopoSuite) {
-	vpp := s.GetContainerByName("vpp").VppInstance
+	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 

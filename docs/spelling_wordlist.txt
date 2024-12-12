@@ -1081,6 +1081,7 @@ strongswan
 strongSwan
 Strongswan
 struct
+structs
 su
 subdirectories
 subdirectory
