@@ -90,9 +90,9 @@ when running in parallel.
         }
 
         func MyTest(s *MySuite) {
-                clientVpp := s.GetContainerByName("client-vpp").VppInstance
+                clientVpp := s.Containers.ClientVpp.VppInstance
 
-                serverVethAddress := s.NetInterfaces["server-iface"].Ip4AddressString()
+                serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 
                 result := clientVpp.Vppctl("ping " + serverVethAddress)
                 s.AssertNotNil(result)
@@ -138,8 +138,10 @@ Modifying the framework
 
 #. To add a new suite, create a new file in the ``infra/`` folder. Naming convention for the suite files is ``suite_[name].go``.
 
-#. Make a ``struct``, in the suite file, with at least ``HstSuite`` struct as its member.
-   HstSuite provides functionality that can be shared for all suites, like starting containers
+#. Make a ``struct``, in the suite file, with at least ``HstSuite``, ``Interfaces`` and ``Containers`` structs as its members.
+   HstSuite provides functionality that can be shared for all suites, like starting containers. ``Interfaces`` and ``Containers`` structs
+   are used to provide simpler access to interfaces and containers respectively. ``s.GetInterfaceByName([name])`` or ``s.GetContainerByName([name])``
+   should only be used to initialize interface and container struct fields within ``SetupSuite``.
 
 #. Create a new map that will contain a file name where a test is located and test functions with a pointer to the suite's struct: ``var myTests = map[string][]func(s *MySuite){}``
 
@@ -149,6 +151,16 @@ Modifying the framework
 
                 type MySuite struct {
                         HstSuite
+                        Interfaces struct {
+		                Server *NetInterface
+		                Client *NetInterface
+                                ...
+	                        }
+	                Containers struct {
+		                ServerVpp *Container
+		                ClientVpp *Container
+		                ...
+	                        }
                 }
 
 
@@ -163,12 +175,13 @@ Modifying the framework
 
 #. In suite file, implement ``SetupSuite`` method which Ginkgo runs once before starting any of the tests.
    It's important here to call ``ConfigureNetworkTopology()`` method,
-   pass the topology name to the function in a form of file name of one of the *yaml* files in ``topo-network`` folder.
-   Without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
+   pass the topology name to the function in a form of file name of one of the *yaml* files in ``topo-network`` folder
+   without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
    This will ensure network topology, such as network interfaces and namespaces, will be created.
    Another important method to call is ``LoadContainerTopology()`` which will load
    containers and shared volumes used by the suite. This time the name passed to method corresponds
-   to file in ``extras/hs-test/topo-containers`` folder
+   to file in ``extras/hs-test/topo-containers`` folder. Lastly, initialize ``Interfaces`` and ``Containers`` struct fields
+   using ``s.GetInterfaceByName("interfaceName")`` and ``s.GetContainerByName("containerName")``. Use the names that are defined in ``.yaml`` files
 
         ::
 
@@ -179,6 +192,9 @@ Modifying the framework
 
                         s.ConfigureNetworkTopology("myNetworkTopology")
                         s.LoadContainerTopology("myContainerTopology")
+                        s.Interfaces.Server = s.GetInterfaceByName("interfaceName")
+                        s.Containers.ServerVpp = s.GetContainerByName("containerName")
+                        ...
                 }
 
 #. In suite file, implement ``SetupTest`` method which gets executed before each test. Starting containers and
@@ -368,7 +384,7 @@ You can do it by test like following:
 
     func MemLeakTest(s *NoTopoSuite) {
     	s.SkipUnlessLeakCheck()  // test is excluded from usual test run
-    	vpp := s.GetContainerByName("vpp").VppInstance
+    	vpp := s.Containers.Vpp.VppInstance
     	/* do your configuration here */
     	vpp.Disconnect()  // no goVPP less noise
     	vpp.EnableMemoryTrace()  // enable memory traces
