@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "246d7d8b_e384ce84",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-12-12T12:46:24Z",
+      "side": 1,
+      "message": "already there 3 lines above",
+      "range": {
+        "startLine": 79,
+        "startChar": 1,
+        "endLine": 79,
+        "endChar": 68
+      },
+      "revId": "5ab0e5b058f6f24c94084ad914c7624596cb18f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
