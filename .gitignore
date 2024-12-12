@@ -145,6 +145,7 @@ compile_commands.json
 /extras/hs-test/.last_hst_ppid
 /extras/hs-test/.goimports.ok
 /extras/hs-test/summary/
+/extras/hs-test/.last_state_hash
 
 # ./configure
 /CMakeFiles
