@@ -5,6 +5,24 @@ if [ "$(lsb_release -is)" != Ubuntu ]; then
 	exit 1
 fi
 
+LAST_STATE_FILE=".last_state_hash"
+
+# get current state hash
+current_state_hash=$(git status --porcelain | grep -vE '(/\.|/10|\.go$|\.sum$|\.mod$|\.txt$|\.test$)' | sha1sum | awk '{print $1}')
+
+if [ -f "$LAST_STATE_FILE" ]; then
+    last_state_hash=$(cat "$LAST_STATE_FILE")
+else
+    last_state_hash=""
+fi
+
+# compare current state with last state
+if [ "$current_state_hash" = "$last_state_hash" ]; then
+    echo "*** Skipping docker build - no new changes \
+(excluding .go, .txt, .sum, .mod, dotfiles, IP address files) ***"
+    exit 0
+fi
+
 export VPP_WS=../..
 OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
@@ -85,3 +103,5 @@ if [ "$images" != "" ]; then
 		# shellcheck disable=SC2086
     docker rmi $images
 fi
+
+echo "$current_state_hash" > "$LAST_STATE_FILE"
