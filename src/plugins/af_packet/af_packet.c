@@ -189,20 +189,6 @@ af_packet_fd_read_ready (clib_file_t * uf)
 static clib_error_t *
 af_packet_fd_error (clib_file_t *uf)
 {
-  af_packet_main_t *apm = &af_packet_main;
-  clib_error_t *err = 0;
-  u64 u64;
-
-  int ret = read (uf->file_descriptor, (char *) &u64, sizeof (u64));
-
-  if (ret < 0)
-    {
-      err = clib_error_return_unix (0, "");
-      vlib_log_notice (apm->log_class, "fd %u %U", uf->file_descriptor,
-		       format_clib_error, err);
-      clib_error_free (err);
-    }
-
   return 0;
 }
 
