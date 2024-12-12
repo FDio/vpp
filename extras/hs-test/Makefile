@@ -72,28 +72,25 @@ help:
 	@echo " cleanup-hst              - stops and removes all docker contaiers and namespaces"
 	@echo " list-tests               - list all tests"
 	@echo
-	@echo "'make build' arguments:"
+	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
 	@echo
-	@echo "'make test' arguments:"
+	@echo "'make test' specific arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " VERBOSE=[true|false]     - verbose output"
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
-	@echo " TEST=[test-name]         - specific test to run"
+	@echo " TEST=[name1,name2...]    - specific test(s) to run"
 	@echo " CPUS=[n-cpus]            - number of cpus to allocate to VPP and containers"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
 	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo " CPU0=[true|false]        - use cpu0"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
-	@echo
-	@echo "List of all tests:"
-	@$(MAKE) list-tests
 
 .PHONY: list-tests
 list-tests:
-	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'Test' | \
+	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'test.go' | \
 		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
 .PHONY: build-vpp-release

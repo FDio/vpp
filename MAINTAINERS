@@ -882,8 +882,8 @@ F:	extras/strongswan/vpp_sswan
 Host stack test framework
 I:	hs-test
 M:	Florin Coras <fcoras@cisco.com>
-M:	Filip Tehlar <ftehlar@cisco.com>
-M:	Maros Ondrejicka <maros.ondrejicka@pantheon.tech>
+M:	Matus Fabian <matfabia@cisco.com>
+M:	Adrian Villin <avillin@cisco.com>
 F:	extras/hs-test
 
 THE REST
