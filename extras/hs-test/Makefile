@@ -57,6 +57,8 @@ ifeq ($(ARCH),)
 ARCH=$(shell dpkg --print-architecture)
 endif
 
+FORCE_BUILD?=true
+
 .PHONY: help
 help:
 	@echo "Make targets:"
@@ -74,6 +76,7 @@ help:
 	@echo
 	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
+	@echo " FORCE_BUILD=[true|false] - force docker image building"
 	@echo
 	@echo "'make test' specific arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
@@ -115,6 +118,7 @@ build-vpp-gcov:
 	@touch .build.ok
 
 .PHONY: test
+test: FORCE_BUILD=false
 test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
@@ -122,8 +126,8 @@ test: .deps.ok .build.ok
 		--dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
 
-
 .PHONY: test-debug
+test-debug: FORCE_BUILD=false
 test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
@@ -132,6 +136,7 @@ test-debug: .deps.ok .build_debug.ok
 		./script/compress.sh $$?
 
 .PHONY: test-cov
+test-leak: FORCE_BUILD=false
 test-cov: .deps.ok .build.cov.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
@@ -149,19 +154,19 @@ build-go:
 .PHONY: build
 build: .deps.ok build-vpp-release build-go
 	@rm -f .build.ok
-	bash ./script/build_hst.sh release
+	bash ./script/build_hst.sh release $(FORCE_BUILD)
 	@touch .build.ok
 
 .PHONY: build-cov
 build-cov: .deps.ok build-vpp-gcov build-go
 	@rm -f .build.cov.ok
-	bash ./script/build_hst.sh gcov
+	bash ./script/build_hst.sh gcov $(FORCE_BUILD)
 	@touch .build.cov.ok
 
 .PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug build-go
 	@rm -f .build.ok
-	bash ./script/build_hst.sh debug
+	bash ./script/build_hst.sh debug $(FORCE_BUILD)
 	@touch .build.ok
 
 .deps.ok:
