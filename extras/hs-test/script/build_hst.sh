@@ -16,8 +16,8 @@ else
     last_state_hash=""
 fi
 
-# compare current state with last state
-if [ "$current_state_hash" = "$last_state_hash" ]; then
+# compare current state with last state and check FORCE_BUILD
+if [ "$current_state_hash" = "$last_state_hash" ] && [ "$2" = "false" ]; then
     echo "*** Skipping docker build - no new changes \
 (excluding .go, .txt, .sum, .mod, dotfiles, IP address files) ***"
     exit 0
