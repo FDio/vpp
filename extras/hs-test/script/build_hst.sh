@@ -5,10 +5,14 @@ if [ "$(lsb_release -is)" != Ubuntu ]; then
 	exit 1
 fi
 
+export UBUNTU_VERSION=${UBUNTU_VERSION:-"$(lsb_release -rs)"}
+echo "Ubuntu version is set to ${UBUNTU_VERSION}"
+
 LAST_STATE_FILE=".last_state_hash"
 
-# get current state hash
+# get current state hash and ubuntu version
 current_state_hash=$(git status --porcelain | grep -vE '(/\.|/10|\.go$|\.sum$|\.mod$|\.txt$|\.test$)' | sha1sum | awk '{print $1}')
+current_state_hash=$current_state_hash$UBUNTU_VERSION
 
 if [ -f "$LAST_STATE_FILE" ]; then
     last_state_hash=$(cat "$LAST_STATE_FILE")
@@ -16,8 +20,8 @@ else
     last_state_hash=""
 fi
 
-# compare current state with last state
-if [ "$current_state_hash" = "$last_state_hash" ]; then
+# compare current state with last state and check FORCE_BUILD
+if [ "$current_state_hash" = "$last_state_hash" ] && [ "$2" = "false" ]; then
     echo "*** Skipping docker build - no new changes \
 (excluding .go, .txt, .sum, .mod, dotfiles, IP address files) ***"
     exit 0
@@ -47,9 +51,6 @@ else
 	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp-native/vpp
 fi
 echo "Taking build objects from ${VPP_BUILD_ROOT}"
-
-export UBUNTU_VERSION=${UBUNTU_VERSION:-"$(lsb_release -rs)"}
-echo "Ubuntu version is set to ${UBUNTU_VERSION}"
 
 export HST_LDPRELOAD=${VPP_BUILD_ROOT}/lib/${OS_ARCH}-linux-gnu/libvcl_ldpreload.so
 echo "HST_LDPRELOAD is set to ${HST_LDPRELOAD}"
