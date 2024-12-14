@@ -608,10 +608,13 @@ policer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    policer_index = p[0];
 	}
 
-      if (~0 != policer_index)
+      if (~0 == policer_index)
 	{
-	  rv = policer_update (vm, policer_index, &c);
+	  error = clib_error_return (0, "Update policer failure");
+	  goto done;
 	}
+
+      rv = policer_update (vm, policer_index, &c);
     }
   else
     {
