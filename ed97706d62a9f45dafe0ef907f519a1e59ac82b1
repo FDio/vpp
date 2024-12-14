@@ -16,6 +16,24 @@
       "message": "A newbie question here: will this function be called irrespective of the cli command to set the crypto_sw_scheduler queue size invoked?\n\nIf yes, it would be better to split the function into two, one to do the cli processing and another to be called as part of init.\n\nAlso, I don\u0027t see cli command implementation in this change, will there be another change request with cli support?",
       "revId": "ed97706d62a9f45dafe0ef907f519a1e59ac82b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "40dedc85_63213b21",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 736,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-12-14T02:45:53Z",
+      "side": 1,
+      "message": "This is for startup config. There\u0027s no cli to configure the queue size and it doesn\u0027t make sense to have one.",
+      "parentUuid": "159ffa79_cea72d13",
+      "revId": "ed97706d62a9f45dafe0ef907f519a1e59ac82b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
