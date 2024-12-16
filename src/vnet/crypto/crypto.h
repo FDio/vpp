@@ -392,8 +392,7 @@ typedef u32 (vnet_crypto_chained_ops_handler_t) (vlib_main_t * vm,
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
 
-typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
-					  vnet_crypto_key_op_t kop,
+typedef void (vnet_crypto_key_handler_t) (vnet_crypto_key_op_t kop,
 					  vnet_crypto_key_index_t idx);
 
 /** async crypto function handlers **/

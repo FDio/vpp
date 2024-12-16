@@ -327,10 +327,9 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 }
 
 /*static*/ void
-cryptodev_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-		       vnet_crypto_key_index_t idx)
+cryptodev_key_handler (vnet_crypto_key_op_t kop, vnet_crypto_key_index_t idx)
 {
-  cryptodev_sess_handler (vm, kop, idx, 8);
+  cryptodev_sess_handler (vlib_get_main (), kop, idx, 8);
 }
 
 clib_error_t *
