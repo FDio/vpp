@@ -25,7 +25,7 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 	set(IPSECMB_LINK_FLAGS "${IPSECMB_LINK_FLAGS} -L${IPSECMB_LIB_DIR} -Wl,--whole-archive ${IPSECMB_LIB} -Wl,--no-whole-archive")
 	set(IPSECMB_LINK_FLAGS "${IPSECMB_LINK_FLAGS} -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
 	include_directories(${IPSECMB_INCLUDE_DIR})
-	add_vpp_plugin(crypto_ipsecmb
+	add_vpp_crypto_engine(ipsecmb
 		SOURCES
 		ipsecmb.c
 
@@ -43,7 +43,7 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 		message(STATUS "Intel IPSecMB ${IPSECMB_VERSION} does not support chacha20-poly1305. Disabled")
 	endif()
 
-	target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont" "-maes")
+	target_compile_options(ipsecmb_crypto_engine PRIVATE "-march=silvermont" "-maes")
 	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR}")
 else()
 	message(STATUS "Intel IPSecMB not found")
