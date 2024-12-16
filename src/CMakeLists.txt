@@ -244,6 +244,7 @@ include(cmake/api.cmake)
 include(cmake/library.cmake)
 include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
+include(cmake/crypto_engines.cmake)
 
 ##############################################################################
 # FreeBSD - use epoll-shim
@@ -278,7 +279,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux|FreeBSD")
   find_package(OpenSSL)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl vpp-api
-    plugins tools/vppapigen tools/g2 tools/perftool cmake pkg
+    plugins crypto_engines tools/vppapigen tools/g2 tools/perftool cmake pkg
     tools/appimage
   )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")

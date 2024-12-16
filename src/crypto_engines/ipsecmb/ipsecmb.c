@@ -1,18 +1,5 @@
-/*
- * ipsecmb.c - Intel IPSec Multi-buffer library Crypto Engine
- *
- * Copyright (c) 2019 Cisco Systemss
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Cisco Systems, Inc.
  */
 
 #include <fcntl.h>
@@ -23,6 +10,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/crypto/crypto.h>
+#include <vnet/crypto/engine.h>
 #include <vppinfra/cpu.h>
 
 #define HMAC_MAX_BLOCK_SIZE  IMB_SHA_512_BLOCK_SIZE
@@ -149,8 +137,7 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			 IMB_HASH_ALG alg)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   IMB_JOB *job;
   u32 i, n_fail = 0, ops_index = 0;
   u8 scratch[n_ops][digest_size];
@@ -204,8 +191,7 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			 JOB_HASH_ALG alg)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   IMB_JOB *job;
   u32 i, n_fail = 0;
   u8 scratch[n_ops][digest_size];
@@ -283,8 +269,7 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			       IMB_CIPHER_MODE cipher_mode)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   IMB_JOB *job;
   u32 i, n_fail = 0, ops_index = 0;
   const u32 burst_sz =
@@ -338,8 +323,7 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			       JOB_CIPHER_MODE cipher_mode)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   IMB_JOB *job;
   u32 i, n_fail = 0;
 
@@ -409,8 +393,8 @@ ipsecmb_ops_gcm_cipher_enc_##a##_chained (vlib_main_t * vm,                  \
     vnet_crypto_op_t * ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops)     \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data +  \
+                                                     vm->thread_index;      \
   IMB_MGR *m = ptd->mgr;                                                     \
   vnet_crypto_op_chunk_t *chp;                                               \
   u32 i, j;                                                                  \
@@ -444,8 +428,8 @@ ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
                                 u32 n_ops)                                   \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + \
+                                                     vm->thread_index;      \
   IMB_MGR *m = ptd->mgr;                                                     \
   u32 i;                                                                     \
                                                                              \
@@ -470,8 +454,8 @@ ipsecmb_ops_gcm_cipher_dec_##a##_chained (vlib_main_t * vm,                  \
     vnet_crypto_op_t * ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops)     \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data +  \
+                                                     vm->thread_index;      \
   IMB_MGR *m = ptd->mgr;                                                     \
   vnet_crypto_op_chunk_t *chp;                                               \
   u32 i, j, n_failed = 0;                                                    \
@@ -512,8 +496,8 @@ ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
                                  u32 n_ops)                                  \
 {                                                                            \
   ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data +  \
+                                                     vm->thread_index;      \
   IMB_MGR *m = ptd->mgr;                                                     \
   u32 i, n_failed = 0;                                                       \
                                                                              \
@@ -577,8 +561,7 @@ ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 			 IMB_CIPHER_DIRECTION dir)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   struct IMB_JOB *job;
   IMB_MGR *m = ptd->mgr;
   u32 i, n_fail = 0, last_key_index = ~0;
@@ -655,8 +638,7 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 				 IMB_CIPHER_DIRECTION dir)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd =
-    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
   IMB_MGR *m = ptd->mgr;
   u32 i, n_fail = 0, last_key_index = ~0;
   u8 *key = 0;
@@ -762,7 +744,7 @@ ipsec_mb_ops_chacha_poly_dec_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 #endif
 
 static void
-crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
 			    vnet_crypto_key_index_t idx)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
@@ -840,33 +822,23 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
     }
 }
 
-static clib_error_t *
-crypto_ipsecmb_init (vlib_main_t * vm)
+static char *
+crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   ipsecmb_alg_data_t *ad;
   ipsecmb_per_thread_data_t *ptd;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   IMB_MGR *m = 0;
-  u32 eidx;
-  u8 *name;
 
   if (!clib_cpu_supports_aes ())
-    return 0;
+    return "AES ISA not available on this CPU";
 
-  /*
-   * A priority that is better than OpenSSL but worse than VPP natvie
-   */
-  name = format (0, "Intel(R) Multi-Buffer Crypto for IPsec Library %s%c",
-		 IMB_VERSION_STR, 0);
-  eidx = vnet_crypto_register_engine (vm, "ipsecmb", 80, (char *) name);
+  imbm->per_thread_data = r->per_thread_data;
 
-  vec_validate_aligned (imbm->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  vec_foreach (ptd, imbm->per_thread_data)
+  for (u32 i = 0; i < r->num_threads; i++)
     {
-	ptd->mgr = alloc_mb_mgr (0);
+      ptd = imbm->per_thread_data + i;
+      ptd->mgr = alloc_mb_mgr (0);
 #if IMB_VERSION_NUM >= IMB_VERSION(1, 3, 0)
 	clib_memset_u8 (ptd->burst_jobs, 0,
 			sizeof (IMB_JOB) * IMB_MAX_BURST_SIZE);
@@ -882,82 +854,80 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 	  m = ptd->mgr;
     }
 
-#define _(a, b, c, d, e, f)                                              \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
-                                    ipsecmb_ops_hmac_##a);               \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                        \
-  ad->block_size = d;                                                    \
-  ad->data_size = e * 2;                                                 \
-  ad->hash_one_block = m-> c##_one_block;                                \
-  ad->hash_fn = m-> c;                                                   \
+#define _(a, b, c, d, e, f)                                                   \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                             \
+  ad->block_size = d;                                                         \
+  ad->data_size = e * 2;                                                      \
+  ad->hash_one_block = m->c##_one_block;                                      \
+  ad->hash_fn = m->c;
 
   foreach_ipsecmb_hmac_op;
 #undef _
 #define _(a, b, c)                                                            \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC,       \
-				    ipsecmb_ops_cipher_enc_##a);              \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC,       \
-				    ipsecmb_ops_cipher_dec_##a);              \
   ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
   ad->data_size = sizeof (ipsecmb_aes_key_data_t);                            \
   ad->keyexp = m->keyexp_##b;
 
   foreach_ipsecmb_cipher_op;
 #undef _
-#define _(a, b)                                                         \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
-                                    ipsecmb_ops_gcm_cipher_enc_##a);    \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
-                                    ipsecmb_ops_gcm_cipher_dec_##a);    \
-  vnet_crypto_register_chained_ops_handler                              \
-      (vm, eidx, VNET_CRYPTO_OP_##a##_ENC,                              \
-       ipsecmb_ops_gcm_cipher_enc_##a##_chained);                       \
-  vnet_crypto_register_chained_ops_handler                              \
-      (vm, eidx, VNET_CRYPTO_OP_##a##_DEC,                              \
-       ipsecmb_ops_gcm_cipher_dec_##a##_chained);                       \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                            \
-  ad->data_size = sizeof (struct gcm_key_data);                         \
-  ad->aes_gcm_pre = m->gcm##b##_pre;                                    \
+#define _(a, b)                                                               \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
+  ad->data_size = sizeof (struct gcm_key_data);                               \
+  ad->aes_gcm_pre = m->gcm##b##_pre;
 
   foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
 #ifdef HAVE_IPSECMB_CHACHA_POLY
-  vnet_crypto_register_ops_handler (vm, eidx,
-				    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
-				    ipsecmb_ops_chacha_poly_enc);
-  vnet_crypto_register_ops_handler (vm, eidx,
-				    VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
-				    ipsecmb_ops_chacha_poly_dec);
-  vnet_crypto_register_chained_ops_handler (
-    vm, eidx, VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
-    ipsec_mb_ops_chacha_poly_enc_chained);
-  vnet_crypto_register_chained_ops_handler (
-    vm, eidx, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
-    ipsec_mb_ops_chacha_poly_dec_chained);
   ad = imbm->alg_data + VNET_CRYPTO_ALG_CHACHA20_POLY1305;
   ad->data_size = 0;
 #endif
 
-  vnet_crypto_register_key_handler (vm, eidx, crypto_ipsecmb_key_handler);
-  return (NULL);
+  return 0;
 }
 
-VLIB_INIT_FUNCTION (crypto_ipsecmb_init) =
-{
-  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+vnet_crypto_engine_op_handlers_t op_handlers[] = {
+#define _(a, b)                                                               \
+  {                                                                           \
+    .opt = VNET_CRYPTO_OP_##a##_ENC,                                          \
+    .fn = ipsecmb_ops_gcm_cipher_enc_##a,                                     \
+    .cfn = ipsecmb_ops_gcm_cipher_enc_##a##_chained,                          \
+  },                                                                          \
+    {                                                                         \
+      .opt = VNET_CRYPTO_OP_##a##_DEC,                                        \
+      .fn = ipsecmb_ops_gcm_cipher_dec_##a,                                   \
+      .cfn = ipsecmb_ops_gcm_cipher_dec_##a##_chained,                        \
+    },
+  foreach_ipsecmb_gcm_cipher_op
+#undef _
+#define _(a, b, c, d, e, f)                                                   \
+  { .opt = VNET_CRYPTO_OP_##a##_HMAC, .fn = ipsecmb_ops_hmac_##a },
+
+    foreach_ipsecmb_hmac_op
+#undef _
+#define _(a, b, c)                                                            \
+  { .opt = VNET_CRYPTO_OP_##a##_ENC, .fn = ipsecmb_ops_cipher_enc_##a },      \
+    { .opt = VNET_CRYPTO_OP_##a##_DEC, .fn = ipsecmb_ops_cipher_dec_##a },
+
+      foreach_ipsecmb_cipher_op
+#undef _
+#ifdef HAVE_IPSECMB_CHACHA_POLY
+  { .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
+    .fn = ipsecmb_ops_chacha_poly_enc,
+    .cfn = ipsec_mb_ops_chacha_poly_enc_chained },
+  { .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
+    .fn = ipsecmb_ops_chacha_poly_dec,
+    .cfn = ipsec_mb_ops_chacha_poly_dec_chained },
+#endif
+  {}
 };
 
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "Intel IPSEC Multi-buffer Crypto Engine",
+VNET_CRYPTO_ENGINE_REGISTRATION () = {
+  .name = "ipsecmb",
+  .desc = "Intel(R) Multi-Buffer Crypto for IPsec Library" IMB_VERSION_STR,
+  .prio = 80,
+  .per_thread_data_sz = sizeof (ipsecmb_per_thread_data_t),
+  .init_fn = crypto_ipsecmb_init,
+  .key_handler = crypto_ipsecmb_key_handler,
+  .op_handlers = op_handlers,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
