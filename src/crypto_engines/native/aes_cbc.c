@@ -18,7 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <crypto_native/crypto_native.h>
+#include <native/crypto_native.h>
 #include <vppinfra/crypto/aes_cbc.h>
 
 #if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0

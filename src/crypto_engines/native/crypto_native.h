@@ -42,7 +42,6 @@ typedef struct crypto_native_key_handler
 
 typedef struct
 {
-  u32 crypto_engine_index;
   crypto_native_key_fn_t *key_fn[VNET_CRYPTO_N_ALGS];
   void **key_data;
   crypto_native_op_handler_t *op_handlers;
