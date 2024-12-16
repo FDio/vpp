@@ -16,8 +16,23 @@
 #include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vnet/crypto/crypto.h>
+#include <vnet/crypto/engine.h>
+#include <vppinfra/unix.h>
+#include <vlib/log.h>
+#include <dlfcn.h>
+#include <dirent.h>
 
 vnet_crypto_main_t crypto_main;
+
+VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
+  .class_name = "crypto",
+  .subclass_name = "main",
+};
+
+#define log_debug(f, ...)                                                     \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, crypto_main_log.class, f, ##__VA_ARGS__)
+#define log_err(f, ...)                                                       \
+  vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log.class, f, ##__VA_ARGS__)
 
 static_always_inline void
 crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)
@@ -451,7 +466,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   clib_memcpy (key->data, data, length);
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
+      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, index);
   return index;
 }
 
@@ -464,7 +479,7 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_DEL, index);
+      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, index);
 
   if (key->type == VNET_CRYPTO_KEY_TYPE_DATA)
     {
@@ -487,7 +502,7 @@ vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index)
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY, index);
+      engine->key_op_handler (VNET_CRYPTO_KEY_OP_MODIFY, index);
 }
 
 vnet_crypto_async_alg_t
@@ -530,7 +545,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
+      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, index);
 
   return index;
 }
@@ -716,6 +731,117 @@ vnet_crypto_init_async_data (vnet_crypto_async_alg_t alg,
   hash_set_mem (cm->async_alg_index_by_name, name, alg);
 }
 
+static void
+vnet_crypto_load_engines (vlib_main_t *vm)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u8 *path;
+  char *p;
+  u32 path_len;
+  struct dirent *entry;
+  DIR *dp;
+
+  path = os_get_exec_path ();
+  log_debug ("exec path is %s", path);
+
+  vec_add1 (path, 0);
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
+  *p = 0;
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
+
+  vec_set_len (path, (u8 *) p - path);
+
+  path = format (path, "/" CLIB_LIB_DIR "/vpp_crypto_engines");
+  path_len = vec_len (path);
+  vec_add1 (path, 0);
+
+  log_debug ("libpath is %s", path);
+
+  dp = opendir ((char *) path);
+
+  if (dp)
+    {
+      while ((entry = readdir (dp)))
+	{
+	  void *handle;
+
+	  if (entry->d_type != DT_REG)
+	    continue;
+
+	  char *ext = strrchr (entry->d_name, '.');
+	  if (!ext || strncmp (ext, ".so", 3) != 0)
+	    {
+	      log_debug ("skipping %s, not .so", entry->d_name);
+	    }
+	  vec_set_len (path, path_len);
+	  path = format (path, "/%s%c", entry->d_name, 0);
+
+	  handle = dlopen ((char *) path, RTLD_LAZY);
+	  if (!handle)
+	    {
+	      log_err ("failed to dlopen %s", path);
+	      continue;
+	    }
+
+	  vnet_crypto_engine_registration_t *r =
+	    dlsym (handle, "__vnet_crypto_engine");
+	  if (!r)
+	    {
+	      log_err ("%s is not a crypto engine", entry->d_name);
+	      dlclose (handle);
+	      continue;
+	    }
+
+	  if (r->per_thread_data_sz)
+	    {
+	      u64 sz =
+		round_pow2 (r->per_thread_data_sz, CLIB_CACHE_LINE_BYTES);
+	      u64 alloc = sz * tm->n_vlib_mains;
+	      r->per_thread_data =
+		clib_mem_alloc_aligned (alloc, CLIB_CACHE_LINE_BYTES);
+	      clib_memset (r->per_thread_data, 0, alloc);
+	      log_debug ("%s: allocated %u bytes per thread", r->name, sz);
+	    }
+
+	  r->num_threads = tm->n_vlib_mains;
+
+	  if (r->init_fn)
+	    {
+	      char *rv = r->init_fn (r);
+	      if (rv)
+		{
+		  log_err ("%s crypto engine init failed: %s", r->name, rv);
+		  if (r->per_thread_data)
+		    clib_mem_free (r->per_thread_data);
+		  dlclose (handle);
+		  continue;
+		}
+	      log_debug ("%s crypto engine initialized", r->name);
+	    }
+	  u32 eidx =
+	    vnet_crypto_register_engine (vm, r->name, r->prio, r->desc);
+	  log_debug ("%s crypto engine registered with id %u", r->name, eidx);
+	  typeof (r->op_handlers) oh = r->op_handlers;
+
+	  while (oh->opt != VNET_CRYPTO_OP_NONE)
+	    {
+	      vnet_crypto_register_ops_handlers (vm, eidx, oh->opt, oh->fn,
+						 oh->cfn);
+	      oh++;
+	    }
+
+	  if (r->key_handler)
+	    vnet_crypto_register_key_handler (vm, eidx, r->key_handler);
+	}
+      closedir (dp);
+    }
+
+done:
+  vec_free (path);
+}
+
 clib_error_t *
 vnet_crypto_init (vlib_main_t * vm)
 {
@@ -771,6 +897,8 @@ vnet_crypto_init (vlib_main_t * vm)
 #undef _
     cm->crypto_node_index =
     vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch")->index;
+
+  vnet_crypto_load_engines (vm);
 
   return 0;
 }

@@ -1,29 +1,18 @@
-/*
- *------------------------------------------------------------------
- * Copyright (c) 2019 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Cisco Systems, Inc.
  */
 
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <crypto_native/crypto_native.h>
+#include <vnet/crypto/engine.h>
+#include <native/crypto_native.h>
 
 crypto_native_main_t crypto_native_main;
+vnet_crypto_engine_op_handlers_t op_handlers[24], *ophp = op_handlers;
 
 static void
-crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+crypto_native_key_handler (vnet_crypto_key_op_t kop,
 			   vnet_crypto_key_index_t idx)
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
@@ -59,17 +48,13 @@ crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
   cm->key_data[idx] = cm->key_fn[key->alg] (key);
 }
 
-clib_error_t *
-crypto_native_init (vlib_main_t * vm)
+static char *
+crypto_native_init (vnet_crypto_engine_registration_t *r)
 {
   crypto_native_main_t *cm = &crypto_native_main;
 
   if (cm->op_handlers == 0)
     return 0;
-
-  cm->crypto_engine_index =
-    vnet_crypto_register_engine (vm, "native", 100,
-				 "Native ISA Optimized Crypto");
 
   crypto_native_op_handler_t *oh = cm->op_handlers;
   crypto_native_key_handler_t *kh = cm->key_handlers;
@@ -100,8 +85,13 @@ crypto_native_init (vlib_main_t * vm)
 
   vec_foreach_pointer (oh, best_by_op_id)
     if (oh)
-      vnet_crypto_register_ops_handlers (vm, cm->crypto_engine_index,
-					 oh->op_id, oh->fn, oh->cfn);
+      {
+	*ophp = (vnet_crypto_engine_op_handlers_t){ .opt = oh->op_id,
+						    .fn = oh->fn,
+						    .cfn = oh->cfn };
+	ophp++;
+	ASSERT ((ophp - op_handlers) < ARRAY_LEN (op_handlers));
+      }
 
   vec_foreach_pointer (kh, best_by_alg_id)
     if (kh)
@@ -110,19 +100,14 @@ crypto_native_init (vlib_main_t * vm)
   vec_free (best_by_op_id);
   vec_free (best_by_alg_id);
 
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_native_key_handler);
   return 0;
 }
 
-VLIB_INIT_FUNCTION (crypto_native_init) =
-{
-  .runs_after = VLIB_INITS ("vnet_crypto_init"),
-};
-
-#include <vpp/app/version.h>
-
-VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER,
-  .description = "Native Crypto Engine",
+VNET_CRYPTO_ENGINE_REGISTRATION () = {
+  .name = "native",
+  .desc = "Native ISA Optimized Crypto",
+  .prio = 100,
+  .init_fn = crypto_native_init,
+  .key_handler = crypto_native_key_handler,
+  .op_handlers = op_handlers,
 };

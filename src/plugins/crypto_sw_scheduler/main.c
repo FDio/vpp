@@ -51,7 +51,7 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
 }
 
 static void
-crypto_sw_scheduler_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+crypto_sw_scheduler_key_handler (vnet_crypto_key_op_t kop,
 				 vnet_crypto_key_index_t idx)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
