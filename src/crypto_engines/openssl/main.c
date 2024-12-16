@@ -1,21 +1,6 @@
-/*
- *------------------------------------------------------------------
- * Copyright (c) 2019 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Cisco Systems, Inc.
  */
-
-#include <sys/syscall.h>
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -23,10 +8,9 @@
 #include <openssl/sha.h>
 
 #include <vlib/vlib.h>
-#include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <vpp/app/version.h>
-#include <crypto_openssl/crypto_openssl.h>
+#include <vnet/crypto/engine.h>
+#include <openssl/crypto_openssl.h>
 
 typedef struct
 {
@@ -546,7 +530,7 @@ openssl_ctx_hmac (vnet_crypto_key_t *key, vnet_crypto_key_op_t kop,
 }
 
 static void
-crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
+crypto_openssl_key_handler (vnet_crypto_key_op_t kop,
 			    vnet_crypto_key_index_t idx)
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
@@ -640,8 +624,8 @@ foreach_openssl_hash_op;
 foreach_openssl_hmac_op;
 #undef _
 
-clib_error_t *
-crypto_openssl_init (vlib_main_t * vm)
+static char *
+crypto_openssl_init (vnet_crypto_engine_registration_t *r)
 {
   crypto_openssl_main_t *cm = &crypto_openssl_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -649,71 +633,63 @@ crypto_openssl_init (vlib_main_t * vm)
   u8 seed[32];
 
   if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
-    return clib_error_return_unix (0, "getrandom() failed");
+    return "getrandom() failed";
 
   RAND_seed (seed, sizeof (seed));
 
-  u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
-  cm->crypto_engine_index = eidx;
-
 #define _(m, a, b, iv)                                                        \
-  vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_ENC,      \
-				     openssl_ops_enc_##a,                     \
-				     openssl_ops_enc_chained_##a);            \
-  vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_DEC,      \
-				     openssl_ops_dec_##a,                     \
-				     openssl_ops_dec_chained_##a);            \
   cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_##a;
-
   foreach_openssl_evp_op;
 #undef _
 
-#define _(a, b)                                                               \
-  vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC,     \
-				     openssl_ops_hmac_##a,                    \
-				     openssl_ops_hmac_chained_##a);           \
-  cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;
-
+#define _(a, b) cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;
   foreach_openssl_hmac_op;
-#undef _
-
-#define _(a, b)                                                               \
-  vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_HASH,     \
-				     openssl_ops_hash_##a,                    \
-				     openssl_ops_hash_chained_##a);
-
-  foreach_openssl_hash_op;
 #undef _
 
   vec_validate_aligned (per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (ptd, per_thread_data)
-  {
+    {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    ptd->hash_ctx = EVP_MD_CTX_create ();
+      ptd->hash_ctx = EVP_MD_CTX_create ();
 #endif
-  }
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_openssl_key_handler);
+    }
   return 0;
 }
 
-VLIB_INIT_FUNCTION (crypto_openssl_init) =
-{
-  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+vnet_crypto_engine_op_handlers_t op_handlers[] = {
+#define _(m, a, b, iv)                                                        \
+  {                                                                           \
+    .opt = VNET_CRYPTO_OP_##a##_ENC,                                          \
+    .fn = openssl_ops_enc_##a,                                                \
+    .cfn = openssl_ops_enc_chained_##a,                                       \
+  },                                                                          \
+    { .opt = VNET_CRYPTO_OP_##a##_DEC,                                        \
+      .fn = openssl_ops_dec_##a,                                              \
+      .cfn = openssl_ops_dec_chained_##a },
+  foreach_openssl_evp_op
+#undef _
+#define _(a, b)                                                               \
+  { .opt = VNET_CRYPTO_OP_##a##_HMAC,                                         \
+    .fn = openssl_ops_hmac_##a,                                               \
+    .cfn = openssl_ops_hmac_chained_##a },
+    foreach_openssl_hmac_op
+#undef _
+#define _(a, b)                                                               \
+  { .opt = VNET_CRYPTO_OP_##a##_HASH,                                         \
+    .fn = openssl_ops_hash_##a,                                               \
+    .cfn = openssl_ops_hash_chained_##a },
+      foreach_openssl_hash_op
+#undef _
+  {}
 };
 
-
-VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER,
-  .description = "OpenSSL Crypto Engine",
+VNET_CRYPTO_ENGINE_REGISTRATION () = {
+  .name = "openssl",
+  .desc = "OpenSSL",
+  .prio = 50,
+  .init_fn = crypto_openssl_init,
+  .key_handler = crypto_openssl_key_handler,
+  .op_handlers = op_handlers,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

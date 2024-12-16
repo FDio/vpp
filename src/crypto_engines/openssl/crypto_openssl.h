@@ -11,7 +11,6 @@ typedef void *(crypto_openssl_ctx_fn_t) (vnet_crypto_key_t *key,
 
 typedef struct
 {
-  u32 crypto_engine_index;
   crypto_openssl_ctx_fn_t *ctx_fn[VNET_CRYPTO_N_ALGS];
 } crypto_openssl_main_t;
 

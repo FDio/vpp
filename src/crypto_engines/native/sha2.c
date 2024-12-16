@@ -5,7 +5,7 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <crypto_native/crypto_native.h>
+#include <native/crypto_native.h>
 #include <vppinfra/crypto/sha2.h>
 
 static_always_inline u32
