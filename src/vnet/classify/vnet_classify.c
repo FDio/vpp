@@ -1844,6 +1844,53 @@ classify_lookup_chain (u32 table_index, u8 * mask, u32 n_skip, u32 n_match)
   return ~0;
 }
 
+u32
+classify_delete_table_from_chain (u32 head_table_index, u32 delete_table_index,
+				  int del_chain)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_classify_table_t *t = NULL, *last = NULL, *cur = NULL;
+  u32 cti = ~0, last_table_index = ~0;
+
+  if (head_table_index == ~0 ||
+      pool_is_free_index (cm->tables, head_table_index))
+    return -1;
+
+  if (pool_is_free_index (cm->tables, delete_table_index))
+    return -1;
+
+  t = pool_elt_at_index (cm->tables, head_table_index);
+
+  /* remove for head and return next */
+  if (head_table_index == delete_table_index ||
+      pool_is_free_index (cm->tables, t->next_table_index))
+    {
+
+      vnet_classify_delete_table_index (cm, delete_table_index, del_chain);
+      return t->next_table_index;
+    }
+
+  /* else remove and return last */
+  last_table_index = head_table_index;
+  for (cti = t->next_table_index; cti != ~0;
+       last_table_index = cti, cti = cur->next_table_index)
+    {
+
+      cur = pool_elt_at_index (cm->tables, cti);
+      if (cti == delete_table_index)
+	{
+
+	  /* update classify list */
+	  last = pool_elt_at_index (cm->tables, last_table_index);
+	  last->next_table_index = del_chain ? ~0 : cur->next_table_index;
+	  vnet_classify_delete_table_index (cm, delete_table_index, del_chain);
+	  break;
+	}
+    }
+
+  /* invalid table index */
+  return head_table_index;
+}
 
 static clib_error_t *
 classify_filter_command_fn (vlib_main_t * vm,
@@ -1856,6 +1903,7 @@ classify_filter_command_fn (vlib_main_t * vm,
   u32 skip = ~0;
   u32 match = ~0;
   u8 *match_vector;
+  int del_chain = 0;
   int is_add = 1;
   u32 table_index = ~0;
   u32 next_table_index = ~0;
@@ -1880,6 +1928,11 @@ classify_filter_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (input, "del-chain"))
+	{
+	  is_add = 0;
+	  del_chain = 1;
+	}
       else if (unformat (line_input, "pcap %=", &pcap, 1))
 	sw_if_index = 0;
       else if (unformat (line_input, "trace"))
@@ -1927,22 +1980,6 @@ classify_filter_command_fn (vlib_main_t * vm,
       return err;
     }
 
-  if (!is_add)
-    {
-      /*
-       * Delete an existing PCAP or trace classify table.
-       */
-      if (pkt_trace)
-	classify_set_trace_chain (cm, ~0);
-      else
-	classify_set_pcap_chain (cm, sw_if_index, ~0);
-
-      vec_free (mask);
-      unformat_free (line_input);
-
-      return 0;
-    }
-
   /*
    * Find an existing compatible table or else make a new one.
    */
@@ -1963,6 +2000,26 @@ classify_filter_command_fn (vlib_main_t * vm,
        */
       next_table_index = table_index;
       table_index = classify_lookup_chain (table_index, mask, skip, match);
+    }
+
+  if (!is_add)
+    {
+      next_table_index = classify_delete_table_from_chain (
+	table_index, classify_lookup_chain (table_index, mask, skip, match),
+	del_chain);
+
+      /*
+       * Delete an existing PCAP or trace classify table.
+       */
+      if (pkt_trace)
+	classify_set_trace_chain (cm, ~0);
+      else
+	classify_set_pcap_chain (cm, sw_if_index, ~0);
+
+      vec_free (mask);
+      unformat_free (line_input);
+
+      return 0;
     }
 
   /*
@@ -2121,13 +2178,12 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * The verbose form displays all of the match rules, with hit-counters
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND (classify_filter, static) =
-{
+VLIB_CLI_COMMAND (classify_filter, static) = {
   .path = "classify filter",
   .short_help =
-  "classify filter <intfc> | pcap mask <mask-value> match <match-value>\n"
-  "  | trace mask <mask-value> match <match-value> [del]\n"
-  "    [buckets <nn>] [memory-size <n>]",
+    "classify filter <intfc> | pcap mask <mask-value> match <match-value>\n"
+    "  | trace mask <mask-value> match <match-value> [del] [del-chain]\n"
+    "    [buckets <nn>] [memory-size <n>]",
   .function = classify_filter_command_fn,
 };
 
