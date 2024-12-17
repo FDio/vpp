@@ -140,6 +140,34 @@ vlib_unregister_errors (vlib_main_t *vm, u32 node_index)
     }
 }
 
+/* Any time a new node is created, need to resize these arrays */
+static void
+vlib_register_error_per_context_adjust(vlib_main_t *vm)
+{
+  vlib_error_main_t *em = &vm->error_main;
+  u32 n_threads = vlib_get_n_threads ();
+  u32 *stats_err_index;
+  u64 **sc;
+
+  vec_foreach (stats_err_index, vm->error_main.stats_err_index_by_context)
+    {
+      if (stats_err_index[0] == 0)
+	continue;
+      sc = vlib_stats_get_entry_data_pointer (stats_err_index[0]);
+      u32 start = vec_len (sc[0]);
+
+      vlib_stats_validate (stats_err_index[0], n_threads - 1,
+			   vec_len (em->counters) - 1 );
+      u32 delta = vec_len (em->counters) - start;
+      ASSERT(delta >= 0);
+      for (int i = 0; i < n_threads; i++)
+        {
+            clib_memset (sc[i] + start, 0, delta * sizeof (sc[i][0]));
+        }
+    }
+
+}
+
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
@@ -227,6 +255,41 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
       nm->node_by_error[n->error_heap_index + i] = n->index;
     }
 
+  vlib_register_error_per_context_adjust (vm);
+
+done:
+  vlib_stats_segment_unlock ();
+}
+
+void
+vlib_register_errors_per_context (vlib_main_t *vm, u32 context)
+{
+  vlib_error_main_t *em = &vm->error_main;
+  u32 n_threads = vlib_get_n_threads ();
+  u64 **sc;
+  u32 stats_err_index;
+  vlib_stats_segment_lock ();
+
+  vec_validate_init_empty (em->stats_err_index_by_context, context, 0);
+  if (em->stats_err_index_by_context[context] != 0)
+  {
+      clib_warning("context %d already registered", context);
+      goto done;
+    }
+
+  em->stats_err_index_by_context[context] =
+    vlib_stats_add_counter_vector ("/node/errors/%d", context);
+
+  stats_err_index = em->stats_err_index_by_context[context];
+  vlib_stats_validate (stats_err_index, n_threads - 1, vec_len(em->counters));
+  sc = vlib_stats_get_entry_data_pointer (stats_err_index);
+  for (int i = 0; i < n_threads; i++)
+    {
+      vlib_main_t *tvm = vlib_get_main_by_index (i);
+      vlib_error_main_t *tem = &tvm->error_main;
+      tem->counters_per_tenant[context] = sc[i];
+      clib_memset (sc[i], 0, vec_len(em->counters) * sizeof (sc[i][0]));
+    }
 done:
   vlib_stats_segment_unlock ();
 }

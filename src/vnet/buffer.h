@@ -507,8 +507,8 @@ typedef struct
       u32 id;
     } reass;
   } ip;
-
-  u32 unused[5];
+  u32 tenant_id;
+  u32 unused[4];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)

@@ -246,6 +246,55 @@ process_drop_punt (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static_always_inline uword
+process_drop_punt_per_tenant (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_frame_t * frame, error_disposition_t disposition)
+{
+  u32 *from, n_left;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_error_main_t *em = &vm->error_main;
+
+  from = vlib_frame_vector_args (frame);
+  n_left = frame->n_vectors;
+  b = bufs;
+
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    trace_errors (vm, node, frame);
+
+  /* ... then count against them in blocks */
+  n_left = frame->n_vectors;
+
+  while (n_left)
+    {
+        em->counters[b[0]->error] += 1;
+        if ((b[0])->flow_id > 0)
+                em->counters_per_tenant[b[0]->flow_id][b[0]->error] += 1;
+        n_left -= 1;
+    }
+
+  if (disposition == ERROR_DISPOSITION_DROP || !vm->os_punt_frame)
+    {
+      vlib_buffer_free (vm, from, frame->n_vectors);
+
+      /* If there is no punt function, free the frame as well. */
+      if (disposition == ERROR_DISPOSITION_PUNT && !vm->os_punt_frame)
+	vlib_frame_free (vm, frame);
+    }
+  else
+    vm->os_punt_frame (vm, node, frame);
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (error_drop_per_tenant_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
+{
+  return process_drop_punt_per_tenant (vm, node, frame, ERROR_DISPOSITION_DROP);
+}
 VLIB_NODE_FN (error_drop_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
@@ -262,6 +311,14 @@ VLIB_NODE_FN (error_punt_node) (vlib_main_t * vm,
 
 VLIB_REGISTER_NODE (error_drop_node) = {
   .name = "drop",
+  .flags = VLIB_NODE_FLAG_IS_DROP,
+  .vector_size = sizeof (u32),
+  .format_trace = format_error_trace,
+  .validate_frame = validate_error_frame,
+};
+
+VLIB_REGISTER_NODE (error_drop_per_tenant_node) = {
+  .name = "drop-per-tenant",
   .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),
   .format_trace = format_error_trace,

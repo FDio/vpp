@@ -63,6 +63,7 @@ typedef struct
 {
   /* Error counters. */
   u64 *counters;
+  u64 **counters_per_tenant;
 
   /* Counter values as of last counter clear. */
   u64 *counters_last_clear;
@@ -73,6 +74,7 @@ typedef struct
 
   /* stats segment entry index */
   u32 stats_err_entry_index;
+  u32 *stats_err_index_by_context;
 } vlib_error_main_t;
 
 /* Per node error registration. */
@@ -80,6 +82,7 @@ void vlib_register_errors (struct vlib_main_t *vm, u32 node_index,
 			   u32 n_errors, char *error_strings[],
 			   vlib_error_desc_t counters[]);
 void vlib_unregister_errors (struct vlib_main_t *vm, u32 node_index);
+void vlib_register_errors_per_context (struct vlib_main_t *vm, u32 context);
 
 unformat_function_t unformat_vlib_error;
 

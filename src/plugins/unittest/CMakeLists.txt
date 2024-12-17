@@ -59,6 +59,7 @@ add_vpp_plugin(unittest
   util_test.c
   vlib_test.c
   counter_test.c
+  error_test.c
 
   COMPONENT
   vpp-plugin-devtools
