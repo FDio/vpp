@@ -2121,13 +2121,12 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * The verbose form displays all of the match rules, with hit-counters
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND (classify_filter, static) =
-{
+VLIB_CLI_COMMAND (classify_filter, static) = {
   .path = "classify filter",
-  .short_help =
-  "classify filter <intfc> | pcap mask <mask-value> match <match-value>\n"
-  "  | trace mask <mask-value> match <match-value> [del]\n"
-  "    [buckets <nn>] [memory-size <n>]",
+  .short_help = "classify filter [del] <intfc> | pcap mask <mask-value> match "
+		"<match-value>\n"
+		"  | trace mask <mask-value> match <match-value>\n"
+		"    [buckets <nn>] [memory-size <n>]",
   .function = classify_filter_command_fn,
 };
 
