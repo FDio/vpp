@@ -732,7 +732,8 @@ lcp_nl_drain_messages (void)
   nl_main_t *nm = &nl_main;
 
   /* Read until there's an error */
-  while ((err = nl_recvmsgs_default (nm->sk_route)) > -1)
+  while ((err = nm->sk_route ? nl_recvmsgs_default (nm->sk_route) :
+			       -NLE_BAD_SOCK) > -1)
     ;
 
   /* If there was an error other then EAGAIN, signal process node */
@@ -750,12 +751,6 @@ lcp_nl_drain_messages (void)
     }
 
   return err;
-}
-
-void
-lcp_nl_pair_add_cb (lcp_itf_pair_t *pair)
-{
-  lcp_nl_drain_messages ();
 }
 
 static clib_error_t *
@@ -1008,16 +1003,12 @@ clib_error_t *
 lcp_nl_init (vlib_main_t *vm)
 {
   nl_main_t *nm = &nl_main;
-  lcp_itf_pair_vft_t nl_itf_pair_vft = {
-    .pair_add_fn = lcp_nl_pair_add_cb,
-  };
 
   nm->nl_status = NL_STATUS_NOTIF_PROC;
   nm->clib_file_index = ~0;
   nm->nl_logger = vlib_log_register_class ("nl", "nl");
 
   lcp_nl_open_socket ();
-  lcp_itf_pair_register_vft (&nl_itf_pair_vft);
 
   return (NULL);
 }
