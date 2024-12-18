@@ -52,6 +52,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .supported_flow_actions = supported_flow_actions_intel,
     .use_intel_phdr_cksum = 1,
     .int_unmaskable = 1,
+    .program_vlans = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_e1000_igb_vf", "Intel e1000 VF" }),
