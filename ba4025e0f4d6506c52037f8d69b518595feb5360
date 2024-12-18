@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "df87366b_32eb5159",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 740,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-12-18T10:13:42Z",
+      "side": 1,
+      "message": "do we need to check for dm here?\nIf dm can be NULL here, then we should return an error\nOr we should never check for dm because it should never be NULL.\nReason I\u0027m saying is that is that if dm is NULL here, then we\u0027ll continue the execution to crash later below...",
+      "revId": "ba4025e0f4d6506c52037f8d69b518595feb5360",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
