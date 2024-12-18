@@ -75,6 +75,30 @@
       },
       "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "426cc56d_bc154b6d",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-12-18T12:18:16Z",
+      "side": 1,
+      "message": "I think it\u0027s a good idea, but this change needs to be done also in case of the slow path, so I would do this refactoring as a separate change.",
+      "parentUuid": "a21e8ae4_b1b26304",
+      "range": {
+        "startLine": 109,
+        "startChar": 1,
+        "endLine": 207,
+        "endChar": 2
+      },
+      "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
