@@ -391,16 +391,22 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 
 COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/http/*.h"
 
+LCOV_VERSION=$(shell lcov --version | sed -E 's/^lcov: LCOV version ([0-9]+)[.].*/\1/')
+LCOV_IGNORE_ERRORS=
+ifeq ($(LCOV_VERSION),2)
+LCOV_IGNORE_ERRORS=--ignore-errors mismatch,unused
+endif
+
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
-	@lcov --ignore-errors --capture \
+	@lcov $(LCOV_IGNORE_ERRORS) --capture \
 		--directory $(VPP_BUILD_DIR) \
 		--output-file $(BUILD_COV_DIR)/coverage$(HS_TEST).info
 	@test -z "$(EXTERN_COV_DIR)" || \
-		lcov --ignore-errors --capture \
+		lcov $(LCOV_IGNORE_ERRORS) --capture \
 		--directory $(EXTERN_COV_DIR) \
 		--output-file $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info
-	@lcov --ignore-errors --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
+	@lcov $(LCOV_IGNORE_ERRORS) --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
 		$(COV_REM_NOT_CODE) \
 		$(COV_REM_DRIVERS)  \
 		$(COV_REM_TODO_NO_TEST) \
