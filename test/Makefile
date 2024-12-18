@@ -399,16 +399,22 @@ COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*
 					 "*/vppinfra/pcap.c" "*/vppinfra/pcap_funcs.h"
 endif
 
+LCOV_VERSION=$(shell lcov --version | sed -E 's/^lcov: LCOV version ([0-9]+)[.].*/\1/')
+LCOV_IGNORE_ERRORS=
+ifeq ($(LCOV_VERSION),2)
+LCOV_IGNORE_ERRORS=--ignore-errors unused,empty,mismatch,gcov
+endif
+
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
-	@lcov --ignore-errors unused,empty,mismatch,gcov --capture \
+	@lcov $(LCOV_IGNORE_ERRORS) --capture \
 		--directory $(VPP_BUILD_DIR) \
 		--output-file $(BUILD_COV_DIR)/coverage$(HS_TEST).info
 	@test -z "$(EXTERN_COV_DIR)" || \
-		lcov --ignore-errors unused,empty,mismatch,gcov --capture \
+		lcov $(LCOV_IGNORE_ERRORS) --capture \
 		--directory $(EXTERN_COV_DIR) \
 		--output-file $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info
-	@lcov --ignore-errors unused,empty,mismatch,gcov --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
+	@lcov $(LCOV_IGNORE_ERRORS) --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
 		$(COV_REM_NOT_CODE) \
 		$(COV_REM_DRIVERS)  \
 		$(COV_REM_TODO_NO_TEST) \
