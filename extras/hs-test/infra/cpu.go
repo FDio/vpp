@@ -140,8 +140,11 @@ func (c *CpuAllocatorT) readCpus() error {
 
 			// make c.cpus divisible by maxContainerCount * nCpus, so we don't have to check which numa will be used
 			// and we can use offsets
-			count_to_remove := len(tmpCpus) % (c.maxContainerCount * *NConfiguredCpus)
-			c.cpus = append(c.cpus, tmpCpus[:len(tmpCpus)-count_to_remove]...)
+			countToRemove := len(tmpCpus) % (c.maxContainerCount * *NConfiguredCpus)
+			if countToRemove >= len(tmpCpus) {
+				return fmt.Errorf("requested too much CPUs per container (%d) should be no more than %d", *NConfiguredCpus, len(tmpCpus)/c.maxContainerCount)
+			}
+			c.cpus = append(c.cpus, tmpCpus[:len(tmpCpus)-countToRemove]...)
 			tmpCpus = tmpCpus[:0]
 		}
 	} else {
