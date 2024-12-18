@@ -194,8 +194,8 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     {
       clib_warning ("hc_session_index[%d] connected error: %U",
 		    hc_session_index, format_session_error, err);
-      vlib_process_signal_event_mt (vlib_get_main_by_index (s->thread_index),
-				    hcm->cli_node_index, HC_CONNECT_FAILED, 0);
+      vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
+				    HC_CONNECT_FAILED, 0);
       return -1;
     }
 
