@@ -547,9 +547,10 @@ hc_get_event (vlib_main_t *vm)
   uword event_type, *event_data = 0;
   clib_error_t *err = NULL;
   FILE *file_ptr;
-  u64 event_timeout = 10;
+  u64 event_timeout;
 
-  if (event_timeout == hcm->timeout || event_timeout == hcm->duration)
+  event_timeout = hcm->timeout ? hcm->timeout : 10;
+  if (event_timeout == hcm->duration)
     event_timeout += 5;
   vlib_process_wait_for_event_or_clock (vm, event_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
