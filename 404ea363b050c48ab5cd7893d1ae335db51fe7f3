@@ -34,6 +34,24 @@
       "parentUuid": "ab4e890d_3b35315e",
       "revId": "404ea363b050c48ab5cd7893d1ae335db51fe7f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e4316a68_29094619",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-12-19T17:51:13Z",
+      "side": 1,
+      "message": "That makes sense, but what happens when .program_vlans \u003d 0 vs .program_vlans \u003d 1? Without digging through the code, it would be nice to have a sentence or two explaining \"when \u0027program_vlans\u0027 is set to 0, [this happens, or something else cannot happen]. By setting it to 1, [something else happens, or something else doesn\u0027t happen] the latter is the desired behavior.\"",
+      "parentUuid": "3395ee52_5d76e8a4",
+      "revId": "404ea363b050c48ab5cd7893d1ae335db51fe7f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
