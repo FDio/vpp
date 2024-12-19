@@ -16,6 +16,24 @@
       "message": "Why is this needed?",
       "revId": "404ea363b050c48ab5cd7893d1ae335db51fe7f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3395ee52_5d76e8a4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2024-12-19T17:19:28Z",
+      "side": 1,
+      "message": "This feature was requested by Intel Customer, Essential this is for feature parity between the ixgbevf and iavf (i40evf) drivers.  They require this for their application which is based on VPP and they need to be able to perform VLAN hardware offloads consistently across their deployments.",
+      "parentUuid": "ab4e890d_3b35315e",
+      "revId": "404ea363b050c48ab5cd7893d1ae335db51fe7f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
