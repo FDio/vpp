@@ -309,27 +309,21 @@ check_tail:
 static int
 ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
 {
-  u32 s_index, bytes = 0;
+  u32 s_index, s_end, bytes = 0;
   ooo_segment_t *s;
-  i32 diff;
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
-  diff = *tail - s->start;
-
-  ASSERT (diff != n_bytes_enqueued);
-
-  if (diff > n_bytes_enqueued)
-    return 0;
 
   /* If last tail update overlaps one/multiple ooo segments, remove them */
-  while (0 <= diff && diff < n_bytes_enqueued)
+  while (f_pos_leq (s->start, *tail))
     {
       s_index = s - f->ooo_segments;
+      s_end = ooo_segment_end_pos (s);
 
       /* Segment end is beyond the tail. Advance tail and remove segment */
-      if (s->length > diff)
+      if (f_pos_leq (*tail, s_end))
 	{
-	  bytes = s->length - diff;
+	  bytes = s_end - *tail;
 	  *tail = *tail + bytes;
 	  ooo_segment_free (f, s_index);
 	  break;
@@ -339,7 +333,6 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
       if (s->next != OOO_SEGMENT_INVALID_INDEX)
 	{
 	  s = pool_elt_at_index (f->ooo_segments, s->next);
-	  diff = *tail - s->start;
 	  ooo_segment_free (f, s_index);
 	}
       /* End of search */
