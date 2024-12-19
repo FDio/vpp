@@ -733,6 +733,12 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
       sign = 1;
     }
 
+  /* Round x to closest value with n_fraction_digits digits after '.' */
+  f64 rounding = 0.5;
+  for (uword i = 0; i < n_fraction_digits; i++)
+    rounding *= 0.1;
+  x += rounding;
+
   /* Check for not-a-number. */
   if (isnan (x))
     return format (s, "%cNaN", sign ? '-' : '+');
@@ -788,11 +794,6 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
 	  digit++;
 	  x -= 1;
 	}
-
-      /* Round last printed digit. */
-      if (decimal_point <= 0
-	  && n_fraction_done + 1 == n_fraction_digits && digit < 9)
-	digit += x >= .5;
 
       vec_add1 (s, '0' + digit);
 
