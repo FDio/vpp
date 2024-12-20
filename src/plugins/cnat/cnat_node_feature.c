@@ -62,14 +62,17 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       iproto = ip4->protocol;
       udp0 = (udp_header_t *) (ip4 + 1);
       cc = cnat_client_ip4_find (
-	&ip4->dst_address); /* TODO do this only if no session? */
+	&ip4->dst_address,
+	vnet_buffer (b)->ip.fib_index); /* TODO do this only if no session? */
     }
   else
     {
       ip6 = vlib_buffer_get_current (b);
       iproto = ip6->protocol;
       udp0 = (udp_header_t *) (ip6 + 1);
-      cc = cnat_client_ip6_find (&ip6->dst_address); /* TODO: same as above */
+      cc = cnat_client_ip6_find (
+	&ip6->dst_address,
+	vnet_buffer (b)->ip.fib_index); /* TODO: same as above */
     }
 
   /* Wrong session key */

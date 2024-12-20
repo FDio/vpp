@@ -55,6 +55,11 @@ typedef struct cnat_ep_trk_t_
    * Allows to disable if not resolved yet
    */
   u8 ct_flags; /* cnat_trk_flag_t */
+
+  /**
+   * dst fib index
+   */
+  u32 ct_fib_idx;
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_

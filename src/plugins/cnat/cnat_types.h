@@ -91,6 +91,7 @@ typedef struct cnat_endpoint_t_
 {
   ip_address_t ce_ip;
   u32 ce_sw_if_index;
+  u32 ce_fib_idx;
   u16 ce_port;
   u8 ce_flags;
 } cnat_endpoint_t;

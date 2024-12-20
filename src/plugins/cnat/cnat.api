@@ -90,6 +90,55 @@ define cnat_translation_update_reply
   u32 id;
 };
 
+/* An enpoint is either
+ * An IP & a port
+ * An interface, an address familiy and a port
+ * An FIB table to which endpoint is belonging
+ */
+typedef cnat_endpoint_v2
+{
+  vl_api_address_t addr;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_family_t if_af;
+  u32 fib_table;
+  u16 port;
+};
+
+typedef cnat_endpoint_tuple_v2
+{
+  vl_api_cnat_endpoint_v2_t dst_ep;
+  vl_api_cnat_endpoint_v2_t src_ep;
+  u8 flags;
+};
+
+
+typedef cnat_translation_v2
+{
+  vl_api_cnat_endpoint_v2_t vip;
+  u32 id;
+  vl_api_ip_proto_t ip_proto;
+  u8 is_real_ip;
+  u8 flags;
+  vl_api_cnat_lb_type_t lb_type;
+  u32 n_paths;
+  vl_api_ip_flow_hash_config_v2_t flow_hash_config;
+  vl_api_cnat_endpoint_tuple_v2_t paths[n_paths];
+};
+
+define cnat_translation_update_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_cnat_translation_v2_t translation;
+};
+
+define cnat_translation_update_v2_reply
+{
+  u32 context;
+  i32 retval;
+  u32 id;
+};
+
 autoreply define cnat_translation_del
 {
   u32 client_index;
@@ -107,6 +156,31 @@ define cnat_translation_dump
 {
   u32 client_index;
   u32 context;
+};
+
+autoendian define cnat_translation_v2_details
+{
+  u32 context;
+  vl_api_cnat_translation_v2_t translation;
+};
+
+autoendian define cnat_translation_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+};
+
+autoendian define cnat_translation_v2_dump_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+service {
+  rpc cnat_translation_v2_dump returns cnat_translation_v2_dump_reply
+    stream cnat_translation_v2_details;
 };
 
 autoreply define cnat_session_purge

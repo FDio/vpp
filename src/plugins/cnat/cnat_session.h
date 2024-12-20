@@ -67,6 +67,11 @@ typedef struct cnat_session_t_
     u8 cs_loc;
 
     u8 __cs_pad;
+
+    /**
+     * FIB index for ingress traffic
+     */
+    u64 cs_fib_idx;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
@@ -103,7 +108,10 @@ typedef struct cnat_session_t_
      */
     u32 flags;
 
-    u32 __pad;
+    /**
+     * FIB index for egress traffic
+     */
+    u32 cs_fib_idx;
   } value;
 } cnat_session_t;
 
