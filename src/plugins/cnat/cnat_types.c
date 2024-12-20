@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/fib/fib_table.h>
 #include <cnat/cnat_types.h>
 
 cnat_main_t cnat_main;
@@ -74,6 +75,7 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
   cnat_endpoint_t *a = va_arg (*args, cnat_endpoint_t *);
   vnet_main_t *vnm = vnet_get_main ();
   int port = 0;
+  u32 table_id = 0;
 
   clib_memset (a, 0, sizeof (*a));
   a->ce_sw_if_index = INDEX_INVALID;
@@ -97,6 +99,19 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
     ;
   else
     return 0;
+
+  if (unformat (input, "table %d", &table_id))
+    {
+      fib_protocol_t fproto =
+	ip_address_family_to_fib_proto (a->ce_ip.version);
+      u32 fib_idx = fib_table_find (fproto, table_id);
+
+      if (fib_idx == ~0)
+	return 0;
+
+      a->ce_fib_idx = fib_idx;
+    }
+
   a->ce_port = (u16) port;
   return 1;
 }
@@ -135,7 +150,8 @@ format_cnat_endpoint (u8 * s, va_list * args)
   cnat_endpoint_t *cep = va_arg (*args, cnat_endpoint_t *);
   vnet_main_t *vnm = vnet_get_main ();
   if (INDEX_INVALID == cep->ce_sw_if_index)
-    s = format (s, "%U;%d", format_ip_address, &cep->ce_ip, cep->ce_port);
+    s = format (s, "%U;%d [fib %d]", format_ip_address, &cep->ce_ip,
+		cep->ce_port, cep->ce_fib_idx);
   else
     {
       if (cep->ce_flags & CNAT_EP_FLAG_RESOLVED)

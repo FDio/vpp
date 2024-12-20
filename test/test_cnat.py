@@ -63,10 +63,11 @@ class CnatCommonTestCase(VppTestCase):
 class Endpoint(object):
     """CNat endpoint"""
 
-    def __init__(self, pg=None, pgi=None, port=0, is_v6=False, ip=None):
+    def __init__(self, pg=None, pgi=None, port=0, is_v6=False, ip=None, table=0):
         self.port = port
         self.is_v6 = is_v6
         self.sw_if_index = INVALID_INDEX
+        self.table = table
         if pg is not None and pgi is not None:
             # pg interface specified and remote index
             self.ip = self.get_ip46(pg.remote_hosts[pgi])
@@ -83,7 +84,7 @@ class Endpoint(object):
             return obj.ip6
         return obj.ip4
 
-    def udpate(self, **kwargs):
+    def update(self, **kwargs):
         self.__init__(**kwargs)
 
     def _vpp_if_af(self):
@@ -97,6 +98,7 @@ class Endpoint(object):
             "port": self.port,
             "sw_if_index": self.sw_if_index,
             "if_af": self._vpp_if_af(),
+            "fib_table": self.table
         }
 
     def __str__(self):
@@ -129,7 +131,7 @@ class Translation(VppObject):
         ]
 
     def add_vpp_config(self):
-        r = self._test.vapi.cnat_translation_update(
+        r = self._test.vapi.cnat_translation_update_v2(
             {
                 "vip": self.vip.encode(),
                 "ip_proto": self._vl4_proto(),
@@ -452,7 +454,7 @@ class TestCNatTranslation(CnatCommonTestCase):
             # modify the translation to use a different backend
             #
             old_dst_port = translation.paths[0][DST].port
-            translation.paths[0][DST].udpate(
+            translation.paths[0][DST].update(
                 pg=self.pg2, pgi=0, port=5000, is_v6=vip.is_v6
             )
             translation.add_vpp_config()
@@ -680,6 +682,208 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation flow hash config """
         self._make_multi_backend_translations()
         self.cnat_fhc_translation()
+
+
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
+class TestCNatVRFTranslation(CnatCommonTestCase):
+    """CNat Translation"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestCNatVRFTranslation, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestCNatVRFTranslation, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestCNatVRFTranslation, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+        self.pg0.generate_remote_hosts(N_REMOTE_HOSTS)
+        self.pg1.generate_remote_hosts(N_REMOTE_HOSTS)
+
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 1, "is_ip6": False})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 2, "is_ip6": False})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 1, "is_ip6": True})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 2, "is_ip6": True})
+        self.vapi.cli("ip route add table 2 0.0.0.0/0 via ip4-lookup-in-table 1")
+        self.vapi.cli("ip route add table 2 ::/0 via ip6-lookup-in-table 1")
+
+        self.pg_interfaces[0].set_table_ip4(1)
+        self.pg_interfaces[1].set_table_ip4(2)
+        self.pg_interfaces[0].set_table_ip6(1)
+        self.pg_interfaces[1].set_table_ip6(2)
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.config_ip6()
+            i.resolve_ndp()
+            i.configure_ipv4_neighbors()
+            i.configure_ipv6_neighbors()
+
+    def tearDown(self):
+        for translation in self.translations:
+            translation.remove_vpp_config()
+
+        self.vapi.cnat_session_purge()
+        self.assertFalse(self.vapi.cnat_session_dump())
+
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+
+        self.vapi.cli("ip route del table 2 0.0.0.0/0")
+        self.vapi.cli("ip route del table 2 ::/0")
+        self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": 1, "is_ip6": False})
+        self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": 2, "is_ip6": False})
+        self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": 1, "is_ip6": True})
+        self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": 2, "is_ip6": True})
+
+        super(TestCNatVRFTranslation, self).tearDown()
+
+    def cnat_translation(self):
+        """CNat Translation"""
+        self.logger.info(self.vapi.cli("sh cnat client"))
+        self.logger.info(self.vapi.cli("sh cnat translation"))
+
+        for nbr, translation in enumerate(self.translations):
+            vip = translation.vip
+            self.logger.info(vip)
+
+            #
+            # Test Flows to the VIP
+            #
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
+                # from client to vip
+                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                self.logger.info(self.vapi.cli("sh cnat session verbose"))
+                self.logger.info(self.vapi.cli("sh cnat client"))
+                self.logger.info(self.vapi.cli("sh ip fib table 2 172.16.1.2"))
+                dst_port = translation.paths[0][DST].port
+                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dst_port)
+                # from vip to client
+                ctx.cnat_send_return().cnat_expect_return()
+
+                #
+                # packets to the VIP that do not match a
+                # translation are dropped
+                #
+                ctx.cnat_send(
+                    self.pg0, src_pgi, sport, self.pg1, vip.ip, 6666, no_replies=True
+                )
+
+                #
+                # packets from the VIP that do not match a
+                # session are forwarded
+                #
+                ctx.cnat_send(self.pg1, nbr, 6666, self.pg0, src_pgi, sport)
+                ctx.cnat_expect(self.pg1, nbr, 6666, self.pg0, src_pgi, sport)
+
+
+    def _make_translations_v4(self):
+        self.translations = []
+        self.translations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30.0.0.1", port=5555, is_v6=False, table=1),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=0, port=4001, is_v6=False, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+        self.translations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30.0.0.2", port=5554, is_v6=False, table=1),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=1, port=4002, is_v6=False, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+        self.translations.append(
+            Translation(
+                self,
+                UDP,
+                Endpoint(ip="30.0.0.2", port=5553, is_v6=False, table=1),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=2, port=4003, is_v6=False, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+
+    def _make_translations_v6(self):
+        self.translations = []
+        self.translations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30::1", port=5555, is_v6=True, table=1),
+                [
+                    (
+                        Endpoint(is_v6=True),
+                        Endpoint(pg=self.pg1, pgi=0, port=4001, is_v6=True, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+        self.translations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30::2", port=5554, is_v6=True, table=1),
+                [
+                    (
+                        Endpoint(is_v6=True),
+                        Endpoint(pg=self.pg1, pgi=1, port=4002, is_v6=True, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+        self.translations.append(
+            Translation(
+                self,
+                UDP,
+                Endpoint(ip="30::2", port=5553, is_v6=True, table=1),
+                [
+                    (
+                        Endpoint(is_v6=True),
+                        Endpoint(pg=self.pg1, pgi=2, port=4003, is_v6=True, table=2),
+                    )
+                ],
+                0x9F,
+            ).add_vpp_config()
+        )
+
+    def test_vrf_cnat6(self):
+        # """ CNat Translation ipv6 """
+        self._make_translations_v6()
+        self.cnat_translation()
+
+    def test_vrf_cnat4(self):
+        # """ CNat Translation ipv4 """
+        self._make_translations_v4()
+        self.cnat_translation()
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")

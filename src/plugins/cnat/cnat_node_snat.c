@@ -124,6 +124,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (iproto == IP_PROTOCOL_TCP || iproto == IP_PROTOCOL_UDP)
 	session->value.cs_port[VLIB_TX] = udp0->dst_port;
 
+      session->value.cs_fib_idx = cpm->snat_ip4.ce_fib_idx;
       session->value.cs_lbi = INDEX_INVALID;
       session->value.flags =
 	CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
@@ -138,6 +139,8 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
     cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
   else
     cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
+
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = session->value.cs_fib_idx;
 
 trace:
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
