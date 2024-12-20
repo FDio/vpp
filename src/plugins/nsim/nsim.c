@@ -116,10 +116,8 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
   hw = vnet_get_hw_interface (nsm->vnet_main, sw_if_index);
   vec_validate_init_empty (nsm->output_next_index_by_sw_if_index, sw_if_index,
 			   ~0);
-  /* Note: use the tx node, this pkt has already visited the output node... */
-  nsm->output_next_index_by_sw_if_index[sw_if_index] =
-    vlib_node_add_next (nsm->vlib_main, nsim_input_node.index,
-			hw->tx_node_index);
+  nsm->output_next_index_by_sw_if_index[sw_if_index] = vlib_node_add_next (
+    nsm->vlib_main, nsim_input_node.index, hw->output_node_index);
 
   vnet_feature_enable_disable ("interface-output", "nsim-output-feature",
 			       sw_if_index, enable_disable, 0, 0);
