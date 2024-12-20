@@ -1070,6 +1070,13 @@ vlib_worker_thread_node_refork (void)
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
 
+  for (j = vec_len (old_rt);
+       j < vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]); j++)
+    {
+      rt = &nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT][j];
+      nm_clone->input_node_counts_by_state[rt->state] += 1;
+    }
+
   vec_free (old_rt);
 
   /* re-clone pre-input nodes */
