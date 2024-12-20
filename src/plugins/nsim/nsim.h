@@ -54,9 +54,12 @@ typedef struct nsim_node_ctx
   u32 *drop;
   u32 *reord;
   u16 *reord_nexts;
+  u32 *fwd;
+  u16 *fwd_nexts;
   u8 *action;
-  u64 n_buffered;
-  u64 n_loss;
+  u32 n_buffered;
+  u32 n_loss;
+  u32 n_reordered;
 } nsim_node_ctx_t;
 
 #define foreach_nsm_action			\
