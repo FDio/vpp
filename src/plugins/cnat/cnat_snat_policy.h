@@ -80,7 +80,7 @@ typedef struct cnat_snat_policy_main_t_
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
 
 extern void cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6,
-			   u32 sw_if_index);
+			   u32 sw_if_index, u32 table_id);
 extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
 extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);
 extern int cnat_set_snat_policy (cnat_snat_policy_type_t policy);

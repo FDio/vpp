@@ -123,6 +123,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 	}
 
       /* add the session */
+      session->value.cs_fib_idx = trk0->ct_fib_idx;
       ip46_address_copy (&session->value.cs_ip[VLIB_TX],
 			 &trk0->ct_ep[VLIB_TX].ce_ip.ip);
       if (ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
@@ -181,6 +182,8 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
     cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
   else
     cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
+
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = session->value.cs_fib_idx;
 
   if (NULL != ct)
     {

@@ -103,10 +103,9 @@ cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
     }
 
   ip_address_to_fib_prefix (&trk->ct_ep[VLIB_TX].ce_ip, &pfx);
-  trk->ct_fei = fib_entry_track (CNAT_FIB_TABLE,
-				 &pfx,
-				 cnat_translation_fib_node_type,
-				 cti, &trk->ct_sibling);
+  trk->ct_fei =
+    fib_entry_track (trk->ct_fib_idx, &pfx, cnat_translation_fib_node_type,
+		     cti, &trk->ct_sibling);
 
   fib_entry_contribute_forwarding (trk->ct_fei,
 				   fib_forw_chain_type_from_fib_proto
@@ -203,10 +202,8 @@ cnat_remove_translation_from_db (index_t cci, cnat_endpoint_t * vip,
   clib_bihash_add_del_8_8 (&cnat_translation_db, &bkey, 0);
 }
 
-
-
-static void
-cnat_translation_stack (cnat_translation_t * ct)
+void
+cnat_translation_stack (cnat_translation_t *ct)
 {
   fib_protocol_t fproto;
   cnat_ep_trk_t *trk;
@@ -220,8 +217,10 @@ cnat_translation_stack (cnat_translation_t * ct)
   vec_reset_length (ct->ct_active_paths);
 
   vec_foreach (trk, ct->ct_paths)
-    if (trk->ct_flags & CNAT_TRK_ACTIVE)
-      vec_add1 (ct->ct_active_paths, *trk);
+    {
+      if (trk->ct_flags & CNAT_TRK_ACTIVE)
+	vec_add1 (ct->ct_active_paths, *trk);
+    }
 
   flow_hash_config_t fhc = IP_FLOW_HASH_DEFAULT;
   if (ct->fhc != 0)
@@ -287,7 +286,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   else
     {
       /* do we know of this ep's vip */
-      cci = cnat_client_add (&vip->ce_ip, flags);
+      cci = cnat_client_add (vip->ce_fib_idx, &vip->ce_ip, flags);
       cc = cnat_client_get (cci);
 
       ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
@@ -344,6 +343,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 		 sizeof (trk->ct_ep[VLIB_RX]));
     trk->ct_flags = path->ep_flags;
     trk->ct_dpo = tmp;
+    trk->ct_fib_idx = path->dst_ep.ce_fib_idx;
 
     cnat_tracker_track (ct->index, trk);
   }
@@ -601,10 +601,11 @@ done:
   return (e);
 }
 
-VLIB_CLI_COMMAND (cnat_translation_cli_add_del_command, static) =
-{
+VLIB_CLI_COMMAND (cnat_translation_cli_add_del_command, static) = {
   .path = "cnat translation",
-  .short_help = "cnat translation [add|del] proto [TCP|UDP] [vip|real] [ip|sw_if_index [v6]] [port] [to [ip|sw_if_index [v6]] [port]->[ip|sw_if_index [v6]] [port]]",
+  .short_help = "cnat translation [add|del] proto [TCP|UDP] [vip|real] [table "
+		"[table_id]] [ip|sw_if_index [v6]] [port] [to [ip|sw_if_index "
+		"[v6]] [port]->[ip|sw_if_index [v6]] [port]]",
   .function = cnat_translation_cli_add_del,
 };
 
@@ -631,7 +632,7 @@ cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
 
   if (!is_del)
     {
-      ct->ct_cci = cnat_client_add (address, ct->flags);
+      ct->ct_cci = cnat_client_add (ct->ct_vip.ce_fib_idx, address, ct->flags);
       cnat_client_translation_added (ct->ct_cci);
       ip_address_copy (&ct->ct_vip.ce_ip, address);
       ct->ct_vip.ce_flags |= CNAT_EP_FLAG_RESOLVED;

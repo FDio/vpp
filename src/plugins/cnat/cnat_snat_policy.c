@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_snat_policy.h>
 #include <cnat/cnat_translation.h>
@@ -342,7 +343,8 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
 }
 
 void
-cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index)
+cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index,
+	       u32 table_id)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
 
@@ -354,6 +356,8 @@ cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index)
   ip_address_set (&cpm->snat_ip6.ce_ip, ip6, AF_IP6);
   cpm->snat_ip4.ce_sw_if_index = sw_if_index;
   cpm->snat_ip6.ce_sw_if_index = sw_if_index;
+  cpm->snat_ip4.ce_fib_idx = fib_table_find (FIB_PROTOCOL_IP4, table_id);
+  cpm->snat_ip6.ce_fib_idx = fib_table_find (FIB_PROTOCOL_IP6, table_id);
 
   cnat_resolve_ep (&cpm->snat_ip4);
   cnat_resolve_ep (&cpm->snat_ip6);
@@ -371,6 +375,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
   vnet_main_t *vnm = vnet_get_main ();
   ip4_address_t ip4 = { { 0 } };
   ip6_address_t ip6 = { { 0 } };
+  u32 table_id = 0;
   clib_error_t *e = 0;
   u32 sw_if_index = INDEX_INVALID;
 
@@ -389,6 +394,8 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
 			      &sw_if_index))
 	;
+      else if (unformat (line_input, "table %d", &table_id))
+	;
       else
 	{
 	  e = clib_error_return (0, "unknown input '%U'",
@@ -397,7 +404,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  cnat_set_snat (&ip4, &ip6, sw_if_index);
+  cnat_set_snat (&ip4, &ip6, sw_if_index, table_id);
 
 done:
   unformat_free (line_input);
@@ -407,8 +414,8 @@ done:
 
 VLIB_CLI_COMMAND (cnat_set_snat_command, static) = {
   .path = "set cnat snat-policy addr",
-  .short_help =
-    "set cnat snat-policy addr [<ip4-address>][<ip6-address>][sw_if_index]",
+  .short_help = "set cnat snat-policy addr "
+		"[<ip4-address>][<ip6-address>][sw_if_index] table [table_id]",
   .function = cnat_set_snat_cli,
 };
 
