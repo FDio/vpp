@@ -19,4 +19,7 @@ add_vpp_plugin(ping
 
   API_FILES
   ping.api
+
+  API_TEST_SOURCES
+  ping_test.c
 )
