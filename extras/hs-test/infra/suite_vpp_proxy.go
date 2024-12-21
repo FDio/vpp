@@ -7,8 +7,10 @@ package hst
 
 import (
 	"fmt"
+	"net"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -70,7 +72,9 @@ func (s *VppProxySuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// VPP HTTP connect-proxy
-	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus)
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G")
+	vpp, err := s.Containers.VppProxy.newVppInstance(s.Containers.VppProxy.AllocatedCpus, memoryConfig)
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
 	s.AssertNil(vpp.Start())
@@ -174,6 +178,37 @@ func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) 
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
 	s.AssertNotContains(log, "Upgrade:")
+}
+
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+	buf := make([]byte, 1500)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			break
+		}
+		_, err = conn.Write(buf[:n])
+		if err != nil {
+			break
+		}
+	}
+}
+
+func (s *VppProxySuite) StartEchoServer() *net.TCPListener {
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(s.ServerAddr()), Port: int(s.ServerPort())})
+	s.AssertNil(err, fmt.Sprint(err))
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				continue
+			}
+			go handleConn(conn)
+		}
+	}()
+	s.Log("* started tcp echo server " + s.ServerAddr() + ":" + strconv.Itoa(int(s.ServerPort())))
+	return listener
 }
 
 var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
