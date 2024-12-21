@@ -237,6 +237,8 @@ func (vpp *VppInstance) Start() error {
 	}
 	vpp.ApiStream = ch
 
+	AddReportEntry("VPP version", vpp.Vppctl("show version verbose"), ReportEntryVisibilityNever)
+
 	return nil
 }
 

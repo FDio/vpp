@@ -12,6 +12,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = ReportAfterSuite("VPP version under test", func(report Report) {
+	for i := range report.SpecReports {
+		specReport := report.SpecReports[i]
+		for j := range specReport.ReportEntries {
+			reportEntry := specReport.ReportEntries[j]
+			if reportEntry.Name == "VPP version" {
+				fmt.Println(reportEntry.Value)
+				return
+			}
+		}
+	}
+})
+
 func TestHst(t *testing.T) {
 	if *IsVppDebug {
 		// 30 minute timeout so that the framework won't timeout while debugging
