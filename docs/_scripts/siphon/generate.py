@@ -28,10 +28,10 @@ siphon_patterns = []
 class Generate(object):
     """Matches a siphon comment block start"""
 
-    siphon_block_start = re.compile("^\s*/\*\?\s*(.*)$")
+    siphon_block_start = re.compile(r"^\s*/\*\?\s*(.*)$")
 
     """Matches a siphon comment block stop"""
-    siphon_block_stop = re.compile("^(.*)\s*\?\*/\s*$")
+    siphon_block_stop = re.compile(r"^(.*)\s*\?\*/\s*$")
 
     """Siphon block directive delimiter"""
     siphon_block_delimiter = "%%"
@@ -39,12 +39,12 @@ class Generate(object):
     """Matches a siphon block directive such as
        '%clicmd:group_label Debug CLI%'"""
     siphon_block_directive = re.compile(
-        "(%s)\s*([a-zA-Z0-9_:]+)\s+(.*)\s*(%s)"
+        r"(%s)\s*([a-zA-Z0-9_:]+)\s+(.*)\s*(%s)"
         % (siphon_block_delimiter, siphon_block_delimiter)
     )
 
     """Matches the start of an initializer block"""
-    siphon_initializer = re.compile("\s*=")
+    siphon_initializer = re.compile(r"\s*=")
 
     """Collated output for each siphon"""
     output = None
