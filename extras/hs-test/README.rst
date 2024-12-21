@@ -20,9 +20,9 @@ Anatomy of a test case
 **Prerequisites**:
 
 * Install hs-test dependencies with ``make install-deps``
-* Tests use *hs-test*'s own docker image, so building it before starting tests is a prerequisite. Run ``make build[-debug]`` to do so
-* Docker has to be installed and Go has to be in path of both the running user and root
+* `Install Go <https://go.dev/doc/install>`_, it has to be in path of both the running user (follow instructions on Go installation page) and root (run ``sudo visudo`` and edit ``secure_path`` line, run ``sudo go version`` to verify)
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
+* Tests use *hs-test*'s own docker image, they are rebuild automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
 
 **Action flow when running a test case**:
 
