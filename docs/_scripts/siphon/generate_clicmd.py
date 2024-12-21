@@ -20,7 +20,7 @@ from . import generate
 generate.siphon_patterns.append(
     (
         re.compile(
-            "(?P<m>VLIB_CLI_COMMAND)\s*" "[(](?P<name>[a-zA-Z0-9_]+)(,[^)]*)?[)]"
+            r"(?P<m>VLIB_CLI_COMMAND)\s*" "[(](?P<name>[a-zA-Z0-9_]+)(,[^)]*)?[)]"
         ),
         "clicmd",
     )

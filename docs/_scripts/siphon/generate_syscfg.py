@@ -20,8 +20,8 @@ from . import generate
 generate.siphon_patterns.append(
     (
         re.compile(
-            "(?P<m>VLIB_CONFIG_FUNCTION)\s*"
-            '[(](?P<fn>[a-zA-Z0-9_]+)\s*,\s*"(?P<name>[^"]*)"[)]'
+            r"(?P<m>VLIB_CONFIG_FUNCTION)\s*"
+            r'[(](?P<fn>[a-zA-Z0-9_]+)\s*,\s*"(?P<name>[^"]*)"[)]'
         ),
         "syscfg",
     )
