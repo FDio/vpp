@@ -12,7 +12,7 @@ LAST_STATE_FILE=".last_state_hash"
 
 # get current state hash and ubuntu version
 current_state_hash=$(git status --porcelain | grep -vE '(/\.|/10|\.go$|\.sum$|\.mod$|\.txt$|\.test$)' | sha1sum | awk '{print $1}')
-current_state_hash=$current_state_hash$UBUNTU_VERSION
+current_state_hash=$current_state_hash$UBUNTU_VERSION$1
 
 if [ -f "$LAST_STATE_FILE" ]; then
     last_state_hash=$(cat "$LAST_STATE_FILE")
@@ -64,11 +64,12 @@ mkdir -p ${bin} ${lib} || true
 rm -rf vpp-data/bin/* || true
 rm -rf vpp-data/lib/* || true
 
+declare -i res=0
 cp ${VPP_BUILD_ROOT}/bin/* ${bin}
 res+=$?
 cp -r ${VPP_BUILD_ROOT}/lib/"${OS_ARCH}"-linux-gnu/* ${lib}
 res+=$?
-if [ $res -ne 0 ]; then
+if [ "$res" -ne 0 ]; then
 	echo "Failed to copy VPP files. Is VPP built? Try running 'make build' in VPP directory."
 	exit 1
 fi
