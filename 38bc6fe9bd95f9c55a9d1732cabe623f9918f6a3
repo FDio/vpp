@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34d1ba22_03df0449",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-21T05:05:30Z",
+      "side": 1,
+      "message": "Looks good! Just a couple of nits",
+      "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0d3b093_60226aae",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 643,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-21T05:05:30Z",
+      "side": 1,
+      "message": "export still needed?",
+      "range": {
+        "startLine": 643,
+        "startChar": 0,
+        "endLine": 643,
+        "endChar": 13
+      },
+      "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6bada1e_6dea524e",
+        "filename": "src/plugins/auto_sdl/auto_sdl.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-21T05:05:30Z",
+      "side": 1,
+      "message": "Are these still needed?",
+      "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
