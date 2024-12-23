@@ -59,6 +59,7 @@ proxy_send_http_resp (session_t *s, http_status_code_t sc,
   int rv;
   u8 *headers_buf = 0;
 
+  ASSERT (s->thread_index == vlib_get_thread_index ());
   if (vec_len (resp_headers))
     {
       headers_buf = http_serialize_headers (resp_headers);
@@ -438,10 +439,10 @@ proxy_accept_callback (session_t * s)
   ps->po.session_handle = session_handle (s);
   ps->po.rx_fifo = s->rx_fifo;
   ps->po.tx_fifo = s->tx_fifo;
+  ps->po.is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
 
   ps->ao.session_handle = SESSION_INVALID_HANDLE;
   sc->ps_index = ps->ps_index;
-  sc->is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
@@ -755,6 +756,26 @@ active_open_alloc_session_fifos (session_t *s)
   return 0;
 }
 
+static void
+active_open_send_http_resp_rpc (void *arg)
+{
+  u32 ps_index = pointer_to_uword (arg);
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_t *ps;
+  http_status_code_t sc;
+  session_t *po_s;
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (ps_index);
+  po_s = session_get_from_handle (ps->po.session_handle);
+  sc = ps->ao_disconnected ? HTTP_STATUS_BAD_GATEWAY : HTTP_STATUS_OK;
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  proxy_send_http_resp (po_s, sc, 0);
+}
+
 static int
 active_open_connected_callback (u32 app_index, u32 opaque,
 				session_t * s, session_error_t err)
@@ -763,8 +784,6 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   proxy_session_t *ps;
   proxy_worker_t *wrk;
   proxy_session_side_ctx_t *sc;
-  session_t *po_s;
-  transport_proto_t tp;
 
   /* Connection failed */
   if (err)
@@ -772,13 +791,14 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       clib_spinlock_lock_if_init (&pm->sessions_lock);
 
       ps = proxy_session_get (opaque);
-      po_s = session_get_from_handle (ps->po.session_handle);
-      tp = session_get_transport_proto (po_s);
-      if (tp == TRANSPORT_PROTO_HTTP)
-	{
-	  proxy_send_http_resp (po_s, HTTP_STATUS_BAD_GATEWAY, 0);
-	}
       ps->ao_disconnected = 1;
+      if (ps->po.is_http)
+	{
+	  session_send_rpc_evt_to_thread (
+	    session_thread_from_handle (ps->po.session_handle),
+	    active_open_send_http_resp_rpc,
+	    uword_to_pointer (ps->ps_index, void *));
+	}
       proxy_session_close_po (ps);
 
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
@@ -807,9 +827,6 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       return -1;
     }
 
-  po_s = session_get_from_handle (ps->po.session_handle);
-  tp = session_get_transport_proto (po_s);
-
   sc = proxy_session_side_ctx_alloc (wrk);
   sc->pair = ps->po;
   sc->ps_index = ps->ps_index;
@@ -818,11 +835,13 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 
   sc->state = PROXY_SC_S_ESTABLISHED;
   s->opaque = sc->sc_index;
-  sc->is_http = tp == TRANSPORT_PROTO_HTTP ? 1 : 0;
 
-  if (tp == TRANSPORT_PROTO_HTTP)
+  if (sc->pair.is_http)
     {
-      proxy_send_http_resp (po_s, HTTP_STATUS_OK, 0);
+      session_send_rpc_evt_to_thread (
+	session_thread_from_handle (ps->po.session_handle),
+	active_open_send_http_resp_rpc,
+	uword_to_pointer (ps->ps_index, void *));
     }
   else
     {
@@ -999,7 +1018,7 @@ active_open_tx_callback (session_t * ao_s)
   if (sc->state < PROXY_SC_S_ESTABLISHED)
     return 0;
 
-  if (sc->is_http)
+  if (sc->pair.is_http)
     {
       /* notify HTTP transport */
       session_t *po = session_get_from_handle (sc->pair.session_handle);

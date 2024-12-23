@@ -43,6 +43,7 @@ typedef struct proxy_session_side_
   session_handle_t session_handle;
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
+  u8 is_http;
 } proxy_session_side_t;
 
 typedef struct proxy_session_side_ctx_
@@ -51,7 +52,6 @@ typedef struct proxy_session_side_ctx_
   proxy_session_side_state_t state;
   u32 sc_index;
   u32 ps_index;
-  u8 is_http;
 } proxy_session_side_ctx_t;
 
 typedef struct
