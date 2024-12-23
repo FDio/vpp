@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0d47003_8e6a649c",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1021,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-12-23T21:03:10Z",
+      "side": 1,
+      "message": "We should eventually handle this branch in proxy_force_ack (maybe rename) since we have to handle multiple protocols there, e.g., tls.",
+      "revId": "755690c6c31671bdce4771db04199e151c32c5d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
