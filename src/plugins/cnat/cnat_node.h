@@ -194,6 +194,9 @@ cnat_ip4_translate_l4 (ip4_header_t *ip4, udp_header_t *udp, ip_csum_t *sum,
   udp->dst_port = new_port[VLIB_TX];
   udp->src_port = new_port[VLIB_RX];
 
+  if (ip4->protocol == IP_PROTOCOL_UDP && udp->checksum == 0)
+    return;
+
   if (oflags &
       (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
     {
@@ -428,7 +431,8 @@ cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
     {
       ip_csum_t sum = udp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port, oflags);
-      udp->checksum = ip_csum_fold (sum);
+      if (udp->checksum)
+	udp->checksum = ip_csum_fold (sum);
       cnat_ip4_translate_l3 (ip4, new_addr, oflags);
     }
   else if (ip4->protocol == IP_PROTOCOL_SCTP)
