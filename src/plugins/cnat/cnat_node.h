@@ -198,8 +198,12 @@ cnat_ip4_translate_l4 (ip4_header_t *ip4, udp_header_t *udp, ip_csum_t *sum,
       (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
     {
       *sum = ip4_pseudo_header_cksum2 (ip4, new_addr);
+      *sum = ip_csum_fold (*sum);
       return;
     }
+
+  if (ip4->protocol == IP_PROTOCOL_UDP && udp->checksum == 0)
+    return;
 
   *sum = ip_csum_update (*sum, ip4->dst_address.as_u32,
 			 new_addr[VLIB_TX].as_u32, ip4_header_t, dst_address);
@@ -210,6 +214,7 @@ cnat_ip4_translate_l4 (ip4_header_t *ip4, udp_header_t *udp, ip_csum_t *sum,
 			 udp_header_t, dst_port);
   *sum = ip_csum_update (*sum, old_port[VLIB_RX], new_port[VLIB_RX],
 			 udp_header_t, src_port);
+  *sum = ip_csum_fold (*sum);
 }
 
 static_always_inline void
@@ -333,7 +338,7 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
       inner_l4_old_sum = inner_l4_sum = tcp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* flags */);
-      tcp->checksum = ip_csum_fold (inner_l4_sum);
+      tcp->checksum = inner_l4_sum;
 
       /* TCP checksum changed */
       sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
@@ -344,7 +349,7 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
       inner_l4_old_sum = inner_l4_sum = udp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &inner_l4_sum, new_addr, new_port,
 			     0 /* flags */);
-      udp->checksum = ip_csum_fold (inner_l4_sum);
+      udp->checksum = inner_l4_sum;
 
       /* UDP checksum changed */
       sum = ip_csum_update (sum, inner_l4_old_sum, inner_l4_sum, ip4_header_t,
@@ -420,7 +425,7 @@ cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
     {
       ip_csum_t sum = tcp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port, oflags);
-      tcp->checksum = ip_csum_fold (sum);
+      tcp->checksum = sum;
       cnat_ip4_translate_l3 (ip4, new_addr, oflags);
       cnat_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
     }
@@ -428,7 +433,7 @@ cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
     {
       ip_csum_t sum = udp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port, oflags);
-      udp->checksum = ip_csum_fold (sum);
+      udp->checksum = sum;
       cnat_ip4_translate_l3 (ip4, new_addr, oflags);
     }
   else if (ip4->protocol == IP_PROTOCOL_SCTP)
