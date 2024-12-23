@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d58b3521_9fda8bd9",
+        "filename": "src/plugins/auto_sdl/auto_sdl.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 643,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-12-23T00:47:44Z",
+      "side": 1,
+      "message": "yes, see answer from auto_sdl.h",
+      "parentUuid": "f0d3b093_60226aae",
+      "range": {
+        "startLine": 643,
+        "startChar": 0,
+        "endLine": 643,
+        "endChar": 13
+      },
+      "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f6bada1e_6dea524e",
@@ -54,6 +78,24 @@
       "writtenOn": "2024-12-21T05:05:30Z",
       "side": 1,
       "message": "Are these still needed?",
+      "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0dbf6503_2cee3a2e",
+        "filename": "src/plugins/auto_sdl/auto_sdl.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-12-23T00:47:44Z",
+      "side": 1,
+      "message": "Yes, auto_sdl and auto_sdl_test are 2 different plugins. auto_sdl_test calls auto_sdl_track_prefix, auto_sdl_pool_size, and auto_sdl_config which are defined in auto_sdl plugin. Instead of exporting 3 different symbols, we export only auto_sdl_plugin_methods_vtable_init which contains the 3 different needed callbacks.",
+      "parentUuid": "f6bada1e_6dea524e",
       "revId": "38bc6fe9bd95f9c55a9d1732cabe623f9918f6a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
