@@ -93,6 +93,7 @@ For more details click on the links below or press next.
     interfacing/binapi/index
     interfacing/c/index
     interfacing/cpp/index
+    interfacing/python/index
     interfacing/go/index
     interfacing/rust/index
     interfacing/libmemif/index
