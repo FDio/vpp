@@ -459,8 +459,11 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
   dns_header_t *h;
   dns_query_t *qp;
   u16 tmp;
-  u8 *request, *name_copy;
+  u8 *request;
+  u8 *name_copy;
   u32 qp_offset;
+  u16 qdcount;
+  dns_pending_request_t *pr;
 
   /* This can easily happen if sitting in GDB, etc. */
   if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID || ep->server_fails > 1)
@@ -486,19 +489,40 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
        */
 
       /* Add space for the query header */
-      vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
+      vec_validate (request, qp_offset + sizeof (dns_query_t) - 1);
 
-      qp = (dns_query_t *) (request + qp_offset);
+      pr = vec_elt_at_index (ep->pending_requests, 0);
+      switch (pr->request_type)
+	{
+	case DNS_API_PENDING_IP_TO_NAME:
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
-      qp++;
-      clib_memcpy (qp, name_copy, vec_len (name_copy));
-      qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
-      vec_free (name_copy);
+	  qdcount = 1;
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  /* Add space for the query header */
+	  vec_validate (request, qp_offset + sizeof (dns_query_t) - 1);
+	  qp = (dns_query_t *) (request + qp_offset);
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
+	  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  break;
+	case DNS_API_PENDING_NAME_TO_IP:
+
+	  qdcount = 2;
+
+	  /* Add space for the query header */
+	  vec_validate (request, qdcount * qp_offset +
+				   qdcount * sizeof (dns_query_t) - 1);
+	  qp = (dns_query_t *) (request + qp_offset);
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  qp++;
+	  clib_memcpy (qp, name_copy, vec_len (name_copy));
+	  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+	  vec_free (name_copy);
+
+	  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  break;
+	}
 
       /* Punch in space for the dns_header_t */
       vec_insert (request, sizeof (dns_header_t), 0);
@@ -511,7 +535,7 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
       /* Ask for a recursive lookup */
       tmp = DNS_RD | DNS_OPCODE_QUERY;
       h->flags = clib_host_to_net_u16 (tmp);
-      h->qdcount = clib_host_to_net_u16 (2);
+      h->qdcount = clib_host_to_net_u16 (qdcount);
       h->nscount = 0;
       h->arcount = 0;
 
@@ -949,6 +973,7 @@ vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
 	  /* Real address record? Done.. */
 	case DNS_TYPE_A:
 	case DNS_TYPE_AAAA:
+	case DNS_TYPE_PTR:
 	  return 0;
 	  /*
 	   * Maybe chase a CNAME pointer?
@@ -1216,9 +1241,7 @@ vnet_dns_response_to_reply (u8 *response, dns_resolve_name_t *rn,
 }
 
 int
-vnet_dns_response_to_name (u8 * response,
-			   vl_api_dns_resolve_ip_reply_t * rmp,
-			   u32 * min_ttlp)
+vnet_dns_response_to_name (u8 *response, dns_resolve_ip_t *ri, u32 *min_ttlp)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -1329,11 +1352,11 @@ vnet_dns_response_to_name (u8 * response,
 	{
 	case DNS_TYPE_PTR:
 	  name = vnet_dns_labels_to_name (rr->rdata, response, &junk);
-	  memcpy (rmp->name, name, vec_len (name));
+	  memcpy (ri->name, name, vec_len (name));
 	  ttl = clib_net_to_host_u32 (rr->ttl);
 	  if (min_ttlp)
 	    *min_ttlp = ttl;
-	  rmp->name[vec_len (name)] = 0;
+	  ri->name[vec_len (name)] = 0;
 	  name_set = 1;
 	  break;
 	default:
@@ -1369,6 +1392,148 @@ dns_resolve_name (u8 *name, dns_cache_entry_t **ep, dns_pending_request_t *t0,
     return 0;
 
   return vnet_dns_response_to_reply (ep[0]->dns_response, rn, 0 /* ttl-ptr */);
+}
+
+__clib_export int
+dns_resolve_ip (u8 *name, dns_cache_entry_t **ep, dns_pending_request_t *t0,
+		dns_resolve_ip_t *ri)
+{
+  dns_main_t *dm = &dns_main;
+  vlib_main_t *vm = vlib_get_main ();
+
+  int rv = vnet_dns_resolve_name (vm, dm, name, t0, ep);
+
+  /* Error, e.g. not enabled? Tell the user */
+  if (rv < 0)
+    return rv;
+
+  /* Resolution pending? Don't reply... */
+  if (ep[0] == 0)
+    return 0;
+
+  return vnet_dns_response_to_name (ep[0]->dns_response, ri, 0 /* ttl-ptr */);
+}
+
+#if 0
+__clib_export int
+dns_get_name_cache(u8 *name, dns_resolve_name_t *rn)
+{
+  dns_main_t																*dm = &dns_main;
+  uword                                     *pt = NULL, *failure;
+  dns_cache_entry_t                         *cache;
+
+  if (name[0] == 0)
+      return VNET_API_ERROR_INVALID_VALUE;
+
+  pt = hash_get_mem (dm->cache_entry_by_name, name);
+
+  if(pt)
+  {
+    cache = pool_elt_at_index(dm->entries, pt[0]);
+    if (cache->dns_response)
+      vnet_dns_response_to_reply(cache->dns_response, rn, 0);
+  }
+
+  return 0;
+}
+#endif
+
+static u8 *
+dns_resolve_ip_to_name (u8 *address, int is_ip6)
+{
+  int i, len;
+  u8 *lookup_name = 0;
+  u8 digit, nybble;
+
+  if (is_ip6)
+    {
+      for (i = 15; i >= 0; i--)
+	{
+	  digit = address[i];
+	  nybble = (digit & 0x0F);
+	  if (nybble > 9)
+	    vec_add1 (lookup_name, (nybble - 10) + 'a');
+	  else
+	    vec_add1 (lookup_name, nybble + '0');
+	  vec_add1 (lookup_name, '.');
+	  nybble = (digit & 0xF0) >> 4;
+	  if (nybble > 9)
+	    vec_add1 (lookup_name, (nybble - 10) + 'a');
+	  else
+	    vec_add1 (lookup_name, nybble + '0');
+	  vec_add1 (lookup_name, '.');
+	}
+      len = vec_len (lookup_name);
+      vec_validate (lookup_name, len + 8);
+      memcpy (lookup_name + len, "ip6.arpa", 8);
+    }
+  else
+    {
+      for (i = 3; i >= 0; i--)
+	{
+	  digit = address[i];
+	  lookup_name = format (lookup_name, "%d.", digit);
+	}
+      lookup_name = format (lookup_name, "in-addr.arpa");
+    }
+
+  vec_terminate_c_string (lookup_name);
+  return lookup_name;
+}
+
+static void
+dns_send_dns_resolve_name_event (vl_api_want_dns_resolve_name_events_t *mp,
+				 dns_resolve_name_t *rn)
+{
+  dns_main_t *dm = &dns_main;
+
+  vl_api_registration_t *rp;
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  vl_api_dns_resolve_name_event_t *e = vl_msg_api_alloc (sizeof (*e));
+  clib_memset (e, 0, sizeof (*e));
+
+  e->_vl_msg_id = htons (VL_API_DNS_RESOLVE_NAME_EVENT + dm->msg_id_base);
+  if (ip_addr_version (&rn->address) == AF_IP4)
+    {
+      ip_address_copy_addr (e->ip4_address, &rn->address);
+      e->ip4_set = 1;
+    }
+  else
+    {
+      ip_address_copy_addr (e->ip6_address, &rn->address);
+      e->ip6_set = 1;
+    }
+
+  vl_api_send_msg (rp, (u8 *) e);
+}
+
+static void
+vl_api_want_dns_resolve_name_events_t_handler (
+  vl_api_want_dns_resolve_name_events_t *mp)
+{
+  dns_main_t *dm = &dns_main;
+  vl_api_want_dns_resolve_name_events_reply_t *rmp;
+  dns_cache_entry_t *ep = 0;
+  dns_pending_request_t _t0 = { 0 }, *t0 = &_t0;
+  int rv;
+  dns_resolve_name_t rn;
+
+  /* Sanitize the name slightly */
+  mp->name[ARRAY_LEN (mp->name) - 1] = 0;
+
+  t0->request_type = DNS_API_PENDING_NAME_TO_IP;
+  t0->client_index = mp->client_index;
+  t0->client_context = mp->context;
+
+  clib_memset (&rn.address, 0, sizeof (rn.address));
+  rv = dns_resolve_name (mp->name, &ep, t0, &rn);
+
+  if (rv < 0 || ep == 0)
+    REPLY_MACRO (VL_API_WANT_DNS_RESOLVE_NAME_EVENTS);
+
+  dns_send_dns_resolve_name_event (mp, &rn);
+  return;
 }
 
 static void
@@ -1411,58 +1576,70 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 }
 
 static void
-vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
+dns_send_dns_resolve_ip_event (vl_api_want_dns_resolve_ip_events_t *mp,
+			       dns_resolve_ip_t *ri)
 {
-  vlib_main_t *vm = vlib_get_main ();
   dns_main_t *dm = &dns_main;
-  vl_api_dns_resolve_ip_reply_t *rmp;
+
+  vl_api_registration_t *rp;
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  vl_api_dns_resolve_ip_event_t *e = vl_msg_api_alloc (sizeof (*e));
+  clib_memset (e, 0, sizeof (*e));
+
+  e->_vl_msg_id = htons (VL_API_DNS_RESOLVE_IP_EVENT + dm->msg_id_base);
+
+  clib_memcpy (e->name, ri->name, sizeof (ri->name));
+
+  vl_api_send_msg (rp, (u8 *) e);
+}
+
+static void
+vl_api_want_dns_resolve_ip_events_t_handler (
+  vl_api_want_dns_resolve_ip_events_t *mp)
+{
+  dns_main_t *dm = &dns_main;
+  vl_api_want_dns_resolve_ip_events_reply_t *rmp;
   dns_cache_entry_t *ep;
+  dns_resolve_ip_t ri;
   int rv;
-  int i, len;
   u8 *lookup_name = 0;
-  u8 digit, nybble;
   dns_pending_request_t _t0 = { 0 }, *t0 = &_t0;
 
-  if (mp->is_ip6)
-    {
-      for (i = 15; i >= 0; i--)
-	{
-	  digit = mp->address[i];
-	  nybble = (digit & 0x0F);
-	  if (nybble > 9)
-	    vec_add1 (lookup_name, (nybble - 10) + 'a');
-	  else
-	    vec_add1 (lookup_name, nybble + '0');
-	  vec_add1 (lookup_name, '.');
-	  nybble = (digit & 0xF0) >> 4;
-	  if (nybble > 9)
-	    vec_add1 (lookup_name, (nybble - 10) + 'a');
-	  else
-	    vec_add1 (lookup_name, nybble + '0');
-	  vec_add1 (lookup_name, '.');
-	}
-      len = vec_len (lookup_name);
-      vec_validate (lookup_name, len + 8);
-      memcpy (lookup_name + len, "ip6.arpa", 8);
-    }
-  else
-    {
-      for (i = 3; i >= 0; i--)
-	{
-	  digit = mp->address[i];
-	  lookup_name = format (lookup_name, "%d.", digit);
-	}
-      lookup_name = format (lookup_name, "in-addr.arpa");
-    }
-
-  vec_add1 (lookup_name, 0);
+  lookup_name = dns_resolve_ip_to_name (mp->address, mp->is_ip6);
 
   t0->request_type = DNS_API_PENDING_IP_TO_NAME;
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
 
-  rv = vnet_dns_resolve_name (vm, dm, lookup_name, t0, &ep);
+  rv = dns_resolve_ip (lookup_name, &ep, t0, &ri);
+  vec_free (lookup_name);
 
+  if (rv < 0 || ep == 0)
+    REPLY_MACRO (VL_API_WANT_DNS_RESOLVE_IP_EVENTS);
+
+  dns_send_dns_resolve_ip_event (mp, &ri);
+  return;
+}
+
+static void
+vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
+{
+  dns_main_t *dm = &dns_main;
+  vl_api_dns_resolve_ip_reply_t *rmp;
+  dns_resolve_ip_t ri;
+  dns_cache_entry_t *ep;
+  int rv;
+  u8 *lookup_name = 0;
+  dns_pending_request_t _t0 = { 0 }, *t0 = &_t0;
+
+  lookup_name = dns_resolve_ip_to_name (mp->address, mp->is_ip6);
+
+  t0->request_type = DNS_API_PENDING_IP_TO_NAME;
+  t0->client_index = mp->client_index;
+  t0->client_context = mp->context;
+
+  rv = dns_resolve_ip (lookup_name, &ep, t0, &ri);
   vec_free (lookup_name);
 
   /* Error, e.g. not enabled? Tell the user */
@@ -1476,11 +1653,10 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
   if (ep == 0)
     return;
 
-  REPLY_MACRO2(VL_API_DNS_RESOLVE_IP_REPLY,
-  ({
-    rv = vnet_dns_response_to_name (ep->dns_response, rmp, 0 /* ttl-ptr */);
-    rmp->retval = clib_host_to_net_u32 (rv);
-  }));
+  REPLY_MACRO2 (VL_API_DNS_RESOLVE_IP_REPLY, ({
+		  clib_memcpy (rmp->name, ri.name, sizeof (ri.name));
+		  rmp->retval = clib_host_to_net_u32 (rv);
+		}));
 }
 
 static clib_error_t *
@@ -2736,7 +2912,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   u8 *reply;
   /* vl_api_dns_resolve_name_reply_t _rnr, *rnr = &_rnr; */
   dns_resolve_name_t _rn, *rn = &_rn;
-  vl_api_dns_resolve_ip_reply_t _rir, *rir = &_rir;
+  dns_resolve_ip_t _ri, *ri = &_ri;
   u32 ttl = 64, tmp;
   u32 qp_offset;
   dns_query_t *qp;
@@ -2764,8 +2940,8 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
     }
   else if (pr->request_type == DNS_PEER_PENDING_IP_TO_NAME)
     {
-      clib_memset (rir, 0, sizeof (*rir));
-      if (vnet_dns_response_to_name (ep->dns_response, rir, &ttl))
+      clib_memset (ri, 0, sizeof (*ri));
+      if (vnet_dns_response_to_name (ep->dns_response, ri, &ttl))
 	{
 	  /* clib_warning ("response_to_name failed..."); */
 	  is_fail = 1;
@@ -2881,7 +3057,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
       else
 	{
 	  /* Or a single PTR RR */
-	  u8 *vecname = format (0, "%s", rir->name);
+	  u8 *vecname = format (0, "%s", ri->name);
 	  u8 *label_vec = name_to_labels (vecname);
 	  vec_free (vecname);
 
