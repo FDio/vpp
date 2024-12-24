@@ -44,6 +44,11 @@ typedef struct
   ip_address_t address;
 } dns_resolve_name_t;
 
+typedef struct
+{
+  u8 name[256];
+} dns_resolve_ip_t;
+
 typedef enum
 {
   DNS_API_PENDING_NAME_TO_IP = 1,

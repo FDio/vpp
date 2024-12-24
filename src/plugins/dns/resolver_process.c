@@ -26,14 +26,10 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-int
-vnet_dns_response_to_reply (u8 * response,
-			    vl_api_dns_resolve_name_reply_t * rmp,
-			    u32 * min_ttlp);
-int
-vnet_dns_response_to_name (u8 * response,
-			   vl_api_dns_resolve_ip_reply_t * rmp,
-			   u32 * min_ttlp);
+int vnet_dns_response_to_reply (u8 *response, dns_resolve_name_t *rn,
+				u32 *min_ttlp);
+int vnet_dns_response_to_name (u8 *response, dns_resolve_ip_t *ri,
+			       u32 *min_ttlp);
 
 static void
 resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
@@ -178,6 +174,7 @@ reply:
 	case DNS_API_PENDING_NAME_TO_IP:
 	  {
 	    vl_api_dns_resolve_name_reply_t *rmp;
+	    dns_resolve_name_t rn;
 	    regp = vl_api_client_index_to_registration (pr->client_index);
 	    if (regp == 0)
 	      continue;
@@ -188,7 +185,20 @@ reply:
 				    + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
-	    rv = vnet_dns_response_to_reply (ep->dns_response, rmp, &min_ttl);
+	    rv = vnet_dns_response_to_reply (ep->dns_response, &rn, &min_ttl);
+	    if (rv == 0)
+	      {
+		if (ip_addr_version (&rn.address) == AF_IP4)
+		  {
+		    ip_address_copy_addr (rmp->ip4_address, &rn.address);
+		    rmp->ip4_set = 1;
+		  }
+		else
+		  {
+		    ip_address_copy_addr (rmp->ip6_address, &rn.address);
+		    rmp->ip6_set = 1;
+		  }
+	      }
 	    if (min_ttl != ~0)
 	      ep->expiration_time = now + min_ttl;
 	    rmp->retval = clib_host_to_net_u32 (rv);
@@ -199,6 +209,7 @@ reply:
 	case DNS_API_PENDING_IP_TO_NAME:
 	  {
 	    vl_api_dns_resolve_ip_reply_t *rmp;
+	    dns_resolve_ip_t ri;
 
 	    regp = vl_api_client_index_to_registration (pr->client_index);
 	    if (regp == 0)
@@ -210,7 +221,9 @@ reply:
 				    + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
-	    rv = vnet_dns_response_to_name (ep->dns_response, rmp, &min_ttl);
+	    rv = vnet_dns_response_to_name (ep->dns_response, &ri, &min_ttl);
+	    if (rv == 0)
+	      clib_memcpy (rmp->name, ri.name, sizeof (ri.name));
 	    if (min_ttl != ~0)
 	      ep->expiration_time = now + min_ttl;
 	    rmp->retval = clib_host_to_net_u32 (rv);
