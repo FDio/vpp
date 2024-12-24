@@ -33,6 +33,24 @@
       "message": "Once upon a time, ping was merely an internal diagnostic CLI to test the forwarding of the packets... Given that it seems to be evolving into something aking to a full-blown OAM facility, it would be very nice to see some unit tests ... Do you think you could sketch a couple ?",
       "revId": "cd73ce4f1cebc65310a341a6474e8f73e931066c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec2d4e7e_28d17461",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3010
+      },
+      "writtenOn": "2024-12-24T08:54:11Z",
+      "side": 1,
+      "message": "Sorry for the late response, I\u0027ve provided a test in one of my previous PRs: https://github.com/FDio/vpp/blob/master/test/test_ping.py#L181",
+      "parentUuid": "cfa8ba46_3a1b6640",
+      "revId": "cd73ce4f1cebc65310a341a6474e8f73e931066c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
