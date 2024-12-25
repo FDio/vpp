@@ -166,31 +166,6 @@ openssl_lctx_get (u32 lctx_index)
   return pool_elt_at_index (openssl_main.lctx_pool, lctx_index);
 }
 
-static int
-openssl_handle_want_async (tls_ctx_t *ctx, int evt_type,
-			   transport_send_params_t *sp, int size)
-{
-  int ret;
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-
-  if (evt_type >= SSL_ASYNC_EVT_MAX || evt_type == 0)
-    {
-      clib_warning ("return 0 [illegal evt_type value:%d]\n", evt_type);
-      return 0;
-    }
-
-  if (evt_type == SSL_ASYNC_EVT_WR)
-    {
-      /* de-schedule transport connection */
-      transport_connection_deschedule (&ctx->connection);
-      sp->flags |= TRANSPORT_SND_F_DESCHED;
-      oc->total_async_write = size;
-    }
-  ret = vpp_tls_async_enqueue_event (oc, evt_type, sp, size);
-
-  return ret;
-}
-
 int
 openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
 {
@@ -219,8 +194,10 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
     {
       if (openssl_main.async && SSL_want_async (oc->ssl))
 	{
-	  ctx->flags |= TLS_CONN_F_ASYNC_RD;
-	  openssl_handle_want_async (ctx, SSL_ASYNC_EVT_RD, NULL, 0);
+	  session_t *tls_session =
+	    session_get_from_handle (ctx->tls_session_handle);
+	  vpp_tls_async_init_event (ctx, tls_async_read_event_handler,
+				    tls_session, SSL_ASYNC_EVT_RD, NULL, 0);
 	  return 0;
 	}
       ossl_check_err_is_fatal (ssl, read);
@@ -264,52 +241,38 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, tls_ctx_t *ctx,
     {
       rv = SSL_write (ssl, fs[i].data, fs[i].len);
       wrote += (rv > 0) ? rv : 0;
+
       if (rv < (int) fs[i].len)
 	{
-	  ossl_check_err_is_fatal (ssl, rv);
+	  if (rv < 0)
+	    {
+	      int err = SSL_get_error (ssl, rv);
+	      if (err == SSL_ERROR_SSL)
+		return -1;
+
+	      if (err == SSL_ERROR_WANT_WRITE)
+		break;
+
+	      if (openssl_main.async && SSL_want_async (ssl))
+		{
+		  session_t *ts =
+		    session_get_from_handle (ctx->tls_session_handle);
+		  vpp_tls_async_init_event (ctx, tls_async_write_event_handler,
+					    ts, SSL_ASYNC_EVT_WR, sp,
+					    sp->max_burst_size);
+		  return 0;
+		}
+	    }
 	  break;
 	}
       i++;
     }
 
-  if (openssl_main.async && SSL_want_async (ssl))
-    {
-      openssl_handle_want_async (ctx, SSL_ASYNC_EVT_WR, sp, max_len);
-      return 0;
-    }
   if (wrote)
     svm_fifo_dequeue_drop (f, wrote);
 
   return wrote;
 }
-
-#ifdef HAVE_OPENSSL_ASYNC
-static int
-openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
-			    session_t * session)
-{
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  int estatus;
-
-  SSL_get_async_status (oc->ssl, &estatus);
-  if (estatus == ASYNC_STATUS_EAGAIN)
-    {
-      vpp_tls_async_update_event (ctx, 1, SSL_ASYNC_EVT_INIT);
-      vpp_tls_async_update_event (ctx, 1, SSL_ASYNC_EVT_RD);
-      vpp_tls_async_update_event (ctx, 1, SSL_ASYNC_EVT_WR);
-    }
-  else
-    {
-      vpp_tls_async_update_event (ctx, 0, SSL_ASYNC_EVT_INIT);
-      vpp_tls_async_update_event (ctx, 0, SSL_ASYNC_EVT_RD);
-      vpp_tls_async_update_event (ctx, 0, SSL_ASYNC_EVT_WR);
-    }
-
-  return 1;
-
-}
-
-#endif
 
 void
 openssl_handle_handshake_failure (tls_ctx_t *ctx)
@@ -338,7 +301,7 @@ openssl_handle_handshake_failure (tls_ctx_t *ctx)
 }
 
 int
-openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
+openssl_ctx_handshake_rx (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
@@ -357,7 +320,8 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 
       if (openssl_main.async && err == SSL_ERROR_WANT_ASYNC)
 	{
-	  openssl_handle_want_async (ctx, SSL_ASYNC_EVT_INIT, NULL, 0);
+	  vpp_tls_async_init_event (ctx, tls_async_handshake_event_handler,
+				    tls_session, SSL_ASYNC_EVT_INIT, NULL, 0);
 	  return -1;
 	}
 
@@ -868,7 +832,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 
 #ifdef HAVE_OPENSSL_ASYNC
   session_t *tls_session = session_get_from_handle (ctx->tls_session_handle);
-  vpp_tls_async_init_events (ctx, openssl_ctx_handshake_rx, tls_session);
+  openssl_ctx_handshake_rx (ctx, tls_session);
 #endif
   while (1)
     {
@@ -876,11 +840,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       err = SSL_get_error (oc->ssl, rv);
 #ifdef HAVE_OPENSSL_ASYNC
       if (err == SSL_ERROR_WANT_ASYNC)
-	{
-	  openssl_check_async_status (ctx, openssl_ctx_handshake_rx,
-				      tls_session);
-	  break;
-	}
+	break;
 #endif
       if (err != SSL_ERROR_WANT_WRITE)
 	break;
@@ -1107,7 +1067,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
     {
       session_t *tls_session =
 	session_get_from_handle (ctx->tls_session_handle);
-      vpp_tls_async_init_events (ctx, openssl_ctx_handshake_rx, tls_session);
+      openssl_ctx_handshake_rx (ctx, tls_session);
     }
 
   while (1)
@@ -1115,16 +1075,13 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       rv = SSL_do_handshake (oc->ssl);
       err = SSL_get_error (oc->ssl, rv);
       if (openssl_main.async && err == SSL_ERROR_WANT_ASYNC)
-	{
-	  openssl_handle_want_async (ctx, SSL_ASYNC_EVT_INIT, NULL, 0);
+	break;
 
-	  break;
-	}
       if (err != SSL_ERROR_WANT_WRITE)
 	break;
     }
 
-  TLS_DBG (2, "tls state for [%u]%u is su", ctx->c_thread_index,
+  TLS_DBG (2, "tls state for [%u]%u is %s", ctx->c_thread_index,
 	   oc->openssl_ctx_index, SSL_state_string_long (oc->ssl));
   return 0;
 }
