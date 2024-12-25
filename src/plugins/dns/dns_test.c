@@ -250,6 +250,87 @@ api_dns_name_server_add_del (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_want_dns_resolve_name_events (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_dns_resolve_name_t *mp;
+  u8 *name = 0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%s", &name))
+	;
+      else
+	break;
+    }
+
+  if (name == 0)
+    {
+      errmsg ("missing name to resolve");
+      return -99;
+    }
+
+  if (vec_len (name) > 127)
+    {
+      errmsg ("name too long");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (WANT_DNS_RESOLVE_NAME_EVENTS, mp);
+  memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_want_dns_resolve_ip_events (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_dns_resolve_ip_t *mp;
+  int is_ip6 = -1;
+  ip4_address_t addr4;
+  ip6_address_t addr6;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip6_address, &addr6))
+	is_ip6 = 1;
+      else if (unformat (line_input, "%U", unformat_ip4_address, &addr4))
+	is_ip6 = 0;
+      else
+	break;
+    }
+
+  if (is_ip6 == -1)
+    {
+      errmsg ("missing address");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (WANT_DNS_RESOLVE_IP_EVENTS, mp);
+  mp->is_ip6 = is_ip6;
+  if (is_ip6)
+    memcpy (mp->address, &addr6, sizeof (addr6));
+  else
+    memcpy (mp->address, &addr4, sizeof (addr4));
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
 #include <dns/dns.api_test.c>
 
 /*
