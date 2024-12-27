@@ -306,7 +306,7 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   u8 *dns_request;
   vlib_frame_t *f;
   u32 *to_next;
-  int junk __attribute__ ((unused));
+  int junk;
 
   ASSERT (ep->dns_request);
 
@@ -349,16 +349,17 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   udp->length = clib_host_to_net_u16 (sizeof (udp_header_t) +
 				      vec_len (ep->dns_request));
   udp->checksum = 0;
-  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &junk);
-
   /* The actual DNS request */
   clib_memcpy (dns_request, ep->dns_request, vec_len (ep->dns_request));
+
+  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &junk);
 
   /* Ship it to ip6_lookup */
   f = vlib_get_frame_to_node (vm, ip6_lookup_node.index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
 
   ep->retry_timer = now + 2.0;
 }
@@ -2192,7 +2193,7 @@ show_dns_servers_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "ip6 name servers:");
       for (i = 0; i < vec_len (dm->ip6_name_servers); i++)
 	vlib_cli_output (vm, "%U", format_ip6_address,
-			 dm->ip4_name_servers + i);
+			 dm->ip6_name_servers + i);
     }
   return 0;
 }
