@@ -31,6 +31,7 @@ typedef struct
   u32 request_type;
   u32 client_index;
   u32 client_context;
+  u16 client_msg_id;
   u8 is_ip6;
   u16 dst_port;
   u16 id;
@@ -44,10 +45,20 @@ typedef struct
   ip_address_t address;
 } dns_resolve_name_t;
 
+typedef struct
+{
+  u8 name[256];
+} dns_resolve_ip_t;
+
 typedef enum
 {
   DNS_API_PENDING_NAME_TO_IP = 1,
   DNS_API_PENDING_IP_TO_NAME,
+  DNS_API_PENDING_WANT_NAME_TO_IP,
+  DNS_API_PENDING_WANT_IP_TO_NAME,
+  DNS_CLI_PENDING_NAME_TO_IP,
+  DNS_CLI_PENDING_NAME_TO_IP6,
+  DNS_CLI_PENDING_IP_TO_NAME,
   DNS_PEER_PENDING_NAME_TO_IP,
   DNS_PEER_PENDING_IP_TO_NAME,
 } dns_pending_request_type_t;
