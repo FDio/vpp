@@ -1512,8 +1512,8 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   ip6_address_t a6;
   int a4_set = 0;
   int a6_set = 0;
-  u8 *name;
-  int name_set = 0;
+  u8 *name, *ptr_name;
+  int name_set = 0, ptr_set = 0;
   u8 *ce;
   u32 qp_offset;
   dns_header_t *h;
@@ -1538,71 +1538,125 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
 	a4_set = 1;
     }
 
+  if (unformat (input, "ptr"))
+    ptr_set = 1;
+
   /* Must have a name */
-  if (!name_set)
+  if (!name_set && !ptr_set)
     return 0;
 
   /* Must have at least one address */
   if (!(a4_set + a6_set))
     return 0;
 
-  /* Build a fake DNS cache entry string, one hemorrhoid at a time */
-  ce = name_to_labels (name);
-  qp_offset = vec_len (ce);
-
-  /* Add space for the query header */
-  vec_validate (ce, qp_offset + sizeof (dns_query_t) - 1);
-  qp = (dns_query_t *) (ce + qp_offset);
-
-  qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
-
-  /* Punch in space for the dns_header_t */
-  vec_insert (ce, sizeof (dns_header_t), 0);
-
-  h = (dns_header_t *) ce;
-
-  /* Fake Transaction ID */
-  h->id = 0xFFFF;
-
-  h->flags = clib_host_to_net_u16 (DNS_RD | DNS_RA);
-  h->qdcount = clib_host_to_net_u16 (1);
-  h->anscount = clib_host_to_net_u16 (a4_set + a6_set);
-  h->nscount = 0;
-  h->arcount = 0;
-
-  /* Now append one or two A/AAAA RR's... */
-  if (a4_set)
+  if (ptr_set)
     {
+      ptr_name = name_to_labels (name);
+      vec_free (name);
+
+      /* only support ip4.in-addr.arpa or ip6.in-addr.arpa */
+      name = dns_resolve_ip_to_name (a6_set ? a6.as_u8 : a4.as_u8, a6_set);
+      ce = name_to_labels (name);
+      qp_offset = vec_len (ce);
+
+      /* Add space for the query header */
+      vec_validate (ce, qp_offset + sizeof (dns_query_t) - 1);
+      qp = (dns_query_t *) (ce + qp_offset);
+
+      qp->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
+      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+
+      /* Punch in space for the dns_header_t */
+      vec_insert (ce, sizeof (dns_header_t), 0);
+
+      h = (dns_header_t *) ce;
+
+      /* Fake Transaction ID */
+      h->id = 0xFFFF;
+
+      h->flags = clib_host_to_net_u16 (DNS_RD | DNS_RA);
+      h->qdcount = clib_host_to_net_u16 (1);
+      h->anscount = clib_host_to_net_u16 (1);
+      h->nscount = 0;
+      h->arcount = 0;
+
       /* Pointer to the name (DGMS) */
       vec_add1 (ce, 0xC0);
       vec_add1 (ce, 0x0C);
-      vec_add2 (ce, rru8, sizeof (*rr) + 4);
+      vec_add2 (ce, rru8, sizeof (*rr) + vec_len (ptr_name));
       rr = (void *) rru8;
-      rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
+      rr->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
       rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
       rr->ttl = clib_host_to_net_u32 (86400);
-      rr->rdlength = clib_host_to_net_u16 (4);
-      memcpy (rr->rdata, &a4, sizeof (a4));
+      rr->rdlength = clib_host_to_net_u16 (vec_len (ptr_name));
+      memcpy (rr->rdata, ptr_name, vec_len (ptr_name));
+
+      *result = ce;
+      if (namep)
+	*namep = name;
+
+      vec_free (ptr_name);
     }
-  if (a6_set)
-    {
-      /* Pointer to the name (DGMS) */
-      vec_add1 (ce, 0xC0);
-      vec_add1 (ce, 0x0C);
-      vec_add2 (ce, rru8, sizeof (*rr) + 16);
-      rr = (void *) rru8;
-      rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-      rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
-      rr->ttl = clib_host_to_net_u32 (86400);
-      rr->rdlength = clib_host_to_net_u16 (16);
-      memcpy (rr->rdata, &a6, sizeof (a6));
-    }
-  *result = ce;
-  if (namep)
-    *namep = name;
   else
-    vec_free (name);
+    {
+      /* Build a fake DNS cache entry string, one hemorrhoid at a time */
+      ce = name_to_labels (name);
+      qp_offset = vec_len (ce);
+
+      /* Add space for the query header */
+      vec_validate (ce, qp_offset + sizeof (dns_query_t) - 1);
+      qp = (dns_query_t *) (ce + qp_offset);
+
+      qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
+      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+
+      /* Punch in space for the dns_header_t */
+      vec_insert (ce, sizeof (dns_header_t), 0);
+
+      h = (dns_header_t *) ce;
+
+      /* Fake Transaction ID */
+      h->id = 0xFFFF;
+
+      h->flags = clib_host_to_net_u16 (DNS_RD | DNS_RA);
+      h->qdcount = clib_host_to_net_u16 (1);
+      h->anscount = clib_host_to_net_u16 (a4_set + a6_set);
+      h->nscount = 0;
+      h->arcount = 0;
+
+      /* Now append one or two A/AAAA RR's... */
+      if (a4_set)
+	{
+	  /* Pointer to the name (DGMS) */
+	  vec_add1 (ce, 0xC0);
+	  vec_add1 (ce, 0x0C);
+	  vec_add2 (ce, rru8, sizeof (*rr) + 4);
+	  rr = (void *) rru8;
+	  rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  rr->ttl = clib_host_to_net_u32 (86400);
+	  rr->rdlength = clib_host_to_net_u16 (4);
+	  memcpy (rr->rdata, &a4, sizeof (a4));
+	}
+      if (a6_set)
+	{
+	  /* Pointer to the name (DGMS) */
+	  vec_add1 (ce, 0xC0);
+	  vec_add1 (ce, 0x0C);
+	  vec_add2 (ce, rru8, sizeof (*rr) + 16);
+	  rr = (void *) rru8;
+	  rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+	  rr->ttl = clib_host_to_net_u32 (86400);
+	  rr->rdlength = clib_host_to_net_u16 (16);
+	  memcpy (rr->rdata, &a6, sizeof (a6));
+	}
+      *result = ce;
+      if (namep)
+	*namep = name;
+      else
+	vec_free (name);
+    }
 
   return 1;
 }
@@ -1650,6 +1704,9 @@ format_dns_query (u8 * s, va_list * args)
 	  break;
 	case DNS_TYPE_ALL:
 	  s = format (s, "type ALL\n");
+	  break;
+	case DNS_TYPE_PTR:
+	  s = format (s, "type PTR\n");
 	  break;
 
 	default:
