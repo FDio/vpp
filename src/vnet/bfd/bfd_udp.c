@@ -269,7 +269,7 @@ bfd_add_udp4_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
       vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
     }
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = key->sw_if_index;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
   typedef struct
   {
@@ -334,7 +334,7 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
       vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
     }
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = key->sw_if_index;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
   typedef struct
   {
