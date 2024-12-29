@@ -74,6 +74,7 @@ typedef struct
   int server_rotor;
   int server_af;
   int server_fails;
+  int server_refer;
   f64 retry_timer;
 
   /** Cached dns response */
@@ -92,6 +93,8 @@ typedef struct
 #define DNS_RESOLVER_EVENT_RESOLVED	1
 #define DNS_RESOLVER_EVENT_PENDING	2
 
+/* retry for every dns server but no reply */
+#define DNS_RESOLVER_EVENT_STIMEOUT 3
 
 typedef struct
 {

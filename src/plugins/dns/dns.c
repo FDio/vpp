@@ -543,6 +543,17 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
     }
   else				/* switch to a new server */
     {
+
+      /* server timeout and no reply */
+      if (++ep->server_refer >=
+	  vec_len (dm->ip6_name_servers) + vec_len (dm->ip4_name_servers))
+	{
+	  vlib_process_signal_event_mt (vm, dm->resolver_process_node_index,
+					DNS_RESOLVER_EVENT_STIMEOUT,
+					ep - dm->entries);
+	  return;
+	}
+
       ep->retry_count = 1;
       ep->server_rotor++;
       if (ep->server_af == 1 /* ip6 */ )
@@ -736,6 +747,10 @@ vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
   dns_pending_request_t *pr;
   int count;
 
+  /* no server return */
+  if (vec_len (dm->ip4_name_servers) + vec_len (dm->ip6_name_servers) == 0)
+    return VNET_API_ERROR_NO_NAME_SERVERS;
+
   now = vlib_time_now (vm);
 
   /* In case we can't actually answer the question right now... */
@@ -839,6 +854,13 @@ re_resolve:
 
   ep->name = format (0, "%s", name);
   dns_terminate_c_string (&ep->name);
+
+  /*
+   * Configuring a single ip6 dns server should not
+   * result in doomed timeout retransmissions at the ip4 server
+   */
+  if (vec_len (dm->ip6_name_servers) + vec_len (dm->ip4_name_servers) == 1)
+    ep->server_af = vec_len (dm->ip6_name_servers) > 0 ? 1 : 0;
 
   hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
 
