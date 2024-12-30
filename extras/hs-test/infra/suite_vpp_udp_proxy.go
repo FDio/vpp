@@ -63,6 +63,11 @@ func (s *VppUdpProxySuite) SetupTest() {
 		s.Interfaces.Server.Ip4AddressString(),
 		s.Interfaces.Server.HwAddress)
 	vpp.Vppctl(arp)
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Client.Peer.Name(),
+		s.Interfaces.Client.Ip4AddressString(),
+		s.Interfaces.Client.HwAddress)
+	vpp.Vppctl(arp)
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -127,7 +132,7 @@ func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (i
 	}
 	defer proxiedConn.Close()
 
-	err = proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 5))
+	err = proxiedConn.SetDeadline(time.Now().Add(time.Second * 5))
 	if err != nil {
 		return 0, err
 	}
@@ -173,7 +178,7 @@ var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, func() {
+var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()

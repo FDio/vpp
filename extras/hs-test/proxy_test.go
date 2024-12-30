@@ -25,6 +25,7 @@ func init() {
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest)
+	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
 	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
@@ -349,4 +350,26 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	n, err := s.ClientSendReceive([]byte("hello"), b)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual([]byte("hello"), b[:n])
+}
+
+func VppProxyUdpMigrationMTTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartEchoServer()
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	b := make([]byte, 1500)
+
+	n, err := s.ClientSendReceive([]byte("hello"), b)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual([]byte("hello"), b[:n])
+
+	n, err = s.ClientSendReceive([]byte("world"), b)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual([]byte("world"), b[:n])
+
+	s.Log(s.Containers.VppProxy.VppInstance.Vppctl("show session verbose 2"))
 }

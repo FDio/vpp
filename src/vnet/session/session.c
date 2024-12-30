@@ -1030,10 +1030,13 @@ session_switch_pool (void *cb_args)
   if (!app_wrk)
     goto app_closed;
 
-  /* Cleanup fifo segment slice state for fifos */
-  sm = app_worker_get_connect_segment_manager (app_wrk);
-  segment_manager_detach_fifo (sm, &s->rx_fifo);
-  segment_manager_detach_fifo (sm, &s->tx_fifo);
+  if (!(s->flags & SESSION_F_PROXY))
+    {
+      /* Cleanup fifo segment slice state for fifos */
+      sm = app_worker_get_connect_segment_manager (app_wrk);
+      segment_manager_detach_fifo (sm, &s->rx_fifo);
+      segment_manager_detach_fifo (sm, &s->tx_fifo);
+    }
 
   /* Check if session closed during migration */
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
@@ -1079,7 +1082,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
     session_lookup_add_connection (tc, session_handle (new_s));
 
   app_wrk = app_worker_get_if_valid (new_s->app_wrk_index);
-  if (app_wrk)
+  if (app_wrk && !(new_s->flags & SESSION_F_PROXY))
     {
       /* New set of fifos attached to the same shared memory */
       sm = app_worker_get_connect_segment_manager (app_wrk);

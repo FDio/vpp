@@ -26,6 +26,14 @@ proxy_main_t proxy_main;
 
 #define TCP_MSS 1460
 
+#define PROXY_DEBUG 0
+
+#if PROXY_DEBUG
+#define PROXY_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define PROXY_DBG(_fmt, _args...)
+#endif
+
 static proxy_session_side_ctx_t *
 proxy_session_side_ctx_alloc (proxy_worker_t *wrk)
 {
@@ -200,6 +208,8 @@ proxy_session_postponed_free_rpc (void *arg)
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
+  PROXY_DBG ("[%u] ps %u postponed free", vlib_get_thread_index (), ps_index);
+
   ps = proxy_session_get (ps_index);
   segment_manager_dealloc_fifos (ps->po.rx_fifo, ps->po.tx_fifo);
   proxy_session_free (ps);
@@ -262,6 +272,9 @@ proxy_try_close_session (session_t * s, int is_active_open)
   wrk = proxy_worker_get (s->thread_index);
   sc = proxy_session_side_ctx_get (wrk, s->opaque);
 
+  PROXY_DBG ("[%u] ps %u close (is ao %u)", vlib_get_thread_index (),
+	     sc->ps_index, is_active_open);
+
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_get (sc->ps_index);
@@ -304,6 +317,8 @@ proxy_try_side_ctx_cleanup (session_t *s)
   if (sc->state == PROXY_SC_S_CREATED)
     return;
 
+  PROXY_DBG ("[%u] ps %u side ctx cleanup", vlib_get_thread_index (),
+	     sc->ps_index);
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_get (sc->ps_index);
@@ -329,6 +344,9 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
   wrk = proxy_worker_get (s->thread_index);
   sc = proxy_session_side_ctx_get (wrk, s->opaque);
   ps_index = sc->ps_index;
+
+  PROXY_DBG ("[%u] ps %u delete (is ao %u)", vlib_get_thread_index (),
+	     sc->ps_index, is_active_open);
 
   proxy_session_side_ctx_free (wrk, sc);
 
@@ -435,6 +453,8 @@ proxy_accept_callback (session_t * s)
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_alloc ();
+
+  PROXY_DBG ("[%u] ps %u new", vlib_get_thread_index (), ps->ps_index);
 
   ps->po.session_handle = session_handle (s);
   ps->po.rx_fifo = s->rx_fifo;
@@ -614,6 +634,8 @@ proxy_rx_callback (session_t *s)
 
       if (sc->state == PROXY_SC_S_CREATED)
 	{
+	  PROXY_DBG ("[%u] ps %u start connect", vlib_get_thread_index (),
+		     sc->ps_index);
 	  proxy_session_start_connect (sc, s);
 	  sc->state = PROXY_SC_S_CONNECTING;
 	  return 0;
@@ -719,6 +741,8 @@ active_open_alloc_session_fifos (session_t *s)
   svm_fifo_t *rxf, *txf;
   proxy_session_t *ps;
 
+  PROXY_DBG ("[%u] ps %u ao alloc fifos", vlib_get_thread_index (), s->opaque);
+
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   /* Active open opaque is pointing at proxy session */
@@ -788,6 +812,8 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   /* Connection failed */
   if (err)
     {
+      PROXY_DBG ("[%u] ps %u connect failed: %d", vlib_get_thread_index (),
+		 opaque, err);
       clib_spinlock_lock_if_init (&pm->sessions_lock);
 
       ps = proxy_session_get (opaque);
@@ -805,6 +831,8 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 
       return 0;
     }
+
+  PROXY_DBG ("[%u] ps %u connected", vlib_get_thread_index (), opaque);
 
   wrk = proxy_worker_get (s->thread_index);
 
@@ -867,6 +895,9 @@ active_open_migrate_po_fixup_rpc (void *arg)
   proxy_session_t *ps;
   session_t *po_s;
 
+  PROXY_DBG ("[%u] ps %u migrate (po fixup)", vlib_get_thread_index (),
+	     ps_index);
+
   wrk = proxy_worker_get (vlib_get_thread_index ());
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
@@ -874,8 +905,6 @@ active_open_migrate_po_fixup_rpc (void *arg)
   ps = proxy_session_get (ps_index);
 
   po_s = session_get_from_handle (ps->po.session_handle);
-  po_s->rx_fifo = ps->po.rx_fifo;
-  po_s->tx_fifo = ps->po.tx_fifo;
 
   po_sc = proxy_session_side_ctx_get (wrk, po_s->opaque);
   po_sc->pair = ps->ao;
@@ -896,6 +925,9 @@ active_open_migrate_rpc (void *arg)
   proxy_session_t *ps;
   session_t *s;
 
+  PROXY_DBG ("[%u] ps %u migrate (alloc new sc)", vlib_get_thread_index (),
+	     ps_index);
+
   wrk = proxy_worker_get (vlib_get_thread_index ());
   sc = proxy_session_side_ctx_alloc (wrk);
 
@@ -907,15 +939,6 @@ active_open_migrate_rpc (void *arg)
   s = session_get_from_handle (ps->ao.session_handle);
   s->opaque = sc->sc_index;
   s->flags &= ~SESSION_F_IS_MIGRATING;
-
-  /* Fixup passive open session because of migration and zc */
-  ps->ao.rx_fifo = ps->po.tx_fifo = s->rx_fifo;
-  ps->ao.tx_fifo = ps->po.rx_fifo = s->tx_fifo;
-
-  ps->po.tx_fifo->shr->master_session_index =
-    session_index_from_handle (ps->po.session_handle);
-  ps->po.tx_fifo->master_thread_index =
-    session_thread_from_handle (ps->po.session_handle);
 
   sc->pair = ps->po;
 
@@ -937,14 +960,18 @@ active_open_migrate_callback (session_t *s, session_handle_t new_sh)
   wrk = proxy_worker_get (s->thread_index);
   sc = proxy_session_side_ctx_get (wrk, s->opaque);
 
+  PROXY_DBG ("[%u] ps %u migrate (free sc)", vlib_get_thread_index (),
+	     sc->ps_index);
+
   /* NOTE: this is just an example. ZC makes this migration rather
    * tedious. Probably better approaches could be found */
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_get (sc->ps_index);
   ps->ao.session_handle = new_sh;
-  ps->ao.rx_fifo = 0;
-  ps->ao.tx_fifo = 0;
+  ps->ao.tx_fifo->shr->master_session_index =
+    session_index_from_handle (new_sh);
+  ps->ao.tx_fifo->master_thread_index = session_thread_from_handle (new_sh);
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
