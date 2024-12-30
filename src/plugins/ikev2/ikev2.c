@@ -3237,22 +3237,21 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	{
 	  u8 *ipx_hdr = b0->data + vnet_buffer (b0)->l3_hdr_offset;
-	  ike0 = vlib_buffer_get_current (b0);
-	  vlib_buffer_advance (b0, -sizeof (*udp0));
-	  udp0 = vlib_buffer_get_current (b0);
-
-	  if (is_ip4)
-	    {
-	      ip40 = (ip4_header_t *) ipx_hdr;
-	      ip_hdr_sz = sizeof (*ip40);
-	    }
-	  else
-	    {
-	      ip60 = (ip6_header_t *) ipx_hdr;
-	      ip_hdr_sz = sizeof (*ip60);
-	    }
-	  vlib_buffer_advance (b0, -ip_hdr_sz);
-	}
+          if (is_ip4)
+	  {
+	    ip40 = (ip4_header_t *) ipx_hdr;
+	    ip_hdr_sz = sizeof (*ip40);
+	    udp0 = (udp_header_t*)(ip40 + 1);
+	    ike0 = (ike_header_t*)(udp0 + 1);
+	  }
+          else
+	  {
+	    ip60 = (ip6_header_t *) ipx_hdr;
+	    ip_hdr_sz = sizeof (*ip60);
+	    udp0 = (udp_header_t*)(ip60 + 1);
+	    ike0 = (ike_header_t*)(udp0 + 1);
+	  }
+      }
 
       rlen = b0->current_length - ip_hdr_sz - sizeof (*udp0);
 
