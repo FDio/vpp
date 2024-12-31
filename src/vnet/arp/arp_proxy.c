@@ -251,7 +251,8 @@ VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
 
 VLIB_CLI_COMMAND (set_arp_proxy_command, static) = {
   .path = "set arp proxy",
-  .short_help = "set arp proxy [del] table-ID <table-ID> start <start-address> end <end-addres>",
+  .short_help = "set arp proxy [del] table-id <table-id> start "
+		"<start-address> end <end-addres>",
   .function = set_arp_proxy,
 };
 
