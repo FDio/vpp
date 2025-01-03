@@ -1668,7 +1668,10 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
     frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
 
   num_threads = 1 /* main thread */  + tm->n_threads;
-  ASSERT (frame_queue_nelts >= 8 + num_threads);
+  if (frame_queue_nelts < 8 + num_threads)
+    clib_panic
+      ("amount of workers (%u) >= handoff queue size (%u)",
+        8 + num_threads, frame_queue_nelts);
 
   vec_add2 (tm->frame_queue_mains, fqm, 1);
 
