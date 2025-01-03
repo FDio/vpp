@@ -18,6 +18,8 @@ DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 DPDK_MLX_IBV_LINK            ?= static
+# On most of the systems, default value for max lcores is 128
+DPDK_MAX_LCORES              ?=
 
 dpdk_version                 ?= 24.07
 dpdk_base_url                ?= http://fast.dpdk.org/rel
@@ -44,6 +46,11 @@ DPDK_MLX5_COMMON_PMD         ?= $(DPDK_MLX_DEFAULT)
 DPDK_BUILD_TYPE:=release
 ifeq ($(DPDK_DEBUG), y)
 DPDK_BUILD_TYPE:=debug
+endif
+
+DPDK_MAX_LCORES_FLAG :=
+ifneq ($(DPDK_MAX_LCORES),)
+DPDK_MAX_LCORES_FLAG := "-Dmax_lcores=$(DPDK_MAX_LCORES)"
 endif
 
 DPDK_DRIVERS_DISABLED := baseband/\*,	\
@@ -177,7 +184,8 @@ DPDK_MESON_ARGS = \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
 	-Db_pie=true \
 	-Dmachine=$(DPDK_MACHINE) \
-	--buildtype=$(DPDK_BUILD_TYPE) \
+	$(DPDK_MAX_LCORES_FLAG) \
+        --buildtype=$(DPDK_BUILD_TYPE) \
 	-Denable_kmods=false \
 	${DPDK_MLX_CONFIG_FLAG}
 
