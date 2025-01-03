@@ -57,6 +57,15 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_CODENAME  = $(shell grep '^VERSION_CODENAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+endif
+
+# Fill in OS_VERSION_ID based on codename if its absent
+ifeq ($(OS_VERSION_ID),)
+# Debian testing doesn't define version_id and therefore need to be referenced by name
+ifeq ($(OS_CODENAME),trixie)
+OS_VERSION_ID = 13
+endif
 endif
 
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
@@ -123,6 +132,13 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-12)
 	DEB_DEPENDS += virtualenv
 	DEB_DEPENDS += clang-14 clang-format-15
+	# for extras/scripts/checkstyle.sh
+	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
+	export CLANG_FORMAT_VER=15
+	LIBFFI=libffi8
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-13)
+	DEB_DEPENDS += virtualenv
+	DEB_DEPENDS += clang-19 clang-format-19
 	# for extras/scripts/checkstyle.sh
 	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
 	export CLANG_FORMAT_VER=15
