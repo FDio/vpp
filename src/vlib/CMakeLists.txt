@@ -28,6 +28,17 @@ else()
   set(VLIB_BUFFER_ALIGN ${VPP_CACHE_LINE_SIZE})
 endif()
 
+if(VPP_MAX_NELTS)
+  set(VLIB_MAX_NELTS ${VPP_MAX_NELTS})
+else()
+  set(VLIB_MAX_NELTS 64)
+endif()
+
+math(EXPR IS_NOT_VLIB_NELTS_POWER_OF_2 "${VLIB_MAX_NELTS} & (${VLIB_MAX_NELTS} - 1)")
+if(IS_NOT_VLIB_NELTS_POWER_OF_2)
+	message(FATAL_ERROR "VPP_MAX_NELTS is not power of 2: ${VPP_MAX_NELTS}")
+endif()
+
 set(PRE_DATA_SIZE 128 CACHE STRING "Buffer headroom size.")
 
 if (CMAKE_BUILD_TYPE_UC STREQUAL "DEBUG")

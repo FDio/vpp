@@ -809,7 +809,6 @@ vlib_error_get_code (vlib_node_main_t * nm, vlib_error_t e)
   return error_code;
 }
 
-#define FRAME_QUEUE_MAX_NELTS 64
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
