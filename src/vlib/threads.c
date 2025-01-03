@@ -282,6 +282,11 @@ vlib_thread_init (vlib_main_t * vm)
       tr->first_index = first_index;
       first_index += tr->count;
       n_vlib_mains += (tr->no_data_structure_clone == 0) ? tr->count : 0;
+      if (n_vlib_mains >= FRAME_QUEUE_MAX_NELTS)
+	return clib_error_return (0,
+				  "configured amount of workers %u is"
+				  " greater than VPP_MAX_WORKERS (%u)",
+				  n_vlib_mains, FRAME_QUEUE_MAX_NELTS);
 
       /* construct coremask */
       if (tr->use_pthreads || !tr->count)
