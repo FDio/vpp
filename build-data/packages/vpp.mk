@@ -33,6 +33,9 @@ endif
 ifneq ($(VPP_PLATFORM),)
 vpp_cmake_args += -DVPP_PLATFORM="$(VPP_PLATFORM)"
 endif
+ifneq ($(VPP_PLATFORM_MAX_THREADS_LOG2),)
+vpp_cmake_args += -DVPP_PLATFORM_MAX_THREADS_LOG2=$(VPP_PLATFORM_MAX_THREADS_LOG2)
+endif
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 vpp_cmake_args += -DVPP_EXCLUDED_PLUGINS="$(VPP_EXCLUDED_PLUGINS)"
 endif

@@ -34,6 +34,10 @@ else()
   set(CMAKE_C_COMPILER_NAMES clang gcc cc)
 endif()
 
+#if (DEFINED VPP_PLATFORM_MAX_THREADS_LOG2)
+#  set(VPP_PLATFORM_MAX_THREADS_LOG2 ${VPP_PLATFORM_MAX_THREADS_LOG2})
+#endif()
+
 project(vpp C)
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
