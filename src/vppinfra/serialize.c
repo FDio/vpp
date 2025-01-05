@@ -41,8 +41,8 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/serialize.h>
 
-void
-serialize_64 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_64 (serialize_main_t *m, va_list *va)
 {
   u64 x = va_arg (*va, u64);
   u32 lo, hi;
@@ -52,29 +52,29 @@ serialize_64 (serialize_main_t * m, va_list * va)
   serialize_integer (m, hi, sizeof (hi));
 }
 
-void
-serialize_32 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_32 (serialize_main_t *m, va_list *va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (x));
 }
 
-void
-serialize_16 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_16 (serialize_main_t *m, va_list *va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (u16));
 }
 
-void
-serialize_8 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_8 (serialize_main_t *m, va_list *va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (u8));
 }
 
-void
-unserialize_64 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_64 (serialize_main_t *m, va_list *va)
 {
   u64 *x = va_arg (*va, u64 *);
   u32 lo, hi;
@@ -83,15 +83,15 @@ unserialize_64 (serialize_main_t * m, va_list * va)
   *x = ((u64) hi << 32) | (u64) lo;
 }
 
-void
-unserialize_32 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_32 (serialize_main_t *m, va_list *va)
 {
   u32 *x = va_arg (*va, u32 *);
   unserialize_integer (m, x, sizeof (x[0]));
 }
 
-void
-unserialize_16 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_16 (serialize_main_t *m, va_list *va)
 {
   u16 *x = va_arg (*va, u16 *);
   u32 t;
@@ -99,8 +99,8 @@ unserialize_16 (serialize_main_t * m, va_list * va)
   x[0] = t;
 }
 
-void
-unserialize_8 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_8 (serialize_main_t *m, va_list *va)
 {
   u8 *x = va_arg (*va, u8 *);
   u32 t;
@@ -108,8 +108,8 @@ unserialize_8 (serialize_main_t * m, va_list * va)
   x[0] = t;
 }
 
-void
-serialize_f64 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_f64 (serialize_main_t *m, va_list *va)
 {
   f64 x = va_arg (*va, f64);
   union
@@ -121,8 +121,8 @@ serialize_f64 (serialize_main_t * m, va_list * va)
   serialize (m, serialize_64, y.i);
 }
 
-void
-serialize_f32 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_f32 (serialize_main_t *m, va_list *va)
 {
   f32 x = va_arg (*va, f64);
   union
@@ -134,8 +134,8 @@ serialize_f32 (serialize_main_t * m, va_list * va)
   serialize_integer (m, y.i, sizeof (y.i));
 }
 
-void
-unserialize_f64 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_f64 (serialize_main_t *m, va_list *va)
 {
   f64 *x = va_arg (*va, f64 *);
   union
@@ -147,8 +147,8 @@ unserialize_f64 (serialize_main_t * m, va_list * va)
   *x = y.f;
 }
 
-void
-unserialize_f32 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_f32 (serialize_main_t *m, va_list *va)
 {
   f32 *x = va_arg (*va, f32 *);
   union
@@ -200,8 +200,8 @@ unserialize_cstring (serialize_main_t * m, char **s)
 }
 
 /* vec_serialize/vec_unserialize helper functions for basic vector types. */
-void
-serialize_vec_8 (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_vec_8 (serialize_main_t *m, va_list *va)
 {
   u8 *s = va_arg (*va, u8 *);
   u32 n = va_arg (*va, u32);
@@ -209,8 +209,8 @@ serialize_vec_8 (serialize_main_t * m, va_list * va)
   clib_memcpy_fast (p, s, n * sizeof (u8));
 }
 
-void
-unserialize_vec_8 (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_vec_8 (serialize_main_t *m, va_list *va)
 {
   u8 *s = va_arg (*va, u8 *);
   u32 n = va_arg (*va, u32);
@@ -218,57 +218,59 @@ unserialize_vec_8 (serialize_main_t * m, va_list * va)
   clib_memcpy_fast (s, p, n);
 }
 
-#define _(n_bits)							\
-  void serialize_vec_##n_bits (serialize_main_t * m, va_list * va)	\
-  {									\
-    u##n_bits * s = va_arg (*va, u##n_bits *);				\
-    u32 n = va_arg (*va, u32);						\
-    u##n_bits * p = serialize_get (m, n * sizeof (s[0]));		\
-									\
-    while (n >= 4)							\
-      {									\
-	p[0] = clib_host_to_net_u##n_bits (s[0]);			\
-	p[1] = clib_host_to_net_u##n_bits (s[1]);			\
-	p[2] = clib_host_to_net_u##n_bits (s[2]);			\
-	p[3] = clib_host_to_net_u##n_bits (s[3]);			\
-	s += 4;								\
-	p += 4;								\
-	n -= 4;								\
-      }									\
-									\
-    while (n >= 1)							\
-      {									\
-	p[0] = clib_host_to_net_u##n_bits (s[0]);			\
-	s += 1;								\
-	p += 1;								\
-	n -= 1;								\
-      }									\
-  }									\
-									\
-  void unserialize_vec_##n_bits (serialize_main_t * m, va_list * va)	\
-  {									\
-    u##n_bits * s = va_arg (*va, u##n_bits *);				\
-    u32 n = va_arg (*va, u32);						\
-    u##n_bits * p = unserialize_get (m, n * sizeof (s[0]));		\
-									\
-    while (n >= 4)							\
-      {									\
-	s[0] = clib_net_to_host_mem_u##n_bits (&p[0]);			\
-	s[1] = clib_net_to_host_mem_u##n_bits (&p[1]);			\
-	s[2] = clib_net_to_host_mem_u##n_bits (&p[2]);			\
-	s[3] = clib_net_to_host_mem_u##n_bits (&p[3]);			\
-	s += 4;								\
-	p += 4;								\
-	n -= 4;								\
-      }									\
-									\
-    while (n >= 1)							\
-      {									\
-	s[0] = clib_net_to_host_mem_u##n_bits (&p[0]);			\
-	s += 1;								\
-	p += 1;								\
-	n -= 1;								\
-      }									\
+#define _(n_bits)                                                             \
+  __clib_export void serialize_vec_##n_bits (serialize_main_t *m,             \
+					     va_list *va)                     \
+  {                                                                           \
+    u##n_bits *s = va_arg (*va, u##n_bits *);                                 \
+    u32 n = va_arg (*va, u32);                                                \
+    u##n_bits *p = serialize_get (m, n * sizeof (s[0]));                      \
+                                                                              \
+    while (n >= 4)                                                            \
+      {                                                                       \
+	p[0] = clib_host_to_net_u##n_bits (s[0]);                             \
+	p[1] = clib_host_to_net_u##n_bits (s[1]);                             \
+	p[2] = clib_host_to_net_u##n_bits (s[2]);                             \
+	p[3] = clib_host_to_net_u##n_bits (s[3]);                             \
+	s += 4;                                                               \
+	p += 4;                                                               \
+	n -= 4;                                                               \
+      }                                                                       \
+                                                                              \
+    while (n >= 1)                                                            \
+      {                                                                       \
+	p[0] = clib_host_to_net_u##n_bits (s[0]);                             \
+	s += 1;                                                               \
+	p += 1;                                                               \
+	n -= 1;                                                               \
+      }                                                                       \
+  }                                                                           \
+                                                                              \
+  __clib_export void unserialize_vec_##n_bits (serialize_main_t *m,           \
+					       va_list *va)                   \
+  {                                                                           \
+    u##n_bits *s = va_arg (*va, u##n_bits *);                                 \
+    u32 n = va_arg (*va, u32);                                                \
+    u##n_bits *p = unserialize_get (m, n * sizeof (s[0]));                    \
+                                                                              \
+    while (n >= 4)                                                            \
+      {                                                                       \
+	s[0] = clib_net_to_host_mem_u##n_bits (&p[0]);                        \
+	s[1] = clib_net_to_host_mem_u##n_bits (&p[1]);                        \
+	s[2] = clib_net_to_host_mem_u##n_bits (&p[2]);                        \
+	s[3] = clib_net_to_host_mem_u##n_bits (&p[3]);                        \
+	s += 4;                                                               \
+	p += 4;                                                               \
+	n -= 4;                                                               \
+      }                                                                       \
+                                                                              \
+    while (n >= 1)                                                            \
+      {                                                                       \
+	s[0] = clib_net_to_host_mem_u##n_bits (&p[0]);                        \
+	s += 1;                                                               \
+	p += 1;                                                               \
+	n -= 1;                                                               \
+      }                                                                       \
   }
 
 _(16);
@@ -300,11 +302,9 @@ serialize_vector (serialize_main_t * m, va_list * va)
     }
 }
 
-void *
-unserialize_vector_ha (serialize_main_t * m,
-		       u32 elt_bytes,
-		       u32 header_bytes,
-		       u32 align, u32 max_length, serialize_function_t * f)
+__clib_export void *
+unserialize_vector_ha (serialize_main_t *m, u32 elt_bytes, u32 header_bytes,
+		       u32 align, u32 max_length, serialize_function_t *f)
 {
   void *v, *p;
   u32 l;
@@ -329,8 +329,8 @@ unserialize_vector_ha (serialize_main_t * m,
   return v;
 }
 
-void
-unserialize_aligned_vector (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_aligned_vector (serialize_main_t *m, va_list *va)
 {
   void **vec = va_arg (*va, void **);
   u32 elt_bytes = va_arg (*va, u32);
@@ -358,8 +358,8 @@ unserialize_vector (serialize_main_t * m, va_list * va)
 				f);
 }
 
-void
-serialize_bitmap (serialize_main_t * m, uword * b)
+__clib_export void
+serialize_bitmap (serialize_main_t *m, uword *b)
 {
   u32 l, i, n_u32s;
 
@@ -410,8 +410,8 @@ unserialize_bitmap (serialize_main_t * m)
   return b;
 }
 
-void
-serialize_pool (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_pool (serialize_main_t *m, va_list *va)
 {
   void *pool = va_arg (*va, void *);
   u32 elt_bytes = va_arg (*va, u32);
@@ -466,8 +466,8 @@ unserialize_pool_helper (serialize_main_t * m,
   return v;
 }
 
-void
-unserialize_pool (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_pool (serialize_main_t *m, va_list *va)
 {
   void **result = va_arg (*va, void **);
   u32 elt_bytes = va_arg (*va, u32);
@@ -475,8 +475,8 @@ unserialize_pool (serialize_main_t * m, va_list * va)
   *result = unserialize_pool_helper (m, elt_bytes, /* align */ 0, f);
 }
 
-void
-unserialize_aligned_pool (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_aligned_pool (serialize_main_t *m, va_list *va)
 {
   void **result = va_arg (*va, void **);
   u32 elt_bytes = va_arg (*va, u32);
@@ -511,8 +511,8 @@ unserialize_vec_heap_elt (serialize_main_t * m, va_list * va)
     }
 }
 
-void
-serialize_heap (serialize_main_t * m, va_list * va)
+__clib_export void
+serialize_heap (serialize_main_t *m, va_list *va)
 {
   void *heap = va_arg (*va, void *);
   serialize_function_t *f = va_arg (*va, serialize_function_t *);
@@ -561,8 +561,8 @@ serialize_heap (serialize_main_t * m, va_list * va)
   }
 }
 
-void
-unserialize_heap (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_heap (serialize_main_t *m, va_list *va)
 {
   void **result = va_arg (*va, void **);
   serialize_function_t *f = va_arg (*va, serialize_function_t *);
@@ -626,8 +626,8 @@ unserialize_heap (serialize_main_t * m, va_list * va)
   }
 }
 
-void
-serialize_magic (serialize_main_t * m, void *magic, u32 magic_bytes)
+__clib_export void
+serialize_magic (serialize_main_t *m, void *magic, u32 magic_bytes)
 {
   void *p;
   serialize_integer (m, magic_bytes, sizeof (magic_bytes));
@@ -635,8 +635,8 @@ serialize_magic (serialize_main_t * m, void *magic, u32 magic_bytes)
   clib_memcpy_fast (p, magic, magic_bytes);
 }
 
-void
-unserialize_check_magic (serialize_main_t * m, void *magic, u32 magic_bytes)
+__clib_export void
+unserialize_check_magic (serialize_main_t *m, void *magic, u32 magic_bytes)
 {
   u32 l;
   void *d;
