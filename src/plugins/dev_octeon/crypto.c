@@ -1250,6 +1250,27 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       auth_type = ROC_SE_SHA1_TYPE;
       digest_len = 12;
       break;
+    case VNET_CRYPTO_ALG_AES_128_CTR_SHA256_TAG16:
+    case VNET_CRYPTO_ALG_AES_192_CTR_SHA256_TAG16:
+    case VNET_CRYPTO_ALG_AES_256_CTR_SHA256_TAG16:
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA256;
+      digest_len = 16;
+      break;
+    case VNET_CRYPTO_ALG_AES_128_CTR_SHA384_TAG24:
+    case VNET_CRYPTO_ALG_AES_192_CTR_SHA384_TAG24:
+    case VNET_CRYPTO_ALG_AES_256_CTR_SHA384_TAG24:
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA384;
+      digest_len = 24;
+      break;
+    case VNET_CRYPTO_ALG_AES_128_CTR_SHA512_TAG32:
+    case VNET_CRYPTO_ALG_AES_192_CTR_SHA512_TAG32:
+    case VNET_CRYPTO_ALG_AES_256_CTR_SHA512_TAG32:
+      enc_type = ROC_SE_AES_CTR;
+      auth_type = ROC_SE_SHA2_SHA512;
+      digest_len = 32;
+      break;
     case VNET_CRYPTO_ALG_3DES_CBC_MD5_TAG12:
       enc_type = ROC_SE_DES3_CBC;
       auth_type = ROC_SE_MD5_TYPE;

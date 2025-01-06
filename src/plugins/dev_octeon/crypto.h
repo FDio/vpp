@@ -49,7 +49,16 @@
   _ (3DES_CBC, SHA512, 24, 32)                                                \
   _ (AES_128_CTR, SHA1, 16, 12)                                               \
   _ (AES_192_CTR, SHA1, 24, 12)                                               \
-  _ (AES_256_CTR, SHA1, 32, 12)
+  _ (AES_256_CTR, SHA1, 32, 12)                                               \
+  _ (AES_128_CTR, SHA256, 16, 16)                                             \
+  _ (AES_192_CTR, SHA256, 24, 16)                                             \
+  _ (AES_256_CTR, SHA256, 32, 16)                                             \
+  _ (AES_128_CTR, SHA384, 16, 24)                                             \
+  _ (AES_192_CTR, SHA384, 24, 24)                                             \
+  _ (AES_256_CTR, SHA384, 32, 24)                                             \
+  _ (AES_128_CTR, SHA512, 16, 32)                                             \
+  _ (AES_192_CTR, SHA512, 24, 32)                                             \
+  _ (AES_256_CTR, SHA512, 32, 32)
 
 #define OCT_MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
 
