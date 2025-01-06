@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ea0494d_54fd5d0f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-06T09:58:35Z",
+      "side": 1,
+      "message": "Thanks for taking a stab on it! We should have a check at init where we check that we don\u0027t have more threads than what was configured.",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ddd4e98f_b1bb2b7c",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-06T09:58:35Z",
+      "side": 1,
+      "message": "is it a leftover?",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6af59c7e_7f5eadc7",
+        "filename": "src/vlib/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-06T09:58:35Z",
+      "side": 1,
+      "message": "Do we really need a power-of-2 here? I would be easier to read/use with a direct number (say 64)",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
