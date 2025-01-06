@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36d55218_50b6043a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-06T10:02:58Z",
+      "side": 1,
+      "message": "I\u0027m not sure we want to add this check in release mode if we correctly check the # of threads at startup",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3cf6f401_9d4696a3",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1671,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-06T10:02:58Z",
+      "side": 1,
+      "message": "you can use ALWAYS_ASSERT instead",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
