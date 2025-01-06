@@ -416,7 +416,7 @@ vls_n_workers (void)
   return pool_elts (vlsm->workers);
 }
 
-static void
+static vls_worker_t *
 vls_worker_alloc (void)
 {
   vls_worker_t *wrk;
@@ -427,6 +427,8 @@ vls_worker_alloc (void)
   wrk->vcl_wrk_index = vcl_get_worker_index ();
   vec_validate (wrk->pending_vcl_wrk_cleanup, 16);
   vec_reset_length (wrk->pending_vcl_wrk_cleanup);
+
+  return wrk;
 }
 
 static void
@@ -1879,6 +1881,7 @@ static void
 vls_app_fork_child_handler (void)
 {
   vcl_worker_t *parent_wrk;
+  vls_worker_t *vls_wrk;
   int parent_wrk_index;
 
   parent_wrk_index = vcl_get_worker_index ();
@@ -1902,11 +1905,11 @@ vls_app_fork_child_handler (void)
   /*
    * Allocate/initialize vls worker and share sessions
    */
-  vls_worker_alloc ();
+  vls_wrk = vls_worker_alloc ();
 
   /* Reset number of threads and set wrk index */
   vlsl->vls_mt_n_threads = 1;
-  vlsl->vls_wrk_index = vcl_get_worker_index ();
+  vlsl->vls_wrk_index = vls_wrk - vlsm->workers;
   vlsl->select_mp_check = 0;
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
