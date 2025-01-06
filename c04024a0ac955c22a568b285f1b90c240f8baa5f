@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa0a3817_cc7093a2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2025-01-06T10:36:45Z",
+      "side": 1,
+      "message": "Hello folks, need help with merging this PR. let me know if there is any feedback, happy to work with you to get it merged. Thanks, VK",
+      "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
