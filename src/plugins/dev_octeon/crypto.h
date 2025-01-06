@@ -49,7 +49,16 @@
   _ (3DES_CBC, SHA512, 24, 32)                                                \
   _ (AES_128_CTR, SHA1, 16, 12)                                               \
   _ (AES_192_CTR, SHA1, 24, 12)                                               \
-  _ (AES_256_CTR, SHA1, 32, 12)
+  _ (AES_256_CTR, SHA1, 32, 12)                                               \
+  _ (AES_128_CTR, SHA256, 16, 16)                                             \
+  _ (AES_192_CTR, SHA256, 24, 16)                                             \
+  _ (AES_256_CTR, SHA256, 32, 16)                                             \
+  _ (AES_128_CTR, SHA384, 16, 24)                                             \
+  _ (AES_192_CTR, SHA384, 24, 24)                                             \
+  _ (AES_256_CTR, SHA384, 32, 24)                                             \
+  _ (AES_128_CTR, SHA512, 16, 32)                                             \
+  _ (AES_192_CTR, SHA512, 24, 32)                                             \
+  _ (AES_256_CTR, SHA512, 32, 32)
 
 #define OCT_MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
 
@@ -114,17 +123,28 @@ typedef struct oct_crypto_scatter_gather
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /** Result data of all entries in the frame */
-  volatile union cpt_res_s res[VNET_CRYPTO_FRAME_SIZE];
-  /** Scatter gather data */
-  void *sg_data;
+  /** Result data */
+  volatile union cpt_res_s res;
   /** Frame pointer */
   vnet_crypto_async_frame_t *frame;
-  /** Number of async elements in frame */
-  u16 elts;
-  /** Next read entry in frame, when dequeue */
-  u16 deq_elts;
-} oct_crypto_inflight_req_t;
+  /** Async frame element */
+  vnet_crypto_async_frame_elt_t *fe;
+  /** AAD meta data */
+  u8 aad[8];
+  /** IV meta data */
+  u8 iv[16];
+  /** Digest len */
+  u8 mac_len;
+  /** aead */
+  bool aead_algo;
+  /** Set when encrypting linked algo with esn.
+   * To move digest data */
+  bool esn_enabled;
+  /** Set if this is last element in frame */
+  bool last_elts;
+  /** Index of element in frame */
+  int index;
+} __plt_cache_aligned oct_crypto_inflight_req_t;
 
 typedef struct
 {
@@ -132,22 +152,33 @@ typedef struct
   oct_crypto_inflight_req_t *req_queue;
   /** Number of inflight operations in queue */
   u32 n_crypto_inflight;
+  /** Number of frames in queue */
+  u32 n_crypto_frame;
   /** Tail of queue to be used for enqueue */
   u16 enq_tail;
   /** Head of queue to be used for dequeue */
   u16 deq_head;
   /** Number of descriptors */
   u16 n_desc;
+  /** Scatter gather data */
+  void *sg_data;
 } oct_crypto_pending_queue_t;
 
 typedef struct
 {
   oct_crypto_dev_t *crypto_dev[OCT_MAX_N_CPT_DEV];
-  oct_crypto_key_t *keys[VNET_CRYPTO_ASYNC_OP_N_TYPES];
+  oct_crypto_key_t *keys[VNET_CRYPTO_OP_N_TYPES];
   oct_crypto_pending_queue_t *pend_q;
   int n_cpt;
   u8 started;
 } oct_crypto_main_t;
+
+static_always_inline bool
+oct_hw_ctx_cache_enable (void)
+{
+  return roc_errata_cpt_hang_on_mixed_ctx_val () ||
+	 roc_model_is_cn10ka_b0 () || roc_model_is_cn10kb_a0 ();
+}
 
 extern oct_crypto_main_t oct_crypto_main;
 
