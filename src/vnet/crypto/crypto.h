@@ -130,7 +130,16 @@ typedef enum
   _ (AES_256_CBC, SHA512, "aes-256-cbc-hmac-sha-512", 32, 32)                 \
   _ (AES_128_CTR, SHA1, "aes-128-ctr-hmac-sha-1", 16, 12)                     \
   _ (AES_192_CTR, SHA1, "aes-192-ctr-hmac-sha-1", 24, 12)                     \
-  _ (AES_256_CTR, SHA1, "aes-256-ctr-hmac-sha-1", 32, 12)
+  _ (AES_256_CTR, SHA1, "aes-256-ctr-hmac-sha-1", 32, 12)                     \
+  _ (AES_128_CTR, SHA256, "aes-128-ctr-hmac-sha-256", 16, 16)                 \
+  _ (AES_192_CTR, SHA256, "aes-192-ctr-hmac-sha-256", 24, 16)                 \
+  _ (AES_256_CTR, SHA256, "aes-256-ctr-hmac-sha-256", 32, 16)                 \
+  _ (AES_128_CTR, SHA384, "aes-128-ctr-hmac-sha-384", 16, 24)                 \
+  _ (AES_192_CTR, SHA384, "aes-192-ctr-hmac-sha-384", 24, 24)                 \
+  _ (AES_256_CTR, SHA384, "aes-256-ctr-hmac-sha-384", 32, 24)                 \
+  _ (AES_128_CTR, SHA512, "aes-128-ctr-hmac-sha-512", 16, 32)                 \
+  _ (AES_192_CTR, SHA512, "aes-192-ctr-hmac-sha-512", 24, 32)                 \
+  _ (AES_256_CTR, SHA512, "aes-256-ctr-hmac-sha-512", 32, 32)
 
 #define foreach_crypto_async_op_type \
   _(ENCRYPT, "async-encrypt") \
