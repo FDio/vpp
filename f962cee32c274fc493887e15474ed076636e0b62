@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "575a30dd_c409b79b",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-07T19:18:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "836a0bfd_3ebf95cd",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6af59c7e_7f5eadc7",
@@ -102,6 +120,24 @@
       "side": 1,
       "message": "I would suggest not using power-of-2 but adding check in cmake project...",
       "parentUuid": "d8158d56_4e11ecb7",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5654f5f9_36656c31",
+        "filename": "src/vlib/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-07T19:18:59Z",
+      "side": 1,
+      "message": "Make sense. Fixed.",
+      "parentUuid": "3b6cda28_ac3224c0",
       "revId": "f962cee32c274fc493887e15474ed076636e0b62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
