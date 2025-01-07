@@ -10,7 +10,7 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
+trace add pg-input 100
 loop create
 loop create
 set int state loop0 up

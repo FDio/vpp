@@ -15,7 +15,7 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
+trace add pg-input 100
 set int state fake-srp0 up
 set int state fake-srp1 up
 

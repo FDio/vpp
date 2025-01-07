@@ -64,7 +64,7 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
+trace add pg-input 100
 
 set int ip addr pg0 10.10.11.10/24
 
