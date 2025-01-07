@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "910d95f8_7c4f37fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-07T20:19:41Z",
+      "side": 1,
+      "message": "Looks good, some quick nits.",
+      "revId": "27ae9f05cc0da5c71b255aab0b7189c132beca8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38db42a3_9bc1a5a6",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-07T20:19:41Z",
+      "side": 1,
+      "message": "could we add a comment here explaining why this capsule is invalid?",
+      "revId": "27ae9f05cc0da5c71b255aab0b7189c132beca8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44d7b77e_b1b14941",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-07T20:19:41Z",
+      "side": 1,
+      "message": "comment",
+      "revId": "27ae9f05cc0da5c71b255aab0b7189c132beca8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aef55a43_78c14089",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-07T20:19:41Z",
+      "side": 1,
+      "message": "This looks like it should be moved to the rpc handler for http",
+      "revId": "27ae9f05cc0da5c71b255aab0b7189c132beca8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
