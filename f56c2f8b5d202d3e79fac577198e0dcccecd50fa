@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e7abdec_9bdf41b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-01-07T08:39:44Z",
+      "side": 1,
+      "message": "Hey Fan, I\u0027ve added the test. The test is failing without this commit (due to the wrong compare when matching ipv6 policy) and passing when placed on the top of this change.",
+      "parentUuid": "0a0f59be_c47cfb86",
+      "revId": "f56c2f8b5d202d3e79fac577198e0dcccecd50fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a21e8ae4_b1b26304",
