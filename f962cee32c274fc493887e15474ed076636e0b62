@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "836a0bfd_3ebf95cd",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-07T14:33:25Z",
+      "side": 1,
+      "message": "Yeah, I honestly thought I\u0027ve removed the comment before the push. I\u0027ll fix that in the patchset 2, as well as I\u0027ll ranane VPP_PLATFORM_M\u003cAX_THREADS_LOG2 to VLIB_MAX_NELTS_LOG2 (again, I thought I already did that, as you can see in the comment).",
+      "parentUuid": "ddd4e98f_b1bb2b7c",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6af59c7e_7f5eadc7",
         "filename": "src/vlib/CMakeLists.txt",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2025-01-06T09:58:35Z",
       "side": 1,
       "message": "Do we really need a power-of-2 here? I would be easier to read/use with a direct number (say 64)",
+      "revId": "f962cee32c274fc493887e15474ed076636e0b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8158d56_4e11ecb7",
+        "filename": "src/vlib/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-07T14:33:25Z",
+      "side": 1,
+      "message": "There are checks around MAX_NELTS to be power of 2. I thought that instead of rouding it up to the nearest power of 2, it would be slightly more clear to just make it LOG2.",
+      "parentUuid": "6af59c7e_7f5eadc7",
       "revId": "f962cee32c274fc493887e15474ed076636e0b62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
