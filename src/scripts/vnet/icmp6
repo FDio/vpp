@@ -10,6 +10,6 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
+trace add pg-input 100
 ip route ::1/128 via local
 ip route ::2/128 via local

@@ -44,7 +44,7 @@ set ip source-and-port-range-check 1.1.1.0/24 range 2000 - 3000 vrf 99
 
 set interface ip source-and-port-range-check pg0 udp-out-vrf 99
 
- show ip source-and-port-range-check vrf 99 1.1.1.1
+show ip source-and-port-range-check vrf 99 1.1.1.1
 
 set ip source-and-port-range-check 1.1.1.0/24 range 4000 - 5000 vrf 99
 
@@ -57,4 +57,4 @@ set ip source-and-port-range-check 1.1.2.0/24 range 4000 - 5000 vrf 99 del
 
 show ip source-and-port-range-check vrf 99 1.1.2.1
 
-tr add pg-input 100
+trace add pg-input 100

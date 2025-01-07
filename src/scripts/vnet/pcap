@@ -12,5 +12,5 @@ packet-generator new {							\
   pcap /home/eliot/pcap-data/ISIS_p2p_adjacency.cap			\
 }
 
-tr add pg-input 10
+trace add pg-input 10
 

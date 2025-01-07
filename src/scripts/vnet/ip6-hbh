@@ -75,4 +75,4 @@ packet-generator new {						\
   }								\
 }
 
-tr add pg-input 100
+trace add pg-input 100
