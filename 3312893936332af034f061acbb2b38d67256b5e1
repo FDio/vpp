@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b69e25a5_0da0b954",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-01-07T12:51:10Z",
+      "side": 1,
+      "message": "No it is not expected - in my case the test was failing as nothing was captured and in the log from the test you could see that there was no match in the policy. Let me double check yet.",
+      "parentUuid": "33d1117c_386cb7f3",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb82c087_0e1bd0e0",
