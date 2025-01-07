@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33d1117c_386cb7f3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-01-07T12:42:18Z",
+      "side": 1,
+      "message": "I ran the test without applying https://gerrit.fd.io/r/c/vpp/+/41721/3 and the test passed. Was it expected?",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb82c087_0e1bd0e0",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 894,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-01-07T12:42:18Z",
+      "side": 1,
+      "message": "The line behind \"(protect)...\" was displayed in the test output. Please either remove or comment with \"# ...\" Instead",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
