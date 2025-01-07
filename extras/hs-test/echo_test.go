@@ -24,19 +24,13 @@ func EchoBuiltinTest(s *VethsSuite) {
 	s.AssertNotContains(o, "failed:")
 }
 
-// unstable with multiple workers
 func TcpWithLossTest(s *VethsSuite) {
-	s.SkipIfMultiWorker()
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server uri tcp://%s/20022",
 		s.Interfaces.Server.Ip4AddressString())
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
-
-	// Ensure that VPP doesn't abort itself with NSIM enabled
-	// Warning: Removing this ping will make VPP crash!
-	clientVpp.Vppctl("ping %s", s.Interfaces.Server.Ip4AddressString())
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
