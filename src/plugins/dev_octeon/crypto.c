@@ -1162,6 +1162,7 @@ oct_cpt_inst_w7_get (oct_crypto_sess_t *sess, struct roc_cpt *roc_cpt)
 
   inst_w7.u64 = 0;
   inst_w7.s.cptr = (u64) &sess->cpt_ctx.se_ctx.fctx;
+
   /* Set the engine group */
   inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 
@@ -1421,6 +1422,7 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
   u32 crypto_total_length;
   oct_crypto_key_t *key;
   vlib_buffer_t *buffer;
+  void *sg_data;
   u16 adj_len;
   int ret = 0;
 
@@ -1429,22 +1431,26 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 
   pend_q = &ocm->pend_q[vlib_get_thread_index ()];
 
-  enq_tail = pend_q->enq_tail;
-
   nb_infl_allowed = pend_q->n_desc - pend_q->n_crypto_inflight;
-  if (PREDICT_FALSE (nb_infl_allowed == 0))
+  if (PREDICT_FALSE (nb_infl_allowed < frame->n_elts))
     {
       oct_crypto_update_frame_error_status (
 	frame, 0, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
       return -1;
     }
 
-  infl_req = &pend_q->req_queue[enq_tail];
-  infl_req->frame = frame;
+  sg_data = pend_q->sg_data;
 
   for (i = 0; i < frame->n_elts; i++)
     {
+      enq_tail = pend_q->enq_tail;
+      infl_req = &pend_q->req_queue[enq_tail];
+      infl_req->frame = frame;
+      infl_req->last_elts = false;
+      infl_req->index = i;
+
       elts = &frame->elts[i];
+      infl_req->fe = elts;
       buffer_index = frame->buffer_indices[i];
       key = vec_elt_at_index (ocm->keys[type], elts->key_index);
 
@@ -1485,7 +1491,7 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 
 	  ret = oct_crypto_fill_fc_params (
 	    sess, inst + i, is_aead, aad_len, (u8 *) dptr_start_ptr, elts,
-	    (oct_crypto_scatter_gather_t *) (infl_req->sg_data) + i,
+	    ((oct_crypto_scatter_gather_t *) (sg_data)) + enq_tail,
 	    crypto_total_length /* cipher_len */,
 	    crypto_start_offset /* cipher_offset */, 0 /* auth_len */,
 	    integ_start_offset /* auth_off */, buffer, adj_len);
@@ -1512,7 +1518,7 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 
 	  ret = oct_crypto_fill_fc_params (
 	    sess, inst + i, is_aead, aad_len, (u8 *) dptr_start_ptr, elts,
-	    (oct_crypto_scatter_gather_t *) (infl_req->sg_data) + i,
+	    ((oct_crypto_scatter_gather_t *) (sg_data)) + enq_tail,
 	    crypto_total_length /* cipher_len */,
 	    crypto_start_offset /* cipher_offset */,
 	    enc_auth_len /* auth_len */, integ_start_offset /* auth_off */,
@@ -1526,14 +1532,16 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 	}
 
       inst[i].w7.u64 = sess->cpt_inst_w7;
-      inst[i].res_addr = (u64) &infl_req->res[i];
+      inst[i].res_addr = (u64) &infl_req->res;
+      OCT_MOD_INC (pend_q->enq_tail, pend_q->n_desc);
     }
 
   oct_crypto_burst_submit (crypto_dev, inst, frame->n_elts);
 
-  infl_req->elts = frame->n_elts;
-  OCT_MOD_INC (pend_q->enq_tail, pend_q->n_desc);
-  pend_q->n_crypto_inflight++;
+  infl_req->last_elts = true;
+
+  pend_q->n_crypto_inflight += frame->n_elts;
+  pend_q->n_crypto_frame++;
 
   return 0;
 }
@@ -1623,22 +1631,22 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   oct_crypto_pending_queue_t *pend_q;
   vnet_crypto_async_frame_t *frame;
   volatile union cpt_res_s *res;
-  int i;
+  bool last_elts_processed;
 
   pend_q = &ocm->pend_q[vlib_get_thread_index ()];
 
-  if (!pend_q->n_crypto_inflight)
+  if (!pend_q->n_crypto_frame)
     return NULL;
 
-  deq_head = pend_q->deq_head;
-  infl_req = &pend_q->req_queue[deq_head];
-  frame = infl_req->frame;
+  last_elts_processed = false;
 
-  fe = frame->elts;
-
-  for (i = infl_req->deq_elts; i < infl_req->elts; ++i)
+  for (; last_elts_processed == false;)
     {
-      res = &infl_req->res[i];
+      deq_head = pend_q->deq_head;
+      infl_req = &pend_q->req_queue[deq_head];
+      fe = infl_req->fe;
+
+      res = &infl_req->res;
 
       if (PREDICT_FALSE (res->cn10k.compcode == CPT_COMP_NOT_DONE))
 	return NULL;
@@ -1646,19 +1654,20 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
       if (PREDICT_FALSE (res->cn10k.uc_compcode))
 	{
 	  if (res->cn10k.uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
-	    status = fe[i].status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	    status = fe->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	  else
-	    status = fe[i].status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	    status = fe->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
 	}
 
-      infl_req->deq_elts++;
+      clib_memset ((void *) &infl_req->res, 0, sizeof (union cpt_res_s));
+      last_elts_processed = infl_req->last_elts;
+      OCT_MOD_INC (pend_q->deq_head, pend_q->n_desc);
     }
 
-  clib_memset ((void *) infl_req->res, 0,
-	       sizeof (union cpt_res_s) * VNET_CRYPTO_FRAME_SIZE);
+  frame = infl_req->frame;
 
-  OCT_MOD_INC (pend_q->deq_head, pend_q->n_desc);
-  pend_q->n_crypto_inflight--;
+  pend_q->n_crypto_frame--;
+  pend_q->n_crypto_inflight -= frame->n_elts;
 
   frame->state = status == VNET_CRYPTO_OP_STATUS_COMPLETED ?
 		   VNET_CRYPTO_FRAME_STATE_SUCCESS :
@@ -1666,9 +1675,6 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 
   *nb_elts_processed = frame->n_elts;
   *enqueue_thread_idx = frame->enqueue_thread_index;
-
-  infl_req->deq_elts = 0;
-  infl_req->elts = 0;
 
   return frame;
 }
@@ -1715,9 +1721,8 @@ oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev)
   oct_crypto_main_t *ocm = &oct_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   extern oct_plt_init_param_t oct_plt_init_param;
-  oct_crypto_inflight_req_t *infl_req_queue;
   u32 n_inflight_req;
-  int i, j = 0;
+  int i;
 
   ocm->pend_q = oct_plt_init_param.oct_plt_zmalloc (
     tm->n_vlib_mains * sizeof (oct_crypto_pending_queue_t),
@@ -1732,8 +1737,7 @@ oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev)
    * Each pending queue will get number of cpt desc / number of cores.
    * And that desc count is shared across inflight entries.
    */
-  n_inflight_req =
-    (OCT_CPT_LF_MAX_NB_DESC / tm->n_vlib_mains) / VNET_CRYPTO_FRAME_SIZE;
+  n_inflight_req = (OCT_CPT_LF_MAX_NB_DESC / tm->n_vlib_mains);
 
   for (i = 0; i < tm->n_vlib_mains; ++i)
     {
@@ -1749,35 +1753,26 @@ oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev)
 	  goto free;
 	}
 
-      for (j = 0; j <= ocm->pend_q[i].n_desc; ++j)
+      ocm->pend_q[i].sg_data = oct_plt_init_param.oct_plt_zmalloc (
+	OCT_SCATTER_GATHER_BUFFER_SIZE * ocm->pend_q[i].n_desc,
+	CLIB_CACHE_LINE_BYTES);
+      if (ocm->pend_q[i].sg_data == NULL)
 	{
-	  infl_req_queue = &ocm->pend_q[i].req_queue[j];
-
-	  infl_req_queue->sg_data = oct_plt_init_param.oct_plt_zmalloc (
-	    OCT_SCATTER_GATHER_BUFFER_SIZE * VNET_CRYPTO_FRAME_SIZE,
-	    CLIB_CACHE_LINE_BYTES);
-	  if (infl_req_queue->sg_data == NULL)
-	    {
-	      log_err (dev, "Failed to allocate crypto scatter gather memory");
-	      goto free;
-	    }
+	  log_err (dev, "Failed to allocate crypto scatter gather memory");
+	  goto free;
 	}
     }
+
   return 0;
+
 free:
   for (; i >= 0; i--)
     {
       if (ocm->pend_q[i].req_queue == NULL)
 	continue;
-      for (; j >= 0; j--)
-	{
-	  infl_req_queue = &ocm->pend_q[i].req_queue[j];
 
-	  if (infl_req_queue->sg_data == NULL)
-	    continue;
+      oct_plt_init_param.oct_plt_free (ocm->pend_q[i].sg_data);
 
-	  oct_plt_init_param.oct_plt_free (infl_req_queue->sg_data);
-	}
       oct_plt_init_param.oct_plt_free (ocm->pend_q[i].req_queue);
     }
   oct_plt_init_param.oct_plt_free (ocm->pend_q);
