@@ -114,17 +114,17 @@ typedef struct oct_crypto_scatter_gather
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /** Result data of all entries in the frame */
-  volatile union cpt_res_s res[VNET_CRYPTO_FRAME_SIZE];
-  /** Scatter gather data */
-  void *sg_data;
+  /** Result data */
+  volatile union cpt_res_s res;
   /** Frame pointer */
   vnet_crypto_async_frame_t *frame;
-  /** Number of async elements in frame */
-  u16 elts;
-  /** Next read entry in frame, when dequeue */
-  u16 deq_elts;
-} oct_crypto_inflight_req_t;
+  /** Async frame element */
+  vnet_crypto_async_frame_elt_t *fe;
+  /** Set if this is last element in frame */
+  bool last_elts;
+  /** Index of element in frame */
+  int index;
+} __plt_cache_aligned oct_crypto_inflight_req_t;
 
 typedef struct
 {
@@ -132,12 +132,16 @@ typedef struct
   oct_crypto_inflight_req_t *req_queue;
   /** Number of inflight operations in queue */
   u32 n_crypto_inflight;
+  /** Number of frames in queue */
+  u32 n_crypto_frame;
   /** Tail of queue to be used for enqueue */
   u16 enq_tail;
   /** Head of queue to be used for dequeue */
   u16 deq_head;
   /** Number of descriptors */
   u16 n_desc;
+  /** Scatter gather data */
+  void *sg_data;
 } oct_crypto_pending_queue_t;
 
 typedef struct
