@@ -578,6 +578,349 @@ class TestSRv6Ad(VppTestCase):
 
         self.logger.debug("packet verification: SUCCESS")
 
+    def test_srv6_end_ad_usid_end_ipv6(self):
+        """Test SRv6 End.AD.uSID end operation for IPv6 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:4:ad6::/64",
+            ingress_dst_addr="5f00:0:4:ad6::",
+            egress_dst_addr="5f00:0:5:6::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:4:ad6::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=0,
+            inner_type="IPv6",
+        )
+
+    def test_srv6_end_ad_usid_shift_srh_ipv6(self):
+        """Test SRv6 End.AD.uSID shift operation with SRH for IPv6 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4::",
+            egress_dst_addr="5f00:0:4::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:ad6:4::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=1,
+            inner_type="IPv6",
+        )
+
+    def test_srv6_end_ad_usid_shift_nosrh_ipv6(self):
+        """Test SRv6 End.AD.uSID shift operation without SRH for IPv6 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4:5::",
+            egress_dst_addr="5f00:0:4:5::",
+            usid_len=32,
+            inner_type="IPv6",
+        )
+
+    def test_srv6_end_ad_usid_end_ipv4(self):
+        """Test SRv6 End.AD.uSID end operation for IPv4 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:4:ad6::/64",
+            ingress_dst_addr="5f00:0:4:ad6::",
+            egress_dst_addr="5f00:0:5:6::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:4:ad6::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=0,
+            inner_type="IPv4",
+        )
+
+    def test_srv6_end_ad_usid_shift_srh_ipv4(self):
+        """Test SRv6 End.AD.uSID shift operation with SRH for IPv4 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4::",
+            egress_dst_addr="5f00:0:4::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:ad6:4::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=1,
+            inner_type="IPv4",
+        )
+
+    def test_srv6_end_ad_usid_shift_nosrh_ipv4(self):
+        """Test SRv6 End.AD.uSID shift operation without SRH for IPv4 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4:5::",
+            egress_dst_addr="5f00:0:4:5::",
+            usid_len=32,
+            inner_type="IPv4",
+        )
+
+    def test_srv6_end_ad_usid_end_ether(self):
+        """Test SRv6 End.AD.uSID end operation for L2 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:4:ad6::/64",
+            ingress_dst_addr="5f00:0:4:ad6::",
+            egress_dst_addr="5f00:0:5:6::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:4:ad6::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=0,
+            inner_type="Ether",
+        )
+
+    def test_srv6_end_ad_usid_shift_srh_ether(self):
+        """Test SRv6 End.AD.uSID shift operation with SRH for L2 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4::",
+            egress_dst_addr="5f00:0:4::",
+            usid_len=32,
+            srh_sidlist=["5f00:0:5:6::", "5f00:0:2:3:ad6:4::", "5f00:0:1::"],
+            ingress_sl=1,
+            egress_sl=1,
+            inner_type="Ether",
+        )
+
+    def test_srv6_end_ad_usid_shift_nosrh_ether(self):
+        """Test SRv6 End.AD.uSID shift operation without SRH for L2 traffic."""
+        self.run_test(
+            src_addr="5f00:0:10::1",
+            local_sid="5f00:0:3:ad6::/64",
+            ingress_dst_addr="5f00:0:3:ad6:4:5::",
+            egress_dst_addr="5f00:0:4:5::",
+            usid_len=32,
+            inner_type="Ether",
+        )
+
+    def run_test(
+        self,
+        src_addr,
+        local_sid,
+        ingress_dst_addr,
+        egress_dst_addr,
+        usid_len=0,
+        srh_sidlist=[],
+        ingress_sl=0,
+        egress_sl=0,
+        inner_type=None,
+    ):
+        """Run test for SRv6 End.AD behavior.
+
+        :param src_addr: source address
+        :param ingress_dst_addr: ingress destination address
+        :param egress_dst_addr: egress destination address
+        :param srh_sidlist: segment list of outer IPv6 SRH
+        :param ingress_sl: segments-left field of ingress IPv6 SRH
+        :param egress_sl: segments-left field of egress IPv6 SRH
+        """
+        self.src_addr = src_addr
+        self.egress_dst_addr = egress_dst_addr
+        self.srh_sidlist = srh_sidlist
+        self.egress_sl = egress_sl
+        self.inner_type = inner_type
+
+        # setup interfaces
+        if inner_type == "IPv6":
+            self.setup_interfaces(ipv6=[True, True])
+        elif inner_type == "IPv4":
+            self.setup_interfaces(ipv6=[True, False], ipv4=[False, True])
+        else:  # Assume L2
+            self.setup_interfaces(ipv6=[True, False])
+
+        # configure route to next segment
+        route = VppIpRoute(
+            self,
+            egress_dst_addr,
+            128,
+            [
+                VppRoutePath(
+                    self.pg0.remote_ip6,
+                    self.pg0.sw_if_index,
+                    proto=DpoProto.DPO_PROTO_IP6,
+                )
+            ],
+        )
+        route.add_vpp_config()
+
+        # instantiate local SRv6 SID
+        cli_str = "sr localsid "
+        if local_sid.find("/") != -1:
+            cli_str += "prefix " + local_sid
+        else:
+            cli_str += "address " + local_sid
+        cli_str += " behavior end.ad"
+        if usid_len:
+            cli_str += ".usid " + str(usid_len)
+        if inner_type == "IPv6":
+            cli_str += " nh " + self.pg1.remote_ip6
+        elif inner_type == "IPv4":
+            cli_str += " nh " + self.pg1.remote_ip4
+        cli_str += " oif " + self.pg1.name
+        cli_str += " iif " + self.pg1.name
+        self.logger.info(self.vapi.cli(cli_str))
+
+        # log the localsids
+        self.logger.debug(self.vapi.cli("show sr localsid"))
+
+        # send one packet per packet size
+        count = len(self.pg_packet_sizes)
+
+        # prepare encapsulation headers
+        ingress_hdr = IPv6(src=src_addr, dst=ingress_dst_addr)
+        if srh_sidlist:
+            ingress_hdr /= IPv6ExtHdrSegmentRouting(
+                addresses=srh_sidlist, segleft=ingress_sl
+            )
+
+        # prepare inner headers
+        if inner_type == "IPv6":
+            inner_hdr = IPv6(src="1234::1", dst="4321::1") / UDP(sport=1234, dport=1234)
+        elif inner_type == "IPv4":
+            inner_hdr = IP(src="123.1.1.1", dst="124.1.1.1") / UDP(
+                sport=1234, dport=1234
+            )
+        else:  # Assume L2
+            inner_hdr = Ether(
+                src="00:11:22:33:44:55", dst="00:55:44:33:22:11", type=0x8137
+            )
+
+            # manually set the next header since scapy doesn't support it
+            ingress_hdr.lastlayer().nh = 143
+
+        # encapsulate inner headers
+        ingress_hdr /= inner_hdr
+
+        # generate packets (pg0->pg1)
+        pkts1 = self.create_stream(
+            self.pg0, self.pg1, ingress_hdr, self.pg_packet_sizes, count
+        )
+
+        # send packets and verify received packets
+        self.send_and_verify_pkts(
+            self.pg0, pkts1, self.pg1, self.compare_rx_tx_packet_ingress
+        )
+
+        # log the localsid counters
+        self.logger.info(self.vapi.cli("show sr localsid"))
+
+        # generate returning packets (pg1->pg0)
+        pkts2 = self.create_stream(
+            self.pg1, self.pg0, inner_hdr, self.pg_packet_sizes, count
+        )
+
+        # send packets and verify received packets
+        self.send_and_verify_pkts(
+            self.pg1, pkts2, self.pg0, self.compare_rx_tx_packet_egress
+        )
+
+        # log the localsid counters
+        self.logger.info(self.vapi.cli("show sr localsid"))
+
+        # remove SRv6 localSID
+        if local_sid.find("/") != -1:
+            cli_str = "sr localsid del prefix " + local_sid
+        else:
+            cli_str = "sr localsid del address " + local_sid
+        self.logger.debug(self.vapi.cli(cli_str))
+
+        # cleanup interfaces
+        self.teardown_interfaces()
+
+    def compare_rx_tx_packet_ingress(self, tx_pkt, rx_pkt):
+        """Compare input and output packet after passing End.AD ingress
+
+        We expect the rx packet be the encapsulation payload of the tx packet.
+
+        :param tx_pkt: transmitted packet
+        :param rx_pkt: received packet
+        """
+        if self.inner_type == "IPv6":
+            # expected rx packet is the inner IPv6 of tx packet
+            expected_pkt = tx_pkt.getlayer(IPv6, 2)
+            # with decremented hlim
+            expected_pkt.hlim -= 1
+
+            self.assertEqual(rx_pkt.getlayer(IPv6), expected_pkt)
+        elif self.inner_type == "IPv4":
+            # expected rx packet is the inner IPv4 of tx packet
+            expected_pkt = tx_pkt.getlayer(IP)
+            # with decremented ttl and adjusted checksum
+            expected_pkt.ttl -= 1
+            expected_pkt.chksum = None
+            expected_pkt = IP(scapy.compat.raw(expected_pkt))
+
+            self.assertEqual(rx_pkt.getlayer(IP), expected_pkt)
+        else:  # Assume L2
+            # expected rx packet is the inner L2 of tx packet
+            expected_pkt = Ether(scapy.compat.raw(tx_pkt[Raw]))
+
+            self.assertEqual(rx_pkt.getlayer(Ether), expected_pkt)
+
+        self.logger.debug("packet verification: SUCCESS")
+
+    def compare_rx_tx_packet_egress(self, tx_pkt, rx_pkt):
+        """Compare input and output packet after passing End.AD egress
+
+        We expect the rx packet to encapsulate the tx packet, with the outer
+        IPv6 header constructed according to the test parameters.
+
+        :param tx_pkt: transmitted packet
+        :param rx_pkt: received packet
+        """
+        # validate the outer IPv6 header
+        rx_ip = rx_pkt.getlayer(IPv6)
+        self.assertEqual(rx_ip.src, self.src_addr)
+        self.assertEqual(rx_ip.dst, self.egress_dst_addr)
+
+        rx_payload_type = rx_ip.nh
+        rx_payload = rx_ip.payload
+
+        # validate the SRH (if present)
+        if self.srh_sidlist:
+            self.assertEqual(rx_payload_type, 43)
+            rx_srh = rx_payload
+            self.assertTrue(isinstance(rx_srh, IPv6ExtHdrSegmentRouting))
+            self.assertEqual(rx_srh.segleft, self.egress_sl)
+            self.assertEqual(rx_srh.lastentry, len(self.srh_sidlist) - 1)
+            self.assertEqual(rx_srh.addresses, self.srh_sidlist)
+
+            rx_payload_type = rx_srh.nh
+            rx_payload = rx_srh.payload
+
+        # validate the inner packet
+        if self.inner_type == "IPv6":
+            self.assertEqual(rx_payload_type, 41)
+
+            # expected inner rx packet is the tx packet
+            expected_inner_pkt = tx_pkt.getlayer(IPv6)
+            # with decremented hlim
+            expected_inner_pkt.hlim -= 1
+
+            self.assertEqual(rx_payload, expected_inner_pkt)
+        elif self.inner_type == "IPv4":
+            self.assertEqual(rx_payload_type, 4)
+
+            # expected inner rx packet is the tx packet
+            expected_inner_pkt = tx_pkt.getlayer(IP)
+            # with decremented ttl and adjusted checksum
+            expected_inner_pkt.ttl -= 1
+            expected_inner_pkt.chksum = None
+            expected_inner_pkt = IP(scapy.compat.raw(expected_inner_pkt))
+
+            self.assertEqual(rx_payload, expected_inner_pkt)
+        else:  # Assume L2
+            self.assertEqual(rx_payload_type, 143)
+
+            # expected inner rx packet is the tx packet
+            expected_inner_pkt = tx_pkt.getlayer(Ether)
+
+            self.assertEqual(Ether(scapy.compat.raw(rx_payload)), expected_inner_pkt)
+
+        self.logger.debug("packet verification: SUCCESS")
+
     def create_stream(self, src_if, dst_if, packet_header, packet_sizes, count):
         """Create SRv6 input packet stream for defined interface.
 

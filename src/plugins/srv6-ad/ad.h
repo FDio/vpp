@@ -42,6 +42,8 @@ typedef struct
   u32 rw_len;		      /**< Number of bits to be rewritten */
   u8 *rewrite;								/**< Headers to be rewritten */
 
+  u8 usid_len; /**< Length of the uSID */
+
   u32 index;
 } srv6_ad_localsid_t;
 
@@ -53,8 +55,11 @@ typedef struct
   vnet_main_t *vnet_main;		  /**< [convenience] vnet main */
 
   dpo_type_t srv6_ad_dpo_type;		  /**< DPO type */
+  dpo_type_t srv6_ad_usid_dpo_type;	  /**< DPO type for uSID variant */
 
   u32 srv6_localsid_behavior_id;	  /**< SRv6 LocalSID behavior number */
+  u32 srv6_localsid_usid_behavior_id; /**< SRv6 LocalSID behavior number for
+					 uSID variant */
 
   u32 *sw_iface_localsid2;		  /**< Retrieve local SID from iface */
   u32 *sw_iface_localsid4;		  /**< Retrieve local SID from iface */
@@ -70,6 +75,7 @@ extern srv6_ad_main_t srv6_ad_main;
 
 format_function_t format_srv6_ad_localsid;
 unformat_function_t unformat_srv6_ad_localsid;
+unformat_function_t unformat_srv6_ad_usid_localsid;
 
 void srv6_ad_dpo_lock (dpo_id_t * dpo);
 void srv6_ad_dpo_unlock (dpo_id_t * dpo);
