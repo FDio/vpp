@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "24ac01c0_9fca7c09",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-01-07T14:15:45Z",
+      "side": 1,
+      "message": "I\u0027ve double checked. For me without ip6 matching patch test is failing:\n  1 ERROR: test_ipsec6_spd_inbound_tun_protect (test_ipsec_spd_fp_input.IPSec6SpdTestCaseTunProtect)\n  2 ------------------------------------------------------------------------------\n  3 Traceback (most recent call last):\n  4   File \"/opt/pibr/github/networking.dataplane.fdio.vpp/test/test_ipsec_spd_fp_input.py\", line 924, in test_ipsec6_spd_inbound_tun_protect\n  5     recv_pkts \u003d self.send_and_expect(self.tun_if, send_pkts, self.pg1)\n  6   File \"/opt/pibr/github/networking.dataplane.fdio.vpp/test/framework.py\", line 558, in send_and_expect\n  7     rx \u003d output.get_capture(n_rx, filter_out_fn\u003dfilter_out_fn)\n  8   File \"/opt/pibr/github/networking.dataplane.fdio.vpp/test/vpp_pg_interface.py\", line 350, in get_capture\n  9     raise Exception(f\"No packets captured on {name} (timeout \u003d {timeout}s)\")\n 10 Exception: No packets captured on pg1 (timeout \u003d 1s)\n 11\n 12 14:13:27,865 Symlink to failed testcase directory: /tmp/vpp-failed-unittests/vpp-unittest-IPSec6SpdTestCaseTunProtect-FAILED -\u003e vpp-unittest-IPSec6SpdTestCaseTunProtect\n\nWhich is expeceted behavior",
+      "parentUuid": "b69e25a5_0da0b954",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb82c087_0e1bd0e0",
