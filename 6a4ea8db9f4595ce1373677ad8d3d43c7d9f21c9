@@ -70,6 +70,24 @@
       "parentUuid": "82b94545_3dd8e51d",
       "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63f060c9_9720aea1",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-08T23:55:32Z",
+      "side": 1,
+      "message": "About raising frame_queue_nelts - I see few problems with that:\nframe_queue_trace_t.n_vecotrs and frame_queue_nelt_counter_t.count are right now statically allocated for FRAME_QUEUE_MAX_NELTS.\n\nDoing that would require making malloc those fields.\n\nThat shouldn\u0027t be too hard to do, there is already vlib_frame_queue_alloc that seems to be a good place for that, but my previous question stands - why nelts must be a power of 2? With all the code around it seems to me that it actually should be dividable by aligned by CLIB_CACHE_LINE_BYTES.",
+      "parentUuid": "f0a019a6_5b9309c7",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
