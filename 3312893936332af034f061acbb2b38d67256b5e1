@@ -90,6 +90,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "373fec67_72167b45",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-01-08T11:13:13Z",
+      "side": 1,
+      "message": "Thanks. I used the same command (test-debug) and there was a compiling error in xdp-tools \"error: unknown warning option \u0027-Wno-maybe-uninitialized\u0027; did you mean \u0027-Wno-uninitialized\u0027? [-Werror,-Wunknown-warning-option]\" so I changed to \"-Wno-uninitialized\" and the compile is now ok. With that the test passed. BTW what is your clang version?",
+      "parentUuid": "3f706dca_60a775fd",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fb82c087_0e1bd0e0",
