@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7e3e3b9d_65990561",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-08T13:11:23Z",
+      "side": 1,
+      "message": "I don\u0027t think you can change the #workers at runtime.\nI think this could remain an assert, and we should check the value of n_vlib_mains in vlib_thread_init() and bail out if it is grater than the max #workers configured at compile time with your other patch",
+      "parentUuid": "52e423c3_4d6889e6",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3cf6f401_9d4696a3",
         "filename": "src/vlib/threads.c",
         "patchSetId": 2
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Here I thought what would help me to figure out what is wrong. Therefore, I thought that a custom error message is easier to search for and can then be referenced in the documentation and properly explained. But if you think that ALWAYS_ASSERT is better, I can change the patch.",
       "parentUuid": "3cf6f401_9d4696a3",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f06d273e_161fd4db",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1671,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-08T13:11:23Z",
+      "side": 1,
+      "message": "fair, but my bigger point in my other comment is that this should remain a debug assert and we should check max #workers at init",
+      "parentUuid": "bea55750_f793314e",
       "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
