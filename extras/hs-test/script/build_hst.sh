@@ -5,13 +5,22 @@ if [ "$(lsb_release -is)" != Ubuntu ]; then
 	exit 1
 fi
 
+export VPP_WS=../..
 export UBUNTU_VERSION=${UBUNTU_VERSION:-"$(lsb_release -rs)"}
 echo "Ubuntu version is set to ${UBUNTU_VERSION}"
+
+if [ "$1" == "debug" ]; then
+	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_debug-native/vpp
+elif [ "$1" == "gcov" ]; then
+  VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_gcov-native/vpp
+else
+	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp-native/vpp
+fi
 
 LAST_STATE_FILE=".last_state_hash"
 
 # get current state hash and ubuntu version
-current_state_hash=$(git status --porcelain | grep -vE '(/\.|/10|\.go$|\.sum$|\.mod$|\.txt$|\.test$)' | sha1sum | awk '{print $1}')
+current_state_hash=$(ls -l "$VPP_BUILD_ROOT"/.mu_build_install_timestamp; ls -l docker | sha1sum | awk '{print $1}')
 current_state_hash=$current_state_hash$UBUNTU_VERSION$1
 
 if [ -f "$LAST_STATE_FILE" ]; then
@@ -22,12 +31,10 @@ fi
 
 # compare current state with last state and check FORCE_BUILD
 if [ "$current_state_hash" = "$last_state_hash" ] && [ "$2" = "false" ]; then
-    echo "*** Skipping docker build - no new changes \
-(excluding .go, .txt, .sum, .mod, dotfiles, IP address files) ***"
+    echo "*** Skipping docker build - no new changes ***"
     exit 0
 fi
 
-export VPP_WS=../..
 OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
@@ -43,13 +50,6 @@ if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   DOCKER_CACHE_ARGS="--builder=${DOCKER_HST_BUILDER} --load --cache-to type=local,dest=${DOCKER_CACHE_DIR},mode=max --cache-from type=local,src=${DOCKER_CACHE_DIR}"
 fi
 
-if [ "$1" == "debug" ]; then
-	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_debug-native/vpp
-elif [ "$1" == "gcov" ]; then
-  VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_gcov-native/vpp
-else
-	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp-native/vpp
-fi
 echo "Taking build objects from ${VPP_BUILD_ROOT}"
 
 export HST_LDPRELOAD=${VPP_BUILD_ROOT}/lib/${OS_ARCH}-linux-gnu/libvcl_ldpreload.so
