@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dea9e6aa_1136577e",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-08T13:12:52Z",
+      "side": 1,
+      "message": "Can we use something like VPP_MAX_WORKERS instead? I think it would be more clear and would allow to be use in other part of the code where we make assumptions on the #workers",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
