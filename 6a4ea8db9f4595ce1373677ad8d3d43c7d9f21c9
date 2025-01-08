@@ -34,6 +34,24 @@
       "parentUuid": "dea9e6aa_1136577e",
       "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82b94545_3dd8e51d",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-08T14:35:16Z",
+      "side": 1,
+      "message": "Good point, I think we should set it to MAX_WORKERS+8.\nNow, looking at this specific thing again, we basically want to enforce a default value of at least 1 element per thread + some margin (8 here) to avoid deadlock when multiple threads try to handover frames between them.\nMaybe instead we should always do something like this in vlib_frame_queue_main_init():\n  n_threads \u003d vlib_get_n_threads();\n  if (frame_queue_nelts \u003c n_threads + 8)\n  {\n    vlib_log_warn(\"frame_queue_elts raised from %d to %d\", frame_queue_elts, n_threads + 8);\n    frame_queue_elts \u003d n_threads + 8;\n  }\nIn that case we no longer have a need for hardcoded values?",
+      "parentUuid": "b17b8e22_62e5b07c",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
