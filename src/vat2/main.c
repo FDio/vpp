@@ -30,7 +30,13 @@
 #include <limits.h>
 #include "vat2.h"
 
+#include <vlibmemory/memclnt.api_types.h>
+#define vl_endianfun
+#include <vlibmemory/memclnt.api.h>
+#undef vl_endianfun
 bool vat2_debug;
+
+volatile int result_ready = 0;
 
 /*
  * Filter these messages as they are used to manage the API connection to VPP
@@ -95,6 +101,7 @@ void
 vac_callback (unsigned char *data, int len)
 {
   u16 result_msg_id = ntohs (*((u16 *) data));
+  result_ready += 1;
   DBG ("Received something async: %d\n", result_msg_id);
 }
 
@@ -142,8 +149,7 @@ vat2_register_function (char *name, cJSON (*f) (cJSON *),
   hash_set_mem (function_by_name, name, vec_len (apifuncs) - 1);
 }
 
-static int
-vat2_exec_command_by_name (char *msgname, cJSON *o)
+cJSON *(*get_api_func (char *msgname, cJSON *o)) (cJSON *)
 {
   u32 crc = 0;
   if (filter_message (msgname))
@@ -160,15 +166,130 @@ vat2_exec_command_by_name (char *msgname, cJSON *o)
   if (!p)
     {
       fprintf (stderr, "No such command %s\n", msgname);
-      return -1;
+      return 0;
     }
   if (crc && crc != apifuncs[p[0]].crc)
     {
       fprintf (stderr, "API CRC does not match: %s!\n", msgname);
     }
-
   cJSON *(*fp) (cJSON *);
   fp = (void *) apifuncs[p[0]].f;
+  return fp;
+}
+
+vl_api_control_ping_reply_t *
+benchmark_control_ping (vl_api_control_ping_t *mp, int len)
+{
+  vac_write ((char *) mp, len);
+
+  /* Read reply */
+  char *p;
+  int l;
+  vac_read (&p, &l, 5); // XXX: Fix timeout
+  if (p == 0 || l == 0)
+    return 0;
+  // XXX Will fail in case of event received. Do loop
+  if (ntohs (*((u16 *) p)) !=
+      vac_get_msg_index (VL_API_CONTROL_PING_REPLY_CRC))
+    {
+      fprintf (stderr, "Mismatched reply\n");
+      return 0;
+    }
+  vl_api_control_ping_reply_t *rmp = (vl_api_control_ping_reply_t *) p;
+  vl_api_control_ping_reply_t_endian (rmp, 0);
+  return rmp;
+}
+
+static int
+vat2_exec_benchmark (char *msgname, cJSON *o, int repeats)
+{
+  cJSON *(*fp) (cJSON *);
+  fp = get_api_func (msgname, o);
+  if (!fp)
+    {
+      fprintf (stderr, "No such command %s\n", msgname);
+      return -1;
+    }
+  clock_t start_time = clock ();
+  for (int i = 0; i < repeats; i++)
+    {
+      cJSON *r = (*fp) (o);
+      if (!r)
+	{
+	  fprintf (stderr, "Call failed: %s\n", msgname);
+	  return -1;
+	}
+      cJSON_Delete (r);
+    }
+  clock_t end_time = clock ();
+  double elapsed_time = (double) (end_time - start_time) / CLOCKS_PER_SEC;
+  printf ("Elapsed time: %.6f seconds Reqs/s: %.2f\n", elapsed_time,
+	  repeats / elapsed_time);
+  return 0;
+}
+
+int
+vat2_exec_benchmark_ping (int repeats)
+{
+  vl_api_control_ping_t mp;
+  vl_api_control_ping_reply_t *rmp;
+  mp._vl_msg_id = vac_get_msg_index (VL_API_CONTROL_PING_CRC);
+  vl_api_control_ping_t_endian (&mp, 1);
+
+  clock_t start_time = clock ();
+  for (int i = 0; i < repeats; i++)
+    {
+      rmp = benchmark_control_ping (&mp, sizeof (mp));
+      if (!rmp)
+	{
+	  fprintf (stderr, "Failed pinging VPP\n");
+	  return -1;
+	}
+    }
+  clock_t end_time = clock ();
+  double elapsed_time = (double) (end_time - start_time) / CLOCKS_PER_SEC;
+  printf ("Elapsed time: %.6f seconds Reqs/s: %.2f\n", elapsed_time,
+	  repeats / elapsed_time);
+
+  return 0;
+}
+
+int
+vat2_exec_benchmark_ping_async (int repeats)
+{
+  vl_api_control_ping_t mp;
+  mp._vl_msg_id = vac_get_msg_index (VL_API_CONTROL_PING_CRC);
+  vl_api_control_ping_t_endian (&mp, 1);
+
+  clock_t start_time = clock ();
+  for (int i = 0; i < repeats; i++)
+    {
+      vac_write ((char *) &mp, sizeof (mp));
+    }
+
+  while (result_ready < repeats)
+    {
+      ;
+    }
+
+  clock_t end_time = clock ();
+  double elapsed_time = (double) (end_time - start_time) / CLOCKS_PER_SEC;
+  printf ("Elapsed time: %.6f seconds Reqs/s: %.2f\n", elapsed_time,
+	  repeats / elapsed_time);
+
+  return 0;
+}
+
+static int
+vat2_exec_command_by_name (char *msgname, cJSON *o)
+{
+  cJSON *(*fp) (cJSON *);
+  fp = get_api_func (msgname, o);
+  if (!fp)
+    {
+      fprintf (stderr, "No such command %s\n", msgname);
+      return -1;
+    }
   cJSON *r = (*fp) (o);
 
   if (r)
@@ -261,7 +382,8 @@ print_help (void)
     " message\n"
     "--dump-apis                    List all APIs available in VAT2 (might "
     "not reflect running VPP)\n"
-    "--plugin-path                  Pluing path"
+    "--plugin-path                  Pluing path\n"
+    "-b, --benchmark <repeats>  Benchmark a given API message\n"
     "\n";
   printf ("%s", help_string);
 }
@@ -278,7 +400,9 @@ main (int argc, char **argv)
   cJSON *o = 0;
   int option_index = 0;
   bool dump_api = false;
+  int benchmark = 0;
   char *msgname = 0;
+  vac_callback_t callback = 0;
   static struct option long_options[] = {
     { "debug", no_argument, 0, 'd' },
     { "prefix", required_argument, 0, 's' },
@@ -286,10 +410,11 @@ main (int argc, char **argv)
     { "dump-apis", no_argument, 0, 0 },
     { "template", required_argument, 0, 't' },
     { "plugin-path", required_argument, 0, 'p' },
+    { "benchmark", required_argument, 0, 'b' },
     { 0, 0, 0, 0 }
   };
 
-  while ((c = getopt_long (argc, argv, "hdp:f:t:", long_options,
+  while ((c = getopt_long (argc, argv, "hdbp:f:t:", long_options,
 			   &option_index)) != -1)
     {
       switch (c)
@@ -300,6 +425,15 @@ main (int argc, char **argv)
 	  break;
 	case 'd':
 	  vat2_debug = true;
+	  break;
+	case 'b':
+	  if (optarg == NULL)
+	    {
+	      fprintf (stderr, "Error: --benchmark requires an argument.\n");
+	      return 1;
+	    }
+	  printf ("Benchmarking %s repeats\n", optarg);
+	  benchmark = atoi (optarg);
 	  break;
 	case 't':
 	  template = optarg;
@@ -371,7 +505,7 @@ main (int argc, char **argv)
 	}
     }
 
-  if (!msgname && !filename)
+  if (!msgname && !filename && !benchmark)
     {
       print_help ();
       exit (-1);
@@ -423,13 +557,15 @@ main (int argc, char **argv)
       free (buf);
     }
 
-  if (!o)
+  if (!o && !benchmark)
     {
       fprintf (stderr, "%s: Failed parsing JSON input\n", argv[0]);
       exit (-1);
     }
 
-  if (vac_connect ("vat2", prefix, 0, 1024))
+  if (benchmark && !msgname)
+    callback = vac_callback;
+  if (vac_connect ("vat2", prefix, callback, 1024))
     {
       fprintf (stderr, "Failed connecting to VPP\n");
       exit (-1);
@@ -437,15 +573,29 @@ main (int argc, char **argv)
 
   if (msgname)
     {
-      vat2_exec_command_by_name (msgname, o);
+      if (benchmark)
+	{
+	  vat2_exec_benchmark (msgname, o, benchmark);
+	}
+      else
+	{
+	  vat2_exec_command_by_name (msgname, o);
+	}
     }
   else
     {
-      if (cJSON_IsArray (o))
+      if (benchmark)
 	{
-	  size_t size = cJSON_GetArraySize (o);
-	  for (int i = 0; i < size; i++)
-	    vat2_exec_command (cJSON_GetArrayItem (o, i));
+	  vat2_exec_benchmark_ping_async (benchmark);
+	}
+      else
+	{
+	  if (cJSON_IsArray (o))
+	    {
+	      size_t size = cJSON_GetArraySize (o);
+	      for (int i = 0; i < size; i++)
+		vat2_exec_command (cJSON_GetArrayItem (o, i));
+	    }
 	}
     }
   cJSON_Delete (o);
