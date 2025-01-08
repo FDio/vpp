@@ -52,6 +52,24 @@
       "parentUuid": "b17b8e22_62e5b07c",
       "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0a019a6_5b9309c7",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-08T14:38:14Z",
+      "side": 1,
+      "message": "Btw, what is the reason why MAX_NELTS must be a power of 2?",
+      "parentUuid": "82b94545_3dd8e51d",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
