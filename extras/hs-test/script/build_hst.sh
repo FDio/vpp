@@ -5,13 +5,14 @@ if [ "$(lsb_release -is)" != Ubuntu ]; then
 	exit 1
 fi
 
+export VPP_WS=../..
 export UBUNTU_VERSION=${UBUNTU_VERSION:-"$(lsb_release -rs)"}
 echo "Ubuntu version is set to ${UBUNTU_VERSION}"
 
 LAST_STATE_FILE=".last_state_hash"
 
 # get current state hash and ubuntu version
-current_state_hash=$(git status --porcelain | grep -vE '(/\.|/10|\.go$|\.sum$|\.mod$|\.txt$|\.test$)' | sha1sum | awk '{print $1}')
+current_state_hash=$(git diff -- "$VPP_WS" ':(exclude)*.go' ':(exclude)*.txt' ':(exclude)*.sum' ':(exclude)*.mod' ':(exclude)10.*' ':(exclude).*' | sha1sum | awk '{print $1}')
 current_state_hash=$current_state_hash$UBUNTU_VERSION$1
 
 if [ -f "$LAST_STATE_FILE" ]; then
@@ -27,7 +28,6 @@ if [ "$current_state_hash" = "$last_state_hash" ] && [ "$2" = "false" ]; then
     exit 0
 fi
 
-export VPP_WS=../..
 OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
