@@ -64,7 +64,8 @@ typedef struct {
 } vac_main_t;
 
 vac_main_t vac_main;
-vac_callback_t vac_callback;
+static vac_callback_t vac_callback;
+
 u16 read_timeout = 0;
 bool rx_is_running = false;
 bool timeout_thread_cancelled = false;
@@ -276,6 +277,7 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
   rx_thread_done = false;
   int rv = 0;
   vac_main_t *pm = &vac_main;
+  vac_callback_t new_callback __attribute__ ((unused));
 
   assert (clib_mem_get_heap ());
   init();
@@ -300,6 +302,7 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
       vl_client_api_unmap();
       return (-1);
     }
+
     vac_callback = cb;
     rx_is_running = true;
   }
