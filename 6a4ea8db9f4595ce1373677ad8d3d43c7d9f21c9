@@ -16,6 +16,24 @@
       "message": "Can we use something like VPP_MAX_WORKERS instead? I think it would be more clear and would allow to be use in other part of the code where we make assumptions on the #workers",
       "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b17b8e22_62e5b07c",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-08T14:06:11Z",
+      "side": 1,
+      "message": "MAX_NELTS is basically the total amount of threads (including main) + 8 (I\u0027m not exactly sure why), and the final value must be the power of 2. It would be slightly misleading for a user (and for 64, you\u0027ll get 55 workers + main thread), or the user will need to set weird values like 23, 55, 119, etc, with a rather lengthy explanation of why.\n\nMy question is what it should represent.",
+      "parentUuid": "dea9e6aa_1136577e",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
