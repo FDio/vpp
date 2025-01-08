@@ -30,7 +30,7 @@ VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
 };
 
 #define log_debug(f, ...)                                                     \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, crypto_main_log.class, f, ##__VA_ARGS__)
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, crypto_main_log.class, f, ##__VA_ARGS__)
 #define log_err(f, ...)                                                       \
   vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log.class, f, ##__VA_ARGS__)
 
