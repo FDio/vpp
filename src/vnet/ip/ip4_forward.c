@@ -1550,6 +1550,9 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
       lb0 = load_balance_get (lbi0);
       dpo0 = load_balance_get_bucket_i (lb0, 0);
 
+      /* Do not cache result for packets with errors, e.g., invalid csum */
+      last_check->first = *error0 == IP4_ERROR_UNKNOWN_PROTOCOL ? 0 : 1;
+
       /*
        * Must have a route to source otherwise we drop the packet.
        * ip4 broadcasts are accepted, e.g. to make dhcp client work
@@ -1572,7 +1575,6 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
       last_check->src.as_u32 = ip0->src_address.as_u32;
       last_check->lbi = lbi0;
       last_check->error = *error0;
-      last_check->first = 0;
       last_check->fib_index = vnet_buffer (b)->ip.fib_index;
     }
   else
@@ -1580,7 +1582,8 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
       vnet_buffer (b)->ip.adj_index[VLIB_RX] =
 	vnet_buffer (b)->ip.adj_index[VLIB_TX];
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = last_check->lbi;
-      *error0 = last_check->error;
+      *error0 =
+	(*error0 == IP4_ERROR_UNKNOWN_PROTOCOL) ? last_check->error : *error0;
     }
 }
 
@@ -1652,6 +1655,9 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
       dpo[0] = load_balance_get_bucket_i (lb[0], 0);
       dpo[1] = load_balance_get_bucket_i (lb[1], 0);
 
+      /* Do not cache result for packets with errors, e.g., invalid csum */
+      last_check->first = error[1] == IP4_ERROR_UNKNOWN_PROTOCOL ? 0 : 1;
+
       error[0] = ((error[0] == IP4_ERROR_UNKNOWN_PROTOCOL &&
 		   dpo[0]->dpoi_type == DPO_RECEIVE) ?
 		  IP4_ERROR_SPOOFED_LOCAL_PACKETS : error[0]);
@@ -1671,7 +1677,6 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
       last_check->src.as_u32 = ip[1]->src_address.as_u32;
       last_check->lbi = lbi[1];
       last_check->error = error[1];
-      last_check->first = 0;
       last_check->fib_index = vnet_buffer (b[1])->ip.fib_index;
     }
   else
@@ -1684,8 +1689,10 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
 	vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
       vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = last_check->lbi;
 
-      error[0] = last_check->error;
-      error[1] = last_check->error;
+      error[0] = (error[0] == IP4_ERROR_UNKNOWN_PROTOCOL) ? last_check->error :
+							    error[0];
+      error[1] = (error[1] == IP4_ERROR_UNKNOWN_PROTOCOL) ? last_check->error :
+							    error[1];
     }
 }
 
