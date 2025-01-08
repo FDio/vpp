@@ -110,6 +110,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7cb11d21_ffcab21b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-01-08T11:37:13Z",
+      "side": 1,
+      "message": "My clang is Ubuntu clang version 14.0.0-1ubuntu1.1.\nBut the behavior you described is very strange, do you have any log from this test?There should be policy matching and in order to have this test passing there must be a match to a policy - I would like to see the trace for encrypted packets - in my case without patch applied it looks as follows:\n\n00:00:00:478656: pg-input\n  stream 0, 218 bytes, sw_if_index 1, next_node ethernet-input\n  current data 0, length 218, buffer-pool 0, ref-count 1, trace handle 0x0\n  00000000: 02fe62550fac02010000ff0286dd6000000000a43240fd010001000000000000\n  00000020: 000000000002fd01000100000000000000000000000100000bb9000000016759\n  00000040: d8883349d09510026b6d4811a73e1822a1b4fc4c3ea1971b80b48528db04ee06\n  00000060: e348b97f46c0f9873b07c0412093454bdeb8bb0e27cbff4c814e4b1fffba9d35\n00:00:00:478660: ethernet-input\n  frame: flags 0x1, hw-if-index 1, sw-if-index 1\n  IP6: 02:01:00:00:ff:02 -\u003e 02:fe:62:55:0f:ac\n00:00:00:478662: ip6-input\n  IPSEC_ESP: fd01:1::2 -\u003e fd01:1::1\n    tos 0x00, flow label 0x0, hop limit 64, payload length 164\n00:00:00:478663: ipsec6-input-feature\n  IPSEC_ESP: sa_id 0 type: 0 spd 1 policy -1 spi 3001 (0x00000bb9) seq 1\n00:00:00:478665: error-drop\n  rx:pg0\n00:00:00:478666: drop\n  null-node: blackholed packets",
+      "parentUuid": "373fec67_72167b45",
+      "revId": "3312893936332af034f061acbb2b38d67256b5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fb82c087_0e1bd0e0",
         "filename": "test/test_ipsec_spd_fp_input.py",
         "patchSetId": 1
