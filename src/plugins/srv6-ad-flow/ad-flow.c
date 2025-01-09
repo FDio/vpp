@@ -31,12 +31,20 @@
 #define SID_CREATE_INVALID_IFACE_TYPE  -3
 #define SID_CREATE_INVALID_IFACE_INDEX -4
 #define SID_CREATE_INVALID_ADJ_INDEX   -5
+#define SID_CREATE_INVALID_USID_FORMAT -6
 
-unsigned char function_name[] = "SRv6-AD-Flow-plugin";
+unsigned char function_name[] = "SRv6-AD-Flow";
 unsigned char keyword_str[] = "End.AD.Flow";
 unsigned char def_str[] =
   "Endpoint with flow-based dynamic proxy to SR-unaware appliance";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> iif <iface-in>";
+
+unsigned char function_name_usid[] = "SRv6-AD-Flow-uSID";
+unsigned char keyword_usid_str[] = "End.AD.Flow.uSID";
+unsigned char def_usid_str[] =
+  "Endpoint with uSID and flow-based dynamic proxy to SR-unaware appliance";
+unsigned char params_usid_str[] =
+  "<usid-length> nh <next-hop> oif <iface-out> iif <iface-in>";
 
 srv6_ad_flow_main_t srv6_ad_flow_main;
 
@@ -179,6 +187,35 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
   vlib_zero_combined_counter (&(sm->rw_invalid_counters), ls_mem->index);
 
   return 0;
+}
+
+static int
+srv6_ad_flow_usid_localsid_creation_fn (ip6_sr_localsid_t *localsid)
+{
+  srv6_ad_flow_localsid_t *ls_mem = localsid->plugin_mem;
+
+  int usid_width;
+
+  /* Validate uSID format */
+  if ((ls_mem->usid_len != 16 && ls_mem->usid_len != 32) ||
+      localsid->localsid_prefix_len < ls_mem->usid_len ||
+      (localsid->localsid_prefix_len - ls_mem->usid_len) & 0x7)
+    {
+      return SID_CREATE_INVALID_USID_FORMAT;
+    }
+
+  clib_memcpy (&localsid->usid_block, &localsid->localsid,
+	       sizeof (ip6_address_t));
+
+  usid_width = localsid->localsid_prefix_len - ls_mem->usid_len;
+  ip6_address_mask_from_width (&localsid->usid_block_mask, usid_width);
+
+  localsid->usid_index = usid_width / 8;
+  localsid->usid_len = ls_mem->usid_len / 8;
+  localsid->usid_next_index = localsid->usid_index + localsid->usid_len;
+  localsid->usid_next_len = 16 - localsid->usid_next_index;
+
+  return srv6_ad_flow_localsid_creation_fn (localsid);
 }
 
 static int
@@ -374,6 +411,86 @@ unformat_srv6_ad_flow_localsid (unformat_input_t *input, va_list *args)
   return 1;
 }
 
+uword
+unformat_srv6_ad_flow_usid_localsid (unformat_input_t *input, va_list *args)
+{
+  void **plugin_mem_p = va_arg (*args, void **);
+  srv6_ad_flow_localsid_t *ls_mem;
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  u8 inner_type = AD_TYPE_IP4;
+  ip46_address_t nh_addr;
+  u32 sw_if_index_out;
+  u32 sw_if_index_in;
+
+  u8 usid_size = 0;
+
+  u8 params = 0;
+#define PARAM_AD_NH  (1 << 0)
+#define PARAM_AD_OIF (1 << 1)
+#define PARAM_AD_IIF (1 << 2)
+
+  if (!unformat (input, "end.ad.flow.usid %u", &usid_size))
+    return 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!(params & PARAM_AD_NH) &&
+	  unformat (input, "nh %U", unformat_ip4_address, &nh_addr.ip4))
+	{
+	  inner_type = AD_TYPE_IP4;
+	  params |= PARAM_AD_NH;
+	}
+      if (!(params & PARAM_AD_NH) &&
+	  unformat (input, "nh %U", unformat_ip6_address, &nh_addr.ip6))
+	{
+	  inner_type = AD_TYPE_IP6;
+	  params |= PARAM_AD_NH;
+	}
+      else if (!(params & PARAM_AD_OIF) &&
+	       unformat (input, "oif %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index_out))
+	{
+	  params |= PARAM_AD_OIF;
+	}
+      else if (!(params & PARAM_AD_IIF) &&
+	       unformat (input, "iif %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index_in))
+	{
+	  params |= PARAM_AD_IIF;
+	}
+      else
+	{
+	  break;
+	}
+    }
+
+  /* Make sure that all parameters are supplied */
+  u8 params_chk = (PARAM_AD_NH | PARAM_AD_OIF | PARAM_AD_IIF);
+  if ((params & params_chk) != params_chk)
+    {
+      return 0;
+    }
+
+  /* Allocate and initialize memory block for local SID parameters */
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  /* Set local SID parameters */
+  ls_mem->usid_len = usid_size;
+  ls_mem->inner_type = inner_type;
+  if (inner_type == AD_TYPE_IP4)
+    ls_mem->nh_addr.ip4 = nh_addr.ip4;
+  else if (inner_type == AD_TYPE_IP6)
+    ls_mem->nh_addr.ip6 = nh_addr.ip6;
+  ls_mem->sw_if_index_out = sw_if_index_out;
+  ls_mem->sw_if_index_in = sw_if_index_in;
+
+  return 1;
+}
+
 /*************************/
 /* SRv6 LocalSID FIB DPO */
 static u8 *
@@ -410,19 +527,30 @@ const static char *const *const srv6_ad_flow_nodes[DPO_PROTO_NUM] = {
   [DPO_PROTO_IP6] = srv6_ad_flow_ip6_nodes,
 };
 
+const static char *const srv6_ad_flow_usid_ip6_nodes[] = {
+  "srv6-ad-flow-usid-localsid",
+  NULL,
+};
+
+const static char *const *const srv6_ad_flow_usid_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = srv6_ad_flow_usid_ip6_nodes,
+};
+
 /**********************/
 static clib_error_t *
 srv6_ad_flow_init (vlib_main_t *vm)
 {
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
-  int rv = 0;
+  int rv = 0, rv_usid = 0;
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
 
-  /* Create DPO */
+  /* Create DPO types */
   sm->srv6_ad_flow_dpo_type =
     dpo_register_new_type (&srv6_ad_flow_vft, srv6_ad_flow_nodes);
+  sm->srv6_ad_flow_usid_dpo_type =
+    dpo_register_new_type (&srv6_ad_flow_vft, srv6_ad_flow_usid_nodes);
 
   /* Register SRv6 LocalSID */
   rv = sr_localsid_register_function (
@@ -434,6 +562,18 @@ srv6_ad_flow_init (vlib_main_t *vm)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else
     sm->srv6_localsid_behavior_id = rv;
+
+  /* Register SRv6 LocalSID for uSID */
+  rv_usid = sr_localsid_register_function (
+    vm, function_name_usid, keyword_usid_str, def_usid_str, params_usid_str,
+    128, &sm->srv6_ad_flow_usid_dpo_type, format_srv6_ad_flow_localsid,
+    unformat_srv6_ad_flow_usid_localsid,
+    srv6_ad_flow_usid_localsid_creation_fn, srv6_ad_flow_localsid_removal_fn);
+  if (rv_usid < 0)
+    clib_error_return (
+      0, "SRv6 LocalSID function for uSID variant could not be registered.");
+  else
+    sm->srv6_localsid_usid_behavior_id = rv_usid;
 
   return 0;
 }
