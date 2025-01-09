@@ -13,27 +13,6 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-if(DEFINED VPP_PLATFORM AND VPP_PLATFORM STREQUAL "default")
-  unset(VPP_PLATFORM)
-  unset(VPP_PLATFORM CACHE)
-  set(VPP_PLATFORM_NAME "default")
-elseif(DEFINED VPP_PLATFORM)
-  set(platform_file ${CMAKE_SOURCE_DIR}/cmake/platform/${VPP_PLATFORM}.cmake)
-  if(NOT EXISTS ${platform_file})
-     message(FATAL_ERROR "unknown platform ${VPP_PLATFORM}")
-  endif()
-  include(${platform_file})
-  set(VPP_PLATFORM_NAME ${VPP_PLATFORM})
-else()
-  set(VPP_PLATFORM_NAME "default")
-endif()
-
-if (DEFINED VPP_PLATFORM_C_COMPILER_NAMES)
-  set(CMAKE_C_COMPILER_NAMES ${VPP_PLATFORM_C_COMPILER_NAME})
-else()
-  set(CMAKE_C_COMPILER_NAMES clang gcc cc)
-endif()
-
 project(vpp C)
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
