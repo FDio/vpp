@@ -11,36 +11,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DPDK_PKTMBUF_HEADROOM        ?= 128
-DPDK_USE_LIBBSD              ?= n
-DPDK_DEBUG                   ?= n
-DPDK_TAP_PMD                 ?= n
-DPDK_FAILSAFE_PMD            ?= n
-DPDK_MACHINE                 ?= default
-DPDK_MLX_IBV_LINK            ?= static
+DPDK_PKTMBUF_HEADROOM          ?= 128
+DPDK_USE_LIBBSD                ?= n
+DPDK_DEBUG                     ?= n
+DPDK_TAP_PMD                   ?= n
+DPDK_FAILSAFE_PMD              ?= n
+DPDK_MACHINE                   ?= default
+DPDK_MLX_IBV_LINK              ?= static
 # On most of the systems, default value for max lcores is 128
-DPDK_MAX_LCORES              ?=
+DPDK_MAX_LCORES                ?=
 
-dpdk_version                 ?= 24.07
-dpdk_base_url                ?= http://fast.dpdk.org/rel
-dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
-dpdk_tarball_sha256sum_24.07 := 9944f7e5f268e7ac9b4193e2cd54ef6d98f6e1d7dddc967c77ae4f6616d6fbbd
+dpdk_version                   ?= 24.11.1
+dpdk_base_url                  ?= http://fast.dpdk.org/rel
+dpdk_tarball                   := dpdk-$(dpdk_version).tar.xz
 
-dpdk_tarball_sha256sum       := $(dpdk_tarball_sha256sum_$(dpdk_version))
-dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
-dpdk_tarball_strip_dirs      := 1
+dpdk_tarball_sha256sum_24.11.1 := bcae7d42c449fc456dfb279feabcbe0599a29bebb2fe2905761e187339d96b8e
+dpdk_tarball_sha256sum         := $(dpdk_tarball_sha256sum_$(dpdk_version))
+dpdk_url                       := $(dpdk_base_url)/$(dpdk_tarball)
+dpdk_tarball_strip_dirs        := 1
 ifeq ($(shell uname), FreeBSD)
-dpdk_depends		     := $(if $(ARCH_X86_64), ipsec-mb)
+dpdk_depends		       := $(if $(ARCH_X86_64), ipsec-mb)
 else
-dpdk_depends		     := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
+dpdk_depends		       := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
 endif
 ifeq ($(rdma-core_version),)
 $(error Missing rdma-core_version)
 endif
-DPDK_MLX_DEFAULT             := $(shell if grep -q "rdma=$(rdma-core_version) dpdk=$(dpdk_version)" mlx_rdma_dpdk_matrix.txt; then echo 'y'; else echo 'n'; fi)
-DPDK_MLX4_PMD                ?= $(DPDK_MLX_DEFAULT)
-DPDK_MLX5_PMD                ?= $(DPDK_MLX_DEFAULT)
-DPDK_MLX5_COMMON_PMD         ?= $(DPDK_MLX_DEFAULT)
+DPDK_MLX_DEFAULT               := $(shell if grep -q "rdma=$(rdma-core_version) dpdk=$(dpdk_version)" mlx_rdma_dpdk_matrix.txt; then echo 'y'; else echo 'n'; fi)
+DPDK_MLX4_PMD                  ?= $(DPDK_MLX_DEFAULT)
+DPDK_MLX5_PMD                  ?= $(DPDK_MLX_DEFAULT)
+DPDK_MLX5_COMMON_PMD           ?= $(DPDK_MLX_DEFAULT)
 # Debug or release
 
 DPDK_BUILD_TYPE:=release
@@ -198,8 +198,8 @@ define dpdk_config_cmds
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
 	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.55.3 setuptools wheel pyelftools; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.55.3 pyelftools && \
+	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
+	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
 	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
