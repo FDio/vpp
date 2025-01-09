@@ -16,6 +16,23 @@
       "message": "This is a patch to address an issue from vpp-dev discussion https://lists.fd.io/g/vpp-dev/message/25416. It should not be reviewed until it can be tested by the person who reported the problem.",
       "revId": "f08b51bd26aa18d13109fb1cd24ded588639e5f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6889f267_652de479",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-09T17:33:05Z",
+      "side": 1,
+      "message": "On further reflection, I know the patch won\u0027t work as currently written. linux-cp would need to set the locally originated flag before packets reach ip4-input, so it would have to happen in a feature node on device-input. I\u0027ll have to update it later.",
+      "revId": "f08b51bd26aa18d13109fb1cd24ded588639e5f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
