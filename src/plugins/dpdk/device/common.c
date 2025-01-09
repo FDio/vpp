@@ -80,7 +80,7 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_device_stop (xd);
     }
 
-  rte_eth_dev_info_get (xd->port_id, &dev_info);
+  (void) rte_eth_dev_info_get (xd->port_id, &dev_info);
 
   dpdk_log_debug ("[%u] configuring device %U", xd->port_id,
 		  format_dpdk_rte_device, dev_info.device);
@@ -451,7 +451,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
       return -1;
     }
 
-  rte_eth_link_get_nowait (port_id, &link);
+  (void) rte_eth_link_get_nowait (port_id, &link);
   u8 link_up = link.link_status;
   if (link_up)
     dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s", port_id,

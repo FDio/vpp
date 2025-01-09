@@ -598,7 +598,7 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
   uint32_t i, j;
   uint32_t ret;
 
-  rte_eth_dev_info_get (xd->port_id, &dev_info);
+  (void) rte_eth_dev_info_get (xd->port_id, &dev_info);
 
   /* parameter check */
   if (clib_bitmap_count_set_bits (bitmap) == 0)
