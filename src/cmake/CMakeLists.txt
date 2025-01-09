@@ -25,3 +25,13 @@ install(
 
   COMPONENT vpp-dev
 )
+
+install(
+  DIRECTORY
+  platform/
+
+  DESTINATION
+  ${VPP_LIBRARY_DIR}/cmake/vpp/platform
+
+  COMPONENT vpp-dev
+)
