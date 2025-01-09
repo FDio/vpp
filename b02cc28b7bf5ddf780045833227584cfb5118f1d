@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b61f7fd3_e3bf319f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-09T08:29:32Z",
+      "side": 1,
+      "message": "Can you add a unittest, especially for the ipv6 query?",
+      "revId": "b02cc28b7bf5ddf780045833227584cfb5118f1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
