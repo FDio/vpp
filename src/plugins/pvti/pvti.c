@@ -324,7 +324,7 @@ VLIB_CLI_COMMAND (pvti_interface_create_command, static) = {
   .short_help =
     "pvti interface create peer <remote-ip> <remote-port> <local-port> [ "
     "local-ip <ip-addr> ][ underlay-mtu <MTU>][underlay-table "
-    "<table-index>][inderlay-fib <fib-index>]",
+    "<table-index>][underlay-fib <fib-index>][peer-address-from-payload]",
   .function = pvti_interface_create_command_fn,
 };
 
