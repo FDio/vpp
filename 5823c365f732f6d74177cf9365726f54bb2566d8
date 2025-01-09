@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "091e4a4d_8549c705",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-09T08:27:52Z",
+      "side": 1,
+      "message": "Looks good to me but it failed spell checking with \u0027../build-root/docs/src/interfacing/python/index.rst:44: : Spell check: cb: Event/Event_cb.\u0027\nYou might have to add that to the dict",
+      "revId": "5823c365f732f6d74177cf9365726f54bb2566d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
