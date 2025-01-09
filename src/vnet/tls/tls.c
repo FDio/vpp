@@ -1305,6 +1305,8 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	    }
 	  tm->fifo_size = tmp;
 	}
+      else if (unformat (input, "engine-path %s", &tm->engine_path))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
