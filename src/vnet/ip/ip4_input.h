@@ -56,7 +56,8 @@ typedef enum
 } ip4_input_next_t;
 
 static_always_inline void
-check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
+check_ver_opt_csum (vlib_buffer_t *b, ip4_header_t *ip, u8 *error,
+		    int verify_checksum)
 {
   if (PREDICT_FALSE (ip->ip_version_and_header_length != 0x45))
     {
@@ -64,7 +65,7 @@ check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
 	*error = IP4_ERROR_VERSION;
       else if ((ip->ip_version_and_header_length & 0x0f) < 5)
 	*error = IP4_ERROR_HDR_TOO_SHORT;
-      else
+      else if (!(b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED))
 	{
 	  *error = IP4_ERROR_OPTIONS;
 	  if (verify_checksum &&
@@ -93,10 +94,10 @@ ip4_input_check_x4 (vlib_main_t * vm,
 
   error0 = error1 = error2 = error3 = IP4_ERROR_NONE;
 
-  check_ver_opt_csum (ip[0], &error0, verify_checksum);
-  check_ver_opt_csum (ip[1], &error1, verify_checksum);
-  check_ver_opt_csum (ip[2], &error2, verify_checksum);
-  check_ver_opt_csum (ip[3], &error3, verify_checksum);
+  check_ver_opt_csum (p[0], ip[0], &error0, verify_checksum);
+  check_ver_opt_csum (p[1], ip[1], &error1, verify_checksum);
+  check_ver_opt_csum (p[2], ip[2], &error2, verify_checksum);
+  check_ver_opt_csum (p[3], ip[3], &error3, verify_checksum);
 
   if (PREDICT_FALSE (ip[0]->ttl < 1))
     error0 = IP4_ERROR_TIME_EXPIRED;
@@ -216,8 +217,8 @@ ip4_input_check_x2 (vlib_main_t * vm,
 
   error0 = error1 = IP4_ERROR_NONE;
 
-  check_ver_opt_csum (ip0, &error0, verify_checksum);
-  check_ver_opt_csum (ip1, &error1, verify_checksum);
+  check_ver_opt_csum (p0, ip0, &error0, verify_checksum);
+  check_ver_opt_csum (p1, ip1, &error1, verify_checksum);
 
   if (PREDICT_FALSE (ip0->ttl < 1))
     error0 = IP4_ERROR_TIME_EXPIRED;
@@ -289,7 +290,7 @@ ip4_input_check_x1 (vlib_main_t * vm,
 
   error0 = IP4_ERROR_NONE;
 
-  check_ver_opt_csum (ip0, &error0, verify_checksum);
+  check_ver_opt_csum (p0, ip0, &error0, verify_checksum);
 
   if (PREDICT_FALSE (ip0->ttl < 1))
     error0 = IP4_ERROR_TIME_EXPIRED;

@@ -350,6 +350,8 @@ lcp_xc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  /* Packets from the host are essentially locally originated */
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
 	  lipi =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
@@ -475,6 +477,8 @@ lcp_xc_mpls_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  /* Packets from the host are essentially locally originated */
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
 	  lipi =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
