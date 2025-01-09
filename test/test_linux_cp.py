@@ -6,6 +6,14 @@ import socket
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
 from scapy.layers.l2 import Ether, ARP
+from scapy.contrib.lacp import LACP
+from scapy.contrib.lldp import (
+    LLDPDUChassisID,
+    LLDPDUPortID,
+    LLDPDUTimeToLive,
+    LLDPDUEndOfLLDPDU,
+    LLDPDU,
+)
 
 from util import reassemble4
 from vpp_object import VppObject
@@ -425,6 +433,132 @@ class TestLinuxCPIpsec(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
         self.unconfig_protect(p)
         self.unconfig_sa(p)
         self.unconfig_network(p)
+
+
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPEthertype(VppTestCase):
+    """Linux CP Ethertype"""
+
+    extra_vpp_plugin_config = [
+        "plugin",
+        "linux_cp_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "linux_cp_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "lldp_plugin.so",
+        "{",
+        "disable",
+        "}",
+    ]
+
+    LACP_ETHERTYPE = 0x8809
+    LLDP_ETHERTYPE = 0x88CC
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLinuxCPEthertype, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLinuxCPEthertype, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestLinuxCPEthertype, self).setUp()
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+        self.host = self.pg0
+        self.phy = self.pg1
+
+        self.pair = VppLcpPair(self, self.phy, self.host).add_vpp_config()
+        self.logger.info(self.vapi.cli("sh lcp"))
+
+    def tearDown(self):
+        self.pair.remove_vpp_config()
+
+        for i in self.pg_interfaces:
+            i.admin_down()
+        super(TestLinuxCPEthertype, self).tearDown()
+
+    def send_packet(self, sender, receiver, ethertype, dst, data, expect_copy=True):
+        packet = Ether(src=sender.remote_mac, dst=dst, type=ethertype) / data
+        if expect_copy:
+            rxs = self.send_and_expect(sender, [packet], receiver)
+            for rx in rxs:
+                self.assertEqual(packet.show2(True), rx.show2(True))
+        else:
+            self.send_and_assert_no_replies(sender, [packet])
+
+    def send_lacp_packet(self, sender, receiver, expect_copy=True):
+        data = LACP(
+            actor_system="00:00:00:00:00:01", partner_system="00:00:00:00:00:02"
+        )
+        self.send_packet(
+            sender,
+            receiver,
+            self.LACP_ETHERTYPE,
+            "01:80:c2:00:00:02",
+            data,
+            expect_copy,
+        )
+
+    def send_lldp_packet(self, sender, receiver, expect_copy=True):
+        data = (
+            LLDPDUChassisID(subtype=4, id="01:02:03:04:05:06")
+            / LLDPDUPortID(subtype=3, id="07:08:09:0a:0b:0c")
+            / LLDPDUTimeToLive(ttl=120)
+            / LLDPDUEndOfLLDPDU()
+        )
+        self.send_packet(
+            sender,
+            receiver,
+            self.LLDP_ETHERTYPE,
+            "01:80:c2:00:00:0e",
+            data,
+            expect_copy,
+        )
+
+    def check_ethertype_enabled(self, ethertype, enabled=True):
+        reply = self.vapi.lcp_ethertype_get()
+        output = self.vapi.cli("show lcp ethertype")
+
+        if enabled:
+            self.assertIn(ethertype, reply.ethertypes)
+            self.assertIn(hex(ethertype), output)
+        else:
+            self.assertNotIn(ethertype, reply.ethertypes)
+            self.assertNotIn(hex(ethertype), output)
+
+    def test_linux_cp_lacp(self):
+        """Linux CP LACP Test"""
+        self.check_ethertype_enabled(self.LACP_ETHERTYPE, enabled=False)
+        self.send_lacp_packet(self.phy, self.host, expect_copy=False)
+        self.send_lacp_packet(self.host, self.phy, expect_copy=False)
+
+        self.vapi.cli("lcp ethertype enable " + str(self.LACP_ETHERTYPE))
+
+        self.check_ethertype_enabled(self.LACP_ETHERTYPE, enabled=True)
+        self.send_lacp_packet(self.phy, self.host, expect_copy=True)
+        self.send_lacp_packet(self.host, self.phy, expect_copy=True)
+
+    def test_linux_cp_lldp(self):
+        """Linux CP LLDP Test"""
+        self.check_ethertype_enabled(self.LLDP_ETHERTYPE, enabled=False)
+        self.send_lldp_packet(self.phy, self.host, expect_copy=False)
+        self.send_lldp_packet(self.host, self.phy, expect_copy=False)
+
+        self.vapi.cli("lcp ethertype enable " + str(self.LLDP_ETHERTYPE))
+
+        self.check_ethertype_enabled(self.LLDP_ETHERTYPE, enabled=True)
+        self.send_lldp_packet(self.phy, self.host, expect_copy=True)
+        self.send_lldp_packet(self.host, self.phy, expect_copy=True)
 
 
 if __name__ == "__main__":

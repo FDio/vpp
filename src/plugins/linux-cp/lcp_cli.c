@@ -337,6 +337,62 @@ VLIB_CLI_COMMAND (lcp_itf_pair_show_cmd_node, static) = {
   .is_mp_safe = 1,
 };
 
+static clib_error_t *
+lcp_ethertype_enable_cmd (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  ethernet_type_t ethertype;
+  int rv;
+
+  if (!unformat (input, "%U", unformat_ethernet_type_host_byte_order,
+		 &ethertype))
+    return clib_error_return (0, "Invalid ethertype");
+
+  rv = lcp_ethertype_enable (ethertype);
+  if (rv)
+    return clib_error_return (0, "Failed to enable ethertype (%d)", rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_ethertype_enable_command, static) = {
+  .path = "lcp ethertype enable",
+  .short_help =
+    "lcp ethertype enable (<hex_ethertype_num>|<uc_ethertype_name>)",
+  .function = lcp_ethertype_enable_cmd,
+};
+
+static clib_error_t *
+lcp_ethertype_show_cmd (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  ethernet_type_t *ethertypes = vec_new (ethernet_type_t, 0);
+  ethernet_type_t *etype;
+  int rv;
+
+  rv = lcp_ethertype_get_enabled (&ethertypes);
+  if (rv)
+    {
+      vec_free (ethertypes);
+      return clib_error_return (0, "Failed to get enabled ethertypes (%d)",
+				rv);
+    }
+
+  vec_foreach (etype, ethertypes)
+    {
+      vlib_cli_output (vm, "0x%04x", *etype);
+    }
+
+  vec_free (ethertypes);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_ethertype_show_command, static) = {
+  .path = "show lcp ethertype",
+  .short_help = "show lcp ethertype",
+  .function = lcp_ethertype_show_cmd,
+};
+
 clib_error_t *
 lcp_cli_init (vlib_main_t *vm)
 {
