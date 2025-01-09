@@ -24,6 +24,7 @@
 #include <vlib/stats/stats.h>
 
 lacp_main_t lacp_main;
+__clib_export int lacp_plugin_enabled = 1;
 
 /*
  * Generate lacp pdu

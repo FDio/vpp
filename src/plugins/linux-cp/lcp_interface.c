@@ -1216,6 +1216,15 @@ lcp_itf_pair_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_itf_pair_link_up_down);
 
+static bool
+is_lacp_plugin_enabled ()
+{
+  int *lacp_plugin_enabled =
+    vlib_get_plugin_symbol ("lacp_plugin.so", "lacp_plugin_enabled");
+
+  return lacp_plugin_enabled ? *lacp_plugin_enabled : false;
+}
+
 static clib_error_t *
 lcp_interface_init (vlib_main_t *vm)
 {
@@ -1232,6 +1241,17 @@ lcp_interface_init (vlib_main_t *vm)
   udp_punt_unknown (vm, 1, 1);
   tcp_punt_unknown (vm, 0, 1);
   tcp_punt_unknown (vm, 1, 1);
+
+  /* mirror LACP pkts if lacp_plugin disabled */
+  if (!is_lacp_plugin_enabled ())
+    {
+      vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "linux-cp-punt-xc");
+      if (n)
+	{
+	  ethernet_register_input_type (vm, ETHERNET_TYPE_SLOW_PROTOCOLS,
+					n->index);
+	}
+    }
 
   lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "itf");
 
