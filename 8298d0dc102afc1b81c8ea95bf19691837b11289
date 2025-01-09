@@ -16,6 +16,23 @@
       "message": "Looks good to me but could you add unittests?",
       "revId": "8298d0dc102afc1b81c8ea95bf19691837b11289",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0ccef2d_968b1982",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2025-01-09T11:27:21Z",
+      "side": 1,
+      "message": "The code seems OK, please add a unit test",
+      "revId": "8298d0dc102afc1b81c8ea95bf19691837b11289",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
