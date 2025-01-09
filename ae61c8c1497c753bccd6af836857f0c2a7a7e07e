@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5c33f464_9c8de975",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-09T08:23:00Z",
+      "side": 1,
+      "message": "can you respect the indentation of the file?",
+      "revId": "ae61c8c1497c753bccd6af836857f0c2a7a7e07e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
