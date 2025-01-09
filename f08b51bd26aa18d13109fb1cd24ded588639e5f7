@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d663bb9_91d9d051",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-09T17:29:07Z",
+      "side": 1,
+      "message": "This is a patch to address an issue from vpp-dev discussion https://lists.fd.io/g/vpp-dev/message/25416. It should not be reviewed until it can be tested by the person who reported the problem.",
+      "revId": "f08b51bd26aa18d13109fb1cd24ded588639e5f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
