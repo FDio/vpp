@@ -18,6 +18,7 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip_types.h>
+#include <vnet/ethernet/ethernet.h>
 
 #include <plugins/linux-cp/lcp.h>
 
@@ -197,6 +198,18 @@ void lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip);
 void lcp_itf_pair_sync_state (lcp_itf_pair_t *lip);
 void lcp_itf_pair_sync_state_hw (vnet_hw_interface_t *hi);
 void lcp_itf_pair_sync_state_all ();
+
+/**
+ * Enable linux-cp-punt-xc for a given ethertype.
+ * @param ethertype - ethertype to enable
+ */
+int lcp_ethertype_enable (ethernet_type_t ethertype);
+
+/**
+ * Get the list of ethertypes enabled for linux-cp-punt-xc.
+ * @param ethertypes_vec - pointer to a vector to store the list of ethertypes
+ */
+int lcp_ethertype_get_enabled (ethernet_type_t **ethertypes_vec);
 
 /*
  * fd.io coding-style-patch-verification: ON

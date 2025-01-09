@@ -1214,6 +1214,53 @@ lcp_itf_pair_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
+int
+lcp_ethertype_enable (ethernet_type_t ethertype)
+{
+  ethernet_main_t *em = &ethernet_main;
+  ethernet_type_info_t *eti;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "linux-cp-punt-xc");
+
+  if (!node)
+    return VNET_API_ERROR_UNIMPLEMENTED;
+
+  eti = ethernet_get_type_info (em, ethertype);
+  if (!eti)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (eti->node_index != ~0 && eti->node_index != node->index)
+    return VNET_API_ERROR_INVALID_REGISTRATION;
+
+  ethernet_register_input_type (vm, ethertype, node->index);
+  return 0;
+}
+
+int
+lcp_ethertype_get_enabled (ethernet_type_t **ethertypes_vec)
+{
+  ethernet_main_t *em = &ethernet_main;
+  ethernet_type_info_t *eti;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "linux-cp-punt-xc");
+
+  if (!ethertypes_vec)
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
+  if (!node)
+    return VNET_API_ERROR_UNIMPLEMENTED;
+
+  vec_foreach (eti, em->type_infos)
+    {
+      if (eti->node_index == node->index)
+	{
+	  vec_add1 (*ethertypes_vec, eti->type);
+	}
+    }
+
+  return 0;
+}
+
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_itf_pair_link_up_down);
 
 static clib_error_t *
