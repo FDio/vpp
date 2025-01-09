@@ -418,3 +418,77 @@ VLIB_CLI_COMMAND (show_device_counters_cmd, static) = {
   .function = show_device_counters_cmd_fn,
   .is_mp_safe = 1,
 };
+
+static clib_error_t *
+show_device_class_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  clib_error_t *error = 0;
+  vnet_device_class_t *c = 0;
+  u8 *dev_name = 0;
+  u8 iterator_one = 0;
+  uword *p = 0;
+  u32 indent = 10;
+  u32 tmp_indent = 10;
+  u32 bits = 10, i = 1;
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      line_input = input;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "dev %s", &dev_name))
+	iterator_one = 1;
+    }
+
+  vlib_cli_output (vm, "vpp registerred dev class:");
+  vlib_cli_output (vm, "  total %u", vec_len (im->device_classes));
+  vlib_cli_output (vm, "    index      dev_name");
+
+  if (iterator_one)
+    {
+      if (dev_name)
+	{
+	  p = hash_get_mem (im->device_class_by_name, dev_name);
+	  if (p)
+	    c = vec_elt_at_index (im->device_classes, p[0]);
+
+	  if (c)
+	    vlib_cli_output (vm, "    %u%U%s", c->index, format_white_space,
+			     indent, c->name);
+
+	  vec_free (dev_name);
+	  unformat_free (line_input);
+	}
+    }
+  else
+    {
+      vec_foreach (c, im->device_classes)
+	{
+	  if (c->index >= bits)
+	    {
+	      bits *= 10;
+	      i++;
+	    }
+
+	  tmp_indent = indent - i + 1;
+	  tmp_indent = tmp_indent > 0 ? tmp_indent : 10;
+	  vlib_cli_output (vm, "    %u%U%s", c->index, format_white_space,
+			   tmp_indent, c->name);
+	}
+    }
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (show_device_class_command, static) = {
+  .path = "show device class",
+  .short_help = "show device class [dev <name>]",
+  .function = show_device_class_command_fn,
+};
