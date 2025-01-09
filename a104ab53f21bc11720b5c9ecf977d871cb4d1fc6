@@ -16,6 +16,24 @@
       "message": "please submit separately...",
       "revId": "a104ab53f21bc11720b5c9ecf977d871cb4d1fc6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fbb6767a_aeb59f87",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-09T19:36:12Z",
+      "side": 1,
+      "message": "Done. Separate CL for RDMA: https://gerrit.fd.io/r/c/vpp/+/42126",
+      "parentUuid": "9151a73f_a72c7b80",
+      "revId": "a104ab53f21bc11720b5c9ecf977d871cb4d1fc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
