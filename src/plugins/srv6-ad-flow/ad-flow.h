@@ -83,6 +83,8 @@ typedef struct
   dlist_elt_t *lru_pool;
   u32 lru_head_index;
 
+  u8 usid_len; /**< Length of the uSID */
+
   u32 index;
 } srv6_ad_flow_localsid_t;
 
@@ -94,8 +96,11 @@ typedef struct
   vnet_main_t *vnet_main; /**< [convenience] vnet main */
 
   dpo_type_t srv6_ad_flow_dpo_type; /**< DPO type */
+  dpo_type_t srv6_uad_flow_dpo_type; /**< DPO type for uSID variant */
 
   u32 srv6_localsid_behavior_id; /**< SRv6 LocalSID behavior number */
+  u32 srv6_localsid_usid_behavior_id; /**< SRv6 LocalSID behavior number for
+					 uSID variant */
 
   u32 *sw_iface_localsid2; /**< Retrieve local SID from iface */
   u32 *sw_iface_localsid4; /**< Retrieve local SID from iface */
@@ -124,6 +129,7 @@ extern srv6_ad_flow_main_t srv6_ad_flow_main;
 
 format_function_t format_srv6_ad_flow_localsid;
 unformat_function_t unformat_srv6_ad_flow_localsid;
+unformat_function_t unformat_srv6_uad_flow_localsid;
 
 void srv6_ad_flow_dpo_lock (dpo_id_t *dpo);
 void srv6_ad_flow_dpo_unlock (dpo_id_t *dpo);

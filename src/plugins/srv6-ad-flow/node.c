@@ -573,6 +573,360 @@ end_ad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = ls_mem->nh_adj;
 }
 
+static_always_inline void
+end_uad_flow_processing_v6 (vlib_main_t *vm, vlib_buffer_t *b,
+			    ip6_header_t *ip, u8 usid_len, u8 usid_index,
+			    u8 usid_next_index, u8 usid_next_len,
+			    srv6_ad_flow_localsid_t *ls_mem, u32 *next,
+			    vlib_combined_counter_main_t **cnt, u32 *cnt_idx,
+			    f64 now)
+{
+  ip6_sr_main_t *srm = &sr_main;
+  srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
+  ip6_address_t *new_dst;
+  u32 encap_length = sizeof (ip6_header_t);
+  clib_bihash_40_8_t *h = &ls_mem->ftable;
+  ip6_header_t *ulh = NULL;
+  u16 src_port = 0, dst_port = 0;
+  srv6_ad_flow_entry_t *e = NULL;
+  clib_bihash_kv_40_8_t kv, value;
+  srv6_ad_is_idle_entry_ctx_t ctx;
+  int ret;
+  bool next_usid = false;
+  u8 index;
+
+  for (index = 0; index < usid_len; index++)
+    {
+      if (ip->dst_address.as_u8[usid_next_index + index] != 0)
+	{
+	  next_usid = true;
+	  break;
+	}
+    }
+
+  if (next_usid)
+    {
+      u8 offset;
+
+      index = usid_index;
+
+      for (offset = 0; offset < usid_next_len; offset++)
+	{
+	  ip->dst_address.as_u8[index + offset] =
+	    ip->dst_address.as_u8[usid_next_index + offset];
+	}
+
+      for (index = 16 - usid_len; index < 16; index++)
+	{
+	  ip->dst_address.as_u8[index] = 0;
+	}
+
+      /* Find the inner IPv6 header (ULH) */
+      ret = end_ad_flow_walk_expect_first_hdr (vm, b, (void *) (ip + 1),
+					       ip->protocol, IP_PROTOCOL_IPV6,
+					       &encap_length, (u8 **) &ulh);
+    }
+  else
+    {
+      ip6_sr_header_t *srh;
+
+      /* Find SRH in the extension header chain */
+      end_ad_flow_walk_expect_first_hdr (vm, b, (void *) (ip + 1),
+					 ip->protocol, IP_PROTOCOL_IPV6_ROUTE,
+					 &encap_length, (u8 **) &srh);
+
+      /* Punt the packet if no SRH or SRH with SL = 0 */
+      if (PREDICT_FALSE (srh == NULL || srh->type != ROUTING_HEADER_TYPE_SR ||
+			 srh->segments_left == 0))
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_PUNT;
+	  *cnt = &(sm->sid_punt_counters);
+	  *cnt_idx = ls_mem->index;
+	  return;
+	}
+
+      /* Decrement Segments Left and update Destination Address */
+      srh->segments_left -= 1;
+      new_dst = (ip6_address_t *) (srh->segments) + srh->segments_left;
+      ip->dst_address.as_u64[0] = new_dst->as_u64[0];
+      ip->dst_address.as_u64[1] = new_dst->as_u64[1];
+
+      /* Add SRH length to the total encapsulation size */
+      encap_length += ip6_ext_header_len ((ip6_ext_header_t *) srh);
+
+      /* Find the inner IPv6 header (ULH) */
+      ret = end_ad_flow_walk_expect_first_hdr (
+	vm, b, ip6_ext_next_header ((ip6_ext_header_t *) srh), srh->protocol,
+	IP_PROTOCOL_IPV6, &encap_length, (u8 **) &ulh);
+    }
+
+  if (PREDICT_FALSE (ulh == NULL))
+    {
+      if (ret == -1) /* Bypass the NF if ULH is not of expected type */
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_BYPASS;
+	  *cnt = &(sm->sid_bypass_counters);
+	  *cnt_idx = ls_mem->index;
+	}
+      else
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_ERROR;
+	  *cnt = &(srm->sr_ls_invalid_counters);
+	}
+      return;
+    }
+
+  /* Compute flow hash on ULH */
+  if (PREDICT_TRUE (ulh->protocol == IP_PROTOCOL_UDP ||
+		    ulh->protocol == IP_PROTOCOL_TCP))
+    {
+      udp_header_t *ulh_l4_hdr = (udp_header_t *) (ulh + 1);
+      src_port = ulh_l4_hdr->src_port;
+      dst_port = ulh_l4_hdr->dst_port;
+    }
+
+  kv.key[0] = ulh->src_address.as_u64[0];
+  kv.key[1] = ulh->src_address.as_u64[1];
+  kv.key[2] = ulh->dst_address.as_u64[0];
+  kv.key[3] = ulh->dst_address.as_u64[1];
+  kv.key[4] = ((u64) src_port << 16) | ((u64) dst_port);
+
+  /* Lookup flow in hashtable */
+  if (!clib_bihash_search_40_8 (h, &kv, &value))
+    {
+      e = pool_elt_at_index (ls_mem->cache,
+			     ad_flow_value_get_session_index (&value));
+    }
+
+  if (!e)
+    {
+      if (pool_elts (ls_mem->cache) >= ls_mem->cache_size)
+	{
+	  if (!ad_flow_lru_free_one (ls_mem, now))
+	    {
+	      *next = SRV6_AD_FLOW_LOCALSID_NEXT_ERROR;
+	      *cnt = &(sm->sid_cache_full_counters);
+	      *cnt_idx = ls_mem->index;
+	      return;
+	    }
+	}
+
+      e = ad_flow_entry_alloc (ls_mem, now);
+      ASSERT (e);
+      e->key.s_addr.ip6.as_u64[0] = ulh->src_address.as_u64[0];
+      e->key.s_addr.ip6.as_u64[1] = ulh->src_address.as_u64[1];
+      e->key.d_addr.ip6.as_u64[0] = ulh->dst_address.as_u64[0];
+      e->key.d_addr.ip6.as_u64[1] = ulh->dst_address.as_u64[1];
+      e->key.s_port = src_port;
+      e->key.d_port = dst_port;
+      e->key.proto = ulh->protocol;
+
+      kv.value = (u64) (e - ls_mem->cache);
+
+      ctx.now = now;
+      ctx.ls = ls_mem;
+      clib_bihash_add_or_overwrite_stale_40_8 (h, &kv,
+					       ad_flow_is_idle_entry_cb, &ctx);
+    }
+  e->last_heard = now;
+
+  /* Cache encapsulation headers */
+  if (PREDICT_FALSE (encap_length > e->rw_len))
+    {
+      vec_validate (e->rw_data, encap_length - 1);
+    }
+  clib_memcpy_fast (e->rw_data, ip, encap_length);
+  e->rw_len = encap_length;
+
+  /* Update LRU */
+  ad_flow_entry_update_lru (ls_mem, e);
+
+  /* Decapsulate the packet */
+  vlib_buffer_advance (b, encap_length);
+
+  /* Set next node */
+  *next = SRV6_AD_FLOW_LOCALSID_NEXT_REWRITE6;
+
+  /* Set Xconnect adjacency to VNF */
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = ls_mem->nh_adj;
+}
+
+static_always_inline void
+end_uad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b,
+			    ip6_header_t *ip, u8 usid_len, u8 usid_index,
+			    u8 usid_next_index, u8 usid_next_len,
+			    srv6_ad_flow_localsid_t *ls_mem, u32 *next,
+			    vlib_combined_counter_main_t **cnt, u32 *cnt_idx,
+			    f64 now)
+{
+  ip6_sr_main_t *srm = &sr_main;
+  srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
+  ip6_address_t *new_dst;
+  u32 encap_length = sizeof (ip6_header_t);
+  clib_bihash_40_8_t *h = &ls_mem->ftable;
+  ip4_header_t *ulh = NULL;
+  u16 src_port = 0, dst_port = 0;
+  srv6_ad_flow_entry_t *e = NULL;
+  clib_bihash_kv_40_8_t kv, value;
+  srv6_ad_is_idle_entry_ctx_t ctx;
+  int ret;
+  bool next_usid = false;
+  u8 index;
+
+  for (index = 0; index < usid_len; index++)
+    {
+      if (ip->dst_address.as_u8[usid_next_index + index] != 0)
+	{
+	  next_usid = true;
+	  break;
+	}
+    }
+
+  if (next_usid)
+    {
+      u8 offset;
+
+      index = usid_index;
+
+      for (offset = 0; offset < usid_next_len; offset++)
+	{
+	  ip->dst_address.as_u8[index + offset] =
+	    ip->dst_address.as_u8[usid_next_index + offset];
+	}
+
+      for (index = 16 - usid_len; index < 16; index++)
+	{
+	  ip->dst_address.as_u8[index] = 0;
+	}
+
+      /* Find the inner IPv6 header (ULH) */
+      ret = end_ad_flow_walk_expect_first_hdr (
+	vm, b, (void *) (ip + 1), ip->protocol, IP_PROTOCOL_IP_IN_IP,
+	&encap_length, (u8 **) &ulh);
+    }
+  else
+    {
+      ip6_sr_header_t *srh;
+
+      /* Find SRH in the extension header chain */
+      end_ad_flow_walk_expect_first_hdr (vm, b, (void *) (ip + 1),
+					 ip->protocol, IP_PROTOCOL_IPV6_ROUTE,
+					 &encap_length, (u8 **) &srh);
+
+      /* Punt the packet if no SRH or SRH with SL = 0 */
+      if (PREDICT_FALSE (srh == NULL || srh->type != ROUTING_HEADER_TYPE_SR ||
+			 srh->segments_left == 0))
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_PUNT;
+	  *cnt = &(sm->sid_punt_counters);
+	  *cnt_idx = ls_mem->index;
+	  return;
+	}
+
+      /* Decrement Segments Left and update Destination Address */
+      srh->segments_left -= 1;
+      new_dst = (ip6_address_t *) (srh->segments) + srh->segments_left;
+      ip->dst_address.as_u64[0] = new_dst->as_u64[0];
+      ip->dst_address.as_u64[1] = new_dst->as_u64[1];
+
+      /* Add SRH length to the total encapsulation size */
+      encap_length += ip6_ext_header_len ((ip6_ext_header_t *) srh);
+
+      /* Find the inner IPv6 header (ULH) */
+      ret = end_ad_flow_walk_expect_first_hdr (
+	vm, b, ip6_ext_next_header ((ip6_ext_header_t *) srh), srh->protocol,
+	IP_PROTOCOL_IP_IN_IP, &encap_length, (u8 **) &ulh);
+    }
+
+  if (PREDICT_FALSE (ulh == NULL))
+    {
+      if (ret == -1) /* Bypass the NF if ULH is not of expected type */
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_BYPASS;
+	  *cnt = &(sm->sid_bypass_counters);
+	  *cnt_idx = ls_mem->index;
+	}
+      else
+	{
+	  *next = SRV6_AD_FLOW_LOCALSID_NEXT_ERROR;
+	  *cnt = &(srm->sr_ls_invalid_counters);
+	}
+      return;
+    }
+
+  /* Compute flow hash on ULH */
+  if (PREDICT_TRUE (ulh->protocol == IP_PROTOCOL_UDP ||
+		    ulh->protocol == IP_PROTOCOL_TCP))
+    {
+      udp_header_t *ulh_l4_hdr = (udp_header_t *) (ulh + 1);
+      src_port = ulh_l4_hdr->src_port;
+      dst_port = ulh_l4_hdr->dst_port;
+    }
+
+  kv.key[0] = *((u64 *) &ulh->address_pair);
+  kv.key[1] = ((u64) src_port << 16) | ((u64) dst_port);
+  kv.key[2] = 0;
+  kv.key[3] = 0;
+  kv.key[4] = 0;
+
+  /* Lookup flow in hashtable */
+  if (!clib_bihash_search_40_8 (h, &kv, &value))
+    {
+      e = pool_elt_at_index (ls_mem->cache,
+			     ad_flow_value_get_session_index (&value));
+    }
+
+  if (!e)
+    {
+      if (pool_elts (ls_mem->cache) >= ls_mem->cache_size)
+	{
+	  if (!ad_flow_lru_free_one (ls_mem, now))
+	    {
+	      *next = SRV6_AD_FLOW_LOCALSID_NEXT_ERROR;
+	      *cnt = &(sm->sid_cache_full_counters);
+	      *cnt_idx = ls_mem->index;
+	      return;
+	    }
+	}
+
+      e = ad_flow_entry_alloc (ls_mem, now);
+      ASSERT (e);
+      e->key.s_addr.ip4 = ulh->src_address;
+      e->key.d_addr.ip4 = ulh->dst_address;
+      e->key.s_port = src_port;
+      e->key.d_port = dst_port;
+      e->key.proto = ulh->protocol;
+
+      kv.value = (u64) (e - ls_mem->cache);
+
+      ctx.now = now;
+      ctx.ls = ls_mem;
+      clib_bihash_add_or_overwrite_stale_40_8 (h, &kv,
+					       ad_flow_is_idle_entry_cb, &ctx);
+    }
+  e->last_heard = now;
+
+  /* Cache encapsulation headers */
+  if (PREDICT_FALSE (encap_length > e->rw_len))
+    {
+      vec_validate (e->rw_data, encap_length - 1);
+    }
+  clib_memcpy_fast (e->rw_data, ip, encap_length);
+  e->rw_len = encap_length;
+
+  /* Update LRU */
+  ad_flow_entry_update_lru (ls_mem, e);
+
+  /* Decapsulate the packet */
+  vlib_buffer_advance (b, encap_length);
+
+  /* Set next node */
+  *next = SRV6_AD_FLOW_LOCALSID_NEXT_REWRITE4;
+
+  /* Set Xconnect adjacency to VNF */
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = ls_mem->nh_adj;
+}
+
 /**
  * @brief SRv6 AD Localsid graph node
  */
@@ -658,6 +1012,108 @@ srv6_ad_flow_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_REGISTER_NODE (srv6_ad_flow_localsid_node) = {
   .function = srv6_ad_flow_localsid_fn,
   .name = "srv6-ad-flow-localsid",
+  .vector_size = sizeof (u32),
+  .format_trace = format_srv6_ad_flow_localsid_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = SRV6_AD_FLOW_LOCALSID_N_NEXT,
+  .next_nodes = {
+		[SRV6_AD_FLOW_LOCALSID_NEXT_PUNT] = "ip6-local",
+		[SRV6_AD_FLOW_LOCALSID_NEXT_BYPASS] = "ip6-lookup",
+    [SRV6_AD_FLOW_LOCALSID_NEXT_REWRITE4] = "ip4-rewrite",
+    [SRV6_AD_FLOW_LOCALSID_NEXT_REWRITE6] = "ip6-rewrite",
+    [SRV6_AD_FLOW_LOCALSID_NEXT_ERROR] = "error-drop",
+  },
+};
+
+/**
+ * @brief SRv6 AD uSID Localsid graph node
+ */
+static uword
+srv6_uad_flow_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame)
+{
+  ip6_sr_main_t *srm = &sr_main;
+  f64 now = vlib_time_now (vm);
+  u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
+  u32 thread_index = vm->thread_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      /* TODO: Dual/quad loop */
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  ip6_header_t *ip0 = 0;
+	  ip6_sr_localsid_t *ls0;
+	  srv6_ad_flow_localsid_t *ls_mem0;
+	  u32 next0;
+	  vlib_combined_counter_main_t *cnt0 = &(srm->sr_ls_valid_counters);
+	  u32 cnt_idx0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+
+	  /* Retrieve local SID context based on IP DA (adj) */
+	  ls0 = pool_elt_at_index (srm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+
+	  cnt_idx0 = ls0 - srm->localsids;
+
+	  /* Retrieve local SID's plugin memory */
+	  ls_mem0 = ls0->plugin_mem;
+
+	  /* SRH processing */
+	  if (ls_mem0->inner_type == AD_TYPE_IP6)
+	    end_uad_flow_processing_v6 (vm, b0, ip0, ls0->usid_len,
+					ls0->usid_index, ls0->usid_next_index,
+					ls0->usid_next_len, ls_mem0, &next0,
+					&cnt0, &cnt_idx0, now);
+	  else
+	    end_uad_flow_processing_v4 (vm, b0, ip0, ls0->usid_len,
+					ls0->usid_index, ls0->usid_next_index,
+					ls0->usid_next_len, ls_mem0, &next0,
+					&cnt0, &cnt_idx0, now);
+
+	  /* Trace packet (if enabled) */
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      srv6_ad_flow_localsid_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof *tr);
+	      tr->localsid_index = ls_mem0->index;
+	    }
+
+	  /* Increment the appropriate per-SID counter */
+	  vlib_increment_combined_counter (
+	    cnt0, thread_index, cnt_idx0, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (srv6_uad_flow_localsid_node) = {
+  .function = srv6_uad_flow_localsid_fn,
+  .name = "srv6-uad-flow-localsid",
   .vector_size = sizeof (u32),
   .format_trace = format_srv6_ad_flow_localsid_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
