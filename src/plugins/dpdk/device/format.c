@@ -423,10 +423,12 @@ format_dpdk_device (u8 * s, va_list * args)
   struct rte_eth_rss_conf rss_conf;
   int vlan_off;
   int retval;
+  int __clib_unused rv;
 
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
-  rte_eth_dev_info_get (xd->port_id, &di);
+  rv = rte_eth_dev_info_get (xd->port_id, &di);
+  ASSERT (rv == 0);
 
   s = format (s, "%U\n%Ucarrier %U",
 	      format_dpdk_device_type, dev_instance,

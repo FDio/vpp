@@ -21,10 +21,11 @@ DPDK_MLX_IBV_LINK            ?= static
 # On most of the systems, default value for max lcores is 128
 DPDK_MAX_LCORES              ?=
 
-dpdk_version                 ?= 24.07
+dpdk_version                 ?= 24.11.1
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
-dpdk_tarball_sha256sum_24.07 := 9944f7e5f268e7ac9b4193e2cd54ef6d98f6e1d7dddc967c77ae4f6616d6fbbd
+
+dpdk_tarball_sha256sum_24.11.1 := bcae7d42c449fc456dfb279feabcbe0599a29bebb2fe2905761e187339d96b8e
 
 dpdk_tarball_sha256sum       := $(dpdk_tarball_sha256sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
@@ -198,8 +199,8 @@ define dpdk_config_cmds
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
 	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.55.3 setuptools wheel pyelftools; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.55.3 pyelftools && \
+	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.57.2 setuptools wheel pyelftools; fi) && \
+	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.57.2 pyelftools && \
 	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
