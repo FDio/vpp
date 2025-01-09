@@ -1523,7 +1523,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
   clib_memset (&xd->link, 0, sizeof (xd->link));
-  rte_eth_link_get_nowait (xd->port_id, &xd->link);
+  (void)rte_eth_link_get_nowait (xd->port_id, &xd->link);
 
   if (LINK_STATE_ELOGS)
     {

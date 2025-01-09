@@ -426,7 +426,7 @@ format_dpdk_device (u8 * s, va_list * args)
 
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
-  rte_eth_dev_info_get (xd->port_id, &di);
+  (void)rte_eth_dev_info_get (xd->port_id, &di);
 
   s = format (s, "%U\n%Ucarrier %U",
 	      format_dpdk_device_type, dev_instance,
