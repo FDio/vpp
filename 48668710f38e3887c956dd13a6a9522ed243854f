@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "28bd144b_1635fb10",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-09T09:29:20Z",
+      "side": 1,
+      "message": "does it replace https://gerrit.fd.io/r/c/vpp/+/42058 ?",
+      "revId": "48668710f38e3887c956dd13a6a9522ed243854f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
