@@ -131,6 +131,9 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
   /* Save split horizon group */
   vnet_buffer (b0)->l2.shg = config->shg;
 
+  /* Default drop packet */
+  *next0 = L2INPUT_FEAT_DROP;
+
   /* determine layer2 kind for stat and mask */
   if (PREDICT_FALSE (ethernet_address_cast (h0->dst_address)))
     {
@@ -215,10 +218,13 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
     }
   else
-    feat_mask = L2INPUT_FEAT_DROP;
+    *next0 = L2INPUT_FEAT_DROP;
 
   /* mask out features from bitmap using packet type and bd config */
   u32 feature_bitmap = config->feature_bitmap & feat_mask;
+
+  if (feature_bitmap == 0)
+    return;
 
   /* save for next feature graph nodes */
   vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
