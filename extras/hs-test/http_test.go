@@ -39,7 +39,7 @@ func init() {
 		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
-		PromConsecutiveConnectionsTest)
+		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -76,6 +76,16 @@ func HttpGetTpsTest(s *NoTopoSuite) {
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
 
+func HttpGetTpsTlsTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	url := "https://" + serverAddress + ":8080/test_file_10M"
+
+	vpp.Vppctl("http tps uri tls://0.0.0.0/8080")
+
+	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
+}
+
 func httpUploadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data interface{}) {
 	url, isValid := data.(string)
 	s.AssertEqual(true, isValid)
@@ -105,6 +115,16 @@ func HttpPostTpsTest(s *NoTopoSuite) {
 	url := "http://" + serverAddress + ":8080/test_file_10M"
 
 	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
+
+	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
+}
+
+func HttpPostTpsTlsTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	url := "https://" + serverAddress + ":8080/test_file_10M"
+
+	vpp.Vppctl("http tps uri tls://0.0.0.0/8080")
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
