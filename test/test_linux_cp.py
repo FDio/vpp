@@ -6,6 +6,7 @@ import socket
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
 from scapy.layers.l2 import Ether, ARP
+from scapy.contrib.lacp import LACP
 
 from util import reassemble4
 from vpp_object import VppObject
@@ -425,6 +426,110 @@ class TestLinuxCPIpsec(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
         self.unconfig_protect(p)
         self.unconfig_sa(p)
         self.unconfig_network(p)
+
+
+class TestLinuxCPLACPBase(VppTestCase):
+    """Base class for Linux CP LACP Tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLinuxCPLACPBase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLinuxCPLACPBase, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestLinuxCPLACPBase, self).setUp()
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+        self.host = self.pg0
+        self.phy = self.pg1
+
+        self.pair = VppLcpPair(self, self.phy, self.host).add_vpp_config()
+        self.logger.info(self.vapi.cli("sh lcp"))
+
+    def tearDown(self):
+        self.pair.remove_vpp_config()
+
+        for i in self.pg_interfaces:
+            i.admin_down()
+        super(TestLinuxCPLACPBase, self).tearDown()
+
+    def send_lacp_packet(self, sender, receiver, expect_copy=True):
+        lacp_packet = Ether(
+            src=sender.remote_mac, dst="01:80:c2:00:00:02", type=0x8809
+        ) / LACP(actor_system="00:00:00:00:00:01", partner_system="00:00:00:00:00:02")
+        if expect_copy:
+            rxs = self.send_and_expect(sender, [lacp_packet], receiver)
+            for rx in rxs:
+                self.assertEqual(lacp_packet.show2(True), rx.show2(True))
+        else:
+            self.send_and_assert_no_replies(sender, [lacp_packet])
+
+
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPLACP(TestLinuxCPLACPBase):
+    """Linux CP LACP with LACP Plugin Disabled"""
+
+    extra_vpp_plugin_config = [
+        "plugin",
+        "linux_cp_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "linux_cp_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "lacp_plugin.so",
+        "{",
+        "disable",
+        "}",
+    ]
+
+    def test_linux_cp_lacp_punt(self):
+        """Linux CP LACP Packet Punt Test"""
+        self.send_lacp_packet(self.phy, self.host, expect_copy=True)
+
+    def test_linux_cp_lacp_xc(self):
+        """Linux CP LACP Packet X-Connect Test"""
+        self.send_lacp_packet(self.host, self.phy, expect_copy=True)
+
+
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPLACPNegative(TestLinuxCPLACPBase):
+    """Linux CP LACP with LACP Plugin Enabled"""
+
+    extra_vpp_plugin_config = [
+        "plugin",
+        "linux_cp_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "linux_cp_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+        "plugin",
+        "lacp_plugin.so",
+        "{",
+        "enable",
+        "}",
+    ]
+
+    def test_linux_cp_lacp_punt(self):
+        """Linux CP LACP Packet Punt Test"""
+        self.send_lacp_packet(self.phy, self.host, expect_copy=False)
+
+    def test_linux_cp_lacp_xc(self):
+        """Linux CP LACP Packet X-Connect Test"""
+        self.send_lacp_packet(self.host, self.phy, expect_copy=False)
 
 
 if __name__ == "__main__":
