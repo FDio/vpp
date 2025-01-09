@@ -280,6 +280,40 @@ vl_api_lcp_itf_pair_replace_end_t_handler (
   REPLY_MACRO (VL_API_LCP_ITF_PAIR_REPLACE_END_REPLY);
 }
 
+static void
+vl_api_lcp_ethertype_enable_t_handler (vl_api_lcp_ethertype_enable_t *mp)
+{
+  vl_api_lcp_ethertype_enable_reply_t *rmp;
+  int rv;
+
+  rv = lcp_ethertype_enable (mp->ethertype);
+
+  REPLY_MACRO (VL_API_LCP_ETHERTYPE_ENABLE_REPLY);
+}
+
+static void
+vl_api_lcp_ethertype_get_t_handler (vl_api_lcp_ethertype_get_t *mp)
+{
+  vl_api_lcp_ethertype_get_reply_t *rmp;
+  ethernet_type_t *ethertypes = vec_new (ethernet_type_t, 0);
+  u16 count = 0;
+  int rv = 0;
+
+  rv = lcp_ethertype_get_enabled (&ethertypes);
+  if (!rv)
+    count = vec_len (ethertypes);
+
+  REPLY_MACRO3 (VL_API_LCP_ETHERTYPE_GET_REPLY, sizeof (u16) * count, ({
+		  rmp->count = htons (count);
+		  for (int i = 0; i < count; i++)
+		    {
+		      rmp->ethertypes[i] = htons (ethertypes[i]);
+		    }
+		}));
+
+  vec_free (ethertypes);
+}
+
 /*
  * Set up the API message handling tables
  */
