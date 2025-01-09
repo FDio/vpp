@@ -215,7 +215,10 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
     }
   else
-    feat_mask = L2INPUT_FEAT_DROP;
+    {
+      *next0 = L2INPUT_NEXT_DROP;
+      return;
+    }
 
   /* mask out features from bitmap using packet type and bd config */
   u32 feature_bitmap = config->feature_bitmap & feat_mask;
