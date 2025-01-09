@@ -2028,6 +2028,7 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
 	  ip6_ext_header_t *prev0;
+	  prev0 = 0;
 	  ip6_sr_header_t *sr0;
 	  u32 next0 = SR_LOCALSID_NEXT_IP6_LOOKUP;
 	  ip6_sr_localsid_t *ls0;
