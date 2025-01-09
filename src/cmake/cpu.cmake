@@ -22,6 +22,31 @@ macro(set_log2_cacheline_size var n)
 endmacro()
 
 ##############################################################################
+# Platform selection
+##############################################################################
+
+if(DEFINED VPP_PLATFORM AND VPP_PLATFORM STREQUAL "default")
+  unset(VPP_PLATFORM)
+  unset(VPP_PLATFORM CACHE)
+  set(VPP_PLATFORM_NAME "default")
+elseif(DEFINED VPP_PLATFORM)
+	set(platform_file ${CMAKE_CURRENT_LIST_DIR}/platform/${VPP_PLATFORM}.cmake)
+  if(NOT EXISTS ${platform_file})
+     message(FATAL_ERROR "unknown platform ${VPP_PLATFORM}")
+  endif()
+  include(${platform_file})
+  set(VPP_PLATFORM_NAME ${VPP_PLATFORM})
+else()
+  set(VPP_PLATFORM_NAME "default")
+endif()
+
+if (DEFINED VPP_PLATFORM_C_COMPILER_NAMES)
+  set(CMAKE_C_COMPILER_NAMES ${VPP_PLATFORM_C_COMPILER_NAME})
+else()
+  set(CMAKE_C_COMPILER_NAMES clang gcc cc)
+endif()
+
+##############################################################################
 # Cache line size
 ##############################################################################
 
