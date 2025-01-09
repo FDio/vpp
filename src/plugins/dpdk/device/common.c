@@ -80,7 +80,9 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_device_stop (xd);
     }
 
-  rte_eth_dev_info_get (xd->port_id, &dev_info);
+  rv = rte_eth_dev_info_get (xd->port_id, &dev_info);
+  if (rv)
+    dpdk_device_error (xd, "rte_eth_dev_info_get", rv);
 
   dpdk_log_debug ("[%u] configuring device %U", xd->port_id,
 		  format_dpdk_rte_device, dev_info.device);
@@ -443,6 +445,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 				 enum rte_eth_event_type type, void *param)
 {
   struct rte_eth_link link;
+  CLIB_UNUSED (int rv);
 
   RTE_SET_USED (param);
   if (type != RTE_ETH_EVENT_INTR_LSC)
@@ -451,7 +454,8 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
       return -1;
     }
 
-  rte_eth_link_get_nowait (port_id, &link);
+  rv = rte_eth_link_get_nowait (port_id, &link);
+  ASSERT (rv == 0);
   u8 link_up = link.link_status;
   if (link_up)
     dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s", port_id,
