@@ -218,6 +218,11 @@ reply:
 	  }
 	  break;
 
+	case DNS_CLI_PENDING_NAME_TO_IP:
+
+	  /* nothint to do... */
+	  break;
+
 	case DNS_PEER_PENDING_IP_TO_NAME:
 	case DNS_PEER_PENDING_NAME_TO_IP:
 	  if (pr->is_ip6)
@@ -301,6 +306,17 @@ retry_scan (vlib_main_t * vm, dns_main_t * dm, f64 now)
     }
 }
 
+static void
+dns_resolve_server_timeout (dns_main_t *dm, u32 index)
+{
+  dns_cache_lock (dm, 12);
+  /* free resource and didn't reply api msg */
+  if (pool_is_free_index (dm->entries, index))
+    return;
+  vnet_dns_delete_entry_by_index_nolock (dm, index);
+  dns_cache_unlock (dm);
+}
+
 static uword
 dns_resolver_process (vlib_main_t * vm,
 		      vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -325,6 +341,11 @@ dns_resolver_process (vlib_main_t * vm,
 	  /* Send one of these when a resolution is pending */
 	case DNS_RESOLVER_EVENT_PENDING:
 	  timeout = 2.0;
+	  break;
+
+	case DNS_RESOLVER_EVENT_STIMEOUT:
+	  for (i = 0; i < vec_len (event_data); i++)
+	    dns_resolve_server_timeout (dm, event_data[i]);
 	  break;
 
 	case DNS_RESOLVER_EVENT_RESOLVED:

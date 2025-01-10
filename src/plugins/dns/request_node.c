@@ -176,9 +176,13 @@ dns46_request_inline (vlib_main_t * vm,
 	  if (is_ip6)
 	    {
 	      ip60 = (ip6_header_t *) (((u8 *) u0) - sizeof (ip6_header_t));
-	      next0 = DNS46_REQUEST_NEXT_DROP;
-	      error0 = DNS46_REQUEST_ERROR_UNIMPLEMENTED;
-	      goto done0;
+	      if ((clib_net_to_host_u32 (
+		     ip60->ip_version_traffic_class_and_flow_label) >>
+		   28) != 6)
+		{
+		  error0 = DNS46_REQUEST_ERROR_IP_OPTIONS;
+		  goto done0;
+		}
 	    }
 	  else
 	    {
@@ -208,7 +212,8 @@ dns46_request_inline (vlib_main_t * vm,
 
 	  label0 = (u8 *) (d0 + 1);
 
-	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) & q0);
+	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) &q0);
+	  vec_add1 (name0, 0);
 
 	  t0->request_type = DNS_PEER_PENDING_NAME_TO_IP;
 
@@ -240,7 +245,6 @@ dns46_request_inline (vlib_main_t * vm,
 	   * vnet_dns_labels_to_name produces a non NULL terminated vector
 	   * vnet_dns_resolve_name expects a C-string.
 	   */
-	  vec_add1 (name0, 0);
 	  vnet_dns_resolve_name (vm, dm, name0, t0, &ep0);
 
 	  if (ep0)
