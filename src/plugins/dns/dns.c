@@ -306,7 +306,7 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   u8 *dns_request;
   vlib_frame_t *f;
   u32 *to_next;
-  int junk __attribute__ ((unused));
+  int junk;
 
   ASSERT (ep->dns_request);
 
@@ -349,16 +349,17 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   udp->length = clib_host_to_net_u16 (sizeof (udp_header_t) +
 				      vec_len (ep->dns_request));
   udp->checksum = 0;
-  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &junk);
 
   /* The actual DNS request */
   clib_memcpy (dns_request, ep->dns_request, vec_len (ep->dns_request));
+  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &junk);
 
   /* Ship it to ip6_lookup */
   f = vlib_get_frame_to_node (vm, ip6_lookup_node.index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
 
   ep->retry_timer = now + 2.0;
 }
@@ -1402,11 +1403,16 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
     return;
 
   REPLY_MACRO2 (VL_API_DNS_RESOLVE_NAME_REPLY, ({
-		  ip_address_copy_addr (rmp->ip4_address, &rn.address);
 		  if (ip_addr_version (&rn.address) == AF_IP4)
-		    rmp->ip4_set = 1;
+		    {
+		      ip_address_copy_addr (rmp->ip4_address, &rn.address);
+		      rmp->ip4_set = 1;
+		    }
 		  else
-		    rmp->ip6_set = 1;
+		    {
+		      ip_address_copy_addr (rmp->ip6_address, &rn.address);
+		      rmp->ip6_set = 1;
+		    }
 		}));
 }
 
@@ -2192,7 +2198,7 @@ show_dns_servers_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "ip6 name servers:");
       for (i = 0; i < vec_len (dm->ip6_name_servers); i++)
 	vlib_cli_output (vm, "%U", format_ip6_address,
-			 dm->ip4_name_servers + i);
+			 dm->ip6_name_servers + i);
     }
   return 0;
 }
@@ -2716,7 +2722,217 @@ vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
 		      dns_pending_request_t * pr, dns_cache_entry_t * ep,
 		      vlib_buffer_t * b0)
 {
-  clib_warning ("Unimplemented...");
+  u32 bi = 0;
+  ip6_address_t src_address;
+  ip6_header_t *ip;
+  udp_header_t *udp;
+  dns_header_t *dh;
+  vlib_frame_t *f;
+  u32 *to_next;
+  u8 *dns_response;
+  u8 *reply;
+  /* vl_api_dns_resolve_name_reply_t _rnr, *rnr = &_rnr; */
+  dns_resolve_name_t _rn, *rn = &_rn;
+  vl_api_dns_resolve_ip_reply_t _rir, *rir = &_rir;
+  u32 ttl = 64, tmp;
+  u32 qp_offset;
+  dns_query_t *qp;
+  dns_rr_t *rr;
+  u8 *rrptr;
+  int is_fail = 0;
+  int is_recycle = (b0 != 0);
+  int junk;
+
+  ASSERT (ep && ep->dns_response);
+
+  if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
+    {
+      /* Quick and dirty way to dig up the A-record address. $$ FIXME */
+      clib_memset (rn, 0, sizeof (*rn));
+      if (vnet_dns_response_to_reply (ep->dns_response, rn, &ttl))
+	{
+	  /* clib_warning ("response_to_reply failed..."); */
+	  is_fail = 1;
+	}
+      else if (ip_addr_version (&rn->address) != AF_IP6)
+	{
+	  /* clib_warning ("No A-record..."); */
+	  is_fail = 1;
+	}
+    }
+  else if (pr->request_type == DNS_PEER_PENDING_IP_TO_NAME)
+    {
+      clib_memset (rir, 0, sizeof (*rir));
+      if (vnet_dns_response_to_name (ep->dns_response, rir, &ttl))
+	{
+	  /* clib_warning ("response_to_name failed..."); */
+	  is_fail = 1;
+	}
+    }
+  else
+    {
+      clib_warning ("Unknown request type %d", pr->request_type);
+      return;
+    }
+
+  /* Initialize a buffer */
+  if (b0 == 0)
+    {
+      if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+	return;
+      b0 = vlib_get_buffer (vm, bi);
+    }
+  else
+    {
+      /* Use the buffer we were handed. Reinitialize it... */
+      vlib_buffer_t bt = {};
+      /* push/pop the reference count */
+      u8 save_ref_count = b0->ref_count;
+      vlib_buffer_copy_template (b0, &bt);
+      b0->ref_count = save_ref_count;
+      bi = vlib_get_buffer_index (vm, b0);
+    }
+
+  if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+    vlib_buffer_free_one (vm, b0->next_buffer);
+
+  /*
+   * Reset the buffer. We recycle the DNS request packet in the cache
+   * hit case, and reply immediately from the request node.
+   *
+   * In the resolution-required / deferred case, resetting a freshly-allocated
+   * buffer won't hurt. We hope.
+   */
+  b0->flags |=
+    (VNET_BUFFER_F_LOCALLY_ORIGINATED | VLIB_BUFFER_TOTAL_LENGTH_VALID);
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0; /* "local0" */
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0; /* default VRF for now */
+
+  if (!ip6_sas (0 /* default VRF for now */, ~0,
+		(const ip6_address_t *) &pr->dst_address, &src_address))
+    return;
+
+  ip = vlib_buffer_get_current (b0);
+  udp = (udp_header_t *) (ip + 1);
+  dns_response = (u8 *) (udp + 1);
+  clib_memset (ip, 0, sizeof (*ip) + sizeof (*udp));
+
+  /*
+   * Start with the variadic portion of the exercise.
+   * Turn the name into a set of DNS "labels". Max length
+   * per label is 63, enforce that.
+   */
+  reply = name_to_labels (pr->name);
+  vec_free (pr->name);
+
+  qp_offset = vec_len (reply);
+
+  /* Add space for the query header */
+  vec_validate (reply, qp_offset + sizeof (dns_query_t) - 1);
+
+  qp = (dns_query_t *) (reply + qp_offset);
+
+  if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
+    qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+  else
+    qp->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
+
+  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+
+  /* Punch in space for the dns_header_t */
+  vec_insert (reply, sizeof (dns_header_t), 0);
+
+  dh = (dns_header_t *) reply;
+
+  /* Transaction ID = pool index */
+  dh->id = pr->id;
+
+  /* Announce that we did a recursive lookup */
+  tmp = DNS_AA | DNS_RA | DNS_RD | DNS_OPCODE_QUERY | DNS_QR;
+  if (is_fail)
+    tmp |= DNS_RCODE_NAME_ERROR;
+  dh->flags = clib_host_to_net_u16 (tmp);
+  dh->qdcount = clib_host_to_net_u16 (1);
+  dh->anscount = (is_fail == 0) ? clib_host_to_net_u16 (1) : 0;
+  dh->nscount = 0;
+  dh->arcount = 0;
+
+  /* If the name resolution worked, cough up an appropriate RR */
+  if (is_fail == 0)
+    {
+      /* Add the answer. First, a name pointer (0xC00C) */
+      vec_add1 (reply, 0xC0);
+      vec_add1 (reply, 0x0C);
+
+      /* Now, add single A-rec RR */
+      if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
+	{
+	  vec_add2 (reply, rrptr, sizeof (dns_rr_t) + sizeof (ip6_address_t));
+	  rr = (dns_rr_t *) rrptr;
+
+	  rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	  rr->class = clib_host_to_net_u16 (1 /* internet */);
+	  rr->ttl = clib_host_to_net_u32 (ttl);
+	  rr->rdlength = clib_host_to_net_u16 (sizeof (ip6_address_t));
+	  ip_address_copy_addr (rr->rdata, &rn->address);
+	}
+      else
+	{
+	  /* Or a single PTR RR */
+	  u8 *vecname = format (0, "%s", rir->name);
+	  u8 *label_vec = name_to_labels (vecname);
+	  vec_free (vecname);
+
+	  vec_add2 (reply, rrptr, sizeof (dns_rr_t) + vec_len (label_vec));
+	  rr = (dns_rr_t *) rrptr;
+	  rr->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
+	  rr->class = clib_host_to_net_u16 (1 /* internet */);
+	  rr->ttl = clib_host_to_net_u32 (ttl);
+	  rr->rdlength = clib_host_to_net_u16 (vec_len (label_vec));
+	  clib_memcpy (rr->rdata, label_vec, vec_len (label_vec));
+	  vec_free (label_vec);
+	}
+    }
+  clib_memcpy (dns_response, reply, vec_len (reply));
+
+  /* Set the packet length */
+  b0->current_length = sizeof (*ip) + sizeof (*udp) + vec_len (reply);
+
+  /* IP header */
+  ip->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 (0x6 << 28);
+
+  ip->payload_length = clib_host_to_net_u16 (
+    vlib_buffer_length_in_chain (vm, b0) - sizeof (ip6_header_t));
+  ip->hop_limit = 255;
+  ip->protocol = IP_PROTOCOL_UDP;
+  ip6_address_copy (&ip->src_address, &src_address);
+  clib_memcpy (&ip->dst_address, pr->dst_address, sizeof (ip6_address_t));
+
+  /* UDP header */
+  udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_dns);
+  udp->dst_port = pr->dst_port;
+  udp->length =
+    clib_host_to_net_u16 (sizeof (udp_header_t) + vec_len (dns_response));
+  udp->checksum = 0;
+
+  /* The actual DNS request */
+  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip, &junk);
+
+  vec_free (reply);
+
+  /*
+   * Ship pkts made out of whole cloth to ip4_lookup
+   * Caller will ship recycled dns reply packets to ip4_lookup
+   */
+  if (is_recycle == 0)
+    {
+      f = vlib_get_frame_to_node (vm, ip6_lookup_node.index);
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
+    }
 }
 
 
