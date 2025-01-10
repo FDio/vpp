@@ -669,29 +669,19 @@ static void
 vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
 			      vnet_crypto_op_id_t did, char *name, u8 is_aead)
 {
-  vnet_crypto_op_type_t eopt, dopt;
   vnet_crypto_main_t *cm = &crypto_main;
 
   cm->algs[alg].name = name;
+  cm->algs[alg].is_aead = is_aead;
   cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
   cm->opt_data[eid].active_engine_index_simple = ~0;
   cm->opt_data[did].active_engine_index_simple = ~0;
   cm->opt_data[eid].active_engine_index_chained = ~0;
   cm->opt_data[did].active_engine_index_chained = ~0;
-  if (is_aead)
-    {
-      eopt = VNET_CRYPTO_OP_TYPE_AEAD_ENCRYPT;
-      dopt = VNET_CRYPTO_OP_TYPE_AEAD_DECRYPT;
-    }
-  else
-    {
-      eopt = VNET_CRYPTO_OP_TYPE_ENCRYPT;
-      dopt = VNET_CRYPTO_OP_TYPE_DECRYPT;
-    }
-  cm->opt_data[eid].type = eopt;
-  cm->opt_data[did].type = dopt;
-  cm->algs[alg].op_by_type[eopt] = eid;
-  cm->algs[alg].op_by_type[dopt] = did;
+  cm->opt_data[eid].type = VNET_CRYPTO_OP_TYPE_ENCRYPT;
+  cm->opt_data[did].type = VNET_CRYPTO_OP_TYPE_DECRYPT;
+  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT] = eid;
+  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT] = did;
   hash_set_mem (cm->alg_index_by_name, name, alg);
 }
 
