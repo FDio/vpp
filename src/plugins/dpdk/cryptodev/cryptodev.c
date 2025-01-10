@@ -71,7 +71,7 @@ prepare_aead_xform (struct rte_crypto_sym_xform *xform,
   aead_xform->iv.offset = CRYPTODEV_IV_OFFSET;
   aead_xform->iv.length = 12;
   aead_xform->key.data = key->data;
-  aead_xform->key.length = vec_len (key->data);
+  aead_xform->key.length = key->length;
 
   return 0;
 }
@@ -249,7 +249,7 @@ cryptodev_check_supported_vnet_alg (vnet_crypto_key_t *key)
 {
   u32 matched = 0;
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     {
       switch (key->async_alg)
 	{
@@ -453,7 +453,7 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
     rte_cryptodev_sym_session_create (sess_pool);
 #endif
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     ret = prepare_linked_xform (xforms_enc, CRYPTODEV_OP_TYPE_ENCRYPT, key);
   else
     ret =
@@ -464,7 +464,7 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
       goto clear_key;
     }
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     prepare_linked_xform (xforms_dec, CRYPTODEV_OP_TYPE_DECRYPT, key);
   else
     prepare_aead_xform (xforms_dec, CRYPTODEV_OP_TYPE_DECRYPT, key, aad_len);

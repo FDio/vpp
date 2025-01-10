@@ -442,7 +442,8 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   u32 index;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key;
+  vnet_crypto_key_t *key, **kp;
+  u32 alloc_sz = sizeof (vnet_crypto_key_t) + round_pow2 (length, 16);
 
   u8 need_barrier_sync = 0;
 
@@ -454,15 +455,19 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   if (need_barrier_sync)
     vlib_worker_thread_barrier_sync (vm);
 
-  pool_get_zero (cm->keys, key);
+  pool_get (cm->keys, kp);
 
   if (need_barrier_sync)
     vlib_worker_thread_barrier_release (vm);
 
-  index = key - cm->keys;
-  key->type = VNET_CRYPTO_KEY_TYPE_DATA;
-  key->alg = alg;
-  vec_validate_aligned (key->data, length - 1, CLIB_CACHE_LINE_BYTES);
+  key = clib_mem_alloc_aligned (alloc_sz, _Alignof (vnet_crypto_key_t));
+  kp[0] = key;
+  index = kp - cm->keys;
+  *key = (vnet_crypto_key_t){
+    .index = index,
+    .alg = alg,
+    .length = length,
+  };
   clib_memcpy (key->data, data, length);
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
@@ -475,23 +480,16 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key = pool_elt_at_index (cm->keys, index);
+  vnet_crypto_key_t *key = cm->keys[index];
+  u32 sz = sizeof (vnet_crypto_key_t) + round_pow2 (key->length, 16);
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, index);
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_DATA)
-    {
-      clib_memset (key->data, 0xfe, vec_len (key->data));
-      vec_free (key->data);
-    }
-  else if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
-    {
-      key->index_crypto = key->index_integ = ~0;
-    }
-
-  pool_put (cm->keys, key);
+  clib_memset (key, 0xfe, sz);
+  clib_mem_free (key);
+  pool_put_index (cm->keys, index);
 }
 
 void
@@ -523,25 +521,40 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
 			    vnet_crypto_key_index_t index_crypto,
 			    vnet_crypto_key_index_t index_integ)
 {
-  u32 index;
+  u32 index, need_barrier_sync;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
-  vnet_crypto_key_t *key_crypto, *key_integ, *key;
+  vnet_crypto_key_t *key_crypto, *key_integ, *key, **kp;
   vnet_crypto_async_alg_t linked_alg;
 
-  key_crypto = pool_elt_at_index (cm->keys, index_crypto);
-  key_integ = pool_elt_at_index (cm->keys, index_integ);
+  key_crypto = cm->keys[index_crypto];
+  key_integ = cm->keys[index_integ];
 
   linked_alg = vnet_crypto_link_algs (key_crypto->alg, key_integ->alg);
   if (linked_alg == ~0)
     return ~0;
 
-  pool_get_zero (cm->keys, key);
-  index = key - cm->keys;
-  key->type = VNET_CRYPTO_KEY_TYPE_LINK;
-  key->index_crypto = index_crypto;
-  key->index_integ = index_integ;
-  key->async_alg = linked_alg;
+  need_barrier_sync = pool_get_will_expand (cm->keys);
+  /* If the cm->keys will expand, stop the parade. */
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
+
+  pool_get (cm->keys, kp);
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
+  key = clib_mem_alloc_aligned (sizeof (vnet_crypto_key_t),
+				_Alignof (vnet_crypto_key_t));
+  kp[0] = key;
+  index = kp - cm->keys;
+  *key = (vnet_crypto_key_t){
+    .index = index,
+    .is_link = 1,
+    .index_crypto = index_crypto,
+    .index_integ = index_integ,
+    .async_alg = linked_alg,
+  };
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)

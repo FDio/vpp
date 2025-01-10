@@ -754,7 +754,7 @@ crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
   void *kd;
 
   /** TODO: add linked alg support **/
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     return;
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL)
@@ -805,10 +805,10 @@ crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
       u64 pad[block_qw], key_hash[block_qw];
 
       clib_memset_u8 (key_hash, 0, HMAC_MAX_BLOCK_SIZE);
-      if (vec_len (key->data) <= ad->block_size)
-	clib_memcpy_fast (key_hash, key->data, vec_len (key->data));
+      if (key->length <= ad->block_size)
+	clib_memcpy_fast (key_hash, key->data, key->length);
       else
-	ad->hash_fn (key->data, vec_len (key->data), key_hash);
+	ad->hash_fn (key->data, key->length, key_hash);
 
       for (i = 0; i < block_qw; i++)
 	pad[i] = key_hash[i] ^ 0x3636363636363636;

@@ -206,11 +206,13 @@ typedef enum
 
 typedef struct
 {
+  u32 index;
+  u16 length;
+  u8 is_link : 1;
   union
   {
     struct
     {
-      u8 *data;
       vnet_crypto_alg_t alg:8;
     };
     struct
@@ -220,9 +222,7 @@ typedef struct
       vnet_crypto_async_alg_t async_alg:8;
     };
   };
-#define VNET_CRYPTO_KEY_TYPE_DATA 0
-#define VNET_CRYPTO_KEY_TYPE_LINK 1
-  u8 type;
+  u8 data[];
 } vnet_crypto_key_t;
 
 typedef enum
@@ -468,7 +468,7 @@ typedef struct
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
   vnet_crypto_async_op_data_t async_opt_data[VNET_CRYPTO_ASYNC_OP_N_IDS];
   vnet_crypto_engine_t *engines;
-  vnet_crypto_key_t *keys;
+  vnet_crypto_key_t **keys;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
   uword *async_alg_index_by_name;
@@ -545,7 +545,7 @@ static_always_inline vnet_crypto_key_t *
 vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  return vec_elt_at_index (cm->keys, index);
+  return cm->keys[index];
 }
 
 static_always_inline int

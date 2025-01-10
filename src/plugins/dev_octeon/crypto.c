@@ -1336,7 +1336,7 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
     }
 
   rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data,
-			    vec_len (key->data));
+			    key->length));
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",

@@ -59,7 +59,7 @@ crypto_sw_scheduler_key_handler (vnet_crypto_key_op_t kop,
 
   vec_validate (cm->keys, idx);
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     {
       if (kop == VNET_CRYPTO_KEY_OP_DEL)
 	{

@@ -19,7 +19,7 @@ crypto_native_key_handler (vnet_crypto_key_op_t kop,
   crypto_native_main_t *cm = &crypto_native_main;
 
   /** TODO: add linked alg support **/
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     return;
 
   if (cm->key_fn[key->alg] == 0)

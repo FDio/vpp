@@ -494,7 +494,7 @@ openssl_ctx_hmac (vnet_crypto_key_t *key, vnet_crypto_key_op_t kop,
 	  vec_validate_aligned (ptd->hmac_ctx, idx, CLIB_CACHE_LINE_BYTES);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	  ctx = HMAC_CTX_new ();
-	  HMAC_Init_ex (ctx, key->data, vec_len (key->data), md, NULL);
+	  HMAC_Init_ex (ctx, key->data, key->length, md, NULL);
 	  ptd->hmac_ctx[idx] = ctx;
 #else
 	  HMAC_CTX_init (&(ptd->_hmac_ctx));
@@ -507,7 +507,7 @@ openssl_ctx_hmac (vnet_crypto_key_t *key, vnet_crypto_key_op_t kop,
       for (ptd = per_thread_data; ptd - per_thread_data < num_threads; ptd++)
 	{
 	  ctx = ptd->hmac_ctx[idx];
-	  HMAC_Init_ex (ctx, key->data, vec_len (key->data), md, NULL);
+	  HMAC_Init_ex (ctx, key->data, key->length, md, NULL);
 	}
     }
   else if (VNET_CRYPTO_KEY_OP_DEL == kop)
@@ -530,7 +530,7 @@ crypto_openssl_key_handler (vnet_crypto_key_op_t kop,
   crypto_openssl_main_t *cm = &crypto_openssl_main;
 
   /** TODO: add linked alg support **/
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     return;
 
   if (cm->ctx_fn[key->alg] == 0)

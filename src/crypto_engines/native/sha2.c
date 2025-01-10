@@ -110,7 +110,7 @@ sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
   clib_sha2_hmac_key_data_t *kd;
 
   kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
-  clib_sha2_hmac_key_data (type, key->data, vec_len (key->data), kd);
+  clib_sha2_hmac_key_data (type, key->data, key->length, kd);
 
   return kd;
 }
