@@ -46,8 +46,12 @@ typedef struct
 
 typedef enum
 {
-  DNS_API_PENDING_NAME_TO_IP = 1,
-  DNS_API_PENDING_IP_TO_NAME,
+  DNS_API_PENDING_NAME_TO_IP = 1, /** A record */
+  DNS_API_PENDING_IP_TO_NAME,	  /** PTR record */
+  DNS_API_PENDING_WANT_NAME_TO_IP,
+  DNS_API_PENDING_WANT_IP_TO_NAME,
+  DNS_CLI_PENDING_NAME_TO_IP,
+  DNS_CLI_PENDING_IP_TO_NAME,
   DNS_PEER_PENDING_NAME_TO_IP,
   DNS_PEER_PENDING_IP_TO_NAME,
 } dns_pending_request_type_t;
@@ -74,6 +78,7 @@ typedef struct
   int server_rotor;
   int server_af;
   int server_fails;
+  int server_refer;
   f64 retry_timer;
 
   /** Cached dns response */
@@ -91,7 +96,8 @@ typedef struct
 
 #define DNS_RESOLVER_EVENT_RESOLVED	1
 #define DNS_RESOLVER_EVENT_PENDING	2
-
+/* retry for every dns server but no reply */
+#define DNS_RESOLVER_EVENT_STIMEOUT 3
 
 typedef struct
 {
@@ -190,13 +196,9 @@ void
 vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip4_address_t * server);
 
-void vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
-			   dns_pending_request_t * t, dns_cache_entry_t * ep,
-			   vlib_buffer_t * b0);
-
-void vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
-			   dns_pending_request_t * t, dns_cache_entry_t * ep,
-			   vlib_buffer_t * b0);
+void vnet_send_dns_reply (vlib_main_t *vm, dns_main_t *dm,
+			  dns_pending_request_t *t, dns_cache_entry_t *ep,
+			  vlib_buffer_t *b0);
 
 u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
 			     u8 ** parse_from_here);
