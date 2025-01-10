@@ -7,6 +7,7 @@ from asfframework import VppTestRunner
 from ipaddress import *
 from config import config
 
+from scapy.layers.inet6 import IPv6
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.layers.dns import DNS, DNSQR
@@ -35,6 +36,9 @@ class TestDns(VppTestCase):
             i.resolve_arp()
 
     def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
         super(TestDns, self).tearDown()
 
     def create_stream(self, src_if):
@@ -109,6 +113,107 @@ class TestDns(VppTestCase):
         self.assertIn("1.2.3.4", str)
         self.assertIn("[P] no.clown.org:", str)
 
+@unittest.skipIf("dns" in config.excluded_plugins, "Exclude DNS plugin tests")
+class TestDns6(VppTestCase):
+    """Dns Test Cases"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDns6, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDns6, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestDns6, self).setUp()
+
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+        super(TestDns6, self).tearDown()
+
+
+    def create_stream(self, src_if):
+        """Create input packet stream for defined interface.
+
+        :param VppInterface src_if: Interface to create packet stream for.
+        """
+        good_request = (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IPv6(src=src_if.remote_ip6)
+            / UDP(sport=1234, dport=53)
+            / DNS(rd=1, qd=DNSQR(qname="bozo.clown.org"))
+        )
+
+        bad_request = (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IPv6(src=src_if.remote_ip6)
+            / UDP(sport=1234, dport=53)
+            / DNS(rd=1, qd=DNSQR(qname="no.clown.org"))
+        )
+        pkts = [good_request, bad_request]
+        return pkts
+
+    def verify_capture(self, dst_if, capture):
+        """Verify captured input packet stream for defined interface.
+
+        :param VppInterface dst_if: Interface to verify captured packet stream
+            for.
+        :param list capture: Captured packet stream.
+        """
+        self.logger.info("Verifying capture on interface %s" % dst_if.name)
+
+        for packet in capture:
+            if DNS in packet:
+                dns = packet[DNS]
+                self.assertEqual(dns.an[0].rdata, "2001:4860:4860::1111")
+
+    def test_dns6_unittest(self):
+        """DNS Name Resolver Basic Functional Test for IPv6"""
+
+        # Set up an upstream name resolver (IPv6)
+        self.vapi.dns_name_server_add_del(
+            is_ip6=1, is_add=1, server_address=IPv6Address("2001:4860:4860::8888").packed
+        )
+
+        # Enable name resolution
+        self.vapi.dns_enable_disable(enable=1)
+
+        # Manually add a static dns cache entry
+        self.logger.info(self.vapi.cli("dns cache add bozo.clown.org 2001:4860:4860::1111"))
+
+        # Test the binary API for IPv6
+        rv = self.vapi.dns_resolve_name(name=b"bozo.clown.org")
+        self.assertEqual(rv.ip6_address, IPv6Address("2001:4860:4860::1111").packed)
+
+        # Configure IPv6 loopback on the pg interface
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, prefix="::1/128", is_add=1
+        )
+
+        # Send DNS request packets for IPv6
+        self.logger.info(self.vapi.cli("show ip6 neighbors"))
+        pkts = self.create_stream(self.pg0)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+
+        self.pg_start()
+        pkts = self.pg0.get_capture(1)
+        self.verify_capture(self.pg0, pkts)
+
+        # Verify DNS cache contents for IPv6
+        dns_cache_contents = self.vapi.cli("show dns cache verbose")
+        self.assertIn("2001:4860:4860::1111", dns_cache_contents)
+        self.assertIn("[P] no.clown.org:", dns_cache_contents)
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

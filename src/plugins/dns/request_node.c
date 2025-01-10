@@ -176,9 +176,13 @@ dns46_request_inline (vlib_main_t * vm,
 	  if (is_ip6)
 	    {
 	      ip60 = (ip6_header_t *) (((u8 *) u0) - sizeof (ip6_header_t));
-	      next0 = DNS46_REQUEST_NEXT_DROP;
-	      error0 = DNS46_REQUEST_ERROR_UNIMPLEMENTED;
-	      goto done0;
+	      if ((clib_net_to_host_u32 (
+		     ip60->ip_version_traffic_class_and_flow_label) >>
+		   28) != 6)
+		{
+		  error0 = DNS46_REQUEST_ERROR_IP_OPTIONS;
+		  goto done0;
+		}
 	    }
 	  else
 	    {
