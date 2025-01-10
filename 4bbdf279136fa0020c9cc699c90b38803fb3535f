@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0a98ba06_f56bf32a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-10T12:55:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b30cf0d5_942d5535",
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "68273479_3f39a76d",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 11
@@ -48,6 +66,30 @@
       "writtenOn": "2025-01-10T11:30:10Z",
       "side": 1,
       "message": "Similarly, we can move this into openssl_read_from_ssl_into_fifo. We\u0027re doing slightly more work than needed but code is easier to maintain.",
+      "range": {
+        "startLine": 579,
+        "startChar": 0,
+        "endLine": 579,
+        "endChar": 39
+      },
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c03f61c6_f9b5665f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 579,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-10T12:55:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "68273479_3f39a76d",
       "range": {
         "startLine": 579,
         "startChar": 0,
@@ -83,6 +125,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d354ed95_a6ab4311",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-10T12:55:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4e101776_18e7b9ec",
+      "range": {
+        "startLine": 588,
+        "startChar": 0,
+        "endLine": 597,
+        "endChar": 5
+      },
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "036f5532_d94c2102",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 11
@@ -94,6 +160,24 @@
       "writtenOn": "2025-01-10T11:30:10Z",
       "side": 1,
       "message": "After change above I don\u0027t think this will be needed.",
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd669dac_bc760f8b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 613,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-10T12:55:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "036f5532_d94c2102",
       "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
