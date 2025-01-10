@@ -60,8 +60,6 @@
 #define foreach_crypto_op_type                                                \
   _ (ENCRYPT, "encrypt")                                                      \
   _ (DECRYPT, "decrypt")                                                      \
-  _ (AEAD_ENCRYPT, "aead-encrypt")                                            \
-  _ (AEAD_DECRYPT, "aead-decrypt")                                            \
   _ (HMAC, "hmac")                                                            \
   _ (HASH, "hash")
 
@@ -250,6 +248,7 @@ typedef enum
 typedef struct
 {
   char *name;
+  u8 is_aead : 1;
   vnet_crypto_op_id_t op_by_type[VNET_CRYPTO_OP_N_TYPES];
 } vnet_crypto_alg_data_t;
 
