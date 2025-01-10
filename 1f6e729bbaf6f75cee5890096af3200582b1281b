@@ -16,6 +16,23 @@
       "message": "first draft.",
       "revId": "1f6e729bbaf6f75cee5890096af3200582b1281b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ceb6a19_ac30ff10",
+        "filename": "src/plugins/pvti/pvti.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-10T08:28:10Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be the encapsulator here?",
+      "revId": "1f6e729bbaf6f75cee5890096af3200582b1281b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
