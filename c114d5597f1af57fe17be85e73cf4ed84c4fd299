@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a65d8594_b5cadc5d",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-10T11:23:57Z",
+      "side": 0,
+      "message": "Why are we dropping max_len? We do want to cap length of io operations and yield cpu.",
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbb6b09e_1dc4500b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-10T11:23:57Z",
+      "side": 0,
+      "message": "Let\u0027s leave the check here because it stops execution of this function",
+      "range": {
+        "startLine": 479,
+        "startChar": 0,
+        "endLine": 484,
+        "endChar": 5
+      },
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

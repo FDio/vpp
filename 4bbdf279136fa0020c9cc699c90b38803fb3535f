@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a629f4b5_fdeb9b4b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-10T11:23:57Z",
+      "side": 1,
+      "message": "Quick review as I\u0027m currently traveling.",
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b30cf0d5_942d5535",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-10T11:23:57Z",
+      "side": 1,
+      "message": "Can we clean these up?",
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e101776_18e7b9ec",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-10T11:23:57Z",
+      "side": 1,
+      "message": "Can\u0027t we keep on handling this within openssl_read_from_ssl_into_fifo?",
+      "range": {
+        "startLine": 588,
+        "startChar": 0,
+        "endLine": 597,
+        "endChar": 5
+      },
+      "revId": "4bbdf279136fa0020c9cc699c90b38803fb3535f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
