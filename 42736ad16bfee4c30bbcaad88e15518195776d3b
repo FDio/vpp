@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c244dbc_da9c3fc9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-10T14:33:01Z",
+      "side": 1,
+      "message": "Hi linux-cp experts, appreciate your feedback on this change. I added it to support LAG in the Sonic-VPP project: https://github.com/sonic-net/sonic-platform-vpp/issues/140\n\nThe change is inspired by the discussions in https://lists.fd.io/g/vpp-dev/message/23417 and https://lists.fd.io/g/vpp-dev/topic/96476162.\n\nNote that I currently enable this functionality based on the presence of the LACP plugin (for which I had to add a variable). I could change that to be an API if preferred (eg. lcp \u003cenable|disable\u003e \u003cethertype\u003e or some other form of API).\n\nThank you,\nAkeel",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
