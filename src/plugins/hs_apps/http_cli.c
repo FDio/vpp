@@ -387,8 +387,7 @@ hcs_ts_rx_callback (session_t *ts)
       goto done;
     }
 
-  if (msg.data.target_path_len == 0 ||
-      msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
+  if (msg.data.target_path_len == 0)
     {
       start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       goto done;
@@ -400,7 +399,8 @@ hcs_ts_rx_callback (session_t *ts)
 		      msg.data.target_path_len, args.buf);
   ASSERT (rv == msg.data.target_path_len);
   HCS_DBG ("%v", args.buf);
-  if (http_validate_abs_path_syntax (args.buf, &is_encoded))
+  if (http_validate_abs_path_syntax (args.buf, msg.data.target_path_len,
+				     &is_encoded))
     {
       start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       vec_free (args.buf);

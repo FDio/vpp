@@ -546,12 +546,6 @@ hss_ts_rx_callback (session_t *ts)
       goto done;
     }
 
-  if (msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
-    {
-      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-      goto done;
-    }
-
   /* Read target path */
   if (msg.data.target_path_len)
     {
@@ -559,7 +553,8 @@ hss_ts_rx_callback (session_t *ts)
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
 			  msg.data.target_path_len, target_path);
       ASSERT (rv == msg.data.target_path_len);
-      if (http_validate_abs_path_syntax (target_path, 0))
+      if (http_validate_abs_path_syntax (target_path, msg.data.target_path_len,
+					 0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
 	  goto done;
@@ -575,7 +570,8 @@ hss_ts_rx_callback (session_t *ts)
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_query_offset,
 			  msg.data.target_query_len, target_query);
       ASSERT (rv == msg.data.target_query_len);
-      if (http_validate_query_syntax (target_query, 0))
+      if (http_validate_query_syntax (target_query, msg.data.target_query_len,
+				      0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
 	  goto done;
