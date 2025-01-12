@@ -166,7 +166,6 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = HTTP_REQ_GET;
   /* request target */
-  msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
   msg.data.target_path_offset = 0;
   msg.data.target_path_len = vec_len (hcm->http_query);
   /* custom headers */

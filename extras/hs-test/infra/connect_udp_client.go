@@ -81,6 +81,7 @@ func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string) error {
 		return errors.New("request failed: " + resp.Status)
 	}
 	if resp.Header.Get("Connection") != "upgrade" || resp.Header.Get("Upgrade") != "connect-udp" || resp.Header.Get("Capsule-Protocol") != "?1" {
+		conn.Close()
 		return errors.New("invalid response")
 	}
 
