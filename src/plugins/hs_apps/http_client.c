@@ -238,7 +238,6 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
 
   wrk->msg.type = HTTP_MSG_REQUEST;
   /* request target */
-  wrk->msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
   wrk->msg.data.target_path_len = vec_len (hcm->target);
   /* custom headers */
   wrk->msg.data.headers_len = vec_len (wrk->headers_buf);

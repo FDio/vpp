@@ -16,10 +16,10 @@ Usage
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
 ``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_build_header_table``, ``http_get_header``,
-``http_reset_header_table``, ``http_free_header_table``, ``http_add_header``,
-``http_serialize_headers``, ``http_parse_authority_form_target``, ``http_serialize_authority_form_target``,
-``http_parse_absolute_form``, ``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``,
-``http_encap_udp_payload_datagram``. ``http_token_is``, ``http_token_is_case``, ``http_token_contains``
+``http_reset_header_table``, ``http_free_header_table``, ``http_add_header``, ``http_validate_target_syntax``,
+``http_serialize_headers``, ``http_parse_authority``, ``http_serialize_authority``, ``http_parse_masque_host_port``,
+``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``. ``http_token_is``, ``http_token_is_case``,
+``http_token_contains``
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
@@ -36,7 +36,8 @@ HTTP plugin sends message header with metadata for parsing, in form of offset an
 Application will get pre-parsed following items:
 
 * HTTP method
-* target form
+* scheme (HTTP/HTTPS)
+* target authority offset and length
 * target path offset and length
 * target query offset and length
 * header section offset and length
@@ -65,30 +66,31 @@ Now application can start reading HTTP data. First let's read the target path:
 .. code-block:: C
 
   u8 *target_path;
+  if (msg.data.target_path_len == 0)
+    {
+      /* your error handling */
+    }
   vec_validate (target_path, msg.data.target_path_len - 1);
   rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset, msg.data.target_path_len, target_path);
   ASSERT (rv == msg.data.target_path_len);
 
-Application might also want to know target form which is stored in ``msg.data.target_form``, you can read more about target forms in RFC9112 section 3.2.
-In case of origin form HTTP plugin always sets ``target_path_offset`` after leading slash character.
+Target path might be in some cases empty (e.g. CONNECT method), you can read more about target forms in RFC9112 section 3.2.
+In case of origin and absolute form HTTP plugin always sets ``target_path_offset`` after leading slash character.
 
-Example bellow validates "absolute-path" rule, as described in RFC9110 section 4.1, in case of target in origin form, additionally application can get information if percent encoding is used and decode path:
+Example bellow validates "absolute-path" rule, as described in RFC9110 section 4.1, additionally application can get information if percent encoding is used and decode path:
 
 .. code-block:: C
 
   int is_encoded = 0;
-  if (msg.data.target_form == HTTP_TARGET_ORIGIN_FORM)
+  if (http_validate_abs_path_syntax (target_path, &is_encoded))
     {
-      if (http_validate_abs_path_syntax (target_path, &is_encoded))
-        {
-          /* your error handling */
-        }
-      if (is_encoded)
-        {
-          u8 *decoded = http_percent_decode (target_path, vec_len (target_path));
-          vec_free (target_path);
-          target_path = decoded;
-        }
+      /* your error handling */
+    }
+  if (is_encoded)
+    {
+      u8 *decoded = http_percent_decode (target_path, vec_len (target_path));
+      vec_free (target_path);
+      target_path = decoded;
     }
 
 More on topic when to decode in RFC3986 section 2.4.
@@ -245,7 +247,6 @@ When server application sends response back to HTTP layer it starts with message
 Application should set following items:
 
 * Status code
-* target form
 * header section offset and length
 * body offset and length
 
@@ -353,7 +354,7 @@ When client application sends message to HTTP layer it starts with message metad
 Application should set following items:
 
 * HTTP method
-* target form, offset and length
+* target offset and length
 * header section offset and length
 * body offset and length
 
@@ -390,7 +391,6 @@ Following example shows how to set message metadata:
   msg.method_type = HTTP_REQ_GET;
   msg.data.headers_offset = 0;
   /* request target */
-  msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
   msg.data.target_path_offset = 0;
   msg.data.target_path_len = vec_len (target);
   /* custom headers */

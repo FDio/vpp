@@ -26,7 +26,7 @@ func init() {
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
-		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest)
+		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest)
 	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest, VppConnectUdpStressMTTest, VppConnectUdpStressTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxyTests(NginxMirroringTest)
@@ -409,6 +409,29 @@ func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
 	payload, err := c.ReadDgramCapsule()
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertEqual(data, payload)
+}
+
+func VppConnectUdpInvalidTargetTest(s *VppUdpProxySuite) {
+	vppProxy := s.Containers.VppProxy.VppInstance
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/example.com/80/", s.VppProxyAddr(), s.ProxyPort())
+	c := s.NewConnectUdpClient(s.MaxTimeout, true)
+	err := c.Dial(proxyAddress, targetUri)
+	s.AssertNotNil(err, "name resolution not supported")
+
+	targetUri = fmt.Sprintf("http://%s:%d/.well-known/masque/udp/1.2.3.4/800000000/", s.VppProxyAddr(), s.ProxyPort())
+	c = s.NewConnectUdpClient(s.MaxTimeout, true)
+	err = c.Dial(proxyAddress, targetUri)
+	s.AssertNotNil(err, "invalid port number")
+
+	targetUri = fmt.Sprintf("http://%s:%d/masque/udp/1.2.3.4/80/", s.VppProxyAddr(), s.ProxyPort())
+	c = s.NewConnectUdpClient(s.MaxTimeout, true)
+	err = c.Dial(proxyAddress, targetUri)
+	s.AssertNotNil(err, "invalid prefix")
 }
 
 func VppConnectUdpInvalidCapsuleTest(s *VppUdpProxySuite) {
