@@ -66,7 +66,7 @@ oct_crypto_session_create (vlib_main_t *vm, vnet_crypto_key_index_t key_index,
 
   key = vnet_crypto_get_key (key_index);
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     {
       /*
        * Read crypto or integ key session. And map link key index to same.
@@ -1335,8 +1335,7 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       return -1;
     }
 
-  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data,
-			    key->length));
+  rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data, key->length);
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",
@@ -1371,7 +1370,7 @@ oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session,
 
   key = vnet_crypto_get_key (key_index);
 
-  if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
+  if (key->is_link)
     rv = oct_crypto_link_session_update (vm, session, key_index, op_type);
   else
     rv = oct_crypto_aead_session_update (vm, session, key_index, op_type);
