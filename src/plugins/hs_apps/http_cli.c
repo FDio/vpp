@@ -387,8 +387,7 @@ hcs_ts_rx_callback (session_t *ts)
       goto done;
     }
 
-  if (msg.data.target_path_len == 0 ||
-      msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
+  if (msg.data.target_path_len == 0)
     {
       start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       goto done;

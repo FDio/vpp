@@ -507,12 +507,11 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 {
   proxy_main_t *pm = &proxy_main;
   http_msg_t msg;
-  http_uri_t target_uri;
+  http_uri_authority_t target_uri;
   session_endpoint_cfg_t target_sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;
   u8 *rx_buf = pm->rx_buf[s->thread_index];
   http_header_table_t req_headers = pm->req_headers[s->thread_index];
-  u32 target_offset, target_len;
 
   rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
@@ -528,22 +527,27 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
     {
       /* TCP tunnel (RFC9110 section 9.3.6) */
       PROXY_DBG ("CONNECT");
-      if (msg.data.target_form != HTTP_TARGET_AUTHORITY_FORM)
+      /* get tunnel target */
+      if (!msg.data.target_authority_len)
 	{
-	  PROXY_DBG ("CONNECT target not authority form");
+	  PROXY_DBG ("CONNECT target missing");
 	  goto bad_req;
 	}
-
-      /* get tunnel target */
-      ASSERT (msg.data.target_path_len <= pm->rcv_buffer_size);
-      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
-			  msg.data.target_path_len, rx_buf);
-      ASSERT (rv == msg.data.target_path_len);
-      rv = http_parse_authority_form_target (rx_buf, msg.data.target_path_len,
-					     &target_uri);
+      ASSERT (msg.data.target_authority_len <= pm->rcv_buffer_size);
+      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_authority_offset,
+			  msg.data.target_authority_len, rx_buf);
+      ASSERT (rv == msg.data.target_authority_len);
+      rv = http_parse_authority (rx_buf, msg.data.target_authority_len,
+				 &target_uri);
       if (rv)
 	{
-	  PROXY_DBG ("target parsing failed");
+	  PROXY_DBG ("authority parsing failed");
+	  goto bad_req;
+	}
+      /* TODO reg-name resolution */
+      if (target_uri.host_type == HTTP_URI_HOST_TYPE_REG_NAME)
+	{
+	  PROXY_DBG ("reg-name resolution not supported");
 	  goto bad_req;
 	}
       target_sep.transport_proto = TRANSPORT_PROTO_TCP;
@@ -553,50 +557,28 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
       /* UDP tunnel (RFC9298) */
       PROXY_DBG ("CONNECT-UDP");
       /* get tunnel target */
-      if (msg.data.target_form == HTTP_TARGET_ORIGIN_FORM)
+      if (msg.data.target_path_len < MASQUE_UDP_URI_MIN_LEN)
 	{
-	  if (msg.data.target_path_len < MASQUE_UDP_URI_MIN_LEN)
-	    {
-	      PROXY_DBG ("target too short");
-	      goto bad_req;
-	    }
-	  rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
-			      msg.data.target_path_len, rx_buf);
-	  ASSERT (rv == msg.data.target_path_len);
-	  target_offset = 0;
-	  target_len = msg.data.target_path_len;
-	}
-      else if (msg.data.target_form == HTTP_TARGET_ABSOLUTE_FORM)
-	{
-	  http_url_t target_url;
-	  ASSERT (msg.data.target_path_len <= pm->rcv_buffer_size);
-	  rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
-			      msg.data.target_path_len, rx_buf);
-	  ASSERT (rv == msg.data.target_path_len);
-	  rv = http_parse_absolute_form (rx_buf, msg.data.target_path_len,
-					 &target_url);
-	  if (rv || target_url.path_len < MASQUE_UDP_URI_MIN_LEN)
-	    {
-	      PROXY_DBG ("target parsing failed");
-	      goto bad_req;
-	    }
-	  target_offset = target_url.path_offset;
-	  target_len = target_url.path_len;
-	}
-      else
-	{
-	  PROXY_DBG ("invalid target form");
+	  PROXY_DBG ("invalid target");
 	  goto bad_req;
 	}
-      if (memcmp (rx_buf + target_offset, masque_udp_uri_prefix,
-		  MASQUE_UDP_URI_PREFIX_LEN))
+      ASSERT (msg.data.target_path_len <= pm->rcv_buffer_size);
+      rv = svm_fifo_peek (s->rx_fifo, msg.data.target_path_offset,
+			  msg.data.target_path_len, rx_buf);
+      ASSERT (rv == msg.data.target_path_len);
+      if (http_validate_target_syntax (rx_buf, msg.data.target_path_len, 0, 0))
+	{
+	  PROXY_DBG ("invalid target");
+	  goto bad_req;
+	}
+      if (memcmp (rx_buf, masque_udp_uri_prefix, MASQUE_UDP_URI_PREFIX_LEN))
 	{
 	  PROXY_DBG ("uri prefix not match");
 	  goto bad_req;
 	}
       rv = http_parse_masque_host_port (
-	rx_buf + target_offset + MASQUE_UDP_URI_PREFIX_LEN,
-	target_len - MASQUE_UDP_URI_PREFIX_LEN, &target_uri);
+	rx_buf + MASQUE_UDP_URI_PREFIX_LEN,
+	msg.data.target_path_len - MASQUE_UDP_URI_PREFIX_LEN, &target_uri);
       if (rv)
 	{
 	  PROXY_DBG ("masque host/port parsing failed");
@@ -633,9 +615,10 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
       return;
     }
   PROXY_DBG ("proxy target %U:%u", format_ip46_address, &target_uri.ip,
-	     target_uri.is_ip4, clib_net_to_host_u16 (target_uri.port));
+	     target_uri.host_type == HTTP_URI_HOST_TYPE_IP4,
+	     clib_net_to_host_u16 (target_uri.port));
   svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
-  target_sep.is_ip4 = target_uri.is_ip4;
+  target_sep.is_ip4 = target_uri.host_type == HTTP_URI_HOST_TYPE_IP4;
   target_sep.ip = target_uri.ip;
   target_sep.port = target_uri.port;
   clib_memcpy (&a->sep_ext, &target_sep, sizeof (target_sep));
