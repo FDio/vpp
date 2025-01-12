@@ -16,6 +16,108 @@
       "message": "Removed extra debug logs. Tested overnight and did not observe any issues with and without async mode.",
       "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c73f0c3_3d3fe6ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "Another quick review. I might\u0027ve missed some lines but, overall, let\u0027s try to avoid spurious changes.",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79b94217_ed742db1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "Move back on line 198",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bd38a62_21ed4cae",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "Let\u0027s clean up all empty lines/spurious changes.",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0107aa9f_f0e12068",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "This included",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac93e104_df3514d9",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "Let\u0027s maintain argument order",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9501f1f_d75c15ed",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 556,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 1,
+      "message": "Let\u0027s avoid spurious changes, i.e., move this back on line 591",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

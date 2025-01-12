@@ -81,6 +81,30 @@
       },
       "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "070c0b96_61651ed2",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-12T21:24:13Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "2b096e75_d285a409",
+      "range": {
+        "startLine": 479,
+        "startChar": 0,
+        "endLine": 484,
+        "endChar": 5
+      },
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
