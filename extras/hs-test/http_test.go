@@ -26,7 +26,7 @@ func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterNoTopoTests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
-		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
+		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest,
 		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
 		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
@@ -36,7 +36,7 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest)
+		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
@@ -1204,6 +1204,18 @@ func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target query")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "GET * HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "asterisk-form is only used for a server-wide OPTIONS request")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "GET www.example.com:80 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "authority-form is only used for CONNECT requests")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "CONNECT https://www.example.com/tunnel HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "CONNECT requests must use authority-form only")
 }
 
 func HttpInvalidContentLengthTest(s *NoTopoSuite) {
@@ -1292,6 +1304,58 @@ func HttpUriDecodeTest(s *NoTopoSuite) {
 	s.AssertNotContains(string(data), "unknown input")
 	s.AssertContains(string(data), "Compiler")
 	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+}
+
+func HttpAbsoluteFormUriTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http cli server")
+
+	resp, err := TcpSendReceive(serverAddress+":80", "GET http://"+serverAddress+"/show/version HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 200 OK")
+
+	resp, err = TcpSendReceive(serverAddress+":80", "GET http://"+serverAddress+":80/show/version HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 200 OK")
+}
+
+func HttpInvalidAuthorityFormUriTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s/8080", serverAddress)
+
+	resp, err := TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.3.4:80a HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.3.4:80000000 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2a3.4:80 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.4:80 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT [dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT [zyx:beef::1234]:443 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
+
+	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT example.org:443 HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "name resolution not supported")
 }
 
 func HttpHeadersTest(s *NoTopoSuite) {

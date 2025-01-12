@@ -42,6 +42,13 @@ const char *http_upgrade_proto_str[] = { "",
 #undef _
 };
 
+#define expect_char(c)                                                        \
+  if (*p++ != c)                                                              \
+    {                                                                         \
+      clib_warning ("unexpected character");                                  \
+      return -1;                                                              \
+    }
+
 static u8 *
 format_http_req_state (u8 *s, va_list *va)
 {
@@ -619,19 +626,21 @@ http_identify_optional_query (http_req_t *req)
 }
 
 static int
-http_get_target_form (http_req_t *req)
+http_parse_target (http_req_t *req)
 {
   int i;
+  u8 *p, *end;
 
-  /* "*" */
+  /* asterisk-form  = "*" */
   if ((req->rx_buf[req->target_path_offset] == '*') &&
       (req->target_path_len == 1))
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
-      return 0;
+      /* we do not support OPTIONS request */
+      return -1;
     }
 
-  /* 1*( "/" segment ) [ "?" query ] */
+  /* origin-form = 1*( "/" segment ) [ "?" query ] */
   if (req->rx_buf[req->target_path_offset] == '/')
     {
       /* drop leading slash */
@@ -639,27 +648,66 @@ http_get_target_form (http_req_t *req)
       req->target_path_offset++;
       req->target_form = HTTP_TARGET_ORIGIN_FORM;
       http_identify_optional_query (req);
-      return 0;
+      /* can't be CONNECT method */
+      return req->method == HTTP_REQ_CONNECT ? -1 : 0;
     }
 
-  /* scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
-  i = v_find_index (req->rx_buf, req->target_path_offset, req->target_path_len,
-		    "://");
-  if (i > 0)
+  /* absolute-form =
+   * scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
+  if (req->target_path_len > 8 &&
+      !memcmp (req->rx_buf + req->target_path_offset, "http", 4))
     {
-      req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
-      http_identify_optional_query (req);
-      return 0;
+      req->scheme = HTTP_URL_SCHEME_HTTP;
+      p = req->rx_buf + req->target_path_offset + 4;
+      if (*p == 's')
+	{
+	  p++;
+	  req->scheme = HTTP_URL_SCHEME_HTTPS;
+	}
+      if (*p++ == ':')
+	{
+	  expect_char ('/');
+	  expect_char ('/');
+	  req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
+	  req->target_authority_offset = p - req->rx_buf;
+	  req->target_authority_len = 0;
+	  end = req->rx_buf + req->target_path_offset + req->target_path_len;
+	  while (p < end)
+	    {
+	      if (*p == '/')
+		{
+		  p++; /* drop leading slash */
+		  req->target_path_offset = p - req->rx_buf;
+		  req->target_path_len = end - p;
+		  break;
+		}
+	      req->target_authority_len++;
+	      p++;
+	    }
+	  if (!req->target_path_len)
+	    {
+	      clib_warning ("zero length host");
+	      return -1;
+	    }
+	  http_identify_optional_query (req);
+	  /* can't be CONNECT method */
+	  return req->method == HTTP_REQ_CONNECT ? -1 : 0;
+	}
     }
 
-  /* host ":" port */
+  /* authority-form = host ":" port */
   for (i = req->target_path_offset;
        i < (req->target_path_offset + req->target_path_len); i++)
     {
       if ((req->rx_buf[i] == ':') && (isdigit (req->rx_buf[i + 1])))
 	{
+	  req->target_authority_len = req->target_path_len;
+	  req->target_path_len = 0;
+	  req->target_authority_offset = req->target_path_offset;
+	  req->target_path_offset = 0;
 	  req->target_form = HTTP_TARGET_AUTHORITY_FORM;
-	  return 0;
+	  /* "authority-form" is only used for CONNECT requests */
+	  return req->method == HTTP_REQ_CONNECT ? 0 : -1;
 	}
     }
 
@@ -776,7 +824,9 @@ http_parse_request_line (http_req_t *req, http_status_code_t *ec)
   req->target_path_len = target_len;
   req->target_query_offset = 0;
   req->target_query_len = 0;
-  if (http_get_target_form (req))
+  req->target_authority_len = 0;
+  req->target_authority_offset = 0;
+  if (http_parse_target (req))
     {
       clib_warning ("invalid target");
       *ec = HTTP_STATUS_BAD_REQUEST;
@@ -792,13 +842,6 @@ http_parse_request_line (http_req_t *req, http_status_code_t *ec)
 
   return 0;
 }
-
-#define expect_char(c)                                                        \
-  if (*p++ != c)                                                              \
-    {                                                                         \
-      clib_warning ("unexpected character");                                  \
-      return -1;                                                              \
-    }
 
 #define parse_int(val, mul)                                                   \
   do                                                                          \
@@ -913,6 +956,7 @@ http_identify_headers (http_req_t *req, http_status_code_t *ec)
   req->content_len_header_index = ~0;
   req->connection_header_index = ~0;
   req->upgrade_header_index = ~0;
+  req->host_header_index = ~0;
   req->headers_offset = req->rx_buf_offset;
 
   /* check if we have any header */
@@ -970,6 +1014,10 @@ http_identify_headers (http_req_t *req, http_status_code_t *ec)
 		 (const char *) name_start, name_len,
 		 http_header_name_token (HTTP_HEADER_UPGRADE)))
 	req->upgrade_header_index = header_index;
+      else if (req->host_header_index == ~0 &&
+	       http_token_is_case ((const char *) name_start, name_len,
+				   http_header_name_token (HTTP_HEADER_HOST)))
+	req->host_header_index = header_index;
 
       /* are we done? */
       if (*p == '\r' && *(p + 1) == '\n')
@@ -1185,6 +1233,30 @@ http_check_connection_upgrade (http_req_t *req)
     }
 }
 
+static void
+http_target_fixup (http_conn_t *hc)
+{
+  http_field_line_t *host;
+
+  if (hc->req.target_form == HTTP_TARGET_ABSOLUTE_FORM)
+    return;
+
+  /* scheme fixup */
+  hc->req.scheme = session_get_transport_proto (session_get_from_handle (
+		     hc->h_tc_session_handle)) == TRANSPORT_PROTO_TLS ?
+		     HTTP_URL_SCHEME_HTTPS :
+		     HTTP_URL_SCHEME_HTTP;
+
+  if (hc->req.target_form == HTTP_TARGET_AUTHORITY_FORM ||
+      hc->req.connection_header_index == ~0)
+    return;
+
+  /* authority fixup */
+  host = vec_elt_at_index (hc->req.headers, hc->req.connection_header_index);
+  hc->req.target_authority_offset = host->value_offset;
+  hc->req.target_authority_len = host->value_len;
+}
+
 static http_sm_result_t
 http_req_state_wait_transport_method (http_conn_t *hc,
 				      transport_send_params_t *sp)
@@ -1219,6 +1291,7 @@ http_req_state_wait_transport_method (http_conn_t *hc,
   if (rv)
     goto error;
 
+  http_target_fixup (hc);
   http_check_connection_upgrade (&hc->req);
 
   rv = http_identify_message_body (&hc->req, &ec);
@@ -1244,7 +1317,9 @@ http_req_state_wait_transport_method (http_conn_t *hc,
   msg.method_type = hc->req.method;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
-  msg.data.target_form = hc->req.target_form;
+  msg.data.scheme = hc->req.scheme;
+  msg.data.target_authority_offset = hc->req.target_authority_offset;
+  msg.data.target_authority_len = hc->req.target_authority_len;
   msg.data.target_path_offset = hc->req.target_path_offset;
   msg.data.target_path_len = hc->req.target_path_len;
   msg.data.target_query_offset = hc->req.target_query_offset;

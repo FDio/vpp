@@ -29,220 +29,175 @@
   }
 
 static int
-http_test_authority_form (vlib_main_t *vm)
+http_test_parse_authority (vlib_main_t *vm)
 {
-  u8 *target = 0, *formated_target = 0;
-  http_uri_t authority;
+  u8 *authority = 0, *formated = 0;
+  http_uri_authority_t parsed;
   int rv;
 
-  target = format (0, "10.10.2.45:20");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", target);
-  formated_target = http_serialize_authority_form_target (&authority);
-  rv = vec_cmp (target, formated_target);
-  HTTP_TEST ((rv == 0), "'%v' should match '%v'", target, formated_target);
-  vec_free (target);
-  vec_free (formated_target);
+  /* IPv4 address */
+  authority = format (0, "10.10.2.45:20");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_IP4),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_IP4);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 20),
+	     "port=%u should be 20", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  target = format (0, "[dead:beef::1234]:443");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", target);
-  formated_target = http_serialize_authority_form_target (&authority);
-  rv = vec_cmp (target, formated_target);
-  HTTP_TEST ((rv == 0), "'%v' should match '%v'", target, formated_target);
-  vec_free (target);
-  vec_free (formated_target);
+  authority = format (0, "10.255.2.1");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_IP4),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_IP4);
+  HTTP_TEST ((parsed.port == 0), "port=%u should be 0", parsed.port);
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  target = format (0, "example.com:80");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv != 0), "'%v' reg-name not supported", target);
-  vec_free (target);
+  /* IPv6 address */
+  authority = format (0, "[dead:beef::1234]:443");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_IP6),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_IP6);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 443),
+	     "port=%u should be 443", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  target = format (0, "10.10.2.45");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
-  vec_free (target);
+  /* registered name */
+  authority = format (0, "example.com:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 80),
+	     "port=%u should be 80", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  target = format (0, "1000.10.2.45:20");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
-  vec_free (target);
+  authority = format (0, "3xample.com:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 80),
+	     "port=%u should be 80", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  target = format (0, "[xyz0::1234]:443");
-  rv = http_parse_authority_form_target (target, vec_len (target), &authority);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", target);
-  vec_free (target);
+  /* 'invalid IPv4 address' is recognized as registered name */
+  authority = format (0, "1000.10.2.45:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 80),
+	     "port=%u should be 80", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  return 0;
-}
+  authority = format (0, "10.10.20:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((clib_net_to_host_u16 (parsed.port) == 80),
+	     "port=%u should be 80", clib_net_to_host_u16 (parsed.port));
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-static int
-http_test_absolute_form (vlib_main_t *vm)
-{
-  u8 *url = 0;
-  http_url_t parsed_url;
-  int rv;
+  authority = format (0, "10.10.10.10.2");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((parsed.port == 0), "port=%u should be 0", parsed.port);
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
 
-  url = format (0, "https://example.org/.well-known/masque/udp/1.2.3.4/123/");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", url);
-  HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTPS),
-	     "scheme should be https");
-  HTTP_TEST ((parsed_url.host_is_ip6 == 0), "host_is_ip6=%u should be 0",
-	     parsed_url.host_is_ip6);
-  HTTP_TEST ((parsed_url.host_offset == strlen ("https://")),
-	     "host_offset=%u should be %u", parsed_url.host_offset,
-	     strlen ("https://"));
-  HTTP_TEST ((parsed_url.host_len == strlen ("example.org")),
-	     "host_len=%u should be %u", parsed_url.host_len,
-	     strlen ("example.org"));
-  HTTP_TEST ((clib_net_to_host_u16 (parsed_url.port) == 443),
-	     "port=%u should be 443", clib_net_to_host_u16 (parsed_url.port));
-  HTTP_TEST ((parsed_url.path_offset == strlen ("https://example.org/")),
-	     "path_offset=%u should be %u", parsed_url.path_offset,
-	     strlen ("https://example.org/"));
-  HTTP_TEST (
-    (parsed_url.path_len == strlen (".well-known/masque/udp/1.2.3.4/123/")),
-    "path_len=%u should be %u", parsed_url.path_len,
-    strlen (".well-known/masque/udp/1.2.3.4/123/"));
-  vec_free (url);
+  /* invalid port */
+  authority = format (0, "example.com:80000000");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://vpp-example.org");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", url);
-  HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
-	     "scheme should be http");
-  HTTP_TEST ((parsed_url.host_is_ip6 == 0), "host_is_ip6=%u should be 0",
-	     parsed_url.host_is_ip6);
-  HTTP_TEST ((parsed_url.host_offset == strlen ("http://")),
-	     "host_offset=%u should be %u", parsed_url.host_offset,
-	     strlen ("http://"));
-  HTTP_TEST ((parsed_url.host_len == strlen ("vpp-example.org")),
-	     "host_len=%u should be %u", parsed_url.host_len,
-	     strlen ("vpp-example.org"));
-  HTTP_TEST ((clib_net_to_host_u16 (parsed_url.port) == 80),
-	     "port=%u should be 80", clib_net_to_host_u16 (parsed_url.port));
-  HTTP_TEST ((parsed_url.path_len == 0), "path_len=%u should be 0",
-	     parsed_url.path_len);
-  vec_free (url);
+  /* no port after colon */
+  authority = format (0, "example.com:");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://1.2.3.4:8080/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", url);
-  HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
-	     "scheme should be http");
-  HTTP_TEST ((parsed_url.host_is_ip6 == 0), "host_is_ip6=%u should be 0",
-	     parsed_url.host_is_ip6);
-  HTTP_TEST ((parsed_url.host_offset == strlen ("http://")),
-	     "host_offset=%u should be %u", parsed_url.host_offset,
-	     strlen ("http://"));
-  HTTP_TEST ((parsed_url.host_len == strlen ("1.2.3.4")),
-	     "host_len=%u should be %u", parsed_url.host_len,
-	     strlen ("1.2.3.4"));
-  HTTP_TEST ((clib_net_to_host_u16 (parsed_url.port) == 8080),
-	     "port=%u should be 8080", clib_net_to_host_u16 (parsed_url.port));
-  HTTP_TEST ((parsed_url.path_offset == strlen ("http://1.2.3.4:8080/")),
-	     "path_offset=%u should be %u", parsed_url.path_offset,
-	     strlen ("http://1.2.3.4:8080/"));
-  HTTP_TEST ((parsed_url.path_len == strlen ("abcd")),
-	     "path_len=%u should be %u", parsed_url.path_len, strlen ("abcd"));
-  vec_free (url);
+  /* invalid character in registered name */
+  authority = format (0, "bad#example.com");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "https://[dead:beef::1234]/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", url);
-  HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTPS),
-	     "scheme should be https");
-  HTTP_TEST ((parsed_url.host_is_ip6 == 1), "host_is_ip6=%u should be 1",
-	     parsed_url.host_is_ip6);
-  HTTP_TEST ((parsed_url.host_offset == strlen ("https://[")),
-	     "host_offset=%u should be %u", parsed_url.host_offset,
-	     strlen ("https://["));
-  HTTP_TEST ((parsed_url.host_len == strlen ("dead:beef::1234")),
-	     "host_len=%u should be %u", parsed_url.host_len,
-	     strlen ("dead:beef::1234"));
-  HTTP_TEST ((clib_net_to_host_u16 (parsed_url.port) == 443),
-	     "port=%u should be 443", clib_net_to_host_u16 (parsed_url.port));
-  HTTP_TEST ((parsed_url.path_offset == strlen ("https://[dead:beef::1234]/")),
-	     "path_offset=%u should be %u", parsed_url.path_offset,
-	     strlen ("https://[dead:beef::1234]/"));
-  HTTP_TEST ((parsed_url.path_len == strlen ("abcd")),
-	     "path_len=%u should be %u", parsed_url.path_len, strlen ("abcd"));
-  vec_free (url);
+  /* invalid IPv6 address not terminated with ']' */
+  authority = format (0, "[dead:beef::1234");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://[::ffff:192.0.2.128]:8080/");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv == 0), "'%v' should be valid", url);
-  HTTP_TEST ((parsed_url.scheme == HTTP_URL_SCHEME_HTTP),
-	     "scheme should be http");
-  HTTP_TEST ((parsed_url.host_is_ip6 == 1), "host_is_ip6=%u should be 1",
-	     parsed_url.host_is_ip6);
-  HTTP_TEST ((parsed_url.host_offset == strlen ("http://[")),
-	     "host_offset=%u should be %u", parsed_url.host_offset,
-	     strlen ("http://["));
-  HTTP_TEST ((parsed_url.host_len == strlen ("::ffff:192.0.2.128")),
-	     "host_len=%u should be %u", parsed_url.host_len,
-	     strlen ("::ffff:192.0.2.128"));
-  HTTP_TEST ((clib_net_to_host_u16 (parsed_url.port) == 8080),
-	     "port=%u should be 8080", clib_net_to_host_u16 (parsed_url.port));
-  HTTP_TEST ((parsed_url.path_len == 0), "path_len=%u should be 0",
-	     parsed_url.path_len);
-  vec_free (url);
+  /* empty IPv6 address */
+  authority = format (0, "[]");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://[dead:beef::1234/abc");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
+  /* invalid IPv6 address too few hex quads */
+  authority = format (0, "[dead:beef]:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://[dead|beef::1234]/abc");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
+  /* invalid IPv6 address more than one :: */
+  authority = format (0, "[dead::beef::1]:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http:example.org:8080/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
+  /* invalid IPv6 address too much hex quads */
+  authority = format (0, "[d:e:a:d:b:e:e:f:1:2]:80");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "htt://example.org:8080/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
+  /* invalid character in IPv6 address */
+  authority = format (0, "[xyz0::1234]:443");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
-  url = format (0, "http://");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http:///abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http://example.org:808080/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http://example.org/a%%3Xbcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http://example.org/a%%3");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http://example.org/a[b]cd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
-
-  url = format (0, "http://exa[m]ple.org/abcd");
-  rv = http_parse_absolute_form (url, vec_len (url), &parsed_url);
-  HTTP_TEST ((rv != 0), "'%v' should be invalid", url);
-  vec_free (url);
+  /* invalid IPv6 address */
+  authority = format (0, "[deadbeef::1234");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
 
   return 0;
 }
@@ -251,13 +206,15 @@ static int
 http_test_parse_masque_host_port (vlib_main_t *vm)
 {
   u8 *path = 0;
-  http_uri_t target;
+  http_uri_authority_t target;
   int rv;
 
   path = format (0, "10.10.2.45/443/");
   rv = http_parse_masque_host_port (path, vec_len (path), &target);
   HTTP_TEST ((rv == 0), "'%v' should be valid", path);
-  HTTP_TEST ((target.is_ip4 == 1), "is_ip4=%d should be 1", target.is_ip4);
+  HTTP_TEST ((target.host_type == HTTP_URI_HOST_TYPE_IP4),
+	     "host_type=%d should be %d", target.host_type,
+	     HTTP_URI_HOST_TYPE_IP4);
   HTTP_TEST ((clib_net_to_host_u16 (target.port) == 443),
 	     "port=%u should be 443", clib_net_to_host_u16 (target.port));
   HTTP_TEST ((target.ip.ip4.data[0] == 10 && target.ip.ip4.data[1] == 10 &&
@@ -269,7 +226,9 @@ http_test_parse_masque_host_port (vlib_main_t *vm)
   path = format (0, "dead%%3Abeef%%3A%%3A1234/80/");
   rv = http_parse_masque_host_port (path, vec_len (path), &target);
   HTTP_TEST ((rv == 0), "'%v' should be valid", path);
-  HTTP_TEST ((target.is_ip4 == 0), "is_ip4=%d should be 0", target.is_ip4);
+  HTTP_TEST ((target.host_type == HTTP_URI_HOST_TYPE_IP6),
+	     "host_type=%d should be %d", target.host_type,
+	     HTTP_URI_HOST_TYPE_IP6);
   HTTP_TEST ((clib_net_to_host_u16 (target.port) == 80),
 	     "port=%u should be 80", clib_net_to_host_u16 (target.port));
   HTTP_TEST ((clib_net_to_host_u16 (target.ip.ip6.as_u16[0]) == 0xdead &&
@@ -398,19 +357,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int res = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "authority-form"))
-	res = http_test_authority_form (vm);
-      else if (unformat (input, "absolute-form"))
-	res = http_test_absolute_form (vm);
+      if (unformat (input, "parse-authority"))
+	res = http_test_parse_authority (vm);
       else if (unformat (input, "parse-masque-host-port"))
 	res = http_test_parse_masque_host_port (vm);
       else if (unformat (input, "udp-payload-datagram"))
 	res = http_test_udp_payload_datagram (vm);
       else if (unformat (input, "all"))
 	{
-	  if ((res = http_test_authority_form (vm)))
-	    goto done;
-	  if ((res = http_test_absolute_form (vm)))
+	  if ((res = http_test_parse_authority (vm)))
 	    goto done;
 	  if ((res = http_test_parse_masque_host_port (vm)))
 	    goto done;

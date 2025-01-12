@@ -1087,13 +1087,6 @@ vt_process_http_server_read_msg (vcl_test_session_t *ts, void *buf,
 	      return 0;
 	    }
 
-	  if (msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
-	    {
-	      vt_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
-	      vterr ("error! http target not in origin form", 0);
-	      return 0;
-	    }
-
 	  /* validate target path syntax */
 	  if (msg.data.target_path_len)
 	    {
@@ -1225,7 +1218,6 @@ vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
       msg.method_type = HTTP_REQ_POST;
 
       /* target */
-      msg.data.target_form = HTTP_TARGET_ORIGIN_FORM;
       target = (u8 *) "/vcl_test_http\0";
       msg.data.target_path_len = strlen ((char *) target);
 

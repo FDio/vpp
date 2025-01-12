@@ -395,11 +395,19 @@ typedef struct http_field_line_
   u32 value_len;
 } http_field_line_t;
 
+typedef enum http_url_scheme_
+{
+  HTTP_URL_SCHEME_HTTP,
+  HTTP_URL_SCHEME_HTTPS,
+} http_url_scheme_t;
+
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
   u64 len;
-  http_target_form_t target_form;
+  http_url_scheme_t scheme;
+  u32 target_authority_offset;
+  u32 target_authority_len;
   u32 target_path_offset;
   u32 target_path_len;
   u32 target_query_offset;
@@ -455,6 +463,9 @@ typedef struct http_req_
   };
 
   http_target_form_t target_form;
+  http_url_scheme_t scheme;
+  u32 target_authority_offset;
+  u32 target_authority_len;
   u32 target_path_offset;
   u32 target_path_len;
   u32 target_query_offset;
@@ -470,6 +481,7 @@ typedef struct http_req_
   uword content_len_header_index;
   uword connection_header_index;
   uword upgrade_header_index;
+  uword host_header_index;
 
   http_upgrade_proto_t upgrade_proto;
 } http_req_t;
@@ -553,7 +565,8 @@ format_http_bytes (u8 *s, va_list *va)
 }
 
 always_inline int
-_validate_target_syntax (u8 *target, u32 len, int is_query, int *is_encoded)
+http_validate_target_syntax (u8 *target, u32 len, int is_query,
+			     int *is_encoded)
 {
   int encoded = 0;
   u32 i;
@@ -605,13 +618,13 @@ _validate_target_syntax (u8 *target, u32 len, int is_query, int *is_encoded)
 always_inline int
 http_validate_abs_path_syntax (u8 *path, int *is_encoded)
 {
-  return _validate_target_syntax (path, vec_len (path), 0, is_encoded);
+  return http_validate_target_syntax (path, vec_len (path), 0, is_encoded);
 }
 
 /**
  * A "query" rule validation (RFC3986 section 2.1).
  *
- * @param query      Vector of target query to validate.
+ * @param query      Target query to validate.
  * @param is_encoded Return flag that indicates if percent-encoded (optional).
  *
  * @return @c 0 on success.
@@ -619,7 +632,7 @@ http_validate_abs_path_syntax (u8 *path, int *is_encoded)
 always_inline int
 http_validate_query_syntax (u8 *query, int *is_encoded)
 {
-  return _validate_target_syntax (query, vec_len (query), 1, is_encoded);
+  return http_validate_target_syntax (query, vec_len (query), 1, is_encoded);
 }
 
 #define htoi(x) (isdigit (x) ? (x - '0') : (tolower (x) - 'a' + 10))
@@ -1106,90 +1119,166 @@ http_serialize_headers (http_header_t *headers)
   return headers_buf;
 }
 
+typedef enum http_uri_host_type_
+{
+  HTTP_URI_HOST_TYPE_IP4,
+  HTTP_URI_HOST_TYPE_IP6,
+  HTTP_URI_HOST_TYPE_REG_NAME
+} http_uri_host_type_t;
+
 typedef struct
 {
-  ip46_address_t ip;
+  http_uri_host_type_t host_type;
+  union
+  {
+    ip46_address_t ip;
+    http_token_t reg_name;
+  };
   u16 port;
-  u8 is_ip4;
-} http_uri_t;
+} http_uri_authority_t;
 
-/**
- * An "authority-form" URL parsing.
- *
- * @param target     Target URL to parse.
- * @param target_len Length of URL.
- * @param authority  Parsed URL metadata in case of success.
- *
- * @return @c 0 on success.
- */
 always_inline int
-http_parse_authority_form_target (u8 *target, u32 target_len,
-				  http_uri_t *authority)
+_http_parse_ip4 (u8 **p, u8 *end, ip4_address_t *ip4)
 {
-  unformat_input_t input;
-  u8 *tmp = 0;
-  u32 port;
+  u8 n_octets = 0, digit, n_digits = 0;
+  u16 dec_octet = 0;
   int rv = 0;
 
-  vec_validate (tmp, target_len - 1);
-  vec_copy (tmp, target);
-  unformat_init_vector (&input, tmp);
-  if (unformat (&input, "[%U]:%d", unformat_ip6_address, &authority->ip.ip6,
-		&port))
+  while (*p != end)
     {
-      authority->port = clib_host_to_net_u16 (port);
-      authority->is_ip4 = 0;
+      if (**p >= '0' && **p <= '9')
+	{
+	  digit = **p - '0';
+	  dec_octet = dec_octet * 10 + digit;
+	  n_digits++;
+	  /* must fit in 8 bits */
+	  if (dec_octet > 255)
+	    return -1;
+	}
+      else if (**p == '.' && n_digits)
+	{
+	  ip4->as_u8[n_octets++] = (u8) dec_octet;
+	  dec_octet = 0;
+	  n_digits = 0;
+	  /* too many octets */
+	  if (n_octets >= ARRAY_LEN (ip4->as_u8))
+	    return -1;
+	}
+      else
+	{
+	  /* probably more data (delimiter) after IPv4 address */
+	  rv = **p;
+	  break;
+	}
+
+      (*p)++;
     }
-  else if (unformat (&input, "%U:%d", unformat_ip4_address, &authority->ip.ip4,
-		     &port))
-    {
-      authority->port = clib_host_to_net_u16 (port);
-      authority->is_ip4 = 1;
-    }
-  /* TODO reg-name resolution */
-  else
-    {
-      clib_warning ("unsupported format '%v'", target);
-      rv = -1;
-    }
-  unformat_free (&input);
+
+  /* must end with octet */
+  if (!n_digits)
+    return -1;
+
+  ip4->as_u8[n_octets++] = (u8) dec_octet;
+
+  /* too few octets */
+  if (n_octets < ARRAY_LEN (ip4->as_u8))
+    return -1;
+
   return rv;
 }
 
-always_inline u8 *
-http_serialize_authority_form_target (http_uri_t *authority)
+/* modified unformat_ip6_address */
+always_inline int
+_http_parse_ip6 (u8 **p, u8 *end, ip6_address_t *ip6)
 {
-  u8 *s;
+  u8 n_hex_digits = 0, n_colon = 0, n_hex_quads = 0;
+  u8 double_colon_index = ~0, i;
+  u16 hex_digit;
+  u32 hex_quad = 0;
+  int rv = 0;
 
-  if (authority->is_ip4)
-    s = format (0, "%U:%d", format_ip4_address, &authority->ip.ip4,
-		clib_net_to_host_u16 (authority->port));
-  else
-    s = format (0, "[%U]:%d", format_ip6_address, &authority->ip.ip6,
-		clib_net_to_host_u16 (authority->port));
+  while (*p != end)
+    {
+      hex_digit = 16;
+      if (**p >= '0' && **p <= '9')
+	hex_digit = **p - '0';
+      else if (**p >= 'a' && **p <= 'f')
+	hex_digit = **p + 10 - 'a';
+      else if (**p >= 'A' && **p <= 'F')
+	hex_digit = **p + 10 - 'A';
+      else if (**p == ':' && n_colon < 2)
+	n_colon++;
+      else
+	{
+	  /* probably more data (delimiter) after IPv6 address */
+	  rv = **p;
+	  break;
+	}
 
-  return s;
+      /* too many hex quads */
+      if (n_hex_quads >= ARRAY_LEN (ip6->as_u16))
+	return -1;
+
+      if (hex_digit < 16)
+	{
+	  hex_quad = (hex_quad << 4) | hex_digit;
+
+	  /* must fit in 16 bits */
+	  if (n_hex_digits >= 4)
+	    return -1;
+
+	  n_colon = 0;
+	  n_hex_digits++;
+	}
+
+      /* save position of :: */
+      if (n_colon == 2)
+	{
+	  /* more than one :: ? */
+	  if (double_colon_index < ARRAY_LEN (ip6->as_u16))
+	    return -1;
+	  double_colon_index = n_hex_quads;
+	}
+
+      if (n_colon > 0 && n_hex_digits > 0)
+	{
+	  ip6->as_u16[n_hex_quads++] = clib_host_to_net_u16 ((u16) hex_quad);
+	  hex_quad = 0;
+	  n_hex_digits = 0;
+	}
+
+      (*p)++;
+    }
+
+  if (n_hex_digits > 0)
+    ip6->as_u16[n_hex_quads++] = clib_host_to_net_u16 ((u16) hex_quad);
+
+  /* expand :: to appropriate number of zero hex quads */
+  if (double_colon_index < ARRAY_LEN (ip6->as_u16))
+    {
+      u8 n_zero = ARRAY_LEN (ip6->as_u16) - n_hex_quads;
+
+      for (i = n_hex_quads - 1; i >= double_colon_index; i--)
+	ip6->as_u16[n_zero + i] = ip6->as_u16[i];
+
+      for (i = 0; i < n_zero; i++)
+	{
+	  ASSERT ((double_colon_index + i) < ARRAY_LEN (ip6->as_u16));
+	  ip6->as_u16[double_colon_index + i] = 0;
+	}
+
+      n_hex_quads = ARRAY_LEN (ip6->as_u16);
+    }
+
+  /* too few hex quads */
+  if (n_hex_quads < ARRAY_LEN (ip6->as_u16))
+    return -1;
+
+  return rv;
 }
 
-typedef enum http_url_scheme_
-{
-  HTTP_URL_SCHEME_HTTP,
-  HTTP_URL_SCHEME_HTTPS,
-} http_url_scheme_t;
-
-typedef struct
-{
-  http_url_scheme_t scheme;
-  u16 port;
-  u32 host_offset;
-  u32 host_len;
-  u32 path_offset;
-  u32 path_len;
-  u8 host_is_ip6;
-} http_url_t;
-
 always_inline int
-_parse_port (u8 **pos, u8 *end, u16 *port)
+_http_parse_port (u8 **pos, u8 *end, u16 *port)
 {
   u32 value = 0;
   u8 *p = *pos;
@@ -1214,19 +1303,20 @@ _parse_port (u8 **pos, u8 *end, u16 *port)
 }
 
 /**
- * An "absolute-form" URL parsing.
+ * Parse authority to components.
  *
- * @param url     Target URL to parse.
- * @param url_len Length of URL.
- * @param parsed  Parsed URL metadata in case of success.
+ * @param authority     Target URL to parse.
+ * @param authority_len Length of URL.
+ * @param parsed        Parsed authority (port is se to 0 if not present).
  *
  * @return @c 0 on success.
  */
 always_inline int
-http_parse_absolute_form (u8 *url, u32 url_len, http_url_t *parsed)
+http_parse_authority (u8 *authority, u32 authority_len,
+		      http_uri_authority_t *parsed)
 {
-  u8 *token_start, *token_end, *end;
-  int is_encoded = 0;
+  u8 *token_start, *p, *end;
+  int rv;
 
   static uword valid_chars[4] = {
     /* -.0123456789 */
@@ -1237,111 +1327,102 @@ http_parse_absolute_form (u8 *url, u32 url_len, http_url_t *parsed)
     0x0000000000000000,
   };
 
-  if (url_len < 9)
-    {
-      clib_warning ("uri too short");
-      return -1;
-    }
+  /* reg-name max 255 chars + colon + port max 5 chars */
+  if (authority_len > 261)
+    return -1;
 
-  clib_memset (parsed, 0, sizeof (*parsed));
-
-  end = url + url_len;
-
-  /* parse scheme */
-  if (!memcmp (url, "http:// ", 7))
-    {
-      parsed->scheme = HTTP_URL_SCHEME_HTTP;
-      parsed->port = clib_host_to_net_u16 (80);
-      parsed->host_offset = 7;
-    }
-  else if (!memcmp (url, "https:// ", 8))
-    {
-      parsed->scheme = HTTP_URL_SCHEME_HTTPS;
-      parsed->port = clib_host_to_net_u16 (443);
-      parsed->host_offset = 8;
-    }
-  else
-    {
-      clib_warning ("invalid scheme");
-      return -1;
-    }
-  token_start = url + parsed->host_offset;
+  end = authority + authority_len;
+  token_start = authority;
+  parsed->port = 0;
 
   /* parse host */
   if (*token_start == '[')
-    /* IPv6 address */
     {
-      parsed->host_is_ip6 = 1;
-      parsed->host_offset++;
-      token_end = ++token_start;
-      while (1)
+      /* IPv6 address */
+      if (authority_len < 4)
+	return -1;
+
+      p = ++token_start;
+      rv = _http_parse_ip6 (&p, end, &parsed->ip.ip6);
+      if (rv != ']')
+	return -1;
+
+      parsed->host_type = HTTP_URI_HOST_TYPE_IP6;
+      token_start = ++p;
+    }
+  else if (isdigit (*token_start))
+    {
+      /* maybe IPv4 address */
+      p = token_start;
+
+      if (authority_len < 7)
+	goto reg_name;
+
+      rv = _http_parse_ip4 (&p, end, &parsed->ip.ip4);
+      if (rv == 0 || rv == ':')
 	{
-	  if (token_end == end)
-	    {
-	      clib_warning ("invalid host, IPv6 addr not terminated with ']'");
-	      return -1;
-	    }
-	  else if (*token_end == ']')
-	    {
-	      parsed->host_len = token_end - token_start;
-	      token_start = token_end + 1;
-	      break;
-	    }
-	  else if (*token_end != ':' && *token_end != '.' &&
-		   !isxdigit (*token_end))
-	    {
-	      clib_warning ("invalid character '%u'", *token_end);
-	      return -1;
-	    }
-	  token_end++;
+	  parsed->host_type = HTTP_URI_HOST_TYPE_IP4;
+	  token_start = p;
 	}
+      else
+	goto reg_name;
     }
   else
     {
-      token_end = token_start;
-      while (token_end != end && *token_end != ':' && *token_end != '/')
+      /* registered name */
+      p = token_start;
+    reg_name:
+      while (p != end && *p != ':')
 	{
-	  if (!clib_bitmap_get_no_check (valid_chars, *token_end))
+	  if (!clib_bitmap_get_no_check (valid_chars, *p))
 	    {
-	      clib_warning ("invalid character '%u'", *token_end);
+	      clib_warning ("invalid character '%u'", *p);
 	      return -1;
 	    }
-	  token_end++;
+	  p++;
 	}
-      parsed->host_len = token_end - token_start;
-      token_start = token_end;
-    }
-
-  if (!parsed->host_len)
-    {
-      clib_warning ("zero length host");
-      return -1;
+      parsed->reg_name.len = p - token_start;
+      if (parsed->reg_name.len > 255)
+	{
+	  clib_warning ("reg-name too long");
+	  return -1;
+	}
+      parsed->host_type = HTTP_URI_HOST_TYPE_REG_NAME;
+      parsed->reg_name.base = (char *) token_start;
+      token_start = p;
     }
 
   /* parse port, if any */
-  if (token_start != end && *token_start == ':')
+  if ((end - token_start) > 1 && *token_start == ':')
     {
-      token_end = ++token_start;
-      if (_parse_port (&token_end, end, &parsed->port))
+      token_start++;
+      if (_http_parse_port (&token_start, end, &parsed->port))
 	{
 	  clib_warning ("invalid port");
 	  return -1;
 	}
-      token_start = token_end;
     }
 
-  if (token_start == end)
-    return 0;
+  return token_start == end ? 0 : -1;
+}
 
-  token_start++; /* drop leading slash */
-  parsed->path_offset = token_start - url;
-  parsed->path_len = end - token_start;
+always_inline u8 *
+http_serialize_authority (http_uri_authority_t *authority)
+{
+  u8 *s;
 
-  if (parsed->path_len)
-    return _validate_target_syntax (token_start, parsed->path_len, 0,
-				    &is_encoded);
+  if (authority->host_type == HTTP_URI_HOST_TYPE_IP4)
+    s = format (0, "%U", format_ip4_address, &authority->ip.ip4);
+  else if (authority->host_type == HTTP_URI_HOST_TYPE_IP6)
+    s = format (0, "[%U]", format_ip6_address, &authority->ip.ip6);
+  else
+    s = format (0, "%U", format_http_bytes, authority->reg_name.base,
+		authority->reg_name.len);
 
-  return 0;
+  if (authority->port)
+    s = format (s, ":%d", clib_net_to_host_u16 (authority->port));
+
+  return s;
 }
 
 /**
@@ -1356,11 +1437,11 @@ http_parse_absolute_form (u8 *url, u32 url_len, http_url_t *parsed)
  * @note Only IPv4 literals and IPv6 literals supported.
  */
 always_inline int
-http_parse_masque_host_port (u8 *path, u32 path_len, http_uri_t *parsed)
+http_parse_masque_host_port (u8 *path, u32 path_len,
+			     http_uri_authority_t *parsed)
 {
-  u8 *p, *end, *decoded_host;
+  u8 *p, *end, *decoded_host, *p4, *p6;
   u32 host_len;
-  unformat_input_t input;
 
   p = path;
   end = path + path_len;
@@ -1373,21 +1454,22 @@ http_parse_masque_host_port (u8 *path, u32 path_len, http_uri_t *parsed)
   if (!host_len || (host_len == path_len) || (host_len + 1 == path_len))
     return -1;
   decoded_host = http_percent_decode (path, host_len);
-  unformat_init_vector (&input, decoded_host);
-  if (unformat (&input, "%U", unformat_ip4_address, &parsed->ip.ip4))
-    parsed->is_ip4 = 1;
-  else if (unformat (&input, "%U", unformat_ip6_address, &parsed->ip.ip6))
-    parsed->is_ip4 = 0;
+  p4 = p6 = decoded_host;
+  if (0 == _http_parse_ip6 (&p6, p6 + vec_len (decoded_host), &parsed->ip.ip6))
+    parsed->host_type = HTTP_URI_HOST_TYPE_IP6;
+  else if (0 ==
+	   _http_parse_ip4 (&p4, p4 + vec_len (decoded_host), &parsed->ip.ip4))
+    parsed->host_type = HTTP_URI_HOST_TYPE_IP4;
   else
     {
-      unformat_free (&input);
+      vec_free (decoded_host);
       clib_warning ("unsupported target_host format");
       return -1;
     }
-  unformat_free (&input);
+  vec_free (decoded_host);
 
   p++;
-  if (_parse_port (&p, end, &parsed->port))
+  if (_http_parse_port (&p, end, &parsed->port))
     {
       clib_warning ("invalid port");
       return -1;
