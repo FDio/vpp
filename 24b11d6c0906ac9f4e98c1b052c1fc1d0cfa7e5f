@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fc1991a_ce3d2530",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2440,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-13T18:21:15Z",
+      "side": 1,
+      "message": "typo: resovle -\u003e resolve",
+      "revId": "24b11d6c0906ac9f4e98c1b052c1fc1d0cfa7e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a98b4ebd_a7473469",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2781,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-13T18:21:15Z",
+      "side": 1,
+      "message": "This seems largely duplicated from the v4 code below - as far as I can tell, it\u0027s mostly the same apart for address selection and IPv6 header instead of IPv4 header.\nA better way could be to have a common function with a parameter \u0027is_ip6\u0027, see for example src/plugins/gre/node.c:gre_input()",
+      "revId": "24b11d6c0906ac9f4e98c1b052c1fc1d0cfa7e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ca8ab7e_7598c553",
+        "filename": "test/test_dns.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-13T18:21:15Z",
+      "side": 1,
+      "message": "shouldn\u0027t we use TEST-NET-1 aka 192.0.2.0/24 here?",
+      "revId": "24b11d6c0906ac9f4e98c1b052c1fc1d0cfa7e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aca46ea3_fd8057a6",
+        "filename": "test/test_dns.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-13T18:21:15Z",
+      "side": 1,
+      "message": "shouldn\u0027t we use 2001:db8::/32 here (documentation)",
+      "revId": "24b11d6c0906ac9f4e98c1b052c1fc1d0cfa7e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af1861cf_dd90f1cc",
+        "filename": "test/test_dns.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-13T18:21:15Z",
+      "side": 1,
+      "message": "can we use example.com instead (and same for all the other subdomains)?",
+      "revId": "24b11d6c0906ac9f4e98c1b052c1fc1d0cfa7e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
