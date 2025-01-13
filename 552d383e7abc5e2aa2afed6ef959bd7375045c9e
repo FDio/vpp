@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee1d4ecc_6c7daf9d",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-13T23:12:26Z",
+      "side": 1,
+      "message": "Move to line 198",
+      "revId": "552d383e7abc5e2aa2afed6ef959bd7375045c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5eb8b4be_c4a6be2c",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-13T23:12:26Z",
+      "side": 1,
+      "message": "Let\u0027s move this into if starting on line 261. \n\nOn SSL_ERROR_WANT_WRITE we should not return, we should break. Maybe instead of using ossl_check_err_is_fatal we can just check if rv \u003c 0 and if protocol error (wouldn\u0027t mind adding ossl_check_err_is_fatal2 macro that doesn\u0027t check for rv \u003c 0), return -1, otherwise check if async is on, if not, break.",
+      "revId": "552d383e7abc5e2aa2afed6ef959bd7375045c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
