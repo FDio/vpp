@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d622bac1_d7eace0e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-13T14:37:26Z",
+      "side": 1,
+      "message": "Damjan, were you able to look at the patchset in its current state? I\u0027ve fixed some gcc-specific problems (at expense that I\u0027ve needed to declare a variable that is unused in Release builds to check errors) and because we already have the retval for those cases, I think ASSERT won\u0027t hurt afterwards (I\u0027ve had an assumption that if retval was not checked before, then it is guaranteed that all parameters, like port number, would be correct at that stage)",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
