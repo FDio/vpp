@@ -69,6 +69,24 @@
       "parentUuid": "a81fd6ed_3d005543",
       "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "515e62fc_cf635d4a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-14T18:17:57Z",
+      "side": 1,
+      "message": "But any reason why the arguments types were changed to void?",
+      "parentUuid": "9ee66719_acd5c0e0",
+      "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
