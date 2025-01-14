@@ -86,6 +86,24 @@
       "parentUuid": "f7b20d16_dc0c6c8d",
       "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef8d7c0e_26009d17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-01-14T16:16:23Z",
+      "side": 1,
+      "message": "very possible. i was trying this last July. my note mentioned:\nset trace filter function bpf_trace_filter\nset bpf trace filter {{geneve \u0026\u0026 tcp port 243}}\ntrace add memif-input 100 filter\n\nwhich worked well, then a day later I said \"i still haven\u0027t figured out how to get the filter working for pcap, keeps complaining i don\u0027t have a classifier configured or something.\" 😊",
+      "parentUuid": "0d150c88_eae25309",
+      "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
