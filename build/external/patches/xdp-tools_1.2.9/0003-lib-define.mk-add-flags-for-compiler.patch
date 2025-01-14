@@ -1,0 +1,29 @@
+From 6b0770e70df3ab02ad2a62f6426668746d4432ba Mon Sep 17 00:00:00 2001
+From: fenglei <1579628578@qq.com>
+Date: Wed, 15 Jan 2025 09:47:36 +0800
+Subject: [PATCH 5/5] lib/define.mk: add flags for compiler
+
+Signed-off-by: fenglei <1579628578@qq.com>
+---
+ lib/defines.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/lib/defines.mk b/lib/defines.mk
+index f3ff3d3..781d5f2 100644
+--- a/lib/defines.mk
++++ b/lib/defines.mk
+@@ -41,6 +41,11 @@ endif
+ DEFINES += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+ 
+ CFLAGS += -std=gnu11 -Wextra -Werror $(DEFINES) $(ARCH_INCLUDES)
++ifeq ($(CC), clang)
++    CFLAGS += -Wno-uninitialized
++else
++    CFLAGS += -Wno-maybe-uninitialized
++endif
+ BPF_CFLAGS += $(DEFINES) $(filter -ffile-prefix-map=%,$(CFLAGS)) $(ARCH_INCLUDES)
+ 
+ CONFIGMK := $(LIB_DIR)/../config.mk
+-- 
+2.43.0
+
