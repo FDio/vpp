@@ -33,6 +33,24 @@
       "message": "Let\u0027s move this into if starting on line 261. \n\nOn SSL_ERROR_WANT_WRITE we should not return, we should break. Maybe instead of using ossl_check_err_is_fatal we can just check if rv \u003c 0 and if protocol error (wouldn\u0027t mind adding ossl_check_err_is_fatal2 macro that doesn\u0027t check for rv \u003c 0), return -1, otherwise check if async is on, if not, break.",
       "revId": "552d383e7abc5e2aa2afed6ef959bd7375045c9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8723ef1_5f610a09",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-14T16:46:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5eb8b4be_c4a6be2c",
+      "revId": "552d383e7abc5e2aa2afed6ef959bd7375045c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

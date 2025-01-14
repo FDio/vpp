@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a0f0166_2247dff5",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-14T16:46:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "79b94217_ed742db1",
+      "revId": "ed8a05b9023c3e61a11f09a8e092b7c01ce34de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5bd38a62_21ed4cae",

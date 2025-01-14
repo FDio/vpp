@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d982b96_af0878ed",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-14T16:46:44Z",
+      "side": 1,
+      "message": "Let\u0027s have one wrapping if:\n\n```\nif (rv \u003c (int) fs[i])\n  {\n    if (rv \u003c 0)\n      {\n        \u003ccheck error\u003e\n        \u003chandle async\u003e\n      }\n     break;\n   }\n```\n\nAlso, just to confirm, we never want to `svm_fifo_dequeue_drop` on `SSL_want_async (ssl)`, right?",
+      "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
