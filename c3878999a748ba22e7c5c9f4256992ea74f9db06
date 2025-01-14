@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c45f468_be2f69dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-14T17:54:06Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nThanks for reviewing the changes.\n\nPlanning to push this change for VPP 25.02 RC1 (before 22nd Jan).\n\nThanks,\nVarun",
+      "revId": "c3878999a748ba22e7c5c9f4256992ea74f9db06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
