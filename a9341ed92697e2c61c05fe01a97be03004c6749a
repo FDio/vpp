@@ -16,6 +16,24 @@
       "message": "We don\u0027t want useless plugins in default build.\nI already asked csit folks to introduce platform verify jobs...",
       "revId": "a9341ed92697e2c61c05fe01a97be03004c6749a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83b5b49d_78f372f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-01-14T10:11:39Z",
+      "side": 1,
+      "message": "\u003e\u003e We don\u0027t want useless plugins in default build.\nIt will be build only in aarch64.\n\n\u003e\u003e I already asked csit folks to introduce platform verify jobs...\nThanks, This patch is intended to prevent any compilation failures for OCTEON plugin that might be caused by new patches.",
+      "parentUuid": "fb0acf5b_d9e314f7",
+      "revId": "a9341ed92697e2c61c05fe01a97be03004c6749a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
