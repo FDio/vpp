@@ -411,6 +411,15 @@ oct_plugin_init (vlib_main_t *vm)
   rv = roc_model_init (&oct_model);
   if (rv)
     return clib_error_return (0, "roc_model_init failed");
+
+#ifdef PLATFORM_OCTEON9
+  if (!roc_model_is_cn9k ())
+    return clib_error_return (0, "OCTEON model is not OCTEON9");
+#else
+  if (!roc_model_is_cn10k ())
+    return clib_error_return (0, "OCTEON model is not OCTEON10");
+#endif
+
   return 0;
 }
 
