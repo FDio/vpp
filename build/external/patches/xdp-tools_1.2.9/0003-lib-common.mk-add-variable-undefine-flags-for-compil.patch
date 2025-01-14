@@ -1,0 +1,34 @@
+From 759fc7d9eb897f45bfebd8e5dac20989900b1456 Mon Sep 17 00:00:00 2001
+From: fenglei <1579628578@qq.com>
+Date: Tue, 14 Jan 2025 19:08:39 +0800
+Subject: [PATCH 4/4] lib/common.mk: add variable undefine flags for compiler
+
+Signed-off-by: fenglei <1579628578@qq.com>
+---
+ lib/common.mk | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/lib/common.mk b/lib/common.mk
+index dfac249..946f03b 100644
+--- a/lib/common.mk
++++ b/lib/common.mk
+@@ -102,9 +102,15 @@ LIB_H := ${LIB_OBJS:.o=.h}
+ $(LIB_OBJS): %.o: %.c %.h $(LIB_H)
+ 	$(Q)$(MAKE) -C $(dir $@) $(notdir $@)
+ 
++ifeq ($(CC), clang)
++    UNDEF_FLAGS := -Wuninitialized
++else
++    UNDEF_FLAGS := -Wno-maybe-uninitialized
++endif
++
+ ALL_EXEC_TARGETS=$(USER_TARGETS) $(TEST_TARGETS)
+ $(ALL_EXEC_TARGETS): %: %.c  $(OBJECT_LIBBPF) $(OBJECT_LIBXDP) $(LIBMK) $(LIB_OBJS) $(KERN_USER_H) $(EXTRA_DEPS) $(EXTRA_USER_DEPS) $(BPF_SKEL_H) $(USER_EXTRA_C)
+-	$(QUIET_CC)$(CC) -Wall $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
++	$(QUIET_CC)$(CC) -Wall $(UNDEF_FLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
+ 	 $< $(USER_EXTRA_C) $(LDLIBS)
+ 
+ $(XDP_OBJ): %.o: %.c $(KERN_USER_H) $(EXTRA_DEPS) $(BPF_HEADERS) $(LIBMK)
+-- 
+2.43.0
+
