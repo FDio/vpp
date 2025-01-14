@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb0acf5b_d9e314f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-14T09:59:49Z",
+      "side": 1,
+      "message": "We don\u0027t want useless plugins in default build.\nI already asked csit folks to introduce platform verify jobs...",
+      "revId": "a9341ed92697e2c61c05fe01a97be03004c6749a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
