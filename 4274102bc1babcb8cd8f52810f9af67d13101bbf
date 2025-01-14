@@ -68,6 +68,24 @@
       "parentUuid": "000a7ccc_1bb1fba4",
       "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d150c88_eae25309",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-14T16:11:03Z",
+      "side": 1,
+      "message": "So initially, you had to specify a classify filter alongside the bpf filter for pcap on the basis that bpf filter evaluation is costly, so you should prefilter. For example, filter on geneve vni (which is fixed offset) with classifier and then apply bpf to those.\nBut we recognized you might just want to just use bpf and pay the cost, and this was changed in Dec: https://gerrit.fd.io/r/c/vpp/+/41933\nMaybe that was your issue?",
+      "parentUuid": "f7b20d16_dc0c6c8d",
+      "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
