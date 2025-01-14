@@ -50,6 +50,24 @@
       "message": "Do we really want to add more parsers in vnet?\nThere are a couple of alternative already.\n\nYou can use \u0027hex\u0027 to match for Geneve here as you already know the option size etc. To help you generate the right \u0027hex\u0027-based stanza, you can use eg. scapy:\n-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------\nfrom scapy.all import *\nfrom scapy.contrib.geneve import *\n\n# compute mask \u0026 match by XOR-ing a template packet\np \u003d (Ether()/IP(chksum\u003d0)/UDP(chksum\u003d0)/GENEVE()/Ether()/IP(chksum\u003d0)/UDP(chksum\u003d0))\ntmpl \u003d raw(p)\n\n# compute \u0026 print mask\np[GENEVE].vni \u003d 0xffffff\nuser \u003d p[GENEVE].payload\nuser[IP].src \u003d \u0027255.255.255.255\u0027\nmask \u003d raw(p)\nmask \u003d \"\".join((\"{:02x}\".format(a ^ b) for a, b in zip(tmpl, mask)))\n\n# compute \u0026 print match\np[GENEVE].vni \u003d 1\nuser \u003d p[GENEVE].payload\nuser[IP].src \u003d \u00271.1.1.1\u0027\nmatch \u003d raw(p)\nmatch \u003d \"\".join((\"{:02x}\".format(a ^ b) for a, b in zip(tmpl, match)))\n\nprint(\"classify filter pcap mask hex \" + mask + \" match hex \" + match)\n-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------8\u003c-------\n\nAn alternative could be to adapt extras/packetforge for this.\n\nAnother alternative is src/plugins/bpf_trace_filter which allows you to use BPF for filters which already supports Geneve.\n\nThoughts?",
       "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7b20d16_dc0c6c8d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-01-14T16:04:55Z",
+      "side": 1,
+      "message": "a while back i tried the bpf_trace_filter and it worked great for tracing geneve encapped packets, but i couldn\u0027t get it to work for generating filtered pcaps. maybe i was doing it wrong, but i gave up.",
+      "parentUuid": "000a7ccc_1bb1fba4",
+      "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
