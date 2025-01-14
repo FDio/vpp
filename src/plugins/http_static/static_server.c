@@ -582,8 +582,8 @@ hss_ts_rx_callback (session_t *ts)
 	}
     }
 
-  /* Read body */
-  if (msg.data.body_len)
+  /* Read request body for POST requests */
+  if (msg.data.body_len && msg.method_type == HTTP_REQ_POST)
     {
       vec_validate (data, msg.data.body_len - 1);
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, msg.data.body_len,
