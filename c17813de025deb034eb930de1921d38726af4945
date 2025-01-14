@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2979918a_5d110483",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-14T21:01:38Z",
+      "side": 1,
+      "message": "There should not be 2 variants of the same OS dependencies here.  Instead, remove lines 138-144, then fix line 60 above to test for OS_VERSION_ID is missing AND OS_CODENAME is \"trixie\" and for that case set OS_VERSION_ID to \"debian-13\".\n\nFrom what I can tell, debian releases which are in the \"testing\" state do not have OS_VERSION_ID set.",
+      "range": {
+        "startLine": 138,
+        "startChar": 0,
+        "endLine": 144,
+        "endChar": 15
+      },
+      "revId": "c17813de025deb034eb930de1921d38726af4945",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
