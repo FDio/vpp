@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0fdbac15_028e3bc1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-14T17:50:11Z",
+      "side": 1,
+      "message": "Yes, we dont want to drop on ssl_want_async.",
+      "parentUuid": "5d982b96_af0878ed",
+      "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a81fd6ed_3d005543",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 16
@@ -31,6 +49,24 @@
       "writtenOn": "2025-01-14T16:57:24Z",
       "side": 1,
       "message": "Missed this originally, is this change really needed? I\u0027m not seeing this function be used anywhere in the async code.",
+      "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ee66719_acd5c0e0",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-14T17:50:11Z",
+      "side": 1,
+      "message": "Now the code is updated to use this function.",
+      "parentUuid": "a81fd6ed_3d005543",
       "revId": "2e65fa0df4d7a422b87908789ec71cdd4f2db1f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
