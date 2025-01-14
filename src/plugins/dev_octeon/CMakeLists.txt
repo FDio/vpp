@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2022 Cisco Systems, Inc.
 
-if (NOT VPP_PLATFORM_NAME STREQUAL "octeon10" AND NOT VPP_PLATFORM_NAME STREQUAL "octeon9")
-  return()
-endif()
-
 # Find OCTEON roc files
 vpp_find_path(OCTEON_ROC_DIR PATH_SUFFIXES octeon-roc NAMES platform.h)
 vpp_plugin_find_library(dev-octeon OCTEON_ROC_LIB "libocteon-roc.a")
