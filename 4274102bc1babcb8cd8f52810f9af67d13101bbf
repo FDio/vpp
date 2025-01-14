@@ -104,6 +104,23 @@
       "parentUuid": "0d150c88_eae25309",
       "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a049cf6e_6e17ac53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2025-01-14T16:33:01Z",
+      "side": 1,
+      "message": "Hi Benoit, I was using the hex but it\u0027s hard to document for others to use when there\u0027s a customer issue and it\u0027s required to capture the pcap. This is just make it easier to document. I also couldn\u0027t get the bpf working with the pcap back then. I could try it again on the latest build.",
+      "revId": "4274102bc1babcb8cd8f52810f9af67d13101bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
