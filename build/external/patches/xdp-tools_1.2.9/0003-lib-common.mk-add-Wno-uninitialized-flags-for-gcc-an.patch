@@ -1,0 +1,27 @@
+From 9c9902372d160ee6608f63aa117e5699a5744309 Mon Sep 17 00:00:00 2001
+From: fenglei <1579628578@qq.com>
+Date: Tue, 14 Jan 2025 16:04:57 +0800
+Subject: [PATCH 2/2] lib/common.mk: add -Wno-uninitialized flags for gcc and
+ clang
+
+Signed-off-by: fenglei <1579628578@qq.com>
+---
+ lib/common.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/common.mk b/lib/common.mk
+index dfac249..66662ac 100644
+--- a/lib/common.mk
++++ b/lib/common.mk
+@@ -104,7 +104,7 @@ $(LIB_OBJS): %.o: %.c %.h $(LIB_H)
+ 
+ ALL_EXEC_TARGETS=$(USER_TARGETS) $(TEST_TARGETS)
+ $(ALL_EXEC_TARGETS): %: %.c  $(OBJECT_LIBBPF) $(OBJECT_LIBXDP) $(LIBMK) $(LIB_OBJS) $(KERN_USER_H) $(EXTRA_DEPS) $(EXTRA_USER_DEPS) $(BPF_SKEL_H) $(USER_EXTRA_C)
+-	$(QUIET_CC)$(CC) -Wall $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
++	$(QUIET_CC)$(CC) -Wall -Wno-uninitialized $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
+ 	 $< $(USER_EXTRA_C) $(LDLIBS)
+ 
+ $(XDP_OBJ): %.o: %.c $(KERN_USER_H) $(EXTRA_DEPS) $(BPF_HEADERS) $(LIBMK)
+-- 
+2.43.0
+
