@@ -1,0 +1,30 @@
+From b0b8c9d4a268e9fdf2661483dddf3938b55a7d67 Mon Sep 17 00:00:00 2001
+From: fenglei <1579628578@qq.com>
+Date: Tue, 14 Jan 2025 14:44:32 +0800
+Subject: [PATCH] xdpdump: A variable-sized type which should be placed at the
+ end of a structure or union
+
+if use -Werror,-Wgnu-variable-sized-type-not-at-end gnu flags in externel, will prevent compile code
+
+Signed-off-by: fenglei <1579628578@qq.com>
+---
+ xdp-dump/xdpdump.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xdp-dump/xdpdump.c b/xdp-dump/xdpdump.c
+index b8f1773..59692ca 100644
+--- a/xdp-dump/xdpdump.c
++++ b/xdp-dump/xdpdump.c
+@@ -192,8 +192,8 @@ static uint64_t get_if_speed(struct iface *iface)
+ 	int                                  fd;
+ 	struct ifreq                         ifr;
+ 	struct {
+-		struct ethtool_link_settings req;
+ 		uint32_t                     modes[3 * MAX_MODE_MASKS];
++		struct ethtool_link_settings req;
+ 	} ereq;
+ 
+ 	if (iface == NULL)
+-- 
+2.43.0
+
