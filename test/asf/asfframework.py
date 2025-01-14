@@ -155,17 +155,6 @@ def _is_platform_aarch64():
 is_platform_aarch64 = _is_platform_aarch64()
 
 
-def _is_distro_ubuntu2404():
-    with open("/etc/os-release") as f:
-        for line in f.readlines():
-            if "noble" in line:
-                return True
-    return False
-
-
-is_distro_ubuntu2404 = _is_distro_ubuntu2404()
-
-
 def _is_distro_debian11():
     with open("/etc/os-release") as f:
         for line in f.readlines():
@@ -226,8 +215,6 @@ class TestCaseTag(Enum):
     FIXME_DEBIAN11 = 4
     # marks suites broken on debug vpp image
     FIXME_VPP_DEBUG = 5
-    # marks suites broken on Ubuntu-24.04
-    FIXME_UBUNTU2404 = 6
 
 
 def create_tag_decorator(e):
@@ -246,7 +233,6 @@ tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
 tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
-tag_fixme_ubuntu2404 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2404)
 
 
 class DummyVpp:
@@ -307,12 +293,6 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
             if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
-
-    @classmethod
-    def skip_fixme_ubuntu2404(cls):
-        """if @tag_fixme_ubuntu2404 & is Ubuntu24.04 - mark for skip"""
-        if cls.has_tag(TestCaseTag.FIXME_UBUNTU2404) and is_distro_ubuntu2404 == True:
-            cls = unittest.skip("Skipping @tag_fixme_ubuntu2404 tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1365,13 +1345,6 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
-
-            if (
-                test.has_tag(TestCaseTag.FIXME_UBUNTU2404)
-                and is_distro_ubuntu2404 == True
-            ):
-                test_title = colorize(f"FIXME with Ubuntu 24.04: {test_title}", RED)
-                test.skip_fixme_ubuntu2404()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
