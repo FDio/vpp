@@ -327,6 +327,46 @@ vl_api_ip_neighbor_config_get_t_handler (vl_api_ip_neighbor_config_get_t *mp)
 }
 
 static void
+vl_api_ip_neighbor_sleep_interval_t_handler (
+  vl_api_ip_neighbor_sleep_interval_t *mp)
+{
+  vl_api_ip_neighbor_sleep_interval_reply_t *rmp;
+  ip_address_family_t af;
+  int rv;
+
+  rv = ip_address_family_decode (mp->af, &af);
+
+  if (!rv)
+    rv = ip_neighbor_sleep_interval (
+      af, clib_net_to_host_f64 (mp->sleep_interval));
+
+  REPLY_MACRO (VL_API_IP_NEIGHBOR_SLEEP_INTERVAL_REPLY);
+}
+
+static void
+vl_api_ip_neighbor_sleep_interval_get_t_handler (
+  vl_api_ip_neighbor_sleep_interval_get_t *mp)
+{
+  vl_api_ip_neighbor_sleep_interval_get_reply_t *rmp;
+  int rv;
+  ip_address_family_t af = AF_IP4;
+  f64 sleep_interval = 0.0;
+
+  rv = ip_address_family_decode (mp->af, &af);
+
+  if (!rv)
+    sleep_interval = ip_neighbor_get_sleep_interval (af);
+
+  // clang-format off
+  REPLY_MACRO2 (VL_API_IP_NEIGHBOR_SLEEP_INTERVAL_GET_REPLY,
+  ({
+    rmp->af = ip_address_family_encode (af);
+    rmp->sleep_interval = clib_host_to_net_f64 (sleep_interval);
+  }));
+  // clang-format on
+}
+
+static void
 vl_api_ip_neighbor_replace_begin_t_handler (vl_api_ip_neighbor_replace_begin_t
 					    * mp)
 {
