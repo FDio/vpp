@@ -68,18 +68,23 @@ vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
 {
   vl_api_crypto_set_handler_reply_t *rmp;
   int rv = 0;
-  char *engine;
-  char *alg_name;
-  crypto_op_class_type_t oct;
 
-  engine = (char *) mp->engine;
-  alg_name = (char *) mp->alg_name;
-  oct = (crypto_op_class_type_t) mp->oct;
+  enum
+  {
+    CRYPTO_OP_SIMPLE,
+    CRYPTO_OP_CHAINED,
+    CRYPTO_OP_BOTH,
+  } oct = (typeof (oct)) mp->oct;
 
-  if (mp->is_async)
-    rv = vnet_crypto_set_async_handler2 (alg_name, engine);
-  else
-    rv = vnet_crypto_set_handler2 (alg_name, engine, oct);
+  vnet_crypto_set_handlers_args_t args = {
+    .engine = (char *) mp->engine,
+    .handler_name = (char *) mp->alg_name,
+    .set_async = mp->is_async != 0,
+    .set_simple = oct == CRYPTO_OP_SIMPLE || oct == CRYPTO_OP_BOTH,
+    .set_chained = oct == CRYPTO_OP_CHAINED || oct == CRYPTO_OP_BOTH,
+  };
+
+  rv = vnet_crypto_set_handlers (&args);
 
   REPLY_MACRO (VL_API_CRYPTO_SET_HANDLER_REPLY);
 }
