@@ -16,6 +16,57 @@
       "message": "Hi linux-cp experts, appreciate your feedback on this change. I added it to support LAG in the Sonic-VPP project: https://github.com/sonic-net/sonic-platform-vpp/issues/140\n\nThe change is inspired by the discussions in https://lists.fd.io/g/vpp-dev/message/23417 and https://lists.fd.io/g/vpp-dev/topic/96476162.\n\nNote that I currently enable this functionality based on the presence of the LACP plugin (for which I had to add a variable). I could change that to be an API if preferred (eg. lcp \u003cenable|disable\u003e \u003cethertype\u003e or some other form of API).\n\nThank you,\nAkeel",
       "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49aba589_233fb371",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-15T02:51:03Z",
+      "side": 1,
+      "message": "Can the comment use c-style comments like `/* comment */` ? It would be more consistent with nearly all of the other comments present in this file.",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2175b01_5561bda7",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-15T02:51:03Z",
+      "side": 1,
+      "message": "The name xc confused me at first. I thought that if it is true it meant packets were being cross-connected until I looked at the code more closely.\n\nMaybe the meaning of xc would be more clear if it was named check_xc or maybe_xc.",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "20ec08e0_e17b9781",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-15T02:51:03Z",
+      "side": 1,
+      "message": "You use a bool for xc and it seems like direction0 is also being treated as a bool, but it is declared as a u8 instead. It would be more consistent to make direction0 a bool. Or declare xc as a u8.\n\nIt seems like it\u0027s value will be false if traffic is being punted phy to host and true if it\u0027s being cross-connected host to phy. The semantics would be more clear if it were given a more meaningful name like \u0027is_xc0\u0027 or \u0027is_host2phy0\u0027 or \u0027is_outbound0\u0027.",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
