@@ -28,6 +28,9 @@ extern int ip_neighbor_config (ip_address_family_t af,
 extern int ip_neighbor_get_config (ip_address_family_t af, u32 *limit,
 				   u32 *age, bool *recycle);
 
+extern int ip_neighbor_sleep_interval (ip_address_family_t af, f64 interval);
+extern f64 ip_neighbor_get_sleep_interval (ip_address_family_t af);
+
 extern void ip_neighbor_del_all (ip_address_family_t af, u32 sw_if_index);
 
 typedef walk_rc_t (*ip_neighbor_walk_cb_t) (index_t ipni, void *ctx);
