@@ -220,9 +220,10 @@ restore_engines (u32 * engs)
 
       if (engs[i] != ~0)
 	{
-	  ce = vec_elt_at_index (cm->engines, engs[i]);
-	  od->active_engine_index_simple = engs[i];
-	  cm->ops_handlers[i] = ce->ops_handlers[i];
+	vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
+	ce = vec_elt_at_index (cm->engines, engs[i]);
+	od->active_engine_index[t] = engs[i];
+	cm->opt_data[i].handlers[t] = ce->ops[i].handlers[t];
 	}
     }
 
@@ -247,12 +248,13 @@ save_current_engines (u32 * engs)
   for (i = 1; i < VNET_CRYPTO_N_OP_IDS; i++)
     {
       vnet_crypto_op_data_t *od = &cm->opt_data[i];
-      if (od->active_engine_index_simple != ~0)
+      if (od->active_engine_index[VNET_CRYPTO_HANDLER_TYPE_SIMPLE])
 	{
 	  /* save engine index */
-	  engs[i] = od->active_engine_index_simple;
-	  od->active_engine_index_simple = ce - cm->engines;
-	  cm->ops_handlers[i] = ce->ops_handlers[i];
+	vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
+	engs[i] = od->active_engine_index[t];
+	od->active_engine_index[t] = ce - cm->engines;
+	cm->opt_data[i].handlers[t] = ce->ops[i].handlers[t];
 	}
     }
 
@@ -289,7 +291,7 @@ test_crypto_incremental (vlib_main_t * vm, crypto_test_main_t * tm,
   {
     r = rv[i];
     int t;
-    ad = vec_elt_at_index (cm->algs, r->alg);
+    ad = cm->algs + r->alg;
     for (t = 0; t < VNET_CRYPTO_OP_N_TYPES; t++)
       {
 	vnet_crypto_op_id_t id = ad->op_by_type[t];
@@ -345,7 +347,7 @@ test_crypto_incremental (vlib_main_t * vm, crypto_test_main_t * tm,
   {
     r = rv[i];
     int t;
-    ad = vec_elt_at_index (cm->algs, r->alg);
+    ad = cm->algs + r->alg;
     for (t = 0; t < VNET_CRYPTO_OP_N_TYPES; t++)
       {
 	vnet_crypto_op_id_t id = ad->op_by_type[t];
@@ -442,7 +444,7 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
     {
       r = rv[i];
       int t;
-      ad = vec_elt_at_index (cm->algs, r->alg);
+      ad = cm->algs + r->alg;
       for (t = 0; t < VNET_CRYPTO_OP_N_TYPES; t++)
 	{
 	  vnet_crypto_op_id_t id = ad->op_by_type[t];
@@ -648,29 +650,8 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
 static u32
 test_crypto_get_key_sz (vnet_crypto_alg_t alg)
 {
-  switch (alg)
-    {
-#define _(n, s, l) \
-  case VNET_CRYPTO_ALG_##n: \
-    return l;
-  foreach_crypto_cipher_alg
-  foreach_crypto_aead_alg
-#undef _
-    case VNET_CRYPTO_ALG_HMAC_MD5:
-    case VNET_CRYPTO_ALG_HMAC_SHA1:
-      return 20;
-    case VNET_CRYPTO_ALG_HMAC_SHA224:
-      return 28;
-    case VNET_CRYPTO_ALG_HMAC_SHA256:
-      return 32;
-    case VNET_CRYPTO_ALG_HMAC_SHA384:
-      return 48;
-    case VNET_CRYPTO_ALG_HMAC_SHA512:
-      return 64;
-    default:
-      return 0;
-    }
-  return 0;
+  vnet_crypto_main_t *cm = &crypto_main;
+  return cm->algs[alg].key_length;
 }
 
 static clib_error_t *
@@ -702,7 +683,7 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
       else
 	vec_add1 (static_tests, r);
 
-      ad = vec_elt_at_index (cm->algs, r->alg);
+      ad = cm->algs + r->alg;
 
       for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
 	{
@@ -836,7 +817,7 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   u32 n_buffers, n_alloc = 0, warmup_rounds, rounds;
   u32 *buffer_indices = 0;
   vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
-  vnet_crypto_alg_data_t *ad = vec_elt_at_index (cm->algs, tm->alg);
+  vnet_crypto_alg_data_t *ad = cm->algs + tm->alg;
   vnet_crypto_key_index_t key_index = ~0;
   u8 key[64];
   int buffer_size = vlib_buffer_get_default_data_size (vm);

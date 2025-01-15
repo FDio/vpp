@@ -161,7 +161,7 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
 {
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
-#define _(n, s, k)                                                            \
+#define _(n, s, ...)                                                          \
   if (sa->crypto_sync_enc_op_id == VNET_CRYPTO_OP_##n##_ENC)                  \
     sa->crypto_async_enc_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD12_ENC;        \
   if (sa->crypto_sync_dec_op_id == VNET_CRYPTO_OP_##n##_DEC)                  \
@@ -171,7 +171,7 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
     }
   else
     {
-#define _(n, s, k)                                                            \
+#define _(n, s, ...)                                                          \
   if (sa->crypto_sync_enc_op_id == VNET_CRYPTO_OP_##n##_ENC)                  \
     sa->crypto_async_enc_op_id = VNET_CRYPTO_OP_##n##_TAG16_AAD8_ENC;         \
   if (sa->crypto_sync_dec_op_id == VNET_CRYPTO_OP_##n##_DEC)                  \

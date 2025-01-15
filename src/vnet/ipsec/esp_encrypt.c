@@ -625,9 +625,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
-  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
+  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_N_OP_IDS];
   int is_async = im->async_mode;
-  vnet_crypto_async_op_id_t async_op = ~0;
+  vnet_crypto_op_id_t async_op = ~0;
   u16 drop_next =
     (lt == VNET_LINK_IP6 ? ESP_ENCRYPT_NEXT_DROP6 :
 			   (lt == VNET_LINK_IP4 ? ESP_ENCRYPT_NEXT_DROP4 :
