@@ -160,6 +160,44 @@ define ip_neighbor_config_get_reply
   bool recycle;
 };
 
+/** \brief Neighbor: Set sleep interval for neighbor-age-process node
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param af - Address family (v4/v6)
+    @param sleep_interval - sleep timeout duration in seconds
+*/
+autoreply define ip_neighbor_sleep_interval
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+  f64 sleep_interval;
+};
+
+/** \brief Neighbor: Get the current sleep interval for the neighbor-age-process
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply with request
+    @param af - Address family (v4/v6)
+*/
+define ip_neighbor_sleep_interval_get {
+    u32 client_index;
+    u32 context;
+    vl_api_address_family_t af;
+};
+
+/** \brief Neighbor: Reply with the current sleep interval
+    @param context - sender context, to match reply with request
+    @param retval - error (0 is "no error")
+    @param af - Address family (v4/v6)
+    @param sleep_interval - current sleep interval in seconds
+*/
+define ip_neighbor_sleep_interval_get_reply {
+    u32 context;
+    i32 retval;
+    vl_api_address_family_t af;
+    f64 sleep_interval;
+};
+
 /** \brief IP neighbour replace begin
 
     The use-case is that, for some unspecified reason, the control plane
