@@ -3,7 +3,6 @@
 import unittest
 import os
 
-from config import config
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from vpp_neighbor import VppNeighbor, find_nbr
@@ -2331,7 +2330,6 @@ class NeighborStatsTestCase(VppTestCase):
         self.assertEqual(NUM_PKTS + 16, nd1.get_stats()["packets"])
 
 
-@unittest.skipUnless(config.extended, "part of extended tests")
 class NeighborAgeTestCase(VppTestCase):
     """ARP/ND Aging"""
 
@@ -2389,6 +2387,12 @@ class NeighborAgeTestCase(VppTestCase):
         self.assertEqual(config.max_number, max_number)
         self.assertEqual(config.max_age, max_age)
         self.assertEqual(config.recycle, recycle)
+
+    def verify_ip_neighbor_sleep_interval(self, af, sleep_interval):
+        resp = self.vapi.ip_neighbor_sleep_interval_get(af)
+
+        self.assertEqual(resp.af, af)
+        self.assertEqual(resp.sleep_interval, sleep_interval)
 
     def test_age(self):
         """Aging/Recycle"""
@@ -2454,6 +2458,8 @@ class NeighborAgeTestCase(VppTestCase):
         self.verify_ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=True
         )
+        self.vapi.ip_neighbor_sleep_interval(af=vaf.ADDRESS_IP4, sleep_interval=0.1)
+        self.verify_ip_neighbor_sleep_interval(af=vaf.ADDRESS_IP4, sleep_interval=0.1)
 
         # now new additions are allowed
         VppNeighbor(
