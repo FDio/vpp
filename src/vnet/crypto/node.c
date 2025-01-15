@@ -45,7 +45,7 @@ typedef enum
 typedef struct
 {
   vnet_crypto_op_status_t op_status;
-  vnet_crypto_async_op_id_t op;
+  vnet_crypto_op_id_t op;
 } crypto_dispatch_trace_t;
 
 static u8 *
@@ -55,15 +55,14 @@ format_crypto_dispatch_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   crypto_dispatch_trace_t *t = va_arg (*args, crypto_dispatch_trace_t *);
 
-  s = format (s, "%U: %U", format_vnet_crypto_async_op, t->op,
+  s = format (s, "%U: %U", format_vnet_crypto_op, t->op,
 	      format_vnet_crypto_op_status, t->op_status);
   return s;
 }
 
 static void
-vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_buffer_t * b,
-			     vnet_crypto_async_op_id_t op_id,
+vnet_crypto_async_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_buffer_t *b, vnet_crypto_op_id_t op_id,
 			     vnet_crypto_op_status_t status)
 {
   crypto_dispatch_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));

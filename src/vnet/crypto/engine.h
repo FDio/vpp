@@ -12,8 +12,8 @@ typedef unsigned int u32;
 typedef struct
 {
   vnet_crypto_op_id_t opt;
-  vnet_crypto_ops_handler_t *fn;
-  vnet_crypto_chained_ops_handler_t *cfn;
+  vnet_crypto_simple_op_fn_t *fn;
+  vnet_crypto_chained_op_fn_t *cfn;
 } vnet_crypto_engine_op_handlers_t;
 
 struct vnet_crypto_engine_registration;
@@ -31,7 +31,7 @@ typedef struct vnet_crypto_engine_registration
   u32 num_threads;
   void *per_thread_data;
   vnet_crypto_engine_init_fn_t *init_fn;
-  vnet_crypto_key_handler_t *key_handler;
+  vnet_crypto_key_fn_t *key_handler;
   vnet_crypto_engine_op_handlers_t *op_handlers;
 } vnet_crypto_engine_registration_t;
 
