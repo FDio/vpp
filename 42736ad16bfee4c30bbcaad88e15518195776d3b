@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c03f4cd_caaa8eae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-15T18:55:37Z",
+      "side": 1,
+      "message": "Thanks for the review Matthew. I agree, the API/CLI approach would be more useful. I\u0027ll work on this and address your other comments, then will update the patchset.",
+      "parentUuid": "d51ebd98_90da0493",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "49aba589_233fb371",
