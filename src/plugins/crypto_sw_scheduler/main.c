@@ -401,7 +401,7 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
 }
 
 static_always_inline int
-convert_async_crypto_id (vnet_crypto_async_op_id_t async_op_id, u32 *crypto_op,
+convert_async_crypto_id (vnet_crypto_op_id_t async_op_id, u32 *crypto_op,
 			 u32 *auth_op_or_aad_len, u16 *digest_len, u8 *is_enc)
 {
   switch (async_op_id)
