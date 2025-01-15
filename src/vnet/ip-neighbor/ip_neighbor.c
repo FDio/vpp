@@ -125,6 +125,8 @@ typedef struct ip_neighbor_db_t_
   u32 ipndb_n_elts;
   /** per-protocol number of elements per-fib-index*/
   u32 *ipndb_n_elts_per_fib;
+  /** sleep interval for neighbor-age-process node */
+  f64 ipndb_sleep_interval;
 } ip_neighbor_db_t;
 
 static vlib_log_class_t ipn_logger;
@@ -136,12 +138,14 @@ static ip_neighbor_db_t ip_neighbor_db[N_AF] = {
     /* Default to not aging and not recycling */
     .ipndb_age = 0,
     .ipndb_recycle = false,
+    .ipndb_sleep_interval = 0.0,
   },
   [AF_IP6] = {
     .ipndb_limit = 50000,
     /* Default to not aging and not recycling */
     .ipndb_age = 0,
     .ipndb_recycle = false,
+    .ipndb_sleep_interval = 0.0,
   }
 };
 
@@ -1627,6 +1631,9 @@ ip_neighbor_age_loop (vlib_main_t * vm,
 
       if (!timeout)
 	vlib_process_wait_for_event (vm);
+      else if (ip_neighbor_db[af].ipndb_sleep_interval)
+	vlib_process_wait_for_event_or_clock (
+	  vm, ip_neighbor_db[af].ipndb_sleep_interval);
       else
 	vlib_process_wait_for_event_or_clock (vm, timeout);
 
@@ -1753,6 +1760,19 @@ ip_neighbor_get_config (ip_address_family_t af, u32 *limit, u32 *age,
   *recycle = ip_neighbor_db[af].ipndb_recycle;
 
   return (0);
+}
+
+int
+ip_neighbor_sleep_interval (ip_address_family_t af, f64 interval)
+{
+  ip_neighbor_db[af].ipndb_sleep_interval = interval;
+  return (0);
+}
+
+f64
+ip_neighbor_get_sleep_interval (ip_address_family_t af)
+{
+  return ip_neighbor_db[af].ipndb_sleep_interval;
 }
 
 static clib_error_t *
