@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8677c991_be116abf",
+        "filename": "build/external/mlx_rdma_dpdk_matrix.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-15T17:18:40Z",
+      "side": 1,
+      "message": "dpdk 24.11",
+      "revId": "f21d062fc4c55045dd271ab71c60ea819d2a4919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
