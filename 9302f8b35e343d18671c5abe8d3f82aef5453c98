@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19c17525_f87eb61c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-01-15T15:14:13Z",
+      "side": 1,
+      "message": "adding Benoit. This brings an interesting point - do we actually have the “recommended format” for the help strings for this case ?\n\nIt is admittedly a bit of a bike shed topic, but might be nice to have consistency ?",
+      "revId": "9302f8b35e343d18671c5abe8d3f82aef5453c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
