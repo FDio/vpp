@@ -16,6 +16,57 @@
       "message": "Damjan, were you able to look at the patchset in its current state? I\u0027ve fixed some gcc-specific problems (at expense that I\u0027ve needed to declare a variable that is unused in Release builds to check errors) and because we already have the retval for those cases, I think ASSERT won\u0027t hurt afterwards (I\u0027ve had an assumption that if retval was not checked before, then it is guaranteed that all parameters, like port number, would be correct at that stage)",
       "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4aefdf4_2c840665",
+        "filename": "build/external/mlx_rdma_dpdk_matrix.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-15T17:17:21Z",
+      "side": 1,
+      "message": "rdma\u003d55.0 dpdk\u003d24.11",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0efc8f1c_bc60afa0",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-15T17:17:21Z",
+      "side": 1,
+      "message": "please avoid the format change. remove unnecessary space",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d5bf83e_06fa5073",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-15T17:17:21Z",
+      "side": 1,
+      "message": "24.11",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
