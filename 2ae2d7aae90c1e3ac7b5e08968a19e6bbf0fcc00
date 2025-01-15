@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "677d490f_238c0983",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-15T17:14:22Z",
+      "side": 1,
+      "message": "Hi Vladimir, can you update dpdk version to 24.11 instead 24.11.1",
+      "revId": "2ae2d7aae90c1e3ac7b5e08968a19e6bbf0fcc00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
