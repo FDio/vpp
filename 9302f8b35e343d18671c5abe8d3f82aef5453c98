@@ -16,6 +16,24 @@
       "message": "adding Benoit. This brings an interesting point - do we actually have the “recommended format” for the help strings for this case ?\n\nIt is admittedly a bit of a bike shed topic, but might be nice to have consistency ?",
       "revId": "9302f8b35e343d18671c5abe8d3f82aef5453c98",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3d2118a_f9cd31d8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-15T15:18:53Z",
+      "side": 1,
+      "message": "I don\u0027t think we do, but in this case the parsing is looking for table-id (small caps) and is case-sensitive, so the help string is clearly wring at least for the parameter name (placeholder could remain table-ID but I don\u0027t see the point).\nMy take is we should not have nitpick commits to change docs strings arbitrarily but in this case, the doc string gives a wrong parameter (table-ID instead of the parsed table-id) and should be fixed",
+      "parentUuid": "19c17525_f87eb61c",
+      "revId": "9302f8b35e343d18671c5abe8d3f82aef5453c98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
