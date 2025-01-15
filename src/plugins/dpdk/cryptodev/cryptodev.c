@@ -111,7 +111,7 @@ prepare_linked_xform (struct rte_crypto_sym_xform *xforms,
   xform_auth->type = RTE_CRYPTO_SYM_XFORM_AUTH;
   xforms->next = xforms + 1;
 
-  switch (key->async_alg)
+  switch (key->alg)
     {
 #define _(a, b, c, d, e)                                                      \
   case VNET_CRYPTO_ALG_##a##_##d##_TAG##e:                                    \
@@ -251,7 +251,7 @@ cryptodev_check_supported_vnet_alg (vnet_crypto_key_t *key)
 
   if (key->is_link)
     {
-      switch (key->async_alg)
+      switch (key->alg)
 	{
 #define _(a, b, c, d, e)                                                      \
   case VNET_CRYPTO_ALG_##a##_##d##_TAG##e:                                    \

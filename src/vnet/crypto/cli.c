@@ -1,19 +1,7 @@
-/*
- * Copyright (c) 2019 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
-#include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vnet/crypto/crypto.h>
 
@@ -38,7 +26,8 @@ show_crypto_engines_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%-20s%-8s%s", "Name", "Prio", "Description");
   vec_foreach (p, cm->engines)
     {
-      vlib_cli_output (vm, "%-20s%-8u%s", p->name, p->priority, p->desc);
+      if (p->name)
+	vlib_cli_output (vm, "%-20s%-8u%s", p->name, p->priority, p->desc);
     }
   return 0;
 }
@@ -50,100 +39,53 @@ VLIB_CLI_COMMAND (show_crypto_engines_command, static) =
   .function = show_crypto_engines_command_fn,
 };
 
-static u8 *
-format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
-{
-  vnet_crypto_engine_t *e;
-  vnet_crypto_main_t *cm = &crypto_main;
-  u32 id = va_arg (*args, u32);
-  u32 ei = va_arg (*args, u32);
-  int is_chained = va_arg (*args, int);
-  int is_async = va_arg (*args, int);
-
-  if (is_async)
-    {
-      vec_foreach (e, cm->engines)
-	{
-	  if (e->enqueue_handlers[id] && e->dequeue_handler)
-	    {
-	      s = format (s, "%U", format_vnet_crypto_engine, e - cm->engines);
-	      if (ei == e - cm->engines)
-		s = format (s, "%c ", '*');
-	      else
-		s = format (s, " ");
-	    }
-	}
-
-      return s;
-    }
-  else
-    {
-      vec_foreach (e, cm->engines)
-	{
-	  void * h = is_chained ? (void *) e->chained_ops_handlers[id]
-	    : (void *) e->ops_handlers[id];
-
-	  if (h)
-	    {
-	      s = format (s, "%U", format_vnet_crypto_engine, e - cm->engines);
-	      if (ei == e - cm->engines)
-		s = format (s, "%c ", '*');
-	      else
-		s = format (s, " ");
-	    }
-	}
-      return s;
-    }
-}
-
-static u8 *
-format_vnet_crypto_handlers (u8 * s, va_list * args)
-{
-  vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_alg_data_t *d = vec_elt_at_index (cm->algs, alg);
-  u32 indent = format_get_indent (s);
-  int i, first = 1;
-
-  for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
-    {
-      vnet_crypto_op_data_t *od;
-      vnet_crypto_op_id_t id = d->op_by_type[i];
-
-      if (id == 0)
-	continue;
-
-      od = cm->opt_data + id;
-      if (first == 0)
-        s = format (s, "\n%U", format_white_space, indent);
-      s = format (s, "%-16U", format_vnet_crypto_op_type, od->type);
-
-      s = format (s, "%-28U", format_vnet_crypto_engine_candidates, id,
-          od->active_engine_index_simple, 0, 0);
-      s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
-          od->active_engine_index_chained, 1, 0);
-      first = 0;
-    }
-  return s;
-}
-
-
 static clib_error_t *
 show_crypto_handlers_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  vnet_crypto_main_t *cm = &crypto_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  int i;
+  u8 *s = 0;
+  char *handler_type_str[] = {
+#define _(n, s) [VNET_CRYPTO_HANDLER_TYPE_##n] = s,
+    foreach_crypto_handler_type
+  };
 
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
-  vlib_cli_output (vm, "%-16s%-16s%-28s%s", "Algo", "Type", "Simple",
-      "Chained");
+  FOREACH_ARRAY_ELT (a, cm->algs)
+    {
+      if (a == cm->algs)
+	continue;
 
-  for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
-    vlib_cli_output (vm, "%-20U%U", format_vnet_crypto_alg, i,
-		     format_vnet_crypto_handlers, i);
+      vlib_cli_output (vm, "\n%s:", a->name);
+      for (u32 i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+	if (a->op_by_type[i] != VNET_CRYPTO_OP_NONE)
+	  {
+	    vlib_cli_output (vm, "  %U:", format_vnet_crypto_op_type, i);
+	    vnet_crypto_op_id_t id = a->op_by_type[i];
+	    vnet_crypto_op_data_t *od = cm->opt_data + id;
+	    vnet_crypto_engine_t *e;
+
+	    for (u32 i = 0; i < VNET_CRYPTO_HANDLER_N_TYPES; i++)
+	      {
+		vec_foreach (e, cm->engines)
+		  {
+		    if (e->ops[id].handlers[i])
+		      {
+			s = format (s, " %s", e->name);
+			if (e->ops[id].handlers[i] == od->handlers[i])
+			  s = format (s, "*");
+		      }
+		  }
+
+		vlib_cli_output (vm, "    %s:%v", handler_type_str[i], s);
+		vec_reset_length (s);
+	      }
+	  }
+    }
+  vec_free (s);
 
   return 0;
 }
@@ -242,63 +184,6 @@ VLIB_CLI_COMMAND (set_crypto_handler_command, static) =
   .function = set_crypto_handler_command_fn,
 };
 
-static u8 *
-format_vnet_crypto_async_handlers (u8 * s, va_list * args)
-{
-  vnet_crypto_async_alg_t alg = va_arg (*args, vnet_crypto_async_alg_t);
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_async_alg_data_t *d = vec_elt_at_index (cm->async_algs, alg);
-  u32 indent = format_get_indent (s);
-  int i, first = 1;
-
-  for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_TYPES; i++)
-    {
-      vnet_crypto_async_op_data_t *od;
-      vnet_crypto_async_op_id_t id = d->op_by_type[i];
-
-      if (id == 0)
-	continue;
-
-      od = cm->async_opt_data + id;
-      if (first == 0)
-	s = format (s, "\n%U", format_white_space, indent);
-      s = format (s, "%-16U", format_vnet_crypto_async_op_type, od->type);
-
-      s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
-		  od->active_engine_index_async, 0, 1);
-      first = 0;
-    }
-  return s;
-}
-
-static clib_error_t *
-show_crypto_async_handlers_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int i;
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    unformat_free (line_input);
-
-  vlib_cli_output (vm, "%-28s%-16s%s", "Algo", "Type", "Handler");
-
-  for (i = 0; i < VNET_CRYPTO_N_ASYNC_ALGS; i++)
-    vlib_cli_output (vm, "%-28U%U", format_vnet_crypto_async_alg, i,
-		     format_vnet_crypto_async_handlers, i);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_crypto_async_handlers_command, static) =
-{
-  .path = "show crypto async handlers",
-  .short_help = "show crypto async handlers",
-  .function = show_crypto_async_handlers_command_fn,
-};
-
-
 static clib_error_t *
 show_crypto_async_status_command_fn (vlib_main_t * vm,
 				     unformat_input_t * input,
@@ -375,11 +260,10 @@ set_crypto_async_handler_command_fn (vlib_main_t * vm,
       char *key;
       u8 *value;
 
-      hash_foreach_mem (key, value, cm->async_alg_index_by_name,
-      ({
-        (void) value;
-        rc += vnet_crypto_set_async_handler2 (key, engine);
-      }));
+      hash_foreach_mem (key, value, cm->alg_index_by_name, ({
+			  (void) value;
+			  rc += vnet_crypto_set_async_handler2 (key, engine);
+			}));
 
       if (rc)
 	vlib_cli_output (vm, "failed to set crypto engine!");
@@ -450,11 +334,3 @@ VLIB_CLI_COMMAND (set_crypto_async_dispatch_mode_command, static) = {
   .short_help = "set crypto async dispatch mode <polling|interrupt|adaptive>",
   .function = set_crypto_async_dispatch_command_fn,
 };
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
