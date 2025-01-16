@@ -34,6 +34,24 @@
       "parentUuid": "a091ea3a_657a2af1",
       "revId": "f7249f86cfda9f76df1b175cb1958405492264f9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "996b582e_d8c9e165",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-16T15:32:43Z",
+      "side": 1,
+      "message": "Thanks for making the requested change.\n\nYes, I think the race condition you described could possibly happen though I don\u0027t know for sure. I have not looked through kernel code in a while at details of what happens when a netlink request or ioctl() is processed.\n\nIf it happens, the effect would be that we apply unnecessary changes to eth1 and incur the overhead of resetting the NIC but it still ends up in the correct state. I think most of the time the timestamp will work correctly to avoid that overhead though.\n\nMaybe if it ends up being an issue for someone in the future, there is some other better approach possible. E.g. after all other operations performed while creating a pair, make some innocuous change that will signal that the interface is active (add an interface alt name property formatted like \u0027lcp-interface-\u003cphy_sw_if_index\u003e-\u003ckernel_if_index\u003e\u0027 or something). Then linux-nl can look for the kernel\u0027s announcement of that change being applied and mark the pair active when it sees it.",
+      "parentUuid": "1df9fa78_97f81a8b",
+      "revId": "f7249f86cfda9f76df1b175cb1958405492264f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
