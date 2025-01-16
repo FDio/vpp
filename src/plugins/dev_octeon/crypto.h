@@ -143,7 +143,7 @@ typedef struct
 typedef struct
 {
   oct_crypto_dev_t *crypto_dev[OCT_MAX_N_CPT_DEV];
-  oct_crypto_key_t *keys[VNET_CRYPTO_ASYNC_OP_N_TYPES];
+  oct_crypto_key_t *keys[VNET_CRYPTO_OP_N_TYPES];
   oct_crypto_pending_queue_t *pend_q;
   int n_cpt;
   u8 started;
