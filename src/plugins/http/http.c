@@ -2467,13 +2467,24 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   if (!http_req_state_is_tx_valid (hc))
     {
-      clib_warning ("hc [%u]%x invalid tx state: http req state "
-		    "'%U', session state '%U'",
-		    as->thread_index, as->connection_index,
-		    format_http_req_state, hc->req.state,
-		    format_http_conn_state, hc);
-      svm_fifo_dequeue_drop_all (as->tx_fifo);
-      return 0;
+      /* Sometimes the server apps can send the response earlier
+       * than expected (e.g when rejecting a bad request)*/
+      if (hc->req.state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA &&
+	  hc->is_server)
+	{
+	  svm_fifo_dequeue_drop_all (as->rx_fifo);
+	  hc->req.state = HTTP_REQ_STATE_WAIT_APP_REPLY;
+	}
+      else
+	{
+	  clib_warning ("hc [%u]%x invalid tx state: http req state "
+			"'%U', session state '%U'",
+			as->thread_index, as->connection_index,
+			format_http_req_state, hc->req.state,
+			format_http_conn_state, hc);
+	  svm_fifo_dequeue_drop_all (as->tx_fifo);
+	  return 0;
+	}
     }
 
   HTTP_DBG (1, "run state machine");
