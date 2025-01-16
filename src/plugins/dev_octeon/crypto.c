@@ -1279,7 +1279,7 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
 
   crypto_key = vnet_crypto_get_key (key->index_crypto);
   rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, crypto_key->data,
-			    vec_len (crypto_key->data));
+			    crypto_key->length);
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting cipher key for enc type %u",
@@ -1290,7 +1290,7 @@ oct_crypto_link_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   auth_key = vnet_crypto_get_key (key->index_integ);
 
   rv = roc_se_auth_key_set (&sess->cpt_ctx, auth_type, auth_key->data,
-			    vec_len (auth_key->data), digest_len);
+			    auth_key->length, digest_len);
   if (rv)
     {
       clib_warning ("Cryptodev: Error in setting auth key for auth type %u",
@@ -1311,7 +1311,7 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   u32 digest_len = ~0;
   i32 rv = 0;
 
-  switch (key->async_alg)
+  switch (key->alg)
     {
     case VNET_CRYPTO_ALG_AES_128_GCM:
     case VNET_CRYPTO_ALG_AES_192_GCM:
@@ -1422,7 +1422,7 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
   oct_crypto_key_t *key;
   vlib_buffer_t *buffer;
   u16 adj_len;
-  int ret;
+  int ret = 0;
 
   /* GCM packets having 8 bytes of aad and 8 bytes of iv */
   u8 aad_iv = 8 + 8;
@@ -1458,7 +1458,13 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
       sess = key->sess;
 
       if (PREDICT_FALSE (!sess->initialised))
-	oct_crypto_session_init (vm, sess, elts->key_index, type);
+	ret = oct_crypto_session_init (vm, sess, elts->key_index, type);
+      if (ret)
+	{
+	  oct_crypto_update_frame_error_status (
+	    frame, i, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+	  return -1;
+	}
 
       crypto_dev = sess->crypto_dev;
 
@@ -1523,11 +1529,14 @@ oct_crypto_enqueue_enc_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
       inst[i].res_addr = (u64) &infl_req->res[i];
     }
 
-  oct_crypto_burst_submit (crypto_dev, inst, frame->n_elts);
+  if (PREDICT_TRUE (crypto_dev != NULL))
+    {
+      oct_crypto_burst_submit (crypto_dev, inst, frame->n_elts);
 
-  infl_req->elts = frame->n_elts;
-  OCT_MOD_INC (pend_q->enq_tail, pend_q->n_desc);
-  pend_q->n_crypto_inflight++;
+      infl_req->elts = frame->n_elts;
+      OCT_MOD_INC (pend_q->enq_tail, pend_q->n_desc);
+      pend_q->n_crypto_inflight++;
+    }
 
   return 0;
 }
