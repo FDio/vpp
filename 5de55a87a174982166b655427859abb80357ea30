@@ -16,6 +16,23 @@
       "message": "Hi, Ole, may I ask you to take a look?",
       "revId": "5de55a87a174982166b655427859abb80357ea30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa3a2e0b_bd3384af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2025-01-16T09:43:08Z",
+      "side": 1,
+      "message": "Awaiting a larger discussion of what additional information belongs to the stats segment.",
+      "revId": "5de55a87a174982166b655427859abb80357ea30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
