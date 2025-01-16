@@ -1104,8 +1104,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   ipsec_sa_t *sa0 = 0;
   bool anti_replay_result;
   int is_async = im->async_mode;
-  vnet_crypto_async_op_id_t async_op = ~0;
-  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
+  vnet_crypto_op_id_t async_op = ~0;
+  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_N_OP_IDS];
   esp_decrypt_error_t err;
 
   vlib_get_buffers (vm, from, b, n_left);
