@@ -383,12 +383,15 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
 
-  sa->crypto_sync_key_index = vnet_crypto_key_add (
-    vm, im->crypto_algs[crypto_alg].alg, (u8 *) ck->data, ck->len);
-  if (~0 == sa->crypto_sync_key_index)
+  if (crypto_alg != IPSEC_CRYPTO_ALG_NONE)
     {
-      pool_put (ipsec_sa_pool, sa);
-      return VNET_API_ERROR_KEY_LENGTH;
+      sa->crypto_sync_key_index = vnet_crypto_key_add (
+	vm, im->crypto_algs[crypto_alg].alg, (u8 *) ck->data, ck->len);
+      if (~0 == sa->crypto_sync_key_index)
+	{
+	  pool_put (ipsec_sa_pool, sa);
+	  return VNET_API_ERROR_KEY_LENGTH;
+	}
     }
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
@@ -536,7 +539,8 @@ ipsec_sa_del (ipsec_sa_t * sa)
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&sa->dpo);
-  vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
+  if (sa->crypto_alg != IPSEC_CRYPTO_ALG_NONE)
+    vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_sync_key_index);
   if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
