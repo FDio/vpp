@@ -34,6 +34,24 @@
       "parentUuid": "677d490f_238c0983",
       "revId": "2ae2d7aae90c1e3ac7b5e08968a19e6bbf0fcc00",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad4ba75a_73e0ed97",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-16T13:38:39Z",
+      "side": 1,
+      "message": "It\u0027s generally recommended to use stable releases of both VPP and DPDK , I didn\u0027t aware the 24.11.1 patch version fixed the CVE issue. can you also update the commit message to capture this info ?",
+      "parentUuid": "9a099494_28f12ef8",
+      "revId": "2ae2d7aae90c1e3ac7b5e08968a19e6bbf0fcc00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

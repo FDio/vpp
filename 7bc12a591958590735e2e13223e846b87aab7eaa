@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "78a49ef7_1a662c47",
+        "filename": "build/external/mlx_rdma_dpdk_matrix.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-16T13:38:39Z",
+      "side": 1,
+      "message": "I recommend remove this change here as https://gerrit.fd.io/r/c/vpp/+/42126 has included rdma version update.",
+      "parentUuid": "b4aefdf4_2c840665",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0efc8f1c_bc60afa0",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 4
