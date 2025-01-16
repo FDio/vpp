@@ -36,11 +36,43 @@
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
 #include <ctype.h>
+#include <signal.h>
 
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
 #define SERVER_PORT 9482
 
 #define MAX_TOKENS 10
+
+#define WAIT_SELECT_MICROSECONDS	 20000
+#define TIME_REQUEST_PROCESS_MAX_SECONDS 1
+
+static volatile sig_atomic_t APP_TERM = 0;
+static volatile sig_atomic_t SIGNAL_LAST_HANDLED = 0;
+
+static void
+signal_handler (int signum)
+{
+  APP_TERM = 1;
+  SIGNAL_LAST_HANDLED = signum;
+}
+
+static int
+set_signal_handlers ()
+{
+  int i;
+  int signals[] = { SIGTERM, SIGINT, SIGQUIT, SIGTSTP };
+  const int sz = sizeof signals / sizeof signals[0];
+
+  for (i = 0; i < sz; i++)
+    {
+      if (signal (signals[i], signal_handler) == SIG_ERR)
+	{
+	  return signals[i];
+	}
+    }
+
+  return 0;
+}
 
 static char *
 prom_string (char *s)
@@ -74,7 +106,7 @@ print_metric_v1 (FILE *stream, stat_segment_data_t *res)
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       fformat (stream, "# TYPE %s_packets counter\n", prom_string (res->name));
       fformat (stream, "# TYPE %s_bytes counter\n", prom_string (res->name));
-      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+      for (k = 0; k < vec_len (res->combined_counter_vec); k++)
 	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
 	  {
 	    fformat (stream,
@@ -155,6 +187,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
   char *tokens[MAX_TOKENS];
   int lengths[MAX_TOKENS];
   int j, k;
+  int exit = 0;
 
   num_tokens = tokenize (res->name, tokens, lengths, MAX_TOKENS);
   switch (res->type)
@@ -162,8 +195,8 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
       if (res->simple_counter_vec == 0)
 	return;
-      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
-	for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
+      for (k = 0; k < vec_len (res->simple_counter_vec) && !exit; k++)
+	for (j = 0; j < vec_len (res->simple_counter_vec[k]) && !exit; j++)
 	  {
 	    if ((num_tokens == 4) &&
 		(!strncmp (tokens[1], "nodes", lengths[1]) ||
@@ -208,6 +241,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 		else
 		  {
 		    print_metric_v1 (stream, res);
+		    exit = 1;
 		  }
 	      }
 	    else if (!strncmp (tokens[1], "err", lengths[1]))
@@ -224,6 +258,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 	    else
 	      {
 		print_metric_v1 (stream, res);
+		exit = 1;
 	      }
 	  }
       break;
@@ -231,8 +266,8 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
       if (res->combined_counter_vec == 0)
 	return;
-      for (k = 0; k < vec_len (res->combined_counter_vec); k++)
-	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
+      for (k = 0; k < vec_len (res->combined_counter_vec) && !exit; k++)
+	for (j = 0; j < vec_len (res->combined_counter_vec[k]) && !exit; j++)
 	  {
 	    if ((num_tokens == 4) &&
 		!strncmp (tokens[1], "interfaces", lengths[1]))
@@ -255,6 +290,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
 	    else
 	      {
 		print_metric_v1 (stream, res);
+		exit = 1;
 	      }
 	  }
       break;
@@ -321,14 +357,20 @@ retry:
   stat_segment_data_free (res);
 }
 
-
-#define ROOTPAGE  "<html><head><title>Metrics exporter</title></head><body><ul><li><a href=\"/metrics\">metrics</a></li></ul></body></html>"
-#define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
+#define ROOTPAGE                                                              \
+  "<html><head><title>Metrics exporter</title></head><body><ul><li><a "       \
+  "href=\"/metrics\">metrics</a></li></ul></body></html>"
+#define NOT_FOUND_ERROR                                                       \
+  "<html><head><title>Document not found</title></head><body><h1>404 - "      \
+  "Document not found</h1></body></html>"
 
 static void
-http_handler (FILE *stream, u8 **patterns, u8 v2)
+http_handler (FILE *stream, u8 *stat_segment_name, u8 **patterns, u8 v2)
 {
   char status[80] = { 0 };
+  int rv;
+  u8 *str = 0;
+
   if (fgets (status, sizeof (status) - 1, stream) == 0)
     {
       fprintf (stderr, "fgets error: %s %s\n", status, strerror (errno));
@@ -371,14 +413,26 @@ http_handler (FILE *stream, u8 **patterns, u8 v2)
     }
   if (strcmp (request_uri, "/metrics") != 0)
     {
-      fprintf (stream,
-	       "HTTP/1.0 404 Not Found\r\nContent-Length: %lu\r\n\r\n",
+      fprintf (stream, "HTTP/1.0 404 Not Found\r\nContent-Length: %lu\r\n\r\n",
 	       (unsigned long) strlen (NOT_FOUND_ERROR));
       fputs (NOT_FOUND_ERROR, stream);
       return;
     }
+  rv = stat_segment_connect ((char *) stat_segment_name);
+  if (rv)
+    {
+      str = format (str, "Couldn't connect to vpp, does %s exist?\n",
+		    stat_segment_name);
+      fputs ((char *) str, stderr);
+      fputs ("HTTP/1.0 500 Internal Server Error\r\nContent-Type: "
+	     "text/plain\r\n\r\n",
+	     stream);
+      fputs ((char *) str, stream);
+      return;
+    }
   fputs ("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n", stream);
   dump_metrics (stream, patterns, v2);
+  stat_segment_disconnect ();
 }
 
 static int
@@ -433,21 +487,28 @@ union my_sockaddr
   struct sockaddr_in6 sin6_addr;
 };
 
-
-
 int
 main (int argc, char **argv)
 {
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   u16 port = SERVER_PORT;
+  struct timeval tv;
+  fd_set rfdset;
   char *usage =
     "%s: usage [socket-name <name>] [port <0 - 65535>] [v2] <patterns> ...\n";
-  int rv;
   u8 v2 = 0;
 
   /* Allocating 256MB heap */
   clib_mem_init (0, 256 << 20);
+
+  int sig_err = set_signal_handlers ();
+  if (sig_err)
+    {
+      fprintf (stderr, "Failed to set signal handler: %s\n",
+	       strsignal (sig_err));
+      exit (1);
+    }
 
   unformat_init_command_line (a, argv);
 
@@ -478,39 +539,54 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  rv = stat_segment_connect ((char *) stat_segment_name);
-  if (rv)
-    {
-      fformat (stderr, "Couldn't connect to vpp, does %s exist?\n",
-	       stat_segment_name);
-      exit (1);
-    }
-
   int fd = start_listen (port);
   if (fd < 0)
     {
+      fprintf (stderr, "Start listen error\n");
       exit (1);
     }
-  for (;;)
+
+  for (; !APP_TERM;)
     {
+      // To check the termination condition of the application, make the
+      // incoming connection check non-blocking.
+      tv.tv_sec = 0;
+      tv.tv_usec = WAIT_SELECT_MICROSECONDS;
+
+      FD_ZERO (&rfdset);
+      FD_SET (fd, &rfdset);
+
+      int select_ret = select (fd + 1, &rfdset, NULL, NULL, &tv);
+      if (select_ret < 0)
+	{
+	  if (errno != EINTR)
+	    {
+	      fprintf (stderr, "Select failed: %s\n", strerror (errno));
+	      break;
+	    }
+	  continue;
+	}
+      else if (!FD_ISSET (fd, &rfdset))
+	{
+	  continue;
+	}
+
       int conn_sock = accept (fd, NULL, NULL);
       if (conn_sock < 0)
 	{
-	  fprintf (stderr, "Accept failed: %s", strerror (errno));
+	  fprintf (stderr, "Accept failed: %s\n", strerror (errno));
 	  continue;
 	}
-      else
+
+      struct sockaddr_in6 clientaddr = { 0 };
+      char address[INET6_ADDRSTRLEN];
+      socklen_t addrlen;
+      getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);
+      if (inet_ntop (AF_INET6, &clientaddr.sin6_addr, address,
+		     sizeof (address)))
 	{
-	  struct sockaddr_in6 clientaddr = { 0 };
-	  char address[INET6_ADDRSTRLEN];
-	  socklen_t addrlen;
-	  getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);
-	  if (inet_ntop
-	      (AF_INET6, &clientaddr.sin6_addr, address, sizeof (address)))
-	    {
-	      fprintf (stderr, "Client address is [%s]:%d\n", address,
-		       ntohs (clientaddr.sin6_port));
-	    }
+	  fprintf (stderr, "Client address is [%s]:%d\n", address,
+		   ntohs (clientaddr.sin6_port));
 	}
 
       FILE *stream = fdopen (conn_sock, "r+");
@@ -520,14 +596,31 @@ main (int argc, char **argv)
 	  close (conn_sock);
 	  continue;
 	}
+      uint64_t time_start = _time_now_nsec ();
       /* Single reader at the moment */
-      http_handler (stream, patterns, v2);
+      http_handler (stream, stat_segment_name, patterns, v2);
+      uint64_t time_stop = _time_now_nsec ();
       fclose (stream);
+
+      if (time_stop > time_start)
+	{
+	  double time_elapsed = (double) (time_stop - time_start) / 1e9;
+	  fprintf (stderr, "Request processing time: %5.6f sec\n",
+		   time_elapsed);
+	  if (time_elapsed > TIME_REQUEST_PROCESS_MAX_SECONDS)
+	    {
+	      fprintf (stderr, "Request processing time is too long!\n");
+	    }
+	}
     }
+  if (SIGNAL_LAST_HANDLED)
+    {
+      fprintf (stderr, "The signal is received: %s\n",
+	       strsignal (SIGNAL_LAST_HANDLED));
+    }
+  fprintf (stderr, "Application is completed.\n");
 
-  stat_segment_disconnect ();
   close (fd);
-
   exit (0);
 }
 
