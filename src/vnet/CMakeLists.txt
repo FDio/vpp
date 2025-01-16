@@ -524,6 +524,7 @@ list(APPEND VNET_SOURCES
   crypto/cli.c
   crypto/crypto.c
   crypto/format.c
+  crypto/main.c
   crypto/node.c
   crypto/crypto_api.c
 )
