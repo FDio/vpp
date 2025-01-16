@@ -195,7 +195,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 
     add_vpp_march_variant(spr
       FLAGS -march=sapphirerapids -mtune=sapphirerapids -mprefer-vector-width=512
-      OFF
     )
 
     add_vpp_march_variant(znver4
