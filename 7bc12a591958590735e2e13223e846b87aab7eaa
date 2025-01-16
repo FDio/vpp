@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8891bc0f_a1176dd4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-16T22:24:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d622bac1_d7eace0e",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4aefdf4_2c840665",
@@ -53,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "23917b43_2e6d4e5f",
+        "filename": "build/external/mlx_rdma_dpdk_matrix.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-16T22:24:29Z",
+      "side": 1,
+      "message": "My concern is that MLX_DEFUALT checks for exact version of dpdk to be present in the file, the check is:\n```\nDPDK_MLX_DEFAULT               :\u003d $(shell if grep -q \"rdma\u003d$(rdma-core_version) dpdk\u003d$(dpdk_version)\" mlx_rdma_dpdk_matrix.txt; then echo \u0027y\u0027; else echo \u0027n\u0027; fi)\n```\n\nTherefore MLX_DEFAULT would be always no if I would omit that line. I can do that though.",
+      "parentUuid": "78a49ef7_1a662c47",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0efc8f1c_bc60afa0",
@@ -70,6 +106,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1e17da6_1ed085f8",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-16T22:24:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0efc8f1c_bc60afa0",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5d5bf83e_06fa5073",
@@ -83,6 +137,24 @@
       "writtenOn": "2025-01-15T17:17:21Z",
       "side": 1,
       "message": "24.11",
+      "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5123b5d_a06ab44f",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-16T22:24:29Z",
+      "side": 1,
+      "message": "As discussed, I\u0027ll leave it as-is beucase 24.11.1 patches a CVE.",
+      "parentUuid": "5d5bf83e_06fa5073",
       "revId": "7bc12a591958590735e2e13223e846b87aab7eaa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
