@@ -28,23 +28,29 @@ static openssl_per_thread_data_t *per_thread_data;
 static u32 num_threads;
 
 #define foreach_openssl_aes_evp_op                                            \
-  _ (cbc, DES_CBC, EVP_des_cbc)                                               \
-  _ (cbc, 3DES_CBC, EVP_des_ede3_cbc)                                         \
-  _ (cbc, AES_128_CBC, EVP_aes_128_cbc)                                       \
-  _ (cbc, AES_192_CBC, EVP_aes_192_cbc)                                       \
-  _ (cbc, AES_256_CBC, EVP_aes_256_cbc)                                       \
-  _ (gcm, AES_128_GCM, EVP_aes_128_gcm)                                       \
-  _ (gcm, AES_192_GCM, EVP_aes_192_gcm)                                       \
-  _ (gcm, AES_256_GCM, EVP_aes_256_gcm)                                       \
-  _ (cbc, AES_128_CTR, EVP_aes_128_ctr)                                       \
-  _ (cbc, AES_192_CTR, EVP_aes_192_ctr)                                       \
-  _ (cbc, AES_256_CTR, EVP_aes_256_ctr)                                       \
-  _ (null_gmac, AES_128_NULL_GMAC, EVP_aes_128_gcm)                           \
-  _ (null_gmac, AES_192_NULL_GMAC, EVP_aes_192_gcm)                           \
-  _ (null_gmac, AES_256_NULL_GMAC, EVP_aes_256_gcm)
+  _ (cbc, DES_CBC, EVP_des_cbc, 0, 0)                                         \
+  _ (cbc, 3DES_CBC, EVP_des_ede3_cbc, 0, 0)                                   \
+  _ (cbc, AES_128_CBC, EVP_aes_128_cbc, 0, 0)                                 \
+  _ (cbc, AES_192_CBC, EVP_aes_192_cbc, 0, 0)                                 \
+  _ (cbc, AES_256_CBC, EVP_aes_256_cbc, 0, 0)                                 \
+  _ (gcm, AES_128_GCM, EVP_aes_128_gcm, 0, 0)                                 \
+  _ (gcm, AES_128_GCM_TAG16_AAD8, EVP_aes_128_gcm, 1, 8)                      \
+  _ (gcm, AES_128_GCM_TAG16_AAD12, EVP_aes_128_gcm, 1, 12)                    \
+  _ (gcm, AES_192_GCM, EVP_aes_192_gcm, 0, 0)                                 \
+  _ (gcm, AES_192_GCM_TAG16_AAD8, EVP_aes_192_gcm, 1, 8)                      \
+  _ (gcm, AES_192_GCM_TAG16_AAD12, EVP_aes_192_gcm, 1, 12)                    \
+  _ (gcm, AES_256_GCM, EVP_aes_256_gcm, 0, 0)                                 \
+  _ (gcm, AES_256_GCM_TAG16_AAD8, EVP_aes_256_gcm, 1, 8)                      \
+  _ (gcm, AES_256_GCM_TAG16_AAD12, EVP_aes_256_gcm, 1, 12)                    \
+  _ (cbc, AES_128_CTR, EVP_aes_128_ctr, 0, 0)                                 \
+  _ (cbc, AES_192_CTR, EVP_aes_192_ctr, 0, 0)                                 \
+  _ (cbc, AES_256_CTR, EVP_aes_256_ctr, 0, 0)                                 \
+  _ (null_gmac, AES_128_NULL_GMAC, EVP_aes_128_gcm, 0, 0)                     \
+  _ (null_gmac, AES_192_NULL_GMAC, EVP_aes_192_gcm, 0, 0)                     \
+  _ (null_gmac, AES_256_NULL_GMAC, EVP_aes_256_gcm, 0, 0)
 
 #define foreach_openssl_chacha20_evp_op                                       \
-  _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305)
+  _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305, 0, 0)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #define foreach_openssl_evp_op foreach_openssl_aes_evp_op \
@@ -81,7 +87,7 @@ crypto_openssl_main_t crypto_openssl_main;
 static_always_inline u32
 openssl_ops_enc_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher)
+		     const EVP_CIPHER *cipher, u32 fixed, u32 aad_len)
 {
   openssl_per_thread_data_t *ptd = per_thread_data + vm->thread_index;
   EVP_CIPHER_CTX *ctx;
@@ -135,7 +141,7 @@ openssl_ops_enc_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 static_always_inline u32
 openssl_ops_dec_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher)
+		     const EVP_CIPHER *cipher, u32 fixed, u32 aad_len)
 {
   openssl_per_thread_data_t *ptd = per_thread_data + vm->thread_index;
   EVP_CIPHER_CTX *ctx;
@@ -189,7 +195,8 @@ openssl_ops_dec_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 static_always_inline u32
 openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		      vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		      const EVP_CIPHER *cipher, int is_gcm, int is_gmac)
+		      const EVP_CIPHER *cipher, int is_gcm, int is_gmac,
+		      u32 fixed, u32 aadlen)
 {
   openssl_per_thread_data_t *ptd = per_thread_data + vm->thread_index;
   EVP_CIPHER_CTX *ctx;
@@ -199,6 +206,7 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     {
       vnet_crypto_op_t *op = ops[i];
       int len = 0;
+      u32 taglen = 16;
 
       if (i + 2 < n_ops)
 	{
@@ -213,8 +221,14 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
       ctx = ptd->evp_cipher_enc_ctx[op->key_index];
       EVP_EncryptInit_ex (ctx, 0, 0, NULL, op->iv);
-      if (op->aad_len)
-	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, op->aad_len);
+      if (!fixed)
+	{
+	  taglen = op->tag_len;
+	  aadlen = op->aad_len;
+	}
+
+      if (aadlen)
+	EVP_EncryptUpdate (ctx, NULL, &len, op->aad, aadlen);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  chp = chunks + op->chunk_index;
@@ -228,7 +242,7 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       else
 	EVP_EncryptUpdate (ctx, is_gmac ? 0 : op->dst, &len, op->src, op->len);
       EVP_EncryptFinal_ex (ctx, is_gmac ? 0 : op->dst + len, &len);
-      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_GET_TAG, op->tag_len, op->tag);
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_GET_TAG, taglen, op->tag);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
@@ -237,34 +251,36 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 static_always_inline u32
 openssl_ops_enc_null_gmac (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-			   const EVP_CIPHER *cipher)
+			   const EVP_CIPHER *cipher, u32 fixed, u32 aadlen)
 {
   return openssl_ops_enc_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 1, /* is_gmac */ 1);
+			       /* is_gcm */ 1, /* is_gmac */ 1, fixed, aadlen);
 }
 
 static_always_inline u32
 openssl_ops_enc_gcm (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher)
+		     const EVP_CIPHER *cipher, u32 fixed, u32 aadlen)
 {
   return openssl_ops_enc_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 1, /* is_gmac */ 0);
+			       /* is_gcm */ 1, /* is_gmac */ 0, fixed, aadlen);
 }
 
 static_always_inline __clib_unused u32
 openssl_ops_enc_chacha20_poly1305 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 				   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-				   const EVP_CIPHER *cipher)
+				   const EVP_CIPHER *cipher, u32 fixed,
+				   u32 aadlen)
 {
   return openssl_ops_enc_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 0, /* is_gmac */ 0);
+			       /* is_gcm */ 0, /* is_gmac */ 0, fixed, aadlen);
 }
 
 static_always_inline u32
 openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		      vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		      const EVP_CIPHER *cipher, int is_gcm, int is_gmac)
+		      const EVP_CIPHER *cipher, int is_gcm, int is_gmac,
+		      u32 fixed, u32 aadlen)
 {
   openssl_per_thread_data_t *ptd = per_thread_data + vm->thread_index;
   EVP_CIPHER_CTX *ctx;
@@ -274,11 +290,17 @@ openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     {
       vnet_crypto_op_t *op = ops[i];
       int len = 0;
+      u32 taglen = 16;
 
+      if (!fixed)
+	{
+	  taglen = op->tag_len;
+	  aadlen = op->aad_len;
+	}
       ctx = ptd->evp_cipher_dec_ctx[op->key_index];
       EVP_DecryptInit_ex (ctx, 0, 0, NULL, op->iv);
       if (op->aad_len)
-	EVP_DecryptUpdate (ctx, 0, &len, op->aad, op->aad_len);
+	EVP_DecryptUpdate (ctx, 0, &len, op->aad, aadlen);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  chp = chunks + op->chunk_index;
@@ -294,7 +316,7 @@ openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	  EVP_DecryptUpdate (ctx, is_gmac ? 0 : op->dst, &len, op->src,
 			     op->len);
 	}
-      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, op->tag_len, op->tag);
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, taglen, op->tag);
 
       if (EVP_DecryptFinal_ex (ctx, is_gmac ? 0 : op->dst + len, &len) > 0)
 	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
@@ -310,28 +332,32 @@ openssl_ops_dec_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 static_always_inline u32
 openssl_ops_dec_null_gmac (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-			   const EVP_CIPHER *cipher)
+			   const EVP_CIPHER *cipher, u32 fixed, u32 aad_len)
 {
   return openssl_ops_dec_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 1, /* is_gmac */ 1);
+			       /* is_gcm */ 1, /* is_gmac */ 1, fixed,
+			       aad_len);
 }
 
 static_always_inline u32
 openssl_ops_dec_gcm (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 		     vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-		     const EVP_CIPHER *cipher)
+		     const EVP_CIPHER *cipher, u32 fixed, u32 aad_len)
 {
   return openssl_ops_dec_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 1, /* is_gmac */ 0);
+			       /* is_gcm */ 1, /* is_gmac */ 0, fixed,
+			       aad_len);
 }
 
 static_always_inline __clib_unused u32
 openssl_ops_dec_chacha20_poly1305 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 				   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-				   const EVP_CIPHER *cipher)
+				   const EVP_CIPHER *cipher, u32 fixed,
+				   u32 aad_len)
 {
   return openssl_ops_dec_aead (vm, ops, chunks, n_ops, cipher,
-			       /* is_gcm */ 0, /* is_gmac */ 0);
+			       /* is_gcm */ 0, /* is_gmac */ 0, fixed,
+			       aad_len);
 }
 
 static_always_inline u32
@@ -539,31 +565,31 @@ crypto_openssl_key_handler (vnet_crypto_key_op_t kop,
   cm->ctx_fn[key->alg](key, kop, idx);
 }
 
-#define _(m, a, b)                                                            \
+#define _(m, a, b, f, l)                                                      \
   static u32 openssl_ops_enc_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],   \
 				  u32 n_ops)                                  \
   {                                                                           \
-    return openssl_ops_enc_##m (vm, ops, 0, n_ops, b ());                     \
+    return openssl_ops_enc_##m (vm, ops, 0, n_ops, b (), f, l);               \
   }                                                                           \
                                                                               \
   u32 openssl_ops_dec_##a (vlib_main_t *vm, vnet_crypto_op_t *ops[],          \
 			   u32 n_ops)                                         \
   {                                                                           \
-    return openssl_ops_dec_##m (vm, ops, 0, n_ops, b ());                     \
+    return openssl_ops_dec_##m (vm, ops, 0, n_ops, b (), f, l);               \
   }                                                                           \
                                                                               \
   static u32 openssl_ops_enc_chained_##a (                                    \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
     u32 n_ops)                                                                \
   {                                                                           \
-    return openssl_ops_enc_##m (vm, ops, chunks, n_ops, b ());                \
+    return openssl_ops_enc_##m (vm, ops, chunks, n_ops, b (), f, l);          \
   }                                                                           \
                                                                               \
   static u32 openssl_ops_dec_chained_##a (                                    \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
     u32 n_ops)                                                                \
   {                                                                           \
-    return openssl_ops_dec_##m (vm, ops, chunks, n_ops, b ());                \
+    return openssl_ops_dec_##m (vm, ops, chunks, n_ops, b (), f, l);          \
   }                                                                           \
   static void *openssl_ctx_##a (vnet_crypto_key_t *key,                       \
 				vnet_crypto_key_op_t kop,                     \
@@ -630,7 +656,7 @@ crypto_openssl_init (vnet_crypto_engine_registration_t *r)
 
   RAND_seed (seed, sizeof (seed));
 
-#define _(m, a, b) cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_##a;
+#define _(m, a, b, f, l) cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_##a;
   foreach_openssl_evp_op;
 #undef _
 
@@ -648,7 +674,7 @@ crypto_openssl_init (vnet_crypto_engine_registration_t *r)
 }
 
 vnet_crypto_engine_op_handlers_t op_handlers[] = {
-#define _(m, a, b)                                                            \
+#define _(m, a, b, f, l)                                                      \
   {                                                                           \
     .opt = VNET_CRYPTO_OP_##a##_ENC,                                          \
     .fn = openssl_ops_enc_##a,                                                \
