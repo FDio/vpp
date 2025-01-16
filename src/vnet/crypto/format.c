@@ -22,7 +22,7 @@ format_vnet_crypto_alg (u8 * s, va_list * args)
 {
   vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_alg_data_t *d = vec_elt_at_index (cm->algs, alg);
+  vnet_crypto_alg_data_t *d = cm->algs + alg;
   return format (s, "%s", d->name);
 }
 
@@ -105,6 +105,7 @@ format_vnet_crypto_engine (u8 * s, va_list * args)
   return format (s, "%s", e->name);
 }
 
+#if 0
 u8 *
 format_vnet_crypto_async_op_type (u8 * s, va_list * args)
 {
@@ -125,7 +126,7 @@ format_vnet_crypto_async_op_type (u8 * s, va_list * args)
 u8 *
 format_vnet_crypto_async_alg (u8 * s, va_list * args)
 {
-  vnet_crypto_async_alg_t alg = va_arg (*args, vnet_crypto_async_alg_t);
+  vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_alg_data_t *d = vec_elt_at_index (cm->async_algs, alg);
   return format (s, "%s", d->name);
@@ -141,6 +142,7 @@ format_vnet_crypto_async_op (u8 * s, va_list * args)
   return format (s, "%U-%U", format_vnet_crypto_async_op_type, otd->type,
 		 format_vnet_crypto_async_alg, otd->alg);
 }
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -1,16 +1,5 @@
-/*
- * Copyright (c) 2018 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
 #include <stdbool.h>
@@ -21,8 +10,6 @@
 #include <vlib/log.h>
 #include <dlfcn.h>
 #include <dirent.h>
-
-vnet_crypto_main_t crypto_main;
 
 VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
   .class_name = "crypto",
@@ -52,26 +39,31 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 				      vnet_crypto_op_chunk_t * chunks,
 				      u32 n_ops)
 {
+  vnet_crypto_op_data_t *od = cm->opt_data + opt;
   u32 rv = 0;
   if (n_ops == 0)
     return 0;
 
   if (chunks)
     {
+      vnet_crypto_chained_op_fn_t *fn =
+	od->handlers[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
 
-      if (cm->chained_ops_handlers[opt] == 0)
+      if (fn == 0)
 	crypto_set_op_status (ops, n_ops,
 			      VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
       else
-	rv = (cm->chained_ops_handlers[opt]) (vm, ops, chunks, n_ops);
+	rv = fn (vm, ops, chunks, n_ops);
     }
   else
     {
-      if (cm->ops_handlers[opt] == 0)
+      vnet_crypto_simple_op_fn_t *fn =
+	od->handlers[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+      if (fn == 0)
 	crypto_set_op_status (ops, n_ops,
 			      VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
       else
-	rv = (cm->ops_handlers[opt]) (vm, ops, n_ops);
+	rv = fn (vm, ops, n_ops);
     }
   return rv;
 }
@@ -141,48 +133,34 @@ vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
 }
 
 static_always_inline void
-crypto_set_active_engine (vnet_crypto_op_data_t * od,
-			  vnet_crypto_op_id_t id, u32 ei,
-			  crypto_op_class_type_t oct)
+crypto_set_active_engine (vnet_crypto_op_data_t *od, vnet_crypto_op_id_t id,
+			  u32 ei, vnet_crypto_handler_type_t t)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ce = vec_elt_at_index (cm->engines, ei);
 
-  if (oct == CRYPTO_OP_BOTH || oct == CRYPTO_OP_CHAINED)
+  if (ce->ops[id].handlers[t])
     {
-      if (ce->chained_ops_handlers[id])
-	{
-	  od->active_engine_index_chained = ei;
-	  cm->chained_ops_handlers[id] = ce->chained_ops_handlers[id];
-	}
-    }
-
-  if (oct == CRYPTO_OP_BOTH || oct == CRYPTO_OP_SIMPLE)
-    {
-      if (ce->ops_handlers[id])
-	{
-	  od->active_engine_index_simple = ei;
-	  cm->ops_handlers[id] = ce->ops_handlers[id];
-	}
+      od->active_engine_index[t] = ei;
+      cm->opt_data[id].handlers[t] = ce->ops[id].handlers[t];
     }
 }
 
 int
-vnet_crypto_set_handler2 (char *alg_name, char *engine,
-			  crypto_op_class_type_t oct)
+vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *a)
 {
   uword *p;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_data_t *ad;
   int i;
 
-  p = hash_get_mem (cm->alg_index_by_name, alg_name);
+  p = hash_get_mem (cm->alg_index_by_name, a->handler_name);
   if (!p)
     return -1;
 
-  ad = vec_elt_at_index (cm->algs, p[0]);
+  ad = cm->algs + p[0];
 
-  p = hash_get_mem (cm->engine_index_by_name, engine);
+  p = hash_get_mem (cm->engine_index_by_name, a->engine);
   if (!p)
     return -1;
 
@@ -194,7 +172,15 @@ vnet_crypto_set_handler2 (char *alg_name, char *engine,
 	continue;
 
       od = cm->opt_data + id;
-      crypto_set_active_engine (od, id, p[0], oct);
+      if (a->set_async)
+	crypto_set_active_engine (od, id, p[0],
+				  VNET_CRYPTO_HANDLER_TYPE_ASYNC);
+      if (a->set_simple)
+	crypto_set_active_engine (od, id, p[0],
+				  VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
+      if (a->set_chained)
+	crypto_set_active_engine (od, id, p[0],
+				  VNET_CRYPTO_HANDLER_TYPE_CHAINED);
     }
 
   return 0;
@@ -207,117 +193,109 @@ vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
   vnet_crypto_op_id_t opt = 0;
   int i;
 
-  if (alg >= vec_len (cm->algs))
+  if (alg >= ARRAY_LEN (cm->algs))
     return 0;
 
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     if ((opt = cm->algs[alg].op_by_type[i]) != 0)
       break;
 
-  if (opt >= vec_len (cm->ops_handlers))
-    return 0;
-
-  return NULL != cm->ops_handlers[opt];
+  return NULL != cm->opt_data[opt].handlers[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
 }
 
 void
-vnet_crypto_register_ops_handler_inline (vlib_main_t * vm, u32 engine_index,
+vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
 					 vnet_crypto_op_id_t opt,
-					 vnet_crypto_ops_handler_t * fn,
-					 vnet_crypto_chained_ops_handler_t *
-					 cfn)
+					 vnet_crypto_simple_op_fn_t *fn,
+					 vnet_crypto_chained_op_fn_t *cfn)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
   vnet_crypto_op_data_t *otd = cm->opt_data + opt;
-  vec_validate_aligned (cm->ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
-			CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->chained_ops_handlers, VNET_CRYPTO_N_OP_IDS - 1,
-			CLIB_CACHE_LINE_BYTES);
 
   if (fn)
     {
-      e->ops_handlers[opt] = fn;
-      if (otd->active_engine_index_simple == ~0)
+      vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
+      e->ops[opt].handlers[t] = fn;
+      if (!otd->active_engine_index[t])
 	{
-	  otd->active_engine_index_simple = engine_index;
-	  cm->ops_handlers[opt] = fn;
+	  otd->active_engine_index[t] = engine_index;
+	  cm->opt_data[opt].handlers[t] = fn;
 	}
 
-      ae = vec_elt_at_index (cm->engines, otd->active_engine_index_simple);
+      ae = vec_elt_at_index (cm->engines, otd->active_engine_index[t]);
       if (ae->priority < e->priority)
-	crypto_set_active_engine (otd, opt, engine_index, CRYPTO_OP_SIMPLE);
+	crypto_set_active_engine (otd, opt, engine_index, t);
     }
 
   if (cfn)
     {
-      e->chained_ops_handlers[opt] = cfn;
-      if (otd->active_engine_index_chained == ~0)
+      vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_CHAINED;
+      e->ops[opt].handlers[t] = cfn;
+      if (otd->active_engine_index[t])
 	{
-	  otd->active_engine_index_chained = engine_index;
-	  cm->chained_ops_handlers[opt] = cfn;
+	  otd->active_engine_index[t] = engine_index;
+	  cm->opt_data[opt].handlers[t] = cfn;
 	}
 
-      ae = vec_elt_at_index (cm->engines, otd->active_engine_index_chained);
+      ae = vec_elt_at_index (cm->engines, otd->active_engine_index[t]);
       if (ae->priority < e->priority)
-	crypto_set_active_engine (otd, opt, engine_index, CRYPTO_OP_CHAINED);
+	crypto_set_active_engine (otd, opt, engine_index, t);
     }
 
   return;
 }
 
 void
-vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
+vnet_crypto_register_ops_handler (vlib_main_t *vm, u32 engine_index,
 				  vnet_crypto_op_id_t opt,
-				  vnet_crypto_ops_handler_t * fn)
+				  vnet_crypto_simple_op_fn_t *fn)
 {
   vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, 0);
 }
 
 void
-vnet_crypto_register_chained_ops_handler (vlib_main_t * vm, u32 engine_index,
+vnet_crypto_register_chained_ops_handler (vlib_main_t *vm, u32 engine_index,
 					  vnet_crypto_op_id_t opt,
-					  vnet_crypto_chained_ops_handler_t *
-					  fn)
+					  vnet_crypto_chained_op_fn_t *fn)
 {
   vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, 0, fn);
 }
 
 void
-vnet_crypto_register_ops_handlers (vlib_main_t * vm, u32 engine_index,
+vnet_crypto_register_ops_handlers (vlib_main_t *vm, u32 engine_index,
 				   vnet_crypto_op_id_t opt,
-				   vnet_crypto_ops_handler_t * fn,
-				   vnet_crypto_chained_ops_handler_t * cfn)
+				   vnet_crypto_simple_op_fn_t *fn,
+				   vnet_crypto_chained_op_fn_t *cfn)
 {
   vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, cfn);
 }
 
 void
 vnet_crypto_register_enqueue_handler (vlib_main_t *vm, u32 engine_index,
-				      vnet_crypto_async_op_id_t opt,
-				      vnet_crypto_frame_enqueue_t *enqueue_hdl)
+				      vnet_crypto_op_id_t opt,
+				      vnet_crypto_frame_enq_fn_t *enqueue_hdl)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
-  vnet_crypto_async_op_data_t *otd = cm->async_opt_data + opt;
-  vec_validate_aligned (cm->enqueue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS,
-			CLIB_CACHE_LINE_BYTES);
+  vnet_crypto_op_data_t *otd = cm->opt_data + opt;
+  vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
 
   if (!enqueue_hdl)
     return;
 
-  e->enqueue_handlers[opt] = enqueue_hdl;
-  if (otd->active_engine_index_async == ~0)
+  e->ops[opt].handlers[t] = enqueue_hdl;
+  if (!otd->active_engine_index[t])
     {
-      otd->active_engine_index_async = engine_index;
-      cm->enqueue_handlers[opt] = enqueue_hdl;
+      otd->active_engine_index[t] = engine_index;
+      otd->handlers[t] = enqueue_hdl;
     }
 
-  ae = vec_elt_at_index (cm->engines, otd->active_engine_index_async);
+  ae = vec_elt_at_index (cm->engines, otd->active_engine_index[t]);
   if (ae->priority <= e->priority)
     {
-      otd->active_engine_index_async = engine_index;
-      cm->enqueue_handlers[opt] = enqueue_hdl;
+      otd->active_engine_index[t] = engine_index;
+      otd->handlers[t] = enqueue_hdl;
     }
 
   return;
@@ -340,21 +318,23 @@ static void
 vnet_crypto_update_cm_dequeue_handlers (void)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_async_op_data_t *otd;
+  vnet_crypto_op_data_t *otd;
   vnet_crypto_engine_t *e;
   u32 *active_engines = 0, *ei, last_ei = ~0, i;
 
   vec_reset_length (cm->dequeue_handlers);
 
-  for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_IDS; i++)
+  for (i = 0; i < VNET_CRYPTO_N_OP_IDS; i++)
     {
-      otd = cm->async_opt_data + i;
-      if (otd->active_engine_index_async == ~0)
+      otd = cm->opt_data + i;
+      if (!otd->active_engine_index[VNET_CRYPTO_HANDLER_TYPE_ASYNC])
 	continue;
-      e = cm->engines + otd->active_engine_index_async;
+      e =
+	cm->engines + otd->active_engine_index[VNET_CRYPTO_HANDLER_TYPE_ASYNC];
       if (!e->dequeue_handler)
 	continue;
-      vec_add1 (active_engines, otd->active_engine_index_async);
+      vec_add1 (active_engines,
+		otd->active_engine_index[VNET_CRYPTO_HANDLER_TYPE_ASYNC]);
     }
 
   vec_sort_with_function (active_engines, engine_index_cmp);
@@ -392,47 +372,13 @@ vnet_crypto_register_dequeue_handler (vlib_main_t *vm, u32 engine_index,
 }
 
 void
-vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
-				  vnet_crypto_key_handler_t * key_handler)
+vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
+				  vnet_crypto_key_fn_t *key_handler)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine_index);
   e->key_op_handler = key_handler;
   return;
-}
-
-static int
-vnet_crypto_key_len_check (vnet_crypto_alg_t alg, u16 length)
-{
-  switch (alg)
-    {
-    case VNET_CRYPTO_N_ALGS:
-      return 0;
-    case VNET_CRYPTO_ALG_NONE:
-      return 1;
-
-#define _(n, s, l) \
-      case VNET_CRYPTO_ALG_##n: \
-        if ((l) == length) \
-          return 1;        \
-        break;
-      foreach_crypto_cipher_alg foreach_crypto_aead_alg
-#undef _
-	/* HMAC allows any key length */
-#define _(n, s) \
-      case VNET_CRYPTO_ALG_HMAC_##n: \
-        return 1;
-	foreach_crypto_hmac_alg
-#undef _
-
-#define _(n, s)                                                               \
-  case VNET_CRYPTO_ALG_HASH_##n:                                              \
-    return 1;
-	  foreach_crypto_hash_alg
-#undef _
-    }
-
-  return 0;
 }
 
 u32
@@ -443,12 +389,23 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key, **kp;
+  vnet_crypto_alg_data_t *ad = cm->algs + alg;
   u32 alloc_sz = sizeof (vnet_crypto_key_t) + round_pow2 (length, 16);
-
   u8 need_barrier_sync = 0;
 
-  if (!vnet_crypto_key_len_check (alg, length))
+  ASSERT (alg != 0);
+
+  if (length == 0)
     return ~0;
+
+  if (ad->variable_key_length == 0)
+    {
+      if (ad->key_length == 0)
+	return ~0;
+
+      if (ad->key_length != length)
+	return ~0;
+    }
 
   need_barrier_sync = pool_get_will_expand (cm->keys);
   /* If the cm->keys will expand, stop the parade. */
@@ -503,7 +460,7 @@ vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index)
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_MODIFY, index);
 }
 
-vnet_crypto_async_alg_t
+vnet_crypto_alg_t
 vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 		       vnet_crypto_alg_t integ_alg)
 {
@@ -525,7 +482,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key_crypto, *key_integ, *key, **kp;
-  vnet_crypto_async_alg_t linked_alg;
+  vnet_crypto_alg_t linked_alg;
 
   key_crypto = cm->keys[index_crypto];
   key_integ = cm->keys[index_integ];
@@ -553,7 +510,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
     .is_link = 1,
     .index_crypto = index_crypto,
     .index_integ = index_integ,
-    .async_alg = linked_alg,
+    .alg = linked_alg,
   };
 
   vec_foreach (engine, cm->engines)
@@ -561,54 +518,6 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, index);
 
   return index;
-}
-
-static_always_inline void
-crypto_set_active_async_engine (vnet_crypto_async_op_data_t * od,
-				vnet_crypto_async_op_id_t id, u32 ei)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_engine_t *ce = vec_elt_at_index (cm->engines, ei);
-
-  if (ce->enqueue_handlers[id] && ce->dequeue_handler)
-    {
-      od->active_engine_index_async = ei;
-      cm->enqueue_handlers[id] = ce->enqueue_handlers[id];
-    }
-}
-
-int
-vnet_crypto_set_async_handler2 (char *alg_name, char *engine)
-{
-  uword *p;
-  vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_async_alg_data_t *ad;
-  int i;
-
-  p = hash_get_mem (cm->async_alg_index_by_name, alg_name);
-  if (!p)
-    return -1;
-
-  ad = vec_elt_at_index (cm->async_algs, p[0]);
-
-  p = hash_get_mem (cm->engine_index_by_name, engine);
-  if (!p)
-    return -1;
-
-  for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_TYPES; i++)
-    {
-      vnet_crypto_async_op_data_t *od;
-      vnet_crypto_async_op_id_t id = ad->op_by_type[i];
-      if (id == 0)
-	continue;
-
-      od = cm->async_opt_data + id;
-      crypto_set_active_async_engine (od, id, p[0]);
-    }
-
-  vnet_crypto_update_cm_dequeue_handlers ();
-
-  return 0;
 }
 
 u32
@@ -654,84 +563,6 @@ vnet_crypto_set_async_dispatch (u8 mode, u8 adaptive)
       vlib_node_set_flag (ovm, node_index, VLIB_NODE_FLAG_ADAPTIVE_MODE,
 			  adaptive);
     }
-}
-
-int
-vnet_crypto_is_set_async_handler (vnet_crypto_async_op_id_t op)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-
-  return (op < vec_len (cm->enqueue_handlers) &&
-	  NULL != cm->enqueue_handlers[op]);
-}
-
-static void
-vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
-			      vnet_crypto_op_id_t did, char *name, u8 is_aead)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-
-  cm->algs[alg].name = name;
-  cm->algs[alg].is_aead = is_aead;
-  cm->opt_data[eid].alg = cm->opt_data[did].alg = alg;
-  cm->opt_data[eid].active_engine_index_simple = ~0;
-  cm->opt_data[did].active_engine_index_simple = ~0;
-  cm->opt_data[eid].active_engine_index_chained = ~0;
-  cm->opt_data[did].active_engine_index_chained = ~0;
-  cm->opt_data[eid].type = VNET_CRYPTO_OP_TYPE_ENCRYPT;
-  cm->opt_data[did].type = VNET_CRYPTO_OP_TYPE_DECRYPT;
-  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT] = eid;
-  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT] = did;
-  hash_set_mem (cm->alg_index_by_name, name, alg);
-}
-
-static void
-vnet_crypto_init_hash_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t id,
-			    char *name)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  cm->algs[alg].name = name;
-  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HASH] = id;
-  cm->opt_data[id].alg = alg;
-  cm->opt_data[id].active_engine_index_simple = ~0;
-  cm->opt_data[id].active_engine_index_chained = ~0;
-  cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HASH;
-  hash_set_mem (cm->alg_index_by_name, name, alg);
-}
-
-static void
-vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
-			    vnet_crypto_op_id_t id, char *name)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  cm->algs[alg].name = name;
-  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HMAC] = id;
-  cm->opt_data[id].alg = alg;
-  cm->opt_data[id].active_engine_index_simple = ~0;
-  cm->opt_data[id].active_engine_index_chained = ~0;
-  cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HMAC;
-  hash_set_mem (cm->alg_index_by_name, name, alg);
-}
-
-static void
-vnet_crypto_init_async_data (vnet_crypto_async_alg_t alg,
-			     vnet_crypto_async_op_id_t eid,
-			     vnet_crypto_async_op_id_t did, char *name)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-
-  cm->async_algs[alg].name = name;
-  cm->async_algs[alg].op_by_type[VNET_CRYPTO_ASYNC_OP_TYPE_ENCRYPT] = eid;
-  cm->async_algs[alg].op_by_type[VNET_CRYPTO_ASYNC_OP_TYPE_DECRYPT] = did;
-  cm->async_opt_data[eid].type = VNET_CRYPTO_ASYNC_OP_TYPE_ENCRYPT;
-  cm->async_opt_data[eid].alg = alg;
-  cm->async_opt_data[eid].active_engine_index_async = ~0;
-  cm->async_opt_data[eid].active_engine_index_async = ~0;
-  cm->async_opt_data[did].type = VNET_CRYPTO_ASYNC_OP_TYPE_DECRYPT;
-  cm->async_opt_data[did].alg = alg;
-  cm->async_opt_data[did].active_engine_index_async = ~0;
-  cm->async_opt_data[did].active_engine_index_async = ~0;
-  hash_set_mem (cm->async_alg_index_by_name, name, alg);
 }
 
 static void
@@ -851,54 +682,21 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_crypto_thread_t *ct = 0;
+  vnet_crypto_engine_t *p;
 
+  vec_add2 (cm->engines, p, 1);
   cm->engine_index_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
-  cm->async_alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_foreach (ct, cm->threads)
     pool_init_fixed (ct->frame_pool, VNET_CRYPTO_FRAME_POOL_SIZE);
-  vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
-  vec_validate (cm->async_algs, VNET_CRYPTO_N_ASYNC_ALGS);
 
-#define _(n, s, l) \
-  vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
-				VNET_CRYPTO_OP_##n##_ENC, \
-				VNET_CRYPTO_OP_##n##_DEC, s, 0);
-  foreach_crypto_cipher_alg;
-#undef _
-#define _(n, s, l) \
-  vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
-				VNET_CRYPTO_OP_##n##_ENC, \
-				VNET_CRYPTO_OP_##n##_DEC, s, 1);
-  foreach_crypto_aead_alg;
-#undef _
-#define _(n, s) \
-  vnet_crypto_init_hmac_data (VNET_CRYPTO_ALG_HMAC_##n, \
-			      VNET_CRYPTO_OP_##n##_HMAC, "hmac-" s);
-  foreach_crypto_hmac_alg;
-#undef _
-#define _(n, s)                                                               \
-  vnet_crypto_init_hash_data (VNET_CRYPTO_ALG_HASH_##n,                       \
-			      VNET_CRYPTO_OP_##n##_HASH, s);
-  foreach_crypto_hash_alg;
-#undef _
-#define _(n, s, k, t, a) \
-  vnet_crypto_init_async_data (VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a, \
-			       VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC, \
-			       VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC, \
-			       s);
-  foreach_crypto_aead_async_alg
-#undef _
-#define _(c, h, s, k ,d) \
-  vnet_crypto_init_async_data (VNET_CRYPTO_ALG_##c##_##h##_TAG##d, \
-			       VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC, \
-			       VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC, \
-			       s);
-    foreach_crypto_link_async_alg
-#undef _
-    cm->crypto_node_index =
+  FOREACH_ARRAY_ELT (e, cm->algs)
+    if (e->name)
+      hash_set_mem (cm->alg_index_by_name, e->name, e - cm->algs);
+
+  cm->crypto_node_index =
     vlib_get_node_by_name (vm, (u8 *) "crypto-dispatch")->index;
 
   vnet_crypto_load_engines (vm);
@@ -907,11 +705,3 @@ vnet_crypto_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vnet_crypto_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
