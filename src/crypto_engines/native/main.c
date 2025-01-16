@@ -9,7 +9,7 @@
 #include <native/crypto_native.h>
 
 crypto_native_main_t crypto_native_main;
-vnet_crypto_engine_op_handlers_t op_handlers[24], *ophp = op_handlers;
+vnet_crypto_engine_op_handlers_t op_handlers[64], *ophp = op_handlers;
 
 static void
 crypto_native_key_handler (vnet_crypto_key_op_t kop,
