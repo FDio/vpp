@@ -112,19 +112,19 @@ typedef struct
 
 typedef struct
 {
-  vnet_crypto_op_id_t enc_op_id;
-  vnet_crypto_op_id_t dec_op_id;
-  vnet_crypto_alg_t alg;
-  u8 iv_size;
-  u8 block_align;
-  u8 icv_size;
+  const vnet_crypto_op_id_t enc_op_id;
+  const vnet_crypto_op_id_t dec_op_id;
+  const vnet_crypto_alg_t alg;
+  const u8 iv_size;
+  const u8 block_align;
+  const u8 icv_size;
 } ipsec_main_crypto_alg_t;
 
 typedef struct
 {
-  vnet_crypto_op_id_t op_id;
-  vnet_crypto_alg_t alg;
-  u8 icv_size;
+  const vnet_crypto_op_id_t op_id;
+  const vnet_crypto_alg_t alg;
+  const u8 icv_size;
 } ipsec_main_integ_alg_t;
 
 typedef struct
@@ -224,10 +224,10 @@ typedef struct
   u32 esp_default_backend;
 
   /* crypto alg data */
-  ipsec_main_crypto_alg_t *crypto_algs;
+  ipsec_main_crypto_alg_t crypto_algs[IPSEC_CRYPTO_N_ALG];
 
   /* crypto integ data */
-  ipsec_main_integ_alg_t *integ_algs;
+  ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;

@@ -552,6 +552,7 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_spd_policy.c
   ipsec/ipsec_tun.c
   ipsec/ipsec_tun_in.c
+  ipsec/main.c
   ipsec/esp_format.c
   ipsec/esp_encrypt.c
   ipsec/esp_decrypt.c
