@@ -85,6 +85,8 @@ static ipsecmb_main_t ipsecmb_main = { };
   _ (AES_256_GCM_TAG16_AAD8, 256, 1, 8)                                       \
   _ (AES_256_GCM_TAG16_AAD12, 256, 1, 12)
 
+#define foreach_chacha_poly_fixed_aad_lengths _ (0) _ (8) _ (12)
+
 static_always_inline vnet_crypto_op_status_t
 ipsecmb_status_job (IMB_STATUS status)
 {
@@ -548,7 +550,7 @@ ipsecmb_retire_aead_job (IMB_JOB *job, u32 *n_fail)
 
 static_always_inline u32
 ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
-			 IMB_CIPHER_DIRECTION dir)
+			 IMB_CIPHER_DIRECTION dir, u32 fixed, u32 aad_len)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
@@ -579,7 +581,8 @@ ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
       job->key_len_in_bytes = 32;
 
       job->u.CHACHA20_POLY1305.aad = op->aad;
-      job->u.CHACHA20_POLY1305.aad_len_in_bytes = op->aad_len;
+      job->u.CHACHA20_POLY1305.aad_len_in_bytes =
+	fixed ? aad_len : op->aad_len;
       job->src = op->src;
       job->dst = op->dst;
 
@@ -612,20 +615,36 @@ static_always_inline u32
 ipsecmb_ops_chacha_poly_enc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			     u32 n_ops)
 {
-  return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_ENCRYPT);
+  return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_ENCRYPT, 0, 0);
 }
 
 static_always_inline u32
 ipsecmb_ops_chacha_poly_dec (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			     u32 n_ops)
 {
-  return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_DECRYPT);
+  return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_DECRYPT, 0, 0);
 }
 
-static_always_inline u32
-ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
-				 vnet_crypto_op_chunk_t *chunks, u32 n_ops,
-				 IMB_CIPHER_DIRECTION dir)
+#define _(a)                                                                  \
+  static_always_inline u32 ipsecmb_ops_chacha_poly_tag16_aad##a##_enc (       \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_ENCRYPT, 1, a);   \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_chacha_poly_tag16_aad##a##_dec (       \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return ipsecmb_ops_chacha_poly (vm, ops, n_ops, IMB_DIR_DECRYPT, 1, a);   \
+  }
+foreach_chacha_poly_fixed_aad_lengths
+#undef _
+
+  static_always_inline u32
+  ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				   vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+				   IMB_CIPHER_DIRECTION dir, u32 fixed,
+				   u32 aad_len)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
@@ -653,7 +672,7 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	    }
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
-				      op->aad_len);
+				      fixed ? aad_len : op->aad_len);
 
 	  chp = chunks + op->chunk_index;
 	  for (j = 0; j < op->n_chunks; j++)
@@ -663,7 +682,8 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	      chp += 1;
 	    }
 
-	  IMB_CHACHA20_POLY1305_ENC_FINALIZE (m, &ctx, op->tag, op->tag_len);
+	  IMB_CHACHA20_POLY1305_ENC_FINALIZE (m, &ctx, op->tag,
+					      fixed ? 16 : op->tag_len);
 
 	  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 	}
@@ -689,7 +709,7 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	    }
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
-				      op->aad_len);
+				      fixed ? aad_len : op->aad_len);
 
 	  chp = chunks + op->chunk_index;
 	  for (j = 0; j < op->n_chunks; j++)
@@ -699,9 +719,10 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	      chp += 1;
 	    }
 
-	  IMB_CHACHA20_POLY1305_DEC_FINALIZE (m, &ctx, scratch, op->tag_len);
+	  IMB_CHACHA20_POLY1305_DEC_FINALIZE (m, &ctx, scratch,
+					      fixed ? 16 : op->tag_len);
 
-	  if (memcmp (op->tag, scratch, op->tag_len))
+	  if (memcmp (op->tag, scratch, fixed ? 16 : op->tag_len))
 	    {
 	      n_fail = n_fail + 1;
 	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -720,7 +741,7 @@ ipsec_mb_ops_chacha_poly_enc_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 				      u32 n_ops)
 {
   return ipsecmb_ops_chacha_poly_chained (vm, ops, chunks, n_ops,
-					  IMB_DIR_ENCRYPT);
+					  IMB_DIR_ENCRYPT, 0, 0);
 }
 
 static_always_inline u32
@@ -729,13 +750,34 @@ ipsec_mb_ops_chacha_poly_dec_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 				      u32 n_ops)
 {
   return ipsecmb_ops_chacha_poly_chained (vm, ops, chunks, n_ops,
-					  IMB_DIR_DECRYPT);
+					  IMB_DIR_DECRYPT, 0, 0);
 }
+
+#define _(a)                                                                  \
+  static_always_inline u32                                                    \
+    ipsec_mb_ops_chacha_poly_tag16_aad##a##_enc_chained (                     \
+      vlib_main_t *vm, vnet_crypto_op_t *ops[],                               \
+      vnet_crypto_op_chunk_t *chunks, u32 n_ops)                              \
+  {                                                                           \
+    return ipsecmb_ops_chacha_poly_chained (vm, ops, chunks, n_ops,           \
+					    IMB_DIR_ENCRYPT, 1, a);           \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32                                                    \
+    ipsec_mb_ops_chacha_poly_tag16_aad##a##_dec_chained (                     \
+      vlib_main_t *vm, vnet_crypto_op_t *ops[],                               \
+      vnet_crypto_op_chunk_t *chunks, u32 n_ops)                              \
+  {                                                                           \
+    return ipsecmb_ops_chacha_poly_chained (vm, ops, chunks, n_ops,           \
+					    IMB_DIR_DECRYPT, 1, a);           \
+  }
+foreach_chacha_poly_fixed_aad_lengths
+#undef _
 #endif
 
-static void
-crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
-			    vnet_crypto_key_index_t idx)
+  static void
+  crypto_ipsecmb_key_handler (vnet_crypto_key_op_t kop,
+			      vnet_crypto_key_index_t idx)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
@@ -908,6 +950,19 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
   { .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
     .fn = ipsecmb_ops_chacha_poly_dec,
     .cfn = ipsec_mb_ops_chacha_poly_dec_chained },
+#define _(a)                                                                  \
+  {                                                                           \
+    .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD##a##_ENC,               \
+    .fn = ipsecmb_ops_chacha_poly_tag16_aad##a##_enc,                         \
+    .cfn = ipsec_mb_ops_chacha_poly_tag16_aad##a##_enc_chained,               \
+  },                                                                          \
+    {                                                                         \
+      .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD##a##_DEC,             \
+      .fn = ipsecmb_ops_chacha_poly_tag16_aad##a##_dec,                       \
+      .cfn = ipsec_mb_ops_chacha_poly_tag16_aad##a##_dec_chained,             \
+    },
+  foreach_chacha_poly_fixed_aad_lengths
+#undef _
 #endif
   {}
 };
