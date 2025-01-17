@@ -16,6 +16,57 @@
       "message": "It seems other changes (flow.c etc.) are needed to resolve the compile issues, so it better to stay as one patch. LGTM now.",
       "revId": "6e20a2d0a6b217f8e53bfb18e7ed6ad79f9b0ffd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "255b7fd1_776e492c",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-17T17:09:49Z",
+      "side": 1,
+      "message": "please use __clib_unused",
+      "revId": "6e20a2d0a6b217f8e53bfb18e7ed6ad79f9b0ffd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "525d566b_0f21818a",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-17T17:09:49Z",
+      "side": 1,
+      "message": "please use __clib_unused",
+      "revId": "6e20a2d0a6b217f8e53bfb18e7ed6ad79f9b0ffd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7443704f_060a1d1e",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1523,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-17T17:09:49Z",
+      "side": 1,
+      "message": "please use, __clib_unused instead\nint __clib_unused rv;",
+      "revId": "6e20a2d0a6b217f8e53bfb18e7ed6ad79f9b0ffd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
