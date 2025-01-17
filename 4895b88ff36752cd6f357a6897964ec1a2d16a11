@@ -16,6 +16,23 @@
       "message": "I rebased this on HEAD as there have been fixes added to the \u0027make test\u0027 framework to resolve intermittent failures.",
       "revId": "4895b88ff36752cd6f357a6897964ec1a2d16a11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "88b6e767_44e259c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-17T17:05:01Z",
+      "side": 1,
+      "message": "use VPP_PLATFORM to achive support for specific platform....\nSee src/cmake/platform/octeon10.cmake as example...",
+      "revId": "4895b88ff36752cd6f357a6897964ec1a2d16a11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
