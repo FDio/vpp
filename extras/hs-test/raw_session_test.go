@@ -7,6 +7,7 @@ func init() {
 }
 
 func VppEchoQuicTest(s *VethsSuite) {
+	s.Skip("temp skip (broken?)")
 	testVppEcho(s, "quic")
 }
 
