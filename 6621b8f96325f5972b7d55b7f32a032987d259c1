@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "04d91e10_0377ebe0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-17T19:42:50Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nWhen I\u0027m testing with async mode along with pipeline configuration (please refer below), observing memory leak.\nhttps://gerrit.fd.io/r/c/vpp/+/41591/11/src/plugins/tlsopenssl/tls_openssl.c#1396\nhttps://gerrit.fd.io/r/c/vpp/+/41591/11/src/plugins/tlsopenssl/tls_openssl.c#981\n\nDo you see any more changes required in plugin/session layer to handle pipeline support?\n\nThanks,\nVarun",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ffd634b3_b80e6a51",
@@ -31,6 +48,24 @@
       "writtenOn": "2025-01-17T19:04:25Z",
       "side": 1,
       "message": "Nice, I can\u0027t test this so just asking questions: basically if we\u0027re doing async write, you take out the connection out of the scheduler until we get called back that the async write was completed?",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "676f63b4_c410518f",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-17T19:42:50Z",
+      "side": 1,
+      "message": "Yes, similar to the logic implemented in openssl_handle_want_async function earlier.",
+      "parentUuid": "ffd634b3_b80e6a51",
       "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -54,6 +89,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "238f03d7_5080232a",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-17T19:42:50Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "cfa55170_732cc94e",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f0064cfa_aedd6333",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 19
@@ -65,6 +118,24 @@
       "writtenOn": "2025-01-17T19:04:25Z",
       "side": 1,
       "message": "maybe above this `ASSERT (thread_index \u003d\u003d vlib_get_thread_index())` to avoid surprises. Similar for the other events",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d678b058_3c089990",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-17T19:42:50Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f0064cfa_aedd6333",
       "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
