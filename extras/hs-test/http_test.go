@@ -36,7 +36,7 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest)
+		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
@@ -1240,7 +1240,7 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 func HttpContentLengthTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 12"))
 	ifName := s.VppIfName()
 
 	resp, err := TcpSendReceive(serverAddress+":80",
@@ -1259,6 +1259,25 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 	validatePostInterfaceStats(s, resp)
 }
 
+func HttpHeaderErrorConnectionDropTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 12"))
+	request := "POST /interface_stats.json HTTP/1.1\r\nContent-Length: 18234234\r\n\r\n" + s.VppIfName()
+	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	s.AssertNil(err, fmt.Sprint(err))
+	err = conn.SetDeadline(time.Now().Add(time.Second * 10))
+	s.AssertNil(err, fmt.Sprint(err))
+	_, err = conn.Write([]byte(request))
+	s.AssertNil(err, fmt.Sprint(err))
+	reply := make([]byte, 1024)
+	_, err = conn.Read(reply)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(string(reply), "HTTP/1.1 413 Content Too Large")
+	check := make([]byte, 1)
+	_, err = conn.Read(check)
+	s.AssertEqual(err, io.EOF)
+}
 func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
