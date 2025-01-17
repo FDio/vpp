@@ -520,6 +520,7 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *target_path,
 static int
 hss_ts_rx_callback (session_t *ts)
 {
+  hss_main_t *hsm = &hss_main;
   hss_session_t *hs;
   u8 *target_path = 0, *target_query = 0, *data = 0;
   http_msg_t msg;
@@ -543,13 +544,13 @@ hss_ts_rx_callback (session_t *ts)
 		       http_header_name_token (HTTP_HEADER_ALLOW),
 		       http_token_lit ("GET, POST"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
-      goto done;
+      goto err_done;
     }
 
   if (msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
     {
       start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-      goto done;
+      goto err_done;
     }
 
   /* Read target path */
@@ -562,7 +563,7 @@ hss_ts_rx_callback (session_t *ts)
       if (http_validate_abs_path_syntax (target_path, 0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-	  goto done;
+	  goto err_done;
 	}
       /* Target path must be a proper C-string in addition to a vector */
       vec_add1 (target_path, 0);
@@ -578,13 +579,24 @@ hss_ts_rx_callback (session_t *ts)
       if (http_validate_query_syntax (target_query, 0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-	  goto done;
+	  goto err_done;
 	}
     }
 
   /* Read request body for POST requests */
   if (msg.data.body_len && msg.method_type == HTTP_REQ_POST)
     {
+      if (msg.data.body_len > hsm->max_body_size)
+	{
+	  start_send_data (hs, HTTP_STATUS_CONTENT_TOO_LARGE);
+	  goto err_done;
+	}
+      if (svm_fifo_max_dequeue (ts->rx_fifo) - msg.data.body_offset <
+	  msg.data.body_len)
+	{
+	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+	  goto err_done;
+	}
       vec_validate (data, msg.data.body_len - 1);
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, msg.data.body_len,
 			  data);
@@ -593,7 +605,10 @@ hss_ts_rx_callback (session_t *ts)
 
   /* Find and send data */
   handle_request (hs, msg.method_type, target_path, target_query, data);
+  goto done;
 
+err_done:
+  hss_session_disconnect_transport (hs);
 done:
   vec_free (target_path);
   vec_free (target_query);
@@ -906,6 +921,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hsm->fifo_size = 0;
   hsm->cache_size = 10 << 20;
   hsm->max_age = HSS_DEFAULT_MAX_AGE;
+  hsm->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   hsm->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
 
   /* Get a line of input. */
@@ -942,6 +958,9 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "url-handlers"))
 	hsm->enable_url_handlers = 1;
       else if (unformat (line_input, "max-age %d", &hsm->max_age))
+	;
+      else if (unformat (line_input, "max-body-size %llu",
+			 &hsm->max_body_size))
 	;
       else
 	{
@@ -1006,7 +1025,7 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
     "http static server www-root <path> [prealloc-fifos <nn>]\n"
     "[private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]\n"
     "[uri <uri>] [ptr-thresh <nn>] [url-handlers] [debug [nn]]\n"
-    "[keepalive-timeout <nn>]\n",
+    "[keepalive-timeout <nn>] [max-body-size <nn>]\n",
   .function = hss_create_command_fn,
 };
 
