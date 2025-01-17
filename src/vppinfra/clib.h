@@ -39,6 +39,7 @@
 #define included_clib_h
 
 #include <stddef.h>
+#include <stdalign.h>
 
 #if __has_include(<vppinfra/config.h>)
 #include <vppinfra/config.h>
