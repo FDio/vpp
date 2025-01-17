@@ -5,6 +5,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -350,6 +351,188 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_http_token_is_case (vlib_main_t *vm)
+{
+  static const char eq_1[] = "content-length";
+  static const char eq_2[] = "CONtENT-lenGth";
+  static const char eq_3[] = "caPsulE-ProtOcol";
+  static const char eq_4[] = "ACCESS-CONTROL-REQUEST-METHOD";
+  static const char ne_1[] = "content_length";
+  static const char ne_2[] = "content-lengXh";
+  static const char ne_3[] = "coNtent-lengXh";
+  static const char ne_4[] = "content-len";
+  static const char ne_5[] = "comtent-length";
+  static const char ne_6[] = "content-lengtR";
+  u8 rv;
+
+  rv = http_token_is_case (
+    eq_1, strlen (eq_1), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 1), "'%s' and '%s' are equal", eq_1,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    eq_2, strlen (eq_2), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 1), "'%s' and '%s' are equal", eq_2,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv =
+    http_token_is_case (eq_3, strlen (eq_3),
+			http_header_name_token (HTTP_HEADER_CAPSULE_PROTOCOL));
+  HTTP_TEST ((rv == 1), "'%s' and '%s' are equal", eq_3,
+	     http_header_name_str (HTTP_HEADER_CAPSULE_PROTOCOL))
+
+  rv = http_token_is_case (
+    eq_4, strlen (eq_4),
+    http_header_name_token (HTTP_HEADER_ACCESS_CONTROL_REQUEST_METHOD));
+  HTTP_TEST ((rv == 1), "'%s' and '%s' are equal", eq_4,
+	     http_header_name_str (HTTP_HEADER_ACCESS_CONTROL_REQUEST_METHOD))
+
+  rv = http_token_is_case (
+    ne_1, strlen (ne_1), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_1,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    ne_2, strlen (ne_2), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_2,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    ne_3, strlen (ne_3), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_3,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    ne_4, strlen (ne_4), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_4,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    ne_5, strlen (ne_5), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_5,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (
+    ne_6, strlen (ne_6), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
+  HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_6,
+	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  return 0;
+}
+
+static int
+http_test_http_header_table (vlib_main_t *vm)
+{
+  http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
+  const char buf[] = "daTe: Wed, 15 Jan 2025 16:17:33 GMT"
+		     "conTent-tYpE: text/html; charset=utf-8"
+		     "STRICT-transport-security: max-age=31536000"
+		     "sAnDwich: Eggs"
+		     "CONTENT-ENCODING: GZIP"
+		     "sandwich: Spam";
+  http_msg_t msg = {};
+  http_field_line_t *headers = 0, *field_line;
+  const http_token_t *value;
+  u8 rv;
+
+  /* daTe */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 0;
+  field_line->name_len = 4;
+  field_line->value_offset = 6;
+  field_line->value_len = 29;
+  /* conTent-tYpE */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 35;
+  field_line->name_len = 12;
+  field_line->value_offset = 49;
+  field_line->value_len = 24;
+  /* STRICT-transport-security */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 73;
+  field_line->name_len = 25;
+  field_line->value_offset = 100;
+  field_line->value_len = 16;
+  /* sAnDwich */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 116;
+  field_line->name_len = 8;
+  field_line->value_offset = 126;
+  field_line->value_len = 4;
+  /* CONTENT-ENCODING */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 130;
+  field_line->name_len = 16;
+  field_line->value_offset = 148;
+  field_line->value_len = 4;
+  /* sandwich */
+  vec_add2 (headers, field_line, 1);
+  field_line->name_offset = 152;
+  field_line->name_len = 8;
+  field_line->value_offset = 162;
+  field_line->value_len = 4;
+
+  msg.data.headers_ctx = pointer_to_uword (headers);
+  msg.data.headers_len = strlen (buf);
+
+  http_init_header_table_buf (&ht, msg);
+  memcpy (ht.buf, buf, strlen (buf));
+  http_build_header_table (&ht, msg);
+
+  vlib_cli_output (vm, "%U", format_hash, ht.value_by_name, 1);
+
+  value = http_get_header (
+    &ht, http_header_name_token (HTTP_HEADER_CONTENT_ENCODING));
+  HTTP_TEST ((value != 0), "'%s' is in headers",
+	     http_header_name_str (HTTP_HEADER_CONTENT_ENCODING));
+  rv = http_token_is (value->base, value->len, http_token_lit ("GZIP"));
+  HTTP_TEST ((rv = 1), "header value '%U' should be 'GZIP'", format_http_bytes,
+	     value->base, value->len);
+
+  value =
+    http_get_header (&ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
+  HTTP_TEST ((value != 0), "'%s' is in headers",
+	     http_header_name_str (HTTP_HEADER_CONTENT_TYPE));
+
+  value = http_get_header (&ht, http_header_name_token (HTTP_HEADER_DATE));
+  HTTP_TEST ((value != 0), "'%s' is in headers",
+	     http_header_name_str (HTTP_HEADER_DATE));
+
+  value = http_get_header (
+    &ht, http_header_name_token (HTTP_HEADER_STRICT_TRANSPORT_SECURITY));
+  HTTP_TEST ((value != 0), "'%s' is in headers",
+	     http_header_name_str (HTTP_HEADER_STRICT_TRANSPORT_SECURITY));
+
+  value = http_get_header (&ht, http_token_lit ("DATE"));
+  HTTP_TEST ((value != 0), "'DATE' is in headers");
+
+  value = http_get_header (&ht, http_token_lit ("date"));
+  HTTP_TEST ((value != 0), "'date' is in headers");
+
+  /* repeated header */
+  value = http_get_header (&ht, http_token_lit ("sandwich"));
+  HTTP_TEST ((value != 0), "'sandwich' is in headers");
+  rv = http_token_is (value->base, value->len, http_token_lit ("Eggs, Spam"));
+  HTTP_TEST ((rv = 1), "header value '%U' should be 'Eggs, Spam'",
+	     format_http_bytes, value->base, value->len);
+
+  value = http_get_header (&ht, http_token_lit ("Jade"));
+  HTTP_TEST ((value == 0), "'Jade' is not in headers");
+
+  value = http_get_header (&ht, http_token_lit ("CONTENT"));
+  HTTP_TEST ((value == 0), "'CONTENT' is not in headers");
+
+  value =
+    http_get_header (&ht, http_header_name_token (HTTP_HEADER_ACCEPT_CHARSET));
+  HTTP_TEST ((value == 0), "'%s' is not in headers",
+	     http_header_name_str (HTTP_HEADER_ACCEPT_CHARSET));
+
+  http_free_header_table (&ht);
+  vec_free (headers);
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -363,6 +546,10 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_parse_masque_host_port (vm);
       else if (unformat (input, "udp-payload-datagram"))
 	res = http_test_udp_payload_datagram (vm);
+      else if (unformat (input, "token-is-case"))
+	res = http_test_http_token_is_case (vm);
+      else if (unformat (input, "header-table"))
+	res = http_test_http_header_table (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -370,6 +557,10 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_parse_masque_host_port (vm)))
 	    goto done;
 	  if ((res = http_test_udp_payload_datagram (vm)))
+	    goto done;
+	  if ((res = http_test_http_token_is_case (vm)))
+	    goto done;
+	  if ((res = http_test_http_header_table (vm)))
 	    goto done;
 	}
       else

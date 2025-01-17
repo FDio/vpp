@@ -419,14 +419,14 @@ hcs_ts_rx_callback (session_t *ts)
 			  msg.data.headers_len, hs->req_headers.buf);
       ASSERT (rv == msg.data.headers_len);
       http_build_header_table (&hs->req_headers, msg);
-      const http_header_t *accept = http_get_header (
+      const http_token_t *accept_value = http_get_header (
 	&hs->req_headers, http_header_name_token (HTTP_HEADER_ACCEPT));
-      if (accept)
+      if (accept_value)
 	{
-	  HCS_DBG ("client accept: %U", format_http_bytes, accept->value.base,
-		   accept->value.len);
+	  HCS_DBG ("client accept: %U", format_http_bytes, accept_value->base,
+		   accept_value->len);
 	  /* just for testing purpose, we don't care about precedence */
-	  if (http_token_contains (accept->value.base, accept->value.len,
+	  if (http_token_contains (accept_value->base, accept_value->len,
 				   http_token_lit ("text/plain")))
 	    args.plain_text = 1;
 	}
