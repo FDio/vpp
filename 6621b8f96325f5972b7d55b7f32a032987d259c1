@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47389d58_0b1aeec1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 19
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-17T19:04:25Z",
+      "side": 1,
+      "message": "Add a space after colon, i.e., \"tls: async ..\"",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffd634b3_b80e6a51",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-17T19:04:25Z",
+      "side": 1,
+      "message": "Nice, I can\u0027t test this so just asking questions: basically if we\u0027re doing async write, you take out the connection out of the scheduler until we get called back that the async write was completed?",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfa55170_732cc94e",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-17T19:04:25Z",
+      "side": 1,
+      "message": "At one point I think we should be improving this to do batching of rcps, instead of doing one rpc per ctx.",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0064cfa_aedd6333",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-17T19:04:25Z",
+      "side": 1,
+      "message": "maybe above this `ASSERT (thread_index \u003d\u003d vlib_get_thread_index())` to avoid surprises. Similar for the other events",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
