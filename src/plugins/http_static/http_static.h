@@ -24,6 +24,7 @@
 #include <http_static/http_cache.h>
 
 #define HSS_DEFAULT_MAX_AGE 600
+#define HSS_DEFAULT_MAX_BODY_SIZE     8192
 #define HSS_DEFAULT_KEEPALIVE_TIMEOUT 60
 
 /** @file http_static.h
@@ -161,6 +162,8 @@ typedef struct
   u64 cache_size;
   /** How long a response is considered fresh (in seconds) */
   u32 max_age;
+  /** Maximum size of a request body (in bytes) **/
+  u64 max_body_size;
   /** Formatted max_age: "max-age=xyz" */
   u8 *max_age_formatted;
   /** Timeout during which client connection will stay open */
