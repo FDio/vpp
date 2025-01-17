@@ -106,7 +106,7 @@ crypto_native_init (vnet_crypto_engine_registration_t *r)
 VNET_CRYPTO_ENGINE_REGISTRATION () = {
   .name = "native",
   .desc = "Native ISA Optimized Crypto",
-  .prio = 100,
+  .prio = 20,
   .init_fn = crypto_native_init,
   .key_handler = crypto_native_key_handler,
   .op_handlers = op_handlers,
