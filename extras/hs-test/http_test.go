@@ -1228,7 +1228,7 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 func HttpContentLengthTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 12"))
 	ifName := s.VppIfName()
 
 	resp, err := TcpSendReceive(serverAddress+":80",
@@ -1245,6 +1245,11 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
+	
+	resp, err = TcpSendReceive(serverAddress+":80",
+		"POST /inter HTTP/1.1\r\nContent-Length: 18234234\r\n\r\n"+ifName)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 413 Content Too Large")
 }
 
 func HttpMethodNotImplementedTest(s *NoTopoSuite) {
