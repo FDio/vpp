@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5433b71c_77e557e3",
+        "filename": "src/plugins/http_static/http_static.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-17T19:42:46Z",
+      "side": 1,
+      "message": "in my opinion too high and we are not able to read that amount of bytes anyway, default rx fifo size is 8kB and we don\u0027t support reading of body split into multiple chunks (io more data handling)",
+      "range": {
+        "startLine": 27,
+        "startChar": 38,
+        "endLine": 27,
+        "endChar": 47
+      },
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18f8890e_2c6b242a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-17T19:42:46Z",
+      "side": 1,
+      "message": "we should check if we have full body in fifo here too, since we do not support reading large body (io more data not handled here), and return error to client (when running debug build we assert but on release we pass some random data to url handler)",
+      "range": {
+        "startLine": 589,
+        "startChar": 1,
+        "endLine": 594,
+        "endChar": 36
+      },
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
