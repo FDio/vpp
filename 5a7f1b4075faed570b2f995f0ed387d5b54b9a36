@@ -16,6 +16,23 @@
       "message": "adding the component owner",
       "revId": "5a7f1b4075faed570b2f995f0ed387d5b54b9a36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "646ec897_91a0b6f6",
+        "filename": "build/external/patches/xdp-tools_1.2.9/0005-xdpdump-A-variable-sized-type-which-should-be-placed.patch",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-17T08:35:38Z",
+      "side": 1,
+      "message": "You are changing the wire format of the netlink message here, I don\u0027t think it is correct.\nCan we disable compilation of xdp-dump altogether instead? We don\u0027t care about it, only about the library.",
+      "revId": "5a7f1b4075faed570b2f995f0ed387d5b54b9a36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
