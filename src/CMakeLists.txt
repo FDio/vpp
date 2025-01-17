@@ -13,6 +13,12 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+if (DEFINED VPP_PLATFORM_C_COMPILER_NAMES)
+  set(CMAKE_C_COMPILER_NAMES ${VPP_PLATFORM_C_COMPILER_NAME})
+else()
+  set(CMAKE_C_COMPILER_NAMES clang gcc cc)
+endif()
+
 project(vpp C)
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
