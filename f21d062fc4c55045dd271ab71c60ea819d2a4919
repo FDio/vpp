@@ -52,6 +52,24 @@
       "parentUuid": "7a9b33e5_6ece18cf",
       "revId": "f21d062fc4c55045dd271ab71c60ea819d2a4919",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ecd5e28_5c0744f6",
+        "filename": "build/external/mlx_rdma_dpdk_matrix.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-01-17T10:30:53Z",
+      "side": 1,
+      "message": "please just add a new line, like:\n\nrdma\u003d52.0 dpdk\u003d24.07\nrdma\u003d55.0 dpdk\u003d24.11.1",
+      "parentUuid": "d35d697c_4f1f031e",
+      "revId": "f21d062fc4c55045dd271ab71c60ea819d2a4919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
