@@ -526,7 +526,7 @@ func HttpClientPostFilePtrTest(s *NoTopoSuite) {
 
 func HttpUnitTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	o := vpp.Vppctl("test http all")
+	o := vpp.Vppctl("test-http all")
 	s.Log(o)
 	s.AssertContains(o, "SUCCESS")
 }
