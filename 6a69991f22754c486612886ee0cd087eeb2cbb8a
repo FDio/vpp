@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d0afa763_0b7be4aa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-01-17T16:38:25Z",
+      "side": 1,
+      "message": "I like the first version of the patch which limits the scope of the fix to the error path. This version introduces a universal check for every packet which will have a slight performance hit. The second problem is next does not take the value from L2INPUT_FEAT_XXX. Instead, it should take the value from L2INPUT_NEXT_XXX.",
+      "revId": "6a69991f22754c486612886ee0cd087eeb2cbb8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
