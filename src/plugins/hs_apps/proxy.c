@@ -592,13 +592,12 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 			  msg.data.headers_len, req_headers.buf);
       ASSERT (rv == msg.data.headers_len);
       http_build_header_table (&req_headers, msg);
-      const http_header_t *capsule_protocol = http_get_header (
+      const http_token_t *capsule_protocol = http_get_header (
 	&req_headers, http_header_name_token (HTTP_HEADER_CAPSULE_PROTOCOL));
       if (capsule_protocol)
 	{
 	  PROXY_DBG ("Capsule-Protocol header present");
-	  if (!http_token_is (capsule_protocol->value.base,
-			      capsule_protocol->value.len,
+	  if (!http_token_is (capsule_protocol->base, capsule_protocol->len,
 			      http_token_lit (HTTP_BOOLEAN_TRUE)))
 	    {
 	      PROXY_DBG ("Capsule-Protocol invalid value");

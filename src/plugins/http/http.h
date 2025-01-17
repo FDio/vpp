@@ -861,7 +861,7 @@ typedef struct
 
 typedef struct
 {
-  http_header_t *headers;
+  http_token_t *values;
   uword *value_by_name;
   u8 *buf;
   char **concatenated_values;
@@ -869,7 +869,7 @@ typedef struct
 
 #define HTTP_HEADER_TABLE_NULL                                                \
   {                                                                           \
-    .headers = 0, .value_by_name = 0, .buf = 0, .concatenated_values = 0,     \
+    .values = 0, .value_by_name = 0, .buf = 0, .concatenated_values = 0,      \
   }
 
 always_inline u8
@@ -882,17 +882,52 @@ http_token_is (const char *actual, uword actual_len, const char *expected,
   return memcmp (actual, expected, expected_len) == 0 ? 1 : 0;
 }
 
+/* Based on searching for a value in a given range from Hacker's Delight */
+always_inline uword
+http_tolower_word (uword x)
+{
+#if uword_bits == 64
+  uword all_bytes = 0x0101010101010101;
+#else
+  uword all_bytes = 0x01010101;
+#endif
+  uword d, y;
+  d = (x | (0x80 * all_bytes)) - (0x41 * all_bytes);
+  d = ~((x | (0x7F * all_bytes)) ^ d);
+  y = (d & (0x7F * all_bytes)) + (0x66 * all_bytes);
+  y = y | d;
+  y = y | (0x7F * all_bytes);
+  y = ~y;
+  y = (y >> 2) & (0x20 * all_bytes);
+  return (x | y);
+}
+
 always_inline u8
 http_token_is_case (const char *actual, uword actual_len, const char *expected,
 		    uword expected_len)
 {
-  uword i;
+  uword i, last_a = 0, last_e = 0;
+  uword *a, *e;
   ASSERT (actual != 0);
   if (actual_len != expected_len)
     return 0;
-  for (i = 0; i < expected_len; i++)
+
+  i = expected_len;
+  a = (uword *) actual;
+  e = (uword *) expected;
+  while (i >= sizeof (uword))
     {
-      if (tolower (actual[i]) != tolower (expected[i]))
+      if (http_tolower_word (*a) != http_tolower_word (*e))
+	return 0;
+      a++;
+      e++;
+      i -= sizeof (uword);
+    }
+  if (i > 0)
+    {
+      clib_memcpy_fast (&last_a, a, i);
+      clib_memcpy_fast (&last_e, e, i);
+      if (http_tolower_word (last_a) != http_tolower_word (last_e))
 	return 0;
     }
   return 1;
@@ -927,7 +962,7 @@ http_reset_header_table (http_header_table_t *ht)
   for (i = 0; i < vec_len (ht->concatenated_values); i++)
     vec_free (ht->concatenated_values[i]);
   vec_reset_length (ht->concatenated_values);
-  vec_reset_length (ht->headers);
+  vec_reset_length (ht->values);
   vec_reset_length (ht->buf);
   hash_free (ht->value_by_name);
 }
@@ -955,7 +990,7 @@ http_free_header_table (http_header_table_t *ht)
   for (i = 0; i < vec_len (ht->concatenated_values); i++)
     vec_free (ht->concatenated_values[i]);
   vec_free (ht->concatenated_values);
-  vec_free (ht->headers);
+  vec_free (ht->values);
   vec_free (ht->buf);
   hash_free (ht->value_by_name);
 }
@@ -964,7 +999,37 @@ static uword
 _http_ht_hash_key_sum (hash_t *h, uword key)
 {
   http_token_t *name = uword_to_pointer (key, http_token_t *);
-  return hash_memory (name->base, name->len, 0);
+  uword last[3] = {};
+  uwordu *q = (uword *) name->base;
+  u64 a, b, c, n;
+
+  a = b = (uword_bits == 64) ? 0x9e3779b97f4a7c13LL : 0x9e3779b9;
+  c = 0;
+  n = name->len;
+
+  while (n >= 3 * sizeof (uword))
+    {
+      a += http_tolower_word (q[0]);
+      b += http_tolower_word (q[1]);
+      c += http_tolower_word (q[2]);
+      hash_mix (a, b, c);
+      n -= 3 * sizeof (uword);
+      q += 3;
+    }
+
+  c += name->len;
+
+  if (n > 0)
+    {
+      clib_memcpy_fast (&last, q, n);
+      a += http_tolower_word (last[0]);
+      b += http_tolower_word (last[1]);
+      c += http_tolower_word (last[2]);
+    }
+
+  hash_mix (a, b, c);
+
+  return c;
 }
 
 static uword
@@ -973,7 +1038,22 @@ _http_ht_hash_key_equal (hash_t *h, uword key1, uword key2)
   http_token_t *name1 = uword_to_pointer (key1, http_token_t *);
   http_token_t *name2 = uword_to_pointer (key2, http_token_t *);
   return name1 && name2 &&
-	 http_token_is (name1->base, name1->len, name2->base, name2->len);
+	 http_token_is_case (name1->base, name1->len, name2->base, name2->len);
+}
+
+static u8 *
+_http_ht_format_pair (u8 *s, va_list *args)
+{
+  http_header_table_t *ht = va_arg (*args, http_header_table_t *);
+  void *CLIB_UNUSED (*v) = va_arg (*args, void *);
+  hash_pair_t *p = va_arg (*args, hash_pair_t *);
+  http_token_t *name = uword_to_pointer (p->key, http_token_t *);
+  http_token_t *value = vec_elt_at_index (ht->values, p->value[0]);
+
+  s = format (s, "%U: %U", format_http_bytes, name->base, name->len,
+	      format_http_bytes, value->base, value->len);
+
+  return s;
 }
 
 /**
@@ -988,16 +1068,15 @@ _http_ht_hash_key_equal (hash_t *h, uword key1, uword key2)
 always_inline void
 http_build_header_table (http_header_table_t *ht, http_msg_t msg)
 {
-  http_token_t name;
-  http_header_t *header;
+  http_token_t name, *value;
   http_field_line_t *field_lines, *field_line;
   uword *p;
 
   ASSERT (ht);
   field_lines = uword_to_pointer (msg.data.headers_ctx, http_field_line_t *);
-  ht->value_by_name =
-    hash_create2 (0, 0, sizeof (uword), _http_ht_hash_key_sum,
-		  _http_ht_hash_key_equal, 0, 0);
+  ht->value_by_name = hash_create2 (
+    0, sizeof (http_token_t), sizeof (uword), _http_ht_hash_key_sum,
+    _http_ht_hash_key_equal, _http_ht_format_pair, ht);
 
   vec_foreach (field_line, field_lines)
     {
@@ -1008,27 +1087,25 @@ http_build_header_table (http_header_table_t *ht, http_msg_t msg)
       if (p)
 	{
 	  char *new_value = 0;
-	  header = vec_elt_at_index (ht->headers, p[0]);
-	  u32 new_len = header->value.len + field_line->value_len + 2;
+	  value = vec_elt_at_index (ht->values, p[0]);
+	  u32 new_len = value->len + field_line->value_len + 2;
 	  vec_validate (new_value, new_len - 1);
-	  clib_memcpy (new_value, header->value.base, header->value.len);
-	  new_value[header->value.len] = ',';
-	  new_value[header->value.len + 1] = ' ';
-	  clib_memcpy (new_value + header->value.len + 2,
+	  clib_memcpy (new_value, value->base, value->len);
+	  new_value[value->len] = ',';
+	  new_value[value->len + 1] = ' ';
+	  clib_memcpy (new_value + value->len + 2,
 		       ht->buf + field_line->value_offset,
 		       field_line->value_len);
 	  vec_add1 (ht->concatenated_values, new_value);
-	  header->value.base = new_value;
-	  header->value.len = new_len;
+	  value->base = new_value;
+	  value->len = new_len;
 	  continue;
 	}
       /* or create new record */
-      vec_add2 (ht->headers, header, 1);
-      header->name.base = name.base;
-      header->name.len = name.len;
-      header->value.base = (char *) (ht->buf + field_line->value_offset);
-      header->value.len = field_line->value_len;
-      hash_set_mem (ht->value_by_name, &header->name, header - ht->headers);
+      vec_add2 (ht->values, value, 1);
+      value->base = (char *) (ht->buf + field_line->value_offset);
+      value->len = field_line->value_len;
+      hash_set_mem_alloc (&ht->value_by_name, &name, value - ht->values);
     }
 }
 
@@ -1038,21 +1115,21 @@ http_build_header_table (http_header_table_t *ht, http_msg_t msg)
  * @param header_table Header table to search.
  * @param name Header name to match.
  *
- * @return Header in case of success, @c 0 otherwise.
+ * @return Header value in case of success, @c 0 otherwise.
  */
-always_inline const http_header_t *
+always_inline const http_token_t *
 http_get_header (http_header_table_t *header_table, const char *name,
 		 uword name_len)
 {
   uword *p;
-  http_header_t *header;
+  http_token_t *value;
   http_token_t name_token = { (char *) name, name_len };
 
   p = hash_get_mem (header_table->value_by_name, &name_token);
   if (p)
     {
-      header = vec_elt_at_index (header_table->headers, p[0]);
-      return header;
+      value = vec_elt_at_index (header_table->values, p[0]);
+      return value;
     }
 
   return 0;

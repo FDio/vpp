@@ -139,11 +139,14 @@ Following example shows how to parse headers:
       /* build header table */
       http_build_header_table (&ht, msg);
       /* get Accept header */
-      const http_header_t *accept = http_get_header (&ht,
+      const http_token_t *accept_value = http_get_header (&ht,
         http_header_name_token (HTTP_HEADER_ACCEPT));
       if (accept_value)
         {
-          /* do something interesting */
+          if (http_token_contains (accept_value->base, accept_value->len, http_token_lit ("text/plain")))
+            {
+              /* do something interesting */
+            }
         }
       /* free header table */
       http_free_header_table (&ht);
@@ -187,7 +190,7 @@ Modified example above:
       /* build header table */
       http_build_header_table (&ctx->ht, msg);
       /* get Accept header */
-      const http_header_t *accept = http_get_header (&ctx->ht,
+      const http_token_t *accept_value = http_get_header (&ctx->ht,
         http_header_name_token (HTTP_HEADER_ACCEPT));
       if (accept_value)
         {
@@ -495,7 +498,7 @@ Following example shows how to parse headers:
       /* build header table */
       http_build_header_table (&ht, msg);
       /* get Content-Type header */
-      const http_header_t *content_type = http_get_header (&ht,
+      const http_token_t *content_type = http_get_header (&ht,
         http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
       if (content_type)
         {
