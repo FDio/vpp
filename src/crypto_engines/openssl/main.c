@@ -50,7 +50,13 @@ static u32 num_threads;
   _ (null_gmac, AES_256_NULL_GMAC, EVP_aes_256_gcm, 0, 0)
 
 #define foreach_openssl_chacha20_evp_op                                       \
-  _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305, 0, 0)
+  _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305, 0, 0)       \
+  _ (chacha20_poly1305, CHACHA20_POLY1305_TAG16_AAD0, EVP_chacha20_poly1305,  \
+     1, 0)                                                                    \
+  _ (chacha20_poly1305, CHACHA20_POLY1305_TAG16_AAD8, EVP_chacha20_poly1305,  \
+     1, 8)                                                                    \
+  _ (chacha20_poly1305, CHACHA20_POLY1305_TAG16_AAD12, EVP_chacha20_poly1305, \
+     1, 12)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #define foreach_openssl_evp_op foreach_openssl_aes_evp_op \
