@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d80bdd63_0fdb88da",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2025-01-17T18:54:07Z",
+      "side": 1,
+      "message": "Applying patch: 0005-xdp-dump-disable-xdp-dump.patch\npatching file Makefile\nHunk #1 FAILED at 16.\n1 out of 1 hunk FAILED -- saving rejects to file Makefile.rej\nmake: *** [packages/xdp-tools.mk:40: /builddir/build/BUILD/vpp-ext-deps-25.02-build/vpp-ext-deps-25.02/build/external/_build/.xdp-tools.patch.ok] Error 1",
+      "revId": "38097970c038de6c3c67cb8e1c7209f1df1f24d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
