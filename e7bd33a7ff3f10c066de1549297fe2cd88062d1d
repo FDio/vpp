@@ -26,6 +26,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9fa31267_2db41cd0",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-17T21:06:25Z",
+      "side": 1,
+      "message": "Let\u0027s handle these sort of things by first doing \"bad case\"/error handling with exit first and then handle \"good path\" without any indentation. That is:\n\n```\nif (msg.data.body_len \u003e hsm-\u003emax_body_size) \n  {\n    start_send_data (hs, HTTP_STATUS_CONTENT_TOO_LARGE);\n    goto done;\n  }\nvec_validate (data, msg.data.body_len - 1);\n...\n```\n\nHaving said that, I think we need to offload POST rx handling to url/file handlers somehow. That is, they may be configured/want to do custom handling including saving to files on disk.\n\nLet\u0027s talk to Matus about this.",
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "18f8890e_2c6b242a",
         "filename": "src/plugins/http_static/static_server.c",
         "patchSetId": 4
