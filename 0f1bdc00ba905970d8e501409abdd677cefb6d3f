@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e132e8a_41a756d3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-18T23:58:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e3e3b9d_65990561",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3cf6f401_9d4696a3",
@@ -103,6 +121,24 @@
       "side": 1,
       "message": "fair, but my bigger point in my other comment is that this should remain a debug assert and we should check max #workers at init",
       "parentUuid": "bea55750_f793314e",
+      "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "297be9cc_0255cfb3",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1671,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-18T23:58:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f06d273e_161fd4db",
       "revId": "0f1bdc00ba905970d8e501409abdd677cefb6d3f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
