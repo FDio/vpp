@@ -88,6 +88,24 @@
       "parentUuid": "f0a019a6_5b9309c7",
       "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "200e6abf_f10aa483",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-19T00:04:40Z",
+      "side": 1,
+      "message": "I think getting rid of FRAME_QUEUE_MAX_NELTS is way harder than my current approach, so I\u0027d rather get a separate change around that and discuss all my concerns there.\n\nSo as initial questions were answered, I\u0027ll mark this thread as resolved.",
+      "parentUuid": "63f060c9_9720aea1",
+      "revId": "6a4ea8db9f4595ce1373677ad8d3d43c7d9f21c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
