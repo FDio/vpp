@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6c1b1321_5eb5ef64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-19T12:02:59Z",
+      "side": 1,
+      "message": "With http tps, observing memory leak in both with and without enabling async mode  cases:\n\nCase 1: (without enabling engine \u0026 async mode)\n1. tls openssl set-tls record-size 16384 record-split-size 68 max-pipelines 4\n2. http tps  uri tls://0.0.0.0/443 private-segment-size  4294901760 fifo-size 128\n\nCase 2: (with enabling engine \u0026 async mode)\n1. tls openssl set engine dpdk_engine async\n2. tls openssl set-tls record-size 16384 record-split-size 68 max-pipelines 4\n3. http tps  uri tls://0.0.0.0/443 private-segment-size  4294901760 fifo-size 128",
+      "parentUuid": "04d91e10_0377ebe0",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ffd634b3_b80e6a51",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 19
