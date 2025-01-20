@@ -89,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "885b8d52_94ddffc6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-01-20T22:30:02Z",
+      "side": 1,
+      "message": "Have tested below combinations:\n1. Marvell async crypto h/w with async mode (with and without pipeline config)\n2. W/o marvell crypto h/w (with and without pipeline config)\n\nNo functional issues observed in all 4 cases, except memory leak with pipeline config.",
+      "parentUuid": "3d76892b_974de2c7",
+      "revId": "6621b8f96325f5972b7d55b7f32a032987d259c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ffd634b3_b80e6a51",
