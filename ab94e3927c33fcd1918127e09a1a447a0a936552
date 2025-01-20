@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89b14f01_2ab0cf22",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T15:24:31Z",
+      "side": 1,
+      "message": "PS 16 adds tests for API and removes the dangling comments from *.c files. PTAL",
+      "revId": "ab94e3927c33fcd1918127e09a1a447a0a936552",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
