@@ -16,6 +16,23 @@
       "message": "I would be glad if you\u0027ll be able to review the change again. I think I\u0027ve fixed all the things you\u0027ve mentioned about the change.",
       "revId": "95f25d4170fcc58de601f55c9fcec692f875a6e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3520f32b_2122568c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-20T08:52:03Z",
+      "side": 1,
+      "message": "Looks good to me, thanks!",
+      "revId": "95f25d4170fcc58de601f55c9fcec692f875a6e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
