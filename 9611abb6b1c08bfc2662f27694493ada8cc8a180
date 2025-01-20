@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8f626b2_4450265d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3180
+      },
+      "writtenOn": "2025-01-20T15:49:30Z",
+      "side": 1,
+      "message": "Great job in implementing sFlow for VPP. Lack of high performance and low delay traffic telemetry was major obstacle for our plans to rely on VPP as DDoS scrubbing platform. I really happy to see this capability implemented.",
+      "revId": "9611abb6b1c08bfc2662f27694493ada8cc8a180",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
