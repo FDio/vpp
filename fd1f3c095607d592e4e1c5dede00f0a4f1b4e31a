@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5fd47c49_d9e21f6d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T08:19:49Z",
+      "side": 1,
+      "message": "Have you taken a look at the performance impact of connect() - dump() - disconnect() for each HTTP request?",
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ba01ba2_ee42793a",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T08:19:49Z",
+      "side": 1,
+      "message": "I think you could make this a bit easier to read by simply \u0027return print_metric_v1()\u0027 at this and the other call sites, and remove \u0027exit\u0027 variable again.",
+      "range": {
+        "startLine": 244,
+        "startChar": 6,
+        "endLine": 244,
+        "endChar": 10
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "033af4dd_aaa26606",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T08:19:49Z",
+      "side": 1,
+      "message": "str is used only in the branch on L422, move it there.",
+      "range": {
+        "startLine": 372,
+        "startChar": 6,
+        "endLine": 372,
+        "endChar": 9
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "338af2a1_17016cf1",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T08:19:49Z",
+      "side": 1,
+      "message": "memory leak, str is not freed.",
+      "range": {
+        "startLine": 424,
+        "startChar": 12,
+        "endLine": 424,
+        "endChar": 18
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "106eac0c_3807cd52",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-20T08:19:49Z",
+      "side": 1,
+      "message": "will this ever evaluate to false? L599 and L602 are called consecutively.",
+      "range": {
+        "startLine": 605,
+        "startChar": 10,
+        "endLine": 605,
+        "endChar": 32
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
