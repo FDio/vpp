@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a171db6_9f643710",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-01-20T10:41:32Z",
+      "side": 1,
+      "message": "This will result in logs to event logger which is different from regular logging.  Users should know how to access those i.e.\n\nDBGvpp# show event-logger\n2 of 16777216 events in buffer, logger running\n     121.546054862: af-packet-msg: fd 21 reason af_packet_fd_error: Network is down\n     169.067937375: af-packet-msg: fd 23 reason af_packet_fd_error: Network is down",
+      "revId": "60a08855fdd498237df3d03d000909b49da46f17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
