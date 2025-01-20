@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74f300d4_646f75d7",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1464,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-01-20T15:32:04Z",
+      "side": 1,
+      "message": "These are part of other https://gerrit.fd.io/r/c/vpp/+/42169.\nThis patch is about AES_CTR SHA256/384/512 support.\nUpdate the patch accordingly.",
+      "range": {
+        "startLine": 1464,
+        "startChar": 0,
+        "endLine": 1464,
+        "endChar": 29
+      },
+      "revId": "e2689436e0670532aebcf4f0ad6cb851cc23fbcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
