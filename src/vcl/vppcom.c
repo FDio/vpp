@@ -413,7 +413,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
       };
       vcl_segment_attach_session (
 	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
-	mp->vpp_event_queue_address, mp->mq_index, 0, session);
+	mp->vpp_event_queue_address, mp->mq_index, 0, &tmp_session);
       if (tmp_session.vpp_evt_q)
 	vcl_send_session_disconnect (wrk, &tmp_session);
       return VCL_INVALID_SESSION_INDEX;
