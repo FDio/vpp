@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "54ac8fce_199a1566",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-21T18:03:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6ee9aa1b_2d95be34",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "f5c5ea5b_d482ee23",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 3
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4aab9062_ef5fd5bd",
+        "filename": "src/vlib/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-21T18:03:41Z",
+      "side": 1,
+      "message": "To be honest I don\u0027t know myself. \n\nIn src/vlib/thread.c, lines 362-366 there is a check that is verifying that its a power of 2.\n https://github.com/FDio/vpp/blob/98028dd4c475f8929cf07a87114e857bfc6bda93/src/vlib/threads.c#L362-L366\n \nAnd following back with git-blame, the check was present in the initial commit of the code.\n\nI kinda hope that someone would be able to clearify that... Otherwise I probably would try to change it in my next attempt to rework the whole logic (and to make it dynamic) and see what fails. But my own test setup is relatively simple and doesn\u0027t cover a lot of use-cases (at least not yet).",
+      "parentUuid": "a6b954e0_293e69c5",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cf27b05a_5f403b4f",
@@ -65,6 +101,24 @@
       "writtenOn": "2025-01-21T17:30:44Z",
       "side": 1,
       "message": "I\u0027d rather define VLIB_MAX_WORKERS here, and make FRAME_QUEUE_MAX_NELTS in src/vlib/node.h use it, that way we can use VLIB_MAX_WORKERS in other parts of VPP",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f2fa954_b0984427",
+        "filename": "src/vlib/config.h.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-01-21T18:03:41Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "cf27b05a_5f403b4f",
       "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
