@@ -33,7 +33,9 @@
   _ (2, ADMIN_UP, "admin-up")                                                 \
   _ (3, LINK_UP, "link-up")                                                   \
   _ (4, ZEROCOPY, "zero-copy")                                                \
-  _ (5, SYSCALL_LOCK, "syscall-lock")
+  _ (5, SYSCALL_LOCK, "syscall-lock")                                         \
+  _ (6, CSUM_ENABLED, "csum-enabled")                                         \
+  _ (7, MULTI_BUFFER, "multi-buffer")
 
 enum
 {
@@ -147,7 +149,9 @@ typedef enum
 
 typedef enum
 {
-  AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
+  AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1 << 0,
+  AF_XDP_CREATE_FLAGS_CSUM_ENABLED = 1 << 1,
+  AF_XDP_CREATE_FLAGS_MULTI_BUFFER = 1 << 2,
 } af_xdp_create_flag_t;
 
 typedef struct

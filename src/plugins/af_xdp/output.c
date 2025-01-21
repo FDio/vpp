@@ -4,6 +4,11 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_psh_cksum.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <af_xdp/af_xdp.h>
 
 #define AF_XDP_TX_RETRIES 5
@@ -81,7 +86,7 @@ wrap_around:
     }
 
   xsk_ring_cons__release (&txq->cq, n_free);
-  vlib_buffer_free (vm, bis, n_free);
+  vlib_buffer_free_no_next (vm, bis, n_free);
 }
 
 static_always_inline void
@@ -110,7 +115,7 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 	{
 	  ret = sendmsg (txq->xsk_fd, &msg, MSG_DONTWAIT);
 	}
-      while (ret < 0 && EAGAIN == errno);
+      while (ret < 0 && (EAGAIN == errno));
       if (PREDICT_FALSE (ret < 0))
 	{
 	  /* not EAGAIN: something bad is happening */
@@ -124,10 +129,9 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 }
 
 static_always_inline u32
-af_xdp_device_output_tx_try (vlib_main_t * vm,
-			     const vlib_node_runtime_t * node,
-			     af_xdp_device_t * ad, af_xdp_txq_t * txq,
-			     u32 n_tx, u32 * bi)
+af_xdp_device_output_tx_try (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     af_xdp_device_t *ad, af_xdp_txq_t *txq, u32 n_tx,
+			     u32 *bi)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   const uword start = vm->buffer_main->buffer_mem_start;
@@ -136,16 +140,27 @@ af_xdp_device_output_tx_try (vlib_main_t * vm,
   struct xdp_desc *desc;
   u64 offset, addr;
   u32 idx, n, n_wrap;
+  int chains = 0, n_descs;
 
   ASSERT (mask == txq->cq.mask);
 
-  n_tx = xsk_ring_prod__reserve (&txq->tx, n_tx, &idx);
+  vlib_get_buffers (vm, bi, bufs, n_tx);
+
+  for (int i = 0; i < n_tx; i++)
+    {
+      vlib_buffer_t *b0 = b[i];
+      while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  b0 = vlib_get_buffer (vm, b0->next_buffer);
+	  chains += 1;
+	}
+    }
+
+  n_descs = xsk_ring_prod__reserve (&txq->tx, n_tx + chains, &idx);
 
   /* if ring is full, do nothing */
-  if (PREDICT_FALSE (0 == n_tx))
+  if (PREDICT_FALSE (0 == n_descs))
     return 0;
-
-  vlib_get_buffers (vm, bi, bufs, n_tx);
 
   desc = xsk_ring_prod__tx_desc (&txq->tx, idx);
   n = clib_min (n_tx, size - (idx & mask));
@@ -164,33 +179,29 @@ wrap_around:
 	}
 
       vlib_prefetch_buffer_header (b[4], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[0]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[0]) - start;
       desc[0].addr = offset | addr;
       desc[0].len = b[0]->current_length;
 
       vlib_prefetch_buffer_header (b[5], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[1]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[1]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[1]) - start;
       desc[1].addr = offset | addr;
       desc[1].len = b[1]->current_length;
 
       vlib_prefetch_buffer_header (b[6], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[2]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[2]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[2]) - start;
       desc[2].addr = offset | addr;
       desc[2].len = b[2]->current_length;
 
       vlib_prefetch_buffer_header (b[7], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[3]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[3]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[3]) - start;
       desc[3].addr = offset | addr;
       desc[3].len = b[3]->current_length;
@@ -202,24 +213,42 @@ wrap_around:
 
   while (n >= 1)
     {
-      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT))
+      vlib_buffer_t *b0 = b[0];
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
-	  if (vlib_buffer_chain_linearize (vm, b[0]) != 1)
+	  if (vlib_buffer_chain_linearize (vm, b0) == 0)
 	    {
 	      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
 			  "vlib_buffer_chain_linearize failed");
-	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b[0]));
+	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b0));
+	      b += 1;
+	      n -= 1;
 	      continue;
+	    }
+	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      addr = pointer_to_uword (b0) - start;
+	      offset = (sizeof (vlib_buffer_t) + b0->current_data)
+		       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+	      desc[0].addr = offset | addr;
+	      desc[0].len = b0->current_length;
+	      desc[0].options = XDP_PKT_CONTD;
+	      desc += 1;
+
+	      /* next buffer */
+	      b0 = vlib_get_buffer (vm, b0->next_buffer);
 	    }
 	}
 
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
-      addr = pointer_to_uword (b[0]) - start;
+      addr = pointer_to_uword (b0) - start;
+      offset = (sizeof (vlib_buffer_t) + b0->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       desc[0].addr = offset | addr;
-      desc[0].len = b[0]->current_length;
+      desc[0].len = b0->current_length;
+      desc[0].options = 0;
       desc += 1;
+
       b += 1;
       n -= 1;
     }
@@ -232,7 +261,7 @@ wrap_around:
       goto wrap_around;
     }
 
-  return n_tx;
+  return n_descs;
 }
 
 VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
@@ -269,7 +298,7 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (shared_queue)
     clib_spinlock_unlock (&txq->lock);
 
-  if (PREDICT_FALSE (n != n_tx))
+  if (PREDICT_FALSE (n < n_tx))
     {
       vlib_buffer_free (vm, from + n, n_tx - n);
       vlib_error_count (vm, node->node_index,
