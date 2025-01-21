@@ -406,7 +406,8 @@ do_checks:
       if (svm_fifo_needs_deq_ntf (tcp_rx_fifo, read))
 	{
 	  svm_fifo_clear_deq_ntf (tcp_rx_fifo);
-	  session_send_io_evt_to_thread (tcp_rx_fifo, SESSION_IO_EVT_RX);
+	  session_program_transport_io_evt (tcp_rx_fifo->vpp_sh,
+					    SESSION_IO_EVT_RX);
 	}
     }
 
@@ -601,7 +602,7 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
     {
       svm_fifo_enqueue_nocopy (tcp_tx_fifo, wrote);
       if (svm_fifo_set_event (tcp_tx_fifo))
-	session_send_io_evt_to_thread (tcp_tx_fifo, SESSION_IO_EVT_TX);
+	session_program_tx_io_evt (tcp_tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
     }
 
   return wrote;

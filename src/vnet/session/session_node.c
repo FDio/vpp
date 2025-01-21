@@ -688,7 +688,7 @@ session_mq_worker_update_handler (void *data)
    * Retransmit messages that may have been lost
    */
   if (s->tx_fifo && !svm_fifo_is_empty (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 
   if (s->rx_fifo && !svm_fifo_is_empty (s->rx_fifo))
     app_worker_rx_notify (app_wrk, s);
