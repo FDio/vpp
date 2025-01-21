@@ -33,6 +33,23 @@
       "message": "Hello folks, need help with merging this PR. let me know if there is any feedback, happy to work with you to get it merged. Thanks, VK",
       "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5f7b83e_cdca8c98",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-01-21T13:10:21Z",
+      "side": 1,
+      "message": "please consider using VPP_PLATFORM instead, i.e. adding src/cmake/platform/grace.cmake similarly like we have it for octeon10",
+      "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
