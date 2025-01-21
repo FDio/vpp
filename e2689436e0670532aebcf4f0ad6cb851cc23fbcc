@@ -22,6 +22,30 @@
       },
       "revId": "e2689436e0670532aebcf4f0ad6cb851cc23fbcc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9db61a6e_75af45dc",
+        "filename": "src/plugins/dev_octeon/crypto.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1464,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-01-21T06:49:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "74f300d4_646f75d7",
+      "range": {
+        "startLine": 1464,
+        "startChar": 0,
+        "endLine": 1464,
+        "endChar": 29
+      },
+      "revId": "e2689436e0670532aebcf4f0ad6cb851cc23fbcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
