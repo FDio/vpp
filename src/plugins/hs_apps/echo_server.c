@@ -256,8 +256,7 @@ echo_server_ctrl_reply (session_t *s)
 
   rv = svm_fifo_enqueue (s->tx_fifo, sizeof (esm->cfg), (u8 *) &esm->cfg);
   ASSERT (rv == sizeof (esm->cfg));
-  session_send_io_evt_to_thread_custom (&s->session_index, s->thread_index,
-					SESSION_IO_EVT_TX);
+  session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 }
 
 static int
@@ -423,8 +422,8 @@ echo_server_rx_callback (session_t * s)
 	{
 	  /* TODO should be session_enqueue_notify(s) but quic tests seem
 	   * to fail if that's the case */
-	  if (session_send_io_evt_to_thread (rx_fifo,
-					     SESSION_IO_EVT_BUILTIN_RX))
+	  if (session_program_transport_io_evt (s->handle,
+						SESSION_IO_EVT_BUILTIN_RX))
 	    es_err ("failed to enqueue self-tap");
 
 	  if (es->rx_retries == 500000)

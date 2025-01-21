@@ -66,7 +66,7 @@ int
 tls_add_vpp_q_rx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_RX);
+    session_enqueue_notify (s);
   return 0;
 }
 
@@ -81,7 +81,7 @@ int
 tls_add_vpp_q_tx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
   return 0;
 }
 
@@ -569,7 +569,7 @@ dtls_migrate_ctx (void *arg)
     }
 
   if (svm_fifo_max_dequeue (us->tx_fifo))
-    session_send_io_evt_to_thread (us->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (us->handle, SESSION_IO_EVT_TX);
 }
 
 static void

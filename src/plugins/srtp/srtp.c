@@ -291,7 +291,7 @@ done:
   if (n_wrote)
     {
       if (svm_fifo_set_event (us->tx_fifo))
-	session_send_io_evt_to_thread (us->tx_fifo, SESSION_IO_EVT_TX);
+	session_program_tx_io_evt (us->handle, SESSION_IO_EVT_TX);
     }
 
   if (PREDICT_FALSE (ctx->app_closed &&
@@ -538,7 +538,7 @@ srtp_migrate_ctx (void *arg)
   us->opaque = ctx_handle;
   us->flags &= ~SESSION_F_IS_MIGRATING;
   if (svm_fifo_max_dequeue (us->tx_fifo))
-    session_send_io_evt_to_thread (us->tx_fifo, SESSION_IO_EVT_TX);
+    session_program_tx_io_evt (us->handle, SESSION_IO_EVT_TX);
 
   /* Migrate app session as well */
   session_dgram_connect_notify (&ctx->connection, old_thread_index,

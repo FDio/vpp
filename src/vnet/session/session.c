@@ -83,6 +83,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   return 0;
 }
 
+/* Deprecated, use session_program_* functions */
 int
 session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
@@ -90,6 +91,7 @@ session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 				     f->master_thread_index, evt_type);
 }
 
+/* Deprecated, use session_program_* functions */
 int
 session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 				      session_evt_type_t evt_type)
@@ -118,6 +120,14 @@ session_program_rx_io_evt (session_handle_tu_t sh)
 					 (u32) sh.thread_index,
 					 SESSION_IO_EVT_BUILTIN_RX);
     }
+}
+
+int
+session_program_transport_io_evt (session_handle_tu_t sh,
+				  session_evt_type_t evt_type)
+{
+  return session_send_evt_to_thread ((void *) &sh.session_index, 0,
+				     (u32) sh.thread_index, evt_type);
 }
 
 int

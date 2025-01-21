@@ -1099,13 +1099,7 @@ active_open_rx_callback (session_t * s)
    * Send event for server tx fifo
    */
   if (svm_fifo_set_event (proxy_tx_fifo))
-    {
-      u8 thread_index = proxy_tx_fifo->master_thread_index;
-      u32 session_index = proxy_tx_fifo->vpp_session_index;
-      return session_send_io_evt_to_thread_custom (&session_index,
-						   thread_index,
-						   SESSION_IO_EVT_TX);
-    }
+    session_program_tx_io_evt (proxy_tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 
   if (svm_fifo_max_enqueue (proxy_tx_fifo) <= TCP_MSS)
     svm_fifo_add_want_deq_ntf (proxy_tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -1136,9 +1130,7 @@ active_open_tx_callback (session_t * ao_s)
   if (sc->pair.is_http)
     {
       /* notify HTTP transport */
-      session_t *po = session_get_from_handle (sc->pair.session_handle);
-      session_send_io_evt_to_thread_custom (
-	&po->session_index, po->thread_index, SESSION_IO_EVT_RX);
+      session_program_rx_io_evt (sc->pair.session_handle);
     }
   else
     {
