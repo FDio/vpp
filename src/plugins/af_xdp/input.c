@@ -21,6 +21,10 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include "af_xdp.h"
 
 #define foreach_af_xdp_input_error                                            \
@@ -54,8 +58,8 @@ af_xdp_device_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_trace && n_left)
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
-      if (PREDICT_TRUE
-	  (vlib_trace_buffer (vm, node, next_index, b, /* follow_chain */ 0)))
+      if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b,
+					   /* follow_chain */ 1)))
 	{
 	  af_xdp_input_trace_t *tr =
 	    vlib_add_trace (vm, node, b, sizeof (*tr));
@@ -199,16 +203,83 @@ af_xdp_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_frame_no_append (f);
 }
 
+static_always_inline void
+af_xdp_needs_csum (vlib_buffer_t *b0)
+{
+  u16 ethertype = 0, l2hdr_sz = 0;
+  vnet_buffer_oflags_t oflags = 0;
+  u8 l4_proto = 0;
+
+  ethernet_header_t *eh = vlib_buffer_get_current (b0);
+  ethertype = clib_net_to_host_u16 (eh->type);
+  l2hdr_sz = sizeof (*eh);
+
+  if (ethernet_frame_is_tagged (ethertype))
+    {
+      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+      ethertype = clib_net_to_host_u16 (vlan->type);
+      l2hdr_sz += sizeof (*vlan);
+      if (ethertype == ETHERNET_TYPE_VLAN)
+	{
+	  vlan++;
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	}
+    }
+
+  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset + l2hdr_sz;
+
+  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) ((u8 *) eh + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset =
+	vnet_buffer (b0)->l3_hdr_offset + ip4_header_bytes (ip4);
+      l4_proto = ip4->protocol;
+      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
+      b0->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) ((u8 *) eh + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset =
+	vnet_buffer (b0)->l3_hdr_offset + sizeof (ip6_header_t);
+      l4_proto = ip6->protocol;
+      b0->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+
+  if (l4_proto == IP_PROTOCOL_TCP)
+    oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  else if (l4_proto == IP_PROTOCOL_UDP)
+    oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+
+  if (oflags)
+    vnet_buffer_offload_flags_set (b0, oflags);
+}
+
 static_always_inline u32
 af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
-			  af_xdp_rxq_t *rxq, u32 *bis, const u32 n_rx,
-			  vlib_buffer_t *bt, u32 idx)
+			  af_xdp_rxq_t *rxq, u32 *to_next, u32 n_descs,
+			  vlib_buffer_t *bt, u32 idx, int csum_enabled,
+			  u32 *n_pkts)
 {
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
-  u16 offs[VLIB_FRAME_SIZE], *off = offs;
-  u16 lens[VLIB_FRAME_SIZE], *len = lens;
+  u32 options[VLIB_FRAME_SIZE];
+  u32 bis[VLIB_FRAME_SIZE];
+  u16 lens[VLIB_FRAME_SIZE];
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 offs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **b = bufs;
+  u16 *off = offs;
+  u32 *option = options;
+  u16 *len = lens;
   const u32 mask = rxq->rx.mask;
-  u32 n = n_rx, *bi = bis, bytes = 0;
+  i32 n = n_descs;
+  u32 *bi = bis, bytes = 0, n_rx_packets = 0;
 
 #define addr2bi(addr) ((addr) >> CLIB_LOG2_CACHE_LINE_BYTES)
 
@@ -220,60 +291,138 @@ af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
       ASSERT (vlib_buffer_is_known (vm, bi[0]) ==
 	      VLIB_BUFFER_KNOWN_ALLOCATED);
       off[0] = xsk_umem__extract_offset (addr) - sizeof (vlib_buffer_t);
+      option[0] =
+	(desc->options & XDP_PKT_CONTD) ? VLIB_BUFFER_NEXT_PRESENT : 0;
       len[0] = desc->len;
       idx = (idx + 1) & mask;
       bi += 1;
       off += 1;
+      option += 1;
       len += 1;
       n -= 1;
     }
 
-  vlib_get_buffers (vm, bis, bufs, n_rx);
+  /* Rollback some descriptors if we have a partial packet at the end */
+  option -= 1;
+  while (option[0] && (n_descs >= 1))
+    {
+      n_descs -= 1;
+      option -= 1;
+    }
 
-  n = n_rx;
+  vlib_get_buffers (vm, bis, bufs, n_descs);
+
+  n = n_descs;
   off = offs;
+  option = options;
+  bi = bis;
   len = lens;
 
   while (n >= 8)
     {
+      if ((option[0] & VLIB_BUFFER_NEXT_PRESENT) ||
+	  (option[1] & VLIB_BUFFER_NEXT_PRESENT) ||
+	  (option[2] & VLIB_BUFFER_NEXT_PRESENT) ||
+	  (option[3] & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
       vlib_prefetch_buffer_header (b[4], LOAD);
       vlib_buffer_copy_template (b[0], bt);
       b[0]->current_data = off[0];
+      b[0]->flags |= option[0];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[0]);
       bytes += b[0]->current_length = len[0];
 
       vlib_prefetch_buffer_header (b[5], LOAD);
       vlib_buffer_copy_template (b[1], bt);
       b[1]->current_data = off[1];
+      b[1]->flags |= option[1];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[1]);
       bytes += b[1]->current_length = len[1];
 
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_buffer_copy_template (b[2], bt);
       b[2]->current_data = off[2];
+      b[2]->flags |= option[2];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[2]);
       bytes += b[2]->current_length = len[2];
 
       vlib_prefetch_buffer_header (b[7], LOAD);
       vlib_buffer_copy_template (b[3], bt);
       b[3]->current_data = off[3];
+      b[3]->flags |= option[3];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[3]);
       bytes += b[3]->current_length = len[3];
 
+      to_next[0] = bi[0];
+      to_next[1] = bi[1];
+      to_next[2] = bi[2];
+      to_next[3] = bi[3];
+
+      to_next += 4;
+      bi += 4;
       b += 4;
       off += 4;
+      option += 4;
       len += 4;
       n -= 4;
-    }
+      n_rx_packets += 4;
+  }
 
-  while (n >= 1)
+  while (n > 0)
     {
       vlib_buffer_copy_template (b[0], bt);
       b[0]->current_data = off[0];
       bytes += b[0]->current_length = len[0];
+
+      if (csum_enabled)
+	af_xdp_needs_csum (b[0]);
+
+      vlib_buffer_t *b0 = b[0];
+      to_next[0] = bi[0];
+      to_next += 1;
+      while ((option[0] & VLIB_BUFFER_NEXT_PRESENT) && (n > 0))
+	{
+	  vlib_buffer_t *pb = b[0];
+
+	  /* advance */
+	  b += 1;
+	  bi += 1;
+	  len += 1;
+	  off += 1;
+	  option += 1;
+	  n -= 1;
+
+	  /* current buffer */
+	  vlib_buffer_copy_template (b[0], bt);
+	  b[0]->current_data = off[0];
+	  bytes += b[0]->current_length = len[0];
+
+	  /* previous buffer */
+	  pb->next_buffer = bi[0];
+	  pb->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+	  /* first buffer */
+	  b0->total_length_not_including_first_buffer += len[0];
+	}
+
       b += 1;
       off += 1;
+      option += 1;
+      bi += 1;
       len += 1;
       n -= 1;
+      n_rx_packets += 1;
     }
 
-  xsk_ring_cons__release (&rxq->rx, n_rx);
+  xsk_ring_cons__release (&rxq->rx, n_descs);
+  ASSERT (n_rx_packets <= n_descs);
+  *n_pkts = n_rx_packets;
+
   return bytes;
 }
 
@@ -285,12 +434,13 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
   vlib_buffer_t bt;
   u32 next_index, *to_next, n_left_to_next;
-  u32 n_rx_packets, n_rx_bytes;
+  u32 n_descs, n_rx_bytes, n_pkts = 0;
   u32 idx;
+  int csum_enabled = ad->flags & AF_XDP_DEVICE_F_CSUM_ENABLED;
 
-  n_rx_packets = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
+  n_descs = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
 
-  if (PREDICT_FALSE (0 == n_rx_packets))
+  if (PREDICT_FALSE (0 == n_descs))
     goto refill;
 
   vlib_buffer_copy_template (&bt, ad->buffer_template);
@@ -300,25 +450,28 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-  n_rx_bytes =
-    af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets, &bt, idx);
+  if (csum_enabled)
+    n_rx_bytes = af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_descs, &bt,
+					   idx, 1, &n_pkts);
+  else
+    n_rx_bytes = af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_descs, &bt,
+					   idx, 0, &n_pkts);
   af_xdp_device_input_ethernet (vm, node, next_index, ad->sw_if_index,
 				ad->hw_if_index);
 
-  vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_rx_packets);
+  vlib_put_next_frame (vm, node, next_index, n_left_to_next - n_pkts);
 
-  af_xdp_device_input_trace (vm, node, n_rx_packets, to_next, next_index,
+  af_xdp_device_input_trace (vm, node, n_pkts, to_next, next_index,
 			     ad->hw_if_index);
 
-  vlib_increment_combined_counter
-    (vnm->interface_main.combined_sw_if_counters +
-     VNET_INTERFACE_COUNTER_RX, vm->thread_index,
-     ad->hw_if_index, n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+    vm->thread_index, ad->hw_if_index, n_pkts, n_rx_bytes);
 
 refill:
   af_xdp_device_input_refill_inline (vm, node, ad, rxq);
 
-  return n_rx_packets;
+  return n_pkts;
 }
 
 VLIB_NODE_FN (af_xdp_input_node) (vlib_main_t * vm,
