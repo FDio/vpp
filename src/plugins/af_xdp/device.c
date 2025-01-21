@@ -252,13 +252,28 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
 
   fd = bpf_program__fd (bpf_prog);
 
-  if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_UPDATE_IF_NOEXIST,
-		      NULL))
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
     {
-      args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
-      args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
-					    ad->linux_ifname);
-      goto err1;
+      bpf_program__set_flags (bpf_prog, bpf_program__flags (bpf_prog) |
+			      BPF_F_XDP_HAS_FRAGS);
+      if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_SKB_MODE, NULL))
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
+	  args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
+						ad->linux_ifname);
+	  goto err1;
+	}
+    }
+  else
+    {
+      if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_UPDATE_IF_NOEXIST,
+			  NULL))
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
+	  args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
+						ad->linux_ifname);
+	  goto err1;
+	}
     }
 
   return 0;
@@ -341,6 +356,8 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    sock_config.bind_flags |= XDP_USE_SG;
   if (args->prog)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
   if (xsk_socket__create
@@ -630,6 +647,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   pool_get_zero (am->devices, ad);
 
+  if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+  if (args->flags & AF_XDP_CREATE_FLAGS_CSUM_ENABLED)
+    ad->flags |= AF_XDP_DEVICE_F_CSUM_ENABLED;
   if (tm->n_vlib_mains > 1 &&
       0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
