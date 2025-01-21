@@ -21,6 +21,10 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include "af_xdp.h"
 
 #define foreach_af_xdp_input_error                                            \
@@ -199,10 +203,69 @@ af_xdp_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_frame_no_append (f);
 }
 
+static_always_inline void
+af_xdp_needs_csum (vlib_buffer_t *b0)
+{
+  u16 ethertype = 0, l2hdr_sz = 0;
+  vnet_buffer_oflags_t oflags = 0;
+  u8 l4_proto = 0;
+
+  ethernet_header_t *eh = vlib_buffer_get_current (b0);
+  ethertype = clib_net_to_host_u16 (eh->type);
+  l2hdr_sz = sizeof (*eh);
+
+  if (ethernet_frame_is_tagged (ethertype))
+    {
+      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+      ethertype = clib_net_to_host_u16 (vlan->type);
+      l2hdr_sz += sizeof (*vlan);
+      if (ethertype == ETHERNET_TYPE_VLAN)
+	{
+	  vlan++;
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	}
+    }
+
+  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset + l2hdr_sz;
+
+  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) ((u8 *) eh + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset =
+	vnet_buffer (b0)->l3_hdr_offset + ip4_header_bytes (ip4);
+      l4_proto = ip4->protocol;
+      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
+      b0->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) ((u8 *) eh + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset =
+	vnet_buffer (b0)->l3_hdr_offset + sizeof (ip6_header_t);
+      l4_proto = ip6->protocol;
+      b0->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+
+  if (l4_proto == IP_PROTOCOL_TCP)
+    oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  else if (l4_proto == IP_PROTOCOL_UDP)
+    oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+
+  if (oflags)
+    vnet_buffer_offload_flags_set (b0, oflags);
+}
+
 static_always_inline u32
 af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
 			  af_xdp_rxq_t *rxq, u32 *bis, const u32 n_rx,
-			  vlib_buffer_t *bt, u32 idx)
+			  vlib_buffer_t *bt, u32 idx, int csum_enabled)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 offs[VLIB_FRAME_SIZE], *off = offs;
@@ -239,21 +302,29 @@ af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
       vlib_prefetch_buffer_header (b[4], LOAD);
       vlib_buffer_copy_template (b[0], bt);
       b[0]->current_data = off[0];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[0]);
       bytes += b[0]->current_length = len[0];
 
       vlib_prefetch_buffer_header (b[5], LOAD);
       vlib_buffer_copy_template (b[1], bt);
       b[1]->current_data = off[1];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[1]);
       bytes += b[1]->current_length = len[1];
 
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_buffer_copy_template (b[2], bt);
       b[2]->current_data = off[2];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[2]);
       bytes += b[2]->current_length = len[2];
 
       vlib_prefetch_buffer_header (b[7], LOAD);
       vlib_buffer_copy_template (b[3], bt);
       b[3]->current_data = off[3];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[3]);
       bytes += b[3]->current_length = len[3];
 
       b += 4;
@@ -266,6 +337,8 @@ af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
     {
       vlib_buffer_copy_template (b[0], bt);
       b[0]->current_data = off[0];
+      if (csum_enabled)
+	af_xdp_needs_csum (b[0]);
       bytes += b[0]->current_length = len[0];
       b += 1;
       off += 1;
@@ -287,6 +360,7 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 next_index, *to_next, n_left_to_next;
   u32 n_rx_packets, n_rx_bytes;
   u32 idx;
+  int csum_enabled = ad->flags & AF_XDP_DEVICE_F_CSUM_ENABLED;
 
   n_rx_packets = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
 
@@ -300,8 +374,12 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-  n_rx_bytes =
-    af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets, &bt, idx);
+  if (csum_enabled)
+    n_rx_bytes = af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets,
+					   &bt, idx, 1);
+  else
+    n_rx_bytes = af_xdp_device_input_bufs (vm, ad, rxq, to_next, n_rx_packets,
+					   &bt, idx, 0);
   af_xdp_device_input_ethernet (vm, node, next_index, ad->sw_if_index,
 				ad->hw_if_index);
 

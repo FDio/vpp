@@ -630,6 +630,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   pool_get_zero (am->devices, ad);
 
+  if (args->flags & AF_XDP_CREATE_FLAGS_CSUM_ENABLED)
+    ad->flags |= AF_XDP_DEVICE_F_CSUM_ENABLED;
   if (tm->n_vlib_mains > 1 &&
       0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;

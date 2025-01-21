@@ -4,6 +4,11 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_psh_cksum.h>
+#include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <af_xdp/af_xdp.h>
 
 #define AF_XDP_TX_RETRIES 5
@@ -123,11 +128,58 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
   clib_spinlock_unlock_if_init (&txq->syscall_lock);
 }
 
+static_always_inline void
+af_xdp_compute_checksum (vlib_buffer_t *b)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+
+  if (oflags == 0)
+    return;
+  if (b->flags & VNET_BUFFER_F_IS_IP4)
+    {
+      ip4_header_t *ip4;
+
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+	  tcp->checksum = ip4_pseudo_header_cksum (ip4);
+	}
+      else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+	  udp->checksum = ip4_pseudo_header_cksum (ip4);
+	}
+    }
+  else if (b->flags & VNET_BUFFER_F_IS_IP6)
+    {
+      ip6_header_t *ip6;
+      ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+	  tcp->checksum = ip6_pseudo_header_cksum (ip6);
+	}
+      else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+	  udp->checksum = ip6_pseudo_header_cksum (ip6);
+	}
+    }
+}
+
 static_always_inline u32
-af_xdp_device_output_tx_try (vlib_main_t * vm,
-			     const vlib_node_runtime_t * node,
-			     af_xdp_device_t * ad, af_xdp_txq_t * txq,
-			     u32 n_tx, u32 * bi)
+af_xdp_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			     af_xdp_device_t *ad, af_xdp_txq_t *txq, u32 n_tx,
+			     u32 *bi, int csum_enabled)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   const uword start = vm->buffer_main->buffer_mem_start;
@@ -164,33 +216,37 @@ wrap_around:
 	}
 
       vlib_prefetch_buffer_header (b[4], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[0]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      if (csum_enabled)
+	af_xdp_compute_checksum (b[0]);
       addr = pointer_to_uword (b[0]) - start;
       desc[0].addr = offset | addr;
       desc[0].len = b[0]->current_length;
 
       vlib_prefetch_buffer_header (b[5], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[1]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[1]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      if (csum_enabled)
+	af_xdp_compute_checksum (b[1]);
       addr = pointer_to_uword (b[1]) - start;
       desc[1].addr = offset | addr;
       desc[1].len = b[1]->current_length;
 
       vlib_prefetch_buffer_header (b[6], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[2]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[2]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      if (csum_enabled)
+	af_xdp_compute_checksum (b[2]);
       addr = pointer_to_uword (b[2]) - start;
       desc[2].addr = offset | addr;
       desc[2].len = b[2]->current_length;
 
       vlib_prefetch_buffer_header (b[7], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[3]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[3]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      if (csum_enabled)
+	af_xdp_compute_checksum (b[3]);
       addr = pointer_to_uword (b[3]) - start;
       desc[3].addr = offset | addr;
       desc[3].len = b[3]->current_length;
@@ -213,9 +269,10 @@ wrap_around:
 	    }
 	}
 
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[0]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      if (csum_enabled)
+	af_xdp_compute_checksum (b[0]);
       addr = pointer_to_uword (b[0]) - start;
       desc[0].addr = offset | addr;
       desc[0].len = b[0]->current_length;
@@ -248,6 +305,7 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   u32 *from;
   u32 n, n_tx;
   int i;
+  int csum_enabled = ad->flags & AF_XDP_DEVICE_F_CSUM_ENABLED;
 
   from = vlib_frame_vector_args (frame);
   n_tx = frame->n_vectors;
@@ -255,14 +313,24 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (shared_queue)
     clib_spinlock_lock (&txq->lock);
 
-  for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
-    {
-      u32 n_enq;
-      af_xdp_device_output_free (vm, node, txq);
-      n_enq =
-	af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
-      n += n_enq;
-    }
+  if (csum_enabled)
+    for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+      {
+	u32 n_enq;
+	af_xdp_device_output_free (vm, node, txq);
+	n_enq = af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n,
+					     from + n, 1);
+	n += n_enq;
+      }
+  else
+    for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+      {
+	u32 n_enq;
+	af_xdp_device_output_free (vm, node, txq);
+	n_enq = af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n,
+					     from + n, 0);
+	n += n_enq;
+      }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
 
