@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d21a57e_a1e6a90b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-21T19:27:58Z",
+      "side": 1,
+      "message": "Hi Matthew, addressed your comments and added an API/CLI to enable per ethertype, and show the ethertypes that are enabled.",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

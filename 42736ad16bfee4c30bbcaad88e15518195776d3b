@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0edfdf1a_ad924b18",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-21T19:27:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "49aba589_233fb371",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c2175b01_5561bda7",
@@ -88,6 +106,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ce34603_15717c2d",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-21T19:27:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c2175b01_5561bda7",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "20ec08e0_e17b9781",
@@ -101,6 +137,24 @@
       "writtenOn": "2025-01-15T02:51:03Z",
       "side": 1,
       "message": "You use a bool for xc and it seems like direction0 is also being treated as a bool, but it is declared as a u8 instead. It would be more consistent to make direction0 a bool. Or declare xc as a u8.\n\nIt seems like it\u0027s value will be false if traffic is being punted phy to host and true if it\u0027s being cross-connected host to phy. The semantics would be more clear if it were given a more meaningful name like \u0027is_xc0\u0027 or \u0027is_host2phy0\u0027 or \u0027is_outbound0\u0027.",
+      "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8d134f3_9dcabf80",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-01-21T19:27:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "20ec08e0_e17b9781",
       "revId": "42736ad16bfee4c30bbcaad88e15518195776d3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
