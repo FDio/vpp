@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ee9aa1b_2d95be34",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-21T17:30:44Z",
+      "side": 1,
+      "message": "should be VPP_MAX_WORKERS ?",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5c5ea5b_d482ee23",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-21T17:30:44Z",
+      "side": 1,
+      "message": "I think it\u0027s a good step in the right direction, thanks a lot. I\u0027m still unsure about this power-of-2 requirement though?",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6b954e0_293e69c5",
+        "filename": "src/vlib/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-21T17:30:44Z",
+      "side": 1,
+      "message": "Sorry I may have missed something but I\u0027m still a bit puzzled about this requirement? Why do we need it to be a power-of-2?",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf27b05a_5f403b4f",
+        "filename": "src/vlib/config.h.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-21T17:30:44Z",
+      "side": 1,
+      "message": "I\u0027d rather define VLIB_MAX_WORKERS here, and make FRAME_QUEUE_MAX_NELTS in src/vlib/node.h use it, that way we can use VLIB_MAX_WORKERS in other parts of VPP",
+      "revId": "6db9a1e6120da9315a8ec522710f7c9aee419f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
