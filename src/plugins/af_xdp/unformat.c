@@ -54,6 +54,14 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->mode = AF_XDP_MODE_ZERO_COPY;
       else if (unformat (line_input, "no-syscall-lock"))
 	args->flags |= AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK;
+      else if (unformat (line_input, "csum-enabled"))
+	args->flags |= AF_XDP_CREATE_FLAGS_CSUM_ENABLED;
+      else if (unformat (line_input, "multi-buffer"))
+	{
+	  args->flags |= AF_XDP_CREATE_FLAGS_MULTI_BUFFER;
+	  if (unformat (line_input, "skb-mode"))
+	    args->flags |= AF_XDP_CREATE_FLAGS_SKB_MODE;
+	}
       else
 	{
 	  /* return failure on unknown input */
