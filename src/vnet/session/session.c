@@ -84,20 +84,6 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 }
 
 int
-session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
-{
-  return session_send_evt_to_thread (&f->vpp_session_index, 0,
-				     f->master_thread_index, evt_type);
-}
-
-int
-session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
-				      session_evt_type_t evt_type)
-{
-  return session_send_evt_to_thread (data, 0, thread_index, evt_type);
-}
-
-int
 session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
@@ -118,6 +104,14 @@ session_program_rx_io_evt (session_handle_tu_t sh)
 					 (u32) sh.thread_index,
 					 SESSION_IO_EVT_BUILTIN_RX);
     }
+}
+
+int
+session_program_transport_io_evt (session_handle_tu_t sh,
+				  session_evt_type_t evt_type)
+{
+  return session_send_evt_to_thread ((void *) &sh.session_index, 0,
+				     (u32) sh.thread_index, evt_type);
 }
 
 int
