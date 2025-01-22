@@ -53,9 +53,9 @@ typedef struct
   int free_data;
   /** File cache pool index */
   u32 cache_pool_index;
-  /** Response header list */
-  http_header_t *resp_headers;
-  /** Serialized headers to send */
+  /** Response header ctx */
+  http_headers_ctx_t resp_headers;
+  /** Response header buffer */
   u8 *headers_buf;
 } hss_session_t;
 

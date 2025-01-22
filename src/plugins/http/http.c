@@ -468,14 +468,12 @@ static const char *connection_upgrade_template = "Connection: upgrade\r\n"
  */
 static const char *http_get_request_template = "GET %s HTTP/1.1\r\n"
 					       "Host: %v\r\n"
-					       "User-Agent: %v\r\n"
-					       "%s";
+					       "User-Agent: %v\r\n";
 
 static const char *http_post_request_template = "POST %s HTTP/1.1\r\n"
 						"Host: %v\r\n"
 						"User-Agent: %v\r\n"
-						"Content-Length: %llu\r\n"
-						"%s";
+						"Content-Length: %llu\r\n";
 
 static u32
 http_send_data (http_conn_t *hc, u8 *data, u32 length)
@@ -1368,6 +1366,76 @@ error:
   return HTTP_SM_ERROR;
 }
 
+static void
+http_write_app_headers (http_conn_t *hc, http_msg_t *msg, u8 **tx_buf)
+{
+  http_main_t *hm = &http_main;
+  session_t *as;
+  u8 *app_headers, *p, *end;
+  u32 *tmp;
+  int rv;
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+
+  /* read app header list */
+  if (msg->data.type == HTTP_MSG_DATA_PTR)
+    {
+      uword app_headers_ptr;
+      rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
+			     (u8 *) &app_headers_ptr);
+      ASSERT (rv == sizeof (app_headers_ptr));
+      app_headers = uword_to_pointer (app_headers_ptr, u8 *);
+    }
+  else
+    {
+      app_headers = hm->app_header_lists[hc->c_thread_index];
+      rv = svm_fifo_dequeue (as->tx_fifo, msg->data.headers_len, app_headers);
+      ASSERT (rv == msg->data.headers_len);
+    }
+
+  /* serialize app headers to tx_buf */
+  end = app_headers + msg->data.headers_len;
+  while (app_headers < end)
+    {
+      /* custom header name? */
+      tmp = (u32 *) app_headers;
+      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+	{
+	  http_custom_token_t *name, *value;
+	  name = (http_custom_token_t *) app_headers;
+	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
+	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  value = (http_custom_token_t *) app_headers;
+	  app_headers += sizeof (http_custom_token_t) + value->len;
+	  vec_add2 (*tx_buf, p, name_len + value->len + 4);
+	  clib_memcpy (p, name->token, name_len);
+	  p += name_len;
+	  *p++ = ':';
+	  *p++ = ' ';
+	  clib_memcpy (p, value->token, value->len);
+	  p += value->len;
+	  *p++ = '\r';
+	  *p++ = '\n';
+	}
+      else
+	{
+	  http_app_header_t *header;
+	  header = (http_app_header_t *) app_headers;
+	  app_headers += sizeof (http_app_header_t) + header->value.len;
+	  http_token_t name = { http_header_name_token (header->name) };
+	  vec_add2 (*tx_buf, p, name.len + header->value.len + 4);
+	  clib_memcpy (p, name.base, name.len);
+	  p += name.len;
+	  *p++ = ':';
+	  *p++ = ' ';
+	  clib_memcpy (p, header->value.token, header->value.len);
+	  p += header->value.len;
+	  *p++ = '\r';
+	  *p++ = '\n';
+	}
+    }
+}
+
 static http_sm_result_t
 http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 {
@@ -1407,6 +1475,8 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       return HTTP_SM_ERROR;
     }
 
+  response = hm->tx_bufs[hc->c_thread_index];
+  vec_reset_length (response);
   /*
    * Add "protocol layer" headers:
    * - current time
@@ -1414,11 +1484,12 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
    * - data length
    */
   now = clib_timebase_now (&hm->timebase);
-  response = format (0, http_response_template, http_status_code_str[msg.code],
-		     /* Date */
-		     format_clib_timebase_time, now,
-		     /* Server */
-		     hc->app_name);
+  response =
+    format (response, http_response_template, http_status_code_str[msg.code],
+	    /* Date */
+	    format_clib_timebase_time, now,
+	    /* Server */
+	    hc->app_name);
 
   /* RFC9110 8.6: A server MUST NOT send Content-Length header field in a
    * 2xx (Successful) response to CONNECT or with a status code of 101
@@ -1449,28 +1520,10 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
   if (msg.data.headers_len)
     {
       HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
-      if (msg.data.type == HTTP_MSG_DATA_PTR)
-	{
-	  uword app_headers_ptr;
-	  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
-				 (u8 *) &app_headers_ptr);
-	  ASSERT (rv == sizeof (app_headers_ptr));
-	  vec_append (response, uword_to_pointer (app_headers_ptr, u8 *));
-	}
-      else
-	{
-	  u32 orig_len = vec_len (response);
-	  vec_resize (response, msg.data.headers_len);
-	  u8 *p = response + orig_len;
-	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
-	  ASSERT (rv == msg.data.headers_len);
-	}
+      http_write_app_headers (hc, &msg, &response);
     }
-  else
-    {
-      /* No headers from app */
-      response = format (response, "\r\n");
-    }
+  /* Add empty line after headers */
+  response = format (response, "\r\n");
   HTTP_DBG (3, "%v", response);
 
   sent = http_send_data (hc, response, vec_len (response));
@@ -1478,10 +1531,8 @@ http_req_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
     {
       clib_warning ("sending status-line and headers failed!");
       sc = HTTP_STATUS_INTERNAL_ERROR;
-      vec_free (response);
       goto error;
     }
-  vec_free (response);
 
   if (msg.data.body_len)
     {
@@ -1513,6 +1564,7 @@ error:
 static http_sm_result_t
 http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 {
+  http_main_t *hm = &http_main;
   http_msg_t msg;
   session_t *as;
   u8 *target_buff = 0, *request = 0, *target;
@@ -1556,6 +1608,8 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       target = target_buff;
     }
 
+  request = hm->tx_bufs[hc->c_thread_index];
+  vec_reset_length (request);
   /* currently we support only GET and POST method */
   if (msg.method_type == HTTP_REQ_GET)
     {
@@ -1569,15 +1623,13 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
        * - host
        * - user agent
        */
-      request = format (0, http_get_request_template,
+      request = format (request, http_get_request_template,
 			/* target */
 			target,
 			/* Host */
 			hc->host,
 			/* User-Agent */
-			hc->app_name,
-			/* Any headers from app? */
-			msg.data.headers_len ? "" : "\r\n");
+			hc->app_name);
 
       next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
       sm_result = HTTP_SM_STOP;
@@ -1595,7 +1647,7 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
        * - user agent
        * - content length
        */
-      request = format (0, http_post_request_template,
+      request = format (request, http_post_request_template,
 			/* target */
 			target,
 			/* Host */
@@ -1603,9 +1655,7 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
 			/* User-Agent */
 			hc->app_name,
 			/* Content-Length */
-			msg.data.body_len,
-			/* Any headers from app? */
-			msg.data.headers_len ? "" : "\r\n");
+			msg.data.body_len);
 
       http_buffer_init (&hc->req.tx_buf, msg_to_buf_type[msg.data.type],
 			as->tx_fifo, msg.data.body_len);
@@ -1623,23 +1673,10 @@ http_req_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   if (msg.data.headers_len)
     {
       HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
-      if (msg.data.type == HTTP_MSG_DATA_PTR)
-	{
-	  uword app_headers_ptr;
-	  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
-				 (u8 *) &app_headers_ptr);
-	  ASSERT (rv == sizeof (app_headers_ptr));
-	  vec_append (request, uword_to_pointer (app_headers_ptr, u8 *));
-	}
-      else
-	{
-	  u32 orig_len = vec_len (request);
-	  vec_resize (request, msg.data.headers_len);
-	  u8 *p = request + orig_len;
-	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
-	  ASSERT (rv == msg.data.headers_len);
-	}
+      http_write_app_headers (hc, &msg, &request);
     }
+  /* Add empty line after headers */
+  request = format (request, "\r\n");
   HTTP_DBG (3, "%v", request);
 
   sent = http_send_data (hc, request, vec_len (request));
@@ -1661,7 +1698,6 @@ error:
 
 done:
   vec_free (target_buff);
-  vec_free (request);
   return sm_result;
 }
 
@@ -2297,6 +2333,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   vec_validate (hm->wrk, num_threads - 1);
   vec_validate (hm->rx_bufs, num_threads - 1);
   vec_validate (hm->tx_bufs, num_threads - 1);
+  vec_validate (hm->app_header_lists, num_threads - 1);
   for (i = 0; i < num_threads; i++)
     {
       vec_validate (hm->rx_bufs[i],
@@ -2305,6 +2342,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       vec_validate (hm->tx_bufs[i],
 		    HTTP_UDP_PAYLOAD_MAX_LEN +
 		      HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+      vec_validate (hm->app_header_lists[i], 32 << 10);
     }
 
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
