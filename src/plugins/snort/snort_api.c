@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
+ */
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <snort/snort.h>
@@ -80,17 +83,25 @@ vl_api_snort_interface_attach_t_handler (vl_api_snort_interface_attach_t *mp)
   u8 snort_dir = mp->snort_dir;
   int rv = VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  if (sw_if_index == INDEX_INVALID)
-    rv = VNET_API_ERROR_NO_MATCHING_INTERFACE;
-  else
+  VALIDATE_SW_IF_INDEX (mp);
+  switch (snort_dir)
     {
-      instance = snort_get_instance_by_index (instance_index);
-      if (instance)
-	rv = snort_interface_enable_disable (vm, (char *) instance->name,
-					     sw_if_index, 1 /* is_enable */,
-					     snort_dir);
+    case SNORT_INPUT:
+    case SNORT_OUTPUT:
+    case SNORT_INOUT:
+      break;
+    default:
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto bad_sw_if_index;
     }
-
+  instance = snort_get_instance_by_index (instance_index);
+  if (instance)
+    {
+      rv = snort_interface_enable_disable (vm, (char *) instance->name,
+					   sw_if_index, 1 /* is_enable */,
+					   snort_dir);
+    }
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SNORT_INTERFACE_ATTACH_REPLY);
 }
 
@@ -375,8 +386,10 @@ vl_api_snort_interface_detach_t_handler (vl_api_snort_interface_detach_t *mp)
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   int rv;
 
+  VALIDATE_SW_IF_INDEX (mp);
   rv = snort_interface_disable_all (vm, sw_if_index);
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SNORT_INTERFACE_DETACH_REPLY);
 }
 
