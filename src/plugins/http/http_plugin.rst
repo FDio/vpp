@@ -16,10 +16,10 @@ Usage
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
 ``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_build_header_table``, ``http_get_header``,
-``http_reset_header_table``, ``http_free_header_table``, ``http_add_header``, ``http_validate_target_syntax``,
-``http_serialize_headers``, ``http_parse_authority``, ``http_serialize_authority``, ``http_parse_masque_host_port``,
-``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``. ``http_token_is``, ``http_token_is_case``,
-``http_token_contains``
+``http_reset_header_table``, ``http_free_header_table``, ``http_init_headers_ctx``, ``http_add_header``,
+``http_add_custom_header``, ``http_validate_target_syntax``, ``http_parse_authority``, ``http_serialize_authority``,
+``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``,
+``http_token_is``, ``http_token_is_case``, ``http_token_contains``
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
@@ -253,10 +253,9 @@ Application should set following items:
 * header section offset and length
 * body offset and length
 
-Application could pass headers back to HTTP layer. Header list is created dynamically as vector of ``http_header_t``,
-where we store only pointers to buffers (zero copy).
-Well known header names are predefined.
-The list is serialized just before you send buffer to HTTP layer.
+Application could pass headers back to HTTP layer. Header list is created dynamically using ``http_headers_ctx_t``, which must be initialized with preallocated buffer.
+Well known header names are predefined and are added using ``http_add_header``, for headers with custom names use ``http_add_custom_header``.
+Header list buffer is sent buffer to HTTP layer in raw, current length is stored ``tail_offset`` member of ``http_headers_ctx_t``.
 
 .. note::
     Following headers are added at protocol layer and **MUST NOT** be set by application: Date, Server, Content-Length, Connection, Upgrade
@@ -268,18 +267,20 @@ Following example shows how to create headers section:
   #include <http/http.h>
   #include <http/http_header_names.h>
   #include <http/http_content_types.h>
-  http_header_t *resp_headers = 0;
+  http_headers_ctx_t resp_headers;
   u8 *headers_buf = 0;
-  http_add_header (resp_headers,
-		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+  /* allocate buffer for response header list */
+  vec_validate (headers_buf, 1023);
+  /* initialize header list context */
+  http_init_headers_ctx (&resp_headers, headers_buf, vec_len (headers_buf));
+  /* add headers to the list */
+  http_add_header (&resp_headers, HTTP_HEADER_CONTENT_TYPE,
 		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
-  http_add_header (resp_headers,
-		   http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
+  http_add_header (&resp_headers, HTTP_HEADER_CACHE_CONTROL,
 		   http_token_lit ("max-age=600"));
-  http_add_header (resp_headers,
-		   http_header_name_token (HTTP_HEADER_LOCATION),
-		   (const char *) redirect, vec_len (redirect));
-  headers_buf = http_serialize_headers (resp_headers);
+  http_add_custom_header (&resp_headers,
+		   http_token_lit ("X-Frame-Options"),
+		   (const char *) x_frame_opt, vec_len (x_frame_opt));
 
 The example below show how to create and send response HTTP message metadata:
 
@@ -289,7 +290,7 @@ The example below show how to create and send response HTTP message metadata:
   msg.type = HTTP_MSG_REPLY;
   msg.code = HTTP_STATUS_MOVED
   msg.data.headers_offset = 0;
-  msg.data.headers_len = vec_len (headers_buf);
+  msg.data.headers_len = resp_headers.tail_offset;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.body_len = vec_len (tx_buf);
   msg.data.body_offset = msg.data.headers_len;
@@ -298,11 +299,11 @@ The example below show how to create and send response HTTP message metadata:
   rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
-Next you will send your serialized headers:
+Next you will send your headers:
 
 .. code-block:: C
 
-  rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
+  rv = svm_fifo_enqueue (ts->tx_fifo, msg.data.headers_len, headers_buf);
   ASSERT (rv == msg.data.headers_len);
   vec_free (headers_buf);
 
@@ -377,13 +378,12 @@ The example below shows how to create headers section:
   #include <http/http.h>
   #include <http/http_header_names.h>
   #include <http/http_content_types.h>
-  http_header_t *req_headers = 0;
+  http_headers_ctx_t *req_headers;
   u8 *headers_buf = 0;
-  http_add_header (req_headers,
-		   http_header_name_token (HTTP_HEADER_ACCEPT),
+  vec_validate (headers_buf, 63);
+  http_init_headers_ctx (&eq_headers, headers_buf, vec_len (headers_buf));
+  http_add_header (req_headers, HTTP_HEADER_ACCEPT,
 		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
-  headers_buf = http_serialize_headers (req_headers);
-  vec_free (hs->req_headers);
 
 Following example shows how to set message metadata:
 
@@ -398,7 +398,7 @@ Following example shows how to set message metadata:
   msg.data.target_path_len = vec_len (target);
   /* custom headers */
   msg.data.headers_offset = msg.data.target_path_len;
-  msg.data.headers_len = vec_len (headers_buf);
+  msg.data.headers_len = headers.tail_offset;
   /* no request body because we are doing GET request */
   msg.data.body_len = 0;
   /* data type and total length */
@@ -411,7 +411,7 @@ Finally application sends everything to HTTP layer:
 
   svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) }, /* message metadata */
 			     { target, vec_len (target) }, /* request target */
-			     { headers_buf, vec_len (headers_buf) } }; /* serialized headers */
+			     { headers_buf, msg.data.headers_len } }; /* headers */
   rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);
   vec_free (headers_buf);
   if (rv < 0 || rv != sizeof (msg) + msg.data.len)

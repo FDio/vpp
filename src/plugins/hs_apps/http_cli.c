@@ -52,7 +52,8 @@ typedef struct
   u32 tx_offset;
   u32 vpp_session_index;
   http_header_table_t req_headers;
-  http_header_t *resp_headers;
+  http_headers_ctx_t resp_headers;
+  u8 *resp_headers_buf;
 } hcs_session_t;
 
 typedef struct
@@ -92,6 +93,7 @@ hcs_session_alloc (u32 thread_index)
   memset (hs, 0, sizeof (*hs));
   hs->session_index = hs - hcm->sessions[thread_index];
   hs->thread_index = thread_index;
+  vec_validate (hs->resp_headers_buf, 255);
   return hs;
 }
 
@@ -172,21 +174,10 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg;
   session_t *ts;
-  u8 *headers_buf = 0;
   int rv;
 
-  if (vec_len (hs->resp_headers))
-    {
-      headers_buf = http_serialize_headers (hs->resp_headers);
-      vec_reset_length (hs->resp_headers);
-      msg.data.headers_offset = 0;
-      msg.data.headers_len = vec_len (headers_buf);
-    }
-  else
-    {
-      msg.data.headers_offset = 0;
-      msg.data.headers_len = 0;
-    }
+  msg.data.headers_offset = 0;
+  msg.data.headers_len = hs->resp_headers.tail_offset;
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
@@ -201,9 +192,9 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
 
   if (msg.data.headers_len)
     {
-      rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
+      rv = svm_fifo_enqueue (ts->tx_fifo, msg.data.headers_len,
+			     hs->resp_headers.buf);
       ASSERT (rv == msg.data.headers_len);
-      vec_free (headers_buf);
     }
 
   if (!msg.data.body_len)
@@ -245,8 +236,7 @@ send_data_to_http (void *rpc_args)
   if (args->plain_text)
     type = HTTP_CONTENT_TEXT_PLAIN;
 
-  http_add_header (&hs->resp_headers,
-		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+  http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
 		   http_content_type_token (type));
 
   start_send_data (hs, HTTP_STATUS_OK);
@@ -371,7 +361,8 @@ hcs_ts_rx_callback (session_t *ts)
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
   hs->tx_buf = 0;
-  vec_reset_length (hs->resp_headers);
+  http_init_headers_ctx (&hs->resp_headers, hs->resp_headers_buf,
+			 vec_len (hs->resp_headers_buf));
   http_reset_header_table (&hs->req_headers);
 
   /* Read the http message header */
@@ -380,8 +371,7 @@ hcs_ts_rx_callback (session_t *ts)
 
   if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_GET)
     {
-      http_add_header (&hs->resp_headers,
-		       http_header_name_token (HTTP_HEADER_ALLOW),
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
 		       http_token_lit ("GET"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
@@ -540,7 +530,7 @@ hcs_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     return;
 
   vec_free (hs->tx_buf);
-  vec_free (hs->resp_headers);
+  vec_free (hs->resp_headers_buf);
   http_free_header_table (&hs->req_headers);
   hcs_session_free (hs);
 }
