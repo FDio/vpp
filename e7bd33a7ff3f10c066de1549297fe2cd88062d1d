@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9c77983_cf86cc8c",
+        "filename": "src/plugins/http_static/http_static.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-01-22T12:26:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5433b71c_77e557e3",
+      "range": {
+        "startLine": 27,
+        "startChar": 38,
+        "endLine": 27,
+        "endChar": 47
+      },
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9fa31267_2db41cd0",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0f97d29_4880960f",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-01-22T12:26:29Z",
+      "side": 1,
+      "message": "After a discussion with Matus, we have deferred the topic of offloading POST rx handling for later, as it would mean a sizeable refactor and is slightly out of scope for this change.",
+      "parentUuid": "9fa31267_2db41cd0",
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "18f8890e_2c6b242a",
@@ -54,6 +96,30 @@
       "writtenOn": "2025-01-17T19:42:46Z",
       "side": 1,
       "message": "we should check if we have full body in fifo here too, since we do not support reading large body (io more data not handled here), and return error to client (when running debug build we assert but on release we pass some random data to url handler)",
+      "range": {
+        "startLine": 589,
+        "startChar": 1,
+        "endLine": 594,
+        "endChar": 36
+      },
+      "revId": "e7bd33a7ff3f10c066de1549297fe2cd88062d1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e5ef74f_a5ff2abe",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-01-22T12:26:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "18f8890e_2c6b242a",
       "range": {
         "startLine": 589,
         "startChar": 1,
