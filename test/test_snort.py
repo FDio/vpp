@@ -29,7 +29,6 @@ class TestSnort(VppTestCase):
     def test_snort_cli(self):
         # TODO: add a test with packets
         # { cli command : part of the expected reply }
-        print("TEST SNORT CLI")
         commands_replies = {
             "snort create-instance name snortTest queue-size 16 on-disconnect drop": "",
             "snort create-instance name snortTest2 queue-size 16 on-disconnect pass": "",
@@ -114,6 +113,18 @@ class TestSnortVapi(VppTestCase):
         reply = self.vapi.snort_interface_attach(
             instance_index=0, sw_if_index=2, snort_dir=2
         )
+        # verify attaching with an invalid direction is rejected
+        try:
+            reply = self.vapi.snort_interface_attach(
+                instance_index=1, sw_if_index=2, snort_dir=4
+            )
+        except:
+            pass
+        else:
+            self.assertNotEqual(reply.retval, 0)
+        reply = self.vapi.cli("show snort interfaces")
+        self.assertNotIn("snortTest1", reply)
+
         reply = self.vapi.snort_interface_attach(
             instance_index=1, sw_if_index=2, snort_dir=3
         )
@@ -123,9 +134,21 @@ class TestSnortVapi(VppTestCase):
         self.assertIn("input", reply)
         self.assertIn("inout", reply)
         self.assertIn("output", reply)
+
+        # verify attaching a previously attached interface is rejected
         try:
             reply = self.vapi.snort_interface_attach(
                 instance_index=1, sw_if_index=2, snort_dir=2
+            )
+        except:
+            pass
+        else:
+            self.assertNotEqual(reply.retval, 0)
+
+        # verify attaching an invalid sw_if_index is rejected
+        try:
+            reply = self.vapi.snort_interface_attach(
+                instance_index=1, sw_if_index=3, snort_dir=2
             )
         except:
             pass
@@ -145,6 +168,7 @@ class TestSnortVapi(VppTestCase):
 
     def test_snort_06_detach_if(self):
         """Interfaces can be detached"""
+        # verify detaching an invalid sw_if_index is rejected
         try:
             reply = self.vapi.snort_interface_detach(sw_if_index=3)
         except:
