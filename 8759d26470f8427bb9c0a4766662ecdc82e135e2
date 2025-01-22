@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ba7f38_eb5637a2",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 887,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-22T19:07:58Z",
+      "side": 1,
+      "message": "Cool stuff ;-)",
+      "revId": "8759d26470f8427bb9c0a4766662ecdc82e135e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
