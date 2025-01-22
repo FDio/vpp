@@ -16,6 +16,46 @@
       "message": "Addressed comments",
       "revId": "a74d10236abbb03e4f2644b1e6ce1392d91a4cbe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfddc00a_722a992a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-22T12:40:26Z",
+      "side": 1,
+      "message": "looks good, just one nit",
+      "revId": "a74d10236abbb03e4f2644b1e6ce1392d91a4cbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e7db540_d42581a6",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 1263,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-22T12:40:26Z",
+      "side": 1,
+      "message": "move this assert to the new test and remove rest, keep this test as it was before",
+      "range": {
+        "startLine": 1263,
+        "startChar": 1,
+        "endLine": 1263,
+        "endChar": 57
+      },
+      "revId": "a74d10236abbb03e4f2644b1e6ce1392d91a4cbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
