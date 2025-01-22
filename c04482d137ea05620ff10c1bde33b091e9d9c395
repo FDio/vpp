@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce790fd4_a151eafa",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 1277,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-22T18:53:05Z",
+      "side": 1,
+      "message": "Can we drop this to 1 second or even lower? Ideally we want to avoid hang the tests for too long.",
+      "revId": "c04482d137ea05620ff10c1bde33b091e9d9c395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
