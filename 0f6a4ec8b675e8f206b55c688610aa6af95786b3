@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2426848_0bfc7e8d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-22T19:24:41Z",
+      "side": 1,
+      "message": "quick nits",
+      "revId": "0f6a4ec8b675e8f206b55c688610aa6af95786b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "767b5445_8aa507c6",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-22T19:24:41Z",
+      "side": 1,
+      "message": "token-\u003elen since you cast it above?",
+      "range": {
+        "startLine": 1120,
+        "startChar": 42,
+        "endLine": 1120,
+        "endChar": 50
+      },
+      "revId": "0f6a4ec8b675e8f206b55c688610aa6af95786b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9400ff8_33577a27",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 1126,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-22T19:24:41Z",
+      "side": 1,
+      "message": "Same as above?",
+      "range": {
+        "startLine": 1126,
+        "startChar": 43,
+        "endLine": 1126,
+        "endChar": 52
+      },
+      "revId": "0f6a4ec8b675e8f206b55c688610aa6af95786b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
