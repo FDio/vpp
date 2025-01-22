@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2022 Cisco Systems, Inc.
+ * Copyright(c) 2025 Cisco Systems, Inc.
  */
 #ifndef included_vnet_error_h
 #define included_vnet_error_h
@@ -159,7 +159,8 @@
   _ (BUG, -168, "Bug")                                                        \
   _ (FEATURE_ALREADY_DISABLED, -169, "Feature already disabled")              \
   _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")                \
-  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")
+  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")                    \
+  _ (INVALID_DIRECTION, -172, "Invalid Direction")
 
 typedef enum
 {
