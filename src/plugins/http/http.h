@@ -525,6 +525,7 @@ typedef struct http_main_
 
   u8 **rx_bufs;
   u8 **tx_bufs;
+  u8 **app_header_lists;
 
   clib_timebase_t timebase;
 
@@ -1135,65 +1136,72 @@ http_get_header (http_header_table_t *header_table, const char *name,
   return 0;
 }
 
-/**
- * Add header to the list.
- *
- * @param headers Header list.
- * @param name Pointer to header's name buffer.
- * @param name_len Length of the name.
- * @param value Pointer to header's value buffer.
- * @param value_len Length of the value.
- *
- * @note Headers added at protocol layer: Date, Server, Content-Length
- */
-always_inline void
-http_add_header (http_header_t **headers, const char *name, uword name_len,
-		 const char *value, uword value_len)
+typedef struct
 {
-  http_header_t *header;
-  vec_add2 (*headers, header, 1);
-  header->name.base = (char *) name;
-  header->name.len = name_len;
-  header->value.base = (char *) value;
-  header->value.len = value_len;
+  u32 len;	   /**< length of the header data buffer */
+  u32 tail_offset; /**< current tail in header data */
+  u8 *buf;	   /**< start of header data */
+} http_headers_ctx_t;
+
+typedef struct
+{
+  u32 len;
+  u8 token[0];
+} http_custom_token_t;
+
+typedef struct
+{
+  u32 name;
+  http_custom_token_t value;
+} http_app_header_t;
+
+/* Use high bit of header name length as custom header name bit. */
+#define HTTP_CUSTOM_HEADER_NAME_BIT (1 << 31)
+
+always_inline void
+http_init_headers_ctx (http_headers_ctx_t *ctx, u8 *buf, u32 len)
+{
+  ctx->len = len;
+  ctx->tail_offset = 0;
+  ctx->buf = buf;
 }
 
-/**
- * Serialize the header list.
- *
- * @param headers Header list to serialize.
- *
- * @return New vector with serialized headers.
- *
- * The caller is always responsible to free the returned vector.
- */
-always_inline u8 *
-http_serialize_headers (http_header_t *headers)
+always_inline void
+http_add_header (http_headers_ctx_t *ctx, http_header_name_t name,
+		 const char *value, uword value_len)
 {
-  u8 *headers_buf = 0, *dst;
-  u32 headers_buf_len = 2;
-  http_header_t *header;
+  http_app_header_t *header;
 
-  vec_foreach (header, headers)
-    headers_buf_len += header->name.len + header->value.len + 4;
+  ASSERT ((ctx->tail_offset + sizeof (http_app_header_t) + value_len) <
+	  ctx->len);
 
-  vec_validate (headers_buf, headers_buf_len - 1);
-  dst = headers_buf;
+  header = (http_app_header_t *) (ctx->buf + ctx->tail_offset);
+  header->name = (u32) name;
+  header->value.len = (u32) value_len;
+  clib_memcpy (header->value.token, (u8 *) value, value_len);
+  ctx->tail_offset += sizeof (http_app_header_t) + value_len;
+}
 
-  vec_foreach (header, headers)
-    {
-      clib_memcpy (dst, header->name.base, header->name.len);
-      dst += header->name.len;
-      *dst++ = ':';
-      *dst++ = ' ';
-      clib_memcpy (dst, header->value.base, header->value.len);
-      dst += header->value.len;
-      *dst++ = '\r';
-      *dst++ = '\n';
-    }
-  *dst++ = '\r';
-  *dst = '\n';
-  return headers_buf;
+always_inline void
+http_add_custom_header (http_headers_ctx_t *ctx, const char *name,
+			uword name_len, const char *value, uword value_len)
+{
+  http_custom_token_t *token;
+
+  ASSERT ((ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len +
+	   value_len) < ctx->len);
+
+  /* name */
+  token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
+  token->len = (u32) name_len;
+  clib_memcpy (token->token, (u8 *) name, token->len);
+  token->len |= HTTP_CUSTOM_HEADER_NAME_BIT;
+  ctx->tail_offset += sizeof (http_custom_token_t) + name_len;
+  /* value */
+  token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
+  token->len = (u32) value_len;
+  clib_memcpy (token->token, (u8 *) value, token->len);
+  ctx->tail_offset += sizeof (http_custom_token_t) + value_len;
 }
 
 typedef enum http_uri_host_type_

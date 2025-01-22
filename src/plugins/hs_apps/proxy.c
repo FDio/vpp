@@ -63,32 +63,39 @@ proxy_session_side_ctx_get (proxy_worker_t *wrk, u32 ctx_index)
 }
 
 static_always_inline void
-proxy_send_http_resp (session_t *s, http_status_code_t sc, u8 *headers_buf)
+proxy_send_http_resp (session_t *s, http_status_code_t sc,
+		      http_headers_ctx_t *headers)
 {
   http_msg_t msg;
   int rv;
   uword headers_ptr;
+  svm_fifo_seg_t seg[2];
+  u32 n_segs = 1;
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
+  msg.data.headers_len = 0;
+  if (headers)
+    {
+      msg.data.headers_len = headers->tail_offset;
+      headers_ptr = pointer_to_uword (headers->buf);
+      seg[1].data = (u8 *) &headers_ptr;
+      seg[1].len = sizeof (headers_ptr);
+      n_segs = 2;
+    }
   msg.type = HTTP_MSG_REPLY;
   msg.code = sc;
   msg.data.type = HTTP_MSG_DATA_PTR;
-  msg.data.headers_len = vec_len (headers_buf);
   msg.data.len = msg.data.headers_len;
   msg.data.headers_offset = 0;
   msg.data.body_len = 0;
   msg.data.body_offset = 0;
+  seg[0].data = (u8 *) &msg;
+  seg[0].len = sizeof (msg);
 
-  headers_ptr = pointer_to_uword (headers_buf);
-  svm_fifo_seg_t seg[2] = {
-    { (u8 *) &msg, sizeof (msg) },
-    { (u8 *) &headers_ptr, sizeof (headers_ptr) },
-  };
-
-  rv = svm_fifo_enqueue_segments (s->tx_fifo, seg, msg.data.len ? 2 : 1,
-				  0 /* allow partial */);
-  ASSERT (rv == (sizeof (msg) + (msg.data.len ? sizeof (headers_ptr) : 0)));
+  rv =
+    svm_fifo_enqueue_segments (s->tx_fifo, seg, n_segs, 0 /* allow partial */);
+  ASSERT (rv == (sizeof (msg) + (n_segs == 2 ? sizeof (headers_ptr) : 0)));
 
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
@@ -872,7 +879,7 @@ active_open_send_http_resp_rpc (void *arg)
 	session_get_from_handle (ps->ao.session_handle));
       if (ao_tp == TRANSPORT_PROTO_UDP)
 	proxy_send_http_resp (po_s, HTTP_STATUS_SWITCHING_PROTOCOLS,
-			      pm->capsule_proto_header);
+			      &pm->capsule_proto_header);
       else
 	proxy_send_http_resp (po_s, HTTP_STATUS_OK, 0);
     }
@@ -1469,8 +1476,6 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 clib_error_t *
 proxy_main_init (vlib_main_t * vm)
 {
-  http_header_t *headers = 0;
-
   proxy_main_t *pm = &proxy_main;
   pm->server_client_index = ~0;
   pm->active_open_client_index = ~0;
@@ -1478,11 +1483,12 @@ proxy_main_init (vlib_main_t * vm)
   pm->idle_timeout = 600; /* connect-proxy default idle timeout 10 minutes */
   vec_validate (pm->client_sep, TRANSPORT_N_PROTOS - 1);
 
-  http_add_header (&headers,
-		   http_header_name_token (HTTP_HEADER_CAPSULE_PROTOCOL),
+  vec_validate (pm->capsule_proto_header_buf, 10);
+  http_init_headers_ctx (&pm->capsule_proto_header,
+			 pm->capsule_proto_header_buf,
+			 vec_len (pm->capsule_proto_header_buf));
+  http_add_header (&pm->capsule_proto_header, HTTP_HEADER_CAPSULE_PROTOCOL,
 		   http_token_lit (HTTP_BOOLEAN_TRUE));
-  pm->capsule_proto_header = http_serialize_headers (headers);
-  vec_free (headers);
 
   return 0;
 }

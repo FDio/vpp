@@ -90,7 +90,8 @@ typedef struct
   u32 active_open_app_index;		/**< active open index after attach */
   u32 ckpair_index;			/**< certkey pair index for tls */
 
-  u8 *capsule_proto_header;
+  http_headers_ctx_t capsule_proto_header;
+  u8 *capsule_proto_header_buf;
 
   /*
    * Configuration params

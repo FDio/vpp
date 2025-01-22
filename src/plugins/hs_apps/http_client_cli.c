@@ -16,7 +16,6 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
-#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 
@@ -37,7 +36,6 @@ typedef struct
   u32 vpp_session_index;
   u64 to_recv;
   u8 is_closed;
-  http_header_t *req_headers;
 } hcc_session_t;
 
 typedef struct
@@ -131,9 +129,10 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   hcc_session_t *hs, *new_hs;
   hcc_worker_t *wrk;
   http_msg_t msg;
-  u8 *headers_buf;
+  u8 *headers_buf = 0;
   u32 new_hs_index;
   int rv;
+  http_headers_ctx_t headers;
 
   HCC_DBG ("ho hc_index: %d", hc_index);
 
@@ -157,11 +156,10 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   HCC_DBG ("new hc_index: %d", new_hs->session_index);
   as->opaque = new_hs_index;
 
-  http_add_header (&new_hs->req_headers,
-		   http_header_name_token (HTTP_HEADER_ACCEPT),
+  vec_validate (headers_buf, 63);
+  http_init_headers_ctx (&headers, headers_buf, vec_len (headers_buf));
+  http_add_header (&headers, HTTP_HEADER_ACCEPT,
 		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
-  headers_buf = http_serialize_headers (new_hs->req_headers);
-  vec_free (new_hs->req_headers);
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = HTTP_REQ_GET;
@@ -170,7 +168,7 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   msg.data.target_path_len = vec_len (hcm->http_query);
   /* custom headers */
   msg.data.headers_offset = msg.data.target_path_len;
-  msg.data.headers_len = vec_len (headers_buf);
+  msg.data.headers_len = headers.tail_offset;
   /* request body */
   msg.data.body_len = 0;
   /* data type and total length */
@@ -180,7 +178,7 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
 
   svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) },
 			     { hcm->http_query, vec_len (hcm->http_query) },
-			     { headers_buf, vec_len (headers_buf) } };
+			     { headers_buf, msg.data.headers_len } };
 
   rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);
   vec_free (headers_buf);
