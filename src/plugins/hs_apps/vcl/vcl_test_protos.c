@@ -15,7 +15,6 @@
 
 #include <hs_apps/vcl/vcl_test.h>
 #include <http/http.h>
-#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 
 typedef enum vcl_test_http_state_
@@ -1162,7 +1161,7 @@ vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
 				  uint32_t nbytes)
 {
   http_msg_t msg;
-  http_header_t *req_headers = 0;
+  http_headers_ctx_t req_headers;
   u8 *headers_buf = 0;
   u8 *target;
   vcl_test_http_ctx_t *vcl_test_http_ctx = (vcl_test_http_ctx_t *) ts->opaque;
@@ -1207,11 +1206,11 @@ vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
 
   else if (PREDICT_FALSE (vcl_test_http_ctx->test_state == VCL_TEST_HTTP_IDLE))
     {
+      vec_validate (headers_buf, 63);
+      http_init_headers_ctx (&req_headers, headers_buf, vec_len (headers_buf));
       http_add_header (
-	&req_headers, http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+	&req_headers, HTTP_HEADER_CONTENT_TYPE,
 	http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
-      headers_buf = http_serialize_headers (req_headers);
-      vec_free (req_headers);
 
       memset (&msg, 0, sizeof (http_msg_t));
       msg.type = HTTP_MSG_REQUEST;
@@ -1223,7 +1222,7 @@ vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
 
       /* headers */
       msg.data.headers_offset = msg.data.target_path_len;
-      msg.data.headers_len = vec_len (headers_buf);
+      msg.data.headers_len = req_headers.tail_offset;
 
       /* body */
       msg.data.body_offset = msg.data.headers_offset + msg.data.headers_len;
@@ -1236,7 +1235,7 @@ vt_process_http_client_write_msg (vcl_test_session_t *ts, void *buf,
       vppcom_data_segment_t segs[3] = { { (u8 *) &msg, sizeof (msg) },
 					{ target, strlen ((char *) target) },
 					{ headers_buf,
-					  vec_len (headers_buf) } };
+					  msg.data.headers_len } };
 
       do
 	{

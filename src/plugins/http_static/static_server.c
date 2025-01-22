@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 
 /** @file static_server.c
@@ -41,6 +40,8 @@ hss_session_alloc (u32 thread_index)
   hs->session_index = hs - hsm->sessions[thread_index];
   hs->thread_index = thread_index;
   hs->cache_pool_index = ~0;
+  /* 1kB for headers should be enough for now */
+  vec_validate (hs->headers_buf, 1023);
   return hs;
 }
 
@@ -86,29 +87,17 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg;
   session_t *ts;
-  u8 *headers_buf = 0;
   u32 n_enq;
   u64 to_send;
   int rv;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
 
-  if (vec_len (hs->resp_headers))
-    {
-      headers_buf = http_serialize_headers (hs->resp_headers);
-      vec_free (hs->resp_headers);
-      msg.data.headers_offset = 0;
-      msg.data.headers_len = vec_len (headers_buf);
-    }
-  else
-    {
-      msg.data.headers_offset = 0;
-      msg.data.headers_len = 0;
-    }
-
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
   msg.data.body_len = hs->data_len;
+  msg.data.headers_offset = 0;
+  msg.data.headers_len = hs->resp_headers.tail_offset;
   msg.data.len = msg.data.body_len + msg.data.headers_len;
 
   if (msg.data.len > hss_main.use_ptr_thresh)
@@ -119,7 +108,6 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 
       if (msg.data.headers_len)
 	{
-	  hs->headers_buf = headers_buf;
 	  uword headers = pointer_to_uword (hs->headers_buf);
 	  rv =
 	    svm_fifo_enqueue (ts->tx_fifo, sizeof (headers), (u8 *) &headers);
@@ -144,9 +132,9 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 
   if (msg.data.headers_len)
     {
-      rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
+      rv =
+	svm_fifo_enqueue (ts->tx_fifo, msg.data.headers_len, hs->headers_buf);
       ASSERT (rv == msg.data.headers_len);
-      vec_free (headers_buf);
     }
 
   if (!msg.data.body_len)
@@ -187,11 +175,8 @@ hss_session_send_data (hss_url_handler_args_t *args)
 
   /* Set content type only if we have some response data */
   if (hs->data_len)
-    {
-      http_add_header (&hs->resp_headers,
-		       http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
-		       http_content_type_token (args->ct));
-    }
+    http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
+		     http_content_type_token (args->ct));
 
   start_send_data (hs, args->sc);
 }
@@ -320,11 +305,8 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
   /* Set content type only if we have some response data */
   if (hs->data_len)
-    {
-      http_add_header (&hs->resp_headers,
-		       http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
-		       http_content_type_token (args.ct));
-    }
+    http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
+		     http_content_type_token (args.ct));
 
   start_send_data (hs, sc);
 
@@ -401,10 +383,9 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
 
   vec_free (port_str);
 
-  http_add_header (&hs->resp_headers,
-		   http_header_name_token (HTTP_HEADER_LOCATION),
+  http_add_header (&hs->resp_headers, HTTP_HEADER_LOCATION,
 		   (const char *) redirect, vec_len (redirect));
-  hs->data = redirect; /* TODO: find better way  */
+  vec_free (redirect);
   hs->data_len = 0;
   hs->free_data = 1;
 
@@ -479,16 +460,15 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   /* Set following headers only for happy path:
    * Content-Type
    * Cache-Control max-age
+   * Last-Modified
    */
   type = content_type_from_request (target);
-  http_add_header (&hs->resp_headers,
-		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+  http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
 		   http_content_type_token (type));
-  http_add_header (
-    &hs->resp_headers, http_header_name_token (HTTP_HEADER_CACHE_CONTROL),
-    (const char *) hsm->max_age_formatted, vec_len (hsm->max_age_formatted));
-  http_add_header (&hs->resp_headers,
-		   http_header_name_token (HTTP_HEADER_LAST_MODIFIED),
+  http_add_header (&hs->resp_headers, HTTP_HEADER_CACHE_CONTROL,
+		   (const char *) hsm->max_age_formatted,
+		   vec_len (hsm->max_age_formatted));
+  http_add_header (&hs->resp_headers, HTTP_HEADER_LAST_MODIFIED,
 		   (const char *) last_modified, vec_len (last_modified));
 
 done:
@@ -529,8 +509,8 @@ hss_ts_rx_callback (session_t *ts)
   if (hs->free_data)
     vec_free (hs->data);
   hs->data = 0;
-  hs->resp_headers = 0;
-  vec_free (hs->headers_buf);
+  http_init_headers_ctx (&hs->resp_headers, hs->headers_buf,
+			 vec_len (hs->headers_buf));
 
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -539,8 +519,7 @@ hss_ts_rx_callback (session_t *ts)
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST))
     {
-      http_add_header (&hs->resp_headers,
-		       http_header_name_token (HTTP_HEADER_ALLOW),
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
 		       http_token_lit ("GET, POST"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;

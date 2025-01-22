@@ -6,7 +6,6 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
-#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
@@ -34,7 +33,7 @@ typedef struct
   u32 thread_index;
   vlib_main_t *vlib_main;
   u8 *headers_buf;
-  http_header_t *req_headers;
+  http_headers_ctx_t req_headers;
   http_msg_t msg;
 } hc_worker_t;
 
@@ -155,9 +154,9 @@ hc_request (session_t *s, session_error_t err)
   rv = svm_fifo_enqueue (s->tx_fifo, vec_len (hcm->target), hcm->target);
   ASSERT (rv == vec_len (hcm->target));
 
-  rv = svm_fifo_enqueue (s->tx_fifo, vec_len (wrk->headers_buf),
+  rv = svm_fifo_enqueue (s->tx_fifo, wrk->req_headers.tail_offset,
 			 wrk->headers_buf);
-  ASSERT (rv == wrk->msg.data.headers_len);
+  ASSERT (rv == wrk->req_headers.tail_offset);
 
   if (hcm->req_method == HTTP_REQ_POST)
     {
@@ -214,22 +213,22 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     {
       if (hcm->is_file)
 	http_add_header (
-	  &wrk->req_headers, http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+	  &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
 	  http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
       else
 	http_add_header (
-	  &wrk->req_headers, http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+	  &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
 	  http_content_type_token (HTTP_CONTENT_APP_X_WWW_FORM_URLENCODED));
     }
+  http_add_header (&wrk->req_headers, HTTP_HEADER_ACCEPT, "*", 1);
 
   vec_foreach (header, hcm->custom_header)
-    http_add_header (&wrk->req_headers, (const char *) header->name,
-		     vec_len (header->name), (const char *) header->value,
-		     vec_len (header->value));
+    http_add_custom_header (
+      &wrk->req_headers, (const char *) header->name, vec_len (header->name),
+      (const char *) header->value, vec_len (header->value));
 
-  wrk->headers_buf = http_serialize_headers (wrk->req_headers);
-  vec_free (wrk->req_headers);
-
+  clib_warning ("%U", format_http_bytes, wrk->headers_buf,
+		wrk->req_headers.tail_offset);
   wrk->msg.method_type = hcm->req_method;
   if (hcm->req_method == HTTP_REQ_POST)
     wrk->msg.data.body_len = vec_len (hcm->data);
@@ -240,7 +239,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   /* request target */
   wrk->msg.data.target_path_len = vec_len (hcm->target);
   /* custom headers */
-  wrk->msg.data.headers_len = vec_len (wrk->headers_buf);
+  wrk->msg.data.headers_len = wrk->req_headers.tail_offset;
   /* total length */
   wrk->msg.data.len = wrk->msg.data.target_path_len +
 		      wrk->msg.data.headers_len + wrk->msg.data.body_len;
@@ -621,7 +620,13 @@ hc_run (vlib_main_t *vm)
   num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (hcm->wrk, num_threads - 1);
   vec_foreach (wrk, hcm->wrk)
-    wrk->thread_index = wrk - hcm->wrk;
+    {
+      wrk->thread_index = wrk - hcm->wrk;
+      /* 4k for headers should be enough */
+      vec_validate (wrk->headers_buf, 4095);
+      http_init_headers_ctx (&wrk->req_headers, wrk->headers_buf,
+			     vec_len (wrk->headers_buf));
+    }
 
   if ((err = hc_attach ()))
     return clib_error_return (0, "http client attach: %U", format_clib_error,
