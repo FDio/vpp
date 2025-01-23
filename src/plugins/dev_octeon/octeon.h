@@ -25,6 +25,12 @@
 
 typedef enum
 {
+  OCT_DEV_ARG_CRYPTO_N_DESC = 1,
+  OCT_DEV_ARG_END,
+} oct_dev_args_t;
+
+typedef enum
+{
   OCT_DEVICE_TYPE_UNKNOWN = 0,
   OCT_DEVICE_TYPE_RVU_PF,
   OCT_DEVICE_TYPE_RVU_VF,
