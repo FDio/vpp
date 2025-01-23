@@ -35,6 +35,27 @@ typedef struct
 
 typedef enum
 {
+  OCT_DRV_ARG_NPA_MAX_POOLS = 1,
+  OCT_DRV_ARG_END,
+} oct_drv_args_t;
+
+typedef enum
+{
+  OCT_PORT_ARG_EN_ETH_PAUSE_FRAME = 1,
+  OCT_PORT_ARG_RSS_FLOW_KEY = 2,
+  OCT_PORT_ARG_SWITCH_HEADER_TYPE = 3,
+  OCT_PORT_ARG_END
+} oct_port_args_t;
+
+typedef enum
+{
+  OCT_DEV_ARG_CRYPTO_N_DESC = 1,
+  OCT_DEV_ARG_EGRESS_TM,
+  OCT_DEV_ARG_END,
+} oct_dev_args_t;
+
+typedef enum
+{
   OCT_DEVICE_TYPE_UNKNOWN = 0,
   OCT_DEVICE_TYPE_RVU_PF,
   OCT_DEVICE_TYPE_RVU_VF,
@@ -46,14 +67,41 @@ typedef enum
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (cl, 128);
+  u64 iova[16];
+} oct_npa_batch_alloc_cl128_t;
+
+typedef union
+{
+  struct npa_batch_alloc_status_s status;
+  u64 as_u64;
+} oct_npa_batch_alloc_status_t;
+
+STATIC_ASSERT_SIZEOF (oct_npa_batch_alloc_cl128_t, 128);
+
+typedef struct
+{
+  u8 sq_initialized : 1;
+  u32 n_enq;
+  u64 io_addr;
+  void *lmt_addr;
+  CLIB_CACHE_LINE_ALIGN_MARK (data0);
+  struct roc_nix_sq sq;
+  i32 cached_pkts;
+} oct_txq_t;
+
+typedef struct
+{
   oct_device_type_t type;
   u8 nix_initialized : 1;
   u8 status : 1;
   u8 full_duplex : 1;
+  u8 egress_tm : 1;
   u32 speed;
   struct plt_pci_device plt_pci_dev;
   struct roc_nix *nix;
   oct_msix_handler_info_t *msix_handler;
+  oct_txq_t **ctqs;
 } oct_device_t;
 
 typedef struct
@@ -95,38 +143,19 @@ typedef struct
 
 typedef struct
 {
-  CLIB_ALIGN_MARK (cl, 128);
-  u64 iova[16];
-} oct_npa_batch_alloc_cl128_t;
-
-typedef union
-{
-  struct npa_batch_alloc_status_s status;
-  u64 as_u64;
-} oct_npa_batch_alloc_status_t;
-
-STATIC_ASSERT_SIZEOF (oct_npa_batch_alloc_cl128_t, 128);
-
-typedef struct
-{
-  u8 sq_initialized : 1;
   u8 npa_pool_initialized : 1;
   u16 hdr_off;
-  u32 n_enq;
   u64 aura_handle;
-  u64 io_addr;
-  void *lmt_addr;
   oct_npa_batch_alloc_cl128_t *ba_buffer;
   u8 ba_first_cl;
   u8 ba_num_cl;
-  CLIB_CACHE_LINE_ALIGN_MARK (data0);
-  struct roc_nix_sq sq;
-} oct_txq_t;
+} oct_per_thread_data_t;
 
 typedef struct
 {
   u8 is_config_done;
   u32 npa_max_pools;
+  oct_per_thread_data_t *per_thread_data;
 } oct_main_t;
 
 extern oct_main_t oct_main;
@@ -224,4 +253,7 @@ typedef struct
   u32 sw_if_index;
   oct_tx_desc_t desc;
 } oct_tx_trace_t;
+
+extern tm_system_t dev_oct_tm_ops;
+
 #endif /* _OCTEON_H_ */
