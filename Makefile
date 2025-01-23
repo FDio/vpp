@@ -666,10 +666,13 @@ test-wipe-all:
 	@$(MAKE) -C test wipe-all
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
+#       Also, this target is used by ci-management/jjb/scripts/vpp/checkstyle-test.sh,
+#       thus inclusion of checkstyle-go here to include checkstyle for hs-test
+#       in the vpp-checkstyle-verify-*-*-* jobs
 .PHONY: test-checkstyle
 test-checkstyle:
-	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
 	@$(MAKE) -C test checkstyle-python-all
+	@$(MAKE) -C extras/hs-test checkstyle-go
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle-diff
