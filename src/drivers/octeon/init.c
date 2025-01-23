@@ -15,6 +15,7 @@
 
 struct roc_model oct_model;
 oct_main_t oct_main;
+extern oct_plt_init_param_t oct_plt_init_param;
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
@@ -32,6 +33,12 @@ vnet_dev_node_t oct_rx_node = {
 };
 
 vnet_dev_node_t oct_tx_node = {
+  .format_trace = format_oct_tx_trace,
+  .error_counters = oct_tx_node_counters,
+  .n_error_counters = ARRAY_LEN (oct_tx_node_counters),
+};
+
+vnet_dev_node_t oct_tx_tm_node = {
   .format_trace = format_oct_tx_trace,
   .error_counters = oct_tx_node_counters,
   .n_error_counters = ARRAY_LEN (oct_tx_node_counters),
@@ -148,6 +155,12 @@ static clib_arg_t oct_dev_args[] = {
     .min = OCT_CPT_LF_MIN_NB_DESC,
     .max = OCT_CPT_LF_MAX_NB_DESC,
     .default_val.uint32 = OCT_CPT_LF_DEF_NB_DESC,
+  },
+  {
+    .name = "egress_tm",
+    .desc = "Egress traffic manager enable (network devices only)",
+    .type = CLIB_ARG_TYPE_BOOL,
+    .default_val.boolean = false,
   },
   {
     .name = "end",
@@ -328,6 +341,13 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
 
   log_info (dev, "MAC address is %U", format_ethernet_address, mac_addr);
 
+  /* Enable TM-specific tx node if requested */
+  if (clib_args_get_bool_val_by_name (dev->args, "egress_tm"))
+    {
+      cd->egress_tm = 1;
+      port_add_args.tx_node = &oct_tx_tm_node;
+    }
+
   return vnet_dev_port_add (vm, dev, 0, &port_add_args);
 }
 
@@ -445,6 +465,11 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
 static vnet_dev_rv_t
 oct_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 sz = sizeof (void *) * ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS;
+  struct npa_pool_s npapool = { .nat_align = 1 };
+  vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, 0);
+  struct npa_aura_s aura = {};
   oct_device_t *cd = vnet_dev_get_data (dev);
   vlib_pci_config_hdr_t pci_hdr;
   vnet_dev_rv_t rv;
@@ -511,17 +536,46 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     case OCT_DEVICE_TYPE_RVU_VF:
     case OCT_DEVICE_TYPE_LBK_VF:
     case OCT_DEVICE_TYPE_SDP_VF:
-      return oct_init_nix (vm, dev);
+      rv = oct_init_nix (vm, dev);
+      break;
 
     case OCT_DEVICE_TYPE_O10K_CPT_VF:
     case OCT_DEVICE_TYPE_O9K_CPT_VF:
-      return oct_init_cpt (vm, dev);
+      rv = oct_init_cpt (vm, dev);
+      break;
 
     default:
       return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
     }
 
-  return 0;
+  if (!vec_len (oct_main.per_thread_data))
+    {
+      vec_validate_aligned (oct_main.per_thread_data, tm->n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
+      for (int i = 0; i < tm->n_vlib_mains; i++)
+	{
+	  oct_per_thread_data_t *ptd = vec_elt_at_index (oct_main.per_thread_data, i);
+	  ptd->ba_buffer = oct_plt_init_param.oct_plt_zmalloc (sz, 128);
+
+	  if (ptd->ba_buffer == NULL)
+	    {
+	      log_err (dev, "Failed to allocate memory for batch buffers");
+	      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+	    }
+
+	  clib_memset_u64 (ptd->ba_buffer, OCT_BATCH_ALLOC_IOVA0_MASK,
+			   ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
+	  if ((rv = roc_npa_pool_create (&ptd->aura_handle, bp->alloc_size, bp->n_buffers, &aura,
+					 &npapool, 0)))
+	    {
+	      return cnx_return_roc_err (dev, rv, "roc_npa_pool_create() failed");
+	    }
+	  ptd->npa_pool_initialized = 1;
+	  ptd->hdr_off = vm->buffer_main->ext_hdr_size;
+	  log_notice (dev, "NPA pool created, tx aura_handle = 0x%lx", ptd->aura_handle);
+	}
+    }
+
+  return rv;
 }
 
 static void
@@ -553,7 +607,6 @@ static vnet_dev_rv_t
 oct_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
 {
   int rv;
-  extern oct_plt_init_param_t oct_plt_init_param;
 
   rv = oct_plt_init (&oct_plt_init_param);
   if (rv)
