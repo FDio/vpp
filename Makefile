@@ -804,10 +804,14 @@ checkstyle: checkfeaturelist
 checkstyle-commit:
 	@extras/scripts/check_commit_msg.sh
 
+# Note: this target is used by ci-management/jjb/scripts/vpp/checkstyle-test.sh,
+#       thus inclusion of checkstyle-go here to include checkstyle for hs-test
+#       in the vpp-checkstyle-verify-*-*-* jobs
 .PHONY: checkstyle-test
 checkstyle-test:
 	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
 	@$(MAKE) -C test checkstyle-python-all
+	@$(MAKE) -C extras/hs-test checkstyle-go
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: checkstyle-python
