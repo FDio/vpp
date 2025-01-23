@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8b71760_2fa0619a",
+        "filename": "docs/index.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-23T05:48:03Z",
+      "side": 1,
+      "message": "this should be \u0027python\u0027 per the file path",
+      "range": {
+        "startLine": 96,
+        "startChar": 16,
+        "endLine": 96,
+        "endChar": 23
+      },
+      "revId": "5aa52c80970249046ea680f1e16199279d92d625",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
