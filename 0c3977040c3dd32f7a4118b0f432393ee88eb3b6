@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "04d5af0f_3c2fdf92",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 1280,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-23T08:25:57Z",
+      "side": 1,
+      "message": "AssertMatchError",
+      "range": {
+        "startLine": 1280,
+        "startChar": 3,
+        "endLine": 1280,
+        "endChar": 14
+      },
+      "revId": "0c3977040c3dd32f7a4118b0f432393ee88eb3b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
