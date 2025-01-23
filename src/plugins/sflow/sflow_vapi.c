@@ -15,6 +15,8 @@
 
 #include <sflow/sflow_vapi.h>
 
+#ifdef SFLOW_USE_VAPI
+
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
@@ -212,6 +214,9 @@ sflow_vapi_check_for_linux_if_index_results (sflow_vapi_client_t *vac,
     }
   return false;
 }
+
+#endif /* SFLOW_USE_VAPI */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
