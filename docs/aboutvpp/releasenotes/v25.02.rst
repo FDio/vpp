@@ -1,0 +1,623 @@
+Release notes for VPP 25.02
+===========================
+
+More than 269 commits since the previous release, including 100 fixes.
+
+Features
+--------
+
+- Plugins
+
+  - Crypto - ipsecmb
+
+    - Bump to ipsecmb v2.0 (`de020ab47 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=de020ab47>`_)
+
+  - DPDK
+
+    - Update rdma-core to 55.0 (`eaf1059c8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=eaf1059c8>`_)
+    - Bump to DPDK 24.11.1 (`82f9167e4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=82f9167e4>`_)
+
+  - Host Stack Applications
+
+    - Added request repeating to http client (`d74e440f2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d74e440f2>`_)
+    - Proxying UDP in HTTP/1.1 (`c19cca931 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c19cca931>`_)
+
+  - Marvell Armada device driver
+
+    - Initial DSA support (`99eed5ec6 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=99eed5ec6>`_)
+
+  - Marvell Octeon device driver
+
+    - Enable h/w vlan tagging support (`e07c5fe46 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e07c5fe46>`_)
+    - Add crypto framework (`6937c0b2d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6937c0b2d>`_)
+    - Add support for hmac\_md5 and chachapoly (`3ac40b94c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3ac40b94c>`_)
+    - Update octeon roc version (`d023a7e26 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d023a7e26>`_)
+    - Add direct mode changes in crypto datapath (`d3df84523 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d3df84523>`_)
+
+  - Snort plugin
+
+    - API functions for plugin (`e3ad5aa68 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e3ad5aa68>`_)
+
+- Python binding for the VPP API
+
+  - Vpp\_papi asyncio support (`0ad98a8c9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0ad98a8c9>`_)
+
+- VNET
+
+  - Bidirectional Forwarding Detection (BFD)
+
+    - Add support for multihop (`17a918133 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=17a918133>`_)
+
+  - Crypto Infra
+
+    - Add async algo macros for ctr sha2 (`9b58a8ec0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9b58a8ec0>`_)
+
+  - New Device Drivers Infra
+
+    - Introduce consistent\_qp feature (`825691419 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=825691419>`_)
+    - Secondary interfaces support (`61e287b9f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=61e287b9f>`_)
+
+  - Segment Routing (IPv6 and MPLS)
+
+    - Adding support to SRv6 uA behavior (`3462950ae <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3462950ae>`_)
+
+  - Session Layer
+
+    - Add support for vcl transport attributes (`28955ceb8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=28955ceb8>`_)
+    - Add auto sdl (`6d4dbd4f2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6d4dbd4f2>`_)
+
+  - TLS and TLS engine plugins
+
+    - Add async processing support (`b8af24b26 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b8af24b26>`_)
+
+
+Known issues
+------------
+
+For the full list of issues please refer to fd.io `JIRA <https://jira.fd.io>`_.
+
+Fixed issues
+------------
+
+For the full list of fixed issues please refer to:
+- fd.io `JIRA <https://jira.fd.io>`_
+- git `commit log <https://git.fd.io/vpp/log/?h=master>`_
+
+
+API changes
+-----------
+
+Description of results:
+
+- *Definition changed*: indicates that the API file was modified between releases.
+- *Only in image*: indicates the API is new for this release.
+- *Only in file*: indicates the API has been removed in this release.
+
+============================================================= ==================
+Message Name                                                  Result
+============================================================= ==================
+af_xdp_create                                                 only in file
+af_xdp_create_reply                                           only in file
+af_xdp_create_v2                                              only in file
+af_xdp_create_v2_reply                                        only in file
+auto_sdl_config                                               only in image
+auto_sdl_config_reply                                         only in image
+bfd_udp_enable_multihop                                       only in image
+bfd_udp_enable_multihop_reply                                 only in image
+dev_create_port_if                                            definition changed
+http_static_enable                                            only in file
+http_static_enable_reply                                      only in file
+http_static_enable_v3                                         only in image
+http_static_enable_v3_reply                                   only in image
+ikev2_get_sleep_interval                                      only in image
+ikev2_get_sleep_interval_reply                                only in image
+ikev2_plugin_set_sleep_interval                               only in image
+ikev2_plugin_set_sleep_interval_reply                         only in image
+pg_delete_interface                                           only in image
+pg_delete_interface_reply                                     only in image
+session_rules_v2_details                                      only in image
+session_rules_v2_dump                                         only in image
+session_sdl_add_del_v2                                        only in image
+session_sdl_add_del_v2_reply                                  only in image
+session_sdl_v2_details                                        only in image
+session_sdl_v2_dump                                           only in image
+session_sdl_v3_details                                        only in image
+session_sdl_v3_dump                                           only in image
+sflow_enable_disable                                          only in image
+sflow_enable_disable_reply                                    only in image
+sflow_header_bytes_get                                        only in image
+sflow_header_bytes_get_reply                                  only in image
+sflow_header_bytes_set                                        only in image
+sflow_header_bytes_set_reply                                  only in image
+sflow_interface_details                                       only in image
+sflow_interface_dump                                          only in image
+sflow_polling_interval_get                                    only in image
+sflow_polling_interval_get_reply                              only in image
+sflow_polling_interval_set                                    only in image
+sflow_polling_interval_set_reply                              only in image
+sflow_sampling_rate_get                                       only in image
+sflow_sampling_rate_get_reply                                 only in image
+sflow_sampling_rate_set                                       only in image
+sflow_sampling_rate_set_reply                                 only in image
+snort_client_details                                          only in image
+snort_client_disconnect                                       only in image
+snort_client_disconnect_reply                                 only in image
+snort_client_get                                              only in image
+snort_client_get_reply                                        only in image
+snort_input_mode_get                                          only in image
+snort_input_mode_get_reply                                    only in image
+snort_input_mode_set                                          only in image
+snort_input_mode_set_reply                                    only in image
+snort_instance_create                                         only in image
+snort_instance_create_reply                                   only in image
+snort_instance_delete                                         only in image
+snort_instance_delete_reply                                   only in image
+snort_instance_details                                        only in image
+snort_instance_disconnect                                     only in image
+snort_instance_disconnect_reply                               only in image
+snort_instance_get                                            only in image
+snort_instance_get_reply                                      only in image
+snort_interface_attach                                        only in image
+snort_interface_attach_reply                                  only in image
+snort_interface_detach                                        only in image
+snort_interface_detach_reply                                  only in image
+snort_interface_details                                       only in image
+snort_interface_get                                           only in image
+snort_interface_get_reply                                     only in image
+sw_interface_ip4_enable_disable                               only in image
+sw_interface_ip4_enable_disable_reply                         only in image
+============================================================= ==================
+
+Found 70 api message signature differences
+
+
+Newly deprecated API messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These messages are still there in the API, but can and probably
+will disappear in the next release.
+
+- http_static_enable_v2
+- http_static_enable_v2_reply
+- http_static_enable_v3
+- http_static_enable_v3_reply
+- session_rules_details
+- session_rules_dump
+- session_sdl_add_del
+- session_sdl_add_del_reply
+- session_sdl_details
+- session_sdl_dump
+- session_sdl_v2_details
+- session_sdl_v2_dump
+
+In-progress API messages
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+These messages are provided for testing and experimentation only.
+They are *not* subject to any compatibility process,
+and therefore can arbitrarily change or disappear at *any* moment.
+Also they may have less than satisfactory testing, making
+them unsuitable for other use than the technology preview.
+If you are intending to use these messages in production projects,
+please collaborate with the feature maintainer on their productization.
+
+- abf_itf_attach_add_del
+- abf_itf_attach_add_del_reply
+- abf_itf_attach_details
+- abf_itf_attach_dump
+- abf_plugin_get_version
+- abf_plugin_get_version_reply
+- abf_policy_add_del
+- abf_policy_add_del_reply
+- abf_policy_details
+- abf_policy_dump
+- acl_plugin_use_hash_lookup_get
+- acl_plugin_use_hash_lookup_get_reply
+- acl_plugin_use_hash_lookup_set
+- acl_plugin_use_hash_lookup_set_reply
+- bpf_trace_filter_set
+- bpf_trace_filter_set_reply
+- bpf_trace_filter_set_v2
+- bpf_trace_filter_set_v2_reply
+- cnat_get_snat_addresses
+- cnat_get_snat_addresses_reply
+- cnat_session_details
+- cnat_session_dump
+- cnat_session_purge
+- cnat_session_purge_reply
+- cnat_set_snat_addresses
+- cnat_set_snat_addresses_reply
+- cnat_set_snat_policy
+- cnat_set_snat_policy_reply
+- cnat_snat_policy_add_del_exclude_pfx
+- cnat_snat_policy_add_del_exclude_pfx_reply
+- cnat_snat_policy_add_del_if
+- cnat_snat_policy_add_del_if_reply
+- cnat_translation_del
+- cnat_translation_del_reply
+- cnat_translation_details
+- cnat_translation_dump
+- cnat_translation_update
+- cnat_translation_update_reply
+- det44_get_timeouts_reply
+- det44_set_timeouts
+- det44_set_timeouts_reply
+- dev_attach
+- dev_attach_reply
+- dev_create_port_if
+- dev_create_port_if_reply
+- dev_detach
+- dev_detach_reply
+- dev_remove_port_if
+- dev_remove_port_if_reply
+- flowprobe_get_params
+- flowprobe_get_params_reply
+- flowprobe_interface_add_del
+- flowprobe_interface_add_del_reply
+- flowprobe_interface_details
+- flowprobe_interface_dump
+- flowprobe_set_params
+- flowprobe_set_params_reply
+- gbp_bridge_domain_add
+- gbp_bridge_domain_add_reply
+- gbp_bridge_domain_del
+- gbp_bridge_domain_del_reply
+- gbp_bridge_domain_details
+- gbp_bridge_domain_dump
+- gbp_bridge_domain_dump_reply
+- gbp_contract_add_del
+- gbp_contract_add_del_reply
+- gbp_contract_details
+- gbp_contract_dump
+- gbp_endpoint_add
+- gbp_endpoint_add_reply
+- gbp_endpoint_del
+- gbp_endpoint_del_reply
+- gbp_endpoint_details
+- gbp_endpoint_dump
+- gbp_endpoint_group_add
+- gbp_endpoint_group_add_reply
+- gbp_endpoint_group_del
+- gbp_endpoint_group_del_reply
+- gbp_endpoint_group_details
+- gbp_endpoint_group_dump
+- gbp_ext_itf_add_del
+- gbp_ext_itf_add_del_reply
+- gbp_ext_itf_details
+- gbp_ext_itf_dump
+- gbp_recirc_add_del
+- gbp_recirc_add_del_reply
+- gbp_recirc_details
+- gbp_recirc_dump
+- gbp_route_domain_add
+- gbp_route_domain_add_reply
+- gbp_route_domain_del
+- gbp_route_domain_del_reply
+- gbp_route_domain_details
+- gbp_route_domain_dump
+- gbp_route_domain_dump_reply
+- gbp_subnet_add_del
+- gbp_subnet_add_del_reply
+- gbp_subnet_details
+- gbp_subnet_dump
+- gbp_vxlan_tunnel_add
+- gbp_vxlan_tunnel_add_reply
+- gbp_vxlan_tunnel_del
+- gbp_vxlan_tunnel_del_reply
+- gbp_vxlan_tunnel_details
+- gbp_vxlan_tunnel_dump
+- gtpu_add_del_forward
+- gtpu_add_del_forward_reply
+- gtpu_add_del_tunnel_v2
+- gtpu_add_del_tunnel_v2_reply
+- gtpu_get_transfer_counts
+- gtpu_get_transfer_counts_reply
+- gtpu_tunnel_v2_details
+- gtpu_tunnel_v2_dump
+- ikev2_child_sa_v2_details
+- ikev2_child_sa_v2_dump
+- ikev2_initiate_del_child_sa
+- ikev2_initiate_del_child_sa_reply
+- ikev2_initiate_del_ike_sa
+- ikev2_initiate_del_ike_sa_reply
+- ikev2_initiate_rekey_child_sa
+- ikev2_initiate_rekey_child_sa_reply
+- ikev2_initiate_sa_init
+- ikev2_initiate_sa_init_reply
+- ikev2_nonce_get
+- ikev2_nonce_get_reply
+- ikev2_profile_add_del
+- ikev2_profile_add_del_reply
+- ikev2_profile_details
+- ikev2_profile_disable_natt
+- ikev2_profile_disable_natt_reply
+- ikev2_profile_dump
+- ikev2_profile_set_auth
+- ikev2_profile_set_auth_reply
+- ikev2_profile_set_id
+- ikev2_profile_set_id_reply
+- ikev2_profile_set_ipsec_udp_port
+- ikev2_profile_set_ipsec_udp_port_reply
+- ikev2_profile_set_liveness
+- ikev2_profile_set_liveness_reply
+- ikev2_profile_set_ts
+- ikev2_profile_set_ts_reply
+- ikev2_profile_set_udp_encap
+- ikev2_profile_set_udp_encap_reply
+- ikev2_sa_v3_details
+- ikev2_sa_v3_dump
+- ikev2_set_esp_transforms
+- ikev2_set_esp_transforms_reply
+- ikev2_set_ike_transforms
+- ikev2_set_ike_transforms_reply
+- ikev2_set_local_key
+- ikev2_set_local_key_reply
+- ikev2_set_responder
+- ikev2_set_responder_hostname
+- ikev2_set_responder_hostname_reply
+- ikev2_set_responder_reply
+- ikev2_set_sa_lifetime
+- ikev2_set_sa_lifetime_reply
+- ikev2_set_tunnel_interface
+- ikev2_set_tunnel_interface_reply
+- ikev2_traffic_selector_details
+- ikev2_traffic_selector_dump
+- ip_neighbor_config_get
+- ip_neighbor_config_get_reply
+- ip_route_add_del_v2
+- ip_route_add_del_v2_reply
+- ip_route_lookup_v2
+- ip_route_lookup_v2_reply
+- ip_route_v2_details
+- ip_route_v2_dump
+- ip_session_redirect_add
+- ip_session_redirect_add_reply
+- ip_session_redirect_add_v2
+- ip_session_redirect_add_v2_reply
+- ip_session_redirect_del
+- ip_session_redirect_del_reply
+- l2_emulation
+- l2_emulation_reply
+- lcp_default_ns_get_reply
+- lcp_default_ns_set
+- lcp_default_ns_set_reply
+- lcp_itf_pair_add_del_v2
+- lcp_itf_pair_add_del_v2_reply
+- lcp_itf_pair_add_del_v3
+- lcp_itf_pair_add_del_v3_reply
+- lcp_itf_pair_details
+- lldp_details
+- mdata_enable_disable
+- mdata_enable_disable_reply
+- nat44_ed_vrf_tables_v2_details
+- nat44_ed_vrf_tables_v2_dump
+- nat44_ei_add_del_address_range
+- nat44_ei_add_del_address_range_reply
+- nat44_ei_add_del_static_mapping
+- nat44_ei_add_del_static_mapping_reply
+- nat44_ei_address_details
+- nat44_ei_address_dump
+- nat44_ei_del_session
+- nat44_ei_del_session_reply
+- nat44_ei_del_user
+- nat44_ei_del_user_reply
+- nat44_ei_forwarding_enable_disable
+- nat44_ei_forwarding_enable_disable_reply
+- nat44_ei_ha_flush
+- nat44_ei_ha_flush_reply
+- nat44_ei_ha_resync
+- nat44_ei_ha_resync_completed_event
+- nat44_ei_ha_resync_reply
+- nat44_ei_ha_set_failover
+- nat44_ei_ha_set_failover_reply
+- nat44_ei_ha_set_listener
+- nat44_ei_ha_set_listener_reply
+- nat44_ei_interface_add_del_feature
+- nat44_ei_interface_add_del_feature_reply
+- nat44_ei_interface_details
+- nat44_ei_interface_dump
+- nat44_ei_ipfix_enable_disable
+- nat44_ei_ipfix_enable_disable_reply
+- nat44_ei_plugin_enable_disable
+- nat44_ei_plugin_enable_disable_reply
+- nat44_ei_set_addr_and_port_alloc_alg
+- nat44_ei_set_addr_and_port_alloc_alg_reply
+- nat44_ei_set_fq_options
+- nat44_ei_set_fq_options_reply
+- nat44_ei_set_mss_clamping
+- nat44_ei_set_mss_clamping_reply
+- nat44_ei_set_timeouts
+- nat44_ei_set_timeouts_reply
+- nat44_ei_set_workers
+- nat44_ei_set_workers_reply
+- nat44_ei_show_fq_options
+- nat44_ei_show_fq_options_reply
+- nat44_ei_show_running_config
+- nat44_ei_show_running_config_reply
+- nat44_ei_static_mapping_details
+- nat44_ei_static_mapping_dump
+- nat44_ei_user_details
+- nat44_ei_user_dump
+- nat44_ei_user_session_details
+- nat44_ei_user_session_dump
+- nat44_ei_user_session_v2_details
+- nat44_ei_user_session_v2_dump
+- nat44_ei_worker_details
+- nat44_ei_worker_dump
+- nat64_plugin_enable_disable
+- nat64_plugin_enable_disable_reply
+- npt66_binding_add_del
+- npt66_binding_add_del_reply
+- oddbuf_enable_disable
+- oddbuf_enable_disable_reply
+- pg_interface_enable_disable_coalesce
+- pg_interface_enable_disable_coalesce_reply
+- ping_finished_event
+- pnat_binding_add
+- pnat_binding_add_reply
+- pnat_binding_add_v2
+- pnat_binding_add_v2_reply
+- pnat_binding_attach
+- pnat_binding_attach_reply
+- pnat_binding_del
+- pnat_binding_del_reply
+- pnat_binding_detach
+- pnat_binding_detach_reply
+- pnat_bindings_details
+- pnat_bindings_get
+- pnat_bindings_get_reply
+- pnat_interfaces_details
+- pnat_interfaces_get
+- pnat_interfaces_get_reply
+- pvti_interface_create
+- pvti_interface_create_reply
+- pvti_interface_delete
+- pvti_interface_delete_reply
+- pvti_interface_details
+- pvti_interface_dump
+- sample_macswap_enable_disable
+- sample_macswap_enable_disable_reply
+- set_ip_flow_hash_v3
+- set_ip_flow_hash_v3_reply
+- sflow_enable_disable
+- sflow_enable_disable_reply
+- sflow_header_bytes_get
+- sflow_header_bytes_get_reply
+- sflow_header_bytes_set
+- sflow_header_bytes_set_reply
+- sflow_interface_details
+- sflow_interface_dump
+- sflow_polling_interval_get
+- sflow_polling_interval_get_reply
+- sflow_polling_interval_set
+- sflow_polling_interval_set_reply
+- sflow_sampling_rate_get
+- sflow_sampling_rate_get_reply
+- sflow_sampling_rate_set
+- sflow_sampling_rate_set_reply
+- sr_localsids_with_packet_stats_details
+- sr_localsids_with_packet_stats_dump
+- sr_mobile_localsid_add_del
+- sr_mobile_localsid_add_del_reply
+- sr_mobile_policy_add
+- sr_mobile_policy_add_reply
+- sr_policies_with_sl_index_details
+- sr_policies_with_sl_index_dump
+- sr_policy_add_v2
+- sr_policy_add_v2_reply
+- sr_policy_mod_v2
+- sr_policy_mod_v2_reply
+- sw_interface_ip6nd_ra_details
+- sw_interface_ip6nd_ra_dump
+- sw_interface_set_vxlan_gbp_bypass
+- sw_interface_set_vxlan_gbp_bypass_reply
+- test_addresses
+- test_addresses2
+- test_addresses2_reply
+- test_addresses3
+- test_addresses3_reply
+- test_addresses_reply
+- test_empty
+- test_empty_reply
+- test_enum
+- test_enum_reply
+- test_interface
+- test_interface_reply
+- test_prefix
+- test_prefix_reply
+- test_string
+- test_string2
+- test_string2_reply
+- test_string_reply
+- test_vla
+- test_vla2
+- test_vla2_reply
+- test_vla3
+- test_vla3_reply
+- test_vla4
+- test_vla4_reply
+- test_vla5
+- test_vla5_reply
+- test_vla_reply
+- trace_capture_packets
+- trace_capture_packets_reply
+- trace_clear_cache
+- trace_clear_cache_reply
+- trace_clear_capture
+- trace_clear_capture_reply
+- trace_details
+- trace_dump
+- trace_dump_reply
+- trace_filter_function_details
+- trace_filter_function_dump
+- trace_set_filter_function
+- trace_set_filter_function_reply
+- trace_set_filters
+- trace_set_filters_reply
+- trace_v2_details
+- trace_v2_dump
+- tracenode_enable_disable
+- tracenode_enable_disable_reply
+- vxlan_gbp_tunnel_add_del
+- vxlan_gbp_tunnel_add_del_reply
+- vxlan_gbp_tunnel_details
+- vxlan_gbp_tunnel_dump
+- want_ping_finished_events
+- want_ping_finished_events_reply
+
+Patches that changed API definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+``src/plugins/snort/snort.api``
+
+* `e3ad5aa68 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e3ad5aa68>`_ snort: API functions for plugin
+
+``src/plugins/auto_sdl/auto_sdl.api``
+
+* `6d4dbd4f2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6d4dbd4f2>`_ session: add auto sdl
+
+``src/plugins/http_static/http_static.api``
+
+* `a4597a74a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a4597a74a>`_ http_static: api add keepalive-timeout
+
+``src/plugins/af_xdp/af_xdp.api``
+
+* `0dd47bcf2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0dd47bcf2>`_ af_xdp: api cleanup
+
+``src/plugins/ikev2/ikev2.api``
+
+* `379a454aa <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=379a454aa>`_ tests: reduce sleep interval in ikev2 sa rekey test
+
+``src/plugins/sflow/sflow.api``
+
+* `e40f8a90b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e40f8a90b>`_ sflow: initial checkin
+
+``src/vnet/dev/dev.api``
+
+* `825691419 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=825691419>`_ dev: introduce consistent_qp feature
+
+``src/vnet/session/session.api``
+
+* `e0c4e6e32 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e0c4e6e32>`_ session: session table holding free appns index
+* `6f173171b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6f173171b>`_ session: fix SDL to use remote instead local
+
+``src/vnet/pg/pg.api``
+
+* `0b1bd9df3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0b1bd9df3>`_ pg: add support to delete pg interface
+
+``src/vnet/ip/ip.api``
+
+* `18eedde9f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=18eedde9f>`_ ip: add enable ip4 api
+
+``src/vnet/bfd/bfd.api``
+
+* `17a918133 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=17a918133>`_ bfd: add support for multihop
+
+``src/vnet/devices/tap/tapv2.api``
+
+* `91e63915e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=91e63915e>`_ tap: update tap_flags
+
+``src/vnet/srv6/sr_types.api``
+
+* `c68c97083 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c68c97083>`_ sr : enable SRv6 uSID in the SRv6 API
