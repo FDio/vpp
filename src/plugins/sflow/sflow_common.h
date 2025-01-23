@@ -15,7 +15,7 @@
 #ifndef __included_sflow_common_h__
 #define __included_sflow_common_h__
 
-#define SFLOW_USE_VAPI
+// #define SFLOW_USE_VAPI (set by CMakeLists.txt)
 
 extern vlib_log_class_t sflow_logger;
 #define SFLOW_DBG(...)	  vlib_log_debug (sflow_logger, __VA_ARGS__);

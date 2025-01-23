@@ -539,8 +539,10 @@ sflow_sampling_start (sflow_main_t *smp)
   smp->psample_seq_egress = 0;
   smp->psample_send_drops = 0;
 
+#ifdef SFLOW_USE_VAPI
   // reset vapi request count so that we make a request the first time
   smp->vapi_requests = 0;
+#endif
 
   /* open PSAMPLE netlink channel for writing packet samples */
   SFLOWPS_open (&smp->sflow_psample);
