@@ -33,7 +33,6 @@
 #define SFLOW_MIN_HEADER_BYTES	   64
 #define SFLOW_HEADER_BYTES_STEP	   32
 
-#define SFLOW_USE_VAPI
 #define SFLOW_FIFO_DEPTH  2048 // must be power of 2
 #define SFLOW_POLL_WAIT_S 0.001
 #define SFLOW_READ_BATCH  100
@@ -165,12 +164,12 @@ typedef struct
   u32 csample_send;
   u32 csample_send_drops;
   u32 unixsock_seq;
-
+#ifdef SFLOW_USE_VAPI
   /* vapi query helper thread (transient) */
   CLIB_CACHE_LINE_ALIGN_MARK (_vapi);
   sflow_vapi_client_t vac;
   int vapi_requests;
-
+#endif
 } sflow_main_t;
 
 extern sflow_main_t sflow_main;

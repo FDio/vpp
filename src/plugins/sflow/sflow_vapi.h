@@ -18,6 +18,8 @@
 #include <vnet/vnet.h>
 #include <sflow/sflow_common.h>
 
+#ifdef SFLOW_USE_VAPI
+
 #define SFLOW_VAPI_POLL_INTERVAL  5
 #define SFLOW_VAPI_MAX_REQUEST_Q  8
 #define SFLOW_VAPI_MAX_RESPONSE_Q 16
@@ -41,6 +43,7 @@ int
 sflow_vapi_check_for_linux_if_index_results (sflow_vapi_client_t *vac,
 					     sflow_per_interface_data_t *itfs);
 
+#endif /* SFLOW_USE_VAPI */
 #endif /* __included_sflow_vapi_h__ */
 
 /*
