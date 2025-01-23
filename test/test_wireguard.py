@@ -1769,7 +1769,7 @@ class TestWg(VppTestCase):
                     ),
                 )
             )
-            for ii in range(255)
+            for ii in range(65535)
         ]
 
         rxs = self.send_and_expect(self.pg1, p, self.pg0)
