@@ -542,7 +542,7 @@ test:
 ifeq ($(CC),cc)
 	$(eval CC=clang)
 endif
-	$(call test,vpp,test)
+	$(call test,vpp_debug,test)
 
 .PHONY: test-debug
 test-debug:
@@ -921,15 +921,7 @@ docs:
 	@$(MAKE) -C $(WS_ROOT)/docs docs
 
 .PHONY: pkg-verify
-pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
-	$(call banner,"Building for PLATFORM=vpp")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
-	$(call banner,"Building sample-plugin")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
-	$(call banner,"Building libmemif")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp libmemif-install
-	$(call banner,"Building $(PKG) packages")
-	@$(MAKE) pkg-$(PKG)
+pkg-verify: wipe test-debug
 
 # Note: 'make verify' target is not used by ci-management scripts
 MAKE_VERIFY_GATE_OS ?= ubuntu-22.04
