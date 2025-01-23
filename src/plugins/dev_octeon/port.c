@@ -8,10 +8,13 @@
 #include <dev_octeon/octeon.h>
 #include <dev_octeon/common.h>
 #include <vnet/ethernet/ethernet.h>
+#include <dev_octeon/tm.h>
 
 #define OCT_FLOW_PREALLOC_SIZE	1
 #define OCT_FLOW_MAX_PRIORITY	7
 #define OCT_ETH_LINK_SPEED_100G 100000 /**< 100 Gbps */
+
+tm_system_t tm_system_ops;
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
@@ -24,6 +27,17 @@ static const u64 rxq_cfg =
   ROC_NIX_LF_RX_CFG_CSUM_OL4 | ROC_NIX_LF_RX_CFG_CSUM_IL4 |
   ROC_NIX_LF_RX_CFG_LEN_OL3 | ROC_NIX_LF_RX_CFG_LEN_OL4 |
   ROC_NIX_LF_RX_CFG_LEN_IL3 | ROC_NIX_LF_RX_CFG_LEN_IL4;
+
+static int
+oct_init_tm_args (tm_system_t *tm)
+{
+  memset (tm, 0, sizeof (tm_system_t));
+  memcpy (tm, &dev_oct_tm_ops, sizeof (tm_system_t));
+  /* Initialize flow_id -> tm_node_id mapping hash early */
+  if (flow_id_to_tm_node_id_hash == 0)
+    flow_id_to_tm_node_id_hash = hash_create (0, sizeof (uword));
+  return 0;
+}
 
 static vnet_dev_rv_t
 oct_roc_err (vnet_dev_t *dev, int rv, char *fmt, ...)
@@ -227,6 +241,14 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	  return rv;
 	}
 
+  cd->ctqs = clib_mem_alloc_aligned (sizeof (oct_txq_t *) * ifs->num_tx_queues,
+				     CLIB_CACHE_LINE_BYTES);
+  if (!cd->ctqs)
+    {
+      oct_port_deinit (vm, port);
+      return VNET_DEV_ERR_INTERNAL;
+    }
+
   foreach_vnet_dev_port_tx_queue (q, port)
     if (q->enabled)
       if ((rv = oct_txq_init (vm, q)))
@@ -260,6 +282,12 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
   cp->q_intr_enabled = 1;
   oct_port_add_counters (vm, port);
+
+  if (cd->egress_tm)
+    {
+      oct_init_tm_args (&tm_system_ops);
+      tm_system_register (&tm_system_ops, ifs->primary_interface.hw_if_index);
+    }
 
   return VNET_DEV_OK;
 }
@@ -434,43 +462,6 @@ oct_rxq_stop (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 void
 oct_txq_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
-  vnet_dev_t *dev = txq->port->dev;
-  oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
-  oct_npa_batch_alloc_cl128_t *cl;
-  u32 n, off = ctq->hdr_off;
-
-  if (ctq->ba_num_cl > 0)
-    for (n = ctq->ba_num_cl, cl = ctq->ba_buffer + ctq->ba_first_cl; n;
-	 cl++, n--)
-      {
-	oct_npa_batch_alloc_status_t st;
-
-	st.as_u64 = __atomic_load_n (cl->iova, __ATOMIC_ACQUIRE);
-	if (st.status.ccode != ALLOC_CCODE_INVAL)
-	  for (u32 i = 0; i < st.status.count; i++)
-	    {
-#if (CLIB_DEBUG > 0)
-	      if (!i || (i == 8))
-		cl->iova[i] &= OCT_BATCH_ALLOC_IOVA0_MASK;
-#endif
-	      vlib_buffer_t *b = (vlib_buffer_t *) (cl->iova[i] + off);
-	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b));
-	      ctq->n_enq--;
-	    }
-      }
-
-  n = oct_aura_free_all_buffers (vm, ctq->aura_handle, off,
-				 0 /* To free all availiable buffers */);
-  ctq->n_enq -= n;
-
-  if (ctq->n_enq > 0)
-    log_err (dev, "%u buffers leaked on tx queue %u stop", ctq->n_enq,
-	     txq->queue_id);
-  else
-    log_debug (dev, "%u buffers freed from tx queue %u", n, txq->queue_id);
-
-  ctq->n_enq = 0;
-  ctq->ba_num_cl = ctq->ba_first_cl = 0;
 }
 
 vnet_dev_rv_t
@@ -489,12 +480,6 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   foreach_vnet_dev_port_rx_queue (q, port)
     if ((rv = oct_rxq_start (vm, q)) != VNET_DEV_OK)
       goto done;
-
-  foreach_vnet_dev_port_tx_queue (q, port)
-    {
-      oct_txq_t *ctq = vnet_dev_get_tx_queue_data (q);
-      ctq->n_enq = 0;
-    }
 
   if ((rrv = roc_nix_npc_rx_ena_dis (nix, true)))
     {

@@ -53,35 +53,20 @@ oct_rx_queue_free (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 vnet_dev_rv_t
 oct_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
-  oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
-  u32 sz = sizeof (void *) * ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS;
-  vnet_dev_rv_t rv;
 
   log_debug (dev, "tx_queue_alloc: queue %u alocated", txq->queue_id);
-
-  rv = vnet_dev_dma_mem_alloc (vm, dev, sz, 128, (void **) &ctq->ba_buffer);
-
-  if (rv != VNET_DEV_OK)
-    return rv;
-
-  clib_memset_u64 (ctq->ba_buffer, OCT_BATCH_ALLOC_IOVA0_MASK,
-		   ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
-
-  return rv;
+  return VNET_DEV_OK;
 }
 
 void
 oct_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
-  oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
 
   log_debug (dev, "tx_queue_free: queue %u", txq->queue_id);
-
-  vnet_dev_dma_mem_free (vm, dev, ctq->ba_buffer);
 }
 
 vnet_dev_rv_t
@@ -279,28 +264,14 @@ oct_txq_init (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
   struct roc_nix *nix = cd->nix;
-  struct npa_aura_s aura = {};
-  struct npa_pool_s npapool = { .nat_align = 1 };
   int rrv;
-  vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, 0);
-
-  if ((rrv = roc_npa_pool_create (
-	 &ctq->aura_handle, bp->alloc_size,
-	 txq->size * 6 /* worst case - two SG with 3 segs each = 6 */, &aura,
-	 &npapool, 0)))
-    {
-      oct_txq_deinit (vm, txq);
-      return oct_roc_err (dev, rrv, "roc_npa_pool_create() failed");
-    }
-
-  ctq->npa_pool_initialized = 1;
-  log_notice (dev, "NPA pool created, aura_handle = 0x%lx", ctq->aura_handle);
 
   ctq->sq = (struct roc_nix_sq){
     .nb_desc = txq->size,
     .qid = txq->queue_id,
     .max_sqe_sz = NIX_MAXSQESZ_W16,
   };
+  ctq->cached_pkts = 0;
 
   if ((rrv = roc_nix_sq_init (nix, &ctq->sq)))
     {
@@ -315,12 +286,14 @@ oct_txq_init (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   log_debug (dev, "SQ initialised, qid %u, nb_desc %u, max_sqe_sz %u",
 	     ctq->sq.qid, ctq->sq.nb_desc, ctq->sq.max_sqe_sz);
 
-  ctq->hdr_off = vm->buffer_main->ext_hdr_size;
+  ctq->n_enq = 0;
 
   if (ctq->sq.lmt_addr == 0)
     ctq->sq.lmt_addr = (void *) nix->lmt_base;
   ctq->io_addr = ctq->sq.io_addr & ~0x7fULL;
   ctq->lmt_addr = ctq->sq.lmt_addr;
+
+  cd->ctqs[ctq->sq.qid] = ctq;
 
   return VNET_DEV_OK;
 }
@@ -338,14 +311,6 @@ oct_txq_deinit (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
       if (rrv)
 	oct_roc_err (dev, rrv, "roc_nix_sq_fini() failed");
       ctq->sq_initialized = 0;
-    }
-
-  if (ctq->npa_pool_initialized)
-    {
-      rrv = roc_npa_pool_destroy (ctq->aura_handle);
-      if (rrv)
-	oct_roc_err (dev, rrv, "roc_npa_pool_destroy() failed");
-      ctq->npa_pool_initialized = 0;
     }
 }
 
@@ -376,18 +341,11 @@ format_oct_txq_info (u8 *s, va_list *args)
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *txq = va_arg (*args, vnet_dev_tx_queue_t *);
   oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
-  u32 indent = format_get_indent (s);
 
   if (a->debug)
     {
       s = format (s, "n_enq %u sq_nb_desc %u io_addr %p lmt_addr %p",
 		  ctq->n_enq, ctq->sq.nb_desc, ctq->io_addr, ctq->lmt_addr);
-      s = format (s, "\n%Uaura: id 0x%x count %u limit %u avail %u",
-		  format_white_space, indent,
-		  roc_npa_aura_handle_to_aura (ctq->aura_handle),
-		  roc_npa_aura_op_cnt_get (ctq->aura_handle),
-		  roc_npa_aura_op_limit_get (ctq->aura_handle),
-		  roc_npa_aura_op_available (ctq->aura_handle));
     }
 
   return s;
