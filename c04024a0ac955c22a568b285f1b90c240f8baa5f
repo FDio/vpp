@@ -50,6 +50,24 @@
       "message": "please consider using VPP_PLATFORM instead, i.e. adding src/cmake/platform/grace.cmake similarly like we have it for octeon10",
       "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2152f719_f33d3aa6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2025-01-23T12:47:23Z",
+      "side": 1,
+      "message": "Hi Damjan,\nThank you so much for your review comments!\nWhile using VPP_PLATFORM and adding src/cmake/platform/grace.cmake sounds convincing, we also have the AWS Grafton4 processor, which uses the Arm Neoverse-V2 core. So the patch I proposed here is not specific to the Grace, but for all the systems that use Arm Neoverse-V2 cores. Sorry for the misleading commit message that binds neoverse-v2 only to the Grace.",
+      "parentUuid": "a5f7b83e_cdca8c98",
+      "revId": "c04024a0ac955c22a568b285f1b90c240f8baa5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
