@@ -90,6 +90,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "654a6f38_7f4741b3",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-23T16:48:23Z",
+      "side": 1,
+      "message": "You can edge-trigger on events by calling vlib_process_signal_event() when an interface is enabled/disabled or when sflow records are enqueued. Then you could retrieve the events here with vlib_process_get_events().\n\nThat approach could avoid the need for this process node wake up every 1s when sflow is not enabled. It would allow for the wait time to be set higher because an event signal could cause a longer wait to be terminated early.",
+      "revId": "4dbaded4d67c7c4bfe69885fc819140feab40b3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "01f1d123_b0075e54",
         "filename": "src/plugins/sflow/sflow.c",
         "patchSetId": 15
@@ -154,6 +171,40 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "a201263f_83b696e3",
+      "revId": "4dbaded4d67c7c4bfe69885fc819140feab40b3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "adeab672_39f47ca1",
+        "filename": "src/plugins/sflow/sflow_psample.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-23T16:48:23Z",
+      "side": 1,
+      "message": "All of the code in this file and in sflow_usersock.c is indented by 2 chars. It\u0027s not consistent with the other files in the plugin.\n\nSimilarly, there seems to be a mix of camelCase and lowercase_with_underscores in function declarations in those 2 files, while the other files in the plugin seem to use lowercase_with_underscores. Its nice to be consistent and use one style. If not across the entire plugin, at least within a given file.",
+      "revId": "4dbaded4d67c7c4bfe69885fc819140feab40b3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79d6c663_9c4d5efa",
+        "filename": "src/plugins/sflow/sflow_psample.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-23T16:48:23Z",
+      "side": 1,
+      "message": "There are copies of setCloseOnExec() and setNonBlocking() in both sflow_psample.c and sflow_usersock.c. They appear to be identical. Can those be moved to some common file?",
       "revId": "4dbaded4d67c7c4bfe69885fc819140feab40b3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },

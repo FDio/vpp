@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e54920cd_d6f635cb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-23T16:48:23Z",
+      "side": 1,
+      "message": "Hi Pim et al,\n\nI was in the process of adding some review comments when this change got merged. My bad, sorry for not reviewing sooner.\n\nI thought I would share the draft comments I had in progress in case any of them are helpful.\n\nThanks,\n-Matt",
+      "revId": "e40f8a90bb0c39986c198fca8ad9b0b3c1658401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be4da2eb_7c2e828f",
+        "filename": "src/plugins/sflow/sflow_vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-23T16:48:23Z",
+      "side": 1,
+      "message": "Is there a reason to use vapi? It seems like unnecessary complication for code that will run in VPP. The code here retrieves the address of the one linux-cp function that is really needed. That function could be called directly/synchronously when needed and maybe some overhead and complexity of managing/synchronizing threads could be avoided.",
+      "revId": "e40f8a90bb0c39986c198fca8ad9b0b3c1658401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
