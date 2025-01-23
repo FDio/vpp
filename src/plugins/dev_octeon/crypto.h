@@ -11,6 +11,9 @@
 
 #define OCT_MAX_N_CPT_DEV 2
 
+#define OCT_CPT_LF_DEF_NB_DESC 16384
+
+#define OCT_CPT_LF_MIN_NB_DESC 1024
 #define OCT_CPT_LF_MAX_NB_DESC 128000
 
 /* CRYPTO_ID, KEY_LENGTH_IN_BYTES, TAG_LEN, AAD_LEN */
@@ -81,6 +84,7 @@ typedef struct
   struct roc_cpt_lmtline lmtline;
   struct roc_cpt_lf lf;
   vnet_dev_t *dev;
+  u32 n_desc;
 } oct_crypto_dev_t;
 
 typedef struct
@@ -211,5 +215,6 @@ vnet_crypto_async_frame_t *oct_crypto_frame_dequeue (vlib_main_t *vm,
 						     u32 *nb_elts_processed,
 						     u32 *enqueue_thread_idx);
 int oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev);
-int oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev);
+int oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev,
+		       oct_crypto_dev_t *ocd);
 #endif /* _CRYPTO_H_ */

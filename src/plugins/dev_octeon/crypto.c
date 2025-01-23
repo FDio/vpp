@@ -1940,7 +1940,7 @@ oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 int
-oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev)
+oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -1961,7 +1961,7 @@ oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev)
    * Each pending queue will get number of cpt desc / number of cores.
    * And that desc count is shared across inflight entries.
    */
-  n_inflight_req = (OCT_CPT_LF_MAX_NB_DESC / tm->n_vlib_mains);
+  n_inflight_req = (ocd->n_desc / tm->n_vlib_mains);
 
   for (i = 0; i < tm->n_vlib_mains; ++i)
     {
