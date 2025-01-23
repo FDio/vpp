@@ -61,6 +61,22 @@ static struct
 #undef _
 };
 
+static vnet_dev_arg_t oct_dev_args[] = {
+  {
+    .id = OCT_DEV_ARG_CRYPTO_N_DESC,
+    .name = "n_desc",
+    .desc = "number of cpt descriptors, applicable to cpt devices only",
+    .type = VNET_DEV_ARG_TYPE_UINT32,
+    .default_val.uint32 = OCT_CPT_LF_DEF_NB_DESC,
+  },
+  {
+    .id = OCT_DEV_ARG_END,
+    .name = "end",
+    .desc = "Argument end",
+    .type = VNET_DEV_ARG_END,
+  },
+};
+
 static u8 *
 oct_probe (vlib_main_t *vm, vnet_dev_bus_index_t bus_index, void *dev_info)
 {
@@ -241,7 +257,7 @@ oct_conf_cpt_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd)
   cpt_lf = &ocd->lf;
   cpt_lmtline = &ocd->lmtline;
 
-  cpt_lf->nb_desc = OCT_CPT_LF_MAX_NB_DESC;
+  cpt_lf->nb_desc = ocd->n_desc;
   cpt_lf->lf_id = 0;
   if ((rrv = roc_cpt_lf_init (roc_cpt, cpt_lf)) < 0)
     return cnx_return_roc_err (dev, rrv, "roc_cpt_lf_init");
@@ -261,6 +277,7 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
   extern oct_plt_init_param_t oct_plt_init_param;
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_crypto_dev_t *ocd = NULL;
+  u32 n_desc;
   int rrv;
 
   if (ocm->n_cpt == OCT_MAX_N_CPT_DEV || ocm->started)
@@ -274,6 +291,27 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
   ocd->roc_cpt->pci_dev = &cd->plt_pci_dev;
 
   ocd->dev = dev;
+  ocd->n_desc = OCT_CPT_LF_DEF_NB_DESC;
+
+  foreach_vnet_dev_args (arg, dev)
+    {
+      if (arg->id == OCT_DEV_ARG_CRYPTO_N_DESC &&
+	  vnet_dev_arg_get_uint32 (arg))
+	{
+	  n_desc = vnet_dev_arg_get_uint32 (arg);
+	  if (n_desc < OCT_CPT_LF_MIN_NB_DESC ||
+	      n_desc > OCT_CPT_LF_MAX_NB_DESC)
+	    {
+	      log_err (dev,
+		       "number of cpt descriptors should be within range "
+		       "of %u and %u",
+		       OCT_CPT_LF_MIN_NB_DESC, OCT_CPT_LF_MAX_NB_DESC);
+	      return VNET_DEV_ERR_NOT_SUPPORTED;
+	    }
+
+	  ocd->n_desc = vnet_dev_arg_get_uint32 (arg);
+	}
+    }
 
   if ((rrv = roc_cpt_dev_init (ocd->roc_cpt)))
     return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_init");
@@ -290,7 +328,7 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
        * Initialize s/w queues, which are common across multiple
        * crypto devices
        */
-      oct_conf_sw_queue (vm, dev);
+      oct_conf_sw_queue (vm, dev, ocd);
 
       ocm->crypto_dev[0] = ocd;
     }
@@ -396,6 +434,7 @@ VNET_DEV_REGISTER_DRIVER (octeon) = {
     .free = oct_free,
     .probe = oct_probe,
   },
+  .args = oct_dev_args,
 };
 
 static clib_error_t *
