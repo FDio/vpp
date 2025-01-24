@@ -36,10 +36,10 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
+		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
-		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
+		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -396,21 +396,34 @@ func startSimpleServer(s *NoTopoSuite, replyCount *int, serverAddress string) (s
 	return server
 }
 
-func HttpClientGetRepeat(s *NoTopoSuite) {
-	httpClientRepeat(s, "")
+func HttpClientGetRepeatMTTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "", "parallel 0")
 }
 
-func HttpClientPostRepeat(s *NoTopoSuite) {
-	httpClientRepeat(s, "post")
+func HttpClientGetRepeatTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "", "")
 }
 
-func httpClientRepeat(s *NoTopoSuite, requestMethod string) {
-	replyCount := 0
+func HttpClientPostRepeatTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "post", "")
+}
+
+func httpClientRepeat(s *NoTopoSuite, requestMethod string, parallel string) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.HostAddr()
-	repeatAmount := 10000
-	server := startSimpleServer(s, &replyCount, serverAddress)
-	defer server.Close()
+	logPath := "/tmp/nginx/" + s.Containers.NginxServer.Name + "-access.log"
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
+	replyCountInt := 0
+	repeatAmount := 5
+	durationInSec := 10
+	var err error
+
+	// recreate interfaces with RX-queues
+	s.AssertNil(vpp.DeleteTap(s.Interfaces.Client))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 2, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 2, 3))
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
 
 	if requestMethod == "post" {
 		fileName := "/tmp/test_file.txt"
@@ -419,41 +432,57 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string) {
 		requestMethod += " file /tmp/test_file.txt"
 	}
 
-	uri := "http://" + serverAddress + "/80"
-	cmd := fmt.Sprintf("http client %s use-ptr duration 10 header Hello:World uri %s target /index.html",
-		requestMethod, uri)
+	uri := "http://" + serverAddress + "/" + s.GetPortFromPpid()
+	cmd := fmt.Sprintf("http client %s use-ptr %s duration %d header Hello:World uri %s target /index.html",
+		requestMethod, parallel, durationInSec, uri)
 
-	s.Log("Duration 10s")
+	s.Log("Duration %ds", durationInSec)
 	o := vpp.Vppctl(cmd)
-	outputLen := len(o)
-	if outputLen > 500 {
-		s.Log(o[:500])
-		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
-	} else {
-		s.Log(o)
+	s.Log(o)
+
+	// ************************
+	time.Sleep(time.Second * 75)
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	// ************************
+
+	replyCount := s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	if replyCount != "" {
+		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
+		s.AssertNil(err)
 	}
-	s.Log("Server response count: %d", replyCount)
+	// empty the log file
+	s.Containers.NginxServer.Exec(false, "truncate -s 0 "+logPath)
+
+	s.Log("Server response count: %d", replyCountInt)
 	s.AssertNotNil(o)
 	s.AssertNotContains(o, "error")
-	s.AssertGreaterThan(replyCount, 15000)
+	s.AssertGreaterThan(replyCountInt, 15000)
 
-	cmd = fmt.Sprintf("http client %s use-ptr repeat %d header Hello:World uri %s target /index.html",
-		requestMethod, repeatAmount, uri)
+	replyCount = ""
+	cmd = fmt.Sprintf("http client %s use-ptr %s repeat %d header Hello:World uri %s target /index.html",
+		requestMethod, parallel, repeatAmount, uri)
 
-	replyCount = 0
+	s.AssertNil(err, fmt.Sprint(err))
 	s.Log("Repeat %d", repeatAmount)
 	o = vpp.Vppctl(cmd)
-	outputLen = len(o)
-	if outputLen > 500 {
-		s.Log(o[:500])
-		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
-	} else {
-		s.Log(o)
+	s.Log(o)
+
+	// ************************
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
+	// ************************
+
+	replyCount = s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	if replyCount != "" {
+		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
+		s.AssertNil(err)
 	}
-	s.Log("Server response count: %d", replyCount)
+	s.Log("Server response count: %d", replyCountInt)
 	s.AssertNotNil(o)
 	s.AssertNotContains(o, "error")
-	s.AssertEqual(repeatAmount, replyCount)
+	s.AssertEqual(repeatAmount, replyCountInt)
 }
 
 func HttpClientGetTimeout(s *NoTopoSuite) {
@@ -603,7 +632,7 @@ func PromConsecutiveConnectionsTest(s *NoTopoSuite) {
 }
 
 func PromMemLeakTest(s *NoTopoSuite) {
-	s.SkipUnlessLeakCheck()
+	// s.SkipUnlessLeakCheck()
 
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
@@ -638,7 +667,7 @@ func PromMemLeakTest(s *NoTopoSuite) {
 }
 
 func HttpClientGetMemLeakTest(s *VethsSuite) {
-	s.SkipUnlessLeakCheck()
+	// s.SkipUnlessLeakCheck()
 
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
@@ -1093,7 +1122,7 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "mactime")
 	s.AssertContains(string(data), s.HostAddr())
-	s.AssertContains(string(data), s.Interfaces.Tap.HwAddress.String())
+	s.AssertContains(string(data), s.Interfaces.Client.HwAddress.String())
 	s.AssertHttpHeaderWithValue(resp, "Content-Type", "application/json")
 	parsedTime, err := time.Parse(time.RFC1123, resp.Header.Get("Date"))
 	s.AssertNil(err, fmt.Sprint(err))
