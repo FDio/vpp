@@ -18,13 +18,15 @@ type NoTopoSuite struct {
 		Tap *NetInterface
 	}
 	Containers struct {
-		Vpp        *Container
-		Nginx      *Container
-		NginxHttp3 *Container
-		Wrk        *Container
-		Curl       *Container
-		Ab         *Container
+		Vpp         *Container
+		Nginx       *Container
+		NginxHttp3  *Container
+		NginxServer *Container
+		Wrk         *Container
+		Curl        *Container
+		Ab          *Container
 	}
+	NginxServerPort string
 }
 
 func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
@@ -42,6 +44,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Nginx = s.GetContainerByName("nginx")
 	s.Containers.NginxHttp3 = s.GetContainerByName("nginx-http3")
+	s.Containers.NginxServer = s.GetTransientContainerByName("nginx-server")
 	s.Containers.Wrk = s.GetContainerByName("wrk")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.Ab = s.GetContainerByName("ab")
@@ -98,6 +101,28 @@ func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers
 		"/nginx.conf",
 		"./resources/nginx/nginx.conf",
 		values,
+	)
+}
+
+// Creates container and config.
+func (s *NoTopoSuite) CreateNginxServer() {
+	s.AssertNil(s.Containers.NginxServer.Create())
+	s.NginxServerPort = s.GetPortFromPpid()
+	nginxSettings := struct {
+		LogPrefix string
+		Address   string
+		Port      string
+		Timeout   int
+	}{
+		LogPrefix: s.Containers.NginxServer.Name,
+		Address:   s.Interfaces.Tap.Ip4AddressString(),
+		Port:      s.NginxServerPort,
+		Timeout:   600,
+	}
+	s.Containers.NginxServer.CreateConfigFromTemplate(
+		"/nginx.conf",
+		"./resources/nginx/nginx_server.conf",
+		nginxSettings,
 	)
 }
 
