@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"net/http/httptrace"
 	"os"
 	"strconv"
@@ -36,10 +35,10 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeat, HttpClientPostRepeat, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
+		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
-		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
+		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -382,35 +381,37 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 	s.AssertContains(file_contents, response)
 }
 
-func startSimpleServer(s *NoTopoSuite, replyCount *int, serverAddress string) (server *httptest.Server) {
-	var err error
-	server = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello")
-		*replyCount++
-	}))
-	server.Listener, err = net.Listen("tcp", serverAddress+":80")
-	s.AssertNil(err, "Error while creating listener.")
-
-	server.Start()
-
-	return server
+func HttpClientGetRepeatMTTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "", "sessions 2")
 }
 
-func HttpClientGetRepeat(s *NoTopoSuite) {
-	httpClientRepeat(s, "")
+func HttpClientPtrGetRepeatMTTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "", "use-ptr sessions 2")
 }
 
-func HttpClientPostRepeat(s *NoTopoSuite) {
-	httpClientRepeat(s, "post")
+func HttpClientGetRepeatTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "", "")
 }
 
-func httpClientRepeat(s *NoTopoSuite, requestMethod string) {
-	replyCount := 0
+func HttpClientPostRepeatTest(s *NoTopoSuite) {
+	httpClientRepeat(s, "post", "")
+}
+
+func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.HostAddr()
+	logPath := s.Containers.NginxServer.GetContainerWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	serverAddress := s.Interfaces.Tap.Ip4AddressString()
+	replyCountInt := 0
 	repeatAmount := 10000
-	server := startSimpleServer(s, &replyCount, serverAddress)
-	defer server.Close()
+	durationInSec := 10
+	var err error
+
+	// recreate interfaces with RX-queues
+	s.AssertNil(vpp.DeleteTap(s.Interfaces.Tap))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, 2, 2))
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
 
 	if requestMethod == "post" {
 		fileName := "/tmp/test_file.txt"
@@ -419,41 +420,45 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string) {
 		requestMethod += " file /tmp/test_file.txt"
 	}
 
-	uri := "http://" + serverAddress + "/80"
-	cmd := fmt.Sprintf("http client %s use-ptr duration 10 header Hello:World uri %s target /index.html",
-		requestMethod, uri)
+	uri := "http://" + serverAddress + "/" + s.GetPortFromPpid()
+	cmd := fmt.Sprintf("http client %s %s duration %d header Hello:World uri %s target /index.html",
+		requestMethod, clientArgs, durationInSec, uri)
 
-	s.Log("Duration 10s")
+	s.Log("Duration %ds", durationInSec)
 	o := vpp.Vppctl(cmd)
-	outputLen := len(o)
-	if outputLen > 500 {
-		s.Log(o[:500])
-		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
-	} else {
-		s.Log(o)
+	s.Log(o)
+
+	replyCount := s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	if replyCount != "" {
+		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
+		s.AssertNil(err)
 	}
-	s.Log("Server response count: %d", replyCount)
+	// empty the log file
+	s.Containers.NginxServer.Exec(false, "truncate -s 0 "+logPath)
+
+	s.Log("Server response count: %d", replyCountInt)
 	s.AssertNotNil(o)
 	s.AssertNotContains(o, "error")
-	s.AssertGreaterThan(replyCount, 15000)
+	s.AssertGreaterThan(replyCountInt, 15000)
 
-	cmd = fmt.Sprintf("http client %s use-ptr repeat %d header Hello:World uri %s target /index.html",
-		requestMethod, repeatAmount, uri)
+	replyCount = ""
+	cmd = fmt.Sprintf("http client %s %s repeat %d header Hello:World uri %s target /index.html",
+		requestMethod, clientArgs, repeatAmount, uri)
 
-	replyCount = 0
+	s.AssertNil(err, fmt.Sprint(err))
 	s.Log("Repeat %d", repeatAmount)
 	o = vpp.Vppctl(cmd)
-	outputLen = len(o)
-	if outputLen > 500 {
-		s.Log(o[:500])
-		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
-	} else {
-		s.Log(o)
+	s.Log(o)
+
+	replyCount = s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	if replyCount != "" {
+		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
+		s.AssertNil(err)
 	}
-	s.Log("Server response count: %d", replyCount)
+	s.Log("Server response count: %d", replyCountInt)
 	s.AssertNotNil(o)
 	s.AssertNotContains(o, "error")
-	s.AssertEqual(repeatAmount, replyCount)
+	s.AssertEqual(repeatAmount, replyCountInt)
 }
 
 func HttpClientGetTimeout(s *NoTopoSuite) {
