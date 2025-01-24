@@ -387,8 +387,19 @@ session_half_open_free (session_t *ho)
 static void
 session_half_open_free_rpc (void *args)
 {
-  session_t *ho = ho_session_get (pointer_to_uword (args));
-  session_half_open_free (ho);
+  session_main_t *smm = &session_main;
+  u32 *tmp, *ho_index;
+
+  clib_spinlock_lock (&smm->half_open_free_lock);
+  tmp = smm->half_open_free_list_handling;
+  smm->half_open_free_list_handling = smm->half_open_free_list;
+  smm->half_open_free_list = tmp;
+  clib_spinlock_free (&smm->half_open_free_lock);
+
+  vec_foreach (ho_index, smm->half_open_free_list_handling)
+    session_half_open_free (ho_session_get (*ho_index));
+
+  vec_reset_length (smm->half_open_free_list_handling);
 }
 
 void
@@ -411,9 +422,20 @@ session_half_open_delete_notify (transport_connection_t *tc)
     }
   else
     {
-      void *args = uword_to_pointer ((uword) tc->s_index, void *);
-      session_send_rpc_evt_to_thread_force (transport_cl_thread (),
-					    session_half_open_free_rpc, args);
+      session_main_t *smm = &session_main;
+      u32 need_rpc = 0;
+
+      clib_spinlock_lock (&smm->half_open_free_lock);
+      vec_add1 (smm->half_open_free_list, tc->s_index);
+      if (vec_len (smm->half_open_free_lock) == 1)
+	need_rpc = 1;
+      clib_spinlock_unlock (&smm->half_open_free_lock);
+
+      if (need_rpc)
+	{
+	  session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+						session_half_open_free_rpc, 0);
+	}
     }
 }
 
