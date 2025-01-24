@@ -210,12 +210,6 @@ typedef struct session_main_
   /** Vector of transport update time functions */
   session_update_time_fn *update_time_fns;
 
-  /** Event queues memfd segment */
-  fifo_segment_t wrk_mqs_segment;
-
-  /** Unique segment name counter */
-  u32 unique_segment_name_counter;
-
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn **session_tx_fns;
 
@@ -229,8 +223,6 @@ typedef struct session_main_
    * transports like udp. If vpp has workers, this will be first worker. */
   u32 transport_cl_thread;
 
-  transport_proto_t last_transport_proto_type;
-
   /** Number of workers at pool realloc barrier */
   volatile u32 pool_realloc_at_barrier;
 
@@ -239,6 +231,12 @@ typedef struct session_main_
 
   /** Lock to synchronize parallel forced reallocs */
   clib_spinlock_t pool_realloc_lock;
+
+  /** Event queues memfd segment */
+  fifo_segment_t wrk_mqs_segment;
+
+  /** Last transport proto registered with session layer */
+  transport_proto_t last_transport_proto_type;
 
   /*
    * Config parameters
