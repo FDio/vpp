@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2024 Cisco Systems, Inc.
+ * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
 #include <vnet/session/application.h>
@@ -12,20 +12,26 @@
 
 typedef struct
 {
+  u64 req_per_wrk;
+  u64 request_count;
+  f64 start, end;
+  f64 elapsed_time;
+} hc_stats_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
   u32 thread_index;
   u32 vpp_session_index;
   u64 to_recv;
   u8 is_closed;
+  hc_stats_t stats;
+  u64 data_offset;
+  u8 *resp_headers;
+  u8 *http_response;
+  u8 *response_status;
 } hc_session_t;
-
-typedef struct
-{
-  u64 request_count;
-  f64 start, end;
-  f64 elapsed_time;
-} hc_stats_t;
 
 typedef struct
 {
@@ -35,6 +41,12 @@ typedef struct
   u8 *headers_buf;
   http_headers_ctx_t req_headers;
   http_msg_t msg;
+  u32 ho_index;
+  u32 session_index;
+  // u64 data_offset;
+  // u8 *resp_headers;
+  // u8 *http_response;
+  // u8 *response_status;
 } hc_worker_t;
 
 typedef struct
@@ -52,11 +64,7 @@ typedef struct
   session_endpoint_cfg_t connect_sep;
   u8 *target;
   u8 *data;
-  u64 data_offset;
   hc_worker_t *wrk;
-  u8 *resp_headers;
-  u8 *http_response;
-  u8 *response_status;
   hc_http_header_t *custom_header;
   u8 is_file;
   u8 use_ptr;
@@ -67,6 +75,10 @@ typedef struct
   u64 repeat_count;
   f64 duration;
   bool repeat;
+  bool parallel;
+  u8 counter;
+  u8 ho_counter;
+  u64 worker_index;
 } hc_main_t;
 
 typedef enum
@@ -95,13 +107,6 @@ hc_session_get (u32 session_index, u32 thread_index)
   return pool_elt_at_index (wrk->sessions, session_index);
 }
 
-static void
-hc_ho_session_free (u32 hs_index)
-{
-  hc_worker_t *wrk = hc_worker_get (0);
-  pool_put_index (wrk->sessions, hs_index);
-}
-
 static hc_session_t *
 hc_session_alloc (hc_worker_t *wrk)
 {
@@ -115,14 +120,13 @@ hc_session_alloc (hc_worker_t *wrk)
 }
 
 static int
-hc_request (session_t *s, session_error_t err)
+hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session, session_error_t err)
 {
   hc_main_t *hcm = &hc_main;
   u64 to_send;
   u32 n_enq;
   u8 n_segs;
   int rv;
-  hc_worker_t *wrk = hc_worker_get (s->thread_index);
 
   if (hcm->use_ptr)
     {
@@ -166,7 +170,7 @@ hc_request (session_t *s, session_error_t err)
       rv = svm_fifo_enqueue (s->tx_fifo, n_enq, hcm->data);
       if (rv < to_send)
 	{
-	  hcm->data_offset = (rv > 0) ? rv : 0;
+	  hc_session->data_offset = (rv > 0) ? rv : 0;
 	  svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	}
     }
@@ -187,7 +191,6 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_worker_t *wrk;
   u32 new_hc_index;
   hc_http_header_t *header;
-  HTTP_DBG (1, "ho hc_index: %d", hc_session_index);
 
   if (err)
     {
@@ -199,15 +202,39 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     }
 
   wrk = hc_worker_get (s->thread_index);
-  hc_session_t *hc_session, *new_hc_session = hc_session_alloc (wrk);
-  hc_session = hc_session_get (hc_session_index, 0);
+  hc_session_t *hc_ho_session, *new_hc_session = hc_session_alloc (wrk);
+  hc_ho_session = hc_session_get (hc_session_index, 0);
   new_hc_index = new_hc_session->session_index;
-  clib_memcpy_fast (new_hc_session, hc_session, sizeof (*hc_session));
+  clib_memcpy_fast (new_hc_session, hc_ho_session, sizeof (*hc_ho_session));
+  hcm->ho_counter++;
   new_hc_session->session_index = new_hc_index;
   new_hc_session->thread_index = s->thread_index;
   new_hc_session->vpp_session_index = s->session_index;
-  HTTP_DBG (1, "new hc_index: %d", new_hc_session->session_index);
+
+  wrk->ho_index = hc_session_index;
   s->opaque = new_hc_index;
+  wrk->session_index = new_hc_index;
+
+  HTTP_DBG (1, "old ho_thread: %d", hc_ho_session->thread_index);
+  HTTP_DBG (1, "old ho_index: %d", hc_session_index);
+  HTTP_DBG (1, "session thread_index: %d", s->thread_index);
+  HTTP_DBG (1, "new hc_index: %d", new_hc_session->session_index);
+
+  if (hcm->parallel)
+    {
+      new_hc_session->stats.req_per_wrk =
+	hcm->repeat_count / vlib_num_workers ();
+      if (wrk->thread_index == 1)
+	{
+	  new_hc_session->stats.req_per_wrk +=
+	    hcm->repeat_count % vlib_num_workers ();
+	}
+    }
+  else
+    {
+      new_hc_session->stats.req_per_wrk = hcm->repeat_count;
+      hcm->worker_index = s->thread_index;
+    }
 
   if (hcm->req_method == HTTP_REQ_POST)
     {
@@ -258,9 +285,10 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     }
 
   if (hcm->repeat)
-    hc_stats.start = vlib_time_now (vlib_get_main_by_index (s->thread_index));
+    new_hc_session->stats.start =
+      vlib_time_now (vlib_get_main_by_index (s->thread_index));
 
-  return hc_request (s, err);
+  return hc_request (s, wrk, new_hc_session, err);
 }
 
 static void
@@ -281,15 +309,35 @@ static void
 hc_session_transport_closed_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
-  vlib_process_signal_event_mt (hcm->wrk->vlib_main, hcm->cli_node_index,
+  hc_worker_t *wrk = hc_worker_get (s->thread_index);
+  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				HC_TRANSPORT_CLOSED, 0);
 }
 
 static void
 hc_ho_cleanup_callback (session_t *s)
 {
-  HTTP_DBG (1, "ho hc_index: %d:", s->opaque);
-  hc_ho_session_free (s->opaque);
+  hc_main_t *hcm = &hc_main;
+  hc_worker_t *wrk = hc_worker_get (0);
+  hc_worker_t *wrk2;
+
+  if (hcm->parallel)
+    {
+      HTTP_DBG (1, "cleanup hcm->ho_counter: %d", hcm->ho_counter);
+      if (hcm->ho_counter >= vlib_num_workers ())
+	{
+	  wrk2 = hc_worker_get (s->thread_index);
+	  HTTP_DBG (1, "cleanup hc_ho_index: %d", wrk2->ho_index);
+	  HTTP_DBG (1, "cleanup thread_index: %d", s->thread_index);
+	  pool_put_index (wrk->sessions, wrk2->ho_index);
+	  hcm->ho_counter = 0;
+	}
+    }
+  else
+    {
+      HTTP_DBG (1, "cleanup ho hc_index: %d", wrk->ho_index);
+      pool_put_index (wrk->sessions, wrk->ho_index);
+    }
 }
 
 static void
@@ -344,17 +392,17 @@ hc_rx_callback (session_t *s)
 
       if (msg.data.headers_len)
 	{
-	  hcm->response_status =
+	  hc_session->response_status =
 	    format (0, "%U", format_http_status_code, msg.code);
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
-	  vec_validate (hcm->resp_headers, msg.data.headers_len - 1);
-	  vec_set_len (hcm->resp_headers, msg.data.headers_len);
+	  vec_validate (hc_session->resp_headers, msg.data.headers_len - 1);
+	  vec_set_len (hc_session->resp_headers, msg.data.headers_len);
 	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
-				 hcm->resp_headers);
+				 hc_session->resp_headers);
 
 	  ASSERT (rv == msg.data.headers_len);
-	  HTTP_DBG (1, (char *) format (0, "%v", hcm->resp_headers));
+	  HTTP_DBG (1, (char *) format (0, "%v", wrk->resp_headers));
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
 	}
@@ -372,8 +420,8 @@ hc_rx_callback (session_t *s)
 	{
 	  goto done;
 	}
-      vec_validate (hcm->http_response, msg.data.body_len - 1);
-      vec_reset_length (hcm->http_response);
+      vec_validate (hc_session->http_response, msg.data.body_len - 1);
+      vec_reset_length (hc_session->http_response);
     }
 
   u32 max_deq = svm_fifo_max_dequeue (s->rx_fifo);
@@ -382,8 +430,8 @@ hc_rx_callback (session_t *s)
       goto done;
     }
   u32 n_deq = clib_min (hc_session->to_recv, max_deq);
-  u32 curr = vec_len (hcm->http_response);
-  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hcm->http_response + curr);
+  u32 curr = vec_len (hc_session->http_response);
+  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hc_session->http_response + curr);
   if (rv < 0)
     {
       clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
@@ -393,7 +441,7 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
-  vec_set_len (hcm->http_response, curr + n_deq);
+  vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
 
@@ -402,20 +450,26 @@ done:
     {
       if (hcm->repeat)
 	{
-	  hc_stats.request_count++;
-	  hc_stats.end = vlib_time_now (wrk->vlib_main);
-	  hc_stats.elapsed_time = hc_stats.end - hc_stats.start;
+	  hc_session->stats.request_count++;
+	  hc_session->stats.end = vlib_time_now (wrk->vlib_main);
+	  hc_session->stats.elapsed_time =
+	    hc_session->stats.end - hc_session->stats.start;
 
-	  if (hc_stats.elapsed_time >= hcm->duration &&
-	      hc_stats.request_count >= hcm->repeat_count)
+	  if (hc_session->stats.elapsed_time >= hcm->duration &&
+	      hc_session->stats.request_count >= hc_session->stats.req_per_wrk)
 	    {
-	      vlib_process_signal_event_mt (
-		wrk->vlib_main, hcm->cli_node_index, HC_REPEAT_DONE, 0);
-	      hc_session_disconnect_callback (s);
+	      hcm->counter++;
+	      // don't disconnect if other workers aren't done
+	      if ((hcm->counter >= vlib_num_workers ()) || !hcm->parallel)
+		{
+		  vlib_process_signal_event_mt (
+		    wrk->vlib_main, hcm->cli_node_index, HC_REPEAT_DONE, 0);
+		  hc_session_disconnect_callback (s);
+		}
 	    }
 	  else
 	    {
-	      send_err = hc_request (s, session_err);
+	      send_err = hc_request (s, wrk, hc_session, session_err);
 	      if (send_err)
 		clib_warning ("failed to send request, error %d", send_err);
 	    }
@@ -434,11 +488,12 @@ static int
 hc_tx_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
+  hc_session_t *hc_session = hc_session_get(s->session_index, s->thread_index);
   u64 to_send;
   int rv;
 
-  to_send = vec_len (hcm->data) - hcm->data_offset;
-  rv = svm_fifo_enqueue (s->tx_fifo, to_send, hcm->data + hcm->data_offset);
+  to_send = vec_len (hcm->data) - hc_session->data_offset;
+  rv = svm_fifo_enqueue (s->tx_fifo, to_send, hcm->data + hc_session->data_offset);
 
   if (rv <= 0)
     {
@@ -448,7 +503,7 @@ hc_tx_callback (session_t *s)
 
   if (rv < to_send)
     {
-      hcm->data_offset += rv;
+      hc_session->data_offset += rv;
       svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
     }
 
@@ -516,14 +571,12 @@ hc_connect ()
 {
   hc_main_t *hcm = &hc_main;
   vnet_connect_args_t *a = 0;
-  hc_worker_t *wrk;
+  hc_worker_t *wrk = hc_worker_get (0);
   hc_session_t *hc_session;
   transport_endpt_ext_cfg_t *ext_cfg;
   transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0 };
-
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
-
   clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
   a->app_index = hcm->app_index;
 
@@ -531,13 +584,26 @@ hc_connect ()
     &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
-  /* allocate http session on main thread */
-  wrk = hc_worker_get (0);
-  hc_session = hc_session_alloc (wrk);
-  a->api_context = hc_session->session_index;
+  if (hcm->parallel)
+    {
+      for (u32 i = 0; i <= vlib_num_workers () - 1; i++)
+	{
+	  hc_session = hc_session_alloc (wrk);
+	  a->api_context = hc_session->session_index;
 
-  session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
-					a);
+	  session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+						hc_connect_rpc, a);
+	}
+    }
+  else
+    {
+      /* allocate http session on main thread */
+      hc_session = hc_session_alloc (wrk);
+      a->api_context = hc_session->session_index;
+
+      session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+					    hc_connect_rpc, a);
+    }
 }
 
 static clib_error_t *
@@ -548,6 +614,8 @@ hc_get_event (vlib_main_t *vm)
   clib_error_t *err = NULL;
   FILE *file_ptr;
   u64 event_timeout;
+  hc_worker_t *wrk;
+  hc_session_t *hc_session;
 
   event_timeout = hcm->timeout ? hcm->timeout : 10;
   if (event_timeout == hcm->duration)
@@ -572,6 +640,8 @@ hc_get_event (vlib_main_t *vm)
     case HC_REPLY_RECEIVED:
       if (hcm->filename)
 	{
+    wrk = hc_worker_get (hcm->worker_index);
+    hc_session = hc_session_get(wrk->session_index, hcm->worker_index);
 	  file_ptr =
 	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "a");
 	  if (file_ptr == NULL)
@@ -580,24 +650,59 @@ hc_get_event (vlib_main_t *vm)
 	    }
 	  else
 	    {
-	      fprintf (file_ptr, "< %s\n< %s\n< %s", hcm->response_status,
-		       hcm->resp_headers, hcm->http_response);
+	      fprintf (file_ptr, "< %s\n< %s\n< %s", hc_session->response_status,
+		       hc_session->resp_headers, hc_session->http_response);
 	      fclose (file_ptr);
 	      vlib_cli_output (vm, "file saved (/tmp/%v)", hcm->filename);
 	    }
 	}
       if (hcm->verbose)
-	vlib_cli_output (vm, "< %v< %v", hcm->response_status,
-			 hcm->resp_headers);
-      vlib_cli_output (vm, "\n%v\n", hcm->http_response);
+	{
+	  wrk = hc_worker_get (hcm->worker_index);
+	  vlib_cli_output (vm, "< %v< %v", hc_session->response_status,
+			   hc_session->resp_headers);
+	  vlib_cli_output (vm, "\n%v\n", hc_session->http_response);
+	}
+
       break;
     case HC_REPEAT_DONE:
+      if (hcm->parallel)
+	{
+	  vec_foreach (wrk, hcm->wrk)
+	    {
+	      vec_foreach (hc_session, wrk->sessions)
+		{
+		  hc_stats.request_count += hc_session->stats.request_count;
+		  if (hc_stats.elapsed_time < hc_session->stats.elapsed_time)
+		    {
+		      hc_stats.elapsed_time = hc_session->stats.elapsed_time;
+		    }
+		}
+	    }
+	}
+      else
+	{
+	  wrk = hc_worker_get (hcm->worker_index);
+	  vec_foreach (hc_session, wrk->sessions)
+	    {
+	      hc_stats.request_count += hc_session->stats.request_count;
+        hc_session->stats.request_count = 0;
+	      if (hc_stats.elapsed_time < hc_session->stats.elapsed_time)
+		{
+		  hc_stats.elapsed_time = hc_session->stats.elapsed_time;
+      hc_session->stats.elapsed_time = 0;
+		}
+	    }
+	}
+
       vlib_cli_output (vm,
 		       "< %d request(s) in %.6fs\n< avg latency "
 		       "%.4fms\n< %.2f req/sec",
 		       hc_stats.request_count, hc_stats.elapsed_time,
 		       (hc_stats.elapsed_time / hc_stats.request_count) * 1000,
 		       hc_stats.request_count / hc_stats.elapsed_time);
+      hc_stats.request_count = 0;
+      hc_stats.elapsed_time = 0;
       break;
     default:
       err = clib_error_return (0, "error: unexpected event %d", event_type);
@@ -612,15 +717,14 @@ static clib_error_t *
 hc_run (vlib_main_t *vm)
 {
   hc_main_t *hcm = &hc_main;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   hc_worker_t *wrk;
   clib_error_t *err;
 
-  num_threads = 1 /* main thread */ + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vlib_num_workers();
   vec_validate (hcm->wrk, num_threads - 1);
   vec_foreach (wrk, hcm->wrk)
-    {
+      {
       wrk->thread_index = wrk - hcm->wrk;
       /* 4k for headers should be enough */
       vec_validate (wrk->headers_buf, 4095);
@@ -657,7 +761,7 @@ hc_detach ()
 }
 
 static void
-hcc_worker_cleanup (hc_worker_t *wrk)
+hc_worker_cleanup (hc_worker_t *wrk)
 {
   HTTP_DBG (1, "worker cleanup");
   vec_free (wrk->headers_buf);
@@ -673,14 +777,11 @@ hc_cleanup ()
   hc_http_header_t *header;
 
   vec_foreach (wrk, hcm->wrk)
-    hcc_worker_cleanup (wrk);
+    hc_worker_cleanup (wrk);
 
   vec_free (hcm->uri);
   vec_free (hcm->target);
   vec_free (hcm->data);
-  vec_free (hcm->resp_headers);
-  vec_free (hcm->http_response);
-  vec_free (hcm->response_status);
   vec_free (hcm->wrk);
   vec_free (hcm->filename);
   vec_foreach (header, hcm->custom_header)
@@ -708,7 +809,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->repeat_count = 0;
   hcm->duration = 0;
   hcm->repeat = false;
-  hc_stats.request_count = 0;
+  hcm->parallel = false;
 
   if (hcm->attached)
     return clib_error_return (0, "failed: already running!");
@@ -761,6 +862,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
       else if (unformat (line_input, "duration %f", &hcm->duration))
 	hcm->repeat = true;
+      else if (unformat (line_input, "parallel"))
+	hcm->parallel = true;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -801,11 +904,23 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  if (hcm->parallel && !hcm->repeat)
+    {
+      err = clib_error_return (
+	0, "parallel sessions are only supported with request repeating");
+      goto done;
+    }
+
   if ((rv = parse_uri ((char *) hcm->uri, &hcm->connect_sep)))
     {
       err =
 	clib_error_return (0, "URI parse error: %U", format_session_error, rv);
       goto done;
+    }
+
+  if (hcm->duration >= hcm->timeout)
+    {
+      hcm->timeout = hcm->duration + 10;
     }
 
   if (hcm->repeat)
@@ -845,7 +960,8 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[post] uri http://<ip-addr> target <origin-form> "
     "[data <form-urlencoded> | file <file-path>] [use-ptr] "
     "[save-to <filename>] [header <Key:Value>] [verbose] "
-    "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>]",
+    "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
+    "[parallel (parallel sessions)]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
