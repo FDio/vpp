@@ -819,30 +819,18 @@ session_switch_pool_closed_rpc (void *arg)
   session_cleanup (s);
 }
 
-typedef struct _session_switch_pool_args
-{
-  u32 session_index;
-  clib_thread_index_t thread_index;
-  u32 new_thread_index;
-  u32 new_session_index;
-} session_switch_pool_args_t;
-
 /**
  * Notify old thread of the session pool switch
  */
 static void
-session_switch_pool (void *cb_args)
+session_switch_pool (session_switch_pool_args_t *args)
 {
-  session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
-  session_handle_t new_sh;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
   session_t *s;
 
-  ASSERT (args->thread_index == vlib_get_thread_index ());
-  s = session_get (args->session_index, args->thread_index);
-  new_sh =
-    session_make_handle (args->new_session_index, args->new_thread_index);
+  s = session_get_from_handle (args->old_sh);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
@@ -851,7 +839,7 @@ session_switch_pool (void *cb_args)
   if (!(s->flags & SESSION_F_PROXY))
     {
       if (svm_fifo_max_dequeue (s->tx_fifo))
-	session_program_tx_io_evt (new_sh, SESSION_IO_EVT_TX);
+	session_program_tx_io_evt (args->new_sh, SESSION_IO_EVT_TX);
       /* Cleanup fifo segment slice state for fifos */
       sm = app_worker_get_connect_segment_manager (app_wrk);
       segment_manager_detach_fifo (sm, &s->rx_fifo);
@@ -862,20 +850,60 @@ session_switch_pool (void *cb_args)
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     goto app_closed;
 
-  app_worker_migrate_notify (app_wrk, s, new_sh);
+  app_worker_migrate_notify (app_wrk, s, args->new_sh);
 
-  clib_mem_free (cb_args);
   return;
 
 app_closed:
   /* Session closed during migration. Clean everything up */
-  session_send_rpc_evt_to_thread (args->new_thread_index,
+  session_send_rpc_evt_to_thread (session_thread_from_handle (args->new_sh),
 				  session_switch_pool_closed_rpc,
-				  uword_to_pointer (new_sh, void *));
+				  uword_to_pointer (args->new_sh, void *));
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
   session_cleanup (s);
-  clib_mem_free (cb_args);
+}
+
+static void
+session_switch_pool_rpc (void *args)
+{
+  u32 thread_index = pointer_to_uword (args);
+  session_worker_t *wrk;
+  session_switch_pool_args_t *swpa;
+
+  wrk = session_main_get_worker (thread_index);
+
+  clib_spinlock_lock (&wrk->session_migrate_lock);
+  swpa = wrk->session_migrate_requests;
+  wrk->session_migrate_requests = wrk->session_migrate_requests_handling;
+  wrk->session_migrate_requests_handling = swpa;
+  clib_spinlock_unlock (&wrk->session_migrate_lock);
+
+  vec_foreach (swpa, wrk->session_migrate_requests_handling)
+    session_switch_pool (swpa);
+
+  vec_reset_length (wrk->session_migrate_requests_handling);
+}
+
+static inline void
+session_program_thread_migration (session_switch_pool_args_t *args)
+{
+  session_worker_t *wrk;
+  u8 rpc_needed = 0;
+
+  wrk = session_main_get_worker (args->old_sh.thread_index);
+
+  clib_spinlock_lock (&wrk->session_migrate_lock);
+  vec_add1 (wrk->session_migrate_requests, *args);
+  if (vec_len (wrk->session_migrate_requests) == 1)
+    rpc_needed = 1;
+  clib_spinlock_unlock (&wrk->session_migrate_lock);
+
+  if (rpc_needed)
+    {
+      void *rpc_args = uword_to_pointer ((uword) args->old_sh.thread_index, void *);
+      session_send_rpc_evt_to_thread (args->old_sh.thread_index, session_switch_pool_rpc, rpc_args);
+    }
 }
 
 /**
@@ -886,7 +914,6 @@ session_dgram_connect_notify (transport_connection_t *tc,
 			      session_handle_tu_t osh, session_t **new_session)
 {
   session_t *new_s;
-  session_switch_pool_args_t *rpc_args;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
 
@@ -915,13 +942,8 @@ session_dgram_connect_notify (transport_connection_t *tc,
    * Ask thread owning the old session to clean it up and make us the tx
    * fifo owner
    */
-  rpc_args = clib_mem_alloc (sizeof (*rpc_args));
-  rpc_args->new_session_index = new_s->session_index;
-  rpc_args->new_thread_index = new_s->thread_index;
-  rpc_args->session_index = tc->s_index;
-  rpc_args->thread_index = osh.thread_index;
-  session_send_rpc_evt_to_thread (rpc_args->thread_index, session_switch_pool,
-				  rpc_args);
+  session_switch_pool_args_t rpc_args = { .new_sh = session_handle (new_s), .old_sh = osh };
+  session_program_thread_migration (&rpc_args);
 
   tc->s_index = new_s->session_index;
   new_s->connection_index = tc->c_index;
@@ -2029,6 +2051,7 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
+      clib_spinlock_init (&wrk->session_migrate_lock);
 
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);

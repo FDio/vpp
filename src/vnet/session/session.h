@@ -73,6 +73,11 @@ typedef struct
 } session_dma_transfer;
 
 typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
+typedef struct _session_switch_pool_args
+{
+  session_handle_tu_t old_sh;
+  session_handle_t new_sh;
+} session_switch_pool_args_t;
 
 typedef struct session_worker_
 {
@@ -149,6 +154,10 @@ typedef struct session_worker_
 
   svm_fifo_seg_t *rx_segs;
 
+  session_switch_pool_args_t *session_migrate_requests;
+  session_switch_pool_args_t *session_migrate_requests_handling;
+  clib_spinlock_t session_migrate_lock;
+
   int config_index;
   u8 dma_enabled;
   session_dma_transfer *dma_trans;
@@ -204,12 +213,6 @@ typedef struct session_main_
   /** Worker contexts */
   session_worker_t *wrk;
 
-  /** Event queues memfd segment */
-  fifo_segment_t wrk_mqs_segment;
-
-  /** Unique segment name counter */
-  u32 unique_segment_name_counter;
-
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn **session_tx_fns;
 
@@ -223,8 +226,6 @@ typedef struct session_main_
    * transports like udp. If vpp has workers, this will be first worker. */
   u32 transport_cl_thread;
 
-  transport_proto_t last_transport_proto_type;
-
   /** Number of workers at pool realloc barrier */
   volatile u32 pool_realloc_at_barrier;
 
@@ -233,6 +234,12 @@ typedef struct session_main_
 
   /** Lock to synchronize parallel forced reallocs */
   clib_spinlock_t pool_realloc_lock;
+
+  /** Event queues memfd segment */
+  fifo_segment_t wrk_mqs_segment;
+
+  /** Last transport proto registered with session layer */
+  transport_proto_t last_transport_proto_type;
 
   /*
    * Config parameters
