@@ -232,6 +232,13 @@ typedef struct session_main_
   /** Lock to synchronize parallel forced reallocs */
   clib_spinlock_t pool_realloc_lock;
 
+  /** List of half-open session indices to be freed by first worker */
+  u32 *half_open_free_list;
+  u32 *half_open_free_list_handling;
+
+  /** Lock to synchronize enqueues to half-open free list */
+  clib_spinlock_t half_open_free_lock;
+
   /** Event queues memfd segment */
   fifo_segment_t wrk_mqs_segment;
 
