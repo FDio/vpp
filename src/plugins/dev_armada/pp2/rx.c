@@ -140,6 +140,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				 n_desc);
 	  n_sel = vlib_frame_bitmap_count_set_bits (selected_bmp);
 	  n_avail -= n_sel;
+	  vlib_frame_bitmap_xor (avail_bmp, selected_bmp);
 
 	  if (uword_bitmap_is_bit_set (mp->valid_dsa_src_bitmap, index))
 	    {
