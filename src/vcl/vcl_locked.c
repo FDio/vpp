@@ -140,6 +140,7 @@ typedef struct vls_local_
   pthread_mutex_t vls_mt_mq_mlock;    /**< vcl mq lock */
   pthread_mutex_t vls_mt_spool_mlock; /**< vcl select or pool lock */
   volatile u8 select_mp_check;	      /**< flag set if select checks done */
+  struct sigaction old_sa;	      /**< old sigaction to restore */
 } vls_process_local_t;
 
 static vls_process_local_t vls_local;
@@ -1798,8 +1799,6 @@ vls_handle_pending_wrk_cleanup (void)
   vec_reset_length (vls_wrk->pending_vcl_wrk_cleanup);
 }
 
-static struct sigaction old_sa;
-
 static void
 vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
 {
@@ -1809,7 +1808,7 @@ vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
   if (vcl_get_worker_index () == ~0)
     return;
 
-  if (sigaction (SIGCHLD, &old_sa, 0))
+  if (sigaction (SIGCHLD, &vlsl->old_sa, 0))
     {
       VERR ("couldn't restore sigchld");
       exit (-1);
@@ -1822,6 +1821,9 @@ vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
   child_wrk = vcl_worker_get_if_valid (wrk->forked_child);
   if (!child_wrk)
     goto done;
+
+  /* TODO we need to support multiple children */
+  wrk->forked_child = ~0;
 
   if (si && si->si_pid != child_wrk->current_pid)
     {
@@ -1838,14 +1840,15 @@ vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
   vec_add1 (vls_wrk->pending_vcl_wrk_cleanup, child_wrk->wrk_index);
 
 done:
-  if (old_sa.sa_flags & SA_SIGINFO)
+  if (vlsl->old_sa.sa_flags & SA_SIGINFO)
     {
-      void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
-      fn (signum, si, uc);
+      void (*fn) (int, siginfo_t *, void *) = vlsl->old_sa.sa_sigaction;
+      if (fn)
+	fn (signum, si, uc);
     }
   else
     {
-      void (*fn) (int) = old_sa.sa_handler;
+      void (*fn) (int) = vlsl->old_sa.sa_handler;
       if (fn)
 	fn (signum);
     }
@@ -1855,7 +1858,7 @@ static void
 vls_incercept_sigchld ()
 {
   struct sigaction sa;
-  if (old_sa.sa_sigaction)
+  if (vlsl->old_sa.sa_sigaction)
     {
       VDBG (0, "have intercepted sigchld");
       return;
@@ -1863,11 +1866,17 @@ vls_incercept_sigchld ()
   clib_memset (&sa, 0, sizeof (sa));
   sa.sa_sigaction = vls_intercept_sigchld_handler;
   sa.sa_flags = SA_SIGINFO;
-  if (sigaction (SIGCHLD, &sa, &old_sa))
+  if (sigaction (SIGCHLD, &sa, &vlsl->old_sa))
     {
       VERR ("couldn't intercept sigchld");
       exit (-1);
     }
+
+  /* Not entirely clear how, but some processes can clear old_sa after fork
+   * and subsequently fork and register vls_intercept_sigchld_handler as
+   * old_sa handler leading to recursion */
+  if (vlsl->old_sa.sa_sigaction == vls_intercept_sigchld_handler)
+    vlsl->old_sa.sa_sigaction = 0;
 }
 
 static void
