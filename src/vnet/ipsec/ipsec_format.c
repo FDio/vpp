@@ -463,13 +463,17 @@ format_ipsec_sa (u8 * s, va_list * args)
     goto done;
 
   s = format (s, "\n   locks %d", sa->node.fn_locks);
+#if 0
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
+  s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
+#endif
   s = format (s, "\n   window-size: %llu",
-	      IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa));
-  s = format (s, "\n   window: Bl <- %U Tl", format_ipsec_replay_window,
-	      ipsec_sa_anti_replay_get_64b_window (sa));
+	      sa->dec_rt ? IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa->dec_rt) : 0);
+  if (sa->dec_rt)
+    s = format (s, "\n   window: Bl <- %U Tl", format_ipsec_replay_window,
+		ipsec_sa_anti_replay_get_64b_window (sa->dec_rt));
   s =
     format (s, "\n   crypto alg %U", format_ipsec_crypto_alg, sa->crypto_alg);
   if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))
@@ -482,9 +486,10 @@ format_ipsec_sa (u8 * s, va_list * args)
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
   else
     s = format (s, " key [redacted]");
-  s = format (s, "\n   UDP:[src:%d dst:%d]",
-	      clib_host_to_net_u16 (sa->udp_hdr.src_port),
-	      clib_host_to_net_u16 (sa->udp_hdr.dst_port));
+  if (sa->enc_rt)
+    s = format (s, "\n   UDP:[src:%d dst:%d]",
+		clib_host_to_net_u16 (sa->enc_rt->udp_hdr.src_port),
+		clib_host_to_net_u16 (sa->enc_rt->udp_hdr.dst_port));
 
   vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
   s = format (s, "\n   tx/rx:[packets:%Ld bytes:%Ld]", counts.packets,

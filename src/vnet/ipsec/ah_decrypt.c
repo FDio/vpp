@@ -127,7 +127,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   from = vlib_frame_vector_args (from_frame);
   n_left = from_frame->n_vectors;
-  ipsec_sa_t *sa0 = 0;
+  ipsec_sa_dec_rt_t *sdrt = 0;
   bool anti_replay_result;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
 
@@ -144,30 +144,32 @@ ah_decrypt_inline (vlib_main_t * vm,
 
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
+	  ipsec_sa_t *sa0 = 0;
 	  if (current_sa_index != ~0)
 	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 					     current_sa_index, current_sa_pkts,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
+	  sdrt = sa0->dec_rt;
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
 					  thread_index, current_sa_index);
 	}
 
-      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == sdrt->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
 	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
+	  clib_atomic_cmp_and_swap (&sdrt->thread_index, ~0,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != sa0->thread_index))
+      if (PREDICT_TRUE (thread_index != sdrt->thread_index))
 	{
-	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
+	  vnet_buffer (b[0])->ipsec.thread_index = sdrt->thread_index;
 	  next[0] = AH_DECRYPT_NEXT_HANDOFF;
 	  goto next;
 	}
@@ -202,15 +204,15 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
+      if (PREDICT_FALSE (sdrt->anti_reply_huge))
 	{
 	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    sa0, pd->seq, ~0, false, &pd->seq_hi, true);
+	    sdrt, pd->seq, ~0, false, &pd->seq_hi, true);
 	}
       else
 	{
 	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    sa0, pd->seq, ~0, false, &pd->seq_hi, false);
+	    sdrt, pd->seq, ~0, false, &pd->seq_hi, false);
 	}
       if (anti_replay_result)
 	{
@@ -223,64 +225,67 @@ ah_decrypt_inline (vlib_main_t * vm,
       current_sa_bytes += b[0]->current_length;
       current_sa_pkts += 1;
 
-      pd->icv_size = sa0->integ_icv_size;
+      pd->icv_size = sdrt->integ_icv_size;
       pd->nexthdr_cached = ah0->nexthdr;
-      if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
-	{
-	  if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0) &&
-			     pd->current_data + b[0]->current_length
-			     + sizeof (u32) > buffer_data_size))
-	    {
-	      ah_decrypt_set_next_index (
-		b[0], node, vm->thread_index, AH_DECRYPT_ERROR_NO_TAIL_SPACE,
-		0, next, AH_DECRYPT_NEXT_DROP, current_sa_index);
-	      goto next;
-	    }
+#if 0
+      if (PREDICT_TRUE (sdrt->integ_alg != IPSEC_INTEG_ALG_NONE))
+#endif
+      {
+	if (PREDICT_FALSE (sdrt->use_esn && pd->current_data +
+						b[0]->current_length +
+						sizeof (u32) >
+					      buffer_data_size))
+	  {
+	    ah_decrypt_set_next_index (b[0], node, vm->thread_index,
+				       AH_DECRYPT_ERROR_NO_TAIL_SPACE, 0, next,
+				       AH_DECRYPT_NEXT_DROP, current_sa_index);
+	    goto next;
+	  }
 
-	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	vnet_crypto_op_t *op;
+	vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+	vnet_crypto_op_init (op, sdrt->integ_op_id);
 
-	  op->src = (u8 *) ih4;
-	  op->len = b[0]->current_length;
-	  op->digest = (u8 *) ih4 - pd->icv_size;
-	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-	  op->digest_len = pd->icv_size;
-	  op->key_index = sa0->integ_key_index;
-	  op->user_data = b - bufs;
-	  if (ipsec_sa_is_set_USE_ESN (sa0))
-	    {
-	      u32 seq_hi = clib_host_to_net_u32 (pd->seq_hi);
+	op->src = (u8 *) ih4;
+	op->len = b[0]->current_length;
+	op->digest = (u8 *) ih4 - pd->icv_size;
+	op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+	op->digest_len = pd->icv_size;
+	op->key_index = sdrt->integ_key_index;
+	op->user_data = b - bufs;
+	if (sdrt->use_esn)
+	  {
+	    u32 seq_hi = clib_host_to_net_u32 (pd->seq_hi);
 
-	      op->len += sizeof (seq_hi);
-	      clib_memcpy (op->src + b[0]->current_length, &seq_hi,
-			   sizeof (seq_hi));
-	    }
-	  clib_memcpy (op->digest, ah0->auth_data, pd->icv_size);
-	  clib_memset (ah0->auth_data, 0, pd->icv_size);
+	    op->len += sizeof (seq_hi);
+	    clib_memcpy (op->src + b[0]->current_length, &seq_hi,
+			 sizeof (seq_hi));
+	  }
+	clib_memcpy (op->digest, ah0->auth_data, pd->icv_size);
+	clib_memset (ah0->auth_data, 0, pd->icv_size);
 
-	  if (is_ip6)
-	    {
-	      pd->ip_version_traffic_class_and_flow_label =
-		ih6->ip_version_traffic_class_and_flow_label;
-	      pd->hop_limit = ih6->hop_limit;
-	      ih6->ip_version_traffic_class_and_flow_label = 0x60;
-	      ih6->hop_limit = 0;
-	      pd->nexthdr = ah0->nexthdr;
-	      pd->icv_padding_len =
-		ah_calc_icv_padding_len (pd->icv_size, 1 /* is_ipv6 */ );
-	    }
-	  else
-	    {
-	      pd->tos = ih4->tos;
-	      pd->ttl = ih4->ttl;
-	      ih4->tos = 0;
-	      ih4->ttl = 0;
-	      ih4->checksum = 0;
-	      pd->icv_padding_len =
-		ah_calc_icv_padding_len (pd->icv_size, 0 /* is_ipv6 */ );
-	    }
-	}
+	if (is_ip6)
+	  {
+	    pd->ip_version_traffic_class_and_flow_label =
+	      ih6->ip_version_traffic_class_and_flow_label;
+	    pd->hop_limit = ih6->hop_limit;
+	    ih6->ip_version_traffic_class_and_flow_label = 0x60;
+	    ih6->hop_limit = 0;
+	    pd->nexthdr = ah0->nexthdr;
+	    pd->icv_padding_len =
+	      ah_calc_icv_padding_len (pd->icv_size, 1 /* is_ipv6 */);
+	  }
+	else
+	  {
+	    pd->tos = ih4->tos;
+	    pd->ttl = ih4->ttl;
+	    ih4->tos = 0;
+	    ih4->ttl = 0;
+	    ih4->checksum = 0;
+	    pd->icv_padding_len =
+	      ah_calc_icv_padding_len (pd->icv_size, 0 /* is_ipv6 */);
+	  }
+      }
 
     next:
       n_left -= 1;
@@ -304,6 +309,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
   while (n_left > 0)
     {
+      ipsec_sa_t *sa0;
       ip4_header_t *oh4;
       ip6_header_t *oh6;
       u64 n_lost = 0;
@@ -312,6 +318,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	goto trace;
 
       sa0 = ipsec_sa_get (pd->sa_index);
+      sdrt = sa0->dec_rt;
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
@@ -319,7 +326,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
 	    {
 	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    sa0, pd->seq, pd->seq_hi, true, NULL, true))
+		    sdrt, pd->seq, pd->seq_hi, true, NULL, true))
 		{
 		  ah_decrypt_set_next_index (
 		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
@@ -327,12 +334,12 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 	      n_lost = ipsec_sa_anti_replay_advance (
-		sa0, thread_index, pd->seq, pd->seq_hi, true);
+		sdrt, thread_index, pd->seq, pd->seq_hi, true);
 	    }
 	  else
 	    {
 	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    sa0, pd->seq, pd->seq_hi, true, NULL, false))
+		    sdrt, pd->seq, pd->seq_hi, true, NULL, false))
 		{
 		  ah_decrypt_set_next_index (
 		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
@@ -340,7 +347,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 	      n_lost = ipsec_sa_anti_replay_advance (
-		sa0, thread_index, pd->seq, pd->seq_hi, false);
+		sdrt, thread_index, pd->seq, pd->seq_hi, false);
 	    }
 	  vlib_prefetch_simple_counter (
 	    &ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST], thread_index,

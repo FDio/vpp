@@ -37,6 +37,7 @@ test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	break;
     }
 
+#if 0
   if (~0 != sa_id)
     {
       ipsec_sa_t *sa;
@@ -61,6 +62,7 @@ test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       return clib_error_return (0, "unknown SA `%U'", format_unformat_error,
 				input);
     }
+#endif
 
   return (NULL);
 }

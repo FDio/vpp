@@ -85,40 +85,63 @@ u8 *format_esp_header (u8 * s, va_list * args);
 
 /* TODO seq increment should be atomic to be accessed by multiple workers */
 always_inline int
-esp_seq_advance (ipsec_sa_t * sa)
+esp_seq_advance (ipsec_sa_enc_rt_t *sert)
 {
-  if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa)))
+  if (PREDICT_TRUE (sert->use_esn))
     {
-      if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
+      if (PREDICT_FALSE (sert->seq == ESP_SEQ_MAX))
 	{
-	  if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
-			     sa->seq_hi == ESP_SEQ_MAX))
+	  if (PREDICT_FALSE (sert->use_anti_replay &&
+			     sert->seq_hi == ESP_SEQ_MAX))
 	    return 1;
-	  sa->seq_hi++;
+	  sert->seq_hi++;
 	}
-      sa->seq++;
+      sert->seq++;
     }
   else
     {
-      if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
-			 sa->seq == ESP_SEQ_MAX))
+      if (PREDICT_FALSE (sert->use_anti_replay && sert->seq == ESP_SEQ_MAX))
 	return 1;
-      sa->seq++;
+      sert->seq++;
     }
 
   return 0;
 }
 
 always_inline u16
-esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa,
-	      u32 seq_hi)
+esp_aad_enc_fill (u8 *data, const esp_header_t *esp,
+		  const ipsec_sa_enc_rt_t *sdrt, u32 seq_hi)
 {
   esp_aead_t *aad;
 
   aad = (esp_aead_t *) data;
   aad->data[0] = esp->spi;
 
-  if (ipsec_sa_is_set_USE_ESN (sa))
+  if (sdrt->use_esn)
+    {
+      /* SPI, seq-hi, seq-low */
+      aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
+      aad->data[2] = esp->seq;
+      return 12;
+    }
+  else
+    {
+      /* SPI, seq-low */
+      aad->data[1] = esp->seq;
+      return 8;
+    }
+}
+
+always_inline u16
+esp_aad_dec_fill (u8 *data, const esp_header_t *esp,
+		  const ipsec_sa_dec_rt_t *sdrt, u32 seq_hi)
+{
+  esp_aead_t *aad;
+
+  aad = (esp_aead_t *) data;
+  aad->data[0] = esp->spi;
+
+  if (sdrt->use_esn)
     {
       /* SPI, seq-hi, seq-low */
       aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
