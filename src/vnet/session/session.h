@@ -81,6 +81,14 @@ typedef struct
   u16 *pending_tx_nexts;
 } session_dma_transfer;
 
+typedef struct _session_switch_pool_args
+{
+  u32 session_index;
+  u32 thread_index;
+  u32 new_thread_index;
+  u32 new_session_index;
+} session_switch_pool_args_t;
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -151,6 +159,10 @@ typedef struct session_worker_
   /** Per-app-worker bitmap of pending notifications */
   uword *app_wrks_pending_ntf;
 
+  session_switch_pool_args_t *session_migrate_requests;
+  session_switch_pool_args_t *session_migrate_requests_handling;
+  clib_spinlock_t session_migrate_lock;
+
   int config_index;
   u8 dma_enabled;
   session_dma_transfer *dma_trans;
@@ -210,12 +222,6 @@ typedef struct session_main_
   /** Vector of transport update time functions */
   session_update_time_fn *update_time_fns;
 
-  /** Event queues memfd segment */
-  fifo_segment_t wrk_mqs_segment;
-
-  /** Unique segment name counter */
-  u32 unique_segment_name_counter;
-
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn **session_tx_fns;
 
@@ -229,8 +235,6 @@ typedef struct session_main_
    * transports like udp. If vpp has workers, this will be first worker. */
   u32 transport_cl_thread;
 
-  transport_proto_t last_transport_proto_type;
-
   /** Number of workers at pool realloc barrier */
   volatile u32 pool_realloc_at_barrier;
 
@@ -239,6 +243,12 @@ typedef struct session_main_
 
   /** Lock to synchronize parallel forced reallocs */
   clib_spinlock_t pool_realloc_lock;
+
+  /** Event queues memfd segment */
+  fifo_segment_t wrk_mqs_segment;
+
+  /** Last transport proto registered with session layer */
+  transport_proto_t last_transport_proto_type;
 
   /*
    * Config parameters
