@@ -644,6 +644,8 @@ session_mq_worker_update_handler (void *data)
     }
   owner_app_wrk_map = app_wrk->wrk_map_index;
   app_wrk = application_get_worker (app, mp->wrk_index);
+  if (!app_wrk)
+    return;
 
   /* This needs to come from the new owner */
   if (mp->req_wrk_index == owner_app_wrk_map)
