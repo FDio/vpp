@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "17e8be0e_a4503866",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-24T08:39:33Z",
+      "side": 1,
+      "message": "Apologies Varun, I completely missed this patch. Some comments inline.",
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6c8432b_622d1991",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 952,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-24T08:39:33Z",
+      "side": 1,
+      "message": "What do you typically use as engine path? You build your own dpdk?",
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "618eb317_75733624",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1308,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-01-24T08:39:33Z",
+      "side": 1,
+      "message": "Can\u0027t we do this as part of the async apis and store the value in tls openssl or even add a main to tls async?",
+      "revId": "c114d5597f1af57fe17be85e73cf4ed84c4fd299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
