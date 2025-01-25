@@ -22,7 +22,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <sflow/sflow_common.h>
-#include <sflow/sflow_vapi.h>
 #include <sflow/sflow_psample.h>
 #include <sflow/sflow_usersock.h>
 
@@ -124,6 +123,8 @@ typedef struct
   sflow_fifo_t fifo;
 } sflow_per_thread_data_t;
 
+typedef u32 (*IfIndexLookupFn) (u32);
+
 typedef struct
 {
   /* API message ID base */
@@ -164,12 +165,7 @@ typedef struct
   u32 csample_send;
   u32 csample_send_drops;
   u32 unixsock_seq;
-#ifdef SFLOW_USE_VAPI
-  /* vapi query helper thread (transient) */
-  CLIB_CACHE_LINE_ALIGN_MARK (_vapi);
-  sflow_vapi_client_t vac;
-  int vapi_requests;
-#endif
+  IfIndexLookupFn lcp_itf_pair_get_vif_index_by_phy;
 } sflow_main_t;
 
 extern sflow_main_t sflow_main;
