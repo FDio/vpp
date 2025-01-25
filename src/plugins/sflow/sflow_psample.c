@@ -13,11 +13,6 @@
  * limitations under the License.
  */
 
-#if defined(__cplusplus)
-extern "C"
-{
-#endif
-
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
