@@ -25,6 +25,7 @@
 #include <sflow/sflow.api_enum.h>
 #include <sflow/sflow.api_types.h>
 #include <sflow/sflow_psample.h>
+#include <sflow/sflow_dlapi.h>
 
 #include <vpp-api/client/stat_client.h>
 #include <vlib/stats/stats.h>
@@ -182,6 +183,24 @@ retry:
   SFLOWUSSpec_setAttr (&spec, SFLOW_VPP_ATTR_PORTNAME, hw->name,
 		       vec_len (hw->name));
   SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_IFINDEX, sfif->hw_if_index);
+
+  if (!smp->lcp_dlapi_tested)
+    {
+      void *fn =
+	vlib_get_plugin_symbol (SFLOW_LCP_LIB, SFLOW_LCP_SYM_GET_VIF_BY_PHY);
+      if (fn != NULL)
+	{
+	  smp->lcp_itf_pair_get_vif_index_by_phy = fn;
+	  smp->lcp_dlapi_available = true;
+	}
+      smp->lcp_dlapi_tested = true;
+    }
+  if (smp->lcp_dlapi_available)
+    {
+      sfif->linux_if_index =
+	(*smp->lcp_itf_pair_get_vif_index_by_phy) (sfif->hw_if_index);
+    }
+
   if (sfif->linux_if_index)
     {
       // We know the corresponding Linux ifIndex for this interface, so include
@@ -433,15 +452,6 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  continue;
 	}
 
-#ifdef SFLOW_USE_VAPI
-#ifdef SFLOW_TEST_HAMMER_VAPI
-      sflow_vapi_check_for_linux_if_index_results (&smp->vac,
-						   smp->per_interface_data);
-      sflow_vapi_read_linux_if_index_numbers (&smp->vac,
-					      smp->per_interface_data);
-#endif
-#endif
-
       // PSAMPLE channel may need extra step (e.g. to learn family_id)
       // before it is ready to send
       EnumSFLOWPSState psState = SFLOWPS_state (&smp->sflow_psample);
@@ -458,23 +468,6 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  // second rollover
 	  smp->now_mono_S = tnow_S;
-#ifdef SFLOW_USE_VAPI
-	  if (!smp->vac.vapi_unavailable)
-	    {
-	      // look up linux if_index numbers
-	      sflow_vapi_check_for_linux_if_index_results (
-		&smp->vac, smp->per_interface_data);
-	      if (smp->vapi_requests == 0 ||
-		  (tnow_S % SFLOW_VAPI_POLL_INTERVAL) == 0)
-		{
-		  if (sflow_vapi_read_linux_if_index_numbers (
-			&smp->vac, smp->per_interface_data))
-		    {
-		      smp->vapi_requests++;
-		    }
-		}
-	    }
-#endif
 	  // send status info
 	  send_sampling_status_info (smp);
 	  // poll counters for interfaces that are due
@@ -538,11 +531,6 @@ sflow_sampling_start (sflow_main_t *smp)
   smp->psample_seq_ingress = 0;
   smp->psample_seq_egress = 0;
   smp->psample_send_drops = 0;
-
-#ifdef SFLOW_USE_VAPI
-  // reset vapi request count so that we make a request the first time
-  smp->vapi_requests = 0;
-#endif
 
   /* open PSAMPLE netlink channel for writing packet samples */
   SFLOWPS_open (&smp->sflow_psample);
