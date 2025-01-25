@@ -12,39 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vpp_find_path(NETLINK_INCLUDE_DIR NAMES linux/netlink.h)
-if (NOT NETLINK_INCLUDE_DIR)
-  message(WARNING "netlink headers not found - sflow plugin disabled")
-  return()
-endif()
-
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
   message(WARNING "sflow is not supported on FreeBSD - sflow plugin disabled")
   return()
 endif()
 
-LIST(FIND excluded_plugins linux-cp exc_index)
-if(${exc_index} EQUAL "-1")
-  message(WARNING "sflow plugin - linux-cp plugin included: compiling VAPI calls")
-  add_compile_definitions(SFLOW_USE_VAPI)
-else()
-  message(WARNING "sflow plugin - linux-cp plugin excluded: not compiling VAPI calls")
-endif()
-
-include_directories(${CMAKE_SOURCE_DIR}/vpp-api ${CMAKE_CURRENT_BINARY_DIR}/../../vpp-api)
 add_vpp_plugin(sflow
   SOURCES
   sflow.c
   node.c
   sflow_common.h
   sflow.h
+  sflow_dlapi.h
   sflow_psample.c
   sflow_psample.h
   sflow_psample_fields.h
   sflow_usersock.c
   sflow_usersock.h
-  sflow_vapi.c
-  sflow_vapi.h
 
   MULTIARCH_SOURCES
   node.c

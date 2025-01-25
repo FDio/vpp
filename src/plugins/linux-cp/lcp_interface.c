@@ -162,6 +162,22 @@ lcp_itf_pair_get (u32 index)
   return pool_elt_at_index (lcp_itf_pair_pool, index);
 }
 
+/* binary-direct API: for access from other plugins, bypassing VAPI.
+ * Important for parameters and return types to be simple C types, rather
+ * than structures. See src/plugins/sflow/sflow_dlapi.h for an example.
+ */
+u32
+lcp_itf_pair_get_vif_index_by_phy (u32 phy_sw_if_index)
+{
+  if (phy_sw_if_index < vec_len (lip_db_by_phy))
+    {
+      lcp_itf_pair_t *lip = lcp_itf_pair_get (lip_db_by_phy[phy_sw_if_index]);
+      if (lip)
+	return lip->lip_vif_index;
+    }
+  return INDEX_INVALID;
+}
+
 index_t
 lcp_itf_pair_find_by_vif (u32 vif_index)
 {
