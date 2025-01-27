@@ -814,11 +814,12 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   args->sw_if_index = sw->sw_if_index;
 
   cc.mask = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TCP_GSO |
-	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM |
+	    VNET_HW_IF_CAP_TX_FIXED_OFFSET;
   if (vd->gso_enable)
     cc.val = cc.mask;
   else
-    cc.val = VNET_HW_IF_CAP_INT_MODE;
+    cc.val = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 
   vnet_hw_if_change_caps (vnm, vd->hw_if_index, &cc);
 
