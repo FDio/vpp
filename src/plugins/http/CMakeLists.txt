@@ -16,6 +16,7 @@ add_vpp_plugin(http
   http.c
   http_buffer.c
   http_timer.c
+  http1.c
 )
 
 add_vpp_plugin(http_unittest
