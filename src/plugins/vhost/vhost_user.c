@@ -1636,7 +1636,9 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   for (q = 0; q < vec_len (vui->vrings); q++)
     vhost_user_vring_init (vui, q);
 
-  vnet_hw_if_set_caps (vnm, vui->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+  vnet_hw_if_set_caps (vnm, vui->hw_if_index,
+		       VNET_HW_IF_CAP_INT_MODE |
+			 VNET_HW_IF_CAP_TX_FIXED_OFFSET);
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
 
   if (sw_if_index)

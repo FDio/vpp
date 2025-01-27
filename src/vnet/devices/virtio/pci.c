@@ -530,9 +530,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->gso_enabled = 1;
 	      vif->csum_offload_enabled = 1;
-	      cc.val = cc.mask = VNET_HW_IF_CAP_TCP_GSO |
-				 VNET_HW_IF_CAP_TX_TCP_CKSUM |
-				 VNET_HW_IF_CAP_TX_UDP_CKSUM;
+	      cc.val = cc.mask =
+		VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		VNET_HW_IF_CAP_TX_UDP_CKSUM | VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 	    }
 	}
       else if (csum_offload_enabled
@@ -546,10 +546,12 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->csum_offload_enabled = 1;
 	      vif->gso_enabled = 0;
-	      cc.val =
-		VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+	      cc.val = VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		       VNET_HW_IF_CAP_TX_UDP_CKSUM |
+		       VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 	      cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
-			VNET_HW_IF_CAP_TX_UDP_CKSUM;
+			VNET_HW_IF_CAP_TX_UDP_CKSUM |
+			VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 	    }
 	}
       else
@@ -563,7 +565,8 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	      vif->csum_offload_enabled = 0;
 	      vif->gso_enabled = 0;
 	      cc.val = 0;
-	      cc.mask = VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO;
+	      cc.mask = VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO |
+			VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 	    }
 	}
     }
