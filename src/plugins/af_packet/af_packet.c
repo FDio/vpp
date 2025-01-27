@@ -653,7 +653,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   u8 hw_addr[6];
   vnet_sw_interface_t *sw;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_if_caps_t caps = VNET_HW_IF_CAP_INT_MODE;
+  vnet_hw_if_caps_t caps =
+    VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TX_FIXED_OFFSET;
   uword *p;
   uword if_index;
   u8 *host_if_name_dup = 0;
