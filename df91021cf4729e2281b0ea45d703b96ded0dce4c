@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f41f4ec_4c32db75",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-27T09:29:05Z",
+      "side": 1,
+      "message": "why not do that VLIB_INIT_FUNCTION() with initialization order? That would avoid having this additional complexity here.",
+      "revId": "df91021cf4729e2281b0ea45d703b96ded0dce4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38c30b86_c0297d41",
+        "filename": "src/plugins/sflow/sflow.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-27T09:29:05Z",
+      "side": 1,
+      "message": "in order to detect function signature change, you can use something like typeof(lcp_ift_pair_get_vif_index_by_phy) itf_pair_get instead.",
+      "revId": "df91021cf4729e2281b0ea45d703b96ded0dce4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
