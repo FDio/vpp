@@ -547,6 +547,23 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
       vnet_buffer (b)->oflags = oflags;
       b->flags |= VNET_BUFFER_F_OFFLOAD;
     }
+#if CLIB_DEBUG > 0
+  if (VNET_BUFFER_OFFLOAD_F_IP_CKSUM & oflags)
+    {
+      ASSERT (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID);
+      ASSERT (b->flags & VNET_BUFFER_F_IS_IP4);
+    }
+
+  if ((VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM) &
+      oflags)
+    ASSERT (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+
+  if (VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM & oflags)
+    ASSERT (VNET_BUFFER_OFFLOAD_F_TNL_VXLAN & oflags);
+  if (VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM & oflags)
+    ASSERT ((VNET_BUFFER_OFFLOAD_F_TNL_IPIP & oflags) ||
+	    (VNET_BUFFER_OFFLOAD_F_TNL_VXLAN & oflags));
+#endif
 }
 
 static_always_inline void

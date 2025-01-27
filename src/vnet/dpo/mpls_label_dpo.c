@@ -447,6 +447,11 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                 vnet_buffer (b2)->l3_hdr_offset = b2->current_data;
                 vnet_buffer (b3)->l3_hdr_offset = b3->current_data;
 
+                b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+                b1->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+                b2->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+                b3->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+
                 if (DPO_PROTO_IP4 == dproto)
                 {
                     ip4_header_t * ip0 = vlib_buffer_get_current(b0);
@@ -792,6 +797,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             if (DPO_PROTO_MPLS != dproto)
             {
                 vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
+                b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
                 if (DPO_PROTO_IP4 == dproto)
                 {
