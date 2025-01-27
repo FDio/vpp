@@ -610,6 +610,7 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
   vlib_buffer_advance (b, l->adv);
   vnet_buffer (b)->l2.l2_len = l->len;
   vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l2_hdr_offset + l->len;
+  b->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
   if (l->err == ETHERNET_ERROR_NONE)
     {
