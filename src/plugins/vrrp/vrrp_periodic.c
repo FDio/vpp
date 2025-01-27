@@ -187,7 +187,7 @@ vrrp_periodic_process (vlib_main_t * vm,
 	  timer = pool_elt_at_index (pm->vr_timers, next_timer);
 	  timeout = timer->expire_time - now;
 
-	  vlib_process_wait_for_event_or_clock (vm, timeout);
+	  vlib_process_wait_for_event_or_clock (vm, clib_max (timeout, 10e-6));
 	}
 
       event_type = vlib_process_get_events (vm, (uword **) & event_data);
