@@ -16,7 +16,7 @@
 #ifndef SRC_PLUGINS_HTTP_HTTP_TIMER_H_
 #define SRC_PLUGINS_HTTP_HTTP_TIMER_H_
 
-#include <http/http.h>
+#include <http/http_private.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 #define HTTP_CONN_TIMEOUT	  60
