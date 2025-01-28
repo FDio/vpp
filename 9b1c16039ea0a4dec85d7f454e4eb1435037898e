@@ -35,6 +35,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0fce042_b36d5e57",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-28T21:41:59Z",
+      "side": 1,
+      "message": "PTAL - used vnet_get_hw_interface() now to get the sw_if_index from our sfif-\u003ehw_if_index, and checked the INDEX_INVALID return value (which I think is the correct thing to return).",
+      "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c2552dc2_0b2802e0",
@@ -54,6 +71,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f6bc06d3_8979c9b5",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-28T21:41:59Z",
+      "side": 1,
+      "message": "I think we can lookup with vnet_get_hw_interface() and use the result to grab the sw_if_index for Linux CP. PTAL.",
+      "parentUuid": "c2552dc2_0b2802e0",
+      "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "906d0542_39210240",
         "filename": "src/plugins/sflow/sflow.c",
         "patchSetId": 5
@@ -65,6 +100,24 @@
       "writtenOn": "2025-01-28T14:50:43Z",
       "side": 1,
       "message": "lcp_itf_pair_get_vif_index_by_phy() can return INDEX_INVALID. I\u0027m not sure if there\u0027s any case where it could return 0. Should the condition here be `(sfif-\u003elinux_if_index !\u003d INDEX_INVALID)`?",
+      "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd975832_d6b88404",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-28T21:41:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "906d0542_39210240",
       "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
