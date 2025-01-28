@@ -470,6 +470,7 @@ ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
 	if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
 	  {
 	    ipsec_sa_set_IS_PROTECT (sa);
+	    ipsec_sa_update_runtime (sa);
 	    itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
 	  }
       }
@@ -497,7 +498,11 @@ ipsec_tun_protect_config (ipsec_main_t * im,
   ipsec_sa_lock (itp->itp_out_sa);
 
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
-    ipsec_sa_set_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+    {
+      ipsec_sa_t *sa = ipsec_sa_get (itp->itp_out_sa);
+      ipsec_sa_set_NO_ALGO_NO_DROP (sa);
+      ipsec_sa_update_runtime (sa);
+    }
 
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
@@ -523,12 +528,16 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     ipsec_sa_unset_IS_PROTECT (sa);
+    ipsec_sa_update_runtime (sa);
   }));
 
   ipsec_tun_protect_rx_db_remove (im, itp);
   ipsec_tun_protect_tx_db_remove (itp);
 
-  ipsec_sa_unset_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+  sa = ipsec_sa_get (itp->itp_out_sa);
+  ipsec_sa_unset_NO_ALGO_NO_DROP (sa);
+  ipsec_sa_update_runtime (sa);
+
   ipsec_sa_unlock(itp->itp_out_sa);
 
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
