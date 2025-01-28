@@ -128,6 +128,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left = from_frame->n_vectors;
   ipsec_sa_t *sa0 = 0;
+  ipsec_sa_inb_rt_t *irt;
   bool anti_replay_result;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
 
@@ -150,24 +151,25 @@ ah_decrypt_inline (vlib_main_t * vm,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
+	  irt = sa0->inb_rt;
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
 					  thread_index, current_sa_index);
 	}
 
-      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == irt->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
 	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
+	  clib_atomic_cmp_and_swap (&irt->thread_index, ~0,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != sa0->thread_index))
+      if (PREDICT_TRUE (thread_index != irt->thread_index))
 	{
-	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
+	  vnet_buffer (b[0])->ipsec.thread_index = irt->thread_index;
 	  next[0] = AH_DECRYPT_NEXT_HANDOFF;
 	  goto next;
 	}
@@ -202,15 +204,15 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
+      if (PREDICT_FALSE (irt->anti_reply_huge))
 	{
 	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    sa0, pd->seq, ~0, false, &pd->seq_hi, true);
+	    irt, pd->seq, ~0, false, &pd->seq_hi, true);
 	}
       else
 	{
 	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    sa0, pd->seq, ~0, false, &pd->seq_hi, false);
+	    irt, pd->seq, ~0, false, &pd->seq_hi, false);
 	}
       if (anti_replay_result)
 	{
@@ -223,7 +225,7 @@ ah_decrypt_inline (vlib_main_t * vm,
       current_sa_bytes += b[0]->current_length;
       current_sa_pkts += 1;
 
-      pd->icv_size = sa0->integ_icv_size;
+      pd->icv_size = irt->integ_icv_size;
       pd->nexthdr_cached = ah0->nexthdr;
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
@@ -239,14 +241,14 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	  vnet_crypto_op_init (op, irt->integ_op_id);
 
 	  op->src = (u8 *) ih4;
 	  op->len = b[0]->current_length;
 	  op->digest = (u8 *) ih4 - pd->icv_size;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->digest_len = pd->icv_size;
-	  op->key_index = sa0->integ_key_index;
+	  op->key_index = irt->integ_key_index;
 	  op->user_data = b - bufs;
 	  if (ipsec_sa_is_set_USE_ESN (sa0))
 	    {
@@ -312,6 +314,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	goto trace;
 
       sa0 = ipsec_sa_get (pd->sa_index);
+      irt = sa0->inb_rt;
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
@@ -319,7 +322,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
 	    {
 	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    sa0, pd->seq, pd->seq_hi, true, NULL, true))
+		    irt, pd->seq, pd->seq_hi, true, NULL, true))
 		{
 		  ah_decrypt_set_next_index (
 		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
@@ -327,12 +330,12 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 	      n_lost = ipsec_sa_anti_replay_advance (
-		sa0, thread_index, pd->seq, pd->seq_hi, true);
+		irt, thread_index, pd->seq, pd->seq_hi, true);
 	    }
 	  else
 	    {
 	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    sa0, pd->seq, pd->seq_hi, true, NULL, false))
+		    irt, pd->seq, pd->seq_hi, true, NULL, false))
 		{
 		  ah_decrypt_set_next_index (
 		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
@@ -340,7 +343,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 	      n_lost = ipsec_sa_anti_replay_advance (
-		sa0, thread_index, pd->seq, pd->seq_hi, false);
+		irt, thread_index, pd->seq, pd->seq_hi, false);
 	    }
 	  vlib_prefetch_simple_counter (
 	    &ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST], thread_index,
