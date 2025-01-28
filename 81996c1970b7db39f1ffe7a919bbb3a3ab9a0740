@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "513ab74c_0cfaf3ee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-28T17:36:46Z",
+      "side": 1,
+      "message": "Hi Dave, I pushed https://gerrit.fd.io/r/c/vpp/+/42261 where I clean up shmmax too which I think is not needed either...",
+      "revId": "81996c1970b7db39f1ffe7a919bbb3a3ab9a0740",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
