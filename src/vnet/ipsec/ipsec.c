@@ -312,9 +312,9 @@ clib_error_t *
 ipsec_rsc_in_use (ipsec_main_t * im)
 {
   /* return an error is crypto resource are in use */
-  if (pool_elts (ipsec_sa_pool) > 0)
+  if (pool_elts (im->sa_pool) > 0)
     return clib_error_return (0, "%d SA entries configured",
-			      pool_elts (ipsec_sa_pool));
+			      pool_elts (im->sa_pool));
   if (ipsec_itf_count () > 0)
     return clib_error_return (0, "%d IPSec interface configured",
 			      ipsec_itf_count ());
@@ -384,7 +384,7 @@ ipsec_set_async_mode (u32 is_enabled)
   im->async_mode = is_enabled;
 
   /* change SA crypto op data */
-  pool_foreach (sa, ipsec_sa_pool)
+  pool_foreach (sa, im->sa_pool)
     ipsec_sa_set_async_mode (sa, is_enabled);
 }
 
