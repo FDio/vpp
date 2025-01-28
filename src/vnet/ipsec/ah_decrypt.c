@@ -128,6 +128,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left = from_frame->n_vectors;
   ipsec_sa_t *sa0 = 0;
+  ipsec_sa_inb_rt_t *irt;
   bool anti_replay_result;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
 
@@ -150,6 +151,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
+	  irt = sa0->inb_rt;
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
@@ -239,7 +241,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	  vnet_crypto_op_init (op, irt->integ_op_id);
 
 	  op->src = (u8 *) ih4;
 	  op->len = b[0]->current_length;
@@ -312,6 +314,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	goto trace;
 
       sa0 = ipsec_sa_get (pd->sa_index);
+      irt = sa0->inb_rt;
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{

@@ -129,6 +129,7 @@ ah_encrypt_inline (vlib_main_t * vm,
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   ipsec_sa_t *sa0 = 0;
+  ipsec_sa_outb_rt_t *ort = 0;
   ip4_and_ah_header_t *ih0, *oh0 = 0;
   ip6_and_ah_header_t *ih6_0, *oh6_0 = 0;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
@@ -159,6 +160,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
+	  ort = sa0->outb_rt;
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
@@ -341,11 +343,11 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	}
 
-      if (PREDICT_TRUE (sa0->integ_op_id))
+      if (PREDICT_TRUE (ort->integ_op_id))
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	  vnet_crypto_op_init (op, ort->integ_op_id);
 	  op->src = vlib_buffer_get_current (b[0]);
 	  op->len = b[0]->current_length;
 	  op->digest = vlib_buffer_get_current (b[0]) + ip_hdr_size +

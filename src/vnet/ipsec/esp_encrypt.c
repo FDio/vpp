@@ -225,10 +225,11 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
 static_always_inline void *
 esp_generate_iv (ipsec_sa_t *sa, void *payload, int iv_sz)
 {
+  ipsec_sa_outb_rt_t *ort = sa->outb_rt;
   ASSERT (iv_sz >= sizeof (u64));
   u64 *iv = (u64 *) (payload - iv_sz);
   clib_memset_u8 (iv, 0, iv_sz);
-  *iv = clib_pcg64i_random_r (&sa->iv_prng);
+  *iv = clib_pcg64i_random_r (&ort->iv_prng);
   return iv;
 }
 
@@ -344,6 +345,7 @@ esp_encrypt_chain_integ (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
   total_len = ch->len = start_len;
   ch->src = start;
   cb = vlib_get_buffer (vm, cb->next_buffer);
+  ipsec_sa_outb_rt_t *ort = sa0->outb_rt;
 
   while (1)
     {
@@ -352,7 +354,7 @@ esp_encrypt_chain_integ (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
       if (lb == cb)
 	{
 	  total_len += ch->len = cb->current_length - icv_sz;
-	  if (ipsec_sa_is_set_USE_ESN (sa0))
+	  if (ort->use_esn)
 	    {
 	      u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
 	      clib_memcpy_fast (digest, &seq_hi, sizeof (seq_hi));
@@ -384,11 +386,12 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 		     vlib_buffer_t **b, vlib_buffer_t *lb, u32 hdr_len,
 		     esp_header_t *esp)
 {
-  if (sa0->crypto_enc_op_id)
+  ipsec_sa_outb_rt_t *ort = sa0->outb_rt;
+  if (ort->cipher_op_id)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
+      vnet_crypto_op_init (op, ort->cipher_op_id);
       u8 *crypto_start = payload;
       /* esp_add_footer_and_icv() in esp_encrypt_inline() makes sure we always
        * have enough space for ESP header and footer which includes ICV */
@@ -401,19 +404,19 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       op->key_index = sa0->crypto_key_index;
       op->user_data = bi;
 
-      if (ipsec_sa_is_set_IS_CTR (sa0))
+      if (ort->is_ctr)
 	{
 	  /* construct nonce in a scratch space in front of the IP header */
 	  esp_ctr_nonce_t *nonce =
 	    (esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
-	  if (ipsec_sa_is_set_IS_AEAD (sa0))
+	  if (ort->is_aead)
 	    {
 	      /* constuct aad in a scratch space in front of the nonce */
 	      op->aad = (u8 *) nonce - sizeof (esp_aead_t);
 	      op->aad_len = esp_aad_fill (op->aad, esp, sa0, seq_hi);
 	      op->tag = payload + crypto_len;
 	      op->tag_len = 16;
-	      if (PREDICT_FALSE (ipsec_sa_is_set_IS_NULL_GMAC (sa0)))
+	      if (PREDICT_FALSE (ort->is_null_gmac))
 		{
 		  /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
 		  crypto_start -= iv_sz;
@@ -457,11 +460,11 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	}
     }
 
-  if (sa0->integ_op_id)
+  if (ort->integ_op_id)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, sa0->integ_op_id);
+      vnet_crypto_op_init (op, ort->integ_op_id);
       op->src = payload - iv_sz - sizeof (esp_header_t);
       op->digest = payload + payload_len - icv_sz;
       op->key_index = sa0->integ_key_index;
@@ -482,7 +485,7 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 				   sizeof (esp_header_t), op->digest,
 				   &op->n_chunks);
 	}
-      else if (ipsec_sa_is_set_USE_ESN (sa0))
+      else if (ort->use_esn)
 	{
 	  u32 tmp = clib_net_to_host_u32 (seq_hi);
 	  clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
@@ -502,6 +505,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
+  ipsec_sa_outb_rt_t *ort = sa->outb_rt;
   const u32 key_index = sa->crypto_key_index;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
@@ -516,17 +520,17 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   /* generate the IV in front of the payload */
   void *pkt_iv = esp_generate_iv (sa, payload, iv_sz);
 
-  if (ipsec_sa_is_set_IS_CTR (sa))
+  if (ort->is_ctr)
     {
       /* construct nonce in a scratch space in front of the IP header */
       esp_ctr_nonce_t *nonce =
 	(esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
-      if (ipsec_sa_is_set_IS_AEAD (sa))
+      if (ort->is_aead)
 	{
 	  /* constuct aad in a scratch space in front of the nonce */
 	  aad = (u8 *) nonce - sizeof (esp_aead_t);
 	  esp_aad_fill (aad, esp, sa, sa->seq_hi);
-	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_NULL_GMAC (sa)))
+	  if (PREDICT_FALSE (ort->is_null_gmac))
 	    {
 	      /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
 	      crypto_start_offset -= iv_sz;
@@ -562,7 +566,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	crypto_total_len + icv_sz, 0);
     }
 
-  if (sa->integ_op_id)
+  if (ort->integ_op_id)
     {
       integ_start_offset -= iv_sz + sizeof (esp_header_t);
       integ_total_len += iv_sz + sizeof (esp_header_t);
@@ -574,7 +578,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	    payload - iv_sz - sizeof (esp_header_t),
 	    payload_len + iv_sz + sizeof (esp_header_t), tag, 0);
 	}
-      else if (ipsec_sa_is_set_USE_ESN (sa))
+      else if (ort->use_esn)
 	{
 	  u32 seq_hi = clib_net_to_host_u32 (sa->seq_hi);
 	  clib_memcpy_fast (tag, &seq_hi, sizeof (seq_hi));
@@ -709,6 +713,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  current_sa_packets = current_sa_bytes = 0;
 
 	  sa0 = ipsec_sa_get (sa_index0);
+	  ipsec_sa_outb_rt_t *ort = sa0->outb_rt;
 	  current_sa_index = sa_index0;
 
 	  sa_drop_no_crypto = ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
@@ -722,9 +727,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  clib_prefetch_load (sa0->cacheline1);
 
 	  spi = clib_net_to_host_u32 (sa0->spi);
-	  esp_align = sa0->esp_block_align;
 	  icv_sz = sa0->integ_icv_size;
-	  iv_sz = sa0->crypto_iv_size;
+	  esp_align = ort->esp_block_align;
+	  iv_sz = ort->cipher_iv_size;
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
 	}
 

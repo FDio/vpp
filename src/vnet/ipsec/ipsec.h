@@ -118,6 +118,9 @@ typedef struct
   const u8 iv_size;
   const u8 block_align;
   const u8 icv_size;
+  const u8 is_aead : 1;
+  const u8 is_ctr : 1;
+  const u8 is_null_gmac : 1;
 } ipsec_main_crypto_alg_t;
 
 typedef struct

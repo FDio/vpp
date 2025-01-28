@@ -52,24 +52,6 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } __clib_packed ipsec_crypto_alg_t;
 
-#define IPSEC_CRYPTO_ALG_IS_NULL_GMAC(_alg)                                   \
-  ((_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128) ||                            \
-   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192) ||                            \
-   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256))
-
-#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
-  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
-    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
-    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
-
-#define IPSEC_CRYPTO_ALG_IS_CTR(_alg)                                         \
-  (((_alg == IPSEC_CRYPTO_ALG_AES_CTR_128) ||                                 \
-    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_192) ||                                 \
-    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_256)))
-
-#define IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS(_alg)                                \
-  (_alg == IPSEC_CRYPTO_ALG_CHACHA20_POLY1305)
-
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
   _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -165,8 +147,35 @@ typedef enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 is_aead : 1;
+  u16 is_ctr : 1;
+  u16 is_null_gmac : 1;
+  u16 use_esn : 1;
+  u16 anti_reply_huge : 1;
+  u16 cipher_op_id;
+  u16 integ_op_id;
+  u8 cipher_iv_size;
+} ipsec_sa_inb_rt_t;
 
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 is_aead : 1;
+  u16 is_ctr : 1;
+  u16 is_null_gmac : 1;
+  u16 use_esn : 1;
+  u16 use_anti_replay : 1;
   clib_pcg64i_random_t iv_prng;
+  u16 cipher_op_id;
+  u16 integ_op_id;
+  u8 cipher_iv_size;
+  u8 esp_block_align;
+} ipsec_sa_outb_rt_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
 
   union
   {
@@ -182,15 +191,10 @@ typedef struct
   u32 seq;
   u32 seq_hi;
 
-  u16 crypto_enc_op_id;
-  u16 crypto_dec_op_id;
-  u16 integ_op_id;
   ipsec_sa_flags_t flags;
   u16 thread_index;
 
   u16 integ_icv_size : 6;
-  u16 crypto_iv_size : 5;
-  u16 esp_block_align : 5;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
@@ -237,6 +241,8 @@ typedef struct
 
   ipsec_key_t integ_key;
   ipsec_key_t crypto_key;
+  ipsec_sa_inb_rt_t *inb_rt;
+  ipsec_sa_outb_rt_t *outb_rt;
 } ipsec_sa_t;
 
 STATIC_ASSERT (VNET_CRYPTO_N_OP_IDS < (1 << 16), "crypto ops overflow");
