@@ -52,24 +52,6 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } __clib_packed ipsec_crypto_alg_t;
 
-#define IPSEC_CRYPTO_ALG_IS_NULL_GMAC(_alg)                                   \
-  ((_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128) ||                            \
-   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192) ||                            \
-   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256))
-
-#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
-  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
-    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
-    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
-
-#define IPSEC_CRYPTO_ALG_IS_CTR(_alg)                                         \
-  (((_alg == IPSEC_CRYPTO_ALG_AES_CTR_128) ||                                 \
-    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_192) ||                                 \
-    (_alg == IPSEC_CRYPTO_ALG_AES_CTR_256)))
-
-#define IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS(_alg)                                \
-  (_alg == IPSEC_CRYPTO_ALG_CHACHA20_POLY1305)
-
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
   _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -117,11 +99,8 @@ typedef struct ipsec_key_t_
   _ (16, UDP_ENCAP, "udp-encap")                                              \
   _ (32, IS_PROTECT, "Protect")                                               \
   _ (64, IS_INBOUND, "inbound")                                               \
-  _ (128, IS_AEAD, "aead")                                                    \
-  _ (256, IS_CTR, "ctr")                                                      \
   _ (512, IS_ASYNC, "async")                                                  \
   _ (1024, NO_ALGO_NO_DROP, "no-algo-no-drop")                                \
-  _ (2048, IS_NULL_GMAC, "null-gmac")                                         \
   _ (4096, ANTI_REPLAY_HUGE, "anti-replay-huge")
 
 typedef enum ipsec_sad_flags_t_
@@ -165,8 +144,57 @@ typedef enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 is_aead : 1;
+  u16 is_ctr : 1;
+  u16 is_null_gmac : 1;
+  u16 use_esn : 1;
+  u16 anti_reply_huge : 1;
+  u16 cipher_op_id;
+  u16 integ_op_id;
+  u8 cipher_iv_size;
+  u8 integ_icv_size;
+  u16 thread_index;
+  u32 salt;
+  vnet_crypto_key_index_t cipher_key_index;
+  vnet_crypto_key_index_t integ_key_index;
+} ipsec_sa_inb_rt_t;
+STATIC_ASSERT_SIZEOF (ipsec_sa_inb_rt_t, CLIB_CACHE_LINE_BYTES);
 
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 is_aead : 1;
+  u16 is_ctr : 1;
+  u16 is_null_gmac : 1;
+  u16 is_tunnel : 1;
+  u16 is_tunnel_v6 : 1;
+  u16 udp_encap : 1;
+  u16 use_esn : 1;
+  u16 use_anti_replay : 1;
+  u16 drop_no_crypto : 1;
   clib_pcg64i_random_t iv_prng;
+  u16 cipher_op_id;
+  u16 integ_op_id;
+  u8 cipher_iv_size;
+  u8 esp_block_align;
+  u8 integ_icv_size;
+  u16 thread_index;
+  u32 salt;
+  u32 spi_be;
+  vnet_crypto_key_index_t cipher_key_index;
+  vnet_crypto_key_index_t integ_key_index;
+  union
+  {
+    ip4_header_t ip4_hdr;
+    ip6_header_t ip6_hdr;
+  };
+  udp_header_t udp_hdr;
+} ipsec_sa_outb_rt_t;
+STATIC_ASSERT_SIZEOF (ipsec_sa_outb_rt_t, 2 * CLIB_CACHE_LINE_BYTES);
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   union
   {
@@ -175,41 +203,20 @@ typedef struct
   };
   dpo_id_t dpo;
 
-  vnet_crypto_key_index_t crypto_key_index;
-  vnet_crypto_key_index_t integ_key_index;
-
   u32 spi;
   u32 seq;
   u32 seq_hi;
 
-  u16 crypto_enc_op_id;
-  u16 crypto_dec_op_id;
-  u16 integ_op_id;
   ipsec_sa_flags_t flags;
-  u16 thread_index;
 
-  u16 integ_icv_size : 6;
-  u16 crypto_iv_size : 5;
-  u16 esp_block_align : 5;
-
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-
-  union
-  {
-    ip4_header_t ip4_hdr;
-    ip6_header_t ip6_hdr;
-  };
-  udp_header_t udp_hdr;
+  u16 udp_src_port;
+  u16 udp_dst_port;
 
   /* Salt used in CTR modes (incl. GCM) - stored in network byte order */
   u32 salt;
 
   ipsec_protocol_t protocol;
   tunnel_encap_decap_flags_t tunnel_flags;
-  u8 __pad[2];
-
-  /* data accessed by dataplane code should be above this comment */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   /* Elements with u64 size multiples */
   tunnel_t tunnel;
@@ -222,7 +229,7 @@ typedef struct
   vnet_crypto_alg_t crypto_calg;
   u32 crypto_sync_key_index;
   u32 integ_sync_key_index;
-  u32 crypto_async_key_index;
+  u32 linked_key_index;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;
@@ -237,14 +244,14 @@ typedef struct
 
   ipsec_key_t integ_key;
   ipsec_key_t crypto_key;
+  ipsec_sa_inb_rt_t *inb_rt;
+  ipsec_sa_outb_rt_t *outb_rt;
 } ipsec_sa_t;
 
 STATIC_ASSERT (VNET_CRYPTO_N_OP_IDS < (1 << 16), "crypto ops overflow");
 STATIC_ASSERT (ESP_MAX_ICV_SIZE < (1 << 6), "integer icv overflow");
 STATIC_ASSERT (ESP_MAX_IV_SIZE < (1 << 5), "esp iv overflow");
 STATIC_ASSERT (ESP_MAX_BLOCK_SIZE < (1 << 5), "esp alignment overflow");
-STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
-STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline2, 2 * CLIB_CACHE_LINE_BYTES);
 
 /**
  * Pool of IPSec SAs

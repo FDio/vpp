@@ -61,6 +61,7 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_128_CTR,
       .iv_size = 8,
       .block_align = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_CTR_192] = {
@@ -69,6 +70,7 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_192_CTR,
       .iv_size = 8,
       .block_align = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_CTR_256] = {
@@ -77,6 +79,7 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_256_CTR,
       .iv_size = 8,
       .block_align = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_128] = {
@@ -86,6 +89,8 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_aead = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_192] = {
@@ -95,6 +100,8 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_aead = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_256] = {
@@ -104,6 +111,8 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_aead = 1,
+      .is_ctr = 1,
     },
 
     [IPSEC_CRYPTO_ALG_CHACHA20_POLY1305] = {
@@ -112,6 +121,8 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305,
       .iv_size = 8,
       .icv_size = 16,
+      .is_ctr = 1,
+      .is_aead = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128] = {
@@ -121,6 +132,9 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_ctr = 1,
+      .is_aead = 1,
+      .is_null_gmac = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192] = {
@@ -130,6 +144,9 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_ctr = 1,
+      .is_aead = 1,
+      .is_null_gmac = 1,
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256] = {
@@ -139,6 +156,9 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .icv_size = 16,
+      .is_ctr = 1,
+      .is_aead = 1,
+      .is_null_gmac = 1,
     },
   },
   .integ_algs = {
