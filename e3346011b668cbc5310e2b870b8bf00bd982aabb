@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b5dc1cf_91436fb0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2025-01-28T17:44:45Z",
+      "side": 1,
+      "message": "Hey Ben... See gerrit 42262. If you wouldn\u0027t mind, maybe grab the comment I wrote and add it to this change. I\u0027ll be glad to abandon my patch...",
+      "revId": "e3346011b668cbc5310e2b870b8bf00bd982aabb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
