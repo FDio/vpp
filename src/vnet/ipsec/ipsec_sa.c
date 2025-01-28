@@ -95,21 +95,41 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 void
 ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
 {
+  u32 cipher_key_index, integ_key_index;
+  vnet_crypto_op_id_t inb_cipher_op_id, outb_cipher_op_id, integ_op_id;
   if (is_enabled)
     {
-      sa->crypto_key_index = sa->crypto_async_key_index;
-      sa->crypto_enc_op_id = sa->crypto_async_enc_op_id;
-      sa->crypto_dec_op_id = sa->crypto_async_dec_op_id;
-      sa->integ_key_index = ~0;
-      sa->integ_op_id = ~0;
+      cipher_key_index = sa->crypto_async_key_index;
+      inb_cipher_op_id = sa->crypto_async_enc_op_id;
+      inb_cipher_op_id = sa->crypto_async_dec_op_id;
+      integ_key_index = ~0;
+      integ_op_id = ~0;
     }
   else
     {
-      sa->crypto_key_index = sa->crypto_sync_key_index;
-      sa->crypto_enc_op_id = sa->crypto_sync_enc_op_id;
-      sa->crypto_dec_op_id = sa->crypto_sync_dec_op_id;
-      sa->integ_key_index = sa->integ_sync_key_index;
-      sa->integ_op_id = sa->integ_sync_op_id;
+      cipher_key_index = sa->crypto_sync_key_index;
+      outb_cipher_op_id = sa->crypto_sync_enc_op_id;
+      inb_cipher_op_id = sa->crypto_sync_dec_op_id;
+      integ_key_index = sa->integ_sync_key_index;
+      integ_op_id = sa->integ_sync_op_id;
+    }
+
+  if (sa->inb_rt)
+    {
+      ipsec_sa_inb_rt_t *irt = sa->inb_rt;
+      irt->cipher_key_index = cipher_key_index;
+      irt->integ_key_index = integ_key_index;
+      irt->cipher_op_id = inb_cipher_op_id;
+      irt->integ_op_id = integ_op_id;
+    }
+
+  if (sa->outb_rt)
+    {
+      ipsec_sa_outb_rt_t *ort = sa->outb_rt;
+      ort->cipher_key_index = cipher_key_index;
+      ort->integ_key_index = integ_key_index;
+      ort->cipher_op_id = outb_cipher_op_id;
+      ort->integ_op_id = integ_op_id;
     }
 }
 
@@ -117,32 +137,14 @@ void
 ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
 {
   ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *alg = im->crypto_algs + crypto_alg;
   sa->crypto_alg = crypto_alg;
-  sa->crypto_iv_size = im->crypto_algs[crypto_alg].iv_size;
-  sa->esp_block_align = clib_max (4, im->crypto_algs[crypto_alg].block_align);
-  sa->crypto_sync_enc_op_id = im->crypto_algs[crypto_alg].enc_op_id;
-  sa->crypto_sync_dec_op_id = im->crypto_algs[crypto_alg].dec_op_id;
-  sa->crypto_calg = im->crypto_algs[crypto_alg].alg;
-  ASSERT (sa->crypto_iv_size <= ESP_MAX_IV_SIZE);
-  ASSERT (sa->esp_block_align <= ESP_MAX_BLOCK_SIZE);
-  if (IPSEC_CRYPTO_ALG_IS_GCM (crypto_alg) ||
-      IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS (crypto_alg))
-    {
-      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
-      ipsec_sa_set_IS_CTR (sa);
-      ipsec_sa_set_IS_AEAD (sa);
-    }
-  else if (IPSEC_CRYPTO_ALG_IS_CTR (crypto_alg))
-    {
-      ipsec_sa_set_IS_CTR (sa);
-    }
-  else if (IPSEC_CRYPTO_ALG_IS_NULL_GMAC (crypto_alg))
-    {
-      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
-      ipsec_sa_set_IS_CTR (sa);
-      ipsec_sa_set_IS_AEAD (sa);
-      ipsec_sa_set_IS_NULL_GMAC (sa);
-    }
+  sa->crypto_sync_enc_op_id = alg->enc_op_id;
+  sa->crypto_sync_dec_op_id = alg->dec_op_id;
+  sa->crypto_calg = alg->alg;
+
+  if (alg->is_aead)
+    ipsec_sa_set_IS_AEAD (sa);
 }
 
 void
@@ -150,10 +152,8 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   sa->integ_alg = integ_alg;
-  sa->integ_icv_size = im->integ_algs[integ_alg].icv_size;
   sa->integ_sync_op_id = im->integ_algs[integ_alg].op_id;
   sa->integ_calg = im->integ_algs[integ_alg].alg;
-  ASSERT (sa->integ_icv_size <= ESP_MAX_ICV_SIZE);
 }
 
 void
@@ -189,6 +189,48 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
     sa->crypto_async_dec_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;
   foreach_crypto_link_async_alg
 #undef _
+}
+
+static void
+ipsec_sa_update_runtime (ipsec_sa_t *sa)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *alg = im->crypto_algs + sa->crypto_alg;
+  u8 integ_icv_size;
+
+  if (alg->is_aead)
+    integ_icv_size = im->crypto_algs[sa->crypto_alg].icv_size;
+  else
+    integ_icv_size = im->integ_algs[sa->integ_alg].icv_size;
+  ASSERT (integ_icv_size <= ESP_MAX_ICV_SIZE);
+
+  if (sa->inb_rt)
+    {
+      ipsec_sa_inb_rt_t *irt = sa->inb_rt;
+      irt->anti_reply_huge = ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa);
+      irt->use_esn = ipsec_sa_is_set_USE_ESN (sa);
+      irt->is_ctr = alg->is_ctr;
+      irt->is_aead = alg->is_aead;
+      irt->is_null_gmac = alg->is_null_gmac;
+      irt->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
+      irt->integ_icv_size = integ_icv_size;
+      ASSERT (irt->cipher_iv_size <= ESP_MAX_IV_SIZE);
+    }
+
+  if (sa->outb_rt)
+    {
+      ipsec_sa_outb_rt_t *ort = sa->outb_rt;
+      ort->use_esn = ipsec_sa_is_set_USE_ESN (sa);
+      ort->is_ctr = alg->is_ctr;
+      ort->is_aead = alg->is_aead;
+      ort->is_null_gmac = alg->is_null_gmac;
+      ort->esp_block_align =
+	clib_max (4, im->crypto_algs[sa->crypto_alg].block_align);
+      ort->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
+      ort->integ_icv_size = integ_icv_size;
+      ASSERT (ort->cipher_iv_size <= ESP_MAX_IV_SIZE);
+      ASSERT (ort->esp_block_align <= ESP_MAX_BLOCK_SIZE);
+    }
 }
 
 int
@@ -332,6 +374,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *alg = im->crypto_algs + crypto_alg;
+  ipsec_sa_inb_rt_t *irt;
+  ipsec_sa_outb_rt_t *ort;
   clib_error_t *err;
   ipsec_sa_t *sa;
   u32 sa_index;
@@ -348,7 +393,14 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   pool_get_aligned_zero (ipsec_sa_pool, sa, CLIB_CACHE_LINE_BYTES);
 
-  clib_pcg64i_srandom_r (&sa->iv_prng, rand[0], rand[1]);
+  sa->inb_rt = irt = clib_mem_alloc_aligned (sizeof (ipsec_sa_inb_rt_t),
+					     _Alignof (ipsec_sa_inb_rt_t));
+  sa->outb_rt = ort = clib_mem_alloc_aligned (sizeof (ipsec_sa_outb_rt_t),
+					      _Alignof (ipsec_sa_outb_rt_t));
+  clib_memset (irt, 0, sizeof (ipsec_sa_inb_rt_t));
+  clib_memset (ort, 0, sizeof (ipsec_sa_outb_rt_t));
+
+  clib_pcg64i_srandom_r (&ort->iv_prng, rand[0], rand[1]);
 
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
   fib_node_lock (&sa->node);
@@ -405,7 +457,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	}
     }
 
-  if (sa->crypto_async_enc_op_id && !ipsec_sa_is_set_IS_AEAD (sa))
+  if (sa->crypto_async_enc_op_id && alg->is_aead == 0)
     sa->crypto_async_key_index =
       vnet_crypto_key_add_linked (vm, sa->crypto_sync_key_index,
 				  sa->integ_sync_key_index); // AES-CBC & HMAC
@@ -510,6 +562,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   if (sa_out_index)
     *sa_out_index = sa_index;
 
+  ipsec_sa_update_runtime (sa);
+
   return (0);
 }
 
@@ -545,6 +599,10 @@ ipsec_sa_del (ipsec_sa_t * sa)
     vnet_crypto_key_del (vm, sa->integ_sync_key_index);
   if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
     clib_bitmap_free (sa->replay_window_huge);
+  foreach_pointer (p, sa->inb_rt, sa->outb_rt)
+    if (p)
+      clib_mem_free (p);
+
   pool_put (ipsec_sa_pool, sa);
 }
 
