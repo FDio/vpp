@@ -69,6 +69,24 @@
       "parentUuid": "38c30b86_c0297d41",
       "revId": "df91021cf4729e2281b0ea45d703b96ded0dce4c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3bf8cdd3_3b45aeff",
+        "filename": "src/plugins/sflow/sflow.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-28T09:47:51Z",
+      "side": 1,
+      "message": "I think it could because you can still include the header even if the plugin is not built, but it\u0027s just a comment and not a blocker :)",
+      "parentUuid": "f055a7c4_7c13b0e8",
+      "revId": "df91021cf4729e2281b0ea45d703b96ded0dce4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
