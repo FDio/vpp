@@ -118,6 +118,9 @@ typedef struct
   const u8 iv_size;
   const u8 block_align;
   const u8 icv_size;
+  const u8 is_aead : 1;
+  const u8 is_ctr : 1;
+  const u8 is_null_gmac : 1;
 } ipsec_main_crypto_alg_t;
 
 typedef struct
@@ -263,6 +266,10 @@ typedef struct
 
   u8 async_mode;
   u16 msg_id_base;
+
+  ipsec_sa_t *sa_pool;
+  ipsec_sa_inb_rt_t **inb_sa_runtimes;
+  ipsec_sa_outb_rt_t **outb_sa_runtimes;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
@@ -395,6 +402,8 @@ extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
 extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
 						 u8 next_header,
 						 const char *next_node);
+
+#include <vnet/ipsec/ipsec_funcs.h>
 
 #endif /* __IPSEC_H__ */
 
