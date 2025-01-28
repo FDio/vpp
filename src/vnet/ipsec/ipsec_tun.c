@@ -497,7 +497,15 @@ ipsec_tun_protect_config (ipsec_main_t * im,
   ipsec_sa_lock (itp->itp_out_sa);
 
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
-    ipsec_sa_set_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+    {
+      ipsec_sa_t *sa = ipsec_sa_get (itp->itp_out_sa);
+      ipsec_sa_set_NO_ALGO_NO_DROP (sa);
+      if (sa->outb_rt)
+	sa->outb_rt->drop_no_crypto =
+	  sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+	  sa->integ_alg == IPSEC_INTEG_ALG_NONE &&
+	  !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa);
+    }
 
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
@@ -528,7 +536,13 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ipsec_tun_protect_rx_db_remove (im, itp);
   ipsec_tun_protect_tx_db_remove (itp);
 
-  ipsec_sa_unset_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+  sa = ipsec_sa_get (itp->itp_out_sa);
+  ipsec_sa_unset_NO_ALGO_NO_DROP (sa);
+  if (sa->outb_rt)
+    sa->outb_rt->drop_no_crypto = sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+				  sa->integ_alg == IPSEC_INTEG_ALG_NONE &&
+				  !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa);
+
   ipsec_sa_unlock(itp->itp_out_sa);
 
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,

@@ -129,6 +129,7 @@ ah_encrypt_inline (vlib_main_t * vm,
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   ipsec_sa_t *sa0 = 0;
+  ipsec_sa_outb_rt_t *ort = 0;
   ip4_and_ah_header_t *ih0, *oh0 = 0;
   ip6_and_ah_header_t *ih6_0, *oh6_0 = 0;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
@@ -159,6 +160,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
+	  ort = sa0->outb_rt;
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
@@ -168,18 +170,18 @@ ah_encrypt_inline (vlib_main_t * vm,
       pd->sa_index = current_sa_index;
       next[0] = AH_ENCRYPT_NEXT_DROP;
 
-      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == ort->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
 	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
+	  clib_atomic_cmp_and_swap (&ort->thread_index, ~0,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != sa0->thread_index))
+      if (PREDICT_TRUE (thread_index != ort->thread_index))
 	{
-	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
+	  vnet_buffer (b[0])->ipsec.thread_index = ort->thread_index;
 	  next[0] = AH_ENCRYPT_NEXT_HANDOFF;
 	  goto next;
 	}
@@ -211,7 +213,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  adv = -sizeof (ah_header_t);
 	}
 
-      icv_size = sa0->integ_icv_size;
+      icv_size = ort->integ_icv_size;
       const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
       adv -= padding_len;
       /* transport mode save the eth header before it is overwritten */
@@ -260,7 +262,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  clib_memcpy_fast (&oh6_0->ip6, &ip6_hdr_template, 8);
 	  oh6_0->ah.reserved = 0;
 	  oh6_0->ah.nexthdr = next_hdr_type;
-	  oh6_0->ah.spi = clib_net_to_host_u32 (sa0->spi);
+	  oh6_0->ah.spi = ort->spi_be;
 	  oh6_0->ah.seq_no = clib_net_to_host_u32 (sa0->seq);
 	  oh6_0->ip6.payload_length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
@@ -341,20 +343,20 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	}
 
-      if (PREDICT_TRUE (sa0->integ_op_id))
+      if (PREDICT_TRUE (ort->integ_op_id))
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, sa0->integ_op_id);
+	  vnet_crypto_op_init (op, ort->integ_op_id);
 	  op->src = vlib_buffer_get_current (b[0]);
 	  op->len = b[0]->current_length;
 	  op->digest = vlib_buffer_get_current (b[0]) + ip_hdr_size +
 	    sizeof (ah_header_t);
 	  clib_memset (op->digest, 0, icv_size);
 	  op->digest_len = icv_size;
-	  op->key_index = sa0->integ_key_index;
+	  op->key_index = ort->integ_key_index;
 	  op->user_data = b - bufs;
-	  if (ipsec_sa_is_set_USE_ESN (sa0))
+	  if (ort->use_esn)
 	    {
 	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
 
