@@ -110,15 +110,14 @@ esp_seq_advance (ipsec_sa_t * sa)
 }
 
 always_inline u16
-esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa,
-	      u32 seq_hi)
+esp_aad_fill (u8 *data, const esp_header_t *esp, int use_esn, u32 seq_hi)
 {
   esp_aead_t *aad;
 
   aad = (esp_aead_t *) data;
   aad->data[0] = esp->spi;
 
-  if (ipsec_sa_is_set_USE_ESN (sa))
+  if (use_esn)
     {
       /* SPI, seq-hi, seq-low */
       aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
