@@ -33,6 +33,40 @@
       "message": "Adding Matthew and Neale for LCP",
       "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2552dc2_0b2802e0",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-28T14:50:43Z",
+      "side": 1,
+      "message": "The lookup function expects an sw_if_index but an hw_if_index is passed in here. I think they might often be the same value, but I do not believe that they are guaranteed to be the same and should probably not be used as if they are interchangeable. E.g. if you have no interfaces and you create a memif interface, add a subif on it, then create an rdma interface. The memif interface will have an entry in the hw_interfaces pool (sw_if_index 1, hw_if_index 1), the subif will not have one (sw_if_index 2, hw_if_index 0), the rdma interface will have one (sw_if_index 3, hw_if_index 2). Using the hw_if_index 2 of the rdma interface to look up its lcp pair\u0027s kernel ifindex would probably either find the wrong value or not find any value.\n\nFor the same reason, it might also be better to use sw_if_index in the generated sflow message data above. I don\u0027t think there is an API to look up an interface\u0027s hw_if_index. You can find it via \u0027vppctl show hardware-interface\u0027, but thats probably about the only place it would be reported. In the case where the hw_if_index of an interface differs from it\u0027s sw_if_index, reporting the hw_if_index externally seems like it would have limited utility.",
+      "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "906d0542_39210240",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-01-28T14:50:43Z",
+      "side": 1,
+      "message": "lcp_itf_pair_get_vif_index_by_phy() can return INDEX_INVALID. I\u0027m not sure if there\u0027s any case where it could return 0. Should the condition here be `(sfif-\u003elinux_if_index !\u003d INDEX_INVALID)`?",
+      "revId": "9b1c16039ea0a4dec85d7f454e4eb1435037898e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
