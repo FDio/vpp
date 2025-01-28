@@ -5551,6 +5551,7 @@ static uword
 ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		       vlib_frame_t * f)
 {
+  ipsec_main_t *im = &ipsec_main;
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
   ikev2_child_sa_t *c;
@@ -5631,10 +5632,10 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       /* process ipsec sas */
       ipsec_sa_t *sa;
-      pool_foreach (sa, ipsec_sa_pool)
-	{
-	  ikev2_mngr_process_ipsec_sa (sa);
-	}
+      pool_foreach (sa, im->sa_pool)
+      {
+	ikev2_mngr_process_ipsec_sa (sa);
+      }
 
       ikev2_process_pending_sa_init (vm, km);
     }

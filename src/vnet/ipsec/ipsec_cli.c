@@ -473,7 +473,7 @@ ipsec_sa_show_all (vlib_main_t * vm, ipsec_main_t * im, u8 detail)
 {
   u32 sai;
 
-  pool_foreach_index (sai, ipsec_sa_pool)
+  pool_foreach_index (sai, im->sa_pool)
     {
       vlib_cli_output (vm, "%U", format_ipsec_sa, sai,
 		       (detail ? IPSEC_FORMAT_DETAIL : IPSEC_FORMAT_BRIEF));
@@ -583,6 +583,7 @@ static clib_error_t *
 clear_ipsec_sa_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  ipsec_main_t *im = &ipsec_main;
   u32 sai = ~0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -595,14 +596,14 @@ clear_ipsec_sa_command_fn (vlib_main_t * vm,
 
   if (~0 == sai)
     {
-      pool_foreach_index (sai, ipsec_sa_pool)
+      pool_foreach_index (sai, im->sa_pool)
 	{
 	  ipsec_sa_clear (sai);
 	}
     }
   else
     {
-      if (pool_is_free_index (ipsec_sa_pool, sai))
+      if (pool_is_free_index (im->sa_pool, sai))
 	return clib_error_return (0, "unknown SA index: %d", sai);
       else
 	ipsec_sa_clear (sai);
