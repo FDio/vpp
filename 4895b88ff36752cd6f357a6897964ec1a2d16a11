@@ -33,6 +33,24 @@
       "message": "use VPP_PLATFORM to achive support for specific platform....\nSee src/cmake/platform/octeon10.cmake as example...",
       "revId": "4895b88ff36752cd6f357a6897964ec1a2d16a11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23de5760_daa33751",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2025-01-28T16:05:02Z",
+      "side": 1,
+      "message": "Hello Damjan, This patch is not specific to any particular platform. This patch will enable 64B cache line size for all aarch64 platform. So, I don\u0027t think we need to add any specific compilation flag.",
+      "parentUuid": "88b6e767_44e259c3",
+      "revId": "4895b88ff36752cd6f357a6897964ec1a2d16a11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
