@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Copyright (c) 2025 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -22,10 +22,11 @@
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/bihash_16_8.h>
 
-#include <quicly.h>
-
 #include <vnet/crypto/crypto.h>
 #include <vppinfra/lock.h>
+
+// TODO: Remove once all quicly code is refactored out of this file.
+#include <quicly.h>
 
 /* QUIC log levels
  * 1 - errors
@@ -50,15 +51,6 @@
 #define QUIC_RCV_MAX_PACKETS 16
 
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
-
-/* Taken from quicly.c */
-#define QUICLY_QUIC_BIT 0x40
-
-#define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
-#define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
-#define QUICLY_PACKET_TYPE_HANDSHAKE (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
-#define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
-#define QUICLY_PACKET_TYPE_BITMASK 0xf0
 
 /* error codes */
 #define QUIC_ERROR_FULL_FIFO 0xff10
@@ -94,8 +86,29 @@
     clib_warning ("QUIC-ERR: " _fmt, ##_args);  \
   } while (0)
 
+typedef enum quic_lib_type_
+{
+  QUIC_LIB_NONE,
+  QUIC_LIB_QUICLY,
+  QUIC_LIB_OPENSSL,
+  QUIC_LIB_LAST = QUIC_LIB_OPENSSL,
+} quic_lib_type_t;
 
-
+static_always_inline char *
+quic_lib_type_str (quic_lib_type_t lib_type)
+{
+  switch (lib_type)
+    {
+    case QUIC_LIB_NONE:
+      return ("QUIC_LIB_NONE");
+    case QUIC_LIB_QUICLY:
+      return ("QUIC_LIB_QUICLY");
+    case QUIC_LIB_OPENSSL:
+      return ("QUIC_LIB_OPENSSL");
+    default:
+      return ("UNKNOWN");
+    }
+}
 extern vlib_node_registration_t quic_input_node;
 
 typedef enum
@@ -184,6 +197,15 @@ typedef struct quic_ctx_
 
 } quic_ctx_t;
 
+typedef struct quic_lib_vft_
+{
+  int (*init_crypto_context) (crypto_context_t *crctx, quic_ctx_t *ctx);
+  quic_ctx_t *(*get_conn_ctx) (void *conn);
+} quic_lib_vft_t;
+extern quic_lib_vft_t *quic_vfts;
+extern void quic_register_lib (const quic_lib_vft_t *vft,
+			       quic_lib_type_t type);
+
 /* Make sure our custom fields don't overlap with the fields we use in
    .connection
 */
@@ -266,7 +288,29 @@ typedef struct quic_main_
 
   u8 vnet_crypto_enabled;
   u32 *per_thread_crypto_key_indices;
+  quic_lib_type_t lib_type;
 } quic_main_t;
+
+extern int64_t quic_get_thread_time (u8 thread_index);
+extern quic_main_t *get_quic_main (void);
+extern quic_ctx_t *quic_ctx_get (u32 ctx_index, u32 thread_index);
+extern u32 quic_ctx_alloc (u32 thread_index);
+extern void quic_on_stream_destroy (quicly_stream_t *stream, int err);
+extern void quic_on_stop_sending (quicly_stream_t *stream, int err);
+extern void quic_on_receive_reset (quicly_stream_t *stream, int err);
+extern void quic_on_receive (quicly_stream_t *stream, size_t off,
+			     const void *src, size_t len);
+extern void quic_fifo_egress_shift (quicly_stream_t *stream, size_t delta);
+extern void quic_fifo_egress_emit (quicly_stream_t *stream, size_t off,
+				   void *dst, size_t *len, int *wrote_all);
+extern void quic_check_quic_session_connected (quic_ctx_t *ctx);
+
+static_always_inline int64_t
+quic_get_time (void)
+{
+  u8 thread_index = vlib_get_thread_index ();
+  return quic_get_thread_time (thread_index);
+}
 
 #endif /* __included_quic_h__ */
 
