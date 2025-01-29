@@ -1,5 +1,5 @@
 
-# Copyright (c) 2021 Cisco
+# Copyright (c) 2025 Cisco
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -47,19 +47,16 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
       include_directories (${PICOTLS_INCLUDE_DIR})
     endif()
 
-    add_vpp_plugin(quic
+    add_vpp_plugin(quic_quicly
       SOURCES
-      certs.c
-      error.c
-      quic.c
-      quic_crypto.c
+      quic_quicly.c
 
       LINK_LIBRARIES ${QUIC_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
     message(STATUS "Found quicly ${EXPECTED_QUICLY_VERSION} in ${QUICLY_INCLUDE_DIR}")
   else()
-    message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - QUIC plugin disabled")
+    message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - quic_quicly plugin disabled")
   endif()
 else()
-  message(WARNING "-- quicly headers not found - QUIC plugin disabled")
+  message(WARNING "-- quicly headers not found - quic_quicly plugin disabled")
 endif()
