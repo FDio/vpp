@@ -22,10 +22,11 @@
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/bihash_16_8.h>
 
-#include <quicly.h>
-
 #include <vnet/crypto/crypto.h>
 #include <vppinfra/lock.h>
+
+// TODO: Remove once all quicly code is refactored out of this file.
+#include <quicly.h>
 
 /* QUIC log levels
  * 1 - errors
@@ -50,15 +51,6 @@
 #define QUIC_RCV_MAX_PACKETS 16
 
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
-
-/* Taken from quicly.c */
-#define QUICLY_QUIC_BIT 0x40
-
-#define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
-#define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
-#define QUICLY_PACKET_TYPE_HANDSHAKE (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
-#define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
-#define QUICLY_PACKET_TYPE_BITMASK 0xf0
 
 /* error codes */
 #define QUIC_ERROR_FULL_FIFO 0xff10
@@ -267,6 +259,19 @@ typedef struct quic_main_
   u8 vnet_crypto_enabled;
   u32 *per_thread_crypto_key_indices;
 } quic_main_t;
+
+extern int64_t quic_get_thread_time (u8 thread_index);
+extern quic_main_t *get_quic_main (void);
+extern quic_ctx_t *quic_get_conn_ctx (quicly_conn_t *conn);
+extern quic_ctx_t *quic_ctx_get (u32 ctx_index, u32 thread_index);
+extern u32 quic_ctx_alloc (u32 thread_index);
+
+static_always_inline int64_t
+quic_get_time (void)
+{
+  u8 thread_index = vlib_get_thread_index ();
+  return quic_get_thread_time (thread_index);
+}
 
 #endif /* __included_quic_h__ */
 
