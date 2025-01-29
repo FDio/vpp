@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "449a0840_0d960c0e",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b122260f_ea2535e2",
+      "range": {
+        "startLine": 413,
+        "startChar": 12,
+        "endLine": 413,
+        "endChar": 25
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bc562ced_928dbdca",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-01-29T09:28:19Z",
       "side": 1,
       "message": "connected_counter or something like that is probably better name",
+      "range": {
+        "startLine": 210,
+        "startChar": 7,
+        "endLine": 210,
+        "endChar": 17
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46445dd7_b5e9b75d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bc562ced_928dbdca",
       "range": {
         "startLine": 210,
         "startChar": 7,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "195eb57b_e0abee98",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "92fd39f3_a6b37f1e",
+      "range": {
+        "startLine": 229,
+        "startChar": 10,
+        "endLine": 229,
+        "endChar": 25
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8f5f8836_eebe6477",
@@ -87,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0064cf0e_b0ea9a5b",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f5f8836_eebe6477",
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c4e9701e_ddcd8003",
@@ -100,6 +190,30 @@
       "writtenOn": "2025-01-29T09:28:19Z",
       "side": 1,
       "message": "you need to use lock here\nwhy you can\u0027t free ho session always and only reset ho_counter when all connected?",
+      "range": {
+        "startLine": 335,
+        "startChar": 6,
+        "endLine": 342,
+        "endChar": 2
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af356786_30571f4c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "code crashes when a new session is created after HO cleanup, that\u0027s why the counter is there - to only cleanup once all full sessions have been created",
+      "parentUuid": "c4e9701e_ddcd8003",
       "range": {
         "startLine": 335,
         "startChar": 6,
@@ -133,6 +247,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d64f5a4d_c27224a5",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 468,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9605859c_2c6bc609",
+      "range": {
+        "startLine": 468,
+        "startChar": 12,
+        "endLine": 468,
+        "endChar": 19
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "856572cd_d05d5d7f",
@@ -156,6 +294,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "25de226c_4c9ec498",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 570,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "856572cd_d05d5d7f",
+      "range": {
+        "startLine": 570,
+        "startChar": 18,
+        "endLine": 570,
+        "endChar": 44
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d1d0a707_de63e769",
@@ -169,6 +331,30 @@
       "writtenOn": "2025-01-29T09:28:19Z",
       "side": 1,
       "message": "remove this too",
+      "range": {
+        "startLine": 867,
+        "startChar": 0,
+        "endLine": 871,
+        "endChar": 6
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d9a801b_b38fc6f4",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T15:50:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1d0a707_de63e769",
       "range": {
         "startLine": 867,
         "startChar": 0,
