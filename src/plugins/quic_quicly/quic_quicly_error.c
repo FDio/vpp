@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include <quic/quic.h>
+#include <quic_quicly/quic_quicly_error.h>
 
 #include <quicly.h>
 #include <quicly/constants.h>
 
 u8 *
-quic_format_err (u8 * s, va_list * args)
+quic_quicly_format_err (u8 * s, va_list * args)
 {
   u64 code = va_arg (*args, u64);
   switch (code)
