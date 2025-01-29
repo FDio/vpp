@@ -141,7 +141,7 @@ bt_lookup_seq (tcp_byte_tracker_t * bt, u32 seq)
   rb_node_t *cur, *prev;
   tcp_bt_sample_t *bts;
 
-  cur = rb_node (rt, rt->root);
+  cur = rb_node (rt, rb_tree_root (rt));
   if (rb_node_is_tnil (rt, cur))
     return 0;
 
