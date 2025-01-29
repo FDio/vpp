@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "291db4fc_fbec7325",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-29T09:46:33Z",
+      "side": 1,
+      "message": "Used sfis-\u003esw_if_index both in the non-linux-cp case and as well to resolve the linux vif.",
+      "revId": "6e7f41c73a92ad76ad5ddca6b5883128f19c61e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

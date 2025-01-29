@@ -16,6 +16,24 @@
       "message": "This would probably work, but:\n- I think you could just pass sfif-\u003esw_if_index as the argument.\n- If I\u0027m misunderstanding something and was incorrect about being able to just use sfif-\u003esw_if_index, there is a declaration of `vnet_hw_interface_t *hw` at the beginning of the function that initializes hw with the same vnet_get_hw_interface() call. You could probably use hw-\u003esw_if_index.",
       "revId": "8dd207be7eeb6752eee942a38e19ab9cb820e033",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9552521_30da46ce",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-01-29T09:46:33Z",
+      "side": 1,
+      "message": "d\u0027oh. Good catch, Matt. I have used sfif-\u003esw_if_index here to resolve the LIP and also a few lines above in case Linux CP is not used, for the same reason you pointed out yesterday.",
+      "parentUuid": "93ad3d36_127d70cf",
+      "revId": "8dd207be7eeb6752eee942a38e19ab9cb820e033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
