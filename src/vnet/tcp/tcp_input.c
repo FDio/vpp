@@ -1372,6 +1372,37 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
+always_inline int
+tcp_try_header_prediction (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
+			   vlib_buffer_t *b, tcp_header_t *th, u32 *error)
+{
+  if (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt ||
+      vnet_buffer (b)->tcp.ack_number != tc->snd_una ||
+      tc->snd_wnd != clib_net_to_host_u16 (th->window) << tc->snd_wscale)
+    return 0;
+
+  /* TODO this is only receiver for now */
+  if (!vnet_buffer (b)->tcp.data_len)
+    return 0;
+
+  /* TODO make sure this is timestamp */
+  if ((tcp_doff (th) << 2) - sizeof (tcp_header_t) !=
+      (TCP_OPTION_LEN_TIMESTAMP + 2))
+    return 0;
+
+  if (PREDICT_FALSE (tcp_options_parse (th, &tc->rcv_opts, 1)))
+    return 0;
+
+  if (tc->rcv_nxt == tc->rcv_las)
+    {
+      tc->tsval_recent = tc->rcv_opts.tsval;
+      tc->tsval_recent_age = tcp_time_tstamp (tc->c_thread_index);
+    }
+
+  *error = tcp_segment_rcv (wrk, tc, b);
+  return 1;
+}
+
 always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
@@ -1414,6 +1445,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       th = tcp_buffer_hdr (b[0]);
 
       /* TODO header prediction fast path */
+      if (tcp_try_header_prediction (wrk, tc, b[0], th, &error))
+	goto done;
 
       /* 1-4: check SEQ, RST, SYN */
       if (PREDICT_FALSE (tcp_segment_validate (wrk, tc, b[0], th, &error)))
