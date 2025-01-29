@@ -14,6 +14,7 @@
  */
 
 #include <quic/quic.h>
+#include <quic/quic_inlines.h>
 #include <quic/quic_crypto.h>
 #include <vnet/session/session.h>
 
@@ -26,33 +27,6 @@
 extern quic_main_t quic_main;
 extern quic_ctx_t *quic_get_conn_ctx (quicly_conn_t *conn);
 vnet_crypto_main_t *cm = &crypto_main;
-
-typedef struct crypto_key_
-{
-  vnet_crypto_alg_t algo;
-  u8 key[32];
-  u16 key_len;
-} crypto_key_t;
-
-struct cipher_context_t
-{
-  ptls_cipher_context_t super;
-  vnet_crypto_op_t op;
-  vnet_crypto_op_id_t id;
-  crypto_key_t key;
-};
-
-struct aead_crypto_context_t
-{
-  ptls_aead_context_t super;
-  EVP_CIPHER_CTX *evp_ctx;
-  uint8_t static_iv[PTLS_MAX_IV_SIZE];
-  vnet_crypto_op_t op;
-  crypto_key_t key;
-
-  vnet_crypto_op_id_t id;
-  uint8_t iv[PTLS_MAX_IV_SIZE];
-};
 
 static int
 quic_crypto_setup_cipher (quicly_crypto_engine_t *engine, quicly_conn_t *conn,
@@ -124,142 +98,7 @@ Exit:
   return ret;
 }
 
-static u32
-quic_crypto_set_key (crypto_key_t *key)
-{
-  u8 thread_index = vlib_get_thread_index ();
-  u32 key_id = quic_main.per_thread_crypto_key_indices[thread_index];
-  vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
-  vnet_crypto_engine_t *engine;
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
-
-  vnet_key->alg = key->algo;
-  clib_memcpy (vnet_key->data, key->key, key->key_len);
-
-  vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (VNET_CRYPTO_KEY_OP_ADD, key_id);
-
-  return key_id;
-}
-
-static size_t
-quic_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
-			  void *_output, const void *input, size_t inlen,
-			  uint64_t decrypted_pn, const void *aad,
-			  size_t aadlen)
-{
-  vlib_main_t *vm = vlib_get_main ();
-
-  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
-
-  vnet_crypto_op_init (&ctx->op, ctx->id);
-  ctx->op.aad = (u8 *) aad;
-  ctx->op.aad_len = aadlen;
-  ctx->op.iv = ctx->iv;
-  ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv,
-		       decrypted_pn);
-  ctx->op.src = (u8 *) input;
-  ctx->op.dst = _output;
-  ctx->op.key_index = quic_crypto_set_key (&ctx->key);
-  ctx->op.len = inlen - ctx->super.algo->tag_size;
-  ctx->op.tag_len = ctx->super.algo->tag_size;
-  ctx->op.tag = ctx->op.src + ctx->op.len;
-
-  vnet_crypto_process_ops (vm, &(ctx->op), 1);
-
-  return ctx->op.len;
-}
-
-void
-quic_crypto_decrypt_packet (quic_ctx_t *qctx, quic_rx_packet_ctx_t *pctx)
-{
-  ptls_cipher_context_t *header_protection = NULL;
-  ptls_aead_context_t *aead = NULL;
-  int pn;
-
-  /* Long Header packets are not decrypted by vpp */
-  if (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]))
-    return;
-
-  uint64_t next_expected_packet_number =
-    quicly_get_next_expected_packet_number (qctx->conn);
-  if (next_expected_packet_number == UINT64_MAX)
-    return;
-
-  aead = qctx->ingress_keys.aead_ctx;
-  header_protection = qctx->ingress_keys.hp_ctx;
-
-  if (!aead || !header_protection)
-    return;
-
-  size_t encrypted_len = pctx->packet.octets.len - pctx->packet.encrypted_off;
-  uint8_t hpmask[5] = { 0 };
-  uint32_t pnbits = 0;
-  size_t pnlen, ptlen, i;
-
-  /* decipher the header protection, as well as obtaining pnbits, pnlen */
-  if (encrypted_len < header_protection->algo->iv_size + QUICLY_MAX_PN_SIZE)
-    return;
-  ptls_cipher_init (header_protection, pctx->packet.octets.base +
-					 pctx->packet.encrypted_off +
-					 QUICLY_MAX_PN_SIZE);
-  ptls_cipher_encrypt (header_protection, hpmask, hpmask, sizeof (hpmask));
-  pctx->packet.octets.base[0] ^=
-    hpmask[0] &
-    (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]) ? 0xf : 0x1f);
-  pnlen = (pctx->packet.octets.base[0] & 0x3) + 1;
-  for (i = 0; i != pnlen; ++i)
-    {
-      pctx->packet.octets.base[pctx->packet.encrypted_off + i] ^=
-	hpmask[i + 1];
-      pnbits = (pnbits << 8) |
-	       pctx->packet.octets.base[pctx->packet.encrypted_off + i];
-    }
-
-  size_t aead_off = pctx->packet.encrypted_off + pnlen;
-
-  pn = quicly_determine_packet_number (pnbits, pnlen * 8,
-				       next_expected_packet_number);
-
-  int key_phase_bit =
-    (pctx->packet.octets.base[0] & QUICLY_KEY_PHASE_BIT) != 0;
-
-  if (key_phase_bit != (qctx->key_phase_ingress & 1))
-    {
-      pctx->packet.octets.base[0] ^=
-	hpmask[0] &
-	(QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]) ? 0xf :
-									    0x1f);
-      for (i = 0; i != pnlen; ++i)
-	{
-	  pctx->packet.octets.base[pctx->packet.encrypted_off + i] ^=
-	    hpmask[i + 1];
-	}
-      return;
-    }
-
-  if ((ptlen = quic_crypto_aead_decrypt (
-	 qctx, aead, pctx->packet.octets.base + aead_off,
-	 pctx->packet.octets.base + aead_off,
-	 pctx->packet.octets.len - aead_off, pn, pctx->packet.octets.base,
-	 aead_off)) == SIZE_MAX)
-    {
-      fprintf (stderr, "%s: aead decryption failure (pn: %d)\n", __func__, pn);
-      return;
-    }
-
-  pctx->packet.encrypted_off = aead_off;
-  pctx->packet.octets.len = ptlen + aead_off;
-
-  pctx->packet.decrypted.pn = pn;
-  pctx->packet.decrypted.key_phase = qctx->key_phase_ingress;
-}
-
-void
+static void
 quic_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
 			    quicly_conn_t *conn,
 			    ptls_cipher_context_t *header_protect_ctx,
@@ -268,61 +107,13 @@ quic_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
 			    size_t payload_from, uint64_t packet_number,
 			    int coalesced)
 {
-  vlib_main_t *vm = vlib_get_main ();
-
-  struct cipher_context_t *hp_ctx =
-    (struct cipher_context_t *) header_protect_ctx;
-  struct aead_crypto_context_t *aead_ctx =
-    (struct aead_crypto_context_t *) packet_protect_ctx;
-
-  void *input = datagram.base + payload_from;
-  void *output = input;
-  size_t inlen =
-    datagram.len - payload_from - packet_protect_ctx->algo->tag_size;
-  const void *aad = datagram.base + first_byte_at;
-  size_t aadlen = payload_from - first_byte_at;
-
-  /* Build AEAD encrypt crypto operation */
-  vnet_crypto_op_init (&aead_ctx->op, aead_ctx->id);
-  aead_ctx->op.aad = (u8 *) aad;
-  aead_ctx->op.aad_len = aadlen;
-  aead_ctx->op.iv = aead_ctx->iv;
-  ptls_aead__build_iv (aead_ctx->super.algo, aead_ctx->op.iv,
-		       aead_ctx->static_iv, packet_number);
-  aead_ctx->op.key_index = quic_crypto_set_key (&aead_ctx->key);
-  aead_ctx->op.src = (u8 *) input;
-  aead_ctx->op.dst = output;
-  aead_ctx->op.len = inlen;
-  aead_ctx->op.tag_len = aead_ctx->super.algo->tag_size;
-  aead_ctx->op.tag = aead_ctx->op.src + inlen;
-  vnet_crypto_process_ops (vm, &(aead_ctx->op), 1);
-  assert (aead_ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
-
-  /* Build Header protection crypto operation */
-  ptls_aead_supplementary_encryption_t supp = {
-    .ctx = header_protect_ctx,
-    .input =
-      datagram.base + payload_from - QUICLY_SEND_PN_SIZE + QUICLY_MAX_PN_SIZE
-  };
-
-  /* Build Header protection crypto operation */
-  vnet_crypto_op_init (&hp_ctx->op, hp_ctx->id);
-  memset (supp.output, 0, sizeof (supp.output));
-  hp_ctx->op.iv = (u8 *) supp.input;
-  hp_ctx->op.key_index = quic_crypto_set_key (&hp_ctx->key);
-  ;
-  hp_ctx->op.src = (u8 *) supp.output;
-  hp_ctx->op.dst = (u8 *) supp.output;
-  hp_ctx->op.len = sizeof (supp.output);
-  vnet_crypto_process_ops (vm, &(hp_ctx->op), 1);
-  assert (hp_ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
-
-  datagram.base[first_byte_at] ^=
-    supp.output[0] &
-    (QUICLY_PACKET_IS_LONG_HEADER (datagram.base[first_byte_at]) ? 0xf : 0x1f);
-  for (size_t i = 0; i != QUICLY_SEND_PN_SIZE; ++i)
-    datagram.base[payload_from + i - QUICLY_SEND_PN_SIZE] ^=
-      supp.output[i + 1];
+  quic_lib_crypto_encrypt_packet(engine, conn,
+                                                 header_protect_ctx,
+                                                 packet_protect_ctx,
+                                                 datagram, first_byte_at,
+                                                 payload_from,
+                                                 packet_number,
+                                                 coalesced);
 }
 
 static int
