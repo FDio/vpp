@@ -72,12 +72,12 @@ typedef struct
 #define http_token_lit(s) (s), sizeof (s) - 1
 
 #define foreach_http_conn_state                                               \
-  _ (LISTEN, "listen")                                                        \
-  _ (CONNECTING, "connecting")                                                \
-  _ (ESTABLISHED, "established")                                              \
-  _ (TRANSPORT_CLOSED, "transport-closed")                                    \
-  _ (APP_CLOSED, "app-closed")                                                \
-  _ (CLOSED, "closed")
+  _ (LISTEN, "LISTEN")                                                        \
+  _ (CONNECTING, "CONNECTING")                                                \
+  _ (ESTABLISHED, "ESTABLISHED")                                              \
+  _ (TRANSPORT_CLOSED, "TRANSPORT-CLOSED")                                    \
+  _ (APP_CLOSED, "APP-CLOSED")                                                \
+  _ (CLOSED, "CLOSED")
 
 typedef enum http_conn_state_
 {
