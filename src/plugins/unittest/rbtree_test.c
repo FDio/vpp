@@ -72,13 +72,13 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   RBTREE_TEST (rb_tree_n_nodes (rt) == n_keys + 1, "all nodes added");
 
-  n = rb_tree_max_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_max_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == n_keys - 1, "max should be %u", n_keys - 1);
 
-  n = rb_tree_min_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == 0, "min should be %u", 0);
 
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), n_keys / 2);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), n_keys / 2);
   RBTREE_TEST (n->key == n_keys / 2, "search result should be %u",
 	       n_keys / 2);
 
@@ -90,7 +90,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (aux->key == n_keys / 2 - 1, "predecessor should be %u is %u",
 	       n_keys / 2 - 1, aux->key);
 
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), n_keys);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), n_keys);
   RBTREE_TEST (rb_node_is_tnil (rt, n), "search result should be tnil");
 
   /*
@@ -99,19 +99,19 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < n_keys; i += 2)
     rb_tree_del (rt, i);
 
-  n = rb_tree_max_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_max_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == n_keys - 1, "max should be %u", n_keys - 1);
 
-  n = rb_tree_min_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == 1, "min should be %u and is %u", 1, n->key);
 
   search_key = 2 * ((n_keys - 1) / 4);
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (rb_node_is_tnil (rt, n), "search result for %u should be tnil",
 	       search_key);
 
   search_key += 1;
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 
@@ -132,19 +132,19 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (rb_tree_n_nodes (rt) == n_keys + 1, "number nodes %u is %u",
 	       n_keys + 1, rb_tree_n_nodes (rt));
 
-  n = rb_tree_max_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_max_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == n_keys - 1, "max should be %u", n_keys - 1);
 
-  n = rb_tree_min_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == 0, "min should be %u", 0);
 
   search_key = 2 * ((n_keys - 1) / 4);
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 
   search_key += 1;
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 
@@ -169,14 +169,14 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (rb_tree_n_nodes (rt) == 1, "number nodes %u is %u",
 	       1, rb_tree_n_nodes (rt));
 
-  n = rb_tree_min_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (rb_node_is_tnil (rt, n), "min should be tnil");
 
-  n = rb_tree_max_subtree (rt, rb_node (rt, rt->root));
+  n = rb_tree_max_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (rb_node_is_tnil (rt, n), "max should be tnil");
 
   search_key = 2 * ((n_keys - 1) / 4);
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (rb_node_is_tnil (rt, n), "search result should be tnil");
 
   /*
@@ -187,7 +187,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
     rb_tree_add (rt, test_vals[i]);
 
   search_key = 13;
-  n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
+  n = rb_tree_search_subtree (rt, rb_node (rt, rb_tree_root (rt)), search_key);
   RBTREE_TEST (n->key == search_key, "search result should be %u",
 	       search_key);
 

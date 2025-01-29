@@ -1223,7 +1223,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   min_seqs[3] = snd_una + 2 * burst + 10;
   min_seqs[4] = snd_una + 2 * burst + 20;
 
-  root = bt->sample_lookup.nodes + bt->sample_lookup.root;
+  root = bt->sample_lookup.nodes + rb_tree_root (&bt->sample_lookup);
   bts = bt->samples + bt->head;
   for (i = 0; i < vec_len (min_seqs); i++)
     {
