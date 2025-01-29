@@ -152,6 +152,8 @@ typedef struct
   u8 n_sack_blocks;	/**< Number of SACKs blocks */
 } tcp_options_t;
 
+#define tcp_opts_len(_th) ((tcp_doff (th) << 2) - sizeof (tcp_header_t))
+
 /* Flag tests that return 0 or !0 */
 #define tcp_opts_mss(_to) ((_to)->flags & TCP_OPTS_FLAG_MSS)
 #define tcp_opts_tstamp(_to) ((_to)->flags & TCP_OPTS_FLAG_TSTAMP)
@@ -167,6 +169,9 @@ typedef struct
 #define TCP_OPTION_LEN_SACK_PERMITTED   2
 #define TCP_OPTION_LEN_TIMESTAMP        10
 #define TCP_OPTION_LEN_SACK_BLOCK        8
+
+/* TCP option lengths + option header (2 bytes) */
+#define TCP_OPTION_TIMESTAMP_TLEN (TCP_OPTION_LEN_TIMESTAMP + 2)
 
 #define TCP_HDR_LEN_MAX			60
 #define TCP_WND_MAX                     65535U
@@ -296,7 +301,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
   int j;
   sack_block_t b;
 
-  opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+  opts_len = tcp_opts_len (th);
   data = (const u8 *) (th + 1);
 
   /* Zero out all flags but those set in SYN */
@@ -390,6 +395,27 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 	  continue;
 	}
     }
+  return 0;
+}
+
+always_inline int
+tcp_options_parse_timestamp (tcp_header_t *th, tcp_options_t *to)
+{
+  const u8 *data = (const u8 *) (th + 1);
+
+  ASSERT (to->flags & TCP_OPTS_FLAG_TSTAMP);
+  ASSERT (tcp_opts_len (th) == TCP_OPTION_TIMESTAMP_TLEN);
+
+  if (data[0] != TCP_OPTION_TIMESTAMP || data[1] != TCP_OPTION_LEN_TIMESTAMP)
+    return -1;
+
+  /* Zero out all flags but those set in SYN */
+  to->flags &= (TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_WSCALE |
+		TCP_OPTS_FLAG_TSTAMP | TCP_OPTS_FLAG_MSS);
+
+  to->tsval = clib_net_to_host_u32 (*(u32 *) (data + 2));
+  to->tsecr = clib_net_to_host_u32 (*(u32 *) (data + 6));
+
   return 0;
 }
 
