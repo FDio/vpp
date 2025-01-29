@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include <quic/quic.h>
+#include <quic_quicly/quic_quicly_error.h>
 
 #include <quicly.h>
 #include <quicly/constants.h>
 
 u8 *
-quic_format_err (u8 * s, va_list * args)
+quic_quicly_format_err (u8 *s, va_list *args)
 {
   u64 code = va_arg (*args, u64);
   switch (code)
@@ -28,20 +28,20 @@ quic_format_err (u8 * s, va_list * args)
       s = format (s, "no error");
       break;
       /* app errors */
-    case QUIC_ERROR_FULL_FIFO:
+    case QUIC_QUICLY_ERROR_FULL_FIFO:
       s = format (s, "full fifo");
       break;
-    case QUIC_APP_ERROR_CLOSE_NOTIFY:
-      s = format (s, "QUIC_APP_ERROR_CLOSE_NOTIFY");
+    case QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY:
+      s = format (s, "QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY");
       break;
-    case QUIC_APP_ALLOCATION_ERROR:
-      s = format (s, "QUIC_APP_ALLOCATION_ERROR");
+    case QUIC_QUICLY_APP_ALLOCATION_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_ALLOCATION_ERROR");
       break;
-    case QUIC_APP_ACCEPT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_ACCEPT_NOTIFY_ERROR");
+    case QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR");
       break;
-    case QUIC_APP_CONNECT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_CONNECT_NOTIFY_ERROR");
+    case QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR");
       break;
       /* quicly errors */
     case QUICLY_ERROR_PACKET_IGNORED:
