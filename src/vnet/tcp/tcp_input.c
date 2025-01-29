@@ -1359,6 +1359,60 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 always_inline int
+tcp_try_header_prediction (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
+			   vlib_buffer_t *b, tcp_header_t *th, u32 *error)
+{
+  u32 opts_len = tcp_opts_len (th);
+
+  /* Just a reminder that support for sender needs to be added */
+  ASSERT (vnet_buffer (b)->tcp.ack_number == tc->snd_una);
+
+  /* Accept at most timestamp option */
+  if (opts_len)
+    {
+      if (opts_len != TCP_OPTION_TIMESTAMP_TLEN ||
+	  !tcp_opts_tstamp (&tc->rcv_opts) ||
+	  tcp_options_parse_timestamp (th, &tc->rcv_opts))
+	return 0;
+
+      /* Given that header prediction path is taken only if seg.seq == rcv_nxt
+       * and rcv_las <= rcv_nxt the tsval update condition in
+       * tcp_update_timestamp SEG.SEQ <= Last.ACK.sent < SEG.SEQ + SEG.LEN
+       * converts to rcv_nxt == rcv_las */
+      if (tc->rcv_nxt == tc->rcv_las)
+	{
+	  tc->tsval_recent = tc->rcv_opts.tsval;
+	  tc->tsval_recent_age = tcp_time_tstamp (tc->c_thread_index);
+	}
+    }
+
+  /* tcp_rcv_ack and implicitly tcp_update_snd_wnd are not called so snd_wl1
+   * is never updated when receiver does not send but receives large amounts
+   * of data */
+  tc->snd_wl1 = vnet_buffer (b)->tcp.seq_number;
+
+  *error = tcp_segment_rcv (wrk, tc, b);
+  return 1;
+}
+
+/**
+ * Consider for header prediction if:
+ * - ACK and potentially PSH are the only flags set
+ * - in sequence data (seq == rcv_nxt)
+ * - ack is equal to snd_nxt, i.e., support receiver only for now
+ * - window is the same as last time
+ */
+always_inline int
+tcp_should_try_header_prediction (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
+				  vlib_buffer_t *b, tcp_header_t *th)
+{
+  return (th->flags & (~TCP_FLAG_PSH | TCP_FLAG_ACK)) == TCP_FLAG_ACK &&
+	 vnet_buffer (b)->tcp.seq_number == tc->rcv_nxt &&
+	 vnet_buffer (b)->tcp.ack_number == tc->snd_una &&
+	 tc->snd_wnd == clib_net_to_host_u16 (th->window) << tc->snd_wscale;
+}
+
+always_inline int
 tcp_segment_is_exception (tcp_connection_t *tc, tcp_header_t *th)
 {
   /* TODO(fcoras): tcp-input should not allow segments without one of ack, rst,
@@ -1434,7 +1488,12 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto done;
 	}
 
-      /* TODO header prediction fast path */
+      /* 0: Try header prediction. Support only bulk receiver for now */
+      if (tcp_should_try_header_prediction (wrk, tc, b[0], th))
+	{
+	  if (tcp_try_header_prediction (wrk, tc, b[0], th, &error))
+	    goto done;
+	}
 
       /* 1-4: check SEQ, RST, SYN */
       if (PREDICT_FALSE (tcp_segment_validate (wrk, tc, b[0], th, &error)))
