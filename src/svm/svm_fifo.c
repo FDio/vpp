@@ -542,7 +542,7 @@ f_find_node_rbtree (rb_tree_t * rt, u32 pos)
 {
   rb_node_t *cur, *prev;
 
-  cur = rb_node (rt, rt->root);
+  cur = rb_node (rt, rb_tree_root (rt));
   if (PREDICT_FALSE (rb_node_is_tnil (rt, cur)))
     return 0;
 
@@ -608,7 +608,7 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
       return;
     }
 
-  if (rt->root == RBTREE_TNIL_INDEX)
+  if (rb_tree_root (rt) == RBTREE_TNIL_INDEX)
     {
       c = f_tail_cptr (f);
       ASSERT (c->enq_rb_index == RBTREE_TNIL_INDEX);
@@ -657,7 +657,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
       return;
     }
 
-  if (rt->root == RBTREE_TNIL_INDEX)
+  if (rb_tree_root (rt) == RBTREE_TNIL_INDEX)
     {
       c = f_start_cptr (f);
       ASSERT (c->deq_rb_index == RBTREE_TNIL_INDEX);

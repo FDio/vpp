@@ -41,9 +41,16 @@ typedef struct rb_node_
 
 typedef struct rb_tree_
 {
-  rb_node_t *nodes;		/**< pool of nodes */
-  rb_node_index_t root;		/**< root index */
+  rb_node_t *nodes; /**< pool of nodes */
 } rb_tree_t;
+
+/* Override unused u32 elt in pool header to track root index */
+typedef struct
+{
+  u8 ph[STRUCT_OFFSET_OF (pool_header_t, max_elts) + sizeof (u32)];
+  u32 root;
+} rbtree_header_t;
+#define rb_tree_root(rt) ((rbtree_header_t *) pool_header ((rt)->nodes))->root
 
 typedef int (*rb_tree_lt_fn) (u32 a, u32 b);
 
