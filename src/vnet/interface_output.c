@@ -167,21 +167,86 @@ vnet_interface_output_trace (vlib_main_t * vm,
 }
 
 static_always_inline void
-vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b)
+vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b,
+				      u32 bflags, u32 oflags)
 {
-  if (b->flags & VNET_BUFFER_F_GSO)
-    return;
-  vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
-			      b->flags & VNET_BUFFER_F_IS_IP6);
-  vnet_calc_outer_checksums_inline (vm, b);
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  tcp_header_t *th;
+  udp_header_t *uh;
+  int is_ip4 = bflags & VNET_BUFFER_F_IS_IP4;
+  int is_ip6 = bflags & VNET_BUFFER_F_IS_IP6;
+
+  ASSERT (!(is_ip4 && is_ip6));
+
+  ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+  ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+
+  if (is_ip4)
+    {
+      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  th->checksum = 0;
+	  th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+	}
+      if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  uh->checksum = 0;
+	  uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+	}
+    }
+  else if (is_ip6)
+    {
+      int bogus;
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  th->checksum = 0;
+	  th->checksum =
+	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+	}
+      if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  uh->checksum = 0;
+	  uh->checksum =
+	    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+	}
+    }
+
+  if (oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM)
+    {
+      ip4_header_t *ip4;
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer2 (b)->outer_l3_hdr_offset);
+      ip4->checksum = ip4_header_checksum (ip4);
+    }
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM)
+    {
+      int bogus;
+      ip6_header_t *ip6;
+      udp_header_t *uh;
+
+      ip6 = (ip6_header_t *) (b->data + vnet_buffer2 (b)->outer_l3_hdr_offset);
+      uh = (udp_header_t *) (b->data + vnet_buffer2 (b)->outer_l4_hdr_offset);
+      uh->checksum = 0;
+      uh->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+    }
+
+  vnet_buffer_offload_flags_clear (
+    b,
+    (VNET_BUFFER_OFFLOAD_F_IP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+     VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM |
+     VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM));
 }
 
 static_always_inline uword
 vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 				   vlib_combined_counter_main_t *ccm,
-				   vlib_buffer_t **b, void **p,
-				   u32 config_index, u8 arc, u32 n_left,
-				   int processing_level)
+				   vlib_buffer_t **b, void **p, u32 *bflags,
+				   u32 *oflags, u32 config_index, u8 arc,
+				   u32 n_left, int processing_level)
 {
   u32 n_bytes = 0;
   u32 n_bytes0, n_bytes1, n_bytes2, n_bytes3;
@@ -189,16 +254,11 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 
   while (n_left >= 8)
     {
-      u32 or_flags;
-
       /* Prefetch next iteration. */
       vlib_prefetch_buffer_header (b[4], LOAD);
       vlib_prefetch_buffer_header (b[5], LOAD);
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
-
-      if (processing_level >= 1)
-	or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 
       /* Be grumpy about zero length buffers for benefit of
 	 driver tx function. */
@@ -255,12 +315,20 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 	    }
 	}
 
-      if (processing_level >= 1 && (or_flags & VNET_BUFFER_F_OFFLOAD))
+      if (processing_level >= 1)
 	{
-	  vnet_interface_output_handle_offload (vm, b[0]);
-	  vnet_interface_output_handle_offload (vm, b[1]);
-	  vnet_interface_output_handle_offload (vm, b[2]);
-	  vnet_interface_output_handle_offload (vm, b[3]);
+	  bflags[0] = b[0]->flags;
+	  bflags[1] = b[1]->flags;
+	  bflags[2] = b[2]->flags;
+	  bflags[3] = b[3]->flags;
+
+	  oflags[0] = vnet_buffer (b[0])->oflags;
+	  oflags[1] = vnet_buffer (b[1])->oflags;
+	  oflags[2] = vnet_buffer (b[2])->oflags;
+	  oflags[3] = vnet_buffer (b[3])->oflags;
+
+	  bflags += 4;
+	  oflags += 4;
 	}
 
       n_left -= 4;
@@ -296,13 +364,103 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 	}
 
       if (processing_level >= 1)
-	vnet_interface_output_handle_offload (vm, b[0]);
+	{
+	  bflags[0] = b[0]->flags;
+	  oflags[0] = vnet_buffer (b[0])->oflags;
 
+	  bflags += 1;
+	  oflags += 1;
+	}
       n_left -= 1;
       b += 1;
     }
 
   return n_bytes;
+}
+
+static_always_inline void
+vnet_interface_handle_checksum_offloads (vlib_main_t *vm,
+					 vnet_hw_if_caps_t caps,
+					 vlib_buffer_t **b, u32 *bflags,
+					 u32 *oflags, u32 n_pkt)
+{
+  vlib_frame_bitmap_t gso_bmp = {}, offload_bmp = {}, ip_tnl_bmp = {},
+		      udp_tnl_bmp = {};
+  u32 n_gso_pkt = 0, n_offload_pkt = 0, n_ip_tnl_pkt = 0, n_udp_tnl_pkt = 0;
+  u32 n_outer_udp_cksum_pkt = 0, n_outer_ip_cksum_pkt = 0;
+  u32 outer_ip_oflags[VLIB_FRAME_SIZE] = {},
+      outer_udp_oflags[VLIB_FRAME_SIZE] = {};
+  u32 buffer_offload_flags[VLIB_FRAME_SIZE] = {};
+  u32 buffer_gso_flags[VLIB_FRAME_SIZE] = {};
+  u32 i = 0;
+
+  clib_memcpy_fast (buffer_gso_flags, bflags, sizeof (bflags[0]) * n_pkt);
+  clib_array_mask_u32 (buffer_gso_flags, VNET_BUFFER_F_GSO, n_pkt);
+  clib_mask_compare_u32 (VNET_BUFFER_F_GSO, buffer_gso_flags, gso_bmp, n_pkt);
+  n_gso_pkt = vlib_frame_bitmap_count_set_bits (gso_bmp);
+
+  clib_memcpy_fast (buffer_offload_flags, bflags, sizeof (bflags[0]) * n_pkt);
+  clib_array_mask_u32 (buffer_offload_flags, VNET_BUFFER_F_OFFLOAD, n_pkt);
+  clib_mask_compare_u32 (VNET_BUFFER_F_OFFLOAD, buffer_offload_flags,
+			 offload_bmp, n_pkt);
+  n_offload_pkt = vlib_frame_bitmap_count_set_bits (offload_bmp);
+
+  if (n_offload_pkt == 0 || n_offload_pkt == n_gso_pkt)
+    return;
+
+  vlib_frame_bitmap_xor (offload_bmp, gso_bmp);
+
+  clib_memcpy_fast (outer_ip_oflags, oflags, sizeof (bflags[0]) * n_pkt);
+  clib_memcpy_fast (outer_udp_oflags, oflags, sizeof (bflags[0]) * n_pkt);
+
+  clib_array_mask_u32 (outer_ip_oflags, VNET_BUFFER_OFFLOAD_F_TNL_IPIP, n_pkt);
+  clib_array_mask_u32 (outer_udp_oflags, VNET_BUFFER_OFFLOAD_F_TNL_VXLAN,
+		       n_pkt);
+
+  clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_TNL_IPIP, outer_ip_oflags,
+			 ip_tnl_bmp, n_pkt);
+  clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_TNL_VXLAN, outer_udp_oflags,
+			 udp_tnl_bmp, n_pkt);
+
+  n_ip_tnl_pkt = vlib_frame_bitmap_count_set_bits (ip_tnl_bmp);
+  n_udp_tnl_pkt = vlib_frame_bitmap_count_set_bits (udp_tnl_bmp);
+
+  if (n_ip_tnl_pkt == 0 && n_udp_tnl_pkt == 0 &&
+      (caps & VNET_HW_IF_CAP_TX_CKSUM) == VNET_HW_IF_CAP_TX_CKSUM)
+    return;
+
+  vlib_frame_bitmap_clear (ip_tnl_bmp);
+  vlib_frame_bitmap_clear (udp_tnl_bmp);
+
+  clib_memcpy_fast (outer_ip_oflags, oflags, sizeof (bflags[0]) * n_pkt);
+  clib_memcpy_fast (outer_udp_oflags, oflags, sizeof (bflags[0]) * n_pkt);
+
+  clib_array_mask_u32 (outer_ip_oflags, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM,
+		       n_pkt);
+  clib_array_mask_u32 (outer_udp_oflags, VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM,
+		       n_pkt);
+  clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM,
+			 outer_udp_oflags, udp_tnl_bmp, n_pkt);
+  clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM, outer_ip_oflags,
+			 ip_tnl_bmp, n_pkt);
+
+  n_outer_udp_cksum_pkt = vlib_frame_bitmap_count_set_bits (udp_tnl_bmp);
+  n_outer_ip_cksum_pkt = vlib_frame_bitmap_count_set_bits (ip_tnl_bmp);
+  // tunnel pkts but no outer checksum required! Physical interfaces can
+  // handle variable offset checksum offloads. While virtual interfaces can
+  // not.
+  if (n_outer_udp_cksum_pkt == 0 && n_outer_ip_cksum_pkt == 0)
+    {
+      if (((caps & VNET_HW_IF_CAP_TX_CKSUM) == VNET_HW_IF_CAP_TX_CKSUM) &&
+	  ((caps & VNET_HW_IF_CAP_TX_FIXED_OFFSET) !=
+	   VNET_HW_IF_CAP_TX_FIXED_OFFSET))
+	return;
+    }
+
+  foreach_vlib_frame_bitmap_set_bit_index (i, offload_bmp)
+    {
+      vnet_interface_output_handle_offload (vm, b[i], bflags[i], oflags[i]);
+    }
 }
 
 static_always_inline void
@@ -568,6 +726,8 @@ VLIB_NODE_FN (vnet_interface_output_node)
   int arc_or_subif = 0;
   int do_tx_offloads = 0;
   void *ptr[VLIB_FRAME_SIZE], **p = ptr;
+  u32 bflags[VLIB_FRAME_SIZE] = {};
+  u32 oflags[VLIB_FRAME_SIZE] = {};
   u8 is_parr = 0;
   u32 *from;
 
@@ -639,27 +799,36 @@ VLIB_NODE_FN (vnet_interface_output_node)
 
   ccm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
 
-  /* if not all three flags IP4_,TCP_,UDP_CKSUM set, do compute them
-   * here before sending to the interface */
-  if ((hi->caps & VNET_HW_IF_CAP_TX_CKSUM) != VNET_HW_IF_CAP_TX_CKSUM)
+  /* if not all 5 flags IP4_,TCP_,UDP_, IP4_OUTER_, UDP_OUTER_CKSUM set, do
+   * compute them here before sending to the interface */
+  if ((hi->caps & VNET_HW_IF_CAP_TX_CKSUM_MASK) !=
+      VNET_HW_IF_CAP_TX_CKSUM_MASK)
     do_tx_offloads = 1;
 
   // basic processing
   if (do_tx_offloads == 0 && arc_or_subif == 0 && is_parr == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 0);
+      vm, sw_if_index, ccm, bufs, NULL, NULL, NULL, config_index, arc,
+      n_buffers, 0);
   // basic processing + tx offloads
   else if (do_tx_offloads == 1 && arc_or_subif == 0 && is_parr == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 1);
+      vm, sw_if_index, ccm, bufs, NULL, bflags, oflags, config_index, arc,
+      n_buffers, 1);
   // basic processing + tx offloads + vlans + arcs
   else if (do_tx_offloads == 1 && arc_or_subif == 1 && is_parr == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 2);
+      vm, sw_if_index, ccm, bufs, NULL, bflags, oflags, config_index, arc,
+      n_buffers, 2);
   // basic processing + tx offloads + vlans + arcs + multi-txqs
   else
-    n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, p, config_index, arc, n_buffers, 3);
+    n_bytes = vnet_interface_output_node_inline (vm, sw_if_index, ccm, bufs, p,
+						 bflags, oflags, config_index,
+						 arc, n_buffers, 3);
+
+  if (do_tx_offloads)
+    vnet_interface_handle_checksum_offloads (vm, hi->caps, bufs, bflags,
+					     oflags, n_buffers);
 
   from = vlib_frame_vector_args (frame);
   if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
