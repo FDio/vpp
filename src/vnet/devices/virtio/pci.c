@@ -565,7 +565,7 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	      vif->csum_offload_enabled = 0;
 	      vif->gso_enabled = 0;
 	      cc.val = 0;
-	      cc.mask = VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO |
+	      cc.mask = VNET_HW_IF_CAP_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO |
 			VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 	    }
 	}
