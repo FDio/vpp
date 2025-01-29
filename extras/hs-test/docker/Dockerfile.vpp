@@ -19,6 +19,7 @@ COPY \
    $DIR/http_unittest_plugin.so \
    $DIR/unittest_plugin.so \
    $DIR/quic_plugin.so \
+   $DIR/quic_quicly_plugin.so \
    $DIR/http_static_plugin.so \
    $DIR/ping_plugin.so \
    $DIR/nsim_plugin.so \

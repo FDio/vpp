@@ -6,8 +6,10 @@
 QUIC HostStack
 ==============
 
-The quic plugin provides an `IETF QUIC protocol <https://tools.ietf.org/html/draft-ietf-quic-transport-22>`_ implementation. It is based on
-the quicly_ library.
+The quic plugin provides an
+`IETF QUIC protocol <https://tools.ietf.org/html/draft-ietf-quic-transport-22>`_ implementation.
+It is designed with a modular architecture that separates the core QUIC functionality
+from specific QUIC engine implementations.
 
 This plugin adds the QUIC protocol to VPP's Host Stack. As a result QUIC is
 usable both in internal VPP applications and in external apps.
@@ -17,8 +19,87 @@ usable both in internal VPP applications and in external apps.
 - This plugin is under current development: it should mostly work, but has not been thoroughly tested and should not be used in production.
 - Only bidirectional streams are supported currently.
 
+Architecture
+^^^^^^^^^^^^
+
+The QUIC plugin is split into two main components:
+
+1. Core QUIC Plugin
+   - Provides the framework and common functionality for QUIC protocol support
+   - Manages QUIC contexts, sessions, and connections
+   - Handles UDP transport layer integration
+   - Provides a virtual function table interface for engine implementations
+
+2. QUIC Engine Implementations
+
+   - Implemented as separate plugins (e.g., quic_quicly, quic_openssl)
+   - Each engine plugin provides a specific QUIC implementation
+   - Engines register themselves with the core plugin through a virtual function table
+   - Currently supported engines:
+
+     - QUICLY engine (quic_quicly plugin)
+     - OpenSSL engine (quic_openssl plugin)
+
+Engine Interface
+^^^^^^^^^^^^^^^^
+
+The core QUIC plugin defines a virtual function table interface that each engine implementation must provide. This interface includes functions for:
+
+- Engine initialization
+- Connection management
+- Stream handling
+- Packet processing
+- Crypto operations
+- Statistics and debugging
+
+Engine implementations register themselves with the core plugin using the registration functions:
+
+.. code-block:: c
+
+   void quic_register_engine (const quic_engine_vft_t *vft,
+                            quic_engine_type_t engine_type);
+
+Configuration
+^^^^^^^^^^^^^
+
+The QUIC plugin can be configured through VPP's configuration system. Key configuration options include:
+
+- Default crypto engine selection
+- Maximum packets per key
+- Default congestion control algorithm
+- UDP FIFO size and preallocation
+- Connection timeout settings
+
+Usage
+^^^^^
+
+To use the QUIC plugin:
+
+1. Enable the core QUIC plugin and desired engine plugin(s) in VPP's plugin configuration
+2. Configure the plugin settings as needed
+3. Use the QUIC API to create and manage QUIC connections and streams
+
+Example configuration:
+
+.. code-block:: shell
+
+   # Enable QUIC plugins
+   plugins {
+       plugin quic_plugin.so { enable }
+       plugin quic_quicly_plugin.so { enable }
+   }
+
+   # Configure QUIC settings
+   quic {
+       default-crypto-engine quicly
+       max-packets-per-key 16777216
+       default-quic-cc cubic
+       udp-fifo-size 65536
+       connection-timeout 30
+   }
+
 Getting started
----------------
+^^^^^^^^^^^^^^^
 
 * A common sample setup is with two vpp instances interconnected #twovppinstances
 * Ensure your vpp configuration file contains ``session { evt_qs_memfd_seg }``
@@ -125,3 +206,11 @@ Those structures are linked as follows :
 
 .. image:: /_images/quic_plugin_datastructures.png
 
+Debugging
+^^^^^^^^^
+
+The QUIC plugin provides several debugging features:
+
+- Log levels for different types of events (errors, connection/stream events, packet events, timer events)
+- Connection and stream statistics
+- Debug macros for development
