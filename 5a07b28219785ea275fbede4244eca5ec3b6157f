@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8dcb8e3f_2806b556",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-29T15:57:09Z",
+      "side": 1,
+      "message": "How is this feature tested?\n\nIf there are CSIT tests which verify this feature, please provide a reference to the gerrit change which introduces the feature / performance tests.",
+      "revId": "5a07b28219785ea275fbede4244eca5ec3b6157f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
