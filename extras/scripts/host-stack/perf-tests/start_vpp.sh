@@ -96,6 +96,7 @@ fi
 
 if [[ -n "$QUIC_ENABLE" ]]; then
   QUIC_PLUGIN="plugin quic_plugin.so {enable}"
+  QUIC_QUICLY_PLUGIN="plugin quic_quicly_plugin.so {enable}"
 fi
 
 if [[ -n "$SRTP_ENABLE" ]]; then
@@ -146,6 +147,7 @@ function start_vpp
 	  plugin unittest_plugin.so {enable}			\
 	  plugin http_unittest_plugin.so {enable}		\
 	  $QUIC_PLUGIN						\
+	  $QUIC_QUICLY_PLUGIN			\
 	  $SRTP_PLUGIN						\
 	  $DPDK_PLUGIN_DISABLE					\
 	}
