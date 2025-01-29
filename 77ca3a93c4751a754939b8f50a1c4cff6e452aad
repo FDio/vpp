@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d089ea78_0625e1b6",
+        "filename": "extras/hs-test/infra/suite_no_topo.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f6008588_8e1c482f",
+      "range": {
+        "startLine": 42,
+        "startChar": 24,
+        "endLine": 42,
+        "endChar": 29
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c334a501_7188fda3",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-01-28T13:00:36Z",
       "side": 1,
       "message": "race condition, you need to use lock when accessing shared memory",
+      "range": {
+        "startLine": 208,
+        "startChar": 2,
+        "endLine": 208,
+        "endChar": 20
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db441211_32b0b72b",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c334a501_7188fda3",
       "range": {
         "startLine": 208,
         "startChar": 2,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6860a5f_7d6f05ef",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fb44862b_806ba4e5",
+      "range": {
+        "startLine": 238,
+        "startChar": 12,
+        "endLine": 238,
+        "endChar": 29
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3a9d9561_7803b5de",
@@ -83,6 +155,30 @@
       "writtenOn": "2025-01-28T13:00:36Z",
       "side": 1,
       "message": "race condition, you need to use lock when accessing shared memory",
+      "range": {
+        "startLine": 462,
+        "startChar": 7,
+        "endLine": 469,
+        "endChar": 3
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23b14efc_5b3f929d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a9d9561_7803b5de",
       "range": {
         "startLine": 462,
         "startChar": 7,
@@ -116,6 +212,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d28e1a4_4baa46f6",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c877bea_9fcbd395",
+      "range": {
+        "startLine": 590,
+        "startChar": 0,
+        "endLine": 597,
+        "endChar": 5
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d1e12d7_526c4556",
@@ -129,6 +249,30 @@
       "writtenOn": "2025-01-28T13:00:36Z",
       "side": 1,
       "message": "I would omit this, we are not able to pin session to specific worker within app",
+      "range": {
+        "startLine": 970,
+        "startChar": 30,
+        "endLine": 970,
+        "endChar": 57
+      },
+      "revId": "77ca3a93c4751a754939b8f50a1c4cff6e452aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3d720b6_afce273b",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 970,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-29T08:42:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d1e12d7_526c4556",
       "range": {
         "startLine": 970,
         "startChar": 30,
