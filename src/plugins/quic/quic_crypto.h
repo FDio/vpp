@@ -17,6 +17,8 @@
 #define __included_vpp_quic_crypto_h__
 
 #include <quicly.h>
+#include <vnet/crypto/crypto.h>
+#include <picotls/openssl.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
@@ -31,6 +33,35 @@
 #define quic_load_openssl3_legacy_provider()
 #endif
 
+extern vnet_crypto_main_t *cm;
+
+typedef struct crypto_key_
+{
+  vnet_crypto_alg_t algo;
+  u8 key[32];
+  u16 key_len;
+} crypto_key_t;
+
+struct aead_crypto_context_t
+{
+  ptls_aead_context_t super;
+  EVP_CIPHER_CTX *evp_ctx;
+  uint8_t static_iv[PTLS_MAX_IV_SIZE];
+  vnet_crypto_op_t op;
+  crypto_key_t key;
+
+  vnet_crypto_op_id_t id;
+  uint8_t iv[PTLS_MAX_IV_SIZE];
+};
+
+struct cipher_context_t
+{
+  ptls_cipher_context_t super;
+  vnet_crypto_op_t op;
+  vnet_crypto_op_id_t id;
+  crypto_key_t key;
+};
+
 struct quic_ctx_t;
 
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
@@ -38,8 +69,6 @@ extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
 			    int is_encrypt, ptls_buffer_t * dst,
 			    ptls_iovec_t src);
-void quic_crypto_decrypt_packet (quic_ctx_t * qctx,
-				 quic_rx_packet_ctx_t * pctx);
 
 #endif /* __included_vpp_quic_crypto_h__ */
 /*
