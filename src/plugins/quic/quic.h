@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Copyright (c) 2025 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -18,14 +18,15 @@
 
 #include <vnet/session/application_interface.h>
 
+#include <vppinfra/clib.h>
 #include <vppinfra/lock.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/bihash_16_8.h>
 
-#include <quicly.h>
-
 #include <vnet/crypto/crypto.h>
-#include <vppinfra/lock.h>
+
+// TODO: Remove once all quicly code is refactored out of this file.
+#include <quicly.h>
 
 /* QUIC log levels
  * 1 - errors
@@ -51,21 +52,8 @@
 
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
 
-/* Taken from quicly.c */
-#define QUICLY_QUIC_BIT 0x40
-
-#define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
-#define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
-#define QUICLY_PACKET_TYPE_HANDSHAKE (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
-#define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
-#define QUICLY_PACKET_TYPE_BITMASK 0xf0
-
 /* error codes */
 #define QUIC_ERROR_FULL_FIFO 0xff10
-#define QUIC_APP_ERROR_CLOSE_NOTIFY QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0)
-#define QUIC_APP_ALLOCATION_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x1)
-#define QUIC_APP_ACCEPT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x2)
-#define QUIC_APP_CONNECT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x3)
 
 #define QUIC_DECRYPT_PACKET_OK 0
 #define QUIC_DECRYPT_PACKET_NOTOFFLOADED 1
@@ -80,7 +68,7 @@
 #endif
 
 #if CLIB_ASSERT_ENABLE
-#define QUIC_ASSERT(truth) ASSERT (truth)
+#define QUIC_ASSERT(truth) ASSERT ((truth))
 #else
 #define QUIC_ASSERT(truth)                        \
   do {                                            \
@@ -94,8 +82,29 @@
     clib_warning ("QUIC-ERR: " _fmt, ##_args);  \
   } while (0)
 
+typedef enum quic_lib_type_
+{
+  QUIC_LIB_NONE,
+  QUIC_LIB_QUICLY,
+  QUIC_LIB_OPENSSL,
+  QUIC_LIB_LAST = QUIC_LIB_OPENSSL,
+} quic_lib_type_t;
 
-
+static_always_inline char *
+quic_lib_type_str (quic_lib_type_t lib_type)
+{
+  switch (lib_type)
+    {
+    case QUIC_LIB_NONE:
+      return ("QUIC_LIB_NONE");
+    case QUIC_LIB_QUICLY:
+      return ("QUIC_LIB_QUICLY");
+    case QUIC_LIB_OPENSSL:
+      return ("QUIC_LIB_OPENSSL");
+    default:
+      return ("UNKNOWN");
+    }
+}
 extern vlib_node_registration_t quic_input_node;
 
 typedef enum
@@ -148,7 +157,7 @@ typedef struct quic_ctx_
     transport_connection_t connection;
     struct
     {	      /** QUIC ctx case */
-      quicly_conn_t *conn;
+      void *conn;
       u32 listener_ctx_id;
       u32 client_opaque;
       u8 *srv_hostname;
@@ -158,7 +167,7 @@ typedef struct quic_ctx_
     };
     struct
     {	      /** STREAM ctx case */
-      quicly_stream_t *stream;
+      void *stream;
       u64 bytes_written;
       u32 quic_connection_ctx_id;
       u8 _sctx_end_marker;	/* Leave this at the end */
@@ -179,8 +188,10 @@ typedef struct quic_ctx_
     ptls_aead_context_t *aead_ctx;
   } ingress_keys;
   int key_phase_ingress;
-  quicly_address_t rmt_ip;
-  quicly_address_t lcl_ip;
+  ip46_address_t rmt_ip;
+  u16 rmt_port;
+  ip46_address_t lcl_ip;
+  u16 lcl_port;
 
 } quic_ctx_t;
 
@@ -209,13 +220,6 @@ typedef struct quic_stream_data_
   u32 app_rx_data_len;		/**< bytes received, to be read by external app */
   u32 app_tx_data_len;		/**< bytes sent */
 } quic_stream_data_t;
-
-typedef struct quic_crypto_context_data_
-{
-  quicly_context_t quicly_ctx;
-  char cid_key[QUIC_IV_LEN];
-  ptls_context_t ptls_ctx;
-} quic_crypto_context_data_t;
 
 typedef struct quic_worker_ctx_
 {
@@ -266,7 +270,186 @@ typedef struct quic_main_
 
   u8 vnet_crypto_enabled;
   u32 *per_thread_crypto_key_indices;
+  quic_lib_type_t lib_type;
 } quic_main_t;
+
+extern int64_t quic_get_thread_time (u8 thread_index);
+extern quic_main_t *get_quic_main (void);
+extern u32 quic_ctx_alloc (u32 thread_index);
+extern quic_ctx_t *quic_ctx_get (u32 ctx_index, u32 thread_index);
+extern void quic_ctx_free (quic_ctx_t * ctx);
+extern void quic_check_quic_session_connected (quic_ctx_t *ctx);
+extern void quic_increment_counter (u8 evt, u8 val);
+extern int quic_acquire_crypto_context (quic_ctx_t * ctx);
+
+static_always_inline int
+quic_ctx_is_stream (quic_ctx_t * ctx)
+{
+  return (ctx->flags & QUIC_F_IS_STREAM);
+}
+
+static_always_inline int
+quic_ctx_is_listener (quic_ctx_t * ctx)
+{
+  return (ctx->flags & QUIC_F_IS_LISTENER);
+}
+
+static_always_inline int
+quic_ctx_is_conn (quic_ctx_t * ctx)
+{
+  return !(quic_ctx_is_listener (ctx) || quic_ctx_is_stream (ctx));
+}
+
+static_always_inline void
+quic_build_sockaddr (struct sockaddr *sa, socklen_t *salen,
+		     ip46_address_t *addr, u16 port, u8 is_ip4)
+{
+  if (is_ip4)
+    {
+      struct sockaddr_in *sa4 = (struct sockaddr_in *) sa;
+      sa4->sin_family = AF_INET;
+      sa4->sin_port = port;
+      sa4->sin_addr.s_addr = addr->ip4.as_u32;
+      *salen = sizeof (struct sockaddr_in);
+    }
+  else
+    {
+      struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) sa;
+      sa6->sin6_family = AF_INET6;
+      sa6->sin6_port = port;
+      clib_memcpy (&sa6->sin6_addr, &addr->ip6, 16);
+      *salen = sizeof (struct sockaddr_in6);
+    }
+}
+
+static_always_inline int64_t
+quic_get_time (void)
+{
+  u8 thread_index = vlib_get_thread_index ();
+  return quic_get_thread_time (thread_index);
+}
+
+static_always_inline quic_ctx_t *
+quic_ctx_get_if_valid (u32 ctx_index, u32 thread_index)
+{
+  if (pool_is_free_index (get_quic_main()->ctx_pool[thread_index], ctx_index))
+    return 0;
+  return pool_elt_at_index (get_quic_main()->ctx_pool[thread_index], ctx_index);
+}
+
+static_always_inline crypto_context_t *
+quic_crypto_context_get (u32 cr_index, u32 thread_index)
+{
+  quic_main_t *qm = get_quic_main ();
+  ASSERT (cr_index >> 24 == thread_index);
+  return pool_elt_at_index (qm->wrk_ctx[thread_index].crypto_ctx_pool,
+			    cr_index & 0x00ffffff);
+}
+
+static_always_inline void
+quic_disconnect_transport (quic_ctx_t * ctx)
+{
+  quic_main_t *qm = get_quic_main ();
+
+  QUIC_DBG (2, "Disconnecting transport 0x%lx", ctx->udp_session_handle);
+  vnet_disconnect_args_t a = {
+    .handle = ctx->udp_session_handle,
+    .app_index = qm->app_index,
+  };
+
+  if (vnet_disconnect_session (&a))
+    clib_warning ("UDP session 0x%lx disconnect errored",
+		  ctx->udp_session_handle);
+}
+
+static_always_inline u64
+quic_get_counter_value (u32 event_code)
+{
+  vlib_node_t *n;
+  vlib_main_t *vm;
+  vlib_error_main_t *em;
+
+  u32 code, i;
+  u64 c, sum = 0;
+
+  vm = vlib_get_main ();
+  em = &vm->error_main;
+  n = vlib_get_node (vm, quic_input_node.index);
+  code = event_code;
+  foreach_vlib_main ()
+    {
+      em = &this_vlib_main->error_main;
+      i = n->error_heap_index + code;
+      c = em->counters[i];
+
+      if (i < vec_len (em->counters_last_clear))
+      c -= em->counters_last_clear[i];
+      sum += c;
+    }
+  return sum;
+}
+
+typedef enum quic_session_connected_
+{
+  QUIC_SESSION_CONNECTED_NONE,
+  QUIC_SESSION_CONNECTED_CLIENT,
+  QUIC_SESSION_CONNECTED_SERVER,  
+} quic_session_connected_t;
+
+// TODO: Define appropriate QUIC return values for quic_lib_vft functions!
+typedef struct quic_lib_vft_
+{
+  int (*init_crypto_context) (crypto_context_t *crctx, quic_ctx_t *ctx);
+  void (*crypto_context_make_key_from_crctx) (clib_bihash_kv_24_8_t *kv, crypto_context_t *crctx);
+  void (*crypto_decrypt_packet) (quic_ctx_t *qctx, quic_rx_packet_ctx_t *pctx);
+  void (*crypto_encrypt_packet) (struct st_quicly_crypto_engine_t *engine,
+			    quicly_conn_t *conn,
+			    ptls_cipher_context_t *header_protect_ctx,
+			    ptls_aead_context_t *packet_protect_ctx,
+			    ptls_iovec_t datagram, size_t first_byte_at,
+			    size_t payload_from, uint64_t packet_number,
+			    int coalesced);
+  void (*accept_connection) (quic_rx_packet_ctx_t * pctx);
+  void (*receive_connection) (void *arg);
+  int (*reset_connection) (u64 udp_session_handle,
+				  quic_rx_packet_ctx_t *pctx);
+  int (*connect) (quic_ctx_t * ctx, u32 ctx_index, u32 thread_index, struct sockaddr *sa);
+  quic_session_connected_t (*is_session_connected) (quic_ctx_t * ctx);
+  int (*connect_stream) (void * conn, void ** quic_stream, quic_stream_data_t ** quic_stream_data, u8 is_unidir);
+  int (*stream_tx) (quic_ctx_t * ctx, session_t * stream_session);
+  void (*reset_stream_connect_error) (void * quic_stream);
+  void (*connection_delete) (quic_ctx_t * ctx);
+  u8 * (*format_connection_stats) (u8 * s, va_list * args);
+  void (*show_aggregated_stats) (vlib_main_t * vm);
+  u8 * (*format_stream_ctx_stream_id) (u8 * s, va_list * args);
+  u8 * (*format_stream_connection) (u8 * s, va_list * args);
+  void (*ack_rx_data) (session_t * stream_session);
+  quic_ctx_t *(*get_conn_ctx) (void *conn);
+  void (*store_conn_ctx) (void * conn, quic_ctx_t * ctx);
+  int (*send_packets) (quic_ctx_t * ctx);
+  int (*process_one_rx_packet) (u64 udp_session_handle, svm_fifo_t *f,
+			    u32 fifo_offset, quic_rx_packet_ctx_t *pctx);
+  int (*receive_a_packet) (quic_ctx_t *ctx, quic_rx_packet_ctx_t *pctx);
+  void (*proto_on_close) (u32 ctx_index, u32 thread_index);
+} quic_lib_vft_t;
+
+extern quic_lib_vft_t *quic_vfts;
+extern void quic_register_lib_type (const quic_lib_vft_t *vft,
+			       quic_lib_type_t type);
+
+static_always_inline void
+quic_stop_ctx_timer (quic_ctx_t * ctx)
+{
+  tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
+  quic_main_t *qm = get_quic_main();
+
+  if (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID)
+    return;
+  tw = &qm->wrk_ctx[ctx->c_thread_index].timer_wheel;
+  tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
+  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+  QUIC_DBG (4, "Stopping timer for ctx %u", ctx->c_c_index);
+}
 
 #endif /* __included_quic_h__ */
 
