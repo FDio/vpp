@@ -65,6 +65,7 @@ class QUICTestCase(VppAsfTestCase):
     @classmethod
     def setUpClass(cls):
         cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
+        cls.extra_vpp_plugin_config.append("plugin quic_quicly_plugin.so { enable }")
         super(QUICTestCase, cls).setUpClass()
 
     def setUp(self):

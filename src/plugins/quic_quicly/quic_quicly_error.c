@@ -1,25 +1,14 @@
-/*
- * Copyright (c) 2021 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
-#include <quic/quic.h>
+#include <quic_quicly/quic_quicly_error.h>
 
 #include <quicly.h>
 #include <quicly/constants.h>
 
 u8 *
-quic_format_err (u8 * s, va_list * args)
+quic_quicly_format_err (u8 *s, va_list *args)
 {
   u64 code = va_arg (*args, u64);
   switch (code)
@@ -28,20 +17,20 @@ quic_format_err (u8 * s, va_list * args)
       s = format (s, "no error");
       break;
       /* app errors */
-    case QUIC_ERROR_FULL_FIFO:
+    case QUIC_QUICLY_ERROR_FULL_FIFO:
       s = format (s, "full fifo");
       break;
-    case QUIC_APP_ERROR_CLOSE_NOTIFY:
-      s = format (s, "QUIC_APP_ERROR_CLOSE_NOTIFY");
+    case QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY:
+      s = format (s, "QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY");
       break;
-    case QUIC_APP_ALLOCATION_ERROR:
-      s = format (s, "QUIC_APP_ALLOCATION_ERROR");
+    case QUIC_QUICLY_APP_ALLOCATION_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_ALLOCATION_ERROR");
       break;
-    case QUIC_APP_ACCEPT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_ACCEPT_NOTIFY_ERROR");
+    case QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR");
       break;
-    case QUIC_APP_CONNECT_NOTIFY_ERROR:
-      s = format (s, "QUIC_APP_CONNECT_NOTIFY_ERROR");
+    case QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR:
+      s = format (s, "QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR");
       break;
       /* quicly errors */
     case QUICLY_ERROR_PACKET_IGNORED:
