@@ -58,6 +58,7 @@ plugins {
 
   plugin unittest_plugin.so { enable }
   plugin quic_plugin.so { enable }
+  plugin quic_quicly_plugin.so { enable }
   plugin af_packet_plugin.so { enable }
   plugin hs_apps_plugin.so { enable }
   plugin http_plugin.so { enable }
