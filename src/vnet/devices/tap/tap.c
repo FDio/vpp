@@ -678,15 +678,16 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   cc.mask = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TCP_GSO |
-	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM |
-	    VNET_HW_IF_CAP_TX_FIXED_OFFSET;
+	    VNET_HW_IF_CAP_TX_IP4_CKSUM | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+	    VNET_HW_IF_CAP_TX_UDP_CKSUM | VNET_HW_IF_CAP_TX_FIXED_OFFSET;
   cc.val = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TX_FIXED_OFFSET;
 
   if (args->tap_flags & TAP_FLAG_GSO)
-    cc.val |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
-	      VNET_HW_IF_CAP_TX_UDP_CKSUM;
+    cc.val |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
+	      VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
-    cc.val |= VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+    cc.val |= VNET_HW_IF_CAP_TX_IP4_CKSUM | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+	      VNET_HW_IF_CAP_TX_UDP_CKSUM;
 
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
