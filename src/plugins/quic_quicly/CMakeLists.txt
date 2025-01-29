@@ -36,16 +36,19 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
       include_directories (${PICOTLS_INCLUDE_DIR})
     endif()
 
-    add_vpp_plugin(quic
+    add_vpp_plugin(quic_quicly
       SOURCES
-      quic.c
+      quic_quicly.c
+      quic_quicly_error.c
+      quic_quicly_crypto.c
+      ptls_certs.c
 
       LINK_LIBRARIES ${QUIC_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
     message(STATUS "Found quicly ${EXPECTED_QUICLY_VERSION} in ${QUICLY_INCLUDE_DIR}")
   else()
-    message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - QUIC plugin disabled")
+    message(STATUS "-- quicly ${EXPECTED_QUICLY_VERSION} not found - quic_quicly plugin disabled")
   endif()
 else()
-  message(WARNING "-- quicly headers not found - QUIC plugin disabled")
+  message(WARNING "-- quicly headers not found - quic_quicly plugin disabled")
 endif()
