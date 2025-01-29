@@ -52,6 +52,7 @@ if(QUICLY_INCLUDE_DIR AND QUIC_LINK_LIBRARIES)
       error.c
       quic.c
       quic_crypto.c
+      quicly_impl.c
 
       LINK_LIBRARIES ${QUIC_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
