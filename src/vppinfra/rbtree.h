@@ -42,8 +42,10 @@ typedef struct rb_node_
 typedef struct rb_tree_
 {
   rb_node_t *nodes;		/**< pool of nodes */
-  rb_node_index_t root;		/**< root index */
+  //   rb_node_index_t root;		/**< root index */
 } rb_tree_t;
+
+#define rb_tree_root(rt) rb_node (rt, 0)->key
 
 typedef int (*rb_tree_lt_fn) (u32 a, u32 b);
 
