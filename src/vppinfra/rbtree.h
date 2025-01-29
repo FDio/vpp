@@ -41,9 +41,11 @@ typedef struct rb_node_
 
 typedef struct rb_tree_
 {
-  rb_node_t *nodes;		/**< pool of nodes */
-  rb_node_index_t root;		/**< root index */
+  rb_node_t *nodes; /**< pool of nodes */
 } rb_tree_t;
+
+/* Use pool header opaque to store root index */
+#define rb_tree_root(rt) pool_header ((rt)->nodes)->opaque
 
 typedef int (*rb_tree_lt_fn) (u32 a, u32 b);
 
