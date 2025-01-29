@@ -20,7 +20,18 @@
 
 #include <vppinfra/format.h>
 
-u8 *quic_format_err (u8 * s, va_list * args);
+/* error codes */
+#define QUIC_QUICLY_ERROR_FULL_FIFO 0xff10
+#define QUIC_QUICLY_APP_ERROR_CLOSE_NOTIFY                                    \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0)
+#define QUIC_QUICLY_APP_ALLOCATION_ERROR                                      \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x1)
+#define QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR                                   \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x2)
+#define QUIC_QUICLY_APP_CONNECT_NOTIFY_ERROR                                  \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x3)
+
+u8 *quic_quicly_format_err (u8 *s, va_list *args);
 
 #endif /* __included_quic_error_h__ */
 
