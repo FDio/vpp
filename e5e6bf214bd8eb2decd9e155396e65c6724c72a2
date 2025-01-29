@@ -1,0 +1,182 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b122260f_ea2535e2",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "GetHostWorkDir",
+      "range": {
+        "startLine": 413,
+        "startChar": 12,
+        "endLine": 413,
+        "endChar": 25
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc562ced_928dbdca",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "connected_counter or something like that is probably better name",
+      "range": {
+        "startLine": 210,
+        "startChar": 7,
+        "endLine": 210,
+        "endChar": 17
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92fd39f3_a6b37f1e",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "you need to use lock here",
+      "range": {
+        "startLine": 229,
+        "startChar": 10,
+        "endLine": 229,
+        "endChar": 25
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f5f8836_eebe6477",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "you don\u0027t need lock here. you aren\u0027t accessing any member of hcm which is changed during request flood",
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4e9701e_ddcd8003",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "you need to use lock here\nwhy you can\u0027t free ho session always and only reset ho_counter when all connected?",
+      "range": {
+        "startLine": 335,
+        "startChar": 6,
+        "endLine": 342,
+        "endChar": 2
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9605859c_2c6bc609",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 468,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "maybe completed_count?",
+      "range": {
+        "startLine": 468,
+        "startChar": 12,
+        "endLine": 468,
+        "endChar": 19
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "856572cd_d05d5d7f",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 570,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "i \u003c hcm-\u003emax_sessions",
+      "range": {
+        "startLine": 570,
+        "startChar": 18,
+        "endLine": 570,
+        "endChar": 44
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1d0a707_de63e769",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-29T09:28:19Z",
+      "side": 1,
+      "message": "remove this too",
+      "range": {
+        "startLine": 867,
+        "startChar": 0,
+        "endLine": 871,
+        "endChar": 6
+      },
+      "revId": "e5e6bf214bd8eb2decd9e155396e65c6724c72a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
