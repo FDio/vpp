@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1dfb9dd2_359dca29",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-30T12:09:22Z",
+      "side": 1,
+      "message": "Since the only change here was uppercase, it would be more robust to lowercase() the output of the cli command.\n\nIn general, this should be applied to all cli command output which is used to verify vpp state.",
+      "range": {
+        "startLine": 161,
+        "startChar": 23,
+        "endLine": 161,
+        "endChar": 34
+      },
+      "revId": "d915b1993363425a8e97d106e47bb21402a0b34d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49ca4759_acbea12f",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-30T12:09:22Z",
+      "side": 1,
+      "message": "Same.",
+      "range": {
+        "startLine": 193,
+        "startChar": 23,
+        "endLine": 193,
+        "endChar": 34
+      },
+      "revId": "d915b1993363425a8e97d106e47bb21402a0b34d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
