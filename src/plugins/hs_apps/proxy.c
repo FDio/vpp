@@ -1137,7 +1137,8 @@ active_open_tx_callback (session_t * ao_s)
   if (sc->pair.is_http)
     {
       /* notify HTTP transport */
-      session_program_rx_io_evt (sc->pair.session_handle);
+      session_program_transport_io_evt (sc->pair.session_handle,
+					SESSION_IO_EVT_RX);
     }
   else
     {
