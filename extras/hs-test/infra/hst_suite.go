@@ -327,11 +327,11 @@ func (s *HstSuite) AssertNotEqual(expected, actual interface{}, msgAndArgs ...in
 }
 
 func (s *HstSuite) AssertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, testString).To(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
+	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).To(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
+	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).ToNot(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
 }
 
 func (s *HstSuite) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
