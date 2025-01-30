@@ -158,7 +158,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertHttpContentLength(resp, int64(0))
 	o1 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o1)
-	s.AssertContains(o1, "established")
+	s.AssertContains(o1, "ESTABLISHED")
 
 	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test1", nil)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -176,7 +176,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertHttpBody(resp, "hello")
 	o2 := vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o2)
-	s.AssertContains(o2, "established")
+	s.AssertContains(o2, "ESTABLISHED")
 	s.AssertEqual(o1, o2)
 
 	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
@@ -190,7 +190,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertHttpBody(resp, "some data")
 	o2 = vpp.Vppctl("show session verbose proto http state ready")
 	s.Log(o2)
-	s.AssertContains(o2, "established")
+	s.AssertContains(o2, "ESTABLISHED")
 	s.AssertEqual(o1, o2)
 }
 
