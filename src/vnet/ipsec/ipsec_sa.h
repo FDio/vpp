@@ -194,8 +194,7 @@ typedef struct
   u8 integ_icv_size;
   u16 thread_index;
   u32 salt;
-  u32 seq;
-  u32 seq_hi;
+  u64 seq64;
   u32 spi_be;
   ip_dscp_t t_dscp;
   dpo_id_t dpo;
