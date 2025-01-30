@@ -58,10 +58,8 @@ test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  irt->seq_hi = seq_num >> 32;
 
 	  /* clear the window */
-	  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
-	    clib_bitmap_zero (irt->replay_window_huge);
-	  else
-	    irt->replay_window = 0;
+	  uword_bitmap_clear (irt->replay_window,
+			      irt->anti_replay_window_size / uword_bits);
 	}
 
       ipsec_sa_unlock (sa_index);
