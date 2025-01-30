@@ -58,9 +58,7 @@ ipsec_sa_get_outb_seq (ipsec_sa_t *sa)
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
   u64 seq;
 
-  seq = ort->seq;
-  if (ipsec_sa_is_set_USE_ESN (sa))
-    seq |= (u64) ort->seq_hi << 32;
+  seq = ort->seq64;
   return seq;
 }
 

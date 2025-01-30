@@ -79,32 +79,16 @@ typedef struct esp_aead_t_
   u32 data[3];
 } __clib_packed esp_aead_t;
 
-#define ESP_SEQ_MAX		(4294967295UL)
-
 u8 *format_esp_header (u8 * s, va_list * args);
 
 /* TODO seq increment should be atomic to be accessed by multiple workers */
 always_inline int
 esp_seq_advance (ipsec_sa_outb_rt_t *ort)
 {
-  if (PREDICT_TRUE (ort->use_esn))
-    {
-      if (PREDICT_FALSE (ort->seq == ESP_SEQ_MAX))
-	{
-	  if (PREDICT_FALSE (ort->use_anti_replay &&
-			     ort->seq_hi == ESP_SEQ_MAX))
-	    return 1;
-	  ort->seq_hi++;
-	}
-      ort->seq++;
-    }
-  else
-    {
-      if (PREDICT_FALSE (ort->use_anti_replay && ort->seq == ESP_SEQ_MAX))
-	return 1;
-      ort->seq++;
-    }
-
+  u64 max = ort->use_esn ? CLIB_U64_MAX : CLIB_U32_MAX;
+  if (ort->seq64 == max)
+    return 1;
+  ort->seq64++;
   return 0;
 }
 
