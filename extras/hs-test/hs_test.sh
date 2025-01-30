@@ -140,25 +140,40 @@ fi
 mkdir -p summary
 # shellcheck disable=SC2086
 sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args
+exit_status=$?
 
-if [ $? != 0 ]; then
+if [ -e "summary/failed-summary.log" ]; then
+        rm summary/failed-summary.log
+fi
+
+if [ $exit_status != 0 ]; then
     jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) |
 "TestName:
     \(.LeafNodeText)
 Suite:
     \(.Failure.FailureNodeLocation.FileName)
 Message:\n"
-+(if .ReportEntries? then .ReportEntries[] | select(.Name == "VPP Backtrace") |
-"\tVPP crashed
++ (
+    if .ReportEntries? then
+        (.ReportEntries[] | select(.Name == "VPP Backtrace") |
+        "\tVPP crashed
 Full Back Trace:
-\(.Value.Representation | ltrimstr("{{red}}") | rtrimstr("{{/}}"))" else
-    "\(.Failure.Message)"
-     + (if .Failure.Message == "A spec timeout occurred" then "\n" else
-"\nFull Stack Trace:
-\(.Failure.Location.FullStackTrace)\n" end) end)' summary/report.json > summary/failed-summary.log \
-	&& echo "Summary generated -> summary/failed-summary.log"
+\(.Value.Representation | ltrimstr("{{red}}") | rtrimstr("{{/}}"))"
+        ) // "\(.Failure.Message)"
+    else
+        "parse error"
+    end
+)
++ (
+    if .Failure.Message == "A spec timeout occurred" then
+        "\n"
+    else
+        "\nFull Stack Trace:
+\(.Failure.Location.FullStackTrace)\n"
+    end
+)' summary/report.json > summary/failed-summary.log \
+&& echo "Summary generated -> summary/failed-summary.log"
+    exit $exit_status
 else
-    if [ -e "summary/failed-summary.log" ]; then
-        rm summary/failed-summary.log
-    fi
+    exit $exit_status
 fi
