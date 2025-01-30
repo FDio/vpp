@@ -44,11 +44,9 @@ static inline u64
 ipsec_sa_get_inb_seq (ipsec_sa_t *sa)
 {
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
-  u64 seq;
-
-  seq = irt->seq;
-  if (ipsec_sa_is_set_USE_ESN (sa))
-    seq |= (u64) irt->seq_hi << 32;
+  u64 seq = irt->seq64;
+  if (!ipsec_sa_is_set_USE_ESN (sa))
+    seq = (u32) seq;
   return seq;
 }
 
@@ -1361,7 +1359,7 @@ send_ipsec_sa_v5_details (ipsec_sa_t *sa, void *arg)
       mp->replay_window =
 	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (irt));
       mp->entry.anti_replay_window_size =
-	clib_host_to_net_u32 (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (irt));
+	clib_host_to_net_u32 (irt->anti_replay_window_size);
     }
 
   if (ort)
