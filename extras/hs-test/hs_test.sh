@@ -140,6 +140,7 @@ fi
 mkdir -p summary
 # shellcheck disable=SC2086
 sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args
+exit_status=$?
 
 if [ $? != 0 ]; then
     jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) |
@@ -157,8 +158,10 @@ Full Back Trace:
 "\nFull Stack Trace:
 \(.Failure.Location.FullStackTrace)\n" end) end)' summary/report.json > summary/failed-summary.log \
 	&& echo "Summary generated -> summary/failed-summary.log"
+    exit $exit_status
 else
     if [ -e "summary/failed-summary.log" ]; then
         rm summary/failed-summary.log
     fi
+    exit $exit_status
 fi
