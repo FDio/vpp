@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "016ae29f_c9e855d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-01-30T20:12:05Z",
+      "side": 1,
+      "message": "The job failed, but the logs for the failed tests are not archived with the console output: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-verify-hst-debug-master-ubuntu2204-x86_64/2025/",
+      "revId": "81f489b8ddfd88415f18fcc7d20602fe8cbe9367",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
