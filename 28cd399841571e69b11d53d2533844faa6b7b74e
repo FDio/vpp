@@ -16,6 +16,23 @@
       "message": "Is there a chance I can have a review of this one befoy rc1 cutoff?",
       "revId": "28cd399841571e69b11d53d2533844faa6b7b74e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82cfb02d_dd09f3b5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-01-30T17:10:14Z",
+      "side": 1,
+      "message": "I think it looks good - I\u0027m not fond on the power-of-2 restriction, but it\u0027s what we currently have anyway and at least this is now explicit!\nThe only thing I think is missing is I don\u0027t see a check at startup, to stop if a user has configured more workers than VPP_MAX_WORKERS?",
+      "revId": "28cd399841571e69b11d53d2533844faa6b7b74e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
