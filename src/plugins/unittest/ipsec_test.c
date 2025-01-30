@@ -50,10 +50,7 @@ test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       ort = ipsec_sa_get_outb_rt (sa);
 
       if (ort)
-	{
-	  ort->seq = seq_num & 0xffffffff;
-	  ort->seq_hi = seq_num >> 32;
-	}
+	ort->seq64 = seq_num;
 
       if (irt)
 	{

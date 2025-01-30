@@ -43,8 +43,7 @@ typedef struct
 {
   u32 sa_index;
   u32 spi;
-  u32 seq_lo;
-  u32 seq_hi;
+  u64 seq;
   ipsec_integ_alg_t integ_alg;
 } ah_encrypt_trace_t;
 
@@ -56,9 +55,9 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
 
-  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %u:%u integrity %U",
-	      t->sa_index, t->spi, t->spi, t->seq_hi, t->seq_lo,
-	      format_ipsec_integ_alg, t->integ_alg);
+  s = format (s, "ah: sa-index %d spi %u (0x%08x) seq %lu integrity %U",
+	      t->sa_index, t->spi, t->spi, t->seq, format_ipsec_integ_alg,
+	      t->integ_alg);
   return s;
 }
 
@@ -261,7 +260,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh6_0->ah.reserved = 0;
 	  oh6_0->ah.nexthdr = next_hdr_type;
 	  oh6_0->ah.spi = ort->spi_be;
-	  oh6_0->ah.seq_no = clib_net_to_host_u32 (ort->seq);
+	  oh6_0->ah.seq_no = clib_net_to_host_u32 (ort->seq64);
 	  oh6_0->ip6.payload_length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
 				  sizeof (ip6_header_t));
@@ -315,7 +314,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh0->ip4.length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
 	  oh0->ah.spi = ort->spi_be;
-	  oh0->ah.seq_no = clib_net_to_host_u32 (ort->seq);
+	  oh0->ah.seq_no = clib_net_to_host_u32 (ort->seq64);
 	  oh0->ah.nexthdr = next_hdr_type;
 	  oh0->ah.hdrlen =
 	    (sizeof (ah_header_t) + icv_size + padding_len) / 4 - 2;
@@ -352,11 +351,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  op->user_data = b - bufs;
 	  if (ort->use_esn)
 	    {
-	      u32 seq_hi = clib_host_to_net_u32 (ort->seq_hi);
-
-	      op->len += sizeof (seq_hi);
-	      clib_memcpy (op->src + b[0]->current_length, &seq_hi,
-			   sizeof (seq_hi));
+	      *(u32u *) (op->src + b[0]->current_length) =
+		clib_host_to_net_u32 (ort->seq64 >> 32);
+	      op->len += sizeof (u32);
 	    }
 	}
 
@@ -375,8 +372,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  ah_encrypt_trace_t *tr =
 	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->spi = sa->spi;
-	  tr->seq_lo = ort->seq;
-	  tr->seq_hi = ort->seq_hi;
+	  tr->seq = ort->seq64;
 	  tr->integ_alg = sa->integ_alg;
 	  tr->sa_index = pd->sa_index;
 	}

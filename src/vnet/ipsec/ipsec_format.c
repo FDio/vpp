@@ -476,7 +476,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   if (irt)
     s = format (s, "\n   inbound seq %u seq-hi %u", irt->seq, irt->seq_hi);
   if (ort)
-    s = format (s, "\n   outbound seq %u seq-hi %u", ort->seq, ort->seq_hi);
+    s = format (s, "\n   outbound seq %lu", ort->seq64);
   if (irt)
     {
       s = format (s, "\n   window-size: %llu",
