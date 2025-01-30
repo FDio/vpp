@@ -49,8 +49,7 @@ typedef struct
 {
   u32 sa_index;
   u32 spi;
-  u32 seq;
-  u32 sa_seq_hi;
+  u64 seq;
   u8 udp_encap;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -71,13 +70,11 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
 
-  s =
-    format (s,
-	    "esp: sa-index %d spi %u (0x%08x) seq %u sa-seq-hi %u crypto %U integrity %U%s",
-	    t->sa_index, t->spi, t->spi, t->seq, t->sa_seq_hi,
-	    format_ipsec_crypto_alg,
-	    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
-	    t->udp_encap ? " udp-encap-enabled" : "");
+  s = format (
+    s, "esp: sa-index %d spi %u (0x%08x) seq %lu crypto %U integrity %U%s",
+    t->sa_index, t->spi, t->spi, t->seq, format_ipsec_crypto_alg,
+    t->crypto_alg, format_ipsec_integ_alg, t->integ_alg,
+    t->udp_encap ? " udp-encap-enabled" : "");
   return s;
 }
 
@@ -353,10 +350,9 @@ esp_encrypt_chain_integ (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  total_len += ch->len = cb->current_length - icv_sz;
 	  if (ort->use_esn)
 	    {
-	      u32 seq_hi = clib_net_to_host_u32 (ort->seq_hi);
-	      clib_memcpy_fast (digest, &seq_hi, sizeof (seq_hi));
-	      ch->len += sizeof (seq_hi);
-	      total_len += sizeof (seq_hi);
+	      *(u32u *) digest = clib_net_to_host_u32 (ort->seq64 >> 32);
+	      ch->len += sizeof (u32);
+	      total_len += sizeof (u32);
 	    }
 	}
       else
@@ -522,7 +518,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	{
 	  /* constuct aad in a scratch space in front of the nonce */
 	  aad = (u8 *) nonce - sizeof (esp_aead_t);
-	  esp_aad_fill (aad, esp, ort->use_esn, ort->seq_hi);
+	  esp_aad_fill (aad, esp, ort->use_esn, ort->seq64 >> 32);
 	  if (PREDICT_FALSE (ort->is_null_gmac))
 	    {
 	      /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
@@ -573,9 +569,8 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	}
       else if (ort->use_esn)
 	{
-	  u32 seq_hi = clib_net_to_host_u32 (ort->seq_hi);
-	  clib_memcpy_fast (tag, &seq_hi, sizeof (seq_hi));
-	  integ_total_len += sizeof (seq_hi);
+	  *(u32u *) tag = clib_net_to_host_u32 (ort->seq64 >> 32);
+	  integ_total_len += sizeof (u32);
 	}
     }
 
@@ -1021,7 +1016,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       esp->spi = spi;
-      esp->seq = clib_net_to_host_u32 (ort->seq);
+      esp->seq = clib_net_to_host_u32 (ort->seq64);
 
       if (is_async)
 	{
@@ -1054,9 +1049,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   async_next_node, lb);
 	}
       else
-	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, ort, ort->seq_hi,
-			     payload, payload_len, iv_sz, icv_sz, n_sync, b,
-			     lb, hdr_len, esp);
+	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, ort,
+			     ort->seq64 >> 32, payload, payload_len, iv_sz,
+			     icv_sz, n_sync, b, lb, hdr_len, esp);
 
       vlib_buffer_advance (b[0], 0LL - hdr_len);
 
@@ -1075,8 +1070,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ipsec_sa_t *sa = ipsec_sa_get (sa_index0);
 	      tr->sa_index = sa_index0;
 	      tr->spi = sa->spi;
-	      tr->seq = ort->seq;
-	      tr->sa_seq_hi = ort->seq_hi;
+	      tr->seq = ort->seq64;
 	      tr->udp_encap = ort->udp_encap;
 	      tr->crypto_alg = sa->crypto_alg;
 	      tr->integ_alg = sa->integ_alg;
