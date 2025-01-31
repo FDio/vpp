@@ -85,7 +85,7 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
     }
 
   /* Make sure */
-  uri = (char *) format (0, "%s%c", uri, 0);
+  vec_terminate_c_string (uri);
 
   /* Parse uri */
   unformat_init_string (input, uri, strlen (uri));
