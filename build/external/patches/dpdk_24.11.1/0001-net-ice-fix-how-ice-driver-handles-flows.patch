@@ -1,0 +1,64 @@
+From b33b5d621d340d033cd1d181b0ab0c09dc9bd787 Mon Sep 17 00:00:00 2001
+From: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
+Date: Thu, 30 Jan 2025 15:50:11 +0000
+Subject: [PATCH] net/ice: fix how ice driver handles flows
+
+Currently ICE PMD uses group attribute to select the appropriate HW engine
+to offload the flow. This behavior violates the rte_flow API, existing
+documentation/examples, and reveals hardware specific details.
+
+This patch eliminates the use of the group attribute and runs each engine
+parser in the order they work in the HW pipeline.
+
+Fixes: 9c5f0070fa3f ("net/ice: map group to pipeline stage")
+Cc: qi.z.zhang@intel.com
+Cc: stable@dpdk.org
+
+Signed-off-by: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
+---
+ drivers/net/ice/ice_generic_flow.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/net/ice/ice_generic_flow.c b/drivers/net/ice/ice_generic_flow.c
+index 50d760004f..666c8f3cb9 100644
+--- a/drivers/net/ice/ice_generic_flow.c
++++ b/drivers/net/ice/ice_generic_flow.c
+@@ -2295,21 +2295,22 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
+ 		return 0;
+ 	}
+ 
+-	parser = get_flow_parser(attr->group);
+-	if (parser == NULL) {
+-		rte_flow_error_set(error, EINVAL,
+-				   RTE_FLOW_ERROR_TYPE_ATTR,
+-				   NULL, "NULL attribute.");
+-		return -rte_errno;
++	for (int i = 0; i < 3; i++) {
++		parser = get_flow_parser(i);
++		if (parser == NULL) {
++			rte_flow_error_set(error, EINVAL,
++					RTE_FLOW_ERROR_TYPE_ATTR,
++					NULL, "NULL attribute.");
++			return -rte_errno;
++		}
++		if (ice_parse_engine(ad, flow, parser, attr->priority,
++				pattern, actions, error)) {
++			*engine = parser->engine;
++			return 0;
++		}
+ 	}
+ 
+-	if (ice_parse_engine(ad, flow, parser, attr->priority,
+-			     pattern, actions, error)) {
+-		*engine = parser->engine;
+-		return 0;
+-	} else {
+-		return -rte_errno;
+-	}
++	return -rte_errno;
+ }
+ 
+ static int
+-- 
+2.43.0
+
