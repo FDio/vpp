@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7f7d4d2_317f7937",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-31T17:32:56Z",
+      "side": 1,
+      "message": "hope proposed changes solve crashes and other problems when hammering requests",
+      "revId": "02d750f2c6b1637e52f404b8a45084180bd63469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ca8ba1b_501bee0d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-31T17:32:56Z",
+      "side": 1,
+      "message": "we need to track session state and send event only when peer closed session and not when app initiated close",
+      "range": {
+        "startLine": 311,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 28
+      },
+      "revId": "02d750f2c6b1637e52f404b8a45084180bd63469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2872ff13_33241d9d",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-31T17:32:56Z",
+      "side": 1,
+      "message": "see above comment and here disconnect always",
+      "range": {
+        "startLine": 443,
+        "startChar": 4,
+        "endLine": 443,
+        "endChar": 39
+      },
+      "revId": "02d750f2c6b1637e52f404b8a45084180bd63469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed4ccf7a_a532bfdd",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 751,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-01-31T17:32:56Z",
+      "side": 1,
+      "message": "this might cause some problems when sending data by ptr to http transport and done prematurely when http transport have some outstanding request (not closed yet), but lets first try changes above",
+      "range": {
+        "startLine": 751,
+        "startChar": 2,
+        "endLine": 751,
+        "endChar": 30
+      },
+      "revId": "02d750f2c6b1637e52f404b8a45084180bd63469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
