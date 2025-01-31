@@ -1357,8 +1357,12 @@ send_ipsec_sa_v5_details (ipsec_sa_t *sa, void *arg)
   mp->last_seq_inbound = clib_host_to_net_u64 (ipsec_sa_get_inb_seq (sa));
 
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && irt)
-    mp->replay_window =
-      clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (irt));
+    {
+      mp->replay_window =
+	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (irt));
+      mp->entry.anti_replay_window_size =
+	clib_host_to_net_u32 (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (irt));
+    }
 
   if (ort)
     thread_index = ort->thread_index;
