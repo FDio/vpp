@@ -589,6 +589,7 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_tun.h
   ipsec/ipsec_types_api.h
   ipsec/ipsec_punt.h
+  ipsec/ipsec_funcs.h
   ipsec/esp.h
   ipsec/ah.h
 )
