@@ -39,6 +39,30 @@
       },
       "revId": "f17eed072ec203f05a03e523936d32658c4f66d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b61bb7ef_324fc9c5",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 825,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-01-31T07:57:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "51d8c462_e569f977",
+      "range": {
+        "startLine": 825,
+        "startChar": 25,
+        "endLine": 825,
+        "endChar": 27
+      },
+      "revId": "f17eed072ec203f05a03e523936d32658c4f66d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
