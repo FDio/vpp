@@ -2575,6 +2575,13 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
 
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
+    {
+      HTTP_DBG (1, "conn closed");
+      svm_fifo_dequeue_drop_all (as->tx_fifo);
+      return 0;
+    }
+
   max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
   sp->max_burst_size = max_burst_sz;
 
