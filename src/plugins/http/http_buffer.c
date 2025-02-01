@@ -67,7 +67,7 @@ buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
 
   max_len = clib_min (bf->len - bf->offset, (u64) max_len);
 
-  vec_validate (bf->segs, _n_segs);
+  vec_validate (bf->segs, _n_segs - 1);
 
   len = svm_fifo_segments (bf->src, 0, bf->segs, &_n_segs, max_len);
   if (len < 0)
