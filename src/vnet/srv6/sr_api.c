@@ -215,7 +215,7 @@ vl_api_sr_policy_mod_v2_t_handler (vl_api_sr_policy_mod_v2_t *mp)
 		   ntohl (mp->sl_index), ntohl (mp->sids.weight));
   vec_free (segments);
 
-  REPLY_MACRO (VL_API_SR_POLICY_MOD_REPLY);
+  REPLY_MACRO (VL_API_SR_POLICY_MOD_V2_REPLY);
 }
 
 static void
