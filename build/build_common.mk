@@ -41,7 +41,7 @@ L := $(WORKSPACE)/archives/install-deps-logs
 $(shell rm -rf $(L) && mkdir -p $(L))
 endif
 
-ifneq ($(shell which cmake3),)
+ifneq ($(shell which cmake3 2>/dev/null),)
 CMAKE?=cmake3
 else
 CMAKE?=cmake

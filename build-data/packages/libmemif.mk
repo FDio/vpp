@@ -14,7 +14,7 @@
 libmemif_source = extras
 libmemif_configure_subdir = libmemif
 
-ifneq ($(shell which cmake3),)
+ifneq ($(shell which cmake3 2>/dev/null),)
 CMAKE?=cmake3
 else
 CMAKE?=cmake
