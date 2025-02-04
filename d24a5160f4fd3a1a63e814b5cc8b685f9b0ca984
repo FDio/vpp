@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "953b77a6_4feb7873",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-02-04T13:24:19Z",
+      "side": 1,
+      "message": "You can use \u0027make checkstyle-commit\u0027 to check the commit message format is correct.\nAlso, a git commit template is available see \u0027.git_commit_template.txt\u0027 - you can add it to your local git config with \u0027git config commit.template .git_commit_template.txt\u0027 and it will be picked up by your editor.",
+      "revId": "d24a5160f4fd3a1a63e814b5cc8b685f9b0ca984",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
