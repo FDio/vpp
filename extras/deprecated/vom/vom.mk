@@ -15,7 +15,7 @@ vom_configure_depend = vpp-install
 vom_source = extras
 vom_configure_subdir = vom
 
-ifneq ($(shell which cmake3),)
+ifneq ($(shell which cmake3 2>/dev/null),)
 CMAKE?=cmake3
 else
 CMAKE?=cmake

@@ -18,7 +18,7 @@ sample-plugin_CPPFLAGS = $(call installed_includes_fn, vpp)
 sample-plugin_LDFLAGS = $(call installed_libs_fn, vpp)
 sample-plugin_PATH = $(call package_install_dir_fn,vpp)/bin
 
-ifneq ($(shell which cmake3),)
+ifneq ($(shell which cmake3 2>/dev/null),)
 CMAKE?=cmake3
 else
 CMAKE?=cmake
