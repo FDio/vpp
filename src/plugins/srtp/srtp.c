@@ -15,6 +15,7 @@
 
 #include <srtp/srtp.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session_inlines.h>
 #include <vnet/session/session.h>
 
 static srtp_main_t srtp_main;
