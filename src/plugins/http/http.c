@@ -14,6 +14,7 @@
  */
 
 #include <http/http.h>
+#include <vnet/session/session_inlines.h>
 #include <vnet/session/session.h>
 #include <http/http_timer.h>
 #include <http/http_status_codes.h>

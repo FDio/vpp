@@ -14,6 +14,7 @@
  */
 
 #include <vnet/session/application_local.h>
+#include <vnet/session/session_inlines.h>
 #include <vnet/session/session.h>
 
 typedef enum ct_segment_flags_

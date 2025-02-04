@@ -481,9 +481,9 @@ void session_transport_half_close (session_t *s);
 void session_transport_close (session_t * s);
 void session_transport_reset (session_t * s);
 void session_transport_cleanup (session_t * s);
-int session_enqueue_notify (session_t *s);
-int session_dequeue_notify (session_t * s);
-int session_enqueue_notify_cl (session_t *s);
+// int session_enqueue_notify (session_t *s);
+// int session_dequeue_notify (session_t * s);
+// int session_enqueue_notify_cl (session_t *s);
 /* Deprecated, use session_program_* functions */
 int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
 /* Deprecated, use session_program_* functions */
@@ -517,20 +517,17 @@ uword unformat_transport_connection (unformat_input_t * input,
  * Interface to transport protos
  */
 
-int session_enqueue_stream_connection (transport_connection_t * tc,
-				       vlib_buffer_t * b, u32 offset,
-				       u8 queue_event, u8 is_in_order);
-int session_enqueue_dgram_connection (session_t * s,
-				      session_dgram_hdr_t * hdr,
-				      vlib_buffer_t * b, u8 proto,
-				      u8 queue_event);
-int session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t *hdr,
-				       vlib_buffer_t *b, u8 proto,
-				       u8 queue_event);
-int session_enqueue_dgram_connection_cl (session_t *s,
-					 session_dgram_hdr_t *hdr,
-					 vlib_buffer_t *b, u8 proto,
-					 u8 queue_event);
+// int session_enqueue_stream_connection (transport_connection_t * tc,
+// 				       vlib_buffer_t * b, u32 offset,
+// 				       u8 queue_event, u8 is_in_order);
+// int session_enqueue_dgram_connection (session_t * s,
+// 				      session_dgram_hdr_t * hdr,
+// 				      vlib_buffer_t * b, u8 proto,
+// 				      u8 queue_event);
+// int session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t
+// *hdr, 				       vlib_buffer_t *b, u8 proto,
+// u8 queue_event); int session_enqueue_dgram_connection_cl (session_t *s,
+// session_dgram_hdr_t *hdr, 					 vlib_buffer_t *b, u8 proto, 					 u8 queue_event);
 int session_stream_connect_notify (transport_connection_t * tc,
 				   session_error_t err);
 int session_dgram_connect_notify (transport_connection_t * tc,
@@ -568,7 +565,8 @@ transport_proto_t session_add_transport_proto (void);
 void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
-u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+// u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32
+// max_bytes);
 
 always_inline void
 session_set_state (session_t *s, session_state_t session_state)
@@ -812,8 +810,8 @@ do {									\
       return clib_error_return (0, "session layer is not enabled");	\
 } while (0)
 
-void session_main_flush_enqueue_events (transport_proto_t transport_proto,
-					u32 thread_index);
+// void session_main_flush_enqueue_events (transport_proto_t transport_proto,
+// 					u32 thread_index);
 void session_queue_run_on_main_thread (vlib_main_t * vm);
 
 /**
