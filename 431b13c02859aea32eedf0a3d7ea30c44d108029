@@ -16,6 +16,29 @@
       "message": "thanks",
       "revId": "431b13c02859aea32eedf0a3d7ea30c44d108029",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66a6cee3_7f1b63e0",
+        "filename": "docs/gettingstarted/progressivevpp/nat.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-02-04T15:21:41Z",
+      "side": 1,
+      "message": "Please use the master re-direct link so that the links always point to the latest docs:  https://fd.io/docs/vpp/master  (instead of https://docs.fd.io/vpp/23.06)",
+      "range": {
+        "startLine": 19,
+        "startChar": 1,
+        "endLine": 21,
+        "endChar": 112
+      },
+      "revId": "431b13c02859aea32eedf0a3d7ea30c44d108029",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
