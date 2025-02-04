@@ -2613,7 +2613,10 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     {
       if (!svm_fifo_max_dequeue_cons (as->tx_fifo))
-	http_disconnect_transport (hc);
+	{
+	  session_transport_closed_notify (&hc->connection);
+	  http_disconnect_transport (hc);
+	}
     }
 
   sent = max_burst_sz - sp->max_burst_size;
