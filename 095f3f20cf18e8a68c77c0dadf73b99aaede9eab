@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2312af4e_b5dcc7bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-02-04T23:16:44Z",
+      "side": 1,
+      "message": "Thanks for addressing - can you give feedback on the impact on performance for the connect-read-disconnect for each HTTP request? Over to a VPP committer to merge.",
+      "revId": "095f3f20cf18e8a68c77c0dadf73b99aaede9eab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
