@@ -24,7 +24,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/udp/udp.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/session/session.h>
+#include <vnet/session/session_inlines.h>
 
 static vlib_error_desc_t udp_error_counters[] = {
 #define udp_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
