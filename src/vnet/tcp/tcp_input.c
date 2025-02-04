@@ -18,7 +18,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
-#include <vnet/session/session.h>
+#include <vnet/session/session_inlines.h>
 #include <math.h>
 
 static vlib_error_desc_t tcp_input_error_counters[] = {

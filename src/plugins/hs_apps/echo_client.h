@@ -19,6 +19,7 @@
 #define __included_echo_client_h__
 
 #include <hs_apps/hs_test.h>
+#include <vnet/session/session_inlines.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 

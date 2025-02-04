@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/elog.h>
 #include <vnet/session/transport.h>
+#include <vnet/session/session_inlines.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
