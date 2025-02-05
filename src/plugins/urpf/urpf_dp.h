@@ -98,8 +98,8 @@ urpf_perform_check_x1 (ip_address_family_t af, vlib_dir_t dir,
       lb_index = ip4_fib_forwarding_lookup (fib_index, &ip->src_address);
 
       /* Pass multicast. */
-      lpass = (ip4_address_is_multicast (&ip->src_address) ||
-	       ip4_address_is_global_broadcast (&ip->src_address));
+      lpass = (ip4_address_is_multicast (&ip->dst_address) ||
+	       ip4_address_is_global_broadcast (&ip->dst_address));
     }
   else
     {
@@ -108,7 +108,7 @@ urpf_perform_check_x1 (ip_address_family_t af, vlib_dir_t dir,
       ip = (ip6_header_t *) h;
 
       lb_index = ip6_fib_table_fwding_lookup (fib_index, &ip->src_address);
-      lpass = ip6_address_is_multicast (&ip->src_address);
+      lpass = ip6_address_is_multicast (&ip->dst_address);
     }
 
   llb = load_balance_get (lb_index);
@@ -157,10 +157,10 @@ urpf_perform_check_x2 (ip_address_family_t af, vlib_dir_t dir,
       ip4_fib_forwarding_lookup_x2 (fib_index0, fib_index1, &ip0->src_address,
 				    &ip1->src_address, &lb_index0, &lb_index1);
       /* Pass multicast. */
-      lpass0 = (ip4_address_is_multicast (&ip0->src_address) ||
-		ip4_address_is_global_broadcast (&ip0->src_address));
-      lpass1 = (ip4_address_is_multicast (&ip1->src_address) ||
-		ip4_address_is_global_broadcast (&ip1->src_address));
+      lpass0 = (ip4_address_is_multicast (&ip0->dst_address) ||
+		ip4_address_is_global_broadcast (&ip0->dst_address));
+      lpass1 = (ip4_address_is_multicast (&ip1->dst_address) ||
+		ip4_address_is_global_broadcast (&ip1->dst_address));
     }
   else
     {
@@ -171,8 +171,8 @@ urpf_perform_check_x2 (ip_address_family_t af, vlib_dir_t dir,
 
       lb_index0 = ip6_fib_table_fwding_lookup (fib_index0, &ip0->src_address);
       lb_index1 = ip6_fib_table_fwding_lookup (fib_index1, &ip1->src_address);
-      lpass0 = ip6_address_is_multicast (&ip0->src_address);
-      lpass1 = ip6_address_is_multicast (&ip1->src_address);
+      lpass0 = ip6_address_is_multicast (&ip0->dst_address);
+      lpass1 = ip6_address_is_multicast (&ip1->dst_address);
     }
 
   llb0 = load_balance_get (lb_index0);
