@@ -72,6 +72,9 @@ transport_connection_t *session_lookup_connection (u32 fib_index,
 						   ip46_address_t * rmt,
 						   u16 lcl_port, u16 rmt_port,
 						   u8 proto, u8 is_ip4);
+transport_connection_t *
+session_lookup_6tuple (u32 fib_index, ip46_address_t *lcl, ip46_address_t *rmt,
+		       u16 lcl_port, u16 rmt_port, u8 proto, u8 is_ip4);
 session_t *session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl,
 				     u16 lcl_port, u8 proto, u8 use_wildcard);
 session_t *session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl,
