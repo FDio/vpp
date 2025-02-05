@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8d10406_41a4fa36",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-02-05T20:54:22Z",
+      "side": 1,
+      "message": "I don\u0027t really have any comment on whether the code changes are the best approach to solve the problem you are observing. But this is definitely not a \"docs\" change. The subject should probably be \"api: vl_msg_api_alloc_internal improved to provide consistent behavior\" instead.",
+      "revId": "34fcd9baf9a56e83adbb1541bb46d74646d22b05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6d686858_266d178c",
