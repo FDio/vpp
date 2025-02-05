@@ -133,6 +133,11 @@ typedef struct tcp_worker_ctx_
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   tcp_wrk_stats_t stats;
+
+  u32 *in_bufs;
+  u16 *in_nexts;
+  u32 *in_to_free;
+  u16 err_counters[TCP_N_ERROR];
 } tcp_worker_ctx_t;
 
 #define tcp_worker_stats_inc(_wrk,_stat,_val) 		\
