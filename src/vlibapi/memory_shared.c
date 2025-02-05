@@ -66,7 +66,10 @@ vl_msg_api_alloc_internal (svm_region_t *vlib_rp, int nbytes, int pool,
   if (shmem_hdr == 0)
     {
       clib_warning ("shared memory header NULL");
-      return 0;
+      if (may_return_null)
+	return NULL;
+      else
+	os_out_of_memory ();
     }
 
   /* account for the msgbuf_t header */
@@ -75,15 +78,19 @@ vl_msg_api_alloc_internal (svm_region_t *vlib_rp, int nbytes, int pool,
   if (shmem_hdr->vl_rings == 0)
     {
       clib_warning ("vl_rings NULL");
-      ASSERT (0);
-      abort ();
+      if (may_return_null)
+	return NULL;
+      else
+	os_out_of_memory ();
     }
 
   if (shmem_hdr->client_rings == 0)
     {
       clib_warning ("client_rings NULL");
-      ASSERT (0);
-      abort ();
+      if (may_return_null)
+	return NULL;
+      else
+	os_out_of_memory ();
     }
 
   ap = pool ? shmem_hdr->vl_rings : shmem_hdr->client_rings;
