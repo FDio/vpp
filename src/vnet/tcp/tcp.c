@@ -1557,6 +1557,12 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (wrk->pending_deq_acked);
       vec_reset_length (wrk->pending_disconnects);
       vec_reset_length (wrk->pending_resets);
+      vec_validate (wrk->in_bufs, 255);
+      vec_validate (wrk->in_nexts, 255);
+      vec_validate (wrk->in_to_free, 255);
+      vec_reset_length (wrk->in_bufs);
+      vec_reset_length (wrk->in_nexts);
+      vec_reset_length (wrk->in_to_free);
       wrk->vm = vlib_get_main_by_index (thread);
       wrk->max_timers_per_loop = 10;
 

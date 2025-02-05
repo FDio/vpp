@@ -275,6 +275,12 @@ typedef struct tcp_errors_
   u32 above_ack_wnd;	/**< Acks for data not sent */
 } tcp_errors_t;
 
+typedef struct tcp_gro_ctx_
+{
+  vlib_buffer_t *b;
+  u8 opts[12];
+} tcp_gro_ctx_t;
+
 typedef struct _tcp_connection
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -386,6 +392,8 @@ typedef struct _tcp_connection
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
 
+  vlib_buffer_t *gro_b;
+  vlib_buffer_t *last_gro_b;
 #define rst_state snd_wl1
 } tcp_connection_t;
 
