@@ -589,7 +589,7 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 					if e != nil {
 						if errors.Is(e, os.ErrDeadlineExceeded) {
 							timed += 1
-						} else if errors.Is(e, err.(*CapsuleParseError)) {
+						} else if errors.Is(e, &CapsuleParseError{}) {
 							invalidData.Add(1)
 						} else {
 							re += 1
