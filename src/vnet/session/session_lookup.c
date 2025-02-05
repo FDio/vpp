@@ -1380,6 +1380,71 @@ session_lookup_connection (u32 fib_index, ip46_address_t * lcl,
 				       lcl_port, rmt_port, proto);
 }
 
+/**
+ * Lookup exact match 6-tuple amongst established and half-open sessions
+ *
+ * Does not look into session rules table and does not try to find a listener.
+ */
+transport_connection_t *
+session_lookup_6tuple (u32 fib_index, ip46_address_t *lcl, ip46_address_t *rmt,
+		       u16 lcl_port, u16 rmt_port, u8 proto, u8 is_ip4)
+{
+  session_table_t *st;
+  session_t *s;
+  int rv;
+
+  if (is_ip4)
+    {
+      session_kv4_t kv4;
+
+      st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+      if (PREDICT_FALSE (!st))
+	return 0;
+
+      /*
+       * Lookup session amongst established ones
+       */
+      make_v4_ss_kv (&kv4, &lcl->ip4, &rmt->ip4, lcl_port, rmt_port, proto);
+      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+      if (rv == 0)
+	{
+	  s = session_get_from_handle (kv4.value);
+	  return transport_get_connection (proto, s->connection_index,
+					   s->thread_index);
+	}
+
+      /*
+       * Try half-open connections
+       */
+      rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
+      if (rv == 0)
+	return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
+    }
+  else
+    {
+      session_kv6_t kv6;
+
+      st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
+      if (PREDICT_FALSE (!st))
+	return 0;
+
+      make_v6_ss_kv (&kv6, &lcl->ip6, &rmt->ip6, lcl_port, rmt_port, proto);
+      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+      if (rv == 0)
+	{
+	  s = session_get_from_handle (kv6.value);
+	  return transport_get_connection (proto, s->connection_index,
+					   s->thread_index);
+	}
+
+      /* Try half-open connections */
+      rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
+      if (rv == 0)
+	return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
+    }
+  return 0;
+}
+
 session_error_t
 vnet_session_rule_add_del (session_rule_add_del_args_t *args)
 {
