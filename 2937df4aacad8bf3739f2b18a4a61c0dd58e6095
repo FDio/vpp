@@ -50,6 +50,23 @@
       "message": "@andrew can you cherry pick this patch.",
       "revId": "2937df4aacad8bf3739f2b18a4a61c0dd58e6095",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "99217786_8847e327",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-02-05T16:56:48Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "2937df4aacad8bf3739f2b18a4a61c0dd58e6095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
