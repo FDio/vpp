@@ -1078,6 +1078,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
 
+  //   ASSERT (written == data_len);
+
   /* Update rcv_nxt */
   if (PREDICT_TRUE (written == data_len))
     {
@@ -1264,6 +1266,12 @@ in_order:
   tcp_program_ack (tc);
 
 done:
+  if (tc->gro_b)
+    {
+      tc->gro_b = 0;
+      /* buffer template does not include this */
+      b->total_length_not_including_first_buffer = 0;
+    }
   return error;
 }
 
@@ -1742,7 +1750,7 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
 
 static void
 tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       vlib_buffer_t **bs, u16 *nexts, u32 n_bufs, u8 is_ip4)
+		       vlib_buffer_t **bs, u32 n_bufs, u8 is_ip4)
 {
   tcp_connection_t *tc;
   tcp_header_t *tcp;
@@ -1756,8 +1764,7 @@ tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 	continue;
 
       t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
-      if (nexts[i] == TCP_INPUT_NEXT_DROP || nexts[i] == TCP_INPUT_NEXT_PUNT ||
-	  nexts[i] == TCP_INPUT_NEXT_RESET)
+      if (vnet_buffer (bs[i])->tcp.connection_index == ~0)
 	{
 	  tc = 0;
 	}
@@ -2799,35 +2806,44 @@ VLIB_REGISTER_NODE (tcp6_drop_node) = {
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
 static void
-tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
+tcp_input_set_error_next (tcp_main_t *tm, tcp_worker_ctx_t *wrk,
+			  vlib_buffer_t *b, u32 bi, u8 is_ip4)
 {
-  if (*error == TCP_ERROR_FILTERED || *error == TCP_ERROR_WRONG_THREAD)
+  if (b->flags & VLIB_BUFFER_IS_TRACED)
+    vnet_buffer (b)->tcp.connection_index = ~0;
+  if ((is_ip4 && tm->punt_unknown4) || (!is_ip4 && tm->punt_unknown6))
     {
-      *next = TCP_INPUT_NEXT_DROP;
-    }
-  else if ((is_ip4 && tm->punt_unknown4) || (!is_ip4 && tm->punt_unknown6))
-    {
-      *next = TCP_INPUT_NEXT_PUNT;
-      *error = TCP_ERROR_PUNT;
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, TCP_INPUT_NEXT_PUNT);
+      tcp_inc_err_counter (wrk->err_counters, TCP_ERROR_PUNT, 1);
     }
   else
     {
-      *next = TCP_INPUT_NEXT_RESET;
-      *error = TCP_ERROR_NO_LISTENER;
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, TCP_INPUT_NEXT_RESET);
+      tcp_inc_err_counter (wrk->err_counters, TCP_ERROR_NO_LISTENER, 1);
     }
 }
 
+typedef union
+{
+  vlib_buffer_t *last_b;
+  u16 gso_size;
+} tcp_gro_t;
+#define vlib_buffer_gro(b) ((tcp_gro_t *) &vnet_buffer2 (b)->gso_size)
+
 static inline void
-tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc,
-			   vlib_buffer_t *b, u16 *next, u16 *err_counters)
+tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_worker_ctx_t *wrk,
+			   tcp_connection_t *tc, vlib_buffer_t *b, u32 bi)
 {
   tcp_header_t *tcp;
   u32 error;
+  u16 next;
   u8 flags;
 
   tcp = tcp_buffer_hdr (b);
   flags = tcp->flags & filter_flags;
-  *next = tm->dispatch_table[tc->state][flags].next;
+  next = tm->dispatch_table[tc->state][flags].next;
   error = tm->dispatch_table[tc->state][flags].error;
   tc->segs_in += 1;
 
@@ -2841,32 +2857,121 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc,
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
-      tcp_inc_err_counter (err_counters, error, 1);
+      vec_add1 (wrk->in_to_free, bi);
+      tcp_inc_err_counter (wrk->err_counters, error, 1);
       if (error == TCP_ERROR_DISPATCH)
 	clib_warning ("tcp conn %u disp error state %U flags %U",
 		      tc->c_c_index, format_tcp_state, tc->state,
 		      format_tcp_flags, (int) flags);
+      return;
     }
+
+  if (0)
+    {
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, next);
+      return;
+    }
+
+  u32 opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  if (tc->state != TCP_STATE_ESTABLISHED || tcp->flags != TCP_FLAG_ACK ||
+      opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
+    {
+      tc->gro_b = 0;
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, next);
+      return;
+    }
+
+  //   if (!tc->gro_b && tc->rcv_nxt != vnet_buffer (b)->tcp.seq_number)
+  //     os_panic ();
+
+  /* NOT great, this should not happen */
+  //   if ((b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID) &&
+  //       b->total_length_not_including_first_buffer && b->next_buffer == 0)
+  //     b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+
+  if (!tc->gro_b)
+    {
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, next);
+      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      return;
+    }
+
+  vlib_buffer_t *pb = tc->gro_b;
+  tcp_header_t *pth = tcp_buffer_hdr (pb);
+  u32 popts_len = (tcp_doff (pth) << 2) - sizeof (tcp_header_t);
+
+  if (vnet_buffer (pb)->tcp.seq_end != vnet_buffer (b)->tcp.seq_number ||
+      vnet_buffer (pb)->tcp.ack_number != vnet_buffer (b)->tcp.ack_number ||
+      (opts_len != popts_len ||
+       clib_memcmp ((const u8 *) (tcp + 1), (const u8 *) (pth + 1),
+		    opts_len)) ||
+      ((u16) ~0) - vnet_buffer (pb)->tcp.data_len < tc->snd_mss)
+    {
+      vec_add1 (wrk->in_bufs, bi);
+      vec_add1 (wrk->in_nexts, next);
+      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      return;
+    }
+
+  /* XXX do on init */
+  if (!(pb->flags & VLIB_BUFFER_NEXT_PRESENT))
+    pb->total_length_not_including_first_buffer = 0;
+
+  pb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  pb->total_length_not_including_first_buffer += vnet_buffer (b)->tcp.data_len;
+  vnet_buffer (pb)->tcp.seq_end += vnet_buffer (b)->tcp.data_len;
+  vnet_buffer (pb)->tcp.data_len += vnet_buffer (b)->tcp.data_len;
+
+  ASSERT (pb->total_length_not_including_first_buffer + pb->current_length <=
+	  vnet_buffer (pb)->tcp.data_len + 200);
+
+  //   while (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
+  //     pb = vlib_get_buffer (wrk->vm, pb->next_buffer);
+  if (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
+    pb = tc->last_gro_b;
+  //     pb = vlib_buffer_gro (pb)->last_b;
+
+  pb->next_buffer = bi;
+  pb->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  //   vlib_buffer_gro (pb)->last_b = b;
+  tc->last_gro_b = b;
+
+  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    os_panic ();
+
+  vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
+  /* XXX make sure length is okay*/
+  b->current_length = vnet_buffer (b)->tcp.data_len;
+
+  /* Not full mss, stop coalescing */
+  tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? tc->gro_b : 0;
 }
 
 always_inline uword
 tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, int is_ip4, u8 is_nolookup)
 {
-  u32 n_left_from, *from, thread_index = vm->thread_index;
+  u32 n_left_from, *from, thread_index = vm->thread_index, *bi;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u16 nexts[VLIB_FRAME_SIZE], *next;
-  u16 err_counters[TCP_N_ERROR] = { 0 };
+  //   u16 nexts[VLIB_FRAME_SIZE], *next;
+  //   u16 err_counters[TCP_N_ERROR] = { 0 };
+  tcp_worker_ctx_t *wrk;
 
-  tcp_update_time_now (tcp_get_worker (thread_index));
+  wrk = tcp_get_worker (thread_index);
+  tcp_update_time_now (wrk);
+  clib_memset (wrk->err_counters, 0, sizeof (wrk->err_counters));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   b = bufs;
-  next = nexts;
+  bi = from;
+  //   next = nexts;
 
   while (n_left_from >= 4)
     {
@@ -2881,7 +2986,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
       }
 
-      next[0] = next[1] = TCP_INPUT_NEXT_DROP;
+      //       next[0] = next[1] = TCP_INPUT_NEXT_DROP;
 
       tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
 				     is_nolookup);
@@ -2896,8 +3001,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], err_counters);
+	  tcp_input_dispatch_buffer (tm, wrk, tc0, b[0], bi[0]);
+	  tcp_input_dispatch_buffer (tm, wrk, tc1, b[1], bi[1]);
 	}
       else
 	{
@@ -2905,31 +3010,28 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0],
-					 err_counters);
+	      tcp_input_dispatch_buffer (tm, wrk, tc0, b[0], bi[0]);
 	    }
 	  else
 	    {
-	      tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	      tcp_inc_err_counter (err_counters, error0, 1);
+	      tcp_input_set_error_next (tm, wrk, b[0], bi[0], is_ip4);
 	    }
 
 	  if (PREDICT_TRUE (tc1 != 0))
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1],
-					 err_counters);
+	      tcp_input_dispatch_buffer (tm, wrk, tc1, b[1], bi[1]);
 	    }
 	  else
 	    {
-	      tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
-	      tcp_inc_err_counter (err_counters, error1, 1);
+	      tcp_input_set_error_next (tm, wrk, b[1], bi[1], is_ip4);
 	    }
 	}
 
       b += 2;
-      next += 2;
+      bi += 2;
+      //       next += 2;
       n_left_from -= 2;
     }
   while (n_left_from > 0)
@@ -2943,31 +3045,39 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      next[0] = TCP_INPUT_NEXT_DROP;
+      //       next[0] = TCP_INPUT_NEXT_DROP;
       tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
 				     is_nolookup);
       if (PREDICT_TRUE (tc0 != 0))
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
+	  tcp_input_dispatch_buffer (tm, wrk, tc0, b[0], bi[0]);
 	}
       else
 	{
-	  tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	  tcp_inc_err_counter (err_counters, error0, 1);
+	  tcp_input_set_error_next (tm, wrk, b[0], bi[0], is_ip4);
 	}
 
       b += 1;
-      next += 1;
+      bi += 1;
+      //       next += 1;
       n_left_from -= 1;
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    tcp_input_trace_frame (vm, node, bufs, nexts, frame->n_vectors, is_ip4);
+    tcp_input_trace_frame (vm, node, bufs, frame->n_vectors, is_ip4);
 
-  tcp_store_err_counters (input, err_counters);
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  tcp_store_err_counters (input, wrk->err_counters);
+  vlib_buffer_enqueue_to_next (vm, node, wrk->in_bufs, wrk->in_nexts,
+			       vec_len (wrk->in_bufs));
+  if (vec_len (wrk->in_to_free))
+    vlib_buffer_free (vm, wrk->in_to_free, vec_len (wrk->in_to_free));
+
+  vec_reset_length (wrk->in_bufs);
+  vec_reset_length (wrk->in_nexts);
+  vec_reset_length (wrk->in_to_free);
+
   return frame->n_vectors;
 }
 
