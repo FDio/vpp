@@ -559,7 +559,9 @@ test-cov:
 
 .PHONY: test-cov-hs
 test-cov-hs:
-	@$(MAKE) -C extras/hs-test build-cov
+	$(eval CC=gcc)
+	$(eval TEST_GCOV=1)
+	$(call test,vpp_gcov)
 	@$(MAKE) -C extras/hs-test test-cov
 
 .PHONY: test-cov-both
