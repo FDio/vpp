@@ -14,9 +14,60 @@ clib_array_mask_u32_wrapper (u32 *src, u32 mask, u32 n_elts)
 
 typedef struct
 {
+  u32 flag;
+  u64 bitmap[4];
+  u64 expected_mask[4];
+} array_masked_flag_test_t;
+
+typedef struct
+{
+  u32 flag;
+  u64 expected_mask[4];
+} array_flag_test_t;
+
+typedef struct
+{
   u32 mask;
   u32 expected[256];
 } array_mask_test_t;
+
+static array_masked_flag_test_t masked_flag_tests[] = {
+  { .flag = 0x0,
+    .bitmap = { 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF },
+    .expected_mask = { 0, 0, 0, 0 } },
+  { .flag = 0x4,
+    .bitmap = { 0xFFFFFFFFFFFFFFFF, 0, 0, 0 },
+    .expected_mask = { 0xA0A0A0A0A0A0A0A0, 0, 0, 0 } },
+  { .flag = 0x8,
+    .bitmap = { 0xAAAAAAAAAAAAAAAA, 0, 0, 0 },
+    .expected_mask = { 0xAA00AA00AA00AA00, 0, 0, 0 } },
+  { .flag = 0xF,
+    .bitmap = { 0x5555555555555555, 0xFFFFFFFFFFFFFFFF, 0, 0 },
+    .expected_mask = { 0, 0xAAAAAAAAAAAAAAAA, 0, 0 } },
+  { .flag = 0x1,
+    .bitmap = { 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF },
+    .expected_mask = { 0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA,
+		       0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA } }
+};
+
+static array_flag_test_t flag_tests[] = {
+  // Test case 1: All zeros (no flags set, bitmap should be all zero)
+  { .flag = 0x1, // Arbitrary flag, but no elements should match
+    .expected_mask = { 0x0, 0x0, 0x0, 0x0 } },
+  // Test case 2: All flags set (every element matches the flag)
+  { .flag = 0xF, // Assume all elements contain this flag
+    .expected_mask = { 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		       0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF } },
+  // Test case 3: Alternating pattern (every other element set)
+  { .flag = 0x4, // Flag set in alternating elements
+    .expected_mask = { 0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA,
+		       0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA } },
+  // Test case 4: Edge cases (only first and last element set)
+  { .flag = 0x8, // Flag set only at the first and last positions
+    .expected_mask = { 0x0000000000000001, 0x0, 0x0, 0x8000000000000000 } }
+};
 
 static array_mask_test_t tests[] = {
   /* mask values 0x1, output array of alternating 0 1 0 1 .. */
@@ -78,6 +129,92 @@ static array_mask_test_t tests[] = {
 		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 } },
   /* mask values 0x1, output array of 1, 0, 1, 0,.. */
   { .mask = 1, .expected = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 } },
+};
+
+static clib_error_t *
+test_clib_array_masked_test_flag_u32 (clib_error_t *err)
+{
+  u32 vec[256] = { 0 };
+  u64 result_mask[4];
+  array_masked_flag_test_t *t;
+
+  for (int i = 0; i < ARRAY_LEN (masked_flag_tests); i++)
+    {
+      t = masked_flag_tests + i;
+      // Fill test vector with the flag at alternating positions
+      for (int j = 0; j < 256; j++)
+	{
+	  if (j & 1)
+	    vec[j] = t->flag & j;
+	}
+      clib_array_mask_flag_test_u32 (t->bitmap, vec, t->flag, result_mask,
+				     ARRAY_LEN (vec));
+      for (int j = 0; j < ARRAY_LEN (result_mask); j++)
+	if (result_mask[j] != t->expected_mask[j])
+	  return clib_error_return (
+	    err,
+	    "testcase %u failed at "
+	    "(bitmap[%u] = 0x%llx, expected[%u] = 0x%llx)",
+	    i, j, result_mask[j], j, t->expected_mask[j]);
+    }
+  return err;
+}
+
+REGISTER_TEST (clib_array_masked_test_flag_u32) = {
+  .name = "clib_array_masked_test_flag_u32",
+  .fn = test_clib_array_masked_test_flag_u32,
+};
+
+static clib_error_t *
+test_clib_array_test_flag_u32 (clib_error_t *err)
+{
+  u32 i, j;
+  array_flag_test_t *t;
+  u32 test_array[256];
+  u64 bitmap[4] = { 0 };
+
+  for (i = 0; i < ARRAY_LEN (flag_tests); i++)
+    {
+      t = flag_tests + i;
+      switch (i)
+	{
+	case 0: /* Case 0: All elements are zero (no bits should be set in
+		   bitmap) */
+	  memset (test_array, 0, sizeof (test_array));
+	  break;
+	case 1: /* Case 1: All elements have the flag set (all bits should be
+		   set) */
+	  for (j = 0; j < ARRAY_LEN (test_array); j++)
+	    test_array[j] = t->flag;
+	  break;
+	case 2: /* Case 3: Alternating pattern (010101...) */
+	  for (j = 0; j < ARRAY_LEN (test_array); j++)
+	    test_array[j] = (j & 1) ? t->flag : 0;
+	  break;
+	case 3: /* Case 4: Edge cases - first and last element */
+	  test_array[0] = t->flag;
+	  test_array[255] = t->flag;
+	  break;
+	default:
+	  return clib_error_return (err, "wrong testcase");
+	}
+
+      clib_array_test_flag_u32 (test_array, t->flag, bitmap,
+				ARRAY_LEN (test_array));
+      for (j = 0; j < ARRAY_LEN (bitmap); j++)
+	if (bitmap[j] != t->expected_mask[j])
+	  return clib_error_return (
+	    err,
+	    "testcase %u failed at "
+	    "(bitmap[%u] = 0x%llx, expected[%u] = 0x%llx)",
+	    i, j, bitmap[j], j, t->expected_mask[j]);
+    }
+  return err;
+}
+
+REGISTER_TEST (clib_array_test_flag_u32) = {
+  .name = "clib_array_test_flag_u32",
+  .fn = test_clib_array_test_flag_u32,
 };
 
 static clib_error_t *
