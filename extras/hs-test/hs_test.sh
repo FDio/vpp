@@ -13,6 +13,7 @@ debug_build=
 ginkgo_args=
 tc_names=()
 dryrun=
+no_color=
 
 for i in "$@"
 do
@@ -89,6 +90,12 @@ case "${i}" in
         if [ "$leak_check" = "true" ]; then
             args="$args -leak_check"
             leak_check_set=1
+        fi
+        ;;
+    --no_color=*)
+        no_color="${i#*=}"
+        if [ "$no_color" = "true" ]; then
+            ginkgo_args="$ginkgo_args --no-color"
         fi
         ;;
 esac

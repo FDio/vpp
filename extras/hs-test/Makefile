@@ -57,6 +57,10 @@ ifeq ($(ARCH),)
 ARCH=$(shell dpkg --print-architecture)
 endif
 
+ifeq ($(NO_COLOR),)
+VERBOSE=false
+endif
+
 FORCE_BUILD?=true
 
 .PHONY: help
@@ -106,13 +110,13 @@ build-vpp-debug:
 
 .PHONY: build-vpp-gcov
 build-vpp-gcov:
-	@$(MAKE) -C ../.. build-vpp-gcov
+	@$(MAKE) -C ../.. build-gcov
 
 .build.ok: build
 	@touch .build.ok
 
-.build.cov.ok: build-vpp-gcov
-	@touch .build.cov.ok
+.build.cov.ok: build-cov
+	@touch .build.ok
 
 .build_debug.ok: build-debug
 	@touch .build.ok
@@ -135,13 +139,18 @@ test-debug: .deps.ok .build_debug.ok
 		--cpu0=$(CPU0) --dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
 
+.PHONY: wipe-lcov
+wipe-lcov:
+	@lcov --zerocounters --directory $(WS_ROOT)/build-root/build-vpp_gcov-native/vpp
+
 .PHONY: test-cov
-test-leak: FORCE_BUILD=false
-test-cov: .deps.ok .build.cov.ok
+test-cov: FORCE_BUILD=false
+test-cov: .deps.ok .build.cov.ok wipe-lcov
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN); \
 		./script/compress.sh $$?
+	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
