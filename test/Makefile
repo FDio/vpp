@@ -389,23 +389,20 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/vnet/ethernet/ethernet_format_fns.h" \
 					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
 
-COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/http/*.h"
-
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
-	@lcov --ignore-errors --capture \
+	@lcov --ignore-errors unused,empty,mismatch,gcov --capture \
 		--directory $(VPP_BUILD_DIR) \
 		--output-file $(BUILD_COV_DIR)/coverage$(HS_TEST).info
 	@test -z "$(EXTERN_COV_DIR)" || \
-		lcov --ignore-errors --capture \
+		lcov --ignore-errors unused,empty,mismatch,gcov --capture \
 		--directory $(EXTERN_COV_DIR) \
 		--output-file $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info
-	@lcov --ignore-errors --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
+	@lcov --ignore-errors unused,empty,mismatch,gcov --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
 		$(COV_REM_NOT_CODE) \
 		$(COV_REM_DRIVERS)  \
 		$(COV_REM_TODO_NO_TEST) \
 		$(COV_REM_UNUSED_FEAT) \
-		$(COV_REM_ALT_TEST) \
 		-o $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info \
 		--output-directory $(BUILD_COV_DIR)/html

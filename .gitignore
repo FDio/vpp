@@ -16,7 +16,7 @@
 /build-root/*.tar.xz
 /build-root/*.changes
 /build-root/rpmbuild/
-/build-root/test-coverage/
+/build-root/test-coverage*/
 /build-root/test/
 /build-config.mk
 /build/external/*.tar.gz
