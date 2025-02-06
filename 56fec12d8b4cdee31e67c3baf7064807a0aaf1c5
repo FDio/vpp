@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "56fec12d8b4cdee31e67c3baf7064807a0aaf1c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "656ab154_ee0ae4d0",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-02-06T22:04:50Z",
+      "side": 1,
+      "message": "c style comments? :)",
+      "revId": "56fec12d8b4cdee31e67c3baf7064807a0aaf1c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
