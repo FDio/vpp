@@ -100,8 +100,9 @@ dpdk_device_setup (dpdk_device_t * xd)
       RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
   if (xd->conf.disable_tx_checksum_offload == 0)
-    txo |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
-	   RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
+    txo |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+	   RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+	   RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
 
   if (xd->conf.disable_multi_seg == 0)
     {
