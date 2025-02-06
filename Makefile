@@ -297,7 +297,7 @@ help:
 	@echo " build                - build debug binaries"
 	@echo " build-release        - build release binaries"
 	@echo " build-coverity       - build coverity artifacts"
-	@echo " build-vpp-gcov 		 - build gcov vpp only"
+	@echo " build-gcov 		 - build gcov vpp only"
 	@echo " rebuild              - wipe and build debug binaries"
 	@echo " rebuild-release      - wipe and build release binaries"
 	@echo " run                  - run debug binary"
@@ -452,7 +452,7 @@ endif
 install-deps: install-dep
 
 define make
-	@$(MAKE) -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
+	@$(MAKE) -C $(BR) CC=$(CC) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
 $(BR)/scripts/.version:
@@ -507,9 +507,10 @@ rebuild: wipe build
 build-release: $(BR)/.deps.ok
 	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
-.PHONY: build-vpp-gcov
-build-vpp-gcov:
-	$(call test,vpp_gcov)
+.PHONY: build-gcov
+build-gcov: $(BR)/.deps.ok
+	$(eval CC=gcc)
+	$(call make,vpp_gcov,$(addsuffix -install,$(TARGETS)))
 
 .PHONY: wipe-release
 wipe-release: test-wipe $(BR)/.deps.ok
@@ -559,9 +560,13 @@ test-cov:
 	$(call test,vpp_gcov,cov)
 
 .PHONY: test-cov-hs
-test-cov-hs:
-	@$(MAKE) -C extras/hs-test build-cov
-	@$(MAKE) -C extras/hs-test test-cov
+test-cov-hs: build-gcov
+	@$(MAKE) -C extras/hs-test test-cov \
+	VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
+
+.PHONY: test-cov-post-standalone
+test-cov-post-standalone:
+	$(MAKE) -C test cov-post VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-both
 test-cov-both:

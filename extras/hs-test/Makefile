@@ -57,6 +57,10 @@ ifeq ($(ARCH),)
 ARCH=$(shell dpkg --print-architecture)
 endif
 
+ifeq ($(NO_COLOR),)
+VERBOSE=false
+endif
+
 FORCE_BUILD?=true
 
 .PHONY: help
@@ -91,6 +95,7 @@ help:
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo " CPU0=[true|false]        - use cpu0"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
+	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 
 .PHONY: list-tests
 list-tests:
@@ -107,13 +112,13 @@ build-vpp-debug:
 
 .PHONY: build-vpp-gcov
 build-vpp-gcov:
-	@$(MAKE) -C ../.. build-vpp-gcov
+	@$(MAKE) -C ../.. build-gcov
 
 .build.ok: build
 	@touch .build.ok
 
-.build.cov.ok: build-vpp-gcov
-	@touch .build.cov.ok
+.build.cov.ok: build-cov
+	@touch .build.ok
 
 .build_debug.ok: build-debug
 	@touch .build.ok
@@ -124,7 +129,7 @@ test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN) --skip=$(SKIP); \
+		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -133,16 +138,21 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
 		./script/compress.sh $$?
 
+.PHONY: wipe-lcov
+wipe-lcov:
+	@lcov --zerocounters --directory $(WS_ROOT)/build-root/build-vpp_gcov-native/vpp
+
 .PHONY: test-cov
-test-leak: FORCE_BUILD=false
-test-cov: .deps.ok .build.cov.ok
+test-cov: FORCE_BUILD=false
+test-cov: .deps.ok .build.cov.ok wipe-lcov
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP); \
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
 		./script/compress.sh $$?
+	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
