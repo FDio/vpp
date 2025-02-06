@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -119,11 +120,15 @@ func (c *CpuAllocatorT) readCpus() error {
 			defer file.Close()
 
 			// get numa node cores
+			additionalRange := true
 			sc := bufio.NewScanner(file)
 			sc.Scan()
 			line := sc.Text()
 			_, err = fmt.Sscanf(line, "%d-%d,%d-%d", &third, &fourth, &fifth, &sixth)
-			if err != nil {
+			if err == io.ErrUnexpectedEOF {
+				// our assumption of multiple ranges might be wrong
+				additionalRange = false
+			} else if err != nil {
 				return err
 			}
 
@@ -135,8 +140,10 @@ func (c *CpuAllocatorT) readCpus() error {
 				tmpCpus = tmpCpus[1:]
 			}
 
-			// get numa node cores from second range
-			tmpCpus = iterateAndAppend(fifth, sixth, tmpCpus)
+			if additionalRange {
+				// get numa node cores from second range
+				tmpCpus = iterateAndAppend(fifth, sixth, tmpCpus)
+			}
 
 			// make c.cpus divisible by maxContainerCount * nCpus, so we don't have to check which numa will be used
 			// and we can use offsets
