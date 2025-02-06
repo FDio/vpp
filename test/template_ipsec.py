@@ -16,6 +16,8 @@ from scapy.layers.inet6 import (
     IPv6ExtHdrDestOpt,
 )
 
+from scapy.layers.isakmp import ISAKMP
+
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
@@ -3246,11 +3248,22 @@ class IPSecIPv6Fwd(VppTestCase):
             payload = self.info_to_payload(info)
             # create the packet itself
             p = (
-                Ether(dst=src_if.local_mac, src=src_if.remote_mac)
-                / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
-                / UDP(sport=src_prt, dport=dst_prt)
-                / Raw(payload)
+                (
+                    Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                    / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+                    / UDP(sport=src_prt, dport=dst_prt)
+                    / ISAKMP()
+                    / Raw(payload)
+                )
+                if (src_prt == 500 or src_prt == 4500)
+                else (
+                    Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                    / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+                    / UDP(sport=src_prt, dport=dst_prt)
+                    / Raw(payload)
+                )
             )
+
             # store a copy of the packet in the packet info
             info.data = p.copy()
             # append the packet to the list
