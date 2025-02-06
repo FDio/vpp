@@ -854,39 +854,43 @@ ipsec6_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im,
       &tuples[0], &ip0->src_address, &ip0->dst_address,
       clib_net_to_host_u32 (esp0->spi), IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT);
 
-  if (im->fp_spd_ipv6_in_is_enabled &&
-      PREDICT_TRUE (INDEX_INVALID != spd0->fp_spd.ip6_in_lookup_hash_idx))
+  if (esp0->spi != 0)
     {
-      ipsec_fp_in_policy_match_n (&spd0->fp_spd, ip_v6, tuples, policies, 1);
-      p0 = policies[0];
-    }
-  else /* linear search if fast path is not enabled */
-    {
-      p0 = ipsec6_input_protect_policy_match (
-	spd0, &ip0->src_address, &ip0->dst_address,
-	clib_net_to_host_u32 (esp0->spi));
-    }
-  has_space0 = vlib_buffer_has_space (b[0], (clib_address_t) (esp0 + 1) -
-					      (clib_address_t) ip0);
+      if (im->fp_spd_ipv6_in_is_enabled &&
+	  PREDICT_TRUE (INDEX_INVALID != spd0->fp_spd.ip6_in_lookup_hash_idx))
+	{
+	  ipsec_fp_in_policy_match_n (&spd0->fp_spd, ip_v6, tuples, policies,
+				      1);
+	  p0 = policies[0];
+	}
+      else /* linear search if fast path is not enabled */
+	{
+	  p0 = ipsec6_input_protect_policy_match (
+	    spd0, &ip0->src_address, &ip0->dst_address,
+	    clib_net_to_host_u32 (esp0->spi));
+	}
+      has_space0 = vlib_buffer_has_space (b[0], (clib_address_t) (esp0 + 1) -
+						  (clib_address_t) ip0);
 
-  if (PREDICT_TRUE ((p0 != NULL) && (has_space0)))
-    {
-      *ipsec_matched += 1;
+      if (PREDICT_TRUE ((p0 != NULL) && (has_space0)))
+	{
+	  *ipsec_matched += 1;
 
-      pi0 = p0 - im->policies;
-      vlib_increment_combined_counter (
-	&ipsec_spd_policy_counters, thread_index, pi0, 1,
-	clib_net_to_host_u16 (ip0->payload_length));
+	  pi0 = p0 - im->policies;
+	  vlib_increment_combined_counter (
+	    &ipsec_spd_policy_counters, thread_index, pi0, 1,
+	    clib_net_to_host_u16 (ip0->payload_length));
 
-      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
-      next[0] = im->esp6_decrypt_next_index;
-      vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
-      goto trace0;
-    }
-  else
-    {
-      p0 = NULL;
-      pi0 = ~0;
+	  vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+	  next[0] = im->esp6_decrypt_next_index;
+	  vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
+	  goto trace0;
+	}
+      else
+	{
+	  p0 = NULL;
+	  pi0 = ~0;
+	}
     }
 
   if (im->fp_spd_ipv6_in_is_enabled &&
@@ -999,7 +1003,6 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	  ip4_ipsec_config_t *c0;
 	  ipsec_spd_t *spd0;
 	  ipsec_policy_t *p0 = 0;
-	  ah_header_t *ah0;
 	  u32 header_size = sizeof (ip0[0]);
 	  u64 ipsec_unprocessed = 0, ipsec_matched = 0;
 	  u64 ipsec_dropped = 0, ipsec_bypassed = 0;
@@ -1018,9 +1021,21 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	  spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
 	  ip0 = vlib_buffer_get_current (b0);
-	  ah0 = (ah_header_t *) ((u8 *) ip0 + header_size);
 
-	  if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP)
+	  if (ip0->protocol == IP_PROTOCOL_UDP)
+	  {
+	    udp_header_t *udp0 = (udp_header_t *) ((u8 *) ip0 + header_size);
+
+	    /* RFC5996 Section 2.23: "Port 4500 is reserved for
+	    * UDP-encapsulated ESP and IKE."
+	    * RFC5996 Section 3.1: "IKE messages use UDP ports 500 and/or
+	    4500"
+	    */
+	    if ((clib_host_to_net_u16 (500) == udp0->dst_port) ||
+		(clib_host_to_net_u16 (4500) == udp0->dst_port))
+	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
+	  }
+	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP)
 	  esp0 = (esp_header_t *) ((u8 *) ip0 + header_size);
 
 	  if (esp0 != NULL)
@@ -1032,6 +1047,8 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	  }
 	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
 	    {
+	    ah_header_t *ah0 = (ah_header_t *) ((u8 *) ip0 + header_size);
+
 	    p0 = ipsec6_input_protect_policy_match (
 	      spd0, &ip0->src_address, &ip0->dst_address,
 	      clib_net_to_host_u32 (ah0->spi));
