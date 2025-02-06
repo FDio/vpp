@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2290e400_d7f15609",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-02-06T08:16:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b186c166_be25b7e5",
+      "range": {
+        "startLine": 222,
+        "startChar": 6,
+        "endLine": 226,
+        "endChar": 2
+      },
+      "revId": "45aba1052b80ef2f1b9454d30c29daf4db83d508",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a53e3f42_72a26cba",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-02-05T17:29:08Z",
       "side": 1,
       "message": "this is partly binary data not sure if it make sense logging it here, at least do not use clib_warning",
+      "range": {
+        "startLine": 257,
+        "startChar": 5,
+        "endLine": 258,
+        "endChar": 36
+      },
+      "revId": "45aba1052b80ef2f1b9454d30c29daf4db83d508",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c2f4b92_50c15839",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-02-06T08:16:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a53e3f42_72a26cba",
       "range": {
         "startLine": 257,
         "startChar": 5,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "47aac289_b8beb470",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-02-06T08:16:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cda3f3c5_80bfd0e3",
+      "range": {
+        "startLine": 324,
+        "startChar": 2,
+        "endLine": 324,
+        "endChar": 43
+      },
+      "revId": "45aba1052b80ef2f1b9454d30c29daf4db83d508",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5658c8d9_c36bd45a",
@@ -83,6 +155,30 @@
       "writtenOn": "2025-02-05T17:29:08Z",
       "side": 1,
       "message": "it\u0027s not stored here",
+      "range": {
+        "startLine": 898,
+        "startChar": 18,
+        "endLine": 898,
+        "endChar": 26
+      },
+      "revId": "45aba1052b80ef2f1b9454d30c29daf4db83d508",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8311c33b_954d5eaf",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 898,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-02-06T08:16:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5658c8d9_c36bd45a",
       "range": {
         "startLine": 898,
         "startChar": 18,
