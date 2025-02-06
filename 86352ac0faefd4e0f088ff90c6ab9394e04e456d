@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "180cadc8_a4a86a31",
+        "filename": "extras/hs-test/infra/cpu.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-06T14:39:49Z",
+      "side": 1,
+      "message": "it works fine with something like \"1-5\", but content of cpulist can be something like \"1,5-7\", I guess it will panic in iterateAndAppend in this case... so we should rather implement more robust solution",
+      "revId": "86352ac0faefd4e0f088ff90c6ab9394e04e456d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
