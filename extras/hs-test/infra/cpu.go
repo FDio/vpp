@@ -93,7 +93,7 @@ func (c *CpuAllocatorT) readCpus() error {
 		c.cpus = iterateAndAppend(first, second, c.cpus)
 		c.cpus = iterateAndAppend(third, fourth, c.cpus)
 	} else if NumaAwareCpuAlloc {
-		var fifth, sixth int
+		var range1, range2 int
 		var tmpCpus []int
 
 		file, err := os.Open("/sys/devices/system/node/online")
@@ -122,21 +122,27 @@ func (c *CpuAllocatorT) readCpus() error {
 			sc := bufio.NewScanner(file)
 			sc.Scan()
 			line := sc.Text()
-			_, err = fmt.Sscanf(line, "%d-%d,%d-%d", &third, &fourth, &fifth, &sixth)
-			if err != nil {
-				return err
-			}
 
-			// get numa node cores from first range
-			tmpCpus = iterateAndAppend(third, fourth, tmpCpus)
+			for _, coreRange := range strings.Split(line, ",") {
+				if strings.IndexRune(coreRange, '-') != -1 {
+					_, err = fmt.Sscanf(coreRange, "%d-%d", &range1, &range2)
+					if err != nil {
+						return err
+					}
+					tmpCpus = iterateAndAppend(range1, range2, tmpCpus)
+				} else {
+					_, err = fmt.Sscanf(coreRange, "%d", &range1)
+					if err != nil {
+						return err
+					}
+					tmpCpus = append(tmpCpus, range1)
+				}
+			}
 
 			// discard cpu 0
 			if tmpCpus[0] == 0 && !*UseCpu0 {
 				tmpCpus = tmpCpus[1:]
 			}
-
-			// get numa node cores from second range
-			tmpCpus = iterateAndAppend(fifth, sixth, tmpCpus)
 
 			// make c.cpus divisible by maxContainerCount * nCpus, so we don't have to check which numa will be used
 			// and we can use offsets
