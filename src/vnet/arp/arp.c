@@ -38,6 +38,11 @@
  * to MAC Address lookup).
  */
 
+VLIB_REGISTER_LOG_CLASS (arp_log, static) = {
+  .class_name = "arp",
+};
+#define log_err(fmt, ...) vlib_log_err (arp_log.class, fmt, ##__VA_ARGS__)
+
 /**
  * @brief Per-interface ARP configuration and state
  */
@@ -261,15 +266,20 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			    ARP_ERROR_L3_DST_ADDRESS_UNSET :
 			    error0);
 
+	  log_err ("ARP error0 %d", error0);
 	  if (ARP_ERROR_REPLIES_SENT == error0)
 	    {
 	      next0 = ARP_INPUT_NEXT_DISABLED;
 	      vnet_feature_arc_start (am->feature_arc_index,
 				      vnet_buffer (p0)->sw_if_index[VLIB_RX],
 				      &next0, p0);
+	      log_err ("ARP arc started %d", error0);
 	    }
 	  else
-	    p0->error = node->errors[error0];
+	    {
+	      p0->error = node->errors[error0];
+	      log_err ("ARP bumped counter %d", error0);
+	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -832,9 +842,15 @@ arp_enable_disable_interface (ip4_main_t * im,
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   if (is_enable)
-    arp_enable (am, sw_if_index);
+    {
+      arp_enable (am, sw_if_index);
+      log_err ("ARP enabled on interface %d", sw_if_index);
+    }
   else
-    arp_disable (am, sw_if_index);
+    {
+      arp_disable (am, sw_if_index);
+      log_err ("ARP disabled on interface %d", sw_if_index);
+    }
 }
 
 /*
