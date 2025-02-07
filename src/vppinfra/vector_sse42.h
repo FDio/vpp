@@ -57,7 +57,7 @@ t##s##x##c##_splat (t##s x)						\
 \
 static_always_inline t##s##x##c						\
 t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm_loadu_si128 (p); }				\
+{ return (t##s##x##c) _mm_loadu_si128 ((const __m128i_u *) p); }				\
 \
 static_always_inline void						\
 t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\

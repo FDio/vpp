@@ -162,7 +162,10 @@ _vec_prealloc (void **vp, uword n_elts, uword hdr_sz, uword align, void *heap,
 	       uword elt_sz)
 {
   const vec_attr_t va = {
-    .elt_sz = elt_sz, .hdr_sz = hdr_sz, .align = align, .heap = heap
+    .heap = heap,
+    .elt_sz = (u32) elt_sz,
+    .hdr_sz = (u16) hdr_sz,
+    .align = (u16) align
   };
   void *v;
 
@@ -250,18 +253,22 @@ _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
   void *v = *vp;
   if (PREDICT_FALSE (v == 0))
     {
-      const vec_attr_t va = { .elt_sz = elt_sz,
-			      .align = align,
-			      .hdr_sz = hdr_sz };
+      const vec_attr_t va = {
+        .elt_sz = (u32) elt_sz,
+        .hdr_sz = (u16) hdr_sz,
+        .align = (u16) align,
+      };
       *vp = _vec_alloc_internal (n_add, &va);
       return;
     }
 
   if (PREDICT_FALSE (_vec_find (v)->grow_elts < n_add))
     {
-      const vec_attr_t va = { .elt_sz = elt_sz,
-			      .align = align,
-			      .hdr_sz = hdr_sz };
+      const vec_attr_t va = {
+        .elt_sz = (u32) elt_sz,
+        .hdr_sz = (u16) hdr_sz,
+        .align = (u16) align
+      };
       v = _vec_resize_internal (v, _vec_len (v) + n_add, &va);
       _vec_update_pointer (vp, v);
     }
@@ -410,7 +417,10 @@ static_always_inline void *
 _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
 {
   uword len = vec_len (v);
-  const vec_attr_t va = { .elt_sz = elt_sz, .align = align };
+  const vec_attr_t va = {
+    .elt_sz = (u32) elt_sz,
+    .align = (u16) align
+  };
   void *n = 0;
 
   if (len)
@@ -459,7 +469,10 @@ _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
 static_always_inline void
 _vec_clone (void **v1p, void *v2, uword align, uword elt_sz)
 {
-  const vec_attr_t va = { .elt_sz = elt_sz, .align = align };
+  const vec_attr_t va = {
+    .elt_sz = (u32) elt_sz,
+    .align = (u16) align
+  };
   v1p[0] = _vec_alloc_internal (vec_len (v2), &va);
 }
 #define vec_clone(NEW_V, OLD_V)                                               \
@@ -478,7 +491,7 @@ _vec_clone (void **v1p, void *v2, uword align, uword elt_sz)
 always_inline void
 _vec_zero_elts (void *v, uword first, uword count, uword elt_sz)
 {
-  clib_memset_u8 (v + (first * elt_sz), 0, count * elt_sz);
+  clib_memset_u8 ((u8 *) v + (first * elt_sz), 0, count * elt_sz);
 }
 #define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, sizeof ((V)[0]))
 

@@ -63,7 +63,7 @@ typedef struct
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
-#define VEC_MIN_ALIGN 8
+#define VEC_MIN_ALIGN 8ULL
 
 /** \brief Find the vector header
 
@@ -102,7 +102,7 @@ vec_get_header_size (void *v)
 always_inline void *
 vec_header (void *v)
 {
-  return v ? v - vec_get_header_size (v) : 0;
+  return v ? (u8 *) v - vec_get_header_size (v) : 0;
 }
 
 /** \brief Find the end of user vector header
@@ -114,7 +114,7 @@ vec_header (void *v)
 always_inline void *
 vec_header_end (void *v)
 {
-  return v + vec_get_header_size (v);
+  return (u8 *) v + vec_get_header_size (v);
 }
 
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
@@ -189,9 +189,9 @@ _vec_set_len (void *v, uword len, uword elt_sz)
   uword grow_elts = _vec_find (v)->grow_elts;
 
   if (len > old_len)
-    clib_mem_unpoison (v + old_len * elt_sz, (len - old_len) * elt_sz);
+    clib_mem_unpoison ((u8 *) v + old_len * elt_sz, (len - old_len) * elt_sz);
   else if (len < old_len)
-    clib_mem_poison (v + len * elt_sz, (old_len - len) * elt_sz);
+    clib_mem_poison ((u8 *) v + len * elt_sz, (old_len - len) * elt_sz);
 
   _vec_set_grow_elts (v, old_len + grow_elts - len);
   _vec_find (v)->len = len;
