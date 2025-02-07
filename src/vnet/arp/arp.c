@@ -38,6 +38,11 @@
  * to MAC Address lookup).
  */
 
+VLIB_REGISTER_LOG_CLASS (arp_log, static) = {
+  .class_name = "arp",
+};
+#define log_err(fmt,...) vlib_log_err(arp_log.class, fmt, __VA_ARGS__)
+
 /**
  * @brief Per-interface ARP configuration and state
  */
@@ -832,9 +837,15 @@ arp_enable_disable_interface (ip4_main_t * im,
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   if (is_enable)
-    arp_enable (am, sw_if_index);
+    {
+      arp_enable (am, sw_if_index);
+      log_err ("ARP enabled");
+    }
   else
-    arp_disable (am, sw_if_index);
+    {
+      arp_disable (am, sw_if_index);
+      log_err ("ARP disabled");
+    }
 }
 
 /*
