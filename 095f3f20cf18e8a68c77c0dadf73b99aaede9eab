@@ -16,6 +16,23 @@
       "message": "Thanks for addressing - can you give feedback on the impact on performance for the connect-read-disconnect for each HTTP request? Over to a VPP committer to merge.",
       "revId": "095f3f20cf18e8a68c77c0dadf73b99aaede9eab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75a9fe7a_e70f78ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3176
+      },
+      "writtenOn": "2025-02-07T12:15:42Z",
+      "side": 1,
+      "message": "On my machine, build release, set of metrics ^/sys, average request time:\nmaster: 0.000019 sec\nthis patch: 0.000450 sec\n\nFor queries with a large number of metrics, the performance impact will decrease, as a lot of time is spent on output.\n\nConst values:\nstat_segment_connect: 0.000078 sec\nstat_segment_disconnect: 0.000022 sec\n\nSo about 0.000300 sec is stat_segment_dump and stat_segment_ls.",
+      "revId": "095f3f20cf18e8a68c77c0dadf73b99aaede9eab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
