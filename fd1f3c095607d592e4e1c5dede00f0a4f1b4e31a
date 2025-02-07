@@ -83,6 +83,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cd706ce_ba314dc4",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 3176
+      },
+      "writtenOn": "2025-02-07T12:58:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e75edd04_f5d19d69",
+      "range": {
+        "startLine": 244,
+        "startChar": 6,
+        "endLine": 244,
+        "endChar": 10
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "033af4dd_aaa26606",
@@ -120,6 +144,30 @@
       "side": 1,
       "message": "Fixed in Patchset 5",
       "parentUuid": "033af4dd_aaa26606",
+      "range": {
+        "startLine": 372,
+        "startChar": 6,
+        "endLine": 372,
+        "endChar": 9
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "765c3a59_d521116b",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 3176
+      },
+      "writtenOn": "2025-02-07T12:58:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d0b852d5_51b65d23",
       "range": {
         "startLine": 372,
         "startChar": 6,
@@ -177,6 +225,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4620fbe8_cc814b3a",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 3176
+      },
+      "writtenOn": "2025-02-07T12:58:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36ab6aaf_28dbb9f5",
+      "range": {
+        "startLine": 424,
+        "startChar": 12,
+        "endLine": 424,
+        "endChar": 18
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "106eac0c_3807cd52",
@@ -214,6 +286,30 @@
       "side": 1,
       "message": "Fixed in Patchset 5",
       "parentUuid": "106eac0c_3807cd52",
+      "range": {
+        "startLine": 605,
+        "startChar": 10,
+        "endLine": 605,
+        "endChar": 32
+      },
+      "revId": "fd1f3c095607d592e4e1c5dede00f0a4f1b4e31a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d766638_8243ba71",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 605,
+      "author": {
+        "id": 3176
+      },
+      "writtenOn": "2025-02-07T12:58:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c3dd1b01_df433f30",
       "range": {
         "startLine": 605,
         "startChar": 10,
