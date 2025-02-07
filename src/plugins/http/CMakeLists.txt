@@ -13,6 +13,7 @@
 
 add_vpp_plugin(http
   SOURCES
+  hpack.c
   http.c
   http_buffer.c
   http_timer.c
