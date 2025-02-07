@@ -832,9 +832,15 @@ arp_enable_disable_interface (ip4_main_t * im,
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   if (is_enable)
-    arp_enable (am, sw_if_index);
+    {
+      arp_enable (am, sw_if_index);
+      clib_error_return (0, "ARP enabled");
+    }
   else
-    arp_disable (am, sw_if_index);
+    {
+      arp_disable (am, sw_if_index);
+      clib_error_return (0, "ARP disabled");
+    }
 }
 
 /*
