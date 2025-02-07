@@ -6,6 +6,7 @@
 #include <vpp/app/version.h>
 #include <http/http.h>
 #include <http/http_header_names.h>
+#include <http/http2/hpack.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -533,6 +534,203 @@ http_test_http_header_table (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_hpack (vlib_main_t *vm)
+{
+  vlib_cli_output (vm, "hpack_decode_int");
+
+  static uword (*_hpack_decode_int) (u8 * *pos, u8 * end, u8 prefix_len);
+  _hpack_decode_int =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_int");
+
+  u8 *pos, *end, *input = 0;
+  uword value;
+#define TEST(i, pl, e)                                                        \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  end = vec_end (input);                                                      \
+  value = _hpack_decode_int (&pos, end, (u8) pl);                             \
+  HTTP_TEST ((value == (uword) e && pos == end),                              \
+	     "%U with prefix length %u is %llu", format_hex_bytes, input,     \
+	     vec_len (input), (u8) pl, value);                                \
+  vec_free (input);
+
+  TEST ("\x00", 8, 0);
+  TEST ("\x2A", 8, 42);
+  TEST ("\x72", 4, 2);
+  TEST ("\x7F\x00", 7, 127);
+  TEST ("\x7F\x01", 7, 128);
+  TEST ("\x9F\x9A\x0A", 5, 1337);
+  TEST ("\xFF\x80\x01", 7, 255);
+  /* max value to decode is CLIB_WORD_MAX, CLIB_UWORD_MAX is error */
+  TEST ("\x7F\x80\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F", 7, CLIB_WORD_MAX);
+
+#undef TEST
+
+#define N_TEST(i, pl)                                                         \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  end = vec_end (input);                                                      \
+  value = _hpack_decode_int (&pos, end, (u8) pl);                             \
+  HTTP_TEST ((value == HPACK_INVALID_INT),                                    \
+	     "%U with prefix length %u should be invalid", format_hex_bytes,  \
+	     input, vec_len (input), (u8) pl);                                \
+  vec_free (input);
+
+  /* incomplete */
+  N_TEST ("\x7F", 7);
+  N_TEST ("\x0F\xFF\xFF", 4);
+  /* overflow */
+  N_TEST ("\x0F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00", 4);
+  N_TEST ("\x0F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00", 4);
+
+#undef N_TEST
+
+  vlib_cli_output (vm, "hpack_encode_int");
+
+  static u8 *(*_hpack_encode_int) (u8 * dst, uword value, u8 prefix_len);
+  _hpack_encode_int =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_encode_int");
+
+  u8 *buf = 0;
+  u8 *p;
+
+#define TEST(v, pl, e)                                                        \
+  vec_validate_init_empty (buf, 15, 0);                                       \
+  p = _hpack_encode_int (buf, v, (u8) pl);                                    \
+  HTTP_TEST (((p - buf) == (sizeof (e) - 1) && !memcmp (buf, e, p - buf)),    \
+	     "%llu with prefix length %u is encoded as %U", v, (u8) pl,       \
+	     format_hex_bytes, buf, p - buf);                                 \
+  vec_free (buf);
+
+  TEST (0, 8, "\x00");
+  TEST (2, 4, "\x02");
+  TEST (42, 8, "\x2A");
+  TEST (127, 7, "\x7F\x00");
+  TEST (128, 7, "\x7F\x01");
+  TEST (255, 7, "\x7F\x80\x01");
+  TEST (1337, 5, "\x1F\x9A\x0A");
+  TEST (CLIB_WORD_MAX, 7, "\x7F\x80\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F");
+#undef TEST
+
+  vlib_cli_output (vm, "hpack_decode_string");
+
+  static int (*_hpack_decode_string) (u8 * *src, u8 * end, u8 * *buf,
+				      uword * buf_len);
+  _hpack_decode_string =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_string");
+
+  u8 *bp;
+  uword blen, len;
+  int rv;
+
+#define TEST(i, e)                                                            \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _hpack_decode_string (&pos, vec_end (input), &bp, &blen);              \
+  len = vec_len (buf) - blen;                                                 \
+  HTTP_TEST ((len == strlen (e) && !memcmp (buf, e, len) &&                   \
+	      pos == vec_end (input) && bp == buf + len && rv == 0),          \
+	     "%U is decoded as %U", format_hex_bytes, input, vec_len (input), \
+	     format_http_bytes, buf, len);                                    \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* raw coding */
+  TEST ("\x07private", "private");
+  /* Huffman coding */
+  TEST ("\x85\xAE\xC3\x77\x1A\x4B", "private");
+  TEST ("\x86\xA8\xEB\x10\x64\x9C\xBF", "no-cache");
+  TEST ("\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF",
+	"www.example.com");
+  TEST ("\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"
+	"\xE0\x82\xA6\x2D\x1B\xFF",
+	"Mon, 21 Oct 2013 20:13:21 GMT")
+  TEST ("\xAD\x94\xE7\x82\x1D\xD7\xF2\xE6\xC7\xB3\x35\xDF\xDF\xCD\x5B\x39\x60"
+	"\xD5\xAF\x27\x08\x7F\x36\x72\xC1\xAB\x27\x0F\xB5\x29\x1F\x95\x87\x31"
+	"\x60\x65\xC0\x03\xED\x4E\xE5\xB1\x06\x3D\x50\x07",
+	"foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1");
+  TEST ("\x8A\x9C\xB4\x50\x75\x3C\x1E\xCA\x24\xFE\x3F", "hello world!")
+  TEST ("\x8A\xFF\xFE\x03\x18\xC6\x31\x8C\x63\x18\xC7", "\\aaaaaaaaaaaa");
+  TEST ("\x8C\x1F\xFF\xF0\x18\xC6\x31\x80\x03\x18\xC6\x31\x8F",
+	"a\\aaaaa00aaaaaaa");
+  TEST ("\x87\x1F\xFF\xF0\xFF\xFE\x11\xFF", "a\\\\b");
+  TEST ("\x84\x1F\xF9\xFE\xA3", "a?'b");
+  TEST ("\x84\x1F\xFA\xFF\x23", "a'?b");
+  TEST ("\x8D\x1F\xFF\xFF\xFF\x0C\x63\x18\xC0\x01\x8C\x63\x18\xC7",
+	"\x61\xF9\x61\x61\x61\x61\x61\x30\x30\x61\x61\x61\x61\x61\x61\x61")
+#undef TEST
+
+#define N_TEST(i)                                                             \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 15, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _hpack_decode_string (&pos, vec_end (input), &bp, &blen);              \
+  HTTP_TEST ((rv != 0), "%U should be invalid", format_hex_bytes, input,      \
+	     vec_len (input));                                                \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* incomplete */
+  N_TEST ("\x07priv");
+  /* invalid length */
+  N_TEST ("\x7Fprivate");
+  /* invalid EOF */
+  N_TEST ("\x81\x8C");
+  /* not enough space for decoding */
+  N_TEST (
+    "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"
+    "\xE0\x82\xA6\x2D\x1B\xFF");
+#undef N_TEST
+
+  vlib_cli_output (vm, "hpack_encode_string");
+
+  static u8 *(*_hpack_encode_string) (u8 * dst, const u8 *value,
+				      uword value_len);
+  _hpack_encode_string =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_encode_string");
+
+#define TEST(i, e)                                                            \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  p = _hpack_encode_string (buf, input, vec_len (input));                     \
+  HTTP_TEST (((p - buf) == (sizeof (e) - 1) && !memcmp (buf, e, p - buf)),    \
+	     "%v is encoded as %U", input, format_hex_bytes, buf, p - buf);   \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* Huffman coding */
+  TEST ("private", "\x85\xAE\xC3\x77\x1A\x4B");
+  TEST ("no-cache", "\x86\xA8\xEB\x10\x64\x9C\xBF");
+  TEST ("www.example.com",
+	"\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF");
+  TEST ("Mon, 21 Oct 2013 20:13:21 GMT",
+	"\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"
+	"\xE0\x82\xA6\x2D\x1B\xFF")
+  TEST ("foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1",
+	"\xAD\x94\xE7\x82\x1D\xD7\xF2\xE6\xC7\xB3\x35\xDF\xDF\xCD\x5B\x39\x60"
+	"\xD5\xAF\x27\x08\x7F\x36\x72\xC1\xAB\x27\x0F\xB5\x29\x1F\x95\x87\x31"
+	"\x60\x65\xC0\x03\xED\x4E\xE5\xB1\x06\x3D\x50\x07");
+  TEST ("hello world!", "\x8A\x9C\xB4\x50\x75\x3C\x1E\xCA\x24\xFE\x3F")
+  TEST ("\\aaaaaaaaaaaa", "\x8A\xFF\xFE\x03\x18\xC6\x31\x8C\x63\x18\xC7");
+  /* raw coding */
+  TEST ("[XZ]", "\x4[XZ]");
+#undef TEST
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -550,6 +748,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_token_is_case (vm);
       else if (unformat (input, "header-table"))
 	res = http_test_http_header_table (vm);
+      else if (unformat (input, "hpack"))
+	res = http_test_hpack (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -561,6 +761,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_token_is_case (vm)))
 	    goto done;
 	  if ((res = http_test_http_header_table (vm)))
+	    goto done;
+	  if ((res = http_test_hpack (vm)))
 	    goto done;
 	}
       else
