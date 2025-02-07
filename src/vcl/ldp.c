@@ -126,6 +126,7 @@ typedef struct
    * crypto state used only for testing
    */
   u8 transparent_tls;
+  u8 default_to_regular;
   u32 ckpair_index;
 } ldp_main_t;
 
@@ -269,6 +270,11 @@ ldp_init_cfg (void)
   if (env_var_str)
     {
       ldp->transparent_tls = 1;
+    }
+  env_var_str = getenv (LDP_ENV_DEFAULT_TO_REGULAR);
+  if (env_var_str)
+    {
+      ldp->default_to_regular = 1;
     }
 }
 
@@ -996,8 +1002,8 @@ assign_cert_key_pair (vls_handle_t vlsh)
   return vls_attr (vlsh, VPPCOM_ATTR_SET_CKPAIR, &ldp->ckpair_index, &ckp_len);
 }
 
-int
-socket (int domain, int type, int protocol)
+static_always_inline int
+socket_inline (int domain, int type, int protocol, int vls)
 {
   int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
   u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
@@ -1005,7 +1011,8 @@ socket (int domain, int type, int protocol)
 
   ldp_init_check ();
 
-  if (((domain == AF_INET) || (domain == AF_INET6)) &&
+  if ((vls || !ldp->default_to_regular) &&
+      ((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
       u8 proto;
@@ -1045,6 +1052,18 @@ socket (int domain, int type, int protocol)
   return rv;
 }
 
+int
+socket (int domain, int type, int protocol)
+{
+  return socket_inline (domain, type, protocol, 0);
+}
+
+int
+vls_socket (int domain, int type, int protocol)
+{
+  return socket_inline (domain, type, protocol, 1);
+}
+
 /*
  * Create two new sockets, of type TYPE in domain DOMAIN and using
  * protocol PROTOCOL, which are connected to each other, and put file
@@ -1059,7 +1078,8 @@ socketpair (int domain, int type, int protocol, int fds[2])
 
   ldp_init_check ();
 
-  if (((domain == AF_INET) || (domain == AF_INET6)) &&
+  if (!ldp->default_to_regular &&
+      ((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
       LDBG (0, "LDP-TBD");
