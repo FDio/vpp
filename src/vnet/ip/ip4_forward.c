@@ -62,6 +62,12 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
 
+VLIB_REGISTER_LOG_CLASS (ip4f_log, static) = {
+  .class_name = "ip4_forward",
+};
+#define log_err(fmt, ...) vlib_log_err (ip4f_log.class, fmt, ##__VA_ARGS__)
+
+
 /** @brief IPv4 lookup node.
     @node ip4-lookup
 
@@ -630,8 +636,12 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 
   {
     ip4_enable_disable_interface_callback_t *cb;
+    log_err ("interface %d callbacks start", sw_if_index);
     vec_foreach (cb, im->enable_disable_interface_callbacks)
-      cb->function (im, cb->function_opaque, sw_if_index, is_enable);
+      {
+        cb->function (im, cb->function_opaque, sw_if_index, is_enable);
+        log_err ("interface %d callback %d called", sw_if_index, cb->function_opaque);
+      }
   }
 }
 
