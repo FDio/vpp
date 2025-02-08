@@ -151,6 +151,8 @@ typedef struct session_worker_
   /** Per-app-worker bitmap of pending notifications */
   uword *app_wrks_pending_ntf;
 
+  svm_fifo_seg_t *rx_segs;
+
   int config_index;
   u8 dma_enabled;
   session_dma_transfer *dma_trans;
@@ -667,56 +669,65 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
 			    u8 is_in_order)
 {
   vlib_buffer_t *chain_b;
-  u32 chain_bi, len, diff;
-  vlib_main_t *vm = vlib_get_main ();
-  u8 *data;
-  u32 written = 0;
-  int rv = 0;
+  u32 chain_bi;
 
-  if (is_in_order && offset)
+  if (is_in_order)
     {
-      diff = offset - b->current_length;
-      if (diff > b->total_length_not_including_first_buffer)
-	return 0;
-      chain_b = b;
-      session_enqueue_discard_chain_bytes (vm, b, &chain_b, diff);
-      chain_bi = vlib_get_buffer_index (vm, chain_b);
-    }
-  else
-    chain_bi = b->next_buffer;
+      session_worker_t *wrk = session_main_get_worker (s->thread_index);
+      u32 diff, written = 0;
 
-  do
-    {
-      chain_b = vlib_get_buffer (vm, chain_bi);
-      data = vlib_buffer_get_current (chain_b);
-      len = chain_b->current_length;
-      if (!len)
-	continue;
-      if (is_in_order)
+      if (offset)
 	{
-	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
-	  if (rv == len)
-	    {
-	      written += rv;
-	    }
-	  else if (rv < len)
-	    {
-	      return (rv > 0) ? (written + rv) : written;
-	    }
-	  else if (rv > len)
-	    {
-	      written += rv;
-
-	      /* written more than what was left in chain */
-	      if (written > b->total_length_not_including_first_buffer)
-		return written;
-
-	      /* drop the bytes that have already been delivered */
-	      session_enqueue_discard_chain_bytes (vm, b, &chain_b, rv - len);
-	    }
+	  diff = offset - b->current_length;
+	  if (diff > b->total_length_not_including_first_buffer)
+	    return 0;
+	  chain_b = b;
+	  session_enqueue_discard_chain_bytes (wrk->vm, b, &chain_b, diff);
+	  chain_bi = vlib_get_buffer_index (wrk->vm, chain_b);
 	}
       else
 	{
+	  chain_bi = b->next_buffer;
+	}
+
+      chain_b = vlib_get_buffer (wrk->vm, chain_bi);
+      svm_fifo_seg_t *seg;
+
+      while (chain_b)
+	{
+	  vec_add2 (wrk->rx_segs, seg, 1);
+	  seg->data = vlib_buffer_get_current (chain_b);
+	  seg->len = chain_b->current_length;
+	  chain_b = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
+		      vlib_get_buffer (wrk->vm, chain_b->next_buffer) :
+		      0;
+	}
+
+      written = svm_fifo_enqueue_segments (s->rx_fifo, wrk->rx_segs,
+					   vec_len (wrk->rx_segs),
+					   1 /* allow partial*/);
+
+      vec_reset_length (wrk->rx_segs);
+
+      return written;
+    }
+  else
+    {
+      vlib_main_t *vm = vlib_get_main ();
+      int rv = 0;
+      u8 *data;
+      u32 len;
+
+      /* TODO svm_fifo_enqueue_segments with offset */
+      chain_bi = b->next_buffer;
+      do
+	{
+	  chain_b = vlib_get_buffer (vm, chain_bi);
+	  data = vlib_buffer_get_current (chain_b);
+	  len = chain_b->current_length;
+	  if (!len)
+	    continue;
+
 	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
 	  if (rv)
 	    {
@@ -725,15 +736,12 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
 	    }
 	  offset += len;
 	}
+      while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
+			   chain_b->next_buffer :
+			   0));
+
+      return 0;
     }
-  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
-		       chain_b->next_buffer :
-		       0));
-
-  if (is_in_order)
-    return written;
-
-  return 0;
 }
 
 /*
