@@ -195,7 +195,7 @@ ip4_destination_matches_interface (ip4_main_t * im,
 				   ip4_address_t * key,
 				   ip_interface_address_t * ia)
 {
-  ip4_address_t *a = ip_interface_address_get_address (&im->lookup_main, ia);
+  ip4_address_t *a = (ip4_address_t *) ip_interface_address_get_address (&im->lookup_main, ia);
   return ip4_destination_matches_route (im, key, a, ia->address_length);
 }
 
@@ -214,7 +214,7 @@ ip4_interface_address_matching_destination (ip4_main_t * im,
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
-    ip4_address_t * a = ip_interface_address_get_address (lm, ia);
+    ip4_address_t *a = (ip4_address_t *) ip_interface_address_get_address (lm, ia);
     if (ip4_destination_matches_route (im, dst, a, ia->address_length))
       {
 	result = a;

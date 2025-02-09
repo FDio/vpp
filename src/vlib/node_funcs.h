@@ -220,7 +220,7 @@ vlib_node_get_state (vlib_main_t * vm, u32 node_index)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
   n = vec_elt (nm->nodes, node_index);
-  return n->state;
+  return (vlib_node_state_t) n->state;
 }
 
 always_inline void
@@ -297,7 +297,7 @@ always_inline void *
 vlib_frame_vector_args (vlib_frame_t * f)
 {
   ASSERT (f->vector_offset);
-  return (void *) f + f->vector_offset;
+  return (u8 *) f + f->vector_offset;
 }
 
 /** \brief Get pointer to frame vector aux data.
@@ -308,7 +308,7 @@ always_inline void *
 vlib_frame_aux_args (vlib_frame_t *f)
 {
   ASSERT (f->aux_offset);
-  return (void *) f + f->aux_offset;
+  return (u8 *) f + f->aux_offset;
 }
 
 /** \brief Get pointer to frame scalar data.
@@ -323,7 +323,7 @@ always_inline void *
 vlib_frame_scalar_args (vlib_frame_t * f)
 {
   ASSERT (f->scalar_offset);
-  return (void *) f + f->scalar_offset;
+  return (u8 *) f + f->scalar_offset;
 }
 
 always_inline vlib_next_frame_t *
@@ -385,7 +385,8 @@ vlib_frame_t *vlib_get_next_frame_internal (vlib_main_t * vm,
       vlib_frame_t *_f = vlib_get_next_frame_internal (                       \
 	(vm), (node), (next_index), (alloc_new_frame));                       \
       u32 _n = _f->n_vectors;                                                 \
-      (vectors) = vlib_frame_vector_args (_f) + _n * sizeof ((vectors)[0]);   \
+      (vectors) = (__typeof__(vectors))((u8 *) vlib_frame_vector_args (_f)    \
+          + _n * sizeof ((vectors)[0]));                                      \
       (n_vectors_left) = VLIB_FRAME_SIZE - _n;                                \
     }                                                                         \
   while (0)
@@ -398,11 +399,13 @@ vlib_frame_t *vlib_get_next_frame_internal (vlib_main_t * vm,
       vlib_frame_t *_f = vlib_get_next_frame_internal (                       \
 	(vm), (node), (next_index), (alloc_new_frame));                       \
       u32 _n = _f->n_vectors;                                                 \
-      (vectors) = vlib_frame_vector_args (_f) + _n * sizeof ((vectors)[0]);   \
+      (vectors) = (__typeof__(vectors))((u8 *) vlib_frame_vector_args (_f)    \
+          + _n * sizeof ((vectors)[0]));                                      \
       if ((maybe_no_aux) && (_f)->aux_offset == 0)                            \
 	(aux_data) = NULL;                                                    \
       else                                                                    \
-	(aux_data) = vlib_frame_aux_args (_f) + _n * sizeof ((aux_data)[0]);  \
+	(aux_data) = (__typeof__(vectors))((u8 *)vlib_frame_aux_args (_f)           \
+          + _n * sizeof ((aux_data)[0]));                                     \
       (n_vectors_left) = VLIB_FRAME_SIZE - _n;                                \
     }                                                                         \
   while (0)
@@ -545,7 +548,7 @@ void vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index,
 always_inline uword
 vlib_in_process_context (vlib_main_t * vm)
 {
-  return vm->node_main.current_process_index != ~0;
+  return vm->node_main.current_process_index != ~0U;
 }
 
 always_inline vlib_process_t *
@@ -677,7 +680,7 @@ vlib_process_get_event_data (vlib_main_t * vm,
   /* Find first type with events ready.
      Return invalid type when there's nothing there. */
   t = clib_bitmap_first_set (p->non_empty_event_type_bitmap);
-  if (t == ~0)
+  if (t == ~0U)
     return 0;
 
   p->non_empty_event_type_bitmap =
@@ -728,7 +731,7 @@ vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
   /* Find first type with events ready.
      Return invalid type when there's nothing there. */
   t = clib_bitmap_first_set (p->non_empty_event_type_bitmap);
-  if (t == ~0)
+  if (t == ~0U)
     return t;
 
   p->non_empty_event_type_bitmap =
@@ -971,7 +974,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 {
   uword add_to_pending = 0, delete_from_wheel = 0;
   u8 *data_to_be_written_by_caller;
-  vec_attr_t va = { .elt_sz = n_data_elt_bytes };
+  vec_attr_t va = { .elt_sz = (u32) n_data_elt_bytes };
 
   ASSERT (n->type == VLIB_NODE_TYPE_PROCESS);
 
@@ -992,7 +995,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 
     l = vec_len (data_vec);
 
-    data_vec = _vec_realloc_internal (data_vec, l + n_data_elts, &va);
+    data_vec = (u8 *) _vec_realloc_internal (data_vec, l + n_data_elts, &va);
 
     p->pending_event_data_by_type_index[t] = data_vec;
     data_to_be_written_by_caller = data_vec + l * n_data_elt_bytes;
@@ -1027,8 +1030,8 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
   if (add_to_pending && p->event_resume_pending == 0)
     {
       vlib_process_restore_t restore = {
-	.runtime_index = n->runtime_index,
-	.reason = VLIB_PROCESS_RESTORE_REASON_EVENT,
+            .reason = VLIB_PROCESS_RESTORE_REASON_EVENT,
+            .runtime_index = n->runtime_index
       };
       p->event_resume_pending = 1;
       vec_add1 (nm->process_restore_current, restore);
@@ -1154,7 +1157,7 @@ always_inline void
 vlib_process_signal_event (vlib_main_t * vm,
 			   uword node_index, uword type_opaque, uword data)
 {
-  uword *d = vlib_process_signal_event_data (vm, node_index, type_opaque,
+  uword *d = (uword *) vlib_process_signal_event_data (vm, node_index, type_opaque,
 					     1 /* elts */ , sizeof (uword));
   d[0] = data;
 }
@@ -1164,7 +1167,7 @@ vlib_process_signal_event_pointer (vlib_main_t * vm,
 				   uword node_index,
 				   uword type_opaque, void *data)
 {
-  void **d = vlib_process_signal_event_data (vm, node_index, type_opaque,
+  void **d = (void **) vlib_process_signal_event_data (vm, node_index, type_opaque,
 					     1 /* elts */ , sizeof (data));
   d[0] = data;
 }
@@ -1185,7 +1188,7 @@ vlib_process_signal_event_mt (vlib_main_t * vm,
 	.type_opaque = type_opaque,
 	.data = data,
       };
-      vlib_rpc_call_main_thread (vlib_process_signal_event_mt_helper,
+      vlib_rpc_call_main_thread ((void *) vlib_process_signal_event_mt_helper,
 				 (u8 *) & args, sizeof (args));
     }
   else
@@ -1198,7 +1201,7 @@ vlib_process_signal_one_time_event (vlib_main_t * vm,
 				    uword type_index, uword data)
 {
   uword *d =
-    vlib_process_signal_one_time_event_data (vm, node_index, type_index,
+    (uword *) vlib_process_signal_one_time_event_data (vm, node_index, type_index,
 					     1 /* elts */ , sizeof (uword));
   d[0] = data;
 }

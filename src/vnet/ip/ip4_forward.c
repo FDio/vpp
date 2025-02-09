@@ -287,8 +287,7 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
     (lm, ia, sw_if_index,
      1 /* honor unnumbered */ ,
      ({
-       ip4_address_t * a =
-         ip_interface_address_get_address (lm, ia);
+       ip4_address_t *a = (ip4_address_t *) ip_interface_address_get_address (lm, ia);
        result = a;
        break;
      }));

@@ -81,7 +81,7 @@ do {                                                                    \
                         (_sw_if_index)) :                               \
                (u32)~0);                                                \
     ip_interface_address_t * _a;                                        \
-    while (_ia != ~0)                                                   \
+    while (_ia != ~0U)                                                   \
     {                                                                   \
         _a = pool_elt_at_index ((lm)->if_address_pool, _ia);            \
         _ia = _a->next_this_sw_interface;                               \

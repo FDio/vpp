@@ -41,6 +41,7 @@
 #define included_vlib_counter_h
 
 #include <vlib/counter_types.h>
+#include <vppinfra/types.h>
 
 /** \file
 
@@ -144,13 +145,12 @@ vlib_get_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   counter_t *my_counters;
   counter_t v;
-  int i;
 
   ASSERT (index < vlib_simple_counter_n_counters (cm));
 
   v = 0;
 
-  for (i = 0; i < vec_len (cm->counters); i++)
+  for (uword i = 0; i < vec_len (cm->counters); i++)
     {
       my_counters = cm->counters[i];
       v += my_counters[index];

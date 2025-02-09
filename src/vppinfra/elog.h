@@ -366,7 +366,7 @@ elog_event_data_not_inline (elog_main_t * em,
 always_inline void
 elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
-  u32 *d = elog_event_data_not_inline (em,
+  u32 *d = (u32 *) elog_event_data_not_inline (em,
 				       type,
 				       &em->default_track,
 				       clib_cpu_time_now ());
@@ -381,7 +381,7 @@ elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 always_inline void
 elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
-  u32 *d = elog_event_data_inline (em,
+  u32 *d = (u32 *) elog_event_data_inline (em,
 				   type,
 				   &em->default_track,
 				   clib_cpu_time_now ());
@@ -398,7 +398,7 @@ always_inline void
 elog_track (elog_main_t * em, elog_event_type_t * type, elog_track_t * track,
 	    u32 data)
 {
-  u32 *d = elog_event_data_not_inline (em,
+  u32 *d = (u32 *) elog_event_data_not_inline (em,
 				       type,
 				       track,
 				       clib_cpu_time_now ());
@@ -415,7 +415,7 @@ always_inline void
 elog_track_inline (elog_main_t * em, elog_event_type_t * type,
 		   elog_track_t * track, u32 data)
 {
-  u32 *d = elog_event_data_inline (em,
+  u32 *d = (u32 *) elog_event_data_inline (em,
 				   type,
 				   track,
 				   clib_cpu_time_now ());

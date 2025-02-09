@@ -81,9 +81,41 @@ always_inline uword __vec_elt_sz (uword elt_sz, int is_void);
 
 #define _vec_round_size(s) \
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
+
+#ifdef __cplusplus
+extern "C++"
+{
+
+#include <type_traits>
+
+#define _vec_is_void(P) std::is_same<decltype(P), void*>::value
+
+template <typename T>
+inline uword _element_size(T* p)
+{
+  return sizeof(T);
+}
+
+template <>
+inline uword _element_size<void>(void* p)
+{
+  return sizeof(u8);
+}
+
+template <>
+inline uword _element_size<void*>(void** p)
+{
+  return sizeof(u8 *);
+}
+
+}
+#else
+#define _element_size(P)  sizeof ((P)[0])
 #define _vec_is_void(P)                                                       \
   __builtin_types_compatible_p (__typeof__ ((P)[0]), void)
-#define _vec_elt_sz(V)	 __vec_elt_sz (sizeof ((V)[0]), _vec_is_void (V))
+#endif
+
+#define _vec_elt_sz(V)	 __vec_elt_sz (_element_size(V), _vec_is_void (V))
 #define _vec_align(V, A) __vec_align (__alignof__((V)[0]), A)
 
 always_inline __clib_nosanitize_addr uword
