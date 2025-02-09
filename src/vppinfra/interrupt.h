@@ -34,7 +34,7 @@ clib_interrupt_free (void **data)
 static_always_inline int
 clib_interrupt_get_n_int (void *d)
 {
-  clib_interrupt_header_t *h = d;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) d;
   if (h)
     return h->n_int;
   return 0;
@@ -43,7 +43,7 @@ clib_interrupt_get_n_int (void *d)
 static_always_inline void
 clib_interrupt_set (void *in, int int_num)
 {
-  clib_interrupt_header_t *h = in;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) in;
   u32 off = int_num >> log2_uword_bits;
   uword bit = 1ULL << (int_num & pow2_mask (log2_uword_bits));
 
@@ -55,7 +55,7 @@ clib_interrupt_set (void *in, int int_num)
 static_always_inline void
 clib_interrupt_set_atomic (void *in, int int_num)
 {
-  clib_interrupt_header_t *h = in;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) in;
   u32 off = int_num >> log2_uword_bits;
   uword bit = 1ULL << (int_num & pow2_mask (log2_uword_bits));
 
@@ -67,7 +67,7 @@ clib_interrupt_set_atomic (void *in, int int_num)
 static_always_inline void
 clib_interrupt_clear (void *in, int int_num)
 {
-  clib_interrupt_header_t *h = in;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) in;
   u32 off = int_num >> log2_uword_bits;
   uword bit = 1ULL << (int_num & pow2_mask (log2_uword_bits));
   uword *loc = h->local;
@@ -83,7 +83,7 @@ clib_interrupt_clear (void *in, int int_num)
 static_always_inline int
 clib_interrupt_get_next_and_clear (void *in, int last)
 {
-  clib_interrupt_header_t *h = in;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) in;
   uword bit, v;
   uword *loc = h->local;
   uword *rem = h->remote;
@@ -118,7 +118,7 @@ clib_interrupt_get_next_and_clear (void *in, int last)
 static_always_inline int
 clib_interrupt_is_any_pending (void *in)
 {
-  clib_interrupt_header_t *h = in;
+  clib_interrupt_header_t *h = (clib_interrupt_header_t *) in;
   u32 n_uwords = h->uwords_used;
   uword *loc = h->local;
   uword *rem = h->remote;

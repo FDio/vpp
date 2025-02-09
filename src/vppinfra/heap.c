@@ -413,9 +413,11 @@ _heap_alloc (void *v,
   if (!e)
     {
       uword max_len;
-      vec_attr_t va = { .elt_sz = elt_bytes,
-			.hdr_sz = sizeof (h[0]),
-			.align = HEAP_DATA_ALIGN };
+      vec_attr_t va = {
+            .elt_sz = (u32) elt_bytes,
+            .hdr_sz = (u16) sizeof (h[0]),
+            .align = HEAP_DATA_ALIGN
+      };
 
       offset = vec_len (v);
       max_len = heap_get_max_len (v);

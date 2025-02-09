@@ -138,7 +138,7 @@ typedef struct _unformat_input_t
 
     /* Return values for fill buffer function which indicate whether not
        input has been exhausted. */
-#define UNFORMAT_END_OF_INPUT (~0)
+#define UNFORMAT_END_OF_INPUT ~0ULL
 #define UNFORMAT_MORE_INPUT   0
 
   /* User controlled argument to fill buffer function. */
