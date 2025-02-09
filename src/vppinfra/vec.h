@@ -439,7 +439,7 @@ _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
     @param V pointer to a vector
     @return Vdup copy of vector
 */
-#define vec_dup(V) (__typeof__(V)) vec_dup_ha(V,0,0)
+#define vec_dup(V) vec_dup_ha(V,0,0)
 
 /** \brief Return copy of vector (no header, alignment specified).
 

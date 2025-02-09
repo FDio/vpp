@@ -1237,7 +1237,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 error:
   ad->flags |= AVF_DEVICE_F_ERROR;
   ASSERT (ad->error != 0);
-  vlib_log_err (avf_log.class, "%U", format_clib_error, ad->error);
+  vlib_log_err (avf_log._class, "%U", format_clib_error, ad->error);
 }
 
 clib_error_t *

@@ -135,7 +135,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
     {
       vlib_buffer_t *b;
       b = vlib_buffer_ptr_from_index (buffer_mem_start, bp->buffers[i], 0);
-      b->template = bp->buffer_template;
+      b->_template = bp->buffer_template;
     }
 
   /* map DMA pages if at least one physical device exists */
@@ -205,7 +205,7 @@ dpdk_ops_vpp_enqueue_one (vlib_buffer_template_t *bt, void *obj)
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
   ASSERT (b->ref_count == 1);
   ASSERT (b->buffer_pool_index == bt->buffer_pool_index);
-  b->template = *bt;
+  b->_template = *bt;
 }
 
 int
@@ -273,7 +273,7 @@ dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t *vm, struct rte_mempool *old,
   if (clib_atomic_sub_fetch (&b->ref_count, 1) == 0)
     {
       u32 bi = vlib_get_buffer_index (vm, b);
-      b->template = *bt;
+      b->_template = *bt;
       vlib_buffer_pool_put (vm, bt->buffer_pool_index, &bi, 1);
       return;
     }

@@ -49,8 +49,8 @@ VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
   .class_name = "interface",
 };
 
-#define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt,...) vlib_log_debug(if_default_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt,...) vlib_log_err(if_default_log._class, fmt, __VA_ARGS__)
 
 typedef enum vnet_interface_helper_flags_t_
 {
