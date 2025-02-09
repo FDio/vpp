@@ -13,11 +13,11 @@
   vlib_log_is_enabled (VLIB_LOG_LEVEL_DEBUG, ena_log.class)
 
 #define ena_stats_log_err(dev, f, ...)                                        \
-  vlib_log (VLIB_LOG_LEVEL_ERR, ena_stats_log.class, "%U: " f,                \
+  vlib_log (VLIB_LOG_LEVEL_ERR, ena_stats_log._class, "%U: " f,                \
 	    format_vnet_dev_addr, dev, ##__VA_ARGS__)
 
 #define ena_stats_log_debug(dev, f, ...)                                      \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_stats_log.class, "%U: " f,              \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_stats_log._class, "%U: " f,              \
 	    format_vnet_dev_addr, dev, ##__VA_ARGS__)
 
 #define ena_stats_log_is_debug()                                              \
