@@ -123,6 +123,12 @@
 #define CLIB_SANITIZE_ADDR 1
 #endif
 
+#ifdef __cplusplus
+#define __clib_strdup(V) strdup(V)
+#else
+#define __clib_strdup(V) V
+#endif
+
 #define __clib_unused __attribute__ ((unused))
 #define __clib_weak __attribute__ ((weak))
 #define __clib_packed __attribute__ ((packed))

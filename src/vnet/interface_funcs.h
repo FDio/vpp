@@ -237,7 +237,7 @@ void vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index);
 
 /* Creates a software interface given template. */
 clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
-					vnet_sw_interface_t * template,
+					vnet_sw_interface_t * _template,
 					u32 * sw_if_index);
 
 void vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index);

@@ -886,14 +886,14 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
 #if defined(CLIB_HAVE_VEC512)
       vlib_buffer_copy_indices (queue + n_queue, buffers, 8);
-      b[0]->template = bt;
-      b[1]->template = bt;
-      b[2]->template = bt;
-      b[3]->template = bt;
-      b[4]->template = bt;
-      b[5]->template = bt;
-      b[6]->template = bt;
-      b[7]->template = bt;
+      b[0]->_template = bt;
+      b[1]->_template = bt;
+      b[2]->_template = bt;
+      b[3]->_template = bt;
+      b[4]->_template = bt;
+      b[5]->_template = bt;
+      b[6]->_template = bt;
+      b[7]->_template = bt;
       n_queue += 8;
 
       vlib_buffer_validate (vm, b[0]);
@@ -915,10 +915,10 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[7]);
 #else
       vlib_buffer_copy_indices (queue + n_queue, buffers, 4);
-      b[0]->template = bt;
-      b[1]->template = bt;
-      b[2]->template = bt;
-      b[3]->template = bt;
+      b[0]->_template = bt;
+      b[1]->_template = bt;
+      b[2]->_template = bt;
+      b[3]->_template = bt;
       n_queue += 4;
 
       vlib_buffer_validate (vm, b[0]);
@@ -977,7 +977,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       if (clib_atomic_sub_fetch (&b[0]->ref_count, 1) == 0)
 	{
-	  b[0]->template = bt;
+	  b[0]->_template = bt;
 	  queue[n_queue++] = bi;
 	}
 

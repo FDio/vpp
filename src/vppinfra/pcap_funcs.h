@@ -45,7 +45,7 @@ pcap_add_packet (pcap_main_t * pm,
   u8 *d;
 
   vec_add2 (pm->pcap_data, d, sizeof (h[0]) + n_bytes_in_trace);
-  h = (void *) (d);
+  h = (pcap_packet_header_t *) (d);
   h->time_in_sec = time_now;
   h->time_in_usec = 1e6 * (time_now - h->time_in_sec);
   h->n_packet_bytes_stored_in_file = n_bytes_in_trace;

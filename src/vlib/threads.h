@@ -198,7 +198,7 @@ vlib_smp_unsafe_warning (void)
   if (CLIB_DEBUG > 0)
     {
       if (vlib_get_thread_index ())
-	fformat (stderr, "%s: SMP unsafe warning...\n", __func__);
+	fformat (stderr, __clib_strdup("%s: SMP unsafe warning...\n"), __func__);
     }
 }
 
@@ -369,8 +369,8 @@ vlib_worker_thread_barrier_check (void)
 	{
 	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
 	  ELOG_TYPE_DECLARE (e) = {
-	    .format = "barrier-wait-thread-%d",
-	    .format_args = "i4",
+	    .format = __clib_strdup("barrier-wait-thread-%d"),
+	    .format_args = __clib_strdup("i4"),
 	  };
 
 	  struct
@@ -416,8 +416,8 @@ vlib_worker_thread_barrier_check (void)
 	      t = vlib_time_now (vm) - t;
 	      vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
               ELOG_TYPE_DECLARE (e) = {
-                .format = "barrier-refork-thread-%d",
-                .format_args = "i4",
+                .format = __clib_strdup("barrier-refork-thread-%d"),
+                .format_args = __clib_strdup("i4"),
               };
 
 	      struct
@@ -441,8 +441,8 @@ vlib_worker_thread_barrier_check (void)
 	  t = vlib_time_now (vm) - t;
 	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
 	  ELOG_TYPE_DECLARE (e) = {
-	    .format = "barrier-released-thread-%d: %dus",
-	    .format_args = "i4i4",
+	    .format = __clib_strdup("barrier-released-thread-%d: %dus"),
+	    .format_args = __clib_strdup("i4i4"),
 	  };
 
 	  struct

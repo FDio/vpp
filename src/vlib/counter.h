@@ -169,11 +169,10 @@ always_inline void
 vlib_zero_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   counter_t *my_counters;
-  int i;
 
   ASSERT (index < vlib_simple_counter_n_counters (cm));
 
-  for (i = 0; i < vec_len (cm->counters); i++)
+  for (u32 i = 0; i < vec_len (cm->counters); i++)
     {
       my_counters = cm->counters[i];
       my_counters[index] = 0;
@@ -289,12 +288,11 @@ vlib_get_combined_counter (const vlib_combined_counter_main_t * cm,
 			   u32 index, vlib_counter_t * result)
 {
   vlib_counter_t *my_counters, *counter;
-  int i;
 
   result->packets = 0;
   result->bytes = 0;
 
-  for (i = 0; i < vec_len (cm->counters); i++)
+  for (u32 i = 0; i < vec_len (cm->counters); i++)
     {
       my_counters = cm->counters[i];
 
@@ -314,9 +312,8 @@ always_inline void
 vlib_zero_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
   vlib_counter_t *my_counters, *counter;
-  int i;
 
-  for (i = 0; i < vec_len (cm->counters); i++)
+  for (u32 i = 0; i < vec_len (cm->counters); i++)
     {
       my_counters = cm->counters[i];
 
