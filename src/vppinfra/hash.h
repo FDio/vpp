@@ -249,7 +249,7 @@ uword hash_bytes (void *v);
 #define hash_set1(h,key)	(h) = _hash_set3(h,(uword) (key),0,0)
 
 /* Public macro to unset a (key, value) pair */
-#define hash_unset(h,key)	((h) = _hash_unset ((h), (uword) (key),0))
+#define hash_unset(h,key)	((h) = (__typeof__(h)) _hash_unset ((h), (uword) (key),0))
 
 /* Public macro to unset a (key, value) pair, return the old value */
 #define hash_unset3(h,key,old_value) ((h) = _hash_unset ((h), (uword) (key), (void *) (old_value)))

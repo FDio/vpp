@@ -575,7 +575,7 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 	continue;
 
       b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
-      b->template = bp->buffer_template;
+      b->_template = bp->buffer_template;
       bi = vlib_get_buffer_index (vm, b);
       bp->buffers[bp->n_avail++] = bi;
       vlib_get_buffer (vm, bi);

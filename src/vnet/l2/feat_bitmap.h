@@ -18,6 +18,7 @@
 #ifndef included_vnet_l2_feat_bitmap_h
 #define included_vnet_l2_feat_bitmap_h
 
+#include "vppinfra/clib.h"
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
@@ -59,7 +60,7 @@ feat_bitmap_init_next_nodes (vlib_main_t * vm, u32 node_index,	/* the current gr
       else
 	{			// Node may be in plugin which is not installed, use drop node
 	  next_nodes[idx] =
-	    vlib_node_add_named_next (vm, node_index, "feature-bitmap-drop");
+	    vlib_node_add_named_next (vm, node_index, __clib_strdup("feature-bitmap-drop"));
 	}
     }
 
@@ -67,7 +68,7 @@ feat_bitmap_init_next_nodes (vlib_main_t * vm, u32 node_index,	/* the current gr
   for (; idx < FEAT_MAX; idx++)
     {
       next_nodes[idx] = vlib_node_add_named_next (vm, node_index,
-						  "feature-bitmap-drop");
+						  __clib_strdup("feature-bitmap-drop"));
     }
 }
 

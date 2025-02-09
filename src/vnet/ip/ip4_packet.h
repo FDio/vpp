@@ -330,11 +330,11 @@ ip4_header_set_ecn_w_chksum (ip4_header_t * ip4, ip_ecn_t ecn)
 {
   ip_csum_t sum = ip4->checksum;
   u8 old = ip4->tos;
-  u8 new = (old & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn;
+  u8 _new = (old & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn;
 
-  sum = ip_csum_update (sum, old, new, ip4_header_t, tos);
+  sum = ip_csum_update (sum, old, _new, ip4_header_t, tos);
   ip4->checksum = ip_csum_fold (sum);
-  ip4->tos = new;
+  ip4->tos = (ip_dscp_t) _new;
 }
 
 always_inline ip_dscp_t

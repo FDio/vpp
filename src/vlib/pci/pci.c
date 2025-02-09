@@ -59,7 +59,7 @@ VLIB_REGISTER_LOG_CLASS (pci_log, static) = {
 };
 
 #define log_debug(h, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, pci_log.class, "%U: " f,                    \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, pci_log._class, "%U: " f,                    \
 	    format_vlib_pci_log, h, ##__VA_ARGS__)
 
 u8 *
