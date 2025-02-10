@@ -982,7 +982,8 @@ transport_add_tx_event (transport_connection_t * tc)
   session_t *s = session_get (tc->s_index, tc->thread_index);
   if (svm_fifo_has_event (s->tx_fifo))
     return;
-  session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+  session_handle_tu_t *h = (session_handle_tu_t*) &(s->handle);
+  session_program_tx_io_evt (*h, SESSION_IO_EVT_TX);
 }
 
 always_inline u32
@@ -1013,14 +1014,16 @@ listen_session_get_handle (session_t *s)
 always_inline session_t *
 listen_session_get_from_handle (session_handle_t handle)
 {
-  return session_get_from_handle (handle);
+  session_handle_tu_t *h = (session_handle_tu_t*) &(handle);
+  return session_get_from_handle (*h);
 }
 
 always_inline void
 listen_session_parse_handle (session_handle_t handle, u32 * index,
 			     u32 * thread_index)
 {
-  session_parse_handle (handle, index, thread_index);
+  session_handle_tu_t *h = (session_handle_tu_t*) &(handle);
+  session_parse_handle (*h, index, thread_index);
 }
 
 always_inline session_t *
@@ -1053,7 +1056,7 @@ ho_session_alloc (void)
   ASSERT (session_vlib_thread_is_cl_thread ());
   s = session_alloc (transport_cl_thread ());
   s->session_state = SESSION_STATE_CONNECTING;
-  s->flags |= SESSION_F_HALF_OPEN;
+  s->flags = (session_flags_t) (s->flags | SESSION_F_HALF_OPEN);
   return s;
 }
 
@@ -1124,7 +1127,7 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (pool_safe_realloc_header_t, sizeof (pool_header_t));
 
-#define POOL_REALLOC_SAFE_ELT_THRESH 32
+#define POOL_REALLOC_SAFE_ELT_THRESH 32UL
 
 #define pool_realloc_flag(PH)                                                 \
   ((pool_safe_realloc_header_t *) pool_header (PH))->flag
@@ -1170,14 +1173,14 @@ pool_program_safe_realloc (void **p, u32 elt_size, u32 align)
   if (pool_realloc_flag (*p))
     return;
 
-  pra = clib_mem_alloc (sizeof (*pra));
+  pra = (pool_realloc_rpc_args_t *) clib_mem_alloc (sizeof (*pra));
   pra->pool = p;
   pra->elt_size = elt_size;
   pra->align = align;
   pool_realloc_flag (*p) = 1;
 
   session_send_rpc_evt_to_thread (0 /* thread index */,
-				  pool_program_safe_realloc_rpc, pra);
+				  (void *) pool_program_safe_realloc_rpc, pra);
 }
 
 #define pool_needs_realloc(P)                                                 \
