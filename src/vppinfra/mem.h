@@ -259,7 +259,7 @@ uword clib_mem_size (void *p);
 void clib_mem_free_s (void *p);
 
 /* Memory allocator which panics when it fails.
-   Use macro so that clib_panic macro can expand __FUNCTION__ and __LINE__. */
+   Use macro so that clib_panic macro can expand __func__ and __LINE__. */
 #define clib_mem_alloc_aligned_no_fail(size,align)				\
 ({										\
   uword _clib_mem_alloc_size = (size);						\

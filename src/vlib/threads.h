@@ -166,7 +166,10 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 #define BARRIER_SYNC_TIMEOUT (1.0)
 #endif
 
-#define vlib_worker_thread_barrier_sync(X) {vlib_worker_thread_barrier_sync_int(X, __FUNCTION__);}
+#define vlib_worker_thread_barrier_sync(X)                                    \
+  {                                                                           \
+    vlib_worker_thread_barrier_sync_int (X, __func__);                        \
+  }
 
 void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm,
 					  const char *func_name);
@@ -195,7 +198,7 @@ vlib_smp_unsafe_warning (void)
   if (CLIB_DEBUG > 0)
     {
       if (vlib_get_thread_index ())
-	fformat (stderr, "%s: SMP unsafe warning...\n", __FUNCTION__);
+	fformat (stderr, "%s: SMP unsafe warning...\n", __func__);
     }
 }
 

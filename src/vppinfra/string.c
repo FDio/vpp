@@ -94,7 +94,7 @@ clib_memswap (void *_a, void *_b, uword bytes)
 __clib_export void
 clib_c11_violation (const char *s)
 {
-  _clib_error (CLIB_ERROR_WARNING, (char *) __FUNCTION__, 0, (char *) s);
+  _clib_error (CLIB_ERROR_WARNING, (char *) __func__, 0, (char *) s);
 }
 
 /**
