@@ -16,6 +16,23 @@
       "message": "Hi guys,\n\nIf either of you get a chance, would you mind reviewing/merging this patch?\n\nThe commit log is somewhat self explanatory, but here\u0027s a more detailed explanation...\n\nIf a lot of VRRP VRs are configured at around the same time (e.g. at control-plane startup on numerous interfaces/subinterfaces), they might all make a state change at approximately the same time (e.g. 3s after startup they all move from init state to the master state if no higher priority peer has advertised itself). It seems that some NICs can take about 1s to complete the operation to add or delete a MAC address, which can happen during a state transition. vlib_process_wait_for_event_or_clock() is called after each timer is processed, but it does not actually cause the process node to yield if the time being waited is less than 10e-6s, it just returns right away. So N number of VRs that need to transition could cause the main thread to be occupied for N seconds as all of those operations get performed serially.\n\nThe patch attempts to force the process node to yield after each event it processes by using the larger of the actual time until the next event or 10e-6 as the wait time.\n\nThanks!\n-Matt",
       "revId": "2b25aabd643aa572cf36953da5e167edbf1152c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a14a1e1e_ad85dfee",
+        "filename": "src/plugins/vrrp/vrrp_periodic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-02-10T09:37:36Z",
+      "side": 1,
+      "message": "I think it would be good to add a comment in the code explaining why? It can be copy/pasted of the commit message.",
+      "revId": "2b25aabd643aa572cf36953da5e167edbf1152c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
