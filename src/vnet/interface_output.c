@@ -395,51 +395,23 @@ vnet_interface_handle_checksum_offloads (vlib_main_t *vm,
 {
   vlib_frame_bitmap_t gso_bmp = {}, offload_bmp = {}, ip_tnl_bmp = {},
 		      udp_tnl_bmp = {};
-  u32 n_gso_pkt = 0, n_offload_pkt = 0, n_ip_tnl_pkt = 0, n_udp_tnl_pkt = 0;
+  u32 n_offload_pkt = 0, n_ip_tnl_pkt = 0, n_udp_tnl_pkt = 0;
   u32 n_outer_udp_cksum_pkt = 0, n_outer_ip_cksum_pkt = 0;
-  // u32 outer_ip_oflags[VLIB_FRAME_SIZE] = {},
-  //    outer_udp_oflags[VLIB_FRAME_SIZE] = {};
-  // u32 buffer_offload_flags[VLIB_FRAME_SIZE] = {};
-  // u32 buffer_gso_flags[VLIB_FRAME_SIZE] = {};
   u32 i = 0;
 
-  clib_array_test_flag_u32 (bflags, VNET_BUFFER_F_GSO, gso_bmp, n_pkt);
-
-  // clib_memcpy_fast (buffer_gso_flags, bflags, sizeof (bflags[0]) * n_pkt);
-  // clib_array_mask_u32 (buffer_gso_flags, VNET_BUFFER_F_GSO, n_pkt);
-  // clib_mask_compare_u32 (VNET_BUFFER_F_GSO, buffer_gso_flags, gso_bmp,
-  // n_pkt);
-  n_gso_pkt = vlib_frame_bitmap_count_set_bits (gso_bmp);
-
   clib_array_test_flag_u32 (bflags, VNET_BUFFER_F_OFFLOAD, offload_bmp, n_pkt);
-
-  // clib_memcpy_fast (buffer_offload_flags, bflags, sizeof (bflags[0]) *
-  // n_pkt); clib_array_mask_u32 (buffer_offload_flags, VNET_BUFFER_F_OFFLOAD,
-  // n_pkt); clib_mask_compare_u32 (VNET_BUFFER_F_OFFLOAD,
-  // buffer_offload_flags, 			 offload_bmp, n_pkt);
-  n_offload_pkt = vlib_frame_bitmap_count_set_bits (offload_bmp);
-
-  if (n_offload_pkt == 0 || n_offload_pkt == n_gso_pkt)
+  if ((offload_bmp[0] | offload_bmp[1] | offload_bmp[2] | offload_bmp[3]) == 0)
     return;
 
+  clib_array_test_flag_u32 (bflags, VNET_BUFFER_F_GSO, gso_bmp, n_pkt);
   vlib_frame_bitmap_xor (offload_bmp, gso_bmp);
+  n_offload_pkt = vlib_frame_bitmap_count_set_bits (offload_bmp);
+
+  if (n_offload_pkt == 0)
+    return;
 
   if ((caps & VNET_HW_IF_CAP_TX_CKSUM) == VNET_HW_IF_CAP_TX_CKSUM)
     {
-      // clib_memcpy_fast (outer_ip_oflags, oflags, sizeof (oflags[0]) *
-      // n_pkt); clib_memcpy_fast (outer_udp_oflags, oflags, sizeof (oflags[0])
-      // * n_pkt);
-
-      // clib_array_mask_u32 (outer_ip_oflags, VNET_BUFFER_OFFLOAD_F_TNL_IPIP,
-      // n_pkt); clib_array_mask_u32 (outer_udp_oflags,
-      // VNET_BUFFER_OFFLOAD_F_TNL_VXLAN, 		       n_pkt);
-
-      // clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_TNL_IPIP,
-      // outer_ip_oflags, 			 ip_tnl_bmp, n_pkt);
-      // clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_TNL_VXLAN,
-      // outer_udp_oflags, 			 udp_tnl_bmp,
-      // n_pkt);
-
       clib_array_test_flag_u32 (oflags, VNET_BUFFER_OFFLOAD_F_TNL_IPIP,
 				ip_tnl_bmp, n_pkt);
       clib_array_test_flag_u32 (oflags, VNET_BUFFER_OFFLOAD_F_TNL_VXLAN,
@@ -452,21 +424,6 @@ vnet_interface_handle_checksum_offloads (vlib_main_t *vm,
 
       vlib_frame_bitmap_clear (ip_tnl_bmp);
       vlib_frame_bitmap_clear (udp_tnl_bmp);
-
-      // clib_memcpy_fast (outer_ip_oflags, oflags, sizeof (bflags[0]) *
-      // n_pkt); clib_memcpy_fast (outer_udp_oflags, oflags, sizeof (bflags[0])
-      // * n_pkt);
-
-      // clib_array_mask_u32 (outer_ip_oflags,
-      // VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM,
-      //       	       n_pkt);
-      // clib_array_mask_u32 (outer_udp_oflags,
-      // VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM,
-      //       	       n_pkt);
-      // clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM,
-      //       		 outer_udp_oflags, udp_tnl_bmp, n_pkt);
-      // clib_mask_compare_u32 (VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM,
-      // outer_ip_oflags, 			 ip_tnl_bmp, n_pkt);
 
       clib_array_test_flag_u32 (oflags, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM,
 				ip_tnl_bmp, n_pkt);
@@ -487,9 +444,6 @@ vnet_interface_handle_checksum_offloads (vlib_main_t *vm,
 
   foreach_vlib_frame_bitmap_set_bit_index (i, offload_bmp)
     {
-      if (_tmp)
-	CLIB_PREFETCH (b[vlib_frame_bitmap_find_first_set (&_tmp)],
-		       2 * CLIB_CACHE_LINE_BYTES, LOAD);
       vnet_interface_output_handle_offload (vm, b[i], bflags[i], oflags[i]);
     }
 }
