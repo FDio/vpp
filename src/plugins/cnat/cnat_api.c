@@ -241,7 +241,7 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   ip_address2_from_46 (&session->value.cs_ip[VLIB_TX], session->key.cs_af,
 		       &ep.ce_ip);
   ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
-  cnat_endpoint_encode (&ep, &mp->session._new);
+  cnat_endpoint_encode (&ep, &mp->session.new);
 
   ip_address2_from_46 (&session->key.cs_ip[VLIB_RX], session->key.cs_af,
 		       &ep.ce_ip);
