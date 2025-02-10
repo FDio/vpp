@@ -10,7 +10,7 @@
 #include <dev_ena/ena.h>
 
 #define ena_log_is_debug()                                                    \
-  vlib_log_is_enabled (VLIB_LOG_LEVEL_DEBUG, ena_log.class)
+  vlib_log_is_enabled (VLIB_LOG_LEVEL_DEBUG, ena_log._class)
 
 #define ena_stats_log_err(dev, f, ...)                                        \
   vlib_log (VLIB_LOG_LEVEL_ERR, ena_stats_log._class, "%U: " f,                \
@@ -21,7 +21,7 @@
 	    format_vnet_dev_addr, dev, ##__VA_ARGS__)
 
 #define ena_stats_log_is_debug()                                              \
-  vlib_log_is_enabled (VLIB_LOG_LEVEL_DEBUG, ena_stats_log.class)
+  vlib_log_is_enabled (VLIB_LOG_LEVEL_DEBUG, ena_stats_log._class)
 
 static_always_inline void
 ena_set_mem_addr (vlib_main_t *vm, vnet_dev_t *dev, ena_mem_addr_t *m, void *p)
