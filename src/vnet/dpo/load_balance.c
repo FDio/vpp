@@ -1030,12 +1030,19 @@ load_balance_module_init (void)
      * This should never be used, but just in case, stack it on a drop.
      */
     lbi = load_balance_create(1, DPO_PROTO_IP4, 0);
+    ASSERT(0 == lbi);
     load_balance_set_bucket(lbi, 0, drop_dpo_get(DPO_PROTO_IP4));
 
     load_balance_logger =
         vlib_log_register_class("dpo", "load-balance");
 
     load_balance_map_module_init();
+}
+
+void
+load_balance_pool_alloc (uword size)
+{
+  pool_alloc_aligned(load_balance_pool, size, CLIB_CACHE_LINE_BYTES);
 }
 
 static clib_error_t *
