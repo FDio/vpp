@@ -801,10 +801,10 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vif->gso_enabled = 0;
   vif->packet_coalesce = 0;
 
-  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_CKSUM;
   if (enable_disable)
     {
-      cc.val = VNET_HW_IF_CAP_L4_TX_CKSUM;
+      cc.val = VNET_HW_IF_CAP_TX_CKSUM;
       vif->csum_offload_enabled = 1;
     }
   else
@@ -849,7 +849,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
   vec_foreach_index (i, vif->tap_fds)
     _IOCTL (vif->tap_fds[i], TUNSETOFFLOAD, offload);
 
-  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_CKSUM;
 
   if (enable_disable)
     {
