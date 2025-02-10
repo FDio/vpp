@@ -179,6 +179,11 @@ format_function_t format_ip4_mtrie_8;
 extern ip4_mtrie_8_ply_t *ip4_ply_pool;
 
 /**
+ * @brief Pre-allocate the pool of plys
+ */
+extern void ip4_mtrie_pool_alloc (uword size);
+
+/**
  * Is the leaf terminal (i.e. an LB index) or non-terminal (i.e. a PLY index)
  */
 always_inline u32

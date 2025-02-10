@@ -1772,6 +1772,12 @@ fib_entry_module_init (void)
     fib_entry_track_module_init();
 }
 
+void
+fib_entry_pool_alloc (uword size)
+{
+  pool_alloc(fib_entry_pool, size);
+}
+
 fib_route_path_t *
 fib_entry_encode (fib_node_index_t fib_entry_index)
 {

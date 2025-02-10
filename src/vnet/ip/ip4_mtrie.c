@@ -860,6 +860,12 @@ ip4_mtrie_module_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip4_mtrie_module_init);
 
+void
+ip4_mtrie_pool_alloc (uword size)
+{
+  pool_alloc (ip4_ply_pool, size);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
