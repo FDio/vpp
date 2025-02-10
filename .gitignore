@@ -161,3 +161,4 @@ compile_commands.json
 /startup.vpp
 # log file archives
 /archives
+/venv
