@@ -166,6 +166,7 @@ RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
 RPM_DEPENDS += nasm
+RPM_DEPENDS += socat
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
