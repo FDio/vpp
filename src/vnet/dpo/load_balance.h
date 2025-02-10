@@ -260,5 +260,6 @@ load_balance_get_bucket_i (const load_balance_t *lb,
 }
 
 extern void load_balance_module_init(void);
+extern void load_balance_pool_alloc (uword size);
 
 #endif

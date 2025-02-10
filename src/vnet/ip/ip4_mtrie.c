@@ -190,7 +190,7 @@ ip4_mtrie_8_init (ip4_mtrie_8_t *m)
 {
   ip4_mtrie_8_ply_t *root;
 
-  pool_get (ip4_ply_pool, root);
+  pool_get_aligned (ip4_ply_pool, root, CLIB_CACHE_LINE_BYTES);
   m->root_ply = root - ip4_ply_pool;
 
   ply_8_init (root, IP4_MTRIE_LEAF_EMPTY, 0, 0);
@@ -853,12 +853,18 @@ ip4_mtrie_module_init (vlib_main_t * vm)
   clib_error_t *error = NULL;
 
   /* Burn one ply so index 0 is taken */
-  pool_get (ip4_ply_pool, p);
+  pool_get_aligned (ip4_ply_pool, p, CLIB_CACHE_LINE_BYTES);
 
   return (error);
 }
 
 VLIB_INIT_FUNCTION (ip4_mtrie_module_init);
+
+void
+ip4_mtrie_pool_alloc (uword size)
+{
+  pool_alloc_aligned (ip4_ply_pool, size, CLIB_CACHE_LINE_BYTES);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
