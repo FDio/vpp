@@ -200,8 +200,8 @@ ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t _new,
   return sum;
 }
 
-#define ip_csum_update(sum,old,new,type,field)			\
-  ip_csum_update_inline ((sum), (old), (new),			\
+#define ip_csum_update(sum,old,_new,type,field)			\
+  ip_csum_update_inline ((sum), (old), (_new),			\
 			 STRUCT_OFFSET_OF (type, field),	\
 			 STRUCT_SIZE_OF (type, field))
 
