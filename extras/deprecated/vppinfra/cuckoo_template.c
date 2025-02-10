@@ -788,7 +788,7 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
 	  new_bucket->aux = aux;
 	}
     }
-  h->buckets = new;
+  h->buckets = _new;
 #if CLIB_CUCKOO_DEBUG_COUNTERS
   ++h->rehashes;
 #endif
