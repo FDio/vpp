@@ -12,6 +12,7 @@ leak_check_set=0
 debug_build=
 ginkgo_args=
 tc_names=()
+skip_names=()
 dryrun=
 
 for i in "$@"
@@ -65,6 +66,10 @@ case "${i}" in
             args="$args -verbose"
         fi
         ;;
+    --skip=*)
+        skip_list="${i#*=}"
+        IFS=',' read -r -a skip_names <<< "$skip_list"
+        ;;
     --parallel=*)
         ginkgo_args="$ginkgo_args -procs=${i#*=}"
         ;;
@@ -101,6 +106,10 @@ fi
 
 for name in "${tc_names[@]}"; do
     ginkgo_args="$ginkgo_args --focus $name"
+done
+
+for skip in "${skip_names[@]}"; do
+    ginkgo_args="$ginkgo_args --skip $skip"
 done
 
 if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ] || [ $dryrun_set -eq 1 ]; }; then

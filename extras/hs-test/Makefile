@@ -84,6 +84,7 @@ help:
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
+	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
 	@echo " CPUS=[n-cpus]            - number of cpus to allocate to VPP and containers"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
 	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
@@ -123,7 +124,7 @@ test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN); \
+		--dryrun=$(DRYRUN) --skip=$(SKIP); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -132,7 +133,7 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0) --dryrun=$(DRYRUN); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP); \
 		./script/compress.sh $$?
 
 .PHONY: test-cov
@@ -140,7 +141,7 @@ test-leak: FORCE_BUILD=false
 test-cov: .deps.ok .build.cov.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN); \
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP); \
 		./script/compress.sh $$?
 
 .PHONY: test-leak
