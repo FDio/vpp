@@ -264,7 +264,7 @@ CLIB_MARCH_FN_REGISTRATION (dpdk_ops_vpp_enqueue);
 
 static_always_inline void
 dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t *vm, struct rte_mempool *old,
-				   struct rte_mempool *new, void *obj,
+				   struct rte_mempool *_new, void *obj,
 				   vlib_buffer_template_t *bt)
 {
   struct rte_mbuf *mb = obj;
