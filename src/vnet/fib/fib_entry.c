@@ -1772,6 +1772,29 @@ fib_entry_module_init (void)
     fib_entry_track_module_init();
 }
 
+static clib_error_t *
+fib_entry_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  int size;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "pool-size %d", &size))
+        ;
+      else
+        return clib_error_return (0, "unknown input `%U'",
+                                  format_unformat_error, input);
+    }
+
+  ASSERT (size > 0);
+  pool_alloc(fib_entry_pool, size);
+
+  return 0;
+}
+
+/* fib-entry { pool-size <size> } configuration. */
+VLIB_CONFIG_FUNCTION (fib_entry_config, "fib-entry");
+
 fib_route_path_t *
 fib_entry_encode (fib_node_index_t fib_entry_index)
 {

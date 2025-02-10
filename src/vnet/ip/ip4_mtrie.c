@@ -860,6 +860,29 @@ ip4_mtrie_module_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip4_mtrie_module_init);
 
+static clib_error_t *
+ip4_mtrie_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  int size;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "pool-size %d", &size))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  ASSERT (size > 0);
+  pool_alloc (ip4_ply_pool, size);
+
+  return 0;
+}
+
+/* ip4-mtrie { pool-size <size> } configuration. */
+VLIB_CONFIG_FUNCTION (ip4_mtrie_config, "ip4-mtrie");
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
