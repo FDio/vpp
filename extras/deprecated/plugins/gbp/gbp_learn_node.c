@@ -154,7 +154,7 @@ typedef struct gbp_learn_l2_trace_t_
   /* per-pkt trace data */
   mac_address_t mac;
   u32 sw_if_index;
-  u32 new;
+  u32 _new;
   u32 throttled;
   u32 sclass;
   u32 d_bit;
@@ -489,7 +489,7 @@ typedef struct gbp_learn_l3_trace_t_
   /* per-pkt trace data */
   ip46_address_t ip;
   u32 sw_if_index;
-  u32 new;
+  u32 _new;
   u32 throttled;
   u32 sclass;
 } gbp_learn_l3_trace_t;

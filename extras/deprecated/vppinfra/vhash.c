@@ -744,7 +744,7 @@ void
 vhash_resize (vhash_t * old, u32 log2_n_keys)
 {
   static vhash_resize_t vr;
-  vhash_t new;
+  vhash_t _new;
   u32 i = 0;
 
   vr.old = old;
@@ -758,7 +758,7 @@ vhash_resize (vhash_t * old, u32 log2_n_keys)
     }
 
   vhash_free (old);
-  *old = new;
+  *old = _new;
 }
 
 #endif /* CLIB_HAVE_VEC128 */

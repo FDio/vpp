@@ -1158,7 +1158,7 @@ fib_walk_set_histogram_elements_size (vlib_main_t * vm,
     clib_error_t * error = NULL;
     u32 _new;
 
-    if (unformat (input, "%d", &new))
+    if (unformat (input, "%d", &_new))
     {
 	fib_walk_work_nodes_visited_incr = _new;
     }
