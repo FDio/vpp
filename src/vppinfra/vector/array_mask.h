@@ -124,7 +124,8 @@ clib_array_mask_set_u32 (u32 *a, u32 v, uword *bmp, u32 n_elts)
       n_elts -= uword_bits;
     }
 
-  clib_array_mask_set_u32_x64 (a, v, bmp[0] & pow2_mask (n_elts), n_elts);
+  if (n_elts > 0)
+    clib_array_mask_set_u32_x64 (a, v, bmp[0] & pow2_mask (n_elts), n_elts);
 }
 
 #endif
