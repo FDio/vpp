@@ -34,6 +34,24 @@
       "parentUuid": "beda7861_d60a4b41",
       "revId": "5892ee03e0eca59fee65d48e2b200b62f9aa38d1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e9f3cd9_3864b803",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1030,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-11T10:44:35Z",
+      "side": 1,
+      "message": "Done I had to leave the if else statment before #if, as the #ifed code depends on definition of esp.",
+      "parentUuid": "d1cd2e43_2c1380e0",
+      "revId": "5892ee03e0eca59fee65d48e2b200b62f9aa38d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
