@@ -36,6 +36,7 @@ typedef enum _tcp_input_next
   TCP_INPUT_NEXT_ESTABLISHED,
   TCP_INPUT_NEXT_RESET,
   TCP_INPUT_NEXT_PUNT,
+  TCP_INPUT_NEXT_COALESCE,
   TCP_INPUT_N_NEXT
 } tcp_input_next_t;
 
@@ -2716,6 +2717,40 @@ VLIB_REGISTER_NODE (tcp6_drop_node) = {
   .error_counters = tcp_input_error_counters,
 };
 
+always_inline uword
+tcp46_coalesce_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame, int is_ip4)
+{
+  /* No-op, buffers were coalesced into other buffers */
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (tcp4_coalesce_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_coalesce_inline (vm, node, from_frame, 1 /* is_ip4 */);
+}
+
+VLIB_NODE_FN (tcp6_coalesce_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_coalesce_inline (vm, node, from_frame, 0 /* is_ip4 */);
+}
+
+VLIB_REGISTER_NODE (tcp4_coalesce_node) = {
+  .name = "tcp4-coalesce",
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+};
+
+VLIB_REGISTER_NODE (tcp6_coalesce_node) = {
+  .name = "tcp6-coalesce",
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+};
+
 #define foreach_tcp4_input_next                                               \
   _ (DROP, "tcp4-drop")                                                       \
   _ (LISTEN, "tcp4-listen")                                                   \
@@ -2723,7 +2758,8 @@ VLIB_REGISTER_NODE (tcp6_drop_node) = {
   _ (SYN_SENT, "tcp4-syn-sent")                                               \
   _ (ESTABLISHED, "tcp4-established")                                         \
   _ (RESET, "tcp4-reset")                                                     \
-  _ (PUNT, "ip4-punt")
+  _ (PUNT, "ip4-punt")                                                        \
+  _ (COALESCE, "tcp4-coalesce")
 
 #define foreach_tcp6_input_next                                               \
   _ (DROP, "tcp6-drop")                                                       \
@@ -2732,7 +2768,8 @@ VLIB_REGISTER_NODE (tcp6_drop_node) = {
   _ (SYN_SENT, "tcp6-syn-sent")                                               \
   _ (ESTABLISHED, "tcp6-established")                                         \
   _ (RESET, "tcp6-reset")                                                     \
-  _ (PUNT, "ip6-punt")
+  _ (PUNT, "ip6-punt")                                                        \
+  _ (COALESCE, "tcp6-coalesce")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
@@ -2757,7 +2794,8 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
 
 static inline void
 tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc,
-			   vlib_buffer_t *b, u16 *next, u16 *err_counters)
+			   vlib_buffer_t *b, u32 bi, u16 *next,
+			   u16 *err_counters)
 {
   tcp_header_t *tcp;
   u32 error;
@@ -2784,7 +2822,74 @@ tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc,
 	clib_warning ("tcp conn %u disp error state %U flags %U",
 		      tc->c_c_index, format_tcp_state, tc->state,
 		      format_tcp_flags, (int) flags);
+      return;
     }
+
+  u32 opts_len = (tcp_doff (tcp) << 2) - sizeof (tcp_header_t);
+  if (tc->state != TCP_STATE_ESTABLISHED || tcp->flags != TCP_FLAG_ACK ||
+      opts_len > TCP_OPTION_LEN_TIMESTAMP + 2)
+    {
+      tc->gro_b = 0;
+      return;
+    }
+
+  if (!tc->gro_b)
+    {
+      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      return;
+    }
+
+  vlib_buffer_t *pb = tc->gro_b;
+  tcp_header_t *pth = tcp_buffer_hdr (pb);
+  u32 popts_len = (tcp_doff (pth) << 2) - sizeof (tcp_header_t);
+
+  if (vnet_buffer (pb)->tcp.seq_end != vnet_buffer (b)->tcp.seq_number ||
+      vnet_buffer (pb)->tcp.ack_number != vnet_buffer (b)->tcp.ack_number ||
+      (opts_len != popts_len ||
+       clib_memcmp ((const u8 *) (tcp + 1), (const u8 *) (pth + 1),
+		    opts_len)) ||
+      ((u16) ~0) - vnet_buffer (pb)->tcp.data_len < tc->snd_mss)
+    {
+      tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? b : 0;
+      return;
+    }
+
+  /* XXX do on init */
+  if (!(pb->flags & VLIB_BUFFER_NEXT_PRESENT))
+    pb->total_length_not_including_first_buffer = 0;
+
+  pb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  pb->total_length_not_including_first_buffer += vnet_buffer (b)->tcp.data_len;
+  vnet_buffer (pb)->tcp.seq_end += vnet_buffer (b)->tcp.data_len;
+  vnet_buffer (pb)->tcp.data_len += vnet_buffer (b)->tcp.data_len;
+
+  ASSERT (pb->total_length_not_including_first_buffer + pb->current_length <=
+	  vnet_buffer (pb)->tcp.data_len + 200);
+
+  if (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      pb = tc->last_gro_b;
+      /* If last happend to be chained buffer, walk to last in chain */
+      while (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	pb = vlib_get_buffer (vlib_get_main (), pb->next_buffer);
+    }
+
+  tc->last_gro_b = b;
+  //     pb = vlib_buffer_gro (pb)->last_b;
+
+  pb->next_buffer = bi;
+  pb->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  //   vlib_buffer_gro (pb)->last_b = b;
+
+  ASSERT (!(b->flags & VLIB_BUFFER_NEXT_PRESENT));
+
+  vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
+  /* XXX make sure length is okay */
+  b->current_length = vnet_buffer (b)->tcp.data_len;
+
+  /* Not full mss, stop coalescing */
+  tc->gro_b = vnet_buffer (b)->tcp.data_len >= tc->snd_mss ? tc->gro_b : 0;
+  *next = TCP_INPUT_NEXT_COALESCE;
 }
 
 always_inline uword
@@ -2832,8 +2937,10 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], err_counters);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], from[b - bufs], &next[0],
+				     err_counters);
+	  tcp_input_dispatch_buffer (tm, tc1, b[1], from[b - bufs + 1],
+				     &next[1], err_counters);
 	}
       else
 	{
@@ -2841,8 +2948,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0],
-					 err_counters);
+	      tcp_input_dispatch_buffer (tm, tc0, b[0], from[b - bufs],
+					 &next[0], err_counters);
 	    }
 	  else
 	    {
@@ -2854,8 +2961,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1],
-					 err_counters);
+	      tcp_input_dispatch_buffer (tm, tc1, b[1], from[b - bufs + 1],
+					 &next[1], err_counters);
 	    }
 	  else
 	    {
@@ -2885,7 +2992,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], from[b - bufs], &next[0],
+				     err_counters);
 	}
       else
 	{
