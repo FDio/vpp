@@ -79,7 +79,7 @@ do {                                                                    \
                 > (_sw_if_index)) ?                                     \
                vec_elt ((lm)->if_address_pool_index_by_sw_if_index,     \
                         (_sw_if_index)) :                               \
-               (u32)~0);                                                \
+                ~0U);                                                   \
     ip_interface_address_t * _a;                                        \
     while (_ia != ~0U)                                                   \
     {                                                                   \

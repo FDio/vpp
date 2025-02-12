@@ -680,7 +680,7 @@ vlib_process_get_event_data (vlib_main_t * vm,
   /* Find first type with events ready.
      Return invalid type when there's nothing there. */
   t = clib_bitmap_first_set (p->non_empty_event_type_bitmap);
-  if (t == ~0U)
+  if (t == ~0ULL)
     return 0;
 
   p->non_empty_event_type_bitmap =
@@ -731,7 +731,7 @@ vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
   /* Find first type with events ready.
      Return invalid type when there's nothing there. */
   t = clib_bitmap_first_set (p->non_empty_event_type_bitmap);
-  if (t == ~0U)
+  if (t == ~0ULL)
     return t;
 
   p->non_empty_event_type_bitmap =
