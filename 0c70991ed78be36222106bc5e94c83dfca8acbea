@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a9f6cfc_47aba8e0",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "I\u0027ve added new line - but the checkstyle doesn\u0027t like indentation and the fixstyle \"correets\" it to what you see.",
+      "parentUuid": "58a6cd36_b5de9af7",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7d3ae619_6ae5d5d6",
@@ -70,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "06473bf8_433fc1fb",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 876,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "Good catch",
+      "parentUuid": "dec11cf0_afc884c9",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4dd82397_45c467ca",
@@ -83,6 +119,24 @@
       "writtenOn": "2025-02-12T09:56:24Z",
       "side": 1,
       "message": "Please enlighten me here - if p0 is found here why we are dropping the packet?",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8066c87e_37897eb0",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 942,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "Because it is policy DISCARD match - the only interesting thing that will happen is the ipsec_dropped counter incrementation - so that it reflects in stats.",
+      "parentUuid": "4dd82397_45c467ca",
       "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -106,6 +160,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2af979f8_6e3c32f0",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1038,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "ok I can remove the #ifed section",
+      "parentUuid": "f0991595_d0c329c3",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "77d990b4_50e270ed",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 3
@@ -117,6 +189,24 @@
       "writtenOn": "2025-02-12T00:29:39Z",
       "side": 1,
       "message": "Is it just me or is the indent off on this line?",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0303191b_10051852",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1040,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "The formatting is enforced  by make fixstyle",
+      "parentUuid": "77d990b4_50e270ed",
       "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -140,6 +230,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d6cfaa98_49bcd6f5",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "yes we can do it - also we can fix bypass and discard handling for ah, another thing is that ah packages may probably be encapsulated in udp header, but then can I fix it in separate patch? As the amount of changes becomes significant, so I would prefer to deal with ah in another round.",
+      "parentUuid": "32bc7e7f_0e1e1bdb",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d9fd42e6_4b812f65",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 3
@@ -151,6 +259,24 @@
       "writtenOn": "2025-02-12T00:29:39Z",
       "side": 1,
       "message": "This label might be hard to miss if its indented. I think the label should start in the first column.",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e34f7186_f0abaead",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1091,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-02-12T12:04:11Z",
+      "side": 1,
+      "message": "Again it\u0027s enforced by the formatter - if I move it make checkstyle will complains.",
+      "parentUuid": "d9fd42e6_4b812f65",
       "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
