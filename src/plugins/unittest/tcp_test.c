@@ -1005,7 +1005,7 @@ static void
 tcp_test_set_time (u32 thread_index, u32 val)
 {
   session_main.wrk[thread_index].last_vlib_time = val;
-  tcp_set_time_now (&tcp_main.wrk_ctx[thread_index], val);
+  tcp_set_time_now (&tcp_main.wrk[thread_index], val);
 }
 
 static int

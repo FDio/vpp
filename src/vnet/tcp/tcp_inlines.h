@@ -68,7 +68,7 @@ always_inline tcp_connection_t *
 tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
 {
   tcp_worker_ctx_t *wrk;
-  if (thread_index >= vec_len (tcp_main.wrk_ctx))
+  if (thread_index >= vec_len (tcp_main.wrk))
     return 0;
   wrk = tcp_get_worker (thread_index);
   if (pool_is_free_index (wrk->connections, conn_index))
@@ -217,7 +217,7 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 always_inline u32
 tcp_time_tstamp (u32 thread_index)
 {
-  return tcp_main.wrk_ctx[thread_index].time_tstamp;
+  return tcp_main.wrk[thread_index].time_tstamp;
 }
 
 /**
@@ -226,14 +226,13 @@ tcp_time_tstamp (u32 thread_index)
 always_inline u32
 tcp_tstamp (tcp_connection_t * tc)
 {
-  return (tcp_main.wrk_ctx[tc->c_thread_index].time_tstamp -
-	  tc->timestamp_delta);
+  return (tcp_main.wrk[tc->c_thread_index].time_tstamp - tc->timestamp_delta);
 }
 
 always_inline f64
 tcp_time_now_us (u32 thread_index)
 {
-  return tcp_main.wrk_ctx[thread_index].time_us;
+  return tcp_main.wrk[thread_index].time_us;
 }
 
 always_inline void
