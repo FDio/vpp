@@ -2819,8 +2819,6 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
       }
 
-      next[0] = next[1] = TCP_INPUT_NEXT_DROP;
-
       tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
 				     is_nolookup);
       tc1 = tcp_input_lookup_buffer (b[1], thread_index, &error1, is_ip4,
@@ -2881,7 +2879,6 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      next[0] = TCP_INPUT_NEXT_DROP;
       tc0 = tcp_input_lookup_buffer (b[0], thread_index, &error0, is_ip4,
 				     is_nolookup);
       if (PREDICT_TRUE (tc0 != 0))
