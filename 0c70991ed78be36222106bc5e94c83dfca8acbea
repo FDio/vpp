@@ -72,6 +72,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4dd82397_45c467ca",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 942,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-12T09:56:24Z",
+      "side": 1,
+      "message": "Please enlighten me here - if p0 is found here why we are dropping the packet?",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0991595_d0c329c3",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1038,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-12T09:56:24Z",
+      "side": 1,
+      "message": "Logic 1027 and 1038 should be combined. I understand you may want to keep the clib_warning message. However, the warning was never compiled (wrapped by #if 0) so I don\u0027t see the point of keeping it. The trace should have enough debug info for this packet already.",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "77d990b4_50e270ed",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 3
@@ -83,6 +117,23 @@
       "writtenOn": "2025-02-12T00:29:39Z",
       "side": 1,
       "message": "Is it just me or is the indent off on this line?",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32bc7e7f_0e1e1bdb",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-12T09:56:24Z",
+      "side": 1,
+      "message": "I am hoping this could goes into an inline function and includes the trace into it too.",
       "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
