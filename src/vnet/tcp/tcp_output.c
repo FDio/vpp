@@ -299,7 +299,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 void
 tcp_update_burst_snd_vars (tcp_connection_t * tc)
 {
-  tcp_main_t *tm = &tcp_main;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
 
   /* Compute options to be used for connection. These may be reused when
    * sending data or to compute the effective mss (snd_mss) */
@@ -310,8 +310,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   tc->snd_mss = clib_min (tc->mss, tc->rcv_opts.mss) - tc->snd_opts_len;
   ASSERT (tc->snd_mss > 0);
 
-  tcp_options_write (tm->wrk_ctx[tc->c_thread_index].cached_opts,
-		     &tc->snd_opts);
+  tcp_options_write (wrk->cached_opts, &tc->snd_opts);
 
   tcp_update_rcv_wnd (tc);
 
@@ -875,7 +874,6 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 {
   u8 tcp_hdr_opts_len, flags = TCP_FLAG_ACK;
   u32 advertise_wnd, data_len;
-  tcp_main_t *tm = &tcp_main;
   tcp_header_t *th;
 
   data_len = b->current_length;
@@ -907,9 +905,8 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
 
   if (maybe_burst)
     {
-      clib_memcpy_fast ((u8 *) (th + 1),
-			tm->wrk_ctx[tc->c_thread_index].cached_opts,
-			tc->snd_opts_len);
+      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+      clib_memcpy_fast ((u8 *) (th + 1), wrk->cached_opts, tc->snd_opts_len);
     }
   else
     {
