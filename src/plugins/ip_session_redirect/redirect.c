@@ -70,7 +70,7 @@ ip_session_redirect_find (ip_session_redirect_main_t *im, u32 table_index,
   /* we are adding the table index at the end of the match string so we
    * can disambiguiate identical matches in different tables in
    * im->session_by_match_and_table_index */
-  u8 *match_and_table_index = (u8 *) vec_dup (match);
+  const u8 *match_and_table_index = vec_dup (match);
   vec_add (match_and_table_index, (void *) &table_index, 4);
   uword *p =
     hash_get_mem (im->session_by_match_and_table_index, match_and_table_index);
