@@ -16,6 +16,24 @@
       "message": "In order to keep things consistent, what about having a single section \u0027l3fib\u0027 with the 3 settings? Eg.\nl3fib {\n    load-balance-pool-size 1M\n    fib-entry-pool-size 1M\n    ip4-mtrie-pool-size 1K\n}",
       "revId": "14348c69158439234aa134478e18b61ac501920f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e1ab659_2300b1e6",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-02-12T11:24:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c5df6859_cb595c6a",
+      "revId": "14348c69158439234aa134478e18b61ac501920f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
