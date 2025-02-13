@@ -60,8 +60,7 @@ typedef enum
 typedef struct
 {
   u32 seq;
-  u32 sa_seq;
-  u32 sa_seq_hi;
+  u64 sa_seq64;
   u32 pkt_seq_hi;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -81,10 +80,10 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
 
   s = format (s,
-	      "esp: crypto %U integrity %U pkt-seq %d sa-seq %u sa-seq-hi %u "
+	      "esp: crypto %U integrity %U pkt-seq %d sa-seq %lu "
 	      "pkt-seq-hi %u",
 	      format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg,
-	      t->integ_alg, t->seq, t->sa_seq, t->sa_seq_hi, t->pkt_seq_hi);
+	      t->integ_alg, t->seq, t->sa_seq64, t->pkt_seq_hi);
   return s;
 }
 
@@ -1369,8 +1368,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tr->crypto_alg = sa->crypto_alg;
 	  tr->integ_alg = sa->integ_alg;
 	  tr->seq = pd->seq;
-	  tr->sa_seq = irt->seq;
-	  tr->sa_seq_hi = irt->seq_hi;
+	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
 	}
 
@@ -1442,8 +1440,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->crypto_alg = sa->crypto_alg;
 	  tr->integ_alg = sa->integ_alg;
 	  tr->seq = pd->seq;
-	  tr->sa_seq = irt->seq;
-	  tr->sa_seq_hi = irt->seq_hi;
+	  tr->sa_seq64 = irt->seq64;
 	}
 
       n_left--;
