@@ -44,11 +44,9 @@ static inline u64
 ipsec_sa_get_inb_seq (ipsec_sa_t *sa)
 {
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
-  u64 seq;
-
-  seq = irt->seq;
-  if (ipsec_sa_is_set_USE_ESN (sa))
-    seq |= (u64) irt->seq_hi << 32;
+  u64 seq = irt->seq64;
+  if (!ipsec_sa_is_set_USE_ESN (sa))
+    seq = (u32) seq;
   return seq;
 }
 

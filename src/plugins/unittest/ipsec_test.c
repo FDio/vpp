@@ -54,8 +54,7 @@ test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
       if (irt)
 	{
-	  irt->seq = seq_num & 0xffffffff;
-	  irt->seq_hi = seq_num >> 32;
+	  irt->seq64 = seq_num;
 
 	  /* clear the window */
 	  uword_bitmap_clear (irt->replay_window,
