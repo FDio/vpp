@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c466ca4_d6b33e83",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-02-13T21:35:03Z",
+      "side": 1,
+      "message": "alignment required here and elsewhere",
+      "revId": "7462e00bc4f354de6659686462f49217c815ca01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
