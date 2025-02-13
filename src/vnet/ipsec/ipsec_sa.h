@@ -166,6 +166,7 @@ typedef struct
   u16 async_op_id;
   vnet_crypto_key_index_t cipher_key_index;
   vnet_crypto_key_index_t integ_key_index;
+  u32 anti_replay_window_size;
   union
   {
     u64 replay_window;
@@ -336,41 +337,9 @@ extern uword unformat_ipsec_key (unformat_input_t *input, va_list *args);
  * Anti Replay definitions
  */
 
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE(_irt)                                \
-  (u32) (PREDICT_FALSE (_irt->anti_reply_huge) ?                              \
-	   clib_bitmap_bytes (_irt->replay_window_huge) * 8 :                 \
-	   BITS (_irt->replay_window))
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN(_irt, _is_huge)            \
-  (u32) (_is_huge ? clib_bitmap_bytes (_irt->replay_window_huge) * 8 :        \
-		    BITS (_irt->replay_window))
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN(_irt)                              \
-  (u64) (PREDICT_FALSE (_irt->anti_reply_huge) ?                              \
-	   clib_bitmap_count_set_bits (_irt->replay_window_huge) :            \
-	   count_set_bits (_irt->replay_window))
-
 #define IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN_KNOWN_WIN(_irt, _is_huge)          \
   (u64) (_is_huge ? clib_bitmap_count_set_bits (_irt->replay_window_huge) :   \
 		    count_set_bits (_irt->replay_window))
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX(_irt)                           \
-  (u32) (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (_irt) - 1)
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX_KNOWN_WIN(_irt, _is_huge)       \
-  (u32) (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (_irt, _is_huge) - 1)
-
-/*
- * sequence number less than the lower bound are outside of the window
- * From RFC4303 Appendix A:
- *  Bl = Tl - W + 1
- */
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_sa)                          \
-  (u32) (_sa->seq - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (_sa) + 1)
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND_KNOWN_WIN(_sa, _is_huge)      \
-  (u32) (_sa->seq -                                                           \
-	 IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN (_sa, _is_huge) + 1)
 
 always_inline u64
 ipsec_sa_anti_replay_get_64b_window (const ipsec_sa_inb_rt_t *irt)
@@ -379,7 +348,7 @@ ipsec_sa_anti_replay_get_64b_window (const ipsec_sa_inb_rt_t *irt)
     return irt->replay_window;
 
   u64 w;
-  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (irt);
+  u32 window_size = irt->anti_replay_window_size;
   u32 tl_win_index = irt->seq & (window_size - 1);
 
   if (PREDICT_TRUE (tl_win_index >= 63))
@@ -400,7 +369,7 @@ always_inline int
 ipsec_sa_anti_replay_check (const ipsec_sa_inb_rt_t *irt, u32 seq,
 			    bool ar_huge)
 {
-  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN (irt, ar_huge);
+  u32 window_size = irt->anti_replay_window_size;
 
   /* we assume that the packet is in the window.
    * if the packet falls left (sa->seq - seq >= window size),
@@ -435,9 +404,8 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_inb_rt_t *irt, u32 seq,
 {
   ASSERT ((post_decrypt == false) == (hi_seq_req != 0));
 
-  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN (irt, ar_huge);
-  u32 window_lower_bound =
-    IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND_KNOWN_WIN (irt, ar_huge);
+  u32 window_size = irt->anti_replay_window_size;
+  u32 window_lower_bound = irt->seq - window_size + 1;
 
   if (!irt->use_esn)
     {
@@ -623,7 +591,7 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
 {
   u32 n_lost = 0;
   u32 seen = 0;
-  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN (irt, ar_huge);
+  u32 window_size = irt->anti_replay_window_size;
 
   if (inc < window_size)
     {
@@ -778,7 +746,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt, u32 thread_index,
 			      u32 seq, u32 hi_seq, bool ar_huge)
 {
   u64 n_lost = 0;
-  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE_KNOWN_WIN (irt, ar_huge);
+  u32 window_size = irt->anti_replay_window_size;
   u32 pos;
 
   if (irt->use_esn)
