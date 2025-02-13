@@ -202,16 +202,8 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (PREDICT_FALSE (irt->anti_reply_huge))
-	{
-	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    irt, pd->seq, ~0, false, &pd->seq_hi, true);
-	}
-      else
-	{
-	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    irt, pd->seq, ~0, false, &pd->seq_hi, false);
-	}
+      anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
+	irt, pd->seq, ~0, false, &pd->seq_hi);
       if (anti_replay_result)
 	{
 	  ah_decrypt_set_next_index (b[0], node, vm->thread_index,
@@ -317,32 +309,16 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (irt->integ_icv_size))
 	{
 	  /* redo the anti-reply check. see esp_decrypt for details */
-	  if (PREDICT_FALSE (irt->anti_reply_huge))
+	  if (ipsec_sa_anti_replay_and_sn_advance (irt, pd->seq, pd->seq_hi,
+						   true, NULL))
 	    {
-	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    irt, pd->seq, pd->seq_hi, true, NULL, true))
-		{
-		  ah_decrypt_set_next_index (
-		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
-		    next, AH_DECRYPT_NEXT_DROP, pd->sa_index);
-		  goto trace;
-		}
-	      n_lost = ipsec_sa_anti_replay_advance (
-		irt, thread_index, pd->seq, pd->seq_hi, true);
+	      ah_decrypt_set_next_index (b[0], node, vm->thread_index,
+					 AH_DECRYPT_ERROR_REPLAY, 0, next,
+					 AH_DECRYPT_NEXT_DROP, pd->sa_index);
+	      goto trace;
 	    }
-	  else
-	    {
-	      if (ipsec_sa_anti_replay_and_sn_advance (
-		    irt, pd->seq, pd->seq_hi, true, NULL, false))
-		{
-		  ah_decrypt_set_next_index (
-		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
-		    next, AH_DECRYPT_NEXT_DROP, pd->sa_index);
-		  goto trace;
-		}
-	      n_lost = ipsec_sa_anti_replay_advance (
-		irt, thread_index, pd->seq, pd->seq_hi, false);
-	    }
+	  n_lost = ipsec_sa_anti_replay_advance (irt, thread_index, pd->seq,
+						 pd->seq_hi);
 	  vlib_prefetch_simple_counter (
 	    &ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST], thread_index,
 	    pd->sa_index);

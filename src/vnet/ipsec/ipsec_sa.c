@@ -214,7 +214,6 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
   if (ipsec_sa_get_inb_rt (sa))
     {
       ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
-      irt->anti_reply_huge = ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa);
       irt->use_anti_replay = ipsec_sa_is_set_USE_ANTI_REPLAY (sa);
       irt->use_esn = ipsec_sa_is_set_USE_ESN (sa);
       irt->is_tunnel = ipsec_sa_is_set_IS_TUNNEL (sa);
@@ -444,12 +443,10 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->flags = flags;
 
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && anti_replay_window_size > 64)
-    {
-      ipsec_sa_set_ANTI_REPLAY_HUGE (sa);
-      anti_replay_window_size = 1 << max_log2 (anti_replay_window_size);
-    }
+    /* window size rounded up to next power of 2 */
+    anti_replay_window_size = 1 << max_log2 (anti_replay_window_size);
   else
-    anti_replay_window_size = BITS (irt->replay_window[0]);
+    anti_replay_window_size = 64;
 
   vec_validate (im->inb_sa_runtimes, sa_index);
   vec_validate (im->outb_sa_runtimes, sa_index);
@@ -613,7 +610,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	ipsec_register_udp_port (dst_port, !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
     }
 
-  /* window size rounded up to next power of 2 */
   for (u32 i = 0; i < anti_replay_window_size / uword_bits; i++)
     irt->replay_window[i] = ~0ULL;
 
