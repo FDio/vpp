@@ -180,20 +180,20 @@ typedef struct
   u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
-  clib_pcg64i_random_t iv_prng;
   u16 cipher_op_id;
   u16 integ_op_id;
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
-  u16 thread_index;
-  u32 salt;
-  u64 seq64;
-  u32 spi_be;
   ip_dscp_t t_dscp;
-  dpo_id_t dpo;
   tunnel_encap_decap_flags_t tunnel_flags;
+  u16 thread_index;
   u16 async_op_id;
+  u32 salt;
+  u32 spi_be;
+  u64 seq64;
+  dpo_id_t dpo;
+  clib_pcg64i_random_t iv_prng;
   vnet_crypto_key_index_t cipher_key_index;
   vnet_crypto_key_index_t integ_key_index;
   union
