@@ -126,6 +126,14 @@ int
 session_program_transport_io_evt (session_handle_tu_t sh,
 				  session_evt_type_t evt_type)
 {
+  ASSERT (evt_type == SESSION_IO_EVT_RX || evt_type == SESSION_IO_EVT_TX ||
+	  evt_type == SESSION_IO_EVT_TX_FLUSH ||
+	  evt_type == SESSION_IO_EVT_BUILTIN_RX);
+  if (PREDICT_FALSE (evt_type != SESSION_IO_EVT_RX &&
+		     evt_type != SESSION_IO_EVT_TX &&
+		     evt_type != SESSION_IO_EVT_TX_FLUSH &&
+		     evt_type != SESSION_IO_EVT_BUILTIN_RX))
+    return -1;
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
 				     (u32) sh.thread_index, evt_type);
 }
