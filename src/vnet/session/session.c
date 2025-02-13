@@ -28,9 +28,17 @@
 
 session_main_t session_main;
 
+typedef enum
+{
+  SESSION_EVT_RPC,
+  SESSION_EVT_IO,
+  SESSION_EVT_SESSION,
+} session_evt_family_t;
+
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
-			    session_evt_type_t evt_type)
+			    session_evt_type_t evt_type,
+			    session_evt_family_t family)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   session_event_t *evt;
@@ -45,30 +53,33 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -2;
     }
-  switch (evt_type)
+  switch (family)
     {
-    case SESSION_CTRL_EVT_RPC:
+    case SESSION_EVT_RPC:
+      ASSERT (evt_type == SESSION_CTRL_EVT_RPC);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
-    case SESSION_IO_EVT_RX:
-    case SESSION_IO_EVT_TX:
-    case SESSION_IO_EVT_TX_FLUSH:
-    case SESSION_IO_EVT_BUILTIN_RX:
+    case SESSION_EVT_IO:
+      ASSERT (evt_type == SESSION_IO_EVT_RX || evt_type == SESSION_IO_EVT_TX ||
+	      evt_type == SESSION_IO_EVT_TX_FLUSH ||
+	      evt_type == SESSION_IO_EVT_BUILTIN_RX);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
       break;
-    case SESSION_IO_EVT_TX_MAIN:
-    case SESSION_CTRL_EVT_CLOSE:
-    case SESSION_CTRL_EVT_RESET:
+    case SESSION_EVT_SESSION:
+      ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
+	      evt_type == SESSION_CTRL_EVT_HALF_CLOSE ||
+	      evt_type == SESSION_CTRL_EVT_RESET);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
+      ASSERT (0);
       clib_warning ("evt unhandled!");
       svm_msg_q_unlock (mq);
       return -1;
@@ -88,7 +99,8 @@ int
 session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread (&f->vpp_session_index, 0,
-				     f->master_thread_index, evt_type);
+				     f->master_thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 /* Deprecated, use session_program_* functions */
@@ -96,14 +108,16 @@ int
 session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 				      session_evt_type_t evt_type)
 {
-  return session_send_evt_to_thread (data, 0, thread_index, evt_type);
+  return session_send_evt_to_thread (data, 0, thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
 session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-				     (u32) sh.thread_index, evt_type);
+				     (u32) sh.thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
@@ -116,9 +130,9 @@ session_program_rx_io_evt (session_handle_tu_t sh)
     }
   else
     {
-      return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-					 (u32) sh.thread_index,
-					 SESSION_IO_EVT_BUILTIN_RX);
+      return session_send_evt_to_thread (
+	(void *) &sh.session_index, 0, (u32) sh.thread_index,
+	SESSION_IO_EVT_BUILTIN_RX, SESSION_EVT_IO);
     }
 }
 
@@ -127,25 +141,24 @@ session_program_transport_io_evt (session_handle_tu_t sh,
 				  session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-				     (u32) sh.thread_index, evt_type);
+				     (u32) sh.thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect, shutdown and reset */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
-	  evt_type == SESSION_CTRL_EVT_HALF_CLOSE ||
-	  evt_type == SESSION_CTRL_EVT_RESET);
-  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
+  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type,
+				     SESSION_EVT_SESSION);
 }
 
 void
 session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 				      void *rpc_args)
 {
-  session_send_evt_to_thread (fp, rpc_args, thread_index,
-			      SESSION_CTRL_EVT_RPC);
+  session_send_evt_to_thread (fp, rpc_args, thread_index, SESSION_CTRL_EVT_RPC,
+			      SESSION_EVT_RPC);
 }
 
 void
