@@ -426,7 +426,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   ipsec_sa_outb_rt_t *ort;
   clib_error_t *err;
   ipsec_sa_t *sa;
-  u32 sa_index;
+  u32 sa_index, irt_sz;
   u16 thread_index = (vlib_num_workers ()) ? ~0 : 0;
   u64 rand[2];
   uword *p;
@@ -443,19 +443,22 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa_index = sa - im->sa_pool;
   sa->flags = flags;
 
-  vec_validate (im->inb_sa_runtimes, sa_index);
-  vec_validate (im->outb_sa_runtimes, sa_index);
-
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && anti_replay_window_size > 64)
     {
       ipsec_sa_set_ANTI_REPLAY_HUGE (sa);
       anti_replay_window_size = 1 << max_log2 (anti_replay_window_size);
     }
   else
-    anti_replay_window_size = BITS (irt->replay_window);
+    anti_replay_window_size = BITS (irt->replay_window[0]);
 
-  irt = clib_mem_alloc_aligned (sizeof (ipsec_sa_inb_rt_t),
-				alignof (ipsec_sa_inb_rt_t));
+  vec_validate (im->inb_sa_runtimes, sa_index);
+  vec_validate (im->outb_sa_runtimes, sa_index);
+
+  irt_sz = sizeof (ipsec_sa_inb_rt_t);
+  irt_sz += anti_replay_window_size / 8;
+  irt_sz = round_pow2 (irt_sz, CLIB_CACHE_LINE_BYTES);
+
+  irt = clib_mem_alloc_aligned (irt_sz, alignof (ipsec_sa_inb_rt_t));
   ort = clib_mem_alloc_aligned (sizeof (ipsec_sa_outb_rt_t),
 				alignof (ipsec_sa_outb_rt_t));
   im->inb_sa_runtimes[sa_index] = irt;
@@ -611,15 +614,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     }
 
   /* window size rounded up to next power of 2 */
-  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
-    {
-      irt->replay_window_huge =
-	clib_bitmap_set_region (0, 0, 1, anti_replay_window_size);
-    }
-  else
-    {
-      irt->replay_window = ~0;
-    }
+  for (u32 i = 0; i < anti_replay_window_size / uword_bits; i++)
+    irt->replay_window[i] = ~0ULL;
 
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
 
@@ -660,9 +656,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
     vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_sync_key_index);
-  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
-    if (irt && irt->replay_window_huge)
-      clib_bitmap_free (irt->replay_window_huge);
   foreach_pointer (p, irt, ort)
     if (p)
       clib_mem_free (p);

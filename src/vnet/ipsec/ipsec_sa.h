@@ -167,11 +167,7 @@ typedef struct
   vnet_crypto_key_index_t cipher_key_index;
   vnet_crypto_key_index_t integ_key_index;
   u32 anti_replay_window_size;
-  union
-  {
-    u64 replay_window;
-    clib_bitmap_t *replay_window_huge;
-  };
+  uword replay_window[];
 } ipsec_sa_inb_rt_t;
 
 typedef struct
@@ -333,34 +329,25 @@ extern uword unformat_ipsec_key (unformat_input_t *input, va_list *args);
 
 #define IPSEC_UDP_PORT_NONE ((u16) ~0)
 
-/*
- * Anti Replay definitions
- */
-
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN_KNOWN_WIN(_irt, _is_huge)          \
-  (u64) (_is_huge ? clib_bitmap_count_set_bits (_irt->replay_window_huge) :   \
-		    count_set_bits (_irt->replay_window))
-
 always_inline u64
 ipsec_sa_anti_replay_get_64b_window (const ipsec_sa_inb_rt_t *irt)
 {
+  uword *bmp = (uword *) irt->replay_window;
+
   if (!irt->anti_reply_huge)
-    return irt->replay_window;
+    return irt->replay_window[0];
 
   u64 w;
   u32 window_size = irt->anti_replay_window_size;
   u32 tl_win_index = irt->seq & (window_size - 1);
 
   if (PREDICT_TRUE (tl_win_index >= 63))
-    return clib_bitmap_get_multiple (irt->replay_window_huge,
-				     tl_win_index - 63, 64);
+    return uword_bitmap_get_multiple (bmp, tl_win_index - 63, 64);
 
-  w = clib_bitmap_get_multiple_no_check (irt->replay_window_huge, 0,
-					 tl_win_index + 1)
+  w = uword_bitmap_get_multiple_no_check (bmp, 0, tl_win_index + 1)
       << (63 - tl_win_index);
-  w |= clib_bitmap_get_multiple_no_check (irt->replay_window_huge,
-					  window_size - 63 + tl_win_index,
-					  63 - tl_win_index);
+  w |= uword_bitmap_get_multiple_no_check (
+    bmp, window_size - 63 + tl_win_index, 63 - tl_win_index);
 
   return w;
 }
@@ -376,9 +363,10 @@ ipsec_sa_anti_replay_check (const ipsec_sa_inb_rt_t *irt, u32 seq,
    * the result is wrong */
 
   if (ar_huge)
-    return clib_bitmap_get (irt->replay_window_huge, seq & (window_size - 1));
+    return uword_bitmap_is_bit_set ((uword *) irt->replay_window,
+				    seq & (window_size - 1));
   else
-    return (irt->replay_window >> (window_size + seq - irt->seq - 1)) & 1;
+    return (irt->replay_window[0] >> (window_size + seq - irt->seq - 1)) & 1;
 
   return 0;
 }
@@ -592,13 +580,13 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
   u32 n_lost = 0;
   u32 seen = 0;
   u32 window_size = irt->anti_replay_window_size;
+  uword *window = irt->replay_window;
 
   if (inc < window_size)
     {
       if (ar_huge)
 	{
 	  /* the number of packets we saw in this section of the window */
-	  clib_bitmap_t *window = irt->replay_window_huge;
 	  u32 window_lower_bound = (irt->seq + 1) & (window_size - 1);
 	  u32 window_next_lower_bound =
 	    (window_lower_bound + inc) & (window_size - 1);
@@ -684,8 +672,8 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
 	      window[i_block] &= ~mask;
 	    }
 
-	  clib_bitmap_set_no_check (window,
-				    (irt->seq + inc) & (window_size - 1), 1);
+	  uword_bitmap_set_bits_at_index (
+	    window, (irt->seq + inc) & (window_size - 1), 1);
 	}
       else
 	{
@@ -694,11 +682,11 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
 	   * of the window that we will right shift of the end
 	   * as a result of this increments
 	   */
-	  u64 old = irt->replay_window & pow2_mask (inc);
+	  u64 old = irt->replay_window[0] & pow2_mask (inc);
 	  /* the number of packets we saw in this section of the window */
 	  seen = count_set_bits (old);
-	  irt->replay_window =
-	    ((irt->replay_window) >> inc) | (1ULL << (window_size - 1));
+	  irt->replay_window[0] =
+	    ((irt->replay_window[0]) >> inc) | (1ULL << (window_size - 1));
 	}
 
       /*
@@ -709,9 +697,12 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
     }
   else
     {
+      u32 n_uwords = window_size / uword_bits;
       /* holes in the replay window are lost packets */
-      n_lost = window_size -
-	       IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN_KNOWN_WIN (irt, ar_huge);
+      if (ar_huge)
+	n_lost = window_size - uword_bitmap_count_set_bits (window, n_uwords);
+      else
+	n_lost = window_size - count_set_bits (irt->replay_window[0]);
 
       /* any sequence numbers that now fall outside the window
        * are forever lost */
@@ -719,13 +710,13 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 inc,
 
       if (PREDICT_FALSE (ar_huge))
 	{
-	  clib_bitmap_zero (irt->replay_window_huge);
-	  clib_bitmap_set_no_check (irt->replay_window_huge,
-				    (irt->seq + inc) & (window_size - 1), 1);
+	  uword_bitmap_clear (window, n_uwords);
+	  uword_bitmap_set_bits_at_index (
+	    window, (irt->seq + inc) & (window_size - 1), 1);
 	}
       else
 	{
-	  irt->replay_window = 1ULL << (window_size - 1);
+	  irt->replay_window[0] = 1ULL << (window_size - 1);
 	}
     }
 
@@ -770,19 +761,19 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt, u32 thread_index,
 	{
 	  pos = ~seq + irt->seq + 1;
 	  if (ar_huge)
-	    clib_bitmap_set_no_check (irt->replay_window_huge,
-				      seq & (window_size - 1), 1);
+	    uword_bitmap_set_bits_at_index (irt->replay_window,
+					    seq & (window_size - 1), 1);
 	  else
-	    irt->replay_window |= (1ULL << (window_size - 1 - pos));
+	    irt->replay_window[0] |= (1ULL << (window_size - 1 - pos));
 	}
       else
 	{
 	  pos = irt->seq - seq;
 	  if (ar_huge)
-	    clib_bitmap_set_no_check (irt->replay_window_huge,
-				      seq & (window_size - 1), 1);
+	    uword_bitmap_set_bits_at_index (irt->replay_window,
+					    seq & (window_size - 1), 1);
 	  else
-	    irt->replay_window |= (1ULL << (window_size - 1 - pos));
+	    irt->replay_window[0] |= (1ULL << (window_size - 1 - pos));
 	}
     }
   else
@@ -797,10 +788,10 @@ ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt, u32 thread_index,
 	{
 	  pos = irt->seq - seq;
 	  if (ar_huge)
-	    clib_bitmap_set_no_check (irt->replay_window_huge,
-				      seq & (window_size - 1), 1);
+	    uword_bitmap_set_bits_at_index (irt->replay_window,
+					    seq & (window_size - 1), 1);
 	  else
-	    irt->replay_window |= (1ULL << (window_size - 1 - pos));
+	    irt->replay_window[0] |= (1ULL << (window_size - 1 - pos));
 	}
     }
 
