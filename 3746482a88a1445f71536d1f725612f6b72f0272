@@ -33,6 +33,24 @@
       "message": "what\u0027s broken?",
       "revId": "3746482a88a1445f71536d1f725612f6b72f0272",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b637dfae_d899a60c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2025-02-13T23:16:42Z",
+      "side": 1,
+      "message": "Currently failing:\nDhcp4 server behind urpf-in gets incoming dpchdiscover packet (0.0.0.0 -\u003e 255.255.255.255) dropped.\nOSPF router behind urpf-out gets its outgoing multicast packets dropped. (another possibility to allow such packets would be marking them locally-originated, but the linux-cp used in my setup doesn\u0027t do it)\n\nAlso Matt suggested a stricter conditioning (make checks for being a multicast packet only in the urpf-out case) e.g.\n```\n+      lpass \u003d\n+       ((dir \u003d\u003d VLIB_TX \u0026\u0026 ip4_address_is_multicast (\u0026ip-\u003edst_address)) ||\n+        ip4_address_is_global_broadcast (\u0026ip-\u003edst_address));\n\n+      lpass \u003d dir \u003d\u003d VLIB_TX \u0026\u0026 ip6_address_is_multicast (\u0026ip-\u003edst_address);\n```\nI can amend his suggestion to the patch.",
+      "parentUuid": "6ff5be34_8d905742",
+      "revId": "3746482a88a1445f71536d1f725612f6b72f0272",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
