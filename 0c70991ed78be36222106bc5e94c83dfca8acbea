@@ -246,6 +246,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "616ac2bc_a0f53c3c",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-13T09:59:11Z",
+      "side": 1,
+      "message": "Yeah thanks for that. Yes it needs to be handled and I agree on making both changes in a different patch.",
+      "parentUuid": "d6cfaa98_49bcd6f5",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d9fd42e6_4b812f65",
@@ -277,6 +295,24 @@
       "side": 1,
       "message": "Again it\u0027s enforced by the formatter - if I move it make checkstyle will complains.",
       "parentUuid": "d9fd42e6_4b812f65",
+      "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "546950cf_17864c05",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1091,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-13T09:59:11Z",
+      "side": 1,
+      "message": "You have a variable \"ipsec_bypassed\" with the same name as the jumping point \"ipsec_bypassed\". No matter if it is the cause that checkstyle forces this indention, it is misleading.\n\nAlso instead of jumping when detected ipsec_bypassed \u003e 0, you may increment \"ipsec_unprocessed\" by 1 at line 1039 and adds a \"goto next_packet;\" after it, and then adds \"next_packet:\" in line 1087.",
+      "parentUuid": "e34f7186_f0abaead",
       "revId": "0c70991ed78be36222106bc5e94c83dfca8acbea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
