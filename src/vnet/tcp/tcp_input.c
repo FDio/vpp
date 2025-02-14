@@ -217,20 +217,6 @@ static int
 tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 		      vlib_buffer_t * b0, tcp_header_t * th0, u32 * error0)
 {
-  /* We could get a burst of RSTs interleaved with acks */
-  if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
-    {
-      tcp_send_reset (tc0);
-      *error0 = TCP_ERROR_CONNECTION_CLOSED;
-      goto error;
-    }
-
-  if (PREDICT_FALSE (!tcp_ack (th0) && !tcp_rst (th0) && !tcp_syn (th0)))
-    {
-      *error0 = TCP_ERROR_SEGMENT_INVALID;
-      goto error;
-    }
-
   if (PREDICT_FALSE (tcp_options_parse (th0, &tc0->rcv_opts, 0)))
     {
       *error0 = TCP_ERROR_OPTIONS;
@@ -1372,6 +1358,42 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
+always_inline int
+tcp_segment_is_exception (tcp_connection_t *tc, tcp_header_t *th)
+{
+  /* TODO(fcoras): tcp-input should not allow segments without one of ack, rst,
+   * syn flags, so we shouldn't be checking for their presence. Leave the check
+   * in for now, remove in due time */
+  ASSERT (th->flags & (TCP_FLAG_ACK | TCP_FLAG_RST | TCP_FLAG_SYN));
+  return !tc || tc->state == TCP_STATE_CLOSED ||
+	 !(th->flags & (TCP_FLAG_ACK | TCP_FLAG_RST | TCP_FLAG_SYN));
+}
+
+always_inline void
+tcp_segment_handle_exception (tcp_connection_t *tc, tcp_header_t *th,
+			      u32 *error)
+{
+  if (!tc)
+    {
+      *error = TCP_ERROR_INVALID_CONNECTION;
+      return;
+    }
+
+  /* We could get a burst of RSTs interleaved with acks */
+  if (tc->state == TCP_STATE_CLOSED)
+    {
+      tcp_send_reset (tc);
+      *error = TCP_ERROR_CONNECTION_CLOSED;
+      return;
+    }
+
+  if (!(th->flags & (TCP_FLAG_ACK | TCP_FLAG_RST | TCP_FLAG_SYN)))
+    {
+      *error = TCP_ERROR_SEGMENT_INVALID;
+      return;
+    }
+}
+
 always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
@@ -1404,14 +1426,13 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 			       thread_index);
+      th = tcp_buffer_hdr (b[0]);
 
-      if (PREDICT_FALSE (tc == 0))
+      if (PREDICT_FALSE (tcp_segment_is_exception (tc, th)))
 	{
-	  error = TCP_ERROR_INVALID_CONNECTION;
+	  tcp_segment_handle_exception (tc, th, &error);
 	  goto done;
 	}
-
-      th = tcp_buffer_hdr (b[0]);
 
       /* TODO header prediction fast path */
 
