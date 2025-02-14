@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f47327b8_7d3ad841",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 715,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-02-14T10:52:36Z",
+      "side": 1,
+      "message": "I can\u0027t convince myself it is equivalent to the else if (wrap \u003c 0) / else branches: pos does not seem to be equivalent to masked_seq in both cases?\nI see it was already the case for huge AR but I\u0027d like to double check we do not have a bug for huge AR here",
+      "revId": "46fc39c347729184c796df297d77edf8ba625b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
