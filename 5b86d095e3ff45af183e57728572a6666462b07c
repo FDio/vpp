@@ -16,6 +16,24 @@
       "message": "Hm, how hard would it be to add a license comment here?",
       "revId": "5b86d095e3ff45af183e57728572a6666462b07c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "542e7f6a_8b1306ac",
+        "filename": "src/plugins/http/extras/rfc7541_huffman_code.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-14T19:12:55Z",
+      "side": 1,
+      "message": "moved to the python script",
+      "parentUuid": "923b6e19_4df9e2c9",
+      "revId": "5b86d095e3ff45af183e57728572a6666462b07c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
