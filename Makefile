@@ -23,6 +23,11 @@ MACHINE=$(shell uname -m)
 SUDO?=sudo -E
 DPDK_CONFIG?=no-pci
 
+# we prefer clang by default
+ifeq ($(CC),cc)
+  CC=clang
+endif
+
 ifeq ($(strip $(SHELL)),)
 $(error "bash not found, VPP requires bash to build")
 endif
@@ -541,16 +546,10 @@ endef
 
 .PHONY: test
 test:
-ifeq ($(CC),cc)
-	$(eval CC=clang)
-endif
 	$(call test,vpp,test)
 
 .PHONY: test-debug
 test-debug:
-ifeq ($(CC),cc)
-	$(eval CC=clang)
-endif
 	$(call test,vpp_debug,test)
 
 .PHONY: test-cov
