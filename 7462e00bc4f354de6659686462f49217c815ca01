@@ -16,6 +16,24 @@
       "message": "alignment required here and elsewhere",
       "revId": "7462e00bc4f354de6659686462f49217c815ca01",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df9b7929_9ec30a37",
+        "filename": "src/vnet/ip/ip4_mtrie.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-02-14T09:46:18Z",
+      "side": 1,
+      "message": "Good catch!\nI suspect we had a bug in mtrie init actually, where we were using pool_get() instead of pool_get_aligned() and as a result we would allocate the ply pool on potentially unaligned boundaries.\nI patched that too.",
+      "parentUuid": "7c466ca4_d6b33e83",
+      "revId": "7462e00bc4f354de6659686462f49217c815ca01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
