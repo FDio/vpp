@@ -560,12 +560,12 @@ test-cov:
 
 .PHONY: test-cov-hs
 test-cov-hs: build-gcov
-	@$(MAKE) -C extras/hs-test test-cov \
+	@$(MAKE) CC=$(CC) -C extras/hs-test test-cov \
 	VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-post-standalone
 test-cov-post-standalone:
-	$(MAKE) -C test cov-post VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
+	$(MAKE) CC=$(CC) -C test cov-post VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-both
 test-cov-both:
@@ -795,14 +795,14 @@ pkg-srpm: dist
 
 .PHONY: install-ext-deps
 install-ext-deps:
-	$(MAKE) -C build/external install-$(PKG)
+	$(MAKE) CC=$(CC) -C build/external install-$(PKG)
 
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
 
 .PHONY: install-opt-deps
 install-opt-deps:
-	$(MAKE) -C build/optional install-$(PKG)
+	$(MAKE) CC=$(CC) -C build/optional install-$(PKG)
 
 .PHONY: json-api-files
 json-api-files:
@@ -928,13 +928,13 @@ docs:
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+	@$(MAKE) CC=$(CC) -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+	@$(MAKE) CC=$(CC) -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
-	@$(MAKE) -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	@$(MAKE) CC=$(CC) -C build-root PLATFORM=vpp TAG=vpp libmemif-install
 	$(call banner,"Building $(PKG) packages")
-	@$(MAKE) pkg-$(PKG)
+	@$(MAKE) CC=$(CC) pkg-$(PKG)
 
 # Note: 'make verify' target is not used by ci-management scripts
 MAKE_VERIFY_GATE_OS ?= ubuntu-22.04
@@ -944,7 +944,7 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
 	$(call banner,"Testing vppapigen")
 	@src/tools/vppapigen/test_vppapigen.py
 	$(call banner,"Running tests")
-	@$(MAKE) COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	@$(MAKE) CC=$(CC) COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 else
 	$(call banner,"Skipping tests. Tests under 'make verify' supported on $(MAKE_VERIFY_GATE_OS)")
 endif
