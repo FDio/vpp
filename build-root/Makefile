@@ -667,7 +667,7 @@ MAKE_PARALLEL_FLAGS ?= $(if $($(PACKAGE)_make_parallel_fails),,-j $(MAKE_PARALLE
 
 # Make command shorthand for packages & tools.
 PACKAGE_MAKE =					\
-  $(MAKE)					\
+  $(MAKE) CC=$(CC)				\
     -C $(PACKAGE_BUILD_DIR)			\
     $($(PACKAGE)_make_args)			\
     $(MAKE_PARALLEL_FLAGS)
