@@ -28,9 +28,17 @@
 
 session_main_t session_main;
 
+typedef enum
+{
+  SESSION_EVT_RPC,
+  SESSION_EVT_IO,
+  SESSION_EVT_SESSION,
+} session_evt_family_t;
+
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
-			    session_evt_type_t evt_type)
+			    session_evt_type_t evt_type,
+			    session_evt_family_t family)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   session_event_t *evt;
@@ -45,30 +53,33 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       svm_msg_q_unlock (mq);
       return -2;
     }
-  switch (evt_type)
+  switch (family)
     {
-    case SESSION_CTRL_EVT_RPC:
+    case SESSION_EVT_RPC:
+      ASSERT (evt_type == SESSION_CTRL_EVT_RPC);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
-    case SESSION_IO_EVT_RX:
-    case SESSION_IO_EVT_TX:
-    case SESSION_IO_EVT_TX_FLUSH:
-    case SESSION_IO_EVT_BUILTIN_RX:
+    case SESSION_EVT_IO:
+      ASSERT (evt_type == SESSION_IO_EVT_RX || evt_type == SESSION_IO_EVT_TX ||
+	      evt_type == SESSION_IO_EVT_TX_FLUSH ||
+	      evt_type == SESSION_IO_EVT_BUILTIN_RX);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
       break;
-    case SESSION_IO_EVT_TX_MAIN:
-    case SESSION_CTRL_EVT_CLOSE:
-    case SESSION_CTRL_EVT_RESET:
+    case SESSION_EVT_SESSION:
+      ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
+	      evt_type == SESSION_CTRL_EVT_HALF_CLOSE ||
+	      evt_type == SESSION_CTRL_EVT_RESET);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
+      ASSERT (0);
       clib_warning ("evt unhandled!");
       svm_msg_q_unlock (mq);
       return -1;
@@ -88,7 +99,8 @@ int
 session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread (&f->vpp_session_index, 0,
-				     f->master_thread_index, evt_type);
+				     f->master_thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 /* Deprecated, use session_program_* functions */
@@ -96,14 +108,16 @@ int
 session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 				      session_evt_type_t evt_type)
 {
-  return session_send_evt_to_thread (data, 0, thread_index, evt_type);
+  return session_send_evt_to_thread (data, 0, thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
 session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-				     (u32) sh.thread_index, evt_type);
+				     (u32) sh.thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
@@ -116,9 +130,9 @@ session_program_rx_io_evt (session_handle_tu_t sh)
     }
   else
     {
-      return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-					 (u32) sh.thread_index,
-					 SESSION_IO_EVT_BUILTIN_RX);
+      return session_send_evt_to_thread (
+	(void *) &sh.session_index, 0, (u32) sh.thread_index,
+	SESSION_IO_EVT_BUILTIN_RX, SESSION_EVT_IO);
     }
 }
 
@@ -127,25 +141,24 @@ session_program_transport_io_evt (session_handle_tu_t sh,
 				  session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread ((void *) &sh.session_index, 0,
-				     (u32) sh.thread_index, evt_type);
+				     (u32) sh.thread_index, evt_type,
+				     SESSION_EVT_IO);
 }
 
 int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect, shutdown and reset */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
-	  evt_type == SESSION_CTRL_EVT_HALF_CLOSE ||
-	  evt_type == SESSION_CTRL_EVT_RESET);
-  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
+  return session_send_evt_to_thread (s, 0, s->thread_index, evt_type,
+				     SESSION_EVT_SESSION);
 }
 
 void
 session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 				      void *rpc_args)
 {
-  session_send_evt_to_thread (fp, rpc_args, thread_index,
-			      SESSION_CTRL_EVT_RPC);
+  session_send_evt_to_thread (fp, rpc_args, thread_index, SESSION_CTRL_EVT_RPC,
+			      SESSION_EVT_RPC);
 }
 
 void
@@ -480,115 +493,6 @@ session_alloc_for_half_open (transport_connection_t *tc)
   return s;
 }
 
-/**
- * Discards bytes from buffer chain
- *
- * It discards n_bytes_to_drop starting at first buffer after chain_b
- */
-always_inline void
-session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
-				     vlib_buffer_t ** chain_b,
-				     u32 n_bytes_to_drop)
-{
-  vlib_buffer_t *next = *chain_b;
-  u32 to_drop = n_bytes_to_drop;
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-  while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
-    {
-      next = vlib_get_buffer (vm, next->next_buffer);
-      if (next->current_length > to_drop)
-	{
-	  vlib_buffer_advance (next, to_drop);
-	  to_drop = 0;
-	}
-      else
-	{
-	  to_drop -= next->current_length;
-	  next->current_length = 0;
-	}
-    }
-  *chain_b = next;
-
-  if (to_drop == 0)
-    b->total_length_not_including_first_buffer -= n_bytes_to_drop;
-}
-
-/**
- * Enqueue buffer chain tail
- */
-always_inline int
-session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
-			    u32 offset, u8 is_in_order)
-{
-  vlib_buffer_t *chain_b;
-  u32 chain_bi, len, diff;
-  vlib_main_t *vm = vlib_get_main ();
-  u8 *data;
-  u32 written = 0;
-  int rv = 0;
-
-  if (is_in_order && offset)
-    {
-      diff = offset - b->current_length;
-      if (diff > b->total_length_not_including_first_buffer)
-	return 0;
-      chain_b = b;
-      session_enqueue_discard_chain_bytes (vm, b, &chain_b, diff);
-      chain_bi = vlib_get_buffer_index (vm, chain_b);
-    }
-  else
-    chain_bi = b->next_buffer;
-
-  do
-    {
-      chain_b = vlib_get_buffer (vm, chain_bi);
-      data = vlib_buffer_get_current (chain_b);
-      len = chain_b->current_length;
-      if (!len)
-	continue;
-      if (is_in_order)
-	{
-	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
-	  if (rv == len)
-	    {
-	      written += rv;
-	    }
-	  else if (rv < len)
-	    {
-	      return (rv > 0) ? (written + rv) : written;
-	    }
-	  else if (rv > len)
-	    {
-	      written += rv;
-
-	      /* written more than what was left in chain */
-	      if (written > b->total_length_not_including_first_buffer)
-		return written;
-
-	      /* drop the bytes that have already been delivered */
-	      session_enqueue_discard_chain_bytes (vm, b, &chain_b, rv - len);
-	    }
-	}
-      else
-	{
-	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
-	  if (rv)
-	    {
-	      clib_warning ("failed to enqueue multi-buffer seg");
-	      return -1;
-	    }
-	  offset += len;
-	}
-    }
-  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	  ? chain_b->next_buffer : 0));
-
-  if (is_in_order)
-    return written;
-
-  return 0;
-}
-
 void
 session_fifo_tuning (session_t * s, svm_fifo_t * f,
 		     session_ft_action_t act, u32 len)
@@ -758,154 +662,6 @@ session_main_flush_enqueue_events (transport_proto_t transport_proto,
 
   vec_reset_length (handles);
   wrk->session_to_enqueue[transport_proto] = handles;
-}
-
-/*
- * Enqueue data for delivery to app. If requested, it queues app notification
- * event for later delivery.
- *
- * @param tc Transport connection which is to be enqueued data
- * @param b Buffer to be enqueued
- * @param offset Offset at which to start enqueueing if out-of-order
- * @param queue_event Flag to indicate if peer is to be notified or if event
- *                    is to be queued. The former is useful when more data is
- *                    enqueued and only one event is to be generated.
- * @param is_in_order Flag to indicate if data is in order
- * @return Number of bytes enqueued or a negative value if enqueueing failed.
- */
-int
-session_enqueue_stream_connection (transport_connection_t * tc,
-				   vlib_buffer_t * b, u32 offset,
-				   u8 queue_event, u8 is_in_order)
-{
-  session_t *s;
-  int enqueued = 0, rv, in_order_off;
-
-  s = session_get (tc->s_index, tc->thread_index);
-
-  if (is_in_order)
-    {
-      enqueued = svm_fifo_enqueue (s->rx_fifo,
-				   b->current_length,
-				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
-			 && enqueued >= 0))
-	{
-	  in_order_off = enqueued > b->current_length ? enqueued : 0;
-	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
-	  if (rv > 0)
-	    enqueued += rv;
-	}
-    }
-  else
-    {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
-					 b->current_length,
-					 vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
-	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
-      /* if something was enqueued, report even this as success for ooo
-       * segment handling */
-      return rv;
-    }
-
-  if (queue_event)
-    {
-      /* Queue RX event on this fifo. Eventually these will need to be
-       * flushed by calling @ref session_main_flush_enqueue_events () */
-      if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  session_worker_t *wrk = session_main_get_worker (s->thread_index);
-	  ASSERT (s->thread_index == vlib_get_thread_index ());
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
-	}
-
-      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
-    }
-
-  return enqueued;
-}
-
-always_inline int
-session_enqueue_dgram_connection_inline (session_t *s,
-					 session_dgram_hdr_t *hdr,
-					 vlib_buffer_t *b, u8 proto,
-					 u8 queue_event, u32 is_cl)
-{
-  int rv;
-
-  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
-	  >= b->current_length + sizeof (*hdr));
-
-  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
-    {
-      svm_fifo_seg_t segs[2] = {
-	  { (u8 *) hdr, sizeof (*hdr) },
-	  { vlib_buffer_get_current (b), b->current_length }
-      };
-
-      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, 2,
-				      0 /* allow_partial */ );
-    }
-  else
-    {
-      vlib_main_t *vm = vlib_get_main ();
-      svm_fifo_seg_t *segs = 0, *seg;
-      vlib_buffer_t *it = b;
-      u32 n_segs = 1;
-
-      vec_add2 (segs, seg, 1);
-      seg->data = (u8 *) hdr;
-      seg->len = sizeof (*hdr);
-      while (it)
-	{
-	  vec_add2 (segs, seg, 1);
-	  seg->data = vlib_buffer_get_current (it);
-	  seg->len = it->current_length;
-	  n_segs++;
-	  if (!(it->flags & VLIB_BUFFER_NEXT_PRESENT))
-	    break;
-	  it = vlib_get_buffer (vm, it->next_buffer);
-	}
-      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, n_segs,
-				      0 /* allow partial */ );
-      vec_free (segs);
-    }
-
-  if (queue_event && rv > 0)
-    {
-      /* Queue RX event on this fifo. Eventually these will need to be
-       * flushed by calling @ref session_main_flush_enqueue_events () */
-      if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  u32 thread_index =
-	    is_cl ? vlib_get_thread_index () : s->thread_index;
-	  session_worker_t *wrk = session_main_get_worker (thread_index);
-	  ASSERT (s->thread_index == vlib_get_thread_index () || is_cl);
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[proto], session_handle (s));
-	}
-
-      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
-    }
-  return rv > 0 ? rv : 0;
-}
-
-int
-session_enqueue_dgram_connection (session_t *s, session_dgram_hdr_t *hdr,
-				  vlib_buffer_t *b, u8 proto, u8 queue_event)
-{
-  return session_enqueue_dgram_connection_inline (s, hdr, b, proto,
-						  queue_event, 0 /* is_cl */);
-}
-
-int
-session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t *hdr,
-				   vlib_buffer_t *b, u8 proto, u8 queue_event)
-{
-  return session_enqueue_dgram_connection_inline (s, hdr, b, proto,
-						  queue_event, 1 /* is_cl */);
 }
 
 int

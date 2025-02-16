@@ -1467,7 +1467,7 @@ tcp_stats_collector_fn (vlib_stats_collector_data_t *d)
   tcp_wrk_stats_t acc = {};
   tcp_worker_ctx_t *wrk;
 
-  vec_foreach (wrk, tm->wrk_ctx)
+  vec_foreach (wrk, tm->wrk)
     {
 #define _(name, type, str) acc.name += wrk->stats.name;
       foreach_tcp_wrk_stat
@@ -1515,7 +1515,7 @@ tcp_main_enable (vlib_main_t * vm)
   int thread;
 
   /* Already initialized */
-  if (tm->wrk_ctx)
+  if (tm->wrk)
     return 0;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
@@ -1537,11 +1537,11 @@ tcp_main_enable (vlib_main_t * vm)
    */
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (tm->wrk_ctx, num_threads - 1);
+  vec_validate (tm->wrk, num_threads - 1);
   n_workers = num_threads == 1 ? 1 : vtm->n_threads;
   prealloc_conn_per_wrk = tcp_cfg.preallocated_connections / n_workers;
 
-  wrk = &tm->wrk_ctx[0];
+  wrk = &tm->wrk[0];
   wrk->tco_next_node[0] = vlib_node_get_next (vm, session_queue_node.index,
 					      tcp4_output_node.index);
   wrk->tco_next_node[1] = vlib_node_get_next (vm, session_queue_node.index,
@@ -1549,7 +1549,7 @@ tcp_main_enable (vlib_main_t * vm)
 
   for (thread = 0; thread < num_threads; thread++)
     {
-      wrk = &tm->wrk_ctx[thread];
+      wrk = &tm->wrk[thread];
 
       vec_validate (wrk->pending_deq_acked, 255);
       vec_validate (wrk->pending_disconnects, 255);
@@ -1562,8 +1562,8 @@ tcp_main_enable (vlib_main_t * vm)
 
       if (thread > 0)
 	{
-	  wrk->tco_next_node[0] = tm->wrk_ctx[0].tco_next_node[0];
-	  wrk->tco_next_node[1] = tm->wrk_ctx[0].tco_next_node[1];
+	  wrk->tco_next_node[0] = tm->wrk[0].tco_next_node[0];
+	  wrk->tco_next_node[1] = tm->wrk[0].tco_next_node[1];
 	}
 
       /*

@@ -919,7 +919,7 @@ show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     return clib_error_return (0, "unknown input `%U'", format_unformat_error,
 			      input);
-  for (thread = 0; thread < vec_len (tm->wrk_ctx); thread++)
+  for (thread = 0; thread < vec_len (tm->wrk); thread++)
     {
       wrk = tcp_get_worker (thread);
       vlib_cli_output (vm, "Thread %u:\n", thread);
@@ -957,7 +957,7 @@ clear_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "unknown input `%U'", format_unformat_error,
 			      input);
 
-  for (thread = 0; thread < vec_len (tm->wrk_ctx); thread++)
+  for (thread = 0; thread < vec_len (tm->wrk); thread++)
     {
       wrk = tcp_get_worker (thread);
       clib_memset (&wrk->stats, 0, sizeof (wrk->stats));

@@ -214,7 +214,6 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
   if (ipsec_sa_get_inb_rt (sa))
     {
       ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
-      irt->anti_reply_huge = ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa);
       irt->use_anti_replay = ipsec_sa_is_set_USE_ANTI_REPLAY (sa);
       irt->use_esn = ipsec_sa_is_set_USE_ESN (sa);
       irt->is_tunnel = ipsec_sa_is_set_IS_TUNNEL (sa);
@@ -426,7 +425,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   ipsec_sa_outb_rt_t *ort;
   clib_error_t *err;
   ipsec_sa_t *sa;
-  u32 sa_index;
+  u32 sa_index, irt_sz;
+  u16 thread_index = (vlib_num_workers ()) ? ~0 : 0;
   u64 rand[2];
   uword *p;
   int rv;
@@ -440,17 +440,35 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   pool_get_aligned_zero (im->sa_pool, sa, CLIB_CACHE_LINE_BYTES);
   sa_index = sa - im->sa_pool;
+  sa->flags = flags;
+
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && anti_replay_window_size > 64)
+    /* window size rounded up to next power of 2 */
+    anti_replay_window_size = 1 << max_log2 (anti_replay_window_size);
+  else
+    anti_replay_window_size = 64;
+
   vec_validate (im->inb_sa_runtimes, sa_index);
   vec_validate (im->outb_sa_runtimes, sa_index);
 
-  irt = clib_mem_alloc_aligned (sizeof (ipsec_sa_inb_rt_t),
-				_Alignof (ipsec_sa_inb_rt_t));
+  irt_sz = sizeof (ipsec_sa_inb_rt_t);
+  irt_sz += anti_replay_window_size / 8;
+  irt_sz = round_pow2 (irt_sz, CLIB_CACHE_LINE_BYTES);
+
+  irt = clib_mem_alloc_aligned (irt_sz, alignof (ipsec_sa_inb_rt_t));
   ort = clib_mem_alloc_aligned (sizeof (ipsec_sa_outb_rt_t),
-				_Alignof (ipsec_sa_outb_rt_t));
+				alignof (ipsec_sa_outb_rt_t));
   im->inb_sa_runtimes[sa_index] = irt;
   im->outb_sa_runtimes[sa_index] = ort;
-  clib_memset (irt, 0, sizeof (ipsec_sa_inb_rt_t));
-  clib_memset (ort, 0, sizeof (ipsec_sa_outb_rt_t));
+
+  *irt = (ipsec_sa_inb_rt_t){
+    .thread_index = thread_index,
+    .anti_replay_window_size = anti_replay_window_size,
+  };
+
+  *ort = (ipsec_sa_outb_rt_t){
+    .thread_index = thread_index,
+  };
 
   clib_pcg64i_srandom_r (&ort->iv_prng, rand[0], rand[1]);
 
@@ -470,12 +488,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->spi = spi;
   sa->stat_index = sa_index;
   sa->protocol = proto;
-  sa->flags = flags;
   sa->salt = salt;
-  if (irt)
-    irt->thread_index = (vlib_num_workers ()) ? ~0 : 0;
-  if (ort)
-    ort->thread_index = (vlib_num_workers ()) ? ~0 : 0;
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
@@ -484,9 +497,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     }
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   ipsec_sa_set_async_op_ids (sa);
-
-  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && anti_replay_window_size > 64)
-    ipsec_sa_set_ANTI_REPLAY_HUGE (sa);
 
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
 
@@ -600,17 +610,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	ipsec_register_udp_port (dst_port, !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
     }
 
-  /* window size rounded up to next power of 2 */
-  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
-    {
-      anti_replay_window_size = 1 << max_log2 (anti_replay_window_size);
-      irt->replay_window_huge =
-	clib_bitmap_set_region (0, 0, 1, anti_replay_window_size);
-    }
-  else
-    {
-      irt->replay_window = ~0;
-    }
+  for (u32 i = 0; i < anti_replay_window_size / uword_bits; i++)
+    irt->replay_window[i] = ~0ULL;
 
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
 
@@ -651,9 +652,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
     vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_sync_key_index);
-  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
-    if (irt && irt->replay_window_huge)
-      clib_bitmap_free (irt->replay_window_huge);
   foreach_pointer (p, irt, ort)
     if (p)
       clib_mem_free (p);

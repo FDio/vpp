@@ -474,13 +474,12 @@ format_ipsec_sa (u8 * s, va_list * args)
   if (ort)
     s = format (s, "\n   outbound thread-index:%d", ort->thread_index);
   if (irt)
-    s = format (s, "\n   inbound seq %u seq-hi %u", irt->seq, irt->seq_hi);
+    s = format (s, "\n   inbound seq %lu", irt->seq64);
   if (ort)
     s = format (s, "\n   outbound seq %lu", ort->seq64);
   if (irt)
     {
-      s = format (s, "\n   window-size: %llu",
-		  IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (irt));
+      s = format (s, "\n   window-size: %llu", irt->anti_replay_window_size);
       s = format (s, "\n   window: Bl <- %U Tl", format_ipsec_replay_window,
 		  ipsec_sa_anti_replay_get_64b_window (irt));
     }

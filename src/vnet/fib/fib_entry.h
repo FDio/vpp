@@ -480,6 +480,7 @@ extern void fib_entry_set_flow_hash_config(fib_node_index_t fib_entry_index,
                                            flow_hash_config_t hash_config);
 
 extern void fib_entry_module_init(void);
+extern void fib_entry_pool_alloc(uword size);
 
 extern u32 fib_entry_get_stats_index(fib_node_index_t fib_entry_index);
 

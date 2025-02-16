@@ -1304,7 +1304,7 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
     {
       if ((now = vlib_time_now (vm)) > deadline)
 	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  fformat (stderr, "%s: worker thread deadlock\n", __func__);
 	  os_panic ();
 	}
       CLIB_PAUSE ();
@@ -1409,7 +1409,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
     {
       if ((now = vlib_time_now (vm)) > deadline)
 	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  fformat (stderr, "%s: worker thread deadlock\n", __func__);
 	  os_panic ();
 	}
     }
@@ -1485,7 +1485,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     {
       if ((now = vlib_time_now (vm)) > deadline)
 	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	  fformat (stderr, "%s: worker thread deadlock\n", __func__);
 	  os_panic ();
 	}
     }
@@ -1502,7 +1502,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	  if ((now = vlib_time_now (vm)) > deadline)
 	    {
 	      fformat (stderr, "%s: worker thread refork deadlock\n",
-		       __FUNCTION__);
+		       __func__);
 	      os_panic ();
 	    }
 	}

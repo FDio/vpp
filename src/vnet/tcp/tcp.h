@@ -220,7 +220,7 @@ typedef struct tcp_configuration_
 typedef struct _tcp_main
 {
   /** per-worker context */
-  tcp_worker_ctx_t *wrk_ctx;
+  tcp_worker_ctx_t *wrk;
 
   /* Pool of listeners. */
   tcp_connection_t *listener_pool;
@@ -301,8 +301,8 @@ vnet_get_tcp_main ()
 always_inline tcp_worker_ctx_t *
 tcp_get_worker (u32 thread_index)
 {
-  ASSERT (thread_index < vec_len (tcp_main.wrk_ctx));
-  return &tcp_main.wrk_ctx[thread_index];
+  ASSERT (thread_index < vec_len (tcp_main.wrk));
+  return &tcp_main.wrk[thread_index];
 }
 
 tcp_connection_t *tcp_connection_alloc (u8 thread_index);

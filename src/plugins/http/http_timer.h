@@ -16,7 +16,7 @@
 #ifndef SRC_PLUGINS_HTTP_HTTP_TIMER_H_
 #define SRC_PLUGINS_HTTP_HTTP_TIMER_H_
 
-#include <http/http.h>
+#include <http/http_private.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 #define HTTP_CONN_TIMEOUT	  60
@@ -45,7 +45,8 @@ http_conn_timer_start (http_conn_t *hc)
   u32 hs_handle;
 
   ASSERT (hc->timer_handle == HTTP_TIMER_HANDLE_INVALID);
-  hs_handle = hc->c_thread_index << 24 | hc->c_c_index;
+  ASSERT (hc->h_hc_index <= 0x00FFFFFF);
+  hs_handle = hc->c_thread_index << 24 | hc->h_hc_index;
 
   clib_spinlock_lock (&twc->tw_lock);
   hc->timer_handle =
@@ -79,7 +80,8 @@ http_conn_timer_update (http_conn_t *hc)
     tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, hc->timeout);
   else
     {
-      hs_handle = hc->c_thread_index << 24 | hc->c_c_index;
+      ASSERT (hc->h_hc_index <= 0x00FFFFFF);
+      hs_handle = hc->c_thread_index << 24 | hc->h_hc_index;
       hc->timer_handle =
 	tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->timeout);
     }

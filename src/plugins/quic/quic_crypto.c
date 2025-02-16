@@ -248,8 +248,7 @@ quic_crypto_decrypt_packet (quic_ctx_t *qctx, quic_rx_packet_ctx_t *pctx)
 	 pctx->packet.octets.len - aead_off, pn, pctx->packet.octets.base,
 	 aead_off)) == SIZE_MAX)
     {
-      fprintf (stderr, "%s: aead decryption failure (pn: %d)\n", __FUNCTION__,
-	       pn);
+      fprintf (stderr, "%s: aead decryption failure (pn: %d)\n", __func__, pn);
       return;
     }
 
@@ -349,8 +348,7 @@ quic_crypto_cipher_setup_crypto (ptls_cipher_context_t *_ctx, int is_enc,
     }
   else
     {
-      QUIC_DBG (1, "%s, Invalid crypto cipher : ", __FUNCTION__,
-		_ctx->algo->name);
+      QUIC_DBG (1, "%s, Invalid crypto cipher : ", __func__, _ctx->algo->name);
       assert (0);
     }
 
@@ -405,8 +403,7 @@ quic_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
     }
   else
     {
-      QUIC_DBG (1, "%s, invalied aead cipher %s", __FUNCTION__,
-		_ctx->algo->name);
+      QUIC_DBG (1, "%s, invalied aead cipher %s", __func__, _ctx->algo->name);
       assert (0);
     }
 

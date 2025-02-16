@@ -444,21 +444,21 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type,
 #define ELOG_TYPE_INIT_FORMAT_AND_FUNCTION(fmt,func) \
   { .format = fmt, .function = func, }
 
-#define ELOG_TYPE_INIT(fmt) \
-  ELOG_TYPE_INIT_FORMAT_AND_FUNCTION(fmt,(char *) __FUNCTION__)
+#define ELOG_TYPE_INIT(fmt)                                                   \
+  ELOG_TYPE_INIT_FORMAT_AND_FUNCTION (fmt, (char *) __func__)
 
 #define ELOG_TYPE_DECLARE_HELPER(f,fmt,func)		\
   static elog_event_type_t __ELOG_TYPE_VAR(f) =		\
     ELOG_TYPE_INIT_FORMAT_AND_FUNCTION (fmt, func)
 
-#define ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt)		\
-  ELOG_TYPE_DECLARE_HELPER (f, fmt, (char *) __FUNCTION__)
+#define ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f, fmt)                         \
+  ELOG_TYPE_DECLARE_HELPER (f, fmt, (char *) __func__)
 
 #define ELOG_TYPE_DECLARE_FORMAT(f,fmt)		\
   ELOG_TYPE_DECLARE_HELPER (f, fmt, 0)
 
-/* Shorthands with and without __FUNCTION__.
-   D for decimal; X for hex.  F for __FUNCTION__. */
+/* Shorthands with and without __func__.
+   D for decimal; X for hex.  F for __func__. */
 #define ELOG_TYPE(f,fmt) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt)
 #define ELOG_TYPE_D(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " %d")
 #define ELOG_TYPE_X(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " 0x%x")

@@ -972,7 +972,7 @@ dispatch_node (vlib_main_t * vm,
     {
       ELOG_TYPE_DECLARE (e) =
         {
-          .function = (char *) __FUNCTION__,
+          .function = (char *) __func__,
           .format = "%s vector length %d, switching to %s",
           .format_args = "T4i4t4",
           .n_enum_strings = 2,

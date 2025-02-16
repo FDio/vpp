@@ -23,7 +23,7 @@ typedef struct
   /* Error message. */
   u8 *what;
 
-  /* Where error occurred (e.g. __FUNCTION__ __LINE__) */
+  /* Where error occurred (e.g. __func__ __LINE__) */
   const u8 *where;
 
   uword flags;

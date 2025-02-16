@@ -38,6 +38,9 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_mtrie.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/dpo/load_balance.h>
 
 ip_main_t ip_main;
 
@@ -111,6 +114,39 @@ VLIB_INIT_FUNCTION (ip_main_init) = {
 			    "in_out_acl_init", "policer_classify_init",
 			    "flow_classify_init"),
 };
+
+static clib_error_t *
+ip_config_init (vlib_main_t *vm, unformat_input_t *input)
+{
+  uword lbsz = 0, fibentrysz = 0, mtriesz = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "load-balance-pool-size %U", unformat_memory_size,
+		    &lbsz))
+	;
+      else if (unformat (input, "fib-entry-pool-size %U", unformat_memory_size,
+			 &fibentrysz))
+	;
+      else if (unformat (input, "ip4-mtrie-pool-size %U", unformat_memory_size,
+			 &mtriesz))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (lbsz)
+    load_balance_pool_alloc (lbsz);
+  if (fibentrysz)
+    fib_entry_pool_alloc (fibentrysz);
+  if (mtriesz)
+    ip4_mtrie_pool_alloc (mtriesz);
+
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (ip_config_init, "l3fib");
 
 /*
  * fd.io coding-style-patch-verification: ON

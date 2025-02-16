@@ -60,8 +60,7 @@ typedef enum
 typedef struct
 {
   u32 seq;
-  u32 sa_seq;
-  u32 sa_seq_hi;
+  u64 sa_seq64;
   u32 pkt_seq_hi;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
@@ -81,10 +80,10 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
 
   s = format (s,
-	      "esp: crypto %U integrity %U pkt-seq %d sa-seq %u sa-seq-hi %u "
+	      "esp: crypto %U integrity %U pkt-seq %d sa-seq %lu "
 	      "pkt-seq-hi %u",
 	      format_ipsec_crypto_alg, t->crypto_alg, format_ipsec_integ_alg,
-	      t->integ_alg, t->seq, t->sa_seq, t->sa_seq_hi, t->pkt_seq_hi);
+	      t->integ_alg, t->seq, t->sa_seq64, t->pkt_seq_hi);
   return s;
 }
 
@@ -810,32 +809,16 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
    * a sequence s, s+1, s+2, s+3, ... s+n and nothing will prevent any
    * implementation, sequential or batching, from decrypting these.
    */
-  if (PREDICT_FALSE (irt->anti_reply_huge))
+  if (ipsec_sa_anti_replay_and_sn_advance (irt, pd->seq, pd->seq_hi, true,
+					   NULL))
     {
-      if (ipsec_sa_anti_replay_and_sn_advance (irt, pd->seq, pd->seq_hi, true,
-					       NULL, true))
-	{
-	  esp_decrypt_set_next_index (b, node, vm->thread_index,
-				      ESP_DECRYPT_ERROR_REPLAY, 0, next,
-				      ESP_DECRYPT_NEXT_DROP, pd->sa_index);
-	  return;
-	}
-      n_lost = ipsec_sa_anti_replay_advance (irt, vm->thread_index, pd->seq,
-					     pd->seq_hi, true);
+      esp_decrypt_set_next_index (b, node, vm->thread_index,
+				  ESP_DECRYPT_ERROR_REPLAY, 0, next,
+				  ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+      return;
     }
-  else
-    {
-      if (ipsec_sa_anti_replay_and_sn_advance (irt, pd->seq, pd->seq_hi, true,
-					       NULL, false))
-	{
-	  esp_decrypt_set_next_index (b, node, vm->thread_index,
-				      ESP_DECRYPT_ERROR_REPLAY, 0, next,
-				      ESP_DECRYPT_NEXT_DROP, pd->sa_index);
-	  return;
-	}
-      n_lost = ipsec_sa_anti_replay_advance (irt, vm->thread_index, pd->seq,
-					     pd->seq_hi, false);
-    }
+  n_lost =
+    ipsec_sa_anti_replay_advance (irt, vm->thread_index, pd->seq, pd->seq_hi);
 
   vlib_prefetch_simple_counter (&ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST],
 				vm->thread_index, pd->sa_index);
@@ -1205,16 +1188,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       pd->current_length = b[0]->current_length;
 
       /* anti-reply check */
-      if (PREDICT_FALSE (irt->anti_reply_huge))
-	{
-	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    irt, pd->seq, ~0, false, &pd->seq_hi, true);
-	}
-      else
-	{
-	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
-	    irt, pd->seq, ~0, false, &pd->seq_hi, false);
-	}
+      anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
+	irt, pd->seq, ~0, false, &pd->seq_hi);
 
       if (anti_replay_result)
 	{
@@ -1393,8 +1368,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tr->crypto_alg = sa->crypto_alg;
 	  tr->integ_alg = sa->integ_alg;
 	  tr->seq = pd->seq;
-	  tr->sa_seq = irt->seq;
-	  tr->sa_seq_hi = irt->seq_hi;
+	  tr->sa_seq64 = irt->seq64;
 	  tr->pkt_seq_hi = pd->seq_hi;
 	}
 
@@ -1466,8 +1440,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->crypto_alg = sa->crypto_alg;
 	  tr->integ_alg = sa->integ_alg;
 	  tr->seq = pd->seq;
-	  tr->sa_seq = irt->seq;
-	  tr->sa_seq_hi = irt->seq_hi;
+	  tr->sa_seq64 = irt->seq64;
 	}
 
       n_left--;

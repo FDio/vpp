@@ -195,6 +195,13 @@ next_with_same_number_of_set_bits (uword x)
   return ripple | ones;
 }
 
+static_always_inline void
+uword_bitmap_clear (uword *bmp, uword n_uwords)
+{
+  while (n_uwords--)
+    bmp++[0] = 0;
+}
+
 #define foreach_set_bit_index(i, v)                                           \
   for (uword _tmp = (v) + 0 * (uword) (i = get_lowest_set_bit_index (v));     \
        _tmp;                                                                  \
@@ -271,6 +278,34 @@ uword_bitmap_find_first_set (uword *bmp)
     b++;
 
   return (b - bmp) * uword_bits + get_lowest_set_bit_index (b[0]);
+}
+
+always_inline uword
+uword_bitmap_get_multiple (uword *bmp, uword i, uword n_bits)
+{
+  uword rv;
+
+  bmp += i / uword_bits;
+  i %= uword_bits;
+
+  rv = (bmp[0] >> i);
+  rv &= pow2_mask (n_bits);
+
+  if (i + n_bits <= uword_bits)
+    return rv;
+
+  n_bits -= uword_bits - i;
+  rv |= (bmp[1] & pow2_mask (n_bits)) << (uword_bits - i);
+
+  return rv;
+}
+
+always_inline uword
+uword_bitmap_get_multiple_no_check (uword *bmp, uword i, uword n_bits)
+{
+  bmp += i / uword_bits;
+  i %= uword_bits;
+  return ((bmp[0] >> i) & pow2_mask (n_bits));
 }
 
 static_always_inline u32

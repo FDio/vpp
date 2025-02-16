@@ -53,7 +53,7 @@ enum
 };
 
 /* Current function name.  Need (char *) cast to silence gcc4 pointer signedness warning. */
-#define clib_error_function ((char *) __FUNCTION__)
+#define clib_error_function ((char *) __func__)
 
 #ifndef CLIB_ASSERT_ENABLE
 #define CLIB_ASSERT_ENABLE (CLIB_DEBUG > 0)

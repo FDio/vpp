@@ -187,7 +187,19 @@ vrrp_periodic_process (vlib_main_t * vm,
 	  timer = pool_elt_at_index (pm->vr_timers, next_timer);
 	  timeout = timer->expire_time - now;
 
-	  vlib_process_wait_for_event_or_clock (vm, timeout);
+	  /*
+	   * Adding a virtual MAC to some NICs can take a significant amount
+	   * of time (~1s). If a lot of VRs enter the master state around the
+	   * same time, the process node can stay active for a very long time
+	   * processing all of the transitions.
+	   *
+	   * Try to force a 10us sleep between processing events to ensure
+	   * that the process node does not prevent API messages and RPCs
+	   * from being handled for an extended period. This prevents
+	   * vlib_process_wait_for_event_or_clock() from returning
+	   * immediately.
+	   */
+	  vlib_process_wait_for_event_or_clock (vm, clib_max (timeout, 10e-6));
 	}
 
       event_type = vlib_process_get_events (vm, (uword **) & event_data);
