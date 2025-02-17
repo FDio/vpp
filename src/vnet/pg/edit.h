@@ -90,8 +90,7 @@ typedef struct
 always_inline void
 pg_edit_free (pg_edit_t * e)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (e->values); i++)
+  for (uword i = 0; i < ARRAY_LEN (e->values); i++)
     vec_free (e->values[i]);
 }
 
@@ -159,10 +158,9 @@ pg_edit_set_fixed (pg_edit_t * e, u64 value)
 static inline void
 pg_edit_copy_type_and_values (pg_edit_t * dst, pg_edit_t * src)
 {
-  int i;
   dst->type = src->type;
   src->type = PG_EDIT_INVALID_TYPE;
-  for (i = 0; i < ARRAY_LEN (dst->values); i++)
+  for (uword i = 0; i < ARRAY_LEN (dst->values); i++)
     {
       dst->values[i] = src->values[i];
       src->values[i] = 0;

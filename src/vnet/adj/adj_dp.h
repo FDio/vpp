@@ -46,11 +46,11 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
       else
        {
          ip_csum_t sum;
-         u16 old,new;
+         u16 old, _new;
          old = 0;
-         new = ip4->length;
+         _new = ip4->length;
          sum = ip4->checksum;
-         sum = ip_csum_update (sum, old, new, ip4_header_t, length);
+         sum = ip_csum_update (sum, old, _new, ip4_header_t, length);
          ip4->checksum = ip_csum_fold (sum);
        }
     }

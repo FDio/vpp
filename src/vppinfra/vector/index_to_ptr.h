@@ -247,7 +247,7 @@ clib_index_to_ptr_u32 (u32 *indices, void *base, u8 shift, void **ptrs,
 #endif
   while (n_elts)
     {
-      ptrs[0] = base + ((u64) indices[0] << shift);
+      ptrs[0] = (u64 *) ((u8 *) base + ((u64) indices[0] << shift));
       ptrs += 1;
       indices += 1;
       n_elts -= 1;

@@ -505,16 +505,16 @@ static clib_error_t *
 pipe_create_sub_interface (vnet_hw_interface_t * hi,
 			   u32 sub_id, u32 * sw_if_index)
 {
-  vnet_sw_interface_t template;
+  vnet_sw_interface_t _template;
 
-  clib_memset (&template, 0, sizeof (template));
-  template.type = VNET_SW_INTERFACE_TYPE_PIPE;
-  template.flood_class = VNET_FLOOD_CLASS_NORMAL;
-  template.sup_sw_if_index = hi->sw_if_index;
-  template.sub.id = sub_id;
+  clib_memset (&_template, 0, sizeof (_template));
+  _template.type = VNET_SW_INTERFACE_TYPE_PIPE;
+  _template.flood_class = VNET_FLOOD_CLASS_NORMAL;
+  _template.sup_sw_if_index = hi->sw_if_index;
+  _template.sub.id = sub_id;
 
   return (vnet_create_sw_interface (vnet_get_main (),
-				    &template, sw_if_index));
+				    &_template, sw_if_index));
 }
 
 int
