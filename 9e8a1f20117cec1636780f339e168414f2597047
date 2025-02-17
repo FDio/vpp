@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "58f441e8_d70a0aa3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2025-02-17T13:11:19Z",
+      "side": 1,
+      "message": "Hello Damjan,\nCould you please suggest who else should be added to the reviewers?\nI see that you are not an sr-plugin maintainer, but you have submitted previous patches.\nThanks!",
+      "revId": "9e8a1f20117cec1636780f339e168414f2597047",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
