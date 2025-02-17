@@ -696,7 +696,7 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
       while (chain_b)
 	{
 	  vec_add2 (wrk->rx_segs, seg, 1);
-	  seg->data = vlib_buffer_get_current (chain_b);
+	  seg->data = (u8 *) vlib_buffer_get_current (chain_b);
 	  seg->len = chain_b->current_length;
 	  chain_b = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
 		      vlib_get_buffer (wrk->vm, chain_b->next_buffer) :
@@ -723,7 +723,7 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
       do
 	{
 	  chain_b = vlib_get_buffer (vm, chain_bi);
-	  data = vlib_buffer_get_current (chain_b);
+	  data = (u8 *) vlib_buffer_get_current (chain_b);
 	  len = chain_b->current_length;
 	  if (!len)
 	    continue;
@@ -770,7 +770,7 @@ session_enqueue_stream_connection (transport_connection_t *tc,
   if (is_in_order)
     {
       enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-				   vlib_buffer_get_current (b));
+				   (u8 *) vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
 			 enqueued >= 0))
 	{
@@ -783,7 +783,7 @@ session_enqueue_stream_connection (transport_connection_t *tc,
   else
     {
       rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
-					 vlib_buffer_get_current (b));
+					 (u8 *) vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
 	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
       /* if something was enqueued, report even this as success for ooo
@@ -799,7 +799,7 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 	{
 	  session_worker_t *wrk = session_main_get_worker (s->thread_index);
 	  ASSERT (s->thread_index == vlib_get_thread_index ());
-	  s->flags |= SESSION_F_RX_EVT;
+	  s->flags = (session_flags_t)(s->flags | SESSION_F_RX_EVT);
 	  vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
 	}
 
@@ -823,7 +823,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     {
       svm_fifo_seg_t segs[2] = { { (u8 *) hdr, sizeof (*hdr) },
-				 { vlib_buffer_get_current (b),
+				 { (u8 *) vlib_buffer_get_current (b),
 				   b->current_length } };
 
       rv =
@@ -842,7 +842,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
       while (it)
 	{
 	  vec_add2 (segs, seg, 1);
-	  seg->data = vlib_buffer_get_current (it);
+	  seg->data = (u8 *) vlib_buffer_get_current (it);
 	  seg->len = it->current_length;
 	  n_segs++;
 	  if (!(it->flags & VLIB_BUFFER_NEXT_PRESENT))
@@ -864,7 +864,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
 	    is_cl ? vlib_get_thread_index () : s->thread_index;
 	  session_worker_t *wrk = session_main_get_worker (thread_index);
 	  ASSERT (s->thread_index == vlib_get_thread_index () || is_cl);
-	  s->flags |= SESSION_F_RX_EVT;
+    s->flags = (session_flags_t)(s->flags | SESSION_F_RX_EVT);
 	  vec_add1 (wrk->session_to_enqueue[proto], session_handle (s));
 	}
 
