@@ -278,6 +278,7 @@ typedef enum http_status_code_
   _ (PROXY_STATUS, "Proxy-Status")                                            \
   _ (RANGE, "Range")                                                          \
   _ (REFERER, "Referer")                                                      \
+  _ (REFRESH, "Refresh")                                                      \
   _ (REPR_DIGEST, "Repr-Digest")                                              \
   _ (SET_COOKIE, "Set-Cookie")                                                \
   _ (SIGNATURE, "Signature")                                                  \
