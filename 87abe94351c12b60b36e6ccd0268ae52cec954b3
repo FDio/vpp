@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ad2634d_77aaf0b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-02-18T02:14:28Z",
+      "side": 1,
+      "message": "Verfied \u0027make install-ext-deps\u0027 locally and verified all build jobs are using the correct compiler.",
+      "revId": "87abe94351c12b60b36e6ccd0268ae52cec954b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
