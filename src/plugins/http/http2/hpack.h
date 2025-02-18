@@ -14,6 +14,27 @@
 #define HPACK_ENCODED_INT_MAX_LEN 6
 #endif
 
+#define HPACK_DEFAULT_HEADER_TABLE_SIZE	   4096
+#define HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD 32
+
+typedef struct
+{
+  u8 *buf;
+  uword name_len;
+} hpack_dynamic_table_entry_t;
+
+typedef struct
+{
+  /* SETTINGS_HEADER_TABLE_SIZE */
+  u32 max_size;
+  /* dynamic table size update */
+  u32 size;
+  /* current usage (each entry = 32 + name len + value len) */
+  u32 used;
+  /* ring buffer */
+  hpack_dynamic_table_entry_t *entries;
+} hpack_dynamic_table_t;
+
 /**
  * Decode unsigned variable-length integer (RFC7541 section 5.1)
  *
@@ -47,7 +68,10 @@ u8 *hpack_encode_int (u8 *dst, uword value, u8 prefix_len);
  *                advanced by number of written bytes
  * @param buf_len Length the buffer, will be decreased
  *
- * @return @c 0 on success.
+ * @return @c 0 on success
+ *
+ * @note Caller is responsible to check if there is somthing left in source
+ * buffer first
  */
 int hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len);
 
@@ -72,5 +96,20 @@ u8 *hpack_encode_huffman (u8 *dst, const u8 *value, uword value_len);
  * to byte boundary
  */
 uword hpack_huffman_encoded_len (const u8 *value, uword value_len);
+
+/**
+ * Initialize HPACK dynamic table
+ *
+ * @param table    Dynamic table to initialize
+ * @param max_size Maximum table size (SETTINGS_HEADER_TABLE_SIZE)
+ */
+void hpack_dynamic_table_init (hpack_dynamic_table_t *table, u32 max_size);
+
+/**
+ * Free HPACK dynamic table
+ *
+ * @param table Dynamic table to free
+ */
+void hpack_dynamic_table_free (hpack_dynamic_table_t *table);
 
 #endif /* SRC_PLUGINS_HTTP_HPACK_H_ */

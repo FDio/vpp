@@ -681,6 +681,7 @@ http_test_hpack (vlib_main_t *vm)
   vec_free (buf);
 
   /* incomplete */
+  N_TEST ("\x87");
   N_TEST ("\x07priv");
   /* invalid length */
   N_TEST ("\x7Fprivate");
@@ -726,6 +727,73 @@ http_test_hpack (vlib_main_t *vm)
   TEST ("\\aaaaaaaaaaaa", "\x8A\xFF\xFE\x03\x18\xC6\x31\x8C\x63\x18\xC7");
   /* raw coding */
   TEST ("[XZ]", "\x4[XZ]");
+#undef TEST
+
+  vlib_cli_output (vm, "hpack_decode_header");
+
+  static int (*_hpack_decode_header) (
+    u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
+    u32 * value_len, hpack_dynamic_table_t * dt);
+
+  _hpack_decode_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_header");
+
+  static void (*_hpack_dynamic_table_init) (hpack_dynamic_table_t * table,
+					    u32 max_size);
+
+  _hpack_dynamic_table_init =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+
+  static void (*_hpack_dynamic_table_free) (hpack_dynamic_table_t * table);
+
+  _hpack_dynamic_table_free =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+
+  u32 name_len, value_len;
+  hpack_dynamic_table_t table;
+  u8 dt_grow_ok;
+
+#define TEST(i, e_name, e_value, dt_grow)                                     \
+  _hpack_dynamic_table_init (&table, HPACK_DEFAULT_HEADER_TABLE_SIZE);        \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
+			     &value_len, &table);                             \
+  len = vec_len (buf) - blen;                                                 \
+  if (dt_grow)                                                                \
+    dt_grow_ok = table.used == (strlen (e_name) + strlen (e_value) +          \
+				HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD);          \
+  else                                                                        \
+    dt_grow_ok = table.used == 0;                                             \
+  HTTP_TEST ((rv == 0 && dt_grow_ok && name_len == strlen (e_name) &&         \
+	      value_len == strlen (e_value) &&                                \
+	      !memcmp (buf, e_name, name_len) &&                              \
+	      !memcmp (buf + name_len, e_value, value_len) &&                 \
+	      vec_len (buf) == (blen + name_len + value_len) &&               \
+	      pos == vec_end (input) && bp == buf + name_len + value_len),    \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
+	     vec_len (input), format_http_bytes, buf, name_len,               \
+	     format_http_bytes, buf + name_len, value_len);                   \
+  _hpack_dynamic_table_free (&table);                                         \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* C.2.1. Literal Header Field with Indexing */
+  TEST ("\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B\x65\x79\x0D\x63\x75\x73\x74"
+	"\x6F\x6D\x2D\x68\x65\x61\x64\x65\x72",
+	"custom-key", "custom-header", 1);
+  /* C.2.2. Literal Header Field without Indexing */
+  TEST ("\x04\x0C\x2F\x73\x61\x6D\x70\x6C\x65\x2F\x70\x61\x74\x68", ":path",
+	"/sample/path", 0);
+  /* C.2.3. Literal Header Field Never Indexed */
+  TEST ("\x10\x08\x70\x61\x73\x73\x77\x6F\x72\x64\x06\x73\x65\x63\x72\x65\x74",
+	"password", "secret", 0);
+  /* C.2.4. Indexed Header Field */
+  TEST ("\x82", ":method", "GET", 0);
 #undef TEST
 
   return 0;
