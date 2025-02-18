@@ -2613,9 +2613,8 @@ class TestNAT44EDMW(TestNAT44ED):
     vpp_worker_count = 4
     max_sessions = 5000
 
-    def test_dynamic(self):
+    def test_dynamic(self, pkt_count=1500):
         """NAT44ED dynamic translation test"""
-        pkt_count = 1500
         tcp_port_offset = 20
         udp_port_offset = 20
         icmp_id_offset = 20
@@ -2774,6 +2773,64 @@ class TestNAT44EDMW(TestNAT44ED):
             sc[:, 0].sum(),
             len(recvd_tcp_ports) + len(recvd_udp_ports) + len(recvd_icmp_ids),
         )
+
+    def test_dynamic_vrf_routing(self):
+        """NAT44ED dynamic translation test with vrf routing"""
+
+        def nat_add_vrf_table(vrf_id):
+            self.vapi.nat44_ed_add_del_vrf_table(table_vrf_id=vrf_id, is_add=1)
+
+        def nat_del_vrf_table(vrf_id):
+            self.vapi.nat44_ed_add_del_vrf_table(table_vrf_id=vrf_id, is_add=0)
+
+        def nat_add_vrf_route(vrf_id, outside_vrf_id):
+            self.vapi.nat44_ed_add_del_vrf_route(
+                table_vrf_id=vrf_id, vrf_id=outside_vrf_id, is_add=1
+            )
+
+        def nat_del_vrf_route(vrf_id, outside_vrf_id):
+            self.vapi.nat44_ed_add_del_vrf_route(
+                table_vrf_id=vrf_id, vrf_id=outside_vrf_id, is_add=0
+            )
+
+        inside_vrf_ids = [self.pg0.ip4_table_id, 1000, 2000]
+        outside_vrf_ids = [1001, self.pg1.ip4_table_id, 2001]
+        for inside_vrf in inside_vrf_ids:
+            nat_add_vrf_table(inside_vrf)
+            for outside_vrf in outside_vrf_ids:
+                nat_add_vrf_route(inside_vrf, outside_vrf)
+        with self.vapi.assert_negative_api_retval():
+            nat_add_vrf_table(inside_vrf_ids[0])
+        with self.vapi.assert_negative_api_retval():
+            nat_add_vrf_route(inside_vrf_ids[0], outside_vrf_ids[0])
+
+        vrfs = self.vapi.nat44_ed_vrf_tables_v2_dump()
+        self.assertEqual(len(vrfs), len(inside_vrf_ids))
+        for i, t in enumerate(vrfs):
+            self.assertEqual(t.table_vrf_id, inside_vrf_ids[i])
+            self.assertEqual(t.vrf_ids, outside_vrf_ids)
+
+        self.test_dynamic(pkt_count=10)
+
+        for inside_vrf in inside_vrf_ids:
+            for outside_vrf in outside_vrf_ids:
+                nat_del_vrf_route(inside_vrf, outside_vrf)
+        with self.vapi.assert_negative_api_retval():
+            nat_del_vrf_route(inside_vrf_ids[0], outside_vrf_ids[0])
+
+        vrfs = self.vapi.nat44_ed_vrf_tables_v2_dump()
+        self.assertEqual(len(vrfs), len(inside_vrf_ids))
+        for i, t in enumerate(vrfs):
+            self.assertEqual(t.table_vrf_id, inside_vrf_ids[i])
+            self.assertEqual(len(t.vrf_ids), 0)
+
+        for inside_vrf in inside_vrf_ids:
+            nat_del_vrf_table(inside_vrf)
+        with self.vapi.assert_negative_api_retval():
+            nat_del_vrf_table(inside_vrf_ids[0])
+
+        vrfs = self.vapi.nat44_ed_vrf_tables_v2_dump()
+        self.assertEqual(len(vrfs), 0)
 
     def test_frag_in_order(self):
         """NAT44ED translate fragments arriving in order"""
