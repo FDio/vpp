@@ -535,6 +535,102 @@ http_test_http_header_table (vlib_main_t *vm)
 }
 
 static int
+http_test_parse_request (const char *first_req, uword first_req_len,
+			 const char *second_req, uword second_req_len,
+			 const char *third_req, uword third_req_len,
+			 hpack_dynamic_table_t *dynamic_table)
+{
+  http2_error_t rv;
+  u8 *buf = 0;
+  hpack_request_control_data_t control_data;
+  http_field_line_t *headers = 0;
+  u16 parsed_bitmap = 0;
+
+  static http2_error_t (*_hpack_parse_request) (
+    u8 * src, u32 src_len, u8 * dst, u32 dst_len,
+    hpack_request_control_data_t * control_data, http_field_line_t * *headers,
+    hpack_dynamic_table_t * dynamic_table);
+
+  _hpack_parse_request =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_request");
+
+  parsed_bitmap =
+    HPACK_PSEUDO_HEADER_METHOD_PARSED | HPACK_PSEUDO_HEADER_SCHEME_PARSED |
+    HPACK_PSEUDO_HEADER_PATH_PARSED | HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+
+  /* first request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_request ((u8 *) first_req, (u32) first_req_len, buf, 254,
+			     &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.method != HTTP_REQ_GET ||
+      control_data.scheme != HTTP_URL_SCHEME_HTTP ||
+      control_data.path_len != 1 || control_data.authority_len != 15 ||
+      dynamic_table->used != 57 || vec_len (headers) != 0)
+    return 1;
+  if (memcmp (control_data.path, "/", 1))
+    return 1;
+  if (memcmp (control_data.authority, "www.example.com", 15))
+    return 1;
+  vec_free (headers);
+  vec_free (buf);
+
+  /* second request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_request ((u8 *) second_req, (u32) second_req_len, buf, 254,
+			     &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.method != HTTP_REQ_GET ||
+      control_data.scheme != HTTP_URL_SCHEME_HTTP ||
+      control_data.path_len != 1 || control_data.authority_len != 15 ||
+      dynamic_table->used != 110 || vec_len (headers) != 1)
+    return 2;
+  if (memcmp (control_data.path, "/", 1))
+    return 2;
+  if (memcmp (control_data.authority, "www.example.com", 15))
+    return 2;
+  if (headers[0].name_len != 13 || headers[0].value_len != 8)
+    return 2;
+  if (memcmp (buf + headers[0].name_offset, "cache-control", 13))
+    return 2;
+  if (memcmp (buf + headers[0].value_offset, "no-cache", 8))
+    return 2;
+  vec_free (headers);
+  vec_free (buf);
+
+  /* third request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_request ((u8 *) third_req, (u32) third_req_len, buf, 254,
+			     &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.method != HTTP_REQ_GET ||
+      control_data.scheme != HTTP_URL_SCHEME_HTTPS ||
+      control_data.path_len != 11 || control_data.authority_len != 15 ||
+      dynamic_table->used != 164 || vec_len (headers) != 1)
+    return 3;
+  if (memcmp (control_data.path, "/index.html", 11))
+    return 3;
+  if (memcmp (control_data.authority, "www.example.com", 15))
+    return 3;
+  if (headers[0].name_len != 10 || headers[0].value_len != 12)
+    return 3;
+  if (memcmp (buf + headers[0].name_offset, "custom-key", 10))
+    return 2;
+  if (memcmp (buf + headers[0].value_offset, "custom-value", 12))
+    return 2;
+  vec_free (headers);
+  vec_free (buf);
+
+  return 0;
+}
+
+static int
 http_test_hpack (vlib_main_t *vm)
 {
   vlib_cli_output (vm, "hpack_decode_int");
@@ -617,14 +713,14 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_decode_string");
 
-  static int (*_hpack_decode_string) (u8 * *src, u8 * end, u8 * *buf,
-				      uword * buf_len);
+  static http2_error_t (*_hpack_decode_string) (u8 * *src, u8 * end, u8 * *buf,
+						uword * buf_len);
   _hpack_decode_string =
     vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_string");
 
   u8 *bp;
   uword blen, len;
-  int rv;
+  http2_error_t rv;
 
 #define TEST(i, e)                                                            \
   vec_validate (input, sizeof (i) - 2);                                       \
@@ -636,7 +732,8 @@ http_test_hpack (vlib_main_t *vm)
   rv = _hpack_decode_string (&pos, vec_end (input), &bp, &blen);              \
   len = vec_len (buf) - blen;                                                 \
   HTTP_TEST ((len == strlen (e) && !memcmp (buf, e, len) &&                   \
-	      pos == vec_end (input) && bp == buf + len && rv == 0),          \
+	      pos == vec_end (input) && bp == buf + len &&                    \
+	      rv == HTTP2_ERROR_NO_ERROR),                                    \
 	     "%U is decoded as %U", format_hex_bytes, input, vec_len (input), \
 	     format_http_bytes, buf, len);                                    \
   vec_free (input);                                                           \
@@ -667,7 +764,7 @@ http_test_hpack (vlib_main_t *vm)
 	"\x61\xF9\x61\x61\x61\x61\x61\x30\x30\x61\x61\x61\x61\x61\x61\x61")
 #undef TEST
 
-#define N_TEST(i)                                                             \
+#define N_TEST(i, e)                                                          \
   vec_validate (input, sizeof (i) - 2);                                       \
   memcpy (input, i, sizeof (i) - 1);                                          \
   pos = input;                                                                \
@@ -675,21 +772,23 @@ http_test_hpack (vlib_main_t *vm)
   bp = buf;                                                                   \
   blen = vec_len (buf);                                                       \
   rv = _hpack_decode_string (&pos, vec_end (input), &bp, &blen);              \
-  HTTP_TEST ((rv != 0), "%U should be invalid", format_hex_bytes, input,      \
-	     vec_len (input));                                                \
+  HTTP_TEST ((rv == e), "%U should be invalid (%U)", format_hex_bytes, input, \
+	     vec_len (input), format_http2_error, rv);                        \
   vec_free (input);                                                           \
   vec_free (buf);
 
   /* incomplete */
-  N_TEST ("\x07priv");
+  N_TEST ("\x87", HTTP2_ERROR_COMPRESSION_ERROR);
+  N_TEST ("\x07priv", HTTP2_ERROR_COMPRESSION_ERROR);
   /* invalid length */
-  N_TEST ("\x7Fprivate");
+  N_TEST ("\x7Fprivate", HTTP2_ERROR_COMPRESSION_ERROR);
   /* invalid EOF */
-  N_TEST ("\x81\x8C");
+  N_TEST ("\x81\x8C", HTTP2_ERROR_COMPRESSION_ERROR);
   /* not enough space for decoding */
   N_TEST (
     "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"
-    "\xE0\x82\xA6\x2D\x1B\xFF");
+    "\xE0\x82\xA6\x2D\x1B\xFF",
+    HTTP2_ERROR_INTERNAL_ERROR);
 #undef N_TEST
 
   vlib_cli_output (vm, "hpack_encode_string");
@@ -728,6 +827,123 @@ http_test_hpack (vlib_main_t *vm)
   TEST ("[XZ]", "\x4[XZ]");
 #undef TEST
 
+  vlib_cli_output (vm, "hpack_decode_header");
+
+  static http2_error_t (*_hpack_decode_header) (
+    u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
+    u32 * value_len, hpack_dynamic_table_t * dt);
+
+  _hpack_decode_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_header");
+
+  static void (*_hpack_dynamic_table_init) (hpack_dynamic_table_t * table,
+					    u32 max_size);
+
+  _hpack_dynamic_table_init =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+
+  static void (*_hpack_dynamic_table_free) (hpack_dynamic_table_t * table);
+
+  _hpack_dynamic_table_free =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+
+  u32 name_len, value_len;
+  hpack_dynamic_table_t table;
+
+  _hpack_dynamic_table_init (&table, 128);
+
+#define TEST(i, e_name, e_value, dt_size)                                     \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
+			     &value_len, &table);                             \
+  len = vec_len (buf) - blen;                                                 \
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR && table.used == dt_size &&          \
+	      name_len == strlen (e_name) && value_len == strlen (e_value) && \
+	      !memcmp (buf, e_name, name_len) &&                              \
+	      !memcmp (buf + name_len, e_value, value_len) &&                 \
+	      vec_len (buf) == (blen + name_len + value_len) &&               \
+	      pos == vec_end (input) && bp == buf + name_len + value_len),    \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
+	     vec_len (input), format_http_bytes, buf, name_len,               \
+	     format_http_bytes, buf + name_len, value_len);                   \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* C.2.1. Literal Header Field with Indexing */
+  TEST ("\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B\x65\x79\x0D\x63\x75\x73\x74"
+	"\x6F\x6D\x2D\x68\x65\x61\x64\x65\x72",
+	"custom-key", "custom-header", 55);
+  /* C.2.2. Literal Header Field without Indexing */
+  TEST ("\x04\x0C\x2F\x73\x61\x6D\x70\x6C\x65\x2F\x70\x61\x74\x68", ":path",
+	"/sample/path", 55);
+  /* C.2.3. Literal Header Field Never Indexed */
+  TEST ("\x10\x08\x70\x61\x73\x73\x77\x6F\x72\x64\x06\x73\x65\x63\x72\x65\x74",
+	"password", "secret", 55);
+  /* C.2.4. Indexed Header Field */
+  TEST ("\x82", ":method", "GET", 55);
+  TEST ("\xBE", "custom-key", "custom-header", 55);
+  /* Literal Header Field with Indexing - enough space in dynamic table */
+  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D",
+	":authority", "www.example.com", 112);
+  /* verification */
+  TEST ("\xBE", ":authority", "www.example.com", 112);
+  TEST ("\xBF", "custom-key", "custom-header", 112);
+  /* Literal Header Field with Indexing - eviction */
+  TEST ("\x58\x08\x6E\x6F\x2D\x63\x61\x63\x68\x65", "cache-control",
+	"no-cache", 110);
+  /* verification */
+  TEST ("\xBE", "cache-control", "no-cache", 110);
+  TEST ("\xBF", ":authority", "www.example.com", 110);
+  /* Literal Header Field with Indexing - eviction */
+  TEST ("\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B\x65\x79\x0D\x63\x75\x73\x74"
+	"\x6F\x6D\x2D\x68\x65\x61\x64\x65\x72",
+	"custom-key", "custom-header", 108);
+  /* verification */
+  TEST ("\xBE", "custom-key", "custom-header", 108);
+  TEST ("\xBF", "cache-control", "no-cache", 108);
+  /* Literal Header Field with Indexing - eviction */
+  TEST ("\x41\x0F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C\x65\x2E\x63\x6F\x6D",
+	":authority", "www.example.com", 112);
+  /* verification */
+  TEST ("\xBE", ":authority", "www.example.com", 112);
+  TEST ("\xBF", "custom-key", "custom-header", 112);
+#undef TEST
+
+  _hpack_dynamic_table_free (&table);
+
+  vlib_cli_output (vm, "hpack_parse_request");
+
+  int result;
+  /* C.3. Request Examples without Huffman Coding */
+  _hpack_dynamic_table_init (&table, HPACK_DEFAULT_HEADER_TABLE_SIZE);
+  result = http_test_parse_request (
+    http_token_lit ("\x82\x86\x84\x41\x0F\x77\x77\x77\x2E\x65\x78\x61"
+		    "\x6D\x70\x6C\x65\x2E\x63\x6F\x6D"),
+    http_token_lit (
+      "\x82\x86\x84\xBE\x58\x08\x6E\x6F\x2D\x63\x61\x63\x68\x65"),
+    http_token_lit (
+      "\x82\x87\x85\xBF\x40\x0A\x63\x75\x73\x74\x6F\x6D\x2D\x6B"
+      "\x65\x79\x0C\x63\x75\x73\x74\x6F\x6D\x2D\x76\x61\x6C\x75\x65"),
+    &table);
+  _hpack_dynamic_table_free (&table);
+  HTTP_TEST ((result == 0), "request without Huffman Coding (result=%d)",
+	     result);
+  /* C.4. Request Examples with Huffman Coding */
+  _hpack_dynamic_table_init (&table, HPACK_DEFAULT_HEADER_TABLE_SIZE);
+  result = http_test_parse_request (
+    http_token_lit (
+      "\x82\x86\x84\x41\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF"),
+    http_token_lit ("\x82\x86\x84\xBE\x58\x86\xA8\xEB\x10\x64\x9C\xBF"),
+    http_token_lit ("\x82\x87\x85\xBF\x40\x88\x25\xA8\x49\xE9\x5B\xA9\x7D\x7F"
+		    "\x89\x25\xA8\x49\xE9\x5B\xB8\xE8\xB4\xBF"),
+    &table);
+  _hpack_dynamic_table_free (&table);
+  HTTP_TEST ((result == 0), "request with Huffman Coding (result=%d)", result);
   return 0;
 }
 
