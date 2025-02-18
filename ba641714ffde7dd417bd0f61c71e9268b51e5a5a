@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "735332eb_39be7be6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-02-18T15:21:18Z",
+      "side": 1,
+      "message": "s/clib/vppinfra/ on the headline of commit message to fix checkstyle failure",
+      "revId": "ba641714ffde7dd417bd0f61c71e9268b51e5a5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
