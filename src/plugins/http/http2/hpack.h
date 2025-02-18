@@ -6,6 +6,7 @@
 #define SRC_PLUGINS_HTTP_HPACK_H_
 
 #include <vppinfra/types.h>
+#include <http/http2/http2.h>
 
 #define HPACK_INVALID_INT CLIB_UWORD_MAX
 #if uword_bits == 64
@@ -13,6 +14,47 @@
 #else
 #define HPACK_ENCODED_INT_MAX_LEN 6
 #endif
+
+#define HPACK_DEFAULT_HEADER_TABLE_SIZE	   4096
+#define HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD 32
+
+typedef struct
+{
+  u8 *buf;
+  uword name_len;
+} hpack_dynamic_table_entry_t;
+
+typedef struct
+{
+  /* SETTINGS_HEADER_TABLE_SIZE */
+  u32 max_size;
+  /* dynamic table size update */
+  u32 size;
+  /* current usage (each entry = 32 + name len + value len) */
+  u32 used;
+  /* ring buffer */
+  hpack_dynamic_table_entry_t *entries;
+} hpack_dynamic_table_t;
+
+enum
+{
+#define _(bit, name, str) HPACK_PSEUDO_HEADER_##name##_PARSED = (1 << bit),
+  foreach_http2_pseudo_header
+#undef _
+};
+
+typedef struct
+{
+  http_req_method_t method;
+  http_url_scheme_t scheme;
+  u8 *authority;
+  u32 authority_len;
+  u8 *path;
+  u32 path_len;
+  u8 *headers;
+  u32 headers_len;
+  u16 parsed_bitmap;
+} hpack_request_control_data_t;
 
 /**
  * Decode unsigned variable-length integer (RFC7541 section 5.1)
@@ -47,9 +89,13 @@ u8 *hpack_encode_int (u8 *dst, uword value, u8 prefix_len);
  *                advanced by number of written bytes
  * @param buf_len Length the buffer, will be decreased
  *
- * @return @c 0 on success.
+ * @return @c HTTP2_ERROR_NO_ERROR on success
+ *
+ * @note Caller is responsible to check if there is somthing left in source
+ * buffer first
  */
-int hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len);
+http2_error_t hpack_decode_huffman (u8 **src, u8 *end, u8 **buf,
+				    uword *buf_len);
 
 /**
  * Encode given string in Huffman codes.
@@ -72,5 +118,40 @@ u8 *hpack_encode_huffman (u8 *dst, const u8 *value, uword value_len);
  * to byte boundary
  */
 uword hpack_huffman_encoded_len (const u8 *value, uword value_len);
+
+/**
+ * Initialize HPACK dynamic table
+ *
+ * @param table    Dynamic table to initialize
+ * @param max_size Maximum table size (SETTINGS_HEADER_TABLE_SIZE)
+ */
+void hpack_dynamic_table_init (hpack_dynamic_table_t *table, u32 max_size);
+
+/**
+ * Free HPACK dynamic table
+ *
+ * @param table Dynamic table to free
+ */
+void hpack_dynamic_table_free (hpack_dynamic_table_t *table);
+
+u8 *format_hpack_dynamic_table (u8 *s, va_list *args);
+
+/**
+ * Request parser
+ *
+ * @param src           Header block to parse
+ * @param src_len       Length of header block
+ * @param dst           Buffer where headers will be decoded
+ * @param dst_len       Length of buffer for decoded headers
+ * @param control_data  Preparsed pseudo-headers
+ * @param headers       List of regular headers
+ * @param dynamic_table Decoder dynamic table
+ *
+ * @return @c HTTP2_ERROR_NO_ERROR on success, connection error otherwise
+ */
+http2_error_t hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+				   hpack_request_control_data_t *control_data,
+				   http_field_line_t **headers,
+				   hpack_dynamic_table_t *dynamic_table);
 
 #endif /* SRC_PLUGINS_HTTP_HPACK_H_ */

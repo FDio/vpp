@@ -56,6 +56,7 @@ typedef enum http_req_method_
   HTTP_REQ_GET = 0,
   HTTP_REQ_POST,
   HTTP_REQ_CONNECT,
+  HTTP_REQ_UNKNOWN, /* for internal use */
 } http_req_method_t;
 
 typedef enum http_msg_type_
@@ -278,6 +279,7 @@ typedef enum http_status_code_
   _ (PROXY_STATUS, "Proxy-Status")                                            \
   _ (RANGE, "Range")                                                          \
   _ (REFERER, "Referer")                                                      \
+  _ (REFRESH, "Refresh")                                                      \
   _ (REPR_DIGEST, "Repr-Digest")                                              \
   _ (SET_COOKIE, "Set-Cookie")                                                \
   _ (SIGNATURE, "Signature")                                                  \
@@ -337,6 +339,7 @@ typedef enum http_url_scheme_
 {
   HTTP_URL_SCHEME_HTTP,
   HTTP_URL_SCHEME_HTTPS,
+  HTTP_URL_SCHEME_UNKNOWN, /* for internal use */
 } http_url_scheme_t;
 
 typedef struct http_msg_data_
