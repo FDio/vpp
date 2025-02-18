@@ -620,13 +620,14 @@ nat44_ed_get_vrf_table (u32 table_vrf_id)
 {
   snat_main_t *sm = &snat_main;
   vrf_table_t *t;
+  uword *p;
 
-  pool_foreach (t, sm->vrf_tables)
+  p = hash_get (sm->vrf_index_by_vrf_id, table_vrf_id);
+  if (p && !pool_is_free_index (sm->vrf_tables, p[0]))
     {
-      if (table_vrf_id == t->table_vrf_id)
-	{
-	  return t;
-	}
+      t = pool_elt_at_index (sm->vrf_tables, p[0]);
+      ASSERT (table_vrf_id == t->table_vrf_id);
+      return t;
     }
   return NULL;
 }
@@ -660,6 +661,10 @@ nat44_ed_add_del_vrf_table (u32 table_vrf_id, bool is_add)
 	{
 	  return VNET_API_ERROR_VALUE_EXIST;
 	}
+
+      ASSERT (t->table_fib_index < vec_len (sm->vrf_index_by_fib_index));
+      sm->vrf_index_by_fib_index[t->table_fib_index] = ~0;
+      hash_unset (sm->vrf_index_by_vrf_id, t->table_vrf_id);
       pool_foreach (r, t->routes)
 	{
 	  fib_table_unlock (r->fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
@@ -675,11 +680,15 @@ nat44_ed_add_del_vrf_table (u32 table_vrf_id, bool is_add)
 	{
 	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
-      pool_get (sm->vrf_tables, t);
-      clib_memset (t, 0, sizeof (*t));
+
+      pool_get_zero (sm->vrf_tables, t);
       t->table_vrf_id = table_vrf_id;
       t->table_fib_index = fib_table_find_or_create_and_lock (
 	FIB_PROTOCOL_IP4, table_vrf_id, sm->fib_src_low);
+      vec_validate_init_empty (sm->vrf_index_by_fib_index, t->table_fib_index,
+			       ~0);
+      sm->vrf_index_by_fib_index[t->table_fib_index] = t - sm->vrf_tables;
+      hash_set (sm->vrf_index_by_vrf_id, table_vrf_id, t - sm->vrf_tables);
     }
 
   return 0;
@@ -692,6 +701,8 @@ nat44_ed_del_vrf_tables ()
   vrf_table_t *t;
   vrf_route_t *r;
 
+  vec_free (sm->vrf_index_by_fib_index);
+  hash_free (sm->vrf_index_by_vrf_id);
   pool_foreach (t, sm->vrf_tables)
     {
       pool_foreach (r, t->routes)
@@ -733,8 +744,7 @@ nat44_ed_add_del_vrf_route (u32 table_vrf_id, u32 vrf_id, bool is_add)
 	{
 	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
-      pool_get (t->routes, r);
-      clib_memset (r, 0, sizeof (*r));
+      pool_get_zero (t->routes, r);
       r->vrf_id = vrf_id;
       r->fib_index = fib_table_find_or_create_and_lock (
 	FIB_PROTOCOL_IP4, vrf_id, sm->fib_src_low);

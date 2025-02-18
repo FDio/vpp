@@ -300,13 +300,17 @@ get_vrf_table_by_fib (u32 fib_index)
 {
   snat_main_t *sm = &snat_main;
   vrf_table_t *t;
+  u32 i;
 
-  pool_foreach (t, sm->vrf_tables)
+  if (fib_index >= vec_len (sm->vrf_index_by_fib_index))
+    return 0;
+
+  i = vec_elt (sm->vrf_index_by_fib_index, fib_index);
+  if (!pool_is_free_index (sm->vrf_tables, i))
     {
-      if (fib_index == t->table_fib_index)
-	{
-	  return t;
-	}
+      t = pool_elt_at_index (sm->vrf_tables, i);
+      ASSERT (fib_index == t->table_fib_index);
+      return t;
     }
 
   return 0;

@@ -523,6 +523,8 @@ typedef struct snat_main_s
 
   // VRF routing table for dynamic sessions
   vrf_table_t *vrf_tables;
+  u32 *vrf_index_by_fib_index;
+  u32 *vrf_index_by_vrf_id;
 
   /* Interface pool */
   snat_interface_t *interfaces;
