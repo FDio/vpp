@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4989a357_ecc6f208",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 3187
+      },
+      "writtenOn": "2025-02-18T11:32:13Z",
+      "side": 1,
+      "message": "we recently absorbed this change via an update to our VPP baseline version.\nIts causing coring because the ip.rx_sw_if_index has large incorrect values.\nThey i guess are clobbered by TCP opaque info sent from our passive proxy plugin node --\u003e TCP stack for uplink packets- what happens then is if there is a TCP stack RESET (node tcp-reset) it cores in subsequent node:\ntcp46_reset_inline :\n     /* IP lookup in fib where it was received. Previous value\n       * was overwritten by tcp-input */\n      vnet_buffer (b[0])-\u003esw_if_index[VLIB_TX] \u003d\n        vec_elt (ip4_main.fib_index_by_sw_if_index,\n                 vnet_buffer (b[0])-\u003esw_if_index[VLIB_RX]); \n\n\nbecause sw_if_index[VLIB_RX] is a large incorrect num, TX gets the wrong index -\nit then cores inside ip4-lookup -\n\nis it safe for me to remove this one line? or should the full patch be reverted in our code base?",
+      "revId": "bfa86084af0e4d0cc8ad8ccbeafe999b748a990e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
