@@ -728,6 +728,46 @@ http_test_hpack (vlib_main_t *vm)
   TEST ("[XZ]", "\x4[XZ]");
 #undef TEST
 
+  vlib_cli_output (vm, "hpack_decode_header");
+
+  static int (*_hpack_decode_header) (u8 * *src, u8 * end, u8 * *buf,
+				      uword * buf_len, u32 * name_len,
+				      u32 * value_len);
+  _hpack_decode_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_header");
+
+  u32 name_len, value_len;
+
+#define TEST(i, e_name, e_value)                                              \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
+			     &value_len);                                     \
+  len = vec_len (buf) - blen;                                                 \
+  HTTP_TEST ((rv == 0 && name_len == strlen (e_name) &&                       \
+	      value_len == strlen (e_value) &&                                \
+	      !memcmp (buf, e_name, name_len) &&                              \
+	      !memcmp (buf + name_len, e_value, value_len)),                  \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
+	     vec_len (input), format_http_bytes, buf, name_len,               \
+	     format_http_bytes, buf + name_len, value_len);                   \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* C.2.2. Literal Header Field without Indexing */
+  TEST ("\x04\x0C\x2F\x73\x61\x6D\x70\x6C\x65\x2F\x70\x61\x74\x68", ":path",
+	"/sample/path");
+  /* C.2.3. Literal Header Field Never Indexed */
+  TEST ("\x10\x08\x70\x61\x73\x73\x77\x6F\x72\x64\x06\x73\x65\x63\x72\x65\x74",
+	"password", "secret");
+  /* C.2.4. Indexed Header Field */
+  TEST ("\x82", ":method", "GET");
+#undef TEST
+
   return 0;
 }
 
