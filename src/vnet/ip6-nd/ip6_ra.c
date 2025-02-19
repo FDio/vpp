@@ -198,6 +198,7 @@ typedef enum
   ICMP6_ROUTER_SOLICITATION_NEXT_DROP,
   ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW,
   ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX,
+  ICMP6_ROUTER_SOLICITATION_NEXT_PUNT,
   ICMP6_ROUTER_SOLICITATION_N_NEXT,
 } icmp6_router_solicitation_or_advertisement_next_t;
 
@@ -609,6 +610,17 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	drop0:
 	  p0->error = error_node->errors[error0];
 
+	  if (error0 == ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG)
+	    {
+	      /* We are not configured to answer router solicitation,
+	       * but maybe Linux is via LCP, so punt the request */
+	      next0 = ICMP6_ROUTER_SOLICITATION_NEXT_PUNT;
+	      error0 = ICMP6_ERROR_NONE;
+
+	      /* Restore the buffer to contain the whole packet */
+	      vlib_buffer_reset (p0);
+	    }
+
 	  if (error0 != ICMP6_ERROR_NONE)
 	    vlib_error_count (vm, error_node->node_index, error0, 1);
 
@@ -642,7 +654,8 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node, static) = {
 		  [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] =
 		    "ip6-rewrite-mcast",
 		  [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] =
-		    "interface-output" },
+		    "interface-output",
+		  [ICMP6_ROUTER_SOLICITATION_NEXT_PUNT] = "ip6-punt" },
 };
 
 /* validate advertised info for consistancy (see RFC-4861 section 6.2.7) - log
