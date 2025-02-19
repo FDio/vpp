@@ -46,6 +46,7 @@ static inline void
 clib_bihash_mark_free_vec8_8 (clib_bihash_kv_vec8_8_t *v)
 {
   v->value = 0xFEEDFACE8BADF00DULL;
+  v->key = ~0ULL;
 }
 
 /** Decide if a clib_bihash_kv_vec8_8_t instance is free
