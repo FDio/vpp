@@ -52,6 +52,24 @@
       "parentUuid": "9bdc5439_8a36a273",
       "revId": "bfa86084af0e4d0cc8ad8ccbeafe999b748a990e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3ab54cc_8baece95",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-02-19T19:32:36Z",
+      "side": 1,
+      "message": "That should work, i.e., probably because traffic is not ingested via ip-input and the output path might also have custom nodes, tracking of sw_if_index might not be needed. \n\nBut, alternatively, if you just set `ip.fib_index` (this is apparently okay) and `ip.rx_sw_if_index` to the index of an interface (maybe it\u0027s only one interface so 1 should do), in opwv-tp4-control everything should just work without reverting the patch.",
+      "parentUuid": "feb728c9_a4af9428",
+      "revId": "bfa86084af0e4d0cc8ad8ccbeafe999b748a990e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
