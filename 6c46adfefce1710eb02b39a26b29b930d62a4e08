@@ -33,6 +33,24 @@
       "message": "Does this still work if you disable vxlan-gpe but still want to use NSH?\nEg. vpp \"unix { interactive } dpdk { no-pci } plugins { plugin vxlan_gpe_plugin.so { disable } }\"\nI suspect NSH will fail to load because those symbols will not be available. Check GRE and VxLAN below.",
       "revId": "6c46adfefce1710eb02b39a26b29b930d62a4e08",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d0393ace_94105886",
+        "filename": "src/plugins/nsh/nsh.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-02-19T13:59:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b615a22_49bbbfd7",
+      "revId": "6c46adfefce1710eb02b39a26b29b930d62a4e08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
