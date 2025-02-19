@@ -34,6 +34,24 @@
       "parentUuid": "4989a357_ecc6f208",
       "revId": "bfa86084af0e4d0cc8ad8ccbeafe999b748a990e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "feb728c9_a4af9428",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 3187
+      },
+      "writtenOn": "2025-02-19T15:31:06Z",
+      "side": 1,
+      "message": "Hi Florin,\nthanks for the response. Yes i think i have that version u mention (line 314) [VPP 2310].\nFrom my tests I don\u0027t see this value ever getting set as in i don\u0027t see ip4_local_check_src_x2 nor ip4_local_check_src getting called in normal wget requests. It looks to me therefore this has half random/half clobbered value by the time tcp_input_lookup_buffer is called - If we track normal uplink packet on our system:\n\n1. opwv-tp4-input (opwv) node [this overloads opaque-\u003etcp fields]\n2. opwv-tp4-passive (opwv) node [this resets the tcp fields]\n3. opwv-tp4-control (opwv) node [proxy app node which now directs to TCP stack]\n4. tcp4-input-nolookup node [this now sets sw RX to ip.rx_sw_if_index \n  ip.rx_sw_if_index \u003d\u003d tcp.data_len (+ flags and another byte)\n \n//if its a reset scenario it continues to a crash\n5. tcp4-reset  [uses RX in #4 to find TX which is random value]\n6. ip4-lookup  \u003c\u003c\u003ccore dumps here as TX index is completely wrong\n\nI guess given this and the fact we don\u0027t seem to trigger that DPO code (its for different traffic to our client/server proxied packets?), i assume i can\nremove all the patch if need be - would need to then check TCP resets use correct sw index",
+      "parentUuid": "9bdc5439_8a36a273",
+      "revId": "bfa86084af0e4d0cc8ad8ccbeafe999b748a990e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
