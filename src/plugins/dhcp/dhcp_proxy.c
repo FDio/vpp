@@ -188,7 +188,7 @@ dhcp_proxy_server_add (fib_protocol_t proto,
 {
   dhcp_proxy_main_t *dpm = &dhcp_proxy_main;
   dhcp_proxy_t *proxy = 0;
-  int new = 0;
+  int _new = 0;
 
   proxy = dhcp_get_proxy (dpm, rx_fib_index, proto);
 
@@ -199,7 +199,7 @@ dhcp_proxy_server_add (fib_protocol_t proto,
 
       pool_get (dpm->dhcp_servers[proto], proxy);
       clib_memset (proxy, 0, sizeof (*proxy));
-      new = 1;
+      _new = 1;
 
       dpm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] =
 	proxy - dpm->dhcp_servers[proto];
@@ -211,7 +211,7 @@ dhcp_proxy_server_add (fib_protocol_t proto,
     {
       if (~0 != dhcp_proxy_server_find (proxy, proto, addr, server_table_id))
 	{
-	  return (new);
+	  return (_new);
 	}
     }
 
@@ -224,7 +224,7 @@ dhcp_proxy_server_add (fib_protocol_t proto,
 
   vec_add1 (proxy->dhcp_servers, server);
 
-  return (new);
+  return (_new);
 }
 
 typedef struct dhcp4_proxy_dump_walk_ctx_t_

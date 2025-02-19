@@ -21,7 +21,7 @@
 
 /** Add a chunk of memory to a virtual allocation arena
     @param vam - clib_valloc_main_t * pointer to the allocation arena
-    @param template - clib_valloc_chunk_t * pointer to a template chunk which
+    @param _template - clib_valloc_chunk_t * pointer to a template chunk which
     describes the virtual address range to add
 
     @note only the baseva and size member of the template chunk are significant
@@ -30,7 +30,7 @@
  */
 
 __clib_export void
-clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
+clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *_template)
 {
   clib_valloc_chunk_t *ch, *new_ch;
   u32 index;
@@ -51,10 +51,10 @@ clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
       while (index != ~0)
 	{
 	  ch = pool_elt_at_index (vam->chunks, index);
-	  ASSERT (template->baseva < ch->baseva || template->baseva >=
+	  ASSERT (_template->baseva < ch->baseva || _template->baseva >=
 		  (ch->baseva + ch->size));
-	  ASSERT (template->baseva + template->size < ch->baseva ||
-		  template->baseva + template->size >=
+	  ASSERT (_template->baseva + _template->size < ch->baseva ||
+		  _template->baseva + _template->size >=
 		  (ch->baseva + ch->size));
 	  index = ch->next;
 	}
@@ -64,7 +64,7 @@ clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
   if (index != ~0)
     ch = pool_elt_at_index (vam->chunks, index);
 
-  if (index == ~0 || template->baseva < ch->baseva)
+  if (index == ~0 || _template->baseva < ch->baseva)
     {
       pool_get (vam->chunks, new_ch);
       clib_memset (new_ch, 0, sizeof (*new_ch));
@@ -82,8 +82,8 @@ clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
 	  new_ch->next = new_ch->prev = ~0;
 	}
 
-      new_ch->baseva = template->baseva;
-      new_ch->size = template->size;
+      new_ch->baseva = _template->baseva;
+      new_ch->size = _template->size;
 
       vam->first_index = new_ch - vam->chunks;
 
@@ -109,8 +109,8 @@ clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
       new_ch->prev = index;
       ch->next = new_ch - vam->chunks;
 
-      new_ch->baseva = template->baseva;
-      new_ch->size = template->size;
+      new_ch->baseva = _template->baseva;
+      new_ch->size = _template->size;
 
       hash_set (vam->chunk_index_by_baseva, new_ch->baseva,
 		new_ch - vam->chunks);
@@ -121,14 +121,14 @@ clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
 
 /** Initialize a virtual memory allocation arena
     @param vam - clib_valloc_main_t * pointer to the arena to initialize
-    @param template - clib_valloc_chunk_t * pointer to a template chunk which
+    @param _template - clib_valloc_chunk_t * pointer to a template chunk which
     describes the initial virtual address range
 */
 __clib_export void
-clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
+clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * _template,
 		  int need_lock)
 {
-  ASSERT (template && template->baseva && template->size);
+  ASSERT (_template && _template->baseva && _template->size);
   clib_memset (vam, 0, sizeof (*vam));
   if (need_lock)
     clib_spinlock_init (&vam->lock);
@@ -137,7 +137,7 @@ clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
   vam->first_index = ~0;
   vam->flags |= CLIB_VALLOC_INITIALIZED;
 
-  clib_valloc_add_chunk (vam, template);
+  clib_valloc_add_chunk (vam, _template);
 }
 
 /** Allocate virtual space

@@ -123,6 +123,12 @@
 #define CLIB_SANITIZE_ADDR 1
 #endif
 
+#ifdef __cplusplus
+#define __clib_strdup(V) strdup(V)
+#else
+#define __clib_strdup(V) V
+#endif
+
 #define __clib_unused __attribute__ ((unused))
 #define __clib_weak __attribute__ ((weak))
 #define __clib_packed __attribute__ ((packed))
@@ -256,7 +262,7 @@ min_log2_u64 (u64 x)
 always_inline uword
 max_pow2 (uword x)
 {
-  word y = (word) 1 << min_log2 (x);
+  uword y = (uword) 1 << min_log2 (x);
   if (x > y)
     y *= 2;
   return y;

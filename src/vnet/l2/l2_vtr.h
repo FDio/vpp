@@ -78,7 +78,7 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
   u8 *eth;
   u8 save_macs[12];
 
-  eth = vlib_buffer_get_current (b0);
+  eth = (u8 *) vlib_buffer_get_current (b0);
 
   /* copy the 12B dmac and smac to a temporary location */
   clib_memcpy_fast (save_macs, eth, sizeof (save_macs));
@@ -142,7 +142,7 @@ l2_efp_filter_process (vlib_buffer_t * b0, vtr_config_t * in_config)
   u64 packet_tags;
   u64 tag_mask;
 
-  eth = vlib_buffer_get_current (b0);
+  eth = (u8 *) vlib_buffer_get_current (b0);
 
   /*
    * If there are 2 tags pushed, they must match config->tags[0] and
@@ -198,7 +198,7 @@ typedef struct
 always_inline u32
 l2_pbb_process (vlib_buffer_t * b0, ptr_config_t * config)
 {
-  u8 *eth = vlib_buffer_get_current (b0);
+  u8 *eth = (u8 *) vlib_buffer_get_current (b0);
 
   if (config->pop_bytes > 0)
     {

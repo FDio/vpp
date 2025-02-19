@@ -20,7 +20,7 @@
 #include <vnet/ip/ip4_packet.h>
 
 typedef struct {
-  u16 class;
+  u16 _class;
   u8 type;
   u8 pad;
 } nsh_option_map_by_key_t;
@@ -251,7 +251,7 @@ typedef enum {
 #define MAX_NSH_OPTION_LEN  128
 
 int
-nsh_md2_register_option (u16 class,
+nsh_md2_register_option (u16 _class,
                       u8 type,
                       u8 option_size,
                       int add_options (u8 * opt,
@@ -278,7 +278,7 @@ int
 nsh_add_del_proxy_session (nsh_add_del_map_args_t * a);
 
 nsh_option_map_t *
-nsh_md2_lookup_option (u16 class, u8 type);
+nsh_md2_lookup_option (u16 _class, u8 type);
 
 int
 nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp);

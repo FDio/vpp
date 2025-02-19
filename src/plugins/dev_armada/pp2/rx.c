@@ -43,8 +43,8 @@ mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
       b1 = desc_to_vlib_buffer (vm, dp[1]);
       bi[0] = pp2_ppio_inq_desc_get_cookie (dp[0]);
       bi[1] = pp2_ppio_inq_desc_get_cookie (dp[1]);
-      b0->template = bt;
-      b1->template = bt;
+      b0->_template = bt;
+      b1->_template = bt;
 
       n_rx_bytes += b0->current_length =
 	pp2_ppio_inq_desc_get_pkt_len (dp[0]) + len_adj;
@@ -56,7 +56,7 @@ mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       b0 = desc_to_vlib_buffer (vm, dp[0]);
       bi[0] = pp2_ppio_inq_desc_get_cookie (dp[0]);
-      b0->template = bt;
+      b0->_template = bt;
 
       n_rx_bytes += b0->current_length =
 	pp2_ppio_inq_desc_get_pkt_len (dp[0]) + len_adj;

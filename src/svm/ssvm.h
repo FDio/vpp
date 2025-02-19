@@ -143,14 +143,14 @@ static inline void *
 ssvm_push_heap (ssvm_shared_header_t * sh)
 {
   clib_mem_heap_t *oldheap;
-  oldheap = clib_mem_set_heap (sh->heap);
+  oldheap = clib_mem_set_heap ((clib_mem_heap_t *) sh->heap);
   return ((void *) oldheap);
 }
 
 static inline void
 ssvm_pop_heap (void *oldheap)
 {
-  clib_mem_set_heap (oldheap);
+  clib_mem_set_heap ((clib_mem_heap_t *) oldheap);
 }
 
 static inline void *
@@ -159,7 +159,7 @@ ssvm_mem_alloc (ssvm_private_t * ssvm, uword size)
   clib_mem_heap_t *oldheap;
   void *rv;
 
-  oldheap = clib_mem_set_heap (ssvm->sh->heap);
+  oldheap = clib_mem_set_heap ((clib_mem_heap_t *) ssvm->sh->heap);
   rv = clib_mem_alloc (size);
   clib_mem_set_heap (oldheap);
   return (rv);

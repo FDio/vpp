@@ -36,10 +36,10 @@ VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
 };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (if_default_log.class, fmt, __VA_ARGS__)
+  vlib_log_debug (if_default_log._class, fmt, __VA_ARGS__)
 #define log_warn(fmt, ...)                                                    \
-  vlib_log_warn (if_default_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...) vlib_log_err (if_default_log.class, fmt, __VA_ARGS__)
+  vlib_log_warn (if_default_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (if_default_log._class, fmt, __VA_ARGS__)
 
 void
 perfmon_reset (vlib_main_t *vm)

@@ -36,10 +36,10 @@ static_always_inline vnet_api_error_t
 vnet_api_error (clib_error_t *err)
 {
   if (err == 0)
-    return 0;
+    return (vnet_api_error_t) 0;
   if (err->code >= 0)
     return VNET_API_ERROR_BUG;
-  return err->code;
+  return (vnet_api_error_t) err->code;
 }
 
 static_always_inline vnet_api_error_t
