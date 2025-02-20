@@ -836,8 +836,7 @@ vlib_node_registration_t session_queue_node;
 
 typedef struct
 {
-  u32 session_index;
-  u32 server_thread_index;
+  u32 thread_index;
 } session_queue_trace_t;
 
 /* packet trace format function */
@@ -848,8 +847,7 @@ format_session_queue_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   session_queue_trace_t *t = va_arg (*args, session_queue_trace_t *);
 
-  s = format (s, "session index %d thread index %d",
-	      t->session_index, t->server_thread_index);
+  s = format (s, "thread index %d", t->thread_index);
   return s;
 }
 
@@ -880,25 +878,25 @@ enum
 };
 
 static void
-session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
-			u32 next_index, vlib_buffer_t **bufs, u16 n_segs,
-			session_t *s, u32 n_trace)
+session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *bis,
+			u16 *nexts, u16 n_bufs)
 {
-  vlib_buffer_t **b = bufs;
+  u32 n_trace = vlib_get_trace_count (vm, node), *bi = bis;
+  u16 *next = nexts;
+  vlib_buffer_t *b;
 
-  while (n_trace && n_segs)
+  while (n_trace && n_bufs)
     {
-      if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b[0],
-					   1 /* follow_chain */)))
+      b = vlib_get_buffer (vm, bi[0]);
+      if (PREDICT_TRUE (
+	    vlib_trace_buffer (vm, node, next[0], b, 1 /* follow_chain */)))
 	{
-	  session_queue_trace_t *t =
-	    vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->session_index = s->session_index;
-	  t->server_thread_index = s->thread_index;
+	  session_queue_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  t->thread_index = vm->thread_index;
 	  n_trace--;
 	}
-      b++;
-      n_segs--;
+      bi++;
+      n_bufs--;
     }
   vlib_set_trace_count (vm, node, n_trace);
 }
@@ -1402,7 +1400,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				session_evt_elt_t * elt,
 				int *n_tx_packets, u8 peek_data)
 {
-  u32 n_trace, n_left, pbi, next_index, max_burst;
+  u32 n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
@@ -1575,10 +1573,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   /* Ask transport to push headers */
   ctx->transport_vft->push_header (ctx->tc, ctx->transport_pending_bufs,
 				   ctx->n_segs_per_evt);
-
-  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node)) > 0))
-    session_tx_trace_frame (vm, node, next_index, ctx->transport_pending_bufs,
-			    ctx->n_segs_per_evt, ctx->s, n_trace);
 
   if (PREDICT_FALSE (n_bufs))
     vlib_buffer_free (vm, ctx->tx_buffers, n_bufs);
@@ -2072,7 +2066,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, OLD_IO_EVTS, wrk);
 
   if (vec_len (wrk->pending_tx_buffers))
-    session_flush_pending_tx_buffers (wrk, node);
+    {
+      if (PREDICT_FALSE (vlib_get_trace_count (vm, node) > 0))
+	session_tx_trace_frame (vm, node, wrk->pending_tx_buffers,
+				wrk->pending_tx_nexts,
+				vec_len (wrk->pending_tx_nexts));
+      session_flush_pending_tx_buffers (wrk, node);
+    }
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
