@@ -886,11 +886,6 @@ ipsec6_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im,
 	  vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
 	  goto trace0;
 	}
-      else
-	{
-	  p0 = NULL;
-	  pi0 = ~0;
-	}
     }
 
   if (im->fp_spd_ipv6_in_is_enabled &&
