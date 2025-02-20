@@ -291,7 +291,17 @@ typedef enum
   VLIB_NODE_DISPATCH_REASON_POLL,
   VLIB_NODE_DISPATCH_REASON_INTERRUPT,
   VLIB_NODE_DISPATCH_REASON_SCHED,
+  VLIB_NODE_DISPATCH_N_REASON,
 } __clib_packed vlib_node_dispatch_reason_t;
+
+#define vlib_node_dispatch_reason_enum_strings                                \
+  {                                                                           \
+    [VLIB_NODE_DISPATCH_REASON_UNKNOWN] = "unknown",                          \
+    [VLIB_NODE_DISPATCH_REASON_PENDING_FRAME] = "pending-frame",              \
+    [VLIB_NODE_DISPATCH_REASON_POLL] = "poll",                                \
+    [VLIB_NODE_DISPATCH_REASON_INTERRUPT] = "interrupt",                      \
+    [VLIB_NODE_DISPATCH_REASON_SCHED] = "scheduled",                          \
+  }
 
 typedef struct vlib_node_t
 {

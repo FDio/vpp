@@ -2,6 +2,7 @@ Checks: "-*,\
 misc-*,\
 bugprone-*,\
 -bugprone-reserved-identifier,\
+-bugprone-assignment-in-if-condition,\
 -performance-*,\
 clang-analyzer-*,\
 -clang-analyzer-valist.Uninitialized,\
