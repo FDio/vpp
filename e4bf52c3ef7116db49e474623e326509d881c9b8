@@ -16,6 +16,57 @@
       "message": "Hi Matthew, addressed your comments and added an API/CLI to enable per ethertype, and show the ethertypes that are enabled.",
       "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "707e74b7_ce581e35",
+        "filename": "src/plugins/linux-cp/lcp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-02-20T09:46:20Z",
+      "side": 1,
+      "message": "vec_add1 is a macro not a function. It can have a side effect on ethertypes, and basically change change the address (which makes ethertypes invalid). I suggest to pass it by pointer like lcp_ethertype_get_enabled(\u0026ethertypes) and rewrite the function accordingly",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71bd0c06_a63a252b",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-02-20T09:46:20Z",
+      "side": 1,
+      "message": "same comment as API function",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9908d4af_3c8a34f5",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1240,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-02-20T09:46:20Z",
+      "side": 1,
+      "message": "see above, pass an ethertype_type_t** and change all ethertype instance into *ethertype",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
