@@ -510,7 +510,7 @@ http_path_remove_dot_segments (u8 *path)
   u8 *new_path = 0;
   int i, ii;
 
-  if (!path)
+  if (!path || vec_len (path) == 0)
     return vec_new (u8, 0);
 
   segments = vec_new (u32, 1);
@@ -559,6 +559,70 @@ http_path_remove_dot_segments (u8 *path)
     }
   vec_free (segments);
   vec_free (segments_len);
+  return new_path;
+}
+
+/**
+ * Squash repeated forward slashes from path
+ *
+ * @param path Path to sanitize.
+ *
+ * @return New vector with sanitized path.
+ *
+ * The caller is always responsible to free the returned vector.
+ */
+always_inline u8 *
+http_path_squash_slashes (u8 *path)
+{
+  u32 *parts = 0, *parts_len = 0;
+  u8 *new_path = 0;
+  int i = 0;
+
+  if (!path || vec_len (path) == 0)
+    return vec_new (u8, 0);
+
+  /* rewind to first meaningful uri segment */
+  while (path[i] == '/')
+    {
+      if (i < (vec_len (path) - 1))
+	i++;
+      else
+	return vec_new (u8, 0);
+    }
+
+  /* first part of the squashed target */
+  parts = vec_new (u32, 1);
+  parts[0] = i;
+
+  while (i++ < (vec_len (path) - 2))
+    {
+      // Do we have repeating slashes?
+      if (path[i] == '/' && path[i + 1] == '/')
+	{
+	  // End the part, skip the slashes
+	  vec_add1 (parts_len, i - parts[vec_len (parts) - 1] + 1);
+	  while (i++ < (vec_len (path) - 2))
+	    {
+	      if (path[i + 1] != '/')
+		{
+		  vec_add1 (parts, i + 1);
+		  break;
+		}
+	    }
+	}
+    }
+  /* add dummy tail, if needed */
+  if (vec_len (parts) > vec_len (parts_len))
+    vec_add1 (parts_len, vec_len (path) - 1);
+
+  /* we might end with empty path, so return at least empty vector */
+  new_path = vec_new (u8, 0);
+  /* append all valid parts */
+  for (i = 0; i < vec_len (parts_len); i++)
+    vec_add (new_path, path + parts[i], parts_len[i]);
+
+  vec_free (parts);
+  vec_free (parts_len);
   return new_path;
 }
 

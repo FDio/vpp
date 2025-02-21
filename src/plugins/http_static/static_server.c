@@ -397,7 +397,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 		  u8 *target)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
-  u8 *path, *sanitized_path;
+  u8 *path, *sanitized_path, *squashed_path;
   u32 ce_index;
   http_content_type_t type;
   u8 *last_modified;
@@ -407,8 +407,9 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
     return -1;
 
   /* Remove dot segments to prevent path traversal */
-  sanitized_path = http_path_remove_dot_segments (target);
-
+  squashed_path = http_path_squash_slashes (target);
+  sanitized_path = http_path_remove_dot_segments (squashed_path);
+  vec_free (squashed_path);
   /*
    * Construct the file to open
    */

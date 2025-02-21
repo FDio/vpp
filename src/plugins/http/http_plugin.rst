@@ -19,7 +19,7 @@ The plugin exposes following inline functions: ``http_validate_abs_path_syntax``
 ``http_reset_header_table``, ``http_free_header_table``, ``http_init_headers_ctx``, ``http_add_header``,
 ``http_add_custom_header``, ``http_validate_target_syntax``, ``http_parse_authority``, ``http_serialize_authority``,
 ``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``,
-``http_token_is``, ``http_token_is_case``, ``http_token_contains``
+``http_token_is``, ``http_token_is_case``, ``http_token_contains``, ``http_path_squash_slashes``
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
