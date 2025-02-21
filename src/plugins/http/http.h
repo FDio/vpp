@@ -495,7 +495,8 @@ http_percent_decode (u8 *src, u32 len)
 }
 
 /**
- * Remove dot segments from path (RFC3986 section 5.2.4)
+ * Sanitize HTTP path by squashing repeating slashes and removing
+ * dot segments from path (RFC3986 section 5.2.4)
  *
  * @param path Path to sanitize.
  *
@@ -504,23 +505,24 @@ http_percent_decode (u8 *src, u32 len)
  * The caller is always responsible to free the returned vector.
  */
 always_inline u8 *
-http_path_remove_dot_segments (u8 *path)
+http_path_sanitize (u8 *path)
 {
   u32 *segments = 0, *segments_len = 0, segment_len;
   u8 *new_path = 0;
   int i, ii;
 
-  if (!path)
+  if (!path || vec_len (path) == 0)
     return vec_new (u8, 0);
 
   segments = vec_new (u32, 1);
   /* first segment */
-  segments[0] = 0;
+  segments[0] = (path[0] == '/' ? 1 : 0);
   /* find all segments */
   for (i = 1; i < (vec_len (path) - 1); i++)
     {
       if (path[i] == '/')
 	vec_add1 (segments, i + 1);
+
     }
   /* dummy tail */
   vec_add1 (segments, vec_len (path));
@@ -530,7 +532,9 @@ http_path_remove_dot_segments (u8 *path)
   for (i = 0; i < vec_len (segments_len); i++)
     {
       segment_len = segments[i + 1] - segments[i];
-      if (segment_len == 2 && path[segments[i]] == '.')
+      /* aside from dots, skip empty segments (double slashes) */
+      if ((segment_len == 2 && path[segments[i]] == '.') || 
+		      segment_len == 1)
 	segment_len = 0;
       else if (segment_len == 3 && path[segments[i]] == '.' &&
 	       path[segments[i] + 1] == '.')
