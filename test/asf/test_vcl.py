@@ -8,6 +8,7 @@ import signal
 import glob
 from config import config
 from asfframework import VppAsfTestCase, VppTestRunner, Worker
+from asfframework import tag_fixme_fips
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -418,6 +419,7 @@ class LDPCutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLCutThruTestCase(VCLTestCase):
     """VCL Cut Thru Tests"""
 
@@ -507,6 +509,7 @@ class VCLCutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackEcho(VCLTestCase):
     """VCL Thru Host Stack Echo"""
 
@@ -564,6 +567,7 @@ class VCLThruHostStackEcho(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackTLS(VCLTestCase):
     """VCL Thru Host Stack TLS"""
 
@@ -618,6 +622,7 @@ class VCLThruHostStackTLS(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
     """VCL Thru Host Stack Echo interrupt mode"""
 
@@ -640,6 +645,7 @@ class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
         )
 
 
+@tag_fixme_fips
 class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
     """VCL Thru Host Stack TLS interrupt mode"""
 
@@ -652,6 +658,7 @@ class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackDTLS(VCLTestCase):
     """VCL Thru Host Stack DTLS"""
 
@@ -705,6 +712,7 @@ class VCLThruHostStackDTLS(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackQUIC(VCLTestCase):
     """VCL Thru Host Stack QUIC"""
 
@@ -759,6 +767,7 @@ class VCLThruHostStackQUIC(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackHTTPPost(VCLTestCase):
     """VCL Thru Host Stack HTTP Post"""
 
@@ -812,6 +821,7 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """VCL Thru Host Stack Bidir Nsock"""
 
@@ -974,6 +984,7 @@ class LDPThruHostStackNsock(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLThruHostStackNsock(VCLTestCase):
     """VCL Thru Host Stack Nsock"""
 
@@ -1223,6 +1234,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLIpv6CutThruTestCase(VCLTestCase):
     """VCL IPv6 Cut Thru Tests"""
 
@@ -1321,6 +1333,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_fips
 class VCLIpv6ThruHostStackEcho(VCLTestCase):
     """VCL IPv6 Thru Host Stack Echo"""
 
