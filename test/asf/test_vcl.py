@@ -8,6 +8,7 @@ import signal
 import glob
 from config import config
 from asfframework import VppAsfTestCase, VppTestRunner, Worker
+from asfframework import tag_fixme_no_weak_crypto
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
@@ -58,6 +59,7 @@ class VCLAppWorker(Worker):
         super(VCLAppWorker, self).__init__(self.args, logger, env, *args, **kwargs)
 
 
+@tag_fixme_no_weak_crypto
 class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
@@ -311,6 +313,7 @@ class VCLTestCase(VppAsfTestCase):
         self.assert_equal(worker_client.result, 0, "Binary test return code")
 
 
+@tag_fixme_no_weak_crypto
 class LDPCutThruTestCase(VCLTestCase):
     """LDP Cut Thru Tests"""
 
@@ -418,6 +421,7 @@ class LDPCutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLCutThruTestCase(VCLTestCase):
     """VCL Cut Thru Tests"""
 
@@ -507,6 +511,7 @@ class VCLCutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackEcho(VCLTestCase):
     """VCL Thru Host Stack Echo"""
 
@@ -564,6 +569,7 @@ class VCLThruHostStackEcho(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackCLUDPEcho(VCLTestCase):
     """VCL Thru Host Stack CL UDP Echo"""
 
@@ -606,6 +612,7 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackTLS(VCLTestCase):
     """VCL Thru Host Stack TLS"""
 
@@ -660,6 +667,7 @@ class VCLThruHostStackTLS(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
     """VCL Thru Host Stack Echo interrupt mode"""
 
@@ -682,6 +690,7 @@ class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
         )
 
 
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
     """VCL Thru Host Stack TLS interrupt mode"""
 
@@ -694,6 +703,7 @@ class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackDTLS(VCLTestCase):
     """VCL Thru Host Stack DTLS"""
 
@@ -747,6 +757,7 @@ class VCLThruHostStackDTLS(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackQUIC(VCLTestCase):
     """VCL Thru Host Stack QUIC"""
 
@@ -801,6 +812,7 @@ class VCLThruHostStackQUIC(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackHTTPPost(VCLTestCase):
     """VCL Thru Host Stack HTTP Post"""
 
@@ -854,6 +866,7 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """VCL Thru Host Stack Bidir Nsock"""
 
@@ -911,6 +924,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class LDPThruHostStackBidirNsock(VCLTestCase):
     """LDP Thru Host Stack Bidir Nsock"""
 
@@ -964,6 +978,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class LDPThruHostStackNsock(VCLTestCase):
     """LDP Thru Host Stack Nsock"""
 
@@ -1016,6 +1031,7 @@ class LDPThruHostStackNsock(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLThruHostStackNsock(VCLTestCase):
     """VCL Thru Host Stack Nsock"""
 
@@ -1065,6 +1081,7 @@ class VCLThruHostStackNsock(VCLTestCase):
         )
 
 
+@tag_fixme_no_weak_crypto
 class LDPThruHostStackIperf(VCLTestCase):
     """LDP Thru Host Stack Iperf"""
 
@@ -1112,6 +1129,7 @@ class LDPThruHostStackIperf(VCLTestCase):
         )
 
 
+@tag_fixme_no_weak_crypto
 class LDPThruHostStackIperfUdp(VCLTestCase):
     """LDP Thru Host Stack Iperf UDP"""
 
@@ -1157,6 +1175,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
         )
 
 
+@tag_fixme_no_weak_crypto
 class LDPIpv6CutThruTestCase(VCLTestCase):
     """LDP IPv6 Cut Thru Tests"""
 
@@ -1265,6 +1284,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLIpv6CutThruTestCase(VCLTestCase):
     """VCL IPv6 Cut Thru Tests"""
 
@@ -1363,6 +1383,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+@tag_fixme_no_weak_crypto
 class VCLIpv6ThruHostStackEcho(VCLTestCase):
     """VCL IPv6 Thru Host Stack Echo"""
 

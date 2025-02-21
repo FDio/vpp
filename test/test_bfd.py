@@ -36,8 +36,10 @@ from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
     tag_fixme_debian11,
+    tag_fixme_no_weak_crypto,
     tag_run_solo,
     VppTestRunner,
+    TestCaseTag,
 )
 from util import ppp
 from vpp_ip import DpoProto
@@ -1058,6 +1060,7 @@ def bfd_stats_diff(stats_before, stats_after):
 )
 @tag_run_solo
 @tag_fixme_debian11
+@tag_fixme_no_weak_crypto
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -1074,6 +1077,8 @@ class BFD4TestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - IPv4, {hoptype_str}"""
         )
+        if cls.has_tag(TestCaseTag.FIXME_NO_WEAK_CRYPTO):
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -2062,6 +2067,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_no_weak_crypto
 class BFD6TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2078,6 +2084,8 @@ class BFD6TestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - IPv6, {hoptype_str}"""
         )
+        if cls.has_tag(TestCaseTag.FIXME_NO_WEAK_CRYPTO):
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -2632,6 +2640,7 @@ class BFDTunTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_no_weak_crypto
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
     vpp_clock_offset = None
@@ -2645,6 +2654,8 @@ class BFDSHA1TestCase(VppTestCase):
         super(BFDSHA1TestCase, cls).setUpClass()
         hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
         cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - SHA1 auth - {hoptype_str}"""
+        if cls.has_tag(TestCaseTag.FIXME_NO_WEAK_CRYPTO):
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -3015,6 +3026,7 @@ class BFDSHA1TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_no_weak_crypto
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
     vpp_session = None
@@ -3025,6 +3037,8 @@ class BFDAuthOnOffTestCase(VppTestCase):
         super(BFDAuthOnOffTestCase, cls).setUpClass()
         hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
         cls.__doc__ = f"""""Bidirectional Forwarding Detection (BFD) - changing auth - {hoptype_str}"""
+        if cls.has_tag(TestCaseTag.FIXME_NO_WEAK_CRYPTO):
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
@@ -3310,6 +3324,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_no_weak_crypto
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
 
@@ -3322,6 +3337,8 @@ class BFDCLITestCase(VppTestCase):
         cls.__doc__ = (
             f"""""Bidirectional Forwarding Detection (BFD) - CLI - {hoptype_str}"""
         )
+        if cls.has_tag(TestCaseTag.FIXME_NO_WEAK_CRYPTO):
+            return
         cls.vapi.cli("set log class bfd level debug")
         try:
             cls.create_pg_interfaces([0])
