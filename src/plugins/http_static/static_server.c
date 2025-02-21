@@ -406,8 +406,8 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (!hsm->www_root)
     return -1;
 
-  /* Remove dot segments to prevent path traversal */
-  sanitized_path = http_path_remove_dot_segments (target);
+  /* Sanitize received path */
+  sanitized_path = http_path_sanitize (target);
 
   /*
    * Construct the file to open
