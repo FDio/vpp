@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7a17c05_77f90819",
+        "filename": "src/plugins/linux-cp/lcp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-02-21T19:07:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "707e74b7_ce581e35",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "71bd0c06_a63a252b",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "22dbc6c7_5ec2ec65",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-02-21T19:07:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71bd0c06_a63a252b",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9908d4af_3c8a34f5",
@@ -65,6 +101,24 @@
       "writtenOn": "2025-02-20T09:46:20Z",
       "side": 1,
       "message": "see above, pass an ethertype_type_t** and change all ethertype instance into *ethertype",
+      "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf2f6756_ef81fb4f",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1240,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-02-21T19:07:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9908d4af_3c8a34f5",
       "revId": "e4bf52c3ef7116db49e474623e326509d881c9b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
