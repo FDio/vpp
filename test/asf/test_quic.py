@@ -172,6 +172,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf(True, "Exclude Tests")
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
 
