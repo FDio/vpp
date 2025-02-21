@@ -202,6 +202,8 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7) = {
   .digest = TEST_DATA (sha1_tc7_digest),
 };
 
+#ifdef NO_FIPS
+
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_chained) = {
   .name = "RFC2202 HMAC-SHA-1 TC7 [chained]",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
@@ -222,6 +224,8 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_inc) = {
   .key.length = 80,
   .digest.length = 12,
 };
+
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
