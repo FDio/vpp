@@ -74,15 +74,12 @@ static u32 num_threads;
 #endif
 
 #define foreach_openssl_hash_op                                               \
-  _ (SHA1, EVP_sha1)                                                          \
   _ (SHA224, EVP_sha224)                                                      \
   _ (SHA256, EVP_sha256)                                                      \
   _ (SHA384, EVP_sha384)                                                      \
   _ (SHA512, EVP_sha512)
 
 #define foreach_openssl_hmac_op \
-  _(MD5, EVP_md5) \
-  _(SHA1, EVP_sha1) \
   _(SHA224, EVP_sha224) \
   _(SHA256, EVP_sha256) \
   _(SHA384, EVP_sha384) \
