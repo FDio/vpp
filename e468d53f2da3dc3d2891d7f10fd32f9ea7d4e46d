@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "dca1abaf_73939b9a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-21T15:33:26Z",
+      "side": 1,
+      "message": "please write also test in hs-test, probably something like HttpStaticMovedTest to verify if path was sanitized (empty segments removed)",
+      "revId": "e468d53f2da3dc3d2891d7f10fd32f9ea7d4e46d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "955d3855_0010822e",
         "filename": "src/plugins/http/http.h",
         "patchSetId": 1
