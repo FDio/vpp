@@ -36,6 +36,7 @@ from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
     tag_fixme_debian11,
+    tag_fixme_fips,
     tag_run_solo,
     VppTestRunner,
 )
@@ -1058,6 +1059,7 @@ def bfd_stats_diff(stats_before, stats_after):
 )
 @tag_run_solo
 @tag_fixme_debian11
+@tag_fixme_fips
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2062,6 +2064,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_fips
 class BFD6TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2632,6 +2635,7 @@ class BFDTunTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_fips
 class BFDSHA1TestCase(VppTestCase):
     pg0 = None
     vpp_clock_offset = None
@@ -3015,6 +3019,7 @@ class BFDSHA1TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_fips
 class BFDAuthOnOffTestCase(VppTestCase):
     pg0 = None
     vpp_session = None
@@ -3310,6 +3315,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@tag_fixme_fips
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
 
