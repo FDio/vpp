@@ -5,7 +5,13 @@ import unittest
 import os
 import signal
 from config import config
-from asfframework import VppAsfTestCase, VppTestRunner, Worker, tag_fixme_vpp_workers
+from asfframework import (
+    VppAsfTestCase,
+    VppTestRunner,
+    Worker,
+    tag_fixme_vpp_workers,
+    tag_fixme_no_weak_crypto,
+)
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -51,6 +57,7 @@ class QUICAppWorker(Worker):
 
 
 @unittest.skipIf("quic" in config.excluded_plugins, "Exclude QUIC plugin tests")
+@tag_fixme_no_weak_crypto
 class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
@@ -140,6 +147,7 @@ class QUICTestCase(VppAsfTestCase):
         super(QUICTestCase, self).tearDown()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoIntTestCase(QUICTestCase):
     """QUIC Echo Internal Test Case"""
 
@@ -172,6 +180,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_no_weak_crypto
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
 
@@ -182,6 +191,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_no_weak_crypto
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
 
@@ -196,6 +206,7 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_no_weak_crypto
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
 
@@ -205,6 +216,7 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
         self.client("nclients", "10", "mbytes", "1")
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtTestCase(QUICTestCase):
     quic_setup = "default"
     test_bytes = "test-bytes:assert"
@@ -329,6 +341,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         self.assertFalse(server_kill_error, "Server kill errored")
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Test Case"""
 
@@ -341,6 +354,7 @@ class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtTransferBigTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Big Test Case"""
 
@@ -357,6 +371,7 @@ class QUICEchoExtTransferBigTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtQcloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Qclose Rx Test Case"""
 
@@ -369,6 +384,7 @@ class QUICEchoExtQcloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtQcloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Qclose Tx Test Case"""
 
@@ -381,6 +397,7 @@ class QUICEchoExtQcloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtEarlyQcloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Early Qclose Rx Test Case"""
 
@@ -393,6 +410,7 @@ class QUICEchoExtEarlyQcloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtEarlyQcloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Early Qclose Tx Test Case"""
 
@@ -405,6 +423,7 @@ class QUICEchoExtEarlyQcloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtScloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Sclose Rx Test Case"""
 
@@ -417,6 +436,7 @@ class QUICEchoExtScloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtScloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Sclose Tx Test Case"""
 
@@ -429,6 +449,7 @@ class QUICEchoExtScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtEarlyScloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Early Sclose Rx Test Case"""
 
@@ -441,6 +462,7 @@ class QUICEchoExtEarlyScloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Early Sclose Tx Test Case"""
 
@@ -453,6 +475,7 @@ class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
 
@@ -466,6 +489,7 @@ class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamBigTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Big Test Case"""
 
@@ -483,6 +507,7 @@ class QUICEchoExtServerStreamBigTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamQcloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Qclose Rx Test Case"""
 
@@ -497,6 +522,7 @@ class QUICEchoExtServerStreamQcloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamQcloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Qclose Tx Test Case"""
 
@@ -511,6 +537,7 @@ class QUICEchoExtServerStreamQcloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamEarlyQcloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Early Qclose Rx Test Case"""
 
@@ -525,6 +552,7 @@ class QUICEchoExtServerStreamEarlyQcloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamEarlyQcloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Early Qclose Tx Test Case"""
 
@@ -539,6 +567,7 @@ class QUICEchoExtServerStreamEarlyQcloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamScloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Sclose Rx Test Case"""
 
@@ -553,6 +582,7 @@ class QUICEchoExtServerStreamScloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamScloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Sclose Tx Test Case"""
 
@@ -567,6 +597,7 @@ class QUICEchoExtServerStreamScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamEarlyScloseRxTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Early Sclose Rx Test Case"""
 
@@ -581,6 +612,7 @@ class QUICEchoExtServerStreamEarlyScloseRxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamEarlyScloseTxTestCase(QUICEchoExtTestCase):
     """QUIC Echo Ext Transfer Server Stream Early Sclose Tx Test Case"""
 
@@ -595,6 +627,7 @@ class QUICEchoExtServerStreamEarlyScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_no_weak_crypto
 class QUICEchoExtServerStreamWorkersTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream MultiWorker Test Case"""
 

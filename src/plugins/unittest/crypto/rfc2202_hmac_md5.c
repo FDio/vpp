@@ -19,6 +19,8 @@
 #include <vnet/crypto/crypto.h>
 #include <unittest/crypto/crypto.h>
 
+#ifndef VPP_DISABLE_WEAK_CRYPTO
+
 static u8 md5_tc1_key[16] = {
   0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
   0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
@@ -190,6 +192,8 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7_chained) = {
     TEST_DATA_CHUNK (md5_tc7_data, 40, 33)
   },
 };
+
+#endif /* VPP_DISABLE_WEAK_CRYPTO */
 
 /*
  * fd.io coding-style-patch-verification: ON
