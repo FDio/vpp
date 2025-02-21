@@ -215,6 +215,8 @@ class TestCaseTag(Enum):
     FIXME_DEBIAN11 = 4
     # marks suites broken on debug vpp image
     FIXME_VPP_DEBUG = 5
+    # marks suites broken in FIPS environment
+    FIXME_FIPS = 6
 
 
 def create_tag_decorator(e):
@@ -232,6 +234,7 @@ tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
+tag_fixme_fips = create_tag_decorator(TestCaseTag.FIXME_FIPS)
 tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
 
 
@@ -293,6 +296,17 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
             if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
+
+    @classmethod
+    def skip_fixme_fips(cls):
+        """if @tag_fixme_fips & in FIPS - mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_FIPS):
+            # vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
+            # if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
+            # FIXME: figure out a way to know if FIPS is enabled
+            fips_mode = True
+            if fips_mode:
+                cls = unittest.skip("Skipping @tag_fixme_fips tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -602,6 +616,12 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        # If we are skipping the test, we should not waste the time doing the setup ?
+        # Also - if we do the setup, this leaves a lingering VPP in case the test is skipped.
+        # So - do the surgery for now.
+        if cls.has_tag(TestCaseTag.FIXME_FIPS):
+            return
+
         super(VppAsfTestCase, cls).setUpClass()
         cls.logger = get_logger(cls.__name__)
         cls.logger.debug(f"--- START setUpClass() {cls.__name__} ---")
@@ -1345,6 +1365,10 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if test.has_tag(TestCaseTag.FIXME_FIPS):
+                test_title = colorize(f"FIXME with FIPS: {test_title}", RED)
+                test.skip_fixme_fips()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
