@@ -42,7 +42,7 @@ from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_object import VppObject
 from vpp_papi import VppEnum
-from asfframework import tag_run_solo, tag_fixme_vpp_debug
+from asfframework import tag_run_solo, tag_fixme_vpp_debug, tag_fixme_fips
 from framework import VppTestCase
 from re import compile
 import unittest
@@ -67,6 +67,7 @@ def get_field_bytes(pkt, name):
     return fld.i2m(pkt, val)
 
 
+@tag_fixme_fips
 class VppWgInterface(VppInterface):
     """
     VPP WireGuard interface
@@ -512,6 +513,7 @@ def filter_out_misc_and_handshake_init(p):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@tag_fixme_fips
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2914,6 +2916,7 @@ class WireguardHandoffTests(TestWg):
     "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
 )
 @tag_run_solo
+@tag_fixme_fips
 class TestWgFIB(VppTestCase):
     """Wireguard FIB Test Case"""
 
