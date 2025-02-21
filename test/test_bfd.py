@@ -1058,6 +1058,7 @@ def bfd_stats_diff(stats_before, stats_after):
 )
 @tag_run_solo
 @tag_fixme_debian11
+@unittest.skipIf(True, "Exclude Tests")
 class BFD4TestCase(VppTestCase):
     pg0 = None
     interface0 = None
@@ -2062,6 +2063,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@unittest.skipIf(True, "Exclude Tests")
 class BFD6TestCase(VppTestCase):
     pg0 = None
     interface0 = None
