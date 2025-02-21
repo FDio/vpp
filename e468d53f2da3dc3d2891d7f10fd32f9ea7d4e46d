@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "955d3855_0010822e",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-21T15:12:57Z",
+      "side": 1,
+      "message": "please make this part of the function above, otherwise we walk path two times and doing extra memory allocation",
+      "revId": "e468d53f2da3dc3d2891d7f10fd32f9ea7d4e46d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
