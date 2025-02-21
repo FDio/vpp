@@ -48,12 +48,14 @@ static u8 sha512_digest[] = {
   0x64, 0x3C, 0xE8, 0x0E, 0x2A, 0x9A, 0xC9, 0x4F, 0xA5, 0x4C, 0xA4, 0x9F
 };
 
+#ifdef NO_FIPS
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha1_tc1) = {
   .name = "NIST SHA-1 TC1",
   .alg = VNET_CRYPTO_ALG_HASH_SHA1,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha1_tc1_digest),
 };
+#endif
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha224_tc1) = {
   .name = "NIST SHA-224 TC1",
