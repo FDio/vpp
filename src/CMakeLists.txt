@@ -129,6 +129,17 @@ if (CMAKE_BUILD_TYPE)
   add_compile_options(-g -Werror -Wall)
 endif()
 
+if(DEFINED ENV{CMAKE_VPP_DISABLE_WEAK_CRYPTO})
+    string(TOLOWER "$ENV{CMAKE_VPP_DISABLE_WEAK_CRYPTO}" VPP_DISABLE_WEAK_CRYPTO_VALUE)
+
+    if(VPP_DISABLE_WEAK_CRYPTO_VALUE STREQUAL "true" OR
+       VPP_DISABLE_WEAK_CRYPTO_VALUE STREQUAL "yes" OR
+       VPP_DISABLE_WEAK_CRYPTO_VALUE STREQUAL "y")
+	add_compile_definitions(VPP_DISABLE_WEAK_CRYPTO)
+	message(STATUS "Define C define VPP_DISABLE_WEAK_CRYPTO because CMAKE_VPP_DISABLE_WEAK_CRYPTO is set to '$ENV{VPP_DISABLE_WEAK_CRYPTO}'")
+    endif()
+endif()
+
 if (compiler_flag_no_address_of_packed_member)
   add_compile_options(-Wno-address-of-packed-member)
 endif()

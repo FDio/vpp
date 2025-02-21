@@ -1023,6 +1023,25 @@ VLIB_CLI_COMMAND (test_crypto_command, static) =
 };
 
 static clib_error_t *
+test_weak_crypto_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+ #ifdef VPP_DISABLE_WEAK_CRYPTO
+	  vlib_cli_output (vm, "weak crypto is disabled");
+#else
+	  vlib_cli_output (vm, "weak crypto is enabled");
+#endif
+	  return 0;
+}
+
+VLIB_CLI_COMMAND (test_weak_crypto_command, static) =
+{
+  .path = "test weak crypto",
+  .short_help = "test weak crypto",
+  .function = test_weak_crypto_command_fn,
+};
+
+static clib_error_t *
 crypto_test_init (vlib_main_t * vm)
 {
   return (0);

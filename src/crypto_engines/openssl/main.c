@@ -73,6 +73,19 @@ static u32 num_threads;
 #define EVP_CTRL_AEAD_SET_TAG EVP_CTRL_GCM_SET_TAG
 #endif
 
+#ifdef VPP_DISABLE_WEAK_CRYPTO
+#define foreach_openssl_hash_op                                               \
+  _ (SHA224, EVP_sha224)                                                      \
+  _ (SHA256, EVP_sha256)                                                      \
+  _ (SHA384, EVP_sha384)                                                      \
+  _ (SHA512, EVP_sha512)
+
+#define foreach_openssl_hmac_op \
+  _(SHA224, EVP_sha224) \
+  _(SHA256, EVP_sha256) \
+  _(SHA384, EVP_sha384) \
+  _(SHA512, EVP_sha512)
+#else
 #define foreach_openssl_hash_op                                               \
   _ (SHA1, EVP_sha1)                                                          \
   _ (SHA224, EVP_sha224)                                                      \
@@ -87,6 +100,7 @@ static u32 num_threads;
   _(SHA256, EVP_sha256) \
   _(SHA384, EVP_sha384) \
   _(SHA512, EVP_sha512)
+#endif /* VPP_DISABLE_WEAK_CRYPTO */
 
 crypto_openssl_main_t crypto_openssl_main;
 
