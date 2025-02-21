@@ -30,7 +30,7 @@ func init() {
 		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
-		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
+		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathSanitizationTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
@@ -865,11 +865,14 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertContains(o, "page.html")
 }
 
-func HttpStaticPathTraversalTest(s *NoTopoSuite) {
+func HttpStaticPathSanitizationTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	vpp.Container.Exec(false, "mkdir -p "+"/tmp/secret_folder")
 	err := vpp.Container.CreateFile("/tmp/secret_folder/secret_file.txt", "secret")
+	s.AssertNil(err, fmt.Sprint(err))
+	indexContent := "<html><body>index</body></html>"
+	err = vpp.Container.CreateFile(wwwRootPath+"/index.html", indexContent)
 	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.VppAddr()
 	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
@@ -885,6 +888,26 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
 	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
 	s.AssertHttpContentLength(resp, int64(0))
+
+	req, err = http.NewRequest("GET", "http://"+serverAddress+":80//////fake/directory///../././//../../secret_folder/secret_file.txt", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err = client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 404)
+	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
+	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
+	s.AssertHttpContentLength(resp, int64(0))
+
+	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err = client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 301)
+	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+serverAddress+"/index.html")
 }
 
 func HttpStaticMovedTest(s *NoTopoSuite) {

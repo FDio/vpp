@@ -15,7 +15,7 @@ Usage
 -----
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
-``http_percent_decode``, ``http_path_remove_dot_segments``, ``http_build_header_table``, ``http_get_header``,
+``http_percent_decode``, ``http_path_sanitize``, ``http_build_header_table``, ``http_get_header``,
 ``http_reset_header_table``, ``http_free_header_table``, ``http_init_headers_ctx``, ``http_add_header``,
 ``http_add_custom_header``, ``http_validate_target_syntax``, ``http_parse_authority``, ``http_serialize_authority``,
 ``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``,
