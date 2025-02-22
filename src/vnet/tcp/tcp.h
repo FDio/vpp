@@ -326,6 +326,7 @@ void tcp_send_window_update_ack (tcp_connection_t * tc);
 void tcp_program_ack (tcp_connection_t * tc);
 void tcp_program_dupack (tcp_connection_t * tc);
 void tcp_program_retransmit (tcp_connection_t * tc);
+void tcp_program_fin (tcp_connection_t *tc);
 
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 u32 tcp_snd_space (tcp_connection_t * tc);

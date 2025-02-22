@@ -378,7 +378,7 @@ tcp_connection_close (tcp_connection_t * tc)
       break;
     case TCP_STATE_SYN_RCVD:
       tcp_connection_timers_reset (tc);
-      tcp_send_fin (tc);
+      tcp_program_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
       tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			tcp_cfg.finwait1_time);
@@ -396,7 +396,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  break;
 	}
       if (!transport_max_tx_dequeue (&tc->connection))
-	tcp_send_fin (tc);
+	tcp_program_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
@@ -410,7 +410,7 @@ tcp_connection_close (tcp_connection_t * tc)
       if (!transport_max_tx_dequeue (&tc->connection))
 	{
 	  tcp_connection_timers_reset (tc);
-	  tcp_send_fin (tc);
+	  tcp_program_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.lastack_time);
@@ -443,7 +443,7 @@ tcp_session_half_close (u32 conn_index, clib_thread_index_t thread_index)
   if (tc->state != TCP_STATE_ESTABLISHED)
     return;
   if (!transport_max_tx_dequeue (&tc->connection))
-    tcp_send_fin (tc);
+    tcp_program_fin (tc);
   else
     tc->flags |= TCP_CONN_FINPNDG;
   tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
@@ -1161,7 +1161,7 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
       tcp_cong_recovery_off (tc);
       /* Make sure we don't try to send unsent data */
       tc->snd_nxt = tc->snd_una;
-      tcp_send_fin (tc);
+      tcp_program_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
       session_transport_closed_notify (&tc->connection);
 

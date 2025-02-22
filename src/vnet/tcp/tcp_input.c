@@ -2188,7 +2188,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      /* TX fifo finally drained */
 	      max_deq = transport_max_tx_dequeue (&tc->connection);
 	      if (max_deq <= tc->burst_acked)
-		tcp_send_fin (tc);
+		tcp_program_fin (tc);
 	      /* If a fin was received and data was acked extend wait */
 	      else if ((tc->flags & TCP_CONN_FINRCVD) && tc->bytes_acked)
 		tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
@@ -2246,7 +2246,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    break;
 
 	  tcp_connection_timers_reset (tc);
-	  tcp_send_fin (tc);
+	  tcp_program_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.lastack_time);
@@ -2280,7 +2280,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Apparently our ACK for the peer's FIN was lost */
 	  if (is_fin && tc->snd_una != tc->snd_nxt)
 	    {
-	      tcp_send_fin (tc);
+	      tcp_program_fin (tc);
 	      goto drop;
 	    }
 
@@ -2364,7 +2364,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	   * propagate to app. */
 	  tcp_connection_timers_reset (tc);
 	  tc->rcv_nxt += 1;
-	  tcp_send_fin (tc);
+	  tcp_program_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_TIME_WAIT);
 	  tcp_program_cleanup (wrk, tc);
 	  break;
