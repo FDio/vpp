@@ -1026,6 +1026,16 @@ tcp_program_ack (tcp_connection_t * tc)
 }
 
 void
+tcp_program_fin (tcp_connection_t *tc)
+{
+  if (!(tc->flags & TCP_CONN_SNDFIN))
+    {
+      session_add_self_custom_tx_evt (&tc->connection, 1);
+      tc->flags |= TCP_CONN_SNDFIN;
+    }
+}
+
+void
 tcp_program_dupack (tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_SNDACK))
@@ -2044,6 +2054,13 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
     {
       tc->flags &= ~TCP_CONN_RXT_PENDING;
       n_segs = tcp_do_retransmit (tc, sp->max_burst_size);
+    }
+
+  if (PREDICT_FALSE (tc->flags & TCP_CONN_SNDFIN))
+    {
+      tcp_send_fin (tc);
+      tc->flags &= ~TCP_CONN_SNDFIN;
+      return n_segs + 1;
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))

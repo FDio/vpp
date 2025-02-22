@@ -111,24 +111,24 @@ typedef enum tcp_cfg_flag_
 #define _(sym, str) TCP_CFG_F_##sym = 1 << TCP_CFG_F_##sym##_BIT,
   foreach_tcp_cfg_flag
 #undef _
-  TCP_CFG_N_FLAGS
-} tcp_cfg_flags_e;
+} __clib_packed tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                           \
+  _ (SNDACK, "Send ACK")                                                      \
+  _ (FINSNT, "FIN sent")                                                      \
+  _ (RECOVERY, "Recovery")                                                    \
+  _ (FAST_RECOVERY, "Fast Recovery")                                          \
+  _ (DCNT_PENDING, "Disconnect pending")                                      \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                   \
+  _ (FINPNDG, "FIN pending")                                                  \
+  _ (RXT_PENDING, "Retransmit pending")                                       \
+  _ (FRXT_FIRST, "Retransmit first")                                          \
+  _ (DEQ_PENDING, "Dequeue pending ")                                         \
+  _ (PSH_PENDING, "PSH pending")                                              \
+  _ (FINRCVD, "FIN received")                                                 \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                        \
+  _ (SNDFIN, "Send FIN")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -143,8 +143,7 @@ typedef enum tcp_connection_flag_
 #define _(sym, str) TCP_CONN_##sym = 1 << TCP_CONN_##sym##_BIT,
   foreach_tcp_connection_flag
 #undef _
-  TCP_CONN_N_FLAGS
-} tcp_connection_flags_e;
+} __clib_packed tcp_connection_flags_e;
 
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
@@ -281,8 +280,8 @@ typedef struct _tcp_connection
   transport_connection_t connection;  /**< Common transport data. First! */
 
   u8 state;			/**< TCP state as per tcp_state_t */
-  u8 cfg_flags;			/**< Connection configuration flags */
-  u16 flags;			/**< Connection flags (see tcp_conn_flags_e) */
+  tcp_cfg_flags_e cfg_flags;	/**< Connection configuration flags */
+  tcp_connection_flags_e flags; /**< Connection flags (see tcp_conn_flags_e) */
   u32 timers[TCP_N_TIMERS];	/**< Timer handles into timer wheel */
   u32 pending_timers;		/**< Expired timers not yet handled */
 
