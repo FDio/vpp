@@ -30,39 +30,49 @@
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal */
-#define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm256_set1_##i (x); }				\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm256_loadu_si256 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
-{ _mm256_storeu_si256 ((__m256i *) p, (__m256i) v); }			\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_zero (t##s##x##c x)					\
-{ return _mm256_testz_si256 ((__m256i) x, (__m256i) x); }		\
-\
-static_always_inline int						\
-t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^ b); }				\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm256_unpacklo_##i ((__m256i) a, (__m256i) b); } \
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm256_unpackhi_##i ((__m256i) a, (__m256i) b); } \
-
+#define _(t, s, c, i)                                                         \
+  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
+  {                                                                           \
+    return (t##s##x##c) _mm256_set1_##i (x);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_unaligned (void *p)       \
+  {                                                                           \
+    return (t##s##x##c) _mm256_loadu_si256 ((const __m256i_u *) p);           \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_unaligned (t##s##x##c v,       \
+							  void *p)            \
+  {                                                                           \
+    _mm256_storeu_si256 ((__m256i *) p, (__m256i) v);                         \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c x)            \
+  {                                                                           \
+    return _mm256_testz_si256 ((__m256i) x, (__m256i) x);                     \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b) \
+  {                                                                           \
+    return t##s##x##c##_is_all_zero (a ^ b);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)   \
+  {                                                                           \
+    return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x));                 \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_lo (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm256_unpacklo_##i ((__m256i) a, (__m256i) b);       \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_hi (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm256_unpackhi_##i ((__m256i) a, (__m256i) b);       \
+  }
 
 foreach_avx2_vec256i foreach_avx2_vec256u
 #undef _
@@ -231,23 +241,34 @@ static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {
   const u16x16 masks[17] = {
-    {0},
-    {-1},
-    {-1, -1},
-    {-1, -1, -1},
-    {-1, -1, -1, -1},
-    {-1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    { 0 },
+    { (u16) ~0 },
+    { (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0 },
+    { (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0, (u16) ~0,
+      (u16) ~0, (u16) ~0 },
   };
 
   ASSERT (n_last < 17);

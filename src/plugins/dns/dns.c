@@ -491,14 +491,14 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
       qp = (dns_query_t *) (request + qp_offset);
 
       qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+      qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
       qp++;
       clib_memcpy (qp, name_copy, vec_len (name_copy));
       qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
       vec_free (name_copy);
 
       qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+      qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
       /* Punch in space for the dns_header_t */
       vec_insert (request, sizeof (dns_header_t), 0);
@@ -1039,13 +1039,13 @@ found_last_request:
   qp = (dns_query_t *) (request + qp_offset);
 
   qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
   clib_memcpy (qp, name_copy, vec_len (name_copy));
   qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
   vec_free (name_copy);
 
   qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
   /* Punch in space for the dns_header_t */
   vec_insert (request, sizeof (dns_header_t), 0);
@@ -1555,7 +1555,7 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   qp = (dns_query_t *) (ce + qp_offset);
 
   qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
   /* Punch in space for the dns_header_t */
   vec_insert (ce, sizeof (dns_header_t), 0);
@@ -1580,7 +1580,7 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
       vec_add2 (ce, rru8, sizeof (*rr) + 4);
       rr = (void *) rru8;
       rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
-      rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+      rr->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
       rr->ttl = clib_host_to_net_u32 (86400);
       rr->rdlength = clib_host_to_net_u16 (4);
       memcpy (rr->rdata, &a4, sizeof (a4));
@@ -1593,7 +1593,7 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
       vec_add2 (ce, rru8, sizeof (*rr) + 16);
       rr = (void *) rru8;
       rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-      rr->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+      rr->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
       rr->ttl = clib_host_to_net_u32 (86400);
       rr->rdlength = clib_host_to_net_u16 (16);
       memcpy (rr->rdata, &a6, sizeof (a6));
@@ -2839,7 +2839,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   else
     qp->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
 
-  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  qp->_class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
   /* Punch in space for the dns_header_t */
   vec_insert (reply, sizeof (dns_header_t), 0);
@@ -2873,7 +2873,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
 	  rr = (dns_rr_t *) rrptr;
 
 	  rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
-	  rr->class = clib_host_to_net_u16 (1 /* internet */ );
+	  rr->_class = clib_host_to_net_u16 (1 /* internet */);
 	  rr->ttl = clib_host_to_net_u32 (ttl);
 	  rr->rdlength = clib_host_to_net_u16 (sizeof (ip4_address_t));
 	  ip_address_copy_addr (rr->rdata, &rn->address);
@@ -2888,7 +2888,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
 	  vec_add2 (reply, rrptr, sizeof (dns_rr_t) + vec_len (label_vec));
 	  rr = (dns_rr_t *) rrptr;
 	  rr->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
-	  rr->class = clib_host_to_net_u16 (1 /* internet */ );
+	  rr->_class = clib_host_to_net_u16 (1 /* internet */);
 	  rr->ttl = clib_host_to_net_u32 (ttl);
 	  rr->rdlength = clib_host_to_net_u16 (vec_len (label_vec));
 	  clib_memcpy (rr->rdata, label_vec, vec_len (label_vec));

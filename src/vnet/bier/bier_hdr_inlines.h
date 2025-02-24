@@ -60,17 +60,17 @@
 static inline bier_hdr_version_t
 bier_hdr_get_version (const bier_hdr_t *bier_hdr)
 {
-    return ((bier_hdr->bh_first_word &
-             BIER_HDR_VERSION_FIELD_MASK) >>
-            BIER_HDR_VERSION_FIELD_SHIFT);
+  return (bier_hdr_version_t) ((bier_hdr->bh_first_word &
+				BIER_HDR_VERSION_FIELD_MASK) >>
+			       BIER_HDR_VERSION_FIELD_SHIFT);
 }
 
 static inline bier_hdr_len_id_t
 bier_hdr_get_len_id (const bier_hdr_t *bier_hdr)
 {
-    return ((bier_hdr->bh_first_word &
-             BIER_HDR_LEN_FIELD_MASK) >>
-            BIER_HDR_LEN_FIELD_SHIFT);
+  return (
+    bier_hdr_len_id_t) ((bier_hdr->bh_first_word & BIER_HDR_LEN_FIELD_MASK) >>
+			BIER_HDR_LEN_FIELD_SHIFT);
 }
 
 static inline bier_hdr_entropy_t
@@ -168,8 +168,9 @@ bier_hdr_set_proto_id (bier_hdr_t *bier_hdr,
 static inline bier_hdr_proto_id_t
 bier_hdr_get_proto_id (const bier_hdr_t *bier_hdr)
 {
-    return ((bier_hdr->bh_oam_dscp_proto & BIER_HDR_PROTO_FIELD_MASK) >>
-            BIER_HDR_PROTO_FIELD_SHIFT);
+    return (bier_hdr_proto_id_t) ((bier_hdr->bh_oam_dscp_proto &
+				   BIER_HDR_PROTO_FIELD_MASK) >>
+				  BIER_HDR_PROTO_FIELD_SHIFT);
 }
 
 static inline void

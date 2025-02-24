@@ -154,7 +154,7 @@ typedef struct gbp_learn_l2_trace_t_
   /* per-pkt trace data */
   mac_address_t mac;
   u32 sw_if_index;
-  u32 new;
+  u32 _new;
   u32 throttled;
   u32 sclass;
   u32 d_bit;
@@ -352,7 +352,7 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	      gbp_learn_l2_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      clib_memcpy_fast (t->mac.bytes, eh0->src_address, 6);
-	      t->new = (NULL == ge0);
+	      t->_new = (NULL == ge0);
 	      t->throttled = t0;
 	      t->sw_if_index = sw_if_index0;
 	      t->sclass = sclass0;
@@ -381,11 +381,12 @@ format_gbp_learn_l2_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_learn_l2_trace_t *t = va_arg (*args, gbp_learn_l2_trace_t *);
 
-  s = format (s, "new:%d throttled:%d d-bit:%d mac:%U itf:%d sclass:%d"
+  s = format (s,
+	      "new:%d throttled:%d d-bit:%d mac:%U itf:%d sclass:%d"
 	      " gb-flags:%U",
-	      t->new, t->throttled, t->d_bit,
-	      format_mac_address_t, &t->mac, t->sw_if_index, t->sclass,
-	      format_gbp_bridge_domain_flags, t->gb_flags);
+	      t->_new, t->throttled, t->d_bit, format_mac_address_t, &t->mac,
+	      t->sw_if_index, t->sclass, format_gbp_bridge_domain_flags,
+	      t->gb_flags);
 
   return s;
 }
@@ -489,7 +490,7 @@ typedef struct gbp_learn_l3_trace_t_
   /* per-pkt trace data */
   ip46_address_t ip;
   u32 sw_if_index;
-  u32 new;
+  u32 _new;
   u32 throttled;
   u32 sclass;
 } gbp_learn_l3_trace_t;
@@ -633,7 +634,7 @@ gbp_learn_l3 (vlib_main_t * vm,
 		ip46_address_set_ip6 (&t->ip, &ip6_0->src_address);
 	      if (FIB_PROTOCOL_IP4 == fproto && ip4_0)
 		ip46_address_set_ip4 (&t->ip, &ip4_0->src_address);
-	      t->new = (NULL == ge0);
+	      t->_new = (NULL == ge0);
 	      t->throttled = t0;
 	      t->sw_if_index = sw_if_index0;
 	      t->sclass = sclass0;
@@ -658,10 +659,9 @@ format_gbp_learn_l3_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_learn_l3_trace_t *t = va_arg (*args, gbp_learn_l3_trace_t *);
 
-  s = format (s, "new:%d throttled:%d ip:%U itf:%d sclass:%d",
-	      t->new, t->throttled,
-	      format_ip46_address, &t->ip, IP46_TYPE_ANY, t->sw_if_index,
-	      t->sclass);
+  s = format (s, "new:%d throttled:%d ip:%U itf:%d sclass:%d", t->_new,
+	      t->throttled, format_ip46_address, &t->ip, IP46_TYPE_ANY,
+	      t->sw_if_index, t->sclass);
 
   return s;
 }

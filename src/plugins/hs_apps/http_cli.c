@@ -656,7 +656,7 @@ hcs_listen ()
     {
       hcs_uri_map_t *map;
       pool_get_zero (hcm->uri_map_pool, map);
-      map->uri = vec_dup (uri);
+      map->uri = (u8 *) vec_dup (uri);
       map->handle = a->handle;
       hash_set_mem (hcm->index_by_uri, map->uri, map - hcm->uri_map_pool);
     }

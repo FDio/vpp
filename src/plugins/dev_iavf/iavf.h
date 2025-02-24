@@ -159,20 +159,20 @@ iavf_reg_flush (iavf_device_t *ad)
 }
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log.class, "%U" f,                     \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log._class, "%U" f,                    \
 	    format_vnet_dev_log, (dev),                                       \
 	    clib_string_skip_prefix (__func__, "iavf_"), ##__VA_ARGS__)
 #define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, iavf_log.class, "%U: " f,                    \
+  vlib_log (VLIB_LOG_LEVEL_INFO, iavf_log._class, "%U: " f,                   \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, iavf_log.class, "%U: " f,                  \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, iavf_log._class, "%U: " f,                 \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, iavf_log.class, "%U: " f,                 \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, iavf_log._class, "%U: " f,                \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, iavf_log.class, "%U: " f,                     \
+  vlib_log (VLIB_LOG_LEVEL_ERR, iavf_log._class, "%U: " f,                    \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 
 /* temp */

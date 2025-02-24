@@ -632,39 +632,39 @@ VLIB_CLI_COMMAND (clear_interface_counters_command, static) = {
  */
 
 static clib_error_t *
-parse_vlan_sub_interfaces (unformat_input_t * input,
-			   vnet_sw_interface_t * template)
+parse_vlan_sub_interfaces (unformat_input_t *input,
+			   vnet_sw_interface_t *_template)
 {
   clib_error_t *error = 0;
   u32 inner_vlan, outer_vlan;
 
   if (unformat (input, "any inner-dot1q any"))
     {
-      template->sub.eth.flags.two_tags = 1;
-      template->sub.eth.flags.outer_vlan_id_any = 1;
-      template->sub.eth.flags.inner_vlan_id_any = 1;
+      _template->sub.eth.flags.two_tags = 1;
+      _template->sub.eth.flags.outer_vlan_id_any = 1;
+      _template->sub.eth.flags.inner_vlan_id_any = 1;
     }
   else if (unformat (input, "any"))
     {
-      template->sub.eth.flags.one_tag = 1;
-      template->sub.eth.flags.outer_vlan_id_any = 1;
+      _template->sub.eth.flags.one_tag = 1;
+      _template->sub.eth.flags.outer_vlan_id_any = 1;
     }
   else if (unformat (input, "%d inner-dot1q any", &outer_vlan))
     {
-      template->sub.eth.flags.two_tags = 1;
-      template->sub.eth.flags.inner_vlan_id_any = 1;
-      template->sub.eth.outer_vlan_id = outer_vlan;
+      _template->sub.eth.flags.two_tags = 1;
+      _template->sub.eth.flags.inner_vlan_id_any = 1;
+      _template->sub.eth.outer_vlan_id = outer_vlan;
     }
   else if (unformat (input, "%d inner-dot1q %d", &outer_vlan, &inner_vlan))
     {
-      template->sub.eth.flags.two_tags = 1;
-      template->sub.eth.outer_vlan_id = outer_vlan;
-      template->sub.eth.inner_vlan_id = inner_vlan;
+      _template->sub.eth.flags.two_tags = 1;
+      _template->sub.eth.outer_vlan_id = outer_vlan;
+      _template->sub.eth.inner_vlan_id = inner_vlan;
     }
   else if (unformat (input, "%d", &outer_vlan))
     {
-      template->sub.eth.flags.one_tag = 1;
-      template->sub.eth.outer_vlan_id = outer_vlan;
+      _template->sub.eth.flags.one_tag = 1;
+      _template->sub.eth.outer_vlan_id = outer_vlan;
     }
   else
     {
@@ -677,7 +677,7 @@ parse_vlan_sub_interfaces (unformat_input_t * input,
     {
       if (unformat (input, "exact-match"))
 	{
-	  template->sub.eth.flags.exact_match = 1;
+	_template->sub.eth.flags.exact_match = 1;
 	}
     }
 
@@ -694,7 +694,7 @@ create_sub_interfaces (vlib_main_t * vm,
   u32 hw_if_index, sw_if_index;
   vnet_hw_interface_t *hi;
   u32 id, id_min, id_max;
-  vnet_sw_interface_t template;
+  vnet_sw_interface_t _template;
 
   hw_if_index = ~0;
   if (!unformat_user (input, unformat_vnet_hw_interface, vnm, &hw_if_index))
@@ -704,25 +704,25 @@ create_sub_interfaces (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (&template, 0, sizeof (template));
-  template.sub.eth.raw_flags = 0;
+  clib_memset (&_template, 0, sizeof (_template));
+  _template.sub.eth.raw_flags = 0;
 
   if (unformat (input, "%d default", &id_min))
     {
       id_max = id_min;
-      template.sub.eth.flags.default_sub = 1;
+      _template.sub.eth.flags.default_sub = 1;
     }
   else if (unformat (input, "%d untagged", &id_min))
     {
       id_max = id_min;
-      template.sub.eth.flags.no_tags = 1;
-      template.sub.eth.flags.exact_match = 1;
+      _template.sub.eth.flags.no_tags = 1;
+      _template.sub.eth.flags.exact_match = 1;
     }
   else if (unformat (input, "%d dot1q", &id_min))
     {
       /* parse dot1q config */
       id_max = id_min;
-      error = parse_vlan_sub_interfaces (input, &template);
+      error = parse_vlan_sub_interfaces (input, &_template);
       if (error)
 	goto done;
     }
@@ -730,24 +730,24 @@ create_sub_interfaces (vlib_main_t * vm,
     {
       /* parse dot1ad config */
       id_max = id_min;
-      template.sub.eth.flags.dot1ad = 1;
-      error = parse_vlan_sub_interfaces (input, &template);
+      _template.sub.eth.flags.dot1ad = 1;
+      error = parse_vlan_sub_interfaces (input, &_template);
       if (error)
 	goto done;
     }
   else if (unformat (input, "%d-%d", &id_min, &id_max))
     {
-      template.sub.eth.flags.one_tag = 1;
-      template.sub.eth.flags.exact_match = 1;
+      _template.sub.eth.flags.one_tag = 1;
+      _template.sub.eth.flags.exact_match = 1;
       if (id_min > id_max)
 	goto id_error;
     }
   else if (unformat (input, "%d", &id_min))
     {
       id_max = id_min;
-      template.sub.eth.flags.one_tag = 1;
-      template.sub.eth.outer_vlan_id = id_min;
-      template.sub.eth.flags.exact_match = 1;
+      _template.sub.eth.flags.one_tag = 1;
+      _template.sub.eth.outer_vlan_id = id_min;
+      _template.sub.eth.flags.exact_match = 1;
     }
   else
     {
@@ -784,14 +784,14 @@ create_sub_interfaces (vlib_main_t * vm,
 	  continue;
 	}
 
-      template.type = VNET_SW_INTERFACE_TYPE_SUB;
-      template.flood_class = VNET_FLOOD_CLASS_NORMAL;
-      template.sup_sw_if_index = hi->sw_if_index;
-      template.sub.id = id;
+      _template.type = VNET_SW_INTERFACE_TYPE_SUB;
+      _template.flood_class = VNET_FLOOD_CLASS_NORMAL;
+      _template.sup_sw_if_index = hi->sw_if_index;
+      _template.sub.id = id;
       if (id_min < id_max)
-	template.sub.eth.outer_vlan_id = id;
+	_template.sub.eth.outer_vlan_id = id;
 
-      error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
+      error = vnet_create_sw_interface (vnm, &_template, &sw_if_index);
       if (error)
 	goto done;
 

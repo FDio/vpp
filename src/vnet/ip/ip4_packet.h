@@ -190,7 +190,7 @@ ip4_header_bytes (const ip4_header_t * i)
 always_inline void *
 ip4_next_header (ip4_header_t * i)
 {
-  return (void *) i + ip4_header_bytes (i);
+  return (u8 *) i + ip4_header_bytes (i);
 }
 
 /* Turn off array bounds check due to ip4_header_t
@@ -310,20 +310,20 @@ ip4_header_checksum (ip4_header_t * i)
 always_inline void
 ip4_header_set_dscp (ip4_header_t * ip4, ip_dscp_t dscp)
 {
-  ip4->tos &= ~0xfc;
+  ip4->tos = (ip_dscp_t) (ip4->tos & ~0xfc);
   /* not masking the dscp value to save th instruction
    * it shouldn't b necessary since the argument is an enum
    * whose range is therefore constrained in the CP. in the
    * DP it will have been taken from another packet, so again
    * constrained in  value */
-  ip4->tos |= dscp << IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT;
+  ip4->tos =
+    (ip_dscp_t) (ip4->tos | (dscp << IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT));
 }
 
 always_inline void
 ip4_header_set_ecn (ip4_header_t * ip4, ip_ecn_t ecn)
 {
-  ip4->tos &= ~IP_PACKET_TC_FIELD_ECN_MASK;
-  ip4->tos |= ecn;
+  ip4->tos = (ip_dscp_t) ((ip4->tos & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn);
 }
 
 always_inline void
@@ -331,23 +331,23 @@ ip4_header_set_ecn_w_chksum (ip4_header_t * ip4, ip_ecn_t ecn)
 {
   ip_csum_t sum = ip4->checksum;
   u8 old = ip4->tos;
-  u8 new = (old & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn;
+  u8 _new = (old & ~IP_PACKET_TC_FIELD_ECN_MASK) | ecn;
 
-  sum = ip_csum_update (sum, old, new, ip4_header_t, tos);
+  sum = ip_csum_update (sum, old, _new, ip4_header_t, tos);
   ip4->checksum = ip_csum_fold (sum);
-  ip4->tos = new;
+  ip4->tos = (ip_dscp_t) _new;
 }
 
 always_inline ip_dscp_t
 ip4_header_get_dscp (const ip4_header_t * ip4)
 {
-  return (ip4->tos >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
+  return (ip_dscp_t) (ip4->tos >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
 }
 
 always_inline ip_ecn_t
 ip4_header_get_ecn (const ip4_header_t * ip4)
 {
-  return (ip4->tos & IP_PACKET_TC_FIELD_ECN_MASK);
+  return (ip_ecn_t) (ip4->tos & IP_PACKET_TC_FIELD_ECN_MASK);
 }
 
 always_inline u8

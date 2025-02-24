@@ -37,9 +37,8 @@ typedef union
   u32 as_u32[2];
 } time_u64_t;
 
-
-typedef CLIB_PACKED(struct {
-  u16 class;
+typedef CLIB_PACKED (struct {
+  u16 _class;
   u8 type;
   u8 length;
   u8 data_list_elts_left;
@@ -47,7 +46,6 @@ typedef CLIB_PACKED(struct {
   u8 reserve;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) nsh_md2_ioam_trace_option_t;
-
 
 #define foreach_nsh_md2_ioam_trace_stats				\
   _(SUCCESS, "Pkts updated with TRACE records")					\
@@ -171,7 +169,7 @@ nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
   trace_data_size = fetch_trace_data_size (profile->trace_type);
 
   trace_option = (nsh_md2_ioam_trace_option_t *) rewrite_string;
-  trace_option->class = clib_host_to_net_u16 (0x9);
+  trace_option->_class = clib_host_to_net_u16 (0x9);
   trace_option->type = NSH_MD2_IOAM_OPTION_TYPE_TRACE;
   trace_option->length = (trace_option_elts * trace_data_size) + 4;
   trace_option->data_list_elts_left = trace_option_elts;
