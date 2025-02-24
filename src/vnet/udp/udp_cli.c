@@ -97,7 +97,8 @@ format_udp_vars (u8 * s, va_list * args)
 
   s = format (s, " index %u%U flags: %U\n", uc->c_c_index,
 	      format_udp_cfg_flags, uc, format_udp_connection_flags, uc);
-  s = format (s, " fib_index: %u next_node: %u opaque: %u ", uc->c_fib_index);
+  s = format (s, " fib_index: %u next_node: %u opaque: %u ", uc->c_fib_index,
+	      uc->next_node_index, uc->next_node_opaque);
   if (!(uc->flags & UDP_CONN_F_LISTEN))
     s = format (s, " sw_if_index: %d mss: %u\n", uc->sw_if_index, uc->mss);
   else
