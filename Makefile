@@ -322,6 +322,7 @@ help:
 	@echo " install-ext-dep[s]   - install external development dependencies"
 	@echo " install-opt-deps     - install optional dependencies"
 	@echo " ctags                - (re)generate ctags database"
+	@echo " etags                - (re)generate etags database"
 	@echo " gtags                - (re)generate gtags database"
 	@echo " cscope               - (re)generate cscope database"
 	@echo " compdb               - (re)generate compile_commands.json"
@@ -823,6 +824,11 @@ cleanup-hst:
 .PHONY: ctags
 ctags: ctags.files
 	@ctags --totals --tag-relative=yes -L $<
+	@rm $<
+
+.PHONY: etags
+etags: ctags.files
+	@ctags -e --totals -L $<
 	@rm $<
 
 .PHONY: gtags
