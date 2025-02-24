@@ -236,9 +236,9 @@ void vnet_set_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index,
 void vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index);
 
 /* Creates a software interface given template. */
-clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
-					vnet_sw_interface_t * template,
-					u32 * sw_if_index);
+clib_error_t *vnet_create_sw_interface (vnet_main_t *vnm,
+					vnet_sw_interface_t *_template,
+					u32 *sw_if_index);
 
 void vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index);
 void vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index);
@@ -558,7 +558,7 @@ pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
 	  n_left -= b->current_length;
 	  if (n_left <= 0)
 	    break;
-	  d += b->current_length;
+	  d = (u8 *) d + b->current_length;
 	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	  b = vlib_get_buffer (vm, b->next_buffer);
 	}
@@ -586,7 +586,7 @@ static_always_inline void
 vnet_hw_if_unset_caps (vnet_main_t *vnm, u32 hw_if_index,
 		       vnet_hw_if_caps_t caps)
 {
-  vnet_hw_if_caps_change_t cc = { .val = 0, .mask = caps };
+  vnet_hw_if_caps_change_t cc = { .val = (vnet_hw_if_caps_t) 0, .mask = caps };
   vnet_hw_if_change_caps (vnm, hw_if_index, &cc);
 }
 

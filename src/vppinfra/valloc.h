@@ -48,11 +48,10 @@ typedef struct
 #define CLIB_VALLOC_INITIALIZED	(1<<0) /**< object has been initialized */
 
 /* doxygen tags in valloc.c */
-void clib_valloc_init (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template, int need_lock);
-void
-clib_valloc_add_chunk (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template);
+void clib_valloc_init (clib_valloc_main_t *vam, clib_valloc_chunk_t *_template,
+		       int need_lock);
+void clib_valloc_add_chunk (clib_valloc_main_t *vam,
+			    clib_valloc_chunk_t *_template);
 
 format_function_t format_valloc;
 

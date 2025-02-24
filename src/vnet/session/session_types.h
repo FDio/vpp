@@ -258,13 +258,13 @@ typedef struct session_
 always_inline session_type_t
 session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 {
-  return (proto << 1 | is_ip4);
+    return (transport_proto_t) (proto << 1 | is_ip4);
 }
 
 always_inline transport_proto_t
 session_type_transport_proto (session_type_t st)
 {
-  return (st >> 1);
+    return (transport_proto_t) (st >> 1);
 }
 
 always_inline u8
@@ -276,7 +276,7 @@ session_type_is_ip4 (session_type_t st)
 always_inline transport_proto_t
 session_get_transport_proto (session_t * s)
 {
-  return (s->session_type >> 1);
+  return (transport_proto_t) (s->session_type >> 1);
 }
 
 always_inline fib_protocol_t

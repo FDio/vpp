@@ -20,7 +20,7 @@
 #include <vnet/ip/ip4_packet.h>
 
 typedef struct {
-  u16 class;
+  u16 _class;
   u8 type;
   u8 pad;
 } nsh_option_map_by_key_t;
@@ -250,21 +250,13 @@ typedef enum {
 #define MAX_NSH_HEADER_LEN  256
 #define MAX_NSH_OPTION_LEN  128
 
-int
-nsh_md2_register_option (u16 class,
-                      u8 type,
-                      u8 option_size,
-                      int add_options (u8 * opt,
-                                       u8 * opt_size),
-                      int options(vlib_buffer_t * b,
-                                  nsh_tlv_header_t * opt),
-                      int swap_options (vlib_buffer_t * b,
-				        nsh_tlv_header_t * old_opt,
-		                        nsh_tlv_header_t * new_opt),
-                      int pop_options (vlib_buffer_t * b,
-                                       nsh_tlv_header_t * opt),
-                      u8 * trace (u8 * s,
-                                  nsh_tlv_header_t * opt));
+int nsh_md2_register_option (
+  u16 _class, u8 type, u8 option_size, int add_options (u8 *opt, u8 *opt_size),
+  int options (vlib_buffer_t *b, nsh_tlv_header_t *opt),
+  int swap_options (vlib_buffer_t *b, nsh_tlv_header_t *old_opt,
+		    nsh_tlv_header_t *new_opt),
+  int pop_options (vlib_buffer_t *b, nsh_tlv_header_t *opt),
+  u8 *trace (u8 *s, nsh_tlv_header_t *opt));
 
 typedef struct _nsh_main_placeholder
 {
@@ -277,8 +269,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp);
 int
 nsh_add_del_proxy_session (nsh_add_del_map_args_t * a);
 
-nsh_option_map_t *
-nsh_md2_lookup_option (u16 class, u8 type);
+nsh_option_map_t *nsh_md2_lookup_option (u16 _class, u8 type);
 
 int
 nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp);

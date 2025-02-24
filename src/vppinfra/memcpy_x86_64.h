@@ -270,7 +270,8 @@ clib_memcpy_x86_64_const (u8 *dst, u8 *src, size_t n)
 }
 
 static_always_inline void *
-clib_memcpy_x86_64 (void *restrict dst, const void *restrict src, size_t n)
+clib_memcpy_x86_64 (void *__restrict__ dst, const void *__restrict__ src,
+		    size_t n)
 {
   u8 *d = (u8 *) dst, *s = (u8 *) src;
 

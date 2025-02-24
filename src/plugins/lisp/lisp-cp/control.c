@@ -2612,10 +2612,10 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
 	      ip_address_t * probed_loc)
 {
   u32 *li;
-  locator_t *loc, new;
+  locator_t *loc, _new;
   ip_interface_address_t *ia = 0;
   void *addr;
-  ip_address_t *new_ip = &gid_address_ip (&new.address);
+  ip_address_t *new_ip = &gid_address_ip (&_new.address);
 
   m->locators = 0;
   locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool,
@@ -2623,7 +2623,7 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
   vec_foreach (li, ls->locator_indices)
   {
     loc = pool_elt_at_index (lcm->locator_pool, li[0]);
-    new = loc[0];
+    _new = loc[0];
     if (loc->local)
       {
           foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
@@ -2644,9 +2644,9 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
           }));
 
 	if (probed_loc && ip_address_cmp (probed_loc, new_ip) == 0)
-	  new.probed = 1;
+	    _new.probed = 1;
       }
-    vec_add1 (m->locators, new);
+    vec_add1 (m->locators, _new);
   }
 }
 

@@ -2120,19 +2120,19 @@ void
 session_wrk_enable_adaptive_mode (session_worker_t *wrk)
 {
   u32 thread_index = wrk->vm->thread_index;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
 
   if ((wrk->timerfd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK)) < 0)
     clib_warning ("timerfd_create");
 
-  template.read_function = session_wrk_tfd_read_ready;
-  template.write_function = session_wrk_tfd_write_ready;
-  template.file_descriptor = wrk->timerfd;
-  template.private_data = thread_index;
-  template.polling_thread_index = thread_index;
-  template.description = format (0, "session-wrk-tfd-%u", thread_index);
+  _template.read_function = session_wrk_tfd_read_ready;
+  _template.write_function = session_wrk_tfd_write_ready;
+  _template.file_descriptor = wrk->timerfd;
+  _template.private_data = thread_index;
+  _template.polling_thread_index = thread_index;
+  _template.description = format (0, "session-wrk-tfd-%u", thread_index);
 
-  wrk->timerfd_file = clib_file_add (&file_main, &template);
+  wrk->timerfd_file = clib_file_add (&file_main, &_template);
   wrk->flags |= SESSION_WRK_F_ADAPTIVE;
 }
 
