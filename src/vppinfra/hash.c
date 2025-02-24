@@ -620,22 +620,21 @@ _hash_free (void *v)
 static void *
 hash_resize_internal (void *old, uword new_size, uword free_old)
 {
-  void *new;
+  void *_new;
   hash_pair_t *p;
 
-  new = 0;
+  _new = 0;
   if (new_size > 0)
     {
       hash_t *h = old ? hash_header (old) : 0;
-      new = _hash_create (new_size, h);
-      hash_foreach_pair (p, old, {
-	new = _hash_set3 (new, p->key, &p->value[0], 0);
-      });
+      _new = _hash_create (new_size, h);
+      hash_foreach_pair (
+	p, old, { _new = _hash_set3 (_new, p->key, &p->value[0], 0); });
     }
 
   if (free_old)
     hash_free (old);
-  return new;
+  return _new;
 }
 
 __clib_export void *

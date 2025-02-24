@@ -49,8 +49,10 @@ VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
   .class_name = "interface",
 };
 
-#define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (if_default_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)                                                     \
+  vlib_log_err (if_default_log._class, fmt, __VA_ARGS__)
 
 typedef enum vnet_interface_helper_flags_t_
 {
@@ -558,8 +560,8 @@ vnet_if_update_lookup_tables (vnet_main_t *vnm, u32 sw_if_index)
 }
 
 static u32
-vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
-				       vnet_sw_interface_t * template)
+vnet_create_sw_interface_no_callbacks (vnet_main_t *vnm,
+				       vnet_sw_interface_t *_template)
 {
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *sw;
@@ -568,7 +570,7 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
   pool_get (im->sw_interfaces, sw);
   sw_if_index = sw - im->sw_interfaces;
 
-  sw[0] = template[0];
+  sw[0] = _template[0];
 
   sw->flags = 0;
   sw->sw_if_index = sw_if_index;
@@ -603,18 +605,18 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 }
 
 clib_error_t *
-vnet_create_sw_interface (vnet_main_t * vnm, vnet_sw_interface_t * template,
-			  u32 * sw_if_index)
+vnet_create_sw_interface (vnet_main_t *vnm, vnet_sw_interface_t *_template,
+			  u32 *sw_if_index)
 {
   vnet_interface_main_t *im = &vnm->interface_main;
   clib_error_t *error;
   vnet_hw_interface_t *hi;
   vnet_device_class_t *dev_class;
 
-  if (template->sub.eth.flags.two_tags == 1
-      && template->sub.eth.flags.exact_match == 1
-      && (template->sub.eth.flags.inner_vlan_id_any == 1
-	  || template->sub.eth.flags.outer_vlan_id_any == 1))
+  if (_template->sub.eth.flags.two_tags == 1 &&
+      _template->sub.eth.flags.exact_match == 1 &&
+      (_template->sub.eth.flags.inner_vlan_id_any == 1 ||
+       _template->sub.eth.flags.outer_vlan_id_any == 1))
     {
       char *str = "inner-dot1q any exact-match is unsupported";
       error = clib_error_return (0, str);
@@ -622,23 +624,22 @@ vnet_create_sw_interface (vnet_main_t * vnm, vnet_sw_interface_t * template,
       return error;
     }
 
-  hi = vnet_get_sup_hw_interface (vnm, template->sup_sw_if_index);
+  hi = vnet_get_sup_hw_interface (vnm, _template->sup_sw_if_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
-  if (template->type == VNET_SW_INTERFACE_TYPE_SUB &&
+  if (_template->type == VNET_SW_INTERFACE_TYPE_SUB &&
       dev_class->subif_add_del_function)
     {
-      error = dev_class->subif_add_del_function (vnm, hi->hw_if_index,
-						 (struct vnet_sw_interface_t
-						  *) template, 1);
+      error = dev_class->subif_add_del_function (
+	vnm, hi->hw_if_index, (struct vnet_sw_interface_t *) _template, 1);
       if (error)
 	return error;
     }
 
-  *sw_if_index = vnet_create_sw_interface_no_callbacks (vnm, template);
-  error = vnet_sw_interface_set_flags_helper
-    (vnm, *sw_if_index, template->flags,
-     VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
+  *sw_if_index = vnet_create_sw_interface_no_callbacks (vnm, _template);
+  error = vnet_sw_interface_set_flags_helper (
+    vnm, *sw_if_index, _template->flags,
+    VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE);
 
   if (error)
     {

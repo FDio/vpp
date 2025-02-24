@@ -126,15 +126,18 @@ always_inline type						\
 clib_##sex##_to_host_unaligned_mem_##type (type * x)		\
 { return clib_host_to_##sex##_unaligned_mem_##type (x); }
 
-#ifndef __cplusplus
 _(little, u16)
 _(little, u32)
 _(little, u64)
 _(little, i16)
 _(little, i32)
 _(little, i64)
-_(big, u16) _(big, u32) _(big, u64) _(big, i16) _(big, i32) _(big, i64)
-#endif
+_ (big, u16)
+_ (big, u32)
+_ (big, u64)
+_ (big, i16)
+_ (big, i32)
+_ (big, i64)
 #undef _
 /* Network "net" alias for "big". */
 #define _(type)						\
@@ -161,14 +164,12 @@ clib_host_to_net_mem_##type (type * x)			\
 always_inline type					\
 clib_host_to_net_unaligned_mem_##type (type * x)	\
 { return clib_host_to_big_unaligned_mem_##type (x); }
-#ifndef __cplusplus
-  _(u16);
-_(i16);
-_(u32);
-_(i32);
-_(u64);
-_(i64);
-#endif
+_ (u16);
+_ (i16);
+_ (u32);
+_ (i32);
+_ (u64);
+_ (i64);
 
 #undef _
 

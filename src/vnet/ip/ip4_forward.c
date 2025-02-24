@@ -283,15 +283,13 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
   ip_interface_address_t *ia = 0;
   ip4_address_t *result = 0;
 
-  foreach_ip_interface_address
-    (lm, ia, sw_if_index,
-     1 /* honor unnumbered */ ,
-     ({
-       ip4_address_t * a =
-         ip_interface_address_get_address (lm, ia);
-       result = a;
-       break;
-     }));
+  foreach_ip_interface_address (
+    lm, ia, sw_if_index, 1 /* honor unnumbered */, ({
+      ip4_address_t *a =
+	(ip4_address_t *) ip_interface_address_get_address (lm, ia);
+      result = a;
+      break;
+    }));
   if (result_ia)
     *result_ia = result ? ia : 0;
   return result;

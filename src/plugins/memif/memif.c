@@ -249,7 +249,7 @@ memif_connect (memif_if_t * mif)
   memif_main_t *mm = &memif_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   memif_region_t *mr;
   int i, j;
   u32 n_txqs = 0, n_threads = vlib_get_n_threads ();
@@ -281,8 +281,8 @@ memif_connect (memif_if_t * mif)
 	}
     }
 
-  template.read_function = memif_int_fd_read_ready;
-  template.write_function = memif_int_fd_write_ready;
+  _template.read_function = memif_int_fd_read_ready;
+  _template.write_function = memif_int_fd_write_ready;
 
   with_barrier = 1;
   if (vlib_worker_thread_barrier_held ())
@@ -399,12 +399,11 @@ memif_connect (memif_if_t * mif)
 
       if (mq->int_fd > -1)
 	{
-	  template.file_descriptor = mq->int_fd;
-	  template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
-	  template.description = format (0, "%U rx %u int",
-					 format_memif_device_name,
-					 mif->dev_instance, i);
-	  memif_file_add (&mq->int_clib_file_index, &template);
+	  _template.file_descriptor = mq->int_fd;
+	  _template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
+	  _template.description = format (
+	    0, "%U rx %u int", format_memif_device_name, mif->dev_instance, i);
+	  memif_file_add (&mq->int_clib_file_index, &_template);
 	  vnet_hw_if_set_rx_queue_file_index (vnm, qi,
 					      mq->int_clib_file_index);
 	}
@@ -1137,12 +1136,12 @@ memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args)
 	  goto error;
 	}
 
-      clib_file_t template = { 0 };
-      template.read_function = memif_conn_fd_accept_ready;
-      template.file_descriptor = msf->sock->fd;
-      template.private_data = mif->socket_file_index;
-      template.description = format (0, "memif listener %s", msf->filename);
-      memif_file_add (&msf->sock->private_data, &template);
+      clib_file_t _template = { 0 };
+      _template.read_function = memif_conn_fd_accept_ready;
+      _template.file_descriptor = msf->sock->fd;
+      _template.private_data = mif->socket_file_index;
+      _template.description = format (0, "memif listener %s", msf->filename);
+      memif_file_add (&msf->sock->private_data, &_template);
     }
 
   msf->ref_cnt++;

@@ -257,18 +257,18 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 }
 
 static inline double
-vcl_test_time_diff (struct timespec *old, struct timespec *new)
+vcl_test_time_diff (struct timespec *old, struct timespec *_new)
 {
   uint64_t sec, nsec;
-  if ((new->tv_nsec - old->tv_nsec) < 0)
+  if ((_new->tv_nsec - old->tv_nsec) < 0)
     {
-      sec = new->tv_sec - old->tv_sec - 1;
-      nsec = new->tv_nsec - old->tv_nsec + 1e9;
+      sec = _new->tv_sec - old->tv_sec - 1;
+      nsec = _new->tv_nsec - old->tv_nsec + 1e9;
     }
   else
     {
-      sec = new->tv_sec - old->tv_sec;
-      nsec = new->tv_nsec - old->tv_nsec;
+      sec = _new->tv_sec - old->tv_sec;
+      nsec = _new->tv_nsec - old->tv_nsec;
     }
   return (double) sec + (1e-9 * nsec);
 }
@@ -276,23 +276,23 @@ vcl_test_time_diff (struct timespec *old, struct timespec *new)
 static inline void
 vcl_test_stats_dump_inc (vcl_test_session_t *ts, int is_rx)
 {
-  vcl_test_stats_t *old, *new;
+  vcl_test_stats_t *old, *_new;
   double duration, rate;
   uint64_t total_bytes;
   char *dir_str;
 
   old = &ts->old_stats;
-  new = &ts->stats;
-  duration = vcl_test_time_diff (&old->stop, &new->stop);
+  _new = &ts->stats;
+  duration = vcl_test_time_diff (&old->stop, &_new->stop);
 
   if (is_rx)
     {
-      total_bytes = new->rx_bytes - old->rx_bytes;
+      total_bytes = _new->rx_bytes - old->rx_bytes;
       dir_str = "Received";
     }
   else
     {
-      total_bytes = new->tx_bytes - old->tx_bytes;
+      total_bytes = _new->tx_bytes - old->tx_bytes;
       dir_str = "Sent";
     }
 

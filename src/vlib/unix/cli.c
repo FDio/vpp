@@ -2883,7 +2883,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
   unix_cli_file_t *cf;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   vlib_main_t *vm = um->vlib_main;
   vlib_node_t *n = 0;
 
@@ -2914,16 +2914,16 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   pool_get_zero (cm->cli_file_pool, cf);
   clib_macro_init (&cf->macro_main);
 
-  template.read_function = unix_cli_read_ready;
-  template.write_function = unix_cli_write_ready;
-  template.error_function = unix_cli_error_detected;
-  template.file_descriptor = fd;
-  template.private_data = cf - cm->cli_file_pool;
-  template.description = format (0, "%s", name);
+  _template.read_function = unix_cli_read_ready;
+  _template.write_function = unix_cli_write_ready;
+  _template.error_function = unix_cli_error_detected;
+  _template.file_descriptor = fd;
+  _template.private_data = cf - cm->cli_file_pool;
+  _template.description = format (0, "%s", name);
 
   cf->name = format (0, "unix-cli-%s", name);
   cf->process_node_index = n->index;
-  cf->clib_file_index = clib_file_add (fm, &template);
+  cf->clib_file_index = clib_file_add (fm, &_template);
   cf->output_vector = 0;
   cf->input_vector = 0;
   vec_validate (cf->current_command, 0);
@@ -3194,7 +3194,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   if (s->config && s->config[0] != 0)
     {
       /* CLI listen. */
-      clib_file_t template = { 0 };
+      clib_file_t _template = { 0 };
 
       /* mkdir of file socketu, only under /run  */
       if (strncmp (s->config, "/run", 4) == 0)
@@ -3218,11 +3218,11 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       if (error)
 	return error;
 
-      template.read_function = unix_cli_listen_read_ready;
-      template.file_descriptor = s->fd;
-      template.description = format (0, "cli listener %s", s->config);
+      _template.read_function = unix_cli_listen_read_ready;
+      _template.file_descriptor = s->fd;
+      _template.description = format (0, "cli listener %s", s->config);
 
-      clib_file_add (fm, &template);
+      clib_file_add (fm, &_template);
     }
 
   /* Set CLI prompt. */

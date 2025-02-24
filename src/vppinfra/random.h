@@ -158,10 +158,9 @@ random_string (u32 * seed, uword len)
 {
   u8 *alphabet = (u8 *) "abcdefghijklmnopqrstuvwxyz";
   u8 *s = 0;
-  word i;
 
   vec_resize (s, len);
-  for (i = 0; i < len; i++)
+  for (uword i = 0; i < len; i++)
     s[i] = alphabet[random_u32 (seed) % 26];
 
   return s;

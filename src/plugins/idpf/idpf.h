@@ -174,19 +174,19 @@ extern vlib_log_class_registration_t idpf_log;
 extern vlib_log_class_registration_t idpf_stats_log;
 
 #define idpf_log_err(dev, f, ...)                                             \
-  vlib_log (VLIB_LOG_LEVEL_ERR, idpf_log.class, "%U: " f,                     \
+  vlib_log (VLIB_LOG_LEVEL_ERR, idpf_log._class, "%U: " f,                    \
 	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define idpf_log_warn(dev, f, ...)                                            \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, idpf_log.class, "%U: " f,                 \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, idpf_log._class, "%U: " f,                \
 	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define idpf_log_debug(dev, f, ...)                                           \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, idpf_log.class, "%U: " f,                   \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, idpf_log._class, "%U: " f,                  \
 	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define idpf_stats_log_debug(dev, f, ...)                                     \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, idpf_stats_log.class, "%U: " f,             \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, idpf_stats_log._class, "%U: " f,            \
 	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 /* List handler */

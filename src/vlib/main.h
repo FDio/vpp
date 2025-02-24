@@ -470,9 +470,10 @@ vlib_main_init ()
   vlib_global_main_t *vgm = &vlib_global_main;
   vlib_main_t *vm;
 
-  vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  vgm->init_functions_called = (uword *) hash_create (0, /* value bytes */ 0);
 
-  vm = clib_mem_alloc_aligned (sizeof (*vm), CLIB_CACHE_LINE_BYTES);
+  vm = (vlib_main_t *) clib_mem_alloc_aligned (sizeof (*vm),
+					       CLIB_CACHE_LINE_BYTES);
   vec_add1_ha (vgm->vlib_mains, vm, 0, CLIB_CACHE_LINE_BYTES);
 }
 

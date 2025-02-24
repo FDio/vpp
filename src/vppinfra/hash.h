@@ -100,7 +100,7 @@ typedef struct hash_header
 always_inline hash_t *
 hash_header (void *v)
 {
-  return vec_header (v);
+  return (hash_t *) vec_header (v);
 }
 
 /* Number of elements in the hash table */
@@ -230,11 +230,12 @@ void *hash_dup (void *old);
 uword hash_bytes (void *v);
 
 /* Public macro to set a (key, value) pair, return the old value */
-#define hash_set3(h,key,value,old_value)				\
-({									\
-  uword _v = (uword) (value);						\
-  (h) = _hash_set3 ((h), (uword) (key), (void *) &_v, (old_value));	\
-})
+#define hash_set3(h, key, value, old_value)                                   \
+  ({                                                                          \
+    uword _v = (uword) (value);                                               \
+    (h) = (__typeof__ (h)) _hash_set3 ((h), (uword) (key), (void *) &_v,      \
+				       (old_value));                          \
+  })
 
 /* Public macro to fetch value for given key */
 #define hash_get(h,key)		_hash_get ((h), (uword) (key))
@@ -249,7 +250,8 @@ uword hash_bytes (void *v);
 #define hash_set1(h,key)	(h) = _hash_set3(h,(uword) (key),0,0)
 
 /* Public macro to unset a (key, value) pair */
-#define hash_unset(h,key)	((h) = _hash_unset ((h), (uword) (key),0))
+#define hash_unset(h, key)                                                    \
+  ((h) = (__typeof__ (h)) _hash_unset ((h), (uword) (key), 0))
 
 /* Public macro to unset a (key, value) pair, return the old value */
 #define hash_unset3(h,key,old_value) ((h) = _hash_unset ((h), (uword) (key), (void *) (old_value)))
@@ -290,7 +292,8 @@ hash_set_mem_alloc (uword ** h, const void *key, uword v)
 #define hash_set1_mem(h,key)     hash_set3 ((h), pointer_to_uword (key), 0, 0)
 
 /* Public macro to unset (key, value) for pointer key */
-#define hash_unset_mem(h,key)    ((h) = _hash_unset ((h), pointer_to_uword (key),0))
+#define hash_unset_mem(h, key)                                                \
+  ((h) = (__typeof__ (h)) _hash_unset ((h), pointer_to_uword (key), 0))
 
 /* Public inline function to unset pointer key and then free the key memory */
 always_inline void
@@ -309,7 +312,7 @@ hash_unset_mem_free (uword ** h, const void *key)
 extern void *_hash_free (void *v);
 
 /* Public macro to free a hash table */
-#define hash_free(h) (h) = _hash_free ((h))
+#define hash_free(h) (h) = (__typeof__ (h)) _hash_free ((h))
 
 clib_error_t *hash_validate (void *v);
 

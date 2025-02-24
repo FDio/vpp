@@ -17,9 +17,9 @@ VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
 };
 
 #define log_debug(f, ...)                                                     \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, crypto_main_log.class, f, ##__VA_ARGS__)
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, crypto_main_log._class, f, ##__VA_ARGS__)
 #define log_err(f, ...)                                                       \
-  vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log.class, f, ##__VA_ARGS__)
+  vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log._class, f, ##__VA_ARGS__)
 
 static_always_inline void
 crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)

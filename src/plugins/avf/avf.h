@@ -89,23 +89,20 @@
 extern vlib_log_class_registration_t avf_log;
 extern vlib_log_class_registration_t avf_stats_log;
 
-#define avf_log_err(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_ERR, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_err(dev, f, ...)                                              \
+  vlib_log (VLIB_LOG_LEVEL_ERR, avf_log._class, "%U: " f,                     \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
-#define avf_log_warn(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_warn(dev, f, ...)                                             \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_log._class, "%U: " f,                 \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
-#define avf_log_debug(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_debug(dev, f, ...)                                            \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log._class, "%U: " f,                   \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define avf_stats_log_debug(dev, f, ...)                                      \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_stats_log.class, "%U: " f,              \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_stats_log._class, "%U: " f,             \
 	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define foreach_avf_device_flags                                              \
