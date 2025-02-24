@@ -22,7 +22,7 @@
 #include <nsh/nsh_packet.h>
 
 
-extern nsh_option_map_t *nsh_md2_lookup_option (u16 class, u8 type);
+extern nsh_option_map_t *nsh_md2_lookup_option (u16 _class, u8 type);
 
 
 typedef struct
@@ -84,7 +84,7 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
 	case 1:		/* PadN */
 	  break;
 	default:
-	  nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+	  nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
 	  if ((nsh_option != NULL) && (hm->options[nsh_option->option_id]))
 	    {
 	      if ((*hm->options[nsh_option->option_id]) (b0, opt0) < 0)

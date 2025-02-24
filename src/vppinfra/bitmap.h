@@ -586,7 +586,7 @@ always_inline uword *clib_bitmap_dup_xor (uword * ai, uword * bi);
 #define _(name)						\
   always_inline uword *					\
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
-{ return clib_bitmap_##name (clib_bitmap_dup (ai), bi); }
+{ return clib_bitmap_##name ((uword *) clib_bitmap_dup (ai), bi); }
 
 _(and);
 _(andnot);

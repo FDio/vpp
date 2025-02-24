@@ -147,23 +147,23 @@ elt_delete (heap_header_t * h, heap_elt_t * e)
   After : P ... NEW ... E
 */
 always_inline void
-elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
+elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_elt_t * _new)
 {
   heap_elt_t *p = heap_prev (e);
 
   if (p == e)
     {
-      new->prev = 0;
-      new->next = e - new;
-      p->prev = new - p;
-      h->head = new - h->elts;
+      _new->prev = 0;
+      _new->next = e - _new;
+      p->prev = _new - p;
+      h->head = _new - h->elts;
     }
   else
     {
-      new->prev = p - new;
-      new->next = e - new;
-      e->prev = new - e;
-      p->next = new - p;
+      _new->prev = p - _new;
+      _new->next = e - _new;
+      e->prev = _new - e;
+      p->next = _new - p;
     }
 }
 
@@ -172,23 +172,23 @@ elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
   After : E ... NEW ... N
 */
 always_inline void
-elt_insert_after (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
+elt_insert_after (heap_header_t * h, heap_elt_t * e, heap_elt_t * _new)
 {
   heap_elt_t *n = heap_next (e);
 
   if (n == e)
     {
-      new->next = 0;
-      new->prev = e - new;
-      e->next = new - e;
-      h->tail = new - h->elts;
+      _new->next = 0;
+      _new->prev = e - _new;
+      e->next = _new - e;
+      h->tail = _new - h->elts;
     }
   else
     {
-      new->prev = e - new;
-      new->next = n - new;
-      e->next = new - e;
-      n->prev = new - n;
+      _new->prev = e - _new;
+      _new->next = n - _new;
+      e->next = _new - e;
+      n->prev = _new - n;
     }
 }
 
@@ -413,9 +413,11 @@ _heap_alloc (void *v,
   if (!e)
     {
       uword max_len;
-      vec_attr_t va = { .elt_sz = elt_bytes,
-			.hdr_sz = sizeof (h[0]),
-			.align = HEAP_DATA_ALIGN };
+      vec_attr_t va = {
+            .elt_sz = (u32) elt_bytes,
+            .hdr_sz = (u16) sizeof (h[0]),
+            .align = HEAP_DATA_ALIGN
+      };
 
       offset = vec_len (v);
       max_len = heap_get_max_len (v);
