@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0619a3a_0632ab52",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-02-24T15:11:37Z",
+      "side": 1,
+      "message": "I ended up expanding HttpStaticPathTraversalTest into HttpStaticPathSanitizationTest since it tested the same area of code",
+      "parentUuid": "dca1abaf_73939b9a",
+      "revId": "e468d53f2da3dc3d2891d7f10fd32f9ea7d4e46d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "955d3855_0010822e",
