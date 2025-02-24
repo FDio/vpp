@@ -723,16 +723,16 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
   CVT (clib_cuckoo_bucket) * old = h->buckets;
   uword old_nbuckets = vec_len (old);
   uword new_nbuckets = 2 * old_nbuckets;
-  CVT (clib_cuckoo_bucket) * new =
+  CVT (clib_cuckoo_bucket) * _new =
     vec_dup_aligned (old, CLIB_CACHE_LINE_BYTES);
   /* allocate space */
-  vec_validate_aligned (new, new_nbuckets - 1, CLIB_CACHE_LINE_BYTES);
-  ASSERT (new_nbuckets == vec_len (new));
+  vec_validate_aligned (_new, new_nbuckets - 1, CLIB_CACHE_LINE_BYTES);
+  ASSERT (new_nbuckets == vec_len (_new));
   /* store old pointer in to-be-freed list */
   vec_add1 (h->to_be_freed, old);
   /* mark new elements as free */
   CVT (clib_cuckoo_bucket) * bucket;
-  for (bucket = new + old_nbuckets; bucket < vec_end (new); ++bucket)
+  for (bucket = _new + old_nbuckets; bucket < vec_end (_new); ++bucket)
     {
       clib_memset (bucket->elts, 0xff, sizeof (bucket->elts));
     }
@@ -745,8 +745,8 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
     {
       /* items in old bucket might be moved to new bucket */
       uword new_bucket_idx = old_bucket_idx + old_nbuckets;
-      CVT (clib_cuckoo_bucket) * old_bucket = new + old_bucket_idx;
-      CVT (clib_cuckoo_bucket) * new_bucket = new + new_bucket_idx;
+      CVT (clib_cuckoo_bucket) * old_bucket = _new + old_bucket_idx;
+      CVT (clib_cuckoo_bucket) * new_bucket = _new + new_bucket_idx;
       int i = 0;
       int moved = 0;
       clib_cuckoo_bucket_aux_t aux = old_bucket->aux;
@@ -757,7 +757,7 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
 	  clib_cuckoo_lookup_info_t old_lookup =
 	    CV (clib_cuckoo_calc_lookup) (old, hash);
 	  clib_cuckoo_lookup_info_t new_lookup =
-	    CV (clib_cuckoo_calc_lookup) (new, hash);
+	    CV (clib_cuckoo_calc_lookup) (_new, hash);
 	  if ((old_bucket_idx == old_lookup.bucket1 &&
 	       new_bucket_idx == new_lookup.bucket1) ||
 	      (old_bucket_idx == old_lookup.bucket2 &&
@@ -788,7 +788,7 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
 	  new_bucket->aux = aux;
 	}
     }
-  h->buckets = new;
+  h->buckets = _new;
 #if CLIB_CUCKOO_DEBUG_COUNTERS
   ++h->rehashes;
 #endif

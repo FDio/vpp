@@ -217,11 +217,11 @@ stats_segment_socket_init (void)
   if ((error = clib_socket_init (s)))
     return error;
 
-  clib_file_t template = { 0 };
-  template.read_function = stats_socket_accept_ready;
-  template.file_descriptor = s->fd;
-  template.description = format (0, "stats segment listener %s", s->config);
-  clib_file_add (&file_main, &template);
+  clib_file_t _template = { 0 };
+  _template.read_function = stats_socket_accept_ready;
+  _template.file_descriptor = s->fd;
+  _template.description = format (0, "stats segment listener %s", s->config);
+  clib_file_add (&file_main, &_template);
 
   sm->socket = s;
 

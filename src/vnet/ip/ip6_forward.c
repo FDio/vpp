@@ -283,7 +283,7 @@ ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index)
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
-    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
+    ip6_address_t *a = (ip6_address_t *) ip_interface_address_get_address (lm, ia);
     result = a;
     break;
   }));

@@ -18,12 +18,12 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 };
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, dev_log.class, "%U" f, format_vnet_dev_log, \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, dev_log._class, "%U" f, format_vnet_dev_log, \
 	    dev,                                                              \
 	    clib_string_skip_prefix (__func__, "vnet_dev_bus_platform_dt_"),  \
 	    ##__VA_ARGS__)
 #define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, dev_log.class, "%U" f, format_vnet_dev_log,   \
+  vlib_log (VLIB_LOG_LEVEL_ERR, dev_log._class, "%U" f, format_vnet_dev_log,   \
 	    dev, 0, ##__VA_ARGS__)
 
 #define PLATFORM_DEV_PATH "/sys/bus/platform/devices"

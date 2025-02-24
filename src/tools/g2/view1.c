@@ -476,26 +476,26 @@ void format_popbox_string (char *tmpbuf, int len, event_t *ep, event_def_t *edp)
 static void add_snapshot(void)
 {
     int i;
-    snapshot_t *new = g_malloc(sizeof(snapshot_t));
+    snapshot_t *_new = g_malloc(sizeof(snapshot_t));
 
-    memcpy(&new->geometry, s_v1, sizeof(new->geometry));
+    memcpy(&_new->geometry, s_v1, sizeof(_new->geometry));
     for (i = 0; i < NEVENTS; i++) {
-        new->show_event[i] = g_eventdefs[i].selected;
+        _new->show_event[i] = g_eventdefs[i].selected;
     }
-    new->pidvec = g_malloc(sizeof(pid_sort_t)*g_npids);
-    memcpy(new->pidvec, g_pids, sizeof(pid_sort_t)*g_npids);
-    new->vscroll_value =  GTK_ADJUSTMENT(s_view1_vsadj)->value;
-    new->summary_mode = summary_mode;
-    new->color_mode = color_mode;
+    _new->pidvec = g_malloc(sizeof(pid_sort_t)*g_npids);
+    memcpy(_new->pidvec, g_pids, sizeof(pid_sort_t)*g_npids);
+    _new->vscroll_value =  GTK_ADJUSTMENT(s_view1_vsadj)->value;
+    _new->summary_mode = summary_mode;
+    _new->color_mode = color_mode;
 
     if (s_snapshots) {
-        new->next = s_snapshots;
-        s_snapshots = new;
+        _new->next = s_snapshots;
+        s_snapshots = _new;
     } else {
-        new->next = 0;
-        s_snapshots = new;
+        _new->next = 0;
+        s_snapshots = _new;
     }
-    s_cursnap = new;
+    s_cursnap = _new;
 }
 
 /****************************************************************************

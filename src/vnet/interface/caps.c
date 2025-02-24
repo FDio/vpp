@@ -12,7 +12,7 @@ VLIB_REGISTER_LOG_CLASS (if_caps_log, static) = {
 };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (if_caps_log.class, fmt, __VA_ARGS__)
+  vlib_log_debug (if_caps_log._class, fmt, __VA_ARGS__)
 
 format_function_t format_vnet_hw_if_caps;
 

@@ -61,6 +61,7 @@
 #ifndef included_heap_h
 #define included_heap_h
 
+#include "vppinfra/types.h"
 #include <vppinfra/clib.h>
 #include <vppinfra/cache.h>
 #include <vppinfra/hash.h>
@@ -155,27 +156,27 @@ typedef struct
 } heap_header_t;
 
 /* Start of heap elements is always cache aligned. */
-#define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
+#define HEAP_DATA_ALIGN (u16)(CLIB_CACHE_LINE_BYTES)
 
 always_inline heap_header_t *
 heap_header (void *v)
 {
-  return vec_header (v);
+  return (heap_header_t *) vec_header (v);
 }
 
 always_inline void
-heap_dup_header (heap_header_t * old, heap_header_t * new)
+heap_dup_header (heap_header_t * old, heap_header_t * _new)
 {
   uword i;
 
-  new[0] = old[0];
-  new->elts = vec_dup (new->elts);
-  new->free_elts = vec_dup (new->free_elts);
-  new->free_lists = vec_dup (new->free_lists);
-  for (i = 0; i < vec_len (new->free_lists); i++)
-    new->free_lists[i] = vec_dup (new->free_lists[i]);
-  new->used_elt_bitmap = clib_bitmap_dup (new->used_elt_bitmap);
-  new->small_free_elt_free_index = vec_dup (new->small_free_elt_free_index);
+  _new[0] = old[0];
+  _new->elts = vec_dup (_new->elts);
+  _new->free_elts = vec_dup (_new->free_elts);
+  _new->free_lists = vec_dup (_new->free_lists);
+  for (i = 0; i < vec_len (_new->free_lists); i++)
+    _new->free_lists[i] = vec_dup (_new->free_lists[i]);
+  _new->used_elt_bitmap = clib_bitmap_dup (_new->used_elt_bitmap);
+  _new->small_free_elt_free_index = vec_dup (_new->small_free_elt_free_index);
 }
 
 /* Make a duplicate copy of a heap. */
@@ -185,9 +186,11 @@ always_inline void *
 _heap_dup (void *v_old, uword v_bytes)
 {
   heap_header_t *h_old, *h_new;
-  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
-		    .hdr_sz = sizeof (heap_header_t),
-		    .elt_sz = 1 };
+  vec_attr_t va = {
+        .elt_sz = 1UL,
+        .hdr_sz = sizeof (heap_header_t),
+        .align = HEAP_DATA_ALIGN
+  };
   void *v_new;
 
   h_old = heap_header (v_old);
@@ -214,9 +217,11 @@ uword heap_bytes (void *v);
 always_inline void *
 _heap_new (u32 len, u32 n_elt_bytes)
 {
-  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
-		    .hdr_sz = sizeof (heap_header_t),
-		    .elt_sz = n_elt_bytes };
+  vec_attr_t va = {
+        .elt_sz = (u16) n_elt_bytes,
+        .hdr_sz = (u16) sizeof (heap_header_t),
+        .align = HEAP_DATA_ALIGN
+  };
   void *v = _vec_alloc_internal (len, &va);
   heap_header (v)->elt_bytes = n_elt_bytes;
   return v;
@@ -318,7 +323,7 @@ extern u8 *format_heap (u8 * s, va_list * va);
 
 void *_heap_free (void *v);
 
-#define heap_free(v) (v)=_heap_free(v)
+#define heap_free(v) (v)= (__typeof__(v)) _heap_free(v)
 
 #endif /* included_heap_h */
 

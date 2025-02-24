@@ -93,11 +93,11 @@ typedef struct
 } clib_file_main_t;
 
 always_inline uword
-clib_file_add (clib_file_main_t * um, clib_file_t * template)
+clib_file_add (clib_file_main_t * um, clib_file_t * _template)
 {
   clib_file_t *f;
   pool_get (um->file_pool, f);
-  f[0] = template[0];
+  f[0] = _template[0];
   f->read_events = 0;
   f->write_events = 0;
   f->error_events = 0;

@@ -829,7 +829,7 @@ void vhash_main_unset (vhash_main_t * vm);
 
 typedef struct
 {
-  vhash_main_t new;
+  vhash_main_t _new;
 
   vhash_t *old;
 } vhash_resize_t;
