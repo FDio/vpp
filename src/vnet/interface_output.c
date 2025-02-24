@@ -577,12 +577,6 @@ VLIB_NODE_FN (vnet_interface_output_node)
   if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
       !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
     {
-      vlib_simple_counter_main_t *cm;
-
-      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			     VNET_INTERFACE_COUNTER_TX_ERROR);
-      vlib_increment_simple_counter (cm, ti, sw_if_index, n_buffers);
-
       return vlib_error_drop_buffers (
 	vm, node, from,
 	/* buffer stride */ 1, n_buffers, VNET_INTERFACE_OUTPUT_NEXT_DROP,
