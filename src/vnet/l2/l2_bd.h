@@ -203,7 +203,7 @@ static inline u32
 bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
 {
   u32 bd_index = bd_find_index (bdm, bd_id);
-  if (bd_index == ~0)
+  if (bd_index == ~0U)
     return bd_add_bd_index (bdm, bd_id);
   return bd_index;
 }

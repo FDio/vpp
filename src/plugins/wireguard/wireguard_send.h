@@ -36,11 +36,11 @@ ip4_header_set_len_w_chksum (ip4_header_t * ip4, u16 len)
 {
   ip_csum_t sum = ip4->checksum;
   u16 old = ip4->length;
-  u16 new = len;
+  u16 _new = len;
 
-  sum = ip_csum_update (sum, old, new, ip4_header_t, length);
+  sum = ip_csum_update (sum, old, _new, ip4_header_t, length);
   ip4->checksum = ip_csum_fold (sum);
-  ip4->length = new;
+  ip4->length = _new;
 }
 
 #endif /* __included_wg_send_h__ */

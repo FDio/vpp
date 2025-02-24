@@ -185,7 +185,7 @@ always_inline clib_mem_heap_t *
 clib_mem_get_per_cpu_heap (void)
 {
   int cpu = os_get_thread_index ();
-  return clib_mem_main.per_cpu_mheaps[cpu];
+  return (clib_mem_heap_t *) clib_mem_main.per_cpu_mheaps[cpu];
 }
 
 always_inline void *
@@ -221,10 +221,9 @@ clib_mem_set_thread_index (void)
    * and grab it for this thread. We need to be able to
    * push/pop the thread heap without affecting other thread(s).
    */
-  int i;
   if (__os_thread_index != 0)
     return;
-  for (i = 0; i < ARRAY_LEN (clib_mem_main.per_cpu_mheaps); i++)
+  for (uword i = 0; i < ARRAY_LEN (clib_mem_main.per_cpu_mheaps); i++)
     if (clib_atomic_bool_cmp_and_swap (&clib_mem_main.per_cpu_mheaps[i],
 				       0, clib_mem_main.per_cpu_mheaps[0]))
       {
@@ -284,7 +283,7 @@ clib_mem_get_heap (void)
 always_inline clib_mem_heap_t *
 clib_mem_set_heap (clib_mem_heap_t * heap)
 {
-  return clib_mem_set_per_cpu_heap (heap);
+  return (clib_mem_heap_t *) clib_mem_set_per_cpu_heap (heap);
 }
 
 void clib_mem_destroy_heap (clib_mem_heap_t * heap);

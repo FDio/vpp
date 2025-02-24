@@ -94,7 +94,7 @@ vnet_dev_port_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw,
 
 clib_error_t *
 vnet_dev_port_mac_change (vnet_hw_interface_t *hi, const u8 *old,
-			  const u8 *new)
+			  const u8 *_new)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hi->dev_instance);
@@ -108,7 +108,7 @@ vnet_dev_port_mac_change (vnet_hw_interface_t *hi, const u8 *old,
   if (!di->is_primary_if)
     return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
 
-  vnet_dev_set_hw_addr_eth_mac (&req.addr, new);
+  vnet_dev_set_hw_addr_eth_mac (&req.addr, _new);
 
   log_debug (p->dev, "new mac  %U", format_vnet_dev_hw_addr, &req.addr);
 
