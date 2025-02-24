@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13c97198_7aeba5bf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-02-24T14:12:19Z",
+      "side": 1,
+      "message": "Please add Coverity issue ID 509068 in your commit log and also update the coverity issue website with your fix.",
+      "revId": "3570acbb782292eb75292237c713aa6f937a3901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
