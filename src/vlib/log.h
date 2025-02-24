@@ -42,7 +42,7 @@ typedef enum
 typedef struct
 {
   vlib_log_level_t level;
-  vlib_log_class_t class;
+  vlib_log_class_t _class;
   f64 timestamp;
   u8 *string;
 } vlib_log_entry_t;
@@ -82,7 +82,7 @@ typedef struct vlib_log_registration
 {
   char *class_name;
   char *subclass_name;
-  vlib_log_class_t class;
+  vlib_log_class_t _class;
   vlib_log_level_t default_level;
   vlib_log_level_t default_syslog_level;
 
@@ -120,9 +120,9 @@ extern vlib_log_main_t log_main;
 clib_error_t *vlib_log_init (struct vlib_main_t *vm);
 vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
 vlib_log_class_t
-vlib_log_register_class_rate_limit (char *class, char *subclass,
+vlib_log_register_class_rate_limit (char *_class, char *subclass,
 				    u32 rate_limit);
-void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
+void vlib_log (vlib_log_level_t level, vlib_log_class_t _class, char *fmt,
 	       ...);
 int last_log_entry ();
 u8 *format_vlib_log_class (u8 * s, va_list * args);
@@ -144,7 +144,7 @@ __vlib_add_log_registration_##x (void)		\
   {						\
     vlib_log_main_t * lm = &log_main;		\
     x.next = lm->registrations;			\
-    x.class = ~0;				\
+    x._class = ~0;				\
     lm->registrations = &x;			\
   }						\
 __VA_ARGS__  vlib_log_class_registration_t x
@@ -164,9 +164,9 @@ vlib_log_get_subclass_data (vlib_log_class_t ci)
 }
 
 static_always_inline int
-vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t class)
+vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t _class)
 {
-  vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (class);
+  vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (_class);
 
   if (level <= sc->level && sc->level != VLIB_LOG_LEVEL_DISABLED)
     return 1;

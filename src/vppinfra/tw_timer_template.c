@@ -121,22 +121,22 @@ timer_addhead (TWT (tw_timer) * pool, u32 head_index, u32 new_index)
   TWT (tw_timer) * head = pool_elt_at_index (pool, head_index);
   TWT (tw_timer) * old_first;
   u32 old_first_index;
-  TWT (tw_timer) * new;
+  TWT (tw_timer) * _new;
 
-  new = pool_elt_at_index (pool, new_index);
+  _new = pool_elt_at_index (pool, new_index);
 
   if (PREDICT_FALSE (head->next == head_index))
     {
       head->next = head->prev = new_index;
-      new->next = new->prev = head_index;
+      _new->next = _new->prev = head_index;
       return;
     }
 
   old_first_index = head->next;
   old_first = pool_elt_at_index (pool, old_first_index);
 
-  new->next = old_first_index;
-  new->prev = old_first->prev;
+  _new->next = old_first_index;
+  _new->prev = old_first->prev;
   old_first->prev = new_index;
   head->next = new_index;
 }

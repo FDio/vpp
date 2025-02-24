@@ -71,8 +71,7 @@ do {                                                    \
    * produces a warning not seen with gcc-7 or 8        \
    */                                                   \
   typeof (h) h_ = (h);                                  \
-  int i;                                                \
-  for (i = 0; i < vec_len (h_); i++)                    \
+  for (uword i = 0; i < vec_len (h_); i++)                    \
     {                                                   \
       (h_[i]) (__VA_ARGS__);                            \
     }                                                   \

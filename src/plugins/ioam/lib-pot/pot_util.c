@@ -46,12 +46,12 @@ int pot_util_init (void)
     return(0);
 }
 
-static void pot_profile_init(pot_profile * new, u8 id)
+static void pot_profile_init(pot_profile * _new, u8 id)
 {
-    if (new)
+    if (_new)
     {
-        clib_memset(new, 0, sizeof(pot_profile));
-        new->id = id;
+        clib_memset(_new, 0, sizeof(pot_profile));
+        _new->id = id;
     }
 }
 

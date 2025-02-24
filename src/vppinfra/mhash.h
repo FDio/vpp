@@ -89,7 +89,7 @@ mhash_init_vec_string (mhash_t * h, uword n_value_bytes)
 always_inline void *
 mhash_key_to_mem (mhash_t * h, uword key)
 {
-  if (key == ~0)
+  if (key == ~0ULL)
     {
       u8 *key_tmp;
 

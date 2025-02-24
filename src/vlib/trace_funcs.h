@@ -69,7 +69,7 @@ vlib_add_trace_inline (vlib_main_t * vm,
     {
       return tm->add_trace_callback ((struct vlib_main_t *) vm,
 				     (struct vlib_node_runtime_t *) r,
-				     (struct vlib_buffer_t *) b,
+				     (vlib_buffer_t *) b,
 				     n_data_bytes);
     }
   else if (PREDICT_FALSE (tm->trace_enable == 0))
