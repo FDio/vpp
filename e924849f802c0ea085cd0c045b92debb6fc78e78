@@ -22,6 +22,30 @@
       },
       "revId": "e924849f802c0ea085cd0c045b92debb6fc78e78",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1758c8ad_c2e9f4b0",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 903,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-02-24T16:34:08Z",
+      "side": 1,
+      "message": "To test the functionality? Probably no.\nTo be explicit about the patch fixing the previously found bug? Yes.\nIt depends on what we consider important with this test, just general testing of the mechanisms or do we want to target specific weak points we found along the way.",
+      "parentUuid": "e040b472_f89e9d94",
+      "range": {
+        "startLine": 903,
+        "startChar": 63,
+        "endLine": 903,
+        "endChar": 1088
+      },
+      "revId": "e924849f802c0ea085cd0c045b92debb6fc78e78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
