@@ -296,7 +296,7 @@ typedef struct
     } mpls;
 
     /* l2 bridging path, only valid there */
-    struct opaque_l2
+    struct
     {
       u32 feature_bitmap;
       u16 bd_index;		/* bridge-domain index */
@@ -539,7 +539,7 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
   if (b->flags & VNET_BUFFER_F_OFFLOAD)
     {
       /* add a flag to existing offload */
-      vnet_buffer (b)->oflags |= oflags;
+      vnet_buffer (b)->oflags = (vnet_buffer_oflags_t) (vnet_buffer (b)->oflags | oflags);
     }
   else
     {
@@ -552,7 +552,7 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 static_always_inline void
 vnet_buffer_offload_flags_clear (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 {
-  vnet_buffer (b)->oflags &= ~oflags;
+  vnet_buffer (b)->oflags = (vnet_buffer_oflags_t) (vnet_buffer (b)->oflags & ~oflags);
   if (0 == vnet_buffer (b)->oflags)
     b->flags &= ~VNET_BUFFER_F_OFFLOAD;
 }

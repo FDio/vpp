@@ -40,6 +40,7 @@
 #ifndef included_ip_ip6_h
 #define included_ip_ip6_h
 
+#include "vppinfra/types.h"
 #include <stdbool.h>
 
 #include <vlib/buffer.h>
@@ -195,8 +196,7 @@ ip6_destination_matches_route (const ip6_main_t * im,
 			       const ip6_address_t * key,
 			       const ip6_address_t * dest, uword dest_length)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (key->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (key->as_uword); i++)
     {
       if ((key->as_uword[i] ^ dest->as_uword[i]) & im->
 	  fib_masks[dest_length].as_uword[i])
@@ -210,7 +210,7 @@ ip6_destination_matches_interface (ip6_main_t * im,
 				   ip6_address_t * key,
 				   ip_interface_address_t * ia)
 {
-  ip6_address_t *a = ip_interface_address_get_address (&im->lookup_main, ia);
+  ip6_address_t *a = (ip6_address_t *) ip_interface_address_get_address (&im->lookup_main, ia);
   return ip6_destination_matches_route (im, key, a, ia->address_length);
 }
 
@@ -221,8 +221,7 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
 					 ip6_address_t * dest,
 					 uword dest_length)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (key->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (key->as_uword); i++)
     {
       if ((clib_mem_unaligned (&key->as_uword[i], uword) ^ dest->as_uword[i])
 	  & im->fib_masks[dest_length].as_uword[i])
@@ -246,7 +245,7 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
-    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
+    ip6_address_t *a = (ip6_address_t *) ip_interface_address_get_address (lm, ia);
     if (ip6_destination_matches_route (im, dst, a, ia->address_length))
       {
 	result = a;

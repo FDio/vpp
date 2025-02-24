@@ -63,7 +63,7 @@ typedef struct
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
-#define VEC_MIN_ALIGN 8
+#define VEC_MIN_ALIGN 8ULL
 
 /** \brief Find the vector header
 
@@ -81,9 +81,41 @@ always_inline uword __vec_elt_sz (uword elt_sz, int is_void);
 
 #define _vec_round_size(s) \
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
+
+#ifdef __cplusplus
+extern "C++"
+{
+
+#include <type_traits>
+
+#define _vec_is_void(P) std::is_same<decltype(P), void*>::value
+
+template <typename T>
+inline uword _element_size(T* p)
+{
+  return sizeof(T);
+}
+
+template <>
+inline uword _element_size<void>(void* p)
+{
+  return sizeof(u8);
+}
+
+template <>
+inline uword _element_size<void*>(void** p)
+{
+  return sizeof(u8 *);
+}
+
+}
+#else
+#define _element_size(P)  sizeof ((P)[0])
 #define _vec_is_void(P)                                                       \
   __builtin_types_compatible_p (__typeof__ ((P)[0]), void)
-#define _vec_elt_sz(V)	 __vec_elt_sz (sizeof ((V)[0]), _vec_is_void (V))
+#endif
+
+#define _vec_elt_sz(V)	 __vec_elt_sz (_element_size(V), _vec_is_void (V))
 #define _vec_align(V, A) __vec_align (__alignof__((V)[0]), A)
 
 always_inline __clib_nosanitize_addr uword
@@ -102,7 +134,7 @@ vec_get_header_size (void *v)
 always_inline void *
 vec_header (void *v)
 {
-  return v ? v - vec_get_header_size (v) : 0;
+  return v ? (u8 *) v - vec_get_header_size (v) : 0;
 }
 
 /** \brief Find the end of user vector header
@@ -114,7 +146,7 @@ vec_header (void *v)
 always_inline void *
 vec_header_end (void *v)
 {
-  return v + vec_get_header_size (v);
+  return (u8 *) v + vec_get_header_size (v);
 }
 
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
@@ -189,9 +221,9 @@ _vec_set_len (void *v, uword len, uword elt_sz)
   uword grow_elts = _vec_find (v)->grow_elts;
 
   if (len > old_len)
-    clib_mem_unpoison (v + old_len * elt_sz, (len - old_len) * elt_sz);
+    clib_mem_unpoison ((u8 *) v + old_len * elt_sz, (len - old_len) * elt_sz);
   else if (len < old_len)
-    clib_mem_poison (v + len * elt_sz, (old_len - len) * elt_sz);
+    clib_mem_poison ((u8 *) v + len * elt_sz, (old_len - len) * elt_sz);
 
   _vec_set_grow_elts (v, old_len + grow_elts - len);
   _vec_find (v)->len = len;

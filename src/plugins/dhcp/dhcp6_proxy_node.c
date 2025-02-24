@@ -108,7 +108,7 @@ ip6_interface_first_global_or_site_address (ip6_main_t * im, u32 sw_if_index)
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
-    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
+    ip6_address_t *a = (ip6_address_t *) ip_interface_address_get_address (lm, ia);
     if ((a->as_u8[0] & 0xe0) == 0x20 ||
         (a->as_u8[0] & 0xfe) == 0xfc)  {
         result = a;
