@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e040b472_f89e9d94",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 903,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-24T16:23:24Z",
+      "side": 1,
+      "message": "does it have to be so long?",
+      "range": {
+        "startLine": 903,
+        "startChar": 63,
+        "endLine": 903,
+        "endChar": 1088
+      },
+      "revId": "e924849f802c0ea085cd0c045b92debb6fc78e78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
