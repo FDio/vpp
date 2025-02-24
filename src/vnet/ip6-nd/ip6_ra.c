@@ -335,11 +335,6 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
 	      if (error0 == ICMP6_ERROR_NONE)
 		{
-		  /* adjust the sizeof the buffer to just include the ipv6 header */
-		  p0->current_length -=
-		    (options_len0 +
-		     sizeof (icmp6_neighbor_discovery_header_t));
-
 		  radv_info = ip6_ra_get_itf (sw_if_index0);
 
 		  error0 = ((!radv_info || 0 == radv_info->send_radv) ?
@@ -348,6 +343,12 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
 		      f64 now = vlib_time_now (vm);
+
+		      /* adjust the sizeof the buffer to just include
+			 the ipv6 header */
+		      p0->current_length -=
+			(options_len0 +
+			 sizeof (icmp6_neighbor_discovery_header_t));
 
 		      /* for solicited adverts - need to rate limit */
 		      if (is_solicitation)
