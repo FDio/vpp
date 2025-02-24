@@ -33,7 +33,7 @@ vlib_buffer_push_udp (vlib_buffer_t *b, u16 sp, u16 dp)
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
     udp_len += b->total_length_not_including_first_buffer;
 
-  uh = vlib_buffer_push_uninit (b, sizeof (udp_header_t));
+  uh = (udp_header_t *) vlib_buffer_push_uninit (b, sizeof (udp_header_t));
   uh->src_port = sp;
   uh->dst_port = dp;
   uh->checksum = 0;
@@ -86,7 +86,7 @@ ip_udp_fixup_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 is_ip4,
       ip_csum_t sum0;
       u16 old_l0 = 0;
 
-      ip0 = vlib_buffer_get_current (b0);
+      ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
 
       /* fix the <bleep>ing outer-IP checksum */
       sum0 = ip0->checksum;
@@ -112,7 +112,7 @@ ip_udp_fixup_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 is_ip4,
       ip6_header_t *ip0;
       int bogus0;
 
-      ip0 = vlib_buffer_get_current (b0);
+      ip0 = (ip6_header_t *) vlib_buffer_get_current (b0);
 
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 				     - sizeof (*ip0));
@@ -159,7 +159,7 @@ ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
     {
       ip4_header_t *ip0;
 
-      ip0 = vlib_buffer_get_current (b0);
+      ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
 
       /* Apply the encap string. */
       clib_memcpy_fast (ip0, ec0, ec_len);
@@ -169,7 +169,7 @@ ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
     {
       ip6_header_t *ip0;
 
-      ip0 = vlib_buffer_get_current (b0);
+      ip0 = (ip6_header_t *) vlib_buffer_get_current (b0);
 
       /* Apply the encap string. */
       clib_memcpy_fast (ip0, ec0, ec_len);
@@ -214,8 +214,8 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
       ip_csum_t sum0, sum1;
       u16 old_l0 = 0, old_l1 = 0;
 
-      ip0 = vlib_buffer_get_current (b0);
-      ip1 = vlib_buffer_get_current (b1);
+      ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
+      ip1 = (ip4_header_t *) vlib_buffer_get_current (b1);
 
       /* Apply the encap string */
       clib_memcpy_fast (ip0, ec0, ec_len);
@@ -263,8 +263,8 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
       ip6_header_t *ip0, *ip1;
       int bogus0, bogus1;
 
-      ip0 = vlib_buffer_get_current (b0);
-      ip1 = vlib_buffer_get_current (b1);
+      ip0 = (ip6_header_t *) vlib_buffer_get_current (b0);
+      ip1 = (ip6_header_t *) vlib_buffer_get_current (b1);
 
       /* Apply the encap string. */
       clib_memcpy_fast (ip0, ec0, ec_len);

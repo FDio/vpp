@@ -135,7 +135,7 @@ iavf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
       b->next_buffer = t->buffers[i];
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
       b = vlib_get_buffer (vm, b->next_buffer);
-      b->template = *bt;
+      b->_template = *bt;
       tlnifb += b->current_length = ((iavf_rx_desc_qw1_t) qw1).length;
       i++;
     }
@@ -192,10 +192,10 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vlib_prefetch_buffer_header (b[11], LOAD);
 	}
 
-      b[0]->template = *bt;
-      b[1]->template = *bt;
-      b[2]->template = *bt;
-      b[3]->template = *bt;
+      b[0]->_template = *bt;
+      b[1]->_template = *bt;
+      b[2]->_template = *bt;
+      b[3]->_template = *bt;
 
       n_rx_bytes += b[0]->current_length =
 	((iavf_rx_desc_qw1_t) qw1[0]).length;
@@ -223,7 +223,7 @@ iavf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left)
     {
-      b[0]->template = *bt;
+      b[0]->_template = *bt;
 
       n_rx_bytes += b[0]->current_length =
 	((iavf_rx_desc_qw1_t) qw1[0]).length;
