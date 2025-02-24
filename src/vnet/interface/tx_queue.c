@@ -12,8 +12,8 @@ VLIB_REGISTER_LOG_CLASS (if_txq_log, static) = {
   .subclass_name = "tx-queue",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (if_txq_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (if_txq_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...) vlib_log_debug (if_txq_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)   vlib_log_err (if_txq_log._class, fmt, __VA_ARGS__)
 
 static u64
 tx_queue_key (u32 hw_if_index, u32 queue_id)

@@ -160,7 +160,7 @@ ip_incremental_checksum_buffer (vlib_main_t * vm,
   u32 n;
 
   n = clib_min (n_bytes_left, b->current_length - first_buffer_offset);
-  h = vlib_buffer_get_current (b) + first_buffer_offset;
+  h = (u8 *) vlib_buffer_get_current (b) + first_buffer_offset;
   sum = ip_incremental_checksum (sum, h, n);
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
@@ -219,7 +219,7 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       else			/* packet in buffer with no ip header  */
 	{			/* buffer current pointer at l4 header */
 	  n_this_buffer = p0->current_length;
-	  data_this_buffer = vlib_buffer_get_current (p0);
+	  data_this_buffer = (u8 *) vlib_buffer_get_current (p0);
 	}
       n_this_buffer = clib_min (n_this_buffer, n_bytes_left);
     }
@@ -239,7 +239,7 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       length_odd = (n_this_buffer & 1);
 
       p0 = vlib_get_buffer (vm, p0->next_buffer);
-      data_this_buffer = vlib_buffer_get_current (p0);
+      data_this_buffer = (u8 *) vlib_buffer_get_current (p0);
       n_this_buffer = clib_min (p0->current_length, n_bytes_left);
 
       if (PREDICT_FALSE (length_odd))

@@ -31,8 +31,8 @@ VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
   .class_name = "snort",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...) vlib_log_debug (snort_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)   vlib_log_err (snort_log._class, fmt, __VA_ARGS__)
 
 static void
 vl_api_snort_instance_create_t_handler (vl_api_snort_instance_create_t *mp)

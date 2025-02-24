@@ -304,7 +304,7 @@ generic_buffer_node_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   u32 next_index;
 
-  from = vlib_frame_vector_args (frame);
+  from = (u32 *) vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 

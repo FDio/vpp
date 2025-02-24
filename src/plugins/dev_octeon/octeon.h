@@ -158,19 +158,19 @@ vnet_dev_rv_t oct_txq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_tx_queue_t *);
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, oct_log.class, "%U: " f,                    \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, oct_log._class, "%U: " f,                    \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, oct_log.class, "%U: " f,                     \
+  vlib_log (VLIB_LOG_LEVEL_INFO, oct_log._class, "%U: " f,                     \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, oct_log.class, "%U: " f,                   \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, oct_log._class, "%U: " f,                   \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, oct_log.class, "%U: " f,                  \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, oct_log._class, "%U: " f,                  \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, oct_log.class, "%U: " f,                      \
+  vlib_log (VLIB_LOG_LEVEL_ERR, oct_log._class, "%U: " f,                      \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 
 #define foreach_oct_tx_node_counter                                           \

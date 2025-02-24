@@ -47,7 +47,7 @@ nsh_md2_encap (vlib_buffer_t * b, nsh_base_header_t * hdr,
       /* round to 4-byte */
       old_option_size = ((old_option_size + 3) >> 2) << 2;
 
-      nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+      nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
       if (nsh_option == NULL)
 	{
 	  goto next_tlv_md2;
@@ -114,7 +114,7 @@ nsh_md2_swap (vlib_buffer_t * b,
       /* round to 4-byte */
       old_option_size = ((old_option_size + 3) >> 2) << 2;
 
-      nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+      nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
       if (nsh_option == NULL)
 	{
 	  goto next_tlv_md2;
@@ -169,7 +169,7 @@ nsh_md2_decap (vlib_buffer_t * b,
   /* Scan the set of variable metadata, process ones that we understand */
   while (opt0 < limit0)
     {
-      nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+      nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
       if (nsh_option == NULL)
 	{
 	  *next = drop_node_val;
