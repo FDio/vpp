@@ -17,6 +17,7 @@
 
 #define HPACK_DEFAULT_HEADER_TABLE_SIZE	   4096
 #define HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD 32
+#define HPACK_ENCODER_SKIP_CONTENT_LEN	   ((u64) ~0)
 
 typedef struct
 {
@@ -55,6 +56,16 @@ typedef struct
   u32 headers_len;
   u16 parsed_bitmap;
 } hpack_request_control_data_t;
+
+typedef struct
+{
+  http_status_code_t sc;
+  u64 content_len;
+  u8 *server_name;
+  u32 server_name_len;
+  u8 *date;
+  u32 date_len;
+} hpack_response_control_data_t;
 
 /**
  * Decode unsigned variable-length integer (RFC7541 section 5.1)
@@ -153,5 +164,17 @@ http2_error_t hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 				   hpack_request_control_data_t *control_data,
 				   http_field_line_t **headers,
 				   hpack_dynamic_table_t *dynamic_table);
+
+/**
+ * Serialize response
+ *
+ * @param app_headers     App header list
+ * @param app_headers_len App header list length
+ * @param control_data    Header values set by protocol layer
+ * @param dst             Vector where serialized headers will be added
+ */
+void hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
+			       hpack_response_control_data_t *control_data,
+			       u8 **dst);
 
 #endif /* SRC_PLUGINS_HTTP_HPACK_H_ */
