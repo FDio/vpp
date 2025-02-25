@@ -16,6 +16,24 @@
       "message": "I would argue that VPP is not C++ project so there is no compatibility issue.\nIf you have strong use case we can discuss this in details on one of next community calls...",
       "revId": "1bf953c0f75b4736a506dce4222951e154c1a6e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8c7a11d_7dba6681",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-02-25T16:30:10Z",
+      "side": 1,
+      "message": "No added logic, just C style casts and renames accrued\nit\u0027s does not effect anything it\u0027s just allow outsiders to write cpp plugins",
+      "parentUuid": "6a941ec8_0a0c069a",
+      "revId": "1bf953c0f75b4736a506dce4222951e154c1a6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
