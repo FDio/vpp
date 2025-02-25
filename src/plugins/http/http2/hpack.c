@@ -86,6 +86,20 @@ static hpack_static_table_entry_t
     { name_val_token_lit ("www-authenticate", "") },
   };
 
+typedef struct
+{
+  char *base;
+  uword len;
+  u8 static_table_index;
+} hpack_token_t;
+
+static hpack_token_t hpack_headers[] = {
+#define _(sym, str_canonical, str_lower, hpack_index)                         \
+  { http_token_lit (str_lower), hpack_index },
+  foreach_http_header_name
+#undef _
+};
+
 __clib_export uword
 hpack_decode_int (u8 **src, u8 *end, u8 prefix_len)
 {
@@ -892,4 +906,41 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   HTTP_DBG (2, "%U", format_hpack_dynamic_table, dynamic_table);
   return HTTP2_ERROR_NO_ERROR;
+}
+
+u8 *
+hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
+		     u32 value_len)
+{
+  hpack_token_t *name_token;
+
+  name_token = &hpack_headers[name];
+  if (name_token->static_table_index)
+    {
+      /* Literal Header Field without Indexing — Indexed Name */
+      *dst = 0x00; /* zero first 4 bits */
+      dst = hpack_encode_int (dst, name_token->static_table_index, 4);
+    }
+  else
+    {
+      /* Literal Header Field without Indexing — New Name */
+      *dst++ = 0x00;
+      dst = hpack_encode_string (dst, (const u8 *) name_token->base,
+				 name_token->len);
+    }
+
+  dst = hpack_encode_string (dst, value, value_len);
+
+  return dst;
+}
+
+u8 *
+hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len,
+			    const u8 *value, u32 value_len)
+{
+  /* Literal Header Field without Indexing — New Name */
+  *dst++ = 0x00;
+  dst = hpack_encode_string (dst, name, name_len);
+  dst = hpack_encode_string (dst, value, value_len);
+  return dst;
 }

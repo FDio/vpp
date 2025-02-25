@@ -210,97 +210,108 @@ typedef enum http_status_code_
 } http_status_code_t;
 
 #define foreach_http_header_name                                              \
-  _ (ACCEPT, "Accept")                                                        \
-  _ (ACCEPT_CHARSET, "Accept-Charset")                                        \
-  _ (ACCEPT_ENCODING, "Accept-Encoding")                                      \
-  _ (ACCEPT_LANGUAGE, "Accept-Language")                                      \
-  _ (ACCEPT_RANGES, "Accept-Ranges")                                          \
-  _ (ACCESS_CONTROL_ALLOW_CREDENTIALS, "Access-Control-Allow-Credentials")    \
-  _ (ACCESS_CONTROL_ALLOW_HEADERS, "Access-Control-Allow-Headers")            \
-  _ (ACCESS_CONTROL_ALLOW_METHODS, "Access-Control-Allow-Methods")            \
-  _ (ACCESS_CONTROL_ALLOW_ORIGIN, "Access-Control-Allow-Origin")              \
-  _ (ACCESS_CONTROL_EXPOSE_HEADERS, "Access-Control-Expose-Headers")          \
-  _ (ACCESS_CONTROL_MAX_AGE, "Access-Control-Max-Age")                        \
-  _ (ACCESS_CONTROL_REQUEST_HEADERS, "Access-Control-Request-Headers")        \
-  _ (ACCESS_CONTROL_REQUEST_METHOD, "Access-Control-Request-Method")          \
-  _ (AGE, "Age")                                                              \
-  _ (ALLOW, "Allow")                                                          \
-  _ (ALPN, "ALPN")                                                            \
-  _ (ALT_SVC, "Alt-Svc")                                                      \
-  _ (ALT_USED, "Alt-Used")                                                    \
-  _ (ALTERNATES, "Alternates")                                                \
-  _ (AUTHENTICATION_CONTROL, "Authentication-Control")                        \
-  _ (AUTHENTICATION_INFO, "Authentication-Info")                              \
-  _ (AUTHORIZATION, "Authorization")                                          \
-  _ (CACHE_CONTROL, "Cache-Control")                                          \
-  _ (CACHE_STATUS, "Cache-Status")                                            \
-  _ (CAPSULE_PROTOCOL, "Capsule-Protocol")                                    \
-  _ (CDN_CACHE_CONTROL, "CDN-Cache-Control")                                  \
-  _ (CDN_LOOP, "CDN-Loop")                                                    \
-  _ (CLIENT_CERT, "Client-Cert")                                              \
-  _ (CLIENT_CERT_CHAIN, "Client-Cert-Chain")                                  \
-  _ (CLOSE, "Close")                                                          \
-  _ (CONNECTION, "Connection")                                                \
-  _ (CONTENT_DIGEST, "Content-Digest")                                        \
-  _ (CONTENT_DISPOSITION, "Content-Disposition")                              \
-  _ (CONTENT_ENCODING, "Content-Encoding")                                    \
-  _ (CONTENT_LANGUAGE, "Content-Language")                                    \
-  _ (CONTENT_LENGTH, "Content-Length")                                        \
-  _ (CONTENT_LOCATION, "Content-Location")                                    \
-  _ (CONTENT_RANGE, "Content-Range")                                          \
-  _ (CONTENT_TYPE, "Content-Type")                                            \
-  _ (COOKIE, "Cookie")                                                        \
-  _ (DATE, "Date")                                                            \
-  _ (DIGEST, "Digest")                                                        \
-  _ (DPOP, "DPoP")                                                            \
-  _ (DPOP_NONCE, "DPoP-Nonce")                                                \
-  _ (EARLY_DATA, "Early-Data")                                                \
-  _ (ETAG, "ETag")                                                            \
-  _ (EXPECT, "Expect")                                                        \
-  _ (EXPIRES, "Expires")                                                      \
-  _ (FORWARDED, "Forwarded")                                                  \
-  _ (FROM, "From")                                                            \
-  _ (HOST, "Host")                                                            \
-  _ (IF_MATCH, "If-Match")                                                    \
-  _ (IF_MODIFIED_SINCE, "If-Modified-Since")                                  \
-  _ (IF_NONE_MATCH, "If-None-Match")                                          \
-  _ (IF_RANGE, "If-Range")                                                    \
-  _ (IF_UNMODIFIED_SINCE, "If-Unmodified-Since")                              \
-  _ (KEEP_ALIVE, "Keep-Alive")                                                \
-  _ (LAST_MODIFIED, "Last-Modified")                                          \
-  _ (LINK, "Link")                                                            \
-  _ (LOCATION, "Location")                                                    \
-  _ (MAX_FORWARDS, "Max-Forwards")                                            \
-  _ (ORIGIN, "Origin")                                                        \
-  _ (PRIORITY, "Priority")                                                    \
-  _ (PROXY_AUTHENTICATE, "Proxy-Authenticate")                                \
-  _ (PROXY_AUTHENTICATION_INFO, "Proxy-Authentication-Info")                  \
-  _ (PROXY_AUTHORIZATION, "Proxy-Authorization")                              \
-  _ (PROXY_STATUS, "Proxy-Status")                                            \
-  _ (RANGE, "Range")                                                          \
-  _ (REFERER, "Referer")                                                      \
-  _ (REFRESH, "Refresh")                                                      \
-  _ (REPR_DIGEST, "Repr-Digest")                                              \
-  _ (SET_COOKIE, "Set-Cookie")                                                \
-  _ (SIGNATURE, "Signature")                                                  \
-  _ (SIGNATURE_INPUT, "Signature-Input")                                      \
-  _ (STRICT_TRANSPORT_SECURITY, "Strict-Transport-Security")                  \
-  _ (RETRY_AFTER, "Retry-After")                                              \
-  _ (SERVER, "Server")                                                        \
-  _ (TE, "TE")                                                                \
-  _ (TRAILER, "Trailer")                                                      \
-  _ (TRANSFER_ENCODING, "Transfer-Encoding")                                  \
-  _ (UPGRADE, "Upgrade")                                                      \
-  _ (USER_AGENT, "User-Agent")                                                \
-  _ (VARY, "Vary")                                                            \
-  _ (VIA, "Via")                                                              \
-  _ (WANT_CONTENT_DIGEST, "Want-Content-Digest")                              \
-  _ (WANT_REPR_DIGEST, "Want-Repr-Digest")                                    \
-  _ (WWW_AUTHENTICATE, "WWW-Authenticate")
+  _ (ACCEPT_CHARSET, "Accept-Charset", "accept-charset", 15)                  \
+  _ (ACCEPT_ENCODING, "Accept-Encoding", "accept-encoding", 16)               \
+  _ (ACCEPT_LANGUAGE, "Accept-Language", "accept-language", 17)               \
+  _ (ACCEPT_RANGES, "Accept-Ranges", "accept-ranges", 18)                     \
+  _ (ACCEPT, "Accept", "accept", 19)                                          \
+  _ (ACCESS_CONTROL_ALLOW_CREDENTIALS, "Access-Control-Allow-Credentials",    \
+     "access-control-allow-credentials", 0)                                   \
+  _ (ACCESS_CONTROL_ALLOW_HEADERS, "Access-Control-Allow-Headers",            \
+     "access-control-allow-headers", 0)                                       \
+  _ (ACCESS_CONTROL_ALLOW_METHODS, "Access-Control-Allow-Methods",            \
+     "access-control-allow-methods", 0)                                       \
+  _ (ACCESS_CONTROL_ALLOW_ORIGIN, "Access-Control-Allow-Origin",              \
+     "access-control-allow-origin", 20)                                       \
+  _ (ACCESS_CONTROL_EXPOSE_HEADERS, "Access-Control-Expose-Headers",          \
+     "access-control-expose-headers", 0)                                      \
+  _ (ACCESS_CONTROL_MAX_AGE, "Access-Control-Max-Age",                        \
+     "access-control-max-age", 0)                                             \
+  _ (ACCESS_CONTROL_REQUEST_HEADERS, "Access-Control-Request-Headers",        \
+     "access-control-request-headers", 0)                                     \
+  _ (ACCESS_CONTROL_REQUEST_METHOD, "Access-Control-Request-Method",          \
+     "access-control-request-method", 0)                                      \
+  _ (AGE, "Age", "age", 21)                                                   \
+  _ (ALLOW, "Allow", "allow", 22)                                             \
+  _ (ALPN, "ALPN", "alpn", 0)                                                 \
+  _ (ALT_SVC, "Alt-Svc", "alt-svc", 0)                                        \
+  _ (ALT_USED, "Alt-Used", "alt-used", 0)                                     \
+  _ (ALTERNATES, "Alternates", "alternates", 0)                               \
+  _ (AUTHENTICATION_CONTROL, "Authentication-Control",                        \
+     "authentication-control", 0)                                             \
+  _ (AUTHENTICATION_INFO, "Authentication-Info", "authentication-info", 0)    \
+  _ (AUTHORIZATION, "Authorization", "authorization", 23)                     \
+  _ (CACHE_CONTROL, "Cache-Control", "cache-control", 24)                     \
+  _ (CACHE_STATUS, "Cache-Status", "cache-status", 0)                         \
+  _ (CAPSULE_PROTOCOL, "Capsule-Protocol", "capsule-protocol", 0)             \
+  _ (CDN_CACHE_CONTROL, "CDN-Cache-Control", "cdn-cache-control", 0)          \
+  _ (CDN_LOOP, "CDN-Loop", "cdn-loop", 0)                                     \
+  _ (CLIENT_CERT, "Client-Cert", "client-cert", 0)                            \
+  _ (CLIENT_CERT_CHAIN, "Client-Cert-Chain", "client-cert-chain", 0)          \
+  _ (CLOSE, "Close", "close", 0)                                              \
+  _ (CONNECTION, "Connection", "connection", 0)                               \
+  _ (CONTENT_DIGEST, "Content-Digest", "content-digest", 0)                   \
+  _ (CONTENT_DISPOSITION, "Content-Disposition", "content-disposition", 25)   \
+  _ (CONTENT_ENCODING, "Content-Encoding", "content-encoding", 26)            \
+  _ (CONTENT_LANGUAGE, "Content-Language", "content-language", 27)            \
+  _ (CONTENT_LENGTH, "Content-Length", "content-length", 28)                  \
+  _ (CONTENT_LOCATION, "Content-Location", "content-location", 29)            \
+  _ (CONTENT_RANGE, "Content-Range", "content-range", 30)                     \
+  _ (CONTENT_TYPE, "Content-Type", "content-type", 31)                        \
+  _ (COOKIE, "Cookie", "cookie", 32)                                          \
+  _ (DATE, "Date", "date", 33)                                                \
+  _ (DIGEST, "Digest", "digest", 0)                                           \
+  _ (DPOP, "DPoP", "dpop", 0)                                                 \
+  _ (DPOP_NONCE, "DPoP-Nonce", "dpop-nonce", 0)                               \
+  _ (EARLY_DATA, "Early-Data", "early-data", 0)                               \
+  _ (ETAG, "ETag", "etag", 34)                                                \
+  _ (EXPECT, "Expect", "expect", 35)                                          \
+  _ (EXPIRES, "Expires", "expires", 36)                                       \
+  _ (FORWARDED, "Forwarded", "forwarded", 0)                                  \
+  _ (FROM, "From", "from", 37)                                                \
+  _ (HOST, "Host", "host", 38)                                                \
+  _ (IF_MATCH, "If-Match", "if-match", 39)                                    \
+  _ (IF_MODIFIED_SINCE, "If-Modified-Since", "if-modified-since", 40)         \
+  _ (IF_NONE_MATCH, "If-None-Match", "if-none-match", 41)                     \
+  _ (IF_RANGE, "If-Range", "if-range", 42)                                    \
+  _ (IF_UNMODIFIED_SINCE, "If-Unmodified-Since", "if-unmodified-since", 43)   \
+  _ (KEEP_ALIVE, "Keep-Alive", "keep-alive", 0)                               \
+  _ (LAST_MODIFIED, "Last-Modified", "last-modified", 44)                     \
+  _ (LINK, "Link", "link", 45)                                                \
+  _ (LOCATION, "Location", "location", 46)                                    \
+  _ (MAX_FORWARDS, "Max-Forwards", "max-forwards", 47)                        \
+  _ (ORIGIN, "Origin", "origin", 0)                                           \
+  _ (PRIORITY, "Priority", "priority", 0)                                     \
+  _ (PROXY_AUTHENTICATE, "Proxy-Authenticate", "proxy-authenticate", 48)      \
+  _ (PROXY_AUTHENTICATION_INFO, "Proxy-Authentication-Info",                  \
+     "proxy-authentication-info", 0)                                          \
+  _ (PROXY_AUTHORIZATION, "Proxy-Authorization", "proxy-authorization", 49)   \
+  _ (PROXY_STATUS, "Proxy-Status", "proxy-status", 0)                         \
+  _ (RANGE, "Range", "range", 50)                                             \
+  _ (REFERER, "Referer", "referer", 51)                                       \
+  _ (REFRESH, "Refresh", "refresh", 52)                                       \
+  _ (REPR_DIGEST, "Repr-Digest", "repr-digest", 0)                            \
+  _ (RETRY_AFTER, "Retry-After", "retry-after", 53)                           \
+  _ (SERVER, "Server", "server", 54)                                          \
+  _ (SET_COOKIE, "Set-Cookie", "set-cookie", 55)                              \
+  _ (SIGNATURE, "Signature", "signature", 0)                                  \
+  _ (SIGNATURE_INPUT, "Signature-Input", "signature-input", 0)                \
+  _ (STRICT_TRANSPORT_SECURITY, "Strict-Transport-Security",                  \
+     "strict-transport-security", 56)                                         \
+  _ (TE, "TE", "te", 0)                                                       \
+  _ (TRAILER, "Trailer", "trailer", 0)                                        \
+  _ (TRANSFER_ENCODING, "Transfer-Encoding", "transfer-encoding", 57)         \
+  _ (UPGRADE, "Upgrade", "upgrade", 0)                                        \
+  _ (USER_AGENT, "User-Agent", "user-agent", 58)                              \
+  _ (VARY, "Vary", "vary", 59)                                                \
+  _ (VIA, "Via", "via", 60)                                                   \
+  _ (WANT_CONTENT_DIGEST, "Want-Content-Digest", "want-content-digest", 0)    \
+  _ (WANT_REPR_DIGEST, "Want-Repr-Digest", "want-repr-digest", 0)             \
+  _ (WWW_AUTHENTICATE, "WWW-Authenticate", "www-authenticate", 61)
 
 typedef enum http_header_name_
 {
-#define _(sym, str) HTTP_HEADER_##sym,
+#define _(sym, str_canonical, str_lower, hpack_index) HTTP_HEADER_##sym,
   foreach_http_header_name
 #undef _
 } http_header_name_t;
