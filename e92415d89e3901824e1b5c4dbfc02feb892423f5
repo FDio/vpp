@@ -16,6 +16,24 @@
       "message": "Looking at unformat_ethernet_type_host_byte_order(), it seems like the values it can parse are either numeric values in hex or proto names in uppercase like IP4 or CDP. I think it would be useful to make the \u0027\u003cethertype\u003e\u0027 more indicative of this fact in the help text. E.g. change it to \u0027(\u003chex_ethertype_num\u003e|\u003cuc_ethertype_name\u003e)\u0027.",
       "revId": "e92415d89e3901824e1b5c4dbfc02feb892423f5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "226a295d_d0ca0d88",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 3173
+      },
+      "writtenOn": "2025-02-25T14:12:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e3a13b38_e72b2ca9",
+      "revId": "e92415d89e3901824e1b5c4dbfc02feb892423f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
