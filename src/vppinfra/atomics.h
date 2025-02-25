@@ -34,12 +34,16 @@
 #define clib_atomic_or_fetch(a, b) __sync_or_and_fetch(a, b)
 #define clib_atomic_nand_fetch(a, b) __sync_nand_and_fetch(a, b)
 
-#define clib_atomic_cmp_and_swap(addr,old,new) __sync_val_compare_and_swap(addr, old, new)
-#define clib_atomic_bool_cmp_and_swap(addr,old,new) __sync_bool_compare_and_swap(addr, old, new)
+#define clib_atomic_cmp_and_swap(addr, old, _new)                             \
+  __sync_val_compare_and_swap (addr, old, _new)
+#define clib_atomic_bool_cmp_and_swap(addr, old, _new)                        \
+  __sync_bool_compare_and_swap (addr, old, _new)
 
-#define clib_atomic_cmp_and_swap_acq_relax_n(addr,exp,new,weak) __atomic_compare_exchange_n ((addr), (exp), (new), (weak), __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)
-#define clib_atomic_cmp_and_swap_acq_relax(addr, exp, new, weak)              \
-  __atomic_compare_exchange ((addr), (exp), (new), (weak), __ATOMIC_ACQUIRE,  \
+#define clib_atomic_cmp_and_swap_acq_relax_n(addr, exp, _new, weak)           \
+  __atomic_compare_exchange_n ((addr), (exp), (_new), (weak),                 \
+			       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)
+#define clib_atomic_cmp_and_swap_acq_relax(addr, exp, _new, weak)             \
+  __atomic_compare_exchange ((addr), (exp), (_new), (weak), __ATOMIC_ACQUIRE, \
 			     __ATOMIC_RELAXED)
 
 #define clib_atomic_test_and_set(a) __atomic_exchange_n(a, 1, __ATOMIC_ACQUIRE)

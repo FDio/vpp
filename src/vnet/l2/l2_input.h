@@ -298,7 +298,7 @@ vnet_update_l2_len (vlib_buffer_t *b)
   u8 vlan_count = 0;
 
   /* point at current l2 hdr */
-  eth = vlib_buffer_get_current (b);
+  eth = (ethernet_header_t *) vlib_buffer_get_current (b);
 
   /*
    * l2-output pays no attention to this
@@ -313,7 +313,7 @@ vnet_update_l2_len (vlib_buffer_t *b)
       ethernet_vlan_header_t *vlan;
       vnet_buffer (b)->l2.l2_len += sizeof (*vlan);
       vlan_count = 1;
-      vlan = (void *) (eth + 1);
+      vlan = (ethernet_vlan_header_t *) (eth + 1);
       ethertype = clib_net_to_host_u16 (vlan->type);
       if (ethertype == ETHERNET_TYPE_VLAN)
 	{
@@ -335,7 +335,7 @@ vnet_update_l2_len (vlib_buffer_t *b)
 static inline u32
 vnet_l2_compute_flow_hash (vlib_buffer_t * b)
 {
-  ethernet_header_t *eh = vlib_buffer_get_current (b);
+  ethernet_header_t *eh = (ethernet_header_t *) vlib_buffer_get_current (b);
   u8 *l3h = (u8 *) eh + vnet_buffer (b)->l2.l2_len;
   u16 ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
 

@@ -110,9 +110,10 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
       vnet_calc_ip6_checksums (vm, b, ip6, th, uh, oflags);
     }
 
-  vnet_buffer_offload_flags_clear (b, (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
-				       VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
-				       VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
+  vnet_buffer_offload_flags_clear (
+    b, (vnet_buffer_oflags_t) (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+			       VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+			       VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
 }
 
 static_always_inline void

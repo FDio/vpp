@@ -45,24 +45,24 @@ clib_dlist_addtail (dlist_elt_t * pool, u32 head_index, u32 new_index)
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   u32 old_last_index;
   dlist_elt_t *old_last;
-  dlist_elt_t *new;
+  dlist_elt_t *_new;
 
   ASSERT (head->value == ~0);
 
-  new = pool_elt_at_index (pool, new_index);
+  _new = pool_elt_at_index (pool, new_index);
 
   if (PREDICT_FALSE (head->next == ~0))
     {
       head->next = head->prev = new_index;
-      new->next = new->prev = head_index;
+      _new->next = _new->prev = head_index;
       return;
     }
 
   old_last_index = head->prev;
   old_last = pool_elt_at_index (pool, old_last_index);
 
-  new->next = old_last->next;
-  new->prev = old_last_index;
+  _new->next = old_last->next;
+  _new->prev = old_last_index;
   old_last->next = new_index;
   head->prev = new_index;
 }
@@ -73,24 +73,24 @@ clib_dlist_addhead (dlist_elt_t * pool, u32 head_index, u32 new_index)
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   dlist_elt_t *old_first;
   u32 old_first_index;
-  dlist_elt_t *new;
+  dlist_elt_t *_new;
 
   ASSERT (head->value == ~0);
 
-  new = pool_elt_at_index (pool, new_index);
+  _new = pool_elt_at_index (pool, new_index);
 
   if (PREDICT_FALSE (head->next == ~0))
     {
       head->next = head->prev = new_index;
-      new->next = new->prev = head_index;
+      _new->next = _new->prev = head_index;
       return;
     }
 
   old_first_index = head->next;
   old_first = pool_elt_at_index (pool, old_first_index);
 
-  new->next = old_first_index;
-  new->prev = old_first->prev;
+  _new->next = old_first_index;
+  _new->prev = old_first->prev;
   old_first->prev = new_index;
   head->next = new_index;
 }

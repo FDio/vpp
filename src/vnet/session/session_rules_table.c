@@ -27,10 +27,11 @@ VLIB_REGISTER_LOG_CLASS (session_rt_log, static) = { .class_name = "session",
 						     .subclass_name = "rt" };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (session_rt_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+  vlib_log_debug (session_rt_log._class, "%s: " fmt, __func__, __VA_ARGS__)
 #define log_warn(fmt, ...)                                                    \
-  vlib_log_warn (session_rt_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...) vlib_log_err (session_rt_log.class, fmt, __VA_ARGS__)
+  vlib_log_warn (session_rt_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)                                                     \
+  vlib_log_err (session_rt_log._class, fmt, __VA_ARGS__)
 
 static session_rules_table_group_t *srt_instances;
 const session_rt_engine_vft_t *session_rt_engine_vft;

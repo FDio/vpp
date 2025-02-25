@@ -65,7 +65,8 @@ always_inline vtep_table_t
 vtep_table_create ()
 {
   vtep_table_t t = { };
-  t.vtep6 = hash_create_mem (0, sizeof (vtep6_key_t), sizeof (uword));
+  t.vtep6 =
+    (uword *) hash_create_mem (0, sizeof (vtep6_key_t), sizeof (uword));
   return t;
 }
 
