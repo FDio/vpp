@@ -50,30 +50,37 @@
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal */
-#define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm_set1_##i (x); }				\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm_loadu_si128 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
-{ _mm_storeu_si128 ((__m128i *) p, (__m128i) v); }			\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_zero (t##s##x##c x)					\
-{ return _mm_testz_si128 ((__m128i) x, (__m128i) x); }			\
-\
-static_always_inline int						\
-t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^ b); }				\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); };		\
+#define _(t, s, c, i)                                                         \
+  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
+  {                                                                           \
+    return (t##s##x##c) _mm_set1_##i (x);                                     \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_unaligned (void *p)       \
+  {                                                                           \
+    return (t##s##x##c) _mm_loadu_si128 ((const __m128i_u *) p);              \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_unaligned (t##s##x##c v,       \
+							  void *p)            \
+  {                                                                           \
+    _mm_storeu_si128 ((__m128i *) p, (__m128i) v);                            \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c x)            \
+  {                                                                           \
+    return _mm_testz_si128 ((__m128i) x, (__m128i) x);                        \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b) \
+  {                                                                           \
+    return t##s##x##c##_is_all_zero (a ^ b);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)   \
+  {                                                                           \
+    return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x));                 \
+  };
 
 foreach_sse42_vec128i foreach_sse42_vec128u
 #undef _

@@ -83,7 +83,7 @@ do {						\
 
 extern void *clib_error_free_vector (clib_error_t * errors);
 
-#define clib_error_free(e) e = clib_error_free_vector(e)
+#define clib_error_free(e) e = (__typeof__ (e)) clib_error_free_vector (e)
 
 extern clib_error_t *_clib_error_return (clib_error_t *errors, any code,
 					 uword flags, const char *where,

@@ -224,7 +224,7 @@ typedef enum
   _ (u8, revision_id)                                                         \
   _ (u8, prog_if)                                                             \
   _ (u8, subclass)                                                            \
-  _ (u8, class)                                                               \
+  _ (u8, _class)                                                              \
   _ (u8, cache_line_size)                                                     \
   _ (u8, latency_timer)                                                       \
   _ (pci_config_header_type_t, header_type)                                   \

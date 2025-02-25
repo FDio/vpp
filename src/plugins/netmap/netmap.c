@@ -212,12 +212,12 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
     clib_spinlock_init (&nif->lockp);
 
   {
-    clib_file_t template = { 0 };
-    template.read_function = netmap_fd_read_ready;
-    template.file_descriptor = nif->fd;
-    template.private_data = nif->if_index;
-    template.description = format (0, "netmap socket");
-    nif->clib_file_index = clib_file_add (&file_main, &template);
+    clib_file_t _template = { 0 };
+    _template.read_function = netmap_fd_read_ready;
+    _template.file_descriptor = nif->fd;
+    _template.private_data = nif->if_index;
+    _template.description = format (0, "netmap socket");
+    nif->clib_file_index = clib_file_add (&file_main, &_template);
   }
 
   /*use configured or generate random MAC address */

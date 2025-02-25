@@ -83,17 +83,16 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 		   hi->sw_if_index, p2pe_subif_id);
 	      return VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
 	    }
-	  vnet_sw_interface_t template = {
-	    .type = VNET_SW_INTERFACE_TYPE_P2P,
-	    .flood_class = VNET_FLOOD_CLASS_NORMAL,
-	    .sup_sw_if_index = hi->sw_if_index,
-	    .sub.id = p2pe_subif_id
-	  };
+	  vnet_sw_interface_t _template = { .type = VNET_SW_INTERFACE_TYPE_P2P,
+					    .flood_class =
+					      VNET_FLOOD_CLASS_NORMAL,
+					    .sup_sw_if_index = hi->sw_if_index,
+					    .sub.id = p2pe_subif_id };
 
-	  clib_memcpy (template.p2p.client_mac, client_mac,
-		       sizeof (template.p2p.client_mac));
+	  clib_memcpy (_template.p2p.client_mac, client_mac,
+		       sizeof (_template.p2p.client_mac));
 
-	  if (vnet_create_sw_interface (vnm, &template, &p2pe_sw_if_index))
+	  if (vnet_create_sw_interface (vnm, &_template, &p2pe_sw_if_index))
 	    return VNET_API_ERROR_SUBIF_CREATE_FAILED;
 
 	  /* Allocate counters for this interface. */

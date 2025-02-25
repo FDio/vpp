@@ -64,19 +64,20 @@ do {                                                    \
  * @param h the callback set
  * @param varargs additional callback parameters
  */
-#define clib_call_callbacks(h, ... )                    \
-do {                                                    \
-  /*                                                    \
-   * Note: fp exists to shut up gcc-6, which            \
-   * produces a warning not seen with gcc-7 or 8        \
-   */                                                   \
-  typeof (h) h_ = (h);                                  \
-  int i;                                                \
-  for (i = 0; i < vec_len (h_); i++)                    \
-    {                                                   \
-      (h_[i]) (__VA_ARGS__);                            \
-    }                                                   \
- } while (0);
+#define clib_call_callbacks(h, ...)                                           \
+  do                                                                          \
+    {                                                                         \
+      /*                                                                      \
+       * Note: fp exists to shut up gcc-6, which                              \
+       * produces a warning not seen with gcc-7 or 8                          \
+       */                                                                     \
+      typeof (h) h_ = (h);                                                    \
+      for (uword i = 0; i < vec_len (h_); i++)                                \
+	{                                                                     \
+	  (h_[i]) (__VA_ARGS__);                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 /** @brief predicate function says whether the specified function is enabled
  * @param h the callback set

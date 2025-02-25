@@ -23,8 +23,9 @@ VLIB_REGISTER_LOG_CLASS (if_rxq_log, static) = {
   .subclass_name = "rx-queue",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (if_rxq_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (if_rxq_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (if_rxq_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (if_rxq_log._class, fmt, __VA_ARGS__)
 
 static u32
 next_thread_index (vnet_main_t *vnm, u32 thread_index)
