@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a941ec8_0a0c069a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-02-25T16:19:54Z",
+      "side": 1,
+      "message": "I would argue that VPP is not C++ project so there is no compatibility issue.\nIf you have strong use case we can discuss this in details on one of next community calls...",
+      "revId": "1bf953c0f75b4736a506dce4222951e154c1a6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
