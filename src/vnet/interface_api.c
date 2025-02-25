@@ -1374,7 +1374,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
   vnet_hw_interface_t *hi;
   int rv = 0;
   u32 id;
-  vnet_sw_interface_t template;
+  vnet_sw_interface_t _template;
   uword *p;
   vnet_interface_main_t *im = &vnm->interface_main;
   u64 sup_and_sub_key;
@@ -1407,17 +1407,17 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
       goto out;
     }
 
-  clib_memset (&template, 0, sizeof (template));
-  template.type = VNET_SW_INTERFACE_TYPE_SUB;
-  template.flood_class = VNET_FLOOD_CLASS_NORMAL;
-  template.sup_sw_if_index = hi->sw_if_index;
-  template.sub.id = id;
-  template.sub.eth.raw_flags = 0;
-  template.sub.eth.flags.one_tag = 1;
-  template.sub.eth.outer_vlan_id = id;
-  template.sub.eth.flags.exact_match = 1;
+  clib_memset (&_template, 0, sizeof (_template));
+  _template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  _template.flood_class = VNET_FLOOD_CLASS_NORMAL;
+  _template.sup_sw_if_index = hi->sw_if_index;
+  _template.sub.id = id;
+  _template.sub.eth.raw_flags = 0;
+  _template.sub.eth.flags.one_tag = 1;
+  _template.sub.eth.outer_vlan_id = id;
+  _template.sub.eth.flags.exact_match = 1;
 
-  error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
+  error = vnet_create_sw_interface (vnm, &_template, &sw_if_index);
   if (error)
     {
       clib_error_report (error);

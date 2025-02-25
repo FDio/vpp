@@ -146,15 +146,15 @@ extern vlib_dma_backend_t intel_dsa_backend;
 format_function_t format_intel_dsa_addr;
 
 #define dsa_log_debug(f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, intel_dsa_log.class, "%s: " f, __func__,    \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, intel_dsa_log._class, "%s: " f, __func__,   \
 	    ##__VA_ARGS__)
 
 #define dsa_log_info(f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_INFO, intel_dsa_log.class, "%s: " f, __func__,     \
+  vlib_log (VLIB_LOG_LEVEL_INFO, intel_dsa_log._class, "%s: " f, __func__,    \
 	    ##__VA_ARGS__)
 
 #define dsa_log_error(f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_ERR, intel_dsa_log.class, "%s: " f, __func__,      \
+  vlib_log (VLIB_LOG_LEVEL_ERR, intel_dsa_log._class, "%s: " f, __func__,     \
 	    ##__VA_ARGS__)
 
 #endif

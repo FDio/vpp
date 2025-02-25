@@ -74,11 +74,10 @@ typedef void (vlib_trace_buffer_callback_t) (struct vlib_main_t *,
 
 /* Callback type for alternate handling of vlib_add_trace internals */
 struct vlib_node_runtime_t;
-struct vlib_buffer_t;
+typedef union vlib_buffer_t vlib_buffer_t;
 typedef void *(vlib_add_trace_callback_t) (struct vlib_main_t *,
-					   struct vlib_node_runtime_t * r,
-					   struct vlib_buffer_t * b,
-					   u32 n_data_bytes);
+					   struct vlib_node_runtime_t *r,
+					   vlib_buffer_t *b, u32 n_data_bytes);
 
 typedef int (vlib_is_packet_traced_fn_t) (vlib_buffer_t *b,
 					  u32 classify_table_index, int func);
@@ -91,7 +90,7 @@ typedef struct vlib_trace_filter_function_registration
   struct vlib_trace_filter_function_registration *next;
 } vlib_trace_filter_function_registration_t;
 
-typedef struct
+typedef struct vlib_trace_main_t
 {
   /* Pool of trace buffers. */
   vlib_trace_header_t **trace_buffer_pool;

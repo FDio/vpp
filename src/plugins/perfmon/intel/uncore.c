@@ -27,11 +27,11 @@ VLIB_REGISTER_LOG_CLASS (if_intel_uncore_log, static) = {
 };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (if_intel_uncore_log.class, fmt, __VA_ARGS__)
+  vlib_log_debug (if_intel_uncore_log._class, fmt, __VA_ARGS__)
 #define log_warn(fmt, ...)                                                    \
-  vlib_log_warn (if_intel_uncore_log.class, fmt, __VA_ARGS__)
+  vlib_log_warn (if_intel_uncore_log._class, fmt, __VA_ARGS__)
 #define log_err(fmt, ...)                                                     \
-  vlib_log_err (if_intel_uncore_log.class, fmt, __VA_ARGS__)
+  vlib_log_err (if_intel_uncore_log._class, fmt, __VA_ARGS__)
 
 #define PERF_INTEL_CODE(event, umask, edge, any, inv, cmask)                  \
   ((event) | (umask) << 8 | (edge) << 18 | (any) << 21 | (inv) << 23 |        \

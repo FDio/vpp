@@ -25,7 +25,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-extern nsh_option_map_t * nsh_md2_lookup_option (u16 class, u8 type);
+extern nsh_option_map_t *nsh_md2_lookup_option (u16 _class, u8 type);
 
 extern u8 * format_nsh_header (u8 * s, va_list * args);
 extern u8 * format_nsh_node_map_trace (u8 * s, va_list * args);
