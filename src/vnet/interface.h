@@ -66,9 +66,10 @@ typedef clib_error_t *(vnet_interface_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 flags);
 
 /* Sub-interface add/del callback. */
-typedef clib_error_t *(vnet_subif_add_del_function_t)
-  (struct vnet_main_t * vnm, u32 if_index,
-   struct vnet_sw_interface_t * template, int is_add);
+typedef clib_error_t *(
+  vnet_subif_add_del_function_t) (struct vnet_main_t *vnm, u32 if_index,
+				  struct vnet_sw_interface_t *_template,
+				  int is_add);
 
 /* Interface set mtu callback. */
 typedef clib_error_t *(vnet_interface_set_max_frame_size_function_t) (
@@ -894,7 +895,7 @@ typedef enum vnet_sw_interface_flags_t_
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
    software interface. */
-typedef struct
+typedef struct vnet_sw_interface_t
 {
   vnet_sw_interface_type_t type:16;
 

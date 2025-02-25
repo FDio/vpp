@@ -128,7 +128,8 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_t *b;
 
-  b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffer_index, 0);
+  b = (vlib_buffer_t *) vlib_buffer_ptr_from_index (bm->buffer_mem_start,
+						    buffer_index, 0);
   vlib_buffer_validate (vm, b);
   return b;
 }
@@ -220,7 +221,7 @@ vlib_get_buffers_with_offset (vlib_main_t *vm, u32 *bi, void **b, u32 count,
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
   void *base = (void *) (buffer_mem_start + offset);
-  int objsize = __builtin_object_size (b, 0);
+  uword objsize = __builtin_object_size (b, 0);
   const int sh = CLIB_LOG2_CACHE_LINE_BYTES;
 
   if (COMPILE_TIME_CONST (count) == 0 && objsize >= 64 * sizeof (b[0]) &&
@@ -483,7 +484,7 @@ vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
   clib_spinlock_lock (&bm->buffer_known_hash_lockp);
   uword *p = hash_get (bm->buffer_known_hash, buffer_index);
   clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
-  return p ? p[0] : VLIB_BUFFER_UNKNOWN;
+  return (vlib_buffer_known_state_t) (p ? p[0] : VLIB_BUFFER_UNKNOWN);
 }
 
 /* Validates sanity of a single buffer.
@@ -780,12 +781,10 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   u32 n_queue = 0, queue[queue_size + 8];
   vlib_buffer_template_t bt = {};
 #if defined(CLIB_HAVE_VEC128)
-  vlib_buffer_t bpi_mask = {.buffer_pool_index = ~0 };
+  vlib_buffer_t bpi_mask = { .buffer_pool_index = (u8) ~0 };
   vlib_buffer_t bpi_vec = {};
-  vlib_buffer_t flags_refs_mask = {
-    .flags = VLIB_BUFFER_NEXT_PRESENT,
-    .ref_count = ~1
-  };
+  vlib_buffer_t flags_refs_mask = { .flags = VLIB_BUFFER_NEXT_PRESENT,
+				    .ref_count = (u8) ~1 };
 #endif
 
   if (PREDICT_FALSE (n_buffers == 0))
@@ -886,14 +885,14 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
 #if defined(CLIB_HAVE_VEC512)
       vlib_buffer_copy_indices (queue + n_queue, buffers, 8);
-      b[0]->template = bt;
-      b[1]->template = bt;
-      b[2]->template = bt;
-      b[3]->template = bt;
-      b[4]->template = bt;
-      b[5]->template = bt;
-      b[6]->template = bt;
-      b[7]->template = bt;
+      b[0]->_template = bt;
+      b[1]->_template = bt;
+      b[2]->_template = bt;
+      b[3]->_template = bt;
+      b[4]->_template = bt;
+      b[5]->_template = bt;
+      b[6]->_template = bt;
+      b[7]->_template = bt;
       n_queue += 8;
 
       vlib_buffer_validate (vm, b[0]);
@@ -915,10 +914,10 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[7]);
 #else
       vlib_buffer_copy_indices (queue + n_queue, buffers, 4);
-      b[0]->template = bt;
-      b[1]->template = bt;
-      b[2]->template = bt;
-      b[3]->template = bt;
+      b[0]->_template = bt;
+      b[1]->_template = bt;
+      b[2]->_template = bt;
+      b[3]->_template = bt;
       n_queue += 4;
 
       vlib_buffer_validate (vm, b[0]);
@@ -977,7 +976,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       if (clib_atomic_sub_fetch (&b[0]->ref_count, 1) == 0)
 	{
-	  b[0]->template = bt;
+	  b[0]->_template = bt;
 	  queue[n_queue++] = bi;
 	}
 
@@ -1115,7 +1114,6 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   vlib_buffer_t *s, *d, *fd;
   uword n_alloc, n_buffers = 1;
   u32 flag_mask = VLIB_BUFFER_COPY_CLONE_FLAGS_MASK;
-  int i;
 
   s = b;
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -1150,7 +1148,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 		    vlib_buffer_get_current (s), s->current_length);
 
   /* next segments */
-  for (i = 1; i < n_buffers; i++)
+  for (uword i = 1; i < n_buffers; i++)
     {
       /* previous */
       d->next_buffer = new_buffers[i];
@@ -1202,9 +1200,9 @@ vlib_buffer_move (vlib_main_t * vm, vlib_buffer_t * b, i16 offset)
   ASSERT (offset + b->current_length <
 	  vlib_buffer_get_default_data_size (vm));
 
-  u8 *source = vlib_buffer_get_current (b);
+  u8 *source = (u8 *) vlib_buffer_get_current (b);
   b->current_data = offset;
-  u8 *destination = vlib_buffer_get_current (b);
+  u8 *destination = (u8 *) vlib_buffer_get_current (b);
   u16 length = b->current_length;
 
   if (source + length <= destination)	/* no overlap */
@@ -1444,8 +1442,8 @@ vlib_buffer_chain_append_data (vlib_main_t * vm,
   u16 len = clib_min (data_len,
 		      n_buffer_bytes - last->current_length -
 		      last->current_data);
-  clib_memcpy_fast (vlib_buffer_get_current (last) + last->current_length,
-		    data, len);
+  clib_memcpy_fast (
+    (u8 *) vlib_buffer_get_current (last) + last->current_length, data, len);
   vlib_buffer_chain_increase_length (first, last, len);
   return len;
 }
@@ -1537,7 +1535,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 	    break; /* malformed chained buffer */
 
 	  b = vlib_get_buffer (vm, b->next_buffer);
-	  src = vlib_buffer_get_current (b);
+	  src = (u8 *) vlib_buffer_get_current (b);
 	  src_len = b->current_length;
 	}
 

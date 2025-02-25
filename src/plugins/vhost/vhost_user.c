@@ -418,7 +418,7 @@ vhost_user_socket_read (clib_file_t * uf)
   vhost_user_intf_t *vui;
   struct cmsghdr *cmsg;
   u8 q;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
@@ -798,12 +798,12 @@ vhost_user_socket_read (clib_file_t * uf)
 	      goto close_socket;
 	    }
 
-	  template.read_function = vhost_user_callfd_read_ready;
-	  template.file_descriptor = fds[0];
-	  template.private_data =
+	  _template.read_function = vhost_user_callfd_read_ready;
+	  _template.file_descriptor = fds[0];
+	  _template.private_data =
 	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
-	  template.description = format (0, "vhost user");
-	  vui->vrings[q].callfd_idx = clib_file_add (&file_main, &template);
+	  _template.description = format (0, "vhost user");
+	  vui->vrings[q].callfd_idx = clib_file_add (&file_main, &_template);
 	}
       else
 	vui->vrings[q].callfd_idx = ~0;
@@ -837,12 +837,11 @@ vhost_user_socket_read (clib_file_t * uf)
 	      goto close_socket;
 	    }
 
-	  template.read_function = vhost_user_kickfd_read_ready;
-	  template.file_descriptor = fds[0];
-	  template.private_data =
-	    (((uword) (vui - vhost_user_main.vhost_user_interfaces)) << 8) +
-	    q;
-	  vui->vrings[q].kickfd_idx = clib_file_add (&file_main, &template);
+	  _template.read_function = vhost_user_kickfd_read_ready;
+	  _template.file_descriptor = fds[0];
+	  _template.private_data =
+	    (((uword) (vui - vhost_user_main.vhost_user_interfaces)) << 8) + q;
+	  vui->vrings[q].kickfd_idx = clib_file_add (&file_main, &_template);
 	}
       else
 	{
@@ -1130,7 +1129,7 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
 {
   int client_fd, client_len;
   struct sockaddr_un client;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
 
@@ -1153,12 +1152,12 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
 
   vu_log_debug (vui, "New client socket for vhost interface %d, fd %d",
 		vui->sw_if_index, client_fd);
-  template.read_function = vhost_user_socket_read;
-  template.error_function = vhost_user_socket_error;
-  template.file_descriptor = client_fd;
-  template.private_data = vui - vhost_user_main.vhost_user_interfaces;
-  template.description = format (0, "vhost interface %d", vui->sw_if_index);
-  vui->clib_file_index = clib_file_add (&file_main, &template);
+  _template.read_function = vhost_user_socket_read;
+  _template.error_function = vhost_user_socket_error;
+  _template.file_descriptor = client_fd;
+  _template.private_data = vui - vhost_user_main.vhost_user_interfaces;
+  _template.description = format (0, "vhost interface %d", vui->sw_if_index);
+  vui->clib_file_index = clib_file_add (&file_main, &_template);
   vui->num_qid = 2;
   return 0;
 }
@@ -1289,14 +1288,14 @@ vhost_user_process (vlib_main_t * vm,
   vhost_user_intf_t *vui;
   struct sockaddr_un sun;
   int sockfd;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword *event_data = 0;
 
   sockfd = -1;
   sun.sun_family = AF_UNIX;
-  template.read_function = vhost_user_socket_read;
-  template.error_function = vhost_user_socket_error;
+  _template.read_function = vhost_user_socket_read;
+  _template.error_function = vhost_user_socket_error;
 
   while (1)
     {
@@ -1345,11 +1344,12 @@ vhost_user_process (vlib_main_t * vm,
                         clib_unix_warning ("fcntl2");
 
 		      vui->sock_errno = 0;
-		      template.file_descriptor = sockfd;
-		      template.private_data =
-			  vui - vhost_user_main.vhost_user_interfaces;
-		      template.description = format (0, "vhost user process");
-		      vui->clib_file_index = clib_file_add (&file_main, &template);
+		      _template.file_descriptor = sockfd;
+		      _template.private_data =
+			vui - vhost_user_main.vhost_user_interfaces;
+		      _template.description = format (0, "vhost user process");
+		      vui->clib_file_index =
+			clib_file_add (&file_main, &_template);
 		      vui->num_qid = 2;
 
 		      /* This sockfd is considered consumed */
@@ -1590,12 +1590,12 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   if (server_sock_fd != -1)
     {
-      clib_file_t template = { 0 };
-      template.read_function = vhost_user_socksvr_accept_ready;
-      template.file_descriptor = server_sock_fd;
-      template.private_data = vui - vum->vhost_user_interfaces;	//hw index
-      template.description = format (0, "vhost user %d", sw);
-      vui->unix_server_index = clib_file_add (&file_main, &template);
+      clib_file_t _template = { 0 };
+      _template.read_function = vhost_user_socksvr_accept_ready;
+      _template.file_descriptor = server_sock_fd;
+      _template.private_data = vui - vum->vhost_user_interfaces; // hw index
+      _template.description = format (0, "vhost user %d", sw);
+      vui->unix_server_index = clib_file_add (&file_main, &_template);
     }
   else
     {

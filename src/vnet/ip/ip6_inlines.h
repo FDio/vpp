@@ -50,8 +50,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
   const tcp_header_t *tcp;
-  const udp_header_t *udp = (void *) (ip + 1);
-  const gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  const udp_header_t *udp = (const udp_header_t *) (ip + 1);
+  const gtpv1u_header_t *gtpu = (const gtpv1u_header_t *) (udp + 1);
   u64 a, b, c;
   u64 t1, t2;
   u32 t3;
@@ -62,26 +62,28 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   if (PREDICT_TRUE ((protocol == IP_PROTOCOL_TCP) || is_udp))
     {
       is_tcp_udp = 1;
-      tcp = (void *) (ip + 1);
+      tcp = (const tcp_header_t *) (ip + 1);
     }
   else
     {
       const void *cur = ip + 1;
       if (protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
 	{
-	  const ip6_hop_by_hop_header_t *hbh = cur;
+	  const ip6_hop_by_hop_header_t *hbh =
+	    (const ip6_hop_by_hop_header_t *) cur;
 	  protocol = hbh->protocol;
-	  cur += (hbh->length + 1) * 8;
+	  cur = (u8 *) cur + (hbh->length + 1) * 8;
 	}
       if (protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	{
-	  const ip6_fragment_ext_header_t *frag = cur;
+	  const ip6_fragment_ext_header_t *frag =
+	    (const ip6_fragment_ext_header_t *) cur;
 	  protocol = frag->protocol;
 	}
       else if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP)
 	{
 	  is_tcp_udp = 1;
-	  tcp = cur;
+	  tcp = (const tcp_header_t *) cur;
 	}
     }
 
@@ -186,7 +188,7 @@ vlib_buffer_push_ip6_custom (vlib_main_t * vm, vlib_buffer_t * b,
   u16 payload_length;
 
   /* make some room */
-  ip6h = vlib_buffer_push_uninit (b, sizeof (ip6_header_t));
+  ip6h = (ip6_header_t *) vlib_buffer_push_uninit (b, sizeof (ip6_header_t));
   ASSERT (flow_label < 1 << 20);
   ip6h->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 ((0x6 << 28) | flow_label);

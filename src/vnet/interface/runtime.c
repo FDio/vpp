@@ -27,8 +27,9 @@ VLIB_REGISTER_LOG_CLASS (if_rxq_log, static) = {
   .subclass_name = "runtime",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (if_rxq_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (if_rxq_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (if_rxq_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (if_rxq_log._class, fmt, __VA_ARGS__)
 
 static char *node_state_str[] = {
   [VLIB_NODE_STATE_DISABLED] = "disabled",

@@ -7,11 +7,11 @@
 #include <vlib/vlib.h>
 
 #define dma_log_debug(f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, dma_log.class, "%s: " f, __func__,          \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, dma_log._class, "%s: " f, __func__,         \
 	    ##__VA_ARGS__)
 
 #define dma_log_info(f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_INFO, dma_log.class, "%s: " f, __func__,           \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dma_log._class, "%s: " f, __func__,          \
 	    ##__VA_ARGS__)
 
 struct vlib_dma_batch;

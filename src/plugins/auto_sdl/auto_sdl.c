@@ -16,9 +16,10 @@ VLIB_REGISTER_LOG_CLASS (auto_sdl_log, static) = { .class_name = "auto",
 						   .subclass_name = "sdl" };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (auto_sdl_log.class, "%s: " fmt, __func__, __VA_ARGS__)
-#define log_warn(fmt, ...) vlib_log_warn (auto_sdl_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)  vlib_log_err (auto_sdl_log.class, fmt, __VA_ARGS__)
+  vlib_log_debug (auto_sdl_log._class, "%s: " fmt, __func__, __VA_ARGS__)
+#define log_warn(fmt, ...)                                                    \
+  vlib_log_warn (auto_sdl_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (auto_sdl_log._class, fmt, __VA_ARGS__)
 
 static auto_sdl_per_fib_t *
 auto_sdlb_get_for_fib_index (u32 fib_proto, u32 fib_index, int alloc)

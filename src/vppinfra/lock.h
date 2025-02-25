@@ -64,7 +64,8 @@ typedef struct clib_spinlock_s *clib_spinlock_t;
 static inline void
 clib_spinlock_init (clib_spinlock_t * p)
 {
-  *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *p = (clib_spinlock_t) clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+						 CLIB_CACHE_LINE_BYTES);
   clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 
@@ -151,7 +152,8 @@ typedef struct clib_rw_lock_
 always_inline void
 clib_rwlock_init (clib_rwlock_t * p)
 {
-  *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *p = (clib_rwlock_t) clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+					       CLIB_CACHE_LINE_BYTES);
   clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 

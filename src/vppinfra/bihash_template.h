@@ -411,10 +411,8 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   BVT (clib_bihash_bucket) * b;
   int i, limit;
 
-  static const BVT (clib_bihash_bucket) mask = {
-    .linear_search = 1,
-    .log2_pages = -1
-  };
+  static const BVT (clib_bihash_bucket)
+    mask = { .linear_search = 1, .log2_pages = (u8) -1 };
 
 #if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (h->instantiated == 0))
@@ -433,7 +431,7 @@ static inline int BV (clib_bihash_search_inline_with_hash)
 	CLIB_PAUSE ();
     }
 
-  v = BV (clib_bihash_get_value) (h, b->offset);
+  v = (BVT (clib_bihash_value) *) BV (clib_bihash_get_value) (h, b->offset);
 
   /* If the bucket has unresolvable collisions, use linear search */
   limit = BIHASH_KVP_PER_PAGE;
@@ -494,7 +492,7 @@ static inline void BV (clib_bihash_prefetch_data)
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return;
 
-  v = BV (clib_bihash_get_value) (h, b->offset);
+  v = (BVT (clib_bihash_value) *) BV (clib_bihash_get_value) (h, b->offset);
 
   if (PREDICT_FALSE (b->log2_pages && b->linear_search == 0))
     v += extract_bits (hash, h->log2_nbuckets, b->log2_pages);
@@ -512,10 +510,8 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   BVT (clib_bihash_bucket) * b;
   int i, limit;
 
-  static const BVT (clib_bihash_bucket) mask = {
-    .linear_search = 1,
-    .log2_pages = -1
-  };
+  static const BVT (clib_bihash_bucket)
+    mask = { .linear_search = 1, .log2_pages = (u8) -1 };
 
   ASSERT (valuep);
 
@@ -536,7 +532,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
 	CLIB_PAUSE ();
     }
 
-  v = BV (clib_bihash_get_value) (h, b->offset);
+  v = (BVT (clib_bihash_value) *) BV (clib_bihash_get_value) (h, b->offset);
 
   /* If the bucket has unresolvable collisions, use linear search */
   limit = BIHASH_KVP_PER_PAGE;
