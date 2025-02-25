@@ -8,7 +8,8 @@
 #include <http/http.h>
 
 static http_token_t http_header_names[] = {
-#define _(sym, str) { http_token_lit (str) },
+#define _(sym, str_canonical, str_lower, hpack_index)                         \
+  { http_token_lit (str_canonical) },
   foreach_http_header_name
 #undef _
 };

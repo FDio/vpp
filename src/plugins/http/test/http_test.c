@@ -954,6 +954,69 @@ http_test_hpack (vlib_main_t *vm)
     &table);
   _hpack_dynamic_table_free (&table);
   HTTP_TEST ((result == 0), "request with Huffman Coding (result=%d)", result);
+
+  vlib_cli_output (vm, "hpack_serialize_response");
+
+  hpack_response_control_data_t resp_cd;
+  u8 *server_name;
+  u8 *date;
+
+  static void (*_hpack_serialize_response) (
+    u8 * app_headers, u32 app_headers_len,
+    hpack_response_control_data_t * control_data, u8 * *dst);
+
+  _hpack_serialize_response =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_serialize_response");
+
+  server_name = format (0, "http unit tests");
+  date = format (0, "Mon, 21 Oct 2013 20:13:21 GMT");
+
+  vec_validate (buf, 127);
+  vec_reset_length (buf);
+  resp_cd.sc = HTTP_STATUS_GATEWAY_TIMEOUT;
+  resp_cd.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
+  resp_cd.server_name = server_name;
+  resp_cd.server_name_len = vec_len (server_name);
+  resp_cd.date = date;
+  resp_cd.date_len = vec_len (date);
+  u8 expected1[] =
+    "\x08\x03\x35\x30\x34\x0F\x27\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94"
+    "\x7F\x0F\x12\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B"
+    "\x81\x66\xE0\x82\xA6\x2D\x1B\xFF";
+  _hpack_serialize_response (0, 0, &resp_cd, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected1) - 1) &&
+	      !memcmp (buf, expected1, sizeof (expected1) - 1)),
+	     "response encoded as %U", format_hex_bytes, buf, vec_len (buf));
+  vec_reset_length (buf);
+
+  resp_cd.sc = HTTP_STATUS_OK;
+  resp_cd.content_len = 1024;
+  http_headers_ctx_t headers;
+  u8 *headers_buf = 0;
+  vec_validate (headers_buf, 127);
+  http_init_headers_ctx (&headers, headers_buf, vec_len (headers_buf));
+  http_add_header (&headers, HTTP_HEADER_CONTENT_TYPE,
+		   http_token_lit ("text/plain"));
+  http_add_header (&headers, HTTP_HEADER_CACHE_STATUS,
+		   http_token_lit ("ExampleCache; hit"));
+  http_add_custom_header (&headers, http_token_lit ("sandwich"),
+			  http_token_lit ("spam"));
+  u8 expected2[] =
+    "\x88\x0F\x27\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7F\x0F\x12\x96"
+    "\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66\xE0\x82"
+    "\xA6\x2D\x1B\xFF\x0F\x0D\x83\x08\x04\xD7\x0F\x10\x87\x49\x7C\xA5\x8A\xE8"
+    "\x19\xAA\x00\x88\x20\xC9\x39\x56\x42\x46\x9B\x51\x8D\xC1\xE4\x74\xD7\x41"
+    "\x6F\x0C\x93\x97\xED\x49\xCC\x9F\x00\x86\x40\xEA\x93\xC1\x89\x3F\x83\x45"
+    "\x63\xA7";
+  _hpack_serialize_response (headers_buf, headers.tail_offset, &resp_cd, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected2) - 1) &&
+	      !memcmp (buf, expected2, sizeof (expected2) - 1)),
+	     "response encoded as %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+  vec_free (headers_buf);
+  vec_free (server_name);
+  vec_free (date);
+
   return 0;
 }
 

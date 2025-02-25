@@ -7,6 +7,7 @@
 #include <http/http.h>
 #include <http/http2/hpack.h>
 #include <http/http2/huffman_table.h>
+#include <http/http_status_codes.h>
 
 #define HPACK_STATIC_TABLE_SIZE 61
 
@@ -85,6 +86,20 @@ static hpack_static_table_entry_t
     { name_val_token_lit ("via", "") },
     { name_val_token_lit ("www-authenticate", "") },
   };
+
+typedef struct
+{
+  char *base;
+  uword len;
+  u8 static_table_index;
+} hpack_token_t;
+
+static hpack_token_t hpack_headers[] = {
+#define _(sym, str_canonical, str_lower, hpack_index)                         \
+  { http_token_lit (str_lower), hpack_index },
+  foreach_http_header_name
+#undef _
+};
 
 __clib_export uword
 hpack_decode_int (u8 **src, u8 *end, u8 prefix_len)
@@ -892,4 +907,195 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   HTTP_DBG (2, "%U", format_hpack_dynamic_table, dynamic_table);
   return HTTP2_ERROR_NO_ERROR;
+}
+
+static inline u8 *
+hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
+		     u32 value_len)
+{
+  hpack_token_t *name_token;
+  u8 *a, *b;
+  u32 orig_len, actual_size;
+
+  orig_len = vec_len (dst);
+  name_token = &hpack_headers[name];
+  if (name_token->static_table_index)
+    {
+      /* static table index with 4 bit prefix is max 2 bytes */
+      vec_add2 (dst, a, 2 + value_len + HPACK_ENCODED_INT_MAX_LEN);
+      /* Literal Header Field without Indexing — Indexed Name */
+      *a = 0x00; /* zero first 4 bits */
+      b = hpack_encode_int (a, name_token->static_table_index, 4);
+    }
+  else
+    {
+      /* one extra byte for 4 bit prefix */
+      vec_add2 (dst, a,
+		name_token->len + value_len + HPACK_ENCODED_INT_MAX_LEN * 2 +
+		  1);
+      b = a;
+      /* Literal Header Field without Indexing — New Name */
+      *b++ = 0x00;
+      b = hpack_encode_string (b, (const u8 *) name_token->base,
+			       name_token->len);
+    }
+  b = hpack_encode_string (b, value, value_len);
+
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len,
+			    const u8 *value, u32 value_len)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  orig_len = vec_len (dst);
+  /* one extra byte for 4 bit prefix */
+  vec_add2 (dst, a, name_len + value_len + HPACK_ENCODED_INT_MAX_LEN * 2 + 1);
+  b = a;
+  /* Literal Header Field without Indexing — New Name */
+  *b++ = 0x00;
+  b = hpack_encode_string (b, name, name_len);
+  b = hpack_encode_string (b, value, value_len);
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_status_code (u8 *dst, http_status_code_t sc)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+#define encode_common_sc(_index)                                              \
+  vec_add2 (dst, a, 1);                                                       \
+  *a++ = 0x80 | _index;
+
+  switch (sc)
+    {
+    case HTTP_STATUS_OK:
+      encode_common_sc (8);
+      break;
+    case HTTP_STATUS_NO_CONTENT:
+      encode_common_sc (9);
+      break;
+    case HTTP_STATUS_PARTIAL_CONTENT:
+      encode_common_sc (10);
+      break;
+    case HTTP_STATUS_NOT_MODIFIED:
+      encode_common_sc (11);
+      break;
+    case HTTP_STATUS_BAD_REQUEST:
+      encode_common_sc (12);
+      break;
+    case HTTP_STATUS_NOT_FOUND:
+      encode_common_sc (13);
+      break;
+    case HTTP_STATUS_INTERNAL_ERROR:
+      encode_common_sc (14);
+      break;
+    default:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 5);
+      b = a;
+      /* Literal Header Field without Indexing — Indexed Name */
+      *b++ = 8;
+      b = hpack_encode_string (b, (const u8 *) http_status_code_str[sc], 3);
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
+      break;
+    }
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_content_len (u8 *dst, u64 content_len)
+{
+  u8 digit_buffer[20];
+  u8 *d = digit_buffer + sizeof (digit_buffer);
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  orig_len = vec_len (dst);
+  vec_add2 (dst, a, 3 + sizeof (digit_buffer));
+  b = a;
+
+  /* static table index 28 */
+  *b++ = 0x0F;
+  *b++ = 0x0D;
+  do
+    {
+      *--d = '0' + content_len % 10;
+      content_len /= 10;
+    }
+  while (content_len);
+
+  b = hpack_encode_string (b, d, digit_buffer + sizeof (digit_buffer) - d);
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+  return dst;
+}
+
+__clib_export void
+hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
+			  hpack_response_control_data_t *control_data,
+			  u8 **dst)
+{
+  u8 *p, *end;
+
+  p = *dst;
+
+  /* status code must be first since it is pseudo-header */
+  p = hpack_encode_status_code (p, control_data->sc);
+
+  /* server name */
+  p = hpack_encode_header (p, HTTP_HEADER_SERVER, control_data->server_name,
+			   control_data->server_name_len);
+
+  /* date */
+  p = hpack_encode_header (p, HTTP_HEADER_DATE, control_data->date,
+			   control_data->date_len);
+
+  /* content length if any */
+  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+    p = hpack_encode_content_len (p, control_data->content_len);
+
+  if (!app_headers_len)
+    {
+      *dst = p;
+      return;
+    }
+
+  end = app_headers + app_headers_len;
+  while (app_headers < end)
+    {
+      /* custom header name? */
+      u32 *tmp = (u32 *) app_headers;
+      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+	{
+	  http_custom_token_t *name, *value;
+	  name = (http_custom_token_t *) app_headers;
+	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
+	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  value = (http_custom_token_t *) app_headers;
+	  app_headers += sizeof (http_custom_token_t) + value->len;
+	  p = hpack_encode_custom_header (p, name->token, name_len,
+					  value->token, value->len);
+	}
+      else
+	{
+	  http_app_header_t *header;
+	  header = (http_app_header_t *) app_headers;
+	  app_headers += sizeof (http_app_header_t) + header->value.len;
+	  p = hpack_encode_header (p, header->name, header->value.token,
+				   header->value.len);
+	}
+    }
+
+  *dst = p;
 }
