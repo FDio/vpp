@@ -67,6 +67,24 @@
       "message": "you might end sending some headers, which were lucky to fit in the buffer, and are no more valid for status 500... so you better make sure no headers go to the client in this case",
       "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73f2fa85_2f44decf",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-26T19:07:15Z",
+      "side": 1,
+      "message": "and you will send body/data too",
+      "parentUuid": "f034b146_1b29f951",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
