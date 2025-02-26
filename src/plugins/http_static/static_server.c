@@ -27,8 +27,40 @@
 /*? %%clicmd:group_label Static HTTP Server %% ?*/
 
 #define HSS_FIFO_THRESH (16 << 10)
-
+#define HSS_HEADER_BUF_MAX_SIZE 16192
 hss_main_t hss_main;
+
+static int
+hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
+		uword value_len)
+{
+  u32 needed_size = 0;
+  while (http_add_header (&hs->resp_headers, name, value, value_len) == -1)
+    {
+      if (needed_size)
+	{
+	  http_truncate_headers_list (&hs->resp_headers);
+	  hs->data_len = 0;
+	  return -1;
+	}
+      else
+	needed_size = hs->resp_headers.tail_offset +
+		      sizeof (http_app_header_t) + value_len;
+      if (needed_size < HSS_HEADER_BUF_MAX_SIZE)
+	{
+	  vec_resize (hs->headers_buf, sizeof (http_app_header_t) + value_len);
+	  hs->resp_headers.len = needed_size;
+	  hs->resp_headers.buf = hs->headers_buf;
+	}
+      else
+	{
+	  http_truncate_headers_list (&hs->resp_headers);
+	  hs->data_len = 0;
+	  return -1;
+	}
+    }
+  return 0;
+}
 
 static hss_session_t *
 hss_session_alloc (u32 thread_index)
@@ -175,8 +207,9 @@ hss_session_send_data (hss_url_handler_args_t *args)
 
   /* Set content type only if we have some response data */
   if (hs->data_len)
-    http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
-		     http_content_type_token (args->ct));
+    if (hss_add_header (hs, HTTP_HEADER_CONTENT_TYPE,
+			http_content_type_token (args->ct)))
+      args->sc = HTTP_STATUS_INTERNAL_ERROR;
 
   start_send_data (hs, args->sc);
 }
@@ -305,8 +338,9 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
   /* Set content type only if we have some response data */
   if (hs->data_len)
-    http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
-		     http_content_type_token (args.ct));
+    if (hss_add_header (hs, HTTP_HEADER_CONTENT_TYPE,
+			http_content_type_token (args.ct)))
+      sc = HTTP_STATUS_INTERNAL_ERROR;
 
   start_send_data (hs, sc);
 
@@ -383,8 +417,10 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
 
   vec_free (port_str);
 
-  http_add_header (&hs->resp_headers, HTTP_HEADER_LOCATION,
-		   (const char *) redirect, vec_len (redirect));
+  if (hss_add_header (hs, HTTP_HEADER_LOCATION, (const char *) redirect,
+		      vec_len (redirect)))
+    return HTTP_STATUS_INTERNAL_ERROR;
+
   vec_free (redirect);
   hs->data_len = 0;
   hs->free_data = 1;
@@ -463,13 +499,16 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
    * Last-Modified
    */
   type = content_type_from_request (target);
-  http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
-		   http_content_type_token (type));
-  http_add_header (&hs->resp_headers, HTTP_HEADER_CACHE_CONTROL,
-		   (const char *) hsm->max_age_formatted,
-		   vec_len (hsm->max_age_formatted));
-  http_add_header (&hs->resp_headers, HTTP_HEADER_LAST_MODIFIED,
-		   (const char *) last_modified, vec_len (last_modified));
+  if (hss_add_header (hs, HTTP_HEADER_CONTENT_TYPE,
+		      http_content_type_token (type)) ||
+      hss_add_header (hs, HTTP_HEADER_CACHE_CONTROL,
+		      (const char *) hsm->max_age_formatted,
+		      vec_len (hsm->max_age_formatted)) ||
+      hss_add_header (hs, HTTP_HEADER_LAST_MODIFIED,
+		      (const char *) last_modified, vec_len (last_modified)))
+    {
+      sc = HTTP_STATUS_INTERNAL_ERROR;
+    }
 
 done:
   vec_free (sanitized_path);
@@ -521,9 +560,10 @@ hss_ts_rx_callback (session_t *ts)
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST))
     {
-      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
-		       http_token_lit ("GET, POST"));
-      start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
+      if (hss_add_header (hs, HTTP_HEADER_ALLOW, http_token_lit ("GET, POST")))
+	start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
+      else
+	start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto err_done;
     }
 
