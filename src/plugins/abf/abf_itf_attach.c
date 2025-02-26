@@ -681,18 +681,20 @@ VLIB_REGISTER_NODE (abf_ip6_node) =
   }
 };
 
-VNET_FEATURE_INIT (abf_ip4_feat, static) =
-{
+VNET_FEATURE_INIT (abf_ip4_feat, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "abf-input-ip4",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+			       "ip4-full-reassembly-feature",
+			       "ip4-sv-reassembly-feature"),
 };
 
-VNET_FEATURE_INIT (abf_ip6_feat, static) =
-{
+VNET_FEATURE_INIT (abf_ip6_feat, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "abf-input-ip6",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa",
+			       "ip6-full-reassembly-feature",
+			       "ip6-sv-reassembly-feature"),
 };
 
 static fib_node_t *
