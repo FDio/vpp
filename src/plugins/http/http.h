@@ -535,7 +535,7 @@ http_path_sanitize (u8 *path)
     {
       segment_len = segments[i + 1] - segments[i];
       /* aside from dots, skip empty segments (double slashes) */
-      if ((segment_len == 2 && path[segments[i]] == '.') || segment_len == 1)
+      if ((segment_len == 2 && path[segments[i]] == '.'))
 	segment_len = 0;
       else if (segment_len == 3 && path[segments[i]] == '.' &&
 	       path[segments[i] + 1] == '.')
@@ -924,20 +924,21 @@ http_init_headers_ctx (http_headers_ctx_t *ctx, u8 *buf, u32 len)
  * @param value     Header value pointer.
  * @param value_len Header value length.
  */
-always_inline void
+always_inline int
 http_add_header (http_headers_ctx_t *ctx, http_header_name_t name,
 		 const char *value, uword value_len)
 {
   http_app_header_t *header;
 
-  ASSERT ((ctx->tail_offset + sizeof (http_app_header_t) + value_len) <
-	  ctx->len);
+  if ((ctx->tail_offset + sizeof (http_app_header_t) + value_len) > ctx->len)
+    return -1;
 
   header = (http_app_header_t *) (ctx->buf + ctx->tail_offset);
   header->name = (u32) name;
   header->value.len = (u32) value_len;
   clib_memcpy (header->value.token, (u8 *) value, value_len);
   ctx->tail_offset += sizeof (http_app_header_t) + value_len;
+  return 0;
 }
 
 /**
