@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44eeb972_fe1e7189",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 926,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-26T18:52:18Z",
+      "side": 1,
+      "message": "add @return...",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67104c9b_de89170f",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 954,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-26T18:52:18Z",
+      "side": 1,
+      "message": "change also this one",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d35199e_2fc5a286",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-26T18:52:18Z",
+      "side": 1,
+      "message": "this add N elements to end of vector (incrementing size)",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f034b146_1b29f951",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-26T18:52:18Z",
+      "side": 1,
+      "message": "you might end sending some headers, which were lucky to fit in the buffer, and are no more valid for status 500... so you better make sure no headers go to the client in this case",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
