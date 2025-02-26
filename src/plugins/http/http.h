@@ -923,21 +923,24 @@ http_init_headers_ctx (http_headers_ctx_t *ctx, u8 *buf, u32 len)
  * @param name      Header name ID (see @ref http_header_name_t).
  * @param value     Header value pointer.
  * @param value_len Header value length.
+ *
+ * @return @c 0 if in case of success, @c -1 otherwise.
  */
-always_inline void
+always_inline int
 http_add_header (http_headers_ctx_t *ctx, http_header_name_t name,
 		 const char *value, uword value_len)
 {
   http_app_header_t *header;
 
-  ASSERT ((ctx->tail_offset + sizeof (http_app_header_t) + value_len) <
-	  ctx->len);
+  if ((ctx->tail_offset + sizeof (http_app_header_t) + value_len) > ctx->len)
+    return -1;
 
   header = (http_app_header_t *) (ctx->buf + ctx->tail_offset);
   header->name = (u32) name;
   header->value.len = (u32) value_len;
   clib_memcpy (header->value.token, (u8 *) value, value_len);
   ctx->tail_offset += sizeof (http_app_header_t) + value_len;
+  return 0;
 }
 
 /**
@@ -948,15 +951,19 @@ http_add_header (http_headers_ctx_t *ctx, http_header_name_t name,
  * @param name_len  Header name length.
  * @param value     Header value pointer.
  * @param value_len Header value length.
+ *
+ * @return @c 0 if in case of success, @c -1 otherwise.
  */
-always_inline void
+always_inline int
 http_add_custom_header (http_headers_ctx_t *ctx, const char *name,
 			uword name_len, const char *value, uword value_len)
 {
   http_custom_token_t *token;
 
-  ASSERT ((ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len +
-	   value_len) < ctx->len);
+  if ((ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len +
+       value_len) < ctx->len)
+    ;
+  return -1;
 
   /* name */
   token = (http_custom_token_t *) (ctx->buf + ctx->tail_offset);
@@ -969,6 +976,19 @@ http_add_custom_header (http_headers_ctx_t *ctx, const char *name,
   token->len = (u32) value_len;
   clib_memcpy (token->token, (u8 *) value, token->len);
   ctx->tail_offset += sizeof (http_custom_token_t) + value_len;
+  return 0;
+}
+
+/**
+ * Truncate the header ctx buffer
+ *
+ * @param ctx Headers list context.
+ */
+always_inline void
+http_truncate_headers_ctx (http_headers_ctx_t *ctx)
+{
+  ctx->tail_offset = 0;
+  clib_memset (ctx->buf, 0, ctx->len);
 }
 
 typedef enum http_uri_host_type_
