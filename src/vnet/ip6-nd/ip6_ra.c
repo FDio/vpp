@@ -628,8 +628,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
-{
+VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node, static) = {
   .function = icmp6_router_solicitation,
   .name = "icmp6-router-solicitation",
 
@@ -638,14 +637,15 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
   .format_trace = format_icmp6_input_trace,
 
   .n_next_nodes = ICMP6_ROUTER_SOLICITATION_N_NEXT,
-  .next_nodes = {
-    [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "ip6-drop",
-    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite-mcast",
-    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] = "interface-output",
-  },
+  .next_nodes = { [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "ip6-drop",
+		  [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] =
+		    "ip6-rewrite-mcast",
+		  [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] =
+		    "interface-output" },
 };
 
- /* validate advertised info for consistancy (see RFC-4861 section 6.2.7) - log any inconsistencies, packet will always  be dropped  */
+/* validate advertised info for consistancy (see RFC-4861 section 6.2.7) - log
+ * any inconsistencies, packet will always  be dropped  */
 static_always_inline uword
 icmp6_router_advertisement (vlib_main_t * vm,
 			    vlib_node_runtime_t * node, vlib_frame_t * frame)
