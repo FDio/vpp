@@ -232,24 +232,34 @@ gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
 
   if (!is_ipv6)
     {
-      vec_validate (rewrite, sizeof (*h4) - 1);
+      /* Allocate space for maximum header size including key */
+      vec_validate (rewrite, sizeof (*h4) + sizeof(u32) - 1);
       h4 = (ip4_and_gre_header_t *) rewrite;
       gre = &h4->gre;
       h4->ip4.ip_version_and_header_length = 0x45;
+      h4->ip4.flags_and_fragment_offset = 0; //to prevent fragment offset field from being corrupted by GRE Key
       h4->ip4.ttl = 254;
       h4->ip4.protocol = IP_PROTOCOL_GRE;
       /* fixup ip4 header length and checksum after-the-fact */
       h4->ip4.src_address.as_u32 = t->tunnel_src.ip4.as_u32;
       h4->ip4.dst_address.as_u32 = dst->ip4.as_u32;
+
+      /* Set total IP length including GRE header and key if present */
+      u16 total_length = sizeof(ip4_header_t) + sizeof(gre_header_t);
+      if (t->key_present)
+          total_length += sizeof(u32);
+      h4->ip4.length = clib_host_to_net_u16(total_length);
+
       h4->ip4.checksum = ip4_header_checksum (&h4->ip4);
     }
   else
     {
-      vec_validate (rewrite, sizeof (*h6) - 1);
+      /* Allocate space for maximum header size including key */
+      vec_validate (rewrite, sizeof (*h6) + sizeof(u32) - 1);
       h6 = (ip6_and_gre_header_t *) rewrite;
       gre = &h6->gre;
-      h6->ip6.ip_version_traffic_class_and_flow_label =
-	clib_host_to_net_u32 (6 << 28);
+      h6->ip6.ip_version_traffic_class_and_flow_label = 
+        clib_host_to_net_u32 ((6 << 28) | (0 << 20)); // Clear flow label
       h6->ip6.hop_limit = 255;
       h6->ip6.protocol = IP_PROTOCOL_GRE;
       /* fixup ip6 header length and checksum after-the-fact */
@@ -258,6 +268,17 @@ gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
       h6->ip6.dst_address.as_u64[0] = dst->ip6.as_u64[0];
       h6->ip6.dst_address.as_u64[1] = dst->ip6.as_u64[1];
     }
+
+  /* Set GRE header fields */
+  gre->flags_and_version = 0;  // Clear flags first
+  gre->protocol = clib_host_to_net_u16(gre_proto_from_vnet_link(link_type));
+
+  if (t->key_present) 
+  {
+    gre_header_with_key_t *grek = (gre_header_with_key_t *)gre;
+    grek->flags_and_version = clib_host_to_net_u16(GRE_FLAGS_KEY);
+    grek->key = clib_host_to_net_u32(t->gre_key);
+  }
 
   if (PREDICT_FALSE (t->type == GRE_TUNNEL_TYPE_ERSPAN))
     {
@@ -279,13 +300,36 @@ gre44_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip4_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+
+  /* Clear fragment offset */
+  ip0->ip4.flags_and_fragment_offset = 0;
   flags = pointer_to_uword (data);
+
+  /* Access GRE headers */
+  gre_header_t *gre0;
+  gre_header_with_key_t *grek0;
+  u16 gre_flags;
+  u32 gre_key;
+  u16 gre_proto;
+  gre0 = &ip0->gre;
+  grek0 = (gre_header_with_key_t *)gre0;
+
+  /* Save GRE header values */
+  gre_flags = grek0->flags_and_version;
+  gre_key = grek0->key;
+  gre_proto = grek0->protocol;
 
   /* Fixup the checksum and len fields in the GRE tunnel encap
    * that was applied at the midchain node */
   ip0->ip4.length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
   tunnel_encap_fixup_4o4 (flags, (ip4_header_t *) (ip0 + 1), &ip0->ip4);
+
+  /* Restore GRE header values */
+  grek0->flags_and_version = gre_flags;
+  grek0->key = gre_key;
+  grek0->protocol = gre_proto;
+
   ip0->ip4.checksum = ip4_header_checksum (&ip0->ip4);
 }
 
@@ -297,6 +341,7 @@ gre64_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip4_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+  ip0->ip4.flags_and_fragment_offset = 0; // to prevent fragment offset corruption
   flags = pointer_to_uword (data);
 
   /* Fixup the checksum and len fields in the GRE tunnel encap
@@ -314,6 +359,7 @@ grex4_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip4_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+  ip0->flags_and_fragment_offset = 0; // to prevent fragment offset corruption
 
   /* Fixup the checksum and len fields in the GRE tunnel encap
    * that was applied at the midchain node */
@@ -329,6 +375,14 @@ gre46_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip6_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+
+  /* Clear IPv6 flow label to prevent corruption */
+  ip0->ip6.ip_version_traffic_class_and_flow_label &= 
+    clib_host_to_net_u32(0xFFF00000); // Keep only version & traffic class
+    
+  /* Ensure protocol is set to GRE */
+  ip0->ip6.protocol = IP_PROTOCOL_GRE;
+
   flags = pointer_to_uword (data);
 
   /* Fixup the payload length field in the GRE tunnel encap that was applied
@@ -346,6 +400,13 @@ gre66_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip6_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+  /* Clear IPv6 flow label (bits 0-19 of the first 
+   * 32-bit word after version & traffic class) */
+  ip0->ip6.ip_version_traffic_class_and_flow_label &= 
+    clib_host_to_net_u32(0xFFF00000); // Keep only version & traffic class
+  
+  /* Ensure protocol is set to GRE */
+  ip0->ip6.protocol = IP_PROTOCOL_GRE;
   flags = pointer_to_uword (data);
 
   /* Fixup the payload length field in the GRE tunnel encap that was applied
@@ -362,6 +423,13 @@ grex6_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
   ip6_and_gre_header_t *ip0;
 
   ip0 = vlib_buffer_get_current (b0);
+
+ /*  Clear IPv6 flow label to prevent corruption */
+ ip0->ip6.ip_version_traffic_class_and_flow_label &= 
+ clib_host_to_net_u32(0xFFF00000); // Keep only version & traffic class
+   
+ // Ensure protocol is set to GRE
+ ip0->ip6.protocol = IP_PROTOCOL_GRE;
 
   /* Fixup the payload length field in the GRE tunnel encap that was applied
    * at the midchain node */
@@ -705,7 +773,8 @@ format_gre_tunnel_name (u8 *s, va_list *args)
     return format (s, "<improperly-referenced>");
 
   t = pool_elt_at_index (gm->tunnels, dev_instance);
-  return format (s, "gre%d", t->user_instance);
+  s = format (s, "gre%d", t->user_instance);
+  return s;
 }
 
 static u8 *
