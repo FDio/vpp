@@ -44,7 +44,7 @@ if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   DOCKER_HST_BUILDER="hst_builder"
   set -x
   if ! docker buildx ls --format "{{.Name}}" | grep -q "${DOCKER_HST_BUILDER}"; then
-    docker buildx create --name=${DOCKER_HST_BUILDER} --driver=docker-container --use --bootstrap || true
+    docker buildx create --use --driver-opt env.http_proxy="$HTTP_PROXY" --driver-opt env.https_proxy="$HTTP_PROXY" --driver-opt '"env.no_proxy='"$NO_PROXY"'"' --name=${DOCKER_HST_BUILDER} --driver=docker-container --use --bootstrap || true
   fi
   set -x
   DOCKER_CACHE_ARGS="--builder=${DOCKER_HST_BUILDER} --load --cache-to type=local,dest=${DOCKER_CACHE_DIR},mode=max --cache-from type=local,src=${DOCKER_CACHE_DIR}"
