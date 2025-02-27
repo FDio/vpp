@@ -60,8 +60,22 @@ typedef enum gre_tunnel_type_t_
 #undef _
 } __clib_packed gre_tunnel_type_t;
 
-extern u8 *format_gre_tunnel_type (u8 * s, va_list * args);
+/**
+ * @brief GRE key type (RFC 2890)
+ */
+typedef u32 gre_key_t;
 
+/**
+ * @brief Check if a GRE key is valid (non-zero)
+ */
+#define gre_key_is_valid(_key) ((_key) != 0)
+
+extern u8 *format_gre_tunnel_type (u8 *s, va_list *args);
+
+/**
+ * @brief Format a GRE key for display
+ */
+format_function_t format_gre_key;
 
 /**
  * A GRE payload protocol registration
@@ -94,15 +108,16 @@ typedef struct gre_tunnel_key_common_t_
     struct
     {
       u32 fib_index;
+      gre_key_t gre_key;
       u16 session_id;
       gre_tunnel_type_t type;
       tunnel_mode_t mode;
     };
-    u64 as_u64;
+    u64 as_u64[2];
   };
-} gre_tunnel_key_common_t;
+} __attribute__ ((packed)) gre_tunnel_key_common_t;
 
-STATIC_ASSERT_SIZEOF (gre_tunnel_key_common_t, sizeof (u64));
+STATIC_ASSERT_SIZEOF (gre_tunnel_key_common_t, 2 * sizeof (u64));
 
 /**
  * @brief Key for a IPv4 GRE Tunnel
@@ -119,14 +134,14 @@ typedef struct gre_tunnel_key4_t_
       ip4_address_t gtk_src;
       ip4_address_t gtk_dst;
     };
-    u64 gtk_as_u64;
+    u64 gtk_as_u64; // Must fit in exactly 1 * sizeof(u64)
   };
 
   /** address independent attributes */
   gre_tunnel_key_common_t gtk_common;
 } __attribute__ ((packed)) gre_tunnel_key4_t;
 
-STATIC_ASSERT_SIZEOF (gre_tunnel_key4_t, 2 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (gre_tunnel_key4_t, 3 * sizeof (u64));
 
 /**
  * @brief Key for a IPv6 GRE Tunnel
@@ -144,7 +159,7 @@ typedef struct gre_tunnel_key6_t_
   gre_tunnel_key_common_t gtk_common;
 } __attribute__ ((packed)) gre_tunnel_key6_t;
 
-STATIC_ASSERT_SIZEOF (gre_tunnel_key6_t, 5 * sizeof (u64));
+STATIC_ASSERT_SIZEOF (gre_tunnel_key6_t, 6 * sizeof (u64));
 
 /**
  * Union of the two possible key types
@@ -205,6 +220,9 @@ typedef struct
   u32 sw_if_index;
   gre_tunnel_type_t type;
   tunnel_mode_t mode;
+  /* GRE key */
+  gre_key_t gre_key;
+
   tunnel_encap_decap_flags_t flags;
 
   /**
@@ -320,8 +338,8 @@ extern clib_error_t *gre_interface_admin_up_down (vnet_main_t * vnm,
 
 extern void gre_tunnel_stack (adj_index_t ai);
 extern void gre_update_adj (vnet_main_t * vnm,
-			    u32 sw_if_index, adj_index_t ai);
-
+  u32 sw_if_index, adj_index_t ai);
+  
 typedef struct mgre_walk_ctx_t_
 {
   const gre_tunnel_t *t;
@@ -367,41 +385,40 @@ typedef struct
   ip46_address_t src, dst;
   u32 outer_table_id;
   u16 session_id;
+  gre_key_t gre_key;
   tunnel_encap_decap_flags_t flags;
 } vnet_gre_tunnel_add_del_args_t;
 
 extern int vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
-				    u32 * sw_if_indexp);
+  u32 * sw_if_indexp);
 
 static inline void
-gre_mk_key4 (ip4_address_t src,
-	     ip4_address_t dst,
-	     u32 fib_index,
-	     gre_tunnel_type_t ttype,
-	     tunnel_mode_t tmode, u16 session_id, gre_tunnel_key4_t * key)
+gre_mk_key4 (ip4_address_t src, ip4_address_t dst, u32 fib_index,
+	     gre_tunnel_type_t ttype, tunnel_mode_t tmode, u16 session_id,
+	     gre_key_t gre_key, gre_tunnel_key4_t *key)
 {
+  clib_memset (key, 0, sizeof (*key)); // Zero entire structure first
   key->gtk_src = src;
   key->gtk_dst = dst;
   key->gtk_common.type = ttype;
   key->gtk_common.mode = tmode;
   key->gtk_common.fib_index = fib_index;
   key->gtk_common.session_id = session_id;
+  key->gtk_common.gre_key = gre_key;
 }
 
 static inline int
 gre_match_key4 (const gre_tunnel_key4_t * key1,
-		const gre_tunnel_key4_t * key2)
+  const gre_tunnel_key4_t * key2)
 {
   return ((key1->gtk_as_u64 == key2->gtk_as_u64) &&
 	  (key1->gtk_common.as_u64 == key2->gtk_common.as_u64));
 }
 
 static inline void
-gre_mk_key6 (const ip6_address_t * src,
-	     const ip6_address_t * dst,
-	     u32 fib_index,
-	     gre_tunnel_type_t ttype,
-	     tunnel_mode_t tmode, u16 session_id, gre_tunnel_key6_t * key)
+gre_mk_key6 (const ip6_address_t *src, const ip6_address_t *dst, u32 fib_index,
+	     gre_tunnel_type_t ttype, tunnel_mode_t tmode, u16 session_id,
+	     gre_key_t gre_key, gre_tunnel_key6_t *key)
 {
   key->gtk_src = *src;
   key->gtk_dst = *dst;
@@ -409,11 +426,12 @@ gre_mk_key6 (const ip6_address_t * src,
   key->gtk_common.mode = tmode;
   key->gtk_common.fib_index = fib_index;
   key->gtk_common.session_id = session_id;
+  key->gtk_common.gre_key = gre_key;
 }
 
 static inline int
 gre_match_key6 (const gre_tunnel_key6_t * key1,
-		const gre_tunnel_key6_t * key2)
+  const gre_tunnel_key6_t * key2)
 {
   return (ip6_address_is_equal (&key1->gtk_src, &key2->gtk_src) &&
 	  ip6_address_is_equal (&key1->gtk_dst, &key2->gtk_dst) &&
