@@ -318,9 +318,9 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 	server.Start()
 	defer server.Close()
 
-	uri := "http://" + serverAddress + "/80"
+	uri := "http://" + serverAddress + "/test"
 	vpp := s.Containers.Vpp.VppInstance
-	o := vpp.Vppctl("http client post verbose header Hello:World uri " + uri + " target /test data " + body)
+	o := vpp.Vppctl("http client post verbose header Hello:World uri " + uri + " data " + body)
 
 	s.Log(o)
 	s.AssertContains(o, "200 OK")
@@ -346,7 +346,6 @@ func HttpClientGetNoResponseBodyTest(s *NoTopoSuite) {
 func httpClientGet(s *NoTopoSuite, response string, size int) {
 	serverAddress := s.HostAddr()
 	vpp := s.Containers.Vpp.VppInstance
-
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", serverAddress+":80")
 	s.AssertNil(err, fmt.Sprint(err))
@@ -354,7 +353,7 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			s.LogHttpReq(false),
-			ghttp.VerifyRequest("GET", "/test"),
+			ghttp.VerifyRequest("GET", "/"),
 			ghttp.VerifyHeaderKV("Hello", "World"),
 			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
 			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
@@ -362,8 +361,8 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 	server.Start()
 	defer server.Close()
 
-	uri := "http://" + serverAddress + "/80"
-	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri + " target /test"
+	uri := "http://" + serverAddress
+	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
 
 	o := vpp.Vppctl(cmd)
 	outputLen := len(o)
@@ -420,8 +419,8 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 		requestMethod += " file /tmp/test_file.txt"
 	}
 
-	uri := "http://" + serverAddress + "/" + s.GetPortFromPpid()
-	cmd := fmt.Sprintf("http client %s %s duration %d header Hello:World uri %s target /index.html",
+	uri := "http://" + serverAddress + ":" + s.GetPortFromPpid() + "/index"
+	cmd := fmt.Sprintf("http client %s %s duration %d header Hello:World uri %s",
 		requestMethod, clientArgs, durationInSec, uri)
 
 	s.Log("Duration %ds", durationInSec)
@@ -442,7 +441,7 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	s.AssertGreaterThan(replyCountInt, 15000)
 
 	replyCount = ""
-	cmd = fmt.Sprintf("http client %s %s repeat %d header Hello:World uri %s target /index.html",
+	cmd = fmt.Sprintf("http client %s %s repeat %d header Hello:World uri %s",
 		requestMethod, clientArgs, repeatAmount, uri)
 
 	s.AssertNil(err, fmt.Sprint(err))
@@ -480,8 +479,8 @@ func HttpClientGetTimeout(s *NoTopoSuite) {
 		))
 	server.Start()
 	defer server.Close()
-	uri := "http://" + serverAddress + "/" + s.GetPortFromPpid()
-	cmd := "http client verbose timeout 1 uri " + uri + " target /timeout"
+	uri := "http://" + serverAddress + ":" + s.GetPortFromPpid() + "/timeout"
+	cmd := "http client verbose timeout 1 uri " + uri
 
 	o := vpp.Vppctl(cmd)
 	s.Log(o)
@@ -510,8 +509,8 @@ func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
 	server.Start()
 	defer server.Close()
 
-	uri := "http://" + serverAddress + "/80"
-	cmd := "http client post verbose uri " + uri + " target /test file " + fileName
+	uri := "http://" + serverAddress + "/test"
+	cmd := "http client post verbose uri " + uri + " file " + fileName
 	if usePtr {
 		cmd += " use-ptr"
 	}

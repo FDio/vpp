@@ -281,6 +281,7 @@ typedef enum session_fd_flag_
 } session_fd_flag_t;
 
 session_error_t parse_uri (char *uri, session_endpoint_cfg_t *sep);
+session_error_t parse_target (char **uri, char **target);
 session_error_t vnet_bind_uri (vnet_listen_args_t *);
 session_error_t vnet_unbind_uri (vnet_unlisten_args_t *a);
 session_error_t vnet_connect_uri (vnet_connect_args_t *a);
