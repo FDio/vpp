@@ -18,18 +18,18 @@
  * limitations under the License.
  */
 
-#define foreach_gre_protocol			\
-_ (0x0800, ip4)                                 \
-_ (0x86DD, ip6)                                 \
-_ (0x6558, teb)                                 \
-_ (0x0806, arp)					\
-_ (0x8847, mpls_unicast)			\
-_ (0x88BE, erspan)				\
-_ (0x894F, nsh)
+#define foreach_gre_protocol                                                  \
+  _ (0x0800, ip4)                                                             \
+  _ (0x86DD, ip6)                                                             \
+  _ (0x6558, teb)                                                             \
+  _ (0x0806, arp)                                                             \
+  _ (0x8847, mpls_unicast)                                                    \
+  _ (0x88BE, erspan)                                                          \
+  _ (0x894F, nsh)
 
 typedef enum
 {
-#define _(n,f) GRE_PROTOCOL_##f = n,
+#define _(n, f) GRE_PROTOCOL_##f = n,
   foreach_gre_protocol
 #undef _
 } gre_protocol_t;
@@ -42,26 +42,64 @@ typedef struct
 #define GRE_FLAGS_CHECKSUM (1 << 15)
 
   /* deprecated, according to rfc2784 */
-#define GRE_FLAGS_ROUTING (1 << 14)
-#define GRE_FLAGS_KEY (1 << 13)
-#define GRE_FLAGS_SEQUENCE (1 << 12)
+#define GRE_FLAGS_ROUTING	      (1 << 14)
+#define GRE_FLAGS_KEY		      (1 << 13)
+#define GRE_FLAGS_SEQUENCE	      (1 << 12)
 #define GRE_FLAGS_STRICT_SOURCE_ROUTE (1 << 11)
 
   /* version 1 is PPTP which we don't support */
 #define GRE_SUPPORTED_VERSION 0
-#define GRE_VERSION_MASK 0x7
+#define GRE_VERSION_MASK      0x7
 
   /* 0x800 for ip4, etc. */
   u16 protocol;
 } gre_header_t;
 
+typedef struct
+{
+  /* flags and version */
+  u16 flags_and_version;
+  /* 0x800 for ip4, etc. */
+  u16 protocol;
+  /* Optional GRE Key field */
+  u32 key;
+} gre_header_with_key_t;
+
+always_inline u32
+gre_get_key (const gre_header_t *h)
+{
+  if (h->flags_and_version & clib_host_to_net_u16 (GRE_FLAGS_KEY))
+    return clib_net_to_host_u32 (((const gre_header_with_key_t *) h)->key);
+  return 0;
+}
+
+always_inline void
+gre_set_key (gre_header_t *h, u32 key)
+{
+  if (key != 0)
+    {
+      h->flags_and_version |= clib_host_to_net_u16 (GRE_FLAGS_KEY);
+      ((gre_header_with_key_t *) h)->key = clib_host_to_net_u32 (key);
+    }
+  else
+    {
+      h->flags_and_version &= ~clib_host_to_net_u16 (GRE_FLAGS_KEY);
+    }
+}
+
+// always_inline void
+// gre_set_key (gre_header_with_key_t *h, u32 key)
+//{
+//   h->flags_and_version |= clib_host_to_net_u16(GRE_FLAGS_KEY);
+//   h->key = clib_host_to_net_u32(key);
+// }
 /* From draft-foschiano-erspan-03.txt
 
    Different frame variants known as "ERSPAN Types" can be
    distinguished based on the GRE "Protocol Type" field value: Type I
    and II's value is 0x88BE while Type III's is 0x22EB [ETYPES].
 
-         GRE header for ERSPAN Type II encapsulation (8 octets [34:41])
+	 GRE header for ERSPAN Type II encapsulation (8 octets [34:41])
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -80,7 +118,7 @@ typedef struct
 
    The ERSPAN Type II feature header is described below:
 
-                     ERSPAN Type II header (8 octets [42:49])
+		     ERSPAN Type II header (8 octets [42:49])
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -92,50 +130,50 @@ typedef struct
   The various fields of the above header are described in this table:
 
    Field         Position    Length          Definition
-                [octet:bit]  (bits)
+		[octet:bit]  (bits)
 
    Ver            [42:0]       4      ERSPAN Encapsulation version.
-                                      This indicates the version of
-                                      the ERSPAN encapsulation
-                                      specification. Set to 0x1 for
-                                      Type II.
+				      This indicates the version of
+				      the ERSPAN encapsulation
+				      specification. Set to 0x1 for
+				      Type II.
 
    VLAN           [42:4]      12      Original VLAN of the frame,
-                                      mirrored from the source.
-                                      If the En field is set to 11,
-                                      the value of VLAN is undefined.
+				      mirrored from the source.
+				      If the En field is set to 11,
+				      the value of VLAN is undefined.
 
    COS            [44:0]       3      Original class of service of the
-                                      frame, mirrored from the source.
+				      frame, mirrored from the source.
 
    En             [44:3]       2      The trunk encapsulation type
-                                      associated with the ERSPAN source
-                                      port for ingress ERSPAN traffic.
+				      associated with the ERSPAN source
+				      port for ingress ERSPAN traffic.
 
-                                      The possible values are:
-                                      00-originally without VLAN tag
-                                      01-originally ISL encapsulated
-                                      10-originally 802.1Q encapsulated
-                                      11-VLAN tag preserved in frame.
+				      The possible values are:
+				      00-originally without VLAN tag
+				      01-originally ISL encapsulated
+				      10-originally 802.1Q encapsulated
+				      11-VLAN tag preserved in frame.
 
    T              [44:5]       1      This bit indicates that the frame
-                                      copy encapsulated in the ERSPAN
-                                      packet has been truncated. This
-                                      occurs if the ERSPAN encapsulated
-                                      frame exceeds the configured MTU.
+				      copy encapsulated in the ERSPAN
+				      packet has been truncated. This
+				      occurs if the ERSPAN encapsulated
+				      frame exceeds the configured MTU.
 
    Session ID     [44:6]      10      Identification associated with
    (ERSPAN ID)                        each ERSPAN session. Must be
-                                     unique between the source and the
-                                      receiver(s). (See section below.)
+				     unique between the source and the
+				      receiver(s). (See section below.)
 
    Reserved       [46:0]      12      All bits are set to zero
 
    Index          [47:4]      20      A 20 bit index/port number
-                                      associated with the ERSPAN
-                                      traffic's port and
-                                      direction (ingress/egress). N.B.:
-                                      This field is platform dependent.
+				      associated with the ERSPAN
+				      traffic's port and
+				      direction (ingress/egress). N.B.:
+				      This field is platform dependent.
 */
 
 typedef CLIB_PACKED (struct {
@@ -156,7 +194,6 @@ typedef CLIB_PACKED (struct {
   gre_header_t gre;
   erspan_t2_t erspan;
 }) erspan_t2_header_t;
-
 
 /* u64 template for ERSPAN type 2 header with both EN bits set */
 #define ERSPAN_HDR2 0x1000180000000000ul
