@@ -693,9 +693,9 @@ hc_get_event (vlib_main_t *vm)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  vlib_cli_output (vm, "< %v< %v", hc_session->response_status,
-			   hc_session->resp_headers);
-	  vlib_cli_output (vm, "\n%v\n", hc_session->http_response);
+	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
+			   hc_session->resp_headers,
+			   hc_session->http_response);
 	}
       break;
     case HC_REPEAT_DONE:
@@ -851,8 +851,6 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "data %v", &hcm->data))
 	hcm->is_file = 0;
-      else if (unformat (line_input, "target %s", &hcm->target))
-	;
       else if (unformat (line_input, "file %s", &path))
 	hcm->is_file = 1;
       else if (unformat (line_input, "use-ptr"))
@@ -919,11 +917,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       err = clib_error_return (0, "URI not defined");
       goto done;
     }
-  if (!hcm->target)
-    {
-      err = clib_error_return (0, "target not defined");
-      goto done;
-    }
+
   if (!hcm->data && hcm->req_method == HTTP_REQ_POST)
     {
       if (path)
@@ -939,6 +933,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  goto done;
 	}
     }
+
   if (hcm->duration && hcm->repeat_count)
     {
       err = clib_error_return (
@@ -950,6 +945,13 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       err = clib_error_return (
 	0, "multiple sessions are only supported with request repeating");
+      goto done;
+    }
+
+  if ((rv = parse_target ((char **) &hcm->uri, (char **) &hcm->target)))
+    {
+      err = clib_error_return (0, "target parse error: %U",
+			       format_session_error, rv);
       goto done;
     }
 
@@ -1000,7 +1002,7 @@ done:
 VLIB_CLI_COMMAND (hc_command, static) = {
   .path = "http client",
   .short_help =
-    "[post] uri http://<ip-addr> target <origin-form> "
+    "[post] uri http://<ip-addr>/<origin-form> "
     "[data <form-urlencoded> | file <file-path>] [use-ptr] "
     "[save-to <filename>] [header <Key:Value>] [verbose] "
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
