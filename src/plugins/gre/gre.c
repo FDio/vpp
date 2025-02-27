@@ -232,7 +232,11 @@ gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
 
   if (!is_ipv6)
     {
-      vec_validate (rewrite, sizeof (*h4) - 1);
+      /* Allocate space for maximum header size including key */
+      if (gre_key_is_valid (t->gre_key))
+	vec_validate (rewrite, sizeof (*h4) + sizeof (gre_key_t) - 1);
+      else
+	vec_validate (rewrite, sizeof (*h4) - 1);
       h4 = (ip4_and_gre_header_t *) rewrite;
       gre = &h4->gre;
       h4->ip4.ip_version_and_header_length = 0x45;
@@ -245,7 +249,11 @@ gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
     }
   else
     {
-      vec_validate (rewrite, sizeof (*h6) - 1);
+      /* Allocate space for maximum header size including key */
+      if (gre_key_is_valid (t->gre_key))
+	vec_validate (rewrite, sizeof (*h6) + sizeof (gre_key_t) - 1);
+      else
+	vec_validate (rewrite, sizeof (*h6) - 1);
       h6 = (ip6_and_gre_header_t *) rewrite;
       gre = &h6->gre;
       h6->ip6.ip_version_traffic_class_and_flow_label =
@@ -265,9 +273,18 @@ gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
       gre->flags_and_version = clib_host_to_net_u16 (GRE_FLAGS_SEQUENCE);
     }
   else
-    gre->protocol =
-      clib_host_to_net_u16 (gre_proto_from_vnet_link (link_type));
-
+    {
+      gre->protocol =
+	clib_host_to_net_u16 (gre_proto_from_vnet_link (link_type));
+      gre->flags_and_version = 0; // Clear flags first
+      /* Add key only for non-ERSPAN tunnels */
+      if (gre_key_is_valid (t->gre_key))
+	{
+	  gre_header_with_key_t *grek = (gre_header_with_key_t *) gre;
+	  grek->flags_and_version = clib_host_to_net_u16 (GRE_FLAGS_KEY);
+	  grek->key = clib_host_to_net_u32 (t->gre_key);
+	}
+    }
   return (rewrite);
 }
 
