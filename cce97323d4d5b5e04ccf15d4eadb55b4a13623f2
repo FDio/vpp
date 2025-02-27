@@ -16,6 +16,23 @@
       "message": "Hello\nI didn\u0027t title my changes properly\ncan you review this pr again",
       "revId": "cce97323d4d5b5e04ccf15d4eadb55b4a13623f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20676c75_5640ec54",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-02-27T15:48:07Z",
+      "side": 1,
+      "message": "Again, VPP is not C++ project, so i don\u0027t think anything is wrong with that code you are trying to change in this huge patch bomb.\nI\u0027m certainly not fine that you are adding prefix _ to variables in my code, as my code is C code and there is nothing wrong with that name.\nPleas join one of community calls so we can discuss alternative approach to address your issue...",
+      "revId": "cce97323d4d5b5e04ccf15d4eadb55b4a13623f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
