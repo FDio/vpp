@@ -181,13 +181,13 @@ build-debug: .deps.ok build-vpp-debug build-go
 	@touch .build.ok
 
 .deps.ok:
-	@sudo $(MAKE) install-deps
+	@$(MAKE) install-deps
 
 .PHONY: install-deps
 install-deps:
 	@rm -f .deps.ok
-	@apt-get update \
-		&& apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
+	@sudo -E apt-get update
+	@sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
 		bridge-utils gpg
 	@if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
 		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
@@ -195,7 +195,7 @@ install-deps:
 			| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
 		apt-get update; \
 	fi
-	@apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+	@sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 	@touch .deps.ok
 
 .goimports.ok:
