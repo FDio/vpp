@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6712863f_8afe94f4",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-27T14:57:50Z",
+      "side": 1,
+      "message": "else return 0 (error)?",
+      "revId": "ff872bc1295621130bb30f4ff06d4c8a1affcd1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "165b704b_e6e4fe02",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-02-27T14:57:50Z",
+      "side": 1,
+      "message": "delete",
+      "range": {
+        "startLine": 87,
+        "startChar": 7,
+        "endLine": 87,
+        "endChar": 12
+      },
+      "revId": "ff872bc1295621130bb30f4ff06d4c8a1affcd1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
