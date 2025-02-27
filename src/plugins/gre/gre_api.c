@@ -67,7 +67,6 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
 
   return (out);
 }
-
 static void
 vl_api_gre_tunnel_add_del_t_handler (vl_api_gre_tunnel_add_del_t *mp)
 {
@@ -114,6 +113,9 @@ vl_api_gre_tunnel_add_del_t_handler (vl_api_gre_tunnel_add_del_t *mp)
   a->session_id = ntohs (mp->tunnel.session_id);
   a->outer_table_id = ntohl (mp->tunnel.outer_table_id);
   a->flags = flags;
+  
+  /* Add GRE key from API message (handles 0 for no-key case) */
+  a->gre_key = ntohl(mp->tunnel.key);
 
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
@@ -121,7 +123,6 @@ out:
   REPLY_MACRO2 (VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
 		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
-
 static void
 send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
 {
@@ -142,6 +143,9 @@ send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
       rmp->tunnel.instance = htonl (t->user_instance);
       rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
       rmp->tunnel.session_id = htons (t->session_id);
+
+      /* Add GRE key to details response */
+      rmp->tunnel.key = htonl(t->gre_key);
     }));
 }
 
