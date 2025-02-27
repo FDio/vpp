@@ -114,11 +114,67 @@ vl_api_gre_tunnel_add_del_t_handler (vl_api_gre_tunnel_add_del_t *mp)
   a->session_id = ntohs (mp->tunnel.session_id);
   a->outer_table_id = ntohl (mp->tunnel.outer_table_id);
   a->flags = flags;
+  a->gre_key = 0; // No key in the v1 API
 
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
 out:
   REPLY_MACRO2 (VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
+}
+
+static void
+vl_api_gre_tunnel_add_del_v2_t_handler (vl_api_gre_tunnel_add_del_v2_t *mp)
+{
+  vnet_gre_tunnel_add_del_args_t _a = {}, *a = &_a;
+  vl_api_gre_tunnel_add_del_v2_reply_t *rmp;
+  tunnel_encap_decap_flags_t flags;
+  u32 sw_if_index = ~0;
+  ip46_type_t itype[2];
+  int rv = 0;
+
+  itype[0] = ip_address_decode (&mp->tunnel.src, &a->src);
+  itype[1] = ip_address_decode (&mp->tunnel.dst, &a->dst);
+
+  if (itype[0] != itype[1])
+    {
+      rv = VNET_API_ERROR_INVALID_PROTOCOL;
+      goto out;
+    }
+
+  if (ip46_address_is_equal (&a->src, &a->dst))
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+
+  rv = gre_tunnel_type_decode (mp->tunnel.type, &a->type);
+
+  if (rv)
+    goto out;
+
+  rv = tunnel_mode_decode (mp->tunnel.mode, &a->mode);
+
+  if (rv)
+    goto out;
+
+  rv = tunnel_encap_decap_flags_decode (mp->tunnel.flags, &flags);
+
+  if (rv)
+    goto out;
+
+  a->is_add = mp->is_add;
+  a->is_ipv6 = (itype[0] == IP46_TYPE_IP6);
+  a->instance = ntohl (mp->tunnel.instance);
+  a->session_id = ntohs (mp->tunnel.session_id);
+  a->outer_table_id = ntohl (mp->tunnel.outer_table_id);
+  a->flags = flags;
+  a->gre_key = ntohl (mp->tunnel.key); // Key field present in v2 API
+
+  rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
+
+out:
+  REPLY_MACRO2 (VL_API_GRE_TUNNEL_ADD_DEL_V2_REPLY,
 		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
@@ -142,6 +198,31 @@ send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
       rmp->tunnel.instance = htonl (t->user_instance);
       rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
       rmp->tunnel.session_id = htons (t->session_id);
+    }));
+}
+
+static void
+send_gre_tunnel_details_v2 (gre_tunnel_t *t, vl_api_gre_tunnel_dump_v2_t *mp)
+{
+  vl_api_gre_tunnel_details_v2_t *rmp;
+
+  REPLY_MACRO_DETAILS2 (
+    VL_API_GRE_TUNNEL_DETAILS_V2, ({
+      ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+      ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
+			 &rmp->tunnel.dst);
+
+      rmp->tunnel.outer_table_id = htonl (
+	fib_table_get_table_id (t->outer_fib_index, t->tunnel_dst.fp_proto));
+
+      rmp->tunnel.type = gre_tunnel_type_encode (t->type);
+      rmp->tunnel.mode = tunnel_mode_encode (t->mode);
+      rmp->tunnel.flags = tunnel_encap_decap_flags_encode (t->flags);
+      rmp->tunnel.instance = htonl (t->user_instance);
+      rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+      rmp->tunnel.session_id = htons (t->session_id);
+      rmp->tunnel.key =
+	htonl (t->gre_key); // Include the GRE key in the v2 API
     }));
 }
 
@@ -176,6 +257,40 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t *mp)
 	}
       t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_gre_tunnel_details (t, mp);
+    }
+}
+
+static void
+vl_api_gre_tunnel_dump_v2_t_handler (vl_api_gre_tunnel_dump_v2_t *mp)
+{
+  vl_api_registration_t *reg;
+  gre_main_t *gm = &gre_main;
+  gre_tunnel_t *t;
+  u32 sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (~0 == sw_if_index)
+    {
+      pool_foreach (t, gm->tunnels)
+	{
+	  send_gre_tunnel_details_v2 (t, mp);
+	}
+    }
+
+  else
+    {
+      if ((sw_if_index >= vec_len (gm->tunnel_index_by_sw_if_index)) ||
+	  (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]))
+	{
+	  return;
+	}
+      t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
+      send_gre_tunnel_details_v2 (t, mp);
     }
 }
 
