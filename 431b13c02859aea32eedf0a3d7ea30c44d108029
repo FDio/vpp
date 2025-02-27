@@ -39,6 +39,30 @@
       },
       "revId": "431b13c02859aea32eedf0a3d7ea30c44d108029",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "292ee8b1_ab2a9816",
+        "filename": "docs/gettingstarted/progressivevpp/nat.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2025-02-27T09:37:54Z",
+      "side": 1,
+      "message": "Thanks for the review!",
+      "parentUuid": "66a6cee3_7f1b63e0",
+      "range": {
+        "startLine": 19,
+        "startChar": 1,
+        "endLine": 21,
+        "endChar": 112
+      },
+      "revId": "431b13c02859aea32eedf0a3d7ea30c44d108029",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
