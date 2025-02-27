@@ -38,17 +38,68 @@
  *
  */
 uword
-unformat_vnet_uri (unformat_input_t * input, va_list * args)
+unformat_vnet_uri (unformat_input_t *input, va_list *args)
 {
   session_endpoint_cfg_t *sep = va_arg (*args, session_endpoint_cfg_t *);
   u32 transport_proto = 0, port;
 
-  if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+  if (unformat (input, "%U://%U:%d", unformat_transport_proto,
 		&transport_proto, unformat_ip4_address, &sep->ip.ip4, &port))
     {
       sep->transport_proto = transport_proto;
       sep->port = clib_host_to_net_u16 (port);
       sep->is_ip4 = 1;
+      return 1;
+    }
+  else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
+		     &transport_proto, unformat_ip4_address, &sep->ip.ip4,
+		     &port))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 1;
+      return 1;
+    }
+  else if (unformat (input, "%U://%U", unformat_transport_proto,
+		     &transport_proto, unformat_ip4_address, &sep->ip.ip4))
+    {
+      sep->transport_proto = transport_proto;
+      if (sep->transport_proto == TRANSPORT_PROTO_HTTP)
+	{
+	  port = 80;
+	}
+      else if (sep->transport_proto == TRANSPORT_PROTO_TLS)
+	{
+	  port = 443;
+	}
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 1;
+      return 1;
+    }
+  else if (unformat (input, "%U://[%U]:%d", unformat_transport_proto,
+		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
+		     &port))
+    {
+      sep->transport_proto = transport_proto;
+      if (sep->transport_proto == TRANSPORT_PROTO_HTTP)
+	{
+	  port = 80;
+	}
+      else if (sep->transport_proto == TRANSPORT_PROTO_TLS)
+	{
+	  port = 443;
+	}
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 0;
+      return 1;
+    }
+  else if (unformat (input, "%U://[%U]", unformat_transport_proto,
+		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
+		     &port))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 0;
       return 1;
     }
   else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
@@ -102,6 +153,45 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
     clib_mem_free (cache_sep);
   cache_sep = clib_mem_alloc (sizeof (*sep));
   *cache_sep = *sep;
+
+  return 0;
+}
+
+/* Use before 'parse_uri()'. Removes target from URI and copies it to 'char
+ * **target'. char **target is resized automatically.
+ */
+session_error_t
+parse_target (char **uri, char **target)
+{
+  u8 counter = 0;
+
+  for (u32 i = 0; i < (u32) strlen (*uri); i++)
+    {
+      if ((*uri)[i] == '/')
+	counter++;
+
+      if (counter == 3)
+	{
+	  /* resize and make space for NULL terminator */
+	  if (vec_len (*target) < strlen (*uri) - i + 2)
+	    vec_resize (*target, strlen (*uri) - i + 2);
+
+	  strncpy (*target, *uri + i, strlen (*uri) - i);
+	  (*uri)[i + 1] = '\0';
+	  break;
+	}
+    }
+
+  if (!*target)
+    {
+      vec_resize (*target, 2);
+      **target = '/';
+    }
+
+  vec_terminate_c_string (*target);
+
+  if (!*target)
+    return SESSION_E_INVALID;
 
   return 0;
 }
