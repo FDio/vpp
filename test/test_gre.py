@@ -168,6 +168,25 @@ class TestGRE(VppTestCase):
             pkts.append(p)
         return pkts
 
+    def create_tunnel_stream_4o4_with_key(
+        self, src_if, tunnel_src, tunnel_dst, src_ip, dst_ip, key
+    ):
+        pkts = []
+        for i in range(0, 257):
+            info = self.create_packet_info(src_if, src_if)
+            payload = self.info_to_payload(info)
+            p = (
+                Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                / IP(src=tunnel_src, dst=tunnel_dst)
+                / GRE(key=key)
+                / IP(src=src_ip, dst=dst_ip)
+                / UDP(sport=1234, dport=1234)
+                / Raw(payload)
+            )
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
     def create_tunnel_stream_6o4(self, src_if, tunnel_src, tunnel_dst, src_ip, dst_ip):
         pkts = []
         for i in range(0, 257):
@@ -265,6 +284,62 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+
+            except:
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
+    def verify_tunneled_4o4_with_key(
+        self, src_if, capture, sent, tunnel_src, tunnel_dst, key, dscp=0, ecn=0
+    ):
+        """
+        Verify GRE encapsulation with key field:
+        - Basic GRE tunnel checks (source, destination, etc.)
+        - Verify GRE flags indicate key field is present (0x2000)
+        - Verify the GRE key value matches what we configured
+        """
+        self.assertEqual(len(capture), len(sent))
+        tos = (dscp << 2) | ecn
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                tx_ip = tx[IP]
+                rx_ip = rx[IP]
+
+                # Verify tunnel outer header
+                self.assertEqual(rx_ip.src, tunnel_src)
+                self.assertEqual(rx_ip.dst, tunnel_dst)
+                self.assertEqual(rx_ip.tos, tos)
+                self.assertEqual(rx_ip.len, len(rx_ip))
+
+                # Verify GRE header
+                rx_gre = rx[GRE]
+
+                # Check if GRE flags has the KEY bit set (0x2000)
+                # In Scapy GRE, this should be reflected in the 'flags' field or through presence of 'key' field
+                self.assertTrue(
+                    hasattr(rx_gre, "key"), "GRE key field not present in packet"
+                )
+
+                # Verify the key value is correct
+                self.assertEqual(
+                    rx_gre.key,
+                    key,
+                    f"GRE key value mismatch: expected {key}, got {rx_gre.key}",
+                )
+                self.logger.info(f"Verified GRE key: {rx_gre.key}")
+
+                # Verify inner packet data
+                rx_inner_ip = rx_gre[IP]
+                self.assertEqual(rx_inner_ip.src, tx_ip.src)
+                self.assertEqual(rx_inner_ip.dst, tx_ip.dst)
+
+                # IP processing post pop has decremented the TTL
+                self.assertEqual(rx_inner_ip.ttl + 1, tx_ip.ttl)
 
             except:
                 self.logger.error(ppp("Rx:", rx))
@@ -431,6 +506,29 @@ class TestGRE(VppTestCase):
                 raise
 
     def verify_decapped_4o4(self, src_if, capture, sent):
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                tx_ip = tx[IP]
+                rx_ip = rx[IP]
+                tx_gre = tx[GRE]
+                tx_ip = tx_gre[IP]
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+                # IP processing post pop has decremented the TTL
+                self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+
+            except:
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
+    def verify_decapped_4o4_with_key(self, src_if, capture, sent):
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):
@@ -717,6 +815,61 @@ class TestGRE(VppTestCase):
         gre_if.remove_vpp_config()
 
         self.pg0.unconfig_ip6()
+
+    def test_gre_with_key(self):
+        """GRE IPv4 tunnel with Key Tests"""
+
+        key_value = 123
+
+        # Create a GRE interface using v2 API
+        gre_if = VppGreInterface(self, self.pg0.local_ip4, "1.1.1.2", gre_key=key_value)
+        gre_if.add_vpp_config()
+        gre_sw_if_index = gre_if.sw_if_index
+
+        self.assertIsNotNone(gre_sw_if_index, "GRE interface was not created properly")
+
+        self.vapi.sw_interface_set_flags(
+            sw_if_index=gre_sw_if_index, flags=1
+        )  # 1 = admin up
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=gre_sw_if_index, prefix="10.0.0.1/24", is_add=1
+        )
+
+        route_via_tun = VppIpRoute(
+            self, "4.4.4.4", 32, [VppRoutePath("0.0.0.0", gre_sw_if_index)]
+        )
+        route_via_tun.add_vpp_config()
+
+        route_tun_dst = VppIpRoute(
+            self,
+            "1.1.1.2",
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+        )
+        route_tun_dst.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "4.4.4.4")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+
+        self.logger.info(f"Verifying GRE encapsulation with key {key_value}")
+        self.verify_tunneled_4o4_with_key(
+            self.pg0,  # source interface
+            rx,  # received packets
+            tx,  # sent packets
+            self.pg0.local_ip4,  # tunnel source
+            "1.1.1.2",  # tunnel destination
+            key_value,  # GRE key value
+        )
+
+        # Cleanup
+        route_tun_dst.remove_vpp_config()
+        route_via_tun.remove_vpp_config()
+
+        self.vapi.sw_interface_set_flags(
+            sw_if_index=gre_sw_if_index, flags=0
+        )  # 0 = admin down
+
+        gre_if.remove_vpp_config()
 
     def test_gre6(self):
         """GRE IPv6 tunnel Tests"""
