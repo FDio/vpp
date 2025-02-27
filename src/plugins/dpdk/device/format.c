@@ -117,8 +117,8 @@
   _ (TX_MACSEC, "TX MACSEC")                                                  \
   _ (TX_OUTER_IPV4, "TX outer IPV4")                                          \
   _ (TX_OUTER_IPV6, "TX outer IPV6")                                          \
-  _ (TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")          \
-  _ (TX_OUTER_UDP_CKSUM, "TX outer UDP cksum")                                \
+  _ (TX_OUTER_IP_CKSUM, "Outer IP cksum of TX pkt. computed by NIC")          \
+  _ (TX_OUTER_UDP_CKSUM, "Outer UDP cksum of TX pkt. computed by NIC")        \
   _ (TX_QINQ, "TX QINQ")                                                      \
   _ (TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")                  \
   _ (TX_SEC_OFFLOAD, "TX SEC OFFLOAD")                                        \
@@ -133,7 +133,7 @@
   _ (TX_TUNNEL_UDP, "TX tunnel UDP")                                          \
   _ (TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                          \
   _ (TX_TUNNEL_VXLAN_GPE, "TX tunnel VXLAN GPE")                              \
-  _ (TX_UDP_CKSUM, "TX UDP cksum")                                            \
+  _ (TX_UDP_CKSUM, "UDP cksum of TX pkt. computed by NIC")                    \
   _ (TX_UDP_SEG, "TX UDP SEG")                                                \
   _ (TX_VLAN, "TX packet is a 802.1q VLAN packet")
 
