@@ -99,6 +99,12 @@ docker_build hs-test/nginx-http3 nginx-http3
 docker_build hs-test/ab ab
 docker_build hs-test/wrk wrk
 
+# make it multi-user friendly
+if [ -d "${DOCKER_CACHE_DIR}" ] ; then
+  chgrp -R docker "${DOCKER_CACHE_DIR}"
+  chmod -R g+rwx "${DOCKER_CACHE_DIR}"
+fi
+
 # cleanup detached images
 images=$(docker images --filter "dangling=true" -q --no-trunc)
 if [ "$images" != "" ]; then
