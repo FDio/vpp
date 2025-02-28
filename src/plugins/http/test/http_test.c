@@ -7,6 +7,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http2/hpack.h>
+#include <http/http2/frame.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -1020,6 +1021,163 @@ http_test_hpack (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_h2_frame (vlib_main_t *vm)
+{
+  static void (*_http2_frame_header_read) (u8 * src,
+					   http2_frame_header_t * fh);
+
+  _http2_frame_header_read =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_header_read");
+
+  vlib_cli_output (vm, "http2_frame_read_settings");
+
+  static http2_error_t (*_http2_frame_read_settings) (
+    http2_conn_settings_t * settings, u8 * payload, u32 payload_len);
+
+  _http2_frame_read_settings =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_read_settings");
+
+  http2_error_t rv;
+  http2_frame_header_t fh = { 0 };
+  http2_conn_settings_t conn_settings = http2_default_conn_settings;
+
+  u8 settings[] = { 0x0, 0x0, 0x12, 0x4, 0x0, 0x0,  0x0, 0x0, 0x0,
+		    0x0, 0x3, 0x0,  0x0, 0x0, 0x64, 0x0, 0x4, 0x40,
+		    0x0, 0x0, 0x0,  0x0, 0x2, 0x0,  0x0, 0x0, 0x0 };
+  _http2_frame_header_read (settings, &fh);
+  HTTP_TEST ((fh.flags == 0 && fh.type == HTTP2_FRAME_TYPE_SETTINGS &&
+	      fh.stream_id == 0 && fh.length == 18),
+	     "frame identified as SETTINGS");
+
+  rv = _http2_frame_read_settings (
+    &conn_settings, settings + HTTP2_FRAME_HEADER_SIZE, fh.length);
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR &&
+	      conn_settings.max_concurrent_streams == 100 &&
+	      conn_settings.initial_window_size == 1073741824 &&
+	      conn_settings.enable_push == 0),
+	     "SETTINGS frame payload parsed")
+
+  u8 settings_ack[] = { 0x0, 0x0, 0x0, 0x4, 0x1, 0x0, 0x0, 0x0, 0x0 };
+  _http2_frame_header_read (settings_ack, &fh);
+  HTTP_TEST ((fh.flags == HTTP2_FRAME_FLAG_ACK &&
+	      fh.type == HTTP2_FRAME_TYPE_SETTINGS && fh.stream_id == 0 &&
+	      fh.length == 0),
+	     "frame identified as SETTINGS ACK");
+
+  vlib_cli_output (vm, "http2_frame_write_settings_ack");
+
+  static void (*_http2_frame_write_settings_ack) (u8 * *dst);
+
+  _http2_frame_write_settings_ack = vlib_get_plugin_symbol (
+    "http_plugin.so", "http2_frame_write_settings_ack");
+
+  u8 *buf = 0;
+
+  _http2_frame_write_settings_ack (&buf);
+  HTTP_TEST ((vec_len (buf) == sizeof (settings_ack)) &&
+	       !memcmp (buf, settings_ack, sizeof (settings_ack)),
+	     "SETTINGS ACK frame written");
+  vec_free (buf);
+
+  vlib_cli_output (vm, "http2_frame_write_settings");
+
+  static void (*_http2_frame_write_settings) (
+    http2_settings_entry_t * settings, u8 * *dst);
+
+  _http2_frame_write_settings =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_settings");
+
+  http2_settings_entry_t *settings_list = 0;
+  vec_validate (settings_list, 2);
+  settings_list[0].identifier = HTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  settings_list[0].value = 100;
+  settings_list[1].identifier = HTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  settings_list[1].value = 1073741824;
+  settings_list[2].identifier = HTTP2_SETTINGS_ENABLE_PUSH;
+  settings_list[2].value = 0;
+
+  _http2_frame_write_settings (settings_list, &buf);
+  HTTP_TEST ((vec_len (buf) == sizeof (settings) &&
+	      !memcmp (buf, settings, sizeof (settings))),
+	     "SETTINGS frame written");
+  vec_free (settings_list);
+  vec_free (buf);
+
+  vlib_cli_output (vm, "http2_frame_read_window_update");
+
+  static http2_error_t (*_http2_frame_read_window_update) (
+    u32 * increment, u8 * payload, u32 payload_len);
+
+  _http2_frame_read_window_update = vlib_get_plugin_symbol (
+    "http_plugin.so", "http2_frame_read_window_update");
+
+  u32 win_increment;
+  u8 win_update[] = { 0x0, 0x0, 0x4,  0x8,  0x0, 0x0, 0x0,
+		      0x0, 0x0, 0x3f, 0xff, 0x0, 0x1 };
+  _http2_frame_header_read (win_update, &fh);
+  HTTP_TEST ((fh.flags == 0 && fh.type == HTTP2_FRAME_TYPE_WINDOW_UPDATE &&
+	      fh.stream_id == 0 && fh.length == 4),
+	     "frame identified as WINDOW_UPDATE");
+
+  rv = _http2_frame_read_window_update (
+    &win_increment, win_update + HTTP2_FRAME_HEADER_SIZE, fh.length);
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR && win_increment == 1073676289),
+	     "WINDOW_UPDATE frame payload parsed")
+
+  vlib_cli_output (vm, "http2_frame_write_window_update");
+
+  static void (*_http2_frame_write_window_update) (u32 increment,
+						   u32 stream_id, u8 * *dst);
+
+  _http2_frame_write_window_update = vlib_get_plugin_symbol (
+    "http_plugin.so", "http2_frame_write_window_update");
+
+  _http2_frame_write_window_update (1073676289, 0, &buf);
+  HTTP_TEST ((vec_len (buf) == sizeof (win_update) &&
+	      !memcmp (buf, win_update, sizeof (win_update))),
+	     "WINDOW_UPDATE frame written");
+  vec_free (buf);
+
+  vlib_cli_output (vm, "http2_frame_read_rst_stream");
+
+  static http2_error_t (*_http2_frame_read_rst_stream) (
+    u32 * error_code, u8 * payload, u32 payload_len);
+
+  _http2_frame_read_rst_stream =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_read_rst_stream");
+
+  u32 error_code;
+  u8 rst_stream[] = { 0x0, 0x0, 0x4, 0x3, 0x0, 0x0, 0x0,
+		      0x0, 0x5, 0x0, 0x0, 0x0, 0x01 };
+  _http2_frame_header_read (rst_stream, &fh);
+  HTTP_TEST ((fh.flags == 0 && fh.type == HTTP2_FRAME_TYPE_RST_STREAM &&
+	      fh.stream_id == 5 && fh.length == 4),
+	     "frame identified as RST_STREAM");
+
+  rv = _http2_frame_read_rst_stream (
+    &error_code, rst_stream + HTTP2_FRAME_HEADER_SIZE, fh.length);
+  HTTP_TEST (
+    (rv == HTTP2_ERROR_NO_ERROR && error_code == HTTP2_ERROR_PROTOCOL_ERROR),
+    "RST_STREAM frame payload parsed")
+
+  vlib_cli_output (vm, "http2_frame_write_rst_stream");
+
+  static void (*_http2_frame_write_rst_stream) (u32 increment, u32 stream_id,
+						u8 * *dst);
+
+  _http2_frame_write_rst_stream =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_rst_stream");
+
+  _http2_frame_write_rst_stream (HTTP2_ERROR_PROTOCOL_ERROR, 5, &buf);
+  HTTP_TEST ((vec_len (buf) == sizeof (rst_stream) &&
+	      !memcmp (buf, rst_stream, sizeof (rst_stream))),
+	     "RST_STREAM frame written");
+  vec_free (buf);
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -1039,6 +1197,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_header_table (vm);
       else if (unformat (input, "hpack"))
 	res = http_test_hpack (vm);
+      else if (unformat (input, "h2-frame"))
+	res = http_test_h2_frame (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -1052,6 +1212,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_header_table (vm)))
 	    goto done;
 	  if ((res = http_test_hpack (vm)))
+	    goto done;
+	  if ((res = http_test_h2_frame (vm)))
 	    goto done;
 	}
       else
