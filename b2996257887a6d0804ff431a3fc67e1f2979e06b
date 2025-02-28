@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a249e0f5_e2d2f0a6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-02-28T16:56:05Z",
+      "side": 1,
+      "message": "Do Not Commit.  Patch is used for testing CI operations.",
+      "revId": "b2996257887a6d0804ff431a3fc67e1f2979e06b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
