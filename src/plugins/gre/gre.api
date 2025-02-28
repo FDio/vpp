@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.1";
+option version = "2.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/tunnel/tunnel_types.api";
@@ -41,6 +41,7 @@ enum gre_tunnel_type : u8
     @param sw_if_index - ignored on create/delete, present in details.
     @param src - Source IP address
     @param dst - Destination IP address, can be multicast
+    @param key - GRE Key for the tunnel (0 means no key is used)
 */
 typedef gre_tunnel
 {
@@ -53,6 +54,7 @@ typedef gre_tunnel
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t src;
   vl_api_address_t dst;
+  u32 key;
 };
 
 /** \brief Add or delete a single GRE tunnel.
