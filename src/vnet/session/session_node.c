@@ -1192,7 +1192,7 @@ session_tx_not_ready (session_t * s, u8 peek_data)
     }
   else
     {
-      if (s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_DELETED || !s->tx_fifo)
 	return 2;
     }
   return 0;
