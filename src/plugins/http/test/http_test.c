@@ -7,6 +7,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http2/hpack.h>
+#include <http/http2/frame.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -1020,6 +1021,94 @@ http_test_hpack (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_h2_frame (vlib_main_t *vm)
+{
+  static void (*_http2_frame_header_read) (u8 * src,
+					   http2_frame_header_t * fh);
+
+  _http2_frame_header_read =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_header_read");
+
+  vlib_cli_output (vm, "http2_frame_read_settings");
+
+  static http2_error_t (*_http2_frame_read_settings) (
+    http2_conn_settings_t * settings, u8 * payload, u32 payload_len);
+
+  _http2_frame_read_settings =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_read_settings");
+
+  http2_error_t rv;
+  http2_frame_header_t fh = { 0 };
+  http2_conn_settings_t conn_settings = http2_default_conn_settings;
+
+  u8 settings[] =
+    "\000\000\022\004\000\000\000\000\000\000\003\000\000\000d\000"
+    "\004@\000\000\000\000\002\000\000\000\000";
+
+  _http2_frame_header_read (settings, &fh);
+  HTTP_TEST ((fh.flags == 0 && fh.type == HTTP2_FRAME_TYPE_SETTINGS &&
+	      fh.stream_id == 0 && fh.length == 18),
+	     "frame identified as SETTINGS");
+
+  rv = _http2_frame_read_settings (
+    &conn_settings, settings + HTTP2_FRAME_HEADER_SIZE, fh.length);
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR &&
+	      conn_settings.max_concurrent_streams == 100 &&
+	      conn_settings.initial_window_size == 1073741824 &&
+	      conn_settings.enable_push == 0),
+	     "SETTINGS frame payload parsed")
+
+  u8 settings_ack[] = "\000\000\000\004\001\000\000\000\000";
+  _http2_frame_header_read (settings_ack, &fh);
+  HTTP_TEST ((fh.flags == HTTP2_FRAME_FLAG_ACK &&
+	      fh.type == HTTP2_FRAME_TYPE_SETTINGS && fh.stream_id == 0 &&
+	      fh.length == 0),
+	     "frame identified as SETTINGS ACK");
+
+  vlib_cli_output (vm, "http2_frame_write_settings_ack");
+
+  static void (*_http2_frame_write_settings_ack) (u8 * *dst);
+
+  _http2_frame_write_settings_ack = vlib_get_plugin_symbol (
+    "http_plugin.so", "http2_frame_write_settings_ack");
+
+  u8 *buf = 0;
+
+  _http2_frame_write_settings_ack (&buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (settings_ack) - 1)) &&
+	       !memcmp (buf, settings_ack, sizeof (settings_ack) - 1),
+	     "SETTINGS ACK frame written");
+  vec_free (buf);
+
+  vlib_cli_output (vm, "http2_frame_write_settings");
+
+  static void (*_http2_frame_write_settings) (
+    http2_settings_entry_t * settings, u8 * *dst);
+
+  _http2_frame_write_settings =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_settings");
+
+  http2_settings_entry_t *settings_list = 0;
+  vec_validate (settings_list, 2);
+  settings_list[0].identifier = HTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  settings_list[0].value = 100;
+  settings_list[1].identifier = HTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  settings_list[1].value = 1073741824;
+  settings_list[2].identifier = HTTP2_SETTINGS_ENABLE_PUSH;
+  settings_list[2].value = 0;
+
+  _http2_frame_write_settings (settings_list, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (settings) - 1) &&
+	      !memcmp (buf, settings, sizeof (settings) - 1)),
+	     "SETTINGS frame written");
+
+  vec_free (settings_list);
+  vec_free (buf);
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -1039,6 +1128,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_header_table (vm);
       else if (unformat (input, "hpack"))
 	res = http_test_hpack (vm);
+      else if (unformat (input, "h2-frame"))
+	res = http_test_h2_frame (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -1052,6 +1143,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_header_table (vm)))
 	    goto done;
 	  if ((res = http_test_hpack (vm)))
+	    goto done;
+	  if ((res = http_test_h2_frame (vm)))
 	    goto done;
 	}
       else
