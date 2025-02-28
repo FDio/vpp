@@ -522,6 +522,7 @@ list(APPEND VNET_API_FILES bfd/bfd.api)
 
 list(APPEND VNET_SOURCES
   crypto/cli.c
+  crypto/config.c
   crypto/crypto.c
   crypto/format.c
   crypto/main.c
