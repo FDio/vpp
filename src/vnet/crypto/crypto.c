@@ -18,6 +18,8 @@ VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
 
 #define log_debug(f, ...)                                                     \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, crypto_main_log.class, f, ##__VA_ARGS__)
+#define log_notice(f, ...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, crypto_main_log.class, f, ##__VA_ARGS__)
 #define log_err(f, ...)                                                       \
   vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log.class, f, ##__VA_ARGS__)
 
@@ -564,11 +566,14 @@ static void
 vnet_crypto_load_engines (vlib_main_t *vm)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_config_t *pc;
   u8 *path;
   char *p;
   u32 path_len;
   struct dirent *entry;
   DIR *dp;
+  uword *config_index;
 
   path = os_get_exec_path ();
   log_debug ("exec path is %s", path);
@@ -619,6 +624,31 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	  if (!r)
 	    {
 	      log_err ("%s is not a crypto engine", entry->d_name);
+	      dlclose (handle);
+	      continue;
+	    }
+
+	  /* follow cryptos config section directive */
+	  config_index = hash_get_mem (cm->config_index_by_name, r->name);
+	  if (config_index)
+	    {
+	      pc = vec_elt_at_index (cm->configs, config_index[0]);
+	      if (pc->is_disabled)
+		{
+		  log_notice ("crypto disabled: %s", r->name);
+		  dlclose (handle);
+		  continue;
+		}
+	      if (cm->default_disabled && pc->is_enabled == 0)
+		{
+		  log_notice ("crypto disabled (default): %s", r->name);
+		  dlclose (handle);
+		  continue;
+		}
+	    }
+	  else if (cm->default_disabled)
+	    {
+	      log_notice ("crypto disabled (default): %s", r->name);
 	      dlclose (handle);
 	      continue;
 	    }
