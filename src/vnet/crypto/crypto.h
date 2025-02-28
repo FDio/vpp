@@ -420,17 +420,28 @@ typedef struct
 
 typedef struct
 {
+  char *name;
+  u8 is_disabled;
+  u8 is_enabled;
+} vnet_crypto_config_t;
+
+typedef struct
+{
   vnet_crypto_key_t **keys;
   u8 keys_lock;
   u32 crypto_node_index;
   vnet_crypto_thread_t *threads;
   vnet_crypto_frame_dequeue_t **dequeue_handlers;
   vnet_crypto_engine_t *engines;
+  /* configs and hash by name */
+  vnet_crypto_config_t *configs;
+  uword *config_index_by_name;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
   vnet_crypto_async_next_node_t *next_nodes;
   vnet_crypto_alg_data_t algs[VNET_CRYPTO_N_ALGS];
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
+  u8 default_disabled;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
