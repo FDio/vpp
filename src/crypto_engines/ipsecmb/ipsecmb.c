@@ -861,6 +861,7 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
   ipsecmb_alg_data_t *ad;
   ipsecmb_per_thread_data_t *ptd;
   IMB_MGR *m = 0;
+  IMB_ARCH arch;
 
   if (!clib_cpu_supports_aes ())
     return "AES ISA not available on this CPU";
@@ -875,12 +876,8 @@ crypto_ipsecmb_init (vnet_crypto_engine_registration_t *r)
 	clib_memset_u8 (ptd->burst_jobs, 0,
 			sizeof (IMB_JOB) * IMB_MAX_BURST_SIZE);
 #endif
-	if (clib_cpu_supports_avx512f ())
-	  init_mb_mgr_avx512 (ptd->mgr);
-	else if (clib_cpu_supports_avx2 () && clib_cpu_supports_bmi2 ())
-	  init_mb_mgr_avx2 (ptd->mgr);
-	else
-	  init_mb_mgr_sse (ptd->mgr);
+
+	init_mb_mgr_auto (ptd->mgr, &arch);
 
 	if (ptd == imbm->per_thread_data)
 	  m = ptd->mgr;
