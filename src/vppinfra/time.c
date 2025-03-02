@@ -332,6 +332,7 @@ format_clib_time (u8 * s, va_list * args)
   clib_time_t *c = va_arg (*args, clib_time_t *);
   int verbose = va_arg (*args, int);
   f64 now, reftime, delta_reftime_in_seconds, error;
+  u32 indent = format_get_indent (s);
 
   /* Compute vpp elapsed time from the CPU clock */
   reftime = unix_time_now ();
@@ -346,8 +347,14 @@ format_clib_time (u8 * s, va_list * args)
 
   error = now - delta_reftime_in_seconds;
 
-  s = format (s, ", reftime %.6f, error %.6f, clocks/sec %.6f",
-	      delta_reftime_in_seconds, error, c->clocks_per_second);
+  s = format (s, "\n%Ucpu time %.6f now %lu last %lu since start %lu \n",
+	      format_white_space, indent, now, clib_cpu_time_now (),
+	      c->last_cpu_time, c->total_cpu_time);
+  s = format (s, "%Ureftime %.6f now %.6f last %.6f init %.6f\n",
+	      format_white_space, indent, delta_reftime_in_seconds, reftime,
+	      c->last_verify_reference_time, c->init_reference_time);
+  s = format (s, "%Uerror %.6f, clocks/sec %.6f", format_white_space, indent,
+	      error, c->clocks_per_second);
   return (s);
 }
 
