@@ -1,0 +1,6 @@
+comment {SPDX-License-Identifier: Apache-2.0}
+comment {Copyright (c) 2025 Cisco Systems, Inc.}
+set int ip address HundredGigabitEthernet16/0/0 6.0.1.1/24
+set int state HundredGigabitEthernet16/0/0 up
+
+session enable

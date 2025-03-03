@@ -1,1 +1,1 @@
-../../../extras/vcl-ldpreload/README.rst
+../../../extras/scripts/host-stack/vcl-ldpreload/README.rst
