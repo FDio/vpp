@@ -16,6 +16,52 @@
       "message": "recheck",
       "revId": "00d9142ddffe97694dc6fdecebe5e718c615a81a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ea6e402_435d3d0c",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 988,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-03T16:06:14Z",
+      "side": 1,
+      "message": "maybe http_truncate_headers_list?",
+      "range": {
+        "startLine": 988,
+        "startChar": 0,
+        "endLine": 988,
+        "endChar": 25
+      },
+      "revId": "00d9142ddffe97694dc6fdecebe5e718c615a81a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cafc3ab5_4442d066",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 991,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-03T16:06:14Z",
+      "side": 1,
+      "message": "do we need this? or it just waste cpu cycles?",
+      "range": {
+        "startLine": 991,
+        "startChar": 2,
+        "endLine": 991,
+        "endChar": 38
+      },
+      "revId": "00d9142ddffe97694dc6fdecebe5e718c615a81a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
