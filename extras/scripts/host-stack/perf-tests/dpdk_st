@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Cisco Systems, Inc.
+
+VPP_WS=${VPP_WS:-/scratch/fcoras/vpp}
+CFG_WS=$VPP_WS/extras/scripts/host-stack/perf-tests
+CFG_DIR=$CFG_WS/conf
+CFG_FILE=dpdk_st.cli
+BASE_DIR=$VPP_WS/build-root
+BIN_FLAVOR=release
+
+#DPDK_DISABLE=1
+DPDK_DEV=0000:16:00.0
+IF_RX_DESC=512
+IF_TX_DESC=256
+DPDK_CSUM=enable-tcp-udp-checksum
+
+NUM_MBUFS=16536
+
+HEAP_SIZE=4g
+API_SIZE=1G
+API_GLOBAL_SIZE=2000M
+EVT_LOG_SIZE=400000
+
+MAIN_CORE=1
+WORKERS=1
+CFG_CORELIST_WKS="corelist-workers 2"
+
+SOCK=/run/vpp-api.sock
+CLI_SOCK=/run/vpp/cli.sock
+SESSION_CFG="session { event-queue-length 100000 use-app-socket-api }"
+
+TCP_CFG="tcp { max-rx-fifo 128m }"
+TLS_CFG="tls { fifo-size 1m }"
+#QUIC_ENABLE=1
+#LOCAL_OSSL=/scratch/fcoras/openssl
+
+function usage() {
+  echo "Usage: cmd [-f release|debug] [-d dpdk_device_pci_address] [-w vpp_workspace]"
+}
+
+while getopts "f:d:h" opt; do
+  case ${opt} in
+    h)  usage
+        exit 0
+        ;;
+    w)  VPP_WS=$OPTARG
+        ;;
+    f)  BIN_FLAVOR=$OPTARG
+        ;;
+    d)  DPDK_DEV=$OPTARG
+        ;;
+    \?) usage
+        exit 1
+        ;;
+  esac
+done
+shift $((OPTIND -1))
+
+source ~/vpp/start_vpp.sh
+
+start_vpp
