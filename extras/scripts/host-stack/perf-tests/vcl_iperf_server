@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Cisco Systems, Inc.
+
+VPP_WS=${VPP_WS:-/scratch/fcoras/vpp}
+CFG_WS=$VPP_WS/extras/scripts/host-stack/perf-tests
+BIN_PATH=iperf3
+LDP_VAR=$VPP_WS/build-root/install-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so
+VCL_CFG=$CFG_WS/vcl_perf.conf
+PARAMS=$@
+
+sudo taskset --cpu-list 6-11 sh -c "LD_PRELOAD=$LDP_VAR VCL_CONFIG=$VCL_CFG $BIN_PATH -4 -s $PARAMS"
+
+# for tls testing
+# CERT=$CFG_WS/selfsigned.crt
+# KEY=$CFG_WS/selfsigned.key
+# sudo taskset --cpu-list 6-11 sh -c "LDP_TRANSPARENT_TLS=1 LDP_TLS_CERT_FILE=$CERT LDP_TLS_KEY_FILE=$KEY LD_PRELOAD=$LDP_VAR VCL_CONFIG=$VCL_CFG $BIN_PATH -4 -s $PARAMS"
+
+# debugging
+# LDP_SCRIPT=/home/fcoras/vpp/gdb_ldp_init
+# sudo gdb --command=$LDP_SCRIPT --args $BIN_PATH -4 -s $PARAMS
