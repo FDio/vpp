@@ -157,6 +157,24 @@
       "parentUuid": "73f2fa85_2f44decf",
       "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7fb6f90_a3e6c712",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T14:52:35Z",
+      "side": 1,
+      "message": "you fixed only headers, but not data (body) you need to set hs-\u003edata_len to 0 together with http_truncate_headers_list otherwise you might send body with sc 500",
+      "parentUuid": "e8e6968c_6f4134ec",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
