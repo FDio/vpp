@@ -175,6 +175,24 @@
       "parentUuid": "e8e6968c_6f4134ec",
       "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "395137fa_bf546914",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-04T15:04:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c7fb6f90_a3e6c712",
+      "revId": "c0aec1e9c4ff688426a190154ace852ebb1eda50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
