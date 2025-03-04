@@ -137,6 +137,30 @@
       },
       "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "932d95aa_daef508b",
+        "filename": "extras/scripts/host-stack/perf-tests/start_vpp.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T20:25:00Z",
+      "side": 1,
+      "message": "was related to missing w",
+      "parentUuid": "04e61c37_fc3e2968",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 0
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
