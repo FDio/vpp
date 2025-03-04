@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d0b53c30_c552e5d6",
+        "filename": "extras/scripts/host-stack/perf-tests/dpdk_mt",
+        "patchSetId": 4
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:38:08Z",
+      "side": 1,
+      "message": "$VPP_WS/build-root",
+      "range": {
+        "startLine": 10,
+        "startChar": 9,
+        "endLine": 10,
+        "endChar": 39
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5c82fd7_c5ab7df1",
+        "filename": "extras/scripts/host-stack/perf-tests/dpdk_mt",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:38:08Z",
+      "side": 1,
+      "message": "w is missing here",
+      "range": {
+        "startLine": 39,
+        "startChar": 15,
+        "endLine": 39,
+        "endChar": 20
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90ca5384_d7d17abe",
+        "filename": "extras/scripts/host-stack/perf-tests/dpdk_mt",
+        "patchSetId": 4
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:38:08Z",
+      "side": 1,
+      "message": "\"${CFG_WS}\"/start_vpp.sh",
+      "range": {
+        "startLine": 57,
+        "startChar": 7,
+        "endLine": 57,
+        "endChar": 25
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "04e61c37_fc3e2968",
+        "filename": "extras/scripts/host-stack/perf-tests/start_vpp.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:38:08Z",
+      "side": 1,
+      "message": "this is doing some troubles with dpdk_mt",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 0
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
