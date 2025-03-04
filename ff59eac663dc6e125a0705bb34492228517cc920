@@ -72,6 +72,52 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fd8a5b1e_ca0d3f5b",
+        "filename": "extras/scripts/host-stack/perf-tests/dpdk_st",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:46:53Z",
+      "side": 1,
+      "message": "w is missing",
+      "range": {
+        "startLine": 43,
+        "startChar": 15,
+        "endLine": 43,
+        "endChar": 20
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12a3a0ec_04289c71",
+        "filename": "extras/scripts/host-stack/perf-tests/dpdk_st",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-04T13:46:53Z",
+      "side": 1,
+      "message": "\"${CFG_WS}\"/start_vpp.sh",
+      "range": {
+        "startLine": 61,
+        "startChar": 7,
+        "endLine": 61,
+        "endChar": 25
+      },
+      "revId": "ff59eac663dc6e125a0705bb34492228517cc920",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "04e61c37_fc3e2968",
         "filename": "extras/scripts/host-stack/perf-tests/start_vpp.sh",
         "patchSetId": 4
