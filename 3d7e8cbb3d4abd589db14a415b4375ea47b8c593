@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f293ffe_65c03216",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:13:47Z",
+      "side": 1,
+      "message": "aren\u0027t all crypto engines plugins? and so if their plugin is not loaded, then they are not used, and vice-versa.\nWhat does this extra config deliver in addition?",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
