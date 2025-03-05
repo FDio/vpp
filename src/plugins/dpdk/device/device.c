@@ -87,6 +87,22 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
 }
 
 static void
+dpdk_report_tx_drop (vlib_main_t *vm, u32 thread_index, u32 if_index,
+		     u32 node_index, u32 n_ok, u32 n_packets)
+{
+  vlib_simple_counter_main_t *cm;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 n_dropped = n_packets - n_ok;
+
+  cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
+			 VNET_INTERFACE_COUNTER_TX_ERROR);
+
+  vlib_increment_simple_counter (cm, thread_index, if_index, n_dropped);
+
+  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_PKT_DROP, n_dropped);
+}
+
+static void
 dpdk_tx_trace_buffer (dpdk_main_t * dm, vlib_node_runtime_t * node,
 		      dpdk_device_t * xd, u16 queue_id,
 		      vlib_buffer_t * buffer)
@@ -159,7 +175,7 @@ tx_burst_vector_internal (vlib_main_t *vm, dpdk_device_t *xd,
 {
   dpdk_tx_queue_t *txq;
   u32 n_retry;
-  int n_sent = 0;
+  u32 n_sent = 0;
 
   n_retry = 16;
   txq = vec_elt_at_index (xd->tx_queues, queue_id);
@@ -279,6 +295,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (f);
   u32 n_packets = f->n_vectors;
   u32 n_left;
+  u32 n_prep;
   u32 thread_index = vm->thread_index;
   int queue_id = tf->queue_id;
   u8 is_shared = tf->shared_queue;
@@ -418,30 +435,33 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       n_left--;
     }
 
-  /* transmit as many packets as possible */
+  /* prepare and transmit as many packets as possible */
   tx_pkts = n_packets = mb - ptd->mbufs;
-  n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets, queue_id,
-				     is_shared);
+
+  n_prep = rte_eth_tx_prepare (xd->port_id, queue_id, ptd->mbufs, n_packets);
+
+  {
+    /* If mbufs are malformed then drop any non-prepared packets */
+    if (PREDICT_FALSE (n_prep != n_packets))
+      {
+	tx_pkts -= n_packets - n_prep;
+	dpdk_report_tx_drop (vm, thread_index, xd->sw_if_index,
+			     node->node_index, n_prep, n_packets);
+	rte_pktmbuf_free_bulk (&ptd->mbufs[n_prep], n_packets - n_prep);
+      }
+  }
+
+  n_left =
+    tx_burst_vector_internal (vm, xd, ptd->mbufs, n_prep, queue_id, is_shared);
 
   {
     /* If there is no callback then drop any non-transmitted packets */
     if (PREDICT_FALSE (n_left))
       {
 	tx_pkts -= n_left;
-	vlib_simple_counter_main_t *cm;
-	vnet_main_t *vnm = vnet_get_main ();
-
-	cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			       VNET_INTERFACE_COUNTER_TX_ERROR);
-
-	vlib_increment_simple_counter (cm, thread_index, xd->sw_if_index,
-				       n_left);
-
-	vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
-			  n_left);
-
-	while (n_left--)
-	  rte_pktmbuf_free (ptd->mbufs[n_packets - n_left - 1]);
+	dpdk_report_tx_drop (vm, thread_index, xd->sw_if_index,
+			     node->node_index, n_prep - n_left, n_prep);
+	rte_pktmbuf_free_bulk (&ptd->mbufs[n_prep - n_left], n_left);
       }
   }
 
