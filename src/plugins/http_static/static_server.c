@@ -510,6 +510,7 @@ hss_ts_rx_callback (session_t *ts)
   if (hs->free_data)
     vec_free (hs->data);
   hs->data = 0;
+  hs->data_len = 0;
   http_init_headers_ctx (&hs->resp_headers, hs->headers_buf,
 			 vec_len (hs->headers_buf));
 
