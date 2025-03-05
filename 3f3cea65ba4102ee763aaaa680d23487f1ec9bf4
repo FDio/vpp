@@ -57,6 +57,24 @@
       "parentUuid": "b56660ea_77929c26",
       "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc8da391_10534658",
+        "filename": "src/crypto_engines/ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-03-05T16:00:47Z",
+      "side": 1,
+      "message": "Cannot remember - vague memory tells me it is performance related. It is no harm to wait for performance report on this one though.",
+      "parentUuid": "90c28465_3c04ba2b",
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
