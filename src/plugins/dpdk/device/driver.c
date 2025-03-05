@@ -113,6 +113,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .drivers = DPDK_DRIVERS ({ "net_ena", "AWS ENA VF" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
     .enable_rxq_int = 1,
+    .need_tx_prepare = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_vmxnet3", "VMware VMXNET3" }),
