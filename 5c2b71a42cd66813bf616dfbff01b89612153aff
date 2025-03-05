@@ -1,5 +1,193 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7927cf0_90c15a5b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "UT is required.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4cfbe7f3_995b86bd",
+        "filename": "src/plugins/gre/error.def",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "unnecessary change.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fa99a20_04477c01",
+        "filename": "src/plugins/gre/gre.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "please follow the API change process as defined here: https://github.com/FDio/vpp/blob/master/src/tools/vppapigen/VPPAPI.rst#api-change-process",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99670998_77f84c72",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "isn\u0027t this already 0 in the tunnel\u0027s rewrite? same for the other functions below.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d2a57d2_05e34b8d",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "why is it necessary to save/restore these values?\nhow do you know that the tunnel has a key?\nwhy is it not done for the other XoY functions?",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e1f56fd_f882083b",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "i would suggest you `typedef u32 gre_key_t` so that all the sizeof(u32) in other code can be replaced with sizeof(gre_key_t) which gives the reader a better understanding of what is being accounted for.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a68e7579_4a2f018a",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "use `__clib_packed`",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31cd264d_e44d9821",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "what\u0027s the value of the key used here when the `key_present` flags is not set?\nAnd if a value of key exists that implicitly means \u0027unused\u0027 is the `key_present` flag needed?",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd347a4f_aa739b21",
+        "filename": "src/plugins/gre/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "ah, that answers my question. i\u0027d say the flag is not needed. you can always have a marco/inline for `gre_key_is_valid(key)` if you want a more expressive form over `if key!\u003d0\u0027\nand even a `format_gre_key` if you want it to print INVALID.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61de1139_e8dfb2eb",
+        "filename": "src/plugins/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "you seem to have done some mass reformatting of this file. please undo that so i can easily find the functionality that changed.\nif it needs reformatting, then please do that in a separate commit (before or after this one).",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27c1e43a_8f7d1362",
+        "filename": "src/vnet/gre/packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-05T23:39:03Z",
+      "side": 1,
+      "message": "const",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
