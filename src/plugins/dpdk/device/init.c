@@ -390,6 +390,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 	  if (dr->int_unmaskable)
 	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
+	  if (dr->need_tx_prepare)
+	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_TX_PREPARE, 1);
 	}
       else
 	dpdk_log_warn ("[%u] unknown driver '%s'", port_id, di.driver_name);
