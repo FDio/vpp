@@ -75,6 +75,24 @@
       "parentUuid": "90c28465_3c04ba2b",
       "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2fb819e_40eab4e9",
+        "filename": "src/crypto_engines/ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2025-03-05T16:09:04Z",
+      "side": 1,
+      "message": "I\u0027m not so sure any VPP CSIT perf verify automation jobs can do with ipsec-mb sw crypto plugin, I guess we will need manually test it and compares?",
+      "parentUuid": "bc8da391_10534658",
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
