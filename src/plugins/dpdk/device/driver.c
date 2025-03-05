@@ -25,19 +25,16 @@ static dpdk_driver_t dpdk_drivers[] = {
 			     { "net_e1000_em", "Intel 82540EM (e1000)" }),
     .enable_rxq_int = 1,
     .supported_flow_actions = supported_flow_actions_intel,
-    .use_intel_phdr_cksum = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_ixgbe", "Intel 82599" }),
     .enable_rxq_int = 1,
     .supported_flow_actions = supported_flow_actions_intel,
-    .use_intel_phdr_cksum = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_i40e", "Intel X710/XL710 Family" }),
     .enable_rxq_int = 1,
     .supported_flow_actions = supported_flow_actions_intel,
-    .use_intel_phdr_cksum = 1,
     .int_unmaskable = 1,
   },
   {
@@ -46,8 +43,14 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "VirtualFunctionEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "net_iavf", "Intel iAVF" },
-			     { "net_i40e_vf", "Intel X710/XL710 Family VF" }),
+    .drivers = DPDK_DRIVERS ({ "net_iavf", "Intel iAVF" }),
+    .interface_name_prefix = "VirtualFunctionEthernet",
+    .supported_flow_actions = supported_flow_actions_intel,
+    .int_unmaskable = 1,
+    .program_vlans = 1,
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "net_i40e_vf", "Intel X710/XL710 Family VF" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
     .supported_flow_actions = supported_flow_actions_intel,
     .use_intel_phdr_cksum = 1,
@@ -92,8 +95,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "VhostEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" },
-			     { "net_enic", "Cisco VIC" }),
+    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" }),
     .use_intel_phdr_cksum = 1,
   },
   {
