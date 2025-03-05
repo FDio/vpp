@@ -16,6 +16,47 @@
       "message": "I remember I did this before and didn\u0027t turn out well. I would suggest waiting for CSIT perf results out before merging it.",
       "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e282e54b_032eee19",
+        "filename": "src/crypto_engines/ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2025-03-05T15:47:14Z",
+      "side": 1,
+      "message": "arch can be NULL here if it\u0027s not going to be used later.",
+      "range": {
+        "startLine": 880,
+        "startChar": 29,
+        "endLine": 880,
+        "endChar": 34
+      },
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90c28465_3c04ba2b",
+        "filename": "src/crypto_engines/ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2025-03-05T15:47:14Z",
+      "side": 1,
+      "message": "Can you remember what the issue was? This API will select the best arch available based on extensions detected through cpuid.\n\nWe have had one reported issue relating to this API that turned out to be the VMM incorrectly advertising features through cpuid, see here:\nhttps://github.com/intel/intel-ipsec-mb/issues/153\n\nCould it have been a similar case?",
+      "parentUuid": "b56660ea_77929c26",
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
