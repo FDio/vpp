@@ -23,9 +23,11 @@
 /**
  * unformat a vnet URI
  *
- * transport-proto://[hostname]ip46-addr:port
- * eg. 	tcp://ip46-addr:port
- * 	tls://[testtsl.fd.io]ip46-addr:port
+ * transport-proto://[hostname]ip4-addr:port
+ * eg. 	tcp://ip4-addr:port
+ *      https://[ip6]:port
+ *      http://ip4:port
+ * 	    tls://[testtsl.fd.io]ip4-addr:port
  *
  * u8 ip46_address[16];
  * u16  port_in_host_byte_order;
@@ -43,78 +45,70 @@ unformat_vnet_uri (unformat_input_t *input, va_list *args)
   session_endpoint_cfg_t *sep = va_arg (*args, session_endpoint_cfg_t *);
   u32 transport_proto = 0, port;
 
-  if (unformat (input, "%U://%U:%d", unformat_transport_proto,
-		&transport_proto, unformat_ip4_address, &sep->ip.ip4, &port))
+  if (unformat (input, "%U:", unformat_transport_proto, &transport_proto))
     {
       sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 1;
-      return 1;
     }
-  else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
-		     &transport_proto, unformat_ip4_address, &sep->ip.ip4,
-		     &port))
+  else if (unformat (input, "%Us:", unformat_transport_proto,
+		     &transport_proto))
     {
+      sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
       sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 1;
-      return 1;
     }
-  else if (unformat (input, "%U://%U", unformat_transport_proto,
-		     &transport_proto, unformat_ip4_address, &sep->ip.ip4))
-    {
-      sep->transport_proto = transport_proto;
-      if (sep->transport_proto == TRANSPORT_PROTO_HTTP)
-	port = 80;
-      else if (sep->transport_proto == TRANSPORT_PROTO_TLS)
-	port = 443;
-      else
-	return 0;
 
-      sep->port = clib_host_to_net_u16 (port);
+  if (unformat (input, "//%U:", unformat_ip4_address, &sep->ip.ip4))
+    {
       sep->is_ip4 = 1;
-      return 1;
     }
-  else if (unformat (input, "%U://[%U]:%d", unformat_transport_proto,
-		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
-		     &port))
+  /* deprecated */
+  else if (unformat (input, "//%U/", unformat_ip4_address, &sep->ip.ip4))
     {
-      sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 1;
+    }
+  else if (unformat (input, "//%U", unformat_ip4_address, &sep->ip.ip4))
+    {
+      sep->is_ip4 = 1;
+    }
+  /* deprecated */
+  else if (unformat (input, "//%U/", unformat_ip6_address, &sep->ip.ip6))
+    {
       sep->is_ip4 = 0;
+    }
+  else if (unformat (input, "//[%U]:", unformat_ip6_address, &sep->ip.ip6))
+    {
+      sep->is_ip4 = 0;
+    }
+  /* deprecated */
+  else if (unformat (input, "//[%U]/", unformat_ip6_address, &sep->ip.ip6))
+    {
+      sep->is_ip4 = 0;
+    }
+  else if (unformat (input, "//[%U]", unformat_ip6_address, &sep->ip.ip6))
+    {
+      sep->is_ip4 = 0;
+    }
+  else if (unformat (input, "//session/%lu", &sep->parent_handle))
+    {
+      sep->ip.ip4.as_u32 = 1; /* ip need to be non zero in vnet */
       return 1;
     }
-  else if (unformat (input, "%U://[%U]", unformat_transport_proto,
-		     &transport_proto, unformat_ip6_address, &sep->ip.ip6))
-    {
-      sep->transport_proto = transport_proto;
-      if (sep->transport_proto == TRANSPORT_PROTO_HTTP)
-	port = 80;
-      else if (sep->transport_proto == TRANSPORT_PROTO_TLS)
-	port = 443;
-      else
-	return 0;
 
-      sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 0;
-      return 1;
-    }
-  else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
-		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
-		     &port))
+  if (unformat (input, "%d", &port))
     {
-      sep->transport_proto = transport_proto;
       sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 0;
       return 1;
     }
-  else if (unformat (input, "%U://session/%lu", unformat_transport_proto,
-		     &transport_proto, &sep->parent_handle))
+  else if (sep->transport_proto == TRANSPORT_PROTO_HTTP)
     {
-      sep->transport_proto = transport_proto;
-      sep->ip.ip4.as_u32 = 1;	/* ip need to be non zero in vnet */
+      sep->port = clib_host_to_net_u16 (80);
       return 1;
     }
+  else if (sep->transport_proto == TRANSPORT_PROTO_TLS)
+    {
+      sep->port = clib_host_to_net_u16 (443);
+      return 1;
+    }
+
   return 0;
 }
 
