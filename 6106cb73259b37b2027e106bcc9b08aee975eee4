@@ -33,6 +33,23 @@
       "message": "perftest-2n-icx",
       "revId": "6106cb73259b37b2027e106bcc9b08aee975eee4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39d428a2_8cdb1ef4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-06T09:13:46Z",
+      "side": 1,
+      "message": "perftest-2n-spr mrrANDnic_*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2patch mrrANDnic_*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2xcbase",
+      "revId": "6106cb73259b37b2027e106bcc9b08aee975eee4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
