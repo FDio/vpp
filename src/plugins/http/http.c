@@ -803,6 +803,13 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
       hc->timeout = http_cfg->timeout;
     }
 
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (ext_cfg)
+    {
+      HTTP_DBG (1, "app set tls");
+      cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
+    }
+
   hc->is_server = 0;
 
   if (vec_len (app->name))

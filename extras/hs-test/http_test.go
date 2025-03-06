@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -33,7 +34,7 @@ func init() {
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathSanitizationTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
-		HttpClientGetNoResponseBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
+		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
@@ -329,26 +330,43 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 func HttpClientGetResponseBodyTest(s *NoTopoSuite) {
 	response := "<body>hello world</body>"
 	size := len(response)
-	httpClientGet(s, response, size)
+	httpClientGet(s, response, size, "http")
 }
 
 func HttpClientGet128kbResponseTest(s *NoTopoSuite) {
 	response := strings.Repeat("a", 128*1024)
 	size := len(response)
-	httpClientGet(s, response, size)
+	httpClientGet(s, response, size, "http")
 }
 
-func HttpClientGetNoResponseBodyTest(s *NoTopoSuite) {
+func HttpClientGetTlsNoRespBodyTest(s *NoTopoSuite) {
 	response := ""
-	httpClientGet(s, response, 0)
+	httpClientGet(s, response, 0, "https")
 }
 
-func httpClientGet(s *NoTopoSuite, response string, size int) {
-	serverAddress := s.HostAddr()
+func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
+	var l net.Listener
+	var err error
+	var port string
 	vpp := s.Containers.Vpp.VppInstance
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	serverAddress := s.HostAddr()
+
+	if proto == "https" {
+		certFile := "resources/cert/localhost.crt"
+		keyFile := "resources/cert/localhost.key"
+		cer, err := tls.LoadX509KeyPair(certFile, keyFile)
+		s.AssertNil(err)
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
+		server.HTTPTestServer.TLS = tlsConfig
+		port = "443"
+		l, err = tls.Listen("tcp", serverAddress+":443", tlsConfig)
+	} else {
+		port = "80"
+		l, err = net.Listen("tcp", serverAddress+":80")
+	}
 	s.AssertNil(err, fmt.Sprint(err))
+
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
@@ -361,7 +379,7 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 	server.Start()
 	defer server.Close()
 
-	uri := "http://" + serverAddress
+	uri := proto + "://" + serverAddress + ":" + port
 	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
 
 	o := vpp.Vppctl(cmd)
