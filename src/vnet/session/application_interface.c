@@ -23,9 +23,11 @@
 /**
  * unformat a vnet URI
  *
- * transport-proto://[hostname]ip46-addr:port
- * eg. 	tcp://ip46-addr:port
- * 	tls://[testtsl.fd.io]ip46-addr:port
+ * transport-proto://[hostname]ip4-addr:port
+ * eg. 	tcp://ip4-addr:port
+ *      https://[ip6]:port
+ *      http://ip4:port
+ * 	    tls://[testtsl.fd.io]ip4-addr:port
  *
  * u8 ip46_address[16];
  * u16  port_in_host_byte_order;
@@ -51,6 +53,7 @@ unformat_vnet_uri (unformat_input_t *input, va_list *args)
       sep->is_ip4 = 1;
       return 1;
     }
+  /* deprecated */
   else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
 		     &transport_proto, unformat_ip4_address, &sep->ip.ip4,
 		     &port))
@@ -99,6 +102,7 @@ unformat_vnet_uri (unformat_input_t *input, va_list *args)
       sep->is_ip4 = 0;
       return 1;
     }
+  /* deprecated */
   else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
 		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
 		     &port))
@@ -112,7 +116,45 @@ unformat_vnet_uri (unformat_input_t *input, va_list *args)
 		     &transport_proto, &sep->parent_handle))
     {
       sep->transport_proto = transport_proto;
-      sep->ip.ip4.as_u32 = 1;	/* ip need to be non zero in vnet */
+      sep->ip.ip4.as_u32 = 1; /* ip need to be non zero in vnet */
+      return 1;
+    }
+  else if (unformat (input, "%Us://%U:%d", unformat_transport_proto,
+		     &transport_proto, unformat_ip4_address, &sep->ip.ip4,
+		     &port))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 1;
+      sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
+      return 1;
+    }
+  else if (unformat (input, "%Us://%U", unformat_transport_proto,
+		     &transport_proto, unformat_ip4_address, &sep->ip.ip4))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (443);
+      sep->is_ip4 = 1;
+      sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
+      return 1;
+    }
+  else if (unformat (input, "%Us://[%U]:%d", unformat_transport_proto,
+		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
+		     &port))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (port);
+      sep->is_ip4 = 0;
+      sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
+      return 1;
+    }
+  else if (unformat (input, "%Us://[%U]", unformat_transport_proto,
+		     &transport_proto, unformat_ip6_address, &sep->ip.ip6))
+    {
+      sep->transport_proto = transport_proto;
+      sep->port = clib_host_to_net_u16 (443);
+      sep->is_ip4 = 0;
+      sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
       return 1;
     }
   return 0;
