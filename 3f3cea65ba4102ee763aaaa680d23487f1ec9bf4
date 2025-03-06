@@ -128,6 +128,24 @@
       "parentUuid": "e2fb819e_40eab4e9",
       "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7865a79d_273805b8",
+        "filename": "src/crypto_engines/ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2025-03-06T09:47:38Z",
+      "side": 1,
+      "message": "I don\u0027t think this change is going to affect performance. This change helps to fail gracefully (without segfault), or fallback to SSE, when executed on buggy or old VMM\u0027s.",
+      "parentUuid": "f1546e8c_4b9aaf96",
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
