@@ -82,6 +82,7 @@ typedef struct
   u64 appns_secret;
   clib_spinlock_t lock;
   bool was_transport_closed;
+  u32 ckpair_index;
 } hc_main_t;
 
 typedef enum
@@ -526,6 +527,7 @@ hc_attach ()
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[18];
   u32 segment_size = 128 << 20;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   int rv;
 
   if (hcm->private_segment_size)
@@ -546,6 +548,7 @@ hc_attach ()
     hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hcm->prealloc_fifos;
+  a->options[APP_OPTIONS_TLS_ENGINE] = CRYPTO_ENGINE_OPENSSL;
   if (hcm->appns_id)
     {
       a->namespace_id = hcm->appns_id;
@@ -559,6 +562,14 @@ hc_attach ()
   hcm->app_index = a->app_index;
   vec_free (a->name);
   hcm->attached = 1;
+
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  hcm->ckpair_index = ck_pair->index;
 
   return 0;
 }
@@ -598,6 +609,14 @@ hc_connect ()
   ext_cfg = session_endpoint_add_ext_cfg (
     &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+
+  if (hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
+    {
+      ext_cfg = session_endpoint_add_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
+    }
 
   session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
 					a);

@@ -49,7 +49,9 @@ typedef struct _session_endpoint
 #undef _
 } session_endpoint_t;
 
-#define foreach_session_endpoint_cfg_flags _ (PROXY_LISTEN, "proxy listener")
+#define foreach_session_endpoint_cfg_flags                                    \
+  _ (PROXY_LISTEN, "proxy listener")                                          \
+  _ (SECURE, "secure")
 
 typedef enum session_endpoint_cfg_flags_bits_
 {
