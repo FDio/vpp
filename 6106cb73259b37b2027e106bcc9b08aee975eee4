@@ -50,6 +50,23 @@
       "message": "perftest-2n-spr mrrANDnic_*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2patch mrrANDnic_*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2xcbase",
       "revId": "6106cb73259b37b2027e106bcc9b08aee975eee4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48902c11_af7c49a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-06T11:50:31Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-spr/15/ : FAILURE\n\nPerhaps a tiny regression, but negligible when compared to natural performance variance. No objections from me.",
+      "revId": "6106cb73259b37b2027e106bcc9b08aee975eee4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
