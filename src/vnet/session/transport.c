@@ -592,6 +592,7 @@ transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip,
   /* Pool reallocs with worker barrier */
   lep = transport_endpoint_alloc ();
   clib_memcpy_fast (&lep->ep.ip, ip, sizeof (*ip));
+  lep->ep.fib_index = fib_index;
   lep->ep.port = port;
   lep->proto = proto;
   lep->refcnt = 1;
