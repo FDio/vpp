@@ -161,7 +161,9 @@ typedef struct http_tc_
   u8 is_server;
   http_udp_tunnel_mode_t udp_tunnel_mode;
 
-  http_req_t *req_pool; /* multiplexing => request per stream */
+  void *req_pool; /* multiplexing => request per stream */
+
+  void *opaque; /* version specific data */
 } http_conn_t;
 
 typedef struct http_worker_
@@ -198,12 +200,16 @@ typedef struct http_main_
 
 typedef struct http_engine_vft_
 {
+  const char *name;
   void (*app_tx_callback) (http_conn_t *hc, transport_send_params_t *sp);
   void (*app_rx_evt_callback) (http_conn_t *hc);
   void (*app_close_callback) (http_conn_t *hc);
   void (*app_reset_callback) (http_conn_t *hc);
   void (*transport_rx_callback) (http_conn_t *hc);
   void (*transport_close_callback) (http_conn_t *hc);
+  void (*conn_cleanup_callback) (http_conn_t *hc);
+  void (*enable_callback) (void);			    /* optional */
+  uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
 } http_engine_vft_t;
 
 void http_register_engine (const http_engine_vft_t *vft,
@@ -331,69 +337,6 @@ u8 *http_get_app_target (http_req_t *req, http_msg_t *msg);
  * @note Use for streaming of body sent by app.
  */
 void http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg);
-
-/**
- * Allocate new request within given HTTP connection.
- *
- * @param hc  HTTP connection.
- *
- * @return Request index in per-connection pool.
- */
-always_inline u32
-http_alloc_req (http_conn_t *hc)
-{
-  http_req_t *req;
-  pool_get_zero (hc->req_pool, req);
-  req->app_session_handle = SESSION_INVALID_HANDLE;
-  return (req - hc->req_pool);
-}
-
-/**
- * Get request in per-connection pool.
- *
- * @param hc        HTTP connection.
- * @param req_index Request index.
- *
- * @return Pointer to the request data.
- */
-always_inline http_req_t *
-http_get_req (http_conn_t *hc, u32 req_index)
-{
-  return pool_elt_at_index (hc->req_pool, req_index);
-}
-
-/**
- * Get request in per-connection pool if valid.
- *
- * @param hc        HTTP connection.
- * @param req_index Request index.
- *
- * @return Pointer to the request data or @c 0 if not valid.
- */
-always_inline http_req_t *
-http_get_req_if_valid (http_conn_t *hc, u32 req_index)
-{
-  if (pool_is_free_index (hc->req_pool, req_index))
-    return 0;
-  return pool_elt_at_index (hc->req_pool, req_index);
-}
-
-/**
- * Free request in per-connection pool.
- *
- * @param hc  HTTP connection.
- * @param req Pointer to the request.
- */
-always_inline void
-http_req_free (http_conn_t *hc, http_req_t *req)
-{
-  vec_free (req->headers);
-  vec_free (req->target);
-  http_buffer_free (&req->tx_buf);
-  if (CLIB_DEBUG)
-    memset (req, 0xba, sizeof (*req));
-  pool_put (hc->req_pool, req);
-}
 
 /**
  * Change state of given HTTP request.

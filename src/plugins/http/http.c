@@ -419,7 +419,7 @@ http_ts_accept_callback (session_t *ts)
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
 
   ts->session_state = SESSION_STATE_READY;
-  /* TODO: TLS set by ALPN result, TCP: first try HTTP/1 */
+  /* TODO: TLS set by ALPN result, TCP: will decide in http_ts_rx_callback */
   hc->version = HTTP_VERSION_1;
   ts->opaque = http_make_handle (hc_index, hc->version);
 
@@ -596,6 +596,7 @@ http_ts_rx_callback (session_t *ts)
       return 0;
     }
 
+  /* TODO: if version is unknown */
   http_vfts[http_version_from_handle (ts->opaque)].transport_rx_callback (hc);
 
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
@@ -623,7 +624,6 @@ static void
 http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 {
   http_conn_t *hc;
-  http_req_t *req;
   u32 hc_index;
 
   if (ntf == SESSION_CLEANUP_TRANSPORT)
@@ -634,13 +634,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, hc_index);
 
-  pool_foreach (req, hc->req_pool)
-    {
-      vec_free (req->headers);
-      vec_free (req->target);
-      http_buffer_free (&req->tx_buf);
-    }
-  pool_free (hc->req_pool);
+  http_vfts[hc->version].conn_cleanup_callback (hc);
 
   if (hc->pending_timer == 0)
     http_conn_timer_stop (hc);
@@ -705,6 +699,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   u64 options[APP_OPTIONS_N_OPTIONS];
   http_main_t *hm = &http_main;
   u32 num_threads, i;
+  http_engine_vft_t *http_version;
 
   if (!is_en)
     {
@@ -760,6 +755,12 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 
   http_timers_init (vm, http_conn_timeout_cb, http_conn_invalidate_timer_cb);
   hm->is_init = 1;
+
+  vec_foreach (http_version, http_vfts)
+    {
+      if (http_version->enable_callback)
+	http_version->enable_callback ();
+    }
 
   return 0;
 }
@@ -1211,6 +1212,28 @@ http_transport_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION (http_transport_init);
 
+static uword
+unformat_http_version_cfg (unformat_input_t *input, va_list *va)
+{
+  http_engine_vft_t *http_version;
+  unformat_input_t sub_input;
+  int found = 0;
+
+  vec_foreach (http_version, http_vfts)
+    {
+      if (!unformat (input, http_version->name))
+	continue;
+
+      if (http_version->unformat_cfg_callback &&
+	  unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  if (http_version->unformat_cfg_callback (&sub_input))
+	    found = 1;
+	}
+    }
+  return found;
+}
+
 static clib_error_t *
 http_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -1239,6 +1262,8 @@ http_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	  if (hm->fifo_size != mem_sz)
 	    clib_warning ("invalid fifo size %lu", mem_sz);
 	}
+      else if (unformat (input, "%U", unformat_http_version_cfg))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

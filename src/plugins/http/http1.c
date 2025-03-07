@@ -48,6 +48,18 @@ static const char *post_request_template = "POST %s HTTP/1.1\r\n"
 					   "User-Agent: %v\r\n"
 					   "Content-Length: %llu\r\n";
 
+always_inline http_req_t *
+http1_alloc_req (http_conn_t *hc)
+{
+  http_req_t *req;
+
+  req = clib_mem_alloc (sizeof (*req));
+  clib_memset (req, 0, sizeof (*req));
+  req->app_session_handle = SESSION_INVALID_HANDLE;
+  hc->req_pool = (void *) req;
+  return req;
+}
+
 static void
 http1_send_error (http_conn_t *hc, http_status_code_t ec,
 		  transport_send_params_t *sp)
@@ -1622,11 +1634,10 @@ http1_app_tx_callback (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_req_t *req;
 
-  req = http_get_req_if_valid (hc, 0);
+  req = (http_req_t *) hc->req_pool;
   if (!req)
     {
-      http_alloc_req (hc);
-      req = http_get_req (hc, 0);
+      req = http1_alloc_req (hc);
       req->app_session_handle = hc->h_pa_session_handle;
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
     }
@@ -1661,7 +1672,7 @@ http1_app_rx_evt_callback (http_conn_t *hc)
 {
   http_req_t *req;
 
-  req = http_get_req (hc, 0);
+  req = (http_req_t *) hc->req_pool;
 
   if (req->state == HTTP_REQ_STATE_TUNNEL)
     http1_req_state_tunnel_rx (hc, req, 0);
@@ -1672,7 +1683,7 @@ http1_app_close_callback (http_conn_t *hc)
 {
   http_req_t *req;
 
-  req = http_get_req_if_valid (hc, 0);
+  req = (http_req_t *) hc->req_pool;
   /* Nothing more to send, confirm close */
   if (!req || !http_io_as_max_read (req))
     {
@@ -1698,11 +1709,10 @@ http1_transport_rx_callback (http_conn_t *hc)
 {
   http_req_t *req;
 
-  req = http_get_req_if_valid (hc, 0);
+  req = (http_req_t *) hc->req_pool;
   if (!req)
     {
-      http_alloc_req (hc);
-      req = http_get_req (hc, 0);
+      req = http1_alloc_req (hc);
       req->app_session_handle = hc->h_pa_session_handle;
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
     }
@@ -1729,13 +1739,30 @@ http1_transport_close_callback (http_conn_t *hc)
     session_transport_closing_notify (&hc->connection);
 }
 
+static void
+http1_conn_cleanup_callback (http_conn_t *hc)
+{
+  http_req_t *req;
+
+  req = (http_req_t *) hc->req_pool;
+  if (!req)
+    return;
+
+  vec_free (req->headers);
+  vec_free (req->target);
+  clib_mem_free (req);
+  hc->req_pool = 0;
+}
+
 const static http_engine_vft_t http1_engine = {
+  .name = "http1",
   .app_tx_callback = http1_app_tx_callback,
   .app_rx_evt_callback = http1_app_rx_evt_callback,
   .app_close_callback = http1_app_close_callback,
   .app_reset_callback = http1_app_reset_callback,
   .transport_rx_callback = http1_transport_rx_callback,
   .transport_close_callback = http1_transport_close_callback,
+  .conn_cleanup_callback = http1_conn_cleanup_callback,
 };
 
 static clib_error_t *
