@@ -201,11 +201,10 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
     {
       if (s->session_state == VCL_STATE_LISTEN)
 	{
-	  s->session_state = VCL_STATE_LISTEN_NO_MQ;
+	  s->flags |= VCL_SESSION_F_LISTEN_NO_MQ;
 	  continue;
 	}
       if ((s->flags & VCL_SESSION_F_IS_VEP) ||
-	  s->session_state == VCL_STATE_LISTEN_NO_MQ ||
 	  s->session_state == VCL_STATE_CLOSED)
 	continue;
 
@@ -772,9 +771,6 @@ vcl_session_state_str (vcl_session_state_t state)
       break;
     case VCL_STATE_UPDATED:
       st = "STATE_UPDATED";
-      break;
-    case VCL_STATE_LISTEN_NO_MQ:
-      st = "STATE_LISTEN_NO_MQ";
       break;
     default:
       st = "UNKNOWN_STATE";

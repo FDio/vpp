@@ -519,8 +519,7 @@ vcl_session_reset_handler (vcl_worker_t * wrk,
     }
 
   /* Caught a reset before actually accepting the session */
-  if (session->session_state == VCL_STATE_LISTEN ||
-      session->session_state == VCL_STATE_LISTEN_NO_MQ)
+  if (session->session_state == VCL_STATE_LISTEN)
     {
       if (!vcl_flag_accepted_session (session, reset_msg->handle,
 				      VCL_ACCEPTED_F_RESET))
@@ -712,8 +711,7 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
     return 0;
 
   /* Caught a disconnect before actually accepting the session */
-  if (session->session_state == VCL_STATE_LISTEN ||
-      session->session_state == VCL_STATE_LISTEN_NO_MQ)
+  if (session->session_state == VCL_STATE_LISTEN)
     {
       if (!vcl_flag_accepted_session (session, msg->handle,
 				      VCL_ACCEPTED_F_CLOSED))
@@ -1085,8 +1083,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
        *    VPP_CLOSING state instead can been marked as ACCEPTED_F_CLOSED.
        */
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK) &&
-	  !(s->session_state == VCL_STATE_LISTEN ||
-	    s->session_state == VCL_STATE_LISTEN_NO_MQ))
+	  !(s->session_state == VCL_STATE_LISTEN))
 	{
 	  s->session_state = VCL_STATE_VPP_CLOSING;
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
@@ -1114,8 +1111,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
        *    DISCONNECT state instead can been marked as ACCEPTED_F_RESET.
        */
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK) &&
-	  !(s->session_state == VCL_STATE_LISTEN ||
-	    s->session_state == VCL_STATE_LISTEN_NO_MQ))
+	  !(s->session_state == VCL_STATE_LISTEN))
 	{
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
 	  s->session_state = VCL_STATE_DISCONNECT;
@@ -1331,6 +1327,12 @@ vppcom_session_unbind (u32 session_handle)
     }
   clib_fifo_free (session->accept_evts_fifo);
 
+  if (session->flags & VCL_SESSION_F_LISTEN_NO_MQ)
+    {
+      vcl_session_free (wrk, session);
+      return VPPCOM_OK;
+    }
+
   vcl_send_session_unlisten (wrk, session);
 
   VDBG (0, "session %u [0x%llx]: sending unbind!", session->session_index,
@@ -1425,7 +1427,7 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
     {
       if (s->flags & VCL_SESSION_F_IS_VEP)
 	continue;
-      if (s->session_state == VCL_STATE_LISTEN_NO_MQ)
+      if (s->session_state == VCL_STATE_LISTEN)
 	vppcom_session_listen (vcl_session_handle (s), 10);
       else
 	VDBG (0, "internal error: unexpected state %d", s->session_state);
@@ -1769,12 +1771,15 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
     return VPPCOM_EBADFD;
 
   listen_vpp_handle = listen_session->vpp_handle;
-  if (listen_session->session_state == VCL_STATE_LISTEN)
+  if (listen_session->session_state == VCL_STATE_LISTEN &&
+      !(listen_session->flags & VCL_SESSION_F_LISTEN_NO_MQ))
     {
       VDBG (0, "session %u [0x%llx]: already in listen state!",
 	    listen_sh, listen_vpp_handle);
       return VPPCOM_OK;
     }
+
+  listen_session->flags &= ~VCL_SESSION_F_LISTEN_NO_MQ;
 
   VDBG (0, "session %u: sending vpp listen request...", listen_sh);
 
@@ -1851,7 +1856,6 @@ again:
     return VPPCOM_EBADFD;
 
   if ((ls->session_state != VCL_STATE_LISTEN) &&
-      (ls->session_state != VCL_STATE_LISTEN_NO_MQ) &&
       (!vcl_session_is_connectable_listener (wrk, ls)))
     {
       VDBG (0, "ERROR: session [0x%llx]: not in listen state! state (%s)",
