@@ -71,7 +71,6 @@ typedef enum vcl_session_state_
   VCL_STATE_DISCONNECT,
   VCL_STATE_DETACHED,
   VCL_STATE_UPDATED,
-  VCL_STATE_LISTEN_NO_MQ,
 } vcl_session_state_t;
 
 typedef struct epoll_event vppcom_epoll_event_t;
@@ -144,6 +143,7 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_PENDING_FREE = 1 << 7,
   VCL_SESSION_F_PENDING_LISTEN = 1 << 8,
   VCL_SESSION_F_APP_CLOSING = 1 << 9,
+  VCL_SESSION_F_LISTEN_NO_MQ = 1 << 10,
 } __clib_packed vcl_session_flags_t;
 
 typedef enum vcl_worker_wait_
@@ -563,9 +563,8 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
       return 0;
     }
 
-  ASSERT (s->session_state == VCL_STATE_LISTEN
-	  || s->session_state == VCL_STATE_LISTEN_NO_MQ
-	  || vcl_session_is_connectable_listener (wrk, s));
+  ASSERT (s->session_state == VCL_STATE_LISTEN ||
+	  vcl_session_is_connectable_listener (wrk, s));
   return s;
 }
 
