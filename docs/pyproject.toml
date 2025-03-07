@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vpp-docs"
+version = "0.1.0"
+description = "VPP Docs"
+#readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "VPP Contributors", email = "vpp-dev@fd.io" }
+]
+dependencies = [
+    "sphinx",
+    "sphinxcontrib-spelling",
+    "sphinx-rtd-theme",
+    "noiseprotocol",
+    "recommonmark",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+]
+
+freebsd = [
+    "sysctl",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vpp_test"]
+
+[tool.hatch.envs.test]
+dependencies = [
+    "scapy==2.6.1",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+target-version = ["py39"]
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_classes = ["*TestCase"]
+addopts = """
+    --verbose
+    --failed-first
+    --cache-clear
+"""
+
+[project.scripts]
+vpp-test = "vpp_test.cli:main"

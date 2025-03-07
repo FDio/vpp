@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 import ply.lex as lex
 import ply.yacc as yacc
 from io import TextIOWrapper
+import importlib
 
 assert sys.version_info >= (3, 5), "Not supported Python version: {}".format(
     sys.version
@@ -1182,6 +1183,19 @@ def write_dependencies(output_file, dependency_file, imports):
             print(f" {r[-1]}", file=f)
 
 
+def load_plugin(output_module):
+    """Load the plugin for the given output module."""
+    try:
+        # Construct the module name
+        module_name = f"plugins.vppapigen_{output_module.lower()}"
+        # Dynamically import the module
+        plugin = importlib.import_module(module_name)
+        return plugin
+    except ImportError as err:
+        log.exception("Error importing output plugin: %s", err)
+        return None
+
+
 def run_vppapigen(
     input_file=None,
     output=sys.stdout,
@@ -1219,30 +1233,9 @@ def run_vppapigen(
     #
     # Generate representation
     #
-    from importlib.machinery import SourceFileLoader
-
-    # Default path
-    pluginpath = ""
-    if not pluginpath:
-        cand = []
-        cand.append(os.path.dirname(os.path.realpath(__file__)))
-        cand.append(os.path.dirname(os.path.realpath(__file__)) + "/../share/vpp/")
-        for c in cand:
-            c += "/"
-            if os.path.isfile("{}vppapigen_{}.py".format(c, output_module.lower())):
-                pluginpath = c
-                break
-    else:
-        pluginpath = pluginpath + "/"
-    if pluginpath == "":
+    plugin = load_plugin(output_module)
+    if not plugin:
         log.exception("Output plugin not found")
-        return 1
-    module_path = "{}vppapigen_{}.py".format(pluginpath, output_module.lower())
-
-    try:
-        plugin = SourceFileLoader(output_module, module_path).load_module()
-    except Exception as err:
-        log.exception("Error importing output plugin: %s, %s", module_path, err)
         return 1
 
     parser = VPPAPI(debug=debug, filename=filename, logger=log, revision=git_revision)

@@ -10,7 +10,7 @@ def discover_tests(directory, callback):
     do_insert = True
     for _f in os.listdir(directory):
         f = "%s/%s" % (directory, _f)
-        if os.path.isdir(f):
+        if os.path.isdir(f) and not _f.startswith("."):
             discover_tests(f, callback)
             continue
         if not os.path.isfile(f):

@@ -91,14 +91,11 @@ DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-python
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += clang gcovr lcov chrpath autoconf libnuma-dev
-DEB_DEPENDS += python3-all python3-setuptools check
-DEB_DEPENDS += libffi-dev python3-ply libunwind-dev
-DEB_DEPENDS += cmake ninja-build python3-jsonschema python3-yaml
-DEB_DEPENDS += python3-venv  # ensurepip
-DEB_DEPENDS += python3-dev python3-pip
+DEB_DEPENDS += check
+DEB_DEPENDS += libffi-dev libunwind-dev
+DEB_DEPENDS += cmake ninja-build
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
 # DEB_DEPENDS += enchant  # for docs
-DEB_DEPENDS += python3-virtualenv
 DEB_DEPENDS += libssl-dev
 DEB_DEPENDS += libelf-dev libpcap-dev # for libxdp (af_xdp)
 DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
@@ -118,7 +115,6 @@ ifeq ($(OS_VERSION_ID),24.04)
 	LIBFFI=libffi8
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),22.04)
-	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += clang clang-format-15
 	# overwrite clang-format version to run `make checkstyle` successfully
@@ -127,7 +123,6 @@ else ifeq ($(OS_VERSION_ID),22.04)
 	LIBFFI=libffi7
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),20.04)
-	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += clang clang-format-11
 	LIBFFI=libffi7
@@ -177,34 +172,23 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
-	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
-	RPM_DEPENDS += python3-ply  # for vppapigen
-	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID),rocky)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
-	RPM_DEPENDS += python3-ply  # for vppapigen
-	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += infiniband-diags llvm clang cmake
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else ifeq ($(OS_ID),almalinux)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
-	RPM_DEPENDS += python3-ply  # for vppapigen
-	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += infiniband-diags llvm clang cmake
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
-	RPM_DEPENDS += python2-devel python36-devel python3-ply
-	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += libarchive cmake
 	RPM_DEPENDS += infiniband-diags libibumad
 	RPM_DEPENDS += libpcap-devel llvm-toolset
@@ -212,18 +196,13 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),anolis-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
-	RPM_DEPENDS += python2-devel python36-devel python3-ply
-	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += libarchive cmake
-	RPM_DEPENDS += libpcap-devel llvm-toolset git-clang-format python3-pyyaml
+	RPM_DEPENDS += libpcap-devel llvm-toolset git-clang-format
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 	export CLANG_FORMAT_VER=15
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python36-ply  # for vppapigen
-	RPM_DEPENDS += python3-devel python3-pip
-	RPM_DEPENDS += python-virtualenv python36-jsonschema
 	RPM_DEPENDS += devtoolset-9 devtoolset-9-libasan-devel
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -239,7 +218,7 @@ RPM_DEPENDS_DEBUG += zlib-debuginfo nss-softokn-debuginfo
 RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel lsb-release
@@ -406,7 +385,7 @@ bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
 .PHONY: install-dep
-install-dep:
+install-dep: check-uv
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
@@ -671,8 +650,7 @@ test-wipe-cov:
 test-wipe-all:
 	@$(MAKE) -C test wipe-all
 
-# Note: All python venv consolidated in test/Makefile, test/requirements*.txt
-#       Also, this target is used by ci-management/jjb/scripts/vpp/checkstyle-test.sh,
+# Note: This target is used by ci-management/jjb/scripts/vpp/checkstyle-test.sh,
 #       thus inclusion of checkstyle-go here to include checkstyle for hs-test
 #       in the vpp-checkstyle-verify-*-*-* jobs
 .PHONY: test-checkstyle
@@ -898,11 +876,11 @@ endif
 
 .PHONY: featurelist
 featurelist: centos-pyyaml
-	@extras/scripts/fts.py --all --markdown
+	@$(VENV_BIN)/fts --all --markdown
 
 .PHONY: checkfeaturelist
 checkfeaturelist: centos-pyyaml
-	@extras/scripts/fts.py --validate --all
+	@$(VENV_BIN)/fts --validate --all
 
 #
 # Build the documentation
@@ -958,3 +936,57 @@ endif
 .PHONY: check-dpdk-mlx
 check-dpdk-mlx:
 	@[ $$($(MAKE) -sC build/external dpdk-show-DPDK_MLX_DEFAULT) = y ]
+
+# === venv ===
+UV_DIR := $(BR)/.local
+UV_CACHE := $(BR)/.uv-cache
+export UV := $(UV_DIR)/bin/uv
+OS := $(shell uname -s)
+export VENV_DIR=$(BR)/venv
+export VENV_BIN=$(VENV_DIR)/bin
+export PYTHONPYCACHEPREFIX=$(VENV_DIR)/__pycache__
+export UV_LINK_MODE=copy
+PACKAGES_MARKER := $(VENV_DIR)/.packages
+
+.PHONY: check-uv install-uv
+
+check-uv:
+	@if [ "$(OS)" = "Linux" ]; then \
+		if [ ! -x "$(UV)" ]; then \
+			$(MAKE) install-uv; \
+		else \
+			echo "uv is already installed at $(UV)"; \
+		fi \
+	else \
+		echo "Skipping uv installation (not Linux)."; \
+	fi
+
+install-uv:
+	@echo "Installing uv..."
+	@mkdir -p $(UV_DIR)
+	XDG_BIN_HOME=$(UV_DIR)/bin sh -c 'curl -fsSL https://astral.sh/uv/install.sh | sh'
+	@echo "uv installed successfully at $(UV_DIR)/bin/uv"
+
+PYTHON_PACKAGES := \
+	pip \
+	cmake \
+	src/tools/vppapigen \
+	src/scripts \
+	black==24.4.2
+
+$(PACKAGES_MARKER):
+	@echo "Creating virtual environment..."
+	UV_CACHE_DIR=$(UV_CACHE) $(UV) venv $(VENV_DIR) --python=3.13
+	@echo "Installing package with dependencies..."
+	# @$(UV) pip install --upgrade pip --python=$(VENV_DIR)/bin/python
+	@$(UV) pip install --python=$(VENV_DIR)/bin/python $(PYTHON_PACKAGES)
+
+	# $(VENV_BIN)/pip install $(PYTHON_PACKAGES)
+	@touch $@
+
+	# @$(UV) pip install --python=$(VENV_DIR)/bin/python -e "src/tools/vppapigen"
+	# @touch $(INSTALL_MARKER)
+
+.PHONY: venv
+venv: $(PACKAGES_MARKER)
+# === venv ===

@@ -19,18 +19,21 @@ endif()
 ##############################################################################
 # API
 ##############################################################################
+# Find vppapigen once at the start
+if(NOT VPP_APIGEN)
+
+    find_program(VPP_APIGEN vppapigen
+    HINTS ${CMAKE_SOURCE_DIR}/../build-root/venv/bin
+    REQUIRED)
+    message(STATUS "Using vppapigen: ${VPP_APIGEN}")
+endif()
+
 function(vpp_generate_api_c_header file)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.h)
   set (dependency_file ${CMAKE_CURRENT_BINARY_DIR}/${file}.d)
   get_filename_component(output_dir ${output_name} DIRECTORY)
-  if(NOT VPP_APIGEN)
-    set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
-    set(VPPAPIGEN_SUBMODULES
-      ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_c.py
-      ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_json.py
-    )
-  endif()
-  if (VPP_INCLUDE_DIR)
+
+  if(VPP_INCLUDE_DIR)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
   endif()
 
@@ -51,9 +54,9 @@ function(vpp_generate_api_c_header file)
 set(COMMON_ARGS
   OUTPUT ${OUTPUT_HEADERS}
   COMMAND mkdir -p ${output_dir}
-  COMMAND ${PYENV} ${VPP_APIGEN}
+  COMMAND ${VPP_APIGEN}
   ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name} -MF ${dependency_file}
-  DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file} ${VPPAPIGEN_SUBMODULES}
+  DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
   COMMENT "Generating API header ${output_name}"
 )
 
@@ -80,15 +83,12 @@ endfunction()
 function(vpp_generate_api_json_header file dir component)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.json)
   get_filename_component(output_dir ${output_name} DIRECTORY)
-  if(NOT VPP_APIGEN)
-     set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
-  endif()
   if (VPP_INCLUDE_DIR)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
   endif()
   add_custom_command (OUTPUT ${output_name}
     COMMAND mkdir -p ${output_dir}
-    COMMAND ${PYENV} ${VPP_APIGEN}
+    COMMAND ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --outputdir ${output_dir} --output ${output_name}
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
@@ -119,7 +119,7 @@ function(vpp_generate_vapi_c_header f)
   add_custom_command(
     OUTPUT ${output_name}
     WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${PYENV} ${VPP_VAPI_C_GEN}
+    COMMAND ${VPP_VAPI_C_GEN}
     ARGS --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_C_GEN_DEPENDS}
     COMMENT "Generating VAPI C header ${output_name}"
@@ -146,7 +146,7 @@ function (vpp_generate_vapi_cpp_header f)
   add_custom_command(
     OUTPUT ${output_name}
     WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${PYENV} ${VPP_VAPI_CPP_GEN}
+    COMMAND ${VPP_VAPI_CPP_GEN}
     ARGS --gen-h-prefix=vapi --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_CPP_GEN_DEPENDS}
     COMMENT "Generating VAPI C++ header ${output_name}"
