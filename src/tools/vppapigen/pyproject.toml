@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "vppapigen"
+version = "1.0.0"
+description = "VPP API Generator"
+authors = ["VPP Contributors <vpp-dev@fd.io>"]
+license = "Apache-2.0"
+packages = [
+    { include = "plugins" }  # Include the plugins directory
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+ply = "^3.11"  # Specify the version range if needed
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+vppapigen = "vppapigen:main"

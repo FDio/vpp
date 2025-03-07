@@ -20,20 +20,12 @@ endif
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
 DOCS_DIR ?= $(WS_ROOT)/docs
-
+UV ?= $(WS_ROOT)/build-root/.local/bin/uv
 SPHINX_SCRIPTS_DIR ?= $(WS_ROOT)/docs/scripts
 
 # Work out the OS if we haven't already
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 OS_VERSION ?= $(shell grep '^VERSION_ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
-PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
-PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
-
-PYTHON ?= "python3"
-PYTHON_VERSION_OK := $(shell $(PYTHON) -c "exec('import sys\nif sys.hexversion >= 0x03070000: print(\"true\")\nelse: print(\"false\")')")
-ifneq ($(PYTHON_VERSION_OK),true)
-$(error "ERROR: docs build requires python version >= to 3.7")
-endif
 
 # You can set these variables from the command line.
 SPHINXOPTS        = --keep-going -n -W
@@ -52,18 +44,6 @@ help:
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
 	  $(SPHINXBUILD) --help ;\
-	)
-
-.PHONY: venv
-venv:
-	@( \
-	    if [ ! -d ${VENV_DIR} ]; then \
-	      ${PYTHON} -m venv ${VENV_DIR}; \
-	      . ${VENV_DIR}/bin/activate; \
-	      ${PYTHON} -m pip install pip==${PIP_VERSION}; \
-	      ${PYTHON} -m pip install pip-tools==${PIP_TOOLS_VERSION}; \
-	      ${PYTHON} -m pip install -r ${WS_ROOT}/test/requirements-3.txt; \
-	    fi; \
 	)
 
 .PHONY: spell
@@ -94,3 +74,19 @@ clean:
 
 .PHONY: build
 build: docs
+
+# ========================= VENV =========================
+INSTALL_MARKER := $(VENV_DIR)/.doc_installed
+$(INSTALL_MARKER): pyproject.toml
+	@echo "Installing package with dependencies... $(UV)"
+	@$(UV) pip install --python=$(VENV_DIR)/bin/python -e ".[dev]"
+	@touch $(INSTALL_MARKER)
+
+.PHONY: venv
+venv: $(INSTALL_MARKER)
+
+.PHONY: sync-dependencies
+sync-dependencies:
+	@echo "Syncing dependencies..."
+	@$(UV) pip sync pyproject.toml
+# ========================= VENV =========================

@@ -124,7 +124,7 @@ $(DOCS_GENERATED_DIR)/.featurelist.done:
 	@( \
 	  cd $(WS_ROOT) && \
 	  find . -name FEATURE.yaml | \
-	    ./src/scripts/fts.py \
+	    $(VENV_BIN)/fts \
 	      --markdown \
 	      --repolink $(REPOSITORY_URL) > \
 	    $(FEATURE_LIST_FILE) ; \
