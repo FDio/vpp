@@ -56,6 +56,7 @@ endif
 
 VENV_BR_DIR=$(BR)/test
 VENV_PATH=$(VENV_BR_DIR)/venv
+export PYTHONPYCACHEPREFIX=$(VENV_PATH)/__pycache__
 
 ifeq ($(TEST_DEBUG),1)
 VENV_RUN_DIR:=$(VENV_PATH)/run-debug
@@ -63,80 +64,57 @@ else
 VENV_RUN_DIR:=$(VENV_PATH)/run
 endif
 
-ifeq ($(PYTHON),)
-PYTHON_INTERP=python3
-else
-PYTHON_INTERP=$(PYTHON)
-endif
-
 ifeq ($(V),)
 V=0
 endif
 
-PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=24.2
-# Keep in sync with requirements.txt
-PIP_TOOLS_VERSION=7.4.1
-PIP_SETUPTOOLS_VERSION=71.1.0
-PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
-SCAPY_VERSION=$(shell grep scapy $(TEST_DIR)/requirements.txt | cut -d'=' -f3 | cut -d';' -f1)
+# ========================= VENV =========================
+export UV_LINK_MODE=copy
+VENV_PATH := $(BR)/.venv
+UV_DIR := $(BR)/.local
+UV_CACHE := $(BR)/.uv-cache
+UV := $(UV_DIR)/bin/uv
+INSTALL_MARKER := $(VENV_PATH)/.installed
+
+# Target to check if 'uv' is installed
+check-uv-installed:
+	@command -v $(UV) >/dev/null 2>&1 || { echo "uv is not installed."; exit 1; }
+
+$(VENV_PATH): check-uv-installed
+	@echo "Creating virtual environment..."
+	UV_CACHE_DIR=$(UV_CACHE) $(UV) venv $(VENV_PATH) --python=3.13
+
+$(INSTALL_MARKER): $(VENV_PATH) pyproject.toml
+	@echo "Installing package with dependencies..."
+	@$(UV) pip install --upgrade pip --python=$(VENV_PATH)/bin/python
+	@$(VENV_PATH)/bin/pip install git+https://github.com/vpp-dev/scapy.git@v2.4.5+vpp1
+	@$(UV) pip install --python=$(VENV_PATH)/bin/python -e ".[dev]"
+	@touch $(INSTALL_MARKER)
+
+.PHONY: venv
+venv: $(UV) $(VENV_PATH)
+
+.PHONY: install-dependencies
+install-dependencies: $(INSTALL_MARKER)
+
+.PHONY: sync-dependencies
+sync-dependencies: venv
+	@echo "Syncing dependencies..."
+	@$(UV) pip sync pyproject.toml
+
+# ========================= VENV =========================
 BUILD_COV_DIR=$(BR)/test-coverage
 
-PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION)-$(PIP_TOOLS_VERSION).done
-PIP_INSTALL_DONE=$(VENV_RUN_DIR)/pip-install-$(PYTHON_VERSION)-$(PIP_VERSION).done
-PIP_PATCH_DONE=$(VENV_RUN_DIR)/pip-patch-$(PYTHON_VERSION).done
-PAPI_INSTALL_DONE=$(VENV_RUN_DIR)/papi-install-$(PYTHON_VERSION).done
-PAPI_PYTHON_SRC_DIR=$(WS_ROOT)/src/vpp-api/python
-PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
-	$(PAPI_PYTHON_SRC_DIR)/build \
-	$(PAPI_PYTHON_SRC_DIR)/vpp_papi.egg-info \
-	$(PAPI_PYTHON_SRC_DIR)/vpp_papi/__pycache__
-
-$(PIP_TOOLS_INSTALL_DONE):
-	@rm -rf $(VENV_PATH)
-	@mkdir -p $(VENV_RUN_DIR)
-	@$(PYTHON_INTERP) -m venv $(VENV_PATH)
-	# pip version pinning
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  python3 -m pip install pip===$(PIP_VERSION)"
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  python3 -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  python3 -m pip install setuptools===$(PIP_SETUPTOOLS_VERSION)"
-	@touch $@
-
-$(PYTHON_DEPENDS): requirements.txt
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  CUSTOM_COMPILE_COMMAND='$(MAKE) test-refresh-deps (or update requirements.txt)' \
-		  python3 -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
-
-$(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  python3 -m piptools sync $(PYTHON_DEPENDS)"
-	@touch $@
-
-$(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
-	@echo --- patching ---
-	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
-	for f in $(CURDIR)/patches/scapy-$(SCAPY_VERSION)/*.patch ; do \
-		echo Applying patch: $$(basename $$f) ; \
-		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
-		retCode=$$?; \
-		[ $$retCode -gt 1 ] && exit $$retCode; \
-	done; \
-	touch $@
-
-$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
-	@touch $@
-
 .PHONY: refresh-deps
-refresh-deps: clean-deps $(PIP_INSTALL_DONE) $(PYTHON_DEPENDS)
+refresh-deps: clean-deps
 
 .PHONY: clean-deps
 clean-deps:
-	@rm -f $(PYTHON_DEPENDS)
+	@rm -rf $(VENV_DIR)
+	@rm -rf *.egg-info
+	@rm -rf dist/
+	@rm -rf build/
+	@rm -rf __pycache__/
 
 INTERN_PLUGIN_SRC_DIR=$(WS_ROOT)/src/plugins
 ifneq ($(EXTERN_PLUGIN_SRC_DIR),)
@@ -166,7 +144,7 @@ ifneq ($(findstring $(SANITY),0 n no),)
 SANITY_IMPORT_VPP_PAPI_CMD=true
 ARG0=
 else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_import_vpp_papi.py
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && python sanity_import_vpp_papi.py
 ARG0=--sanity
 endif
 
@@ -302,7 +280,7 @@ $(FAILED_DIR): reset
 	@mkdir -p $@
 
 .PHONY: test-dep
-test-dep: $(PAPI_INSTALL_DONE) $(FAILED_DIR)
+test-dep: install-dependencies $(FAILED_DIR)
 
 .PHONY: test
 test: test-dep sanity
@@ -436,7 +414,7 @@ start-gdb: sanity
 	@bash -c "source $(VENV_PATH)/bin/activate && python3 -c 'from debug import start_vpp_in_gdb; start_vpp_in_gdb()' $(RUN_TESTS_ARGS)"
 
 .PHONY: checkstyle-python-all
-checkstyle-python-all: $(PIP_INSTALL_DONE)
+checkstyle-python-all: install-dependencies
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		black -t py39 --check --diff $(WS_ROOT) ||\
 		(echo \"*************************************************************************\" &&\
@@ -451,7 +429,7 @@ checkstyle-python-all: $(PIP_INSTALL_DONE)
 checkstyle: checkstyle-python-all
 
 .PHONY: fixstyle-python-all
-fixstyle-python-all: $(PIP_INSTALL_DONE)
+fixstyle-python-all: install-dependencies
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		black -t py39 $(WS_ROOT) ||\
 		(echo \"*************************************************************************\" &&\
@@ -661,3 +639,49 @@ help:
 	@echo " test-start-vpp-in-gdb       - start VPP in gdb (release)"
 	@echo " test-start-vpp-debug-in-gdb - start VPP in gdb (debug)"
 	@echo ""
+
+.PHONY: check-updates
+check-updates: $(VENV_DIR)
+	@echo "Checking for package updates..."
+	@$(UV) pip list --outdated --format=columns
+
+.PHONY: update-deps
+update-deps:
+	@echo "Updating dependencies in pyproject.toml..."
+	@$(UV) pip list --outdated | \
+		awk 'NR>2 {print $$1 "==" $$3}' > deps.tmp
+	@if [ -s deps.tmp ]; then \
+		echo "Found updates for:"; \
+		cat deps.tmp; \
+		echo "Updating dependencies..."; \
+		while IFS== read pkg ver; do \
+			sed -i.bak "s/\"$$pkg==.*\"/\"$$pkg==$$ver\"/" pyproject.toml; \
+		done < deps.tmp; \
+		rm -f deps.tmp *.bak; \
+		echo "Dependencies updated. Please review changes in pyproject.toml"; \
+	else \
+		echo "All dependencies are up to date"; \
+		rm -f deps.tmp; \
+	fi
+
+.PHONY: update-all
+update-all: update-deps install
+	@echo "Dependencies updated and installed"
+
+.PHONY: list-deps
+list-deps: $(VENV_PATH)
+	@echo "Current package versions:"
+	@$(UV) pip list
+
+.PHONY: audit
+audit: $(VENV_PATH)
+	@echo "Auditing dependencies..."
+	@$(UV) pip install pip-audit
+	@$(VENV_PATH)/bin/pip-audit
+
+.PHONY: find-imports
+find-imports: $(VENV_PATH)
+	@echo "Finding Python imports..."
+	@$(UV) pip install pipreqs
+	@$(VENV_PATH)/bin/pipreqs . --force --mode compat --ignore tests/,docs/
+

@@ -406,7 +406,7 @@ bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
 .PHONY: install-dep
-install-dep:
+install-dep: check-uv
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
@@ -958,3 +958,19 @@ endif
 .PHONY: check-dpdk-mlx
 check-dpdk-mlx:
 	@[ $$($(MAKE) -sC build/external dpdk-show-DPDK_MLX_DEFAULT) = y ]
+
+### === uv ===
+UV_DIR := $(BR)/.local
+OS := $(shell uname -s)
+
+.PHONY: check-uv install-uv
+
+check-uv:
+	@if [ "$(OS)" = "Linux" ]; then $(MAKE) install-uv; \
+	else echo "Skipping uv installation (not Linux)."; fi
+
+install-uv:
+	@echo "Installing uv..."
+	@mkdir -p $(UV_DIR)
+	XDG_BIN_HOME=$(UV_DIR)/bin sh -c 'curl -fsSL https://astral.sh/uv/install.sh | sh'
+	@echo "uv installed successfully at $(UV_DIR)/bin/uv"
