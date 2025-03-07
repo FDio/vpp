@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vpp-scripts"
+version = "0.1.0"
+description = "VPP Scripts"
+dependencies = [
+    "pyyaml",
+    "jsonschema",
+]
+
+[project.scripts]
+fts = "fts:main"
+compdb_cleanup = "compdb_cleanup:main"
+[tool.hatch.build]
+include = [
+    "fts.py",
+    "compdb_cleanup.py",
+]
+

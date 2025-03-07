@@ -54,18 +54,6 @@ help:
 	  $(SPHINXBUILD) --help ;\
 	)
 
-.PHONY: venv
-venv:
-	@( \
-	    if [ ! -d ${VENV_DIR} ]; then \
-	      ${PYTHON} -m venv ${VENV_DIR}; \
-	      . ${VENV_DIR}/bin/activate; \
-	      ${PYTHON} -m pip install pip==${PIP_VERSION}; \
-	      ${PYTHON} -m pip install pip-tools==${PIP_TOOLS_VERSION}; \
-	      ${PYTHON} -m pip install -r ${WS_ROOT}/test/requirements-3.txt; \
-	    fi; \
-	)
-
 .PHONY: spell
 spell: venv
 	@( \
@@ -94,3 +82,19 @@ clean:
 
 .PHONY: build
 build: docs
+
+# ========================= VENV =========================
+INSTALL_MARKER := $(VENV_DIR)/.doc_installed
+$(INSTALL_MARKER): pyproject.toml
+	@echo "Installing package with dependencies..."
+	@$(UV) pip install --python=$(VENV_DIR)/bin/python -e ".[dev]"
+	@touch $(INSTALL_MARKER)
+
+.PHONY: venv
+venv: $(INSTALL_MARKER)
+
+.PHONY: sync-dependencies
+sync-dependencies:
+	@echo "Syncing dependencies..."
+	@$(UV) pip sync pyproject.toml
+# ========================= VENV =========================
