@@ -1028,7 +1028,7 @@ http1_req_state_transport_io_more_data (http_conn_t *hc, http_req_t *req,
    * server back to HTTP_REQ_STATE_WAIT_APP_REPLY
    * client to HTTP_REQ_STATE_WAIT_APP_METHOD */
   if (req->to_recv == 0)
-    http_req_state_change (req, hc->is_server ?
+    http_req_state_change (req, (hc->flags & HTTP_CONN_F_IS_SERVER) ?
 				  HTTP_REQ_STATE_WAIT_APP_REPLY :
 				  HTTP_REQ_STATE_WAIT_APP_METHOD);
 
@@ -1456,7 +1456,7 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
       /* Finished transaction:
        * server back to HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD
        * client to HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY */
-      http_req_state_change (req, hc->is_server ?
+      http_req_state_change (req, (hc->flags & HTTP_CONN_F_IS_SERVER) ?
 				    HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD :
 				    HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
       http_buffer_free (hb);
@@ -1635,7 +1635,8 @@ http1_app_tx_callback (http_conn_t *hc, transport_send_params_t *sp)
     {
       /* Sometimes the server apps can send the response earlier
        * than expected (e.g when rejecting a bad request)*/
-      if (req->state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA && hc->is_server)
+      if (req->state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA &&
+	  (hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  http_io_ts_drain_all (hc);
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_REPLY);

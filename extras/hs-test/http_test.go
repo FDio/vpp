@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest)
+	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliTlsTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterNoTopoTests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest,
@@ -236,6 +236,25 @@ func HttpCliTest(s *VethsSuite) {
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
 		" uri " + uri + " query /show/vlib/graph")
 
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func HttpCliTlsTest(s *VethsSuite) {
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/443"
+
+	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server uri " + uri)
+
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
+		" uri " + uri + " query /show/version")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+
+	/* second request to test postponed ho-cleanup */
+	o = s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
+		" uri " + uri + " query /show/version")
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")

@@ -179,6 +179,13 @@ http_conn_free (http_conn_t *hc)
   pool_put (wrk->conn_pool, hc);
 }
 
+static void
+http_add_postponed_ho_cleanups (u32 ho_hc_index)
+{
+  http_main_t *hm = &http_main;
+  vec_add1 (hm->postponed_ho_free, ho_hc_index);
+}
+
 static inline http_conn_t *
 http_ho_conn_get (u32 ho_hc_index)
 {
@@ -195,11 +202,48 @@ http_ho_conn_free (http_conn_t *ho_hc)
   pool_put (hm->ho_conn_pool, ho_hc);
 }
 
+static void
+http_ho_try_free (u32 ho_hc_index)
+{
+  http_conn_t *ho_hc;
+  HTTP_DBG (1, "half open: %x", ho_hc_index);
+  ho_hc = http_ho_conn_get (ho_hc_index);
+  if (!(ho_hc->flags & HTTP_CONN_F_HO_DONE))
+    {
+      HTTP_DBG (1, "postponed cleanup");
+      ho_hc->h_tc_session_handle = SESSION_INVALID_HANDLE;
+      http_add_postponed_ho_cleanups (ho_hc_index);
+      return;
+    }
+  if (!(ho_hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+    session_half_open_delete_notify (&ho_hc->connection);
+  http_ho_conn_free (ho_hc);
+}
+
+static void
+http_flush_postponed_ho_cleanups ()
+{
+  http_main_t *hm = &http_main;
+  u32 *ho_indexp, *tmp;
+
+  tmp = hm->postponed_ho_free;
+  hm->postponed_ho_free = hm->ho_free_list;
+  hm->ho_free_list = tmp;
+
+  vec_foreach (ho_indexp, hm->ho_free_list)
+    http_ho_try_free (*ho_indexp);
+
+  vec_reset_length (hm->ho_free_list);
+}
+
 static inline u32
 http_ho_conn_alloc (void)
 {
   http_main_t *hm = &http_main;
   http_conn_t *hc;
+
+  if (vec_len (hm->postponed_ho_free))
+    http_flush_postponed_ho_cleanups ();
 
   pool_get_aligned_safe (hm->ho_conn_pool, hc, CLIB_CACHE_LINE_BYTES);
   clib_memset (hc, 0, sizeof (*hc));
@@ -361,7 +405,7 @@ http_conn_invalidate_timer_cb (u32 hs_handle)
     }
 
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
-  hc->pending_timer = 1;
+  hc->flags |= HTTP_CONN_F_PENDING_TIMER;
 }
 
 static void
@@ -381,7 +425,7 @@ http_conn_timeout_cb (void *hc_handlep)
       return;
     }
 
-  if (!hc->pending_timer)
+  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
     {
       HTTP_DBG (1, "timer not pending");
       return;
@@ -492,6 +536,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
     {
       clib_warning ("half-open hc index %d, error: %U", ho_hc_index,
 		    format_session_error, err);
+      ho_hc->flags |= HTTP_CONN_F_HO_DONE;
       app_wrk = app_worker_get_if_valid (ho_hc->h_pa_wrk_index);
       if (app_wrk)
 	app_worker_connect_notify (app_wrk, 0, err, ho_hc->h_pa_app_api_ctx);
@@ -502,6 +547,9 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc = http_conn_get_w_thread (new_hc_index, ts->thread_index);
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
+
+  /* in chain with TLS there is race on half-open cleanup */
+  __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
@@ -642,12 +690,12 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
     }
   pool_free (hc->req_pool);
 
-  if (hc->pending_timer == 0)
+  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
     http_conn_timer_stop (hc);
 
   session_transport_delete_notify (&hc->connection);
 
-  if (!hc->is_server)
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
     {
       vec_free (hc->app_name);
       vec_free (hc->host);
@@ -658,12 +706,9 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 static void
 http_ts_ho_cleanup_callback (session_t *ts)
 {
-  http_conn_t *ho_hc;
   u32 ho_hc_index = http_conn_index_from_handle (ts->opaque);
   HTTP_DBG (1, "half open: %x", ho_hc_index);
-  ho_hc = http_ho_conn_get (ho_hc_index);
-  session_half_open_delete_notify (&ho_hc->connection);
-  http_ho_conn_free (ho_hc);
+  http_ho_try_free (ho_hc_index);
 }
 
 int
@@ -803,7 +848,12 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
       hc->timeout = http_cfg->timeout;
     }
 
-  hc->is_server = 0;
+  ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+  if (ext_cfg)
+    {
+      HTTP_DBG (1, "app set tls");
+      cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
+    }
 
   if (vec_len (app->name))
     hc->app_name = vec_dup (app->name);
@@ -895,7 +945,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc->c_s_index = app_listener_index;
   lhc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
-  lhc->is_server = 1;
+  lhc->flags |= HTTP_CONN_F_IS_SERVER;
 
   if (vec_len (app->name))
     lhc->app_name = vec_dup (app->name);
@@ -1142,6 +1192,12 @@ http_transport_cleanup_ho (u32 ho_hc_index)
 
   HTTP_DBG (1, "half open: %x", ho_hc_index);
   ho_hc = http_ho_conn_get (ho_hc_index);
+  if (ho_hc->h_tc_session_handle == SESSION_INVALID_HANDLE)
+    {
+      HTTP_DBG (1, "already pending cleanup");
+      ho_hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
+      return;
+    }
   session_cleanup_half_open (ho_hc->h_tc_session_handle);
   http_ho_conn_free (ho_hc);
 }
