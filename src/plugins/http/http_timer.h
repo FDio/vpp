@@ -59,7 +59,7 @@ http_conn_timer_stop (http_conn_t *hc)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
 
-  hc->pending_timer = 0;
+  hc->flags &= ~HTTP_CONN_F_PENDING_TIMER;
   if (hc->timer_handle == HTTP_TIMER_HANDLE_INVALID)
     return;
 

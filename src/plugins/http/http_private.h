@@ -138,6 +138,26 @@ typedef struct http_req_
   http_upgrade_proto_t upgrade_proto;
 } http_req_t;
 
+#define foreach_http_conn_flags                                               \
+  _ (HO_DONE, "ho-done")                                                      \
+  _ (NO_APP_SESSION, "no-app-session")                                        \
+  _ (PENDING_TIMER, "pending-timer")                                          \
+  _ (IS_SERVER, "is-server")
+
+typedef enum http_conn_flags_bit_
+{
+#define _(sym, str) HTTP_CONN_F_BIT_##sym,
+  foreach_http_conn_flags
+#undef _
+} http_conn_flags_bit_t;
+
+typedef enum http_conn_flags_
+{
+#define _(sym, str) HTTP_CONN_F_##sym = 1 << HTTP_CONN_F_BIT_##sym,
+  foreach_http_conn_flags
+#undef _
+} __clib_packed http_conn_flags_t;
+
 typedef struct http_tc_
 {
   union
@@ -155,10 +175,9 @@ typedef struct http_tc_
   http_conn_state_t state;
   u32 timer_handle;
   u32 timeout;
-  u8 pending_timer;
   u8 *app_name;
   u8 *host;
-  u8 is_server;
+  http_conn_flags_t flags;
   http_udp_tunnel_mode_t udp_tunnel_mode;
 
   http_req_t *req_pool; /* multiplexing => request per stream */
@@ -174,6 +193,8 @@ typedef struct http_main_
   http_worker_t *wrk;
   http_conn_t *listener_pool;
   http_conn_t *ho_conn_pool;
+  u32 *postponed_ho_free;
+  u32 *ho_free_list;
   u32 app_index;
 
   u8 **rx_bufs;

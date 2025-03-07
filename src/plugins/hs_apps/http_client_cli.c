@@ -62,6 +62,8 @@ typedef struct
   u8 *http_response;
   u8 *appns_id;
   u64 appns_secret;
+  u32 ckpair_index;
+  u8 need_crypto;
 } hcc_main_t;
 
 typedef enum
@@ -333,6 +335,7 @@ hcc_attach ()
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[18];
   u32 segment_size = 128 << 20;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   int rv;
 
   if (hcm->private_segment_size)
@@ -353,6 +356,7 @@ hcc_attach ()
     hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hcm->prealloc_fifos;
+  a->options[APP_OPTIONS_TLS_ENGINE] = CRYPTO_ENGINE_OPENSSL;
   if (hcm->appns_id)
     {
       a->namespace_id = hcm->appns_id;
@@ -365,6 +369,15 @@ hcc_attach ()
   hcm->app_index = a->app_index;
   vec_free (a->name);
   hcm->test_client_attached = 1;
+
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+  hcm->ckpair_index = ck_pair->index;
+
   return 0;
 }
 
@@ -410,6 +423,14 @@ hcc_connect ()
   ext_cfg = session_endpoint_add_ext_cfg (
     &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+
+  if (hcm->need_crypto)
+    {
+      ext_cfg = session_endpoint_add_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
+    }
 
   /* allocate http session on main thread */
   wrk = hcc_worker_get (0);
@@ -581,6 +602,8 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       err = clib_error_return (0, "Uri parse error: %d", rv);
       goto done;
     }
+  hcm->need_crypto = hcm->connect_sep.transport_proto == TRANSPORT_PROTO_TLS;
+  hcm->connect_sep.transport_proto = TRANSPORT_PROTO_HTTP;
 
   session_enable_disable_args_t args = { .is_en = 1,
 					 .rt_engine_type =
