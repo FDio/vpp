@@ -45,8 +45,8 @@ http_conn_timer_start (http_conn_t *hc)
   u32 hs_handle;
 
   ASSERT (hc->timer_handle == HTTP_TIMER_HANDLE_INVALID);
-  ASSERT (hc->h_hc_index <= 0x00FFFFFF);
-  hs_handle = hc->c_thread_index << 24 | hc->h_hc_index;
+  ASSERT (hc->hc_hc_index <= 0x00FFFFFF);
+  hs_handle = hc->c_thread_index << 24 | hc->hc_hc_index;
 
   clib_spinlock_lock (&twc->tw_lock);
   hc->timer_handle =
@@ -80,8 +80,8 @@ http_conn_timer_update (http_conn_t *hc)
     tw_timer_update_2t_1w_2048sl (&twc->tw, hc->timer_handle, hc->timeout);
   else
     {
-      ASSERT (hc->h_hc_index <= 0x00FFFFFF);
-      hs_handle = hc->c_thread_index << 24 | hc->h_hc_index;
+      ASSERT (hc->hc_hc_index <= 0x00FFFFFF);
+      hs_handle = hc->c_thread_index << 24 | hc->hc_hc_index;
       hc->timer_handle =
 	tw_timer_start_2t_1w_2048sl (&twc->tw, hs_handle, 0, hc->timeout);
     }

@@ -239,6 +239,23 @@ func HttpCliTest(s *VethsSuite) {
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
+
+	/* test client session cleanup */
+	clientCleanupDone := false
+	for nTries := 0; nTries < 30; nTries++ {
+		o := s.Containers.ClientVpp.VppInstance.Vppctl("show session verbose 2")
+		if !strings.Contains(o, "->"+s.Interfaces.Server.Ip4AddressString()+":80") {
+			clientCleanupDone = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(true, clientCleanupDone)
+
+	/* test server app stop listen */
+	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server listener del")
+	o = s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose proto http")
+	s.AssertNotContains(o, "LISTEN")
 }
 
 func HttpCliTlsTest(s *VethsSuite) {
