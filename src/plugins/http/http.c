@@ -419,7 +419,7 @@ http_ts_accept_callback (session_t *ts)
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
 
   ts->session_state = SESSION_STATE_READY;
-  /* TODO: TLS set by ALPN result, TCP: first try HTTP/1 */
+  /* TODO: TLS set by ALPN result, TCP: will decide in http_ts_rx_callback */
   hc->version = HTTP_VERSION_1;
   ts->opaque = http_make_handle (hc_index, hc->version);
 
@@ -596,6 +596,7 @@ http_ts_rx_callback (session_t *ts)
       return 0;
     }
 
+  /* TODO: if version is unknown */
   http_vfts[http_version_from_handle (ts->opaque)].transport_rx_callback (hc);
 
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
@@ -623,7 +624,6 @@ static void
 http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 {
   http_conn_t *hc;
-  http_req_t *req;
   u32 hc_index;
 
   if (ntf == SESSION_CLEANUP_TRANSPORT)
@@ -634,13 +634,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, hc_index);
 
-  pool_foreach (req, hc->req_pool)
-    {
-      vec_free (req->headers);
-      vec_free (req->target);
-      http_buffer_free (&req->tx_buf);
-    }
-  pool_free (hc->req_pool);
+  http_vfts[hc->version].conn_cleanup_callback (hc);
 
   if (hc->pending_timer == 0)
     http_conn_timer_stop (hc);
