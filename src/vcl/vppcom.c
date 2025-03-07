@@ -1428,7 +1428,8 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
       if (s->session_state == VCL_STATE_LISTEN_NO_MQ)
 	vppcom_session_listen (vcl_session_handle (s), 10);
       else
-	VDBG (0, "internal error: unexpected state %d", s->session_state);
+	VDBG (0, "reattach error: %u unexpected state %d", s->session_index,
+	      s->session_state);
     }
 }
 
@@ -1773,6 +1774,11 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
     {
       VDBG (0, "session %u [0x%llx]: already in listen state!",
 	    listen_sh, listen_vpp_handle);
+      return VPPCOM_OK;
+    }
+  if (PREDICT_FALSE (!wrk->ctrl_mq))
+    {
+      listen_session->session_state = VCL_STATE_LISTEN_NO_MQ;
       return VPPCOM_OK;
     }
 
