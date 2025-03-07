@@ -199,6 +199,12 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
   close (wrk->app_api_sock.fd);
   pool_foreach (s, wrk->sessions)
     {
+      if (s->flags & VCL_SESSION_F_APP_CLOSING)
+	{
+	  vcl_session_free (wrk, s);
+	  clib_warning ("cleaning up stale session");
+	  continue;
+	}
       if (s->session_state == VCL_STATE_LISTEN)
 	{
 	  s->flags |= VCL_SESSION_F_LISTEN_NO_MQ;
@@ -211,6 +217,7 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
       hash_set (seg_indices_map, s->tx_fifo->segment_index, 1);
 
       s->session_state = VCL_STATE_DETACHED;
+      s->flags |= VCL_SESSION_F_APP_CLOSING;
       vec_add2 (wrk->unhandled_evts_vector, e, 1);
       e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
       e->session_index = s->session_index;
@@ -220,10 +227,21 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
   hash_foreach (seg_index, val, seg_indices_map,
 		({ vec_add1 (seg_indices, seg_index); }));
 
+  /* If multi-threaded apps, wait for all threads to hopefully finish
+   * their blocking operations  */
+  if (wrk->pre_wait_fn)
+    wrk->pre_wait_fn (VCL_INVALID_SESSION_INDEX);
+  sleep (1);
+  if (wrk->post_wait_fn)
+    wrk->post_wait_fn (VCL_INVALID_SESSION_INDEX);
+
   vcl_segment_detach_segments (seg_indices);
 
   /* Detach worker's mqs segment */
   vcl_segment_detach (vcl_vpp_worker_segment_handle (wrk->wrk_index));
+
+  wrk->app_event_queue = 0;
+  wrk->ctrl_mq = 0;
 
   vec_free (seg_indices);
   hash_free (seg_indices_map);
@@ -357,14 +375,17 @@ vcl_session_read_ready (vcl_session_t * s)
 
       return svm_fifo_max_dequeue_cons (s->rx_fifo);
     }
-  else if (s->session_state == VCL_STATE_LISTEN)
-    {
-      return clib_fifo_elts (s->accept_evts_fifo);
-    }
   else
     {
-      return (s->session_state == VCL_STATE_DISCONNECT) ?
-	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+      switch (s->session_state)
+	{
+	case VCL_STATE_LISTEN:
+	  return clib_fifo_elts (s->accept_evts_fifo);
+	default:
+	  return (s->session_state == VCL_STATE_DISCONNECT) ?
+		   VPPCOM_ECONNRESET :
+		   VPPCOM_ENOTCONN;
+	}
     }
 }
 
@@ -391,13 +412,15 @@ vcl_session_read_ready2 (vcl_session_t *s)
 
       return svm_fifo_max_dequeue_cons (s->rx_fifo);
     }
-  else if (s->session_state == VCL_STATE_LISTEN)
-    {
-      return clib_fifo_elts (s->accept_evts_fifo);
-    }
   else
     {
-      return 1;
+      switch (s->session_state)
+	{
+	case VCL_STATE_LISTEN:
+	  return clib_fifo_elts (s->accept_evts_fifo);
+	default:
+	  return 1;
+	}
     }
 }
 
