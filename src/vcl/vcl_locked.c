@@ -759,7 +759,7 @@ vls_listener_wrk_stop_listen (vcl_locked_session_t * vls, u32 wrk_index)
   if (s->session_state != VCL_STATE_LISTEN)
     return;
   vcl_send_session_unlisten (wrk, s);
-  s->session_state = VCL_STATE_LISTEN_NO_MQ;
+  s->flags |= VCL_SESSION_F_LISTEN_NO_MQ;
   vls_listener_wrk_set (vls, wrk_index, 0 /* is_active */ );
 }
 
@@ -912,7 +912,7 @@ vls_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
 
   if (s->session_state == VCL_STATE_LISTEN)
     {
-      s->session_state = VCL_STATE_LISTEN_NO_MQ;
+      s->flags |= VCL_SESSION_F_LISTEN_NO_MQ;
       s->rx_fifo = s->tx_fifo = 0;
     }
   else if (s->rx_fifo)
@@ -1384,36 +1384,41 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   switch (s->session_state)
     {
     case VCL_STATE_LISTEN:
-      if (is_add)
+      if (!(s->flags & VCL_SESSION_F_LISTEN_NO_MQ))
 	{
-	  vls_listener_wrk_set (vls, vls->vcl_wrk_index, 1 /* is_active */);
-	  break;
+	  if (is_add)
+	    {
+	      vls_listener_wrk_set (vls, vls->vcl_wrk_index,
+				    1 /* is_active */);
+	      break;
+	    }
+	  /* Although removal from epoll means listener no longer accepts new
+	   * sessions, the accept queue built by vpp cannot be drained by
+	   * stopping the listener. Morover, some applications, e.g., nginx,
+	   * might constantly remove and add listeners to their epfds. Removing
+	   * listeners in such situations causes a lot of churn in vpp as
+	   * segments and segment managers need to be recreated. */
+	  /* vls_listener_wrk_stop_listen (vls, vls->vcl_wrk_index); */
 	}
-      /* Although removal from epoll means listener no longer accepts new
-       * sessions, the accept queue built by vpp cannot be drained by stopping
-       * the listener. Morover, some applications, e.g., nginx, might
-       * constantly remove and add listeners to their epfds. Removing
-       * listeners in such situations causes a lot of churn in vpp as segments
-       * and segment managers need to be recreated. */
-      /* vls_listener_wrk_stop_listen (vls, vls->vcl_wrk_index); */
-      break;
-    case VCL_STATE_LISTEN_NO_MQ:
-      if (!is_add)
-	break;
+      else
+	{
+	  if (!is_add)
+	    break;
 
-      /* Register worker as listener */
-      vls_listener_wrk_start_listen (vls, vls->vcl_wrk_index);
+	  /* Register worker as listener */
+	  vls_listener_wrk_start_listen (vls, vls->vcl_wrk_index);
 
-      /* If owner worker did not attempt to accept/xpoll on the session,
-       * force a listen stop for it, since it may not be interested in
-       * accepting new sessions.
-       * This is pretty much a hack done to give app workers the illusion
-       * that it is fine to listen and not accept new sessions for a
-       * given listener. Without it, we would accumulate unhandled
-       * accepts on the passive worker message queue. */
-      owner_wrk = vls_shared_get_owner (vls);
-      if (!vls_listener_wrk_is_active (vls, owner_wrk))
-	vls_listener_wrk_stop_listen (vls, owner_wrk);
+	  /* If owner worker did not attempt to accept/xpoll on the session,
+	   * force a listen stop for it, since it may not be interested in
+	   * accepting new sessions.
+	   * This is pretty much a hack done to give app workers the illusion
+	   * that it is fine to listen and not accept new sessions for a
+	   * given listener. Without it, we would accumulate unhandled
+	   * accepts on the passive worker message queue. */
+	  owner_wrk = vls_shared_get_owner (vls);
+	  if (!vls_listener_wrk_is_active (vls, owner_wrk))
+	    vls_listener_wrk_stop_listen (vls, owner_wrk);
+	}
       break;
     default:
       break;
