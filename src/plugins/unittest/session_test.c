@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/session/transport.h>
 #include <sys/epoll.h>
 #include <vnet/session/session_rules_table.h>
 
@@ -50,6 +51,11 @@ placeholder_session_reset_callback (session_t * s)
 
 volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
+static u32 placeholder_accept;
+volatile u32 accepted_session_index;
+volatile u32 accepted_session_thread;
+volatile int app_session_error = 0;
+
 int
 placeholder_session_connected_callback (u32 app_index, u32 api_context,
 					session_t * s, session_error_t err)
@@ -81,12 +87,21 @@ placeholder_del_segment_callback (u32 client_index, u64 segment_handle)
 void
 placeholder_session_disconnect_callback (session_t * s)
 {
-  clib_warning ("called...");
+  if (!(s->session_index == connected_session_index &&
+	s->thread_index == connected_session_thread) &&
+      !(s->session_index == accepted_session_index &&
+	s->thread_index == accepted_session_thread))
+    {
+      clib_warning (0, "unexpected disconnect s %u thread %u",
+		    s->session_index, s->thread_index);
+      app_session_error = 1;
+    }
+  vnet_disconnect_args_t da = {
+    .handle = session_handle (s),
+    .app_index = app_worker_get (s->app_wrk_index)->app_index
+  };
+  vnet_disconnect_session (&da);
 }
-
-static u32 placeholder_accept;
-volatile u32 accepted_session_index;
-volatile u32 accepted_session_thread;
 
 int
 placeholder_session_accept_callback (session_t * s)
@@ -105,12 +120,39 @@ placeholder_server_rx_callback (session_t * s)
   return -1;
 }
 
+void
+placeholder_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
+{
+  if (ntf == SESSION_CLEANUP_TRANSPORT)
+    return;
+
+  if (s->session_index == connected_session_index &&
+      s->thread_index == connected_session_thread)
+    {
+      connected_session_index = ~0;
+      connected_session_thread = ~0;
+    }
+  else if (s->session_index == accepted_session_index &&
+	   s->thread_index == accepted_session_thread)
+    {
+      accepted_session_index = ~0;
+      accepted_session_thread = ~0;
+    }
+  else
+    {
+      clib_warning (0, "unexpected cleanup s %u thread %u", s->session_index,
+		    s->thread_index);
+      app_session_error = 1;
+    }
+}
+
 static session_cb_vft_t placeholder_session_cbs = {
   .session_reset_callback = placeholder_session_reset_callback,
   .session_connected_callback = placeholder_session_connected_callback,
   .session_accept_callback = placeholder_session_accept_callback,
   .session_disconnect_callback = placeholder_session_disconnect_callback,
   .builtin_app_rx_callback = placeholder_server_rx_callback,
+  .session_cleanup_callback = placeholder_cleanup_callback,
   .add_segment_callback = placeholder_add_segment_callback,
   .del_segment_callback = placeholder_del_segment_callback,
 };
@@ -278,6 +320,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234;
   u16 placeholder_server_port = 1234, placeholder_client_port = 5678;
   session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
+  u32 client_vrf = 0, server_vrf = 1;
   ip4_address_t intf_addr[3];
   transport_connection_t *tc;
   session_t *s;
@@ -288,25 +331,25 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
    * Create the loopbacks
    */
   intf_addr[0].as_u32 = clib_host_to_net_u32 (0x01010101);
-  session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
+  session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]);
 
   intf_addr[1].as_u32 = clib_host_to_net_u32 (0x02020202);
-  session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
+  session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]);
 
-  session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
-					     1 /* is_add */ );
-  session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
-					     1 /* is_add */ );
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 1 /* is_add */);
 
   /*
    * Insert namespace
    */
-  appns_id = format (0, "appns1");
+  appns_id = format (0, "appns_server");
   vnet_app_namespace_add_del_args_t ns_args = {
     .ns_id = appns_id,
     .secret = placeholder_secret,
-    .sw_if_index = sw_if_index[1],
-    .ip4_fib_id = 0,
+    .sw_if_index = sw_if_index[1], /* server interface*/
+    .ip4_fib_id = 0,		   /* sw_if_index takes precedence */
     .is_add = 1
   };
   error = vnet_app_namespace_add_del (&ns_args);
@@ -357,10 +400,10 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
    * Connect and force lcl ip
    */
   client_sep.is_ip4 = 1;
-  client_sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x02020202);
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
   client_sep.port = placeholder_server_port;
   client_sep.peer.is_ip4 = 1;
-  client_sep.peer.ip.ip4.as_u32 = clib_host_to_net_u32 (0x01010101);
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
   client_sep.peer.port = placeholder_client_port;
   client_sep.transport_proto = TRANSPORT_PROTO_TCP;
 
@@ -401,6 +444,35 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc->lcl_port == placeholder_client_port),
 		"ports should be equal");
 
+  /* Disconnect server session, should lead to faster port cleanup on client */
+  vnet_disconnect_args_t disconnect_args = {
+    .handle =
+      session_make_handle (accepted_session_index, accepted_session_thread),
+    .app_index = server_index,
+  };
+
+  error = vnet_disconnect_session (&disconnect_args);
+  SESSION_TEST ((error == 0), "disconnect should work");
+
+  /* wait for stuff to happen */
+  tries = 0;
+  while (connected_session_index != ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  /* Active closes take longer to cleanup, don't wait */
+
+  clib_warning ("waited %.1f seconds for disconnect", tries / 10.0);
+  SESSION_TEST ((connected_session_index == ~0), "session should not exist");
+  SESSION_TEST ((connected_session_thread == ~0), "thread should not exist");
+  SESSION_TEST (transport_port_local_in_use () == 0,
+		"port should be cleaned up");
+  SESSION_TEST ((app_session_error == 0), "no app session errors");
+
+  /* Start cleanup by detaching apps */
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
     .api_client_index = ~0,
@@ -416,13 +488,167 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   /* Allow the disconnects to finish before removing the routes. */
   vlib_process_suspend (vm, 10e-3);
 
-  session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
-					     0 /* is_add */ );
-  session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
-					     0 /* is_add */ );
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 0 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 0 /* is_add */);
 
   session_delete_loopback (sw_if_index[0]);
   session_delete_loopback (sw_if_index[1]);
+
+  /*
+   * Redo the test but with client in the non-default namespace
+   */
+
+  /* Create the loopbacks */
+  client_vrf = 1;
+  server_vrf = 0;
+  session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]);
+  session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]);
+
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 1 /* is_add */);
+
+  /* Insert new client namespace */
+  vec_free (appns_id);
+  appns_id = format (0, "appns_client");
+  ns_args.ns_id = appns_id;
+  ns_args.sw_if_index = sw_if_index[0]; /* client interface*/
+  ns_args.is_add = 1;
+
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns insertion should succeed: %U",
+		format_session_error, error);
+
+  /* Attach client */
+  attach_args.name = format (0, "session_test_client");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 0;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
+  attach_args.api_client_index = ~0;
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "client app attached: %U", format_session_error,
+		error);
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  /* Attach server */
+  attach_args.name = format (0, "session_test_server");
+  attach_args.namespace_id = 0;
+  attach_args.options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = 0;
+  attach_args.api_client_index = ~0;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server app attached: %U", format_session_error,
+		error);
+  vec_free (attach_args.name);
+  server_index = attach_args.app_index;
+
+  /* Bind server */
+  clib_memset (&server_sep, 0, sizeof (server_sep));
+  server_sep.is_ip4 = 1;
+  server_sep.port = placeholder_server_port;
+  bind_args.sep_ext = server_sep;
+  bind_args.app_index = server_index;
+  error = vnet_listen (&bind_args);
+  SESSION_TEST ((error == 0), "server bind should work: %U",
+		format_session_error, error);
+
+  /* Connect client */
+  connected_session_index = connected_session_thread = ~0;
+  accepted_session_index = accepted_session_thread = ~0;
+  clib_memset (&client_sep, 0, sizeof (client_sep));
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
+  client_sep.port = placeholder_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
+  client_sep.peer.port = placeholder_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  connect_args.sep_ext = client_sep;
+  connect_args.app_index = client_index;
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "connect should work");
+
+  /* wait for stuff to happen */
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  while (accepted_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  clib_warning ("waited %.1f seconds for connections", tries / 10.0);
+  SESSION_TEST ((connected_session_index != ~0), "session should exist");
+  SESSION_TEST ((connected_session_thread != ~0), "thread should exist");
+  SESSION_TEST ((accepted_session_index != ~0), "session should exist");
+  SESSION_TEST ((accepted_session_thread != ~0), "thread should exist");
+  s = session_get (connected_session_index, connected_session_thread);
+  tc = session_get_transport (s);
+  SESSION_TEST ((tc != 0), "transport should exist");
+  SESSION_TEST (
+    (memcmp (&tc->lcl_ip, &client_sep.peer.ip, sizeof (tc->lcl_ip)) == 0),
+    "ips should be equal");
+  SESSION_TEST ((tc->lcl_port == placeholder_client_port),
+		"ports should be equal");
+
+  /* Disconnect server session, for faster port cleanup on client */
+  disconnect_args.app_index = server_index;
+  disconnect_args.handle =
+    session_make_handle (accepted_session_index, accepted_session_thread);
+
+  error = vnet_disconnect_session (&disconnect_args);
+  SESSION_TEST ((error == 0), "disconnect should work");
+
+  /* wait for stuff to happen */
+  tries = 0;
+  while (connected_session_index != ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  /* Active closes take longer to cleanup, don't wait */
+
+  clib_warning ("waited %.1f seconds for disconnect", tries / 10.0);
+  SESSION_TEST ((connected_session_index == ~0), "session should not exist");
+  SESSION_TEST ((connected_session_thread == ~0), "thread should not exist");
+  SESSION_TEST ((app_session_error == 0), "no app session errors");
+  SESSION_TEST (transport_port_local_in_use () == 0,
+		"port should be cleaned up");
+
+  /* Start cleanup by detaching apps */
+  detach_args.app_index = server_index;
+  vnet_application_detach (&detach_args);
+  detach_args.app_index = client_index;
+  vnet_application_detach (&detach_args);
+
+  ns_args.is_add = 0;
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns delete should succeed: %d", error);
+
+  /* Allow the disconnects to finish before removing the routes. */
+  vlib_process_suspend (vm, 10e-3);
+
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 0 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 0 /* is_add */);
+
+  session_delete_loopback (sw_if_index[0]);
+  session_delete_loopback (sw_if_index[1]);
+
   return 0;
 }
 
@@ -1781,6 +2007,11 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
     unformat_free (&tmp_input);
   vec_free (attach_args.name);
   session_delete_loopback (sw_if_index);
+
+  /* Revert default appns sw_if_index */
+  app_ns = app_namespace_get_default ();
+  app_ns->sw_if_index = ~0;
+
   return 0;
 }
 
