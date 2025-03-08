@@ -684,6 +684,13 @@ transport_port_alloc_max_tries ()
   return tm->port_alloc_max_tries;
 }
 
+u32
+transport_port_local_in_use ()
+{
+  transport_main_t *tm = &tp_main;
+  return pool_elts (tm->local_endpoints) - vec_len (tm->lcl_endpts_freelist);
+}
+
 void
 transport_clear_stats ()
 {
