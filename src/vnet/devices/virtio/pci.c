@@ -452,7 +452,7 @@ virtio_pci_disable_offload (vlib_main_t * vm, virtio_if_t * vif)
   virtio_ctrl_msg_t offload_hdr;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
-  offload_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
+  offload_hdr.ctrl._class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   offload_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
   offload_hdr.status = VIRTIO_NET_ERR;
   u64 offloads = 0ULL;
@@ -472,7 +472,7 @@ virtio_pci_enable_checksum_offload (vlib_main_t * vm, virtio_if_t * vif)
   virtio_ctrl_msg_t csum_offload_hdr;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
-  csum_offload_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
+  csum_offload_hdr.ctrl._class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   csum_offload_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
   csum_offload_hdr.status = VIRTIO_NET_ERR;
   u64 offloads = 0ULL;
@@ -493,7 +493,7 @@ virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
   virtio_ctrl_msg_t gso_hdr;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
-  gso_hdr.ctrl.class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
+  gso_hdr.ctrl._class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
   gso_hdr.ctrl.cmd = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
   gso_hdr.status = VIRTIO_NET_ERR;
   u64 offloads = VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
@@ -581,7 +581,7 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   virtio_ctrl_msg_t mq_hdr;
   virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
 
-  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl._class = VIRTIO_NET_CTRL_MQ;
   mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
   mq_hdr.status = VIRTIO_NET_ERR;
   clib_memcpy (mq_hdr.data, &num_queues, sizeof (num_queues));
@@ -601,7 +601,7 @@ virtio_pci_enable_multiqueue_rss (vlib_main_t *vm, virtio_if_t *vif,
 
   STATIC_ASSERT (sizeof (*rss) <= sizeof (mq_hdr.data),
 		 "virtio_net_rss_config size too big");
-  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl._class = VIRTIO_NET_CTRL_MQ;
   mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_RSS_CONFIG;
   mq_hdr.status = VIRTIO_NET_ERR;
 

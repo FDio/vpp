@@ -251,15 +251,15 @@ af_packet_set_rx_queues (vlib_main_t *vm, af_packet_if_t *apif)
 	vnm, apif->hw_if_index, rx_queue->queue_id, VNET_HW_IF_RXQ_THREAD_ANY);
 
       {
-	clib_file_t template = { 0 };
-	template.read_function = af_packet_fd_read_ready;
-	template.error_function = af_packet_fd_error;
-	template.file_descriptor = rx_queue->fd;
-	template.private_data = rx_queue->queue_index;
-	template.description =
+	clib_file_t _template = { 0 };
+	_template.read_function = af_packet_fd_read_ready;
+	_template.error_function = af_packet_fd_error;
+	_template.file_descriptor = rx_queue->fd;
+	_template.private_data = rx_queue->queue_index;
+	_template.description =
 	  format (0, "%U queue %u", format_af_packet_device_name,
 		  apif->dev_instance, rx_queue->queue_id);
-	rx_queue->clib_file_index = clib_file_add (&file_main, &template);
+	rx_queue->clib_file_index = clib_file_add (&file_main, &_template);
       }
       vnet_hw_if_set_rx_queue_file_index (vnm, rx_queue->queue_index,
 					  rx_queue->clib_file_index);

@@ -61,11 +61,11 @@ gdb_af_xdp_get_cons (const struct xsk_ring_cons * cons)
 }
 
 static clib_error_t *
-af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
+af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * _new)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
-  errno_t err = memcpy_s (ad->hwaddr, sizeof (ad->hwaddr), new, 6);
+  errno_t err = memcpy_s (ad->hwaddr, sizeof (ad->hwaddr), _new, 6);
   if (err)
     return clib_error_return_code (0, -err, CLIB_ERROR_ERRNO_VALID,
 				   "mac change failed");

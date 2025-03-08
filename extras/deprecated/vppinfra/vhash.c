@@ -653,8 +653,8 @@ vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index,
 			  u32 n_keys_this_call)
 {
   vhash_t *old = vr->old;
-  vhash_main_t *vm = &vr->new;
-  vhash_t *new = vm->vhash;
+  vhash_main_t *vm = &vr->_new;
+  vhash_t *_new = vm->vhash;
   uword i, j, n_key_u32;
 
   n_key_u32 = old->n_key_u32;
@@ -665,7 +665,7 @@ vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index,
       hash_seeds[0] = old->hash_seeds[0].as_u32[0];
       hash_seeds[1] = old->hash_seeds[1].as_u32[0];
       hash_seeds[2] = old->hash_seeds[2].as_u32[0];
-      vhash_init (new, old->log2_n_keys + 1, n_key_u32, hash_seeds);
+      vhash_init (_new, old->log2_n_keys + 1, n_key_u32, hash_seeds);
     }
 
   vec_reset_length (vm->keys);
@@ -744,11 +744,11 @@ void
 vhash_resize (vhash_t * old, u32 log2_n_keys)
 {
   static vhash_resize_t vr;
-  vhash_t new;
+  vhash_t _new;
   u32 i = 0;
 
   vr.old = old;
-  vr.new.vhash = &new;
+  vr._new.vhash = &_new;
 
   while (1)
     {
@@ -758,7 +758,7 @@ vhash_resize (vhash_t * old, u32 log2_n_keys)
     }
 
   vhash_free (old);
-  *old = new;
+  *old = _new;
 }
 
 #endif /* CLIB_HAVE_VEC128 */

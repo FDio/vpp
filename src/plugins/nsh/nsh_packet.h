@@ -85,7 +85,7 @@ typedef CLIB_PACKED(struct {
 }) nsh_md1_data_t;
 
 typedef CLIB_PACKED(struct {
-  u16 class;
+  u16 _class;
   u8 type;
   u8 length;
 }) nsh_tlv_header_t;

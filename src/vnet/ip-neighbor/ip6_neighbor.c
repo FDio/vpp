@@ -30,7 +30,7 @@ VLIB_REGISTER_LOG_CLASS (ip6_neighbor_log, static) = {
 };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (ip6_neighbor_log.class, fmt, __VA_ARGS__)
+  vlib_log_debug (ip6_neighbor_log._class, fmt, __VA_ARGS__)
 void
 ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
 			const ip6_address_t *dst)

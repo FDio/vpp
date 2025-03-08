@@ -950,7 +950,7 @@ elf_get_segment_contents (elf_main_t * em, void *data, uword segment_index)
 {
   elf_segment_t *g = vec_elt_at_index (em->segments, segment_index);
   if (!g->contents)
-    vec_add (g->contents, data + g->header.file_offset,
+    vec_add (g->contents, (u8 *) data + g->header.file_offset,
 	     g->header.memory_size);
 }
 
@@ -966,7 +966,7 @@ elf_get_section_contents (elf_main_t * em,
   result = 0;
   if (vec_len (s->contents) > 0)
     {
-      vec_attr_t va = { .elt_sz = elt_size };
+      vec_attr_t va = { .elt_sz = (u32) elt_size };
       /* Make vector copy of contents with given element size. */
       result =
 	_vec_realloc_internal (result, vec_len (s->contents) / elt_size, &va);
