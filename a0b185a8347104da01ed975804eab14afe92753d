@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5fc8b65_805da6de",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-09T20:56:38Z",
+      "side": 1,
+      "message": "This failure, in particular, would be a major infrastructure failure, hence the assert. But I guess we could make the test assert by passing async notifications via some variable. Pushed update.",
+      "parentUuid": "253ab646_5b8ddc13",
+      "revId": "a0b185a8347104da01ed975804eab14afe92753d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2efb1006_ba947e92",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-03-09T20:39:57Z",
       "side": 1,
       "message": "precendence -\u003e precedence",
+      "revId": "a0b185a8347104da01ed975804eab14afe92753d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa8055bb_576eeb4b",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-09T20:56:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2efb1006_ba947e92",
       "revId": "a0b185a8347104da01ed975804eab14afe92753d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
