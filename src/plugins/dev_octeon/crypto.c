@@ -1354,7 +1354,7 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
   vnet_crypto_key_t *key = vnet_crypto_get_key (key_index);
   roc_se_cipher_type enc_type = 0;
   roc_se_auth_type auth_type = 0;
-  u32 digest_len = ~0;
+  u32 digest_len = 16;
   i32 rv = 0;
 
   switch (key->alg)
@@ -1366,9 +1366,6 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
       sess->aes_gcm = 1;
       sess->iv_offset = 0;
       sess->iv_length = 16;
-      sess->cpt_ctx.mac_len = 16;
-      sess->cpt_op = type;
-      digest_len = 16;
       break;
     case VNET_CRYPTO_ALG_CHACHA20_POLY1305:
       enc_type = ROC_SE_CHACHA20;
@@ -1380,6 +1377,9 @@ oct_crypto_aead_session_update (vlib_main_t *vm, oct_crypto_sess_t *sess,
 	key->alg, key_index);
       return -1;
     }
+
+  sess->cpt_ctx.mac_len = digest_len;
+  sess->cpt_op = type;
 
   rv = roc_se_ciph_key_set (&sess->cpt_ctx, enc_type, key->data, key->length);
   if (rv)
