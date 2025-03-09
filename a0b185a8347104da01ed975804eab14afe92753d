@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "a0b185a8347104da01ed975804eab14afe92753d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "253ab646_5b8ddc13",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-03-09T20:39:57Z",
+      "side": 1,
+      "message": "just wondering, you need assertions like here because there\u0027s no good way to put an assertion in the test directly?",
+      "revId": "a0b185a8347104da01ed975804eab14afe92753d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2efb1006_ba947e92",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-03-09T20:39:57Z",
+      "side": 1,
+      "message": "precendence -\u003e precedence",
+      "revId": "a0b185a8347104da01ed975804eab14afe92753d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
