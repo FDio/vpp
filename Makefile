@@ -32,6 +32,10 @@ ifeq ($(strip $(SHELL)),)
 $(error "bash not found, VPP requires bash to build")
 endif
 
+ifeq ($(shell command -v sudo),)
+$(error "sudo not found, VPP requires sudo to build")
+endif
+
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -79,6 +83,8 @@ else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux anolis,$(OS
 PKG=rpm
 else ifeq ($(filter freebsd,$(OS_ID)),$(OS_ID))
 PKG=pkg
+else ifeq ($(filter,openwrt,$(OS_ID)),$(OS_ID))
+PKG=ipk
 endif
 
 ifeq ($(filter anolis,$(OS_ID)),$(OS_ID))
@@ -270,6 +276,10 @@ FBSD_BUILD_DEPS += git sudo autoconf automake curl gsed
 FBSD_BUILD_DEPS += pkgconf ninja cmake libepoll-shim jansson
 FBSD_DEPS = $(FBSD_BUILD_DEPS) $(FBSD_PYTHON_DEPS) $(FBSD_TEST_DEPS) $(FBSD_DEVEL_DEPS)
 
+# OpenWRT build and test dependencies
+OWRT_PYTHON_DEPS = python3-ply python3-pip python3-venv
+
+
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
 endif
@@ -449,15 +459,18 @@ else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
 else ifeq ($(OS_ID), freebsd)
 	@sudo pkg install -y $(FBSD_DEPS)
+else ifeq ($(OS_ID), openwrt)
+	@sudo -E opkg update
+	@sudo -E opkg install $(OWRT_PYTHON_DEPS)
 else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, openSUSE-leap or FreeBSD systems")
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, openSUSE-leap, FreeBSD or OpenWRT systems")
 endif
 	git config commit.template .git_commit_template.txt
 
 .PHONY: install-deps
 install-deps: install-dep
 
-define make
+define makudo 
 	@$(MAKE) -C $(BR) CC=$(CC) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
