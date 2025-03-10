@@ -156,6 +156,89 @@ oct_rxq_init (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
   return VNET_DEV_OK;
 }
 
+static_always_inline vlib_buffer_t *
+oct_seg_to_bp (void *p)
+{
+  return (vlib_buffer_t *) p - 1;
+}
+
+static void
+oct_multi_seg_free (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq,
+		    oct_nix_rx_cqe_desc_t *d)
+{
+  vlib_buffer_t *t;
+  u8 s0 = d->sg0.segs, s1;
+
+  t = oct_seg_to_bp (d->segs0[1]);
+  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, t));
+
+  if (s0 == 2)
+    return;
+  t = oct_seg_to_bp (d->segs0[2]);
+  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, t));
+
+  if (d->sg1.subdc != NIX_SUBDC_SG)
+    return;
+
+  s1 = d->sg1.segs;
+  if (s1 == 0)
+    return;
+
+  t = oct_seg_to_bp (d->segs1[0]);
+  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, t));
+
+  if (s1 == 1)
+    return;
+  t = oct_seg_to_bp (d->segs1[1]);
+  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, t));
+
+  if (s1 == 2)
+    return;
+  t = oct_seg_to_bp (d->segs1[2]);
+  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, t));
+}
+
+int
+oct_drain_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
+{
+  oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
+  oct_nix_rx_cqe_desc_t *descs = crq->cq.desc_base;
+  oct_nix_lf_cq_op_status_t status;
+  u32 cq_size = crq->cq.nb_desc;
+  u32 cq_mask = crq->cq.qmask;
+  vlib_buffer_t *b;
+  u32 i, head, n_desc, n, f_cnt = 0;
+
+  /* Free all CQ entries */
+  while (1)
+    {
+      /* get head and tail from NIX_LF_CQ_OP_STATUS */
+      status.as_u64 = roc_atomic64_add_sync (crq->cq.wdata, crq->cq.status);
+      if (status.cq_err || status.op_err)
+	return f_cnt;
+
+      head = status.head;
+      n_desc = (status.tail - head) & cq_mask;
+
+      if (n_desc == 0)
+	return f_cnt;
+
+      n = clib_min (cq_size - head, n_desc);
+      for (i = head; i < n; i++)
+	{
+	  b = oct_seg_to_bp (descs[i].segs0[0]);
+	  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b));
+	  if (descs[i].sg0.segs > 1)
+	    oct_multi_seg_free (vm, rxq, &descs[i]);
+	}
+      f_cnt += n;
+      plt_write64 ((crq->cq.wdata | n), crq->cq.door);
+      plt_wmb ();
+    }
+
+  return f_cnt;
+}
+
 void
 oct_rxq_deinit (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 {
@@ -173,6 +256,7 @@ oct_rxq_deinit (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 
   if (crq->cq_initialized)
     {
+      oct_drain_queue (vm, rxq);
       rrv = roc_nix_cq_fini (&crq->cq);
       if (rrv)
 	oct_roc_err (dev, rrv, "roc_nix_cq_fini() failed");

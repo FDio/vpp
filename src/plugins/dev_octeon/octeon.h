@@ -139,6 +139,7 @@ void oct_tx_queue_free (vlib_main_t *, vnet_dev_tx_queue_t *);
 vnet_dev_rv_t oct_rxq_init (vlib_main_t *, vnet_dev_rx_queue_t *);
 vnet_dev_rv_t oct_txq_init (vlib_main_t *, vnet_dev_tx_queue_t *);
 void oct_rxq_deinit (vlib_main_t *, vnet_dev_rx_queue_t *);
+int oct_drain_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq);
 void oct_txq_deinit (vlib_main_t *, vnet_dev_tx_queue_t *);
 format_function_t format_oct_rxq_info;
 format_function_t format_oct_txq_info;
