@@ -377,7 +377,9 @@ oct_rxq_stop (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
   if ((rrv = roc_nix_rq_ena_dis (&crq->rq, 0)))
     oct_roc_err (dev, rrv, "roc_nix_rq_ena_dis() failed");
 
-  n = oct_aura_free_all_buffers (vm, crq->aura_handle, crq->hdr_off);
+  n = oct_drain_queue (vm, rxq);
+  n += oct_aura_free_all_buffers (vm, crq->aura_handle, crq->hdr_off,
+				  crq->n_enq - n);
 
   if (crq->n_enq - n > 0)
     log_err (dev, "%u buffers leaked on rx queue %u stop", crq->n_enq - n,
@@ -396,10 +398,7 @@ oct_txq_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   oct_npa_batch_alloc_cl128_t *cl;
   u32 n, off = ctq->hdr_off;
 
-  n = oct_aura_free_all_buffers (vm, ctq->aura_handle, off);
-  ctq->n_enq -= n;
-
-  if (ctq->n_enq > 0 && ctq->ba_num_cl > 0)
+  if (ctq->ba_num_cl > 0)
     for (n = ctq->ba_num_cl, cl = ctq->ba_buffer + ctq->ba_first_cl; n;
 	 cl++, n--)
       {
@@ -409,11 +408,19 @@ oct_txq_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 	if (st.status.ccode != ALLOC_CCODE_INVAL)
 	  for (u32 i = 0; i < st.status.count; i++)
 	    {
+#if (CLIB_DEBUG > 0)
+	      if (!i || (i == 8))
+		cl->iova[i] &= OCT_BATCH_ALLOC_IOVA0_MASK;
+#endif
 	      vlib_buffer_t *b = (vlib_buffer_t *) (cl->iova[i] + off);
 	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b));
 	      ctq->n_enq--;
 	    }
       }
+
+  n = oct_aura_free_all_buffers (vm, ctq->aura_handle, off,
+				 0 /* To free all availiable buffers */);
+  ctq->n_enq -= n;
 
   if (ctq->n_enq > 0)
     log_err (dev, "%u buffers leaked on tx queue %u stop", ctq->n_enq,
@@ -422,6 +429,7 @@ oct_txq_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     log_debug (dev, "%u buffers freed from tx queue %u", n, txq->queue_id);
 
   ctq->n_enq = 0;
+  ctq->ba_num_cl = ctq->ba_first_cl = 0;
 }
 
 vnet_dev_rv_t

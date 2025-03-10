@@ -432,6 +432,10 @@ VNET_DEV_NODE_FN (oct_rx_node)
   foreach_vnet_dev_rx_queue_runtime (rxq, node)
     {
       vnet_dev_port_t *port = rxq->port;
+
+      if (!rxq->started)
+	continue;
+
       n_rx += oct_rx_node_inline (vm, node, frame, port, rxq, 0);
     }
 
