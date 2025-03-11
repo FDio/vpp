@@ -16,6 +16,24 @@
       "message": "aren\u0027t all crypto engines plugins? and so if their plugin is not loaded, then they are not used, and vice-versa.\nWhat does this extra config deliver in addition?",
       "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab6e011f_d5bcb2c6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-11T09:39:18Z",
+      "side": 1,
+      "message": "crypto engines are not plugins and are part of vnet. IIRC They would probably not be plugin as some other vnet component depend on if like vnet/tls.\n\nThis extra config let you load only the crypto that you want to run, like in case of openssl-FIPS, you don\u0027t want to fallback on a non FIPS engine.",
+      "parentUuid": "1f293ffe_65c03216",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
