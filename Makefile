@@ -932,7 +932,7 @@ docs:
 	@$(MAKE) -C $(WS_ROOT)/docs docs
 
 .PHONY: pkg-verify
-pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
+pkg-verify: $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp")
 	@$(MAKE) CC=$(CC) -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
