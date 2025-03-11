@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "616a776a_e8d5bae7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nThanks for review and your comments. \nPlease see the updated Patch13. \n\nI implemented the changes you mentioned and replied to two issues #104 and #305. I would be glad to have your comments on them.\n\nRegarding the node.c, some lines are shown with format-changed (removed one-space), although I have not carried out those changes. Might have happened during clang-format check. I will look into it.\n\nThanks!",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4cfbe7f3_995b86bd",
@@ -35,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d151cd82_9549fc1a",
+        "filename": "src/plugins/gre/error.def",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4cfbe7f3_995b86bd",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4fa99a20_04477c01",
@@ -48,6 +83,24 @@
       "writtenOn": "2025-03-05T23:39:03Z",
       "side": 1,
       "message": "please follow the API change process as defined here: https://github.com/FDio/vpp/blob/master/src/tools/vppapigen/VPPAPI.rst#api-change-process",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a917ec0e_fde32fa7",
+        "filename": "src/plugins/gre/gre.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "I dropped the API change for now",
+      "parentUuid": "4fa99a20_04477c01",
       "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -71,6 +124,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a66950d7_58fbee73",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "although it is set to 0 in the rewrite template, it keeps being damaged after the key insertion. By setting it explicitly to 0 in fixup functions, the issue is resolved",
+      "parentUuid": "99670998_77f84c72",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0d2a57d2_05e34b8d",
         "filename": "src/plugins/gre/gre.c",
         "patchSetId": 1
@@ -82,6 +153,24 @@
       "writtenOn": "2025-03-05T23:39:03Z",
       "side": 1,
       "message": "why is it necessary to save/restore these values?\nhow do you know that the tunnel has a key?\nwhy is it not done for the other XoY functions?",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf8105bc_41c646c8",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "You are absolutely right and these changes should have been removed",
+      "parentUuid": "0d2a57d2_05e34b8d",
       "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -99,6 +188,24 @@
       "writtenOn": "2025-03-05T23:39:03Z",
       "side": 1,
       "message": "i would suggest you `typedef u32 gre_key_t` so that all the sizeof(u32) in other code can be replaced with sizeof(gre_key_t) which gives the reader a better understanding of what is being accounted for.",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aec26f55_12c9c975",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "implemented as you said",
+      "parentUuid": "1e1f56fd_f882083b",
       "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -122,6 +229,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fe9d2393_d2faff14",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "I used __attribute__ ((packed)) to be consistent with other existing structs defined below it. Do you want all these packed attributes to be updated using __clib_packed?\n\nOtherwise, I will use __clib_packed only for this one.",
+      "parentUuid": "a68e7579_4a2f018a",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "31cd264d_e44d9821",
         "filename": "src/plugins/gre/gre.h",
         "patchSetId": 1
@@ -133,6 +258,24 @@
       "writtenOn": "2025-03-05T23:39:03Z",
       "side": 1,
       "message": "what\u0027s the value of the key used here when the `key_present` flags is not set?\nAnd if a value of key exists that implicitly means \u0027unused\u0027 is the `key_present` flag needed?",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "43b1d1fc_aeec23e9",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "removed the key_present",
+      "parentUuid": "31cd264d_e44d9821",
       "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -154,6 +297,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f6676be_fb016043",
+        "filename": "src/plugins/gre/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "implemented as you said",
+      "parentUuid": "cd347a4f_aa739b21",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61de1139_e8dfb2eb",
@@ -171,6 +332,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e8b0f6f_c288a9c7",
+        "filename": "src/plugins/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "61de1139_e8dfb2eb",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "27c1e43a_8f7d1362",
@@ -184,6 +363,24 @@
       "writtenOn": "2025-03-05T23:39:03Z",
       "side": 1,
       "message": "const",
+      "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3574f430_f6ba6256",
+        "filename": "src/vnet/gre/packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-03-11T13:55:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27c1e43a_8f7d1362",
       "revId": "5c2b71a42cd66813bf616dfbff01b89612153aff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
