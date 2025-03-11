@@ -242,6 +242,14 @@ func (vpp *VppInstance) Start() error {
 	return nil
 }
 
+func (vpp *VppInstance) Stop() {
+	pid := vpp.Container.Exec(false, "pidof vpp")
+	// Stop VPP only if it's still running
+	if len(pid) > 0 {
+		vpp.Container.ExecServer(false, "bash -c \"kill -15 "+pid+"\"")
+	}
+}
+
 func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
 	vppCliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",

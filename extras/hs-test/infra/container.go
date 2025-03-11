@@ -533,12 +533,15 @@ func (c *Container) stop() error {
 	if c.VppInstance != nil && c.VppInstance.ApiStream != nil {
 		c.VppInstance.saveLogs()
 		c.VppInstance.Disconnect()
+		c.VppInstance.Stop()
 	}
+	timeout := 0
 	c.VppInstance = nil
 	c.saveLogs()
-
 	c.Suite.Log("Stopping container " + c.Name)
-	timeout := 0
+	if c.Suite.CoverageRun {
+		timeout = 3
+	}
 	if err := c.Suite.Docker.ContainerStop(c.ctx, c.ID, containerTypes.StopOptions{Timeout: &timeout}); err != nil {
 		return err
 	}
