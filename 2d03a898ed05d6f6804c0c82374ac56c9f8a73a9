@@ -16,6 +16,24 @@
       "message": "vpp.Container.Exec() might be a better option unless there\u0027s a reason to use ExecServer. Also, please remove \"\\n\" from pid string.",
       "revId": "2d03a898ed05d6f6804c0c82374ac56c9f8a73a9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0677be8b_5c4385c8",
+        "filename": "extras/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-11T14:35:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f5cea621_cd1bc739",
+      "revId": "2d03a898ed05d6f6804c0c82374ac56c9f8a73a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
