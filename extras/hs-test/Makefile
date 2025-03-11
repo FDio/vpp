@@ -148,7 +148,7 @@ wipe-lcov:
 .PHONY: test-cov
 test-cov: FORCE_BUILD=false
 test-cov: .deps.ok .build.cov.ok wipe-lcov
-	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	@bash ./hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
 		./script/compress.sh $$?

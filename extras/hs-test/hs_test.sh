@@ -6,6 +6,7 @@ args=
 focused_test=0
 persist_set=0
 dryrun_set=0
+coverage_set=0
 unconfigure_set=0
 debug_set=0
 leak_check_set=0
@@ -24,6 +25,13 @@ case "${i}" in
         if [ "$persist" = "true" ]; then
             args="$args -persist"
             persist_set=1
+        fi
+        ;;
+    --coverage=*)
+        coverage="${i#*=}"
+        if [ "$coverage" = "true" ]; then
+            args="$args -coverage"
+            coverage_set=1
         fi
         ;;
     --debug=*)
