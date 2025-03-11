@@ -34,6 +34,40 @@
       "parentUuid": "1f293ffe_65c03216",
       "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a1f086d_e868ab76",
+        "filename": "src/vnet/crypto/config.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-03-11T14:02:19Z",
+      "side": 1,
+      "message": "use SPD-X",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7ef73e7_0fc17306",
+        "filename": "src/vnet/crypto/config.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-03-11T14:02:19Z",
+      "side": 1,
+      "message": "not needed",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
