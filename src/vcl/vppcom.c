@@ -4557,17 +4557,31 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
       if (ep->app_tlvs)
 	vcl_handle_ep_app_tlvs (s, ep);
 
-      /* Session not connected/bound in vpp. Create it by 'connecting' it */
+      /* Session not connected/bound in vpp. Create it by binding it */
       if (PREDICT_FALSE (s->session_state == VCL_STATE_CLOSED))
 	{
 	  u32 session_index = s->session_index;
 	  f64 timeout = vcm->cfg.session_timeout;
 	  int rv;
 
-	  vcl_send_session_connect (wrk, s);
-	  rv = vppcom_wait_for_session_state_change (session_index,
-						     VCL_STATE_READY,
-						     timeout);
+	  /* VPP assumes sockets are bound, not ideal, but for not
+	   * connect socket, grab lcl ip:port pair and use it to bind */
+	  if (s->transport.rmt_port == 0 ||
+	      ip46_address_is_zero (&s->transport.lcl_ip))
+	    {
+	      vcl_send_session_connect (wrk, s);
+	      rv = vppcom_wait_for_session_state_change (
+		session_index, VCL_STATE_READY, timeout);
+	      if (rv < 0)
+		return rv;
+	      vcl_send_session_disconnect (wrk, s);
+	      rv = vppcom_wait_for_session_state_change (
+		session_index, VCL_STATE_DETACHED, timeout);
+	      s->session_state = VCL_STATE_CLOSED;
+	    }
+	  vcl_send_session_listen (wrk, s);
+	  rv = vppcom_wait_for_session_state_change (
+	    session_index, VCL_STATE_LISTEN, timeout);
 	  if (rv < 0)
 	    return rv;
 	  s = vcl_session_get (wrk, session_index);
