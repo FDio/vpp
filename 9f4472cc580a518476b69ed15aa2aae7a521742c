@@ -33,6 +33,24 @@
       "message": "Current code seems to be working fine when offloads are not on, so should we be anding this with `or_flags \u0026 VNET_BUFFER_F_OFFLOAD`?",
       "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c08213f8_6d61eccb",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-12T09:00:18Z",
+      "side": 1,
+      "message": "Technically rte_eth_tx_prepare() will check if the segment are not too big for the card, if the flags mix are compatible, etc ...\n\nBut I agree if the card tx offload is disabled, or none of the buffer are offloaded, it will make no sense to prepare.\n\nI think the right check should be unlikely `xd-\u003eflags \u0026 DPDK_DEVICE_FLAG_TX_OFFLOAD \u0026\u0026 (one of the vlib_buffer VNET_BUFFER_F_OFFLOAD is set) \u0026\u0026 xd-\u003eflags \u0026 DPDK_DEVICE_FLAG_TX_PREPARE`",
+      "parentUuid": "304a9b35_667cd8bb",
+      "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
