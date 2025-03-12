@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5cc1a5d6_2c326c2b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-12T15:54:40Z",
+      "side": 1,
+      "message": "We did some tests with bganne, we conclude that \n o tx_prepare in ena driver will cost 10% overhead (for all packets size)\n o when we do need to generate checksum, the hardware offloading will perform efficiently ~25% better even on small packet (64 bytes on the wire)\n \nWe will recommend to use/activate tx_prepare only for ena driver as we are not cpu bounded.\nIf in the future we got issue like ena driver, we could use the tx-prepare flag as workaround.",
+      "revId": "5c62beb0f900719f2a46c4d8c0258189acaaf2e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
