@@ -223,7 +223,8 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
   return read;
 }
 
-static int
+// static int
+int
 openssl_write_from_fifo_into_ssl (svm_fifo_t *f, tls_ctx_t *ctx,
 				  transport_send_params_t *sp, u32 max_len)
 {
@@ -407,7 +408,8 @@ openssl_confirm_app_close (tls_ctx_t *ctx)
   session_transport_closed_notify (&ctx->connection);
 }
 
-static int
+// static int
+int
 openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 		       transport_send_params_t *sp)
 {
@@ -423,6 +425,7 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
   space = clib_max ((int) space - TLSO_CTRL_BYTES, 0);
 
   f = app_session->tx_fifo;
+  TLS_DBG (8, "");
 
   deq_max = svm_fifo_max_dequeue_cons (f);
   deq_max = clib_min (deq_max, space);
@@ -438,40 +441,57 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
   if (svm_fifo_provision_chunks (ts->tx_fifo, 0, 0, deq_max + TLSO_CTRL_BYTES))
     goto check_tls_fifo;
 
+  TLS_DBG (8, "");
   wrote = openssl_write_from_fifo_into_ssl (f, ctx, sp, deq_max);
 
   /* Unrecoverable protocol error. Reset connection */
   if (PREDICT_FALSE (wrote < 0))
     {
+      TLS_DBG (8, "");
       tls_notify_app_io_error (ctx);
       return 0;
     }
 
+  TLS_DBG (8, "");
   if (!wrote)
     goto check_tls_fifo;
 
+  TLS_DBG (8, "");
   if (svm_fifo_needs_deq_ntf (f, wrote))
-    session_dequeue_notify (app_session);
+    {
+      TLS_DBG (8, "");
+      session_dequeue_notify (app_session);
+    }
 
+  TLS_DBG (8, "");
 check_tls_fifo:
 
+  TLS_DBG (8, "");
   if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
 		     BIO_ctrl_pending (oc->rbio) <= 0))
-    openssl_confirm_app_close (ctx);
+    {
+      TLS_DBG (8, "");
+      openssl_confirm_app_close (ctx);
+    }
 
   /* Deschedule and wait for deq notification if fifo is almost full */
   enq_buf = clib_min (svm_fifo_size (ts->tx_fifo) / 2, TLSO_MIN_ENQ_SPACE);
   if (space < wrote + enq_buf)
     {
+      TLS_DBG (8, "");
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
       transport_connection_deschedule (&ctx->connection);
       sp->flags |= TRANSPORT_SND_F_DESCHED;
     }
   else
     {
+      TLS_DBG (8, "");
       /* Request tx reschedule of the app session */
       if (wrote)
-	app_session->flags |= SESSION_F_CUSTOM_TX;
+	{
+	  TLS_DBG (8, "");
+	  app_session->flags |= SESSION_F_CUSTOM_TX;
+	}
     }
 
   return wrote;
@@ -548,7 +568,8 @@ openssl_ctx_write (tls_ctx_t *ctx, session_t *app_session,
     return openssl_ctx_write_dtls (ctx, app_session, sp);
 }
 
-static inline int
+// static inline int
+int
 openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
@@ -1090,14 +1111,19 @@ static int
 openssl_transport_close (tls_ctx_t * ctx)
 {
   if (openssl_main.async && vpp_openssl_is_inflight (ctx))
-    return 0;
+    {
+      TLS_DBG (1, "IN_FLIGHT");
+      return 0;
+    }
 
   if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
+      TLS_DBG (1, "HS_FAILURE");
       openssl_handle_handshake_failure (ctx);
       return 0;
     }
   session_transport_closing_notify (&ctx->connection);
+  TLS_DBG (1, "CLOSE_NOTIFY");
   return 0;
 }
 

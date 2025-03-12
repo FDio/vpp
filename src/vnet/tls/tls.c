@@ -406,13 +406,18 @@ tls_app_rx_callback (session_t *ts)
 {
   tls_ctx_t *ctx;
 
+  // TLS_DBG (1, "===========>");
   /* DTLS session migrating, wait for next notification */
   if (PREDICT_FALSE (ts->flags & SESSION_F_IS_MIGRATING))
     return 0;
 
+  // TLS_DBG (1, "===========>");
   /* Read rescheduled but underlying transport deleted now */
   if (PREDICT_FALSE ((ts->session_state == SESSION_STATE_TRANSPORT_DELETED)))
-    return 0;
+    {
+      // TLS_DBG (1, "===========>");
+      return 0;
+    }
 
   ctx = tls_ctx_get (ts->opaque);
   if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_NO_APP_SESSION) ||
