@@ -51,6 +51,24 @@
       "parentUuid": "304a9b35_667cd8bb",
       "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34ca7968_c604d3ce",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-12T16:44:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c08213f8_6d61eccb",
+      "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
