@@ -16,6 +16,23 @@
       "message": "perftest-2n-icx mrrANDnic_*ANDdrv_vfio_pciAND1cAND64bANDeth-l2bdbasemaclrn",
       "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "304a9b35_667cd8bb",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-12T06:23:53Z",
+      "side": 1,
+      "message": "Current code seems to be working fine when offloads are not on, so should we be anding this with `or_flags \u0026 VNET_BUFFER_F_OFFLOAD`?",
+      "revId": "9f4472cc580a518476b69ed15aa2aae7a521742c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
