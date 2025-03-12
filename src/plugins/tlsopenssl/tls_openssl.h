@@ -99,6 +99,12 @@ void openssl_confirm_app_close (tls_ctx_t *ctx);
 int tls_async_write_event_handler (void *event, void *session);
 int tls_async_read_event_handler (void *event, void *session);
 int tls_async_handshake_event_handler (void *event, void *session);
+int openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session);
+int openssl_write_from_fifo_into_ssl (svm_fifo_t *f, tls_ctx_t *ctx,
+				      transport_send_params_t *sp,
+				      u32 max_len);
+int openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
+			   transport_send_params_t *sp);
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_OPENSSL_H_ */
 
 /*
