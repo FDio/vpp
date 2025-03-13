@@ -33,6 +33,24 @@
       "message": "can we initialize set n_left to n_packets - n_prep in that case, and then do n_left +\u003d tx_burst_vector_internal() below so that we can do the stats increment and free_bulk in 1 go?",
       "revId": "5c62beb0f900719f2a46c4d8c0258189acaaf2e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "adac09fa_43289771",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-13T09:50:18Z",
+      "side": 1,
+      "message": "thanks, that\u0027s simplify a bit :)",
+      "parentUuid": "2f6cd7f5_0b8743a9",
+      "revId": "5c62beb0f900719f2a46c4d8c0258189acaaf2e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
