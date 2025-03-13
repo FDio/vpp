@@ -43,6 +43,8 @@
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
 
+#define FEATURE_CFG_EMBED_LENGTH 1
+
 typedef struct
 {
   /* Features are prioritized by index.  Smaller indices get
@@ -123,19 +125,45 @@ always_inline void *
 vnet_get_config_data (vnet_config_main_t * cm,
 		      u32 * config_index, u32 * next_index, u32 n_data_bytes)
 {
-  u32 i, n, *d;
+  u32 i, n, *d, caller_n;
 
   i = *config_index;
 
   d = heap_elt_at_index (cm->config_string_heap, i);
 
-  n = round_pow2 (n_data_bytes, sizeof (d[0])) / sizeof (d[0]);
+  caller_n = round_pow2 (n_data_bytes, sizeof (d[0])) / sizeof (d[0]);
+
+#if FEATURE_CFG_EMBED_LENGTH
+
+  n = d[0];
+  ++d;
+
+  /*
+   * Check for consistency between caller's idea of config data length
+   * and encoded config data length.
+   *
+   * Note that caller's config data length is in bytes, but the
+   * encoded data length is the number of u32s needed to contain
+   * that number of bytes.
+   */
+  ASSERT (caller_n == n);
+
+  /* Last 32 bits are next index. */
+  *next_index = d[n];
+
+  /* Advance config index to next config. */
+  *config_index = (i + n + 1 + 1);
+
+#else
+
+  n = caller_n;
 
   /* Last 32 bits are next index. */
   *next_index = d[n];
 
   /* Advance config index to next config. */
   *config_index = (i + n + 1);
+#endif
 
   /* Return config data to user for this feature. */
   return (void *) d;
@@ -178,6 +206,10 @@ u32 vnet_config_get_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
 u8 *vnet_config_format_features (vlib_main_t * vm,
 				 vnet_config_main_t * cm,
 				 u32 config_index, u8 * s);
+
+u8 *format_vnet_feature_config_string (u8 *s, va_list *args);
+u8 *format_vnet_feature_config_string_simple (u8 *s, va_list *args);
+u8 *format_vnet_feature_config_string_detailed (u8 *s, va_list *args);
 
 #endif /* included_vnet_config_h */
 
