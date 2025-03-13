@@ -76,7 +76,7 @@ typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
   clib_time_t clib_time;
-
+  clib_bitmap_t *vlsh_libc_punt_map;
   /*
    * Select state
    */
@@ -177,18 +177,37 @@ ldp_get_app_name ()
 }
 
 static inline int
+ldp_vlsh_is_libc_punt (vls_handle_t vlsh)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  return clib_bitmap_get (ldpw->vlsh_libc_punt_map, vlsh);
+}
+
+static inline int
 ldp_vlsh_to_fd (vls_handle_t vlsh)
 {
   return (vlsh + ldp->vlsh_bit_val);
 }
 
+#define ldp_fd_to_vlsh(fd) ldp_fd_to_vlsh_inline (&fd)
+
 static inline vls_handle_t
-ldp_fd_to_vlsh (int fd)
+ldp_fd_to_vlsh_inline (int *fd)
 {
-  if (fd < ldp->vlsh_bit_val)
+  vls_handle_t vlsh;
+
+  if (PREDICT_FALSE (*fd < ldp->vlsh_bit_val))
     return VLS_INVALID_HANDLE;
 
-  return (fd - ldp->vlsh_bit_val);
+  vlsh = *fd - ldp->vlsh_bit_val;
+
+  if (PREDICT_FALSE (ldp_vlsh_is_libc_punt (vlsh)))
+    {
+      *fd = ldp_vlsh_to_fd (vlsh);
+      return VLS_INVALID_HANDLE;
+    }
+
+  return vlsh;
 }
 
 static void
@@ -324,6 +343,7 @@ close (int fd)
 
   ldp_init_check ();
 
+  // FIXME
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
@@ -1075,6 +1095,90 @@ socketpair (int domain, int type, int protocol, int fds[2])
   return rv;
 }
 
+static int
+ldp_endpt_local_addr (vppcom_endpt_t *ep)
+{
+  if (ep->is_ip4)
+    {
+      struct sockaddr_in *sin = (struct sockaddr_in *) ep->ip;
+      if (sin->sin_addr.s_addr == htonl (INADDR_LOOPBACK))
+	{
+	  return 1;
+	}
+    }
+  else
+    {
+      struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) ep->ip;
+      if (memcmp (&sin6->sin6_addr, &in6addr_loopback,
+		  sizeof (in6addr_loopback)) == 0)
+	{
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+typedef enum ldp_punt_
+{
+  LDP_PUNT_BIND = 0,
+  LDP_PUNT_CONNECT,
+} ldp_punt_t;
+
+int
+ldp_punt_to_libc (vls_handle_t vlsh, vppcom_endpt_t *ep, ldp_punt_t punt)
+{
+  u32 tp, tplen = sizeof (tp);
+  ldp_worker_ctx_t *ldpw;
+  int rv = 0, fd;
+
+  ldpw = ldp_worker_get_current ();
+
+  if (vls_attr (vlsh, VPPCOM_ATTR_GET_PROTOCOL, &tp, &tplen))
+    {
+      LDBG (0, "fd %d: ERROR: failed to get protocol!", vlsh);
+      errno = EINVAL;
+      return -1;
+    }
+
+  LDBG (0, "calling libc_socket");
+  fd = libc_socket (ep->is_ip4 ? AF_INET : AF_INET6,
+		    tp == VPPCOM_PROTO_TCP ? SOCK_STREAM : SOCK_DGRAM, 0);
+  if (fd < 0)
+    {
+      errno = -fd;
+      return -1;
+    }
+  vls_set_libc_epfd (vlsh, fd);
+  ldpw->vlsh_libc_punt_map =
+    clib_bitmap_set (ldpw->vlsh_libc_punt_map, vlsh, 1);
+
+  switch (punt)
+    {
+    case LDP_PUNT_BIND:
+      LDBG (0, "fd %d: calling libc_bind: addr %p, len %lu", fd, ep->ip,
+	    ep->is_ip4 ? sizeof (struct sockaddr_in) :
+			 sizeof (struct sockaddr_in6));
+      rv = libc_bind (fd, (struct sockaddr *) ep->ip,
+		      ep->is_ip4 ? sizeof (struct sockaddr_in) :
+				   sizeof (struct sockaddr_in6));
+      break;
+    case LDP_PUNT_CONNECT:
+      LDBG (0, "fd %d: calling libc_connect: addr %p, len %lu", fd, ep->ip,
+	    ep->is_ip4 ? sizeof (struct sockaddr_in) :
+			 sizeof (struct sockaddr_in6));
+      rv = libc_connect (fd, (struct sockaddr *) ep->ip,
+			 ep->is_ip4 ? sizeof (struct sockaddr_in) :
+				      sizeof (struct sockaddr_in6));
+      break;
+    default:
+      LDBG (0, "fd %d: ERROR: unknown punt %u", fd, punt);
+      rv = -1;
+      break;
+    }
+
+  return rv;
+}
+
 int
 bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 {
@@ -1129,6 +1233,11 @@ bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
       LDBG (0, "fd %d: calling vls_bind: vlsh %u, addr %p, len %u", fd, vlsh,
 	    addr, len);
 
+      if (ldp_endpt_local_addr (&ep))
+	{
+	  rv = ldp_punt_to_libc (vlsh, &ep, LDP_PUNT_BIND);
+	  goto done;
+	}
       rv = vls_bind (vlsh, &ep);
       if (rv != VPPCOM_OK)
 	{
@@ -1295,6 +1404,12 @@ connect (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 	}
       LDBG (0, "fd %d: calling vls_connect(): vlsh %u addr %p len %u", fd,
 	    vlsh, addr, len);
+
+      if (ldp_endpt_local_addr (&ep))
+	{
+	  rv = ldp_punt_to_libc (vlsh, &ep, LDP_PUNT_CONNECT);
+	  goto done;
+	}
 
       rv = vls_connect (vlsh, &ep);
       if (rv != VPPCOM_OK)
