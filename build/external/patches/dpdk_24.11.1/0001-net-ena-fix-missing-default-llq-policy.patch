@@ -1,0 +1,26 @@
+From: Shai Brandes <shaibran@amazon.com>
+
+The driver failed to set a default llq_header_policy,
+causing LLQ to be disabled when the devarg value is
+not specified by the application.
+
+Fixes: d7918d19d25e ("net/ena: restructure LLQ policy user setting")
+Cc: stable@dpdk.org
+Signed-off-by: Yosef Raisman <yraisman@amazon.com>
+Signed-off-by: Shai Brandes <shaibran@amazon.com>
+---
+ drivers/net/ena/ena_ethdev.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/net/ena/ena_ethdev.c b/drivers/net/ena/ena_ethdev.c
+index bba48ea1cc..aea2e5c929 100644
+--- a/drivers/net/ena/ena_ethdev.c
++++ b/drivers/net/ena/ena_ethdev.c
+@@ -2330,6 +2330,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
+ 
+ 	/* Assign default devargs values */
+ 	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
++	adapter->llq_header_policy = ENA_LLQ_POLICY_RECOMMENDED;
+ 
+ 	/* Get user bypass */
+ 	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
