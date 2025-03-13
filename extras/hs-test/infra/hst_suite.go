@@ -248,6 +248,12 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 	}
 }
 
+func (s *HstSuite) SkipIfNotCoverage() {
+	if !s.CoverageRun {
+		s.Skip("skipping, not a coverage run")
+	}
+}
+
 func (s *HstSuite) SetupTest() {
 	testCounterFunc()
 	s.Log("[* TEST SETUP]")

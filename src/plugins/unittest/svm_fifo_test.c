@@ -2856,6 +2856,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 done:
   if (res)
     return clib_error_return (0, "svm fifo unit test failed");
+
+  vlib_cli_output (vm, "SUCCESS");
   return 0;
 }
 
