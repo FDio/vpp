@@ -388,6 +388,16 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/vnet/ipsec/esp_format.c" "*/vnet/ethernet/sfp.c" \
 					 "*/vnet/ethernet/ethernet_format_fns.h" \
 					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
+ifeq ($(HS-TEST),1)
+COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
+			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
+					 "*/vnet/gso/*" "*/vnet/ipfix-export/*" "*/vnet/ipip/*" \
+					 "*/vnet/ipsec/*" "*/vnet/l2/*" "*/vnet/mpls/*" \
+					 "*/vnet/pg/*" "*/vnet/policer/*" "*/vnet/snap/*" \
+					 "*/vnet/span/*" "*/vnet/srv6/*" "*/vnet/teib/*" \
+					 "*/vnet/tunnel/*" "*/vpp-api/vapi/*" "*/vpp/app/vpe_cli.c" \
+					 "*/vppinfra/pcap.c" "*/vppinfra/pcap_funcs.h"
+endif
 
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
@@ -403,6 +413,7 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		$(COV_REM_DRIVERS)  \
 		$(COV_REM_TODO_NO_TEST) \
 		$(COV_REM_UNUSED_FEAT) \
+		$(COV_REM_HST_UNUSED_FEAT) \
 		-o $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info \
 		--output-directory $(BUILD_COV_DIR)/html
