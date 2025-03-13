@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a2966c9_8d586dcd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-13T12:42:07Z",
+      "side": 1,
+      "message": "http unit tests run only with hs-test before, now they will run only for coverage test, for rest it is fine since they run within python tests framework\nso 1) keep running http unit tests always or 2) create python test which will run this",
+      "revId": "36d6c24d51027278868d6c98c9efac3536c56982",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
