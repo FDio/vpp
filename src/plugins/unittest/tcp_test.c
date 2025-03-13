@@ -1594,6 +1594,8 @@ tcp_test (vlib_main_t * vm,
 done:
   if (res)
     return clib_error_return (0, "TCP unit test failed");
+
+  vlib_cli_output (vm, "SUCCESS");
   return 0;
 }
 
