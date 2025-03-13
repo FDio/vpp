@@ -76,7 +76,7 @@ typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
   clib_time_t clib_time;
-
+  clib_bitmap_t *vlsh_libc_punt_map;
   /*
    * Select state
    */
@@ -177,6 +177,13 @@ ldp_get_app_name ()
 }
 
 static inline int
+ldp_vlsh_is_libc_punt (vls_handle_t vlsh)
+{
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  return clib_bitmap_get (ldpw->vlsh_libc_punt_map, vlsh);
+}
+
+static inline int
 ldp_vlsh_to_fd (vls_handle_t vlsh)
 {
   return (vlsh + ldp->vlsh_bit_val);
@@ -185,10 +192,37 @@ ldp_vlsh_to_fd (vls_handle_t vlsh)
 static inline vls_handle_t
 ldp_fd_to_vlsh (int fd)
 {
-  if (fd < ldp->vlsh_bit_val)
+  if (PREDICT_FALSE (fd < ldp->vlsh_bit_val))
     return VLS_INVALID_HANDLE;
 
   return (fd - ldp->vlsh_bit_val);
+}
+
+#define ldp_map_or_update_fd(fd) ldp_map_or_update_fd_inline (&fd)
+
+/**
+ * Map fd to vls session handle
+ *
+ * If fd is not a vls sh or fd is punted to libc, return VLS_INVALID_HANDLE.
+ * If fd is a vls sh, update the fd to vls handle mapping.
+ */
+static inline vls_handle_t
+ldp_map_or_update_fd_inline (int *fd)
+{
+  vls_handle_t vlsh;
+
+  if (PREDICT_FALSE (*fd < ldp->vlsh_bit_val))
+    return VLS_INVALID_HANDLE;
+
+  vlsh = *fd - ldp->vlsh_bit_val;
+
+  if (PREDICT_FALSE (ldp_vlsh_is_libc_punt (vlsh)))
+    {
+      *fd = vls_get_libc_fd (vlsh);
+      return VLS_INVALID_HANDLE;
+    }
+
+  return vlsh;
 }
 
 static void
@@ -320,30 +354,33 @@ int
 close (int fd)
 {
   vls_handle_t vlsh;
-  int rv, epfd;
+  int rv, libc_fd;
 
   ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      epfd = vls_get_libc_epfd (vlsh);
-      if (epfd > 0)
+      libc_fd = vls_get_libc_fd (vlsh);
+      if (PREDICT_FALSE (libc_fd < 0))
+	{
+	  errno = -libc_fd;
+	  rv = -1;
+	  goto done;
+	}
+
+      if (libc_fd > 0)
 	{
 	  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
 
-	  LDBG (0, "fd %d: calling libc_close: epfd %u", fd, epfd);
+	  /* This is an mq epfd, update the worker that we closed it */
+	  if (!clib_bitmap_get (ldpw->vlsh_libc_punt_map, vlsh))
+	    ldpw->mq_epfd_added = 0;
+	  else
+	    clib_bitmap_set (ldpw->vlsh_libc_punt_map, vlsh, 0);
 
-	  libc_close (epfd);
-	  ldpw->mq_epfd_added = 0;
-
-	  vls_set_libc_epfd (vlsh, 0);
-	}
-      else if (PREDICT_FALSE (epfd < 0))
-	{
-	  errno = -epfd;
-	  rv = -1;
-	  goto done;
+	  LDBG (0, "fd %d: calling libc_close: epfd %u", fd, libc_fd);
+	  libc_close (libc_fd);
 	}
 
       LDBG (0, "fd %d: calling vls_close: vlsh %u", fd, vlsh);
@@ -373,7 +410,7 @@ read (int fd, void *buf, size_t nbytes)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = vls_read (vlsh, buf, nbytes);
@@ -400,7 +437,7 @@ readv (int fd, const struct iovec * iov, int iovcnt)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       for (i = 0; i < iovcnt; ++i)
@@ -439,7 +476,7 @@ write (int fd, const void *buf, size_t nbytes)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = vls_write_msg (vlsh, (void *) buf, nbytes);
@@ -466,7 +503,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       for (i = 0; i < iovcnt; ++i)
@@ -504,7 +541,7 @@ fcntl_internal (int fd, int cmd, va_list ap)
   vls_handle_t vlsh;
   int rv = 0;
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   LDBG (0, "fd %u vlsh %d, cmd %u", fd, vlsh, cmd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
@@ -591,7 +628,7 @@ ioctl (int fd, unsigned long int cmd, ...)
 
   va_start (ap, cmd);
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       switch (cmd)
@@ -658,7 +695,7 @@ ldp_select_init_maps (fd_set * __restrict original,
   clib_bitmap_foreach (fd, *resultb)  {
     if (fd > nfds)
       break;
-    vlsh = ldp_fd_to_vlsh (fd);
+    vlsh = ldp_map_or_update_fd (fd);
     if (vlsh == VLS_INVALID_HANDLE)
       clib_bitmap_set_no_check (*libcb, fd, 1);
     else
@@ -1075,6 +1112,90 @@ socketpair (int domain, int type, int protocol, int fds[2])
   return rv;
 }
 
+static int
+ldp_endpt_local_addr (vppcom_endpt_t *ep)
+{
+  if (ep->is_ip4)
+    {
+      struct sockaddr_in *sin = (struct sockaddr_in *) ep->ip;
+      if (sin->sin_addr.s_addr == htonl (INADDR_LOOPBACK))
+	{
+	  return 1;
+	}
+    }
+  else
+    {
+      struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) ep->ip;
+      if (memcmp (&sin6->sin6_addr, &in6addr_loopback,
+		  sizeof (in6addr_loopback)) == 0)
+	{
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+typedef enum ldp_punt_
+{
+  LDP_PUNT_BIND = 0,
+  LDP_PUNT_CONNECT,
+} ldp_punt_t;
+
+int
+ldp_punt_to_libc (vls_handle_t vlsh, vppcom_endpt_t *ep, ldp_punt_t punt)
+{
+  u32 tp, tplen = sizeof (tp);
+  ldp_worker_ctx_t *ldpw;
+  int rv = 0, fd;
+
+  ldpw = ldp_worker_get_current ();
+
+  if (vls_attr (vlsh, VPPCOM_ATTR_GET_PROTOCOL, &tp, &tplen))
+    {
+      LDBG (0, "fd %d: ERROR: failed to get protocol!", vlsh);
+      errno = EINVAL;
+      return -1;
+    }
+
+  LDBG (0, "calling libc_socket");
+  fd = libc_socket (ep->is_ip4 ? AF_INET : AF_INET6,
+		    tp == VPPCOM_PROTO_TCP ? SOCK_STREAM : SOCK_DGRAM, 0);
+  if (fd < 0)
+    {
+      errno = -fd;
+      return -1;
+    }
+  vls_set_libc_fd (vlsh, fd);
+  ldpw->vlsh_libc_punt_map =
+    clib_bitmap_set (ldpw->vlsh_libc_punt_map, vlsh, 1);
+
+  switch (punt)
+    {
+    case LDP_PUNT_BIND:
+      LDBG (0, "fd %d: calling libc_bind: addr %p, len %lu", fd, ep->ip,
+	    ep->is_ip4 ? sizeof (struct sockaddr_in) :
+			 sizeof (struct sockaddr_in6));
+      rv = libc_bind (fd, (struct sockaddr *) ep->ip,
+		      ep->is_ip4 ? sizeof (struct sockaddr_in) :
+				   sizeof (struct sockaddr_in6));
+      break;
+    case LDP_PUNT_CONNECT:
+      LDBG (0, "fd %d: calling libc_connect: addr %p, len %lu", fd, ep->ip,
+	    ep->is_ip4 ? sizeof (struct sockaddr_in) :
+			 sizeof (struct sockaddr_in6));
+      rv = libc_connect (fd, (struct sockaddr *) ep->ip,
+			 ep->is_ip4 ? sizeof (struct sockaddr_in) :
+				      sizeof (struct sockaddr_in6));
+      break;
+    default:
+      LDBG (0, "fd %d: ERROR: unknown punt %u", fd, punt);
+      rv = -1;
+      break;
+    }
+
+  return rv;
+}
+
 int
 bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 {
@@ -1084,7 +1205,7 @@ bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
@@ -1129,6 +1250,11 @@ bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
       LDBG (0, "fd %d: calling vls_bind: vlsh %u, addr %p, len %u", fd, vlsh,
 	    addr, len);
 
+      if (ldp_endpt_local_addr (&ep))
+	{
+	  rv = ldp_punt_to_libc (vlsh, &ep, LDP_PUNT_BIND);
+	  goto done;
+	}
       rv = vls_bind (vlsh, &ep);
       if (rv != VPPCOM_OK)
 	{
@@ -1201,7 +1327,7 @@ getsockname (int fd, __SOCKADDR_ARG _addr, socklen_t *__restrict len)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
@@ -1251,7 +1377,7 @@ connect (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
       goto done;
     }
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
@@ -1296,6 +1422,12 @@ connect (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
       LDBG (0, "fd %d: calling vls_connect(): vlsh %u addr %p len %u", fd,
 	    vlsh, addr, len);
 
+      if (ldp_endpt_local_addr (&ep))
+	{
+	  rv = ldp_punt_to_libc (vlsh, &ep, LDP_PUNT_CONNECT);
+	  goto done;
+	}
+
       rv = vls_connect (vlsh, &ep);
       if (rv != VPPCOM_OK)
 	{
@@ -1325,7 +1457,7 @@ getpeername (int fd, __SOCKADDR_ARG _addr, socklen_t *__restrict len)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
@@ -1360,7 +1492,7 @@ getpeername (int fd, __SOCKADDR_ARG _addr, socklen_t *__restrict len)
 ssize_t
 send (int fd, const void *buf, size_t n, int flags)
 {
-  vls_handle_t vlsh = ldp_fd_to_vlsh (fd);
+  vls_handle_t vlsh = ldp_map_or_update_fd (fd);
   ssize_t size;
 
   ldp_init_check ();
@@ -1391,7 +1523,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (out_fd);
+  vlsh = ldp_map_or_update_fd (out_fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       int rv;
@@ -1540,7 +1672,7 @@ recv (int fd, void *buf, size_t n, int flags)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = vls_recvfrom (vlsh, buf, n, flags, NULL);
@@ -1644,7 +1776,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = ldp_vls_sendo (vlsh, buf, n, NULL, flags, addr, addr_len);
@@ -1671,7 +1803,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = ldp_vls_recvfrom (vlsh, buf, n, flags, addr, addr_len);
@@ -1789,7 +1921,7 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_tlv_t *app_tlvs = 0;
@@ -1837,7 +1969,7 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
 {
   ssize_t size;
   const char *func_str;
-  u32 sh = ldp_fd_to_vlsh (fd);
+  u32 sh = ldp_map_or_update_fd (fd);
 
   ldp_init_check ();
 
@@ -1885,7 +2017,7 @@ recvmsg (int fd, struct msghdr * msg, int flags)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       struct iovec *iov = msg->msg_iov;
@@ -1943,7 +2075,7 @@ recvmmsg (int fd, struct mmsghdr *vmessages,
 
   ldp_init_check ();
 
-  sh = ldp_fd_to_vlsh (fd);
+  sh = ldp_map_or_update_fd (fd);
 
   if (sh != VLS_INVALID_HANDLE)
     {
@@ -1999,7 +2131,7 @@ getsockopt (int fd, int level, int optname,
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       rv = -EOPNOTSUPP;
@@ -2150,7 +2282,7 @@ setsockopt (int fd, int level, int optname,
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       rv = -EOPNOTSUPP;
@@ -2269,7 +2401,7 @@ listen (int fd, int n)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       LDBG (0, "fd %d: calling vls_listen: vlsh %u, n %d", fd, vlsh, n);
@@ -2301,7 +2433,7 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG _addr,
 
   ldp_init_check ();
 
-  listen_vlsh = ldp_fd_to_vlsh (listen_fd);
+  listen_vlsh = ldp_map_or_update_fd (listen_fd);
   if (listen_vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
@@ -2367,7 +2499,7 @@ shutdown (int fd, int how)
 
   ldp_init_check ();
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
       LDBG (0, "called shutdown: fd %u vlsh %u how %d", fd, vlsh, how);
@@ -2429,7 +2561,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 
   ldp_init_check ();
 
-  vep_vlsh = ldp_fd_to_vlsh (epfd);
+  vep_vlsh = ldp_map_or_update_fd (epfd);
   if (PREDICT_FALSE (vep_vlsh == VLS_INVALID_HANDLE))
     {
       /* The LDP epoll_create1 always creates VCL epfd's.
@@ -2446,7 +2578,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
       goto done;
     }
 
-  vlsh = ldp_fd_to_vlsh (fd);
+  vlsh = ldp_map_or_update_fd (fd);
 
   LDBG (0, "epfd %d ep_vlsh %d, fd %u vlsh %d, op %u", epfd, vep_vlsh, fd,
 	vlsh, op);
@@ -2469,7 +2601,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
     {
       int libc_epfd;
 
-      libc_epfd = vls_get_libc_epfd (vep_vlsh);
+      libc_epfd = vls_get_libc_fd (vep_vlsh);
       if (!libc_epfd)
 	{
 	  LDBG (1, "epfd %d, vep_vlsh %d calling libc_epoll_create1: "
@@ -2482,7 +2614,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 	      goto done;
 	    }
 
-	  rv = vls_set_libc_epfd (vep_vlsh, libc_epfd);
+	  rv = vls_set_libc_fd (vep_vlsh, libc_epfd);
 	  if (rv < 0)
 	    {
 	      errno = -rv;
@@ -2531,7 +2663,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   if (epfd == ldpw->vcl_mq_epfd)
     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
-  ep_vlsh = ldp_fd_to_vlsh (epfd);
+  ep_vlsh = ldp_map_or_update_fd (epfd);
   if (PREDICT_FALSE (ep_vlsh == VLS_INVALID_HANDLE))
     {
       LDBG (0, "epfd %d: bad ep_vlsh %d!", epfd, ep_vlsh);
@@ -2544,7 +2676,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
   max_time = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
-  libc_epfd = vls_get_libc_epfd (ep_vlsh);
+  libc_epfd = vls_get_libc_fd (ep_vlsh);
   if (PREDICT_FALSE (libc_epfd < 0))
     {
       errno = -libc_epfd;
@@ -2614,7 +2746,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   if (epfd == ldpw->vcl_mq_epfd)
     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
-  ep_vlsh = ldp_fd_to_vlsh (epfd);
+  ep_vlsh = ldp_map_or_update_fd (epfd);
   if (PREDICT_FALSE (ep_vlsh == VLS_INVALID_HANDLE))
     {
       LDBG (0, "epfd %d: bad ep_vlsh %d!", epfd, ep_vlsh);
@@ -2622,7 +2754,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       return -1;
     }
 
-  libc_epfd = vls_get_libc_epfd (ep_vlsh);
+  libc_epfd = vls_get_libc_fd (ep_vlsh);
   if (PREDICT_FALSE (!libc_epfd))
     {
       LDBG (1, "epfd %d, vep_vlsh %d calling libc_epoll_create1: "
@@ -2634,7 +2766,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 	  goto done;
 	}
 
-      rv = vls_set_libc_epfd (ep_vlsh, libc_epfd);
+      rv = vls_set_libc_fd (ep_vlsh, libc_epfd);
       if (rv < 0)
 	{
 	  errno = -rv;
@@ -2770,7 +2902,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
       if (fds[i].fd < 0)
 	continue;
 
-      vlsh = ldp_fd_to_vlsh (fds[i].fd);
+      vlsh = ldp_map_or_update_fd (fds[i].fd);
       if (vlsh != VLS_INVALID_HANDLE)
 	{
 	  fds[i].fd = -fds[i].fd;

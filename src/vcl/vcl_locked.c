@@ -119,7 +119,7 @@ typedef struct vcl_locked_session_
   u32 shared_data_index;   /**< shared data index if any */
   u32 owner_vcl_wrk_index; /**< vcl wrk of the vls wrk at alloc */
   uword *vcl_wrk_index_to_session_index; /**< map vcl wrk to session */
-  int libc_epfd;			 /**< epoll fd for libc epoll */
+  int libc_fd;				 /**< epoll fd for libc epoll */
   vls_flags_t flags;			 /**< vls flags */
 } vcl_locked_session_t;
 
@@ -2185,12 +2185,12 @@ vls_use_real_epoll (void)
 }
 
 int
-vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd)
+vls_set_libc_fd (vls_handle_t vlsh, int libc_fd)
 {
   vcl_locked_session_t *vls;
 
   vls_mt_detect ();
-  if (!(vls = vls_get_w_dlock (ep_vlsh)))
+  if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
   if (vls_mt_session_should_migrate (vls))
     {
@@ -2198,14 +2198,14 @@ vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd)
       if (PREDICT_FALSE (!vls))
 	return VPPCOM_EBADFD;
     }
-  vls->libc_epfd = libc_epfd;
+  vls->libc_fd = libc_fd;
   vls_unlock (vls);
   vls_mt_pool_runlock ();
   return 0;
 }
 
 int
-vls_get_libc_epfd (vls_handle_t ep_vlsh)
+vls_get_libc_fd (vls_handle_t vlsh)
 {
   vcl_locked_session_t *vls;
   int rv;
@@ -2213,7 +2213,7 @@ vls_get_libc_epfd (vls_handle_t ep_vlsh)
   vls_mt_detect ();
   vls_mt_pool_rlock ();
 
-  vls = vls_get (ep_vlsh);
+  vls = vls_get (vlsh);
   if (!vls)
     {
       vls_mt_pool_runlock ();
@@ -2223,7 +2223,7 @@ vls_get_libc_epfd (vls_handle_t ep_vlsh)
   /* Avoid locking. In mt scenarios, one thread might be blocking waiting on
    * the fd while another might be closing it. While closing, this attribute
    * might be retrieved, so avoid deadlock */
-  rv = vls->libc_epfd;
+  rv = vls->libc_fd;
 
   vls_mt_pool_runlock ();
 
