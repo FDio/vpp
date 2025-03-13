@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cba69c16_f4ecf58f",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-03-13T17:07:49Z",
+      "side": 1,
+      "message": "Please make test name description same as TestCase description \"CL UDP echo test\"",
+      "range": {
+        "startLine": 590,
+        "startChar": 39,
+        "endLine": 590,
+        "endChar": 49
+      },
+      "revId": "4c11e0a2b7cbc948ca8fd85a73522a0b44d811f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
