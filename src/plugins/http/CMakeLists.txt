@@ -11,9 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(VPP_ENABLE_HTTP_2 "Build http plugin with HTTP/2 enabled" OFF)
+if(VPP_ENABLE_HTTP_2)
+    add_compile_definitions(HTTP_2_ENABLE=1)
+endif()
+
 add_vpp_plugin(http
   SOURCES
   http2/hpack.c
+  http2/http2.c
   http2/frame.c
   http.c
   http_buffer.c

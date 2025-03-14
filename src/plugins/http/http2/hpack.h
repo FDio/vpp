@@ -7,6 +7,7 @@
 
 #include <vppinfra/types.h>
 #include <http/http2/http2.h>
+#include <http/http.h>
 
 #define HPACK_INVALID_INT CLIB_UWORD_MAX
 #if uword_bits == 64
