@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6fa91830_87097f83",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-03-14T02:14:42Z",
+      "side": 1,
+      "message": "Note in order to centralize all of the python package dependencies (.e.g. docs), all of the requirements were [temporarily] included in the test venv.\n\nThus, in order for this patch to work, pyproject.toml files will need to be created for each python program in the repo.\n\nAlso, this change will require refactoring of the docker executor image builder code [0], in order to cache all of the python packages in the CI executor images.\n\n[0] https://github.com/FDio/ci-management/blob/master/docker/scripts/lib_vpp.sh#L78",
+      "revId": "d5deaa44199b745b2120ac2e09834ca3310f39f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
