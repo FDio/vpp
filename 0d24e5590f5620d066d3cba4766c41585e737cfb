@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc41192f_2bd9a6c2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-03-14T16:32:20Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nThis is still a WIP patch to resolve the iperf handshake issue when async mode is enabled with transparent tls and ld_preload. \n\nI have one doubt with transparent tls mode: \nWith transparent TLS mode, cant we use the same control session for data transfer? Why we are creating the separate data session? And doing data transfer with that?\n\nWith this patch, the control and data sessions are established with iperf server and I\u0027m able to get iperf test results (with some hacks in async callback, need to properly it).\n\nPlease review the changes in tls_async.c (in vpp_tls_async_init_event, tls_async_handshake_event_handler and tls_async_write_event_handler), other changes you can ignore for now.\n\nThanks,\nVarun",
+      "revId": "0d24e5590f5620d066d3cba4766c41585e737cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d51cc0e6_6c70fc98",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-03-14T16:32:20Z",
+      "side": 1,
+      "message": "After iperf client closure, getting session disconnect callback in TLS plugin.\nAfter closing the session, engine is triggering the callback for read event was causing the crash. Have added this change to avoid the crash. \nNeed to check on this issue.",
+      "revId": "0d24e5590f5620d066d3cba4766c41585e737cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
