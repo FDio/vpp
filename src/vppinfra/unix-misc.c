@@ -224,6 +224,7 @@ unix_proc_file_contents (char *file, u8 ** result)
 __clib_export __clib_weak void
 os_panic (void)
 {
+  fprintf (stderr, "os_panic() called, aborting.\n");
   abort ();
 }
 
@@ -263,6 +264,7 @@ os_puts (u8 *string, uword string_length, uword is_error)
 __clib_export __clib_weak void
 os_out_of_memory (void)
 {
+  fprintf (stderr, "Out-of-memory, calling os_panic().\n");
   os_panic ();
 }
 
