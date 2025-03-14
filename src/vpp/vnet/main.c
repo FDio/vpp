@@ -435,6 +435,7 @@ void vlib_post_mortem_dump (void);
 void
 os_panic (void)
 {
+  fprintf (stderr, "os_panic() called, aborting.\n");
   vl_msg_api_post_mortem_dump ();
   vlib_post_mortem_dump ();
   abort ();
