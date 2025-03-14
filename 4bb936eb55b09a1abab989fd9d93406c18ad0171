@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f2ca076_7b01b736",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-14T16:17:37Z",
+      "side": 1,
+      "message": "this is optional as we a quick return if no offload is needed in vnet_interface_output_handle_offload()",
+      "revId": "4bb936eb55b09a1abab989fd9d93406c18ad0171",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
