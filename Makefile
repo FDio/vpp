@@ -566,7 +566,7 @@ test-cov-hs: build-gcov
 
 .PHONY: test-cov-post-standalone
 test-cov-post-standalone:
-	$(MAKE) CC=$(CC) -C test cov-post VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
+	$(MAKE) CC=$(CC) -C test cov-post HS_TEST=$(HS_TEST) VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-both
 test-cov-both:

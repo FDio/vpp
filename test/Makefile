@@ -388,7 +388,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/vnet/ipsec/esp_format.c" "*/vnet/ethernet/sfp.c" \
 					 "*/vnet/ethernet/ethernet_format_fns.h" \
 					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
-ifeq ($(HS-TEST),1)
+ifeq ($(HS_TEST),1)
 COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
 			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
 					 "*/vnet/gso/*" "*/vnet/ipfix-export/*" "*/vnet/ipip/*" \
