@@ -184,7 +184,7 @@ serialize_get (serialize_main_t * m, uword n_bytes)
 always_inline void
 serialize_integer (serialize_main_t * m, u64 x, u32 n_bytes)
 {
-  u8 *p = serialize_get (m, n_bytes);
+  u8 *p = (u8 *) serialize_get (m, n_bytes);
   if (n_bytes == 1)
     p[0] = x;
   else if (n_bytes == 2)
@@ -200,7 +200,7 @@ serialize_integer (serialize_main_t * m, u64 x, u32 n_bytes)
 always_inline void
 unserialize_integer (serialize_main_t * m, void *x, u32 n_bytes)
 {
-  u8 *p = unserialize_get (m, n_bytes);
+  u8 *p = (u8 *) unserialize_get (m, n_bytes);
   if (n_bytes == 1)
     *(u8 *) x = p[0];
   else if (n_bytes == 2)
@@ -223,7 +223,7 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
   /* Low bit set means it fits into 1 byte. */
   if (r < (1 << 7))
     {
-      p = serialize_get (m, 1);
+      p = (u8 *) serialize_get (m, 1);
       p[0] = 1 + 2 * r;
       return;
     }
@@ -232,7 +232,7 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
   r -= (1 << 7);
   if (r < (1 << 14))
     {
-      p = serialize_get (m, 2);
+      p = (u8 *) serialize_get (m, 2);
       clib_mem_unaligned (p, u16) = clib_host_to_little_u16 (4 * r + 2);
       return;
     }
@@ -240,12 +240,12 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
   r -= (1 << 14);
   if (r < (1 << 29))
     {
-      p = serialize_get (m, 4);
+      p = (u8 *) serialize_get (m, 4);
       clib_mem_unaligned (p, u32) = clib_host_to_little_u32 (8 * r + 4);
       return;
     }
 
-  p = serialize_get (m, 9);
+  p = (u8 *) serialize_get (m, 9);
   p[0] = 0;			/* Only low 3 bits are used. */
   clib_mem_unaligned (p + 1, u64) = clib_host_to_little_u64 (x);
 }
@@ -253,7 +253,7 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
 always_inline u64
 unserialize_likely_small_unsigned_integer (serialize_main_t * m)
 {
-  u8 *p = unserialize_get (m, 1);
+  u8 *p = (u8 *) serialize_get (m, 1);
   u64 r;
   u32 y = p[0];
 
@@ -263,7 +263,7 @@ unserialize_likely_small_unsigned_integer (serialize_main_t * m)
   r = 1 << 7;
   if (y & 2)
     {
-      p = unserialize_get (m, 1);
+      p = (u8 *) unserialize_get (m, 1);
       r += (y / 4) + (p[0] << 6);
       return r;
     }
@@ -271,14 +271,14 @@ unserialize_likely_small_unsigned_integer (serialize_main_t * m)
   r += 1 << 14;
   if (y & 4)
     {
-      p = unserialize_get (m, 3);
+      p = (u8 *) unserialize_get (m, 3);
       r += ((y / 8)
 	    + (p[0] << (5 + 8 * 0))
 	    + (p[1] << (5 + 8 * 1)) + (p[2] << (5 + 8 * 2)));
       return r;
     }
 
-  p = unserialize_get (m, 8);
+  p = (u8 *) unserialize_get (m, 8);
   r = clib_mem_unaligned (p, u64);
   r = clib_little_to_host_u64 (r);
 

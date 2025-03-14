@@ -271,7 +271,7 @@ main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);
-  char *filename = 0, *prefix = 0, *template = 0, *pluginpath = 0;
+  char *filename = 0, *prefix = 0, *_template = 0, *pluginpath = 0;
   int index;
   int c;
   opterr = 0;
@@ -302,7 +302,7 @@ main (int argc, char **argv)
 	  vat2_debug = true;
 	  break;
 	case 't':
-	  template = optarg;
+	  _template = optarg;
 	  break;
 	case 's':
 	  prefix = optarg;
@@ -320,8 +320,8 @@ main (int argc, char **argv)
 	  abort ();
 	}
     }
-  DBG ("debug = %d, filename = %s, template = %s, shared memory prefix: %s\n",
-       vat2_debug, filename, template, prefix);
+  DBG ("debug = %d, filename = %s, _template = %s, shared memory prefix: %s\n",
+       vat2_debug, filename, _template, prefix);
 
   for (index = optind; index < argc; index++)
     DBG ("Non-option argument %s\n", argv[index]);
@@ -343,9 +343,9 @@ main (int argc, char **argv)
       exit (-1);
     }
 
-  if (template)
+  if (_template)
     {
-      print_template (template);
+      print_template (_template);
       exit (0);
     }
 

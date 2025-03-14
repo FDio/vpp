@@ -439,11 +439,11 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
 
       if (has_ioam_trace_option)
 	{
-	  tlv_header.class = clib_host_to_net_u16 (NSH_MD2_IOAM_CLASS);
+	  tlv_header._class = clib_host_to_net_u16 (NSH_MD2_IOAM_CLASS);
 	  tlv_header.type = NSH_MD2_IOAM_OPTION_TYPE_TRACE;
 	  /* Uses network order's class and type to lookup */
 	  nsh_option =
-	    nsh_md2_lookup_option (tlv_header.class, tlv_header.type);
+	    nsh_md2_lookup_option (tlv_header._class, tlv_header.type);
 	  if (nsh_option == NULL)
 	    return clib_error_return (0, "iOAM Trace not registered");
 
@@ -550,7 +550,7 @@ format_nsh_header (u8 * s, va_list * args)
       /* Scan the set of variable metadata, network order */
       while (opt0 < limit0)
 	{
-	  nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+	  nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
 	  if (nsh_option != NULL)
 	    {
 	      if (nm->trace[nsh_option->option_id] != NULL)

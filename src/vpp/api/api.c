@@ -189,7 +189,7 @@ vl_api_log_dump_t_handler (vl_api_log_dump_t * mp)
       if (start_time <= e->timestamp + time_offset)
 	show_log_details (reg, mp->context, e->timestamp + time_offset,
 			  (vl_api_log_level_t *) & e->level,
-			  format (0, "%U", format_vlib_log_class, e->class),
+			  format (0, "%U", format_vlib_log_class, e->_class),
 			  e->string);
       i = (i + 1) % lm->size;
     }
