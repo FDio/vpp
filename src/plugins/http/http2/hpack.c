@@ -4,7 +4,6 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/ring.h>
-#include <http/http.h>
 #include <http/http2/hpack.h>
 #include <http/http2/huffman_table.h>
 #include <http/http_status_codes.h>
