@@ -186,6 +186,7 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
   u32 n_bytes = 0;
   u32 n_bytes0, n_bytes1, n_bytes2, n_bytes3;
   u32 ti = vm->thread_index;
+  u8 is_parr = p != NULL;
 
   while (n_left >= 8)
     {
@@ -212,7 +213,7 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
       n_bytes += n_bytes2 = vlib_buffer_length_in_chain (vm, b[2]);
       n_bytes += n_bytes3 = vlib_buffer_length_in_chain (vm, b[3]);
 
-      if (processing_level >= 3)
+      if (is_parr)
 	{
 	  p[0] = vlib_buffer_get_current (b[0]);
 	  p[1] = vlib_buffer_get_current (b[1]);
@@ -275,7 +276,7 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 
       n_bytes += n_bytes0 = vlib_buffer_length_in_chain (vm, b[0]);
 
-      if (processing_level >= 3)
+      if (is_parr)
 	{
 	  p[0] = vlib_buffer_get_current (b[0]);
 	  p += 1;
@@ -295,7 +296,7 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 	    vlib_increment_combined_counter (ccm, ti, tx_swif0, 1, n_bytes0);
 	}
 
-      if (processing_level >= 1)
+      if (processing_level >= 1 && (b[0]->flags & VNET_BUFFER_F_OFFLOAD))
 	vnet_interface_output_handle_offload (vm, b[0]);
 
       n_left -= 1;
@@ -645,21 +646,20 @@ VLIB_NODE_FN (vnet_interface_output_node)
     do_tx_offloads = 1;
 
   // basic processing
-  if (do_tx_offloads == 0 && arc_or_subif == 0 && is_parr == 0)
+  if (do_tx_offloads == 0 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 0);
+      vm, sw_if_index, ccm, bufs, is_parr ? p : NULL, config_index, arc,
+      n_buffers, 0);
   // basic processing + tx offloads
-  else if (do_tx_offloads == 1 && arc_or_subif == 0 && is_parr == 0)
+  else if (do_tx_offloads == 1 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 1);
+      vm, sw_if_index, ccm, bufs, is_parr ? p : NULL, config_index, arc,
+      n_buffers, 1);
   // basic processing + tx offloads + vlans + arcs
-  else if (do_tx_offloads == 1 && arc_or_subif == 1 && is_parr == 0)
+  else if (do_tx_offloads == 1 && arc_or_subif == 1)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, NULL, config_index, arc, n_buffers, 2);
-  // basic processing + tx offloads + vlans + arcs + multi-txqs
-  else
-    n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, p, config_index, arc, n_buffers, 3);
+      vm, sw_if_index, ccm, bufs, is_parr ? p : NULL, config_index, arc,
+      n_buffers, 2);
 
   from = vlib_frame_vector_args (frame);
   if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
