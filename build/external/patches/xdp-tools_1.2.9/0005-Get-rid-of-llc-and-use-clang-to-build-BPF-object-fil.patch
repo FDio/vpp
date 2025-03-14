@@ -1,0 +1,130 @@
+From c7f38ebb54f2dcf7588052b0b8189b8e87cb7eff Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Toke=20H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Date: Fri, 14 Mar 2025 11:30:01 +0100
+Subject: [PATCH] Get rid of llc and use clang to build BPF object files
+ directly
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It turns out we pass both -S and -c to clang, which has become an error
+starting from clang 20. The two-stage build using 'clang -S' followed by
+llc was used in the early days of BPF development, but these days, clang
+is perfectly happy to produce BPF object files directly.
+
+So use this opportunity to get rid of llc entirely, and simplify the BPF
+object build rules while we're add it, by moving all of the -W* defines
+to BPF_CFLAGS.
+
+Signed-off-by: Toke Høiland-Jørgensen <toke@redhat.com>
+---
+ .github/scripts/run_tests_in_vm.sh |  2 +-
+ .github/workflows/covscan.yml      |  1 -
+ .github/workflows/selftests.yml    |  1 -
+ configure                          |  6 +-----
+ lib/common.mk                      | 12 +-----------
+ lib/defines.mk                     |  4 +++-
+ lib/libxdp/Makefile                | 12 +-----------
+ lib/libxdp/tests/Makefile          | 12 +-----------
+ lib/util/Makefile                  | 12 +-----------
+ packaging/rpm/xdp-tools.spec       |  1 -
+ 10 files changed, 9 insertions(+), 54 deletions(-)
+
+diff --git a/configure b/configure
+index 6a57528..6b0fd27 100755
+--- a/configure
++++ b/configure
+@@ -61,7 +61,6 @@ check_toolchain()
+     : ${CC=gcc}
+     : ${OBJCOPY=objcopy}
+     : ${CLANG=clang}
+-    : ${LLC=llc}
+     : ${M4=m4}
+     : ${EMACS=emacs}
+     : ${BPFTOOL=bpftool}
+@@ -70,9 +69,8 @@ check_toolchain()
+     : ${ARCH_NAME=}
+ 
+     CLANG=$(find_tool clang "$CLANG")
+-    LLC=$(find_tool llc "$LLC")
+ 
+-    for TOOL in $PKG_CONFIG $CC $LD $OBJCOPY $CLANG $LLC $M4; do
++    for TOOL in $PKG_CONFIG $CC $LD $OBJCOPY $CLANG $M4; do
+         if [ ! $(command -v ${TOOL} 2>/dev/null) ]; then
+             echo "*** ERROR: Cannot find tool ${TOOL}" ;
+             exit 1;
+@@ -131,7 +129,6 @@ check_toolchain()
+     echo "CC:=${CC}" >>$CONFIG
+     echo "OBJCOPY:=${OBJCOPY}" >>$CONFIG
+     echo "CLANG:=${CLANG}" >>$CONFIG
+-    echo "LLC:=${LLC}" >>$CONFIG
+     echo "M4:=${M4}" >>$CONFIG
+     echo "EMACS:=${EMACS}" >>$CONFIG
+     echo "ARCH_INCLUDES:=$ARCH_INCLUDES" >> $CONFIG
+@@ -447,7 +444,6 @@ endif
+ ifeq (\$(VERBOSE), 0)
+     QUIET_CC       = @echo '    CC       '\$@;
+     QUIET_CLANG    = @echo '    CLANG    '\$@;
+-    QUIET_LLC      = @echo '    LLC      '\$@;
+     QUIET_LINK     = @echo '    LINK     '\$@;
+     QUIET_INSTALL  = @echo '    INSTALL  '\$@;
+     QUIET_M4       = @echo '    M4       '\$@;
+diff --git a/lib/common.mk b/lib/common.mk
+index dfac249..ce24c48 100644
+--- a/lib/common.mk
++++ b/lib/common.mk
+@@ -108,17 +108,7 @@ $(ALL_EXEC_TARGETS): %: %.c  $(OBJECT_LIBBPF) $(OBJECT_LIBXDP) $(LIBMK) $(LIB_OB
+ 	 $< $(USER_EXTRA_C) $(LDLIBS)
+ 
+ $(XDP_OBJ): %.o: %.c $(KERN_USER_H) $(EXTRA_DEPS) $(BPF_HEADERS) $(LIBMK)
+-	$(QUIET_CLANG)$(CLANG) -S \
+-	    -target $(BPF_TARGET) \
+-	    -D __BPF_TRACING__ \
+-	    $(BPF_CFLAGS) \
+-	    -Wall \
+-	    -Wno-unused-value \
+-	    -Wno-pointer-sign \
+-	    -Wno-compare-distinct-pointer-types \
+-	    -Werror \
+-	    -O2 -emit-llvm -c -g -o ${@:.o=.ll} $<
+-	$(QUIET_LLC)$(LLC) -march=$(BPF_TARGET) -filetype=obj -o $@ ${@:.o=.ll}
++	$(QUIET_CLANG)$(CLANG) -target $(BPF_TARGET) $(BPF_CFLAGS) -O2 -c -g -o $@ $<
+ 
+ $(BPF_SKEL_H): %.skel.h: %.bpf.o
+ 	$(QUIET_GEN)$(BPFTOOL) gen skeleton $< name $(notdir ${@:.skel.h=}) > $@
+diff --git a/lib/defines.mk b/lib/defines.mk
+index f3ff3d3..e86b206 100644
+--- a/lib/defines.mk
++++ b/lib/defines.mk
+@@ -1,5 +1,7 @@
+ CFLAGS ?= -O2 -g
+-BPF_CFLAGS ?= -Wno-visibility
++BPF_CFLAGS ?= -Wall -Wno-unused-value -Wno-pointer-sign \
++	      -Wno-compare-distinct-pointer-types \
++	      -Wno-visibility -Werror -fno-stack-protector
+ BPF_TARGET ?= bpf
+ 
+ HAVE_FEATURES :=
+diff --git a/lib/libxdp/Makefile b/lib/libxdp/Makefile
+index c3336f2..4716fb0 100644
+--- a/lib/libxdp/Makefile
++++ b/lib/libxdp/Makefile
+@@ -135,17 +135,7 @@ $(EMBEDDED_XDP_OBJS): %.embed.o: %.o
+ 	$(Q)$(OBJCOPY)  --rename-section .data=.rodata,alloc,load,readonly,data,contents $@
+ 
+ $(XDP_OBJS): %.o: %.c $(BPF_HEADERS) $(LIBMK)
+-	$(QUIET_CLANG)$(CLANG) -S \
+-	    -target $(BPF_TARGET) \
+-	    -D __BPF_TRACING__ \
+-	    $(BPF_CFLAGS) \
+-	    -Wall \
+-	    -Wno-unused-value \
+-	    -Wno-pointer-sign \
+-	    -Wno-compare-distinct-pointer-types \
+-	    -Werror \
+-	    -O2 -emit-llvm -c -g -o ${@:.o=.ll} $<
+-	$(QUIET_LLC)$(LLC) -march=$(BPF_TARGET) -filetype=obj -o $@ ${@:.o=.ll}
++	$(QUIET_CLANG)$(CLANG) -target $(BPF_TARGET) $(BPF_CFLAGS) -O2 -c -g -o $@ $<
+ 
+ .PHONY: man
+ ifeq ($(EMACS),)
