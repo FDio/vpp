@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aa5c7f30_48eb81e4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-03-15T10:49:56Z",
+      "side": 1,
+      "message": "Ok, But I was asking that in transparent TLS mode, cant we use the same control session for data transfer? Why we are creating two sessions and doing data transfer in separate data session?",
+      "parentUuid": "1b6f2137_06743cf7",
+      "revId": "0d24e5590f5620d066d3cba4766c41585e737cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d51cc0e6_6c70fc98",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
