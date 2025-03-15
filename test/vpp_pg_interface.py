@@ -280,7 +280,7 @@ class VppPGInterface(VppInterface):
         return output
 
     def get_capture(
-        self, expected_count=None, remark=None, timeout=1, filter_out_fn=is_ipv6_misc
+        self, expected_count=None, remark=None, timeout=1.0, filter_out_fn=is_ipv6_misc
     ):
         """Get captured packets
 

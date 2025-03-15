@@ -980,21 +980,41 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                     break
         return counter_value
 
-    def assert_counter_equal(self, counter, expected_value, thread=None, index=0):
+    def assert_error_counter_equal(self, counter, expected_value):
+        counter_value = self.statistics[counter].sum()
+        self.assert_equal(counter_value, expected_value, "error counter `%s'" % counter)
+
+    def assert_counter_in_range(
+        self, counter, expected_min, expected_max, thread=None, index=0
+    ):
         c = self.get_counter(counter)
         if thread is not None:
             c = c[thread][index]
         else:
             c = sum(x[index] for x in c)
-        self.logger.debug(
-            "validate counter `%s[%s]', expected: %s, real value: %s"
-            % (counter, index, expected_value, c)
-        )
-        self.assert_equal(c, expected_value, "counter `%s[%s]'" % (counter, index))
+        if expected_min == expected_max:
+            expected_value = expected_min
+            self.logger.debug(
+                "validate counter `%s[%s]', expected: %s, real value: %s"
+                % (counter, index, expected_value, c)
+            )
+            self.assert_equal(c, expected_value, "counter `%s[%s]'" % (counter, index))
+        else:
+            assert (
+                expected_min < expected_max
+            ), f"invalid range: expected {expected_min} < {expected_max}"
+            self.logger.debug(
+                "validate counter `%s[%s]', expected: [%s-%s], real value: %s"
+                % (counter, index, expected_min, expected_max, c)
+            )
+            self.assert_in_range(
+                c, expected_min, expected_max, "counter `%s[%s]'" % (counter, index)
+            )
 
-    def assert_error_counter_equal(self, counter, expected_value):
-        counter_value = self.statistics[counter].sum()
-        self.assert_equal(counter_value, expected_value, "error counter `%s'" % counter)
+    def assert_counter_equal(self, counter, expected_value, thread=None, index=0):
+        return self.assert_counter_in_range(
+            counter, expected_value, expected_value, thread, index
+        )
 
     @classmethod
     def sleep(cls, timeout, remark=None):
