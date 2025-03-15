@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f7f1e158_27b65c07",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-15T20:30:28Z",
+      "side": 1,
+      "message": "In transparent mode we just convert tcp sessions into tls sessions in ldp without applications knowing, we can\u0027t ignore requests from applications to open multiple sessions. Nor can we try to force application to only use one session instead of multiple as they won\u0027t be able to make sense of the data. \n\nIn other words, in transparent mode we\u0027re not trying to multiplex application communication over a tls session.",
+      "parentUuid": "aa5c7f30_48eb81e4",
+      "revId": "0d24e5590f5620d066d3cba4766c41585e737cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d51cc0e6_6c70fc98",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 1
