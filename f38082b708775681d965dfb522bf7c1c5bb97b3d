@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bd18b23_689d46ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "UT required.",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7bbd7edb_540f2e4c",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "this is where you set the key in the adj\u0027s rewrite data so ...",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3183eb2_55176f88",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "do this once when building the rewrite, not once per-packet",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "854819e6_38b569d1",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "do this once when building the rewrite, not once per-packet",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09ed71f4_d0fac7ea",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "do this once when building the rewrite, not once per-packet",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72046090_b1328616",
+        "filename": "src/plugins/gre/gre.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "do this once when building the rewrite, not once per-packet",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd6a6f27_1d3a5b0b",
+        "filename": "src/plugins/gre/interface.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "... you don\u0027t need it here.",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "65aa7dcd_505f2861",
+        "filename": "src/vnet/gre/packet.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:49:47Z",
+      "side": 1,
+      "message": "remove this",
+      "revId": "f38082b708775681d965dfb522bf7c1c5bb97b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
