@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5eed388b_8486589a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-03-16T22:41:36Z",
+      "side": 1,
+      "message": "what would be the difference in behaviour between:\n\n`plugins { plugin crypto_openssl { disable } }`\n\nand\n\n`plugins { plugin crypto_openssl { enable } } cryptos { crypto openssl { disable } } `\n\nis this a run time error?\n\n`plugins { plugin crypto_openssl { disable } } cryptos { crypto openssl { enable } } `\n\n\nin vent a crypto engine is an abstraction. All of the in tree crypto engines are plugins. So can\u0027t I already control which engines are present by controlling which plugins are loaded?",
+      "parentUuid": "ab6e011f_d5bcb2c6",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5a1f086d_e868ab76",
