@@ -1,0 +1,16 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
++CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+ CMAKE_POLICY(SET CMP0003 NEW)
+ 
+ PROJECT(quicly)
+--- a/deps/picotls/CMakeLists.txt
++++ b/deps/picotls/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
++CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+ CMAKE_POLICY(SET CMP0003 NEW)
+ 
+ PROJECT(picotls)
