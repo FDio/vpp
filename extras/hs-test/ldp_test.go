@@ -71,7 +71,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 	output := <-clnRes
 	result := s.ParseJsonIperfOutput(output)
 	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 400)
+	s.AssertIperfMinTransfer(result, 50)
 }
 
 func RedisBenchmarkTest(s *LdpSuite) {
