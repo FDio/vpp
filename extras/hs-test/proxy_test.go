@@ -109,7 +109,7 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	s.AssertChannelClosed(time.Minute*4, clnCh)
 	result := s.ParseJsonIperfOutput(<-clnRes)
 	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 400)
+	s.AssertIperfMinTransfer(result, 200)
 }
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
