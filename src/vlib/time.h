@@ -12,8 +12,7 @@
 static inline f64
 vlib_time_get_next_timer (vlib_main_t *vm)
 {
-  vlib_node_main_t *nm = &vm->node_main;
-  TWT (tw_timer_wheel) *wheel = nm->timing_wheel;
+  TWT (tw_timer_wheel) *wheel = vm->timing_wheel;
   return TW (tw_timer_first_expires_in_ticks) (wheel) * wheel->timer_interval;
 }
 
