@@ -33,6 +33,23 @@
       "message": "perftest-2n-icx nic_intel-e810cqAND1cAND*ip4base-eth-2vhostvr1024* nic_intel-e810cqAND1cAND*ethip4-ip4base-2vhost* !drv_af_xdp !imix !1518b !9000b !ndrpdr !soak",
       "revId": "cb61ffd279166a4a129b7fea27cdb3b36bae915a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f09daebe_1fcbf133",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-17T11:34:17Z",
+      "side": 1,
+      "message": "VPP crashed in GSO test, stack trace [0] shows the new code. Also make test has failing GSO tests. Non-GSO tests are probably not affected.\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/13/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k4-k1",
+      "revId": "cb61ffd279166a4a129b7fea27cdb3b36bae915a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
