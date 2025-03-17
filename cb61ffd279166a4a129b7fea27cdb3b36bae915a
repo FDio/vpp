@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f261321_04390645",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-17T09:32:47Z",
+      "side": 1,
+      "message": "csit-2n-icx-perftest nic_intel-e810cqAND1cAND*ip4base-eth-2vhostvr1024* nic_intel-e810cqAND1cAND*ethip4-ip4base-2vhost* !drv_af_xdp !imix !1518b !9000b !ndrpdr !soak",
+      "revId": "cb61ffd279166a4a129b7fea27cdb3b36bae915a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
