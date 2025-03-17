@@ -83,8 +83,45 @@ typedef enum
   /* "Process" nodes which can be suspended and later resumed. */
   VLIB_NODE_TYPE_PROCESS,
 
+  /* Nodes to by called by per-thread timing wheel. */
+  VLIB_NODE_TYPE_SCHED,
+
   VLIB_N_NODE_TYPE,
 } vlib_node_type_t;
+
+typedef struct
+{
+  u8 can_be_disabled : 1;
+  u8 may_receive_interrupts : 1;
+  u8 decrement_main_loop_per_calls_if_polling : 1;
+  u8 supports_adaptive_mode : 1;
+  u8 can_be_polled : 1;
+  u8 is_process : 1;
+} vlib_node_type_atts_t;
+
+static const vlib_node_type_atts_t node_type_attrs[VLIB_N_NODE_TYPE] ={
+  [VLIB_NODE_TYPE_PRE_INPUT] = {
+    .can_be_disabled = 1,
+    .may_receive_interrupts = 1,
+    .decrement_main_loop_per_calls_if_polling = 1,
+    .can_be_polled = 1,
+  },
+  [VLIB_NODE_TYPE_INPUT] = {
+    .can_be_disabled = 1,
+    .may_receive_interrupts = 1,
+    .decrement_main_loop_per_calls_if_polling = 1,
+    .supports_adaptive_mode = 1,
+    .can_be_polled = 1,
+  },
+  [VLIB_NODE_TYPE_PROCESS] = {
+    .can_be_disabled = 1,
+    .is_process = 1,
+  },
+  [VLIB_NODE_TYPE_SCHED] = {
+    .can_be_disabled = 1,
+    .may_receive_interrupts = 1,
+  },
+};
 
 typedef struct _vlib_node_fn_registration
 {
@@ -245,7 +282,16 @@ typedef enum
   foreach_vlib_node_state
 #undef _
     VLIB_N_NODE_STATE,
-} vlib_node_state_t;
+} __clib_packed vlib_node_state_t;
+
+typedef enum
+{
+  VLIB_NODE_DISPATCH_REASON_UNKNOWN = 0,
+  VLIB_NODE_DISPATCH_REASON_PENDING_FRAME,
+  VLIB_NODE_DISPATCH_REASON_POLL,
+  VLIB_NODE_DISPATCH_REASON_INTERRUPT,
+  VLIB_NODE_DISPATCH_REASON_SCHED,
+} __clib_packed vlib_node_dispatch_reason_t;
 
 typedef struct vlib_node_t
 {
@@ -498,7 +544,10 @@ typedef struct vlib_node_runtime_t
 
   u16 flags;				/**< Copy of main node flags. */
 
-  u16 state;				/**< Input node state. */
+  vlib_node_state_t state; /**< Input node state. */
+
+  vlib_node_dispatch_reason_t
+    dispatch_reason; /**< Reason for running this node. */
 
   u16 n_next_nodes;
 
@@ -507,6 +556,9 @@ typedef struct vlib_node_runtime_t
 					  last time this node ran. Set to
 					  zero before first run of this
 					  node. */
+  u32 stop_timer_handle_plus_1;		/**< Timing wheel stop handle for
+					  SCHED node incremented by 1,
+					  0 = no timer running. */
 
   CLIB_ALIGN_MARK (runtime_data_pad, 8);
 
@@ -679,29 +731,22 @@ typedef struct
 }
 vlib_signal_timed_event_data_t;
 
-always_inline uword
-vlib_timing_wheel_data_is_timed_event (u32 d)
+typedef enum
 {
-  return d & 1;
-}
+  VLIB_TW_EVENT_T_PROCESS_NODE = 1,
+  VLIB_TW_EVENT_T_TIMED_EVENT = 2,
+  VLIB_TW_EVENT_T_SCHED_NODE = 3,
+} vlib_tw_event_type_t;
 
-always_inline u32
-vlib_timing_wheel_data_set_suspended_process (u32 i)
+typedef union
 {
-  return 0 + 2 * i;
-}
-
-always_inline u32
-vlib_timing_wheel_data_set_timed_event (u32 i)
-{
-  return 1 + 2 * i;
-}
-
-always_inline uword
-vlib_timing_wheel_data_get_index (u32 d)
-{
-  return d / 2;
-}
+  struct
+  {
+    u32 type : 2; /* vlib_tw_event_type_t */
+    u32 index : 30;
+  };
+  u32 as_u32;
+} vlib_tw_event_t;
 
 typedef struct
 {
@@ -727,8 +772,7 @@ typedef struct
   vlib_node_runtime_t *nodes_by_type[VLIB_N_NODE_TYPE];
 
   /* Node runtime indices for input nodes with pending interrupts. */
-  void *input_node_interrupts;
-  void *pre_input_node_interrupts;
+  void *node_interrupts[VLIB_N_NODE_TYPE];
 
   /* Input nodes are switched from/to interrupt to/from polling mode
      when average vector length goes above/below polling/interrupt
@@ -742,13 +786,13 @@ typedef struct
   /* Vector of internal node's frames waiting to be called. */
   vlib_pending_frame_t *pending_frames;
 
-  /* Timing wheel for scheduling time-based node dispatch. */
-  void *timing_wheel;
-
   vlib_signal_timed_event_data_t *signal_timed_event_data_pool;
 
   /* Vector of process nodes waiting for restore */
   vlib_process_restore_t *process_restore_current;
+
+  /* Vector of sched nodes waiting to be calleed */
+  u32 *sched_node_pending;
 
   /* Vector of process nodes waiting for restore in next greaph scheduler run
    */

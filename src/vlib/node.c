@@ -518,7 +518,7 @@ vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r, char *fmt,
     vlib_node_runtime_t *rt;
     u32 i;
 
-    if (n->type == VLIB_NODE_TYPE_PROCESS)
+    if (node_type_attrs[n->type].is_process)
       {
 	vlib_process_t *p;
 	uword log2_n_stack_bytes;
@@ -559,14 +559,13 @@ vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r, char *fmt,
       {
 	vec_add2_aligned (nm->nodes_by_type[n->type], rt, 1,
 			  /* align */ CLIB_CACHE_LINE_BYTES);
-	if (n->type == VLIB_NODE_TYPE_INPUT)
-	  clib_interrupt_resize (&nm->input_node_interrupts,
-				 vec_len (nm->nodes_by_type[n->type]));
-	else if (n->type == VLIB_NODE_TYPE_PRE_INPUT)
-	  clib_interrupt_resize (&nm->pre_input_node_interrupts,
-				 vec_len (nm->nodes_by_type[n->type]));
+
 	n->runtime_index = rt - nm->nodes_by_type[n->type];
       }
+
+    if (node_type_attrs[n->type].may_receive_interrupts)
+      clib_interrupt_resize (&nm->node_interrupts[n->type],
+			     vec_len (nm->nodes_by_type[n->type]));
 
     if (n->type == VLIB_NODE_TYPE_INPUT)
       nm->input_node_counts_by_state[n->state] += 1;

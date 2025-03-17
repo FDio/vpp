@@ -258,6 +258,9 @@ typedef struct vlib_main_t
   u32 buffer_alloc_success_seed;
   f64 buffer_alloc_success_rate;
 
+  /* Timing wheel for scheduling time-based node dispatch. */
+  void *timing_wheel;
+
 #ifdef CLIB_SANITIZE_ADDR
   /* address sanitizer stack save */
   void *asan_stack_save;
@@ -318,8 +321,6 @@ typedef struct vlib_global_main_t
 
 /* Global main structure. */
 extern vlib_global_main_t vlib_global_main;
-
-void vlib_worker_loop (vlib_main_t * vm);
 
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
