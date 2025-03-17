@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e870631_3016f6fe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-03-17T13:25:10Z",
+      "side": 1,
+      "message": "`plugins { plugin crypto_openssl { disable } }` is not supported anymore, crypto engines were moved out of plugins and into specific DSO in vnet: https://gerrit.fd.io/r/c/vpp/+/42036\nIIUC the main goal was to have the most stable ABI possible for those DSOs so that we could have some FIPS certified and keep using those accross VPP versions (to avoid having to re-certify with each version).\nThe VPP plugin ABI is not stable enough for this.\nSo basically the crypto_{openssl,ipsecmb,native} are no longer plugins. This change is to reintroduced the capability to {while,black}list crypto backends that was lost because of this change.",
+      "parentUuid": "5eed388b_8486589a",
+      "revId": "3d7e8cbb3d4abd589db14a415b4375ea47b8c593",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5a1f086d_e868ab76",
