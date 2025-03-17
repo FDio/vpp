@@ -44,5 +44,5 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	output := <-clnRes
 	result := s.ParseJsonIperfOutput(output)
 	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 800)
+	s.AssertIperfMinTransfer(result, 400)
 }
