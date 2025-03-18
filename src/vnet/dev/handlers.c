@@ -173,7 +173,7 @@ vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op,
   if (!di)
     return VNET_FLOW_ERROR_NO_SUCH_INTERFACE;
 
-  if (di->is_primary_if)
+  if (!di->is_primary_if)
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
   p = di->port;
