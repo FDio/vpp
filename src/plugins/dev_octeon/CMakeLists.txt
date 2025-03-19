@@ -44,5 +44,8 @@ add_vpp_plugin(dev_octeon
 
   LINK_LIBRARIES
   ${OCTEON_ROC_LIB}
+
+  COMPONENT
+  vpp-plugin-octeon
 )
 

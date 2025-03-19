@@ -33,6 +33,7 @@ ubuntu_pkgs = {
         "vpp-dbg",
         "vpp-dev",
         "vpp-ext-deps",
+        "vpp-plugin-octeon",
     ],
     "master": [
         "vpp",
@@ -43,6 +44,7 @@ ubuntu_pkgs = {
         "vpp-dbg",
         "vpp-dev",
         "vpp-ext-deps",
+        "vpp-plugin-octeon",
     ],
 }
 

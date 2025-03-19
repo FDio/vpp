@@ -87,3 +87,11 @@ Depends: vpp (= ${source:Version}),
 Description: VPP Python3 API bindings
  This package contains VPP python api bindings
  .
+
+Package: vpp-plugin-octeon
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${shlibs:Depends}
+Description: Vector Packet Processing--runtime octeon plugin
+ This package contains the VPP dev octeon plugin
+ .
