@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d110efaf_65ff9fc4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-19T13:48:35Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/ : SUCCESS (skipped)\n\nBefore, the test fails: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1\nAfter, the test passes: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1\n\nAs Patchset #3 edited only the comment message, no need to re-run the tests.",
+      "revId": "99291cba307928f0aa40959fb0b8fdfaddef42a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
