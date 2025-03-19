@@ -71,7 +71,6 @@ if(VPP_BUILD_VCL_TESTS)
       "vcl/${test}.c"
       vcl/vcl_test_protos.c
       LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
-      NO_INSTALL
     )
   endforeach()
 
