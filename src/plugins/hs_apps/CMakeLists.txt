@@ -58,7 +58,6 @@ if(VPP_BUILD_VCL_TESTS)
     add_vpp_executable(${test}
       SOURCES "vcl/${test}.c"
       LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
-      NO_INSTALL
     )
   endforeach()
 
