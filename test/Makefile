@@ -276,7 +276,7 @@ endif
 
 EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19)
 
-RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
+RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
 
 define retest-func
@@ -604,6 +604,12 @@ help:
 	@echo "                    select all test functions in test_bfd.py,"
 	@echo "                    test_ip4.py and all test functions named"
 	@echo "                    'test_icmp_error' in all files"
+	@echo "       (default: '')"
+	@echo ""
+	@echo "   SKIP_TESTS=<filter>,[<filter>],..."
+	@echo "       Skip tests matching one or more comma-delimited"
+	@echo "       filter expressions, even if they were selected by TEST"
+	@echo ""
 	@echo "       (default: '')"
 	@echo ""
 	@echo "   VARIANT=<variant>"
