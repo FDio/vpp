@@ -506,9 +506,10 @@ iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       {
 	virtchnl_promisc_info_t pi = {
 	  .vsi_id = ap->vsi_id,
-	  .unicast_promisc = req->promisc,
-	  .multicast_promisc = req->promisc,
+	  .flags = 0, /* needed to prevent uninitialized upper byte */
 	};
+	pi.unicast_promisc = req->promisc;
+	pi.multicast_promisc = req->promisc;
 
 	rv = iavf_vc_op_config_promisc_mode (vm, dev, &pi);
       }
