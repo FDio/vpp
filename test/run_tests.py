@@ -685,8 +685,9 @@ def filter_tests(tests, filter_cb):
 
 
 class FilterByTestOption:
-    def __init__(self, filters):
+    def __init__(self, filters, skip_filters):
         self.filters = filters
+        self.skip_filters = skip_filters
 
     def __call__(self, file_name, class_name, func_name):
         def test_one(
@@ -716,6 +717,21 @@ class FilterByTestOption:
                 class_name,
                 func_name,
             ):
+                for (
+                    x_filter_file_name,
+                    x_filter_class_name,
+                    x_filter_func_name,
+                ) in self.skip_filters:
+                    if test_one(
+                        x_filter_file_name,
+                        x_filter_class_name,
+                        x_filter_func_name,
+                        file_name,
+                        class_name,
+                        func_name,
+                    ):
+                        # If the test matches the excluded tests, do not run it
+                        return False
                 return True
 
         return False
@@ -976,6 +992,11 @@ if __name__ == "__main__":
 
     print("Running tests using custom test runner.")
     filters = [(parse_test_filter(f)) for f in config.filter.split(",")]
+    skip_filters = [(parse_test_filter(f)) for f in config.skip_filter.split(",")]
+    # Remove the (None, None, None) triplet that gets pushed by default
+    skip_filters = [
+        triplet for triplet in skip_filters if triplet != (None, None, None)
+    ]
 
     print(
         "Selected filters: ",
@@ -984,8 +1005,15 @@ if __name__ == "__main__":
             for filter_file, filter_class, filter_func in filters
         ),
     )
+    print(
+        "Selected skip filters: ",
+        "|".join(
+            f"file={filter_file}, class={filter_class}, function={filter_func}"
+            for filter_file, filter_class, filter_func in skip_filters
+        ),
+    )
 
-    filter_cb = FilterByTestOption(filters)
+    filter_cb = FilterByTestOption(filters, skip_filters)
 
     cb = SplitToSuitesCallback(filter_cb)
     for d in config.test_src_dir:

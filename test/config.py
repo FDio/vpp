@@ -151,6 +151,21 @@ parser.add_argument(
     "--filter", action="store", metavar="FILTER_EXPRESSION", help=filter_help_string
 )
 
+skip_filter_help_string = """\
+expression consists of one or more filters separated by commas (',')
+filter consists of 3 string selectors separated by dots ('.')
+
+The syntax is identical to the expression used to select the tests,
+except this one one has the effect to skip the tests that match it.
+"""
+
+parser.add_argument(
+    "--skip-filter",
+    action="store",
+    metavar="SKIP_FILTER_EXPR",
+    help=skip_filter_help_string,
+)
+
 default_retries = 0
 
 parser.add_argument(
