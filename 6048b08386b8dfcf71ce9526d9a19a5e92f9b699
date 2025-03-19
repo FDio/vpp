@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9ecd013f_a9efaf3e",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 946,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-19T09:18:10Z",
+      "side": 1,
+      "message": "yes, \"request\" is session from app perspective. maybe stream is better name here? in case of h1 it is used for multiple requests, for h2 it will be just one (to keep mapping between app session and stream id)",
+      "parentUuid": "05928d53_41a53c9c",
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3ca160ed_13228e77",
         "filename": "src/plugins/http/http1.c",
         "patchSetId": 5
@@ -122,6 +140,30 @@
       "writtenOn": "2025-03-14T19:42:54Z",
       "side": 1,
       "message": "req_handle?\n\nAlso, wonder if we should consider playing with bitfields. That is, make these handles structures with a u32 in them and then track bitfields in them. I think compilers are smart enough now to do the right thing. Not sure what happens if we decide to have more than 2 fields ..",
+      "range": {
+        "startLine": 785,
+        "startChar": 28,
+        "endLine": 785,
+        "endChar": 46
+      },
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72ab8c24_031e80f6",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-19T09:18:10Z",
+      "side": 1,
+      "message": "re: bit fields, might works fine in our case. there is some UB (you can\u0027t use offsetof macro) and USB (alignment). data races are off the table for us, so we are safe",
+      "parentUuid": "16a6495c_fe009c9a",
       "range": {
         "startLine": 785,
         "startChar": 28,
