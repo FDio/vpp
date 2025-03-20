@@ -16,6 +16,24 @@
       "message": "This adds sock_test_server and sock_test_client to the vpp_25.06-rc0*.deb package:\n---- $\u003c ----\nmake pkg-deb\n   . . .\ndpkg -c build-root/vpp_25.06-rc0*.deb | grep _test_[sc]\n-rwxr-xr-x root/root     35224 2025-03-19 18:06 ./usr/bin/sock_test_client\n-rwxr-xr-x root/root     22976 2025-03-19 18:06 ./usr/bin/sock_test_server\n---- $\u003c ----\n\nPlease restore this line and remove line 74 below.\n\nTo verify the change is correct run:\n---- %\u003c ----\nmake pkg-deb\n   . . .\ndpkg -c build-root/vpp_25.06-rc0*.deb | grep _test_\n-rwxr-xr-x root/root     55120 2025-03-19 17:48 ./usr/bin/vcl_test_client\n-rwxr-xr-x root/root     50960 2025-03-19 17:48 ./usr/bin/vcl_test_server\n---- $\u003c ----",
       "revId": "d9c2d94e80444f0eec5dddf86a7a98d335761f48",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bace2c13_b71443ee",
+        "filename": "src/plugins/hs_apps/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2025-03-20T11:49:12Z",
+      "side": 0,
+      "message": "Right, my mistake.",
+      "parentUuid": "c702c4db_cf47c20c",
+      "revId": "d9c2d94e80444f0eec5dddf86a7a98d335761f48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
