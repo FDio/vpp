@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31dd10ce_6d4bd265",
+        "filename": "extras/vpp_config/vpplib/VPPUtil.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-03-20T19:28:08Z",
+      "side": 1,
+      "message": "Have you verified vpp_config still works?  AFAIK, vpp_config has been unsupported since ~2020.",
+      "revId": "a154a1c661282ed95a466e546a438cf6c8e520af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b861dc2f_e8300685",
+        "filename": "src/pkg/debian/control.in",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-03-20T19:28:08Z",
+      "side": 1,
+      "message": "What is the reason for adding a new package that is specific to octeon?\n\nIt would be better to include octeon driver plugins in the vpp-plugin-core package.",
+      "revId": "a154a1c661282ed95a466e546a438cf6c8e520af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
