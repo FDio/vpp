@@ -103,7 +103,6 @@ intel_dsa_batch_fallback (vlib_main_t *vm, intel_dsa_batch_t *b,
       clib_memcpy_fast (desc->dst, desc->src, desc->size);
     }
   b->status = INTEL_DSA_STATUS_CPU_SUCCESS;
-  ch->submitted++;
   return;
 }
 
@@ -407,6 +406,7 @@ intel_dsa_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* fallback to software if exception happened */
 	  intel_dsa_batch_fallback (vm, b, ch);
 	  glitch = 1 & b->barrier_before_last;
+	  t->pending_batches[n++] = b;
 	}
       else
 	{
