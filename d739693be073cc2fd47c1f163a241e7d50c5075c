@@ -84,6 +84,23 @@
       "message": "perftest-2n-icx mrrANDnic_((?!Cavium).)*ANDdrv_vfio_pciAND4cAND64bANDeth-l2bdbasemaclrn",
       "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "849c239f_c7223ecb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-21T14:25:21Z",
+      "side": 1,
+      "message": "perftest-2n-icx nic_intel-e810cqAND1cAND*ip4base-eth-2vhostvr1024* nic_intel-e810cqAND1cAND*ethip4-ip4base-2vhost* !drv_af_xdp !imix !1518b !9000b !ndrpdr !soak",
+      "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
