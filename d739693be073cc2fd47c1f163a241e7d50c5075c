@@ -101,6 +101,23 @@
       "message": "perftest-2n-icx nic_intel-e810cqAND1cAND*ip4base-eth-2vhostvr1024* nic_intel-e810cqAND1cAND*ethip4-ip4base-2vhost* !drv_af_xdp !imix !1518b !9000b !ndrpdr !soak",
       "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cac860ea_3f3462c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-03-21T14:26:16Z",
+      "side": 1,
+      "message": "This PR could be dropped if https://gerrit.fd.io/r/c/vpp/+/42187 is merged",
+      "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
