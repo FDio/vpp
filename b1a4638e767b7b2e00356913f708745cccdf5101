@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51db084d_7736007e",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-22T02:54:07Z",
+      "side": 1,
+      "message": "For now, to improve parser efficiency, can we just have a special cases for https, explicitly at the bottom of unformat list? Then if proto is https, we unformat ip and the optional port in more if branches. \n\nAlso, let\u0027s mark with comments the unformat options that use \"/\" to separate ports as deprecated. And let\u0027s change the description of the function above. \n\nFeels like we need to seriously think about optimizing this at one point.",
+      "revId": "b1a4638e767b7b2e00356913f708745cccdf5101",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
