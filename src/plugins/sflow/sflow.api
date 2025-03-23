@@ -61,7 +61,7 @@ define sflow_sampling_rate_get {
     u32 context;
 };
 
-/** \brief API go the sflow sampling-rate
+/** \brief reply to get the sflow sampling-rate
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sampling_N - the current 1-in-N sampling rate
@@ -121,7 +121,7 @@ define sflow_polling_interval_get {
     u32 context;
 };
 
-/** \brief API go the sflow polling-interval
+/** \brief reply to get the sflow polling-interval
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param polling_S - current polling interval in seconds
@@ -164,7 +164,7 @@ define sflow_header_bytes_get {
     u32 context;
 };
 
-/** \brief API go the sflow header-bytes
+/** \brief reply to get the sflow header-bytes
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param header_B - current maximum header length in bytes
@@ -175,6 +175,75 @@ define sflow_header_bytes_get_reply
   u32 context;
   u32 header_B;
   option in_progress;
+};
+
+/* mirror sflow_direction_t in sflow_common.h */
+enum sflow_direction : u32
+{
+    SFLOW_API_DIRN_UNDEFINED = 0,
+    SFLOW_API_DIRN_INGRESS = 1,
+    SFLOW_API_DIRN_EGRESS = 2,
+    SFLOW_API_DIRN_BOTH = 3,
+};
+
+/** @brief API to set sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sampling_D - direction
+*/
+
+autoreply define sflow_direction_set {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* sampling_D */
+    vl_api_sflow_direction_t sampling_D;
+};
+
+/** @brief API to get sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define sflow_direction_get {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+};
+
+/** \brief reply to get the sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sampling_D - direction
+*/
+
+define sflow_direction_get_reply
+{
+  u32 context;
+  vl_api_sflow_direction_t sampling_D;
+  option in_progress;
+};
+
+/** @brief API to set sflow drop-monitoring
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param drop_M - enable drop-monitoring
+*/
+
+autoreply define sflow_drop_monitoring {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* enable / disable the feature */
+    bool drop_M;
 };
 
 /** \brief Dump sflow enabled interface(s)
