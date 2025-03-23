@@ -27,6 +27,9 @@ uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 #include <sflow/sflow.api_enum.h>
 #include <sflow/sflow.api_types.h>
 
+/* for token names */
+#include <sflow/sflow_common.h>
+
 typedef struct
 {
   /* API message ID base */
@@ -40,7 +43,7 @@ static int
 api_sflow_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
-  int enable_disable = 1;
+  int enable_disable = true;
   u32 hw_if_index = ~0;
   vl_api_sflow_enable_disable_t *mp;
   int ret;
@@ -51,7 +54,9 @@ api_sflow_enable_disable (vat_main_t *vam)
       if (unformat (i, "%U", unformat_sw_if_index, vam, &hw_if_index))
 	;
       else if (unformat (i, "disable"))
-	enable_disable = 0;
+	enable_disable = false;
+      else if (unformat (i, "enable"))
+	enable_disable = true;
       else
 	break;
     }
@@ -249,6 +254,128 @@ api_sflow_header_bytes_set (vat_main_t *vam)
   /* Construct the API message */
   M (SFLOW_HEADER_BYTES_SET, mp);
   mp->header_B = ntohl (header_B);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_sflow_direction_get_reply_t_handler (
+  vl_api_sflow_direction_get_reply_t *mp)
+{
+  vat_main_t *vam = sflow_test_main.vat_main;
+  clib_warning ("sflow direction: %d", ntohl (mp->sampling_D));
+  vam->result_ready = 1;
+}
+
+static int
+api_sflow_direction_get (vat_main_t *vam)
+{
+  vl_api_sflow_direction_get_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (SFLOW_DIRECTION_GET, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sflow_direction_set (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  sflow_direction_t sampling_D = SFLOW_DIRN_UNDEFINED;
+  vl_api_sflow_direction_set_t *mp;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sampling_D rx"))
+	sampling_D = SFLOW_DIRN_INGRESS;
+      else if (unformat (i, "sampling_D tx"))
+	sampling_D = SFLOW_DIRN_INGRESS;
+      else if (unformat (i, "sampling_D both"))
+	sampling_D = SFLOW_DIRN_BOTH;
+      else
+	break;
+    }
+
+  if (sampling_D == SFLOW_DIRN_UNDEFINED)
+    {
+      errmsg ("missing sampling_D direction\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SFLOW_DIRECTION_SET, mp);
+  mp->sampling_D = ntohl (sampling_D);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_sflow_drop_monitoring_get_reply_t_handler (
+  vl_api_sflow_drop_monitoring_get_reply_t *mp)
+{
+  vat_main_t *vam = sflow_test_main.vat_main;
+  clib_warning ("sflow drop_M: %d", mp->drop_M);
+  vam->result_ready = 1;
+}
+
+static int
+api_sflow_drop_monitoring_get (vat_main_t *vam)
+{
+  vl_api_sflow_drop_monitoring_get_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (SFLOW_DROP_MONITORING_GET, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sflow_drop_monitoring_set (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  u32 drop_M = 1;
+  vl_api_sflow_drop_monitoring_set_t *mp;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "disable"))
+	drop_M = 0;
+      else if (unformat (i, "enable"))
+	drop_M = 1;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (SFLOW_DROP_MONITORING_SET, mp);
+  mp->drop_M = ntohl (drop_M);
 
   /* send it... */
   S (mp);
