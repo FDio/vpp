@@ -31,6 +31,15 @@ typedef struct
   int sflow_enabled;
 } sflow_per_interface_data_t;
 
+/* mirror sflow_direction enum in sflow.api */
+typedef enum
+{
+  SFLOW_DIRN_UNDEFINED = 0,
+  SFLOW_DIRN_INGRESS,
+  SFLOW_DIRN_EGRESS,
+  SFLOW_DIRN_BOTH
+} sflow_direction_t;
+
 #endif /* __included_sflow_common_h__ */
 
 /*
