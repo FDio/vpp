@@ -24,7 +24,6 @@
 
 #include <sflow/sflow.api_enum.h>
 #include <sflow/sflow.api_types.h>
-#include <sflow/sflow_psample.h>
 #include <sflow/sflow_dlapi.h>
 
 #include <vpp-api/client/stat_client.h>
@@ -290,8 +289,132 @@ counter_polling_check (sflow_main_t *smp)
   return polled;
 }
 
+static void
+lowercase_and_replace_white(char *str, int len, char replace)
+{
+  if (str)
+    for(int ii = 0; ii < len; ii++)
+      {
+	if (isspace(str[ii]))
+	  str[ii] = replace;
+	else
+	  str[ii] = tolower(str[ii]);
+      }
+}
+
+static int
+compose_trap_str(char *buf, int buf_len, char *str, int str_len)
+{
+  int prefix_len = strlen(SFLOW_TRAP_PREFIX);
+  int max_cont_len = buf_len - prefix_len - 1;
+  int cont_len = (str_len > max_cont_len) ? max_cont_len : str_len;
+  clib_memcpy_fast (buf, SFLOW_TRAP_PREFIX, prefix_len);
+  clib_memcpy_fast (buf + prefix_len, str, cont_len);
+  lowercase_and_replace_white(buf + prefix_len, cont_len, SFLOW_TRAP_WHITE);
+  buf[prefix_len + cont_len] = '\0';
+  return prefix_len + cont_len;
+}
+
+static int
+send_packet_sample(vlib_main_t *vm, sflow_main_t *smp, sflow_sample_t *sample)
+{
+  if (sample->header_bytes > smp->headerB)
+    {
+      // We get here if header-bytes setting is reduced dynamically
+      // and a sample that was in the FIFO appears with a larger
+      // header.
+      return 0;
+    }
+  SFLOWPSSpec spec = {};
+  u32 ps_group, seqNo;
+  switch (sample->sample_type) {
+  case SFLOW_SAMPLETYPE_INGRESS:
+    ps_group = SFLOW_VPP_PSAMPLE_GROUP_INGRESS;
+    seqNo = ++smp->psample_seq_ingress;
+    break;
+  case SFLOW_SAMPLETYPE_EGRESS:
+    ps_group = SFLOW_VPP_PSAMPLE_GROUP_EGRESS;
+    seqNo = ++smp->psample_seq_egress;
+    break;
+  default:
+    return 0;
+  }
+  // TODO: is it always ethernet? (affects ifType counter as well)
+  u16 header_protocol = 1; /* ethernet */
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_GROUP,
+			  ps_group);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_IIFINDEX,
+			  sample->input_if_index);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_OIFINDEX,
+			  sample->output_if_index);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_ORIGSIZE,
+			  sample->sampled_packet_size);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_GROUP_SEQ,
+			  seqNo);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_RATE,
+			  sample->samplingN);
+  SFLOWPSSpec_setAttr (&spec, SFLOWPS_PSAMPLE_ATTR_DATA,
+		       sample->header, sample->header_bytes);
+  SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_PROTO,
+			  header_protocol);
+  if (SFLOWPSSpec_send (&smp->sflow_psample, &spec) < 0)
+    return -1;
+  return 1;
+}
+
+static int
+send_discard_sample(vlib_main_t *vm, sflow_main_t *smp, sflow_sample_t *sample)
+{
+  SFLOWDMSpec dspec = {};
+  if (sample->header_bytes > smp->headerB)
+    {
+      // We get here if header-bytes setting is reduced dynamically
+      // and a sample that was in the FIFO appears with a larger
+      // header.
+      return 0;
+    }
+  if (sample->sample_type != SFLOW_SAMPLETYPE_DISCARD)
+    {
+      return 0;
+    }
+  // TODO: which string do we populate?  Seems like we should set
+  // the trap group to VPP and the trap to the error string.
+  vlib_error_main_t *em = &vm->error_main;
+  if (sample->drop_reason >= vec_len(em->counters_heap))
+    return 0;
+  if (sample->drop_reason >= vec_len(vm->node_main.node_by_error))
+    return 0;
+  u32 err_node_idx = vm->node_main.node_by_error[sample->drop_reason];
+  // Are all the ones we want classed as errors, or might some be WARN or INFO?
+  // if(err->severity == VL_COUNTER_SEVERITY_ERROR)
+  // set TRAP_GROUP_NAME to "vpp_<node>"
+  char trap_grp[SFLOW_MAX_TRAP_LEN];
+  char trap[SFLOW_MAX_TRAP_LEN];
+  vlib_node_t *n = vlib_get_node (vm, err_node_idx);
+  int trap_grp_len = compose_trap_str(trap_grp, SFLOW_MAX_TRAP_LEN, (char *)n->name, vec_len(n->name));
+  // set TRAP_NAME to "vpp_<error>"
+  vlib_error_desc_t *err = &em->counters_heap[sample->drop_reason];
+  int err_name_len = clib_strnlen (err->name, SFLOW_MAX_TRAP_LEN);
+  int trap_len = compose_trap_str(trap, SFLOW_MAX_TRAP_LEN, err->name, err_name_len);
+  // populate the netlink attributes
+  u16 origin=NET_DM_ORIGIN_SW;
+  SFLOWDMSpec_setAttrInt (&dspec, NET_DM_ATTR_ORIGIN, origin);
+  // include NUL termination char in netlink strings.
+  SFLOWDMSpec_setAttr (&dspec, NET_DM_ATTR_HW_TRAP_GROUP_NAME, trap_grp, trap_grp_len + 1);
+  SFLOWDMSpec_setAttr (&dspec, NET_DM_ATTR_HW_TRAP_NAME, trap, trap_len + 1);
+  SFLOWDMSpec_setAttrInt (&dspec, NET_DM_ATTR_ORIG_LEN, sample->sampled_packet_size);
+  SFLOWDMSpec_setAttrInt (&dspec, NET_DM_ATTR_TRUNC_LEN, sample->header_bytes);
+  u16 proto = 0x0800; // TODO: read from header? (really just needs to be non-zero for hsflowd)
+  SFLOWDMSpec_setAttrInt (&dspec, NET_DM_ATTR_PROTO, proto);
+  SFLOWDMSpec_setAttrInt (&dspec, NET_DM_ATTR_IN_PORT, sample->input_if_index);
+  SFLOWDMSpec_setAttr (&dspec, NET_DM_ATTR_PAYLOAD, sample->header, sample->header_bytes);
+  if (SFLOWDMSpec_send (&smp->sflow_dropmon, &dspec) < 0)
+    return -1;
+  return 1;
+}
+
 static u32
-read_worker_fifos (sflow_main_t *smp)
+read_worker_fifos (vlib_main_t *vm, sflow_main_t *smp)
 {
   // Our maximum samples/sec is approximately:
   // (SFLOW_READ_BATCH * smp->total_threads) / SFLOW_POLL_WAIT_S
@@ -321,6 +444,7 @@ read_worker_fifos (sflow_main_t *smp)
   for (; batch < SFLOW_READ_BATCH; batch++)
     {
       u32 psample_send = 0, psample_send_fail = 0;
+      u32 dropmon_send = 0, dropmon_send_fail = 0;
       for (u32 thread_index = 0; thread_index < smp->total_threads;
 	   thread_index++)
 	{
@@ -329,40 +453,23 @@ read_worker_fifos (sflow_main_t *smp)
 	  sflow_sample_t sample;
 	  if (sflow_fifo_dequeue (&sfwk->fifo, &sample))
 	    {
-	      if (sample.header_bytes > smp->headerB)
-		{
-		  // We get here if header-bytes setting is reduced dynamically
-		  // and a sample that was in the FIFO appears with a larger
-		  // header.
-		  continue;
-		}
-	      SFLOWPSSpec spec = {};
-	      u32 ps_group = SFLOW_VPP_PSAMPLE_GROUP_INGRESS;
-	      u32 seqNo = ++smp->psample_seq_ingress;
-	      // TODO: is it always ethernet? (affects ifType counter as well)
-	      u16 header_protocol = 1; /* ethernet */
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_GROUP,
-				      ps_group);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_IIFINDEX,
-				      sample.input_if_index);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_OIFINDEX,
-				      sample.output_if_index);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_ORIGSIZE,
-				      sample.sampled_packet_size);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_GROUP_SEQ,
-				      seqNo);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_RATE,
-				      sample.samplingN);
-	      SFLOWPSSpec_setAttr (&spec, SFLOWPS_PSAMPLE_ATTR_DATA,
-				   sample.header, sample.header_bytes);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_PROTO,
-				      header_protocol);
-	      psample_send++;
-	      if (SFLOWPSSpec_send (&smp->sflow_psample, &spec) < 0)
+	      int sent = send_packet_sample(vm, smp, &sample);
+	      if(sent == 1)
+		psample_send++;
+	      if(sent == -1)
 		psample_send_fail++;
 	    }
+	  if (sflow_drop_fifo_dequeue (&sfwk->drop_fifo, &sample))
+	    {
+	      int sent = send_discard_sample(vm, smp, &sample);
+	      if(sent == 1)
+		dropmon_send++;
+	      if(sent == -1)
+		dropmon_send_fail++;
+	    }
 	}
-      if (psample_send == 0)
+      if (psample_send == 0
+	  && dropmon_send == 0)
 	{
 	  // nothing found on FIFOs this time through, so terminate batch early
 	  break;
@@ -449,6 +556,14 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  SFLOWPS_open_step (&smp->sflow_psample);
 	}
 
+      // DROPMON channel may need extra step (e.g. to learn family_id)
+      // before it is ready to send
+      EnumSFLOWDMState dmState = SFLOWDM_state (&smp->sflow_dropmon);
+      if (dmState != SFLOWDM_STATE_READY)
+	{
+	  SFLOWDM_open_step (&smp->sflow_dropmon);
+	}
+
       // What we want is a monotonic, per-second clock. This seems to do it
       // because it is based on the CPU clock.
       f64 tnow = clib_time_now (&ctm);
@@ -463,7 +578,7 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  counter_polling_check (smp);
 	}
       // process samples from workers
-      read_worker_fifos (smp);
+      read_worker_fifos (vm, smp);
 
       // and sync the global counters
       sflow_err_ctrs_t latest = {};
@@ -525,6 +640,8 @@ sflow_sampling_start (sflow_main_t *smp)
   SFLOWPS_open (&smp->sflow_psample);
   /* open USERSOCK netlink channel for writing counters */
   SFLOWUS_open (&smp->sflow_usersock);
+  /* open DROPMON netlink channel for writing discard events */
+  SFLOWDM_open (&smp->sflow_dropmon);
   smp->sflow_usersock.group_id = SFLOW_NETLINK_USERSOCK_MULTICAST;
   /* set up (or reset) sampling context for each thread */
   sflow_set_worker_sampling_state (smp);
@@ -537,6 +654,7 @@ sflow_sampling_stop (sflow_main_t *smp)
   smp->running = 0;
   SFLOWPS_close (&smp->sflow_psample);
   SFLOWUS_close (&smp->sflow_usersock);
+  SFLOWDM_close (&smp->sflow_dropmon);
 }
 
 static void
@@ -639,6 +757,11 @@ sflow_enable_disable (sflow_main_t *smp, u32 sw_if_index, int enable_disable)
       sfif->polled = 0;
       sfif->sflow_enabled = enable_disable;
       vnet_feature_enable_disable ("device-input", "sflow", sw_if_index,
+				   enable_disable, 0, 0);
+      // TOOD: make this dependent on "sflow sampling-direction both"
+      vnet_feature_enable_disable ("interface-output", "sflow-egress", sw_if_index,
+				   enable_disable, 0, 0);
+      vnet_feature_enable_disable ("error-drop", "sflow-drop", sw_if_index,
 				   enable_disable, 0, 0);
       smp->interfacesEnabled += (enable_disable) ? 1 : -1;
     }
@@ -1026,6 +1149,20 @@ VNET_FEATURE_INIT (sflow, static) = {
   .node_name = "sflow",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
+
+VNET_FEATURE_INIT (sflow_egress, static) = {
+  .arc_name = "interface-output",
+  .node_name = "sflow-egress",
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
+};
+
+/* Add myself to the feature arc */
+VNET_FEATURE_INIT (sflow_drop, static) = {
+  .arc_name = "error-drop",
+  .node_name = "sflow-drop",
+  .runs_before = VNET_FEATURES ("drop"),
+};
+
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
