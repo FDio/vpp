@@ -52,6 +52,8 @@ format_sflow_trace (u8 *s, va_list *args)
 }
 
 vlib_node_registration_t sflow_node;
+vlib_node_registration_t sflow_egress_node;
+vlib_node_registration_t sflow_drop_node;
 
 #endif /* CLIB_MARCH_VARIANT */
 
@@ -65,12 +67,14 @@ static char *sflow_error_strings[] = {
 
 typedef enum
 {
-  SFLOW_NEXT_ETHERNET_INPUT,
+  SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT,
   SFLOW_N_NEXT,
 } sflow_next_t;
 
-VLIB_NODE_FN (sflow_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+static_always_inline uword
+sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame,
+			   sflow_enum_sample_t sample_type)
 {
   u32 n_left_from, *from, *to_next;
   sflow_next_t next_index;
@@ -107,6 +111,7 @@ VLIB_NODE_FN (sflow_node)
 
 	  ethernet_header_t *en = vlib_buffer_get_current (bN);
 	  u32 if_index = vnet_buffer (bN)->sw_if_index[VLIB_RX];
+	  u32 if_index_out = 0;
 	  vnet_hw_interface_t *hw =
 	    vnet_get_sup_hw_interface (smp->vnet_main, if_index);
 	  if (hw)
@@ -117,9 +122,20 @@ VLIB_NODE_FN (sflow_node)
 	      // If so,  should we ignore the sample?
 	    }
 
+	  if (sample_type == SFLOW_SAMPLETYPE_EGRESS)
+	    {
+	      if_index_out = vnet_buffer (bN)->sw_if_index[VLIB_TX];
+	      vnet_hw_interface_t *hw_out =
+		vnet_get_sup_hw_interface (smp->vnet_main, if_index_out);
+	      if (hw_out)
+		if_index_out = hw_out->hw_if_index;
+	    }
+
 	  sflow_sample_t sample = {
+	    .sample_type = sample_type,
 	    .samplingN = sfwk->smpN,
 	    .input_if_index = if_index,
+	    .output_if_index = if_index_out,
 	    .sampled_packet_size =
 	      bN->current_length + bN->total_length_not_including_first_buffer,
 	    .header_bytes = hdr
@@ -173,10 +189,10 @@ VLIB_NODE_FN (sflow_node)
 
       while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
-	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT;
-	  u32 next1 = SFLOW_NEXT_ETHERNET_INPUT;
-	  u32 next2 = SFLOW_NEXT_ETHERNET_INPUT;
-	  u32 next3 = SFLOW_NEXT_ETHERNET_INPUT;
+	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT;
+	  u32 next1 = SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT;
+	  u32 next2 = SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT;
+	  u32 next3 = SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT;
 	  ethernet_header_t *en0, *en1, *en2, *en3;
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
@@ -286,7 +302,7 @@ VLIB_NODE_FN (sflow_node)
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT;
+	  u32 next0 = SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT;
 	  ethernet_header_t *en0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -331,6 +347,138 @@ VLIB_NODE_FN (sflow_node)
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (sflow_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sflow_node_ingress_egress (vm, node, frame, SFLOW_SAMPLETYPE_INGRESS);
+}
+
+VLIB_NODE_FN (sflow_egress_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return sflow_node_ingress_egress (vm, node, frame, SFLOW_SAMPLETYPE_EGRESS);
+}
+
+typedef enum
+{
+  SFLOW_DROP_NEXT_DROP,
+  SFLOW_DROP_N_NEXT,
+} sflow_drop_next_t;
+
+static_always_inline void
+buffer_rewind_current (vlib_buffer_t *bN)
+{
+  /*
+   * Typically, we'll need to rewind the buffer
+   * if l2_hdr_offset is valid, make sure to rewind to the start of
+   * the L2 header. This may not be the buffer start in case we pop-ed
+   * vlan tags.
+   * Otherwise, rewind to buffer start and hope for the best.
+   */
+  /*
+   * If the packet was rewritten the start may be somewhere
+   * in buffer->pre_data, which comes before buffer->data. In
+   * other words, the buffer->current_data index can be negative.
+   */
+  if (bN->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
+    {
+      if (bN->current_data > vnet_buffer (bN)->l2_hdr_offset)
+	vlib_buffer_advance (bN, vnet_buffer (bN)->l2_hdr_offset -
+				   bN->current_data);
+    }
+  else if (bN->current_data > 0)
+    {
+      vlib_buffer_advance (bN, (word) -bN->current_data);
+    }
+}
+
+VLIB_NODE_FN (sflow_drop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next, n_left_to_next;
+  sflow_drop_next_t next_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  sflow_main_t *smp = &sflow_main;
+  uword thread_index = os_get_thread_index ();
+  sflow_per_thread_data_t *sfwk =
+    vec_elt_at_index (smp->per_thread_data, thread_index);
+
+  for (u32 pkt = n_left_from; pkt > 0; --pkt)
+    {
+      vlib_buffer_t *bN = vlib_get_buffer (vm, from[pkt - 1]);
+      buffer_rewind_current (bN);
+      // drops are subject to header_bytes limit too
+      u32 hdr = bN->current_length;
+      if (hdr > smp->headerB)
+	hdr = smp->headerB;
+      ethernet_header_t *en = vlib_buffer_get_current (bN);
+      // Where did this packet come in originally?
+      // (Doesn't have to be known)
+      u32 if_index = vnet_buffer (bN)->sw_if_index[VLIB_RX];
+      if (if_index)
+	{
+	  vnet_hw_interface_t *hw =
+	    vnet_get_sup_hw_interface (smp->vnet_main, if_index);
+	  if (hw)
+	    if_index = hw->hw_if_index;
+	}
+      // queue the discard sample for the main thread
+      sflow_sample_t discard = { .sample_type = SFLOW_SAMPLETYPE_DISCARD,
+				 .input_if_index = if_index,
+				 .sampled_packet_size =
+				   bN->current_length +
+				   bN->total_length_not_including_first_buffer,
+				 .header_bytes = hdr,
+				 // .header_protocol = 0,
+				 .drop_reason = bN->error };
+      sfwk->dsmp++; // drop-samples
+      memcpy (discard.header, en, hdr);
+      if (PREDICT_FALSE (
+	    !sflow_drop_fifo_enqueue (&sfwk->drop_fifo, &discard)))
+	sfwk->ddrp++; // drop-sample drops
+    }
+
+  /* the rest of this is boilerplate code to pass packets on - typically to
+     "drop" */
+  /* TODO: put back tracing code? */
+  /* TODO: process 2 or 4 at a time? */
+  /* TODO: by using this variant of the pipeline are we assuming that
+     we are in a feature arc where frames are not converging or dividing? Just
+     processing through a linear list of nodes that will each pass the whole
+     frame of buffers on unchanged ("lighting fools the way to dusty death").
+     And if so, how do we make that assumption explicit?
+     To improve the flexibility would we have to go back and change the way
+     that interface_output.c (error-drop) launches the frame along the arc
+     in the first place?
+  */
+  next_index = node->cached_next_index;
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0 = SFLOW_DROP_NEXT_DROP;
+	  /* enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+	  b0 = vlib_get_buffer (vm, bi0);
+	  /* do this to always pass on to the next node on feature arc */
+	  vnet_feature_next (&next0, b0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return frame->n_vectors;
+}
+
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (sflow_node) =
 {
@@ -343,7 +491,38 @@ VLIB_REGISTER_NODE (sflow_node) =
   .n_next_nodes = SFLOW_N_NEXT,
   /* edit / add dispositions here */
   .next_nodes = {
-    [SFLOW_NEXT_ETHERNET_INPUT] = "ethernet-input",
+    [SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT] = "ethernet-input",
+  },
+};
+
+VLIB_REGISTER_NODE (sflow_egress_node) =
+{
+  .name = "sflow-egress",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sflow_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(sflow_error_strings),
+  .error_strings = sflow_error_strings,
+  .n_next_nodes = SFLOW_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [SFLOW_NEXT_ETHERNET_INPUT_OR_INTERFACE_OUTPUT] = "interface-output",
+  },
+};
+
+VLIB_REGISTER_NODE (sflow_drop_node) =
+{
+  .name = "sflow-drop",
+  .vector_size = sizeof (u32),
+  .format_trace = format_sflow_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(sflow_error_strings),
+  .error_strings = sflow_error_strings,
+  .n_next_nodes = SFLOW_DROP_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    //[SFLOW_DROP_NEXT_DROP] = "error-drop",
+    [SFLOW_DROP_NEXT_DROP] = "drop",
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
