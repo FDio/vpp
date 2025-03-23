@@ -31,6 +31,15 @@ typedef struct
   int sflow_enabled;
 } sflow_per_interface_data_t;
 
+#define SFLOW_DIRN_INGRESS 1
+#define SFLOW_DIRN_EGRESS  2
+#define SFLOW_DIRN_BOTH	   (SFLOW_DIRN_INGRESS | SFLOW_DIRN_EGRESS)
+
+#define SFLOW_DIRN_INGRESS_STR "rx"
+#define SFLOW_DIRN_EGRESS_STR  "tx"
+#define SFLOW_DIRN_BOTH_STR    "both"
+#define SFLOW_DIRN_NONE_STR    "none"
+
 #endif /* __included_sflow_common_h__ */
 
 /*

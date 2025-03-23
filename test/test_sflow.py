@@ -190,7 +190,7 @@ class SFlowTestCase(VppTestCase):
 
     def test_basic(self):
         self.enable_sflow_via_api()
-        count = 7
+        count = 55
         # create the packet stream
         packets = self.create_stream(self.pg0, self.pg1, count)
         # add the stream to the source interface
