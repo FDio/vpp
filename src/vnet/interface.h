@@ -1069,6 +1069,7 @@ typedef struct
 
   /* feature_arc_index */
   u8 output_feature_arc_index;
+  u8 drop_feature_arc_index;
 
   /* fast lookup tables */
   u32 *hw_if_index_by_sw_if_index;

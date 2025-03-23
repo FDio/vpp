@@ -950,7 +950,7 @@ interface_drop_punt (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 sw_if_indices[VLIB_FRAME_SIZE];
   vlib_simple_counter_main_t *cm;
-  u16 nexts[VLIB_FRAME_SIZE];
+  // u16 nexts[VLIB_FRAME_SIZE];
   u32 n_trace;
   vnet_main_t *vnm;
 
@@ -1002,7 +1002,7 @@ interface_drop_punt (vlib_main_t * vm,
     interface_trace_buffers (vm, node, frame);
 
   /* All going to drop regardless, this is just a counting exercise */
-  clib_memset (nexts, 0, sizeof (nexts));
+  //  clib_memset (nexts, 0, sizeof (nexts));
 
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 (disposition == VNET_ERROR_DISPOSITION_PUNT
@@ -1063,7 +1063,11 @@ interface_drop_punt (vlib_main_t * vm,
 	  (cm, thread_index, sw_if0->sup_sw_if_index, count);
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u8 arc_index = im->drop_feature_arc_index;
+  u32 nextAll=0;
+  vnet_feature_arc_start(arc_index, sw_if_index[0], &nextAll, bufs[0]);
+  vlib_buffer_enqueue_to_single_next (vm, node, from, nextAll, frame->n_vectors);
 
   return frame->n_vectors;
 }
@@ -1429,6 +1433,19 @@ vnet_set_interface_output_node (vnet_main_t * vnm,
   hi->output_node_index = node_index;
 }
 #endif /* CLIB_MARCH_VARIANT */
+
+VNET_FEATURE_ARC_INIT(interface_drop, static) = {
+  .arc_name = "error-drop",
+  .start_nodes = VNET_FEATURES("error-drop"),
+  .last_in_arc = "drop",
+  .arc_index_ptr = &vnet_main.interface_main.drop_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (drop, static) = {
+  .arc_name = "error-drop",
+  .node_name = "drop",
+  .runs_before = 0
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
