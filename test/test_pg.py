@@ -21,17 +21,20 @@ class TestPgTun(VppTestCase):
         self.create_pg_interfaces(range(0, 1))
         self.pg_interfaces += self.create_pg_ip4_interfaces(range(1, 2))
         self.pg_interfaces += self.create_pg_ip6_interfaces(range(2, 3))
-
+        self.pg_interfaces += self.create_pg_interfaces(range(3, 4), 1)
+        self.pg_interfaces += self.create_pg_interfaces(range(4, 5), 0, 1, 1458)
         for i in self.pg_interfaces:
             i.admin_up()
 
-        for i in [self.pg0, self.pg1]:
+        for i in [self.pg0, self.pg1, self.pg3, self.pg4]:
             i.config_ip4()
 
         for i in [self.pg0, self.pg2]:
             i.config_ip6()
 
         self.pg0.resolve_arp()
+        self.pg3.resolve_arp()
+        self.pg4.resolve_arp()
         self.pg0.resolve_ndp()
 
     def tearDown(self):
@@ -101,6 +104,38 @@ class TestPgTun(VppTestCase):
             rx = IPv6(bytes(rx))
             self.assertFalse(rx.haslayer(Ether))
             self.assertEqual(rx[IPv6].dst, self.pg2.remote_ip6)
+
+        p03 = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg3.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw("0" * 48)
+        )
+
+        rxs = self.send_and_expect(self.pg0, p03 * N_PKTS, self.pg3)
+        for rx in rxs:
+            rx.show()
+            self.assertEqual(rx[Ether].src, self.pg3.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg3.remote_mac)
+            assert_ip_checksum_valid(rx)
+            assert_udp_checksum_valid(rx)
+            self.assertEqual(rx[IP].dst, self.pg3.remote_ip4)
+
+        p04 = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg4.remote_ip4, flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
+
+        rxs = self.send_and_expect(self.pg0, [p04], self.pg4)
+        for rx in rxs:
+            rx.show()
+            self.assertEqual(rx[Ether].src, self.pg4.local_mac)
+            self.assertEqual(rx[Ether].dst, self.pg4.remote_mac)
+            #self.assertFail _ip_checksum_valid(rx)
+            #self.assertFail _udp_checksum_valid(rx)
+            self.assertEqual(rx[IP].dst, self.pg4.remote_ip4)
 
 
 if __name__ == "__main__":
