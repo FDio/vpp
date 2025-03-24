@@ -29,6 +29,13 @@ enum pg_interface_mode : u8
  PG_API_MODE_IP6,
 };
 
+enum pg_interface_flags : u32 {
+	PG_API_FLAG_NONE = 0,
+	PG_API_FLAG_CSUM_OFFLOAD = 1, /* enable checksum offload without gso on the interface */
+	PG_API_FLAG_GSO = 2, /* enable gso on the interface */
+	PG_API_FLAG_GRO_COALESCE = 4, /* enable packet coalescing on tx side, provided gso enabled */
+};
+
 /** \brief PacketGenerator create interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -46,12 +53,25 @@ define pg_create_interface
   bool gso_enabled;
   u32 gso_size;
 };
+
 define pg_create_interface_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_interface_index_t interface_id;
   bool gso_enabled;
+  u32 gso_size;
+  vl_api_pg_interface_mode_t mode;
+};
+
+autoendian define pg_create_interface_v3
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t interface_id;
+  vl_api_pg_interface_flags_t pg_flags;
   u32 gso_size;
   vl_api_pg_interface_mode_t mode;
 };
@@ -69,6 +89,15 @@ define pg_create_interface_reply
   vl_api_interface_index_t sw_if_index;
 };
 define pg_create_interface_v2_reply
+{
+  option deprecated;
+
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoendian define pg_create_interface_v3_reply
 {
   u32 context;
   i32 retval;
