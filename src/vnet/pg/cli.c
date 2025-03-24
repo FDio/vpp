@@ -382,7 +382,13 @@ new_stream (vlib_main_t * vm,
 
       else if (unformat (input, "buffer-flags %U",
 			 unformat_vnet_buffer_flags, &s.buffer_flags))
-	;
+	{
+	  if (s.buffer_flags & VNET_BUFFER_F_GSO)
+	    {
+	      if (unformat (input, "gso-size %u", &s.gso_size))
+		;
+	    }
+	}
       else if (unformat (input, "buffer-offload-flags %U",
 			 unformat_vnet_buffer_offload_flags, &s.buffer_oflags))
 	;
@@ -694,6 +700,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
+      else if (unformat (line_input, "csum-offload-enabled"))
+	args.flags |= PG_INTERFACE_FLAG_CSUM_OFFLOAD;
       else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
 			 args.hw_addr.bytes))
 	args.hw_addr_set = 1;
@@ -722,7 +730,7 @@ VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .short_help =
     "create packet-generator interface <interface name>"
     " [hw-addr <addr>] [gso-enabled gso-size <size> [coalesce-enabled]]"
-    " [mode <ethernet | ip4 | ip6>]",
+    " [csum-offload-enabled] [mode <ethernet | ip4 | ip6>]",
   .function = create_pg_if_cmd_fn,
 };
 
@@ -771,6 +779,79 @@ VLIB_CLI_COMMAND (delete_pg_if_cmd, static) = {
   .short_help = "delete packet-generator interface {<interface name> | "
 		"sw_if_index <sw_idx>}",
   .function = delete_pg_if_cmd_fn,
+};
+
+static u8 *
+format_pg_interface_mode (u8 *s, va_list *va)
+{
+  pg_interface_mode_t mode = va_arg (*va, pg_interface_mode_t);
+
+  if (mode == PG_MODE_IP4)
+    s = format (s, "ip4");
+  else if (mode == PG_MODE_IP6)
+    s = format (s, "ip6");
+  else // mode == PG_MODE_ETHERNET
+    s = format (s, "ethernet");
+  return s;
+}
+
+static clib_error_t *
+show_pg_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  pg_interface_details_t pid = { 0 };
+  int rv = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing <interface>");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
+      else
+	{
+	  return clib_error_create ("unknown input `%U'",
+				    format_unformat_error, input);
+	}
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  rv = pg_interface_details (sw_if_index, &pid);
+  if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
+    return clib_error_return (0, "not a pg interface");
+
+  vlib_cli_output (vm, "Interface: %U", format_vnet_hw_if_index_name, vnm,
+		   pid.hw_if_index);
+  vlib_cli_output (vm, "  id: %d", pid.id);
+  vlib_cli_output (vm, "  mode: %U", format_pg_interface_mode, pid.mode);
+  if ((pid.mode & PG_MODE_ETHERNET) == PG_MODE_ETHERNET)
+    vlib_cli_output (vm, "  hw-addr: %U", format_ethernet_address,
+		     pid.hw_addr.bytes);
+  vlib_cli_output (vm, "  csum_offload_enabled: %d", pid.csum_offload_enabled);
+  vlib_cli_output (vm, "  gso_enabled: %d", pid.gso_enabled);
+  if (pid.gso_enabled)
+    vlib_cli_output (vm, "    gso_size: %d", pid.gso_size);
+  vlib_cli_output (vm, "  coalesce_enabled: %d", pid.coalesce_enabled);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_pg_if_cmd, static) = {
+  .path = "show packet-generator interface",
+  .short_help = "show packet-generator interface {<interface name> | "
+		"sw_if_index <sw_idx>}",
+  .function = show_pg_if_cmd_fn,
 };
 
 /* Dummy init function so that we can be linked in. */

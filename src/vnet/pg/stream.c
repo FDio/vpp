@@ -94,6 +94,12 @@ pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
   s->time_last_generate = 0;
 }
 
+static char *pg_tx_func_error_strings[] = {
+#define _(n, s) s,
+  foreach_pg_tx_func_error
+#undef _
+};
+
 static u8 *
 format_pg_output_trace (u8 * s, va_list * va)
 {
@@ -183,6 +189,8 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
   .tx_function = pg_output,
   .format_device_name = format_pg_interface_name,
   .format_tx_trace = format_pg_output_trace,
+  .tx_function_n_errors = PG_TX_N_ERROR,
+  .tx_function_error_strings = pg_tx_func_error_strings,
   .admin_up_down_function = pg_interface_admin_up_down,
   .mac_addr_add_del_function = pg_add_del_mac_address,
 };
@@ -243,10 +251,7 @@ format_pg_tun_tx_trace (u8 *s, va_list *args)
 
 VNET_HW_INTERFACE_CLASS (pg_tun_hw_interface_class) = {
   .name = "PG-tun",
-  //.format_header = format_gre_header_with_length,
-  //.unformat_header = unformat_gre_header,
   .build_rewrite = NULL,
-  //.update_adjacency = gre_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
   .tx_hash_fn_type = VNET_HASH_FN_TYPE_IP,
 };
@@ -257,6 +262,7 @@ pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args)
   vnet_main_t *vnm = vnet_get_main ();
   pg_interface_t *pi;
   vnet_hw_interface_t *hi;
+  vnet_hw_if_caps_change_t cc;
   uword *p;
   u32 i;
 
@@ -295,9 +301,15 @@ pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args)
 	  break;
 	}
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
+      cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
+		VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM |
+		VNET_HW_IF_CAP_TX_FIXED_OFFSET;
       if (args->flags & PG_INTERFACE_FLAG_GSO)
 	{
-	  vnet_hw_if_set_caps (vnm, pi->hw_if_index, VNET_HW_IF_CAP_TCP_GSO);
+	  cc.val = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
+		   VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM |
+		   VNET_HW_IF_CAP_TX_FIXED_OFFSET;
+
 	  pi->gso_enabled = 1;
 	  pi->gso_size = args->gso_size;
 	  if (args->flags & PG_INTERFACE_FLAG_GRO_COALESCE)
@@ -305,6 +317,15 @@ pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args)
 	      pg_interface_enable_disable_coalesce (pi, 1, hi->tx_node_index);
 	    }
 	}
+      else if (args->flags & PG_INTERFACE_FLAG_CSUM_OFFLOAD)
+	{
+	  cc.val = VNET_HW_IF_CAP_TX_IP4_CKSUM | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		   VNET_HW_IF_CAP_TX_UDP_CKSUM |
+		   VNET_HW_IF_CAP_TX_FIXED_OFFSET;
+	  pi->csum_offload_enabled = 1;
+	}
+
+      vnet_hw_if_change_caps (vnm, pi->hw_if_index, &cc);
       pi->sw_if_index = hi->sw_if_index;
 
       hash_set (pg->if_index_by_if_id, pi->id, i);
@@ -364,6 +385,32 @@ pg_interface_delete (u32 sw_if_index)
 
   clib_memset (pi, 0, sizeof (*pi));
   pool_put (pm->interfaces, pi);
+  return 0;
+}
+
+int
+pg_interface_details (u32 sw_if_index, pg_interface_details_t *pid)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  pg_main_t *pm = &pg_main;
+  pg_interface_t *pi;
+  vnet_hw_interface_t *hw;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+  if (hw == NULL || pg_dev_class.index != hw->dev_class_index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  pi = pool_elt_at_index (pm->interfaces, hw->dev_instance);
+
+  pid->hw_if_index = pi->hw_if_index;
+  pid->id = pi->id;
+  pid->mode = pi->mode;
+  mac_address_from_bytes (&pid->hw_addr, pi->hw_addr.bytes);
+  pid->csum_offload_enabled = pi->csum_offload_enabled;
+  pid->gso_enabled = pi->gso_enabled;
+  pid->gso_size = pi->gso_size;
+  pid->coalesce_enabled = pi->coalesce_enabled;
+
   return 0;
 }
 
@@ -525,6 +572,8 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
 {
   vlib_main_t *vm = vlib_get_main ();
   pg_stream_t *s;
+  pg_interface_flags_t flags = 0;
+  u32 gso_size = 0;
   uword *p;
 
   if (!pg->stream_index_by_name)
@@ -583,12 +632,23 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     vec_resize (s->buffer_indices, n);
   }
 
+  if (s->buffer_flags & VNET_BUFFER_F_GSO)
+    {
+      flags = PG_INTERFACE_FLAG_GSO;
+      gso_size = s->gso_size;
+    }
+  else if (s->buffer_flags & VNET_BUFFER_F_OFFLOAD)
+    {
+      flags = PG_INTERFACE_FLAG_CSUM_OFFLOAD;
+    }
+
   pg_interface_args_t args = {
     .if_id = s->if_id,
     .mode = PG_MODE_ETHERNET,
-    .flags = 0,	      /* gso_enabled and coalesce_enabled */
-    .gso_size = 0,    /* gso_size */
-    .hw_addr_set = 0, /* mac address set */
+    .flags =
+      flags, /* csum_offload_enabled, gso_enabled and/or coalesce_enabled */
+    .gso_size = gso_size, /* gso_size */
+    .hw_addr_set = 0,	  /* mac address set */
   };
 
   /* Find an interface to use. */
