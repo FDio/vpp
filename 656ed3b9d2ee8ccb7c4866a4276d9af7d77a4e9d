@@ -33,6 +33,23 @@
       "message": "perftest-3n-icx mrrANDnic_intel-e810cqAND1cAND64bANDethip4gtpuhw-ip4base mrrANDnic_intel-e810cqAND1cAND64bANDethip4lispip4-ip4base !drv_af_xdp",
       "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "847ea89a_c54e56d0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-03-24T13:57:54Z",
+      "side": 1,
+      "message": "The reported regressions are small and look like noise, I do not see big differences in \"show run\".",
+      "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
