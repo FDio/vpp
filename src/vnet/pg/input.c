@@ -1548,7 +1548,8 @@ pg_input_trace (pg_main_t * pg,
 
 static_always_inline void
 fill_buffer_offload_flags (vlib_main_t *vm, u32 next_index, u32 *buffers,
-			   u32 n_buffers, u32 buffer_oflags, int gso_enabled,
+			   u32 n_buffers, u32 buffer_oflags,
+			   int csum_offload_enabled, int gso_enabled,
 			   u32 gso_size)
 {
   for (int i = 0; i < n_buffers; i++)
@@ -1605,7 +1606,8 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 next_index, u32 *buffers,
 	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
-	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM || gso_enabled)
+	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM || gso_enabled ||
+	      csum_offload_enabled)
 	    oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
@@ -1622,7 +1624,8 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 next_index, u32 *buffers,
 
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
-	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM || gso_enabled)
+	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM || gso_enabled ||
+	      csum_offload_enabled)
 	    oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 
 	  /* only set GSO flag for chained buffers */
@@ -1637,7 +1640,8 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 next_index, u32 *buffers,
 	}
       else if (l4_proto == IP_PROTOCOL_UDP)
 	{
-	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM ||
+	      csum_offload_enabled)
 	    oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 	}
 
@@ -1746,15 +1750,16 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	    vnet_buffer (b)->feature_arc_index = feature_arc_index;
 	  }
 
-      if (pi->gso_enabled || (s->buffer_flags & VNET_BUFFER_F_OFFLOAD))
+      if (pi->gso_enabled || pi->csum_offload_enabled ||
+	  (s->buffer_flags & VNET_BUFFER_F_OFFLOAD))
 	{
 	  /* we use s->next_index and not next_index on purpose here: we want
 	   * the original node set by the user (typically ethernet-input,
 	   * ip4-input or ip6-input) whereas next_index can be overwritten by
 	   * device-input features */
-	  fill_buffer_offload_flags (vm, s->next_index, to_next, n_this_frame,
-				     s->buffer_oflags, pi->gso_enabled,
-				     pi->gso_size);
+	  fill_buffer_offload_flags (
+	    vm, s->next_index, to_next, n_this_frame, s->buffer_oflags,
+	    pi->csum_offload_enabled, pi->gso_enabled, pi->gso_size);
 	}
 
       n_trace = vlib_get_trace_count (vm, node);
