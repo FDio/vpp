@@ -90,6 +90,36 @@ vl_api_pg_create_interface_v2_t_handler (vl_api_pg_create_interface_v2_t *mp)
 }
 
 static void
+vl_api_pg_create_interface_v3_t_handler (vl_api_pg_create_interface_v3_t *mp)
+{
+  vl_api_pg_create_interface_v3_reply_t *rmp;
+  pg_main_t *pg = &pg_main;
+  pg_interface_t *pi;
+  pg_interface_args_t args = { 0 };
+  u32 pg_if_id = ~0;
+  int rv;
+
+  args.mode = (pg_interface_mode_t) mp->mode;
+  if (mp->pg_flags & PG_API_FLAG_CSUM_OFFLOAD)
+    args.flags = PG_INTERFACE_FLAG_CSUM_OFFLOAD;
+  else if (mp->pg_flags & PG_API_FLAG_GSO)
+    {
+      args.flags = PG_INTERFACE_FLAG_GSO;
+      args.gso_size = mp->gso_size;
+      if (mp->pg_flags & PG_API_FLAG_GRO_COALESCE)
+	args.flags |= PG_INTERFACE_FLAG_GRO_COALESCE;
+    }
+  args.if_id = mp->interface_id;
+
+  pg_if_id = pg_interface_add_or_get (pg, &args);
+  pi = pool_elt_at_index (pg->interfaces, pg_if_id);
+
+  rv = args.rv;
+  REPLY_MACRO2_END (VL_API_PG_CREATE_INTERFACE_V3_REPLY,
+		    ({ rmp->sw_if_index = pi->sw_if_index; }));
+}
+
+static void
 vl_api_pg_delete_interface_t_handler (vl_api_pg_delete_interface_t *mp)
 {
   vl_api_pg_delete_interface_reply_t *rmp;
