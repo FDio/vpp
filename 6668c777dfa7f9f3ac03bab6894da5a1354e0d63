@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cecb3276_e086f1e7",
+        "filename": "src/vnet/crypto/config.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-03-24T15:34:23Z",
+      "side": 1,
+      "message": "is it used?",
+      "revId": "6668c777dfa7f9f3ac03bab6894da5a1354e0d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7204ce8_7197ed0b",
+        "filename": "src/vnet/crypto/config.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-03-24T15:34:23Z",
+      "side": 1,
+      "message": "don\u0027t we leak \u0027s\u0027 here?",
+      "revId": "6668c777dfa7f9f3ac03bab6894da5a1354e0d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
