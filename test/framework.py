@@ -160,7 +160,9 @@ class VppTestCase(VppAsfTestCase):
         cls._pcaps = []
 
     @classmethod
-    def create_pg_interfaces_internal(cls, interfaces, gso=0, gso_size=0, mode=None):
+    def create_pg_interfaces_internal(
+        cls, interfaces, csum_offload=0, gso=0, gso_size=0, mode=None
+    ):
         """
         Create packet-generator interfaces.
 
@@ -170,50 +172,52 @@ class VppTestCase(VppAsfTestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i, gso, gso_size, mode)
+            intf = VppPGInterface(cls, i, csum_offload, gso, gso_size, mode)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result
         return result
 
     @classmethod
-    def create_pg_ip4_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_ip4_interfaces(cls, interfaces, csum_offload=0, gso=0, gso_size=0):
         if not hasattr(cls, "vpp"):
             cls.pg_interfaces = []
             return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
-            interfaces, gso, gso_size, pgmode.PG_API_MODE_IP4
+            interfaces, csum_offload, gso, gso_size, pgmode.PG_API_MODE_IP4
         )
 
     @classmethod
-    def create_pg_ip6_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_ip6_interfaces(cls, interfaces, csum_offload=0, gso=0, gso_size=0):
         if not hasattr(cls, "vpp"):
             cls.pg_interfaces = []
             return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
-            interfaces, gso, gso_size, pgmode.PG_API_MODE_IP6
+            interfaces, csum_offload, gso, gso_size, pgmode.PG_API_MODE_IP6
         )
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_interfaces(cls, interfaces, csum_offload=0, gso=0, gso_size=0):
         if not hasattr(cls, "vpp"):
             cls.pg_interfaces = []
             return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
-            interfaces, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
+            interfaces, csum_offload, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
         )
 
     @classmethod
-    def create_pg_ethernet_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_ethernet_interfaces(
+        cls, interfaces, csum_offload=0, gso=0, gso_size=0
+    ):
         if not hasattr(cls, "vpp"):
             cls.pg_interfaces = []
             return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
-            interfaces, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
+            interfaces, csum_offload, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
         )
 
     @classmethod

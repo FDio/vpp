@@ -382,7 +382,13 @@ new_stream (vlib_main_t * vm,
 
       else if (unformat (input, "buffer-flags %U",
 			 unformat_vnet_buffer_flags, &s.buffer_flags))
-	;
+	{
+	  if (s.buffer_flags & VNET_BUFFER_F_GSO)
+	    {
+	      if (unformat (input, "gso-size %u", &s.gso_size))
+		;
+	    }
+	}
       else if (unformat (input, "buffer-offload-flags %U",
 			 unformat_vnet_buffer_offload_flags, &s.buffer_oflags))
 	;
@@ -694,6 +700,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
+      else if (unformat (line_input, "csum-offload-enabled"))
+	args.flags |= PG_INTERFACE_FLAG_CSUM_OFFLOAD;
       else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
 			 args.hw_addr.bytes))
 	args.hw_addr_set = 1;
@@ -722,7 +730,7 @@ VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .short_help =
     "create packet-generator interface <interface name>"
     " [hw-addr <addr>] [gso-enabled gso-size <size> [coalesce-enabled]]"
-    " [mode <ethernet | ip4 | ip6>]",
+    " [csum-offload-enabled] [mode <ethernet | ip4 | ip6>]",
   .function = create_pg_if_cmd_fn,
 };
 
