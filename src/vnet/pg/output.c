@@ -44,6 +44,16 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gso/gro_func.h>
 
+static void
+pg_interface_counter_inline (vlib_main_t *vm, pg_interface_t *pif,
+			     uword node_index, u16 n, pg_tx_func_error_t error)
+{
+  vlib_error_count (vm, node_index, error, n);
+  vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
+				   VNET_INTERFACE_COUNTER_DROP,
+				 vm->thread_index, pif->sw_if_index, n);
+}
+
 uword
 pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
@@ -52,7 +62,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   uword n_buffers = frame->n_vectors;
   uword n_left = n_buffers;
   u32 to[GRO_TO_VECTOR_SIZE (n_buffers)];
-  uword n_to = 0;
+  uword n_to = 0, n_gso_drop = 0, n_csum_offload_drop = 0;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   pg_interface_t *pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
 
@@ -73,6 +83,21 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       u32 bi0 = buffers[0];
       vlib_buffer_t *b = vlib_get_buffer (vm, bi0);
       buffers++;
+
+      if (b->flags & VNET_BUFFER_F_GSO)
+	{
+	  if (!pif->gso_enabled)
+	    {
+	      n_gso_drop++;
+	    }
+	}
+      else if (b->flags & VNET_BUFFER_F_OFFLOAD)
+	{
+	  if (!pif->csum_offload_enabled)
+	    {
+	      n_csum_offload_drop++;
+	    }
+	}
 
       if (b->flags & VLIB_BUFFER_IS_TRACED)
 	{
@@ -100,6 +125,14 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       && pif->pcap_main.n_packets_captured >=
       pif->pcap_main.n_packets_to_capture)
     pcap_close (&pif->pcap_main);
+
+  if (n_gso_drop)
+    pg_interface_counter_inline (vm, pif, node->node_index, n_gso_drop,
+				 PG_TX_ERROR_GSO_PACKET_DROP);
+  if (n_csum_offload_drop)
+    pg_interface_counter_inline (vm, pif, node->node_index,
+				 n_csum_offload_drop,
+				 PG_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP);
 
   if (PREDICT_FALSE (pif->coalesce_enabled))
     {
