@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "990a9ed4_d347d5ce",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-24T12:09:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3ca160ed_13228e77",
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6d7baeed_962e6f0e",
@@ -83,6 +101,30 @@
       "writtenOn": "2025-03-14T19:42:54Z",
       "side": 1,
       "message": "should this be `http1_conn_get_req ()` ?",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 19
+      },
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d78081a4_f71ff207",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-24T12:09:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6d7baeed_962e6f0e",
       "range": {
         "startLine": 98,
         "startChar": 0,
@@ -110,6 +152,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e6ee0934_5e54dca1",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-24T12:09:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "58204c9f_8c9ba845",
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "07764a3f_4baec5ad",
@@ -123,6 +183,24 @@
       "writtenOn": "2025-03-14T19:42:54Z",
       "side": 1,
       "message": "`http1_req_get_connection()`?",
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab016ccb_0ec68080",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1704,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-24T12:09:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07764a3f_4baec5ad",
       "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -164,6 +242,30 @@
       "side": 1,
       "message": "re: bit fields, might works fine in our case. there is some UB (you can\u0027t use offsetof macro) and USB (alignment). data races are off the table for us, so we are safe",
       "parentUuid": "16a6495c_fe009c9a",
+      "range": {
+        "startLine": 785,
+        "startChar": 28,
+        "endLine": 785,
+        "endChar": 46
+      },
+      "revId": "6048b08386b8dfcf71ce9526d9a19a5e92f9b699",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e994b766_f88c0eb8",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-24T12:09:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "72ab8c24_031e80f6",
       "range": {
         "startLine": 785,
         "startChar": 28,
