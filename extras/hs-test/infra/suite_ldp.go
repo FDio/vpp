@@ -97,6 +97,11 @@ func (s *LdpSuite) SetupTest() {
 }
 
 func (s *LdpSuite) TearDownTest() {
+	if CurrentSpecReport().Failed() {
+		s.CollectIperfLogs(s.Containers.ServerVpp)
+		s.CollectRedisServerLogs(s.Containers.ServerVpp)
+	}
+
 	for _, container := range s.StartedContainers {
 		delete(container.EnvVars, "LD_PRELOAD")
 		delete(container.EnvVars, "VCL_CONFIG")

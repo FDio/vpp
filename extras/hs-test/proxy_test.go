@@ -93,7 +93,7 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s", s.ServerAddr(), fmt.Sprint(s.ServerPort()))
+		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s --logfile %s", s.ServerAddr(), fmt.Sprint(s.ServerPort()), s.IperfLogFileName(s.Containers.IperfS))
 		s.StartServerApp(s.Containers.IperfS, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
