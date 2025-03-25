@@ -198,7 +198,6 @@ F:	src/examples/srv6-sample-localsid/
 VNET IPSec
 I:	ipsec
 M:	Neale Ranns <neale@graphiant.com>
-M:	Radu Nicolau <radu.nicolau@intel.com>
 M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/vnet/ipsec/
 
@@ -231,7 +230,7 @@ F:	src/plugins/crypto_openssl/
 Plugin - Crypto - ipsecmb
 I:	crypto-ipsecmb
 M:	Neale Ranns <neale@graphiant.com>
-M:      Fan Zhang <fanzhang.oss@gmail.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugins/crypto_ipsecmb/
 
 Plugin - Crypto - sw_scheduler
@@ -396,8 +395,8 @@ F:	src/plugins/acl/
 Plugin - NAT
 I:	nat
 M:	Ole Troan <ot@cisco.com>
-M:  Filip Varga <fivarga@cisco.com>
-M:  Klement Sekera <klement.sekera@gmail.com>
+M:	Filip Varga <fivarga@cisco.com>
+M:	Klement Sekera <klement.sekera@gmail.com>
 F:	src/plugins/nat/
 
 Plugin - PNAT Static match and rewrite engine
@@ -439,7 +438,7 @@ F:	src/plugins/dpdk/
 
 Plugin - DPDK Crypto
 I:	dpdk-cryptodev
-M:	Radu Nicolau <radu.nicolau@intel.com>
+M:	Kai Ji <kai.ji@intel.com>
 M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugins/dpdk/cryptodev/
 
@@ -573,7 +572,7 @@ Plugin - Time-based MAC filter
 I:	mactime
 Y:	src/plugins/mactime/FEATURE.yaml
 M:	Dave Barach <vpp@barachs.net>
-F:      src/plugins/mactime/
+F:	src/plugins/mactime/
 
 Plugin - Network Delay Simulator
 I:	nsim
@@ -593,14 +592,14 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/unittest/
 
 Plugin - IDPF Device driver
-I:      idpf
-M:      Ting Xu <ting.xu@intel.com>
-F:      src/plugins/idpf/
+I:	idpf
+M:	Jeff Shaw <jeffrey.b.shaw@intel.com>
+F:	src/plugins/idpf/
 
 Plugin - Intel DMA engines
-I:      dma_intel
-M:      Marvin Liu <yong.liu@intel.com>
-F:      src/plugins/dma_intel
+I:	dma_intel
+M:	Jeff Shaw <jeffrey.b.shaw@intel.com>
+F:	src/plugins/dma_intel/
 
 Test Infrastructure
 I:	tests
@@ -647,7 +646,7 @@ Binary API Compiler for Python
 I:	vppapigen
 M:	Ole Troan <otroan@employees.org>
 F:	src/tools/vppapigen/
-F:  extras/scripts/crcchecker.py
+F:	extras/scripts/crcchecker.py
 
 API trace tool
 I:	vppapitrace
@@ -718,7 +717,7 @@ F:	src/vpp-api/python
 Plugin - Cisco Discovery Protocol
 I:	cdp
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
-C:  Unmaintained
+C:	Unmaintained
 F:	src/plugins/cdp/
 
 Plugin - Source VRF Select
@@ -734,13 +733,13 @@ F:	src/plugins/ct6
 Plugin - Steal The NIC
 I:	stn
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
-C:  Unmaintained
+C:	Unmaintained
 F:	src/plugins/stn
 
 Plugin - IOAM
 I:	ioam
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
-C:  Unmaintained
+C:	Unmaintained
 F:	src/plugins/ioam
 
 Plugin - Awkward chained buffer geometry tool
@@ -833,14 +832,14 @@ M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/prom
 
 Plugin - BPF Trace Filter
-I:      bpf_trace_filter
-M:      Mohammed Hawari <mohammed@hawari.fr>
-F:      src/plugins/bpf_trace_filter
+I:	bpf_trace_filter
+M:	Mohammed Hawari <mohammed@hawari.fr>
+F:	src/plugins/bpf_trace_filter
 
 Plugin - NPTv6
-I:      npt66
-M:      Ole Troan <otroan@employees.org>
-F:      src/plugins/npt66
+I:	npt66
+M:	Ole Troan <otroan@employees.org>
+F:	src/plugins/npt66
 
 Plugin - Trace node
 I:	tracenode
