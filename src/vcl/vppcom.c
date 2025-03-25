@@ -1404,6 +1404,8 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
 {
   vcl_session_t *s;
 
+  vcl_worker_detached_signal_mq (wrk);
+
   clib_spinlock_lock (&vcm->workers_lock);
   if (vcl_is_first_reattach_to_execute ())
     {
@@ -1412,6 +1414,7 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
 	  clib_spinlock_unlock (&vcm->workers_lock);
 	  return;
 	}
+      vcl_worker_detached_stop_signal_mq (wrk);
       vcl_set_reattach_counter ();
       clib_spinlock_unlock (&vcm->workers_lock);
     }
