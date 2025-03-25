@@ -189,6 +189,53 @@ vcl_worker_cleanup_cb (void *arg)
 }
 
 void
+vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk)
+{
+  /* Generate mq epfd events using pipes to hopefully force
+   * calls into epoll_wait which retries attaching to vpp */
+  if (!wrk->detached_pipefds[0])
+    {
+      if (pipe (wrk->detached_pipefds))
+	{
+	  VDBG (0, "failed to add mq eventfd to mq epoll fd");
+	  exit (1);
+	}
+    }
+
+  struct epoll_event evt = {};
+  evt.events = EPOLLIN;
+  evt.data.u32 = wrk->detached_pipefds[0];
+  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, wrk->detached_pipefds[0],
+		 &evt) < 0)
+    {
+      VDBG (0, "failed to add mq eventfd to mq epoll fd");
+      exit (1);
+    }
+
+  int sig = 1, __clib_unused rv;
+  rv = write (wrk->detached_pipefds[1], &sig, 1);
+}
+
+void
+vcl_worker_detached_signal_mq (vcl_worker_t *wrk)
+{
+  int buf, __clib_unused rv;
+  rv = read (wrk->detached_pipefds[0], &buf, 1);
+  rv = write (wrk->detached_pipefds[1], &buf, 1);
+}
+
+void
+vcl_worker_detached_stop_signal_mq (vcl_worker_t *wrk)
+{
+  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, wrk->detached_pipefds[0], 0) <
+      0)
+    {
+      VDBG (0, "failed to del mq eventfd to mq epoll fd");
+      exit (1);
+    }
+}
+
+void
 vcl_worker_detach_sessions (vcl_worker_t *wrk)
 {
   session_event_t *e;
@@ -239,6 +286,8 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 
   vec_free (seg_indices);
   hash_free (seg_indices_map);
+
+  vcl_worker_detached_start_signal_mq (wrk);
 }
 
 void
