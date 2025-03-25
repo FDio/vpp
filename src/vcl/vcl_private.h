@@ -325,6 +325,9 @@ typedef struct vcl_worker_
   /* functions to be called pre/post wait if vcl managed by vls */
   vcl_worker_wait_mq_fn pre_wait_fn;
   vcl_worker_wait_mq_fn post_wait_fn;
+
+  /* mq_epfd signal pipes when wrk detached from vpp */
+  int detached_pipefds[2];
 } vcl_worker_t;
 
 STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
@@ -799,6 +802,9 @@ void vcl_worker_detach_sessions (vcl_worker_t *wrk);
 void vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
 				 vcl_worker_wait_mq_fn post_wait);
 
+void vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk);
+void vcl_worker_detached_signal_mq (vcl_worker_t *wrk);
+void vcl_worker_detached_stop_signal_mq (vcl_worker_t *wrk);
 /*
  * VCL Binary API
  */
