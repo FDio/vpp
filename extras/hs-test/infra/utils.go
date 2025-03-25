@@ -18,6 +18,8 @@ import (
 const networkTopologyDir string = "topo-network/"
 const containerTopologyDir string = "topo-containers/"
 const HttpCapsuleTypeDatagram = uint64(0)
+const iperfLogFileName = "iperf.log"
+const redisLogFileName = "redis-server.log"
 
 type Stanza struct {
 	content string
@@ -216,6 +218,36 @@ func (s *HstSuite) CollectEnvoyLogs(envoyContainer *Container) {
 	targetDir := envoyContainer.Suite.getLogDirPath()
 	source := envoyContainer.GetHostWorkDir() + "/" + envoyContainer.Name + "-"
 	cmd := exec.Command("cp", "-t", targetDir, source+"access.log")
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
+}
+
+func (s *HstSuite) IperfLogFileName(serverContainer *Container) string {
+	return serverContainer.GetContainerWorkDir() + "/" + serverContainer.Name + "-" + iperfLogFileName
+}
+
+func (s *HstSuite) CollectIperfLogs(serverContainer *Container) {
+	targetDir := serverContainer.Suite.getLogDirPath()
+	source := serverContainer.GetHostWorkDir() + "/" + serverContainer.Name + "-" + iperfLogFileName
+	cmd := exec.Command("cp", "-t", targetDir, source)
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
+}
+
+func (s *HstSuite) RedisServerLogFileName(serverContainer *Container) string {
+	return serverContainer.GetContainerWorkDir() + "/" + serverContainer.Name + "-" + redisLogFileName
+}
+
+func (s *HstSuite) CollectRedisServerLogs(serverContainer *Container) {
+	targetDir := serverContainer.Suite.getLogDirPath()
+	source := serverContainer.GetHostWorkDir() + "/" + serverContainer.Name + "-" + redisLogFileName
+	cmd := exec.Command("cp", "-t", targetDir, source)
 	s.Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {

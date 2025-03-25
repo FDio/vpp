@@ -54,7 +54,7 @@ func ldPreloadIperfVpp(s *LdpSuite, useUdp bool) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid()
+		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid() + " --logfile " + s.IperfLogFileName(s.Containers.ServerVpp)
 		s.StartServerApp(s.Containers.ServerVpp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
@@ -90,7 +90,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "redis-server --daemonize yes --protected-mode no --bind " + serverVethAddress
+		cmd := "redis-server --daemonize yes --protected-mode no --bind " + serverVethAddress + " --loglevel notice --logfile " + s.RedisServerLogFileName(s.Containers.ServerVpp)
 		s.StartServerApp(s.Containers.ServerVpp, "redis-server", cmd, runningSrv, doneSrv)
 	}()
 

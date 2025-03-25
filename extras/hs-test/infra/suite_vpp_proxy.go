@@ -93,6 +93,7 @@ func (s *VppProxySuite) TearDownTest() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
 		s.Log(vpp.Vppctl("show error"))
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
+		s.CollectIperfLogs(s.Containers.IperfS)
 	}
 	s.HstSuite.TearDownTest()
 }
