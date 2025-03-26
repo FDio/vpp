@@ -90,7 +90,11 @@ func RedisBenchmarkTest(s *LdpSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "redis-server --daemonize yes --protected-mode no --bind " + serverVethAddress + " --loglevel notice --logfile " + s.RedisServerLogFileName(s.Containers.ServerVpp)
+		// Avoid redis warning during startup
+		s.Containers.ServerVpp.Exec(false, "sysctl vm.overcommit_memory=1")
+		// Note: --save "" disables snapshotting which during upgrade to ubuntu 24.04 was
+		// observed to corrupt vcl memory / heap. Needs more debugging.
+		cmd := "redis-server --daemonize yes --protected-mode no --save \"\" --bind " + serverVethAddress + " --loglevel notice --logfile " + s.RedisServerLogFileName(s.Containers.ServerVpp)
 		s.StartServerApp(s.Containers.ServerVpp, "redis-server", cmd, runningSrv, doneSrv)
 	}()
 
