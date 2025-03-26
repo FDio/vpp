@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae4657ad_d467e47c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-26T16:09:35Z",
+      "side": 1,
+      "message": "not sure if this is working as expected, to always send maximum and be sure we do not receive more than send, in combination with all math in send_data_chunk (e.g. offset, session dgram header))? maybe this should be done in send_data_chunk at all",
+      "range": {
+        "startLine": 291,
+        "startChar": 3,
+        "endLine": 292,
+        "endChar": 57
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8534ec94_92d41ac1",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-26T16:09:35Z",
+      "side": 1,
+      "message": "c++ style comment? please keep it consistent",
+      "range": {
+        "startLine": 1243,
+        "startChar": 2,
+        "endLine": 1243,
+        "endChar": 4
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34aba559_fb441700",
+        "filename": "src/plugins/hs_apps/echo_client.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-26T16:09:35Z",
+      "side": 1,
+      "message": "there should be something different",
+      "range": {
+        "startLine": 60,
+        "startChar": 36,
+        "endLine": 60,
+        "endChar": 56
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
