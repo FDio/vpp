@@ -26,6 +26,7 @@ endef
 
 define  xdp-tools_build_cmds
 	@cd ${xdp-tools_src_dir} && $(MAKE) CC=gcc V=1 BUILD_STATIC_ONLY=y > $(xdp-tools_build_log)
+	@cd ${xdp-tools_src_dir} && $(MAKE) -C lib/libbpf/src CC=gcc V=1 BUILD_STATIC_ONLY=y >> $(xdp-tools_build_log)
 endef
 
 define  xdp-tools_install_cmds
