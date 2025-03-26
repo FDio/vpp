@@ -652,6 +652,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver or cls.debug_attach:
                 cls.vapi_response_timeout = 0
+            elif config.gcov:
+                cls.vapi_response_timeout = 20
             cls.vapi = VppPapiProvider(cls.__name__, cls, cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
