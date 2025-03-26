@@ -16,6 +16,24 @@
       "message": "This is the test patch only. It should not be merged with the master branch. The purpose of this patch is to run sw CSIT tests with ipsecmb crypto engine and gather the performance results. After that the patch will be abandoned.",
       "revId": "dc4e5a7fc6a9de15f98faefa16cdf4214bf8986d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c57673a_d0788d10",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-03-26T09:33:37Z",
+      "side": 1,
+      "message": "Please add \"DONOTMERGE\" in the title of this patch",
+      "parentUuid": "6f084b73_0e360243",
+      "revId": "dc4e5a7fc6a9de15f98faefa16cdf4214bf8986d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
