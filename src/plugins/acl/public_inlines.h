@@ -268,8 +268,8 @@ fa_acl_match_ip6_addr (ip6_address_t * addr1, ip6_address_t * addr2,
 	}
       if (prefixlen % 8)
 	{
-	  u8 b1 = *((u8 *) addr1 + 1 + prefixlen / 8);
-	  u8 b2 = *((u8 *) addr2 + 1 + prefixlen / 8);
+	  u8 b1 = *((u8 *) addr1 + prefixlen / 8);
+	  u8 b2 = *((u8 *) addr2 + prefixlen / 8);
 	  u8 mask0 = (0xff - ((1 << (8 - (prefixlen % 8))) - 1));
 	  return (b1 & mask0) == b2;
 	}
