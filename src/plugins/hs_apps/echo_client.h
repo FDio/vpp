@@ -57,6 +57,7 @@ typedef struct
   volatile u64 rx_total;
   volatile u64 tx_total;
   volatile int run_test; /**< Signal start of test */
+  volatile bool timer_expired; /**< Signal end of timed test */
 
   f64 syn_start_time;
   f64 test_start_time;
@@ -97,6 +98,7 @@ typedef struct
   u64 appns_secret;			/**< App namespace secret */
   f64 syn_timeout;			/**< Test syn timeout (s) */
   f64 test_timeout;			/**< Test timeout (s) */
+  f64 run_time;				/**< Length of a test (s) */
 
   /*
    * Flags
