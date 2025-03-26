@@ -317,7 +317,7 @@ pvti_flush_peer_and_recharge (vlib_main_t *vm, vlib_node_runtime_t *node,
   tx_peer->chunk_count = 0;
   tx_peer->current_tx_seq++;
 
-  return 1;
+  return (tx_peer->bo0 != 0);
 }
 
 always_inline u16
@@ -349,6 +349,7 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_get_buffers (vm, from, ibufs, n_left_from);
 
   n_left_from = frame->n_vectors;
+outer_loop:
   while (1 && n_left_from > 0)
     {
       n_left_from -= 1;
@@ -377,6 +378,12 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  continue;
 	}
       pvti_tx_peer_t *tx_peer = &ptd->tx_peers[tx_peer_index];
+      if (!tx_peer->bo0)
+	{
+	  b0->error = node->errors[PVTI_OUTPUT_ERROR_NO_PRE_SPACE];
+	  pvti_enqueue_tx_drop_and_trace (vm, node, ptd, b0, stream_index);
+	  continue;
+	}
 
       u32 b0_len = vlib_buffer_length_in_chain (vm, b0);
       u32 total_chunk_len = sizeof (pvti_chunk_header_t) + b0_len;
@@ -424,7 +431,7 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  b0->error = node->errors[PVTI_OUTPUT_ERROR_RECHARGE0];
 		  pvti_enqueue_tx_drop_and_trace (vm, node, ptd, b0,
 						  stream_index);
-		  continue;
+		  goto outer_loop;
 		}
 	      pkts_encapsulated += 1;
 	    }
@@ -441,7 +448,7 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  while (b0_len > 0)
 	    {
-	      ASSERT (tx_peer->bo0_max_current_length >
+	      ASSERT (tx_peer->bo0_max_current_length >=
 		      tx_peer->bo0->current_length);
 	      int copy_len =
 		clib_min (b0_curr->current_length - curr_b0_start_offset,
@@ -473,7 +480,7 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      b0->error = node->errors[PVTI_OUTPUT_ERROR_RECHARGE1];
 		      pvti_enqueue_tx_drop_and_trace (vm, node, ptd, b0,
 						      stream_index);
-		      continue;
+		      goto outer_loop;
 		    }
 		  pkts_encapsulated += 1;
 		  /* next chunk(s) will be reassembly until the next block */

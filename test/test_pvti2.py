@@ -2,6 +2,7 @@
 """ PVTI tests """
 
 import datetime
+import random
 import base64
 import os
 import copy
@@ -363,7 +364,7 @@ class VppPvtiInterface(VppInterface):
 
 @unittest.skipIf("pvti" in config.excluded_plugins, "Exclude PVTI plugin tests")
 # @tag_run_solo
-class TestPvtiBase(VppTestCase):
+class TestPvti(VppTestCase):
     """Packet Vector Tunnel Interface (PVTI) Test Case"""
 
     error_str = compile(r"Error")
@@ -389,7 +390,7 @@ class TestPvtiBase(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestPvtiBase, cls).setUpClass()
+        super(TestPvti, cls).setUpClass()
         try:
             cls.create_pg_interfaces(range(2))
             for i in cls.pg_interfaces:
@@ -405,7 +406,7 @@ class TestPvtiBase(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestPvtiBase, cls).tearDownClass()
+        super(TestPvti, cls).tearDownClass()
 
     def setUp(self):
         super(VppTestCase, self).setUp()
@@ -450,13 +451,13 @@ class TestPvtiBase(VppTestCase):
             if for_rx:
                 dst_ip4 = src_ip_if.remote_ip4
                 dst_ip6 = src_ip_if.remote_ip6
-                src_ip4 = "10.0.%d.4" % i
-                src_ip6 = "2001:db8::%x" % i
+                src_ip4 = "10.0.%d.4" % (i % 256)
+                src_ip6 = "2001:db8::%x" % (i % 256)
             else:
                 src_ip4 = src_ip_if.remote_ip4
                 src_ip6 = src_ip_if.remote_ip6
-                dst_ip4 = "10.0.%d.4" % i
-                dst_ip6 = "2001:db8::%x" % i
+                dst_ip4 = "10.0.%d.4" % (i % 256)
+                dst_ip6 = "2001:db8::%x" % (i % 256)
             src_l4 = 1234 + i
             dst_l4 = 4321 + i
 
@@ -521,7 +522,7 @@ class TestPvtiBase(VppTestCase):
 
         for i in range(0, total_packet_count):
             dst_ip4 = dst_ip_if.remote_ip4
-            src_ip4 = "10.0.%d.4" % i
+            src_ip4 = "10.0.%d.4" % (i % 256)
             src_l4 = 1234 + i
             dst_l4 = 4321 + i
 
@@ -561,7 +562,8 @@ class TestPvtiBase(VppTestCase):
         self.pg_send(intf, pkts)
 
         def _filter_out_fn(p):
-            return is_ipv6_misc(p) # or is_handshake_init(p)
+            # return is_ipv6_misc(p) or is_handshake_init(p)
+            return is_ipv6_misc(p)
 
         try:
             if not timeout:
@@ -573,67 +575,6 @@ class TestPvtiBase(VppTestCase):
                 timeout = 0.1
         finally:
             pass
-
-    def prepare_for_test(self, test_name, underlay_mtu=1500, is_ip6=False):
-        local_port = 12312
-        peer_ip4_addr = "192.0.2.1"
-        peer_ip6_addr = "2001:db8:dead::1"
-        peer_port = 31234
-        peer_port = 12312
-        for i in self.pg_interfaces:
-            i.test_name = test_name
-        if is_ip6:
-            self.pvti0 = VppPvtiInterface(
-                self,
-                self.pg1.local_ip6,
-                local_port,
-                peer_ip6_addr,
-                peer_port,
-                underlay_mtu,
-            ).add_vpp_config()
-        else:
-            self.pvti0 = VppPvtiInterface(
-                self,
-                self.pg1.local_ip4,
-                local_port,
-                peer_ip4_addr,
-                peer_port,
-                underlay_mtu,
-            ).add_vpp_config()
-        self.pvti0.config_ip4()
-        self.pvti0.config_ip6()
-        self.pvti0.admin_up()
-
-        self.logger.info(self.vapi.cli("ip route add 0.0.0.0/0 via 172.16.3.3"))
-        ## FIXME: using direct "interface" below results in blackouts. intermittently.
-        # self.logger.info(self.vapi.cli("ip route 0.0.0.0/0 via pvti0"))
-        self.logger.info(self.vapi.cli("ip route add ::/0 via pvti0"))
-        self.logger.info(self.vapi.cli("ip route add 192.0.2.1/32 via pg0"))
-        self.logger.info(self.vapi.cli("ip neighbor pg0 192.0.2.1 000c.0102.0304"))
-        self.logger.info(self.vapi.cli("ip route 2001:db8:dead::1/128 via pg0"))
-        self.logger.info(
-            self.vapi.cli("ip neighbor pg0 2001:db8:dead::1 000c.0102.0304")
-        )
-        self.logger.info(self.vapi.cli("ip neighbor pg1 172.16.2.2 000c.0102.0304"))
-        self.logger.info(self.vapi.cli("sh int"))
-        self.logger.info(self.vapi.cli("sh ip fib"))
-        self.logger.info(self.vapi.cli("show pvti interface"))
-        self.logger.info(self.vapi.cli("set interface ip pvti-bypass pg0"))
-
-    def cleanup_after_test(self):
-        self.logger.info(self.vapi.cli("ip neighbor del pg0 192.0.2.1 000c.0102.0304"))
-        self.logger.info(self.vapi.cli("ip neighbor del pg1 172.16.2.2 000c.0102.0304"))
-        self.logger.info(self.vapi.cli("ip route del 192.0.2.1/32 via pg0"))
-        # self.logger.info(self.vapi.cli("ip route del 0.0.0.0/0 via pvti0"))
-        self.logger.info(self.vapi.cli("ip route del ::/0 via pvti0"))
-        self.logger.info(self.vapi.cli("sh int"))
-        self.logger.info(self.vapi.cli("show pvti interface"))
-        self.pvti0.remove_vpp_config()
-
-
-@unittest.skipIf("pvti" in config.excluded_plugins, "Exclude PVTI plugin tests")
-# @tag_run_solo
-class TestPvti(TestPvtiBase):
 
     def test_0000_pvti_interface(self):
         """Simple interface creation"""
@@ -719,6 +660,62 @@ class TestPvti(TestPvtiBase):
         self.assertEqual(c_pkts, py_pkts)
 
         self.cleanup_after_test()
+
+    def prepare_for_test(self, test_name, underlay_mtu=1500, is_ip6=False):
+        local_port = 12312
+        peer_ip4_addr = "192.0.2.1"
+        peer_ip6_addr = "2001:db8:dead::1"
+        peer_port = 31234
+        peer_port = 12312
+        for i in self.pg_interfaces:
+            i.test_name = test_name
+        if is_ip6:
+            self.pvti0 = VppPvtiInterface(
+                self,
+                self.pg1.local_ip6,
+                local_port,
+                peer_ip6_addr,
+                peer_port,
+                underlay_mtu,
+            ).add_vpp_config()
+        else:
+            self.pvti0 = VppPvtiInterface(
+                self,
+                self.pg1.local_ip4,
+                local_port,
+                peer_ip4_addr,
+                peer_port,
+                underlay_mtu,
+            ).add_vpp_config()
+        self.pvti0.config_ip4()
+        self.pvti0.config_ip6()
+        self.pvti0.admin_up()
+
+        self.logger.info(self.vapi.cli("ip route add 0.0.0.0/0 via 172.16.3.3"))
+        ## FIXME: using direct "interface" below results in blackouts. intermittently.
+        # self.logger.info(self.vapi.cli("ip route 0.0.0.0/0 via pvti0"))
+        self.logger.info(self.vapi.cli("ip route add ::/0 via pvti0"))
+        self.logger.info(self.vapi.cli("ip route add 192.0.2.1/32 via pg0"))
+        self.logger.info(self.vapi.cli("ip neighbor pg0 192.0.2.1 000c.0102.0304"))
+        self.logger.info(self.vapi.cli("ip route 2001:db8:dead::1/128 via pg0"))
+        self.logger.info(
+            self.vapi.cli("ip neighbor pg0 2001:db8:dead::1 000c.0102.0304")
+        )
+        self.logger.info(self.vapi.cli("ip neighbor pg1 172.16.2.2 000c.0102.0304"))
+        self.logger.info(self.vapi.cli("sh int"))
+        self.logger.info(self.vapi.cli("sh ip fib"))
+        self.logger.info(self.vapi.cli("show pvti interface"))
+        self.logger.info(self.vapi.cli("set interface ip pvti-bypass pg0"))
+
+    def cleanup_after_test(self):
+        self.logger.info(self.vapi.cli("ip neighbor del pg0 192.0.2.1 000c.0102.0304"))
+        self.logger.info(self.vapi.cli("ip neighbor del pg1 172.16.2.2 000c.0102.0304"))
+        self.logger.info(self.vapi.cli("ip route del 192.0.2.1/32 via pg0"))
+        # self.logger.info(self.vapi.cli("ip route del 0.0.0.0/0 via pvti0"))
+        self.logger.info(self.vapi.cli("ip route del ::/0 via pvti0"))
+        self.logger.info(self.vapi.cli("sh int"))
+        self.logger.info(self.vapi.cli("show pvti interface"))
+        self.pvti0.remove_vpp_config()
 
     def test_0003_pvti_send_simple_1pkt_big(self):
         """TX: Simple big packet: 1 -> 2"""
@@ -1052,6 +1049,442 @@ class TestPvti(TestPvtiBase):
 
         self.cleanup_after_test()
 
+    def test_buffer_allocation_failure(self):
+        """Test handling of buffer allocation failures during encapsulation.
+        
+        This test creates a situation where buffer allocation might fail by
+        sending a large number of big packets rapidly, potentially exhausting
+        the buffer pool. With the fix, the code should handle allocation failures
+        gracefully rather than crashing from null pointer dereference.
+        """
+        self.prepare_for_test("buffer_alloc_failure")
+        
+        # Create a large number of packets to increase the chance of buffer exhaustion
+        # We're using relatively large packets to consume more buffers
+        large_packet_count = 1000  # Adjust based on system capabilities
+        large_packets = self.create_packets(self.pg1, count=large_packet_count, size=random.randint(10,6000))
+        
+        try:
+            # Send the packets in rapid succession
+            # We're not making specific assertions here - we're just testing that
+            # VPP doesn't crash when buffer allocations fail
+            for i in range(0, large_packet_count, 300):
+                batch = large_packets[i:i+300]
+                self.pg1.add_stream(batch)
+                self.pg_start()
+                
+            # Allow time for processing
+            self.sleep(1)
+            
+            # If we get here without a crash, the test has succeeded
+            self.logger.info("Buffer allocation failure handling test completed successfully")
+        finally:
+            self.cleanup_after_test()
+
+    def X_test_malformed_chunk_length(self):
+        """Test handling of malformed chunk lengths.
+        
+        This test creates packets with invalid chunk lengths to test
+        proper validation and error handling in the decapsulation path.
+        """
+        self.prepare_for_test("malformed_chunk_length")
+        
+        # Create a packet with crafted malformed chunk length
+        orig_pkt = self.create_packets(self.pg1, count=1, size=200)[0]
+        ende = self.pvti0.get_ende(for_rx_test=True)
+        encap_pkts = ende.encap_packets([orig_pkt])
+        
+        # Modify the packet to have an invalid chunk length
+        pkt = encap_pkts[0]
+        
+        # Access the PVTI layer and first chunk
+        pvti_layer = pkt[PVTI]
+        chunk = pvti_layer.chunks[0]
+        
+        # Set an invalid length that exceeds the packet size
+        original_length = chunk.total_chunk_length
+        chunk.total_chunk_length = 65000  # Much larger than actual data
+        
+        # Rebuild the packet with modified chunk length
+        modified_pkt = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                        IP(src=pkt[IP].src, dst=pkt[IP].dst) /
+                        UDP(sport=pkt[UDP].sport, dport=pkt[UDP].dport) /
+                        pvti_layer)
+        
+        try:
+            # Send the malformed packet
+            # VPP should drop it without crashing
+            self.pg_send(self.pg0, [modified_pkt])
+            
+            # Allow time for processing
+            self.sleep(0.5)
+            
+            # If we get here without a crash, the test has succeeded
+            self.logger.info("Malformed chunk length test completed successfully")
+        finally:
+            self.cleanup_after_test()
+
+    def test_reassembly_buffer_allocation_failure(self):
+        """Test reassembly behavior when buffer allocation fails.
+        
+        This test creates a scenario where buffer allocation might fail
+        during packet reassembly by sending very large fragmented packets.
+        """
+        self.prepare_for_test("reassembly_buffer_failure", underlay_mtu=500)
+        
+        try:
+            # Create a very large packet that will be fragmented
+            large_pkt = self.create_packets(self.pg1, count=1, size=6000)[0]
+            
+            # Create multiple large packets to strain buffer resources
+            large_pkts = []
+            for i in range(20):
+                # Make each packet slightly different
+                pkt_copy = large_pkt.copy()
+                if IP in pkt_copy:
+                    pkt_copy[IP].id = i
+                large_pkts.append(pkt_copy)
+            
+            # Send them all at once to increase chance of allocation failures
+            self.pg1.add_stream(large_pkts)
+            self.pg_start()
+            
+            # Allow time for processing
+            self.sleep(1)
+            
+            # Verify VPP is still running (no crash)
+            self.logger.info(self.vapi.cli("show pvti interface"))
+            
+            # If we get here without a crash, the test has succeeded
+            self.logger.info("Reassembly buffer allocation failure test completed successfully")
+        finally:
+            self.cleanup_after_test()
+
+import random
+import struct
+
+class TestPvtiFuzzingAndEdgeCases(TestPvti):
+    """Tests focusing on fuzzing and edge cases to find potential memory corruption bugs"""
+
+    def test_malformed_chunk_headers(self):
+        """RX: Test with malformed chunk headers"""
+        self.prepare_for_test("malformed_chunk_headers")
+        
+        # Create a packet as base
+        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        # Create packets with various chunk header corruptions
+        malformed_pkts = []
+        
+        # 1. Invalid _pad0 and _pad1 values
+        chunk1 = PVTIChunk(data=ip_payload)
+        chunk1._pad0 = 0xDEAD
+        chunk1._pad1 = 0xDEADBEEF
+        
+        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=42, chunk_count=1, chunks=[chunk1])
+        malformed_pkts.append(p1)
+        
+        # 2. Zero length chunk
+        chunk2 = PVTIChunk(total_chunk_length=8, data=b"")  # Just the header
+        
+        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=43, chunk_count=1, chunks=[chunk2])
+        malformed_pkts.append(p2)
+        
+        # 3. Chunk with invalid flags
+        # Creating raw chunk with specific flag bits set
+        raw_chunk_data = b"\x00\x20"  # Length field (32 bytes)
+        raw_chunk_data += b"\x03\x00"  # Both MB and MF flags set
+        raw_chunk_data += b"\x00\x00\x00\x00"  # pad fields
+        raw_chunk_data += ip_payload[:24]  # Some data to match length
+        
+        p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=44, chunk_count=1, chunks=[]) / \
+             Raw(raw_chunk_data)
+        malformed_pkts.append(p3)
+        
+        # Send packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, malformed_pkts)
+        
+        self.cleanup_after_test()
+
+    def test_fuzz_pvti_header_fields(self):
+        """RX: Fuzz test for PVTI header fields"""
+        self.prepare_for_test("fuzz_pvti_header")
+        
+        # Create a packet as base
+        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        # Create a basic chunk for our packets
+        basic_chunk = PVTIChunk(data=ip_payload)
+        
+        # Generate 20 packets with randomized header fields
+        fuzz_pkts = []
+        for i in range(20):
+            # Randomize various fields
+            seq = random.randint(0, 0xFFFFFFFF)
+            stream_idx = random.randint(0, 255)
+            chunk_count = 1  # Keep this valid
+            reass_chunk_count = random.randint(0, 1)  # 0 or 1
+            mandatory_mask = random.randint(0, 255)
+            flags_value = random.randint(0, 255)
+            pad_bytes = random.randint(0, 16)  # Randomize padding
+            
+            # Create packet with these fields
+            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                UDP(sport=12312, dport=12312) / \
+                PVTI(seq=seq, stream_index=stream_idx,
+                     chunk_count=chunk_count, reass_chunk_count=reass_chunk_count,
+                     mandatory_flags_mask=mandatory_mask, flags_value=flags_value,
+                     pad_bytes=pad_bytes, chunks=[basic_chunk])
+            
+            fuzz_pkts.append(p)
+        
+        # Send packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, fuzz_pkts)
+        
+        self.cleanup_after_test()
+
+    def test_chunked_non_ip_payload(self):
+        """RX: Test with non-IP payload in chunks"""
+        self.prepare_for_test("non_ip_payload")
+        
+        # Create various non-IP payloads
+        payloads = [
+            b"\xDE\xAD\xBE\xEF" * 100,  # Random non-IP data
+            b"\x00" * 400,  # All zeros
+            b"\xFF" * 400,  # All ones
+            b"HTTP/1.1 200 OK\r\nContent-Length: 300\r\n\r\n" + b"X" * 300,  # HTTP-like
+        ]
+        
+        non_ip_pkts = []
+        for i, payload in enumerate(payloads):
+            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                UDP(sport=12312, dport=12312) / \
+                PVTI(seq=42+i, chunk_count=1, chunks=[PVTIChunk(data=payload)])
+            non_ip_pkts.append(p)
+        
+        # Send packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, non_ip_pkts)
+        
+        self.cleanup_after_test()
+
+    def test_overlapping_reassembly(self):
+        """RX: Test with overlapping reassembly chunks"""
+        self.prepare_for_test("overlapping_reassembly")
+        
+        # Create a packet
+        pkt = self.create_packets(self.pg1, count=1, size=1000, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        # Create 3 chunks with overlapping data
+        # Chunk 1: bytes 0-500
+        # Chunk 2: bytes 400-800 (overlaps with 1)
+        # Chunk 3: bytes 700-1000 (overlaps with 2)
+        
+        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=42, chunk_count=1, reass_chunk_count=1,
+                  chunks=[PVTIChunk(data=ip_payload[:500])])
+        
+        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=43, chunk_count=1, reass_chunk_count=1,
+                  chunks=[PVTIChunk(data=ip_payload[400:800])])
+        
+        p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=44, chunk_count=1, reass_chunk_count=1,
+                  chunks=[PVTIChunk(data=ip_payload[700:])])
+        
+        # Send in different orders to test different reassembly scenarios
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p1, p2, p3])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p2, p1, p3])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p3, p2, p1])
+        
+        self.cleanup_after_test()
+
+    def test_fragment_boundary_cases(self):
+        """RX: Test fragment boundary cases"""
+        self.prepare_for_test("fragment_boundary")
+        
+        # Create a packet
+        pkt = self.create_packets(self.pg1, count=1, size=100, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        boundary_pkts = []
+        
+        # 1. Minimal fragment (1 byte)
+        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=42, chunk_count=1, reass_chunk_count=1,
+                  chunks=[PVTIChunk(data=ip_payload[:1])])
+        boundary_pkts.append(p1)
+        
+        # 2. Second fragment completes it
+        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+             UDP(sport=12312, dport=12312) / \
+             PVTI(seq=43, chunk_count=1, reass_chunk_count=1,
+                  chunks=[PVTIChunk(data=ip_payload[1:])])
+        boundary_pkts.append(p2)
+        
+        # 3. Fragments at IP header boundaries
+        if len(ip_payload) >= 40:  # Make sure payload is long enough
+            # First fragment ends exactly at IP header end
+            p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                 UDP(sport=12312, dport=12312) / \
+                 PVTI(seq=44, chunk_count=1, reass_chunk_count=1,
+                      chunks=[PVTIChunk(data=ip_payload[:20])])  # IP header length
+            boundary_pkts.append(p3)
+            
+            # Second fragment starts right after IP header
+            p4 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                 UDP(sport=12312, dport=12312) / \
+                 PVTI(seq=45, chunk_count=1, reass_chunk_count=1,
+                      chunks=[PVTIChunk(data=ip_payload[20:])])
+            boundary_pkts.append(p4)
+        
+        # Send packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, boundary_pkts)
+        
+        self.cleanup_after_test()
+
+    def XXCrashXX_test_binary_fuzzing(self):
+        """RX: Test with binary fuzzing of packets"""
+        self.prepare_for_test("binary_fuzzing")
+        
+        # Create a basic valid packet
+        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        valid_pvti = PVTI(seq=42, chunk_count=1, chunks=[PVTIChunk(data=ip_payload)])
+        valid_raw = raw(valid_pvti)
+        
+        fuzz_pkts = []
+        
+        # Create 20 fuzzed variations
+        for i in range(20):
+            fuzzed_raw = bytearray(valid_raw)
+            
+            # Introduce random mutations
+            num_mutations = random.randint(1, 5)
+            for _ in range(num_mutations):
+                # Pick a random position, avoiding the first few header bytes
+                pos = random.randint(4, len(fuzzed_raw) - 1)
+                # Apply a random mutation
+                mutation_type = random.randint(0, 2)
+                
+                if mutation_type == 0:
+                    # Bit flip
+                    bit_pos = random.randint(0, 7)
+                    fuzzed_raw[pos] ^= (1 << bit_pos)
+                elif mutation_type == 1:
+                    # Byte replacement
+                    fuzzed_raw[pos] = random.randint(0, 255)
+                else:
+                    # Byte swapping if possible
+                    if pos < len(fuzzed_raw) - 1:
+                        fuzzed_raw[pos], fuzzed_raw[pos+1] = fuzzed_raw[pos+1], fuzzed_raw[pos]
+            
+            # Create packet with fuzzed payload
+            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                UDP(sport=12312, dport=12312) / \
+                Raw(bytes(fuzzed_raw))
+            
+            fuzz_pkts.append(p)
+        
+        # Send fuzzed packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, fuzz_pkts)
+        
+        self.cleanup_after_test()
+
+    def test_rogue_peer(self):
+        """Test with a rogue peer changing addresses"""
+        self.prepare_for_test("rogue_peer")
+        
+        # Create a standard packet
+        base_pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
+        ip_payload = raw(base_pkt[IP])
+        
+        # Send packets from different IPs but same port
+        rogue_pkts = []
+        
+        for i in range(10):
+            src_ip = f"192.168.{i}.{i+1}"
+            
+            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                IP(src=src_ip, dst=self.pg0.local_ip4) / \
+                UDP(sport=12312, dport=12312) / \
+                PVTI(seq=42+i, chunk_count=1, chunks=[PVTIChunk(data=ip_payload)])
+            
+            rogue_pkts.append(p)
+        
+        # Send packets
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, rogue_pkts)
+        
+        self.cleanup_after_test()
+
+    def test_race_condition_simulation(self):
+        """Test race condition simulation with rapid parallel processing"""
+        self.prepare_for_test("race_condition")
+        
+        # Simulate race conditions by sending packets that would typically
+        # be processed in parallel in a real multi-threaded environment
+        
+        # Create packets for multiple streams with interleaved sequence
+        race_pkts = []
+        
+        # Base packet
+        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
+        ip_payload = raw(pkt[IP])
+        
+        # Create a series of packets for 2 streams with interleaved sequence
+        for i in range(10):
+            # Stream 0, even sequences
+            p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                 UDP(sport=12312, dport=12312) / \
+                 PVTI(seq=i*2, stream_index=0, chunk_count=1, 
+                      chunks=[PVTIChunk(data=ip_payload)])
+            
+            # Stream 1, odd sequences
+            p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
+                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
+                 UDP(sport=12312, dport=12312) / \
+                 PVTI(seq=i*2+1, stream_index=1, chunk_count=1, 
+                      chunks=[PVTIChunk(data=ip_payload)])
+            
+            # Add in scrambled order to simulate race
+            if i % 2 == 0:
+                race_pkts.extend([p1, p2])
+            else:
+                race_pkts.extend([p2, p1])
+        
+        # Send in a burst to maximize processing overlap
+        self.pg_send(self.pg0, race_pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        
+        self.cleanup_after_test()
 
 class PvtiHandoffTests(TestPvti):
     """Pvti Tests in multi worker setup"""
@@ -1157,332 +1590,6 @@ class PvtiHandoffTests(TestPvti):
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
 
-import random
-import struct
-
-class TestPvtiFuzzingAndEdgeCases(TestPvtiBase):
-    """Tests focusing on fuzzing and edge cases to find potential memory corruption bugs"""
-
-    def XFIXMEX_NOCRASH_test_0001_malformed_chunk_headers(self):
-        """RX: Test with malformed chunk headers"""
-        self.prepare_for_test("malformed_chunk_headers")
-        
-        # Create a packet as base
-        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        # Create packets with various chunk header corruptions
-        malformed_pkts = []
-        
-        # 1. Invalid _pad0 and _pad1 values
-        chunk1 = PVTIChunk(data=ip_payload)
-        chunk1._pad0 = 0xDEAD
-        chunk1._pad1 = 0xDEADBEEF
-        
-        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=42, chunk_count=1, chunks=[chunk1])
-        malformed_pkts.append(p1)
-        
-        # 2. Zero length chunk
-        chunk2 = PVTIChunk(total_chunk_length=8, data=b"")  # Just the header
-        
-        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=43, chunk_count=1, chunks=[chunk2])
-        malformed_pkts.append(p2)
-        
-        # 3. Chunk with invalid flags
-        # Creating raw chunk with specific flag bits set
-        raw_chunk_data = b"\x00\x20"  # Length field (32 bytes)
-        raw_chunk_data += b"\x03\x00"  # Both MB and MF flags set
-        raw_chunk_data += b"\x00\x00\x00\x00"  # pad fields
-        raw_chunk_data += ip_payload[:24]  # Some data to match length
-        
-        p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=44, chunk_count=1, chunks=[]) / \
-             Raw(raw_chunk_data)
-        malformed_pkts.append(p3)
-        
-        # Send packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, malformed_pkts)
-        
-        self.cleanup_after_test()
-
-    def test_fuzz_pvti_header_fields(self):
-        """RX: Fuzz test for PVTI header fields"""
-        self.prepare_for_test("fuzz_pvti_header")
-        
-        # Create a packet as base
-        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        # Create a basic chunk for our packets
-        basic_chunk = PVTIChunk(data=ip_payload)
-        
-        # Generate 20 packets with randomized header fields
-        fuzz_pkts = []
-        for i in range(20):
-            # Randomize various fields
-            seq = random.randint(0, 0xFFFFFFFF)
-            stream_idx = random.randint(0, 255)
-            chunk_count = 1  # Keep this valid
-            reass_chunk_count = random.randint(0, 1)  # 0 or 1
-            mandatory_mask = random.randint(0, 255)
-            flags_value = random.randint(0, 255)
-            pad_bytes = random.randint(0, 16)  # Randomize padding
-            
-            # Create packet with these fields
-            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                UDP(sport=12312, dport=12312) / \
-                PVTI(seq=seq, stream_index=stream_idx,
-                     chunk_count=chunk_count, reass_chunk_count=reass_chunk_count,
-                     mandatory_flags_mask=mandatory_mask, flags_value=flags_value,
-                     pad_bytes=pad_bytes, chunks=[basic_chunk])
-            
-            fuzz_pkts.append(p)
-        
-        # Send packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, fuzz_pkts)
-        
-        self.cleanup_after_test()
-
-    def test_0003_chunked_non_ip_payload(self):
-        """RX: Test with non-IP payload in chunks"""
-        self.prepare_for_test("non_ip_payload")
-        
-        # Create various non-IP payloads
-        payloads = [
-            b"\xDE\xAD\xBE\xEF" * 100,  # Random non-IP data
-            b"\x00" * 400,  # All zeros
-            b"\xFF" * 400,  # All ones
-            b"HTTP/1.1 200 OK\r\nContent-Length: 300\r\n\r\n" + b"X" * 300,  # HTTP-like
-        ]
-        
-        non_ip_pkts = []
-        for i, payload in enumerate(payloads):
-            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                UDP(sport=12312, dport=12312) / \
-                PVTI(seq=42+i, chunk_count=1, chunks=[PVTIChunk(data=payload)])
-            non_ip_pkts.append(p)
-        
-        # Send packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, non_ip_pkts)
-        
-        self.cleanup_after_test()
-
-    def test_0004_overlapping_reassembly(self):
-        """RX: Test with overlapping reassembly chunks"""
-        self.prepare_for_test("overlapping_reassembly")
-        
-        # Create a packet
-        pkt = self.create_packets(self.pg1, count=1, size=1000, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        # Create 3 chunks with overlapping data
-        # Chunk 1: bytes 0-500
-        # Chunk 2: bytes 400-800 (overlaps with 1)
-        # Chunk 3: bytes 700-1000 (overlaps with 2)
-        
-        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=42, chunk_count=1, reass_chunk_count=1,
-                  chunks=[PVTIChunk(data=ip_payload[:500])])
-        
-        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=43, chunk_count=1, reass_chunk_count=1,
-                  chunks=[PVTIChunk(data=ip_payload[400:800])])
-        
-        p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=44, chunk_count=1, reass_chunk_count=1,
-                  chunks=[PVTIChunk(data=ip_payload[700:])])
-        
-        # Send in different orders to test different reassembly scenarios
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p1, p2, p3])
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p2, p1, p3])
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p3, p2, p1])
-        
-        self.cleanup_after_test()
-
-    def test_0005_fragment_boundary_cases(self):
-        """RX: Test fragment boundary cases"""
-        self.prepare_for_test("fragment_boundary")
-        
-        # Create a packet
-        pkt = self.create_packets(self.pg1, count=1, size=100, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        boundary_pkts = []
-        
-        # 1. Minimal fragment (1 byte)
-        p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=42, chunk_count=1, reass_chunk_count=1,
-                  chunks=[PVTIChunk(data=ip_payload[:1])])
-        boundary_pkts.append(p1)
-        
-        # 2. Second fragment completes it
-        p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-             IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-             UDP(sport=12312, dport=12312) / \
-             PVTI(seq=43, chunk_count=1, reass_chunk_count=1,
-                  chunks=[PVTIChunk(data=ip_payload[1:])])
-        boundary_pkts.append(p2)
-        
-        # 3. Fragments at IP header boundaries
-        if len(ip_payload) >= 40:  # Make sure payload is long enough
-            # First fragment ends exactly at IP header end
-            p3 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                 UDP(sport=12312, dport=12312) / \
-                 PVTI(seq=44, chunk_count=1, reass_chunk_count=1,
-                      chunks=[PVTIChunk(data=ip_payload[:20])])  # IP header length
-            boundary_pkts.append(p3)
-            
-            # Second fragment starts right after IP header
-            p4 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                 UDP(sport=12312, dport=12312) / \
-                 PVTI(seq=45, chunk_count=1, reass_chunk_count=1,
-                      chunks=[PVTIChunk(data=ip_payload[20:])])
-            boundary_pkts.append(p4)
-        
-        # Send packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, boundary_pkts)
-        
-        self.cleanup_after_test()
-
-    def XXCrashXX_test_binary_fuzzing(self):
-        """RX: Test with binary fuzzing of packets"""
-        self.prepare_for_test("binary_fuzzing")
-        
-        # Create a basic valid packet
-        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        valid_pvti = PVTI(seq=42, chunk_count=1, chunks=[PVTIChunk(data=ip_payload)])
-        valid_raw = raw(valid_pvti)
-        
-        fuzz_pkts = []
-        
-        # Create 20 fuzzed variations
-        for i in range(20):
-            fuzzed_raw = bytearray(valid_raw)
-            
-            # Introduce random mutations
-            num_mutations = random.randint(1, 5)
-            for _ in range(num_mutations):
-                # Pick a random position, avoiding the first few header bytes
-                pos = random.randint(4, len(fuzzed_raw) - 1)
-                # Apply a random mutation
-                mutation_type = random.randint(0, 2)
-                
-                if mutation_type == 0:
-                    # Bit flip
-                    bit_pos = random.randint(0, 7)
-                    fuzzed_raw[pos] ^= (1 << bit_pos)
-                elif mutation_type == 1:
-                    # Byte replacement
-                    fuzzed_raw[pos] = random.randint(0, 255)
-                else:
-                    # Byte swapping if possible
-                    if pos < len(fuzzed_raw) - 1:
-                        fuzzed_raw[pos], fuzzed_raw[pos+1] = fuzzed_raw[pos+1], fuzzed_raw[pos]
-            
-            # Create packet with fuzzed payload
-            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                UDP(sport=12312, dport=12312) / \
-                Raw(bytes(fuzzed_raw))
-            
-            fuzz_pkts.append(p)
-        
-        # Send fuzzed packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, fuzz_pkts)
-        
-        self.cleanup_after_test()
-
-    def test_0006_rogue_peer(self):
-        """Test with a rogue peer changing addresses"""
-        self.prepare_for_test("rogue_peer")
-        
-        # Create a standard packet
-        base_pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
-        ip_payload = raw(base_pkt[IP])
-        
-        # Send packets from different IPs but same port
-        rogue_pkts = []
-        
-        for i in range(10):
-            src_ip = f"192.168.{i}.{i+1}"
-            
-            p = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                IP(src=src_ip, dst=self.pg0.local_ip4) / \
-                UDP(sport=12312, dport=12312) / \
-                PVTI(seq=42+i, chunk_count=1, chunks=[PVTIChunk(data=ip_payload)])
-            
-            rogue_pkts.append(p)
-        
-        # Send packets
-        self.send_and_assert_no_replies_ignoring_init(self.pg0, rogue_pkts)
-        
-        self.cleanup_after_test()
-
-    def test_0007_race_condition_simulation(self):
-        """Test race condition simulation with rapid parallel processing"""
-        self.prepare_for_test("race_condition")
-        
-        # Simulate race conditions by sending packets that would typically
-        # be processed in parallel in a real multi-threaded environment
-        
-        # Create packets for multiple streams with interleaved sequence
-        race_pkts = []
-        
-        # Base packet
-        pkt = self.create_packets(self.pg1, count=1, for_rx=True)[0]
-        ip_payload = raw(pkt[IP])
-        
-        # Create a series of packets for 2 streams with interleaved sequence
-        for i in range(10):
-            # Stream 0, even sequences
-            p1 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                 UDP(sport=12312, dport=12312) / \
-                 PVTI(seq=i*2, stream_index=0, chunk_count=1, 
-                      chunks=[PVTIChunk(data=ip_payload)])
-            
-            # Stream 1, odd sequences
-            p2 = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / \
-                 IP(src="192.0.2.1", dst=self.pg0.local_ip4) / \
-                 UDP(sport=12312, dport=12312) / \
-                 PVTI(seq=i*2+1, stream_index=1, chunk_count=1, 
-                      chunks=[PVTIChunk(data=ip_payload)])
-            
-            # Add in scrambled order to simulate race
-            if i % 2 == 0:
-                race_pkts.extend([p1, p2])
-            else:
-                race_pkts.extend([p2, p1])
-        
-        # Send in a burst to maximize processing overlap
-        self.pg_send(self.pg0, race_pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        
-        self.cleanup_after_test()
-
 import time
 import threading
 import copy
@@ -1491,7 +1598,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-class TestPvtiTxCrashConditions(TestPvtiBase):
+class TestPvtiTxCrashConditions(TestPvti):
     """Tests focusing on crashing the TX path in PVTI implementation with corrected interface references"""
 
     def get_interface_name(self, sw_if_index):
@@ -1648,7 +1755,7 @@ class TestPvtiTxCrashConditions(TestPvtiBase):
 
         self.cleanup_after_test()
 
-    def XcrashXtest_tx_multi_interface_peer_collision(self):
+    def test_tx_multi_interface_peer_collision(self):
         """TX: Test multiple interfaces with duplicate remote peer info"""
         # Create multiple interfaces pointing to the same remote peer
         interfaces = []
@@ -1815,4 +1922,3 @@ class TestPvtiTxCrashConditions(TestPvtiBase):
             self.vapi.cli(f"ip route del 10.{i}.0.0/16 via {interface_names[i]}")
             self.vapi.cli(f"ip neighbor del pg0 192.0.2.{i+1} 000c.0102.0304")
             pvti.remove_vpp_config()
-

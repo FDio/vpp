@@ -295,8 +295,13 @@ pvti_input_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      pvti_chunk_header_t *pvc0 = vlib_buffer_get_current (b0);
 	      chunks[true_chunk_count] = pvc0;
 	      true_chunk_count += 1;
-	      vlib_buffer_advance (
-		b0, clib_net_to_host_u16 (pvc0->total_chunk_length));
+	      u16 total_chunk_length =
+		clib_net_to_host_u16 (pvc0->total_chunk_length);
+	      if (total_chunk_length >= b0->current_length)
+		{
+		  total_chunk_length = b0->current_length;
+		}
+	      vlib_buffer_advance (b0, total_chunk_length);
 	    }
 	  // FIXME: discard the current reassembly state, reset the seq#
 	  if (rx_stream0->rx_bi0_first != INDEX_INVALID)

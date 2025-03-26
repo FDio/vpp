@@ -42,6 +42,7 @@ typedef struct
   _ (MAKE_PEER, "Could not make peer")                                        \
   _ (RECHARGE0, "Could not recharge 0")                                       \
   _ (RECHARGE1, "Could not recharge 1")                                       \
+  _ (NO_BUFFER, "Could not allocate a buffer")                                \
   _ (NO_PRE_SPACE, "Not enought pre-data space")                              \
   _ (CHOPPED, "Packets chopped")                                              \
   _ (OVERFLOW, "Packets overflowed")                                          \
