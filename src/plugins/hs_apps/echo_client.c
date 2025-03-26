@@ -232,7 +232,6 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
   ec_worker_t *wrk;
   ec_session_t *es;
   session_t *s;
-
   if (ecm->run_test != EC_RUNNING)
     return 0;
 
@@ -266,7 +265,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
     {
       ecm->repeats++;
       ecm->prev_conns = vec_len (conns_this_batch);
-      if (ecm->repeats == 500000)
+      if (ecm->repeats == 500000 && !ecm->run_time)
 	{
 	  ec_err ("stuck clients");
 	}
@@ -286,6 +285,13 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       delete_session = 1;
 
+      if (ecm->run_time)
+	{
+	  svm_fifo_t *f = es->tx_fifo;
+	  es->bytes_to_send = svm_fifo_max_enqueue_prod (f);
+	  es->bytes_to_receive += svm_fifo_max_enqueue_prod (f);
+	}
+
       if (es->bytes_to_send > 0)
 	{
 	  send_data_chunk (ecm, es);
@@ -297,7 +303,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 	  delete_session = 0;
 	}
 
-      if (PREDICT_FALSE (delete_session == 1))
+      if (PREDICT_FALSE (delete_session == 1) || ecm->timer_expired)
 	{
 	  clib_atomic_fetch_add (&ecm->tx_total, es->bytes_sent);
 	  clib_atomic_fetch_add (&ecm->rx_total, es->bytes_received);
@@ -340,6 +346,21 @@ VLIB_REGISTER_NODE (echo_clients_node) = {
   .state = VLIB_NODE_STATE_DISABLED,
 };
 
+static uword
+ec_timer_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  vlib_process_suspend (vm, ec_main.run_time);
+  ec_main.timer_expired = true;
+  return 0;
+}
+
+VLIB_REGISTER_NODE (echo_client_timer_process_node) = {
+  .function = ec_timer_node_fn,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "echo-client-timer-process",
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+
 static void
 ec_reset_runtime_config (ec_main_t *ecm)
 {
@@ -356,6 +377,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = EC_STARTING;
+  ecm->timer_expired = false;
   ecm->ready_connections = 0;
   ecm->connect_conn_index = 0;
   ecm->rx_total = 0;
@@ -368,6 +390,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->attach_flags = 0;
   ecm->syn_timeout = 20.0;
   ecm->test_timeout = 20.0;
+  ecm->run_time = 0;
   vec_free (ecm->connect_uri);
 }
 
@@ -1072,9 +1095,10 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
   ec_main_t *ecm = &ec_main;
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
-  int rv, had_config = 1;
+  int rv, timed_run_conflict = 0, had_config = 1;
   u64 tmp, total_bytes;
   f64 delta;
+  vlib_node_t *n;
 
   if (ecm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
@@ -1100,16 +1124,24 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "quic-streams %d", &ecm->quic_streams))
 	;
       else if (unformat (line_input, "mbytes %lld", &tmp))
-	ecm->bytes_to_send = tmp << 20;
+	{
+	  ecm->bytes_to_send = tmp << 20;
+	  timed_run_conflict++;
+	}
       else if (unformat (line_input, "gbytes %lld", &tmp))
-	ecm->bytes_to_send = tmp << 30;
+	{
+	  ecm->bytes_to_send = tmp << 30;
+	  timed_run_conflict++;
+	}
       else if (unformat (line_input, "bytes %U", unformat_memory_size,
 			 &ecm->bytes_to_send))
-	;
+	timed_run_conflict++;
       else if (unformat (line_input, "test-timeout %f", &ecm->test_timeout))
-	;
+	timed_run_conflict++;
       else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
 	;
+      else if (unformat (line_input, "run-time %f", &ecm->run_time))
+	ecm->test_timeout = ecm->run_time + 1;
       else if (unformat (line_input, "echo-bytes"))
 	ecm->echo_bytes = 1;
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
@@ -1152,6 +1184,9 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  goto cleanup;
 	}
     }
+
+  if (timed_run_conflict && ecm->run_time)
+    return clib_error_return (0, "failed: invalid arguments for a timed run!");
 
 parse_config:
 
@@ -1205,6 +1240,15 @@ parse_config:
   ecm->syn_start_time = vlib_time_now (vm);
   ec_program_connects ();
 
+  /* start timer process */
+  if (ecm->run_time)
+    {
+      vlib_node_set_state (vm, echo_client_timer_process_node.index,
+			   VLIB_NODE_STATE_POLLING);
+      n = vlib_get_node (vm, echo_client_timer_process_node.index);
+      vlib_start_process (vm, n->runtime_index);
+      ec_dbg ("triggered timer process!");
+    }
   /*
    * Park until the sessions come up, or syn_timeout seconds pass
    */
@@ -1337,7 +1381,8 @@ VLIB_CLI_COMMAND (ec_command, static) = {
   .path = "test echo clients",
   .short_help =
     "test echo clients [nclients %d][[m|g]bytes <bytes>]"
-    "[test-timeout <time>][syn-timeout <time>][echo-bytes][fifo-size <size>]"
+    "[test-timeout <time>][syn-timeout <time>][echo-bytes][run-time "
+    "<time>][fifo-size <size>]"
     "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
     "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
     "[uri <tcp://ip/port>][test-bytes][verbose]",
