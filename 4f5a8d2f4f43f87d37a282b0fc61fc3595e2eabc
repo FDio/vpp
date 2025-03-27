@@ -33,6 +33,23 @@
       "message": "Damjan, can you please look at this?",
       "revId": "4f5a8d2f4f43f87d37a282b0fc61fc3595e2eabc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34c9b5fb_c76bd4fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-03-27T17:18:09Z",
+      "side": 1,
+      "message": "Florin, you may have experienced this issue as the session layer can use the DMA infra. Can you please take a look?",
+      "revId": "4f5a8d2f4f43f87d37a282b0fc61fc3595e2eabc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
