@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ba2782e3_428276cc",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-27T09:31:18Z",
+      "side": 1,
+      "message": "bytes_to_receive is currently only used to check when to end a connection. Since for a timed run we don\u0027t know how much data we\u0027ll send and we\u0027re waiting for a signal anyway, bytes_to_receive ends up being useless in this case. \nThat being said, this will be changed soon anyway, as for the implementation of bandwidth parameter it will most likely have to work a bit differently.",
+      "parentUuid": "ae4657ad_d467e47c",
+      "range": {
+        "startLine": 291,
+        "startChar": 3,
+        "endLine": 292,
+        "endChar": 57
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "8534ec94_92d41ac1",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 2
@@ -37,6 +61,30 @@
       "writtenOn": "2025-03-26T16:09:35Z",
       "side": 1,
       "message": "c++ style comment? please keep it consistent",
+      "range": {
+        "startLine": 1243,
+        "startChar": 2,
+        "endLine": 1243,
+        "endChar": 4
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a15a9c2_9789bba6",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-27T09:31:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8534ec94_92d41ac1",
       "range": {
         "startLine": 1243,
         "startChar": 2,
@@ -60,6 +108,30 @@
       "writtenOn": "2025-03-26T16:09:35Z",
       "side": 1,
       "message": "there should be something different",
+      "range": {
+        "startLine": 60,
+        "startChar": 36,
+        "endLine": 60,
+        "endChar": 56
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "49323413_e326e11d",
+        "filename": "src/plugins/hs_apps/echo_client.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-27T09:31:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "34aba559_fb441700",
       "range": {
         "startLine": 60,
         "startChar": 36,
