@@ -136,4 +136,6 @@ unformat_function_t unformat_llc_protocol;
 unformat_function_t unformat_llc_header;
 unformat_function_t unformat_pg_llc_header;
 
+extern vlib_node_registration_t llc_input_node;
+
 #endif /* included_llc_h */

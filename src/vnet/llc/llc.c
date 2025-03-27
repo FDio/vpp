@@ -6,6 +6,7 @@
 /* llc.c: llc support */
 
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/llc/llc.h>
 
 /* Global main structure. */
@@ -187,6 +188,8 @@ llc_init (vlib_main_t * vm)
 #define _(f,n) add_protocol (pm, LLC_PROTOCOL_##f, #f);
   foreach_llc_protocol;
 #undef _
+
+  ethernet_register_input_type (vm, ETHERNET_TYPE_LLC_ENCAP, llc_input_node.index);
 
   return vlib_call_init_function (vm, llc_input_init);
 }
