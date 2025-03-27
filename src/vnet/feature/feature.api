@@ -38,6 +38,25 @@ autoreply define feature_enable_disable {
     string feature_name[64];
 };
 
+autoendian define feature_is_enabled
+{
+  u32 client_index;
+  u32 context;
+
+  string arc_name[64];
+  string feature_name[64];
+  vl_api_interface_index_t sw_if_index;
+};
+
+autoendian define feature_is_enabled_reply
+{
+  u32 client_index;
+  u32 context;
+  i32 retval;
+
+  bool is_enabled;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

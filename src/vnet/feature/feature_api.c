@@ -74,6 +74,30 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
 }
 
+static void
+vl_api_feature_is_enabled_t_handler (vl_api_feature_is_enabled_t *mp)
+{
+  vl_api_feature_is_enabled_reply_t *rmp = NULL;
+  i32 rv = 0;
+  bool is_enabled = false;
+
+  VALIDATE_SW_IF_INDEX_END (mp);
+
+  u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
+  u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
+
+  is_enabled = vnet_feature_is_enabled (
+    (const char *) arc_name, (const char *) feature_name, mp->sw_if_index);
+
+  vec_free (feature_name);
+  vec_free (arc_name);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO2_END (VL_API_FEATURE_IS_ENABLED_REPLY,
+		    ({ rmp->is_enabled = is_enabled; }));
+}
+
 #include <vnet/feature/feature.api.c>
 
 static clib_error_t *
