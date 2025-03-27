@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c854c46_cbe86614",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-27T22:49:59Z",
+      "side": 1,
+      "message": "Some quick comments",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07a40e39_41670ecc",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-27T22:49:59Z",
+      "side": 1,
+      "message": "I think we still want to send the bytes from the send buffer in order. We might want to revisit this at a point in the future, but at least for now we want to keep on sending the \"pattern\" in the send buffer. \n\nAs for bytes_to_send, maybe we should start considering capping the max write / connection, i.e., if fifo is 4M, and tx buffer is 1M, we might be willing to do 1M write, which is maybe too much. Typically I would choose 16k-128k max bytes_this_chunk, to avoid stalling the cpu for too long. In fact if we want to optimize writes with large number of sessions, we should put a cap on max number of writes / node dispatch (in the future ..)",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "469c5b0b_12b3bd08",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1111,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-27T22:49:59Z",
+      "side": 1,
+      "message": "Let\u0027s remove mbytes and gbytes. We\u0027ve had the new \"bytes\" option that leverages unformat_memory_size for a while now",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eaaf0c3c_2fd66984",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-27T22:49:59Z",
+      "side": 1,
+      "message": "Nice and clean ;-)",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

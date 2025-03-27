@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d5081c6_9e4c4b47",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-27T22:49:59Z",
+      "side": 0,
+      "message": "Nit. Guess you didn\u0027t mean to remove this.",
+      "revId": "e1705791e6fa7d80d14110cabbc6979d497e9e12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
