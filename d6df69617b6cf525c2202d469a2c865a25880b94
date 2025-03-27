@@ -50,6 +50,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8194e5d6_d649b2bf",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-27T10:47:54Z",
+      "side": 1,
+      "message": "in receive_data_chunk:\nASSERT (n_read \u003c\u003d es-\u003ebytes_to_receive);\nlooks like check if echo client do not receive more data, which is broken now\nin send_data_chunk you know exactly how much data was sent, so that\u0027s one of reasons why I think you should handle this stuff in send_data_chunk and you should not use test_buf_offset in send_data_chunk (or set it to 0) if running for specific time, otherwise you might not send max_enqueue bytes but less (see there is bunch of clib_min calls and how bytes_this_chunk is calculated)",
+      "parentUuid": "ba2782e3_428276cc",
+      "range": {
+        "startLine": 291,
+        "startChar": 3,
+        "endLine": 292,
+        "endChar": 57
+      },
+      "revId": "d6df69617b6cf525c2202d469a2c865a25880b94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "8534ec94_92d41ac1",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 2
