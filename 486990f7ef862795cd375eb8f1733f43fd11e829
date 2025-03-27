@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0de1078d_0bebb7a6",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-03-27T12:43:03Z",
+      "side": 1,
+      "message": "this should go to \"if (rv \u003e 0)\" bellow",
+      "range": {
+        "startLine": 151,
+        "startChar": 0,
+        "endLine": 152,
+        "endChar": 31
+      },
+      "revId": "486990f7ef862795cd375eb8f1733f43fd11e829",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
