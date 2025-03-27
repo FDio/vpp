@@ -4,6 +4,7 @@
 
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_local.h>
 
 static inline int
 mq_try_lock (svm_msg_q_t *mq)
@@ -165,6 +166,13 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 				     clib_max (old_state, s->session_state));
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
 		    app->cb_fns.session_disconnect_callback (s);
+		}
+	      else if (!session_has_transport (s))
+		{
+		  /* Special handling for cut-through sessions for builtin apps
+		   * similar to session_mq_accepted_reply_handler */
+		  session_set_state (s, SESSION_STATE_READY);
+		  ct_session_connect_notify (s, SESSION_E_NONE);
 		}
 	    }
 	  break;
