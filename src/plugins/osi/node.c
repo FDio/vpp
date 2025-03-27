@@ -289,7 +289,7 @@ osi_input_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (osi_input_init);
 
-void
+__clib_export int
 osi_register_input_protocol (osi_protocol_t protocol, u32 node_index)
 {
   osi_main_t *lm = &osi_main;
@@ -303,8 +303,12 @@ osi_register_input_protocol (osi_protocol_t protocol, u32 node_index)
   }
 
   pi = osi_get_protocol_info (lm, protocol);
+  if (!pi)
+    return VNET_API_ERROR_INVALID_REGISTRATION;
   pi->node_index = node_index;
   pi->next_index = vlib_node_add_next (vm, osi_input_node.index, node_index);
 
   lm->input_next_by_protocol[protocol] = pi->next_index;
+
+  return 0;
 }

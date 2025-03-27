@@ -96,7 +96,7 @@ osi_get_protocol_info (osi_main_t * m, osi_protocol_t protocol)
 extern osi_main_t osi_main;
 
 /* Register given node index to take input for given osi type. */
-void osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
+int osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
 
 format_function_t format_osi_protocol;
 format_function_t format_osi_header;
@@ -108,8 +108,6 @@ unformat_function_t unformat_osi_protocol;
 /* Parse osi header. */
 unformat_function_t unformat_osi_header;
 unformat_function_t unformat_pg_osi_header;
-
-void osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
 
 format_function_t format_osi_header;
 
