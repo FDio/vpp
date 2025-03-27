@@ -11,6 +11,7 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from config import config
 
 
 class TestPgStream(VppTestCase):
@@ -18,6 +19,18 @@ class TestPgStream(VppTestCase):
 
     def __init__(self, *args):
         VppTestCase.__init__(self, *args)
+
+    @classmethod
+    def setUpClass(cls):
+        # increase vapi timeout, to avoid
+        # failures reported on test-cov
+        if config.gcov:
+            cls.vapi_response_timeout = 20
+        super(TestPgStream, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPgStream, cls).tearDownClass()
 
     def setUp(self):
         super(TestPgStream, self).setUp()

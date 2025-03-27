@@ -5,6 +5,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from ipaddress import IPv4Network, IPv6Network
+from config import config
 
 from vpp_ip_route import (
     VppIpRoute,
@@ -25,6 +26,10 @@ class TestSessionSDL(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        # increase vapi timeout, to avoid
+        # failures reported on test-cov
+        if config.gcov:
+            cls.vapi_response_timeout = 20
         super(TestSessionSDL, cls).setUpClass()
 
     @classmethod
