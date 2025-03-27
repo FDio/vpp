@@ -332,7 +332,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   cd->plt_pci_dev = (struct plt_pci_device){
     .id.vendor_id = pci_hdr.vendor_id,
     .id.device_id = pci_hdr.device_id,
-    .id.class_id = pci_hdr.class << 16 | pci_hdr.subclass,
+    .id.class_id = pci_hdr._class << 16 | pci_hdr.subclass,
     .pci_handle = vnet_dev_get_pci_handle (dev),
   };
 

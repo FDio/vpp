@@ -107,6 +107,10 @@ do {                                            \
 } while (0)
 #endif /* __COVERITY */
 
+#ifdef __cplusplus
+#define _Static_assert(truth, ...) static_assert(truth, __VA_ARGS__)
+#endif
+
 #define STATIC_ASSERT(truth,...) _Static_assert(truth, __VA_ARGS__)
 
 #define STATIC_ASSERT_SIZEOF(d, s) \

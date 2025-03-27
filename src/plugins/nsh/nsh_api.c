@@ -252,7 +252,7 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
 	  /* round to 4-byte */
 	  old_option_size = ((old_option_size + 3) >> 2) << 2;
 
-	  nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+	  nsh_option = nsh_md2_lookup_option (opt0->_class, opt0->type);
 	  if (nsh_option == NULL)
 	    {
 	      goto next_tlv_md2;

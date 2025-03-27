@@ -33,7 +33,7 @@ vnet_dev_bus_pci_get_device_info (vlib_main_t *vm, char *device_id)
   clib_error_t *err = 0;
   vlib_pci_device_info_t *di = 0;
 
-  vlib_log_debug (dev_log.class, "device %s", device_id);
+  vlib_log_debug (dev_log._class, "device %s", device_id);
 
   if (vnet_dev_bus_pci_device_id_to_pci_addr (&addr, device_id) == 0)
     return 0;
@@ -41,7 +41,7 @@ vnet_dev_bus_pci_get_device_info (vlib_main_t *vm, char *device_id)
   di = vlib_pci_get_device_info (vm, &addr, &err);
   if (err)
     {
-      vlib_log_err (dev_log.class, "get_device_info: %U", format_clib_error,
+      vlib_log_err (dev_log._class, "get_device_info: %U", format_clib_error,
 		    err);
       clib_error_free (err);
       return 0;

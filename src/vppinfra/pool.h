@@ -67,7 +67,7 @@ typedef struct
 always_inline pool_header_t *
 pool_header (void *v)
 {
-  return vec_header (v);
+  return (pool_header_t *) vec_header (v);
 }
 
 void _pool_init_fixed (void **pool_ptr, uword elt_sz, uword max_elts,
@@ -172,9 +172,11 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
   uword len = 0;
   void *p = pp[0];
   void *e;
-  vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
-		    .elt_sz = elt_sz,
-		    .align = align };
+  vec_attr_t va = {
+        .elt_sz = (u32) elt_sz,
+        .hdr_sz = (u16) sizeof (pool_header_t),
+        .align = (u16) align
+  };
 
   if (p)
     {
@@ -184,7 +186,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
       if (n_free)
 	{
 	  uword index = ph->free_indices[n_free - 1];
-	  e = p + index * elt_sz;
+	  e = (u8 *) p + index * elt_sz;
 	  ph->free_bitmap =
 	    clib_bitmap_andnoti_notrim (ph->free_bitmap, index);
 	  vec_set_len (ph->free_indices, n_free - 1);
@@ -203,7 +205,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
 
   /* Nothing on free list, make a new element and return it. */
   p = _vec_realloc_internal (p, len + 1, &va);
-  e = p + len * elt_sz;
+  e = (u8 *) p + len * elt_sz;
 
   _vec_update_pointer (pp, p);
 
@@ -303,7 +305,7 @@ _pool_put_index (void *p, uword index, uword elt_sz)
   else
     vec_add1 (ph->free_indices, index);
 
-  clib_mem_poison (p + index * elt_sz, elt_sz);
+  clib_mem_poison ((u8 *) p + index * elt_sz, elt_sz);
 }
 
 #define pool_put_index(P, I) _pool_put_index ((void *) (P), I, _vec_elt_sz (P))
@@ -316,10 +318,12 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 {
   pool_header_t *ph = pool_header (pp[0]);
   uword len = vec_len (pp[0]);
-  const vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
-			  .elt_sz = elt_sz,
-			  .align = align,
-			  .heap = heap };
+  const vec_attr_t va = {
+        .heap = heap,
+        .elt_sz = (u32) elt_sz,
+        .hdr_sz = (u16) sizeof (pool_header_t),
+			  .align = (u16) align,
+  };
 
   if (ph && ph->max_elts)
     {
@@ -329,7 +333,7 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 
   pp[0] = _vec_resize_internal (pp[0], len + n_elts, &va);
   _vec_set_len (pp[0], len, elt_sz);
-  clib_mem_poison (pp[0] + len * elt_sz, n_elts * elt_sz);
+  clib_mem_poison ((u8 *) pp[0] + len * elt_sz, n_elts * elt_sz);
 
   ph = pool_header (pp[0]);
   vec_resize (ph->free_indices, n_elts);
@@ -349,9 +353,11 @@ _pool_dup (void *p, uword align, uword elt_sz)
 {
   pool_header_t *nph, *ph = pool_header (p);
   uword len = vec_len (p);
-  const vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
-			  .elt_sz = elt_sz,
-			  .align = align };
+  const vec_attr_t va = {
+        .elt_sz = (u32) elt_sz,
+        .hdr_sz = (u16) sizeof (pool_header_t),
+			  .align = (u16) align
+  };
   void *n;
 
   if (ph && ph->max_elts)
@@ -368,18 +374,18 @@ _pool_dup (void *p, uword align, uword elt_sz)
     {
       u32 *fi;
       vec_foreach (fi, ph->free_indices)
-	clib_mem_unpoison (p + elt_sz * fi[0], elt_sz);
+	clib_mem_unpoison ((u8 *) p + elt_sz * fi[0], elt_sz);
 
       clib_memcpy_fast (n, p, len * elt_sz);
 
-      nph->free_bitmap = clib_bitmap_dup (ph->free_bitmap);
-      nph->free_indices = vec_dup (ph->free_indices);
+      nph->free_bitmap = (uword *) clib_bitmap_dup (ph->free_bitmap);
+      nph->free_indices = (u32 *) vec_dup (ph->free_indices);
 
       vec_foreach (fi, ph->free_indices)
 	{
 	  uword offset = elt_sz * fi[0];
-	  clib_mem_poison (p + offset, elt_sz);
-	  clib_mem_poison (n + offset, elt_sz);
+	  clib_mem_poison ((u8 *) p + offset, elt_sz);
+	  clib_mem_poison ((u8 *) n + offset, elt_sz);
 	}
     }
 

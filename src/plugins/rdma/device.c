@@ -170,11 +170,11 @@ rdma_dev_set_ucast (rdma_device_t * rd)
 }
 
 static clib_error_t *
-rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
+rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * _new)
 {
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, hw->dev_instance);
-  mac_address_from_bytes (&rd->hwaddr, new);
+  mac_address_from_bytes (&rd->hwaddr, _new);
   if (!(rd->flags & RDMA_DEVICE_F_PROMISC) && rdma_dev_set_ucast (rd))
     {
       mac_address_from_bytes (&rd->hwaddr, old);

@@ -2,6 +2,7 @@
  * Copyright(c) 2021 Cisco Systems, Inc.
  */
 
+#include "vppinfra/types.h"
 #include <vppinfra/clib.h>
 #ifndef included_memcpy_h
 #define included_memcpy_h
@@ -9,7 +10,7 @@
 static_always_inline void
 clib_memcpy_may_overrun (void *dst, void *src, u32 n_bytes)
 {
-  word n_left = n_bytes;
+  uword n_left = n_bytes;
 #if defined(CLIB_HAVE_VEC512)
   u8x64u *sv = (u8x64u *) src;
   u8x64u *dv = (u8x64u *) dst;
