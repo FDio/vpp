@@ -408,6 +408,58 @@ VLIB_CLI_COMMAND (lcp_ethertype_show_command, static) = {
   .function = lcp_ethertype_show_cmd,
 };
 
+static clib_error_t *
+lcp_osi_proto_enable_cmd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u32 proto = ~0;
+  int rv;
+
+  if (unformat (input, "0x%x", &proto) || unformat (input, "%u", &proto))
+    ;
+  else
+    return clib_error_return (0, "No OSI proto entered");
+
+  if (proto > 255)
+    return clib_error_return (0, "Invalid OSI proto");
+
+  rv = lcp_osi_proto_enable ((u8) proto);
+  if (rv)
+    return clib_error_return (0, "Failed to enable OSI proto (%d)", rv);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_osi_proto_enable_command, static) = {
+  .path = "lcp osi-proto enable",
+  .short_help = "lcp osi-proto enable <proto_num>",
+  .function = lcp_osi_proto_enable_cmd,
+};
+
+static clib_error_t *
+lcp_osi_proto_show_cmd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u8 *proto, *protos = NULL;
+  clib_error_t *error = NULL;
+  int rv;
+
+  rv = lcp_osi_proto_get_enabled (&protos);
+  if (rv)
+    error = clib_error_return (0, "Failed to get enabled ethertypes (%d)", rv);
+  else
+    vec_foreach (proto, protos)
+      vlib_cli_output (vm, "0x%02x", *proto);
+
+  vec_free (protos);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (lcp_osi_proto_show_command, static) = {
+  .path = "show lcp osi-proto",
+  .short_help = "show lcp osi-proto",
+  .function = lcp_osi_proto_show_cmd,
+};
+
 clib_error_t *
 lcp_cli_init (vlib_main_t *vm)
 {

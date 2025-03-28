@@ -25,6 +25,7 @@ typedef struct lcp_main_s
   u8 test_mode;	      /* Set when Unit testing */
   u8 netlink_processing_active; /* Set while a batch of Netlink messages are
 				   being processed */
+  uword *osi_protos_enabled;	/* bitmap of OSI protos passed through */
 } lcp_main_t;
 
 extern lcp_main_t lcp_main;
@@ -60,5 +61,15 @@ u8 lcp_get_netlink_processing_active (void);
  */
 void lcp_set_default_num_queues (u16 num_queues, u8 is_tx);
 u16 lcp_get_default_num_queues (u8 is_tx);
+
+/**
+ * Enable an OSI protocol for passthrough by linux-cp-punt-xc
+ */
+int lcp_osi_proto_enable (u8 proto);
+
+/**
+ * Retrieve vec of OSI protos enabled for passthrough
+ */
+int lcp_osi_proto_get_enabled (u8 **protos);
 
 #endif

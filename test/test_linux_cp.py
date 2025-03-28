@@ -5,7 +5,7 @@ import socket
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether, ARP, Dot3, LLC
 from scapy.contrib.lacp import LACP
 from scapy.contrib.lldp import (
     LLDPDUChassisID,
@@ -14,6 +14,7 @@ from scapy.contrib.lldp import (
     LLDPDUEndOfLLDPDU,
     LLDPDU,
 )
+from scapy.contrib.isis import *
 
 from util import reassemble4
 from vpp_object import VppObject
@@ -770,3 +771,158 @@ class TestLinuxCPRoutes(VppTestCase):
         self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
         set_interface_up(self.ns_name, "hloop0")
         set_interface_up(self.ns_name, "hloop1")
+
+
+ISIS_PROTO = 0x83
+
+
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPOSI(VppTestCase):
+    """Linux CP OSI registration and passthrough"""
+
+    extra_vpp_plugin_config = [
+        "plugin linux_cp_plugin.so { enable }",
+        "plugin linux_cp_unittest_plugin.so { enable }",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLinuxCPOSI, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLinuxCPOSI, cls).tearDownClass()
+
+    def tearDown(self):
+        self.pair.remove_vpp_config()
+
+        for i in self.pg_interfaces:
+            i.admin_down()
+        super(TestLinuxCPOSI, self).tearDown()
+
+    def setUp(self):
+        super(TestLinuxCPOSI, self).setUp()
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+        self.host = self.pg0
+        self.phy = self.pg1
+
+        self.pair = VppLcpPair(self, self.phy, self.host).add_vpp_config()
+        self.logger.info(self.vapi.cli("sh lcp"))
+
+    def num_osi_protos_enabled(self):
+        reply = self.vapi.lcp_osi_proto_get()
+        return reply.count
+
+    def osi_proto_is_enabled(self, proto, expected=True):
+        reply = self.vapi.lcp_osi_proto_get()
+        self.assertEqual(expected, (proto in reply.osi_protos))
+        return reply.count
+
+    def test_linux_cp_osi_registration(self):
+        """Linux CP OSI proto registration"""
+
+        VNET_API_ERROR_INVALID_REGISTRATION = -31
+        CLNP_PROTO = 0x81
+        BAD_OSI_PROTO = 0xFF
+
+        # verify that CLNP is not registered
+        count_before = self.osi_proto_is_enabled(CLNP_PROTO, expected=False)
+
+        # register CLNP, verify that it was enabled
+        self.vapi.lcp_osi_proto_enable(osi_proto=CLNP_PROTO)
+        count_after = self.osi_proto_is_enabled(CLNP_PROTO, expected=True)
+        self.assertEqual(count_after, count_before + 1)
+        count_before = count_after
+
+        # register an unknown proto, verify that its not enabled
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.lcp_osi_proto_enable(osi_proto=BAD_OSI_PROTO)
+        self.assertEqual(reply.retval, VNET_API_ERROR_INVALID_REGISTRATION)
+        count_after = self.osi_proto_is_enabled(BAD_OSI_PROTO, expected=False)
+        self.assertEqual(count_before, count_after)
+
+    def send_isis_packets(self, sender, receiver, expect_copy=True):
+        # Two cases:
+        # - Original ethernet framing (size instead of ethertype)
+        # - Ethernet II framing (ethertype containing LLC-Encap ethertype)
+        ISIS_ALL_L1 = "01:80:c2:00:00:14"
+        LLC_ETHERTYPE = 0x8870
+        no_encap = (
+            Dot3(src=sender.remote_mac, dst=ISIS_ALL_L1)
+            / LLC()
+            / ISIS_CommonHdr()
+            / ISIS_L1_LAN_Hello(circuittype="L1")
+        )
+        encap = (
+            Ether(src=sender.remote_mac, dst=ISIS_ALL_L1, type=LLC_ETHERTYPE)
+            / LLC()
+            / ISIS_CommonHdr()
+            / ISIS_L1_LAN_Hello(circuittype="L1")
+        )
+        packets = [no_encap, encap]
+
+        if expect_copy:
+            rxs = self.send_and_expect(sender, packets, receiver)
+            for rx in rxs:
+                if Ether in rx:
+                    self.assertEqual(encap.show2(True), rx.show2(True))
+                else:
+                    self.assertEqual(no_encap.show2(True), rx.show2(True))
+        else:
+            self.send_and_assert_no_replies(sender, packets)
+
+    def test_linux_cp_osi_passthrough(self):
+        """Linux CP OSI proto passthrough"""
+
+        # IS-IS should not be registered yet
+        count_before = self.osi_proto_is_enabled(ISIS_PROTO, expected=False)
+
+        # send IS-IS packets in both directions, they should not be forwarded
+        self.send_isis_packets(self.phy, self.host, expect_copy=False)
+        self.send_isis_packets(self.host, self.phy, expect_copy=False)
+
+        # register IS-IS, verify success
+        reply = self.vapi.lcp_osi_proto_enable(osi_proto=ISIS_PROTO)
+        count_after = self.osi_proto_is_enabled(ISIS_PROTO, expected=True)
+        self.assertEqual(count_after, count_before + 1)
+
+        # re-send IS-IS packets, they should be forwarded now
+        self.send_isis_packets(self.phy, self.host, expect_copy=True)
+        self.send_isis_packets(self.host, self.phy, expect_copy=True)
+
+
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPOSINotLoaded(VppTestCase):
+    """Linux CP OSI registration without osi_plugin"""
+
+    extra_vpp_plugin_config = [
+        "plugin linux_cp_plugin.so { enable }",
+        "plugin osi_plugin.so { disable }",
+    ]
+
+    VNET_API_ERROR_FEATURE_DISABLED = -30
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLinuxCPOSINotLoaded, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLinuxCPOSINotLoaded, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestLinuxCPOSINotLoaded, self).setUp()
+
+    def tearDown(self):
+        super(TestLinuxCPOSINotLoaded, self).tearDown()
+
+    def test_linux_cp_osi_not_loaded(self):
+        """Linux CP OSI proto registration without osi_plugin"""
+
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.lcp_osi_proto_enable(osi_proto=ISIS_PROTO)
+
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)

@@ -213,6 +213,42 @@ define lcp_ethertype_get_reply
   u16 ethertypes[count];
 };
 
+/** \brief Enable passthrough for a given OSI protocol
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param osi_proto - the OSI protocol to enable
+*/
+autoreply define lcp_osi_proto_enable
+{
+  u32 client_index;
+  u32 context;
+  u8 osi_proto;
+};
+
+/** \brief Get the enabled OSI protocols for passthrough
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lcp_osi_proto_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the enabled OSI protocols for passthrough
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param count - number of enabled OSI protocols
+    @param osi_protos - array of enabled OSI protocols
+*/
+define lcp_osi_proto_get_reply
+{
+  u32 context;
+  i32 retval;
+  u8 count;
+  u8 osi_protos[count];
+};
+
 service {
   rpc lcp_itf_pair_get returns lcp_itf_pair_get_reply
     stream lcp_itf_pair_details;
