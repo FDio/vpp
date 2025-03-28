@@ -108,6 +108,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7676154a_8946fd33",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1111,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-28T16:51:14Z",
+      "side": 1,
+      "message": "Let\u0027s fix the tests, unless that\u0027s too complicated (I expect it not to be)",
+      "parentUuid": "b9e44e0c_6fdf1a1a",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "eaaf0c3c_2fd66984",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 9
@@ -137,6 +155,24 @@
       "side": 1,
       "message": "That\u0027s good, I guess?",
       "parentUuid": "eaaf0c3c_2fd66984",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5547d09_11462aa5",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-03-28T16:51:14Z",
+      "side": 1,
+      "message": "Yup, it is!",
+      "parentUuid": "d311862a_6b7bcf94",
       "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
