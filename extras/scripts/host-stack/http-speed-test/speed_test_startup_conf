@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Cisco Systems, Inc.
+unix {
+  interactive log /tmp/vpp.log
+  full-coredump
+  exec /scratch/matfabia/vpp/extras/scripts/host-stack/http-speed-test/speedtest.cli
+  cli-listen /run/vpp/cli.sock
+  poll-sleep-usec 0
+}
+heapsize 4g
+api-trace { on }
+api-segment { global-size 2000M api-size 1G gid vpp }
+dpdk {
+  dev 0000:17:00.0 {
+    num-tx-desc 256
+    num-rx-desc 512
+    num-rx-queues 1
+    tso on
+  }
+  enable-tcp-udp-checksum
+}
+cpu {
+  skip-cores 0
+  main-core 1
+  corelist-workers 2-10
+}
+buffers { buffers-per-numa 16536 }
+session { event-queue-length 100000 use-app-socket-api }
+tcp { max-rx-fifo 128m tso }
+socksvr { socket-name /run/vpp-api.sock }
+

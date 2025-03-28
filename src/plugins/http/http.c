@@ -525,7 +525,7 @@ http_ts_disconnect_callback (session_t *ts)
 
   hc_handle.as_u32 = ts->opaque;
 
-  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_index);
+  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
@@ -543,7 +543,7 @@ http_ts_reset_callback (session_t *ts)
 
   hc_handle.as_u32 = ts->opaque;
 
-  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_index);
+  HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
@@ -607,7 +607,8 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
   hc_handle.as_u32 = ts->opaque;
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
-  HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index, hc_index);
+  HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index,
+	    hc_handle.conn_index);
 
   if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
     http_conn_timer_stop (hc);

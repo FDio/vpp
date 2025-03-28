@@ -33,7 +33,7 @@
 
 /** \brief Application session
  */
-typedef struct
+typedef struct hss_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
@@ -42,6 +42,9 @@ typedef struct
   /** vpp session index, handle */
   u32 vpp_session_index;
   session_handle_t vpp_session_handle;
+  u8 *target_path;
+  u8 *target_query;
+  http_req_method_t rt;
   /** Fully-resolved file path */
   u8 *path;
   /** Data to send */
@@ -58,6 +61,9 @@ typedef struct
   http_headers_ctx_t resp_headers;
   /** Response header buffer */
   u8 *headers_buf;
+  /** POST body left to receive */
+  u64 left_recv;
+  int (*read_body_handler) (struct hss_session_ *hs, session_t *ts);
 } hss_session_t;
 
 typedef struct hss_session_handle_
