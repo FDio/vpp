@@ -295,45 +295,17 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
   vec_free (xstats_names);
 }
 
-static clib_error_t *
-dpdk_lib_init (dpdk_main_t * dm)
+static char *if_num_fmt;
+clib_error_t *
+dpdk_init_port(dpdk_main_t *dm, u16 port_id)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u16 port_id;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
+  dpdk_device_t *xd;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hi;
-  dpdk_device_t *xd;
-  char *if_num_fmt;
-
-  /* vlib_buffer_t template */
-  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-  for (int i = 0; i < tm->n_vlib_mains; i++)
-    {
-      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
-      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
-      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-    }
-
-  if_num_fmt =
-    dm->conf->interface_name_format_decimal ? "%d/%d/%d" : "%x/%x/%x";
-
-  /* device config defaults */
-  dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
-  dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
-  dm->default_port_conf.n_rx_queues = 1;
-  dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
-  dm->default_port_conf.rss_hf =
-    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
-  dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
-
-  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
-      check_l3cache () == 0)
-    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
-
-  RTE_ETH_FOREACH_DEV (port_id)
+  do
     {
       u8 addr[6];
       int rv, q;
@@ -343,21 +315,21 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_driver_t *dr;
       i8 numa_node;
 
-      if (!rte_eth_dev_is_valid_port (port_id))
-	continue;
+      if (!rte_eth_dev_is_valid_port (port_id)) 
+          return clib_error_return (0, "rte_eth_dev_is_valid_port(%u)", port_id);
 
       if ((rv = rte_eth_dev_info_get (port_id, &di)) != 0)
 	{
 	  dpdk_log_warn ("[%u] failed to get device info. skipping device.",
 			 port_id);
-	  continue;
+          return clib_error_return (0, "rte_eth_dev_info_get(%u)", port_id);
 	}
 
       if (di.device == 0)
 	{
 	  dpdk_log_warn ("[%u] missing device info. Skipping '%s' device",
 			 port_id, di.driver_name);
-	  continue;
+          return clib_error_return (0, "rte_eth_dev_info_get(%u) missing device", port_id);
 	}
 
       devconf = dpdk_find_startup_config (&di);
@@ -367,7 +339,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  dpdk_log_notice ("[%d] Device %s blacklisted. Skipping...", port_id,
 			   di.driver_name);
-	  continue;
+          return clib_error_return (0, "device(%u) is blacklisted", port_id);
 	}
 
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
@@ -401,6 +373,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	{
 	  struct rte_pci_device *pci_dev;
+          vec_reset_length (xd->name);
 	  if (dr && dr->interface_name_prefix)
 	    {
 	      /* prefix override by driver */
@@ -614,6 +587,47 @@ dpdk_lib_init (dpdk_main_t * dm)
 		      format_dpdk_device_errors, xd);
       dpdk_counters_xstats_init (xd);
     }
+  while (0);
+  return 0;
+}
+
+static clib_error_t *
+dpdk_lib_init (dpdk_main_t * dm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u16 port_id;
+
+  /* vlib_buffer_t template */
+  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  for (int i = 0; i < tm->n_vlib_mains; i++)
+    {
+      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
+      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
+      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+    }
+
+  if_num_fmt =
+    dm->conf->interface_name_format_decimal ? "%d/%d/%d" : "%x/%x/%x";
+
+  /* device config defaults */
+  dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
+  dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
+  dm->default_port_conf.n_rx_queues = 1;
+  dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
+  dm->default_port_conf.rss_hf =
+    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
+  dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
+
+  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
+      check_l3cache () == 0)
+    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
+
+  RTE_ETH_FOREACH_DEV (port_id)
+    {
+      dpdk_init_port(dm, port_id);
+    }
 
   for (int i = 0; i < vec_len (dm->devices); i++)
     vnet_hw_if_update_runtime_data (vnm, dm->devices[i].hw_if_index);
@@ -621,20 +635,16 @@ dpdk_lib_init (dpdk_main_t * dm)
   return 0;
 }
 
-static void
-dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
+void
+dpdk_bind_device_to_uio(dpdk_config_main_t *conf, vlib_pci_addr_t *addr)
 {
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *pci_addr = 0;
   int num_whitelisted = vec_len (conf->dev_confs);
   vlib_pci_device_info_t *d = 0;
-  vlib_pci_addr_t *addr = 0, *addrs;
   int i;
-
-  addrs = vlib_pci_get_all_dev_addrs ();
-  vec_foreach (addr, addrs)
-    {
+  do {
     dpdk_device_config_t * devconf = 0;
     vec_reset_length (pci_addr);
     pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, addr, 0);
@@ -828,9 +838,21 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	devconf->is_blacklisted = 1;
 	clib_error_report (error);
       }
-  }
+  } while (0);
   vec_free (pci_addr);
   vlib_pci_free_device_info (d);
+}
+
+static void
+dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
+{
+  vlib_pci_addr_t *addr = 0, *addrs;
+
+  addrs = vlib_pci_get_all_dev_addrs ();
+  vec_foreach (addr, addrs)
+    {
+        dpdk_bind_device_to_uio(conf, addr);
+    }
 }
 
 static void

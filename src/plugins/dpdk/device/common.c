@@ -514,6 +514,94 @@ dpdk_get_vmbus_device (const struct rte_eth_dev_info *info)
 }
 #endif /* __linux__ */
 
+clib_error_t *
+dpdk_detach_device(vlib_main_t *vm, dpdk_main_t *dm, const u32 hw_if_index, u16 *port_id)
+{
+  vnet_main_t *vnm = vnet_get_main();
+  vnet_hw_interface_t *hw;
+  dpdk_device_t *xd;
+  int ret;
+
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+  if (!xd)
+    return clib_error_return(0, "DPDK device not found for hw-if-index %u", hw_if_index);
+
+  *port_id = xd->port_id;
+
+  if (!rte_eth_dev_is_valid_port(xd->port_id))
+    return clib_error_return(0, "DPDK device has invalid port. hw-if-index %u portid: %u",
+                             hw_if_index, xd->port_id);
+
+  vnet_hw_interface_set_flags (vnm, hw_if_index, 0);
+  vnet_delete_hw_interface (vnm, hw_if_index);        // and it calls dpdk_device_stop()
+
+  struct rte_eth_dev_info dev_info;
+  if ((ret = rte_eth_dev_info_get(xd->port_id, &dev_info)))
+    return clib_error_return(0, "rte_eth_dev_info_get(), err=%d", ret);
+
+  if (dev_info.device == NULL)
+    return clib_error_return(0, "rete_eth_dev_info_get() returns null device");
+
+  if ((ret = rte_eth_dev_close(xd->port_id)))
+    return clib_error_return(0, "rte_eth_dev_close(), err=%d", ret);
+
+  if ((ret = rte_dev_remove(dev_info.device)))
+    return clib_error_return(0, "Cannot remove DPDK device for hw-if-index %u (port=%u, err=%d)",
+                             hw_if_index, xd->port_id, ret);
+
+  dpdk_device_t *v = dm->devices;
+  for (uword i = 0; i < vec_len(dm->devices); i++) 
+    {
+      if (&v[i] == xd) 
+        {
+          v[i] = v[vec_len(v) - 1];
+          vec_set_len(v, vec_len(v) - 1);
+          break;
+        }
+    }
+
+  return NULL;
+}
+extern void
+dpdk_bind_device_to_uio(dpdk_config_main_t *conf, vlib_pci_addr_t *addr);
+extern clib_error_t *
+dpdk_init_port(dpdk_main_t *dm, u16 port_id);
+
+clib_error_t *
+dpdk_attach_device(vlib_main_t *vm, dpdk_main_t *dm, vlib_pci_addr_t pci_addr, u16 *port_id)
+{
+  clib_error_t *error = 0;
+  vnet_main_t *vnm = vnet_get_main();
+  dpdk_config_main_t *conf = &dpdk_config_main;
+  u8 *dev_name = NULL;
+
+  dev_name = format(dev_name, "%U", format_vlib_pci_addr, &pci_addr);
+  dpdk_bind_device_to_uio (conf, &pci_addr);
+  if (rte_eal_hotplug_add ("pci", (const char *) dev_name, "") != 0)
+    {
+      error = clib_error_return(0, "rte_eal_hotplug_add(%s)", dev_name);
+      goto err_exit;
+    }
+  if (rte_eth_dev_get_port_by_name((const char *)dev_name, port_id) != 0)
+    {
+      error = clib_error_return(0, "rte_eth_dev_get_port_by_name(%s)", dev_name);
+      goto err_exit;
+    }
+
+  if ((error = dpdk_init_port(&dpdk_main, *port_id)))
+    {
+      goto err_exit;
+    }
+
+  for (int i = 0; i < vec_len (dm->devices); i++)
+    vnet_hw_if_update_runtime_data (vnm, dm->devices[i].hw_if_index);
+
+ err_exit:
+  vec_free(dev_name);
+  return error;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
