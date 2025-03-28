@@ -1859,10 +1859,12 @@ http1_transport_rx_callback (http_conn_t *hc)
 
   if (!http1_req_state_is_rx_valid (req))
     {
-      clib_warning ("hc [%u]%x invalid rx state: http req state "
-		    "'%U', session state '%U'",
-		    hc->c_thread_index, hc->hc_hc_index, format_http_req_state,
-		    req->state, format_http_conn_state, hc);
+      if (http_io_ts_max_read (hc))
+	clib_warning ("hc [%u]%x invalid rx state: http req state "
+		      "'%U', session state '%U'",
+		      hc->c_thread_index, hc->hc_hc_index,
+		      format_http_req_state, req->state,
+		      format_http_conn_state, hc);
       http_io_ts_drain_all (hc);
       return;
     }

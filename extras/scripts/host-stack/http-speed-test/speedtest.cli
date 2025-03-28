@@ -1,0 +1,5 @@
+comment {SPDX-License-Identifier: Apache-2.0}
+comment {Copyright (c) 2025 Cisco Systems, Inc.}
+set int ip address HundredGigabitEthernet17/0/0 6.0.1.1/24
+set int state HundredGigabitEthernet17/0/0 up
+http static server www-root /scratch/matfabia/Speed-Test max-body-size 40m max-age 0 keepalive-timeout 120 cache-size 100m fifo-size 512k

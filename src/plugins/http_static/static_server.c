@@ -30,6 +30,8 @@
 #define HSS_HEADER_BUF_MAX_SIZE 16192
 hss_main_t hss_main;
 
+static int file_handler_discard_body (hss_session_t *hs, session_t *ts);
+
 static int
 hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
 		uword value_len)
@@ -280,13 +282,17 @@ content_type_from_request (u8 *request)
 }
 
 static int
-try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
-		 u8 *target_path, u8 *target_query, u8 *data)
+try_url_handler (hss_session_t *hs)
 {
+  hss_main_t *hsm = &hss_main;
   http_status_code_t sc = HTTP_STATUS_OK;
   hss_url_handler_args_t args = {};
   uword *p, *url_table;
+  session_t *ts;
+  u8 *data = 0, *target_path;
   int rv;
+
+  target_path = hs->target_path;
 
   if (!hsm->enable_url_handlers || !target_path)
     return -1;
@@ -299,27 +305,47 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
   /* Look for built-in GET / POST handlers */
   url_table =
-    (rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
+    (hs->rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
 
   p = hash_get_mem (url_table, target_path);
   if (!p)
     return -1;
+
+  /* Read request body */
+  if (hs->left_recv)
+    {
+      ts = session_get (hs->vpp_session_index, hs->thread_index);
+      /* TODO: add support for large content (use hs->read_body_handler) */
+      if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
+	{
+	  hs->left_recv = 0;
+	  start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
+	  hss_session_disconnect_transport (hs);
+	  return 0;
+	}
+      vec_validate (data, hs->left_recv - 1);
+      rv = svm_fifo_dequeue (ts->rx_fifo, hs->left_recv, data);
+      ASSERT (rv == hs->left_recv);
+      hs->left_recv = 0;
+    }
 
   hs->path = 0;
   hs->data_offset = 0;
   hs->cache_pool_index = ~0;
 
   if (hsm->debug_level > 0)
-    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST",
+    clib_warning ("%s '%s'", (hs->rt == HTTP_REQ_GET) ? "GET" : "POST",
 		  target_path);
 
-  args.req_type = rt;
-  args.query = target_query;
+  args.req_type = hs->rt;
+  args.query = hs->target_query;
   args.req_data = data;
   args.sh.thread_index = hs->thread_index;
   args.sh.session_index = hs->session_index;
 
   rv = ((hss_url_handler_fn) p[0]) (&args);
+
+  vec_free (data);
 
   /* Wait for data from handler */
   if (rv == HSS_URL_HANDLER_ASYNC)
@@ -328,7 +354,7 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (rv == HSS_URL_HANDLER_ERROR)
     {
       clib_warning ("builtin handler %llx hit on %s '%s' but failed!", p[0],
-		    (rt == HTTP_REQ_GET) ? "GET" : "POST", target_path);
+		    (hs->rt == HTTP_REQ_GET) ? "GET" : "POST", target_path);
       sc = HTTP_STATUS_BAD_GATEWAY;
     }
 
@@ -429,32 +455,49 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
 }
 
 static int
-try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
-		  u8 *target)
+try_file_handler (hss_session_t *hs)
 {
+  hss_main_t *hsm = &hss_main;
   http_status_code_t sc = HTTP_STATUS_OK;
   u8 *path, *sanitized_path;
-  u32 ce_index;
+  u32 ce_index, max_dequeue;
   http_content_type_t type;
   u8 *last_modified;
+  session_t *ts;
 
   /* Feature not enabled */
   if (!hsm->www_root)
     return -1;
 
+  /* Discard request body */
+  if (hs->left_recv)
+    {
+      ts = session_get (hs->vpp_session_index, hs->thread_index);
+      max_dequeue = svm_fifo_max_dequeue (ts->rx_fifo);
+      if (max_dequeue < hs->left_recv)
+	{
+	  svm_fifo_dequeue_drop (ts->rx_fifo, max_dequeue);
+	  hs->left_recv -= max_dequeue;
+	  hs->read_body_handler = file_handler_discard_body;
+	  return 0;
+	}
+      svm_fifo_dequeue_drop (ts->rx_fifo, hs->left_recv);
+      hs->left_recv = 0;
+    }
+
   /* Sanitize received path */
-  sanitized_path = http_path_sanitize (target);
+  sanitized_path = http_path_sanitize (hs->target_path);
 
   /*
    * Construct the file to open
    */
-  if (!target)
+  if (!sanitized_path)
     path = format (0, "%s%c", hsm->www_root, 0);
   else
     path = format (0, "%s/%s%c", hsm->www_root, sanitized_path, 0);
 
   if (hsm->debug_level > 0)
-    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", path);
+    clib_warning ("%s '%s'", (hs->rt == HTTP_REQ_GET) ? "GET" : "POST", path);
 
   if (hs->data && hs->free_data)
     vec_free (hs->data);
@@ -498,7 +541,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
    * Cache-Control max-age
    * Last-Modified
    */
-  type = content_type_from_request (target);
+  type = content_type_from_request (sanitized_path);
   if (hss_add_header (hs, HTTP_HEADER_CONTENT_TYPE,
 		      http_content_type_token (type)) ||
       hss_add_header (hs, HTTP_HEADER_CACHE_CONTROL,
@@ -520,15 +563,12 @@ done:
 }
 
 static void
-handle_request (hss_session_t *hs, http_req_method_t rt, u8 *target_path,
-		u8 *target_query, u8 *data)
+handle_request (hss_session_t *hs)
 {
-  hss_main_t *hsm = &hss_main;
-
-  if (!try_url_handler (hsm, hs, rt, target_path, target_query, data))
+  if (!try_url_handler (hs))
     return;
 
-  if (!try_file_handler (hsm, hs, rt, target_path))
+  if (!try_file_handler (hs))
     return;
 
   /* Handler did not find anything return 404 */
@@ -537,19 +577,41 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *target_path,
 }
 
 static int
+file_handler_discard_body (hss_session_t *hs, session_t *ts)
+{
+  u32 max_dequeue, to_discard;
+
+  max_dequeue = svm_fifo_max_dequeue (ts->rx_fifo);
+  to_discard = clib_min (max_dequeue, hs->left_recv);
+  svm_fifo_dequeue_drop (ts->rx_fifo, to_discard);
+  hs->left_recv -= to_discard;
+  if (hs->left_recv == 0)
+    return try_file_handler (hs);
+  return 0;
+}
+
+static int
 hss_ts_rx_callback (session_t *ts)
 {
   hss_main_t *hsm = &hss_main;
   hss_session_t *hs;
-  u8 *target_path = 0, *target_query = 0, *data = 0;
   http_msg_t msg;
   int rv;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
+  if (hs->left_recv != 0)
+    {
+      ASSERT (hs->read_body_handler);
+      return hs->read_body_handler (hs, ts);
+    }
+
   if (hs->free_data)
     vec_free (hs->data);
+
   hs->data = 0;
   hs->data_len = 0;
+  vec_free (hs->target_path);
+  vec_free (hs->target_query);
   http_init_headers_ctx (&hs->resp_headers, hs->headers_buf,
 			 vec_len (hs->headers_buf));
 
@@ -567,37 +629,38 @@ hss_ts_rx_callback (session_t *ts)
       goto err_done;
     }
 
+  hs->rt = msg.method_type;
+
   /* Read target path */
   if (msg.data.target_path_len)
     {
-      vec_validate (target_path, msg.data.target_path_len - 1);
+      vec_validate (hs->target_path, msg.data.target_path_len - 1);
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
-			  msg.data.target_path_len, target_path);
+			  msg.data.target_path_len, hs->target_path);
       ASSERT (rv == msg.data.target_path_len);
-      if (http_validate_abs_path_syntax (target_path, 0))
+      if (http_validate_abs_path_syntax (hs->target_path, 0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
 	  goto err_done;
 	}
       /* Target path must be a proper C-string in addition to a vector */
-      vec_add1 (target_path, 0);
+      vec_add1 (hs->target_path, 0);
     }
 
   /* Read target query */
   if (msg.data.target_query_len)
     {
-      vec_validate (target_query, msg.data.target_query_len - 1);
+      vec_validate (hs->target_query, msg.data.target_query_len - 1);
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_query_offset,
-			  msg.data.target_query_len, target_query);
+			  msg.data.target_query_len, hs->target_query);
       ASSERT (rv == msg.data.target_query_len);
-      if (http_validate_query_syntax (target_query, 0))
+      if (http_validate_query_syntax (hs->target_query, 0))
 	{
 	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
 	  goto err_done;
 	}
     }
 
-  /* Read request body for POST requests */
   if (msg.data.body_len && msg.method_type == HTTP_REQ_POST)
     {
       if (msg.data.body_len > hsm->max_body_size)
@@ -605,28 +668,19 @@ hss_ts_rx_callback (session_t *ts)
 	  start_send_data (hs, HTTP_STATUS_CONTENT_TOO_LARGE);
 	  goto err_done;
 	}
-      if (svm_fifo_max_dequeue (ts->rx_fifo) - msg.data.body_offset <
-	  msg.data.body_len)
-	{
-	  start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
-	  goto err_done;
-	}
-      vec_validate (data, msg.data.body_len - 1);
-      rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, msg.data.body_len,
-			  data);
-      ASSERT (rv == msg.data.body_len);
+
+      hs->left_recv = msg.data.body_len;
+      /* drop everything up to body */
+      svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
     }
 
   /* Find and send data */
-  handle_request (hs, msg.method_type, target_path, target_query, data);
+  handle_request (hs);
   goto done;
 
 err_done:
   hss_session_disconnect_transport (hs);
 done:
-  vec_free (target_path);
-  vec_free (target_query);
-  vec_free (data);
   svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
   return 0;
 }
@@ -757,6 +811,8 @@ hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
   hs->free_data = 0;
   vec_free (hs->headers_buf);
   vec_free (hs->path);
+  vec_free (hs->target_path);
+  vec_free (hs->target_query);
 
   hss_session_free (hs);
 }
@@ -952,8 +1008,9 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &seg_size))
 	hsm->private_segment_size = seg_size;
-      else if (unformat (line_input, "fifo-size %d", &hsm->fifo_size))
-	hsm->fifo_size <<= 10;
+      else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
+			 &hsm->fifo_size))
+	;
       else if (unformat (line_input, "cache-size %U", unformat_memory_size,
 			 &hsm->cache_size))
 	;
