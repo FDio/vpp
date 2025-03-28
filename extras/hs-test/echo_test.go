@@ -39,7 +39,7 @@ func TcpWithLossTest(s *VethsSuite) {
 	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Server.Name())
 
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes mbytes 50",
+	output := clientVpp.Vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes bytes 50m",
 		s.Interfaces.Server.Ip4AddressString())
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)

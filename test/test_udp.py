@@ -764,7 +764,7 @@ class TestUDP(VppTestCase):
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
-            "test echo client mbytes 10 appns 1 "
+            "test echo client bytes 10m appns 1 "
             + "fifo-size 4k "
             + "syn-timeout 2 uri "
             + uri
