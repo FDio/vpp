@@ -998,6 +998,7 @@ http1_req_state_wait_transport_method (http_conn_t *hc, http_req_t *req,
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
   max_enq = http_io_as_max_write (req);
+  max_enq -= sizeof (msg);
   if (max_enq < req->control_data_len)
     {
       clib_warning ("not enough room for control data in app's rx fifo");
