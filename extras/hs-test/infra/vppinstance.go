@@ -243,9 +243,11 @@ func (vpp *VppInstance) Start() error {
 }
 
 func (vpp *VppInstance) Stop() {
-	pid := strings.TrimSpace(vpp.Container.Exec(false, "pidof vpp"))
+	pid, err := vpp.Container.Exec(false, "pidof vpp")
+	pid = strings.TrimSpace(pid)
 	// Stop VPP only if it's still running
-	if len(pid) > 0 {
+	if err == nil {
+		vpp.getSuite().Log("Stopping VPP")
 		vpp.Container.Exec(false, "bash -c \"kill -15 "+pid+"\"")
 	}
 }

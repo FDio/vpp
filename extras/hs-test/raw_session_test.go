@@ -35,6 +35,7 @@ func testVppEcho(s *VethsSuite, proto string) {
 		" socket-name " + s.Containers.ClientApp.GetContainerWorkDir() + "/var/run/app_ns_sockets/default" +
 		" use-app-socket-api uri " + uri
 	s.Log(clientCommand)
-	o := s.Containers.ClientApp.Exec(true, clientCommand)
+	o, err := s.Containers.ClientApp.Exec(true, clientCommand)
+	s.AssertNil(err)
 	s.Log(o)
 }

@@ -412,7 +412,8 @@ func httpClientGet(s *NoTopoSuite, response string, size int) {
 	s.AssertContains(o, response)
 	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
 
-	file_contents := vpp.Container.Exec(false, "cat /tmp/response.txt")
+	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
+	s.AssertNil(err)
 	s.AssertContains(file_contents, response)
 }
 
@@ -463,7 +464,8 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	o := vpp.Vppctl(cmd)
 	s.Log(o)
 
-	replyCount := s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	replyCount, err := s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	s.AssertNil(err)
 	if replyCount != "" {
 		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
 		s.AssertNil(err)
@@ -485,7 +487,8 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	o = vpp.Vppctl(cmd)
 	s.Log(o)
 
-	replyCount = s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	replyCount, err = s.Containers.NginxServer.Exec(false, "awk 'END { print NR }' "+logPath)
+	s.AssertNil(err)
 	if replyCount != "" {
 		replyCountInt, err = strconv.Atoi(replyCount[:len(replyCount)-1])
 		s.AssertNil(err)

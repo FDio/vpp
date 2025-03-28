@@ -460,7 +460,7 @@ func (c *Container) ExecServer(useEnvVars bool, command string, arguments ...any
 	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) string {
+func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) (string, error) {
 	var envVars string
 	serverCommand := fmt.Sprintf(command, arguments...)
 	if useEnvVars {
@@ -472,8 +472,7 @@ func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) stri
 	GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.Suite.AssertNil(err, fmt.Sprint(err))
-	return string(byteOutput)
+	return string(byteOutput), err
 }
 
 func (c *Container) saveLogs() {
