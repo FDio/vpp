@@ -335,6 +335,36 @@ vl_api_lcp_ethertype_get_t_handler (vl_api_lcp_ethertype_get_t *mp)
   vec_free (ethertypes);
 }
 
+static void
+vl_api_lcp_osi_proto_enable_t_handler (vl_api_lcp_osi_proto_enable_t *mp)
+{
+  vl_api_lcp_osi_proto_enable_reply_t *rmp;
+  int rv;
+
+  rv = lcp_osi_proto_enable (mp->osi_proto);
+
+  REPLY_MACRO (VL_API_LCP_OSI_PROTO_ENABLE_REPLY);
+}
+
+static void
+vl_api_lcp_osi_proto_get_t_handler (vl_api_lcp_osi_proto_get_t *mp)
+{
+  vl_api_lcp_osi_proto_get_reply_t *rmp;
+  u8 *protos = NULL;
+  int rv = 0;
+
+  rv = lcp_osi_proto_get_enabled (&protos);
+  u8 n_protos = vec_len (protos);
+
+  REPLY_MACRO3 (VL_API_LCP_OSI_PROTO_GET_REPLY, sizeof (*rmp->osi_protos) * n_protos, ({
+		  rmp->count = n_protos;
+		  if (n_protos)
+		    clib_memcpy (rmp->osi_protos, protos, sizeof (*rmp->osi_protos) * n_protos);
+		}));
+
+  vec_free (protos);
+}
+
 /*
  * Set up the API message handling tables
  */
