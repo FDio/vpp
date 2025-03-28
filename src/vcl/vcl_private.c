@@ -212,14 +212,16 @@ vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk)
       exit (1);
     }
 
-  int sig = 1, __clib_unused rv;
+  int __clib_unused rv;
+  u8 sig = 1;
   rv = write (wrk->detached_pipefds[1], &sig, 1);
 }
 
 void
 vcl_worker_detached_signal_mq (vcl_worker_t *wrk)
 {
-  int buf, __clib_unused rv;
+  int __clib_unused rv;
+  u8 buf;
   rv = read (wrk->detached_pipefds[0], &buf, 1);
   rv = write (wrk->detached_pipefds[1], &buf, 1);
 }
