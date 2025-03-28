@@ -77,7 +77,7 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
-	o := clientVpp.Vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose mbytes 2", proto, serverVethAddress, port)
+	o := clientVpp.Vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose bytes 2m", proto, serverVethAddress, port)
 	s.Log(o)
 	s.AssertContains(o, "Test finished at")
 }

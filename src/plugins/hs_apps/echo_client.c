@@ -1073,7 +1073,7 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
   int rv, had_config = 1;
-  u64 tmp, total_bytes;
+  u64 total_bytes;
   f64 delta;
 
   if (ecm->test_client_attached)
@@ -1099,10 +1099,6 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "quic-streams %d", &ecm->quic_streams))
 	;
-      else if (unformat (line_input, "mbytes %lld", &tmp))
-	ecm->bytes_to_send = tmp << 20;
-      else if (unformat (line_input, "gbytes %lld", &tmp))
-	ecm->bytes_to_send = tmp << 30;
       else if (unformat (line_input, "bytes %U", unformat_memory_size,
 			 &ecm->bytes_to_send))
 	;
@@ -1336,7 +1332,7 @@ cleanup:
 VLIB_CLI_COMMAND (ec_command, static) = {
   .path = "test echo clients",
   .short_help =
-    "test echo clients [nclients %d][[m|g]bytes <bytes>]"
+    "test echo clients [nclients %d][bytes <bytes>[m|g]]"
     "[test-timeout <time>][syn-timeout <time>][echo-bytes][fifo-size <size>]"
     "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
     "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"

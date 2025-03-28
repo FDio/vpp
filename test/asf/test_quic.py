@@ -178,7 +178,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     def test_quic_int_transfer(self):
         """QUIC internal transfer"""
         self.server()
-        self.client("mbytes", "2")
+        self.client("bytes", "2m")
 
 
 @tag_fixme_vpp_workers
@@ -188,11 +188,11 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     def test_quic_serial_int_transfer(self):
         """QUIC serial internal transfer"""
         self.server()
-        self.client("mbytes", "2")
-        self.client("mbytes", "2")
-        self.client("mbytes", "2")
-        self.client("mbytes", "2")
-        self.client("mbytes", "2")
+        self.client("bytes", "2m")
+        self.client("bytes", "2m")
+        self.client("bytes", "2m")
+        self.client("bytes", "2m")
+        self.client("bytes", "2m")
 
 
 @tag_fixme_vpp_workers
@@ -202,7 +202,7 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     def test_quic_int_multistream_transfer(self):
         """QUIC internal multi-stream transfer"""
         self.server()
-        self.client("nclients", "10", "mbytes", "1")
+        self.client("nclients", "10", "bytes", "1m")
 
 
 class QUICEchoExtTestCase(QUICTestCase):
