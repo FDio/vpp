@@ -423,6 +423,7 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		-o $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info \
 		--output-directory $(BUILD_COV_DIR)/html
+	@rm -f $(BUILD_COV_DIR)/html/cmd_line
 	@test -z "$(EXTERN_COV_DIR)" || \
 		genhtml $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info \
 			--output-directory $(BUILD_COV_DIR)/extern-html
