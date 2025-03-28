@@ -9,8 +9,12 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
+#include <vlib/unix/plugin.h>
+#include <vnet/api_errno.h>
+
 #include <plugins/linux-cp/lcp.h>
 #include <plugins/linux-cp/lcp_interface.h>
+#include <plugins/osi/osi.h>
 
 lcp_main_t lcp_main;
 
@@ -191,4 +195,48 @@ lcp_get_default_num_queues (u8 is_tx)
     return lcpm->num_tx_queues;
 
   return lcpm->num_rx_queues ?: vlib_num_workers ();
+}
+
+typedef int (*osi_reg_fn) (osi_protocol_t protocol, u32 node_index);
+static osi_reg_fn osi_reg_p = NULL;
+
+int
+lcp_osi_proto_enable (u8 proto)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  /* don't do anything if it's already enabled */
+  if (clib_bitmap_get (lcpm->osi_protos_enabled, proto))
+    return 0;
+
+  if (!osi_reg_p)
+    osi_reg_p = vlib_get_plugin_symbol ("osi_plugin.so", "osi_register_input_protocol");
+  if (!osi_reg_p)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_t *lcp_punt_xc_node = vlib_get_node_by_name (vm, (u8 *) "linux-cp-punt-xc");
+  if (!lcp_punt_xc_node)
+    return VNET_API_ERROR_UNIMPLEMENTED;
+
+  int rv = osi_reg_p ((osi_protocol_t) proto, lcp_punt_xc_node->index);
+  if (!rv)
+    lcpm->osi_protos_enabled = clib_bitmap_set (lcpm->osi_protos_enabled, proto, 1);
+
+  return rv;
+}
+
+int
+lcp_osi_proto_get_enabled (u8 **protos)
+{
+  lcp_main_t *lcpm = &lcp_main;
+  uword i;
+
+  if (!protos)
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
+  clib_bitmap_foreach (i, lcpm->osi_protos_enabled)
+    vec_add1 (*protos, i);
+
+  return 0;
 }
