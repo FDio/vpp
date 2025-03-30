@@ -567,7 +567,7 @@ catchup_listen_read_ready (clib_file_t * uf)
   struct sockaddr_in client_addr;
   int client_len;
   mc_socket_catchup_t *c;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
 
   pool_get (msm->catchups, c);
   clib_memset (c, 0, sizeof (c[0]));
@@ -612,13 +612,13 @@ catchup_listen_read_ready (clib_file_t * uf)
       }
   }
 
-  template.read_function = catchup_server_read_ready;
-  template.write_function = catchup_server_write_ready;
-  template.error_function = catchup_socket_error_ready;
-  template.file_descriptor = c->socket;
-  template.description = format (0, "multicast catchup socket");
-  template.private_data = pointer_to_uword (msm);
-  c->clib_file_index = clib_file_add (&file_main, &template);
+  _template.read_function = catchup_server_read_ready;
+  _template.write_function = catchup_server_write_ready;
+  _template.error_function = catchup_socket_error_ready;
+  _template.file_descriptor = c->socket;
+  _template.description = format (0, "multicast catchup socket");
+  _template.private_data = pointer_to_uword (msm);
+  c->clib_file_index = clib_file_add (&file_main, &_template);
   hash_set (msm->catchup_index_by_file_descriptor, c->socket,
 	    c - msm->catchups);
 
@@ -774,50 +774,50 @@ socket_setup (mc_socket_main_t * msm)
 
   /* epoll setup for multicast mastership socket */
   {
-    clib_file_t template = { 0 };
+    clib_file_t _template = { 0 };
 
-    template.read_function = mastership_socket_read_ready;
-    template.file_descriptor =
+    _template.read_function = mastership_socket_read_ready;
+    _template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP].socket;
-    template.private_data = (uword) msm;
-    clib_file_add (&file_main, &template);
+    _template.private_data = (uword) msm;
+    clib_file_add (&file_main, &_template);
 
     /* epoll setup for multicast to_relay socket */
-    template.read_function = to_relay_socket_read_ready;
-    template.file_descriptor =
+    _template.read_function = to_relay_socket_read_ready;
+    _template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY].socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast to_relay socket");
-    clib_file_add (&file_main, &template);
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast to_relay socket");
+    clib_file_add (&file_main, &_template);
 
     /* epoll setup for multicast from_relay socket */
-    template.read_function = from_relay_socket_read_ready;
-    template.file_descriptor =
+    _template.read_function = from_relay_socket_read_ready;
+    _template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY].socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast from_relay socket");
-    clib_file_add (&file_main, &template);
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast from_relay socket");
+    clib_file_add (&file_main, &_template);
 
-    template.read_function = join_socket_read_ready;
-    template.file_descriptor =
+    _template.read_function = join_socket_read_ready;
+    _template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_JOIN].socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast join socket");
-    clib_file_add (&file_main, &template);
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast join socket");
+    clib_file_add (&file_main, &_template);
 
     /* epoll setup for ack rx socket */
-    template.read_function = ack_socket_read_ready;
-    template.file_descriptor = msm->ack_socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast ack rx socket");
-    clib_file_add (&file_main, &template);
+    _template.read_function = ack_socket_read_ready;
+    _template.file_descriptor = msm->ack_socket;
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast ack rx socket");
+    clib_file_add (&file_main, &_template);
 
     /* epoll setup for TCP catchup server */
-    template.read_function = catchup_listen_read_ready;
-    template.file_descriptor = msm->catchup_server_socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast tcp catchup socket");
-    clib_file_add (&file_main, &template);
+    _template.read_function = catchup_listen_read_ready;
+    _template.file_descriptor = msm->catchup_server_socket;
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast tcp catchup socket");
+    clib_file_add (&file_main, &_template);
   }
 
   return 0;
@@ -902,15 +902,15 @@ catchup_request_fun (void *transport_main,
     }
 
   {
-    clib_file_t template = { 0 };
+    clib_file_t _template = { 0 };
 
-    template.read_function = catchup_client_read_ready;
-    template.write_function = catchup_client_write_ready;
-    template.error_function = catchup_socket_error_ready;
-    template.file_descriptor = c->socket;
-    template.private_data = (uword) msm;
-    template.description = format (0, "multicast socket");
-    c->clib_file_index = clib_file_add (um, &template);
+    _template.read_function = catchup_client_read_ready;
+    _template.write_function = catchup_client_write_ready;
+    _template.error_function = catchup_socket_error_ready;
+    _template.file_descriptor = c->socket;
+    _template.private_data = (uword) msm;
+    _template.description = format (0, "multicast socket");
+    c->clib_file_index = clib_file_add (um, &_template);
 
     hash_set (msm->catchup_index_by_file_descriptor, c->socket,
 	      c - msm->catchups);

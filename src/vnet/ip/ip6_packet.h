@@ -40,6 +40,7 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
+#include "vnet/ip/ip_packet.h"
 #include <vlib/vlib.h>
 #include <vnet/ip/ip4_packet.h>
 #include <stdbool.h>
@@ -165,8 +166,7 @@ ip6_multicast_ethernet_address (u8 * ethernet_address, u32 group_id)
 always_inline uword
 ip6_address_is_equal (const ip6_address_t * a, const ip6_address_t * b)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (a->as_uword); i++)
     if (a->as_uword[i] != b->as_uword[i])
       return 0;
   return 1;
@@ -177,8 +177,7 @@ ip6_address_is_equal_masked (const ip6_address_t * a,
 			     const ip6_address_t * b,
 			     const ip6_address_t * mask)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (a->as_uword); i++)
     {
       uword a_masked, b_masked;
       a_masked = a->as_uword[i] & mask->as_uword[i];
@@ -193,26 +192,24 @@ ip6_address_is_equal_masked (const ip6_address_t * a,
 always_inline void
 ip6_address_mask (ip6_address_t * a, const ip6_address_t * mask)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (a->as_uword); i++)
     a->as_uword[i] &= mask->as_uword[i];
 }
 
 always_inline void
 ip6_address_set_zero (ip6_address_t * a)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (a->as_uword); i++)
     a->as_uword[i] = 0;
 }
 
 always_inline void
 ip6_address_mask_from_width (ip6_address_t * a, u32 width)
 {
-  int i, byte, bit, bitnum;
+  int byte, bit, bitnum;
   ASSERT (width <= 128);
   clib_memset (a, 0, sizeof (a[0]));
-  for (i = 0; i < width; i++)
+  for (u32 i = 0; i < width; i++)
     {
       bitnum = (7 - (i & 7));
       byte = i / 8;
@@ -224,8 +221,7 @@ ip6_address_mask_from_width (ip6_address_t * a, u32 width)
 always_inline uword
 ip6_address_is_zero (const ip6_address_t * a)
 {
-  int i;
-  for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
+  for (uword i = 0; i < ARRAY_LEN (a->as_uword); i++)
     if (a->as_uword[i] != 0)
       return 0;
   return 1;
@@ -317,29 +313,28 @@ typedef struct
 always_inline ip_dscp_t
 ip6_traffic_class (const ip6_header_t * i)
 {
-  return (i->ip_version_traffic_class_and_flow_label & IP6_PACKET_TC_MASK) >>
-    20;
+  return (ip_dscp_t) ((i->ip_version_traffic_class_and_flow_label & IP6_PACKET_TC_MASK) >> 20);
 }
 
 static_always_inline ip_dscp_t
 ip6_traffic_class_network_order (const ip6_header_t * ip6)
 {
-  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & IP6_PACKET_TC_MASK) >> 20;
+  return (ip_dscp_t) ((clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & IP6_PACKET_TC_MASK) >> 20);
 }
 
 static_always_inline ip_dscp_t
 ip6_dscp_network_order (const ip6_header_t * ip6)
 {
-  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & IP6_PACKET_DSCP_MASK) >> 22;
+  return (ip_dscp_t) ((clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & IP6_PACKET_DSCP_MASK) >> 22);
 }
 
 static_always_inline ip_ecn_t
 ip6_ecn_network_order (const ip6_header_t * ip6)
 {
-  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
-	  & IP6_PACKET_ECN_MASK) >> 20;
+  return (ip_ecn_t) ((clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & IP6_PACKET_ECN_MASK) >> 20);
 }
 
 static_always_inline void
@@ -544,14 +539,14 @@ ip6_ext_next_header (ip6_ext_header_t * ext_hdr)
 always_inline void *
 ip6_ext_next_header_offset (void *hdr, u16 offset)
 {
-  return (hdr + offset);
+  return (u8 *) hdr + offset;
 }
 
 always_inline int
 vlib_object_within_buffer_data (vlib_main_t * vm, vlib_buffer_t * b,
 				void *obj, size_t len)
 {
-  u8 *o = obj;
+  u8 *o = (u8 *) obj;
   if (o < b->data ||
       o + len > b->data + vlib_buffer_get_default_data_size (vm))
     return 0;
@@ -576,7 +571,7 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
     {
       hdrlen = ip6_ext_header_len (hdr);
       new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
-      res = hdr + hdrlen;
+      res = (u8 *) hdr + hdrlen;
     }
   else if (cur_nh == IP_PROTOCOL_IPV6_FRAGMENTATION)
     {
@@ -585,13 +580,13 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
 	*last = true;
       new_nh = frag_hdr->next_hdr;
       hdrlen = sizeof (ip6_frag_hdr_t);
-      res = hdr + hdrlen;
+      res = (u8 *) hdr + hdrlen;
     }
   else if (cur_nh == IP_PROTOCOL_IPSEC_AH)
     {
       new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
       hdrlen = ip6_ext_authhdr_len (hdr);
-      res = hdr + hdrlen;
+      res = (u8 *) hdr + hdrlen;
     }
   else
     {
@@ -608,7 +603,7 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
 }
 
 #define IP6_EXT_HDR_MAX	      (4)   /* Maximum number of headers */
-#define IP6_EXT_HDR_MAX_DEPTH (256) /* Maximum header depth */
+#define IP6_EXT_HDR_MAX_DEPTH (256U) /* Maximum header depth */
 typedef struct
 {
   int length;
@@ -644,7 +639,7 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
 			     sizeof (ip6_header_t) +
 			       clib_net_to_host_u16 (ip->payload_length));
   u32 offset = sizeof (ip6_header_t);
-  if ((ip6_ext_header_len_s (ip->protocol, next_header) + offset) > max_offset)
+  if ((ip6_ext_header_len_s ((ip_protocol_t) ip->protocol, next_header) + offset) > max_offset)
     {
       return -1;
     }
@@ -661,7 +656,7 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
 	break;
       if (i >= IP6_EXT_HDR_MAX)
 	break;
-      next_header = ip6_ext_next_header_s (next_proto, next_header, max_offset,
+      next_header = ip6_ext_next_header_s ((ip_protocol_t) next_proto, next_header, max_offset,
 					   &offset, &next_proto, &last);
     }
   res->length = i;
@@ -683,7 +678,7 @@ ip6_ext_header_find (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
     {
       if (res > 0)
 	{
-	  *prev_ext_header =
+	  *prev_ext_header = (ip6_ext_header_t *)
 	    ip6_ext_next_header_offset (ip, hdr_chain.eh[res - 1].offset);
 	}
       else

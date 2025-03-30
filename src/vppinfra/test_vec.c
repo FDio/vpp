@@ -406,28 +406,28 @@ generic_validate_vec_add (elt_t * vec, uword num_elts, uword is_add2)
   uword len1 = vec_len (vec);
   uword len2;
   u8 hash = compute_vec_hash (0, vec);
-  elt_t *new;
+  elt_t *_new;
 
   if (is_add2)
     {
-      vec_add2 (vec, new, num_elts);
+      vec_add2 (vec, _new, num_elts);
     }
   else
     {
-      new = create_random_vec (elt_t, num_elts, g_seed);
+      _new = create_random_vec (elt_t, num_elts, g_seed);
 
-      VERBOSE3 ("%U\n", format_hex_bytes, new,
-		vec_len (new) * sizeof (new[0]));
+      VERBOSE3 ("%U\n", format_hex_bytes, _new,
+		vec_len (_new) * sizeof (_new[0]));
 
       /* Add the hash value of the new elements to that of the old vector. */
-      hash = compute_vec_hash (hash, new);
+      hash = compute_vec_hash (hash, _new);
 
       if (num_elts == 1)
-	vec_add1 (vec, new[0]);
+	vec_add1 (vec, _new[0]);
       else if (num_elts > 1)
-	vec_add (vec, new, num_elts);
+	vec_add (vec, _new, num_elts);
 
-      vec_free (new);
+      vec_free (_new);
     }
 
   len2 = vec_len (vec);
@@ -482,25 +482,25 @@ validate_vec_insert_elts (elt_t * vec, uword num_elts, uword start_elt)
 {
   uword len1 = vec_len (vec);
   uword len2;
-  elt_t *new;
+  elt_t *_new;
   u8 hash;
 
   /* vec_insert_elts() would not handle it properly. */
   if (start_elt > len1 || num_elts == 0)
     return vec;
 
-  new = create_random_vec (elt_t, num_elts, g_seed);
+  _new = create_random_vec (elt_t, num_elts, g_seed);
 
-  VERBOSE3 ("%U\n", format_hex_bytes, new, vec_len (new) * sizeof (new[0]));
+  VERBOSE3 ("%U\n", format_hex_bytes, _new, vec_len (_new) * sizeof (_new[0]));
 
   /* Add the hash value of the new elements to that of the old vector. */
   hash = compute_vec_hash (0, vec);
-  hash = compute_vec_hash (hash, new);
+  hash = compute_vec_hash (hash, _new);
 
-  vec_insert_elts (vec, new, num_elts, start_elt);
+  vec_insert_elts (vec, _new, num_elts, start_elt);
   len2 = vec_len (vec);
 
-  vec_free (new);
+  vec_free (_new);
 
   ASSERT (len2 == len1 + num_elts);
   ASSERT (compute_vec_hash (hash, vec) == 0);
@@ -539,16 +539,16 @@ validate_vec_delete (elt_t * vec, uword num_elts, uword start_elt)
 static elt_t *
 validate_vec_dup (elt_t * vec)
 {
-  elt_t *new;
+  elt_t *_new;
   u8 hash;
 
   hash = compute_vec_hash (0, vec);
-  new = vec_dup (vec);
+  _new = vec_dup (vec);
 
-  ASSERT (compute_vec_hash (hash, new) == 0);
+  ASSERT (compute_vec_hash (hash, _new) == 0);
 
-  validate_vec (new, 0);
-  return new;
+  validate_vec (_new, 0);
+  return _new;
 }
 
 static elt_t *
@@ -576,14 +576,14 @@ validate_vec_zero (elt_t * vec)
 static void
 validate_vec_is_equal (elt_t * vec)
 {
-  elt_t *new = NULL;
+  elt_t *_new = NULL;
 
   if (vec_len (vec) <= 0)
     return;
 
-  new = vec_dup (vec);
-  ASSERT (vec_is_equal (new, vec));
-  vec_free (new);
+  _new = vec_dup (vec);
+  ASSERT (vec_is_equal (_new, vec));
+  vec_free (_new);
 }
 
 static elt_t *
@@ -591,21 +591,21 @@ validate_vec_set (elt_t * vec)
 {
   uword i;
   uword len = vec_len (vec);
-  elt_t *new;
+  elt_t *_new;
 
   if (!vec)
     return NULL;
 
-  new = create_random_vec (elt_t, 1, g_seed);
+  _new = create_random_vec (elt_t, 1, g_seed);
 
-  VERBOSE3 ("%U\n", format_hex_bytes, new, vec_len (new) * sizeof (new[0]));
+  VERBOSE3 ("%U\n", format_hex_bytes, _new, vec_len (_new) * sizeof (_new[0]));
 
-  vec_set (vec, new[0]);
+  vec_set (vec, _new[0]);
 
   for (i = 0; i < len; i++)
-    ASSERT (memcmp (&vec[i], &new[0], sizeof (vec[0])) == 0);
+    ASSERT (memcmp (&vec[i], &_new[0], sizeof (vec[0])) == 0);
 
-  vec_free (new);
+  vec_free (_new);
   validate_vec (vec, 0);
   return vec;
 }
@@ -648,25 +648,25 @@ validate_vec_init (uword num_elts)
   u8 *ptr;
   u8 *end;
   uword len;
-  elt_t *new;
+  elt_t *_new;
 
-  new = vec_new (elt_t, num_elts);
-  len = vec_len (new);
+  _new = vec_new (elt_t, num_elts);
+  len = vec_len (_new);
 
   ASSERT (len == num_elts);
 
-  ptr = (u8 *) new;
-  end = (u8 *) (new + len);
+  ptr = (u8 *) _new;
+  end = (u8 *) (_new + len);
 
   while (ptr != end)
     {
-      ASSERT (ptr < (u8 *) vec_end (new));
+      ASSERT (ptr < (u8 *) vec_end (_new));
       ASSERT (ptr[0] == 0);
       ptr++;
     }
 
-  validate_vec (new, 0);
-  return new;
+  validate_vec (_new, 0);
+  return _new;
 }
 
 static elt_t *
@@ -676,10 +676,10 @@ validate_vec_init_h (uword num_elts, uword hdr_bytes)
   u8 *ptr;
   u8 *end;
   uword len;
-  elt_t *new;
+  elt_t *_new;
 
-  new = vec_new_generic (elt_t, num_elts, hdr_bytes, 0, 0);
-  len = vec_len (new);
+  _new = vec_new_generic (elt_t, num_elts, hdr_bytes, 0, 0);
+  len = vec_len (_new);
 
   ASSERT (len == num_elts);
 
@@ -688,57 +688,57 @@ validate_vec_init_h (uword num_elts, uword hdr_bytes)
     {
       if (i == 0)
 	{
-	  ptr = (u8 *) vec_header (new);
+	  ptr = (u8 *) vec_header (_new);
 	  end = ptr + hdr_bytes;
 	}
       else
 	{
-	  ptr = (u8 *) new;
-	  end = (u8 *) (new + len);
+	  ptr = (u8 *) _new;
+	  end = (u8 *) (_new + len);
 	}
 
       while (ptr != end)
 	{
-	  ASSERT (ptr < (u8 *) vec_end (new));
+	  ASSERT (ptr < (u8 *) vec_end (_new));
 	  ASSERT (ptr[0] == 0);
 	  ptr++;
 	}
     }
 
-  validate_vec (new, 1);
-  return new;
+  validate_vec (_new, 1);
+  return _new;
 }
 
 /* XXX - I don't understand the purpose of the vec_clone() call. */
 static elt_t *
 validate_vec_clone (elt_t * vec)
 {
-  elt_t *new;
+  elt_t *_new;
 
-  vec_clone (new, vec);
+  vec_clone (_new, vec);
 
-  ASSERT (vec_len (new) == vec_len (vec));
-  ASSERT (compute_vec_hash (0, new) == 0);
-  validate_vec (new, 0);
-  return new;
+  ASSERT (vec_len (_new) == vec_len (vec));
+  ASSERT (compute_vec_hash (0, _new) == 0);
+  validate_vec (_new, 0);
+  return _new;
 }
 
 static elt_t *
 validate_vec_append (elt_t * vec)
 {
-  elt_t *new;
+  elt_t *_new;
   uword num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
   uword len;
   u8 hash = 0;
 
-  new = create_random_vec (elt_t, num_elts, g_seed);
+  _new = create_random_vec (elt_t, num_elts, g_seed);
 
-  len = vec_len (vec) + vec_len (new);
+  len = vec_len (vec) + vec_len (_new);
   hash = compute_vec_hash (0, vec);
-  hash = compute_vec_hash (hash, new);
+  hash = compute_vec_hash (hash, _new);
 
-  vec_append (vec, new);
-  vec_free (new);
+  vec_append (vec, _new);
+  vec_free (_new);
 
   ASSERT (vec_len (vec) == len);
   ASSERT (compute_vec_hash (hash, vec) == 0);
@@ -749,19 +749,19 @@ validate_vec_append (elt_t * vec)
 static elt_t *
 validate_vec_prepend (elt_t * vec)
 {
-  elt_t *new;
+  elt_t *_new;
   uword num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
   uword len;
   u8 hash = 0;
 
-  new = create_random_vec (elt_t, num_elts, g_seed);
+  _new = create_random_vec (elt_t, num_elts, g_seed);
 
-  len = vec_len (vec) + vec_len (new);
+  len = vec_len (vec) + vec_len (_new);
   hash = compute_vec_hash (0, vec);
-  hash = compute_vec_hash (hash, new);
+  hash = compute_vec_hash (hash, _new);
 
-  vec_prepend (vec, new);
-  vec_free (new);
+  vec_prepend (vec, _new);
+  vec_free (_new);
 
   ASSERT (vec_len (vec) == len);
   ASSERT (compute_vec_hash (hash, vec) == 0);
@@ -848,7 +848,7 @@ static void
 run_validator (uword iter)
 {
   elt_t *vec;
-  elt_t *new;
+  elt_t *_new;
   uword i;
   uword op;
   uword num_elts;
@@ -930,8 +930,8 @@ run_validator (uword iter)
 
 	case OP_IS_VEC_DUP:
 	  VERBOSE2 ("vec_dup()\n");
-	  new = validate_vec_dup (vec);
-	  vec_free (new);
+	  _new = validate_vec_dup (vec);
+	  vec_free (_new);
 	  break;
 
 	case OP_IS_VEC_IS_EQUAL:
@@ -970,8 +970,8 @@ run_validator (uword iter)
 
 	case OP_IS_VEC_CLONE:
 	  VERBOSE2 ("vec_clone()\n");
-	  new = validate_vec_clone (vec);
-	  vec_free (new);
+	  _new = validate_vec_clone (vec);
+	  vec_free (_new);
 	  break;
 
 	case OP_IS_VEC_APPEND:

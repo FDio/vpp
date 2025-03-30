@@ -317,23 +317,23 @@ ena_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       clib_prefetch_store (b[5]);
       clib_prefetch_store (b[6]);
       clib_prefetch_store (b[7]);
-      b[0]->template = bt;
+      b[0]->_template = bt;
       n_rx_bytes += b[0]->current_length = l[0];
       b[0]->flags = f[0];
-      b[1]->template = bt;
+      b[1]->_template = bt;
       n_rx_bytes += b[1]->current_length = l[1];
       b[1]->flags = f[1];
-      b[2]->template = bt;
+      b[2]->_template = bt;
       n_rx_bytes += b[2]->current_length = l[2];
       b[2]->flags = f[2];
-      b[3]->template = bt;
+      b[3]->_template = bt;
       n_rx_bytes += b[3]->current_length = l[3];
       b[3]->flags = f[3];
     }
 
   for (; n_left > 0; b += 1, f += 1, l += 1, n_left -= 1)
     {
-      b[0]->template = bt;
+      b[0]->_template = bt;
       n_rx_bytes += b[0]->current_length = l[0];
       b[0]->flags = f[0];
     }

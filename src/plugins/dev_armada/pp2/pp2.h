@@ -165,20 +165,20 @@ vnet_dev_tx_queue_op_no_rv_t mvpp2_txq_free;
 /* inline funcs */
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, mvpp2_log.class, "%U" f,                    \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, mvpp2_log._class, "%U" f,                    \
 	    format_vnet_dev_log, (dev),                                       \
 	    clib_string_skip_prefix (__func__, "mvpp2_"), ##__VA_ARGS__)
 #define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, mvpp2_log.class, "%U" f,                     \
+  vlib_log (VLIB_LOG_LEVEL_INFO, mvpp2_log._class, "%U" f,                     \
 	    format_vnet_dev_log, (dev), 0, ##__VA_ARGS__)
 #define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, mvpp2_log.class, "%U" f,                   \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, mvpp2_log._class, "%U" f,                   \
 	    format_vnet_dev_log, (dev), 0, ##__VA_ARGS__)
 #define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, mvpp2_log.class, "%U" f,                  \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, mvpp2_log._class, "%U" f,                  \
 	    format_vnet_dev_log, (dev), 0, ##__VA_ARGS__)
 #define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, mvpp2_log.class, "%U" f, format_vnet_dev_log, \
+  vlib_log (VLIB_LOG_LEVEL_ERR, mvpp2_log._class, "%U" f, format_vnet_dev_log, \
 	    (dev), 0, ##__VA_ARGS__)
 
 #define foreach_mvpp2_tx_node_counter                                         \

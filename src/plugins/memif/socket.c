@@ -657,7 +657,7 @@ memif_conn_fd_accept_ready (clib_file_t * uf)
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
     pool_elt_at_index (mm->socket_files, uf->private_data);
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   clib_error_t *err;
   clib_socket_t *client;
 
@@ -667,14 +667,14 @@ memif_conn_fd_accept_ready (clib_file_t * uf)
   if (err)
     goto error;
 
-  template.read_function = memif_master_conn_fd_read_ready;
-  template.write_function = memif_master_conn_fd_write_ready;
-  template.error_function = memif_master_conn_fd_error;
-  template.file_descriptor = client->fd;
-  template.private_data = uf->private_data;
-  template.description = format (0, "memif in conn on %s", msf->filename);
+  _template.read_function = memif_master_conn_fd_read_ready;
+  _template.write_function = memif_master_conn_fd_write_ready;
+  _template.error_function = memif_master_conn_fd_error;
+  _template.file_descriptor = client->fd;
+  _template.private_data = uf->private_data;
+  _template.description = format (0, "memif in conn on %s", msf->filename);
 
-  memif_file_add (&client->private_data, &template);
+  memif_file_add (&client->private_data, &_template);
 
   err = memif_msg_enq_hello (client);
   if (err)

@@ -425,25 +425,25 @@ vlib_punt_reason_alloc (vlib_punt_hdl_t client, const char *reason_name,
 			vlib_punt_reason_t *reason, u32 flags,
 			format_function_t *flags_format)
 {
-  vlib_punt_reason_t new;
+  vlib_punt_reason_t _new;
 
   if (!punt_validate_client (client))
     return -2;
 
-  new = punt_reason_last++;
-  vec_validate (punt_reason_data, new);
-  punt_reason_data[new].pd_name = format (NULL, "%s", reason_name);
-  punt_reason_data[new].pd_reason = new;
-  punt_reason_data[new].pd_fn = fn;
-  punt_reason_data[new].pd_data = data;
-  punt_reason_data[new].flags = flags;
-  punt_reason_data[new].flags_format = flags_format;
-  vec_add1 (punt_reason_data[new].pd_owners, client);
+  _new = punt_reason_last++;
+  vec_validate (punt_reason_data, _new);
+  punt_reason_data[_new].pd_name = format (NULL, "%s", reason_name);
+  punt_reason_data[_new].pd_reason = _new;
+  punt_reason_data[_new].pd_fn = fn;
+  punt_reason_data[_new].pd_data = data;
+  punt_reason_data[_new].flags = flags;
+  punt_reason_data[_new].flags_format = flags_format;
+  vec_add1 (punt_reason_data[_new].pd_owners, client);
 
-  vlib_validate_combined_counter (&punt_counters, new);
-  vlib_zero_combined_counter (&punt_counters, new);
+  vlib_validate_combined_counter (&punt_counters, _new);
+  vlib_zero_combined_counter (&punt_counters, _new);
 
-  *reason = new;
+  *reason = _new;
 
   /* build the DP data-base */
   punt_reg_mk_dp (*reason);

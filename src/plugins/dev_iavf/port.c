@@ -450,7 +450,7 @@ iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
   vnet_dev_t *dev = port->dev;
   char *ed = state ? "ena" : "disa";
   char qstr[16];
-  u64 old, new = 0;
+  u64 old, _new = 0;
 
   state = state != 0;
   old = ap->intr_mode_per_rxq_bitmap;
@@ -460,22 +460,22 @@ iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
       snprintf (qstr, sizeof (qstr), "all queues");
       if (state)
 	foreach_vnet_dev_port_rx_queue (q, port)
-	  u64_bit_set (&new, q->queue_id, 1);
+	  u64_bit_set (&_new, q->queue_id, 1);
     }
   else
     {
       snprintf (qstr, sizeof (qstr), "queue %u", qid);
-      new = old;
-      u64_bit_set (&new, qid, state);
+      _new = old;
+      u64_bit_set (&_new, qid, state);
     }
 
-  if (new == old)
+  if (_new == old)
     {
       log_warn (dev, "interrupt mode already %sbled on %s", ed, qstr);
       return rv;
     }
 
-  ap->intr_mode_per_rxq_bitmap = new;
+  ap->intr_mode_per_rxq_bitmap = _new;
 
   if (port->started)
     {
@@ -487,8 +487,7 @@ iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	}
     }
 
-  log_debug (dev, "interrupt mode %sbled on %s, new bitmap is 0x%x", ed, qstr,
-	     new);
+  log_debug (dev, "interrupt mode %sbled on %s, new bitmap is 0x%x", ed, qstr, _new);
   return rv;
 }
 

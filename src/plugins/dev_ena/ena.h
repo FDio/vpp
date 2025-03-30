@@ -216,19 +216,19 @@ typedef enum
 } ena_tx_node_ctr_t;
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_log.class, "%U" f, format_vnet_dev_log, \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_log._class, "%U" f, format_vnet_dev_log, \
 	    (dev), clib_string_skip_prefix (__func__, "ena_"), ##__VA_ARGS__)
 #define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, ena_log.class, "%U: " f,                     \
+  vlib_log (VLIB_LOG_LEVEL_INFO, ena_log._class, "%U: " f,                     \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, ena_log.class, "%U: " f,                   \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, ena_log._class, "%U: " f,                   \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, ena_log.class, "%U: " f,                  \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, ena_log._class, "%U: " f,                  \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 #define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, ena_log.class, "%U: " f,                      \
+  vlib_log (VLIB_LOG_LEVEL_ERR, ena_log._class, "%U: " f,                      \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
 
 #endif /* _ENA_H_ */

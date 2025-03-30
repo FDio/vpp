@@ -222,7 +222,7 @@ typedef struct
  */
 typedef CLIB_PACKED (struct
 {
-  u8 class;
+  u8 _class;
   u8 cmd;
 }) virtio_net_ctrl_hdr_t;
 

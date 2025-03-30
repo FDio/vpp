@@ -579,7 +579,7 @@ app_rx_mq_fd_write_ready (clib_file_t *cf)
 static void
 app_rx_mqs_epoll_add (application_t *app, app_rx_mq_elt_t *mqe)
 {
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   app_rx_mq_handle_t handle;
   u32 thread_index;
   int fd;
@@ -590,14 +590,14 @@ app_rx_mqs_epoll_add (application_t *app, app_rx_mq_elt_t *mqe)
   handle.app_index = app->app_index;
   handle.thread_index = thread_index;
 
-  template.read_function = app_rx_mq_fd_read_ready;
-  template.write_function = app_rx_mq_fd_write_ready;
-  template.file_descriptor = fd;
-  template.private_data = handle.as_u64;
-  template.polling_thread_index = thread_index;
-  template.description =
+  _template.read_function = app_rx_mq_fd_read_ready;
+  _template.write_function = app_rx_mq_fd_write_ready;
+  _template.file_descriptor = fd;
+  _template.private_data = handle.as_u64;
+  _template.polling_thread_index = thread_index;
+  _template.description =
     format (0, "app-%u-rx-mq-%u", app->app_index, thread_index);
-  mqe->file_index = clib_file_add (&file_main, &template);
+  mqe->file_index = clib_file_add (&file_main, &_template);
 }
 
 static void

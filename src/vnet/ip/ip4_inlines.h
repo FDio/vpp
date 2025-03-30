@@ -53,9 +53,9 @@ always_inline u32
 ip4_compute_flow_hash (const ip4_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
-  tcp_header_t *tcp = (void *) (ip + 1);
-  udp_header_t *udp = (void *) (ip + 1);
-  gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  tcp_header_t *tcp = (tcp_header_t *) (ip + 1);
+  udp_header_t *udp = (udp_header_t *) (ip + 1);
+  gtpv1u_header_t *gtpu = (gtpv1u_header_t *) (udp + 1);
   u32 a, b, c, t1, t2;
   uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
   uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
@@ -116,11 +116,11 @@ vlib_buffer_push_ip4_custom (vlib_main_t *vm, vlib_buffer_t *b,
   ip4_header_t *ih;
 
   /* make some room */
-  ih = vlib_buffer_push_uninit (b, sizeof (ip4_header_t));
+  ih = (ip4_header_t *) vlib_buffer_push_uninit (b, sizeof (ip4_header_t));
 
   ih->ip_version_and_header_length = 0x45;
-  ip4_header_set_dscp (ih, dscp);
-  ip4_header_set_ecn (ih, 0);
+  ip4_header_set_dscp (ih, (ip_dscp_t) dscp);
+  ip4_header_set_ecn (ih, (ip_ecn_t) 0);
   ih->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
 
   /* No fragments */

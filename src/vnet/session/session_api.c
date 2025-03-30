@@ -35,11 +35,11 @@ VLIB_REGISTER_LOG_CLASS (session_api_log, static) = { .class_name = "session",
 						      .subclass_name = "api" };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (session_api_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+  vlib_log_debug (session_api_log._class, "%s: " fmt, __func__, __VA_ARGS__)
 #define log_warn(fmt, ...)                                                    \
-  vlib_log_warn (session_api_log.class, fmt, __VA_ARGS__)
+  vlib_log_warn (session_api_log._class, fmt, __VA_ARGS__)
 #define log_err(fmt, ...)                                                     \
-  vlib_log_err (session_api_log.class, fmt, __VA_ARGS__)
+  vlib_log_err (session_api_log._class, fmt, __VA_ARGS__)
 
 static int
 verify_message_len (void *mp, u64 expected_len, char *where)

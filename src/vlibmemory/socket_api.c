@@ -450,21 +450,21 @@ void
 socksvr_file_add (clib_file_main_t * fm, int fd)
 {
   vl_api_registration_t *rp;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
 
   pool_get (socket_main.registration_pool, rp);
   clib_memset (rp, 0, sizeof (*rp));
 
-  template.read_function = vl_socket_read_ready;
-  template.write_function = vl_socket_write_ready;
-  template.error_function = vl_socket_error_ready;
-  template.file_descriptor = fd;
-  template.description = format (0, "socksrv");
-  template.private_data = rp - socket_main.registration_pool;
+  _template.read_function = vl_socket_read_ready;
+  _template.write_function = vl_socket_write_ready;
+  _template.error_function = vl_socket_error_ready;
+  _template.file_descriptor = fd;
+  _template.description = format (0, "socksrv");
+  _template.private_data = rp - socket_main.registration_pool;
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_SERVER;
   rp->vl_api_registration_pool_index = rp - socket_main.registration_pool;
-  rp->clib_file_index = clib_file_add (fm, &template);
+  rp->clib_file_index = clib_file_add (fm, &_template);
 }
 
 static clib_error_t *
@@ -791,7 +791,7 @@ vl_sock_api_init (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
   clib_file_main_t *fm = &file_main;
-  clib_file_t template = { 0 };
+  clib_file_t _template = { 0 };
   vl_api_registration_t *rp;
   socket_main_t *sm = &socket_main;
   clib_socket_t *sock = &sm->socksvr_listen_socket;
@@ -831,13 +831,13 @@ vl_sock_api_init (vlib_main_t * vm)
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_LISTEN;
 
-  template.read_function = socksvr_accept_ready;
-  template.write_function = socksvr_bogus_write;
-  template.file_descriptor = sock->fd;
-  template.description = format (0, "socksvr %s", sock->config);
-  template.private_data = rp - sm->registration_pool;
+  _template.read_function = socksvr_accept_ready;
+  _template.write_function = socksvr_bogus_write;
+  _template.file_descriptor = sock->fd;
+  _template.description = format (0, "socksvr %s", sock->config);
+  _template.private_data = rp - sm->registration_pool;
 
-  rp->clib_file_index = clib_file_add (fm, &template);
+  rp->clib_file_index = clib_file_add (fm, &_template);
   return 0;
 }
 

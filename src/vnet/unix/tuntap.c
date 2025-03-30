@@ -650,11 +650,11 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   {
-    clib_file_t template = { 0 };
-    template.read_function = tuntap_read_ready;
-    template.file_descriptor = tm->dev_net_tun_fd;
-    template.description = format (0, "vnet tuntap");
-    tm->clib_file_index = clib_file_add (&file_main, &template);
+    clib_file_t _template = { 0 };
+    _template.read_function = tuntap_read_ready;
+    _template.file_descriptor = tm->dev_net_tun_fd;
+    _template.description = format (0, "vnet tuntap");
+    tm->clib_file_index = clib_file_add (&file_main, &_template);
   }
 
 done:

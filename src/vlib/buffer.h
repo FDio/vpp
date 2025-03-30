@@ -162,7 +162,7 @@ typedef struct
 STATIC_ASSERT_SIZEOF (vlib_buffer_template_t, 64);
 
 /** VLIB buffer representation. */
-typedef union
+typedef union vlib_buffer_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct
@@ -173,7 +173,7 @@ typedef union
       {
 	vlib_buffer_template_fields
       };
-      vlib_buffer_template_t template;
+      vlib_buffer_template_t _template;
     };
 
     /* Data above is initialized or zeroed on alloc, data bellow is not

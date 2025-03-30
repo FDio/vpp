@@ -29,7 +29,7 @@ nsh_main_t nsh_main;
 
 /* Uses network order's class and type to register */
 int
-nsh_md2_register_option (u16 class,
+nsh_md2_register_option (u16 _class,
 			 u8 type,
 			 u8 option_size,
 			 int add_options (u8 * opt,
@@ -48,7 +48,7 @@ nsh_md2_register_option (u16 class,
   uword *p;
   nsh_option_map_t *nsh_option;
 
-  key.class = class;
+  key._class = _class;
   key.type = type;
   key.pad = 0;
 
@@ -85,13 +85,13 @@ nsh_md2_register_option (u16 class,
 
 /* Uses network order's class and type to lookup */
 nsh_option_map_t *
-nsh_md2_lookup_option (u16 class, u8 type)
+nsh_md2_lookup_option (u16 _class, u8 type)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_option_map_by_key_t key;
   uword *p;
 
-  key.class = class;
+  key._class = _class;
   key.type = type;
   key.pad = 0;
 
@@ -108,7 +108,7 @@ nsh_md2_lookup_option (u16 class, u8 type)
 
 /* Uses network order's class and type to unregister */
 int
-nsh_md2_unregister_option (u16 class,
+nsh_md2_unregister_option (u16 _class,
 			   u8 type,
 			   int options (vlib_buffer_t * b,
 					nsh_tlv_header_t * opt),
@@ -120,7 +120,7 @@ nsh_md2_unregister_option (u16 class,
   hash_pair_t *hp;
   nsh_option_map_t *nsh_option;
 
-  key.class = class;
+  key._class = _class;
   key.type = type;
   key.pad = 0;
 

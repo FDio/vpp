@@ -719,7 +719,7 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
 {
   uword old_alloc_size;
   clib_mem_heap_t *h = heap ? heap : clib_mem_get_per_cpu_heap ();
-  void *new;
+  void *_new;
 
   ASSERT (count_set_bits (align) == 1);
 
@@ -741,16 +741,16 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
     }
   else
     {
-      new = clib_mem_heap_alloc_inline (h, new_size, align, 1);
+      _new = clib_mem_heap_alloc_inline (h, new_size, align, 1);
 
-      clib_mem_unpoison (new, new_size);
+      clib_mem_unpoison (_new, new_size);
       if (old_alloc_size)
 	{
 	  clib_mem_unpoison (p, old_alloc_size);
-	  clib_memcpy_fast (new, p, clib_min (new_size, old_alloc_size));
+	  clib_memcpy_fast (_new, p, clib_min (new_size, old_alloc_size));
 	  clib_mem_heap_free (h, p);
 	}
-      p = new;
+      p = _new;
     }
 
   return p;

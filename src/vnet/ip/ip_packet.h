@@ -184,7 +184,7 @@ ip_csum_sub_even (ip_csum_t c, ip_csum_t x)
 }
 
 always_inline ip_csum_t
-ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
+ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t _new,
 		       u32 field_byte_offset, u32 field_n_bytes)
 {
   /* For even 1-byte fields on big-endian and odd 1-byte fields on little endian
@@ -193,15 +193,15 @@ ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
       && (field_byte_offset % 2) == CLIB_ARCH_IS_LITTLE_ENDIAN)
     {
       old = old << 8;
-      new = new << 8;
+      _new = _new << 8;
     }
   sum = ip_csum_sub_even (sum, old);
-  sum = ip_csum_add_even (sum, new);
+  sum = ip_csum_add_even (sum, _new);
   return sum;
 }
 
-#define ip_csum_update(sum,old,new,type,field)			\
-  ip_csum_update_inline ((sum), (old), (new),			\
+#define ip_csum_update(sum,old,_new,type,field)			\
+  ip_csum_update_inline ((sum), (old), (_new),			\
 			 STRUCT_OFFSET_OF (type, field),	\
 			 STRUCT_SIZE_OF (type, field))
 

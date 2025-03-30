@@ -19,7 +19,11 @@ else()
   set(CMAKE_C_COMPILER_NAMES clang gcc cc)
 endif()
 
-project(vpp C)
+set(CXX_STANDARD 20)
+set(CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+
+project(vpp LANGUAGES C CXX)
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
   set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")

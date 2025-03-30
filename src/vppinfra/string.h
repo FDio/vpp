@@ -44,6 +44,7 @@
 #ifndef included_clib_string_h
 #define included_clib_string_h
 
+#include "vppinfra/types.h"
 #include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 #include <vppinfra/vector.h>
 #include <vppinfra/error_bootstrap.h>
@@ -72,7 +73,7 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 
 
 static_always_inline void *
-clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
+clib_memcpy_fast (void *__restrict__ dst, const void *__restrict__ src, size_t n)
 {
   ASSERT (dst && src &&
 	  "memcpy(src, dst, n) with src == NULL or dst == NULL is undefined "
@@ -318,7 +319,7 @@ clib_memcpy_le32 (u8 * dst, u8 * src, u8 len)
 static_always_inline void
 clib_memset_u64 (void *p, u64 val, uword count)
 {
-  u64 *ptr = p;
+  u64 *ptr = (u64 *) p;
 #if defined(CLIB_HAVE_VEC512)
   u64x8 v512 = u64x8_splat (val);
   while (count >= 8)
@@ -363,7 +364,7 @@ clib_memset_u64 (void *p, u64 val, uword count)
 static_always_inline void
 clib_memset_u32 (void *p, u32 val, uword count)
 {
-  u32 *ptr = p;
+  u32 *ptr = (u32 *) p;
 #if defined(CLIB_HAVE_VEC512)
   u32x16 v512 = u32x16_splat (val);
   while (count >= 16)
@@ -409,7 +410,7 @@ clib_memset_u32 (void *p, u32 val, uword count)
 static_always_inline void
 clib_memset_u16 (void *p, u16 val, uword count)
 {
-  u16 *ptr = p;
+  u16 *ptr = (u16 *) p;
 #if defined(CLIB_HAVE_VEC512)
   u16x32 v512 = u16x32_splat (val);
   while (count >= 32)
@@ -455,7 +456,7 @@ clib_memset_u16 (void *p, u16 val, uword count)
 static_always_inline void
 clib_memset_u8 (void *p, u8 val, uword count)
 {
-  u8 *ptr = p;
+  u8 *ptr = (u8 *) p;
 #if defined(CLIB_HAVE_VEC512)
   u8x64 v512 = u8x64_splat (val);
   while (count >= 64)

@@ -1299,18 +1299,18 @@ lcp_router_fib_route_path_dup (fib_route_path_t *old)
   int idx;
   fib_route_path_t *p;
 
-  fib_route_path_t *new = vec_dup (old);
-  if (!new)
+  fib_route_path_t *_new = vec_dup (old);
+  if (!_new)
     return NULL;
 
-  for (idx = 0; idx < vec_len (new); idx++)
+  for (idx = 0; idx < vec_len (_new); idx++)
     {
-      p = &new[idx];
+      p = &_new[idx];
       if (p->frp_label_stack)
 	p->frp_label_stack = vec_dup (p->frp_label_stack);
     }
 
-  return new;
+  return _new;
 }
 
 static void

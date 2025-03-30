@@ -249,7 +249,7 @@ pppoe_learn_process (BVT (clib_bihash) * table,
        */
       return;
     }
-  else if (result0->fields.sw_if_index == ~0)
+  else if (result0->fields.sw_if_index == ~0U)
     {
       /* The entry was not in table, so add it  */
       result0->fields.sw_if_index = sw_if_index0;

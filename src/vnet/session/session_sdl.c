@@ -23,11 +23,11 @@ VLIB_REGISTER_LOG_CLASS (session_sdl_log, static) = { .class_name = "session",
 						      .subclass_name = "sdl" };
 
 #define log_debug(fmt, ...)                                                   \
-  vlib_log_debug (session_sdl_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+  vlib_log_debug (session_sdl_log._class, "%s: " fmt, __func__, __VA_ARGS__)
 #define log_warn(fmt, ...)                                                    \
-  vlib_log_warn (session_sdl_log.class, fmt, __VA_ARGS__)
+  vlib_log_warn (session_sdl_log._class, fmt, __VA_ARGS__)
 #define log_err(fmt, ...)                                                     \
-  vlib_log_err (session_sdl_log.class, fmt, __VA_ARGS__)
+  vlib_log_err (session_sdl_log._class, fmt, __VA_ARGS__)
 
 static session_sdl_main_t sdl_main;
 static session_sdl_main_t *sdlm = &sdl_main;

@@ -916,11 +916,11 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* Register socket */
   clib_file_main_t *fm = &file_main;
-  clib_file_t template = { 0 };
-  template.read_function = punt_socket_read_ready;
-  template.file_descriptor = pm->socket_fd;
-  template.description = format (0, "punt socket %s", socket_path);
-  pm->clib_file_index = clib_file_add (fm, &template);
+  clib_file_t _template = { 0 };
+  _template.read_function = punt_socket_read_ready;
+  _template.file_descriptor = pm->socket_fd;
+  _template.description = format (0, "punt socket %s", socket_path);
+  pm->clib_file_index = clib_file_add (fm, &_template);
 
   pm->is_configured = true;
 

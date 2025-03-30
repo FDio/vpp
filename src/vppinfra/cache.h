@@ -87,7 +87,7 @@
 #define CLIB_PREFETCH(addr, size, type)                                       \
   do                                                                          \
     {                                                                         \
-      void *_addr = (addr);                                                   \
+      u8 *_addr = (u8 *) (addr);                                                   \
                                                                               \
       ASSERT ((size) <= 4 * CLIB_CACHE_PREFETCH_BYTES);                       \
       _CLIB_PREFETCH (0, size, type);                                         \
@@ -100,7 +100,7 @@
 #define CLIB_TARGETED_PREFETCH(addr, size, type, locality)                    \
   do                                                                          \
     {                                                                         \
-      void *_addr = (addr);                                                   \
+      u8 *_addr = (u8 *) (addr);                                                   \
                                                                               \
       ASSERT ((size) <= 4 * CLIB_CACHE_PREFETCH_BYTES);                       \
       _CLIB_TARGETED_PREFETCH (0, size, type, locality);                      \

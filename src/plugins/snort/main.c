@@ -30,8 +30,8 @@ VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
   .class_name = "snort",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...) vlib_log_debug (snort_log._class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...)   vlib_log_err (snort_log._class, fmt, __VA_ARGS__)
 
 snort_main_t *
 snort_get_main ()
@@ -521,7 +521,7 @@ snort_vnet_feature_enable_disable (snort_attach_dir_t snort_dir,
 				   is_enable, &fa_data, sizeof (fa_data));
       break;
     default:
-      vlib_log_err (snort_log.class,
+      vlib_log_err (snort_log._class,
 		    "Invalid direction given to enable/disable snort");
       break;
     }
@@ -601,7 +601,7 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
   if (snort_dir == SNORT_INVALID)
     {
       rv = VNET_API_ERROR_INVALID_ARGUMENT;
-      vlib_log_err (snort_log.class,
+      vlib_log_err (snort_log._class,
 		    "cannot attach/detach with invalid direction ");
       goto done;
     }

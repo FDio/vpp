@@ -19,7 +19,7 @@
 #include <vnet/ip/ip_types.h>
 
 /** Default: 5-tuple + flowlabel without the "reverse" bit */
-#define IP_FLOW_HASH_DEFAULT (0x9F)
+#define IP_FLOW_HASH_DEFAULT (flow_hash_config_t)(0x9F)
 
 #define foreach_flow_hash_bit_v1                                              \
   _ (src, IP_FLOW_HASH_SRC_ADDR)                                              \

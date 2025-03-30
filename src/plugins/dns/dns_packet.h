@@ -99,7 +99,7 @@ typedef CLIB_PACKED (struct {
  */
 typedef CLIB_PACKED (struct {
   u16 type;	/**< record type requested */
-  u16 class;	/**< class, 1 = internet */
+  u16 _class;	/**< class, 1 = internet */
 }) dns_query_t;
 
 /**
@@ -107,7 +107,7 @@ typedef CLIB_PACKED (struct {
  */
 typedef CLIB_PACKED (struct {
   u16 type;	/**< record type */
-  u16 class;	/**< class, 1 = internet */
+  u16 _class;	/**< class, 1 = internet */
   u32 ttl;	/**< time to live, in seconds */
   u16 rdlength;
   /**< length of r */
