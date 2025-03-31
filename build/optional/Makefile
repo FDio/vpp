@@ -57,7 +57,7 @@ deb/debian/changelog: Makefile
 	@echo " -- VPP Dev <vpp-dev@lists.fd.io>  $(shell date -R --date=@${SOURCE_DATE_EPOCH})" >> $@
 
 $(DEV_DEB): deb/debian/changelog
-	@cd deb && dpkg-buildpackage -b -uc -us
+	@cd deb && sudo apt-get -y build-dep . && dpkg-buildpackage -b -uc -us
 	git clean -fdx deb
 
 build-deb: $(DEV_DEB)
