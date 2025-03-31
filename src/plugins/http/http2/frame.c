@@ -233,7 +233,7 @@ http2_frame_write_goaway (http2_error_t error_code, u32 last_stream_id,
   u8 *p;
   u32 value;
 
-  ASSERT (last_stream_id > 0 && last_stream_id <= 0x7FFFFFFF);
+  ASSERT (last_stream_id <= 0x7FFFFFFF);
 
   http2_frame_header_t fh = { .type = HTTP2_FRAME_TYPE_GOAWAY,
 			      .length = GOAWAY_MIN_SIZE };
