@@ -1,0 +1,27 @@
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/mkdeb.inc"
+
+mkdeb init \
+  --name vpp-dep-ipsec-mb \
+  --description "VPP development package for Intel IPSec MB library"
+
+mkdeb fetch-github \
+  --repo intel/intel-ipsec-mb
+
+make_args=(
+  "-C" "${src_dir}/lib"
+  "EXTRA_CFLAGS=-g -O3"
+  "SHARED=n"
+  "SAFE_PARAM=n"
+  "SAFE_LOOKUP=n"
+  "SAFE_DATA=n"
+  "PREFIX=${install_dir}"
+)
+
+mkdeb log "Compiling ..."
+make -j "${make_args[@]}" all
+
+mkdeb log "Installing to ${staging_dir} ..."
+make "${make_args[@]}" install
+
+mkdeb finalize

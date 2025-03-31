@@ -1,0 +1,33 @@
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/mkdeb.inc"
+
+mkdeb init \
+  --name vpp-dep-rdma-core \
+  --description "VPP development package for RDMA core library"
+
+mkdeb fetch-github \
+  --repo linux-rdma/rdma-core
+
+mkdeb log "Configuring ..."
+cmake \
+  -S ${src_dir} \
+  -B ${build_dir} \
+  -G Ninja \
+  -DENABLE_STATIC=1 \
+  -DENABLE_RESOLVE_NEIGH=0 \
+  -DNO_PYVERBS=1 \
+  -DENABLE_VALGRIND=0 \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_INSTALL_PREFIX=${install_dir} \
+  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DCMAKE_INSTALL_RUNDIR:PATH=/run \
+  -DCMAKE_C_FLAGS='-fPIC' \
+  -DNO_MAN_PAGES=ON
+
+mkdeb log "Compiling ..."
+cmake --build ${build_dir}
+
+mkdeb log "Installing to ${staging_dir} ..."
+cmake --install ${build_dir}
+
+mkdeb finalize

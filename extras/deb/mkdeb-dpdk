@@ -2,18 +2,15 @@
 source "$(dirname "${BASH_SOURCE[0]}")/mkdeb.inc"
 
 mkdeb init \
-  --name vpp-dep-octeon-roc \
-  --description "VPP development package for Marvell ROC"
-
+  --name vpp-dep-dpdk \
+  --description "VPP development package for DPDK"
 
 mkdeb fetch-github \
-  --repo MarvellEmbeddedProcessors/marvell-octeon-roc
+  --repo DPDK/dpdk
 
 mkdeb log "Configuring ..."
-cmake \
-  -S ${src_dir} \
-  -B ${build_dir} \
-  -G Ninja
+python3 -m venv ${build_dir}/.venv
+${build_dir}/.venv/pip3 install meson
 
 mkdeb log "Compiling ..."
 cmake --build ${build_dir}

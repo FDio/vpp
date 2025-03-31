@@ -1,0 +1,28 @@
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/mkdeb.inc"
+
+mkdeb init \
+  --name vpp-dep-libdaq \
+  --description "VPP development package for snort3 libdaq"
+
+mkdeb fetch-github \
+  --repo snort3/libdaq
+
+mkdeb log "Configuring ..."
+(
+  set -x
+  cd ${src_dir}
+  ./bootstrap
+  cd ${build_dir}
+  ${src_dir}/configure \
+    --prefix ${install_dir} \
+    --exec-prefix ${install_dir}
+)
+
+mkdeb log "Compiling ..."
+make -C ${build_dir}
+
+mkdeb log "Installing to ${staging_dir} ..."
+make -C ${build_dir} install
+
+mkdeb finalize
