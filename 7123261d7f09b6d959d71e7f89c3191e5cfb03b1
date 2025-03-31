@@ -22,6 +22,30 @@
       },
       "revId": "7123261d7f09b6d959d71e7f89c3191e5cfb03b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c64d493c_e5ed26b1",
+        "filename": "extras/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-03-31T06:20:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d821628e_25234145",
+      "range": {
+        "startLine": 246,
+        "startChar": 5,
+        "endLine": 246,
+        "endChar": 7
+      },
+      "revId": "7123261d7f09b6d959d71e7f89c3191e5cfb03b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
