@@ -40,6 +40,7 @@ struct http_buffer_vft_
   void (*free) (http_buffer_t *);
   svm_fifo_seg_t *(*get_segs) (http_buffer_t *, u32 max_len, u32 *n_segs);
   u32 (*drain) (http_buffer_t *, u32 len);
+  u32 (*bytes_left) (http_buffer_t *);
   u8 (*is_drained) (http_buffer_t *);
 };
 
@@ -63,6 +64,12 @@ static inline u32
 http_buffer_drain (http_buffer_t *hb, u32 len)
 {
   return hb->vft->drain (hb, len);
+}
+
+static inline u32
+http_buffer_bytes_left (http_buffer_t *hb)
+{
+  return hb->vft->bytes_left (hb);
 }
 
 static inline u8
