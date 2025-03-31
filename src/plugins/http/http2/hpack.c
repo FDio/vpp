@@ -849,6 +849,7 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
   b_left = dst_len;
   control_data->parsed_bitmap = 0;
   control_data->headers_len = 0;
+  control_data->content_len_header_index = ~0;
 
   while (p != end)
     {
@@ -902,6 +903,15 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
       header->value_len = value_len;
       control_data->headers_len += name_len;
       control_data->headers_len += value_len;
+      /* find headers that will be used later in preprocessing */
+      if (regular_header_parsed)
+	{
+	  if (control_data->content_len_header_index == ~0 &&
+	      http_token_is ((const char *) name, name_len,
+			     hpack_headers[HTTP_HEADER_CONTENT_LENGTH].base,
+			     hpack_headers[HTTP_HEADER_CONTENT_LENGTH].len))
+	    control_data->content_len_header_index = header - *headers;
+	}
     }
 
   HTTP_DBG (2, "%U", format_hpack_dynamic_table, dynamic_table);
