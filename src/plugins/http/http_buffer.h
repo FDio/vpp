@@ -41,7 +41,12 @@ struct http_buffer_vft_
   u32 (*get_segs) (http_buffer_t *, u32 max_len, svm_fifo_seg_t **fs,
 		   u32 *n_segs);
   u32 (*drain) (http_buffer_t *, u32 len);
+<<<<<<< PATCH SET (49d60c http: http/2 stream state machine)
+  u32 (*bytes_left) (http_buffer_t *);
+  u8 (*is_drained) (http_buffer_t *);
+=======
   u64 (*bytes_left) (http_buffer_t *);
+>>>>>>> BASE      (9ffdb9 http: http_buffer improvements)
 };
 
 void http_buffer_init (http_buffer_t *hb, http_buffer_type_t type,
@@ -67,8 +72,19 @@ http_buffer_drain (http_buffer_t *hb, u32 len)
   return hb->vft->drain (hb, len);
 }
 
+<<<<<<< PATCH SET (49d60c http: http/2 stream state machine)
+static inline u32
+http_buffer_bytes_left (http_buffer_t *hb)
+{
+  return hb->vft->bytes_left (hb);
+}
+
+static inline u8
+http_buffer_is_drained (http_buffer_t *hb)
+=======
 static inline u64
 http_buffer_bytes_left (http_buffer_t *hb)
+>>>>>>> BASE      (9ffdb9 http: http_buffer improvements)
 {
   return hb->vft->bytes_left (hb);
 }

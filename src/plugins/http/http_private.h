@@ -472,6 +472,61 @@ http_get_app_msg (http_req_t *req, http_msg_t *msg)
   ASSERT (rv == sizeof (*msg));
 }
 
+always_inline void
+http_identify_optional_query (http_req_t *req, u8 *rx_buf)
+{
+  int i;
+  for (i = req->target_path_offset;
+       i < (req->target_path_offset + req->target_path_len); i++)
+    {
+      if (rx_buf[i] == '?')
+	{
+	  req->target_query_offset = i + 1;
+	  req->target_query_len = req->target_path_offset +
+				  req->target_path_len -
+				  req->target_query_offset;
+	  req->target_path_len =
+	    req->target_path_len - req->target_query_len - 1;
+	  break;
+	}
+    }
+}
+
+always_inline int
+http_parse_content_length (http_req_t *req, u8 *rx_buf)
+{
+  int i;
+  http_field_line_t *field_line;
+  u8 *p;
+  u64 body_len = 0, digit;
+
+  field_line = vec_elt_at_index (req->headers, req->content_len_header_index);
+  p = rx_buf + req->headers_offset + field_line->value_offset;
+  for (i = 0; i < field_line->value_len; i++)
+    {
+      /* check for digit */
+      if (!isdigit (*p))
+	{
+	  HTTP_DBG (1, "expected digit");
+	  return -1;
+	}
+      digit = *p - '0';
+      u64 new_body_len = body_len * 10 + digit;
+      /* check for overflow */
+      if (new_body_len < body_len)
+	{
+	  HTTP_DBG (1, "content-length value too big number, overflow");
+	  return -1;
+	}
+      body_len = new_body_len;
+      p++;
+    }
+
+  req->body_len = body_len;
+
+  return 0;
+}
+
 /* Abstraction of app session fifo operations */
 
 always_inline void
@@ -493,6 +548,16 @@ http_io_as_max_read (http_req_t *req)
 {
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   return svm_fifo_max_dequeue_cons (as->tx_fifo);
+}
+
+always_inline void
+http_io_as_write (http_req_t *req, u8 *data, u32 len)
+{
+  int n_written;
+  session_t *ts = session_get_from_handle (req->hr_pa_session_handle);
+
+  n_written = svm_fifo_enqueue (ts->tx_fifo, len, data);
+  ASSERT (n_written == len);
 }
 
 always_inline u32
