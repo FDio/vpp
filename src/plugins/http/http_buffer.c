@@ -92,6 +92,15 @@ buf_fifo_drain (http_buffer_t *hb, u32 len)
   return len;
 }
 
+static u32
+buf_fifo_bytes_left (http_buffer_t *hb)
+{
+  http_buffer_fifo_t *bf = (http_buffer_fifo_t *) &hb->data;
+
+  ASSERT (bf->offset <= bf->len);
+  return (bf->len - bf->offset);
+}
+
 static u8
 buf_fifo_is_drained (http_buffer_t *hb)
 {
@@ -106,6 +115,7 @@ const static http_buffer_vft_t buf_fifo_vft = {
   .free = buf_fifo_free,
   .get_segs = buf_fifo_get_segs,
   .drain = buf_fifo_drain,
+  .bytes_left = buf_fifo_bytes_left,
   .is_drained = buf_fifo_is_drained,
 };
 
@@ -184,6 +194,13 @@ buf_ptr_drain (http_buffer_t *hb, u32 len)
   return 0;
 }
 
+static u32
+buf_ptr_bytes_left (http_buffer_t *hb)
+{
+  http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
+  return bf->segs[0].len;
+}
+
 static u8
 buf_ptr_is_drained (http_buffer_t *hb)
 {
@@ -197,6 +214,7 @@ const static http_buffer_vft_t buf_ptr_vft = {
   .free = buf_ptr_free,
   .get_segs = buf_ptr_get_segs,
   .drain = buf_ptr_drain,
+  .bytes_left = buf_ptr_bytes_left,
   .is_drained = buf_ptr_is_drained,
 };
 
