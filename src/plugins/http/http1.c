@@ -157,26 +157,6 @@ http1_read_message (http_conn_t *hc, u8 *rx_buf)
   return 0;
 }
 
-static void
-http1_identify_optional_query (http_req_t *req, u8 *rx_buf)
-{
-  int i;
-  for (i = req->target_path_offset;
-       i < (req->target_path_offset + req->target_path_len); i++)
-    {
-      if (rx_buf[i] == '?')
-	{
-	  req->target_query_offset = i + 1;
-	  req->target_query_len = req->target_path_offset +
-				  req->target_path_len -
-				  req->target_query_offset;
-	  req->target_path_len =
-	    req->target_path_len - req->target_query_len - 1;
-	  break;
-	}
-    }
-}
-
 static int
 http1_parse_target (http_req_t *req, u8 *rx_buf)
 {
@@ -198,7 +178,7 @@ http1_parse_target (http_req_t *req, u8 *rx_buf)
       req->target_path_len--;
       req->target_path_offset++;
       req->target_form = HTTP_TARGET_ORIGIN_FORM;
-      http1_identify_optional_query (req, rx_buf);
+      http_identify_optional_query (req, rx_buf);
       /* can't be CONNECT method */
       return req->method == HTTP_REQ_CONNECT ? -1 : 0;
     }
@@ -240,7 +220,7 @@ http1_parse_target (http_req_t *req, u8 *rx_buf)
 	      clib_warning ("zero length host");
 	      return -1;
 	    }
-	  http1_identify_optional_query (req, rx_buf);
+	  http_identify_optional_query (req, rx_buf);
 	  /* can't be CONNECT method */
 	  return req->method == HTTP_REQ_CONNECT ? -1 : 0;
 	}
@@ -687,10 +667,7 @@ static int
 http1_identify_message_body (http_req_t *req, u8 *rx_buf,
 			     http_status_code_t *ec)
 {
-  int i;
-  u8 *p;
-  u64 body_len = 0, digit;
-  http_field_line_t *field_line;
+  int rv;
 
   req->body_len = 0;
 
@@ -712,32 +689,13 @@ http1_identify_message_body (http_req_t *req, u8 *rx_buf,
       HTTP_DBG (2, "Content-Length header not present, no message-body");
       return 0;
     }
-  field_line = vec_elt_at_index (req->headers, req->content_len_header_index);
 
-  p = rx_buf + req->headers_offset + field_line->value_offset;
-  for (i = 0; i < field_line->value_len; i++)
+  rv = http_parse_content_length (req, rx_buf);
+  if (rv)
     {
-      /* check for digit */
-      if (!isdigit (*p))
-	{
-	  clib_warning ("expected digit");
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
-	}
-      digit = *p - '0';
-      u64 new_body_len = body_len * 10 + digit;
-      /* check for overflow */
-      if (new_body_len < body_len)
-	{
-	  clib_warning ("too big number, overflow");
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
-	}
-      body_len = new_body_len;
-      p++;
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return rv;
     }
-
-  req->body_len = body_len;
 
   req->body_offset = req->headers_offset + req->headers_len + 2;
   HTTP_DBG (2, "body length: %llu", req->body_len);
