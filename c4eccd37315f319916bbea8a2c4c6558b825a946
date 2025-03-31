@@ -124,6 +124,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "102d6d14_7504fb03",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1111,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-31T12:59:17Z",
+      "side": 1,
+      "message": "Yeah, as mentioned before, addressed it in a separate change - https://gerrit.fd.io/r/c/vpp/+/42587",
+      "parentUuid": "7676154a_8946fd33",
+      "revId": "c4eccd37315f319916bbea8a2c4c6558b825a946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eaaf0c3c_2fd66984",

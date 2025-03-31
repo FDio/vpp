@@ -16,6 +16,24 @@
       "message": "let\u0027s add `max_burst` variable and set value to 128 \u003c\u003c 10 or something like that.\n\nAnd in the next patch maybe let\u0027s make it a branch. If timed run is on, let\u0027s use `bytes_to_send \u003d clib_min (max_burst, svm_fifo_max_enqueue_prod (f))` and on the else branch `bytes_to_send \u003d clib_min (es-\u003ebytes_to_send, max_burst)`. Use bytes_to_send afterwards lower in the code.",
       "revId": "7862cb0318c77e95bd78f02784cfbb96e5c3a2f8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac38e26b_dc08647b",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-03-31T12:59:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "53ca7e29_18702697",
+      "revId": "7862cb0318c77e95bd78f02784cfbb96e5c3a2f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
