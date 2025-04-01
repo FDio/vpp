@@ -5,6 +5,8 @@
 import subprocess
 import os
 import sys
+import time
+import signal
 
 
 class VppIperf:
@@ -196,20 +198,31 @@ def start_iperf(
 
 def stop_iperf(iperf_cmd):
     """Stop the iperf process matching the iperf_cmd string."""
-    args = ["pgrep", "-x", "-f", iperf_cmd]
-    p = subprocess.Popen(
-        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
-    )
-    stdout, _ = p.communicate()
-    for pid in stdout.split():
-        try:
-            subprocess.run(
-                f"kill -9 {pid}",
-                encoding="utf-8",
-                shell=True,
-            )
-        except Exception:
-            pass
+    try:
+        result = subprocess.run(
+            ["pgrep", "-x", "-f", iperf_cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+        )
+        pids = result.stdout.strip().split()
+        if not pids:
+            # No matching iperf3 processes found
+            return
+
+        for pid in pids:
+            try:
+                # First send SIGTERM to cleanup and notify the parent process
+                os.kill(int(pid), signal.SIGTERM)
+                time.sleep(2)
+                os.kill(int(pid), 0)  # Check if still alive
+                os.kill(int(pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass  # Process already exited
+            except Exception as e:
+                print(f"Error terminating iperf3 process {pid}: {e}")
+    except Exception as e:
+        print(f"Failed to run pgrep for '{iperf_cmd}': {e}")
 
 
 if __name__ == "__main__":
