@@ -22,6 +22,7 @@
 
 typedef enum
 {
+  IP_PMTU_FRAG_ICMP_ERROR,
   IP_PMTU_DROP,
   IP_PMTU_N_NEXT,
 } ip_pmtu_next_t;
@@ -102,12 +103,11 @@ ip_pmtu_dpo_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		p0, ICMP4_destination_unreachable,
 		ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
 		ipm0->ipm_pmtu);
-	      next0 = IP_FRAG_NEXT_ICMP_ERROR;
+	      next0 = IP_PMTU_FRAG_ICMP_ERROR;
 	    }
 	  else
 	    {
-	      next0 =
-		(error0 == IP_FRAG_ERROR_NONE ? next0 : IP_FRAG_NEXT_DROP);
+	      next0 = (error0 == IP_FRAG_ERROR_NONE ? next0 : IP_PMTU_DROP);
 	    }
 
 	  if (error0 == IP_FRAG_ERROR_NONE)
@@ -178,6 +178,7 @@ VLIB_REGISTER_NODE (ip4_ip_pmtu_dpo_node) = {
   .n_next_nodes = IP_PMTU_N_NEXT,
   .next_nodes =
   {
+   [IP_PMTU_FRAG_ICMP_ERROR] = "ip4-icmp-error",
    [IP_PMTU_DROP] = "ip4-drop",
   }
 };
@@ -190,6 +191,7 @@ VLIB_REGISTER_NODE (ip6_ip_pmtu_dpo_node) = {
   .n_next_nodes = IP_PMTU_N_NEXT,
   .next_nodes =
   {
+   [IP_PMTU_FRAG_ICMP_ERROR] = "ip6-icmp-error",
    [IP_PMTU_DROP] = "ip6-drop",
   }
 };
