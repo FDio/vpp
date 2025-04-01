@@ -16,6 +16,23 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/ : SUCCESS (skipped)\n\nBefore, the test fails: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1\nAfter, the test passes: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-2n-icx/19/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1\n\nAs Patchset #3 edited only the comment message, no need to re-run the tests.",
       "revId": "99291cba307928f0aa40959fb0b8fdfaddef42a8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c34f213_1c54391e",
+        "filename": "src/plugins/dev_iavf/port.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-04-01T15:52:33Z",
+      "side": 1,
+      "message": "This may be more convenient:\n\ndiff --git a/src/plugins/dev_iavf/virtchnl.h b/src/plugins/dev_iavf/virtchnl.h\nindex 2099104c8..72158684e 100644\n--- a/src/plugins/dev_iavf/virtchnl.h\n+++ b/src/plugins/dev_iavf/virtchnl.h\n@@ -560,6 +560,7 @@ typedef struct\n     {\n       u16 unicast_promisc : 1;\n       u16 multicast_promisc : 1;\n+      u16 unused : 14;\n     };\n     u16 flags;\n   };",
+      "revId": "99291cba307928f0aa40959fb0b8fdfaddef42a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
