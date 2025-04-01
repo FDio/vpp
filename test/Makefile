@@ -402,7 +402,7 @@ endif
 LCOV_VERSION=$(shell lcov --version | sed -E 's/^lcov: LCOV version ([0-9]+)[.].*/\1/')
 LCOV_IGNORE_ERRORS=
 ifeq ($(LCOV_VERSION),2)
-LCOV_IGNORE_ERRORS=--ignore-errors unused,empty,mismatch,gcov
+LCOV_IGNORE_ERRORS=--ignore-errors unused,empty,mismatch,gcov,negative
 endif
 
 .PHONY: cov-post
