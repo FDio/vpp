@@ -116,7 +116,6 @@ class VppSRv6Policy(VppObject):
         self.weight = weight
         self.fib_table = fib_table
         self.segments = segments
-        self.n_segments = len(segments)
         # source not passed to API
         # self.source = inet_pton(AF_INET6, source)
         self.source = source
@@ -124,76 +123,14 @@ class VppSRv6Policy(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sr_policy_add(
-            bsid=self.bsid,
+            bsid_addr=self.bsid,
             weight=self.weight,
             is_encap=self.is_encap,
             is_spray=self.sr_type,
             fib_table=self.fib_table,
-            sids={"num_sids": self.n_segments, "sids": self.segments},
-        )
-        self._configured = True
-
-    def remove_vpp_config(self):
-        self._test.vapi.sr_policy_del(self.bsid)
-        self._configured = False
-
-    def query_vpp_config(self):
-        # no API to query SR Policies
-        # use _configured flag for now
-        return self._configured
-
-    def object_id(self):
-        return "%d;%s-><%s>;%d" % (
-            self.sr_type,
-            self.bsid,
-            ",".join(self.segments),
-            self.is_encap,
-        )
-
-
-class VppSRv6PolicyV2(VppObject):
-    """
-    SRv6 Policy
-    """
-
-    def __init__(
-        self,
-        test,
-        bsid,
-        is_encap,
-        sr_type,
-        weight,
-        fib_table,
-        segments,
-        encap_src,
-        source,
-    ):
-        self._test = test
-        self.bsid = bsid
-        self.is_encap = is_encap
-        self.sr_type = sr_type
-        self.weight = weight
-        self.fib_table = fib_table
-        self.segments = segments
-        self.encap_src = encap_src
-        self.n_segments = len(segments)
-
-        # source not passed to API
-        # self.source = inet_pton(AF_INET6, source)
-        self.source = source
-        self._configured = False
-
-    def add_vpp_config(self):
-        self._test.vapi.sr_policy_add_v2(
-            bsid_addr=self.bsid,
-            weight=self.weight,
-            is_encap=self.is_encap,
-            type=self.sr_type,
-            fib_table=self.fib_table,
-            encap_src=self.encap_src,
             sids={
-                "num_sids": self.n_segments,
-                "sids": self._get_fixed_segments(),
+                "num_sids": len(self.segments),
+                "sids": self._get_fixed_segments(self.segments),
                 "weight": 1,
             },
         )
@@ -216,10 +153,121 @@ class VppSRv6PolicyV2(VppObject):
             self.is_encap,
         )
 
-    def _get_fixed_segments(self):
-        segs = copy.copy(self.segments)
+    def _get_fixed_segments(self, segments):
+        segs = copy.copy(segments)
         # note: array expect size is 16
-        for _ in range(16 - self.n_segments):
+        for _ in range(16 - len(segments)):
+            segs.append("")
+        return segs
+
+
+class VppSRv6PolicyV2(VppObject):
+    """
+    SRv6 Policy
+    """
+
+    def __init__(
+        self,
+        test,
+        bsid,
+        is_encap,
+        sr_type,
+        weight,
+        fib_table,
+        encap_src,
+        source,
+    ):
+        self._test = test
+        self.bsid = bsid
+        self.is_encap = is_encap
+        self.sr_type = sr_type
+        self.weight = weight
+        self.fib_table = fib_table
+        self.encap_src = encap_src
+
+        # list of segment list
+        self.seg_lists = []
+
+        # source not passed to API
+        # self.source = inet_pton(AF_INET6, source)
+        self.source = source
+        self._configured = False
+
+    def add_vpp_config(self, segments=[]):
+        self._test.vapi.sr_policy_add_v2(
+            bsid_addr=self.bsid,
+            weight=self.weight,
+            is_encap=self.is_encap,
+            type=self.sr_type,
+            fib_table=self.fib_table,
+            encap_src=self.encap_src,
+            sids={
+                "num_sids": len(segments),
+                "sids": self._get_fixed_segments(segments),
+                "weight": 1,
+            },
+        )
+        self.seg_lists.append(segments)
+        self._configured = True
+
+    def mod_vpp_config(self, segments=[]):
+        # only ADD operation is supported
+        self._test.vapi.sr_policy_mod_v2(
+            bsid_addr=self.bsid,
+            weight=self.weight,
+            fib_table=self.fib_table,
+            operation=1,
+            sl_index=0xFFFFFFFF,
+            encap_src=self.encap_src,
+            sids={
+                "num_sids": len(segments),
+                "sids": self._get_fixed_segments(segments),
+                "weight": 1,
+            },
+        )
+        self.seg_lists.append(segments)
+
+    def remove_vpp_config(self):
+        self._test.vapi.sr_policy_del(self.bsid)
+        self._configured = False
+
+    def query_vpp_config(self):
+        match_counter = 0
+        policies = self._test.vapi.sr_policies_v2_dump()
+        for p in policies:
+            segments_matched = True
+            for i in range(p.num_sid_lists):
+                # transform sid_list from IPv6Address list to string list
+                p_sids = [
+                    str(p) for p in p.sid_lists[i].sids[: p.sid_lists[i].num_sids]
+                ]
+                if p_sids != self.seg_lists[i]:
+                    segments_matched = False
+
+            if (
+                str(p.bsid) == str(self.bsid)
+                and str(p.encap_src) == str(self.encap_src)
+                and p.type == self.sr_type
+                and p.is_encap == self.is_encap
+                and p.fib_table == self.fib_table
+                and p.num_sid_lists == len(self.seg_lists)
+                and segments_matched == True
+            ):
+                match_counter += 1
+        return match_counter == 1
+
+    def object_id(self):
+        return "%d;%s-><%s>;%d" % (
+            self.sr_type,
+            self.bsid,
+            ",".join(self.segments),
+            self.is_encap,
+        )
+
+    def _get_fixed_segments(self, segments):
+        segs = copy.copy(segments)
+        # note: array expect size is 16
+        for _ in range(16 - len(segments)):
             segs.append("")
         return segs
 
@@ -275,9 +323,20 @@ class VppSRv6Steering(VppObject):
         self._configured = False
 
     def query_vpp_config(self):
-        # no API to query steering entries
-        # use _configured flag for now
-        return self._configured
+        match_counter = 0
+        steers = self._test.vapi.sr_steering_pol_dump()
+        for s in steers:
+            if s.traffic_type == self.traffic_type and str(s.bsid) == str(self.bsid):
+                if s.traffic_type == SRv6PolicySteeringTypes.SR_STEER_L2:
+                    if s.sw_if_index == self.sw_if_index:
+                        match_counter += 1
+                elif (
+                    s.fib_table == self.table_id
+                    and str(s.prefix.network_address) == str(self.prefix)
+                    and s.prefix.prefixlen == self.mask_width
+                ):
+                    match_counter += 1
+        return match_counter == 1
 
     def object_id(self):
         return "%d;%d;%s/%d->%s" % (
