@@ -14,6 +14,9 @@
 
 #define HTTP_FIFO_THRESH (16 << 10)
 
+static const http_token_t http2_conn_preface = { http_token_lit (
+  "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") };
+
 typedef union
 {
   struct
@@ -278,6 +281,7 @@ typedef struct http_engine_vft_
   void (*transport_close_callback) (http_conn_t *hc);
   void (*transport_reset_callback) (http_conn_t *hc);
   void (*transport_conn_reschedule_callback) (http_conn_t *hc);
+  void (*conn_accept_callback) (http_conn_t *hc); /* optional */
   void (*conn_cleanup_callback) (http_conn_t *hc);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */

@@ -51,6 +51,24 @@ typedef struct http2_req_
   u32 payload_len;
 } http2_req_t;
 
+#define foreach_http2_conn_flags                                              \
+  _ (EXPECT_PREFACE, "expect-preface")                                        \
+  _ (PREFACE_VERIFIED, "preface-verified")
+
+typedef enum http2_conn_flags_bit_
+{
+#define _(sym, str) HTTP2_CONN_F_BIT_##sym,
+  foreach_http2_conn_flags
+#undef _
+} http2_conn_flags_bit_t;
+
+typedef enum http2_conn_flags_
+{
+#define _(sym, str) HTTP2_CONN_F_##sym = 1 << HTTP2_CONN_F_BIT_##sym,
+  foreach_http2_conn_flags
+#undef _
+} __clib_packed http2_conn_flags_t;
+
 typedef struct http2_conn_ctx_
 {
   http2_conn_settings_t peer_settings;
@@ -253,6 +271,29 @@ http2_stream_close (http2_req_t *req)
 		((http_req_handle_t) req->base.hr_req_handle).req_index);
       session_transport_closing_notify (&req->base.connection);
     }
+}
+
+always_inline void
+http2_send_server_preface (http_conn_t *hc)
+{
+  u8 *response;
+  http2_main_t *h2m = &http2_main;
+  http2_settings_entry_t *setting, *settings_list = 0;
+
+#define _(v, label, member, min, max, default_value, err_code)                \
+  if (h2m->settings.member != default_value)                                  \
+    {                                                                         \
+      vec_add2 (settings_list, setting, 1);                                   \
+      setting->identifier = HTTP2_SETTINGS_##label;                           \
+      setting->value = h2m->settings.member;                                  \
+    }
+  foreach_http2_settings
+#undef _
+
+    response = http_get_tx_buf (hc);
+  http2_frame_write_settings (settings_list, &response);
+  http_io_ts_write (hc, response, vec_len (response), 0);
+  http_io_ts_after_write (hc, 0, 0, 1);
 }
 
 /*************************************/
@@ -844,6 +885,23 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
   return HTTP2_ERROR_NO_ERROR;
 }
 
+static_always_inline int
+http2_expect_preface (http_conn_t *hc, http2_conn_ctx_t *h2c)
+{
+  u8 *rx_buf;
+
+  ASSERT (hc->flags & HTTP_CONN_F_IS_SERVER);
+  h2c->flags &= ~HTTP2_CONN_F_EXPECT_PREFACE;
+
+  /* already done in http core */
+  if (h2c->flags & HTTP2_CONN_F_PREFACE_VERIFIED)
+    return 0;
+
+  rx_buf = http_get_rx_buf (hc);
+  http_io_ts_read (hc, rx_buf, http2_conn_preface.len, 1);
+  return memcmp (rx_buf, http2_conn_preface.base, http2_conn_preface.len);
+}
+
 /*****************/
 /* http core VFT */
 /*****************/
@@ -1014,6 +1072,7 @@ http2_transport_rx_callback (http_conn_t *hc)
   u32 to_deq;
   u8 *rx_buf;
   http2_error_t rv;
+  http2_conn_ctx_t *h2c;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
@@ -1023,6 +1082,28 @@ http2_transport_rx_callback (http_conn_t *hc)
     {
       HTTP_DBG (1, "no data to deq");
       return;
+    }
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  if (h2c->flags & HTTP2_CONN_F_EXPECT_PREFACE)
+    {
+      if (to_deq < http2_conn_preface.len)
+	{
+	  HTTP_DBG (1, "to_deq %u is less than conn preface size", to_deq);
+	  http_disconnect_transport (hc);
+	  return;
+	}
+      if (http2_expect_preface (hc, h2c))
+	{
+	  HTTP_DBG (1, "conn preface verification failed");
+	  http_disconnect_transport (hc);
+	  return;
+	}
+      http2_send_server_preface (hc);
+      http_io_ts_drain (hc, http2_conn_preface.len);
+      to_deq -= http2_conn_preface.len;
+      if (to_deq == 0)
+	return;
     }
 
   if (PREDICT_FALSE (to_deq < HTTP2_FRAME_HEADER_SIZE))
@@ -1160,6 +1241,19 @@ http2_transport_conn_reschedule_callback (http_conn_t *hc)
 }
 
 static void
+http2_conn_accept_callback (http_conn_t *hc)
+{
+  http2_conn_ctx_t *h2c;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  h2c = http2_conn_ctx_alloc_w_thread (hc);
+  h2c->flags |= HTTP2_CONN_F_EXPECT_PREFACE;
+  /* already done in http core */
+  if (http_get_transport_proto (hc) == TRANSPORT_PROTO_TCP)
+    h2c->flags |= HTTP2_CONN_F_PREFACE_VERIFIED;
+}
+
+static void
 http2_conn_cleanup_callback (http_conn_t *hc)
 {
   u32 req_index, stream_id, *req_index_p, *req_indices = 0;
@@ -1269,6 +1363,7 @@ const static http_engine_vft_t http2_engine = {
   .transport_reset_callback = http2_transport_reset_callback,
   .transport_conn_reschedule_callback =
     http2_transport_conn_reschedule_callback,
+  .conn_accept_callback = http2_conn_accept_callback,
   .conn_cleanup_callback = http2_conn_cleanup_callback,
   .enable_callback = http2_enable_callback,
   .unformat_cfg_callback = http2_unformat_config_callback,
@@ -1281,6 +1376,7 @@ http2_init (vlib_main_t *vm)
 
   clib_warning ("http/2 enabled");
   h2m->settings = http2_default_conn_settings;
+  h2m->settings.max_concurrent_streams = 100; /* by default unlimited */
   http_register_engine (&http2_engine, HTTP_VERSION_2);
 
   return 0;
