@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ecf51b4c_701b7203",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2025-04-02T10:50:19Z",
+      "side": 1,
+      "message": "gcov-report",
+      "revId": "092f450f0e1ba58098d50799db51b1a5b4217053",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
