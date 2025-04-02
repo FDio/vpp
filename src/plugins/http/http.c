@@ -420,6 +420,7 @@ http_ts_accept_callback (session_t *ts)
   http_conn_t *lhc, *hc;
   u32 hc_index, thresh;
   http_conn_handle_t hc_handle;
+  transport_proto_t tp;
 
   ts_listener = listen_session_get_from_handle (ts->listener_handle);
   lhc = http_listener_get (ts_listener->opaque);
@@ -436,8 +437,17 @@ http_ts_accept_callback (session_t *ts)
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
 
   ts->session_state = SESSION_STATE_READY;
-  /* TODO: TLS set by ALPN result, TCP: will decide in http_ts_rx_callback */
-  hc->version = HTTP_VERSION_1;
+  tp = session_get_transport_proto (ts);
+  if (tp == TRANSPORT_PROTO_TLS)
+    {
+      /* TODO: set by ALPN result */
+      hc->version = HTTP_VERSION_1;
+    }
+  else
+    {
+      /* going to decide in http_ts_rx_callback */
+      hc->version = HTTP_VERSION_NA;
+    }
   hc_handle.version = hc->version;
   hc_handle.conn_index = hc_index;
   ts->opaque = hc_handle.as_u32;
@@ -449,7 +459,6 @@ http_ts_accept_callback (session_t *ts)
    * the fifo is small (under 16K) we set the threshold to it's size, meaning
    * a notification will be given when the fifo empties.
    */
-  ts = session_get_from_handle (hc->hc_tc_session_handle);
   thresh = clib_min (svm_fifo_size (ts->tx_fifo), HTTP_FIFO_THRESH);
   svm_fifo_set_deq_thresh (ts->tx_fifo, thresh);
 
@@ -532,6 +541,10 @@ http_ts_disconnect_callback (session_t *ts)
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
     hc->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
 
+  /* in case peer close cleartext connection before send something */
+  if (PREDICT_FALSE (hc->version == HTTP_VERSION_NA))
+    return;
+
   http_vfts[hc->version].transport_close_callback (hc);
 }
 
@@ -558,6 +571,8 @@ http_ts_rx_callback (session_t *ts)
 {
   http_conn_t *hc;
   http_conn_handle_t hc_handle;
+  u32 max_deq;
+  u8 *rx_buf;
 
   hc_handle.as_u32 = ts->opaque;
 
@@ -572,7 +587,37 @@ http_ts_rx_callback (session_t *ts)
       return 0;
     }
 
-  /* TODO: if version is unknown */
+  if (hc_handle.version == HTTP_VERSION_NA)
+    {
+      HTTP_DBG (1, "unknown http version");
+      max_deq = svm_fifo_max_dequeue_cons (ts->rx_fifo);
+      if (max_deq >= http2_conn_preface.len)
+	{
+	  rx_buf = http_get_rx_buf (hc);
+	  svm_fifo_peek (ts->rx_fifo, 0, http2_conn_preface.len, rx_buf);
+	  if (memcmp (rx_buf, http2_conn_preface.base,
+		      http2_conn_preface.len) == 0)
+	    {
+#if HTTP_2_ENABLE > 0
+	      hc->version = HTTP_VERSION_2;
+	      http_vfts[hc->version].conn_accept_callback (hc);
+#else
+	      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+	      http_disconnect_transport (hc);
+	      return 0;
+#endif
+	    }
+	  else
+	    hc->version = HTTP_VERSION_1;
+	}
+      else
+	hc->version = HTTP_VERSION_1;
+
+      HTTP_DBG (1, "identified HTTP/%u",
+		hc->version == HTTP_VERSION_1 ? 1 : 2);
+      hc_handle.version = hc->version;
+      ts->opaque = hc_handle.as_u32;
+    }
   http_vfts[hc_handle.version].transport_rx_callback (hc);
 
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
