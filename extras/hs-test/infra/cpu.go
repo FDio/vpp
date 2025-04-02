@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -21,8 +20,6 @@ type CpuContext struct {
 
 type CpuAllocatorT struct {
 	cpus              []int
-	runningInCi       bool
-	buildNumber       int
 	maxContainerCount int
 }
 
@@ -40,13 +37,8 @@ func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int, offset int) (*Cp
 	// indexes, not actual cores
 	var minCpu, maxCpu int
 
-	if c.runningInCi {
-		minCpu = ((c.buildNumber) * c.maxContainerCount * nCpus) + offset
-		maxCpu = ((c.buildNumber + 1) * c.maxContainerCount * nCpus) - 1 + offset
-	} else {
-		minCpu = ((GinkgoParallelProcess() - 1) * c.maxContainerCount * nCpus) + offset
-		maxCpu = (GinkgoParallelProcess() * c.maxContainerCount * nCpus) - 1 + offset
-	}
+	minCpu = ((GinkgoParallelProcess() - 1) * c.maxContainerCount * nCpus) + offset
+	maxCpu = (GinkgoParallelProcess() * c.maxContainerCount * nCpus) - 1 + offset
 
 	if len(c.cpus)-1 < maxCpu {
 		err := fmt.Errorf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
@@ -66,33 +58,9 @@ func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int, offset int) (*Cp
 }
 
 func (c *CpuAllocatorT) readCpus() error {
-	var first, second, third, fourth int
-	var file *os.File
-	var err error
+	var first, second int
 
-	if c.runningInCi {
-		// non-debug build runs on node0, debug on node1
-		if *IsDebugBuild {
-			file, err = os.Open("/sys/devices/system/node/node1/cpulist")
-		} else {
-			file, err = os.Open("/sys/devices/system/node/node0/cpulist")
-		}
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		sc := bufio.NewScanner(file)
-		sc.Scan()
-		line := sc.Text()
-		_, err = fmt.Sscanf(line, "%d-%d,%d-%d", &first, &second, &third, &fourth)
-		if err != nil {
-			return err
-		}
-
-		c.cpus = iterateAndAppend(first, second, c.cpus)
-		c.cpus = iterateAndAppend(third, fourth, c.cpus)
-	} else if NumaAwareCpuAlloc {
+	if NumaAwareCpuAlloc {
 		var range1, range2 int
 		var tmpCpus []int
 
@@ -124,7 +92,7 @@ func (c *CpuAllocatorT) readCpus() error {
 			line := sc.Text()
 
 			for _, coreRange := range strings.Split(line, ",") {
-				if strings.IndexRune(coreRange, '-') != -1 {
+				if strings.ContainsRune(coreRange, '-') {
 					_, err = fmt.Sscanf(coreRange, "%d-%d", &range1, &range2)
 					if err != nil {
 						return err
@@ -148,7 +116,8 @@ func (c *CpuAllocatorT) readCpus() error {
 			// and we can use offsets
 			countToRemove := len(tmpCpus) % (c.maxContainerCount * *NConfiguredCpus)
 			if countToRemove >= len(tmpCpus) {
-				return fmt.Errorf("requested too much CPUs per container (%d) should be no more than %d", *NConfiguredCpus, len(tmpCpus)/c.maxContainerCount)
+				return fmt.Errorf("requested too many CPUs per container (%d), should be no more "+
+					"than %d", *NConfiguredCpus, len(tmpCpus)/c.maxContainerCount)
 			}
 			c.cpus = append(c.cpus, tmpCpus[:len(tmpCpus)-countToRemove]...)
 			tmpCpus = tmpCpus[:0]
@@ -200,16 +169,6 @@ func CpuAllocator() (*CpuAllocatorT, error) {
 		var err error
 		cpuAllocator = new(CpuAllocatorT)
 		cpuAllocator.maxContainerCount = 4
-		buildNumberStr := os.Getenv("BUILD_NUMBER")
-
-		if buildNumberStr != "" {
-			cpuAllocator.runningInCi = true
-			// get last digit of build number
-			cpuAllocator.buildNumber, err = strconv.Atoi(buildNumberStr[len(buildNumberStr)-1:])
-			if err != nil {
-				return nil, err
-			}
-		}
 		err = cpuAllocator.readCpus()
 		if err != nil {
 			return nil, err

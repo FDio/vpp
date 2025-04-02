@@ -33,6 +33,8 @@ func TestHst(t *testing.T) {
 		TestTimeout = time.Minute * 5
 	}
 
+	RunningInCi = os.Getenv("BUILD_NUMBER") != ""
+
 	output, err := os.ReadFile("/sys/devices/system/node/online")
 	if err == nil && strings.Contains(string(output), "-") {
 		NumaAwareCpuAlloc = true

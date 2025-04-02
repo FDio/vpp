@@ -46,6 +46,7 @@ var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
+var RunningInCi bool
 
 type HstSuite struct {
 	AllContainers     map[string]*Container
@@ -443,11 +444,7 @@ func (s *HstSuite) SkipIfNotEnoughAvailableCpus() {
 		availableCpus++
 	}
 
-	if s.CpuAllocator.runningInCi {
-		maxRequestedCpu = ((s.CpuAllocator.buildNumber + 1) * s.CpuAllocator.maxContainerCount * s.CpuCount)
-	} else {
-		maxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
-	}
+	maxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
 
 	if availableCpus < maxRequestedCpu {
 		s.Skip(fmt.Sprintf("Test case cannot allocate requested cpus "+
@@ -516,7 +513,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 				output, _ := exechelper.Output(cmd)
 				AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
 				os.WriteFile(s.getLogDirPath()+"backtrace.log", output, os.FileMode(0644))
-				if s.CpuAllocator.runningInCi {
+				if RunningInCi {
 					err = os.Remove(corePath)
 					if err == nil {
 						s.Log("removed " + corePath)
