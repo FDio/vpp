@@ -165,6 +165,7 @@ typedef struct
 {
   bond_per_port_queue_t *per_port_queue;
   void **data;
+  u32 *active_members;
 } bond_per_thread_data_t;
 
 typedef struct
