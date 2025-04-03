@@ -61,7 +61,11 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 # We allow Darwin (MacOS) for docs generation; VPP build will still fail.
 ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+	ifeq ($(OS_ID),rhel)
+		OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/\..*//')
+	else
+		OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+	endif
 OS_CODENAME  = $(shell grep '^VERSION_CODENAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
@@ -201,6 +205,20 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += infiniband-diags libibumad
 	RPM_DEPENDS += libpcap-devel llvm-toolset
 	RPM_DEPENDS_GROUPS = 'Development Tools'
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),rhel-8)
+	RPM_DEPENDS += yum-utils
+	RPM_DEPENDS += openssl-devel
+	RPM_DEPENDS += python3-ply # for vppapigen
+	RPM_DEPENDS += python36-devel
+	RPM_DEPENDS += python3-pip
+	RPM_DEPENDS += python3-virtualenv
+	RPM_DEPENDS += python3-jsonschema
+	RPM_DEPENDS += gcc-toolset-9
+	RPM_DEPENDS += gcc-toolset-9-libasan-devel
+	RPM_DEPENDS += cmake
+	RPM_DEPENDS += llvm-toolset
+	RPM_DEPENDS += infiniband-diags
+	RPM_DEPENDS += autoconf automake bison byacc libtool
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),anolis-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
@@ -381,7 +399,7 @@ ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	exit 0
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@for i in $(RPM_DEPENDS) ; do \
-	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3,4)  ;	\
+	    RPM=$$(basename -s .rpm "$${i##*/}")  ;	\
 	    MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
 	done							   ;	\
 	if [ -n "$$MISSING" ] ; then \
@@ -403,7 +421,11 @@ ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
-ifeq ($(OS_ID),rhel)
+ifeq ($(OS_ID)-$(OS_VERSION_ID),rhel-8)
+	@sudo -E dnf install $(CONFIRM) https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
+	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),rhel-7)
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)

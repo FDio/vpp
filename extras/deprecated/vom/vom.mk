@@ -15,6 +15,18 @@ vom_configure_depend = vpp-install
 vom_source = extras
 vom_configure_subdir = vom
 
+# OS Detection
+#
+# We allow Darwin (MacOS) for docs generation; VPP build will still fail.
+ifneq ($(shell uname),Darwin)
+OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+	ifeq ($(OS_ID),rhel)
+		OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/\..*//')
+	else
+		OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+	endif
+endif
+
 ifneq ($(shell which cmake3 2>/dev/null),)
 CMAKE?=cmake3
 else
@@ -27,9 +39,16 @@ vom_cmake_args += -DCMAKE_CXX_FLAGS="$($(TAG)_TAG_CPPFLAGS)"
 vom_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
 vom_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 
-# Use devtoolset on centos 7
-ifneq ($(wildcard /opt/rh/devtoolset-9/enable),)
-vom_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-9/root/bin"
+# Use devtoolset
+ifeq ($(OS_ID)-$(OS_VERSION_ID),rhel-8)
+	ifneq ($(wildcard /opt/rh/gcc-toolset-9/enable),)
+	vom_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/gcc-toolset-9/root/bin"
+	endif
+else
+	# Use devtoolset on centos 7
+	ifneq ($(wildcard /opt/rh/devtoolset-9/enable),)
+	vom_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-9/root/bin"
+	endif
 endif
 
 vom_configure = \
