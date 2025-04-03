@@ -748,11 +748,11 @@ config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
     }
 
   vec_add2 (pm->configs, pc, 1);
-  hash_set_mem (pm->config_index_by_name, name, pc - pm->configs);
   pc->is_enabled = is_enable;
   pc->is_disabled = is_disable;
   pc->skip_version_check = skip_version_check;
-  pc->name = name;
+  pc->name = vec_dup (name);
+  hash_set_mem (pm->config_index_by_name, pc->name, pc - pm->configs);
 
 done:
   return error;
@@ -816,6 +816,7 @@ done:
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
 	  error = config_one_plugin (vm, (char *) s, &sub_input);
+	  vec_free (s);
 	  unformat_free (&sub_input);
 	  if (error)
 	    goto done2;
