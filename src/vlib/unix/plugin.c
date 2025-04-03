@@ -816,6 +816,7 @@ done:
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
 	  error = config_one_plugin (vm, (char *) s, &sub_input);
+	  vec_free (s);
 	  unformat_free (&sub_input);
 	  if (error)
 	    goto done2;
