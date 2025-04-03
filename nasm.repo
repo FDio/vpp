@@ -1,0 +1,17 @@
+[nasm]
+name=The Netwide Assembler
+baseurl=https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/linux/
+enabled=1
+gpgcheck=0
+
+[nasm-testing]
+name=The Netwide Assembler (release candidate builds)
+baseurl=http://www.nasm.us/pub/nasm/testing/linux/
+enabled=0
+gpgcheck=0
+
+[nasm-snapshot]
+name=The Netwide Assembler (daily snapshot builds)
+baseurl=http://www.nasm.us/pub/nasm/snapshots/latest/linux/
+enabled=0
+gpgcheck=0
