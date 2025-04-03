@@ -1504,12 +1504,12 @@ static http_sm_result_t
 http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
 				  transport_send_params_t *sp)
 {
-  u32 max_write, n_segs, n_written = 0;
+  u32 max_write, n_read, n_segs, n_written = 0;
   http_buffer_t *hb = &req->tx_buf;
   svm_fifo_seg_t *seg;
   u8 finished = 0;
 
-  ASSERT (!http_buffer_is_drained (hb));
+  ASSERT (http_buffer_bytes_left (hb) > 0);
   max_write = http_io_ts_max_write (hc, sp);
   if (max_write == 0)
     {
@@ -1517,8 +1517,8 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
       goto check_fifo;
     }
 
-  seg = http_buffer_get_segs (hb, max_write, &n_segs);
-  if (!seg)
+  n_read = http_buffer_get_segs (hb, max_write, &seg, &n_segs);
+  if (n_read == 0)
     {
       HTTP_DBG (1, "no data to deq");
       goto check_fifo;
@@ -1527,7 +1527,7 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
   n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
 
   http_buffer_drain (hb, n_written);
-  finished = http_buffer_is_drained (hb);
+  finished = http_buffer_bytes_left (hb) == 0;
 
   if (finished)
     {

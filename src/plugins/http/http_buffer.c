@@ -57,8 +57,9 @@ buf_fifo_free (http_buffer_t *hb)
   vec_free (bf->segs);
 }
 
-static svm_fifo_seg_t *
-buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
+static u32
+buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, svm_fifo_seg_t **fs,
+		   u32 *n_segs)
 {
   http_buffer_fifo_t *bf = (http_buffer_fifo_t *) &hb->data;
 
@@ -77,7 +78,8 @@ buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
 
   HTTP_DBG (1, "available to send %u n_segs %u", len, *n_segs);
 
-  return bf->segs;
+  *fs = bf->segs;
+  return len;
 }
 
 static u32
@@ -92,13 +94,13 @@ buf_fifo_drain (http_buffer_t *hb, u32 len)
   return len;
 }
 
-static u8
-buf_fifo_is_drained (http_buffer_t *hb)
+static u64
+buf_fifo_bytes_left (http_buffer_t *hb)
 {
   http_buffer_fifo_t *bf = (http_buffer_fifo_t *) &hb->data;
 
   ASSERT (bf->offset <= bf->len);
-  return (bf->offset == bf->len);
+  return (bf->len - bf->offset);
 }
 
 const static http_buffer_vft_t buf_fifo_vft = {
@@ -106,7 +108,7 @@ const static http_buffer_vft_t buf_fifo_vft = {
   .free = buf_fifo_free,
   .get_segs = buf_fifo_get_segs,
   .drain = buf_fifo_drain,
-  .is_drained = buf_fifo_is_drained,
+  .bytes_left = buf_fifo_bytes_left,
 };
 
 HTTP_BUFFER_REGISTER_VFT (HTTP_BUFFER_FIFO, buf_fifo_vft);
@@ -115,6 +117,7 @@ typedef struct http_buffer_ptr_
 {
   svm_fifo_seg_t *segs;
   svm_fifo_t *f;
+  u64 len;
 } http_buffer_ptr_t;
 
 STATIC_ASSERT (sizeof (http_buffer_ptr_t) <= HTTP_BUFFER_DATA_SZ, "buf data");
@@ -135,12 +138,11 @@ buf_ptr_init (http_buffer_t *hb, void *data, u64 len)
 
   bf->f = f;
   bf->segs = 0;
-  vec_validate (bf->segs, 1);
+  vec_validate (bf->segs, 0);
 
   bf->segs[0].data = uword_to_pointer (ptr, u8 *);
-  bf->segs[0].len = len;
 
-  bf->segs[1] = bf->segs[0];
+  bf->len = len;
 }
 
 static void
@@ -152,15 +154,17 @@ buf_ptr_free (http_buffer_t *hb)
   vec_free (bf->segs);
 }
 
-static svm_fifo_seg_t *
-buf_ptr_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
+static u32
+buf_ptr_get_segs (http_buffer_t *hb, u32 max_len, svm_fifo_seg_t **fs,
+		  u32 *n_segs)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
   *n_segs = 1;
-  bf->segs[1].len = clib_min (bf->segs[0].len, max_len);
+  bf->segs[0].len = clib_min (bf->len, (u64) max_len);
 
-  return &bf->segs[1];
+  *fs = bf->segs;
+  return bf->segs[0].len;
 }
 
 static u32
@@ -168,14 +172,14 @@ buf_ptr_drain (http_buffer_t *hb, u32 len)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
-  ASSERT (bf->segs[0].len >= len);
+  ASSERT (bf->len >= len);
 
-  bf->segs[1].data += len;
-  bf->segs[0].len -= len;
+  bf->segs[0].data += len;
+  bf->len -= len;
 
-  HTTP_DBG (1, "drained %u left %u", len, bf->segs[0].len);
+  HTTP_DBG (1, "drained %u left %u", len, bf->len);
 
-  if (!bf->segs[0].len)
+  if (!bf->len)
     {
       svm_fifo_dequeue_drop (bf->f, sizeof (uword));
       return sizeof (uword);
@@ -184,12 +188,12 @@ buf_ptr_drain (http_buffer_t *hb, u32 len)
   return 0;
 }
 
-static u8
-buf_ptr_is_drained (http_buffer_t *hb)
+static u64
+buf_ptr_bytes_left (http_buffer_t *hb)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
-  return (bf->segs[0].len == 0);
+  return bf->len;
 }
 
 const static http_buffer_vft_t buf_ptr_vft = {
@@ -197,7 +201,7 @@ const static http_buffer_vft_t buf_ptr_vft = {
   .free = buf_ptr_free,
   .get_segs = buf_ptr_get_segs,
   .drain = buf_ptr_drain,
-  .is_drained = buf_ptr_is_drained,
+  .bytes_left = buf_ptr_bytes_left,
 };
 
 HTTP_BUFFER_REGISTER_VFT (HTTP_BUFFER_PTR, buf_ptr_vft);
