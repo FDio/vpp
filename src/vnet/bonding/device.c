@@ -180,7 +180,7 @@ bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 
 static_always_inline u32
 bond_lb_broadcast (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t *b0,
-		   uword n_members)
+		   uword n_members, u32 *active_members)
 {
   bond_main_t *bm = &bond_main;
   vlib_buffer_t *c0;
@@ -192,13 +192,13 @@ bond_lb_broadcast (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t *b0,
 
   for (port = 1; port < n_members; port++)
     {
-      sw_if_index = *vec_elt_at_index (bif->active_members, port);
-      c0 = vlib_buffer_copy (vm, b0);
-      if (PREDICT_TRUE (c0 != 0))
-	{
-	  vnet_buffer (c0)->sw_if_index[VLIB_TX] = sw_if_index;
-	  bond_tx_add_to_queue (ptd, port, vlib_get_buffer_index (vm, c0));
-	}
+    sw_if_index = *vec_elt_at_index (active_members, port);
+    c0 = vlib_buffer_copy (vm, b0);
+    if (PREDICT_TRUE (c0 != 0))
+      {
+	vnet_buffer (c0)->sw_if_index[VLIB_TX] = sw_if_index;
+	bond_tx_add_to_queue (ptd, port, vlib_get_buffer_index (vm, c0));
+      }
     }
 
   return 0;
@@ -258,7 +258,7 @@ bond_tx_hash (vlib_main_t *vm, bond_per_thread_data_t *ptd, bond_if_t *bif,
 
 static_always_inline void
 bond_tx_no_hash (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t **b, u32 *h,
-		 u32 n_left, uword n_members, u32 lb_alg)
+		 u32 n_left, uword n_members, u32 *active_members, u32 lb_alg)
 {
   while (n_left >= 8)
     {
@@ -282,10 +282,10 @@ bond_tx_no_hash (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t **b, u32 *h,
 	}
       else if (lb_alg == BOND_LB_BC)
 	{
-	  h[0] = bond_lb_broadcast (vm, bif, b[0], n_members);
-	  h[1] = bond_lb_broadcast (vm, bif, b[1], n_members);
-	  h[2] = bond_lb_broadcast (vm, bif, b[2], n_members);
-	  h[3] = bond_lb_broadcast (vm, bif, b[3], n_members);
+	  h[0] = bond_lb_broadcast (vm, bif, b[0], n_members, active_members);
+	  h[1] = bond_lb_broadcast (vm, bif, b[1], n_members, active_members);
+	  h[2] = bond_lb_broadcast (vm, bif, b[2], n_members, active_members);
+	  h[3] = bond_lb_broadcast (vm, bif, b[3], n_members, active_members);
 	}
       else
 	{
@@ -302,7 +302,7 @@ bond_tx_no_hash (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t **b, u32 *h,
       if (bif->lb == BOND_LB_RR)
 	h[0] = bond_lb_round_robin (bif, b[0], n_members);
       else if (bif->lb == BOND_LB_BC)
-	h[0] = bond_lb_broadcast (vm, bif, b[0], n_members);
+	h[0] = bond_lb_broadcast (vm, bif, b[0], n_members, active_members);
       else
 	{
 	  ASSERT (0);
@@ -351,8 +351,8 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
 }
 
 static_always_inline void
-bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
-			 u32 * bi, vlib_buffer_t ** b, u32 * data, u32 n_left,
+bond_update_sw_if_index (bond_per_thread_data_t *ptd, bond_if_t *bif, u32 *bi,
+			 vlib_buffer_t **b, u32 *data, u32 n_left,
 			 int single_sw_if_index)
 {
   u32 sw_if_index = data[0];
@@ -381,13 +381,13 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
       else
 	{
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
-	    *vec_elt_at_index (bif->active_members, h[0]);
+	    *vec_elt_at_index (ptd->active_members, h[0]);
 	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] =
-	    *vec_elt_at_index (bif->active_members, h[1]);
+	    *vec_elt_at_index (ptd->active_members, h[1]);
 	  vnet_buffer (b[2])->sw_if_index[VLIB_TX] =
-	    *vec_elt_at_index (bif->active_members, h[2]);
+	    *vec_elt_at_index (ptd->active_members, h[2]);
 	  vnet_buffer (b[3])->sw_if_index[VLIB_TX] =
-	    *vec_elt_at_index (bif->active_members, h[3]);
+	    *vec_elt_at_index (ptd->active_members, h[3]);
 
 	  bond_tx_add_to_queue (ptd, h[0], bi[0]);
 	  bond_tx_add_to_queue (ptd, h[1], bi[1]);
@@ -410,7 +410,7 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
       else
 	{
 	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
-	    *vec_elt_at_index (bif->active_members, h[0]);
+	    *vec_elt_at_index (ptd->active_members, h[0]);
 	  bond_tx_add_to_queue (ptd, h[0], bi[0]);
 	}
 
@@ -422,8 +422,8 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 }
 
 static_always_inline void
-bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
-	       vlib_buffer_t ** b, u32 n_left, u32 * h)
+bond_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node, bond_if_t *bif,
+	       vlib_buffer_t **b, u32 n_left, u32 *h, u32 *active_members)
 {
   uword n_trace = vlib_get_trace_count (vm, node);
 
@@ -442,14 +442,12 @@ bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
 	  t0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	  if (!h)
 	    {
-	      t0->bond_sw_if_index =
-		*vec_elt_at_index (bif->active_members, 0);
+	    t0->bond_sw_if_index = *vec_elt_at_index (active_members, 0);
 	    }
 	  else
 	    {
-	      t0->bond_sw_if_index =
-		*vec_elt_at_index (bif->active_members, h[0]);
-	      h++;
+	    t0->bond_sw_if_index = *vec_elt_at_index (active_members, h[0]);
+	    h++;
 	    }
 	}
       b++;
@@ -473,7 +471,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
 						  thread_index);
-  u32 p, sw_if_index;
+  u32 p, sw_if_index, n_numa_members;
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
@@ -502,12 +500,24 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
+  /*
+   * Take a snapshot of the active members as members may be freed
+   * asynchronously
+   */
+  clib_spinlock_lock_if_init (&bif->lockp);
+  vec_validate (ptd->active_members, vec_len (bif->active_members) - 1);
+  vec_copy (ptd->active_members, bif->active_members);
+  n_numa_members = bif->n_numa_members;
+  clib_spinlock_unlock_if_init (&bif->lockp);
+  n_members = vec_len (ptd->active_members);
+
   /* active-backup mode, ship everything to first sw if index */
   if ((bif->lb == BOND_LB_AB) || PREDICT_FALSE (n_members == 1))
     {
-      sw_if_index = *vec_elt_at_index (bif->active_members, 0);
+      sw_if_index = *vec_elt_at_index (ptd->active_members, 0);
 
-      bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
+      bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0,
+		     ptd->active_members);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
       goto done;
@@ -515,10 +525,12 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
   if (bif->lb == BOND_LB_BC)
     {
-      sw_if_index = *vec_elt_at_index (bif->active_members, 0);
+      sw_if_index = *vec_elt_at_index (ptd->active_members, 0);
 
-      bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_BC);
-      bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
+      bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members,
+		       ptd->active_members, BOND_LB_BC);
+      bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0,
+		     ptd->active_members);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
       goto done;
@@ -527,10 +539,11 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   /* if have at least one member on local numa node, only members on local numa
      node will transmit pkts when bif->local_numa_only is enabled */
   if (bif->n_numa_members >= 1)
-    n_members = bif->n_numa_members;
+    n_members = n_numa_members;
 
   if (bif->lb == BOND_LB_RR)
-    bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_RR);
+    bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members,
+		     ptd->active_members, BOND_LB_RR);
   else
     bond_tx_hash (vm, ptd, bif, bufs, hashes, n_left);
 
@@ -541,7 +554,8 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   else
     bond_hash_to_port (h, frame->n_vectors, n_members, 0);
 
-  bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, h);
+  bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, h,
+		 ptd->active_members);
 
   bond_update_sw_if_index (ptd, bif, from, bufs, hashes, frame->n_vectors,
 			   /* single_sw_if_index */ 0);
@@ -552,7 +566,7 @@ done:
       vlib_frame_t *f;
       u32 *to_next;
 
-      sw_if_index = *vec_elt_at_index (bif->active_members, p);
+      sw_if_index = *vec_elt_at_index (ptd->active_members, p);
       if (PREDICT_TRUE (ptd->per_port_queue[p].n_buffers))
 	{
 	  f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
@@ -564,6 +578,7 @@ done:
 	  ptd->per_port_queue[p].n_buffers = 0;
 	}
     }
+  vec_reset_length (ptd->active_members);
   return frame->n_vectors;
 }
 
