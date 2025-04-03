@@ -118,6 +118,24 @@
       "message": "This PR could be dropped if https://gerrit.fd.io/r/c/vpp/+/42187 is merged",
       "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c7c2730_bca3effa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-04-03T08:15:49Z",
+      "side": 1,
+      "message": "or this patch https://gerrit.fd.io/r/c/vpp/+/42425",
+      "parentUuid": "cac860ea_3f3462c7",
+      "revId": "d739693be073cc2fd47c1f163a241e7d50c5075c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
