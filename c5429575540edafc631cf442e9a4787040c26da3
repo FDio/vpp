@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd34b188_b7e60ac0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-04-04T11:54:52Z",
+      "side": 1,
+      "message": "Here is the show version output built with ```make VPP_PLATFORM\u003docteon10 build```:\n```\nDBGvpp# show version\nvpp v25.06-rc0~139-g6d1e7b133-octeon10 built by root on 5b47e37467bc at 2025-04-04T03:25:37   \n```\n\nHere is the show version output built with (reproducing build in CI) ```make BUILD_NUMBER\u003d1234 VPP_PLATFORM\u003docteon10 build```:\n```\nDBGvpp# show version\nvpp v25.06-rc0~139-g6d1e7b133~b1234-octeon10 built by root on 5b47e37467bc at 2025-04-04T04:12:28\n```",
+      "revId": "c5429575540edafc631cf442e9a4787040c26da3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
