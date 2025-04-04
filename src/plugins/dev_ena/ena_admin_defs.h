@@ -528,7 +528,7 @@ typedef struct
   u32 os_type;
   u8 os_dist_str[128];
   u32 os_dist;
-  u8 kernel_ver_str[32];
+  u8 kernel_ver_str[48];
   u32 kernel_ver;
 
   struct
@@ -576,7 +576,7 @@ typedef struct
 
 } ena_aq_host_info_t;
 
-STATIC_ASSERT_SIZEOF (ena_aq_host_info_t, 196);
+STATIC_ASSERT_SIZEOF (ena_aq_host_info_t, 212);
 
 typedef struct
 {
