@@ -13,7 +13,6 @@
 
 static ena_aq_host_info_t host_info = {
   .os_type = 3, /* DPDK */
-  .kernel_ver_str = VPP_BUILD_VER,
   .os_dist_str = VPP_BUILD_VER,
   .driver_version = {
     .major = 16,
@@ -171,6 +170,8 @@ ena_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   *ed->host_info = host_info;
   ed->host_info->num_cpus = vlib_get_n_threads ();
+  strncpy ((char *) ed->host_info->kernel_ver_str, VPP_BUILD_VER,
+	   sizeof (ed->host_info->kernel_ver_str) - 1);
   ena_set_mem_addr (vm, dev, &host_attr.os_info_ba, ed->host_info);
 
   if ((rv = ena_aq_set_feature (vm, dev, ENA_ADMIN_FEAT_ID_HOST_ATTR_CONFIG,

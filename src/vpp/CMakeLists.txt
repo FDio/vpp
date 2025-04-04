@@ -20,7 +20,7 @@ add_custom_command(
   COMMAND mkdir
   ARGS -p ${CMAKE_CURRENT_BINARY_DIR}/app
   COMMAND scripts/generate_version_h
-  ARGS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
+  ARGS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h ${VPP_PLATFORM}
   COMMENT "Generating VPP version.h"
 )
 
