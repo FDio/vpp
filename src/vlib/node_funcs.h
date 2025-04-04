@@ -261,6 +261,13 @@ vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
     clib_interrupt_set (interrupts, n->runtime_index);
 }
 
+always_inline int
+vlib_node_is_scheduled (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
+  return rt->stop_timer_handle_plus_1 ? 1 : 0;
+}
+
 always_inline void
 vlib_node_schedule (vlib_main_t *vm, u32 node_index, f64 dt)
 {
@@ -273,11 +280,28 @@ vlib_node_schedule (vlib_main_t *vm, u32 node_index, f64 dt)
     .index = node_index,
   };
 
+  ASSERT (vm == vlib_get_main ());
+  ASSERT (vlib_node_is_scheduled (vm, node_index) == 0);
+
   dt = flt_round_nearest (dt * VLIB_TW_TICKS_PER_SECOND);
   ticks = clib_max ((u64) dt, 1);
 
   rt->stop_timer_handle_plus_1 =
     1 + TW (tw_timer_start) (tw, e.as_u32, 0 /* timer_id */, ticks);
+}
+
+always_inline void
+vlib_node_unschedule (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
+  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
+
+  ASSERT (vm == vlib_get_main ());
+  ASSERT (vlib_node_is_scheduled (vm, node_index) == 1);
+
+  TW (tw_timer_stop) (tw, rt->stop_timer_handle_plus_1);
+
+  rt->stop_timer_handle_plus_1 = 0;
 }
 
 always_inline vlib_process_t *
