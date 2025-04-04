@@ -67,6 +67,7 @@ u32 hss_cache_add_and_attach (hss_cache_t *hc, u8 *path, u8 **data,
 void hss_cache_detach_entry (hss_cache_t *hc, u32 ce_index);
 u32 hss_cache_clear (hss_cache_t *hc);
 void hss_cache_init (hss_cache_t *hc, uword cache_size, u8 debug_level);
+void hss_cache_free (hss_cache_t *hc);
 
 u8 *format_hss_cache (u8 *s, va_list *args);
 
