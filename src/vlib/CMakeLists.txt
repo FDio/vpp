@@ -71,6 +71,19 @@ set(PLATFORM_SOURCES
 )
 endif()
 
+set(VLIB_LIBS vppinfra svm ${CMAKE_DL_LIBS} ${EPOLL_LIB})
+
+vpp_find_path(LIBIBERTY_INCLUDE_DIR libiberty/demangle.h)
+vpp_find_library(LIBIBERTY_LIB NAMES iberty libiberty)
+
+if (LIBIBERTY_INCLUDE_DIR AND LIBUNWIND_LIB)
+  message(STATUS "libiberty found at ${LIBIBERTY_LIB}")
+  list(APPEND VLIB_LIBS ${LIBIBERTY_LIB})
+  add_definitions(-DHAVE_LIBIBERTY)
+else()
+  message(WARNING "libiberty not found - stack trace demangle disabled")
+endif()
+
 add_vpp_library(vlib
   SOURCES
   buffer.c
@@ -159,7 +172,7 @@ add_vpp_library(vlib
   API_FILES
   pci/pci_types.api
 
-  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS} ${EPOLL_LIB}
+  LINK_LIBRARIES ${VLIB_LIBS}
 
   DEPENDS api_headers
 )

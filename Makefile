@@ -106,6 +106,7 @@ DEB_DEPENDS += iperf ethtool  # for 'make test TEST=vm_vpp_interfaces'
 DEB_DEPENDS += libpcap-dev
 DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
+DEB_DEPENDS += libiberty-dev
 DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
