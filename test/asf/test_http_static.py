@@ -77,11 +77,20 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 "exec",
                 self.ns_name,
                 "curl",
+                "--noproxy",
+                "10.10.1.2",
                 "-v",
                 f"10.10.1.2/{self.temp.name[5:]}",
             ],
             capture_output=True,
         )
+        if process.returncode != 0:
+            self.logger.error(
+                f"Subprocess failed with return code {process.returncode}"
+            )
+            self.logger.error(f"stderr: {process.stderr.decode()}")
+            raise RuntimeError("Subprocess execution failed")
+        self.logger.info(self.vapi.cli("sh session verbose"))
         self.assertIn(b"Hello world", process.stdout)
         self.assertIn(b"max-age=600", process.stderr)
 
@@ -93,6 +102,8 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 "exec",
                 self.ns_name,
                 "curl",
+                "--noproxy",
+                "10.10.1.2",
                 f"10.10.1.2/{self.temp2.name[5:]}",
             ],
             capture_output=True,
@@ -183,9 +194,9 @@ class TestHttpStaticCli(VppAsfTestCase):
         )
         self.assertIn(b"Hello world2", process.stdout)
 
-        self.vapi.cli("show http static server cache")
-        self.vapi.cli("clear http static cache")
-        self.vapi.cli("show http static server sessions")
+        self.logger.info(self.vapi.cli("show http static server cache"))
+        self.logger.info(self.vapi.cli("clear http static cache"))
+        self.logger.info(self.vapi.cli("show http static server sessions"))
 
 
 if __name__ == "__main__":

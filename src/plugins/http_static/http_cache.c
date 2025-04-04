@@ -400,6 +400,14 @@ hss_cache_init (hss_cache_t *hc, uword cache_size, u8 debug_level)
   hc->first_index = hc->last_index = ~0;
 }
 
+void
+hss_cache_free (hss_cache_t *hc)
+{
+  hss_cache_clear (hc);
+  BV (clib_bihash_free) (&hc->name_to_data);
+  clib_spinlock_free (&hc->cache_lock);
+}
+
 /** \brief format a file cache entry
  */
 static u8 *
