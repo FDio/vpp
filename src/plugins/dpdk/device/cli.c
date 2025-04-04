@@ -373,6 +373,88 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .function = show_dpdk_version_command_fn,
 };
 
+extern clib_error_t *
+dpdk_detach_device(vlib_main_t *vm, dpdk_main_t *dm, const u32 hw_if_index, u16 *port_id);
+
+static clib_error_t *
+dpdk_detach_cli_command_fn (vlib_main_t *vm,
+                            unformat_input_t *input,
+                            vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = ~0;
+  u16 port_id = ~0;
+
+  if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+                &hw_if_index))
+    ;
+  else if (unformat (input, "%u", &hw_if_index))
+    ;
+  else
+    return clib_error_return (0, "Please specify valid hw-interface name or index");
+
+  error = dpdk_detach_device (vm, dm, hw_if_index, &port_id);
+  if (!error)
+    {
+      vlib_cli_output (vm, "Successfully detached hw_if %u (port_id %u)\n",
+                       hw_if_index, port_id);
+    }
+  return error;
+}
+
+/*?
+ * This command is used to detach the DPDK interface.
+ *
+ * @cliexpar
+ * Example of how to detach the DPDK interface:
+ * @cliexcmd{detach dpdk 1}
+?*/
+VLIB_CLI_COMMAND (detach_dpdk_version_command, static) = {
+  .path = "detach dpdk",
+  .short_help = "detach dpdk <hw-interface-index>",
+  .function = dpdk_detach_cli_command_fn,
+};
+
+extern clib_error_t *
+dpdk_attach_device(vlib_main_t *vm, dpdk_main_t *dm, const vlib_pci_addr_t pci_addr, u16 *port_id);
+
+static clib_error_t *
+dpdk_attach_cli_command_fn (vlib_main_t *vm,
+                            unformat_input_t *input,
+                            vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  dpdk_main_t *dm = &dpdk_main;
+  vlib_pci_addr_t pci_addr = {0};
+  u16 port_id = ~0;
+
+  if (unformat (input, "%U", unformat_vlib_pci_addr, &pci_addr))
+    ;
+  else
+    return clib_error_return (0, "Please specify valid pci-addr");
+  error =  dpdk_attach_device (vm, dm, pci_addr, &port_id);
+  if (!error)
+    {
+      vlib_cli_output (vm, "Successfully attached port %u\n", port_id);
+    }
+  return error;
+}
+
+/*?
+ * This command is used to attach the DPDK interface.
+ *
+ * @cliexpar
+ * Example of how to attach the DPDK interface:
+ * @cliexcmd{attach dpdk 0000:00:04.0}
+?*/
+VLIB_CLI_COMMAND (attach_dpdk_version_command, static) = {
+  .path = "attach dpdk",
+  .short_help = "attach dpdk <pci-addr>",
+  .function = dpdk_attach_cli_command_fn,
+};
+
 /* Dummy function to get us linked in. */
 void
 dpdk_cli_reference (void)
