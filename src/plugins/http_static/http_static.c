@@ -73,16 +73,18 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   int rv;
 
   hsm->fifo_size = fifo_size;
-  hsm->cache_size = cache_limit;
   hsm->prealloc_fifos = prealloc_fifos;
   hsm->private_segment_size = private_segment_size;
-  hsm->www_root = format (0, "%s%c", www_root, 0);
-  hsm->uri = format (0, "%s%c", uri, 0);
-  hsm->max_age = max_age;
-  hsm->max_body_size = max_body_size;
-  hsm->keepalive_timeout = keepalive_timeout;
+  if (uri && parse_uri ((char *) uri, &hsm->default_listener.sep))
+    return VNET_API_ERROR_INVALID_VALUE;
+  hsm->default_listener.www_root = format (0, "%s%c", www_root, 0);
+  hsm->default_listener.cache_size = cache_limit;
+  hsm->default_listener.max_age = max_age;
+  hsm->default_listener.max_body_size = max_body_size;
+  hsm->default_listener.keepalive_timeout = keepalive_timeout;
+  hsm->have_default_listener = 1;
 
-  if (vec_len (hsm->www_root) < 2)
+  if (vec_len (hsm->default_listener.www_root) < 2)
     return VNET_API_ERROR_INVALID_VALUE;
 
   if (hsm->app_index != ~0)
@@ -99,8 +101,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
     case 0:
       break;
     default:
-      vec_free (hsm->www_root);
-      vec_free (hsm->uri);
+      vec_free (hsm->default_listener.www_root);
       return VNET_API_ERROR_INIT_FAILED;
     }
   return 0;
