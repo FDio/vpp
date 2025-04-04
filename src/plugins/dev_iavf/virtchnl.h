@@ -560,6 +560,7 @@ typedef struct
     {
       u16 unicast_promisc : 1;
       u16 multicast_promisc : 1;
+      u16 unused : 14;
     };
     u16 flags;
   };
