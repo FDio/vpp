@@ -596,6 +596,19 @@ http_ts_builtin_tx_callback (session_t *ts)
 }
 
 static void
+http_ts_closed_callback (session_t *ts)
+{
+  http_conn_handle_t hc_handle;
+  http_conn_t *hc;
+
+  hc_handle.as_u32 = ts->opaque;
+  hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
+
+  http_disconnect_transport (hc);
+  hc->state = HTTP_CONN_STATE_CLOSED;
+}
+
+static void
 http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 {
   http_conn_t *hc;
@@ -648,6 +661,7 @@ static session_cb_vft_t http_app_cb_vft = {
   .session_disconnect_callback = http_ts_disconnect_callback,
   .session_connected_callback = http_ts_connected_callback,
   .session_reset_callback = http_ts_reset_callback,
+  .session_transport_closed_callback = http_ts_closed_callback,
   .session_cleanup_callback = http_ts_cleanup_callback,
   .half_open_cleanup_callback = http_ts_ho_cleanup_callback,
   .add_segment_callback = http_add_segment_callback,
