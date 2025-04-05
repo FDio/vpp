@@ -1807,7 +1807,7 @@ http1_app_close_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
       return;
     }
   /* Nothing more to send, confirm close */
-  if (!http_io_as_max_read (req))
+  if (!http_io_as_max_read (req) || hc->state == HTTP_CONN_STATE_CLOSED)
     {
       HTTP_DBG (1, "nothing more to send, confirm close");
       session_transport_closed_notify (&req->connection);
