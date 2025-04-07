@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a7ab239_f5611cef",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-07T05:50:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dff84867_d537aced",
+      "range": {
+        "startLine": 298,
+        "startChar": 6,
+        "endLine": 298,
+        "endChar": 31
+      },
+      "revId": "1c2aac67fa5ca83bbd4aa756d8778cdfb72d14d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3afa1409_3923d47c",
@@ -54,6 +78,30 @@
       "writtenOn": "2025-04-06T11:50:56Z",
       "side": 1,
       "message": "is this needed? same is done in hss_listener_add based on listenr flag if not enabled before",
+      "range": {
+        "startLine": 1037,
+        "startChar": 2,
+        "endLine": 1038,
+        "endChar": 32
+      },
+      "revId": "1c2aac67fa5ca83bbd4aa756d8778cdfb72d14d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a471ead_f8689518",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1038,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-07T05:50:20Z",
+      "side": 1,
+      "message": "Side effect of two distinct changes. I think we can remove it fully now although at one point I was toying with the idea of enabling \"modules\" at server startup instead of initializing them while listener comes up. We\u0027ll have to think about this in the future.",
+      "parentUuid": "3afa1409_3923d47c",
       "range": {
         "startLine": 1037,
         "startChar": 2,
@@ -87,6 +135,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "949818f4_24e88c57",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1102,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-07T05:50:20Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e734ae10_23db3b0f",
+      "range": {
+        "startLine": 1102,
+        "startChar": 3,
+        "endLine": 1102,
+        "endChar": 32
+      },
+      "revId": "1c2aac67fa5ca83bbd4aa756d8778cdfb72d14d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "16e84810_1e84b523",
@@ -100,6 +172,30 @@
       "writtenOn": "2025-04-06T11:50:56Z",
       "side": 1,
       "message": "should be updated with new \"index\" parameter",
+      "range": {
+        "startLine": 1452,
+        "startChar": 0,
+        "endLine": 1467,
+        "endChar": 2
+      },
+      "revId": "1c2aac67fa5ca83bbd4aa756d8778cdfb72d14d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "351f820f_3633552a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1467,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-07T05:50:20Z",
+      "side": 1,
+      "message": "Yup, thanks for that.",
+      "parentUuid": "16e84810_1e84b523",
       "range": {
         "startLine": 1452,
         "startChar": 0,
