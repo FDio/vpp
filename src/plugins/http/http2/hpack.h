@@ -56,6 +56,7 @@ typedef struct
   u8 *headers;
   uword content_len_header_index;
   u32 headers_len;
+  u32 control_data_len;
   u16 parsed_bitmap;
 } hpack_request_control_data_t;
 

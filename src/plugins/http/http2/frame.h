@@ -10,6 +10,7 @@
 #include <http/http2/http2.h>
 
 #define HTTP2_FRAME_HEADER_SIZE 9
+#define HTTP2_PING_PAYLOAD_LEN	8
 
 #define foreach_http2_frame_type                                              \
   _ (0x00, DATA, "DATA")                                                      \
@@ -172,12 +173,22 @@ http2_error_t http2_frame_read_goaway (u32 *last_stream_id, u32 *error_code,
 
 /**
  * Write GOAWAY frame to the end of given vector
+ *
  * @param error_code     Error code
  * @param last_stream_id Last stream ID
  * @param dst            Vector where GOAWAY frame will be written
  */
 void http2_frame_write_goaway (http2_error_t error_code, u32 last_stream_id,
 			       u8 **dst);
+
+/**
+ * Write PING frame to the end of given vector
+ *
+ * @param is_resp Indicate that this is PING response
+ * @param payload Payload to parse
+ * @param dst     Vector where GOAWAY frame will be written
+ */
+void http2_frame_write_ping (u8 is_resp, u8 *payload, u8 **dst);
 
 /**
  * Parse HEADERS frame payload
