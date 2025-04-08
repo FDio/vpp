@@ -913,7 +913,7 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 	    control_data->content_len_header_index = header - *headers;
 	}
     }
-
+  control_data->control_data_len = dst_len - b_left;
   HTTP_DBG (2, "%U", format_hpack_dynamic_table, dynamic_table);
   return HTTP2_ERROR_NO_ERROR;
 }

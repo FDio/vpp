@@ -249,6 +249,22 @@ http2_frame_write_goaway (http2_error_t error_code, u32 last_stream_id,
   /* TODO: Additional Debug Data */
 }
 
+void
+http2_frame_write_ping (u8 is_resp, u8 *payload, u8 **dst)
+{
+  u8 *p;
+  http2_frame_header_t fh = {
+    .type = HTTP2_FRAME_TYPE_PING,
+    .length = HTTP2_PING_PAYLOAD_LEN,
+    .flags = is_resp ? HTTP2_FRAME_FLAG_ACK : 0,
+  };
+
+  p = http2_frame_header_alloc (dst);
+  http2_frame_header_write (&fh, p);
+  vec_add2 (*dst, p, HTTP2_PING_PAYLOAD_LEN);
+  clib_memcpy_fast (p, payload, HTTP2_PING_PAYLOAD_LEN);
+}
+
 #define PRIORITY_DATA_LEN 5
 
 __clib_export http2_error_t
@@ -262,7 +278,7 @@ http2_frame_read_headers (u8 **headers, u32 *headers_len, u8 *payload,
       u8 pad_len = *payload++;
       if ((u32) pad_len >= payload_len)
 	return HTTP2_ERROR_PROTOCOL_ERROR;
-      *headers_len -= pad_len;
+      *headers_len -= (pad_len + 1);
     }
 
   if (flags & HTTP2_FRAME_FLAG_PRIORITY)
@@ -303,7 +319,7 @@ http2_frame_read_data (u8 **data, u32 *data_len, u8 *payload, u32 payload_len,
       u8 pad_len = *payload++;
       if ((u32) pad_len >= payload_len)
 	return HTTP2_ERROR_PROTOCOL_ERROR;
-      *data_len -= pad_len;
+      *data_len -= (pad_len + 1);
     }
 
   *data = payload;
