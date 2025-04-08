@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b9f564a_89f2fe23",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2025-04-08T08:30:31Z",
+      "side": 1,
+      "message": "patch\tdescription\ttest\tresults\nhttps://gerrit.fd.io/r/c/vpp/+/42547\tinit_mb_mgr_auto\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND1518bANDethip4ipsec4tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [3371140.21528717, 3363032.518892128, 3362579.308209781, 3362929.96231049, 3359278.4017717927]\nhttps://gerrit.fd.io/r/c/vpp/+/42547\tinit_mb_mgr_auto\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND1518bANDethip4ipsec1tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [3469759.905305956, 3470557.424338563, 3469712.9827661854, 3469716.4623153675, 3470636.447267679]\nhttps://gerrit.fd.io/r/c/vpp/+/42547\tinit_mb_mgr_auto\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND64bANDethip4ipsec1tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [7504301.408491468, 7504721.466890395, 7512831.169959826, 7511409.121908895, 7516167.601215297]\n\t\t\t\nhttps://gerrit.fd.io/r/c/vpp/+/42541\told_implementation\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND1518bANDethip4ipsec4tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [3322446.6596808853, 3317752.627987572, 3315594.8016780294, 3314476.477756532, 3313922.9035655684]\nhttps://gerrit.fd.io/r/c/vpp/+/42541\told_implementation\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND1518bANDethip4ipsec1tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [3405203.14345464, 3415881.5255510663, 3417686.169860849, 3418765.7670883257, 3418331.3180324854]\nhttps://gerrit.fd.io/r/c/vpp/+/42541\told_implementation\tperftest-3n-icx mrrANDnic_intel-e810cqANDdrv_avfAND4cAND64bANDethip4ipsec1tnlsw-ip4base-int-aes256gcm\tMaximum Receive Rate trial results in packets per second: [7159535.487354805, 7167715.634368464, 7170606.463456005, 7169889.935957423, 7170205.1802543355]\nHere are the test results with and witohout this patch applied on ice lake platform. There is something fishy about 4tnl tests as we use 4c and it doesn\u0027t scale, but this problem is not related with our change.",
+      "revId": "3f3cea65ba4102ee763aaaa680d23487f1ec9bf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b56660ea_77929c26",
