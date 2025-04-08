@@ -128,14 +128,14 @@ prepare_linked_xform (struct rte_crypto_sym_xform *xforms,
 
   xform_cipher->cipher.algo = cipher_algo;
   xform_cipher->cipher.key.data = key_cipher->data;
-  xform_cipher->cipher.key.length = vec_len (key_cipher->data);
+  xform_cipher->cipher.key.length = key_cipher->length;
   xform_cipher->cipher.iv.length = 16;
   xform_cipher->cipher.iv.offset = CRYPTODEV_IV_OFFSET;
 
   xform_auth->auth.algo = auth_algo;
   xform_auth->auth.digest_length = digest_len;
   xform_auth->auth.key.data = key_auth->data;
-  xform_auth->auth.key.length = vec_len (key_auth->data);
+  xform_auth->auth.key.length = key_auth->length;
 
   return 0;
 }
