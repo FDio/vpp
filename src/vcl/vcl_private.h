@@ -71,6 +71,7 @@ typedef enum vcl_session_state_
   VCL_STATE_DISCONNECT,
   VCL_STATE_DETACHED,
   VCL_STATE_UPDATED,
+  VCL_STATE_LISTEN_NO_MQ,
 } vcl_session_state_t;
 
 typedef struct epoll_event vppcom_epoll_event_t;
@@ -143,7 +144,6 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_PENDING_FREE = 1 << 7,
   VCL_SESSION_F_PENDING_LISTEN = 1 << 8,
   VCL_SESSION_F_APP_CLOSING = 1 << 9,
-  VCL_SESSION_F_LISTEN_NO_MQ = 1 << 10,
 } __clib_packed vcl_session_flags_t;
 
 typedef enum vcl_worker_wait_
@@ -325,9 +325,6 @@ typedef struct vcl_worker_
   /* functions to be called pre/post wait if vcl managed by vls */
   vcl_worker_wait_mq_fn pre_wait_fn;
   vcl_worker_wait_mq_fn post_wait_fn;
-
-  /* mq_epfd signal pipes when wrk detached from vpp */
-  int detached_pipefds[2];
 } vcl_worker_t;
 
 STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
@@ -566,8 +563,9 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
       return 0;
     }
 
-  ASSERT (s->session_state == VCL_STATE_LISTEN ||
-	  vcl_session_is_connectable_listener (wrk, s));
+  ASSERT (s->session_state == VCL_STATE_LISTEN
+	  || s->session_state == VCL_STATE_LISTEN_NO_MQ
+	  || vcl_session_is_connectable_listener (wrk, s));
   return s;
 }
 
@@ -802,9 +800,6 @@ void vcl_worker_detach_sessions (vcl_worker_t *wrk);
 void vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
 				 vcl_worker_wait_mq_fn post_wait);
 
-void vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk);
-void vcl_worker_detached_signal_mq (vcl_worker_t *wrk);
-void vcl_worker_detached_stop_signal_mq (vcl_worker_t *wrk);
 /*
  * VCL Binary API
  */

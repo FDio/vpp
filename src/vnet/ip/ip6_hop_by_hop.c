@@ -27,6 +27,8 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/classify/vnet_classify.h>
 
+#include <vnet/ip/isft_packet.h>
+
 /**
  * @file
  * @brief In-band OAM (iOAM).
@@ -216,6 +218,7 @@ format_ip6_add_hop_by_hop_trace (u8 * s, va_list * args)
 					  ip6_add_hop_by_hop_trace_t *);
 
   s = format (s, "IP6_ADD_HOP_BY_HOP: next index %d", t->next_index);
+  
   return s;
 }
 
@@ -242,6 +245,8 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 					vlib_node_runtime_t * node,
 					vlib_frame_t * frame)
 {
+  if(0)
+  {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
@@ -325,19 +330,33 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 	  /* $$$ tune, rewrite_length is a multiple of 8 */
+	  
+	  vlib_cli_output(vm, "ip6_add_hop_by_hop_node\n");
+          vlib_cli_output(vm, "Before memcpy: hbh0->protocol%u, hbh0->length%u",hbh0->protocol,hbh0->length);
+	  
 	  clib_memcpy_fast (hbh0, rewrite, rewrite_length);
+	  
+	  vlib_cli_output(vm, "After memcpy: hbh0->protocol%u, hbh0->length%u",hbh0->protocol,hbh0->length);
+	  
+	  
 	  clib_memcpy_fast (hbh1, rewrite, rewrite_length);
+	  
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */
 	  hbh0->protocol = ip0->protocol;
 	  hbh1->protocol = ip1->protocol;
 	  ip0->protocol = 0;
 	  ip1->protocol = 0;
+	  
+	  vlib_cli_output(vm, "Before memcpy: ip0->payload_length%u",ip0->payload_length);
+	  
 	  new_l0 =
 	    clib_net_to_host_u16 (ip0->payload_length) + rewrite_length;
 	  new_l1 =
 	    clib_net_to_host_u16 (ip1->payload_length) + rewrite_length;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
+	  
+	  vlib_cli_output(vm, "After memcpy: ip0->payload_length%u",ip0->payload_length);
 
 	  /* Populate the (first) h-b-h list elt */
 	  next0 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
@@ -432,9 +451,218 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
+    
 
   vlib_node_increment_counter (vm, ip6_add_hop_by_hop_node.index,
 			       IP6_ADD_HOP_BY_HOP_ERROR_PROCESSED, processed);
+      }
+  else
+  {
+    u32 n_left_from, *from, *to_next;
+  ip_lookup_next_t next_index;
+  u32 processed = 0;
+  //u8 *rewrite = hm->rewrite;
+  u32 isfthdr_length = sizeof(isft_hdr_t);
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+	{
+	  u32 bi0, bi1;
+	  vlib_buffer_t *b0, *b1;
+	  u32 next0, next1;
+	  ip6_header_t *ip0, *ip1;
+          udp_header_t *udp0, *udp1;
+          isft_hdr_t *isft0, *isft1;
+          isft_hdr_t *isft_hdr0 = NULL, *isft_hdr1 = NULL;
+	  //ip6_hop_by_hop_header_t *hbh0, *hbh1;
+	  //u64 *copy_src0, *copy_dst0, *copy_src1, *copy_dst1;
+	  u16 new_l0, new_l1;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p2, *p3;
+
+	    p2 = vlib_get_buffer (vm, from[2]);
+	    p3 = vlib_get_buffer (vm, from[3]);
+
+	    vlib_prefetch_buffer_header (p2, LOAD);
+	    vlib_prefetch_buffer_header (p3, LOAD);
+
+	    CLIB_PREFETCH (p2->data - isfthdr_length,
+			   2 * CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p3->data - isfthdr_length,
+			   2 * CLIB_CACHE_LINE_BYTES, STORE);
+	  }
+
+	  /* speculatively enqueue b0 and b1 to the current next frame */
+	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  from += 2;
+	  to_next += 2;
+	  n_left_from -= 2;
+	  n_left_to_next -= 2;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+
+	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
+	  ip0 = vlib_buffer_get_current (b0);
+	  ip1 = vlib_buffer_get_current (b1);
+
+	  udp0 = (udp_header_t *) (ip0 + 1);
+	  udp1 = (udp_header_t *) (ip1 + 1);
+
+    u8 *payload0;
+    u16 udp0_payload_len;
+    
+    payload0 = (u8 *)udp0 + sizeof(udp_header_t);
+    udp0_payload_len = clib_net_to_host_u16(udp0->length) - sizeof(udp_header_t);
+    clib_memmove(payload0 + 8, payload0, udp0_payload_len);
+    udp0->length = clib_host_to_net_u16(clib_net_to_host_u16(udp0->length) + 8);
+    
+
+    u8 *payload1;
+    u16 udp1_payload_len;
+    
+    payload1 = (u8 *)udp1 + sizeof(udp_header_t);
+    udp1_payload_len = clib_net_to_host_u16(udp1->length) - sizeof(udp_header_t);
+    clib_memmove(payload1 + 8, payload1, udp1_payload_len);
+    udp1->length = clib_host_to_net_u16(clib_net_to_host_u16(udp1->length) + 8);
+
+
+    isft0 = (isft_hdr_t *) (udp0 + 1);
+    isft1 = (isft_hdr_t *) (udp1 + 1);
+	  /* $$$ tune, rewrite_length is a multiple of 8 */
+    generate_isft_header(vm, isft_hdr0, 1, 1, 1, 1, 1);
+    generate_isft_header(vm, isft_hdr1, 2, 2, 2, 2, 2);
+
+    vlib_cli_output(vm, "ip6_add_hop_by_hop_node\n");
+
+	  clib_memcpy_fast (isft0, isft_hdr0, sizeof(isft_hdr_t));
+    clib_memcpy_fast (isft1, isft_hdr1, sizeof(isft_hdr_t));
+
+
+    vlib_cli_output(vm, "Before memcpy: ip0->payload_length%u",ip0->payload_length);
+
+	  new_l0 =
+	    clib_net_to_host_u16 (ip0->payload_length) + sizeof(isft_hdr_t);
+	  new_l1 =
+	    clib_net_to_host_u16 (ip1->payload_length) + sizeof(isft_hdr_t);
+	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
+
+    vlib_cli_output(vm, "After memcpy: ip0->payload_length%u",ip0->payload_length);
+
+	  /* Populate the (first) h-b-h list elt */
+	  next0 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
+	  next1 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
+
+
+	  /* $$$$$ End of processing 2 x packets $$$$$ */
+
+	  /*if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+	    {
+	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  ip6_add_hop_by_hop_trace_t *t =
+		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  t->next_index = next0;
+		}
+	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  ip6_add_hop_by_hop_trace_t *t =
+		    vlib_add_trace (vm, node, b1, sizeof (*t));
+		  t->next_index = next1;
+		}
+	    }*/
+	  processed += 2;
+	  /* verify speculative enqueues, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, bi1, next0, next1);
+	}
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0;
+	  ip6_header_t *ip0;
+    udp_header_t *udp0;
+    isft_hdr_t *isft0;
+    isft_hdr_t *isft_hdr0 = NULL;
+	  //ip6_hop_by_hop_header_t *hbh0;
+	  //u64 *copy_src0, *copy_dst0;
+	  u16 new_l0;
+
+	  /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  ip0 = vlib_buffer_get_current (b0);
+
+	  /* Copy the ip header left by the required amount */
+    udp0 = (udp_header_t *) (ip0 + 1);
+
+    u8 *payload0;
+    u16 udp0_payload_len;
+    payload0 = (u8 *)udp0 + sizeof(udp_header_t);
+    udp0_payload_len = clib_net_to_host_u16(udp0->length) - sizeof(udp_header_t);
+    clib_memmove(payload0 + 8, payload0, udp0_payload_len);
+    udp0->length = clib_host_to_net_u16(clib_net_to_host_u16(udp0->length) + 8);
+
+
+    isft0 = (isft_hdr_t *) (udp0 + 1);
+	  /* $$$ tune, rewrite_length is a multiple of 8 */
+    generate_isft_header(vm, isft_hdr0, 1, 1, 1, 1, 1);
+
+    vlib_cli_output(vm, "ip6_add_hop_by_hop_node\n");
+    vlib_cli_output(vm, "Before memcpy: ip0->payload_length%u",ip0->payload_length);
+
+    clib_memcpy_fast (isft0, isft_hdr0, sizeof(isft_hdr_t));
+    
+    new_l0 = clib_net_to_host_u16 (ip0->payload_length) + sizeof(isft_hdr_t);
+	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	  
+    vlib_cli_output(vm, "After memcpy: ip0->payload_length%u",ip0->payload_length);
+
+	  /* Populate the (first) h-b-h list elt */
+    next0 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
+
+	  /*if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      ip6_add_hop_by_hop_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->next_index = next0;
+	    }*/
+
+    processed++;
+
+	  /* verify speculative enqueue, maybe switch current next frame */
+    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  vlib_node_increment_counter (vm, ip6_add_hop_by_hop_node.index,
+			       IP6_ADD_HOP_BY_HOP_ERROR_PROCESSED, processed);
+  }
   return frame->n_vectors;
 }
 

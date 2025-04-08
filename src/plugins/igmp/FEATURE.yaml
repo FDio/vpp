@@ -1,9 +1,0 @@
----
-name: Internet Group Management Protocol
-maintainer: Neale Ranns <nranns@cisco.com>
-features:
-  - IGMPv3 only.
-
-description: "An implementation of the Internet Group Management Protocol (IGMP)"
-state: production
-properties: [API, CLI, MULTITHREAD]

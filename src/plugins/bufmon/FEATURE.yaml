@@ -1,8 +1,0 @@
----
-name: Buffers monitoring plugin
-maintainer: Benoît Ganne <bganne@cisco.com>
-features:
-  - monitor buffer utilization in VPP graph nodes
-description: "monitor buffer utilization in VPP graph nodes"
-state: production
-properties: [CLI, MULTITHREAD]

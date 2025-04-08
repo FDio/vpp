@@ -592,7 +592,6 @@ transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip,
   /* Pool reallocs with worker barrier */
   lep = transport_endpoint_alloc ();
   clib_memcpy_fast (&lep->ep.ip, ip, sizeof (*ip));
-  lep->ep.fib_index = fib_index;
   lep->ep.port = port;
   lep->proto = proto;
   lep->refcnt = 1;
@@ -682,13 +681,6 @@ transport_port_alloc_max_tries ()
 {
   transport_main_t *tm = &tp_main;
   return tm->port_alloc_max_tries;
-}
-
-u32
-transport_port_local_in_use ()
-{
-  transport_main_t *tm = &tp_main;
-  return pool_elts (tm->local_endpoints) - vec_len (tm->lcl_endpts_freelist);
 }
 
 void

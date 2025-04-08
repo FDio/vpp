@@ -46,6 +46,8 @@
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/classify/pcap_classify.h>
 
+#include <sys/time.h>
+
 #define foreach_ethernet_input_next		\
   _ (PUNT, "error-punt")			\
   _ (DROP, "error-drop")			\
@@ -1548,6 +1550,12 @@ ethernet_input_inline (vlib_main_t * vm,
 	  error0 = ETHERNET_ERROR_NONE;
 	  e0 = vlib_buffer_get_current (b0);
 	  type0 = clib_net_to_host_u16 (e0->type);
+	  
+	  struct timeval tv;
+          gettimeofday(&tv, NULL);
+          u64 timestamp_us = (uint64_t)tv.tv_sec * 1e6 + tv.tv_usec;
+          vnet_buffer2(b0)->unused[3] = (timestamp_us >> 32) & 0xFFFFFFFF; 
+          vnet_buffer2(b0)->unused[4] = timestamp_us & 0xFFFFFFFF;
 
 	  /* Set the L2 header offset for all packets */
 	  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;

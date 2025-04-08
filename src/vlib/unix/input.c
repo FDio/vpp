@@ -130,17 +130,6 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
     }
 }
 
-static int
-is_int_pending (vlib_node_main_t *nm)
-{
-
-  for (int nt = 0; nt < VLIB_N_NODE_TYPE; nt++)
-    if (nm->node_interrupts[nt] &&
-	clib_interrupt_is_any_pending (nm->node_interrupts[nt]))
-      return 1;
-  return 0;
-}
-
 static_always_inline uword
 linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, u32 thread_index)
@@ -185,8 +174,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
 	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
-	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks) (
-	  (TWT (tw_timer_wheel) *) vm->timing_wheel);
+	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks)
+	  ((TWT (tw_timer_wheel) *) nm->timing_wheel);
 
 	/* Nothing on the fast wheel, sleep 10ms */
 	if (ticks_until_expiration == TW_SLOTS_PER_RING)
@@ -261,7 +250,10 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		while (nanosleep (&ts, &tsrem) < 0)
 		  ts = tsrem;
 		if (*vlib_worker_threads->wait_at_barrier ||
-		    is_int_pending (nm))
+		    clib_interrupt_is_any_pending (
+		      nm->input_node_interrupts) ||
+		    clib_interrupt_is_any_pending (
+		      nm->pre_input_node_interrupts))
 		  goto done;
 	      }
 	  }

@@ -409,6 +409,7 @@ list(APPEND VNET_SOURCES
   ip/punt_node.c
   ip/vtep.c
   ip/ip_sas.c
+  ip/isft_dex_trans.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
@@ -459,6 +460,7 @@ list(APPEND VNET_HEADERS
   ip/punt.h
   ip/reass/ip4_sv_reass.h
   ip/reass/ip6_sv_reass.h
+  ip/isft_packet.h
 )
 
 list(APPEND VNET_API_FILES
@@ -522,7 +524,6 @@ list(APPEND VNET_API_FILES bfd/bfd.api)
 
 list(APPEND VNET_SOURCES
   crypto/cli.c
-  crypto/config.c
   crypto/crypto.c
   crypto/format.c
   crypto/main.c
@@ -538,6 +539,7 @@ list(APPEND VNET_MULTIARCH_SOURCES crypto/node.c)
 
 list(APPEND VNET_API_FILES crypto/crypto.api)
 
+#[[
 ##############################################################################
 # Layer 3 protocol: IPSec
 ##############################################################################
@@ -593,7 +595,7 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_funcs.h
   ipsec/esp.h
   ipsec/ah.h
-)
+)]]
 
 ##############################################################################
 # Layer 4 protocol: tcp
@@ -751,6 +753,29 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES mpls/mpls.api)
 
 ##############################################################################
+# Tunnel protocol: vxlan-gpe
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  vxlan-gpe/vxlan_gpe.c
+  vxlan-gpe/encap.c
+  vxlan-gpe/decap.c
+  vxlan-gpe/vxlan_gpe_api.c
+)
+
+list (APPEND VNET_MULTIARCH_SOURCES
+  vxlan-gpe/decap.c
+)
+
+list(APPEND VNET_HEADERS
+  vxlan-gpe/vxlan_gpe.h
+  vxlan-gpe/vxlan_gpe_packet.h
+  vxlan-gpe/vxlan_gpe_error.def
+)
+
+list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
+
+##############################################################################
 # ipv6 segment routing
 ##############################################################################
 
@@ -841,6 +866,7 @@ list(APPEND VNET_HEADERS
   ipfix-export/flow_report_classify.h
 )
 
+#[[
 ##############################################################################
 # SPAN (port mirroring)
 ##############################################################################
@@ -859,7 +885,7 @@ list(APPEND VNET_HEADERS
   span/span.h
 )
 
-list(APPEND VNET_API_FILES span/span.api)
+list(APPEND VNET_API_FILES span/span.api)]]
 
 ##############################################################################
 # Packet generator
@@ -1418,7 +1444,7 @@ add_vat_test_library(vnet
   ip6-nd/ip6_nd_test.c
   session/session_test.c
   l2/l2_test.c
-  ipsec/ipsec_test.c
+
 )
 
 ##############################################################################

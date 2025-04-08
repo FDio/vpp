@@ -734,9 +734,6 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
     case VLIB_NODE_TYPE_PROCESS:
       type_str = "process";
       break;
-    case VLIB_NODE_TYPE_SCHED:
-      type_str = "sched";
-      break;
     default:
       type_str = "unknown";
     }

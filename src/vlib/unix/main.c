@@ -54,10 +54,6 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#ifdef HAVE_LIBIBERTY
-#include <libiberty/demangle.h>
-#endif
-
 /** Default CLI pager limit is not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_PAGER_LIMIT 100000
 
@@ -230,20 +226,8 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 	    {
 	      if (color)
 		syslog_msg = format (syslog_msg, ANSI_FG_YELLOW);
-#if HAVE_LIBIBERTY
-	      if (strncmp (sf->name, "_Z", 2) == 0)
-		{
-		  char *demangled = cplus_demangle (sf->name, DMGL_AUTO);
-		  syslog_msg = format (syslog_msg, " %s",
-				       demangled ? demangled : sf->name);
-		  if (demangled)
-		    free (demangled);
-		}
-	      else
-#endif
-		syslog_msg = format (syslog_msg, " %s", sf->name);
-
-	      syslog_msg = format (syslog_msg, " + 0x%x", sf->offset);
+	      syslog_msg =
+		format (syslog_msg, " %s + 0x%x", sf->name, sf->offset);
 	      if (color)
 		syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
 	    }

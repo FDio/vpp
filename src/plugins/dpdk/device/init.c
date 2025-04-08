@@ -27,7 +27,7 @@
 #include <vnet/interface/tx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
-#include <dpdk/cryptodev/cryptodev.h>
+//#include <dpdk/cryptodev/cryptodev.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
 #include <vlib/stats/stats.h>
@@ -390,8 +390,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 	  if (dr->int_unmaskable)
 	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
-	  if (dr->need_tx_prepare)
-	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_TX_PREPARE, 1);
 	}
       else
 	dpdk_log_warn ("[%u] unknown driver '%s'", port_id, di.driver_name);
@@ -1613,7 +1611,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   if (error)
     clib_error_report (error);
 
-  if (dpdk_cryptodev_init)
+ /* if (dpdk_cryptodev_init)
     {
       error = dpdk_cryptodev_init (vm);
       if (error)
@@ -1622,7 +1620,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			 error);
 	  clib_error_free (error);
 	}
-    }
+    }*/
 
   vlib_worker_thread_barrier_release (vm);
   tm->worker_thread_release = 1;
@@ -1702,7 +1700,7 @@ dpdk_init (vlib_main_t * vm)
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
-  dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
+ // dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
 
   return error;
 }

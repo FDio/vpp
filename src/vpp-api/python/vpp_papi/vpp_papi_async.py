@@ -451,8 +451,7 @@ class VPPApiClient:
         for m in r.message_table:
             n = m.name
             self.message_table[n] = m.index
-        # Find the maximum index of the message table
-        self.vpp_dictionary_maxid = max(self.message_table.values() or [0])
+        self.vpp_dictionary_maxid = len(self.message_table)
 
         # self.worker_task = asyncio.create_task(self.message_handler(event_queue))
         requests = {}

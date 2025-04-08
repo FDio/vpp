@@ -253,15 +253,16 @@ print_help (void)
     "Send API message to VPP and print reply\n"
     "\n"
     "-d, --debug                    Print additional information\n"
-    "--dump-apis                    List all APIs available in VAT2 (might "
-    "not reflect running VPP)\n"
+    "-p, --prefix <prefix>          Specify shared memory prefix to connect "
+    "to a given VPP instance\n"
     "-f, --file <filename>          File containing a JSON object with the "
     "arguments for the message to send\n"
-    "-p, --plugin-path              Plugin path\n"
-    "-s, --prefix <prefix>          Specify shared memory prefix to connect "
-    "to a given VPP instance\n"
     "-t, --template <message-name>  Print a template JSON object for given API"
-    " message\n";
+    " message\n"
+    "--dump-apis                    List all APIs available in VAT2 (might "
+    "not reflect running VPP)\n"
+    "--plugin-path                  Pluing path"
+    "\n";
   printf ("%s", help_string);
 }
 
@@ -280,37 +281,37 @@ main (int argc, char **argv)
   char *msgname = 0;
   static struct option long_options[] = {
     { "debug", no_argument, 0, 'd' },
-    { "dump-apis", no_argument, 0, 0 },
-    { "file", required_argument, 0, 'f' },
-    { "plugin-path", required_argument, 0, 'p' },
     { "prefix", required_argument, 0, 's' },
+    { "file", required_argument, 0, 'f' },
+    { "dump-apis", no_argument, 0, 0 },
     { "template", required_argument, 0, 't' },
+    { "plugin-path", required_argument, 0, 'p' },
     { 0, 0, 0, 0 }
   };
 
-  while ((c = getopt_long (argc, argv, "df:p:s:t:", long_options,
+  while ((c = getopt_long (argc, argv, "hdp:f:t:", long_options,
 			   &option_index)) != -1)
     {
       switch (c)
 	{
 	case 0:
-	  if (option_index == 1)
+	  if (option_index == 3)
 	    dump_api = true;
 	  break;
 	case 'd':
 	  vat2_debug = true;
+	  break;
+	case 't':
+	  template = optarg;
+	  break;
+	case 's':
+	  prefix = optarg;
 	  break;
 	case 'f':
 	  filename = optarg;
 	  break;
 	case 'p':
 	  pluginpath = optarg;
-	  break;
-	case 's':
-	  prefix = optarg;
-	  break;
-	case 't':
-	  template = optarg;
 	  break;
 	case '?':
 	  print_help ();

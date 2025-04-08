@@ -42,6 +42,8 @@
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/pg/pg.h>
 
+#include <vnet/ip/isft_packet.h>
+
 typedef struct
 {
   u8 packet_data[64];
@@ -170,6 +172,11 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
+					   
+	  vlib_cli_output(vm, "ip6_input2");
+	  determine_node_type(vm, p0, ip0);
+	  determine_node_type(vm, p1, ip1);
+	  
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -210,6 +217,13 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, next0);
+	  
+	  if(ip0->protocol == IP_PROTOCOL_UDP)
+	    {
+	      vlib_cli_output(vm, "ip6_input");
+	      determine_node_type(vm, p0, ip0);
+            }
+	  
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);

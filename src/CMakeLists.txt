@@ -35,6 +35,8 @@ include(cmake/ccache.cmake)
 ##############################################################################
 # VPP Version
 ##############################################################################
+
+
 execute_process(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMAND scripts/version

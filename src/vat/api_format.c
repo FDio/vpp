@@ -35,12 +35,12 @@
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/ipsec/ipsec.h>
+//#include <vnet/ipsec/ipsec.h>
 #include <inttypes.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
-#include <vnet/span/span.h>
+//#include <vnet/span/span.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
 #include <vnet/mfib/mfib_types.h>
@@ -345,6 +345,7 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
   }
 }
 
+/*
 uword
 unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
 {
@@ -392,6 +393,7 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
     }
   return format (s, "%s", t);
 }
+*/
 
 #else /* VPP_API_TEST_BUILTIN == 1 */
 static uword

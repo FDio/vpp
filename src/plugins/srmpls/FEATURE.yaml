@@ -1,9 +1,0 @@
----
-name: Segment Routing for MPLS
-maintainer: Pablo Camarillo <pcamaril@cisco.com>
-features:
-        - SR Policy support
-        - Automated steering (SR steering based on NextHop/Color)
-description: "SR-MPLS"
-state: production
-properties: [API, CLI, MULTITHREAD]
