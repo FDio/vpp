@@ -6,7 +6,8 @@
 #define CLIB_DEVICETREE_H_
 
 #include <vppinfra/clib.h>
-#include <vlib/vlib.h>
+#include <vppinfra/error.h>
+#include <vppinfra/format.h>
 
 #ifdef __linux
 #define CLIB_DT_LINUX_PREFIX "/sys/firmware/devicetree/base"
