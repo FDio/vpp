@@ -185,8 +185,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
 	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
-	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks) (
-	  (TWT (tw_timer_wheel) *) vm->timing_wheel);
+	ticks_until_expiration = vlib_tw_timer_first_expires_in_ticks (vm);
 
 	/* Nothing on the fast wheel, sleep 10ms */
 	if (ticks_until_expiration == TW_SLOTS_PER_RING)
