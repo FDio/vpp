@@ -405,7 +405,9 @@ http_conn_timeout_cb (void *hc_handlep)
       return;
     }
 
-  http_vfts[hc->version].transport_close_callback (hc);
+  /* in case nothing received on cleartext connection before timeout */
+  if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
+    http_vfts[hc->version].transport_close_callback (hc);
   http_disconnect_transport (hc);
 }
 
@@ -561,7 +563,9 @@ http_ts_reset_callback (session_t *ts)
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
   hc->state = HTTP_CONN_STATE_CLOSED;
-  http_vfts[hc->version].transport_reset_callback (hc);
+  /* in case peer reset cleartext connection before send something */
+  if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
+    http_vfts[hc->version].transport_reset_callback (hc);
 
   http_disconnect_transport (hc);
 }
@@ -671,7 +675,9 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
   if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
     http_conn_timer_stop (hc);
 
-  http_vfts[hc->version].conn_cleanup_callback (hc);
+  /* in case nothing received on cleartext connection */
+  if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
+    http_vfts[hc->version].conn_cleanup_callback (hc);
 
   if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
     {
