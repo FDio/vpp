@@ -78,18 +78,24 @@ clib_spinlock_free (clib_spinlock_t * p)
     }
 }
 
+#define CLIB_SPINLOCK_LOCK(x)                                                 \
+  {                                                                           \
+    typeof (x) __free = 0;                                                    \
+    while (!__atomic_compare_exchange_n (&(x), &__free, 1, 0,                 \
+					 __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) \
+      {                                                                       \
+	while (__atomic_load_n (&(x), __ATOMIC_RELAXED))                      \
+	  CLIB_PAUSE ();                                                      \
+	__free = 0;                                                           \
+      }                                                                       \
+  }
+
+#define CLIB_SPINLOCK_UNLOCK(x) __atomic_store_n (&(x), 0, __ATOMIC_RELEASE)
+
 static_always_inline void
 clib_spinlock_lock (clib_spinlock_t * p)
 {
-  u32 free = 0;
-  while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->lock, &free, 1, 0))
-    {
-      /* atomic load limits number of compare_exchange executions */
-      while (clib_atomic_load_relax_n (&(*p)->lock))
-	CLIB_PAUSE ();
-      /* on failure, compare_exchange writes (*p)->lock into free */
-      free = 0;
-    }
+  CLIB_SPINLOCK_LOCK ((*p)->lock);
   CLIB_LOCK_DBG (p);
 }
 
@@ -122,7 +128,7 @@ clib_spinlock_unlock (clib_spinlock_t * p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
   /* Make sure all reads/writes are complete before releasing the lock */
-  clib_atomic_release (&(*p)->lock);
+  CLIB_SPINLOCK_UNLOCK ((*p)->lock);
 }
 
 static_always_inline void
