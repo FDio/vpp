@@ -223,14 +223,27 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
 
   response = http_get_tx_buf (hc);
   http2_frame_write_goaway (error, h2c->last_processed_stream_id, &response);
-  http_io_ts_after_write (hc, sp, 0, 1);
+  http_io_ts_write (hc, response, vec_len (response), sp);
+  http_io_ts_after_write (hc, sp, 1, 1);
 
   hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
 		  req = http2_req_get (req_index, hc->c_thread_index);
 		  if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
-		    session_transport_closing_notify (&req->base.connection);
+		    session_transport_reset_notify (&req->base.connection);
 		}));
-  http_disconnect_transport (hc);
+  http_shutdown_transport (hc);
+}
+
+always_inline void
+http2_send_stream_error (http_conn_t *hc, u32 stream_id, http2_error_t error,
+			 transport_send_params_t *sp)
+{
+  u8 *response;
+
+  response = http_get_tx_buf (hc);
+  http2_frame_write_rst_stream (error, stream_id, &response);
+  http_io_ts_write (hc, response, vec_len (response), sp);
+  http_io_ts_after_write (hc, sp, 1, 1);
 }
 
 /* send RST_STREAM frame and notify app */
@@ -238,15 +251,9 @@ always_inline void
 http2_stream_error (http_conn_t *hc, http2_req_t *req, http2_error_t error,
 		    transport_send_params_t *sp)
 {
-  u8 *response;
-
   ASSERT (req->stream_state > HTTP2_STREAM_STATE_IDLE);
 
-  response = http_get_tx_buf (hc);
-  http2_frame_write_rst_stream (error, req->stream_id, &response);
-  http_io_ts_write (hc, response, vec_len (response), sp);
-  http_io_ts_after_write (hc, sp, 0, 1);
-
+  http2_send_stream_error (hc, req->stream_id, error, sp);
   req->stream_state = HTTP2_STREAM_STATE_CLOSED;
   if (req->flags & HTTP2_REQ_F_APP_CLOSED)
     session_transport_closed_notify (&req->base.connection);
@@ -382,8 +389,13 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
 	}
       new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
     }
-  /* TODO: handle following case (for now we just discard data frames)
-   * req->base.body_len == 0 && req->stream_state == HTTP2_STREAM_STATE_OPEN */
+  /* TODO: message framing without content length using END_STREAM flag */
+  if (req->base.body_len == 0 && req->stream_state == HTTP2_STREAM_STATE_OPEN)
+    {
+      HTTP_DBG (1, "no content-length and DATA frame expected");
+      *error = HTTP2_ERROR_INTERNAL_ERROR;
+      return HTTP_SM_ERROR;
+    }
   req->base.to_recv = req->base.body_len;
 
   req->base.target_path_len = control_data.path_len;
@@ -430,10 +442,17 @@ http2_req_state_transport_io_more_data (http_conn_t *hc, http2_req_t *req,
 					transport_send_params_t *sp,
 					http2_error_t *error)
 {
-  http_io_as_write (&req->base, req->payload, req->payload_len);
   req->base.to_recv -= req->payload_len;
-  if (req->base.to_recv)
-    http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
+  if (req->base.to_recv == 0)
+    {
+      if (req->stream_state != HTTP2_STREAM_STATE_HALF_CLOSED)
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	  return HTTP_SM_STOP;
+	}
+      http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
+    }
+  http_io_as_write (&req->base, req->payload, req->payload_len);
   http_app_worker_rx_notify (&req->base);
 
   return HTTP_SM_STOP;
@@ -636,6 +655,7 @@ http2_req_run_state_machine (http_conn_t *hc, http2_req_t *req,
 static http2_error_t
 http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
+  http2_main_t *h2m = &http2_main;
   http2_req_t *req;
   u8 *rx_buf;
   http2_error_t rv;
@@ -663,6 +683,15 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  return HTTP2_ERROR_STREAM_CLOSED;
 	}
       h2c->last_opened_stream_id = fh->stream_id;
+      if (hash_elts (h2c->req_by_stream_id) ==
+	  h2m->settings.max_concurrent_streams)
+	{
+	  HTTP_DBG (1, "SETTINGS_MAX_CONCURRENT_STREAMS exceeded");
+	  http_io_ts_drain (hc, fh->length);
+	  http2_send_stream_error (hc, fh->stream_id,
+				   HTTP2_ERROR_REFUSED_STREAM, 0);
+	  return HTTP2_ERROR_NO_ERROR;
+	}
       req = http2_conn_alloc_req (hc, fh->stream_id);
       http_conn_accept_request (hc, &req->base);
       http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
@@ -708,18 +737,26 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
   req = http2_conn_get_req (hc, fh->stream_id);
   if (!req)
     {
+      if (fh->stream_id == 0)
+	{
+	  HTTP_DBG (1, "DATA frame with stream id 0");
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
       h2c = http2_conn_ctx_get_w_thread (hc);
       if (fh->stream_id <= h2c->last_opened_stream_id)
 	{
 	  HTTP_DBG (1, "stream closed, ignoring frame");
+	  http2_send_stream_error (hc, fh->stream_id,
+				   HTTP2_ERROR_STREAM_CLOSED, 0);
 	  return HTTP2_ERROR_NO_ERROR;
 	}
       else
 	return HTTP2_ERROR_PROTOCOL_ERROR;
     }
 
-  /* bogus state, connection error */
-  if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
+  /* bogus state */
+  if (hc->flags & HTTP_CONN_F_IS_SERVER &&
+      req->stream_state != HTTP2_STREAM_STATE_OPEN)
     {
       HTTP_DBG (1, "error: stream already half-closed");
       http2_stream_error (hc, req, HTTP2_ERROR_STREAM_CLOSED, 0);
@@ -872,14 +909,12 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
   else
     {
       /* connection error */
-      hc->state = HTTP_CONN_STATE_CLOSED;
-      if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
-	return HTTP2_ERROR_NO_ERROR;
       h2c = http2_conn_ctx_get_w_thread (hc);
       hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
 		      req = http2_req_get (req_index, hc->c_thread_index);
 		      session_transport_reset_notify (&req->base.connection);
 		    }));
+      http_shutdown_transport (hc);
     }
 
   return HTTP2_ERROR_NO_ERROR;
@@ -890,13 +925,16 @@ http2_handle_ping_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
   u8 *rx_buf, *resp = 0;
 
-  if (fh->stream_id != 0 || fh->length != HTTP2_PING_PAYLOAD_LEN ||
-      fh->flags & HTTP2_FRAME_FLAG_ACK)
+  if (fh->stream_id != 0 || fh->length != HTTP2_PING_PAYLOAD_LEN)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
   rx_buf = http_get_rx_buf (hc);
   vec_validate (rx_buf, fh->length - 1);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
+
+  /* RFC9113 6.7: The endpoint MUST NOT respond to PING frames with ACK */
+  if (fh->flags & HTTP2_FRAME_FLAG_ACK)
+    return HTTP2_ERROR_NO_ERROR;
 
   http2_frame_write_ping (1, rx_buf, &resp);
   http_io_ts_write (hc, resp, vec_len (resp), 0);
@@ -904,6 +942,18 @@ http2_handle_ping_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http_io_ts_after_write (hc, 0, 1, 1);
 
   return HTTP2_ERROR_NO_ERROR;
+}
+
+static http2_error_t
+http2_handle_push_promise (http_conn_t *hc, http2_frame_header_t *fh)
+{
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    {
+      HTTP_DBG (1, "error: server received PUSH_PROMISE");
+      return HTTP2_ERROR_PROTOCOL_ERROR;
+    }
+  /* TODO: client */
+  return HTTP2_ERROR_INTERNAL_ERROR;
 }
 
 static_always_inline int
@@ -1089,6 +1139,7 @@ http2_transport_connected_callback (http_conn_t *hc)
 static void
 http2_transport_rx_callback (http_conn_t *hc)
 {
+  http2_main_t *h2m = &http2_main;
   http2_frame_header_t fh;
   u32 to_deq;
   u8 *rx_buf;
@@ -1137,16 +1188,31 @@ http2_transport_rx_callback (http_conn_t *hc)
   while (to_deq >= HTTP2_FRAME_HEADER_SIZE)
     {
       rx_buf = http_get_rx_buf (hc);
-      http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 0);
+      http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
       http2_frame_header_read (rx_buf, &fh);
-      if (fh.length > to_deq)
+      if (fh.length > h2m->settings.max_frame_size)
 	{
-	  HTTP_DBG (1, "incomplete frame, to deq %lu, frame length %lu",
-		    to_deq, fh.length);
-	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	  HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu",
+		    fh.length, h2m->settings.max_frame_size);
+	  http2_connection_error (hc, HTTP2_ERROR_FRAME_SIZE_ERROR, 0);
 	  return;
 	}
+      if (fh.length > to_deq)
+	{
+	  HTTP_DBG (
+	    1, "frame payload not yet received, to deq %lu, frame length %lu",
+	    to_deq, fh.length);
+	  if (http_io_ts_fifo_size (hc, 1) <
+	      (fh.length + HTTP2_FRAME_HEADER_SIZE))
+	    {
+	      clib_warning ("ts rx fifo too small to hold frame (%u)",
+			    fh.length + HTTP2_FRAME_HEADER_SIZE);
+	      http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	    }
+	  return;
+	}
+      http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
       HTTP_DBG (1, "frame type 0x%02x", fh.type);
@@ -1178,13 +1244,13 @@ http2_transport_rx_callback (http_conn_t *hc)
 	  rv = HTTP2_ERROR_INTERNAL_ERROR;
 	  break;
 	case HTTP2_FRAME_TYPE_PUSH_PROMISE:
-	  /* TODO */
-	  rv = HTTP2_ERROR_PROTOCOL_ERROR;
+	  rv = http2_handle_push_promise (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_PRIORITY: /* deprecated */
 	default:
 	  /* ignore unknown frame type */
 	  http_io_ts_drain (hc, fh.length);
+	  rv = HTTP2_ERROR_NO_ERROR;
 	  break;
 	}
 
