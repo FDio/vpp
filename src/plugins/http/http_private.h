@@ -348,6 +348,15 @@ int http_v_find_index (u8 *vec, u32 offset, u32 num, char *str);
 void http_disconnect_transport (http_conn_t *hc);
 
 /**
+ * Shutdown HTTP connection.
+ *
+ * Close TX side of the underlying transport.
+ *
+ * @param hc HTTP connection to shutdown.
+ */
+void http_shutdown_transport (http_conn_t *hc);
+
+/**
  * Convert numeric representation of status code to @c http_status_code_t.
  *
  * @param status_code Status code within the range of 100 to 599, inclusive.
@@ -621,6 +630,16 @@ http_io_as_drain_all (http_req_t *req)
 }
 
 /* Abstraction of transport session fifo operations */
+
+always_inline u32
+http_io_ts_fifo_size (http_conn_t *hc, u8 is_rx)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  if (is_rx)
+    return svm_fifo_size (ts->rx_fifo);
+  else
+    return svm_fifo_size (ts->tx_fifo);
+}
 
 always_inline u32
 http_io_ts_max_read (http_conn_t *hc)
