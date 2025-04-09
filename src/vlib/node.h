@@ -731,23 +731,6 @@ typedef struct
 }
 vlib_signal_timed_event_data_t;
 
-typedef enum
-{
-  VLIB_TW_EVENT_T_PROCESS_NODE = 1,
-  VLIB_TW_EVENT_T_TIMED_EVENT = 2,
-  VLIB_TW_EVENT_T_SCHED_NODE = 3,
-} vlib_tw_event_type_t;
-
-typedef union
-{
-  struct
-  {
-    u32 type : 2; /* vlib_tw_event_type_t */
-    u32 index : 30;
-  };
-  u32 as_u32;
-} vlib_tw_event_t;
-
 typedef struct
 {
   clib_march_variant_type_t index;

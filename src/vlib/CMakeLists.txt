@@ -162,6 +162,8 @@ add_vpp_library(vlib
   time.h
   trace_funcs.h
   trace.h
+  tw.h
+  tw_funcs.h
   unix/mc_socket.h
   unix/plugin.h
   unix/unix.h

@@ -57,6 +57,7 @@ typedef u32 vlib_log_class_t;
 #include <vlib/buffer.h>
 #include <vlib/cli.h>
 #include <vlib/counter.h>
+#include <vlib/tw.h>
 #include <vlib/error.h>
 #include <vlib/init.h>
 #include <vlib/node.h>
@@ -71,6 +72,7 @@ typedef u32 vlib_log_class_t;
 #include <vlib/threads.h>
 #include <vlib/physmem_funcs.h>
 #include <vlib/buffer_funcs.h>
+#include <vlib/tw_funcs.h>
 #include <vlib/error_funcs.h>
 #include <vlib/format_funcs.h>
 #include <vlib/node_funcs.h>
