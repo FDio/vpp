@@ -4,6 +4,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/devicetree.h>
+#include <vppinfra/hash.h>
 
 #ifdef __linux
 #include <sys/types.h>
