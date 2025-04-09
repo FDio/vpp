@@ -31,7 +31,7 @@ static uword
 vlib_time_virtual_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 			 vlib_frame_t *frame)
 {
-  const f64 next = vlib_time_get_next_timer (vm);
+  const f64 next = vlib_tw_timer_first_expires_in_ticks (vm);
   /* each thread will advance its own time. In case a thread is much faster
    * than another, we must make sure it does not run away... */
   if (vlib_time_now (vm) + next > vlib_time_virtual_stop)
