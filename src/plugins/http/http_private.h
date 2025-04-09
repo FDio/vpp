@@ -348,6 +348,13 @@ int http_v_find_index (u8 *vec, u32 offset, u32 num, char *str);
 void http_disconnect_transport (http_conn_t *hc);
 
 /**
+ * Shutdown HTTP connection.
+ *
+ * @param hc HTTP connection to shutdown.
+ */
+void http_shutdown_transport (http_conn_t *hc);
+
+/**
  * Convert numeric representation of status code to @c http_status_code_t.
  *
  * @param status_code Status code within the range of 100 to 599, inclusive.

@@ -161,6 +161,7 @@ test_builtins_init (vlib_main_t *vm)
     0, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
   (*fp) (handle_get_test1, "test1", HTTP_REQ_GET);
+  (*fp) (handle_get_test1, "test1", HTTP_REQ_POST);
   (*fp) (handle_get_test2, "test2", HTTP_REQ_GET);
   (*fp) (handle_get_test_delayed, "test_delayed", HTTP_REQ_GET);
   (*fp) (handle_post_test3, "test3", HTTP_REQ_POST);

@@ -273,6 +273,20 @@ http_disconnect_transport (http_conn_t *hc)
     clib_warning ("disconnect returned");
 }
 
+void
+http_shutdown_transport (http_conn_t *hc)
+{
+  vnet_shutdown_args_t a = {
+    .handle = hc->hc_tc_session_handle,
+    .app_index = http_main.app_index,
+  };
+
+  hc->state = HTTP_CONN_STATE_CLOSED;
+
+  if (vnet_shutdown_session (&a))
+    clib_warning ("shutdown returned");
+}
+
 http_status_code_t
 http_sc_by_u16 (u16 status_code)
 {

@@ -192,6 +192,8 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	  /* trim code to correct length */
 	  u32 code = (accumulator >> (accumulator_len - hg->code_len)) &
 		     ((1 << hg->code_len) - 1);
+	  if (!code)
+	    return HTTP2_ERROR_COMPRESSION_ERROR;
 	  /* find symbol in the list */
 	  **buf = hg->symbols[code - hg->first_code];
 	  (*buf)++;
@@ -240,7 +242,8 @@ hpack_decode_string (u8 **src, u8 *end, u8 **buf, uword *buf_len)
   u8 *p, is_huffman;
   uword len;
 
-  ASSERT (*src < end);
+  if (*src == end)
+    return HTTP2_ERROR_COMPRESSION_ERROR;
 
   p = *src;
   /* H flag in first bit */
@@ -507,11 +510,6 @@ hpack_get_table_entry (uword index, http_token_t *name, http_token_t *value,
       name->len = e->name_len;
       if (value_is_indexed)
 	{
-	  if (PREDICT_FALSE (e->value_len == 0))
-	    {
-	      HTTP_DBG (1, "static table entry [%llu] without value", index);
-	      return HTTP2_ERROR_COMPRESSION_ERROR;
-	    }
 	  value->base = e->value;
 	  value->len = e->value_len;
 	}
@@ -704,6 +702,9 @@ hpack_header_value_is_valid (u8 *value, u32 value_len)
     0xffffffffffffffff,
     0xffffffffffffffff,
   };
+
+  if (value_len == 0)
+    return 1;
 
   /* must not start or end with SP or HTAB */
   if ((value[0] == 0x20 || value[0] == 0x09 || value[value_len - 1] == 0x20 ||
