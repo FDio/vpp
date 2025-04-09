@@ -1257,15 +1257,13 @@ vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
 static void
 process_timer_start (vlib_main_t *vm, vlib_process_t *p, u32 runtime_index)
 {
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
   vlib_tw_event_t e = { .type = VLIB_TW_EVENT_T_PROCESS_NODE,
 			.index = runtime_index };
 
   if (p->resume_clock_interval == 0)
     return;
 
-  p->stop_timer_handle = TW (tw_timer_start) (tw, e.as_u32, 0 /* timer_id */,
-					      p->resume_clock_interval);
+  p->stop_timer_handle = vlib_tw_timer_start (vm, e, p->resume_clock_interval);
 }
 
 static u64
@@ -1444,14 +1442,16 @@ dispatch_suspended_process (vlib_main_t *vm, vlib_process_restore_t *r,
   return t;
 }
 
-static void
-process_expired_timer_cb (u32 *expired_timer_handles)
+static __clib_warn_unused_result u32 *
+process_expired_timers (u32 *v)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_main_t *nm = &vm->node_main;
   u32 *handle;
 
-  vec_foreach (handle, expired_timer_handles)
+  v = vlib_tw_timer_expire_timers (vm, v);
+
+  vec_foreach (handle, v)
     {
       vlib_tw_event_t e = { .as_u32 = *handle };
       vlib_process_restore_t restore = {};
@@ -1477,26 +1477,7 @@ process_expired_timer_cb (u32 *expired_timer_handles)
       else
 	ASSERT (0);
     }
-}
-
-static void
-vlib_tw_init (vlib_main_t *vm)
-{
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
-  tw = clib_mem_alloc_aligned (sizeof (TWT (tw_timer_wheel)),
-			       CLIB_CACHE_LINE_BYTES);
-  /* Create the process timing wheel */
-  TW (tw_timer_wheel_init)
-  (tw, process_expired_timer_cb /* callback */, 1 / VLIB_TW_TICKS_PER_SECOND,
-   ~0 /* max expirations per call */);
-  vm->timing_wheel = tw;
-}
-
-static void
-vlib_tw_expire_timers (vlib_main_t *vm)
-{
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
-  TW (tw_timer_expire_timers) (tw, vlib_time_now (vm));
+  return v;
 }
 
 static_always_inline void
@@ -1509,6 +1490,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   f64 now;
   vlib_frame_queue_main_t *fqm;
   u32 frame_queue_check_counter = 0;
+  u32 *expired_timers = 0;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1680,7 +1662,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
 	    ed = ELOG_DATA (&vlib_global_main.elog_main, es);
 
-	  vlib_tw_expire_timers (vm);
+	  expired_timers = process_expired_timers (expired_timers);
 
 	  ASSERT (nm->process_restore_current != 0);
 
@@ -1739,7 +1721,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	    }
 	}
       else
-	vlib_tw_expire_timers (vm);
+	expired_timers = process_expired_timers (expired_timers);
 
       vlib_increment_main_loop_counter (vm);
       /* Record time stamp in case there are no enabled nodes and above

@@ -7,13 +7,13 @@
 #define included_vlib_time_h
 
 #include <vlib/vlib.h>
-#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vlib/tw_funcs.h>
 
 static inline f64
 vlib_time_get_next_timer (vlib_main_t *vm)
 {
   TWT (tw_timer_wheel) *wheel = vm->timing_wheel;
-  return TW (tw_timer_first_expires_in_ticks) (wheel) * wheel->timer_interval;
+  return vlib_tw_timer_first_expires_in_ticks (vm) * wheel->timer_interval;
 }
 
 static inline void
