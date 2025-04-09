@@ -47,10 +47,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/fifo.h>
-#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/interrupt.h>
-
-#define VLIB_TW_TICKS_PER_SECOND 1e5 /* 10 us */
 
 #ifdef CLIB_SANITIZE_ADDR
 #include <sanitizer/asan_interface.h>
@@ -271,7 +268,6 @@ vlib_node_is_scheduled (vlib_main_t *vm, u32 node_index)
 always_inline void
 vlib_node_schedule (vlib_main_t *vm, u32 node_index, f64 dt)
 {
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
   u64 ticks;
 
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
@@ -286,21 +282,18 @@ vlib_node_schedule (vlib_main_t *vm, u32 node_index, f64 dt)
   dt = flt_round_nearest (dt * VLIB_TW_TICKS_PER_SECOND);
   ticks = clib_max ((u64) dt, 1);
 
-  rt->stop_timer_handle_plus_1 =
-    1 + TW (tw_timer_start) (tw, e.as_u32, 0 /* timer_id */, ticks);
+  rt->stop_timer_handle_plus_1 = 1 + vlib_tw_timer_start (vm, e, ticks);
 }
 
 always_inline void
 vlib_node_unschedule (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
 
   ASSERT (vm == vlib_get_main ());
   ASSERT (vlib_node_is_scheduled (vm, node_index) == 1);
 
-  TW (tw_timer_stop) (tw, rt->stop_timer_handle_plus_1);
-
+  vlib_tw_timer_stop (vm, rt->stop_timer_handle_plus_1 - 1);
   rt->stop_timer_handle_plus_1 = 0;
 }
 
@@ -1004,7 +997,6 @@ vlib_process_signal_event_helper (vlib_main_t *vm, vlib_node_main_t *nm,
 				  vlib_node_t *n, vlib_process_t *p, uword t,
 				  uword n_data_elts, uword n_data_elt_bytes)
 {
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
   uword add_to_pending = 0, delete_from_wheel = 0;
   u8 *data_to_be_written_by_caller;
   vec_attr_t va = { .elt_sz = n_data_elt_bytes };
@@ -1052,7 +1044,7 @@ vlib_process_signal_event_helper (vlib_main_t *vm, vlib_node_main_t *nm,
       break;
     }
 
-  if (TW (tw_timer_handle_is_free) (tw, p->stop_timer_handle))
+  if (vlib_tw_timer_handle_is_free (vm, p->stop_timer_handle))
     delete_from_wheel = 0;
 
   /* Never add current process to pending vector since current process is
@@ -1071,7 +1063,7 @@ vlib_process_signal_event_helper (vlib_main_t *vm, vlib_node_main_t *nm,
 
   if (delete_from_wheel)
     {
-      TW (tw_timer_stop) (tw, p->stop_timer_handle);
+      vlib_tw_timer_stop (vm, p->stop_timer_handle);
       p->stop_timer_handle = ~0;
     }
 
@@ -1114,7 +1106,6 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
 				   uword type_opaque,
 				   uword n_data_elts, uword n_data_elt_bytes)
 {
-  TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vlib_get_node (vm, node_index);
   vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
@@ -1153,13 +1144,12 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
       te->event_type_index = t;
 
       p->stop_timer_handle =
-	TW (tw_timer_start) (tw,
+	vlib_tw_timer_start (vm,
 			     (vlib_tw_event_t){
 			       .type = VLIB_TW_EVENT_T_TIMED_EVENT,
 			       .index = te - nm->signal_timed_event_data_pool,
-			     }
-			       .as_u32,
-			     0 /* timer_id */, dt * VLIB_TW_TICKS_PER_SECOND);
+			     },
+			     dt * VLIB_TW_TICKS_PER_SECOND);
 
       /* Inline data big enough to hold event? */
       if (te->n_data_bytes < sizeof (te->inline_event_data))

@@ -260,6 +260,7 @@ typedef struct vlib_main_t
 
   /* Timing wheel for scheduling time-based node dispatch. */
   void *timing_wheel;
+  u32 n_tw_timers;
 
 #ifdef CLIB_SANITIZE_ADDR
   /* address sanitizer stack save */
