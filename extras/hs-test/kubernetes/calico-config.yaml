@@ -1,0 +1,341 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: calico-vpp-dataplane
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: calico-vpp-node-sa
+  namespace: calico-vpp-dataplane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: calico-vpp-node-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - services
+  verbs:
+  - watch
+  - list
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - namespaces
+  - serviceaccounts
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - patch
+- apiGroups:
+  - crd.projectcalico.org
+  resources:
+  - globalfelixconfigs
+  - felixconfigurations
+  - bgppeers
+  - bgpfilters
+  - globalbgpconfigs
+  - bgpconfigurations
+  - ippools
+  - ipamblocks
+  - globalnetworkpolicies
+  - globalnetworksets
+  - networkpolicies
+  - networksets
+  - clusterinformations
+  - hostendpoints
+  - blockaffinities
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - crd.projectcalico.org
+  resources:
+  - blockaffinities
+  - ipamblocks
+  - ipamhandles
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+- apiGroups:
+  - crd.projectcalico.org
+  resources:
+  - ipamconfigs
+  verbs:
+  - get
+- apiGroups:
+  - crd.projectcalico.org
+  resources:
+  - blockaffinities
+  verbs:
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: calico-vpp-node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: calico-vpp-node-role
+subjects:
+- kind: ServiceAccount
+  name: calico-vpp-node-sa
+  namespace: calico-vpp-dataplane
+---
+apiVersion: v1
+data:
+  CALICOVPP_CONFIG_TEMPLATE: |-
+    unix {
+      nodaemon
+      full-coredump
+      cli-listen /var/run/vpp/cli.sock
+      pidfile /run/vpp/vpp.pid
+      exec /etc/vpp/startup.exec
+    }
+    api-trace { on }
+    cpu {
+        workers 0
+    }
+    socksvr {
+        socket-name /var/run/vpp/vpp-api.sock
+    }
+    plugins {
+        plugin default { enable }
+        plugin dpdk_plugin.so { disable }
+        plugin calico_plugin.so { enable }
+        plugin ping_plugin.so { disable }
+        plugin dispatch_trace_plugin.so { enable }
+    }
+    buffers {
+      buffers-per-numa 131072
+    }
+  CALICOVPP_INITIAL_CONFIG: |-
+    {
+      "vppStartupSleepSeconds": 1,
+      "corePattern": "/var/lib/vpp/vppcore.%e.%p",
+      "redirectToHostRules": [
+        {
+          "proto": "udp",
+          "port": 53,
+          "ip": "172.18.0.1"
+        },
+        {
+          "proto": "tcp",
+          "port": 53,
+          "ip": "172.18.0.1"
+        }
+      ]
+    }
+  CALICOVPP_FEATURE_GATES: |-
+    {
+      "vclEnabled": true
+    }
+  CALICOVPP_INTERFACES: |-
+    {
+      "uplinkInterfaces": [
+        {
+          "interfaceName": "eth0",
+          "vppDriver": "af_packet"
+        }
+      ]
+    }
+  SERVICE_PREFIX: 10.96.0.0/16
+kind: ConfigMap
+metadata:
+  name: calico-vpp-config
+  namespace: calico-vpp-dataplane
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: calico-vpp-node
+  name: calico-vpp-node
+  namespace: calico-vpp-dataplane
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-vpp-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-vpp-node
+    spec:
+      containers:
+      - env:
+        - name: DATASTORE_TYPE
+          value: kubernetes
+        - name: WAIT_FOR_DATASTORE
+          value: "true"
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: calico-vpp-config
+        image: docker.io/calicovpp/agent:latest
+        imagePullPolicy: IfNotPresent
+        name: agent
+        resources:
+          requests:
+            cpu: 250m
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/run/calico
+          name: var-run-calico
+          readOnly: false
+        - mountPath: /var/lib/calico/felix-plugins
+          name: felix-plugins
+          readOnly: false
+        - mountPath: /var/run/vpp
+          name: vpp-rundir
+        - mountPath: /run/netns/
+          mountPropagation: Bidirectional
+          name: netns
+      - env:
+        - name: DATASTORE_TYPE
+          value: kubernetes
+        - name: WAIT_FOR_DATASTORE
+          value: "true"
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom:
+        - configMapRef:
+            name: calico-vpp-config
+        image: docker.io/calicovpp/vpp:latest
+        imagePullPolicy: IfNotPresent
+        name: vpp
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /lib/firmware
+          name: lib-firmware
+        - mountPath: /var/run/vpp
+          name: vpp-rundir
+        - mountPath: /var/lib/vpp
+          name: vpp-data
+        - mountPath: /etc/vpp
+          name: vpp-config
+        - mountPath: /dev
+          name: devices
+        - mountPath: /sys
+          name: hostsys
+        - mountPath: /run/netns/
+          mountPropagation: Bidirectional
+          name: netns
+        - mountPath: /host
+          name: host-root
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      serviceAccountName: calico-vpp-node-sa
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      volumes:
+      - hostPath:
+          path: /lib/firmware
+        name: lib-firmware
+      - hostPath:
+          path: /var/run/vpp
+        name: vpp-rundir
+      - hostPath:
+          path: /var/lib/vpp
+          type: DirectoryOrCreate
+        name: vpp-data
+      - hostPath:
+          path: /etc/vpp
+        name: vpp-config
+      - hostPath:
+          path: /dev
+        name: devices
+      - hostPath:
+          path: /sys
+        name: hostsys
+      - hostPath:
+          path: /var/run/calico
+        name: var-run-calico
+      - hostPath:
+          path: /run/netns
+        name: netns
+      - hostPath:
+          path: /var/lib/calico/felix-plugins
+        name: felix-plugins
+      - hostPath:
+          path: /
+        name: host-root
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate

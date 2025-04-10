@@ -16,6 +16,7 @@ tc_names=()
 skip_names=()
 dryrun=
 no_color=
+perf=
 
 for i in "$@"
 do
@@ -111,8 +112,17 @@ case "${i}" in
             ginkgo_args="$ginkgo_args --no-color"
         fi
         ;;
+    --perf=*)
+        perf="${i#*=}"
+        ;;
 esac
 done
+
+if [ "$perf" = "true" ]; then
+    ginkgo_args="$ginkgo_args --label-filter=Perf"
+else
+    ginkgo_args="$ginkgo_args --label-filter=!Perf"
+fi
 
 if [ ${#tc_names[@]} -gt 1 ]
 then
@@ -146,6 +156,9 @@ if [ $focused_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     echo -e "\e[1;31mVPP debug flag is not supported while running all tests!\e[1;0m"
     exit 2
 fi
+
+sudo_user="${SUDO_USER:-root}"
+args="$args -sudo_user $sudo_user"
 
 if [ $leak_check_set -eq 1 ]; then
   if [ $focused_test -eq 0 ]; then
