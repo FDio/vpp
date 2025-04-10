@@ -375,6 +375,4 @@ freebsd_pci_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (freebsd_pci_init) = {
-  .runs_after = VLIB_INITS ("unix_input_init"),
-};
+VLIB_INIT_FUNCTION (freebsd_pci_init);
