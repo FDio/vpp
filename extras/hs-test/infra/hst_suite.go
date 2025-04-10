@@ -44,6 +44,8 @@ var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
 var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
+var SudoUser = flag.String("sudo_user", "root", "what user ran hs-test with sudo")
+var IsPerfTesting = flag.Bool("perf", false, "enables performance testing")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
@@ -155,7 +157,23 @@ func (s *HstSuite) newDockerClient() {
 	s.Log("docker client created")
 }
 
+func (s *HstSuite) SetupKindSuite() {
+	s.SkipIfNotPerf()
+	s.CreateLogger()
+	s.Log("[* SUITE SETUP]")
+	s.newDockerClient()
+	RegisterFailHandler(func(message string, callerSkip ...int) {
+		s.HstFail()
+		Fail(message, callerSkip...)
+	})
+	s.Ppid = fmt.Sprint(os.Getppid())
+	// remove last number so we have space to prepend a process index (interfaces have a char limit)
+	s.Ppid = s.Ppid[:len(s.Ppid)-1]
+	s.ProcessIndex = fmt.Sprint(GinkgoParallelProcess())
+}
+
 func (s *HstSuite) SetupSuite() {
+	s.SkipIfPerf()
 	s.CreateLogger()
 	s.Log("[* SUITE SETUP]")
 	s.newDockerClient()
@@ -219,7 +237,7 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 func (s *HstSuite) TearDownSuite() {
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
-	if *IsPersistent || *DryRun {
+	if *IsPersistent || *DryRun{
 		return
 	}
 	s.Log("[* SUITE TEARDOWN]")
@@ -252,6 +270,18 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 func (s *HstSuite) SkipIfNotCoverage() {
 	if !s.CoverageRun {
 		s.Skip("skipping, not a coverage run")
+	}
+}
+
+func (s *HstSuite) SkipIfNotPerf() {
+	if !*IsPerfTesting {
+		s.Skip("skipping performance (KinD) tests")
+	}
+}
+
+func (s *HstSuite) SkipIfPerf() {
+	if *IsPerfTesting {
+		s.Skip("skipping, running performance (KinD) tests only")
 	}
 }
 
