@@ -1239,7 +1239,8 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   /* Exec ourself */
-  execve (vgm->name, (char **) vgm->argv, environ);
+  if (execve ((void *) vgm->argv[0], (char **) vgm->argv, environ))
+    return clib_error_return_unix (0, "execve failed");
 
   return 0;
 }
