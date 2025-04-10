@@ -504,13 +504,19 @@ void vlib_workers_sync (void);
  * Release barrier after workers sync
  */
 void vlib_workers_continue (void);
+static_always_inline void
+vlib_thread_wakeup (u32 thread_index)
+{
+  vlib_main_t *vm = vlib_get_main_by_index (thread_index);
+  ssize_t __clib_unused rv;
+  u64 val = 1;
+
+  if (__atomic_load_n (&vm->thread_sleeps, __ATOMIC_RELAXED) &&
+      !vm->wakeup_pending)
+    {
+      vm->wakeup_pending = 1;
+      rv = write (vm->wakeup_fd, &val, sizeof (u64));
+    }
+}
 
 #endif /* included_vlib_threads_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

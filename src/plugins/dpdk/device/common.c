@@ -17,7 +17,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
 #include <vppinfra/file.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 #include <assert.h>
 
 #include <vnet/ip/ip.h>
