@@ -16,7 +16,7 @@
 #include <vnet/vnet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/interface/rx_queue_funcs.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 
 VLIB_REGISTER_LOG_CLASS (if_rxq_log, static) = {
   .class_name = "interface",

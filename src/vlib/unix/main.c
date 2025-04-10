@@ -68,7 +68,6 @@ char *vlib_default_runtime_dir __attribute__ ((weak));
 char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
-clib_file_main_t file_main;
 
 static clib_error_t *
 unix_main_init (vlib_main_t * vm)
@@ -78,10 +77,7 @@ unix_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_main_init) =
-{
-  .runs_before = VLIB_INITS ("unix_input_init"),
-};
+VLIB_INIT_FUNCTION (unix_main_init);
 
 static int
 unsetup_signal_handlers (int sig)
