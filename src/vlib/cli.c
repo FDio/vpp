@@ -39,6 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/stats/stats.h>
+#include <vlib/file.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/callback.h>
 #include <vppinfra/cpu.h>
