@@ -455,15 +455,4 @@ linux_vmbus_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (linux_vmbus_init) =
-{
-  .runs_before = VLIB_INITS("unix_input_init"),
-};
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+VLIB_INIT_FUNCTION (linux_vmbus_init);
