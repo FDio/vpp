@@ -23,7 +23,7 @@
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
