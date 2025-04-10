@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8a91f1d_2ca40676",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-10T15:56:52Z",
+      "side": 1,
+      "message": "On the line bellow, let\u0027s be explicit that we\u0027re doing an explicit tx close.",
+      "revId": "0af5eccf9d68efbf8d396f9efb7d76ad1fe8dff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
