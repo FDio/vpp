@@ -69,10 +69,12 @@ help:
 	@echo " test                     - run tests"
 	@echo " test-debug               - run tests (vpp debug image)"
 	@echo " test-leak                - run memory leak tests (vpp debug image)"
+	@echo " test-perf                - run performance tests (requires a running cluster)"
 	@echo " build                    - build test infra"
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " build-go                 - just build golang files"
+	@echo " setup-cluster            - setup KinD cluster for performance testing"
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " fixstyle-go              - format .go source files"
 	@echo " cleanup-hst              - stops and removes all docker contaiers and namespaces"
@@ -157,6 +159,18 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC)
+
+.PHONY: test-perf
+test-perf: FORCE_BUILD=false
+test-perf: .deps.ok .build.ok
+	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--test=$(TEST) --vppsrc=$(VPPSRC) --repeat=$(REPEAT) \
+		--skip=$(SKIP) --no_color=$(NO_COLOR) --perf=true; \
+		./script/compress.sh $$?
+
+.PHONY: setup-cluster
+setup-cluster:
+	@bash ./kubernetes/setupCluster.sh
 
 .PHONY: build-go
 build-go:
