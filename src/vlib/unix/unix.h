@@ -121,7 +121,6 @@ typedef enum
 
 /* Global main structure. */
 extern unix_main_t unix_main;
-extern clib_file_main_t file_main;
 
 always_inline void
 unix_save_error (unix_main_t * um, clib_error_t * error)
