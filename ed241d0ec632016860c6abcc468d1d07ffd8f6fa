@@ -16,6 +16,176 @@
       "message": "recheck",
       "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09b01b95_7bd37d6b",
+        "filename": "docs/configuration/reference.rst",
+        "patchSetId": 22
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "I seem to remember a linter at some point telling me there needs to be a blank line after the header. I can\u0027t remember if that was markdown or rst. To be safe, and to be consistent with the rest of this file, can you put a new blank line after the ^^^^ line?",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b2c0721_203b88f0",
+        "filename": "docs/developer/corearchitecture/multi_thread.rst",
+        "patchSetId": 22
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "Can you please put a blank line after the header declaration? Also, normally you would only use the ~~~~ for the number of characters in the header so Relative Placement is underlined, not a bunch of extra ones.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49e3b1d5_77cfee35",
+        "filename": "docs/developer/corearchitecture/multi_thread.rst",
+        "patchSetId": 22
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "indentation is off here",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc6cc359_afe0703f",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1314,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "why does main-core have to be specified? can\u0027t you just use assume its zero if not specified?",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a510c14a_78c77d3a",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "Normally there should be no blank line between the variable declarations. But there would be a blank line after all the variables are declared.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "757d5078_bf0c3e3f",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "It looks liek you have an extra \u0027%\u0027, but I don\u0027t really understand how the format () functino works, so maybe not. I checked the output of \"show threads\" and it looks like its working fine, so this is probably correct.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10f1fb19_0539835b",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "vec_free (line) sets line to NULL so this is redundant.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96e6085b_a485929b",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "I guess the \"State\" column is not used, and this is why you have -17 instead of -7?",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7d0cc0a_9cf2c187",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "You use __CPU_SETSIZE here but still use sizeof (cpu_set_t) everywhere else. To be consistent I htink you should do the same thing everywehre.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21ab4f85_23920d1a",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-04-10T20:51:06Z",
+      "side": 1,
+      "message": "minor nit: the rest of the branches in this function return NULL, but you return 0 here.",
+      "revId": "ed241d0ec632016860c6abcc468d1d07ffd8f6fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
