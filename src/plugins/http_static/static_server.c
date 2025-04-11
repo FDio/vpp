@@ -32,6 +32,7 @@
 hss_main_t hss_main;
 
 static int file_handler_discard_body (hss_session_t *hs, session_t *ts);
+static int url_handler_wait_body (hss_session_t *hs, session_t *ts);
 
 static int
 hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
@@ -316,12 +317,9 @@ try_url_handler (hss_session_t *hs)
   if (hs->left_recv)
     {
       ts = session_get (hs->vpp_session_index, hs->thread_index);
-      /* TODO: add support for large content (use hs->read_body_handler) */
       if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
 	{
-	  hs->left_recv = 0;
-	  start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
-	  hss_session_disconnect_transport (hs);
+	  hs->read_body_handler = url_handler_wait_body;
 	  return 0;
 	}
       vec_validate (data, hs->left_recv - 1);
@@ -604,6 +602,23 @@ file_handler_discard_body (hss_session_t *hs, session_t *ts)
   if (hs->left_recv == 0)
     return try_file_handler (hs);
   return 0;
+}
+
+static int
+url_handler_wait_body (hss_session_t *hs, session_t *ts)
+{
+  /* TODO: add support for large content (buffer or stream data) */
+  if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
+    {
+      clib_warning ("not all data in fifo, max deq %u, left recv %u",
+		    ts->rx_fifo, hs->left_recv);
+      hs->left_recv = 0;
+      start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
+      hss_session_disconnect_transport (hs);
+      return 0;
+    }
+  hs->left_recv = 0;
+  return try_url_handler (hs);
 }
 
 static int
