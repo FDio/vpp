@@ -208,8 +208,7 @@ var http2Tests = []h2specTest{
 	// {desc: "http2/5.5/2"},
 	{desc: "http2/6.1/1"},
 	{desc: "http2/6.1/2"},
-	// TODO: http_static url handler POST expect data immediately
-	// {desc: "http2/6.1/3"},
+	{desc: "http2/6.1/3"},
 	{desc: "http2/6.2/1"},
 	{desc: "http2/6.2/2"},
 	{desc: "http2/6.2/3"},
@@ -267,21 +266,26 @@ var http2Tests = []h2specTest{
 	{desc: "http2/8.1.2.3/5"},
 	{desc: "http2/8.1.2.3/6"},
 	{desc: "http2/8.1.2.3/7"},
-	// TODO: http_static url handler POST expect data immediately
-	// {desc: "http2/8.1.2.6/1"},
+	{desc: "http2/8.1.2.6/1"},
 	{desc: "http2/8.1.2.6/2"},
 	{desc: "http2/8.1.2/1"},
 	{desc: "http2/8.1/1"},
 	{desc: "http2/8.2/1"},
 }
 
+const (
+	GenericTestGroup int = 1
+	HpackTestGroup   int = 2
+	Http2TestGroup   int = 3
+)
+
 var specs = []struct {
-	tg    *spec.TestGroup
+	tg    int
 	tests []h2specTest
 }{
-	{generic.Spec(), genericTests},
-	{hpack.Spec(), hpackTests},
-	{http2.Spec(), http2Tests},
+	{GenericTestGroup, genericTests},
+	{HpackTestGroup, hpackTests},
+	{Http2TestGroup, http2Tests},
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
@@ -300,8 +304,8 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for _, spec := range specs {
-		for _, test := range spec.tests {
+	for _, sp := range specs {
+		for _, test := range sp.tests {
 			test := test
 			testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 			It(testName, func(ctx SpecContext) {
@@ -321,13 +325,24 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 					Sections:     []string{test.desc},
 					Verbose:      true,
 				}
-
 				// capture h2spec output so it will be in log
 				oldStdout := os.Stdout
 				r, w, _ := os.Pipe()
 				os.Stdout = w
 
-				spec.tg.Test(conf)
+				var tg *spec.TestGroup
+				switch sp.tg {
+				case GenericTestGroup:
+					tg = generic.Spec()
+					break
+				case HpackTestGroup:
+					tg = hpack.Spec()
+					break
+				case Http2TestGroup:
+					tg = http2.Spec()
+					break
+				}
+				tg.Test(conf)
 
 				oChan := make(chan string)
 				go func() {
@@ -341,7 +356,7 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 				os.Stdout = oldStdout
 				o := <-oChan
 				s.Log(o)
-				s.AssertEqual(0, spec.tg.FailedCount)
+				s.AssertEqual(0, tg.FailedCount)
 			})
 		}
 	}
