@@ -1883,8 +1883,8 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	new_tc->rcv_wscale = 0;
 
-      new_tc->snd_wnd = clib_net_to_host_u16 (tcp->window)
-			<< new_tc->snd_wscale;
+      /* RFC7323 sec 2.2: Window field in a syn segment must not be scaled */
+      new_tc->snd_wnd = clib_net_to_host_u16 (tcp->window);
       new_tc->snd_wl1 = seq;
       new_tc->snd_wl2 = ack;
 
