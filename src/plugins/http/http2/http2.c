@@ -422,6 +422,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   msg.data.headers_len = req->base.headers_len;
   msg.data.headers_ctx = pointer_to_uword (req->base.headers);
   msg.data.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+  msg.data.body_offset = req->base.control_data_len;
   msg.data.body_len = req->base.body_len;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
@@ -442,16 +443,22 @@ http2_req_state_transport_io_more_data (http_conn_t *hc, http2_req_t *req,
 					transport_send_params_t *sp,
 					http2_error_t *error)
 {
-  req->base.to_recv -= req->payload_len;
-  if (req->base.to_recv == 0)
+  if (req->payload_len > req->base.to_recv)
     {
-      if (req->stream_state != HTTP2_STREAM_STATE_HALF_CLOSED)
-	{
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
-	  return HTTP_SM_STOP;
-	}
-      http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
+      HTTP_DBG (1, "received more data than expected");
+      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+      return HTTP_SM_STOP;
     }
+  req->base.to_recv -= req->payload_len;
+  if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED &&
+      req->base.to_recv != 0)
+    {
+      HTTP_DBG (1, "peer closed stream but don't send all data");
+      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+      return HTTP_SM_STOP;
+    }
+  if (req->base.to_recv == 0)
+    http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_REPLY);
   http_io_as_write (&req->base, req->payload, req->payload_len);
   http_app_worker_rx_notify (&req->base);
 
