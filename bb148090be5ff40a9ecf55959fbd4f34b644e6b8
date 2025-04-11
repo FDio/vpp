@@ -18,6 +18,74 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9655d5b8_2dfd207c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-11T06:37:37Z",
+      "side": 1,
+      "message": "Really nice work! Nits inline",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0588918c_aefe0c9c",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-11T06:37:37Z",
+      "side": 1,
+      "message": "Maybe pull this to a constant at the start of the file (lower as well)",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67a945f2_e52654a9",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-11T06:37:37Z",
+      "side": 1,
+      "message": "\"Server pod created\"?",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "daea1d6b_6afe136a",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-11T06:37:37Z",
+      "side": 1,
+      "message": "\"Client pod created\"?",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3ce17c3c_8a4da6f2",
@@ -31,6 +99,24 @@
       "writtenOn": "2025-04-10T14:48:03Z",
       "side": 1,
       "message": "maybe we can use labels instead of SkipIfNotPerf and SkipIfPerf?\nand run following way:\nginkgo --label-filter\u003d\"perf\"\nand\nginkgo --label-filter\u003d\"!perf\"\n\nhttps://onsi.github.io/ginkgo/#spec-labels",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7520edd4_ed3ac0ae",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-11T06:37:37Z",
+      "side": 1,
+      "message": "+1 if possible",
+      "parentUuid": "3ce17c3c_8a4da6f2",
       "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
