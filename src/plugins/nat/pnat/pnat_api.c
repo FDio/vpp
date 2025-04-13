@@ -93,6 +93,20 @@ static void vl_api_pnat_binding_del_t_handler(vl_api_pnat_binding_del_t *mp) {
     REPLY_MACRO_END(VL_API_PNAT_BINDING_DEL_REPLY);
 }
 
+static void vl_api_pnat_flow_lookup_t_handler(vl_api_pnat_flow_lookup_t *mp) {
+    pnat_main_t *pm = &pnat_main;
+    vl_api_pnat_flow_lookup_reply_t *rmp;
+    u32 binding_index;
+    int rv = 0;
+    binding_index =
+        pnat_flow_lookup(mp->sw_if_index, mp->attachment, &mp->match);
+    if (binding_index == ~0) {
+        rv = -1;
+    }
+    REPLY_MACRO2_END(VL_API_PNAT_FLOW_LOOKUP_REPLY,
+                     ({ rmp->binding_index = binding_index; }));
+}
+
 /*
  * Workaround for a bug in vppapigen that doesn't register the endian handler
  * for _details messages. When that's fixed it should be possible to use
