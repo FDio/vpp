@@ -165,6 +165,23 @@ define pnat_interfaces_details
   vl_api_pnat_mask_t lookup_mask[2]; /* PNAT_ATTACHMENT_POINT_MAX */
 };
 
+
+autoendian define pnat_flow_lookup
+{
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    vl_api_pnat_attachment_point_t attachment;
+    vl_api_pnat_match_tuple_t match;
+};
+
+autoendian define pnat_flow_lookup_reply
+{
+    u32 context;
+    i32 retval;
+    u32 binding_index;
+};
+
 counters pnat {
   none {
     severity info;
