@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ed1769e_189d965f",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-04-14T08:21:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0588918c_aefe0c9c",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "67a945f2_e52654a9",
@@ -69,6 +87,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "694bc955_ce2956fc",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-04-14T08:21:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "67a945f2_e52654a9",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "daea1d6b_6afe136a",
@@ -82,6 +118,24 @@
       "writtenOn": "2025-04-11T06:37:37Z",
       "side": 1,
       "message": "\"Client pod created\"?",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "404d369f_9262f171",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-04-14T08:21:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "daea1d6b_6afe136a",
       "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -117,6 +171,24 @@
       "side": 1,
       "message": "+1 if possible",
       "parentUuid": "3ce17c3c_8a4da6f2",
+      "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "99038bd9_dcbf643c",
+        "filename": "extras/hs-test/infra/suite_kind.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-04-14T08:21:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7520edd4_ed3ac0ae",
       "revId": "bb148090be5ff40a9ecf55959fbd4f34b644e6b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
