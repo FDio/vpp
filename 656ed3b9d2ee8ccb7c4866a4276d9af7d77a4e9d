@@ -50,6 +50,23 @@
       "message": "The reported regressions are small and look like noise, I do not see big differences in \"show run\".",
       "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "30d28c89_760cc0cb",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2025-04-14T09:21:15Z",
+      "side": 1,
+      "message": "this mean we will support Only NICs with full checksum (inner and outer checksum offload). Would be a pity if NIC doesn\u0027t support outer and buffer doesn\u0027t have any outer.\nShall will support only inner checksum offload ? (like it is today)\n\nPS : I don\u0027t know the NICs coverage of outer checksum feature",
+      "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
