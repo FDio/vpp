@@ -1361,10 +1361,9 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 always_inline int
 tcp_segment_is_exception (tcp_connection_t *tc, tcp_header_t *th)
 {
-  /* TODO(fcoras): tcp-input should not allow segments without one of ack, rst,
-   * syn flags, so we shouldn't be checking for their presence. Leave the check
-   * in for now, remove in due time */
-  ASSERT (th->flags & (TCP_FLAG_ACK | TCP_FLAG_RST | TCP_FLAG_SYN));
+  /* tcp-input allows through segments without ack, e.g., fin without ack,
+   * which have to be handled as exception in nodes like established. So
+   * flags must be checked */
   return !tc || tc->state == TCP_STATE_CLOSED ||
 	 !(th->flags & (TCP_FLAG_ACK | TCP_FLAG_RST | TCP_FLAG_SYN));
 }
