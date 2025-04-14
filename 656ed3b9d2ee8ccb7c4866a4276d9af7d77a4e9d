@@ -67,6 +67,24 @@
       "message": "this mean we will support Only NICs with full checksum (inner and outer checksum offload). Would be a pity if NIC doesn\u0027t support outer and buffer doesn\u0027t have any outer.\nShall will support only inner checksum offload ? (like it is today)\n\nPS : I don\u0027t know the NICs coverage of outer checksum feature",
       "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f76bd31_e4490624",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-04-14T13:09:23Z",
+      "side": 1,
+      "message": "The modern hardware NICs support inner and outer checksum offloads. The interface-output node will be optimized for this use case.\nBut failing above check will enable interface-output node to carry out further checks based on egress interface capabilities and packet buffer offload flags. interface-output node will only compute the checksums within software when it is necessary i.e. tunneled packet egressing to virtual interfaces (tap, virtio, vhost etc), tunneled packet with inner and outer checksum offload to egress interface with only 1 level of checksum offload supported, offloads are disabled or not available at all on egress interface etc.",
+      "parentUuid": "30d28c89_760cc0cb",
+      "revId": "656ed3b9d2ee8ccb7c4866a4276d9af7d77a4e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
