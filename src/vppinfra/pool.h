@@ -421,18 +421,20 @@ _pool_free (void **v)
 #define pool_free(p) _pool_free ((void **) &(p))
 
 static_always_inline uword
-pool_get_first_index (void *pool)
+_pool_get_first_index (void *pool)
 {
   pool_header_t *h = pool_header (pool);
   return clib_bitmap_first_clear (h->free_bitmap);
 }
+#define pool_get_first_index(p) _pool_get_first_index ((void *) (p))
 
 static_always_inline uword
-pool_get_next_index (void *pool, uword last)
+_pool_get_next_index (void *pool, uword last)
 {
   pool_header_t *h = pool_header (pool);
   return clib_bitmap_next_clear (h->free_bitmap, last + 1);
 }
+#define pool_get_next_index(p, l) _pool_get_next_index ((void *) (p), l)
 
 /** Optimized iteration through pool.
 
