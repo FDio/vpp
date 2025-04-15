@@ -827,8 +827,7 @@ static void *
 catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes,
 			    u8 * set_output_vector)
 {
-  clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-				       c->clib_file_index);
+  clib_file_t *uf = clib_file_get (&file_main, c->clib_file_index);
   u8 *result = 0;
 
   if (set_output_vector)
