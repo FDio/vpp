@@ -224,7 +224,7 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
   response = http_get_tx_buf (hc);
   http2_frame_write_goaway (error, h2c->last_processed_stream_id, &response);
   http_io_ts_write (hc, response, vec_len (response), sp);
-  http_io_ts_after_write (hc, sp, 1, 1);
+  http_io_ts_after_write (hc, 1);
 
   hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
 		  req = http2_req_get (req_index, hc->c_thread_index);
@@ -243,7 +243,7 @@ http2_send_stream_error (http_conn_t *hc, u32 stream_id, http2_error_t error,
   response = http_get_tx_buf (hc);
   http2_frame_write_rst_stream (error, stream_id, &response);
   http_io_ts_write (hc, response, vec_len (response), sp);
-  http_io_ts_after_write (hc, sp, 1, 1);
+  http_io_ts_after_write (hc, 1);
 }
 
 /* send RST_STREAM frame and notify app */
@@ -301,7 +301,7 @@ http2_send_server_preface (http_conn_t *hc)
     response = http_get_tx_buf (hc);
   http2_frame_write_settings (settings_list, &response);
   http_io_ts_write (hc, response, vec_len (response), 0);
-  http_io_ts_after_write (hc, 0, 0, 1);
+  http_io_ts_after_write (hc, 0);
 }
 
 /*************************************/
@@ -523,7 +523,7 @@ http2_req_state_wait_app_reply (http_conn_t *hc, http2_req_t *req,
 			     { response, vec_len (response) } };
   n_written = http_io_ts_write_segs (hc, segs, 2, sp);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + vec_len (response)));
-  http_io_ts_after_write (hc, sp, 0, 1);
+  http_io_ts_after_write (hc, 0);
 
   return sm_result;
 }
@@ -577,9 +577,14 @@ http2_req_state_app_io_more_data (http_conn_t *hc, http2_req_t *req,
       else
 	req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
     }
+  http_io_ts_after_write (hc, finished);
 
 check_fifo:
-  http_io_ts_after_write (hc, sp, finished, !!n_written);
+  if (http_io_ts_check_write_thresh (hc))
+    {
+      http_io_ts_add_want_deq_ntf (hc);
+      http_req_deschedule (&req->base, sp);
+    }
   return HTTP_SM_STOP;
 }
 
@@ -842,7 +847,7 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
       http2_frame_write_settings_ack (&resp);
       http_io_ts_write (hc, resp, vec_len (resp), 0);
       vec_free (resp);
-      http_io_ts_after_write (hc, 0, 0, 1);
+      http_io_ts_after_write (hc, 0);
     }
 
   return HTTP2_ERROR_NO_ERROR;
@@ -946,7 +951,7 @@ http2_handle_ping_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_frame_write_ping (1, rx_buf, &resp);
   http_io_ts_write (hc, resp, vec_len (resp), 0);
   vec_free (resp);
-  http_io_ts_after_write (hc, 0, 1, 1);
+  http_io_ts_after_write (hc, 1);
 
   return HTTP2_ERROR_NO_ERROR;
 }
