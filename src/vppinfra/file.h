@@ -42,6 +42,7 @@
 
 #include <vppinfra/socket.h>
 #include <vppinfra/pool.h>
+#include <vppinfra/lock.h>
 #include <termios.h>
 
 
@@ -53,12 +54,17 @@ typedef struct clib_file
   /* Unix file descriptor from open/socket. */
   u32 file_descriptor;
 
-  u32 flags;
+  u16 flags;
 #define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
 #define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
 
+  u16 active : 1;
+  u16 dont_close : 1;
+
   /* polling thread index */
   u32 polling_thread_index;
+
+  u32 index;
 
   /* Data available for function's use. */
   u64 private_data;
@@ -85,75 +91,114 @@ typedef enum
 typedef struct
 {
   /* Pool of files to poll for input/output. */
-  clib_file_t *file_pool;
+  clib_file_t **file_pool;
+  clib_file_t **pending_free;
+
+  u8 lock;
 
   void (*file_update) (clib_file_t * file,
 		       clib_file_update_type_t update_type);
 
 } clib_file_main_t;
 
-always_inline uword
-clib_file_add (clib_file_main_t * um, clib_file_t * template)
+always_inline clib_file_t *
+clib_file_get (clib_file_main_t *fm, u32 file_index)
 {
-  clib_file_t *f;
-  pool_get (um->file_pool, f);
+  if (pool_is_free_index (fm->file_pool, file_index))
+    return 0;
+  return *pool_elt_at_index (fm->file_pool, file_index);
+}
+
+always_inline uword
+clib_file_add (clib_file_main_t *fm, clib_file_t *template)
+{
+  clib_file_t *f, **fp;
+  u32 index;
+
+  f = clib_mem_alloc_aligned (sizeof (clib_file_t), CLIB_CACHE_LINE_BYTES);
+
+  CLIB_SPINLOCK_LOCK (fm->lock);
+  pool_get (fm->file_pool, fp);
+  index = fp - fm->file_pool;
+  fp[0] = f;
+  CLIB_SPINLOCK_UNLOCK (fm->lock);
+
   f[0] = template[0];
   f->read_events = 0;
   f->write_events = 0;
   f->error_events = 0;
-  um->file_update (f, UNIX_FILE_UPDATE_ADD);
-  return f - um->file_pool;
+  f->index = index;
+  fm->file_update (f, UNIX_FILE_UPDATE_ADD);
+  f->active = 1;
+  return index;
 }
 
 always_inline void
-clib_file_del (clib_file_main_t * um, clib_file_t * f)
+clib_file_del (clib_file_main_t *fm, clib_file_t *f)
 {
-  um->file_update (f, UNIX_FILE_UPDATE_DELETE);
-  close (f->file_descriptor);
-  f->file_descriptor = ~0;
-  vec_free (f->description);
-  pool_put (um->file_pool, f);
+  fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
+  if (f->dont_close == 0)
+    close ((int) f->file_descriptor);
+
+  CLIB_SPINLOCK_LOCK (fm->lock);
+  f->active = 0;
+  vec_add1 (fm->pending_free, f);
+  pool_put_index (fm->file_pool, f->index);
+  CLIB_SPINLOCK_UNLOCK (fm->lock);
 }
 
 always_inline void
-clib_file_del_by_index (clib_file_main_t * um, uword index)
+clib_file_del_by_index (clib_file_main_t *fm, uword index)
 {
-  clib_file_t *uf;
-  uf = pool_elt_at_index (um->file_pool, index);
-  clib_file_del (um, uf);
+  clib_file_t *f = clib_file_get (fm, index);
+  clib_file_del (fm, f);
 }
 
 always_inline void
-clib_file_set_polling_thread (clib_file_main_t * um, uword index,
+clib_file_free_deleted (clib_file_main_t *fm, u32 thread_index)
+{
+  u32 n_keep = 0;
+
+  if (vec_len (fm->pending_free) == 0)
+    return;
+
+  CLIB_SPINLOCK_LOCK (fm->lock);
+  vec_foreach_pointer (f, fm->pending_free)
+    {
+      if (f->polling_thread_index == thread_index)
+	{
+	  vec_free (f->description);
+	  clib_mem_free (f);
+	}
+      else
+	fm->pending_free[n_keep++] = f;
+    }
+  vec_set_len (fm->pending_free, n_keep);
+  CLIB_SPINLOCK_UNLOCK (fm->lock);
+}
+
+always_inline void
+clib_file_set_polling_thread (clib_file_main_t *fm, uword index,
 			      u32 thread_index)
 {
-  clib_file_t *f = pool_elt_at_index (um->file_pool, index);
-  um->file_update (f, UNIX_FILE_UPDATE_DELETE);
+  clib_file_t *f = clib_file_get (fm, index);
+  fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
   f->polling_thread_index = thread_index;
-  um->file_update (f, UNIX_FILE_UPDATE_ADD);
+  fm->file_update (f, UNIX_FILE_UPDATE_ADD);
 }
 
 always_inline uword
-clib_file_set_data_available_to_write (clib_file_main_t * um,
-				       u32 clib_file_index,
-				       uword is_available)
+clib_file_set_data_available_to_write (clib_file_main_t *fm,
+				       u32 clib_file_index, uword is_available)
 {
-  clib_file_t *uf = pool_elt_at_index (um->file_pool, clib_file_index);
-  uword was_available = (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
+  clib_file_t *f = clib_file_get (fm, clib_file_index);
+  uword was_available = (f->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
   if ((was_available != 0) != (is_available != 0))
     {
-      uf->flags ^= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-      um->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+      f->flags ^= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
+      fm->file_update (f, UNIX_FILE_UPDATE_MODIFY);
     }
   return was_available != 0;
-}
-
-always_inline clib_file_t *
-clib_file_get (clib_file_main_t * fm, u32 file_index)
-{
-  if (pool_is_free_index (fm->file_pool, file_index))
-    return 0;
-  return pool_elt_at_index (fm->file_pool, file_index);
 }
 
 always_inline clib_error_t *
@@ -166,11 +211,3 @@ clib_file_write (clib_file_t * f)
 u8 *clib_file_get_resolved_basename (char *fmt, ...);
 
 #endif /* included_clib_file_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -76,7 +76,7 @@
 #define memif_file_del(a)                                                     \
   do                                                                          \
     {                                                                         \
-      memif_log_debug (0, "clib_file_del idx %u", a - file_main.file_pool);   \
+      memif_log_debug (0, "clib_file_del idx %u", (a)->index);                \
       clib_file_del (&file_main, a);                                          \
     }                                                                         \
   while (0)

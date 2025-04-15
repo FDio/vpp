@@ -729,7 +729,7 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
   else if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
       rxq = vec_elt_at_index (xd->rx_queues, qid);
-      f = pool_elt_at_index (fm->file_pool, rxq->clib_file_index);
+      f = clib_file_get (fm, rxq->clib_file_index);
       fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
     }
   else if (!(xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE))
@@ -737,7 +737,7 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
   else
     {
       rxq = vec_elt_at_index (xd->rx_queues, qid);
-      f = pool_elt_at_index (fm->file_pool, rxq->clib_file_index);
+      f = clib_file_get (fm, rxq->clib_file_index);
       fm->file_update (f, UNIX_FILE_UPDATE_ADD);
     }
   if (rv)

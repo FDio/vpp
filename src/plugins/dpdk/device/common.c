@@ -369,8 +369,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  if (xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE)
 	    {
 	      clib_file_main_t *fm = &file_main;
-	      clib_file_t *f =
-		pool_elt_at_index (fm->file_pool, rxq->clib_file_index);
+	      clib_file_t *f = clib_file_get (fm, rxq->clib_file_index);
 	      fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
 	    }
 	}
