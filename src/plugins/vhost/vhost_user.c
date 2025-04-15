@@ -325,15 +325,13 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 
   if (vring->kickfd_idx != ~0)
     {
-      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-					   vring->kickfd_idx);
+      clib_file_t *uf = clib_file_get (&file_main, vring->kickfd_idx);
       clib_file_del (&file_main, uf);
       vring->kickfd_idx = ~0;
     }
   if (vring->callfd_idx != ~0)
     {
-      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-					   vring->callfd_idx);
+      clib_file_t *uf = clib_file_get (&file_main, vring->callfd_idx);
       clib_file_del (&file_main, uf);
       vring->callfd_idx = ~0;
     }
@@ -367,7 +365,7 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
 
   if (vui->clib_file_index != ~0)
     {
-      clib_file_del (&file_main, file_main.file_pool + vui->clib_file_index);
+      clib_file_del_by_index (&file_main, vui->clib_file_index);
       vui->clib_file_index = ~0;
     }
 
@@ -750,8 +748,8 @@ vhost_user_socket_read (clib_file_t * uf)
 	  /* if there is old fd, delete and close it */
 	  if (vui->vrings[q].callfd_idx != ~0)
 	    {
-	      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-						   vui->vrings[q].callfd_idx);
+	      clib_file_t *uf =
+		clib_file_get (&file_main, vui->vrings[q].callfd_idx);
 	      clib_file_del (&file_main, uf);
 	      vui->vrings[q].callfd_idx = ~0;
 	    }
@@ -823,8 +821,8 @@ vhost_user_socket_read (clib_file_t * uf)
 
       if (vui->vrings[q].kickfd_idx != ~0)
 	{
-	  clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-					       vui->vrings[q].kickfd_idx);
+	  clib_file_t *uf =
+	    clib_file_get (&file_main, vui->vrings[q].kickfd_idx);
 	  clib_file_del (&file_main, uf);
 	  vui->vrings[q].kickfd_idx = ~0;
 	}
@@ -1148,7 +1146,7 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
     {
       vu_log_debug (vui, "Close client socket for vhost interface %d, fd %d",
 		    vui->sw_if_index, UNIX_GET_FD (vui->clib_file_index));
-      clib_file_del (&file_main, file_main.file_pool + vui->clib_file_index);
+      clib_file_del_by_index (&file_main, vui->clib_file_index);
     }
 
   vu_log_debug (vui, "New client socket for vhost interface %d, fd %d",
@@ -1408,8 +1406,7 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   if (vui->unix_server_index != ~0)
     {
       //Close server socket
-      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
-					   vui->unix_server_index);
+      clib_file_t *uf = clib_file_get (&file_main, vui->unix_server_index);
       clib_file_del (&file_main, uf);
       vui->unix_server_index = ~0;
       unlink (vui->sock_filename);
