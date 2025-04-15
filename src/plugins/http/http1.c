@@ -125,6 +125,19 @@ http1_conn_free_req (http_conn_t *hc)
   hc->flags &= ~HTTP_CONN_F_HAS_REQUEST;
 }
 
+/* Deschedule http session and wait for deq notification if underlying ts tx
+ * fifo almost full */
+static_always_inline void
+http1_check_and_deschedule (http_conn_t *hc, http_req_t *req,
+			    transport_send_params_t *sp)
+{
+  if (http_io_ts_check_write_thresh (hc))
+    {
+      http_req_deschedule (req, sp);
+      http_io_ts_add_want_deq_ntf (hc);
+    }
+}
+
 static void
 http1_send_error (http_conn_t *hc, http_status_code_t ec,
 		  transport_send_params_t *sp)
@@ -139,7 +152,7 @@ http1_send_error (http_conn_t *hc, http_status_code_t ec,
   HTTP_DBG (3, "%v", data);
   http_io_ts_write (hc, data, vec_len (data), sp);
   vec_free (data);
-  http_io_ts_after_write (hc, sp, 0, 1);
+  http_io_ts_after_write (hc, 0);
 }
 
 static int
@@ -1039,7 +1052,7 @@ http1_req_state_transport_io_more_data (http_conn_t *hc, http_req_t *req,
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
-      http_io_as_want_deq_ntf (req);
+      http_io_as_add_want_deq_ntf (req);
       return HTTP_SM_STOP;
     }
 
@@ -1095,7 +1108,7 @@ http1_req_state_tunnel_rx (http_conn_t *hc, http_req_t *req,
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
-      http_io_as_want_deq_ntf (req);
+      http_io_as_add_want_deq_ntf (req);
       return HTTP_SM_STOP;
     }
   max_read = clib_min (max_enq, max_deq);
@@ -1187,7 +1200,7 @@ http1_req_state_udp_tunnel_rx (http_conn_t *hc, http_req_t *req,
       if (http_io_as_max_write (req) < dgram_size)
 	{
 	  HTTP_DBG (1, "app's rx fifo full");
-	  http_io_as_want_deq_ntf (req);
+	  http_io_as_add_want_deq_ntf (req);
 	  goto done;
 	}
 
@@ -1328,7 +1341,7 @@ http1_req_state_wait_app_reply (http_conn_t *hc, http_req_t *req,
 
   http_req_state_change (req, next_state);
 
-  http_io_ts_after_write (hc, sp, 0, 1);
+  http_io_ts_after_write (hc, 0);
   return sm_result;
 
 error:
@@ -1445,7 +1458,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 
   http_req_state_change (req, next_state);
 
-  http_io_ts_after_write (hc, sp, 0, 1);
+  http_io_ts_after_write (hc, 0);
   goto done;
 
 error:
@@ -1497,9 +1510,10 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
 				    HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
       http_buffer_free (hb);
     }
+  http_io_ts_after_write (hc, finished);
 
 check_fifo:
-  http_io_ts_after_write (hc, sp, finished, !!n_written);
+  http1_check_and_deschedule (hc, req, sp);
   return HTTP_SM_STOP;
 }
 
@@ -1529,10 +1543,10 @@ http1_req_state_tunnel_tx (http_conn_t *hc, http_req_t *req,
   http_io_as_read_segs (req, segs, &n_segs, max_read);
   n_written = http_io_ts_write_segs (hc, segs, n_segs, sp);
   http_io_as_drain (req, n_written);
+  http_io_ts_after_write (hc, 0);
 
 check_fifo:
-  http_io_ts_after_write (hc, sp, 0, !!n_written);
-
+  http1_check_and_deschedule (hc, req, sp);
   return HTTP_SM_STOP;
 }
 
@@ -1580,8 +1594,9 @@ http1_req_state_udp_tunnel_tx (http_conn_t *hc, http_req_t *req,
     }
 
 done:
-  http_io_ts_after_write (hc, sp, 0, written);
-
+  if (written)
+    http_io_ts_after_write (hc, 0);
+  http1_check_and_deschedule (hc, req, sp);
   return HTTP_SM_STOP;
 }
 
