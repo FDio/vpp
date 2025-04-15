@@ -47,6 +47,13 @@ extern load_balance_main_t load_balance_main;
 #define LB_MAX_BUCKETS 8192
 
 /**
+ * The log2 of maximum number of buckets bitwidth that a load-balance
+ * object can have
+ * This must not overflow the lb_n_buckets field
+ */
+#define LB_MAX_BUCKETS_LOG2_WIDTH 4
+
+/**
  * The number of buckets that a load-balance object can have and still
  * fit in one cache-line
  */
@@ -117,7 +124,7 @@ typedef struct load_balance_t_ {
      */
     u16 lb_n_buckets_minus_1;
 
-   /**
+    /**
      * The protocol of packets that traverse this LB.
      * need in combination with the flow hash config to determine how to hash.
      * u8.
@@ -125,9 +132,15 @@ typedef struct load_balance_t_ {
     dpo_proto_t lb_proto;
 
     /**
+     * bit number of buckets in the load-balance. used in the switch path
+     * as part of the hash calculation.
+     */
+    u8 lb_n_buckets_log2 : LB_MAX_BUCKETS_LOG2_WIDTH;
+
+    /**
      * Flags concenring the LB's creation and modification
      */
-    load_balance_flags_t lb_flags;
+    load_balance_flags_t lb_flags : (8 - LB_MAX_BUCKETS_LOG2_WIDTH);
 
     /**
      * Flags from the load-balance's associated fib_entry_t
@@ -177,6 +190,8 @@ STATIC_ASSERT (LB_MAX_BUCKETS <= CLIB_U16_MAX,
 	       "Too many buckets for load_balance object");
 STATIC_ASSERT (LB_MAX_BUCKETS && !(LB_MAX_BUCKETS & (LB_MAX_BUCKETS - 1)),
 	       "LB_MAX_BUCKETS must be a power of 2");
+STATIC_ASSERT (LB_MAX_BUCKETS <= (1 << ((1 << LB_MAX_BUCKETS_LOG2_WIDTH) - 1)),
+	       "Too many buckets for LB_MAX_BUCKETS_LOG2_WIDTH");
 
 /**
  * Flags controlling load-balance formatting/display

@@ -150,6 +150,18 @@ rotate_right (uword x, uword i)
   return (x >> i) | (x << (BITS (i) - i));
 }
 
+always_inline u32
+rotate_left_u32 (u32 x, u32 i)
+{
+  return (x << i) | (x >> (BITS (i) - i));
+}
+
+always_inline u32
+rotate_right_u32 (u32 x, u32 i)
+{
+  return (x >> i) | (x << (BITS (i) - i));
+}
+
 /* Returns snoob from Hacker's Delight.  Next highest number
    with same number of set bits. */
 always_inline uword

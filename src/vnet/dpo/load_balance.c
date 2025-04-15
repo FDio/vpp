@@ -246,6 +246,7 @@ load_balance_create_i (u32 num_buckets,
     lb->lb_hash_config = fhc;
     lb->lb_n_buckets = num_buckets;
     lb->lb_n_buckets_minus_1 = num_buckets-1;
+    lb->lb_n_buckets_log2 = min_log2 (num_buckets);
     lb->lb_proto = lb_proto;
 
     if (!LB_HAS_INLINE_BUCKETS(lb))
@@ -634,6 +635,7 @@ load_balance_set_n_buckets (load_balance_t *lb,
     ASSERT (n_buckets <= LB_MAX_BUCKETS);
     lb->lb_n_buckets = n_buckets;
     lb->lb_n_buckets_minus_1 = n_buckets-1;
+    lb->lb_n_buckets_log2 = min_log2 (n_buckets);
 }
 
 void
@@ -1139,6 +1141,7 @@ l2_flow_hash (vlib_buffer_t * b0)
 typedef struct load_balance_trace_t_
 {
     index_t lb_index;
+    u32 flow_hash;
 } load_balance_trace_t;
 
 always_inline uword
@@ -1163,7 +1166,7 @@ load_balance_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  vlib_buffer_t *b0;
-	  u32 bi0, lbi0, next0;
+	  u32 bi0, lbi0, hc0, next0;
 	  const dpo_id_t *dpo0;
 	  const load_balance_t *lb0;
 
@@ -1180,20 +1183,38 @@ load_balance_inline (vlib_main_t * vm,
 	  lbi0 =  vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	  lb0 = load_balance_get(lbi0);
 
-	  if (is_l2)
-	  {
-	      vnet_buffer(b0)->ip.flow_hash = l2_flow_hash(b0);
-	  }
-	  else
-	  {
-	      /* it's BIER */
-	      const bier_hdr_t *bh0 = vlib_buffer_get_current(b0);
-	      vnet_buffer(b0)->ip.flow_hash = bier_compute_flow_hash(bh0);
-	  }
+	  /*
+	   * this node is for via FIBs we can re-use the hash value from the
+	   * to node if present.
+	   * We don't want to use the same hash value at each level in the recursion
+	   * graph as that would lead to polarisation
+	   */
+	  hc0 = 0;
 
-	  dpo0 = load_balance_get_bucket_i(lb0,
-					   vnet_buffer(b0)->ip.flow_hash &
-					   (lb0->lb_n_buckets_minus_1));
+	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	    {
+	      if (PREDICT_TRUE (vnet_buffer (b0)->ip.flow_hash))
+		{
+		  hc0 = vnet_buffer (b0)->ip.flow_hash = rotate_left_u32 (
+		    vnet_buffer (b0)->ip.flow_hash, lb0->lb_n_buckets_log2);
+		}
+	      else if (is_l2)
+		{
+		  hc0 = vnet_buffer(b0)->ip.flow_hash = l2_flow_hash (b0);
+		}
+	      else
+		{
+		  /* it's BIER */
+		  const bier_hdr_t *bh0 = vlib_buffer_get_current(b0);
+		  hc0 = vnet_buffer(b0)->ip.flow_hash = bier_compute_flow_hash (bh0);
+		}
+	      dpo0 = load_balance_get_fwd_bucket
+		(lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	    }
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
@@ -1203,6 +1224,7 @@ load_balance_inline (vlib_main_t * vm,
 	      load_balance_trace_t *tr = vlib_add_trace (vm, node, b0,
 							 sizeof (*tr));
 	      tr->lb_index = lbi0;
+	      tr->flow_hash = vnet_buffer(b0)->ip.flow_hash;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -1229,7 +1251,8 @@ format_l2_load_balance_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   load_balance_trace_t *t = va_arg (*args, load_balance_trace_t *);
 
-  s = format (s, "L2-load-balance: index %d", t->lb_index);
+  s = format (s, "L2-load-balance: index %d flow hash: 0x%08x",
+    t->lb_index, t->flow_hash);
   return s;
 }
 
@@ -1301,6 +1324,7 @@ nsh_load_balance (vlib_main_t * vm,
               load_balance_trace_t *tr = vlib_add_trace (vm, node, b0,
                                                          sizeof (*tr));
               tr->lb_index = lbi0;
+              tr->flow_hash = vnet_buffer(b0)->ip.flow_hash;
             }
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
                                            n_left_to_next, bi0, next0);
@@ -1319,7 +1343,8 @@ format_nsh_load_balance_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   load_balance_trace_t *t = va_arg (*args, load_balance_trace_t *);
 
-  s = format (s, "NSH-load-balance: index %d", t->lb_index);
+  s = format (s, "NSH-load-balance: index %d flow hash: 0x%08x",
+    t->lb_index, t->flow_hash);
   return s;
 }
 
@@ -1345,7 +1370,8 @@ format_bier_load_balance_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   load_balance_trace_t *t = va_arg (*args, load_balance_trace_t *);
 
-  s = format (s, "BIER-load-balance: index %d", t->lb_index);
+  s = format (s, "BIER-load-balance: index %d flow hash: 0x%08x",
+    t->lb_index, t->flow_hash);
   return s;
 }
 

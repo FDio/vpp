@@ -548,8 +548,8 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
 		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
+		  hc0 = vnet_buffer (p0)->ip.flow_hash = rotate_left_u32 (
+		    vnet_buffer (p0)->ip.flow_hash, lb0->lb_n_buckets_log2);
 		}
 	      else
 		{
@@ -567,8 +567,8 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_TRUE (vnet_buffer (p1)->ip.flow_hash))
 		{
-		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    vnet_buffer (p1)->ip.flow_hash >> 1;
+		  hc1 = vnet_buffer (p1)->ip.flow_hash = rotate_left_u32 (
+		    vnet_buffer (p1)->ip.flow_hash, lb1->lb_n_buckets_log2);
 		}
 	      else
 		{
@@ -642,8 +642,8 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	    {
 	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
 		{
-		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    vnet_buffer (p0)->ip.flow_hash >> 1;
+		  hc0 = vnet_buffer (p0)->ip.flow_hash = rotate_left_u32 (
+		    vnet_buffer (p0)->ip.flow_hash, lb0->lb_n_buckets_log2);
 		}
 	      else
 		{
