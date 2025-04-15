@@ -22,7 +22,7 @@
 #include <fcntl.h>
 
 #include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 #include <vnet/ethernet/ethernet.h>
 
 #include <netmap/net_netmap.h>
@@ -53,7 +53,7 @@ close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
 {
   if (nif->clib_file_index != ~0)
     {
-      clib_file_del (&file_main, file_main.file_pool + nif->clib_file_index);
+      clib_file_del_by_index (&file_main, nif->clib_file_index);
       nif->clib_file_index = ~0;
     }
   else if (nif->fd > -1)

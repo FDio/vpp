@@ -227,7 +227,7 @@ socket_cleanup_pending_remove_registration_cb (u32 *preg_index)
   clib_file_main_t *fm = &file_main;
   u32 pending_remove_file_index = vl_api_registration_file_index (rp);
 
-  clib_file_t *zf = fm->file_pool + pending_remove_file_index;
+  clib_file_t *zf = clib_file_get (fm, pending_remove_file_index);
 
   clib_file_del (fm, zf);
   vl_socket_free_registration_index (rp - socket_main.registration_pool);
