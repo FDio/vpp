@@ -656,6 +656,21 @@ http_io_ts_max_write (http_conn_t *hc, transport_send_params_t *sp)
 		   sp->max_burst_size);
 }
 
+always_inline int
+http_io_ts_check_write_thresh (http_conn_t *hc)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  return (svm_fifo_max_enqueue_prod (ts->tx_fifo) < HTTP_FIFO_THRESH);
+}
+
+always_inline void
+http_io_ts_want_deq_ntf (http_conn_t *hc, transport_send_params_t *sp)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+  sp->flags |= TRANSPORT_SND_F_DESCHED;
+}
+
 always_inline u32
 http_io_ts_read (http_conn_t *hc, u8 *buf, u32 len, u8 peek)
 {
@@ -745,28 +760,18 @@ http_io_ts_write_segs (http_conn_t *hc, const svm_fifo_seg_t segs[],
 }
 
 always_inline void
-http_io_ts_after_write (http_conn_t *hc, transport_send_params_t *sp, u8 flush,
-			u8 written)
+http_io_ts_after_write (http_conn_t *hc, u8 flush)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
 
   if (!flush)
     {
-      if (written && svm_fifo_set_event (ts->tx_fifo))
+      if (svm_fifo_set_event (ts->tx_fifo))
 	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
-
-      if (sp && (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH))
-	{
-	  /* Deschedule http session and wait for deq notification if
-	   * underlying ts tx fifo almost full */
-	  svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
-	  transport_connection_deschedule (&hc->connection);
-	  sp->flags |= TRANSPORT_SND_F_DESCHED;
-	}
     }
   else
     {
-      if (written && svm_fifo_set_event (ts->tx_fifo))
+      if (svm_fifo_set_event (ts->tx_fifo))
 	session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX_FLUSH);
     }
 }
