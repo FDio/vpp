@@ -108,6 +108,17 @@ log_level_is_enabled (vlib_log_level_t level, vlib_log_level_t configured)
   return 1;
 }
 
+static void
+log_size_validate (vlib_log_main_t *lm)
+{
+  if (vec_len (lm->entries) < lm->size)
+    {
+      CLIB_SPINLOCK_LOCK (lm->lock);
+      vec_validate (lm->entries, lm->size);
+      CLIB_SPINLOCK_UNLOCK (lm->lock);
+    }
+}
+
 void
 vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 {
@@ -122,14 +133,10 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
   int syslog_enabled = log_level_is_enabled (level, sc->syslog_level);
   u8 *s = 0;
 
-  /* make sure we are running on the main thread to avoid use in dataplane
-     code, for dataplane logging consider use of event-logger */
-  ASSERT (vlib_get_thread_index () == 0);
-
   if ((log_enabled || syslog_enabled) == 0)
     return;
 
-  vec_validate (lm->entries, lm->size);
+  log_size_validate (lm);
 
   if ((delta > lm->unthrottle_time) ||
       (sc->is_throttling == 0 && (delta > 1)))
@@ -197,13 +204,19 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 
   if (log_enabled)
     {
+      CLIB_SPINLOCK_LOCK (lm->lock);
       e = vec_elt_at_index (lm->entries, lm->next);
-      vec_free (e->string);
+      lm->next = (lm->next + 1) % lm->size;
+      if (lm->size > lm->count)
+	lm->count++;
       e->level = level;
       e->class = class;
-      e->string = s;
       e->timestamp = t;
-      s = 0;
+      e->thread_index = vm->thread_index;
+      CLIB_SWAP (e->string, s);
+      CLIB_SPINLOCK_UNLOCK (lm->lock);
+
+      vec_free (s);
 
       if (lm->add_to_elog)
 	{
@@ -235,10 +248,6 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 	  ed->string_index =
 	    elog_string (&vlib_global_main.elog_main, "%v%c", e->string, 0);
 	}
-
-      lm->next = (lm->next + 1) % lm->size;
-      if (lm->size > lm->count)
-	lm->count++;
     }
 
   vec_free (s);
@@ -356,7 +365,7 @@ vlib_log_init (vlib_main_t *vm)
   gettimeofday (&lm->time_zero_timeval, 0);
   lm->time_zero = vlib_time_now (vm);
 
-  vec_validate (lm->entries, lm->size);
+  log_size_validate (lm);
 
   while (r)
     {
@@ -384,22 +393,29 @@ show_log (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
-  vlib_log_entry_t *e;
+  vlib_log_entry_t *e, *entries;
   int i = last_log_entry ();
-  int count = lm->count;
+  int count;
   f64 time_offset;
 
   time_offset = (f64) lm->time_zero_timeval.tv_sec
     + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
 
+  CLIB_SPINLOCK_LOCK (lm->lock);
+  count = lm->count;
+  entries = vec_dup (lm->entries);
+  CLIB_SPINLOCK_UNLOCK (lm->lock);
+
   while (count--)
     {
-      e = vec_elt_at_index (lm->entries, i);
+      e = vec_elt_at_index (entries, i);
       vlib_cli_output (vm, "%U %-10U %-14U %v", format_time_float, NULL,
 		       e->timestamp + time_offset, format_vlib_log_level,
 		       e->level, format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;
     }
+
+  vec_free (entries);
 
   return error;
 }
@@ -464,8 +480,10 @@ clear_log (vlib_main_t * vm,
   vlib_log_main_t *lm = &log_main;
   vlib_log_entry_t *e;
   int i = last_log_entry ();
-  int count = lm->count;
+  int count;
 
+  CLIB_SPINLOCK_LOCK (lm->lock);
+  count = lm->count;
   while (count--)
     {
       e = vec_elt_at_index (lm->entries, i);
@@ -475,6 +493,8 @@ clear_log (vlib_main_t * vm,
 
   lm->count = 0;
   lm->next = 0;
+  CLIB_SPINLOCK_UNLOCK (lm->lock);
+
   vlib_log_info (log_log.class, "log cleared");
   return error;
 }
@@ -667,7 +687,7 @@ set_log_size (vlib_main_t * vm,
       if (unformat (line_input, "%d", &size))
 	{
 	  lm->size = size;
-	  vec_validate (lm->entries, lm->size);
+	  log_size_validate (lm);
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -809,7 +829,7 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "size %d", &lm->size))
-	vec_validate (lm->entries, lm->size);
+	log_size_validate (lm);
       else if (unformat (input, "unthrottle-time %d", &lm->unthrottle_time))
 	;
       else if (unformat (input, "default-log-level %U",

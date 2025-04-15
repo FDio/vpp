@@ -41,7 +41,8 @@ typedef enum
 
 typedef struct
 {
-  vlib_log_level_t level;
+  u16 thread_index;
+  u8 level; /* vlib_log_level_t */
   vlib_log_class_t class;
   f64 timestamp;
   u8 *string;
@@ -95,6 +96,7 @@ typedef struct
   vlib_log_entry_t *entries;
   vlib_log_class_data_t *classes;
   int size, next, count;
+  u8 lock;
 
   int default_rate_limit;
   int default_log_level;
