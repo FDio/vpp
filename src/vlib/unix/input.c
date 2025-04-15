@@ -67,7 +67,6 @@ static linux_epoll_main_t *linux_epoll_mains = 0;
 static void
 linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
 {
-  clib_file_main_t *fm = &file_main;
   linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains,
 					     f->polling_thread_index);
   struct epoll_event e = { 0 };
@@ -78,7 +77,7 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
     e.events |= EPOLLOUT;
   if (f->flags & UNIX_FILE_EVENT_EDGE_TRIGGERED)
     e.events |= EPOLLET;
-  e.data.u32 = f - fm->file_pool;
+  e.data.u32 = f->index;
 
   op = -1;
 
@@ -292,8 +291,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
        * deleted file descriptor. We just deal with it and throw away the
        * events for the corresponding file descriptor.
        */
-      f = fm->file_pool + i;
-      if (PREDICT_FALSE (pool_is_free (fm->file_pool, f)))
+      f = clib_file_get (fm, i);
+      if (PREDICT_FALSE (!f))
 	{
 	  if (e->events & EPOLLIN)
 	    {
@@ -326,7 +325,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Make sure f is valid if the file pool moves */
 	      if (pool_is_free_index (fm->file_pool, i))
 		continue;
-	      f = pool_elt_at_index (fm->file_pool, i);
+	      f = clib_file_get (fm, i);
 	      n_errors += errors[n_errors] != 0;
 	    }
 	  if (e->events & EPOLLOUT)
