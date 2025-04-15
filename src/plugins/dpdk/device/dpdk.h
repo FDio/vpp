@@ -214,6 +214,7 @@ typedef struct
   f64 time_last_stats_update;
   vlib_simple_counter_main_t xstats_counters;
   u32 *xstats_symlinks;
+  u32 *xstats_symlinks_v2;
 
   /* mac address */
   u8 *default_mac_address;

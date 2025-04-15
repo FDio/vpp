@@ -235,12 +235,17 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
   int len, ret, i;
   struct rte_eth_xstat_name *xstats_names = 0;
 
-  if (vec_len (xd->xstats_symlinks) > 0)
+  if (vec_len (xd->xstats_symlinks) > 0 ||
+      vec_len (xd->xstats_symlinks_v2) > 0)
     {
       /* xstats already initialized. Reset counters */
       vec_foreach_index (i, xd->xstats_symlinks)
 	{
 	  vlib_stats_remove_entry (xd->xstats_symlinks[i]);
+	}
+      vec_foreach_index (i, xd->xstats_symlinks_v2)
+	{
+	  vlib_stats_remove_entry (xd->xstats_symlinks_v2[i]);
 	}
     }
   else
@@ -265,6 +270,7 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
   vec_validate (xstats_names, len - 1);
   vec_validate (xd->xstats, len - 1);
   vec_validate (xd->xstats_symlinks, len - 1);
+  vec_validate (xd->xstats_symlinks_v2, len - 1);
 
   ret = rte_eth_xstats_get_names (xd->port_id, xstats_names, len);
   if (ret >= 0 && ret <= len)
@@ -284,6 +290,18 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
 		"/interfaces/%U/%s_%d%c", format_vnet_sw_if_index_name,
 		vnet_get_main (), xd->sw_if_index, xstats_names[i].name, i, 0);
 	    }
+
+	  /* add additional symlinks for DPDK Xstats */
+	  xd->xstats_symlinks_v2[i] = vlib_stats_add_symlink (
+	    xd->xstats_counters.stats_entry_index, i, "/if/xstats/%s/%d%c",
+	    xstats_names[i].name, xd->sw_if_index, 0);
+	  if (xd->xstats_symlinks_v2[i] == STAT_SEGMENT_INDEX_INVALID)
+	    {
+	      xd->xstats_symlinks_v2[i] = vlib_stats_add_symlink (
+		xd->xstats_counters.stats_entry_index, i,
+		"/if/xstats/%s_%d/%d%c", xstats_names[i].name, i,
+		xd->sw_if_index, 0);
+	    }
 	}
     }
   else
@@ -292,6 +310,7 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
 		    "not configured.",
 		    xd->port_id, ret);
     }
+
   vec_free (xstats_names);
 }
 
