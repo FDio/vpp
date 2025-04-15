@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd609a7a_005976da",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-15T21:53:13Z",
+      "side": 1,
+      "message": "Needs a few more fixes. Some quick comments for now",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e540166_a97b55c7",
+        "filename": "src/vlib/file.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-15T21:53:13Z",
+      "side": 1,
+      "message": "logs on workers?",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48d24777_e7994afb",
+        "filename": "src/vlib/file.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-15T21:53:13Z",
+      "side": 1,
+      "message": "Maybe call it `vlib_file_poll_init`, to not be thought of as initializing a new vlib file.",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c595dba_93837668",
+        "filename": "src/vlibapi/api.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-15T21:53:13Z",
+      "side": 1,
+      "message": "Can we get away with including this only in vlib (as opposed to client) .c files? Binary api clients are in theory not vlib dependent (in spite of that vlib.h include ..)",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
