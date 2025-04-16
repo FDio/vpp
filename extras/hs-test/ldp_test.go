@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -9,11 +10,32 @@ import (
 )
 
 func init() {
-	RegisterLdpTests(LdpIperfUdpVppTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpVppTest)
+	RegisterLdpTests(LdpIperfUdpVppTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpVppTest, LdpIperfTcpVppReorderTest)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 	ldPreloadIperfVpp(s, true)
+}
+
+func LdpIperfTcpVppReorderTest(s *LdpSuite) {
+	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
+	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
+	cmd := exec.Command("ip", "netns", "exec", s.Interfaces.Server.Peer.NetworkNamespace,
+		"tc", "qdisc", "add", "dev", s.Interfaces.Server.Peer.Name(),
+		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
+	s.Log(cmd.String())
+	o, err := cmd.CombinedOutput()
+	s.AssertNil(err, string(o))
+
+	delete(s.Containers.ClientVpp.EnvVars, "VCL_CONFIG")
+	delete(s.Containers.ClientVpp.EnvVars, "LD_PRELOAD")
+	delete(s.Containers.ClientVpp.EnvVars, "VCL_DEBUG")
+	delete(s.Containers.ClientVpp.EnvVars, "LDP_DEBUG")
+	s.Containers.ClientVpp.VppInstance.Disconnect()
+	s.Containers.ClientVpp.VppInstance.Stop()
+	s.Containers.ClientVpp.Exec(false, "ip addr add dev %s %s", s.Interfaces.Client.Name(), s.Interfaces.Client.Ip4Address)
+
+	ldPreloadIperfVpp(s, false)
 }
 
 func LdpIperfTlsTcpTest(s *LdpSuite) {
