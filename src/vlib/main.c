@@ -41,6 +41,7 @@
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vlib/rpc_funcs.h>
 #include <vlib/stats/stats.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
@@ -1539,6 +1540,12 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
+
+      for (vlib_rpc_t *p = vlib_rpc_dequeue (vm); p; p = vlib_rpc_dequeue (vm))
+	{
+	  p->rpc_fn ((void *) p->data);
+	  vlib_rpc_release (p);
+	}
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
