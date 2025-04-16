@@ -561,7 +561,7 @@ dp_add_fwd_entry_from_mt (u32 si, u32 di)
   a.si = si;
   a.di = di;
 
-  vl_api_rpc_call_main_thread (dp_add_fwd_entry_thread_fn,
+  vlib_rpc_call_main_thread2 (dp_add_fwd_entry_thread_fn,
 			       (u8 *) & a, sizeof (a));
   return 0;
 }
@@ -4323,13 +4323,13 @@ parse_map_reply (vlib_buffer_t * b)
 static void
 queue_map_reply_for_processing (map_records_arg_t * a)
 {
-  vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (*a));
+  vlib_rpc_call_main_thread2 (process_map_reply, (u8 *) a, sizeof (*a));
 }
 
 static void
 queue_map_notify_for_processing (map_records_arg_t * a)
 {
-  vl_api_rpc_call_main_thread (process_map_notify, (u8 *) a, sizeof (a[0]));
+  vlib_rpc_call_main_thread2 (process_map_notify, (u8 *) a, sizeof (a[0]));
 }
 
 static uword
@@ -4551,7 +4551,7 @@ queue_map_request (gid_address_t * seid, gid_address_t * deid,
   gid_address_copy (&a.deid, deid);
   a.smr_invoked = smr_invoked;
 
-  vl_api_rpc_call_main_thread (send_map_request_thread_fn,
+  vlib_rpc_call_main_thread2 (send_map_request_thread_fn,
 			       (u8 *) & a, sizeof (a));
   return 0;
 }

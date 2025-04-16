@@ -432,7 +432,7 @@ wg_peer_update_endpoint_from_mt (index_t peeri, const ip46_address_t *addr,
   };
 
   ip46_address_copy (&args.addr, addr);
-  vlib_rpc_call_main_thread (wg_peer_update_endpoint_thread_fn, (u8 *) &args,
+  vlib_rpc_call_main_thread2 (wg_peer_update_endpoint_thread_fn, (u8 *) &args,
 			     sizeof (args));
 }
 

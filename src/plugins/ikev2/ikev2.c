@@ -2457,7 +2457,7 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
   a.ipsec_over_udp_port = sa->ipsec_over_udp_port;
 
-  vl_api_rpc_call_main_thread (ikev2_add_tunnel_from_main,
+  vlib_rpc_call_main_thread2 (ikev2_add_tunnel_from_main,
 			       (u8 *) & a, sizeof (a));
   return 0;
 }
@@ -2546,7 +2546,7 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   a.local_sa_id = child->local_sa_id;
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
 
-  vl_api_rpc_call_main_thread (ikev2_del_tunnel_from_main, (u8 *) & a,
+  vlib_rpc_call_main_thread2 (ikev2_del_tunnel_from_main, (u8 *) & a,
 			       sizeof (a));
   return 0;
 }
@@ -3092,7 +3092,7 @@ ikev2_del_sa_init_from_main (u64 * ispi)
 static void
 ikev2_del_sa_init (u64 ispi)
 {
-  vl_api_rpc_call_main_thread (ikev2_del_sa_init_from_main, (u8 *) & ispi,
+  vlib_rpc_call_main_thread2 (ikev2_del_sa_init_from_main, (u8 *) & ispi,
 			       sizeof (ispi));
 }
 

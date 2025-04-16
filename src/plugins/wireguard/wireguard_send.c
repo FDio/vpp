@@ -239,7 +239,7 @@ wg_send_handshake_from_mt (u32 peer_idx, bool is_retry)
     {
       handshake = true;
       __atomic_store_n (&peer->handshake_is_sent, handshake, __ATOMIC_RELEASE);
-      vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn, (u8 *) &a,
+      vlib_rpc_call_main_thread2 (wg_send_handshake_thread_fn, (u8 *) &a,
 				   sizeof (a));
     }
 }

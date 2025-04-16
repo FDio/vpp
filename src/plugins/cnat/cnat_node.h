@@ -1041,7 +1041,7 @@ retry_add_ression:
 
 	  /* fire client create to the main thread */
 	  if (!p)
-	    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) &addr,
+	    vlib_rpc_call_main_thread2 (cnat_client_learn, (u8 *) &addr,
 					 sizeof (addr));
 	}
       else

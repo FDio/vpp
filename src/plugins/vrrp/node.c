@@ -662,7 +662,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       args0.priority = vrrp0->priority;
       args0.max_adv_int = vrrp_adv_int_from_packet (vrrp0);
 
-      vl_api_rpc_call_main_thread (vrrp_input_process, (u8 *) &args0,
+      vlib_rpc_call_main_thread2 (vrrp_input_process, (u8 *) &args0,
 				   sizeof (args0));
 
     trace:

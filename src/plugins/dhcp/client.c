@@ -403,7 +403,7 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
       c->next_transmit = 0;	/* send right now... */
       /* Poke the client process, which will send the request */
       uword client_id = c - dcm->clients;
-      vl_api_rpc_call_main_thread (dhcp_client_proc_callback,
+      vlib_rpc_call_main_thread2 (dhcp_client_proc_callback,
 				   (u8 *) & client_id, sizeof (uword));
       break;
 

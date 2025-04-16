@@ -84,7 +84,7 @@ start_timer_from_mt (u32 peer_idx, u32 timer_id, u32 interval_ticks)
   wg_peer_t *peer = wg_peer_get (peer_idx);
   if (PREDICT_FALSE (!peer->timers_dispatched[timer_id]))
     if (!clib_atomic_cmp_and_swap (&peer->timers_dispatched[timer_id], 0, 1))
-      vl_api_rpc_call_main_thread (start_timer_thread_fn, (u8 *) &a,
+      vlib_rpc_call_main_thread2 (start_timer_thread_fn, (u8 *) &a,
 				   sizeof (a));
 }
 

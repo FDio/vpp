@@ -79,7 +79,7 @@ lldp_rpc_update_peer (u32 hw_if_index, const u8 * chid, u8 chid_len,
   u->portid_subtype = portid_subtype;
   clib_memcpy (u->data, chid, chid_len);
   clib_memcpy (u->data + chid_len, portid, portid_len);
-  vl_api_rpc_call_main_thread (lldp_rpc_update_peer_cb, data, data_size);
+  vlib_rpc_call_main_thread2 (lldp_rpc_update_peer_cb, data, data_size);
 }
 
 lldp_tlv_code_t

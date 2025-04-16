@@ -427,7 +427,7 @@ hcs_ts_rx_callback (session_t *ts)
 
   /* Send RPC request to main thread */
   if (vlib_get_thread_index () != 0)
-    vlib_rpc_call_main_thread (alloc_cli_process_callback, (u8 *) &args,
+    vlib_rpc_call_main_thread2 (alloc_cli_process_callback, (u8 *) &args,
 			       sizeof (args));
   else
     alloc_cli_process (&args);
