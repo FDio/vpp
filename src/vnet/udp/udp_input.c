@@ -146,7 +146,15 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 
       /* Expect cl udp enqueue to fail because fifo enqueue */
       if (PREDICT_FALSE (wrote0 == 0))
-	*error0 = UDP_ERROR_FIFO_FULL;
+	{
+	  *error0 = UDP_ERROR_FIFO_FULL;
+	  uc0->errors_in += 1;
+	}
+      else
+	{
+	  uc0->bytes_in += wrote0;
+	  uc0->dgrams_in += 1;
+	}
 
       return;
     }
@@ -155,6 +163,7 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
       < hdr0->data_length + sizeof (session_dgram_hdr_t))
     {
       *error0 = UDP_ERROR_FIFO_FULL;
+      uc0->errors_in += 1;
       return;
     }
 
@@ -175,7 +184,15 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
   /* In some rare cases, session_enqueue_dgram_connection can fail because a
    * chunk cannot be allocated in the RX FIFO */
   if (PREDICT_FALSE (wrote0 == 0))
-    *error0 = UDP_ERROR_FIFO_NOMEM;
+    {
+      *error0 = UDP_ERROR_FIFO_NOMEM;
+      uc0->errors_in += 1;
+    }
+  else
+    {
+      uc0->bytes_in += wrote0;
+      uc0->dgrams_in += 1;
+    }
 }
 
 always_inline session_t *
