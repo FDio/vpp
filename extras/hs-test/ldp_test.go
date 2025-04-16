@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -9,11 +10,23 @@ import (
 )
 
 func init() {
-	RegisterLdpTests(LdpIperfUdpVppTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpVppTest)
+	RegisterLdpTests(LdpIperfUdpVppTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpVppTest, LdpIperfTcpVppReorderTest)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 	ldPreloadIperfVpp(s, true)
+}
+
+func LdpIperfTcpVppReorderTest(s *LdpSuite) {
+	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
+	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
+	cmd := exec.Command("ip", "netns", "exec", s.Interfaces.Server.Peer.NetworkNamespace,
+		"tc", "qdisc", "add", "dev", s.Interfaces.Server.Peer.Name(),
+		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
+	s.Log(cmd.String())
+	o, err := cmd.CombinedOutput()
+	s.AssertNil(err, string(o))
+	ldPreloadIperfVpp(s, false)
 }
 
 func LdpIperfTlsTcpTest(s *LdpSuite) {
