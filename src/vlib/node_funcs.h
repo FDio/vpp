@@ -1212,8 +1212,8 @@ vlib_process_signal_event_mt (vlib_main_t * vm,
 	.type_opaque = type_opaque,
 	.data = data,
       };
-      vlib_rpc_call_main_thread (vlib_process_signal_event_mt_helper,
-				 (u8 *) & args, sizeof (args));
+      vlib_rpc_call_main_thread2 (vlib_process_signal_event_mt_helper,
+				  (u8 *) &args, sizeof (args));
     }
   else
     vlib_process_signal_event (vm, node_index, type_opaque, data);

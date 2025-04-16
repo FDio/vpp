@@ -25,6 +25,7 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
+#include <vlib/rpc_funcs.h>
 
 #include <vlib/threads.h>
 
@@ -1550,8 +1551,8 @@ vlib_workers_sync (void)
       !clib_atomic_swap_rel_n (&vlib_worker_threads->wait_before_barrier, 1))
     {
       clib_thread_index_t thread_index = vlib_get_thread_index ();
-      vlib_rpc_call_main_thread (vlib_worker_sync_rpc, (u8 *) &thread_index,
-				 sizeof (thread_index));
+      vlib_rpc_call_main_thread2 (vlib_worker_sync_rpc, (u8 *) &thread_index,
+				  sizeof (thread_index));
       vlib_worker_flush_pending_rpc_requests (vlib_get_main ());
     }
 
@@ -1695,7 +1696,7 @@ vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 void *rpc_call_main_thread_cb_fn;
 
 void
-vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
+vlib_rpc_call_main_thread (void *callback, u8 *args, u32 arg_size)
 {
   if (rpc_call_main_thread_cb_fn)
     {
@@ -1704,6 +1705,12 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
     }
   else
     clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
+}
+
+void
+vlib_rpc_call_main_thread2 (void *callback, u8 *args, u32 arg_size)
+{
+  vlib_rpc_call (vlib_get_main (), 0, callback, args, arg_size, 1);
 }
 
 clib_error_t *

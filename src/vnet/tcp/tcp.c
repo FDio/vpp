@@ -66,8 +66,7 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
     .sw_if_index = tc->sw_if_index,
     .is_add = is_add
   };
-  vlib_rpc_call_main_thread (tcp_add_del_adj_cb, (u8 *) & args,
-			     sizeof (args));
+  vlib_rpc_call_main_thread2 (tcp_add_del_adj_cb, (u8 *) &args, sizeof (args));
 }
 
 static void

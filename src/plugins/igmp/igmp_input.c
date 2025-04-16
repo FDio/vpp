@@ -302,8 +302,8 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      args = vlib_buffer_get_current (b);
 	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	      vl_api_rpc_call_main_thread (igmp_handle_query,
-					   (u8 *) args, sizeof (*args) + len);
+	      vlib_rpc_call_main_thread2 (igmp_handle_query, (u8 *) args,
+					  sizeof (*args) + len);
 	    }
 	  else
 	    {
@@ -411,8 +411,8 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      args = vlib_buffer_get_current (b);
 	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	      vl_api_rpc_call_main_thread (igmp_handle_report,
-					   (u8 *) args, sizeof (*args) + len);
+	      vlib_rpc_call_main_thread2 (igmp_handle_report, (u8 *) args,
+					  sizeof (*args) + len);
 	    }
 	  else
 	    {

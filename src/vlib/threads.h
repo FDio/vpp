@@ -491,6 +491,7 @@ void
 vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 				     args);
 void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
+void vlib_rpc_call_main_thread2 (void *function, u8 *args, u32 size);
 void vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id);
 vlib_thread_main_t *vlib_get_thread_main_not_inline (void);
 

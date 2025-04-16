@@ -391,8 +391,8 @@ wg_api_peer_event (index_t peeri, wg_peer_flags flags)
     .flags = flags,
   };
 
-  vl_api_rpc_call_main_thread (wg_api_peer_event_cb, (u8 *) &args,
-			       sizeof (args));
+  vlib_rpc_call_main_thread2 (wg_api_peer_event_cb, (u8 *) &args,
+			      sizeof (args));
 }
 
 static void

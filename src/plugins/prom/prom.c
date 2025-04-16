@@ -289,8 +289,8 @@ prom_stats_dump (hss_url_handler_args_t *args)
     }
 
   if (vm->thread_index != 0)
-    vl_api_rpc_call_main_thread (signal_run_to_scraper, (u8 *) &args->sh,
-				 sizeof (args->sh));
+    vlib_rpc_call_main_thread2 (signal_run_to_scraper, (u8 *) &args->sh,
+				sizeof (args->sh));
   else
     signal_run_to_scraper (&args->sh.as_u64);
 
