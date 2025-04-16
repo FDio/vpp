@@ -97,6 +97,20 @@ typedef struct vlib_node_runtime_perf_callback_data_t
   } u[3];
 } vlib_node_runtime_perf_callback_data_t;
 
+typedef void (vlib_rpc_fn_t) (void *);
+
+typedef struct vlib_rpc_t
+{
+  u8 completed;
+  u8 in_use;
+  u8 under_barrier;
+  vlib_rpc_fn_t *rpc_fn;
+  struct vlib_rpc_t *next;
+  u8 data[104];
+} vlib_rpc_t;
+
+STATIC_ASSERT_SIZEOF (vlib_rpc_t, 128);
+
 clib_callback_data_typedef (vlib_node_runtime_perf_callback_set_t,
 			    vlib_node_runtime_perf_callback_data_t);
 
@@ -252,6 +266,13 @@ typedef struct vlib_main_t
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
+
+  /* RPC head and tail - lockless MPSC linked list */
+  vlib_rpc_t *rpc_head;
+  vlib_rpc_t *rpc_tail;
+
+  /* vector of pointers to RPC allocs - only modified by us*/
+  vlib_rpc_t **rpc_allocs;
 
   /* buffer fault injector */
   u32 buffer_alloc_success_seed;

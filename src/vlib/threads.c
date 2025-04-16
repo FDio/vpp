@@ -25,6 +25,7 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
+#include <vlib/rpc_funcs.h>
 
 #include <vlib/threads.h>
 
@@ -1695,8 +1696,11 @@ vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 void *rpc_call_main_thread_cb_fn;
 
 void
-vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
+vlib_rpc_call_main_thread (void *callback, u8 *args, u32 arg_size)
 {
+  vlib_rpc_call (vlib_get_main (), 0, callback, args, arg_size, 1);
+  return;
+
   if (rpc_call_main_thread_cb_fn)
     {
       void (*fp) (void *, u8 *, u32) = rpc_call_main_thread_cb_fn;
