@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "10869113_12ff7334",
+        "filename": "src/vlib/file.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-04-16T08:36:29Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/c/vpp/+/42817",
+      "parentUuid": "0e540166_a97b55c7",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "48d24777_e7994afb",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f9ab32e_2f5ddd28",
+        "filename": "src/vlib/file.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-04-16T08:36:29Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "48d24777_e7994afb",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2c595dba_93837668",
@@ -65,6 +101,24 @@
       "writtenOn": "2025-04-15T21:53:13Z",
       "side": 1,
       "message": "Can we get away with including this only in vlib (as opposed to client) .c files? Binary api clients are in theory not vlib dependent (in spite of that vlib.h include ..)",
+      "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c890bcc_5eaaab45",
+        "filename": "src/vlibapi/api.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-04-16T08:36:29Z",
+      "side": 1,
+      "message": "same answer as including vlib/unix/unix.h, file.h is only needed for file_main,\nso you can define file_main locally. Bigger question is, what to do do remove dependency of file_main implementation in vlib.\nOut of scope of this patch...",
+      "parentUuid": "2c595dba_93837668",
       "revId": "da58168bb966c74bb163a38524b1e2d9853296f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
