@@ -42,6 +42,7 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 #include <vlib/file.h>
+#include <vlib/rpc_funcs.h>
 #include <vlib/stats/stats.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
@@ -1540,6 +1541,12 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
     {
       vlib_node_runtime_t *n;
 
+      for (vlib_rpc_t *p = vlib_rpc_dequeue (vm); p; p = vlib_rpc_dequeue (vm))
+	{
+	  p->rpc_fn ((void *) p->data);
+	  vlib_rpc_release (p);
+	}
+
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
 	  if (!is_main)
@@ -1982,6 +1989,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     goto done;
 
   vlib_tw_init (vm);
+  vlib_rpc_init (vm);
 
   vec_validate (nm->process_restore_current, 10);
   vec_validate (nm->process_restore_next, 10);
@@ -2073,6 +2081,7 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
   vlib_tw_init (vm);
+  vlib_rpc_init (vm);
 
   vm->worker_init_functions_called = hash_create (0, 0);
 

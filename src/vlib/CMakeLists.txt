@@ -158,6 +158,7 @@ add_vpp_library(vlib
   physmem_funcs.h
   physmem.h
   punt.h
+  rpc_funcs.h
   stats/shared.h
   stats/stats.h
   threads.h
