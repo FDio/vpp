@@ -87,6 +87,11 @@ typedef struct
   u32 sw_if_index;			/**< connection sw_if_index */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque; /**< Opaque to pass to next node */
+  u64 bytes_in;		/**< bytes received */
+  u64 dgrams_in;	/**< rfc4113 dgrams received  */
+  u64 bytes_out;	/**< bytes sent */
+  u64 dgrams_out;	/**< rfc4113 dgrams sent */
+  u32 errors_in;	/**< rfc4113 dgrams in errors */
 } udp_connection_t;
 
 #define udp_csum_offload(uc) (!((uc)->cfg_flags & UDP_CFG_F_NO_CSUM_OFFLOAD))

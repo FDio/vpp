@@ -91,18 +91,35 @@ format_udp_connection_flags (u8 * s, va_list * args)
 }
 
 static u8 *
+format_udp_stats (u8 *s, va_list *args)
+{
+  udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+  u32 indent = format_get_indent (s);
+  s = format (s, "in dgrams %lu bytes %lu err %lu\n", uc->dgrams_in,
+	      uc->bytes_in, uc->errors_in);
+  s = format (s, "%Uout dgrams %lu bytes %lu", format_white_space, indent,
+	      uc->dgrams_out, uc->bytes_out);
+  return s;
+}
+
+static u8 *
 format_udp_vars (u8 * s, va_list * args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
 
-  s = format (s, " index %u%U flags: %U\n", uc->c_c_index,
+  s = format (s, " index %u cfg: %U flags: %U\n", uc->c_c_index,
 	      format_udp_cfg_flags, uc, format_udp_connection_flags, uc);
-  s = format (s, " fib_index: %u next_node: %u opaque: %u ", uc->c_fib_index,
+  s = format (s, " fib_index %u next_node %u opaque %u", uc->c_fib_index,
 	      uc->next_node_index, uc->next_node_opaque);
-  if (!(uc->flags & UDP_CONN_F_LISTEN))
-    s = format (s, " sw_if_index: %d mss: %u\n", uc->sw_if_index, uc->mss);
-  else
-    s = format (s, "\n");
+
+  if (uc->flags & UDP_CONN_F_LISTEN)
+    {
+      s = format (s, "\n");
+      return s;
+    }
+
+  s = format (s, " sw_if_index %d mss %u\n", uc->sw_if_index, uc->mss);
+  s = format (s, " stats: %U\n", format_udp_stats, uc);
 
   return s;
 }
