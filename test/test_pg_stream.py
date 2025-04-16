@@ -194,8 +194,9 @@ class TestPgStream(VppTestCase):
                 search_string = "ip4 offload-ip-cksum offload-udp-cksum  l2-hdr-offset 0 l3-hdr-offset 14 l4-hdr-offset 34"
                 look_here = packet[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
+                p = packet[1].split(search_string)
                 search_string = "ip4 l2-hdr-offset 0 l3-hdr-offset 14 l4-hdr-offset 34"
-                look_here = packet[1].find(search_string)
+                look_here = p[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
             elif stream_name == "pg0-pg2-stream":
                 look_here = packet[1].find("ethernet-input")
@@ -203,8 +204,9 @@ class TestPgStream(VppTestCase):
                 search_string = "ip6 offload-udp-cksum  l2-hdr-offset 0 l3-hdr-offset 14 l4-hdr-offset 54"
                 look_here = packet[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
+                p = packet[1].split(search_string)
                 search_string = "ip6 l2-hdr-offset 0 l3-hdr-offset 14 l4-hdr-offset 54"
-                look_here = packet[1].find(search_string)
+                look_here = p[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
             elif stream_name == "pg1-pg0-stream":
                 look_here = packet[1].find("ethernet-input")
@@ -214,8 +216,9 @@ class TestPgStream(VppTestCase):
                 search_string = "ip4 offload-ip-cksum offload-udp-cksum  l2-hdr-offset 0 l3-hdr-offset 0 l4-hdr-offset 20"
                 look_here = packet[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
+                p = packet[1].split(search_string)
                 search_string = "ip4 l2-hdr-offset 0 l3-hdr-offset 0 l4-hdr-offset 20"
-                look_here = packet[1].find(search_string)
+                look_here = p[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
             elif stream_name == "pg2-pg0-stream":
                 look_here = packet[1].find("ethernet-input")
@@ -225,8 +228,9 @@ class TestPgStream(VppTestCase):
                 search_string = "ip6 offload-udp-cksum  l2-hdr-offset 0 l3-hdr-offset 0 l4-hdr-offset 40"
                 look_here = packet[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
+                p = packet[1].split(search_string)
                 search_string = "ip6 l2-hdr-offset 0 l3-hdr-offset 0 l4-hdr-offset 40"
-                look_here = packet[1].find(search_string)
+                look_here = p[1].find(search_string)
                 self.assertNotEqual(look_here, -1)
 
         self.logger.info(self.vapi.cli("packet-generator disable"))
