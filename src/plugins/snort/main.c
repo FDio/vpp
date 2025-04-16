@@ -392,6 +392,18 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
   u8 align = CLIB_CACHE_LINE_BYTES;
   int rv = 0;
 
+  if (sm->listener == 0)
+    {
+      clib_error_t *err;
+      err = snort_listener_init (vm);
+      if (err)
+	{
+	  log_err ("listener init failed: %U", format_clib_error, err);
+	  clib_error_free (err);
+	  return VNET_API_ERROR_INIT_FAILED;
+	}
+    }
+
   if (snort_get_instance_by_name (name))
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
@@ -831,7 +843,7 @@ snort_init (vlib_main_t *vm)
   if (!sm->socket_name)
     snort_set_default_socket (sm, 0);
 
-  return snort_listener_init (vm);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (snort_init);
