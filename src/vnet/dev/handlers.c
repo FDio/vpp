@@ -244,7 +244,7 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hw->dev_instance);
   vnet_dev_port_interface_t *intf;
-  int runtime_update = 0;
+  int runtime_update = 1;
 
   if (di->is_primary_if)
     intf = vnet_dev_port_get_primary_if (di->port);
@@ -258,7 +258,6 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 	{
 	  intf->rx_next_index =
 	    vnet_dev_default_next_index_by_port_type[di->port->attr.type];
-	  runtime_update = 1;
 	}
       intf->redirect_to_node = 0;
     }
@@ -270,7 +269,6 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
       if (intf->feature_arc == 0)
 	{
 	  intf->rx_next_index = next_index;
-	  runtime_update = 1;
 	}
       intf->redirect_to_node = 1;
     }
