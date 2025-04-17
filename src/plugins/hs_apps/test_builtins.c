@@ -52,14 +52,15 @@ VLIB_REGISTER_NODE (test_builtins_timer_process_node) = {
 };
 
 static void
-send_data_to_hss (hss_session_handle_t sh, u8 *data, u8 free_vec_data)
+send_data_to_hss (hss_session_handle_t sh, u8 *data, uword data_len,
+		  u8 free_vec_data)
 {
   tb_main_t *tbm = &tb_main;
   hss_url_handler_args_t args = {};
 
   args.sh = sh;
   args.data = data;
-  args.data_len = vec_len (data);
+  args.data_len = data_len;
   args.ct = HTTP_CONTENT_TEXT_PLAIN;
   args.sc = HTTP_STATUS_OK;
   args.free_vec_data = free_vec_data;
@@ -74,7 +75,7 @@ handle_get_test1 (hss_url_handler_args_t *args)
 
   clib_warning ("get request on test1");
   data = format (0, "hello");
-  send_data_to_hss (args->sh, data, 1);
+  send_data_to_hss (args->sh, data, vec_len (data), 1);
 
   return HSS_URL_HANDLER_ASYNC;
 }
@@ -86,7 +87,7 @@ handle_get_test2 (hss_url_handler_args_t *args)
 
   clib_warning ("get request on test2");
   data = format (0, "some data");
-  send_data_to_hss (args->sh, data, 1);
+  send_data_to_hss (args->sh, data, vec_len (data), 1);
 
   return HSS_URL_HANDLER_ASYNC;
 }
@@ -106,7 +107,7 @@ delayed_resp_cb (u32 *expired_timers)
       e = pool_elt_at_index (tbm->delayed_resps, pool_index);
       clib_warning ("sending delayed data");
       data = format (0, "delayed data");
-      send_data_to_hss (e->sh, data, 1);
+      send_data_to_hss (e->sh, data, vec_len (data), 1);
       pool_put (tbm->delayed_resps, e);
     }
 }
@@ -129,7 +130,7 @@ handle_get_test_delayed (hss_url_handler_args_t *args)
 static hss_url_handler_rc_t
 handle_post_test3 (hss_url_handler_args_t *args)
 {
-  send_data_to_hss (args->sh, 0, 0);
+  send_data_to_hss (args->sh, 0, 0, 0);
   return HSS_URL_HANDLER_ASYNC;
 }
 
@@ -137,7 +138,15 @@ static hss_url_handler_rc_t
 handle_get_64bytes (hss_url_handler_args_t *args)
 {
   tb_main_t *tbm = &tb_main;
-  send_data_to_hss (args->sh, tbm->test_data, 0);
+  send_data_to_hss (args->sh, tbm->test_data, 64, 0);
+  return HSS_URL_HANDLER_ASYNC;
+}
+
+static hss_url_handler_rc_t
+handle_get_4kbytes (hss_url_handler_args_t *args)
+{
+  tb_main_t *tbm = &tb_main;
+  send_data_to_hss (args->sh, tbm->test_data, 4 << 10, 0);
   return HSS_URL_HANDLER_ASYNC;
 }
 
@@ -157,8 +166,8 @@ test_builtins_init (vlib_main_t *vm)
       return;
     }
 
-  tbm->test_data = format (
-    0, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+  /* init test data, big buffer */
+  vec_validate_init_empty (tbm->test_data, (4 << 10) - 1, 'x');
 
   (*fp) (handle_get_test1, "test1", HTTP_REQ_GET);
   (*fp) (handle_get_test1, "test1", HTTP_REQ_POST);
@@ -166,6 +175,7 @@ test_builtins_init (vlib_main_t *vm)
   (*fp) (handle_get_test_delayed, "test_delayed", HTTP_REQ_GET);
   (*fp) (handle_post_test3, "test3", HTTP_REQ_POST);
   (*fp) (handle_get_64bytes, "64B", HTTP_REQ_GET);
+  (*fp) (handle_get_4kbytes, "4kB", HTTP_REQ_GET);
 
   tbm->send_data =
     vlib_get_plugin_symbol ("http_static_plugin.so", "hss_session_send_data");
