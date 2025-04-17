@@ -3,6 +3,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/file.h>
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>
 

@@ -46,6 +46,7 @@
 /*? %%syscfg:group_label Command line session %% ?*/
 
 #include <vlib/vlib.h>
+#include <vlib/file.h>
 #include <vlib/unix/unix.h>
 
 #include <ctype.h>

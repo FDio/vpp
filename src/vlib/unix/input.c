@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/file.h>
 #include <vlib/unix/unix.h>
 #include <signal.h>
 #include <unistd.h>

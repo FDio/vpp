@@ -42,6 +42,7 @@
 #include <vppinfra/unix.h>
 
 #include <vlib/vlib.h>
+#include <vlib/file.h>
 #include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
 #include <vlib/linux/vfio.h>
