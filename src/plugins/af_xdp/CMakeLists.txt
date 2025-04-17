@@ -43,33 +43,33 @@ endif()
 
 include_directories(${XDP_INCLUDE_DIR})
 
-add_vpp_plugin(af_xdp
-  SOURCES
-  api.c
-  cli.c
-  device.c
-  format.c
-  unformat.c
-  plugin.c
-  input.c
-  output.c
+# add_vpp_plugin(af_xdp
+#   SOURCES
+#   api.c
+#   cli.c
+#   device.c
+#   format.c
+#   unformat.c
+#   plugin.c
+#   input.c
+#   output.c
 
-  MULTIARCH_SOURCES
-  input.c
-  output.c
+#   MULTIARCH_SOURCES
+#   input.c
+#   output.c
 
-  API_FILES
-  af_xdp.api
+#   API_FILES
+#   af_xdp.api
 
-  API_TEST_SOURCES
-  unformat.c
-  test_api.c
+#   API_TEST_SOURCES
+#   unformat.c
+#   test_api.c
 
-  LINK_LIBRARIES
-  ${XDP_LIB}
-  ${BPF_LIB}
-  ${ELF_LIB}
-  ${Z_LIB}
+#   LINK_LIBRARIES
+#   ${XDP_LIB}
+#   ${BPF_LIB}
+#   ${ELF_LIB}
+#   ${Z_LIB}
 
-  SUPPORTED_OS_LIST Linux
-)
+#   SUPPORTED_OS_LIST Linux
+# )
