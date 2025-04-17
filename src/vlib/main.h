@@ -205,7 +205,6 @@ typedef struct vlib_main_t
 
   /* thread, cpu and numa_node indices */
   u32 thread_index;
-  u32 cpu_id;
   u32 numa_node;
 
   /* control-plane API queue signal pending, length indication */

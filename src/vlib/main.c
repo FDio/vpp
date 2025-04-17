@@ -1514,7 +1514,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   if (!nm->interrupt_threshold_vector_length)
     nm->interrupt_threshold_vector_length = 5;
 
-  vm->cpu_id = clib_get_current_cpu_id ();
   vm->numa_node = clib_get_current_numa_node ();
   os_set_numa_index (vm->numa_node);
 
@@ -1902,6 +1901,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   if (!vgm->name)
     vgm->name = "VLIB";
 
+  vm->numa_node = clib_get_current_numa_node ();
+
   if ((error = vlib_physmem_init (vm)))
     {
       clib_error_report (error);
@@ -2065,6 +2066,7 @@ vlib_worker_thread_fn (void *arg)
   clib_error_t *e;
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
+  vm->numa_node = clib_get_current_numa_node ();
 
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);

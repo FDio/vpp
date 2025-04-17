@@ -355,12 +355,6 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
 done:
-  if (PREDICT_FALSE (vm->cpu_id != clib_get_current_cpu_id ()))
-    {
-      vm->cpu_id = clib_get_current_cpu_id ();
-      vm->numa_node = clib_get_current_numa_node ();
-    }
-
   return 0;
 }
 
