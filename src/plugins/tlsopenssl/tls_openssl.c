@@ -24,6 +24,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
+#include <vppinfra/llist.h>
 #include <ctype.h>
 #include <tlsopenssl/tls_openssl.h>
 #include <tlsopenssl/tls_bios.h>
@@ -50,6 +51,11 @@ openssl_ctx_alloc_w_thread (clib_thread_index_t thread_index)
   (*ctx)->ctx.tls_ctx_engine = CRYPTO_ENGINE_OPENSSL;
   (*ctx)->ctx.app_session_handle = SESSION_INVALID_HANDLE;
   (*ctx)->openssl_ctx_index = ctx - om->ctx_pool[thread_index];
+
+  /* Initialize llists for async events */
+  if (openssl_main.async)
+    init_async_evts_llists (*ctx);
+
   return ((*ctx)->openssl_ctx_index);
 }
 
@@ -67,23 +73,27 @@ openssl_ctx_free (tls_ctx_t * ctx)
   /* Cleanup ssl ctx unless migrated */
   if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
-      if (SSL_is_init_finished (oc->ssl) &&
-	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
-	SSL_shutdown (oc->ssl);
+      if (SSL_is_init_finished (oc->ssl))
+	{
+	  if ((openssl_main.async &&
+	       (ctx->flags & TLS_CONN_F_PASSIVE_CLOSE)) ||
+	      !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+	    {
+	      TLS_DBG (1, "SSL_shutdown done. Flags: %ld", ctx->flags);
+	      SSL_shutdown (oc->ssl);
+	    }
+	  else
+	    TLS_DBG (1, "SSL_shutdown did not finish: flags: %ld", ctx->flags);
+	}
+      else
+	TLS_DBG (1, "SSL_init did not finish: flags: %ld", ctx->flags);
+
+      if (openssl_main.async)
+	free_async_evts_llists (ctx);
 
       SSL_free (oc->ssl);
       vec_free (ctx->srv_hostname);
       SSL_CTX_free (oc->client_ssl_ctx);
-
-      if (openssl_main.async)
-	{
-	  openssl_evt_free (oc->evt_index[SSL_ASYNC_EVT_INIT],
-			    ctx->c_thread_index);
-	  openssl_evt_free (oc->evt_index[SSL_ASYNC_EVT_RD],
-			    ctx->c_thread_index);
-	  openssl_evt_free (oc->evt_index[SSL_ASYNC_EVT_WR],
-			    ctx->c_thread_index);
-	}
     }
 
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
@@ -175,9 +185,6 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
   svm_fifo_seg_t fs[n_segs];
   u32 max_enq;
   SSL *ssl = oc->ssl;
-
-  if (ctx->flags & TLS_CONN_F_ASYNC_RD)
-    return 0;
 
   max_enq = svm_fifo_max_enqueue_prod (f);
   if (!max_enq)
@@ -548,7 +555,7 @@ openssl_ctx_write (tls_ctx_t *ctx, session_t *app_session,
     return openssl_ctx_write_dtls (ctx, app_session, sp);
 }
 
-static inline int
+inline int
 openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
@@ -1090,7 +1097,10 @@ static int
 openssl_transport_close (tls_ctx_t * ctx)
 {
   if (openssl_main.async && vpp_openssl_is_inflight (ctx))
-    return 0;
+    {
+      TLS_DBG (2, "Close Transport but evts inflight: Flags: %ld", ctx->flags);
+      return 0;
+    }
 
   if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
