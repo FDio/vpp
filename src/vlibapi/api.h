@@ -25,6 +25,7 @@
 #include <svm/svm.h>
 #include <svm/queue.h>
 #include <vlib/vlib.h>
+#include <vlib/file.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api_common.h>
 

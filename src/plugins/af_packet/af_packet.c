@@ -30,7 +30,7 @@
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 #include <vnet/ip/ip.h>
 #include <vnet/devices/netlink.h>
 #include <vnet/ethernet/ethernet.h>
