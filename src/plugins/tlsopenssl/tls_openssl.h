@@ -33,15 +33,30 @@
   if (PREDICT_FALSE (_rv < 0 && SSL_get_error (_ssl, _rv) == SSL_ERROR_SSL))  \
     return -1;
 
+typedef struct tls_async_evt_
+{
+  clib_llist_anchor_t anchor;
+  u32 eidx;
+} async_evt_list;
+
+typedef struct tls_async_ctx_
+{
+  async_evt_list *hs_evt_list;
+  async_evt_list *rd_evt_list;
+  async_evt_list *wr_evt_list;
+  clib_llist_index_t rd_evt_head_index;
+  clib_llist_index_t wr_evt_head_index;
+  clib_llist_index_t hs_evt_head_index;
+  u32 total_async_write;
+} tls_async_ctx_t;
+
 typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
   u32 openssl_ctx_index;
   SSL_CTX *client_ssl_ctx;
   SSL *ssl;
-  u32 evt_index[SSL_ASYNC_EVT_MAX];
-  bool evt_alloc_flag[SSL_ASYNC_EVT_MAX];
-  u32 total_async_write;
+  tls_async_ctx_t async_ctx;
   BIO *rbio;
   BIO *wbio;
 } openssl_ctx_t;
@@ -99,6 +114,9 @@ void openssl_confirm_app_close (tls_ctx_t *ctx);
 int tls_async_write_event_handler (void *event, void *session);
 int tls_async_read_event_handler (void *event, void *session);
 int tls_async_handshake_event_handler (void *event, void *session);
+int openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session);
+void tls_async_evts_init_list (tls_async_ctx_t *ctx);
+void tls_async_evts_free_list (tls_ctx_t *ctx);
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_OPENSSL_H_ */
 
 /*
