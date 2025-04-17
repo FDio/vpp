@@ -449,9 +449,15 @@ http_app_worker_rx_notify (http_req_t *req)
   app_worker_t *app_wrk;
 
   as = session_get_from_handle (req->hr_pa_session_handle);
-  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-  if (app_wrk)
-    app_worker_rx_notify (app_wrk, as);
+  if (!(as->flags & SESSION_F_RX_EVT))
+    {
+      app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+      if (app_wrk)
+	{
+	  as->flags |= SESSION_F_RX_EVT;
+	  app_worker_rx_notify (app_wrk, as);
+	}
+    }
 }
 
 /**
@@ -574,9 +580,9 @@ always_inline void
 http_io_as_write (http_req_t *req, u8 *data, u32 len)
 {
   int n_written;
-  session_t *ts = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
 
-  n_written = svm_fifo_enqueue (ts->tx_fifo, len, data);
+  n_written = svm_fifo_enqueue (as->rx_fifo, len, data);
   ASSERT (n_written == len);
 }
 

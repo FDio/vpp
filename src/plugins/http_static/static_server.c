@@ -611,7 +611,7 @@ url_handler_wait_body (hss_session_t *hs, session_t *ts)
   if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
     {
       clib_warning ("not all data in fifo, max deq %u, left recv %u",
-		    ts->rx_fifo, hs->left_recv);
+		    svm_fifo_max_dequeue (ts->rx_fifo), hs->left_recv);
       hs->left_recv = 0;
       start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
       hss_session_disconnect_transport (hs);
