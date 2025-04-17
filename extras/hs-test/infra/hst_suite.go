@@ -375,6 +375,10 @@ func (s *HstSuite) AssertGreaterThan(actual, expected interface{}, msgAndArgs ..
 	ExpectWithOffset(2, actual).Should(BeNumerically(">=", expected), msgAndArgs...)
 }
 
+func (s *HstSuite) AssertEqualWithinThreshold(actual, expected, threshold interface{}, msgAndArgs ...interface{}) {
+	ExpectWithOffset(2, actual).Should(BeNumerically("~", expected, threshold), msgAndArgs...)
+}
+
 func (s *HstSuite) AssertTimeEqualWithinThreshold(actual, expected time.Time, threshold time.Duration, msgAndArgs ...interface{}) {
 	ExpectWithOffset(2, actual).Should(BeTemporally("~", expected, threshold), msgAndArgs...)
 }
