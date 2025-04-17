@@ -11,6 +11,7 @@ import (
 
 	"github.com/summerwind/h2spec/spec"
 
+	"fd.io/hs-test/h2spec_extras"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/generic"
@@ -124,9 +125,8 @@ var genericTests = []h2specTest{
 	{desc: "generic/3.5/1"},
 	{desc: "generic/3.7/1"},
 	{desc: "generic/3.8/1"},
-	// TODO: flow control
-	//{desc: "generic/3.9/1"},
-	//{desc: "generic/3.9/2"},
+	{desc: "generic/3.9/1"},
+	{desc: "generic/3.9/2"},
 	// TODO: CONTINUATION
 	//{desc: "generic/3.10/1"},
 	//{desc: "generic/3.10/2"},
@@ -180,12 +180,10 @@ var http2Tests = []h2specTest{
 	{desc: "http2/4.3/3"},
 	{desc: "http2/5.1.1/1"},
 	{desc: "http2/5.1.1/2"},
-	// TODO: flow control
-	// {desc: "http2/5.1.2/1"},
+	{desc: "http2/5.1.2/1"},
 	{desc: "http2/5.1/1"},
 	{desc: "http2/5.1/2"},
-	// TODO: flow control
-	// {desc: "http2/5.1/3"},
+	{desc: "http2/5.1/3"},
 	// TODO: CONTINUATION
 	// {desc: "http2/5.1/4"},
 	{desc: "http2/5.1/5"},
@@ -222,8 +220,7 @@ var http2Tests = []h2specTest{
 	{desc: "http2/6.5.2/3"},
 	{desc: "http2/6.5.2/4"},
 	{desc: "http2/6.5.2/5"},
-	// TODO: flow control
-	// {desc: "http2/6.5.3/1"},
+	{desc: "http2/6.5.3/1"},
 	{desc: "http2/6.5.3/2"},
 	{desc: "http2/6.5/1"},
 	{desc: "http2/6.5/2"},
@@ -233,16 +230,17 @@ var http2Tests = []h2specTest{
 	{desc: "http2/6.7/3"},
 	{desc: "http2/6.7/4"},
 	{desc: "http2/6.8/1"},
-	// TODO: flow control
-	// {desc: "http2/6.9.1/1"},
-	// {desc: "http2/6.9.1/2"},
+	{desc: "http2/6.9.1/1"},
+	{desc: "http2/6.9.1/2"},
+	// TODO: message framing without content length using END_STREAM flag
 	// {desc: "http2/6.9.1/3"},
-	// {desc: "http2/6.9.2/1"},
-	// {desc: "http2/6.9.2/2"},
-	// {desc: "http2/6.9.2/3"},
-	// {desc: "http2/6.9/1"},
+	{desc: "http2/6.9.2/1"},
+	{desc: "http2/6.9.2/2"},
+	{desc: "http2/6.9.2/3"},
+	{desc: "http2/6.9/1"},
+	// TODO: message framing without content length using END_STREAM flag
 	// {desc: "http2/6.9/2"},
-	// {desc: "http2/6.9/3"},
+	{desc: "http2/6.9/3"},
 	// TODO: CONTINUATION
 	// {desc: "http2/6.10/1"},
 	// {desc: "http2/6.10/2"},
@@ -273,10 +271,16 @@ var http2Tests = []h2specTest{
 	{desc: "http2/8.2/1"},
 }
 
+var extrasTests = []h2specTest{
+	{desc: "extras/1/1"},
+	{desc: "extras/1/2"},
+}
+
 const (
 	GenericTestGroup int = 1
 	HpackTestGroup   int = 2
 	Http2TestGroup   int = 3
+	ExtrasTestGroup  int = 4
 )
 
 var specs = []struct {
@@ -286,6 +290,7 @@ var specs = []struct {
 	{GenericTestGroup, genericTests},
 	{HpackTestGroup, hpackTests},
 	{Http2TestGroup, http2Tests},
+	{ExtrasTestGroup, extrasTests},
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
@@ -340,6 +345,9 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 					break
 				case Http2TestGroup:
 					tg = http2.Spec()
+					break
+				case ExtrasTestGroup:
+					tg = h2spec_extras.Spec()
 					break
 				}
 				tg.Test(conf)
