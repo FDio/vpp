@@ -6,7 +6,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/bus/pci.h>
 #include <vnet/dev/log.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",

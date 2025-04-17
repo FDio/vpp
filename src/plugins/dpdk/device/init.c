@@ -18,7 +18,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
 #include <vppinfra/linux/sysfs.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 #include <vlib/log.h>
 
 #include <vnet/vnet.h>

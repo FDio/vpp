@@ -42,7 +42,7 @@
 #include <linux/if_tun.h>
 
 #include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>

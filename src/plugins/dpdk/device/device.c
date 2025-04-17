@@ -22,7 +22,7 @@
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
-#include <vlib/unix/unix.h>
+#include <vlib/file.h>
 
 #define foreach_dpdk_tx_func_error			\
   _(PKT_DROP, "Tx packet drops (dpdk tx failure)")

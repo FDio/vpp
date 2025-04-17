@@ -92,6 +92,7 @@ add_vpp_library(vlib
   counter.c
   drop.c
   error.c
+  file.c
   format.c
   handoff_trace.c
   init.c
@@ -143,6 +144,7 @@ add_vpp_library(vlib
   dma/dma.h
   error_funcs.h
   error.h
+  file.h
   format_funcs.h
   global_funcs.h
   init.h
