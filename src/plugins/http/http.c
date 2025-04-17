@@ -903,6 +903,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   http_conn_t *lhc;
   u32 lhc_index;
   transport_endpt_ext_cfg_t *ext_cfg;
+  segment_manager_props_t *props;
 
   sep = (session_endpoint_cfg_t *) tep;
 
@@ -951,6 +952,9 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   lhc->flags |= HTTP_CONN_F_IS_SERVER;
+
+  props = application_segment_manager_properties (app);
+  lhc->app_rx_fifo_size = props->rx_fifo_size;
 
   if (vec_len (app->name))
     lhc->app_name = vec_dup (app->name);

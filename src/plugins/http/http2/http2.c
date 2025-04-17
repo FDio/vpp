@@ -2,6 +2,7 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
+#include <vppinfra/llist.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
 #include <http/http_private.h>
@@ -10,6 +11,9 @@
 #ifndef HTTP_2_ENABLE
 #define HTTP_2_ENABLE 0
 #endif
+
+#define HTTP2_WIN_SIZE_MAX     0x7FFFFFFF
+#define HTTP2_INITIAL_WIN_SIZE 65535
 
 #define foreach_http2_stream_state                                            \
   _ (IDLE, "IDLE")                                                            \
@@ -24,7 +28,9 @@ typedef enum http2_stream_state_
 #undef _
 } http2_stream_state_t;
 
-#define foreach_http2_req_flags _ (APP_CLOSED, "app-closed")
+#define foreach_http2_req_flags                                               \
+  _ (APP_CLOSED, "app-closed")                                                \
+  _ (NEED_WINDOW_UPDATE, "need-window-update")
 
 typedef enum http2_req_flags_bit_
 {
@@ -46,9 +52,11 @@ typedef struct http2_req_
   http2_stream_state_t stream_state;
   u8 flags;
   u32 stream_id;
-  u64 peer_window;
+  i32 peer_window; /* can become negative after settings change */
+  u32 our_window;
   u8 *payload;
   u32 payload_len;
+  clib_llist_anchor_t resume_list;
 } http2_req_t;
 
 #define foreach_http2_conn_flags                                              \
@@ -76,8 +84,11 @@ typedef struct http2_conn_ctx_
   u8 flags;
   u32 last_opened_stream_id;
   u32 last_processed_stream_id;
-  u64 peer_window;
+  u32 peer_window;
+  u32 our_window;
   uword *req_by_stream_id;
+  clib_llist_index_t streams_to_resume;
+  http2_conn_settings_t settings;
 } http2_conn_ctx_t;
 
 typedef struct http2_main_
@@ -99,8 +110,15 @@ http2_conn_ctx_alloc_w_thread (http_conn_t *hc)
 			 CLIB_CACHE_LINE_BYTES);
   clib_memset (h2c, 0, sizeof (*h2c));
   h2c->peer_settings = http2_default_conn_settings;
-  h2c->peer_window = h2c->peer_settings.initial_window_size;
+  h2c->peer_window = HTTP2_INITIAL_WIN_SIZE;
+  h2c->our_window = HTTP2_INITIAL_WIN_SIZE;
+  h2c->settings = h2m->settings;
+  /* adjust settings according to app rx_fifo size */
+  h2c->settings.initial_window_size =
+    clib_min (h2c->settings.initial_window_size, hc->app_rx_fifo_size);
   h2c->req_by_stream_id = hash_create (0, sizeof (uword));
+  h2c->streams_to_resume =
+    clib_llist_make_head (h2m->req_pool[hc->c_thread_index], resume_list);
   hc->opaque =
     uword_to_pointer (h2c - h2m->conn_pool[hc->c_thread_index], void *);
   HTTP_DBG (1, "h2c [%u]%x", hc->c_thread_index,
@@ -154,10 +172,13 @@ http2_conn_alloc_req (http_conn_t *hc, u32 stream_id)
   req->base.c_thread_index = hc->c_thread_index;
   req->stream_id = stream_id;
   req->stream_state = HTTP2_STREAM_STATE_IDLE;
+  req->resume_list.next = CLIB_LLIST_INVALID_INDEX;
+  req->resume_list.prev = CLIB_LLIST_INVALID_INDEX;
   h2c = http2_conn_ctx_get_w_thread (hc);
   HTTP_DBG (1, "h2c [%u]%x req_index %x stream_id %u", hc->c_thread_index,
 	    h2c - h2m->conn_pool[hc->c_thread_index], req_index, stream_id);
   req->peer_window = h2c->peer_settings.initial_window_size;
+  req->our_window = h2c->settings.initial_window_size;
   hash_set (h2c->req_by_stream_id, stream_id, req_index);
   return req;
 }
@@ -171,6 +192,8 @@ http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req, u32 thread_index)
 	    h2c - h2m->conn_pool[thread_index],
 	    ((http_req_handle_t) req->base.hr_req_handle).req_index,
 	    req->stream_id);
+  if (clib_llist_elt_is_linked (req, resume_list))
+    clib_llist_remove (h2m->req_pool[thread_index], resume_list, req);
   vec_free (req->base.headers);
   vec_free (req->base.target);
   http_buffer_free (&req->base.tx_buf);
@@ -207,6 +230,56 @@ http2_req_get (u32 req_index, u32 thread_index)
   http2_main_t *h2m = &http2_main;
 
   return pool_elt_at_index (h2m->req_pool[thread_index], req_index);
+}
+
+always_inline int
+http2_req_update_peer_window (http2_req_t *req, i64 delta)
+{
+  i64 new_value;
+
+  new_value = (i64) req->peer_window + delta;
+  if (new_value > HTTP2_WIN_SIZE_MAX)
+    return -1;
+  req->peer_window = (i32) new_value;
+  HTTP_DBG (1, "new window size %d", req->peer_window);
+  return 0;
+}
+
+always_inline void
+http2_req_add_to_resume_list (http2_conn_ctx_t *h2c, http2_req_t *req)
+{
+  http2_main_t *h2m = &http2_main;
+  http2_req_t *he;
+
+  req->flags &= ~HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+  he = clib_llist_elt (h2m->req_pool[req->base.c_thread_index],
+		       h2c->streams_to_resume);
+  clib_llist_add_tail (h2m->req_pool[req->base.c_thread_index], resume_list,
+		       req, he);
+}
+
+always_inline void
+http2_resume_list_process (http_conn_t *hc)
+{
+  http2_main_t *h2m = &http2_main;
+  http2_req_t *he, *req;
+  http2_conn_ctx_t *h2c;
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  he =
+    clib_llist_elt (h2m->req_pool[hc->c_thread_index], h2c->streams_to_resume);
+
+  /* check if something in list and reschedule first app session from list if
+   * we have some space in connection window */
+  if (h2c->peer_window > 0 &&
+      !clib_llist_is_empty (h2m->req_pool[hc->c_thread_index], resume_list,
+			    he))
+    {
+      req =
+	clib_llist_next (h2m->req_pool[hc->c_thread_index], resume_list, he);
+      clib_llist_remove (h2m->req_pool[hc->c_thread_index], resume_list, req);
+      transport_connection_reschedule (&req->base.connection);
+    }
 }
 
 /* send GOAWAY frame and close TCP connection */
@@ -285,15 +358,15 @@ always_inline void
 http2_send_server_preface (http_conn_t *hc)
 {
   u8 *response;
-  http2_main_t *h2m = &http2_main;
   http2_settings_entry_t *setting, *settings_list = 0;
+  http2_conn_ctx_t *h2c = http2_conn_ctx_get_w_thread (hc);
 
 #define _(v, label, member, min, max, default_value, err_code)                \
-  if (h2m->settings.member != default_value)                                  \
+  if (h2c->settings.member != default_value)                                  \
     {                                                                         \
       vec_add2 (settings_list, setting, 1);                                   \
       setting->identifier = HTTP2_SETTINGS_##label;                           \
-      setting->value = h2m->settings.member;                                  \
+      setting->value = h2c->settings.member;                                  \
     }
   foreach_http2_settings
 #undef _
@@ -301,7 +374,7 @@ http2_send_server_preface (http_conn_t *hc)
     response = http_get_tx_buf (hc);
   http2_frame_write_settings (settings_list, &response);
   http_io_ts_write (hc, response, vec_len (response), 0);
-  http_io_ts_after_write (hc, 0);
+  http_io_ts_after_write (hc, 1);
 }
 
 /*************************************/
@@ -388,6 +461,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
 	  return HTTP_SM_STOP;
 	}
       new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+      http_io_as_add_want_read_ntf (&req->base);
     }
   /* TODO: message framing without content length using END_STREAM flag */
   if (req->base.body_len == 0 && req->stream_state == HTTP2_STREAM_STATE_OPEN)
@@ -481,6 +555,7 @@ http2_req_state_wait_app_reply (http_conn_t *hc, http2_req_t *req,
   u8 flags = HTTP2_FRAME_FLAG_END_HEADERS;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   u32 n_written;
+  http2_conn_ctx_t *h2c;
 
   http_get_app_msg (&req->base, &msg);
   ASSERT (msg.type == HTTP_MSG_REPLY);
@@ -501,6 +576,15 @@ http2_req_state_wait_app_reply (http_conn_t *hc, http2_req_t *req,
   hpack_serialize_response (app_headers, msg.data.headers_len, &control_data,
 			    &response);
   vec_free (date);
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  if (vec_len (response) > h2c->peer_settings.max_frame_size)
+    {
+      /* TODO: CONTINUATION (headers fragmentation) */
+      clib_warning ("resp headers greater than SETTINGS_MAX_FRAME_SIZE");
+      *error = HTTP2_ERROR_INTERNAL_ERROR;
+      return HTTP_SM_ERROR;
+    }
 
   if (msg.data.body_len)
     {
@@ -538,18 +622,42 @@ http2_req_state_app_io_more_data (http_conn_t *hc, http2_req_t *req,
   http_buffer_t *hb = &req->base.tx_buf;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   u8 finished = 0, flags = 0;
+  http2_conn_ctx_t *h2c;
 
   ASSERT (http_buffer_bytes_left (hb) > 0);
+
+  if (req->peer_window <= 0)
+    {
+      HTTP_DBG (1, "stream window is full");
+      /* mark that we need window update on stream */
+      req->flags |= HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+      http_req_deschedule (&req->base, sp);
+      return HTTP_SM_STOP;
+    }
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  if (h2c->peer_window == 0)
+    {
+      HTTP_DBG (1, "connection window is full");
+      /* add to waiting queue */
+      http2_req_add_to_resume_list (h2c, req);
+      http_req_deschedule (&req->base, sp);
+      return HTTP_SM_STOP;
+    }
+
   max_write = http_io_ts_max_write (hc, sp);
   if (max_write <= HTTP2_FRAME_HEADER_SIZE)
     {
       HTTP_DBG (1, "ts tx fifo full");
       goto check_fifo;
     }
+  max_write -= HTTP2_FRAME_HEADER_SIZE;
+  max_write = clib_min (max_write, (u32) req->peer_window);
+  max_write = clib_min (max_write, h2c->peer_window);
+  max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
+
   max_read = http_buffer_bytes_left (hb);
 
-  n_read = http_buffer_get_segs (hb, max_write - HTTP2_FRAME_HEADER_SIZE,
-				 &app_segs, &n_segs);
+  n_read = http_buffer_get_segs (hb, max_write, &app_segs, &n_segs);
   if (n_read == 0)
     {
       HTTP_DBG (1, "no data to deq");
@@ -568,6 +676,8 @@ http2_req_state_app_io_more_data (http_conn_t *hc, http2_req_t *req,
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + n_read));
   vec_free (segs);
   http_buffer_drain (hb, n_read);
+  req->peer_window -= n_read;
+  h2c->peer_window -= n_read;
 
   if (finished)
     {
@@ -667,7 +777,6 @@ http2_req_run_state_machine (http_conn_t *hc, http2_req_t *req,
 static http2_error_t
 http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
-  http2_main_t *h2m = &http2_main;
   http2_req_t *req;
   u8 *rx_buf;
   http2_error_t rv;
@@ -696,7 +805,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	}
       h2c->last_opened_stream_id = fh->stream_id;
       if (hash_elts (h2c->req_by_stream_id) ==
-	  h2m->settings.max_concurrent_streams)
+	  h2c->settings.max_concurrent_streams)
 	{
 	  HTTP_DBG (1, "SETTINGS_MAX_CONCURRENT_STREAMS exceeded");
 	  http_io_ts_drain (hc, fh->length);
@@ -747,6 +856,8 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_conn_ctx_t *h2c;
 
   req = http2_conn_get_req (hc, fh->stream_id);
+  h2c = http2_conn_ctx_get_w_thread (hc);
+
   if (!req)
     {
       if (fh->stream_id == 0)
@@ -754,7 +865,6 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  HTTP_DBG (1, "DATA frame with stream id 0");
 	  return HTTP2_ERROR_PROTOCOL_ERROR;
 	}
-      h2c = http2_conn_ctx_get_w_thread (hc);
       if (fh->stream_id <= h2c->last_opened_stream_id)
 	{
 	  HTTP_DBG (1, "stream closed, ignoring frame");
@@ -775,6 +885,18 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_NO_ERROR;
     }
 
+  if (fh->length > req->our_window)
+    {
+      HTTP_DBG (1, "error: peer violated stream flow control");
+      http2_stream_error (hc, req, HTTP2_ERROR_FLOW_CONTROL_ERROR, 0);
+      return HTTP2_ERROR_NO_ERROR;
+    }
+  if (fh->length > h2c->our_window)
+    {
+      HTTP_DBG (1, "error: peer violated connection flow control");
+      return HTTP2_ERROR_FLOW_CONTROL_ERROR;
+    }
+
   if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
     req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 
@@ -787,6 +909,9 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
   if (rv != HTTP2_ERROR_NO_ERROR)
     return rv;
 
+  req->our_window -= fh->length;
+  h2c->our_window -= fh->length;
+
   HTTP_DBG (1, "run state machine");
   return http2_req_run_state_machine (hc, req, 0, 0);
 }
@@ -797,6 +922,10 @@ http2_handle_window_update_frame (http_conn_t *hc, http2_frame_header_t *fh)
   u8 *rx_buf;
   u32 win_increment;
   http2_error_t rv;
+  http2_req_t *req;
+  http2_conn_ctx_t *h2c;
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
 
   rx_buf = http_get_rx_buf (hc);
   vec_validate (rx_buf, fh->length - 1);
@@ -804,9 +933,57 @@ http2_handle_window_update_frame (http_conn_t *hc, http2_frame_header_t *fh)
 
   rv = http2_frame_read_window_update (&win_increment, rx_buf, fh->length);
   if (rv != HTTP2_ERROR_NO_ERROR)
-    return rv;
+    {
+      HTTP_DBG (1, "invalid WINDOW_UPDATE frame (stream id %u)",
+		fh->stream_id);
+      /* error on the connection flow-control window is connection error */
+      if (fh->stream_id == 0)
+	return rv;
+      /* otherwise it is stream error */
+      req = http2_conn_get_req (hc, fh->stream_id);
+      if (!req)
+	http2_send_stream_error (hc, fh->stream_id, rv, 0);
+      else
+	http2_stream_error (hc, req, rv, 0);
+      return HTTP2_ERROR_NO_ERROR;
+    }
 
-  /* TODO: flow control */
+  HTTP_DBG (1, "WINDOW_UPDATE %u (stream id %u)", win_increment,
+	    fh->stream_id);
+  if (fh->stream_id == 0)
+    {
+      if (win_increment > (HTTP2_WIN_SIZE_MAX - h2c->peer_window))
+	return HTTP2_ERROR_FLOW_CONTROL_ERROR;
+      h2c->peer_window += win_increment;
+    }
+  else
+    {
+      req = http2_conn_get_req (hc, fh->stream_id);
+      if (!req)
+	{
+	  if (fh->stream_id > h2c->last_opened_stream_id)
+	    {
+	      HTTP_DBG (
+		1,
+		"received WINDOW_UPDATE frame on idle stream (stream id %u)",
+		fh->stream_id);
+	      return HTTP2_ERROR_PROTOCOL_ERROR;
+	    }
+	  /* ignore window update on closed stream */
+	  return HTTP2_ERROR_NO_ERROR;
+	}
+      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
+	{
+	  if (http2_req_update_peer_window (req, win_increment))
+	    {
+	      http2_stream_error (hc, req, HTTP2_ERROR_FLOW_CONTROL_ERROR, 0);
+	      return HTTP2_ERROR_NO_ERROR;
+	    }
+	  if (req->flags & HTTP2_REQ_F_NEED_WINDOW_UPDATE)
+	    http2_req_add_to_resume_list (h2c, req);
+	}
+    }
+
   return HTTP2_ERROR_NO_ERROR;
 }
 
@@ -817,6 +994,9 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_error_t rv;
   http2_conn_settings_t new_settings;
   http2_conn_ctx_t *h2c;
+  http2_req_t *req;
+  u32 stream_id, req_index;
+  i32 win_size_delta;
 
   if (fh->stream_id != 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
@@ -841,13 +1021,34 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
       rv = http2_frame_read_settings (&new_settings, rx_buf, fh->length);
       if (rv != HTTP2_ERROR_NO_ERROR)
 	return rv;
-      h2c->peer_settings = new_settings;
 
       /* ACK peer settings */
       http2_frame_write_settings_ack (&resp);
       http_io_ts_write (hc, resp, vec_len (resp), 0);
       vec_free (resp);
       http_io_ts_after_write (hc, 0);
+
+      /* change of SETTINGS_INITIAL_WINDOW_SIZE, we must adjust the size of all
+       * stream flow-control windows */
+      if (h2c->peer_settings.initial_window_size !=
+	  new_settings.initial_window_size)
+	{
+	  win_size_delta = (i32) new_settings.initial_window_size -
+			   (i32) h2c->peer_settings.initial_window_size;
+	  hash_foreach (
+	    stream_id, req_index, h2c->req_by_stream_id, ({
+	      req = http2_req_get (req_index, hc->c_thread_index);
+	      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
+		{
+		  if (http2_req_update_peer_window (req, win_size_delta))
+		    http2_stream_error (hc, req,
+					HTTP2_ERROR_FLOW_CONTROL_ERROR, 0);
+		  if (req->flags & HTTP2_REQ_F_NEED_WINDOW_UPDATE)
+		    http2_req_add_to_resume_list (h2c, req);
+		}
+	    }));
+	}
+      h2c->peer_settings = new_settings;
     }
 
   return HTTP2_ERROR_NO_ERROR;
@@ -913,6 +1114,8 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
     http2_frame_read_goaway (&error_code, &last_stream_id, rx_buf, fh->length);
   if (rv != HTTP2_ERROR_NO_ERROR)
     return rv;
+
+  HTTP_DBG (1, "received GOAWAY %U", format_http2_error, error_code);
 
   if (error_code == HTTP2_ERROR_NO_ERROR)
     {
@@ -1092,6 +1295,9 @@ http2_app_tx_callback (http_conn_t *hc, u32 req_index,
       return;
     }
 
+  /* maybe we can continue sending data on some stream */
+  http2_resume_list_process (hc);
+
   /* reset http connection expiration timer */
   http_conn_timer_update (hc);
 }
@@ -1100,6 +1306,27 @@ static void
 http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
 {
   /* TODO: continue tunnel RX */
+  http2_req_t *req;
+  u8 *response;
+  u32 increment;
+
+  req = http2_req_get (req_index, thread_index);
+  if (!req)
+    {
+      HTTP_DBG (1, "req already deleted");
+      return;
+    }
+  HTTP_DBG (1, "received app read notification stream id %u", req->stream_id);
+  if (req->stream_state == HTTP2_STREAM_STATE_OPEN)
+    {
+      http_io_as_reset_has_read_ntf (&req->base);
+      response = http_get_tx_buf (hc);
+      increment = http_io_as_max_write (&req->base) - req->our_window;
+      req->our_window += increment;
+      http2_frame_write_window_update (increment, req->stream_id, &response);
+      http_io_ts_write (hc, response, vec_len (response), 0);
+      http_io_ts_after_write (hc, 0);
+    }
 }
 
 static void
@@ -1151,7 +1378,6 @@ http2_transport_connected_callback (http_conn_t *hc)
 static void
 http2_transport_rx_callback (http_conn_t *hc)
 {
-  http2_main_t *h2m = &http2_main;
   http2_frame_header_t fh;
   u32 to_deq;
   u8 *rx_buf;
@@ -1203,10 +1429,10 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
       http2_frame_header_read (rx_buf, &fh);
-      if (fh.length > h2m->settings.max_frame_size)
+      if (fh.length > h2c->settings.max_frame_size)
 	{
 	  HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu",
-		    fh.length, h2m->settings.max_frame_size);
+		    fh.length, h2c->settings.max_frame_size);
 	  http2_connection_error (hc, HTTP2_ERROR_FRAME_SIZE_ERROR, 0);
 	  return;
 	}
@@ -1272,6 +1498,9 @@ http2_transport_rx_callback (http_conn_t *hc)
 	  return;
 	}
     }
+
+  /* maybe we can continue sending data on some stream */
+  http2_resume_list_process (hc);
 
   /* reset http connection expiration timer */
   http_conn_timer_update (hc);

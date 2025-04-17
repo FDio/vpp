@@ -219,6 +219,7 @@ typedef struct http_tc_
   http_conn_state_t state;
   u32 timer_handle;
   u32 timeout;
+  u32 app_rx_fifo_size;
   u8 *app_name;
   u8 *host;
   http_conn_flags_t flags;
@@ -560,6 +561,21 @@ http_io_as_add_want_deq_ntf (http_req_t *req)
 {
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+}
+
+always_inline void
+http_io_as_add_want_read_ntf (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+}
+
+always_inline void
+http_io_as_reset_has_read_ntf (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_reset_has_deq_ntf (as->rx_fifo);
 }
 
 always_inline u32
