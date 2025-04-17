@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -47,4 +47,14 @@ func Http2TcpGetTest(s *H2Suite) {
 	vpp.Vppctl("http cli server listener del")
 	o := vpp.Vppctl("show session verbose proto http")
 	s.AssertNotContains(o, "LISTEN")
+}
+
+func Http2TcpPostTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug 2"))
+	s.Log(vpp.Vppctl("test-url-handler enable"))
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' -d hello --http2-prior-knowledge http://%s:80/test3", serverAddress)
+	_, log := s.RunCurlContainer(s.Containers.Curl, args)
+	s.AssertContains(log, "HTTP/2 200")
 }
