@@ -562,6 +562,21 @@ http_io_as_add_want_deq_ntf (http_req_t *req)
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 }
 
+always_inline void
+http_io_as_add_want_read_ntf (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+}
+
+always_inline void
+http_io_as_reset_has_read_ntf (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_reset_has_deq_ntf (as->rx_fifo);
+}
+
 always_inline u32
 http_io_as_max_write (http_req_t *req)
 {
