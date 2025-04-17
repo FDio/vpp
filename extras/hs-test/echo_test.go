@@ -1,11 +1,13 @@
 package main
 
 import (
+	"time"
+
 	. "fd.io/hs-test/infra"
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest)
 	RegisterSoloVethTests(TcpWithLossTest)
 }
 
@@ -22,6 +24,24 @@ func EchoBuiltinTest(s *VethsSuite) {
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
 	s.Log(o)
 	s.AssertNotContains(o, "failed:")
+}
+
+func EchoBuiltinBandwidthTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	t := time.Now()
+	o := clientVpp.Vppctl("test echo client nclients 4 bytes 8m throughput 16m" +
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
+	s.Log(o)
+	s.AssertNotContains(o, "failed:")
+	s.AssertContains(o, "2.00 seconds")
+	// 2 seconds for echo run and 1.1 for shutdowm
+	s.AssertTimeEqualWithinThreshold(time.Now(), t.Add(time.Millisecond*3100), time.Millisecond*100)
 }
 
 func TcpWithLossTest(s *VethsSuite) {
