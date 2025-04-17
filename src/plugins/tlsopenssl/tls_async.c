@@ -82,7 +82,8 @@ typedef struct openssl_async_queue_
 typedef struct openssl_async_
 {
   openssl_evt_t ***evt_pool;
-  openssl_async_queue_t *queue;
+  openssl_async_queue_t *queue_rd;
+  openssl_async_queue_t *queue_wr;
   openssl_async_queue_t *queue_in_init;
   void (*polling) (void);
   u8 start_polling;
@@ -129,7 +130,8 @@ evt_pool_init (vlib_main_t * vm)
   TLS_DBG (2, "Totally there is %d thread\n", num_threads);
 
   vec_validate (om->evt_pool, num_threads - 1);
-  vec_validate (om->queue, num_threads - 1);
+  vec_validate (om->queue_rd, num_threads - 1);
+  vec_validate (om->queue_wr, num_threads - 1);
   vec_validate (om->queue_in_init, num_threads - 1);
 
   om->start_polling = 0;
@@ -137,9 +139,13 @@ evt_pool_init (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     {
-      om->queue[i].evt_run_head = -1;
-      om->queue[i].evt_run_tail = -1;
-      om->queue[i].depth = 0;
+      om->queue_rd[i].evt_run_head = -1;
+      om->queue_rd[i].evt_run_tail = -1;
+      om->queue_rd[i].depth = 0;
+
+      om->queue_wr[i].evt_run_head = -1;
+      om->queue_wr[i].evt_run_tail = -1;
+      om->queue_wr[i].depth = 0;
 
       om->queue_in_init[i].evt_run_head = -1;
       om->queue_in_init[i].evt_run_tail = -1;
@@ -148,6 +154,48 @@ evt_pool_init (vlib_main_t * vm)
   om->polling = NULL;
 
   return;
+}
+
+void
+tls_async_evts_init_list (tls_async_ctx_t *ctx)
+{
+  clib_llist_index_t head_idx;
+  head_idx = clib_llist_make_head (ctx->rd_evt_list, anchor);
+
+  ctx->rd_evt_head_index = head_idx;
+  head_idx = clib_llist_make_head (ctx->wr_evt_list, anchor);
+  ctx->wr_evt_head_index = head_idx;
+  head_idx = clib_llist_make_head (ctx->hs_evt_list, anchor);
+  ctx->hs_evt_head_index = head_idx;
+}
+
+#define REMOVE_ASYNC_EVTS_FROM_LIST(EVT_LIST, LIST_HEAD, HEAD_IDX)            \
+  LIST_HEAD = clib_llist_elt (EVT_LIST, HEAD_IDX);                            \
+  clib_llist_foreach (EVT_LIST, anchor, LIST_HEAD, elt, ({                    \
+			TLS_DBG (3, "Removing Read EIDx: %d", elt->eidx);     \
+			openssl_evt_free (elt->eidx, ctx->c_thread_index);    \
+			clib_llist_remove (EVT_LIST, anchor, elt);            \
+			clib_llist_put (EVT_LIST, elt);                       \
+		      }));
+
+void
+tls_async_evts_free_list (tls_ctx_t *ctx)
+{
+  async_evt_list *elt;
+  async_evt_list *list_head;
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  tls_async_ctx_t *async_ctx = &oc->async_ctx;
+
+  REMOVE_ASYNC_EVTS_FROM_LIST (async_ctx->rd_evt_list, list_head,
+			       async_ctx->rd_evt_head_index)
+  REMOVE_ASYNC_EVTS_FROM_LIST (async_ctx->wr_evt_list, list_head,
+			       async_ctx->wr_evt_head_index)
+  REMOVE_ASYNC_EVTS_FROM_LIST (async_ctx->hs_evt_list, list_head,
+			       async_ctx->hs_evt_head_index)
+
+  clib_llist_free (async_ctx->rd_evt_list);
+  clib_llist_free (async_ctx->wr_evt_list);
+  clib_llist_free (async_ctx->hs_evt_list);
 }
 
 int
@@ -289,14 +337,25 @@ tls_async_openssl_callback (SSL * s, void *cb_arg)
   ssl_async_evt_type_t evt_type = args->async_evt_type;
   int *evt_run_tail, *evt_run_head;
 
-  TLS_DBG (2, "Set event %d to run\n", event_index);
+  TLS_DBG (1, "Event Type: %d event index %d is ready to run\n", evt_type,
+	   event_index);
   event = openssl_evt_get_w_thread (event_index, thread_index);
 
-  if (evt_type == SSL_ASYNC_EVT_INIT)
-    queue = om->queue_in_init;
-  else
-    queue = om->queue;
-
+  switch (evt_type)
+    {
+    case SSL_ASYNC_EVT_INIT:
+      queue = om->queue_in_init;
+      break;
+    case SSL_ASYNC_EVT_RD:
+      queue = om->queue_rd;
+      break;
+    case SSL_ASYNC_EVT_WR:
+      queue = om->queue_wr;
+      break;
+    default:
+      clib_warning ("Invalid evt type:");
+      return 0;
+    }
   evt_run_tail = &queue[thread_index].evt_run_tail;
   evt_run_head = &queue[thread_index].evt_run_head;
 
@@ -343,7 +402,7 @@ openssl_async_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl,
   wrote = SSL_write (ssl, NULL, 0);
   ossl_check_err_is_fatal (ssl, wrote);
 
-  oc->total_async_write -= wrote;
+  oc->async_ctx.total_async_write -= wrote;
   svm_fifo_dequeue_drop (f, wrote);
 
   return wrote;
@@ -363,6 +422,14 @@ openssl_async_read_from_ssl_into_fifo (svm_fifo_t *f, SSL *ssl)
   return read;
 }
 
+#define ADD_ASYNC_EVT_TO_LIST(LIST, HEAD_IDX)                                 \
+  head_idx = HEAD_IDX;                                                        \
+  clib_llist_get (LIST, elt);                                                 \
+  list_head = clib_llist_elt (LIST, head_idx);                                \
+  elt->eidx = eidx;                                                           \
+  clib_llist_add (LIST, anchor, elt, list_head);                              \
+  HEAD_IDX = head_idx;
+
 int
 vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
 			  session_t *session, ssl_async_evt_type_t evt_type,
@@ -370,25 +437,34 @@ vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
 {
   u32 eidx;
   openssl_evt_t *event = NULL;
+  clib_llist_index_t head_idx;
+  async_evt_list *elt;
+  async_evt_list *list_head;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   u32 thread_id = ctx->c_thread_index;
 
-  if (oc->evt_alloc_flag[evt_type])
+  eidx = openssl_evt_alloc ();
+  TLS_DBG (1, "Event: %d for Type %d allocated", eidx, evt_type);
+  if (evt_type == SSL_ASYNC_EVT_RD)
     {
-      eidx = oc->evt_index[evt_type];
-      if (evt_type == SSL_ASYNC_EVT_WR)
-	{
-	  event = openssl_evt_get (eidx);
-	  goto update_wr_evnt;
-	}
-      return 1;
+      ADD_ASYNC_EVT_TO_LIST (oc->async_ctx.rd_evt_list,
+			     oc->async_ctx.rd_evt_head_index)
+    }
+  else if (evt_type == SSL_ASYNC_EVT_WR)
+    {
+      ADD_ASYNC_EVT_TO_LIST (oc->async_ctx.wr_evt_list,
+			     oc->async_ctx.wr_evt_head_index)
+    }
+  else if (evt_type == SSL_ASYNC_EVT_INIT)
+    {
+      ADD_ASYNC_EVT_TO_LIST (oc->async_ctx.hs_evt_list,
+			     oc->async_ctx.hs_evt_head_index)
     }
   else
     {
-      eidx = openssl_evt_alloc ();
-      oc->evt_alloc_flag[evt_type] = true;
+      clib_warning ("INVALID EVENT");
+      return 0;
     }
-
   event = openssl_evt_get (eidx);
   event->ctx_index = oc->openssl_ctx_index;
   /* async call back args */
@@ -397,38 +473,49 @@ vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
   event->async_event_type = evt_type;
   event->async_evt_handler = handler;
   event->session_index = session->session_index;
-  event->status = SSL_ASYNC_INVALID_STATUS;
-  oc->evt_index[evt_type] = eidx;
+  event->status = SSL_ASYNC_INFLIGHT;
 #ifdef HAVE_OPENSSL_ASYNC
   SSL_set_async_callback_arg (oc->ssl, &event->cb_args);
 #endif
-update_wr_evnt:
   if (evt_type == SSL_ASYNC_EVT_WR)
     {
       transport_connection_deschedule (&ctx->connection);
       sp->flags |= TRANSPORT_SND_F_DESCHED;
-      oc->total_async_write = wr_size;
+      oc->async_ctx.total_async_write = wr_size;
     }
   event->tran_sp = sp;
   return 1;
 }
 
+/* Iterates through the list and checks if the async event status is
+ * in flight. If the event is inflight, returns 1.
+ */
+#define CHECK_EVT_IS_INFLIGHT_IN_LIST(EVT_LIST, HEAD_IDX)                     \
+  list_head = clib_llist_elt (EVT_LIST, HEAD_IDX);                            \
+  clib_llist_foreach (EVT_LIST, anchor, list_head, elt, ({                    \
+			event = openssl_evt_get (elt->eidx);                  \
+			if (event->status == SSL_ASYNC_INFLIGHT)              \
+			  return 1;                                           \
+		      }));
+
 int
 vpp_openssl_is_inflight (tls_ctx_t *ctx)
 {
-  u32 eidx;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   openssl_evt_t *event;
-  int i;
+  async_evt_list *elt;
+  async_evt_list *list_head;
+  tls_async_ctx_t *async_ctx = &oc->async_ctx;
 
-  for (i = SSL_ASYNC_EVT_INIT; i < SSL_ASYNC_EVT_MAX; i++)
-    {
-      eidx = oc->evt_index[i];
-      event = openssl_evt_get (eidx);
-
-      if (event->status == SSL_ASYNC_INFLIGHT)
-	return 1;
-    }
+  /* Check for read events */
+  CHECK_EVT_IS_INFLIGHT_IN_LIST (async_ctx->rd_evt_list,
+				 async_ctx->rd_evt_head_index)
+  /* Check for write events */
+  CHECK_EVT_IS_INFLIGHT_IN_LIST (async_ctx->wr_evt_list,
+				 async_ctx->wr_evt_head_index)
+  /* Check for Handshake events */
+  CHECK_EVT_IS_INFLIGHT_IN_LIST (async_ctx->hs_evt_list,
+				 async_ctx->hs_evt_head_index)
 
   return 0;
 }
@@ -593,18 +680,28 @@ resume_handshake_events (int thread_index)
 }
 
 void
-resume_read_write_events (int thread_index)
+resume_read_events (int thread_index)
 {
   openssl_async_t *om = &openssl_async_main;
 
-  openssl_async_queue_t *queue = om->queue;
+  openssl_async_queue_t *queue = om->queue_rd;
+  handle_async_cb_events (queue, thread_index);
+}
+
+void
+resume_write_events (int thread_index)
+{
+  openssl_async_t *om = &openssl_async_main;
+
+  openssl_async_queue_t *queue = om->queue_wr;
   handle_async_cb_events (queue, thread_index);
 }
 
 int
 tls_resume_from_crypto (int thread_index)
 {
-  resume_read_write_events (thread_index);
+  resume_read_events (thread_index);
+  resume_write_events (thread_index);
   resume_handshake_events (thread_index);
   return 0;
 }
@@ -624,16 +721,24 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
   openssl_ctx_t *oc;
   tls_ctx_t *ctx;
   int rv, err;
+  session_t *tls_session;
 
   ASSERT (thread_index == vlib_get_thread_index ());
   ctx = openssl_ctx_get_w_thread (event->ctx_index, thread_index);
   oc = (openssl_ctx_t *) ctx;
-  session_t *tls_session = session_get_from_handle (ctx->tls_session_handle);
 
   if (!SSL_in_init (oc->ssl))
     {
       TLS_DBG (2, "[!SSL_in_init]==>CTX: %p EVT: %p EIDX: %d", ctx, event,
 	       event->event_idx);
+      return 0;
+    }
+
+  tls_session = session_get_from_handle (ctx->tls_session_handle);
+  if (tls_session->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      SSL_shutdown (oc->ssl);
+      TLS_DBG (2, "Session State: App Closed");
       return 0;
     }
 
@@ -686,6 +791,9 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
 
   ctx->flags |= TLS_CONN_F_HS_DONE;
 
+  /* Read early data */
+  openssl_ctx_read_tls (ctx, tls_session);
+
   return 1;
 }
 
@@ -698,6 +806,7 @@ tls_async_read_event_handler (void *async_evt, void *unused)
   openssl_ctx_t *oc;
   tls_ctx_t *ctx;
   SSL *ssl;
+  const u32 max_len = 128 << 10;
 
   ASSERT (thread_index == vlib_get_thread_index ());
   ctx = openssl_ctx_get_w_thread (event->ctx_index, thread_index);
@@ -710,9 +819,21 @@ tls_async_read_event_handler (void *async_evt, void *unused)
   int read, err;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
+  if ((app_session->flags & SESSION_F_APP_CLOSED))
+    {
+      TLS_DBG (1, "App Closed");
+      SSL_shutdown (oc->ssl);
+      return 0;
+    }
   app_rx_fifo = app_session->rx_fifo;
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
+  if (tls_session->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      SSL_shutdown (oc->ssl);
+      TLS_DBG (2, "Session State: App Closed");
+      return 0;
+    }
   tls_rx_fifo = tls_session->rx_fifo;
 
   /* continue the paused job */
@@ -743,6 +864,27 @@ tls_async_read_event_handler (void *async_evt, void *unused)
   if (app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
 
+  /* Try to read more data */
+  while (read > 0)
+    {
+      read = openssl_read_from_ssl_into_fifo (app_rx_fifo, ctx, max_len);
+      if (!read)
+	goto ev_rd_done;
+
+      /* Unrecoverable protocol error. Reset connection */
+      if (PREDICT_FALSE ((read < 0) &&
+			 (SSL_get_error (ssl, read) == SSL_ERROR_SSL)))
+	{
+	  TLS_DBG (2, "Unrecoverable protocol error");
+	  goto ev_rd_done;
+	}
+
+      /* If handshake just completed, session may still be in accepting
+       * state */
+      if (read >= 0 && app_session->session_state >= SESSION_STATE_READY)
+	tls_notify_app_enqueue (ctx, app_session);
+    }
+
 ev_rd_done:
   /* read done */
   ctx->flags &= ~TLS_CONN_F_ASYNC_RD;
@@ -767,7 +909,6 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   ctx = openssl_ctx_get_w_thread (event->ctx_index, thread_index);
   oc = (openssl_ctx_t *) ctx;
   ssl = oc->ssl;
-
   /* write event */
   int wrote = 0;
   u32 space, enq_buf;
@@ -775,10 +916,17 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   transport_send_params_t *sp = event->tran_sp;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
+  if (app_session->flags & SESSION_F_APP_CLOSED)
+    {
+      TLS_DBG (2, "Session State: App Closed");
+      SSL_shutdown (oc->ssl);
+      return 0;
+    }
+
   app_tx_fifo = app_session->tx_fifo;
 
   /* Check if already data write is completed or not */
-  if (oc->total_async_write == 0)
+  if (oc->async_ctx.total_async_write == 0)
     return 0;
 
   wrote = openssl_async_write_from_fifo_into_ssl (app_tx_fifo, ssl, oc);
@@ -788,6 +936,13 @@ tls_async_write_event_handler (void *async_evt, void *unused)
 	return 0;
     }
 
+  tls_session = session_get_from_handle (ctx->tls_session_handle);
+  if (tls_session->session_state >= SESSION_STATE_APP_CLOSED)
+    {
+      TLS_DBG (2, "Session state: App Closed");
+      SSL_shutdown (oc->ssl);
+      return 0;
+    }
   /* Unrecoverable protocol error. Reset connection */
   if (PREDICT_FALSE (wrote < 0))
     {
@@ -795,7 +950,6 @@ tls_async_write_event_handler (void *async_evt, void *unused)
       return 0;
     }
 
-  tls_session = session_get_from_handle (ctx->tls_session_handle);
   tls_tx_fifo = tls_session->tx_fifo;
 
   /* prepare for remaining write(s) */
@@ -807,7 +961,7 @@ tls_async_write_event_handler (void *async_evt, void *unused)
     session_dequeue_notify (app_session);
 
   /* we got here, async write is done */
-  oc->total_async_write = 0;
+  oc->async_ctx.total_async_write = 0;
 
   if (PREDICT_FALSE (ctx->flags & TLS_CONN_F_APP_CLOSED &&
 		     BIO_ctrl_pending (oc->rbio) <= 0))
