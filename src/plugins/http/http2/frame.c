@@ -142,7 +142,7 @@ http2_frame_read_window_update (u32 *increment, u8 *payload, u32 payload_len)
 
   value = (u32 *) payload;
 
-  if (value == 0)
+  if (*value == 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
   *increment = clib_net_to_host_u32 (*value) & 0x7FFFFFFF;
