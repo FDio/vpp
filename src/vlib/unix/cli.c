@@ -3549,44 +3549,6 @@ VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
   .function = unix_show_errors,
 };
 
-/** CLI command to show various unix error statistics. */
-static clib_error_t *
-unix_show_files (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  clib_error_t *error = 0;
-  clib_file_main_t *fm = &file_main;
-  char path[PATH_MAX];
-  u8 *s = 0;
-
-  vlib_cli_output (vm, "%3s %6s %12s %12s %12s %-32s %s", "FD", "Thread",
-		   "Read", "Write", "Error", "File Name", "Description");
-
-  pool_foreach_pointer (f, fm->file_pool)
-    {
-      int rv;
-      s = format (s, "/proc/self/fd/%d%c", f->file_descriptor, 0);
-      rv = readlink((char *) s, path, PATH_MAX - 1);
-
-      path[rv < 0 ? 0 : rv] = 0;
-
-      vlib_cli_output (vm, "%3d %6d %12d %12d %12d %-32s %v",
-		       f->file_descriptor, f->polling_thread_index,
-		       f->read_events, f->write_events, f->error_events,
-		       path, f->description);
-      vec_reset_length (s);
-    }
-  vec_free (s);
-
-  return error;
-}
-
-VLIB_CLI_COMMAND (cli_unix_show_files, static) = {
-  .path = "show unix files",
-  .short_help = "Show Unix files in use",
-  .function = unix_show_files,
-};
-
 /** CLI command to show session command history. */
 static clib_error_t *
 unix_cli_show_history (vlib_main_t * vm,
