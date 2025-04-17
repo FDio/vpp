@@ -379,6 +379,12 @@ memif_connect (memif_if_t * mif)
 				CLIB_CACHE_LINE_BYTES);
 	  vec_foreach (dma_info, mq->dma_info)
 	    {
+	      vlib_buffer_t *bt = &dma_info->data.buffer_template;
+
+	      clib_memset (bt, 0, sizeof (*bt));
+	      bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	      bt->total_length_not_including_first_buffer = 0;
+	      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	      vec_validate_aligned (dma_info->data.desc_data,
 				    pow2_mask (max_log2_ring_sz),
 				    CLIB_CACHE_LINE_BYTES);
