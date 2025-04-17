@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43150c3e_cbe48234",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-04-17T16:11:34Z",
+      "side": 1,
+      "message": "Please remove leading tabs to conform with the style in the rest of the makefile.\n\nWhile leading tabs are valid, they can be fragile if someone has their editor configured to automatically replace tabs with spaces.",
+      "range": {
+        "startLine": 64,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 6
+      },
+      "revId": "8c787d37b21798eb0bc832b163da825d4cff005d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08376aaf_6d6cb270",
+        "filename": "extras/deprecated/vom/vom.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-04-17T16:11:34Z",
+      "side": 1,
+      "message": "VOM is deprecated, so these changes are not necessary.\n\nHowever, if you are using VOM on RHEL-8, then this is ok with me as long as the leading tabs are removed per comment in main Makefile.",
+      "revId": "8c787d37b21798eb0bc832b163da825d4cff005d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
