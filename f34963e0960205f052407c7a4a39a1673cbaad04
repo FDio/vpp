@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b11ec790_3b4c0ceb",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-18T21:15:44Z",
+      "side": 1,
+      "message": "Maybe add some comments here explaining why we need to do the extra drain from fifo head",
+      "revId": "f34963e0960205f052407c7a4a39a1673cbaad04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
