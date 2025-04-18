@@ -161,7 +161,7 @@ mount -t 9p tmp9p /tmp
 modprobe -a vhost_net
 ${VENV_PATH}/bin/python3 ${WS_ROOT}/test/run_tests.py --filter=${TEST} --jobs=${TEST_JOBS} \
 --failed-dir=${FAILED_DIR} --venv-dir=${VENV_PATH} --vpp-ws-dir=${WS_ROOT} --extended \
---vpp-tag=vpp_debug --cache-vpp-output
+--vpp-tag=vpp_debug --cache-vpp-output --skip-filter=${SKIP_FILTER}
 poweroff -f
 _EOF_
 
