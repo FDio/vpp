@@ -20,47 +20,15 @@ import glob
 import logging
 import os
 from pathlib import Path
-import signal
-from subprocess import Popen, PIPE, STDOUT, call
+from subprocess import Popen, PIPE, STDOUT, run, CalledProcessError
 import sys
 import time
-import venv
-import datetime
 import re
 
 
-# Required Std. Path Variables
-test_dir = os.path.dirname(os.path.realpath(__file__))
-ws_root = os.path.dirname(test_dir)
-build_root = os.path.join(ws_root, "build-root")
-venv_dir = os.path.join(build_root, "test", "venv")
-venv_bin_dir = os.path.join(venv_dir, "bin")
-venv_lib_dir = os.path.join(venv_dir, "lib")
-venv_run_dir = os.path.join(venv_dir, "run")
-venv_install_done = os.path.join(venv_run_dir, "venv_install.done")
-papi_python_src_dir = os.path.join(ws_root, "src", "vpp-api", "python")
-
-# Path Variables Set after VPP Build/Install
-vpp_build_dir = vpp_install_path = vpp_bin = vpp_lib = vpp_lib64 = None
-vpp_plugin_path = vpp_test_plugin_path = ld_library_path = None
-
-# Pip version pinning
-pip_version = "22.0.4"
-pip_tools_version = "6.6.0"
-
-# Compiled pip requirements file
-pip_compiled_requirements_file = os.path.join(test_dir, "requirements-3.txt")
-
-
-# Gracefully exit after executing cleanup scripts
-# upon receiving a SIGINT or SIGTERM
-def handler(signum, frame):
-    print("Received Signal {0}".format(signum))
-    post_vm_test_run()
-
-
-signal.signal(signal.SIGINT, handler)
-signal.signal(signal.SIGTERM, handler)
+base_dir = Path(__file__).resolve().parent
+ws_root = base_dir.parent
+run_sh = base_dir / "scripts" / "run.sh"
 
 
 def show_progress(stream, exclude_pattern=None):
@@ -91,130 +59,90 @@ def show_progress(stream, exclude_pattern=None):
     stream.close()
 
 
-class ExtendedEnvBuilder(venv.EnvBuilder):
-    """
-    1. Builds a Virtual Environment for running VPP unit tests
-    2. Installs all necessary scripts, pkgs & patches into the vEnv
-         - python3, pip, pip-tools, papi, scapy patches &
-           test-requirement pkgs
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def post_setup(self, context):
-        """
-        Setup all packages that need to be pre-installed into the venv
-        prior to running VPP unit tests.
-
-        :param context: The context of the virtual environment creation
-                        request being processed.
-        """
-        os.environ["VIRTUAL_ENV"] = context.env_dir
-        os.environ["CUSTOM_COMPILE_COMMAND"] = (
-            "make test-refresh-deps (or update requirements.txt)"
-        )
-        # Set the venv python executable & binary install path
-        env_exe = context.env_exe
-        bin_path = context.bin_path
-        # Packages/requirements to be installed in the venv
-        # [python-module, cmdline-args, package-name_or_requirements-file-name]
-        test_req = [
-            ["pip", "install", "pip===%s" % pip_version],
-            ["pip", "install", "pip-tools===%s" % pip_tools_version],
-            ["piptools", "sync", pip_compiled_requirements_file],
-            ["pip", "install", "-e", papi_python_src_dir],
-        ]
-        for req in test_req:
-            args = [env_exe, "-m"]
-            args.extend(req)
-            print(args)
-            p = Popen(args, stdout=PIPE, stderr=STDOUT, cwd=bin_path)
-            show_progress(p.stdout)
-        self.pip_patch()
-
-    def pip_patch(self):
-        """
-        Apply scapy patch files
-        """
-        scapy_patch_dir = Path(os.path.join(test_dir, "patches", "scapy-2.4.3"))
-        scapy_source_dir = glob.glob(
-            os.path.join(venv_lib_dir, "python3.*", "site-packages")
-        )[0]
-        for f in scapy_patch_dir.iterdir():
-            print("Applying patch: {}".format(os.path.basename(str(f))))
-            args = ["patch", "--forward", "-p1", "-d", scapy_source_dir, "-i", str(f)]
-            print(args)
-            p = Popen(args, stdout=PIPE, stderr=STDOUT)
-            show_progress(p.stdout)
-
-
-# Build VPP Release/Debug binaries
-def build_vpp(debug=True, release=False):
-    """
-    Install VPP Release(if release=True) or Debug(if debug=True) Binaries.
-
-    Default is to build the debug binaries.
-    """
-    global vpp_build_dir, vpp_install_path, vpp_bin, vpp_lib, vpp_lib64
-    global vpp_plugin_path, vpp_test_plugin_path, ld_library_path
-    if debug:
-        print("Building VPP debug binaries")
-        args = ["make", "build"]
-        build = "build-vpp_debug-native"
-        install = "install-vpp_debug-native"
-    elif release:
-        print("Building VPP release binaries")
-        args = ["make", "build-release"]
-        build = "build-vpp-native"
-        install = "install-vpp-native"
-    p = Popen(args, stdout=PIPE, stderr=STDOUT, cwd=ws_root)
-    show_progress(p.stdout)
-    vpp_build_dir = os.path.join(build_root, build)
-    vpp_install_path = os.path.join(build_root, install)
-    vpp_bin = os.path.join(vpp_install_path, "vpp", "bin", "vpp")
-    vpp_lib = os.path.join(vpp_install_path, "vpp", "lib")
-    vpp_lib64 = os.path.join(vpp_install_path, "vpp", "lib64")
-    vpp_plugin_path = (
-        os.path.join(vpp_lib, "vpp_plugins")
-        + ":"
-        + os.path.join(vpp_lib64, "vpp_plugins")
-    )
-    vpp_test_plugin_path = (
-        os.path.join(vpp_lib, "vpp_api_test_plugins")
-        + ":"
-        + os.path.join(vpp_lib64, "vpp_api_test_plugins")
-    )
-    ld_library_path = os.path.join(vpp_lib) + ":" + os.path.join(vpp_lib64)
-
-
-# Environment Vars required by the test framework,
-# papi_provider & unittests
-def set_environ():
-    os.environ["WS_ROOT"] = ws_root
-    os.environ["BR"] = build_root
-    os.environ["VENV_PATH"] = venv_dir
-    os.environ["VENV_BIN"] = venv_bin_dir
-    os.environ["RND_SEED"] = str(time.time())
-    os.environ["VPP_BUILD_DIR"] = vpp_build_dir
-    os.environ["VPP_BIN"] = vpp_bin
-    os.environ["VPP_PLUGIN_PATH"] = vpp_plugin_path
-    os.environ["VPP_TEST_PLUGIN_PATH"] = vpp_test_plugin_path
-    os.environ["VPP_INSTALL_PATH"] = vpp_install_path
-    os.environ["LD_LIBRARY_PATH"] = ld_library_path
-    os.environ["FAILED_DIR"] = "/tmp/vpp-failed-unittests/"
-    if not os.environ.get("TEST_JOBS"):
-        os.environ["TEST_JOBS"] = "1"
+def get_env(args):
+    """Build and return test environment variables."""
+    defaults = {
+        "FAILED_DIR": "/tmp/vpp-failed-unittests/",
+        "V": "1",
+        "SKIP_FILTER": "",
+        "RETRIES": "0",
+        "WS_ROOT": str(ws_root),
+        "BR": str(ws_root / "build-root"),
+        "VENV_PATH": str(ws_root / "build-root" / "test" / "venv"),
+        "VPP_BUILD_DIR": str(ws_root / "build-root" / "build-vpp-native" / "vpp"),
+        "VPP_INSTALL_PATH": str(ws_root / "build-root" / "install-vpp-native"),
+        "VPP_BIN": str(
+            ws_root / "build-root" / "install-vpp-native" / "vpp" / "bin" / "vpp"
+        ),
+        "VPP_PLUGIN_PATH": str(
+            ws_root
+            / "build-root"
+            / "install-vpp-native"
+            / "vpp"
+            / "include"
+            / "vpp_plugins"
+        ),
+        "VPP_TEST_PLUGIN_PATH": str(
+            ws_root
+            / "build-root"
+            / "install-vpp-native"
+            / "vpp"
+            / "include"
+            / "vpp_plugins"
+        ),
+        "LD_LIBRARY_PATH": str(
+            ws_root / "build-root" / "install-vpp-native" / "vpp" / "lib"
+        ),
+        "TAG": "vpp_debug",
+        "RND_SEED": str(time.time()),
+        "VPP_WORKER_COUNT": "",
+        "TEST": args.test_name,
+        "TEST_JOBS": args.jobs,
+        "SOCKET_DIR": args.socket_dir,
+        "PYTHON_OPTS": "",
+        "EXTENDED": args.extended,
+        "USE_RUNNING_VPP": args.running_vpp,
+        "LOG_DIR": args.log_dir,
+        "VM_KERNEL_IMAGE": args.kernel_image,
+        "VM_CPU_LIST": args.vm_cpu_list,
+        "VM_MEM": args.vm_mem,
+        "VM_TEST": args.vm,
+    }
+    # Update values for defaults from environment variables
+    # If a variable is set in os.environ, it takes priority over the defaults
+    return {key: os.environ.get(key, default) for key, default in defaults.items()}
 
 
 # Runs a test inside a spawned QEMU VM
 # If a kernel image is not provided, a linux-image-kvm image is
 # downloaded to the test_data_dir
-def vm_test_runner(test_name, kernel_image, test_data_dir, cpu_mask, mem, jobs="auto"):
-    script = os.path.join(test_dir, "scripts", "run_vpp_in_vm.sh")
+def vm_test_runner(
+    test_name, kernel_image, test_data_dir, cpu_mask, mem, jobs="auto", env=None
+):
+    """Runs a test inside a spawned QEMU VM."""
+    run_vpp_in_vm_sh = base_dir / "scripts" / "run_vpp_in_vm.sh"
+    # Set the environment variables required for running a VM test
     os.environ["TEST_JOBS"] = str(jobs)
+    os.environ["WS_ROOT"] = str(ws_root)
+    os.environ["BR"] = env["BR"]
+    os.environ["VPP_TEST_DATA_DIR"] = str(test_data_dir)
+    os.environ["VPP_BUILD_DIR"] = env["VPP_BUILD_DIR"]
+    os.environ["VPP_INSTALL_PATH"] = env["VPP_INSTALL_PATH"]
+    os.environ["VPP_BIN"] = env["VPP_BIN"]
+    os.environ["VPP_PLUGIN_PATH"] = env["VPP_PLUGIN_PATH"]
+    os.environ["VPP_TEST_PLUGIN_PATH"] = env["VPP_TEST_PLUGIN_PATH"]
+    os.environ["LD_LIBRARY_PATH"] = env["LD_LIBRARY_PATH"]
+    os.environ["RND_SEED"] = env["RND_SEED"]
+    os.environ["VENV_PATH"] = env["VENV_PATH"]
+    os.environ["TAG"] = env["TAG"]
+    os.environ["VPP_WORKER_COUNT"] = env["VPP_WORKER_COUNT"]
+    os.environ["FAILED_DIR"] = env["FAILED_DIR"]
+    os.environ["SKIP_FILTER"] = env["SKIP_FILTER"]
+    if not run_vpp_in_vm_sh.is_file():
+        print(f"Error: script {base_dir}/scripts/run_vpp_in_vm.sh not found.")
+        sys.exit(1)
     p = Popen(
-        [script, test_name, kernel_image, test_data_dir, cpu_mask, mem],
+        [run_vpp_in_vm_sh, test_name, kernel_image, test_data_dir, cpu_mask, mem],
         stdout=PIPE,
         cwd=ws_root,
     )
@@ -242,15 +170,21 @@ def post_vm_test_run():
 
 
 def build_venv():
-    # Builds a virtual env containing all the required packages and patches
-    # for running VPP unit tests
-    if not os.path.exists(venv_install_done):
-        env_builder = ExtendedEnvBuilder(clear=True, with_pip=True)
-        print("Creating a vEnv for running VPP unit tests in {}".format(venv_dir))
-        env_builder.create(venv_dir)
-        # Write state to the venv run dir
-        Path(venv_run_dir).mkdir(exist_ok=True)
-        Path(venv_install_done).touch()
+    """Setup the Python virtual environment via vpp Makefile."""
+    print(
+        f"Setting up Python virtual environment using Makefile in "
+        f"{ws_root}/test/venv..."
+    )
+
+    if not ws_root.is_dir():
+        print(f"Error: WS_ROOT directory not valid at {ws_root}")
+        sys.exit(1)
+
+    try:
+        run(["make", "test-dep"], cwd=str(ws_root), check=True)
+    except CalledProcessError as e:
+        print(f"Failed to set up test virtualenv using Makefile: {e}")
+        sys.exit(e.returncode)
 
 
 def expand_mix_string(s):
@@ -274,73 +208,56 @@ def set_logging(test_data_dir, test_name):
     logging.basicConfig(filename=filename, level=logging.DEBUG)
 
 
-def run_tests_in_venv(
-    test,
-    jobs,
-    log_dir,
-    socket_dir="",
-    running_vpp=False,
-    extended=False,
-):
-    """Runs tests in the virtual environment set by venv_dir.
+def run_tests_in_venv(env):
+    """Runs tests in the Python virtual environment.
 
     Arguments:
-    test: Name of the test to run
-    jobs: Maximum concurrent test jobs
-    log_dir: Directory location for storing log files
-    socket_dir: Use running VPP's socket files
-    running_vpp: True if tests are run against a running VPP
-    extended: Run extended tests
+    env: A dictionary of environment variables for the test run.
     """
-    script = os.path.join(test_dir, "scripts", "run.sh")
+    if not run_sh.is_file():
+        print("Error: scripts/run.sh not found.")
+        sys.exit(1)
     args = [
-        f"--venv-dir={venv_dir}",
-        f"--vpp-ws-dir={ws_root}",
-        f"--socket-dir={socket_dir}",
-        f"--filter={test}",
-        f"--jobs={jobs}",
-        f"--log-dir={log_dir}",
-        f"--tmp-dir={log_dir}",
-        f"--cache-vpp-output",
+        f"--venv-dir={env['VENV_PATH']}",
+        f"--vpp-ws-dir={env['WS_ROOT']}",
+        f"--vpp-tag={env['TAG']}",
+        f"--failed-dir={env['FAILED_DIR']}",
+        f"--verbose={env['V']}",
+        f"--jobs={env['TEST_JOBS']}",
+        f"--filter={env['TEST']}",
+        f"--skip-filter={env['SKIP_FILTER']}",
+        f"--retries={env['RETRIES']}",
+        f"--rnd-seed={env['RND_SEED']}",
+        f"--vpp-worker-count={env['VPP_WORKER_COUNT']}",
+        f"--python-opts={env['PYTHON_OPTS']}",
+        f"--log-dir={env['LOG_DIR']}",
+        f"--tmp-dir={env['LOG_DIR']}",
+        "--keep-pcaps",
+        "--cache-vpp-output",
     ]
-    if running_vpp:
-        args = args + [f"--use-running-vpp"]
-    if extended:
-        args = args + [f"--extended"]
-    print(f"Running script: {script} " f"{' '.join(args)}")
-    process_args = [script] + args
-    call(process_args)
+    if env["USE_RUNNING_VPP"]:
+        args = args + ["--use-running-vpp"] + [f"--socket-dir={env['SOCKET_DIR']}"]
+    if env["EXTENDED"]:
+        args = args + ["--extended"]
+    try:
+        print(f"Running: {run_sh} {' '.join(args)}")
+        run([str(run_sh)] + args, check=True)
+    except CalledProcessError as e:
+        print(f"\nrun.sh failed with exit code {e.returncode}...")
+        sys.exit(e.returncode)
 
 
 if __name__ == "__main__":
     # Build a Virtual Environment for running tests on host & QEMU
     # (TODO): Create a single config object by merging the below args with
     # config.py after gathering dev use-cases.
-    parser = argparse.ArgumentParser(
-        description="Run VPP Unit Tests", formatter_class=argparse.RawTextHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description="Run VPP Unit Tests")
     parser.add_argument(
         "--vm",
         dest="vm",
         required=False,
         action="store_true",
         help="Run Test Inside a QEMU VM",
-    )
-    parser.add_argument(
-        "--debug",
-        dest="debug",
-        required=False,
-        default=True,
-        action="store_true",
-        help="Run Tests on Debug Build",
-    )
-    parser.add_argument(
-        "--release",
-        dest="release",
-        required=False,
-        default=False,
-        action="store_true",
-        help="Run Tests on release Build",
     )
     parser.add_argument(
         "-t",
@@ -380,9 +297,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log-dir",
         action="store",
-        default=os.path.abspath(f"./test-run-{datetime.date.today()}"),
+        default="/tmp/vpp-failed-unittests/",
         help="directory where to store directories "
-        "containing log files (default: ./test-run-YYYY-MM-DD)",
+        "default: /tmp/vpp-failed-unittests/",
     )
     parser.add_argument(
         "--jobs",
@@ -431,24 +348,14 @@ if __name__ == "__main__":
         print("Error: The --test argument must be set for running VM tests")
         sys.exit(1)
     build_venv()
-    # Build VPP release or debug binaries
-    debug = False if args.release else True
-    build_vpp(debug, args.release)
-    set_environ()
+    env = get_env(args)
     if args.running_vpp:
         print("Tests will be run against a running VPP..")
     elif not vm_tests:
         print("Tests will be run by spawning a new VPP instance..")
     # Run tests against a running VPP or a new instance of VPP
     if not vm_tests:
-        run_tests_in_venv(
-            test=args.test_name,
-            jobs=args.jobs,
-            log_dir=args.log_dir,
-            socket_dir=args.socket_dir,
-            running_vpp=args.running_vpp,
-            extended=args.extended,
-        )
+        run_tests_in_venv(env)
     # Run tests against a VPP inside a VM
     else:
         print("Running VPP unit test(s):{0} inside a QEMU VM".format(args.test_name))
@@ -469,4 +376,5 @@ if __name__ == "__main__":
             cpus,
             f"{args.vm_mem}G",
             args.jobs,
+            env,
         )
