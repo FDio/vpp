@@ -23,6 +23,7 @@ from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from enum import Enum
 from abc import ABC, abstractmethod
+from vpp_running import use_running
 
 from config import config, max_vpp_cpus
 import hook as hookmodule
@@ -103,49 +104,58 @@ def pump_output(testclass):
     """pump output from vpp stdout/stderr to proper queues"""
     stdout_fragment = ""
     stderr_fragment = ""
-    while not testclass.pump_thread_stop_flag.is_set():
-        readable = select.select(
-            [
-                testclass.vpp.stdout.fileno(),
-                testclass.vpp.stderr.fileno(),
-                testclass.pump_thread_wakeup_pipe[0],
-            ],
-            [],
-            [],
-        )[0]
-        if testclass.vpp.stdout.fileno() in readable:
-            read = os.read(testclass.vpp.stdout.fileno(), 102400)
-            if len(read) > 0:
-                split = read.decode("ascii", errors="backslashreplace").splitlines(True)
-                if len(stdout_fragment) > 0:
-                    split[0] = "%s%s" % (stdout_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith("\n"):
-                    limit = None
-                else:
-                    limit = -1
-                    stdout_fragment = split[-1]
-                testclass.vpp_stdout_deque.extend(split[:limit])
-                if not config.cache_vpp_output:
-                    for line in split[:limit]:
-                        testclass.logger.info("VPP STDOUT: %s" % line.rstrip("\n"))
-        if testclass.vpp.stderr.fileno() in readable:
-            read = os.read(testclass.vpp.stderr.fileno(), 102400)
-            if len(read) > 0:
-                split = read.decode("ascii", errors="backslashreplace").splitlines(True)
-                if len(stderr_fragment) > 0:
-                    split[0] = "%s%s" % (stderr_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith("\n"):
-                    limit = None
-                else:
-                    limit = -1
-                    stderr_fragment = split[-1]
+    # catch and ignore pump thread exception when running tests
+    # against a running vpp
+    try:
+        while not testclass.pump_thread_stop_flag.is_set():
+            readable = select.select(
+                [
+                    testclass.vpp.stdout.fileno(),
+                    testclass.vpp.stderr.fileno(),
+                    testclass.pump_thread_wakeup_pipe[0],
+                ],
+                [],
+                [],
+            )[0]
+            if testclass.vpp.stdout.fileno() in readable:
+                read = os.read(testclass.vpp.stdout.fileno(), 102400)
+                if len(read) > 0:
+                    split = read.decode("ascii", errors="backslashreplace").splitlines(
+                        True
+                    )
+                    if len(stdout_fragment) > 0:
+                        split[0] = "%s%s" % (stdout_fragment, split[0])
+                    if len(split) > 0 and split[-1].endswith("\n"):
+                        limit = None
+                    else:
+                        limit = -1
+                        stdout_fragment = split[-1]
+                    testclass.vpp_stdout_deque.extend(split[:limit])
+                    if not config.cache_vpp_output:
+                        for line in split[:limit]:
+                            testclass.logger.info("VPP STDOUT: %s" % line.rstrip("\n"))
+            if testclass.vpp.stderr.fileno() in readable:
+                read = os.read(testclass.vpp.stderr.fileno(), 102400)
+                if len(read) > 0:
+                    split = read.decode("ascii", errors="backslashreplace").splitlines(
+                        True
+                    )
+                    if len(stderr_fragment) > 0:
+                        split[0] = "%s%s" % (stderr_fragment, split[0])
+                    if len(split) > 0 and split[-1].endswith("\n"):
+                        limit = None
+                    else:
+                        limit = -1
+                        stderr_fragment = split[-1]
 
-                testclass.vpp_stderr_deque.extend(split[:limit])
-                if not config.cache_vpp_output:
-                    for line in split[:limit]:
-                        testclass.logger.error("VPP STDERR: %s" % line.rstrip("\n"))
-                        # ignoring the dummy pipe here intentionally - the
-                        # flag will take care of properly terminating the loop
+                    testclass.vpp_stderr_deque.extend(split[:limit])
+                    if not config.cache_vpp_output:
+                        for line in split[:limit]:
+                            testclass.logger.error("VPP STDERR: %s" % line.rstrip("\n"))
+                            # ignoring the dummy pipe here intentionally - the
+                            # flag will take care of properly terminating the loop
+    except AttributeError:
+        pass
 
 
 def _is_platform_aarch64():
@@ -260,6 +270,7 @@ class CPUInterface(ABC):
         cls.cpus = cpus
 
 
+@use_running
 class VppAsfTestCase(CPUInterface, unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.

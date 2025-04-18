@@ -38,7 +38,6 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
-from vpp_running import use_running
 from asfframework import VppAsfTestCase
 
 
@@ -82,7 +81,6 @@ class _PacketInfo(object):
         return index and src and dst and data
 
 
-@use_running
 class VppTestCase(VppAsfTestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.

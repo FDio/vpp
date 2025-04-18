@@ -19,6 +19,10 @@ def use_running(cls):
     cls -- VPPTestCase Class
     """
     if config.running_vpp:
+        print(
+            f"Test will be run against a ****running VPP**** as "
+            f"config.running_vpp={config.running_vpp}"
+        )
         if os.path.isdir(config.socket_dir):
             RunningVPP.socket_dir = config.socket_dir
         else:
@@ -28,7 +32,7 @@ def use_running(cls):
         cls.get_api_sock_path = RunningVPP.get_api_sock_path
         cls.get_memif_sock_path = RunningVPP.get_memif_sock_path
         cls.run_vpp = RunningVPP.run_vpp
-        cls.quit_vpp = RunningVPP.quit_vpp
+        cls.quit = RunningVPP.terminate
         cls.vpp = RunningVPP
         cls.running_vpp = True
     return cls
@@ -56,18 +60,25 @@ class RunningVPP:
 
     @classmethod
     def run_vpp(cls):
-        """VPP is already running -- skip this action."""
-        pass
-
-    @classmethod
-    def quit_vpp(cls):
-        """Indicate quitting to framework by setting returncode=1."""
-        cls.returncode = 1
+        """Exit if VPP is not already running."""
+        if not cls.is_running_vpp():
+            print(
+                "Error: VPP is not running, but --use-running-vpp arg used."
+                "Please start VPP before running the tests against it."
+            )
+            sys.exit(1)
 
     @classmethod
     def terminate(cls):
-        """Indicate termination to framework by setting returncode=1."""
+        """Don't terminate a running VPP. Just cleanup papi resources."""
         cls.returncode = 1
+        if hasattr(cls, "vapi"):
+            print("Cleaning up PAPI resources on %s", cls.__name__)
+            print(cls.vapi.vpp.get_stats())
+            print("Disconnecting class vapi client on %s", cls.__name__)
+            cls.vapi.disconnect()
+            print("Deleting class vapi attribute on %s", cls.__name__)
+            del cls.vapi
 
     @classmethod
     def get_default_socket_dir(cls):
