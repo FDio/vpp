@@ -19,6 +19,7 @@ def use_running(cls):
     cls -- VPPTestCase Class
     """
     if config.running_vpp:
+        print(f"Test will be run against a running VPP as running_vpp={config.running_vpp}")
         if os.path.isdir(config.socket_dir):
             RunningVPP.socket_dir = config.socket_dir
         else:

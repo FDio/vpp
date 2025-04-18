@@ -23,6 +23,7 @@ from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from enum import Enum
 from abc import ABC, abstractmethod
+from vpp_running import use_running
 
 from config import config, max_vpp_cpus
 import hook as hookmodule
@@ -260,6 +261,7 @@ class CPUInterface(ABC):
         cls.cpus = cpus
 
 
+@use_running
 class VppAsfTestCase(CPUInterface, unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
