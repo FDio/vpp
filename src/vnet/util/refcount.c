@@ -32,7 +32,7 @@ u64 vlib_refcount_get(vlib_refcount_t *r, u32 index)
 {
   u64 count = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   for (thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++) {
     vlib_refcount_lock(r->per_cpu[thread_index].counter_lock);
     if (index < vec_len(r->per_cpu[thread_index].counters))

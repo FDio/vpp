@@ -96,7 +96,7 @@ ip4_input_check_sw_if_index (vlib_main_t * vm,
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   if (*last_sw_if_index == sw_if_index)
     {
       (*cnt)++;
@@ -125,7 +125,7 @@ ip4_input_inline (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_simple_counter_main_t *cm;

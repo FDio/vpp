@@ -186,7 +186,7 @@ bond_lb_broadcast (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t *b0,
   vlib_buffer_t *c0;
   int port;
   u32 sw_if_index;
-  u16 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
 						  thread_index);
 
@@ -461,7 +461,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 {
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   bond_main_t *bm = &bond_main;
-  u16 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   bond_if_t *bif = pool_elt_at_index (bm->interfaces, rund->dev_instance);
   uword n_members;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];

@@ -186,7 +186,7 @@ void vlib_worker_wait_one_loop (void);
  */
 void vlib_worker_flush_pending_rpc_requests (vlib_main_t *vm);
 
-static_always_inline uword
+static_always_inline clib_thread_index_t
 vlib_get_thread_index (void)
 {
   return __os_thread_index;
@@ -343,7 +343,7 @@ vlib_get_worker_thread_index (u32 worker_index)
 }
 
 always_inline u32
-vlib_get_worker_index (u32 thread_index)
+vlib_get_worker_index (clib_thread_index_t thread_index)
 {
   return thread_index - 1;
 }
@@ -361,7 +361,7 @@ vlib_worker_thread_barrier_check (void)
     {
       vlib_global_main_t *vgm = vlib_get_global_main ();
       vlib_main_t *vm = vlib_get_main ();
-      u32 thread_index = vm->thread_index;
+      clib_thread_index_t thread_index = vm->thread_index;
       f64 t = vlib_time_now (vm);
 
       if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
@@ -378,7 +378,7 @@ vlib_worker_thread_barrier_check (void)
 
 	  struct
 	  {
-	    u32 thread_index;
+	    clib_thread_index_t thread_index;
 	  } __clib_packed *ed;
 
 	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
@@ -425,7 +425,7 @@ vlib_worker_thread_barrier_check (void)
 
 	      struct
 	      {
-		u32 thread_index;
+		clib_thread_index_t thread_index;
 	      } __clib_packed *ed;
 
 	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
@@ -450,7 +450,7 @@ vlib_worker_thread_barrier_check (void)
 
 	  struct
 	  {
-	    u32 thread_index;
+	    clib_thread_index_t thread_index;
 	    u32 duration;
 	  } __clib_packed *ed;
 

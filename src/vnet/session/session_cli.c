@@ -404,7 +404,7 @@ typedef struct session_cli_filter_
   session_cli_endpt_flags_t endpt_flags;
   session_state_t *states;
   transport_proto_t transport_proto;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 verbose;
 } session_cli_filter_t;
 
@@ -521,7 +521,8 @@ session_cli_show_session_filter (vlib_main_t *vm, session_cli_filter_t *sf)
 }
 
 void
-session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
+session_cli_show_events_thread (vlib_main_t *vm,
+				clib_thread_index_t thread_index)
 {
   session_worker_t *wrk;
 
@@ -540,7 +541,7 @@ session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
 }
 
 static void
-session_cli_show_events (vlib_main_t * vm, u32 thread_index)
+session_cli_show_events (vlib_main_t *vm, clib_thread_index_t thread_index)
 {
   session_main_t *smm = &session_main;
   if (!thread_index)
@@ -824,7 +825,7 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
 {
   session_main_t *smm = &session_main;
-  u32 thread_index = 0, clear_all = 0;
+  clib_thread_index_t thread_index = 0, clear_all = 0;
   session_worker_t *wrk;
   u32 session_index = ~0;
   session_t *session;

@@ -646,7 +646,7 @@ vlib_node_registration_t ioam_cache_ts_timer_tick_node;
 
 typedef struct
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } ioam_cache_ts_timer_tick_trace_t;
 
 /* packet trace format function */
@@ -696,7 +696,7 @@ expired_cache_ts_timer_callback (u32 * expired_timers)
   ioam_cache_main_t *cm = &ioam_cache_main;
   int i;
   u32 pool_index;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 count = 0;
 
   for (i = 0; i < vec_len (expired_timers); i++)

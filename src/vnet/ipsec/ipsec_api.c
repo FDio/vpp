@@ -1222,7 +1222,7 @@ send_ipsec_sa_v4_details (ipsec_sa_t *sa, void *arg)
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_sa_v4_details_t *mp;
-  u32 thread_index = 0;
+  clib_thread_index_t thread_index = 0;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -1309,7 +1309,7 @@ send_ipsec_sa_v5_details (ipsec_sa_t *sa, void *arg)
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_sa_v5_details_t *mp;
-  u32 thread_index = 0;
+  clib_thread_index_t thread_index = 0;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));

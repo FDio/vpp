@@ -118,7 +118,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		   int is_ip6)
 {
   u32 n_left, *from;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u16 buffer_data_size = vlib_buffer_get_default_data_size (vm);
   ah_decrypt_packet_data_t pkt_data[VLIB_FRAME_SIZE], *pd = pkt_data;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;

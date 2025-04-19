@@ -711,7 +711,7 @@ void vnet_dev_poll_port_remove (vlib_main_t *, vnet_dev_port_t *,
 
 typedef struct
 {
-  u16 thread_index;
+  clib_thread_index_t thread_index;
   u8 completed;
   u8 in_order;
   vnet_dev_port_t *port;

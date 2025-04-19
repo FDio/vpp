@@ -194,7 +194,6 @@ set(VPPINFRA_HEADERS
   random_isaac.h
   rbtree.h
   serialize.h
-  smp.h
   socket.h
   sparse_vec.h
   stack.h

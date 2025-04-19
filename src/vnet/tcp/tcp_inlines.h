@@ -56,7 +56,7 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 }
 
 always_inline tcp_connection_t *
-tcp_connection_get (u32 conn_index, u32 thread_index)
+tcp_connection_get (u32 conn_index, clib_thread_index_t thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   if (PREDICT_FALSE (pool_is_free_index (wrk->connections, conn_index)))
@@ -65,7 +65,7 @@ tcp_connection_get (u32 conn_index, u32 thread_index)
 }
 
 always_inline tcp_connection_t *
-tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
+tcp_connection_get_if_valid (u32 conn_index, clib_thread_index_t thread_index)
 {
   tcp_worker_ctx_t *wrk;
   if (thread_index >= vec_len (tcp_main.wrk))
@@ -215,7 +215,7 @@ tcp_is_lost_fin (tcp_connection_t * tc)
  * Time used to generate timestamps, not the timestamp
  */
 always_inline u32
-tcp_time_tstamp (u32 thread_index)
+tcp_time_tstamp (clib_thread_index_t thread_index)
 {
   return tcp_main.wrk[thread_index].time_tstamp;
 }
@@ -230,7 +230,7 @@ tcp_tstamp (tcp_connection_t * tc)
 }
 
 always_inline f64
-tcp_time_now_us (u32 thread_index)
+tcp_time_now_us (clib_thread_index_t thread_index)
 {
   return tcp_main.wrk[thread_index].time_us;
 }

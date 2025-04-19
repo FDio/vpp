@@ -37,7 +37,7 @@ typedef struct
 typedef struct
 {
   u32 hs_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u64 node_index;
   u8 plain_text;
   u8 *buf;
@@ -47,7 +47,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u8 *tx_buf;
   u32 tx_offset;
   u32 vpp_session_index;
@@ -85,7 +85,7 @@ typedef struct
 static hcs_main_t hcs_main;
 
 static hcs_session_t *
-hcs_session_alloc (u32 thread_index)
+hcs_session_alloc (clib_thread_index_t thread_index)
 {
   hcs_main_t *hcm = &hcs_main;
   hcs_session_t *hs;
@@ -98,7 +98,7 @@ hcs_session_alloc (u32 thread_index)
 }
 
 static hcs_session_t *
-hcs_session_get (u32 thread_index, u32 hs_index)
+hcs_session_get (clib_thread_index_t thread_index, u32 hs_index)
 {
   hcs_main_t *hcm = &hcs_main;
   if (pool_is_free_index (hcm->sessions[thread_index], hs_index))

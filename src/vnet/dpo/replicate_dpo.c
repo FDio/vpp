@@ -742,7 +742,7 @@ replicate_inline (vlib_main_t * vm,
     vlib_combined_counter_main_t * cm = &replicate_main.repm_counters;
     replicate_main_t * rm = &replicate_main;
     u32 n_left_from, * from, * to_next, next_index;
-    u32 thread_index = vlib_get_thread_index();
+    clib_thread_index_t thread_index = vlib_get_thread_index ();
 
     from = vlib_frame_vector_args (frame);
     n_left_from = frame->n_vectors;

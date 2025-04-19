@@ -507,7 +507,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   u32 n_left_from, *from;
   u32 next_index = 0;
   u32 n_bytes;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   l2_input_config_t *config;

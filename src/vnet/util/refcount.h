@@ -64,8 +64,9 @@ void vlib_refcount_unlock (clib_spinlock_t counter_lock)
 
 void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size);
 
-static_always_inline
-void vlib_refcount_add(vlib_refcount_t *r, u32 thread_index, u32 counter_index, i32 v)
+static_always_inline void
+vlib_refcount_add (vlib_refcount_t *r, clib_thread_index_t thread_index,
+		   u32 counter_index, i32 v)
 {
   vlib_refcount_per_cpu_t *per_cpu = &r->per_cpu[thread_index];
   if (PREDICT_FALSE(counter_index >= vec_len(per_cpu->counters)))
@@ -80,7 +81,7 @@ static_always_inline
 void vlib_refcount_init(vlib_refcount_t *r)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   r->per_cpu = 0;
   vec_validate (r->per_cpu, tm->n_vlib_mains - 1);
 

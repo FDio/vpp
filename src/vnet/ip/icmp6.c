@@ -292,7 +292,7 @@ ip6_icmp_error (vlib_main_t * vm,
   u32 *from, *to_next;
   uword n_left_from, n_left_to_next;
   ip6_icmp_error_next_t next_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

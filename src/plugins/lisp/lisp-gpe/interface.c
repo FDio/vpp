@@ -233,7 +233,7 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
 
   from = vlib_frame_vector_args (from_frame);

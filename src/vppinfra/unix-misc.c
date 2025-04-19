@@ -64,8 +64,8 @@
 #include <stdio.h>		/* for sprintf */
 #include <limits.h>
 
-__clib_export __thread uword __os_thread_index = 0;
-__clib_export __thread uword __os_numa_index = 0;
+__clib_export __thread clib_thread_index_t __os_thread_index = 0;
+__clib_export __thread clib_numa_node_index_t __os_numa_index = 0;
 __clib_export cpu_set_t __os_affinity_cpu_set;
 __clib_export clib_bitmap_t *os_get_cpu_affinity_bitmap ();
 

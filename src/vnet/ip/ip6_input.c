@@ -73,7 +73,7 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_input_node.index);
   vlib_simple_counter_main_t *cm;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

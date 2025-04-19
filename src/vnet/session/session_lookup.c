@@ -954,10 +954,10 @@ session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4)
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
-			       ip4_address_t * rmt, u16 lcl_port,
-			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * result)
+session_lookup_connection_wt4 (u32 fib_index, ip4_address_t *lcl,
+			       ip4_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, clib_thread_index_t thread_index,
+			       u8 *result)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -1185,10 +1185,10 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
-			       ip6_address_t * rmt, u16 lcl_port,
-			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * result)
+session_lookup_connection_wt6 (u32 fib_index, ip6_address_t *lcl,
+			       ip6_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, clib_thread_index_t thread_index,
+			       u8 *result)
 {
   session_table_t *st;
   session_t *s;

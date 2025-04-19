@@ -702,7 +702,8 @@ segment_manager_del_sessions_filter (segment_manager_t *sm,
 }
 
 int
-segment_manager_try_alloc_fifos (fifo_segment_t *fs, u32 thread_index,
+segment_manager_try_alloc_fifos (fifo_segment_t *fs,
+				 clib_thread_index_t thread_index,
 				 u32 rx_fifo_size, u32 tx_fifo_size,
 				 svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo)
 {
@@ -740,8 +741,8 @@ segment_manager_try_alloc_fifos (fifo_segment_t *fs, u32 thread_index,
 static inline int
 sm_lookup_segment_and_alloc_fifos (segment_manager_t *sm,
 				   segment_manager_props_t *props,
-				   u32 thread_index, svm_fifo_t **rx_fifo,
-				   svm_fifo_t **tx_fifo)
+				   clib_thread_index_t thread_index,
+				   svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo)
 {
   uword free_bytes, max_free_bytes;
   fifo_segment_t *cur, *fs = 0;
@@ -771,7 +772,8 @@ sm_lookup_segment_and_alloc_fifos (segment_manager_t *sm,
 static int
 sm_lock_and_alloc_segment_and_fifos (segment_manager_t *sm,
 				     segment_manager_props_t *props,
-				     u32 thread_index, svm_fifo_t **rx_fifo,
+				     clib_thread_index_t thread_index,
+				     svm_fifo_t **rx_fifo,
 				     svm_fifo_t **tx_fifo)
 {
   int new_fs_index, rv;
@@ -814,10 +816,10 @@ done:
 }
 
 int
-segment_manager_alloc_session_fifos (segment_manager_t * sm,
-				     u32 thread_index,
-				     svm_fifo_t ** rx_fifo,
-				     svm_fifo_t ** tx_fifo)
+segment_manager_alloc_session_fifos (segment_manager_t *sm,
+				     clib_thread_index_t thread_index,
+				     svm_fifo_t **rx_fifo,
+				     svm_fifo_t **tx_fifo)
 {
   segment_manager_props_t *props;
   int rv;

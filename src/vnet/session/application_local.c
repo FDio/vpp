@@ -76,13 +76,13 @@ typedef struct ct_main_
 static ct_main_t ct_main;
 
 static inline ct_worker_t *
-ct_worker_get (u32 thread_index)
+ct_worker_get (clib_thread_index_t thread_index)
 {
   return &ct_main.wrk[thread_index];
 }
 
 static ct_connection_t *
-ct_connection_alloc (u32 thread_index)
+ct_connection_alloc (clib_thread_index_t thread_index)
 {
   ct_worker_t *wrk = ct_worker_get (thread_index);
   ct_connection_t *ct;
@@ -99,7 +99,7 @@ ct_connection_alloc (u32 thread_index)
 }
 
 static ct_connection_t *
-ct_connection_get (u32 ct_index, u32 thread_index)
+ct_connection_get (u32 ct_index, clib_thread_index_t thread_index)
 {
   ct_worker_t *wrk = ct_worker_get (thread_index);
 
@@ -659,7 +659,7 @@ ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
 }
 
 static void
-ct_accept_one (u32 thread_index, u32 ho_index)
+ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
 {
   ct_connection_t *sct, *cct, *ho;
   transport_connection_t *ll_ct;
@@ -768,7 +768,7 @@ ct_accept_one (u32 thread_index, u32 ho_index)
 static void
 ct_accept_rpc_wrk_handler (void *rpc_args)
 {
-  u32 thread_index, n_connects, i, n_pending;
+  clib_thread_index_t thread_index, n_connects, i, n_pending;
   const u32 max_connects = 32;
   ct_worker_t *wrk;
   u8 need_rpc = 0;
@@ -805,7 +805,7 @@ ct_accept_rpc_wrk_handler (void *rpc_args)
 static void
 ct_fwrk_flush_connects (void *rpc_args)
 {
-  u32 thread_index, fwrk_index, n_workers;
+  clib_thread_index_t thread_index, fwrk_index, n_workers;
   ct_main_t *cm = &ct_main;
   ct_worker_t *wrk;
   u8 need_rpc;
@@ -851,7 +851,7 @@ static void
 ct_program_connect_to_wrk (u32 ho_index)
 {
   ct_main_t *cm = &ct_main;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   /* Simple round-robin policy for spreading sessions over workers. We skip
    * thread index 0, i.e., offset the index by 1, when we have workers as it
@@ -946,7 +946,7 @@ ct_session_half_open_get (u32 ct_index)
 }
 
 static void
-ct_session_cleanup (u32 conn_index, u32 thread_index)
+ct_session_cleanup (u32 conn_index, clib_thread_index_t thread_index)
 {
   ct_connection_t *ct, *peer_ct;
 
@@ -1173,7 +1173,7 @@ ct_program_cleanup (ct_connection_t *ct)
 }
 
 static void
-ct_session_close (u32 ct_index, u32 thread_index)
+ct_session_close (u32 ct_index, clib_thread_index_t thread_index)
 {
   ct_connection_t *ct, *peer_ct;
   session_t *s;
@@ -1204,7 +1204,7 @@ ct_session_close (u32 ct_index, u32 thread_index)
 }
 
 static void
-ct_session_reset (u32 ct_index, u32 thread_index)
+ct_session_reset (u32 ct_index, clib_thread_index_t thread_index)
 {
   ct_connection_t *ct;
   ct = ct_connection_get (ct_index, thread_index);
@@ -1213,7 +1213,7 @@ ct_session_reset (u32 ct_index, u32 thread_index)
 }
 
 static transport_connection_t *
-ct_session_get (u32 ct_index, u32 thread_index)
+ct_session_get (u32 ct_index, clib_thread_index_t thread_index)
 {
   return (transport_connection_t *) ct_connection_get (ct_index,
 						       thread_index);
@@ -1331,7 +1331,7 @@ static u8 *
 format_ct_session (u8 * s, va_list * args)
 {
   u32 ct_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   ct_connection_t *ct;
 

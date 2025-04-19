@@ -64,7 +64,8 @@ session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
 }
 
 always_inline u64
-session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
+session_wrk_tfd_timeout (session_wrk_state_t state,
+			 clib_thread_index_t thread_index)
 {
   if (state == SESSION_WRK_INTERRUPT)
     return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
@@ -282,7 +283,7 @@ session_mq_handle_connects_rpc (void *arg)
 static void
 session_mq_connect_handler (session_worker_t *wrk, session_evt_elt_t *elt)
 {
-  u32 thread_index = wrk - session_main.wrk;
+  clib_thread_index_t thread_index = wrk - session_main.wrk;
   session_evt_elt_t *he;
 
   if (PREDICT_FALSE (thread_index > transport_cl_thread ()))
@@ -778,7 +779,7 @@ session_wrk_handle_evts_main_rpc (void *args)
   clib_llist_index_t ei, next_ei;
   session_evt_elt_t *he, *elt;
   session_worker_t *fwrk;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -836,7 +837,7 @@ vlib_node_registration_t session_queue_node;
 
 typedef struct
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } session_queue_trace_t;
 
 /* packet trace format function */
@@ -1845,7 +1846,7 @@ static const u32 session_evt_msg_sizes[] = {
 
 always_inline void
 session_update_time_subscribers (session_main_t *smm, clib_time_type_t now,
-				 u32 thread_index)
+				 clib_thread_index_t thread_index)
 {
   session_update_time_fn *fn;
 
@@ -1953,7 +1954,7 @@ static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
-  u32 thread_index = vm->thread_index, __clib_unused n_evts;
+  clib_thread_index_t thread_index = vm->thread_index, __clib_unused n_evts;
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   session_main_t *smm = vnet_get_session_main ();
   session_worker_t *wrk = &smm->wrk[thread_index];
@@ -2119,7 +2120,7 @@ session_wrk_tfd_write_ready (clib_file_t *cf)
 void
 session_wrk_enable_adaptive_mode (session_worker_t *wrk)
 {
-  u32 thread_index = wrk->vm->thread_index;
+  clib_thread_index_t thread_index = wrk->vm->thread_index;
   clib_file_t template = { 0 };
 
   if ((wrk->timerfd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK)) < 0)

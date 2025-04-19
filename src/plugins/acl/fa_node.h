@@ -110,7 +110,7 @@ typedef struct {
     u8 as_u8[2];
     u16 as_u16;
   } tcp_flags_seen; ;     /* +2 bytes = 62 */
-  u16 thread_index;          /* +2 bytes = 64 */
+  clib_thread_index_t thread_index; /* +2 bytes = 64 */
   u64 link_enqueue_time;  /* 8 byte = 8 */
   u32 link_prev_idx;      /* +4 bytes = 12 */
   u32 link_next_idx;      /* +4 bytes = 16 */
@@ -133,7 +133,7 @@ typedef struct {
     u64 as_u64;
     struct {
       u32 session_index;
-      u16 thread_index;
+      clib_thread_index_t thread_index;
       u16 intf_policy_epoch;
     };
   };
@@ -255,119 +255,143 @@ u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 
 /* use like: elog_acl_maybe_trace_X1(am, "foobar: %d", "i4", int32_value); */
 
-#define elog_acl_maybe_trace_X1(am, acl_elog_trace_format_label, acl_elog_trace_format_args, acl_elog_val1)              \
-do {                                                                                                                     \
-  if (am->trace_sessions) {                                                                                              \
-    CLIB_UNUSED(struct { u8 available_space[18 - sizeof(acl_elog_val1)]; } *static_check);                               \
-    u16 thread_index = os_get_thread_index ();                                                                           \
-    vlib_worker_thread_t * w = vlib_worker_threads + thread_index;                                                       \
-    ELOG_TYPE_DECLARE (e) =                                                                                              \
-      {                                                                                                                  \
-        .format = "(%02d) " acl_elog_trace_format_label,                                                                 \
-        .format_args = "i2" acl_elog_trace_format_args,                                                                  \
-      };                                                                                                                 \
-    CLIB_PACKED(struct                                                                                                   \
-      {                                                                                                                  \
-        u16 thread;                                                                                                      \
-        typeof(acl_elog_val1) val1;                                                                                      \
-      }) *ed;                                                                                                            \
-    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);                                                \
-    ed->thread = thread_index;                                                                                           \
-    ed->val1 = acl_elog_val1;                                                                                            \
-  }                                                                                                                      \
-} while (0)
-
+#define elog_acl_maybe_trace_X1(am, acl_elog_trace_format_label,              \
+				acl_elog_trace_format_args, acl_elog_val1)    \
+  do                                                                          \
+    {                                                                         \
+      if (am->trace_sessions)                                                 \
+	{                                                                     \
+	  CLIB_UNUSED (struct {                                               \
+	    u8 available_space[18 - sizeof (acl_elog_val1)];                  \
+	  } * static_check);                                                  \
+	  clib_thread_index_t thread_index = os_get_thread_index ();          \
+	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;       \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "(%02d) " acl_elog_trace_format_label,                  \
+	    .format_args = "i2" acl_elog_trace_format_args,                   \
+	  };                                                                  \
+	  CLIB_PACKED (struct {                                               \
+	    u16 thread;                                                       \
+	    typeof (acl_elog_val1) val1;                                      \
+	  }) *                                                                \
+	    ed;                                                               \
+	  ed =                                                                \
+	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed->thread = thread_index;                                          \
+	  ed->val1 = acl_elog_val1;                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /* use like: elog_acl_maybe_trace_X2(am, "foobar: %d some u64: %lu", "i4i8", int32_value, int64_value); */
 
-#define elog_acl_maybe_trace_X2(am, acl_elog_trace_format_label, acl_elog_trace_format_args,                             \
-                                                                                           acl_elog_val1, acl_elog_val2) \
-do {                                                                                                                     \
-  if (am->trace_sessions) {                                                                                              \
-    CLIB_UNUSED(struct { u8 available_space[18 - sizeof(acl_elog_val1) - sizeof(acl_elog_val2)]; } *static_check);       \
-    u16 thread_index = os_get_thread_index ();                                                                           \
-    vlib_worker_thread_t * w = vlib_worker_threads + thread_index;                                                       \
-    ELOG_TYPE_DECLARE (e) =                                                                                              \
-      {                                                                                                                  \
-        .format = "(%02d) " acl_elog_trace_format_label,                                                                 \
-        .format_args = "i2" acl_elog_trace_format_args,                                                                  \
-      };                                                                                                                 \
-    CLIB_PACKED(struct                                                                                                   \
-      {                                                                                                                  \
-        u16 thread;                                                                                                      \
-        typeof(acl_elog_val1) val1;                                                                                      \
-        typeof(acl_elog_val2) val2;                                                                                      \
-      }) *ed;                                                                                                            \
-    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);                                                \
-    ed->thread = thread_index;                                                                                           \
-    ed->val1 = acl_elog_val1;                                                                                            \
-    ed->val2 = acl_elog_val2;                                                                                            \
-  }                                                                                                                      \
-} while (0)
-
+#define elog_acl_maybe_trace_X2(am, acl_elog_trace_format_label,              \
+				acl_elog_trace_format_args, acl_elog_val1,    \
+				acl_elog_val2)                                \
+  do                                                                          \
+    {                                                                         \
+      if (am->trace_sessions)                                                 \
+	{                                                                     \
+	  CLIB_UNUSED (struct {                                               \
+	    u8 available_space[18 - sizeof (acl_elog_val1) -                  \
+			       sizeof (acl_elog_val2)];                       \
+	  } * static_check);                                                  \
+	  clib_thread_index_t thread_index = os_get_thread_index ();          \
+	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;       \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "(%02d) " acl_elog_trace_format_label,                  \
+	    .format_args = "i2" acl_elog_trace_format_args,                   \
+	  };                                                                  \
+	  CLIB_PACKED (struct {                                               \
+	    u16 thread;                                                       \
+	    typeof (acl_elog_val1) val1;                                      \
+	    typeof (acl_elog_val2) val2;                                      \
+	  }) *                                                                \
+	    ed;                                                               \
+	  ed =                                                                \
+	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed->thread = thread_index;                                          \
+	  ed->val1 = acl_elog_val1;                                           \
+	  ed->val2 = acl_elog_val2;                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /* use like: elog_acl_maybe_trace_X3(am, "foobar: %d some u64 %lu baz: %d", "i4i8i4", int32_value, u64_value, int_value); */
 
-#define elog_acl_maybe_trace_X3(am, acl_elog_trace_format_label, acl_elog_trace_format_args, acl_elog_val1,              \
-                                                                                           acl_elog_val2, acl_elog_val3) \
-do {                                                                                                                     \
-  if (am->trace_sessions) {                                                                                              \
-    CLIB_UNUSED(struct { u8 available_space[18 - sizeof(acl_elog_val1) - sizeof(acl_elog_val2)                           \
-                                               - sizeof(acl_elog_val3)]; } *static_check);                               \
-    u16 thread_index = os_get_thread_index ();                                                                           \
-    vlib_worker_thread_t * w = vlib_worker_threads + thread_index;                                                       \
-    ELOG_TYPE_DECLARE (e) =                                                                                              \
-      {                                                                                                                  \
-        .format = "(%02d) " acl_elog_trace_format_label,                                                                 \
-        .format_args = "i2" acl_elog_trace_format_args,                                                                  \
-      };                                                                                                                 \
-    CLIB_PACKED(struct                                                                                                   \
-      {                                                                                                                  \
-        u16 thread;                                                                                                      \
-        typeof(acl_elog_val1) val1;                                                                                      \
-        typeof(acl_elog_val2) val2;                                                                                      \
-        typeof(acl_elog_val3) val3;                                                                                      \
-      }) *ed;                                                                                                            \
-    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);                                                \
-    ed->thread = thread_index;                                                                                           \
-    ed->val1 = acl_elog_val1;                                                                                            \
-    ed->val2 = acl_elog_val2;                                                                                            \
-    ed->val3 = acl_elog_val3;                                                                                            \
-  }                                                                                                                      \
-} while (0)
-
+#define elog_acl_maybe_trace_X3(am, acl_elog_trace_format_label,              \
+				acl_elog_trace_format_args, acl_elog_val1,    \
+				acl_elog_val2, acl_elog_val3)                 \
+  do                                                                          \
+    {                                                                         \
+      if (am->trace_sessions)                                                 \
+	{                                                                     \
+	  CLIB_UNUSED (struct {                                               \
+	    u8 available_space[18 - sizeof (acl_elog_val1) -                  \
+			       sizeof (acl_elog_val2) -                       \
+			       sizeof (acl_elog_val3)];                       \
+	  } * static_check);                                                  \
+	  clib_thread_index_t thread_index = os_get_thread_index ();          \
+	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;       \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "(%02d) " acl_elog_trace_format_label,                  \
+	    .format_args = "i2" acl_elog_trace_format_args,                   \
+	  };                                                                  \
+	  CLIB_PACKED (struct {                                               \
+	    u16 thread;                                                       \
+	    typeof (acl_elog_val1) val1;                                      \
+	    typeof (acl_elog_val2) val2;                                      \
+	    typeof (acl_elog_val3) val3;                                      \
+	  }) *                                                                \
+	    ed;                                                               \
+	  ed =                                                                \
+	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed->thread = thread_index;                                          \
+	  ed->val1 = acl_elog_val1;                                           \
+	  ed->val2 = acl_elog_val2;                                           \
+	  ed->val3 = acl_elog_val3;                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /* use like: elog_acl_maybe_trace_X4(am, "foobar: %d some int %d baz: %d bar: %d", "i4i4i4i4", int32_value, int32_value2, int_value, int_value); */
 
-#define elog_acl_maybe_trace_X4(am, acl_elog_trace_format_label, acl_elog_trace_format_args, acl_elog_val1,              \
-                                                                            acl_elog_val2, acl_elog_val3, acl_elog_val4) \
-do {                                                                                                                     \
-  if (am->trace_sessions) {                                                                                              \
-    CLIB_UNUSED(struct { u8 available_space[18 - sizeof(acl_elog_val1) - sizeof(acl_elog_val2)                           \
-                                               - sizeof(acl_elog_val3) -sizeof(acl_elog_val4)]; } *static_check);        \
-    u16 thread_index = os_get_thread_index ();                                                                           \
-    vlib_worker_thread_t * w = vlib_worker_threads + thread_index;                                                       \
-    ELOG_TYPE_DECLARE (e) =                                                                                              \
-      {                                                                                                                  \
-        .format = "(%02d) " acl_elog_trace_format_label,                                                                 \
-        .format_args = "i2" acl_elog_trace_format_args,                                                                  \
-      };                                                                                                                 \
-    CLIB_PACKED(struct                                                                                                   \
-      {                                                                                                                  \
-        u16 thread;                                                                                                      \
-        typeof(acl_elog_val1) val1;                                                                                      \
-        typeof(acl_elog_val2) val2;                                                                                      \
-        typeof(acl_elog_val3) val3;                                                                                      \
-        typeof(acl_elog_val4) val4;                                                                                      \
-      }) *ed;                                                                                                            \
-    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);                                                \
-    ed->thread = thread_index;                                                                                           \
-    ed->val1 = acl_elog_val1;                                                                                            \
-    ed->val2 = acl_elog_val2;                                                                                            \
-    ed->val3 = acl_elog_val3;                                                                                            \
-    ed->val4 = acl_elog_val4;                                                                                            \
-  }                                                                                                                      \
-} while (0)
-
+#define elog_acl_maybe_trace_X4(am, acl_elog_trace_format_label,              \
+				acl_elog_trace_format_args, acl_elog_val1,    \
+				acl_elog_val2, acl_elog_val3, acl_elog_val4)  \
+  do                                                                          \
+    {                                                                         \
+      if (am->trace_sessions)                                                 \
+	{                                                                     \
+	  CLIB_UNUSED (struct {                                               \
+	    u8 available_space[18 - sizeof (acl_elog_val1) -                  \
+			       sizeof (acl_elog_val2) -                       \
+			       sizeof (acl_elog_val3) -                       \
+			       sizeof (acl_elog_val4)];                       \
+	  } * static_check);                                                  \
+	  clib_thread_index_t thread_index = os_get_thread_index ();          \
+	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;       \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "(%02d) " acl_elog_trace_format_label,                  \
+	    .format_args = "i2" acl_elog_trace_format_args,                   \
+	  };                                                                  \
+	  CLIB_PACKED (struct {                                               \
+	    u16 thread;                                                       \
+	    typeof (acl_elog_val1) val1;                                      \
+	    typeof (acl_elog_val2) val2;                                      \
+	    typeof (acl_elog_val3) val3;                                      \
+	    typeof (acl_elog_val4) val4;                                      \
+	  }) *                                                                \
+	    ed;                                                               \
+	  ed =                                                                \
+	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed->thread = thread_index;                                          \
+	  ed->val1 = acl_elog_val1;                                           \
+	  ed->val2 = acl_elog_val2;                                           \
+	  ed->val3 = acl_elog_val3;                                           \
+	  ed->val4 = acl_elog_val4;                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 #endif

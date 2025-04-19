@@ -136,16 +136,17 @@ fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 }
 
 static u64
-acl_fa_get_list_head_expiry_time (acl_main_t * am,
-				  acl_fa_per_worker_data_t * pw, u64 now,
-				  u16 thread_index, int timeout_type)
+acl_fa_get_list_head_expiry_time (acl_main_t *am, acl_fa_per_worker_data_t *pw,
+				  u64 now, clib_thread_index_t thread_index,
+				  int timeout_type)
 {
   return pw->fa_conn_list_head_expiry_time[timeout_type];
 }
 
 static int
-acl_fa_conn_time_to_check (acl_main_t * am, acl_fa_per_worker_data_t * pw,
-			   u64 now, u16 thread_index, u32 session_index)
+acl_fa_conn_time_to_check (acl_main_t *am, acl_fa_per_worker_data_t *pw,
+			   u64 now, clib_thread_index_t thread_index,
+			   u32 session_index)
 {
   if (session_index == FA_SESSION_BOGUS_INDEX)
     return 0;
@@ -162,7 +163,8 @@ acl_fa_conn_time_to_check (acl_main_t * am, acl_fa_per_worker_data_t * pw,
  * return the total number of sessions reclaimed.
  */
 static int
-acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
+acl_fa_check_idle_sessions (acl_main_t *am, clib_thread_index_t thread_index,
+			    u64 now)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   fa_full_session_id_t fsid;
@@ -429,7 +431,7 @@ acl_fa_worker_conn_cleaner_process (vlib_main_t * vm,
 {
   acl_main_t *am = &acl_main;
   u64 now = clib_cpu_time_now ();
-  u16 thread_index = os_get_thread_index ();
+  clib_thread_index_t thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   int num_expired;
   elog_acl_maybe_trace_X1 (am,

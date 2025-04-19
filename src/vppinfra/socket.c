@@ -48,6 +48,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sched.h>
 
 #include <vppinfra/mem.h>
 #include <vppinfra/vec.h>

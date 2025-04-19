@@ -232,7 +232,7 @@ static inline void make_working_copy
   vnet_classify_bucket_t working_bucket __attribute__ ((aligned (8)));
   void *oldheap;
   vnet_classify_entry_t *working_copy;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   int working_copy_length, required_length;
 
   if (thread_index >= vec_len (t->working_copies))
@@ -427,7 +427,7 @@ vnet_classify_add_del (vnet_classify_table_t *t, vnet_classify_entry_t *add_v,
   u32 hash, new_hash;
   u32 limit;
   u32 old_log2_pages, new_log2_pages;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u8 *key_minus_skip;
   int resplit_once = 0;
   int mark_bucket_linear;

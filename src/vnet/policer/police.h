@@ -91,7 +91,8 @@ typedef struct
   u32 current_bucket;		// MOD
   u32 extended_limit;
   u32 extended_bucket;		// MOD
-  u32 thread_index;		// Tie policer to a thread, rather than lock
+  clib_thread_index_t
+    thread_index;		// Tie policer to a thread, rather than lock
   u64 last_update_time;		// MOD
   u8 *name;
 } policer_t;

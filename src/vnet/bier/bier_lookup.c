@@ -83,7 +83,7 @@ bier_lookup (vlib_main_t * vm,
 {
     u32 n_left_from, next_index, * from, * to_next;
     bier_lookup_main_t *blm = &bier_lookup_main;
-    u32 thread_index = vlib_get_thread_index();
+    clib_thread_index_t thread_index = vlib_get_thread_index ();
     bier_bit_mask_bucket_t buckets_copy[BIER_HDR_BUCKETS_4096];
 
     from = vlib_frame_vector_args (from_frame);
@@ -347,7 +347,7 @@ clib_error_t *
 bier_lookup_module_init (vlib_main_t * vm)
 {
     bier_lookup_main_t *blm = &bier_lookup_main;
-    u32 thread_index;
+    clib_thread_index_t thread_index;
 
     vec_validate (blm->blm_clones, vlib_num_workers());
     vec_validate (blm->blm_fmasks, vlib_num_workers());

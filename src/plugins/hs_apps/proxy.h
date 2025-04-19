@@ -117,7 +117,7 @@ typedef struct
 extern proxy_main_t proxy_main;
 
 static inline proxy_worker_t *
-proxy_worker_get (u32 thread_index)
+proxy_worker_get (clib_thread_index_t thread_index)
 {
   proxy_main_t *pm = &proxy_main;
   return vec_elt_at_index (pm->workers, thread_index);

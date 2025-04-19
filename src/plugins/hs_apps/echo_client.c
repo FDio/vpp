@@ -53,7 +53,7 @@ signal_evt_to_cli (int code)
 }
 
 static inline ec_worker_t *
-ec_worker_get (u32 thread_index)
+ec_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (ec_main.wrk, thread_index);
 }
@@ -575,7 +575,7 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
   ec_main_t *ecm = &ec_main;
   ec_session_t *es;
   ec_worker_t *wrk;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   if (PREDICT_FALSE (api_context == HS_CTRL_HANDLE))
     return ec_ctrl_session_connected_callback (s);
@@ -632,7 +632,7 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s,
 {
   ec_main_t *ecm = &ec_main;
   ec_session_t *es;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   ec_worker_t *wrk;
 
   if (PREDICT_FALSE (ecm->run_test != EC_STARTING))

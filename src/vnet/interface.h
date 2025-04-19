@@ -615,7 +615,7 @@ typedef struct
   u32 dev_instance;
 
   /* index of thread pollling this queue */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   /* file index of queue interrupt line */
   u32 file_index;

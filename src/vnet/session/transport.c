@@ -106,7 +106,7 @@ format_transport_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
   u32 conn_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   transport_proto_vft_t *tp_vft;
   transport_connection_t *tc;
@@ -431,8 +431,8 @@ default_get_transport_endpoint (transport_connection_t * tc,
 
 void
 transport_get_endpoint (transport_proto_t tp, u32 conn_index,
-			u32 thread_index, transport_endpoint_t * tep,
-			u8 is_lcl)
+			clib_thread_index_t thread_index,
+			transport_endpoint_t *tep, u8 is_lcl)
 {
   if (tp_vfts[tp].get_transport_endpoint)
     tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep,
@@ -830,7 +830,7 @@ u8 *
 format_transport_pacer (u8 * s, va_list * args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
-  u32 thread_index = va_arg (*args, int);
+  clib_thread_index_t thread_index = va_arg (*args, int);
   clib_us_time_t now, diff;
 
   now = transport_us_time_now (thread_index);
@@ -966,7 +966,8 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 }
 
 void
-transport_update_pacer_time (u32 thread_index, clib_time_type_t now)
+transport_update_pacer_time (clib_thread_index_t thread_index,
+			     clib_time_type_t now)
 {
   session_wrk_update_time (session_main_get_worker (thread_index), now);
 }

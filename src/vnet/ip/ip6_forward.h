@@ -60,7 +60,7 @@ ip6_lookup_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

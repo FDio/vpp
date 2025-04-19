@@ -124,7 +124,7 @@ format_lb_nat_trace (u8 * s, va_list * args)
 }
 
 lb_hash_t *
-lb_get_sticky_table (u32 thread_index)
+lb_get_sticky_table (clib_thread_index_t thread_index)
 {
   lb_main_t *lbm = &lb_main;
   lb_hash_t *sticky_ht = lbm->per_cpu[thread_index].sticky_ht;
@@ -282,7 +282,7 @@ lb_node_fn (vlib_main_t * vm,
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 lb_time = lb_hash_time_now (vm);
 
   lb_hash_t *sticky_ht = lb_get_sticky_table (thread_index);

@@ -81,7 +81,7 @@ hss_confirm_data_read (hss_session_t *hs, u32 n_last_deq)
 }
 
 static hss_session_t *
-hss_session_alloc (u32 thread_index)
+hss_session_alloc (clib_thread_index_t thread_index)
 {
   hss_main_t *hsm = &hss_main;
   hss_session_t *hs;
@@ -96,7 +96,7 @@ hss_session_alloc (u32 thread_index)
 }
 
 __clib_export hss_session_t *
-hss_session_get (u32 thread_index, u32 hs_index)
+hss_session_get (clib_thread_index_t thread_index, u32 hs_index)
 {
   hss_main_t *hsm = &hss_main;
   if (pool_is_free_index (hsm->sessions[thread_index], hs_index))

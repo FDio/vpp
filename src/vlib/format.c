@@ -213,7 +213,7 @@ unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
 u8 *
 format_vlib_thread_name (u8 * s, va_list * args)
 {
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
 
   if (thread_index == 0)
     return format (s, "main");
@@ -226,7 +226,7 @@ format_vlib_thread_name (u8 * s, va_list * args)
 u8 *
 format_vlib_thread_name_and_index (u8 * s, va_list * args)
 {
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
 
   return format (s, "%U (%u)", format_vlib_thread_name, thread_index,
 		 thread_index);

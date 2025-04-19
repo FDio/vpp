@@ -247,7 +247,7 @@ punt_socket_inline2 (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     ip_address_family_t af, ip_protocol_t protocol)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   uword n_packets = frame->n_vectors;
   punt_main_t *pm = &punt_main;
   int i;

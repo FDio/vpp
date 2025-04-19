@@ -269,7 +269,7 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 block_nr = rx_queue->rx_req->req3.tp_block_nr;
   u8 *block_start = 0;
   uword n_trace = vlib_get_trace_count (vm, node);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = rx_queue->rx_req->req3.tp_frame_size / n_buffer_bytes;
   u32 num_pkts = 0;
@@ -571,7 +571,7 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 frame_num = rx_queue->rx_req->req.tp_frame_nr;
   u8 *block_start = rx_queue->rx_ring[block];
   uword n_trace = vlib_get_trace_count (vm, node);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = rx_queue->rx_req->req.tp_frame_size / n_buffer_bytes;
   u32 sw_if_index = apif->sw_if_index;

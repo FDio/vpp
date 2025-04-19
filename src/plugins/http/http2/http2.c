@@ -163,7 +163,8 @@ http2_conn_alloc_req (http_conn_t *hc, u32 stream_id)
 }
 
 static inline void
-http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req, u32 thread_index)
+http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req,
+		     clib_thread_index_t thread_index)
 {
   http2_main_t *h2m = &http2_main;
 
@@ -202,7 +203,7 @@ http2_conn_get_req (http_conn_t *hc, u32 stream_id)
 }
 
 always_inline http2_req_t *
-http2_req_get (u32 req_index, u32 thread_index)
+http2_req_get (u32 req_index, clib_thread_index_t thread_index)
 {
   http2_main_t *h2m = &http2_main;
 
@@ -990,7 +991,8 @@ http2_expect_preface (http_conn_t *hc, http2_conn_ctx_t *h2c)
 /*****************/
 
 static u32
-http2_hc_index_get_by_req_index (u32 req_index, u32 thread_index)
+http2_hc_index_get_by_req_index (u32 req_index,
+				 clib_thread_index_t thread_index)
 {
   http2_req_t *req;
 
@@ -999,7 +1001,7 @@ http2_hc_index_get_by_req_index (u32 req_index, u32 thread_index)
 }
 
 static transport_connection_t *
-http2_req_get_connection (u32 req_index, u32 thread_index)
+http2_req_get_connection (u32 req_index, clib_thread_index_t thread_index)
 {
   http2_req_t *req;
   req = http2_req_get (req_index, thread_index);
@@ -1026,7 +1028,7 @@ static u8 *
 http2_format_req (u8 *s, va_list *args)
 {
   u32 req_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   http_conn_t *hc = va_arg (*args, http_conn_t *);
   u32 verbose = va_arg (*args, u32);
   http2_req_t *req;
@@ -1097,13 +1099,15 @@ http2_app_tx_callback (http_conn_t *hc, u32 req_index,
 }
 
 static void
-http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
+http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
+			   clib_thread_index_t thread_index)
 {
   /* TODO: continue tunnel RX */
 }
 
 static void
-http2_app_close_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
+http2_app_close_callback (http_conn_t *hc, u32 req_index,
+			  clib_thread_index_t thread_index)
 {
   http2_req_t *req;
 
@@ -1130,7 +1134,8 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
 }
 
 static void
-http2_app_reset_callback (http_conn_t *hc, u32 req_index, u32 thread_index)
+http2_app_reset_callback (http_conn_t *hc, u32 req_index,
+			  clib_thread_index_t thread_index)
 {
   http2_req_t *req;
 

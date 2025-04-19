@@ -517,7 +517,7 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   application_t *app;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   thread_index = session_thread_from_handle (new_sh);
   app_wrk = app_worker_get (s->app_wrk_index);

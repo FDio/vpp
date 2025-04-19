@@ -197,7 +197,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  u16 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 *from, n_left;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;

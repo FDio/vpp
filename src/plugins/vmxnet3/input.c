@@ -203,7 +203,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vmxnet3_rx_comp *rx_comp;
   u32 desc_idx;
   vmxnet3_rxq_t *rxq;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 buffer_indices[VLIB_FRAME_SIZE], *bi;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   vmxnet3_rx_ring *ring;

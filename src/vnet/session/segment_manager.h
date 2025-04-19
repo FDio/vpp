@@ -146,15 +146,15 @@ u64 segment_manager_segment_handle (segment_manager_t * sm,
 				    fifo_segment_t * segment);
 void segment_manager_segment_reader_unlock (segment_manager_t * sm);
 
-int segment_manager_alloc_session_fifos (segment_manager_t * sm,
-					 u32 thread_index,
-					 svm_fifo_t ** rx_fifo,
-					 svm_fifo_t ** tx_fifo);
-int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
-				     u32 thread_index,
+int segment_manager_alloc_session_fifos (segment_manager_t *sm,
+					 clib_thread_index_t thread_index,
+					 svm_fifo_t **rx_fifo,
+					 svm_fifo_t **tx_fifo);
+int segment_manager_try_alloc_fifos (fifo_segment_t *fs,
+				     clib_thread_index_t thread_index,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
-				     svm_fifo_t ** rx_fifo,
-				     svm_fifo_t ** tx_fifo);
+				     svm_fifo_t **rx_fifo,
+				     svm_fifo_t **tx_fifo);
 void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
 void segment_manager_detach_fifo (segment_manager_t *sm, svm_fifo_t **f);
