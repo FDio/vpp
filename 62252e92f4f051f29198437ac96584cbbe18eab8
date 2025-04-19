@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c23c114_6e49d2ee",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-04-19T14:15:59Z",
+      "side": 1,
+      "message": "this looks bit fragile and might be flaky. did you try to run it multiple times? you can use REPEAT\u003dn parameter with hs-test. from time to time i get some failures on both debug and release build (e.g. 2.02 seconds instead of 2.00)",
+      "range": {
+        "startLine": 42,
+        "startChar": 1,
+        "endLine": 44,
+        "endChar": 97
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aab65805_39493602",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-04-19T14:15:59Z",
+      "side": 1,
+      "message": "why this magic number? maybe add some comment",
+      "range": {
+        "startLine": 656,
+        "startChar": 36,
+        "endLine": 656,
+        "endChar": 40
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c17fc80a_e6fe500f",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 722,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-04-19T14:15:59Z",
+      "side": 1,
+      "message": "~0",
+      "range": {
+        "startLine": 722,
+        "startChar": 27,
+        "endLine": 722,
+        "endChar": 45
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
