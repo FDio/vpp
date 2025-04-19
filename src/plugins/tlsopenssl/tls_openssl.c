@@ -35,7 +35,7 @@
 openssl_main_t openssl_main;
 
 static u32
-openssl_ctx_alloc_w_thread (u32 thread_index)
+openssl_ctx_alloc_w_thread (clib_thread_index_t thread_index)
 {
   openssl_main_t *om = &openssl_main;
   openssl_ctx_t **ctx;
@@ -102,7 +102,7 @@ openssl_ctx_detach (tls_ctx_t *ctx)
 }
 
 static u32
-openssl_ctx_attach (u32 thread_index, void *ctx_ptr)
+openssl_ctx_attach (clib_thread_index_t thread_index, void *ctx_ptr)
 {
   openssl_main_t *om = &openssl_main;
   session_handle_t sh;

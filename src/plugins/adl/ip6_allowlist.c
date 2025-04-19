@@ -58,7 +58,7 @@ VLIB_NODE_FN (ip6_adl_allowlist_node) (vlib_main_t * vm,
   adl_feature_type_t next_index;
   adl_main_t *cm = &adl_main;
   vlib_combined_counter_main_t * vcm = &load_balance_main.lbm_via_counters;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 allowed_packets;
 
   from = vlib_frame_vector_args (frame);

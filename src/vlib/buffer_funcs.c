@@ -297,7 +297,7 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
   u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
   vlib_frame_bitmap_t mask, used_elts = {};
   vlib_frame_queue_elt_t *hf = 0;
-  u16 thread_index;
+  clib_thread_index_t thread_index;
   u32 n_comp, off = 0, n_left = n_packets;
 
   thread_index = thread_indices[0];

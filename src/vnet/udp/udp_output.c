@@ -52,7 +52,7 @@ format_udp_tx_trace (u8 *s, va_list *args)
 }
 
 always_inline udp_connection_t *
-udp_output_get_connection (vlib_buffer_t *b, u32 thread_index)
+udp_output_get_connection (vlib_buffer_t *b, clib_thread_index_t thread_index)
 {
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.flags & UDP_CONN_F_LISTEN))
     return udp_listener_get (vnet_buffer (b)->tcp.connection_index);

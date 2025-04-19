@@ -176,13 +176,13 @@ void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);
 
 always_inline udp_worker_t *
-udp_worker_get (u32 thread_index)
+udp_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (udp_main.wrk, thread_index);
 }
 
 always_inline udp_connection_t *
-udp_connection_get (u32 conn_index, u32 thread_index)
+udp_connection_get (u32 conn_index, clib_thread_index_t thread_index)
 {
   udp_worker_t *wrk = udp_worker_get (thread_index);
 
@@ -210,11 +210,12 @@ udp_connection_from_transport (transport_connection_t * tc)
 }
 
 void udp_connection_free (udp_connection_t * uc);
-udp_connection_t *udp_connection_alloc (u32 thread_index);
+udp_connection_t *udp_connection_alloc (clib_thread_index_t thread_index);
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 always_inline udp_connection_t *
-udp_connection_clone_safe (u32 connection_index, u32 thread_index)
+udp_connection_clone_safe (u32 connection_index,
+			   clib_thread_index_t thread_index)
 {
   u32 current_thread_index = vlib_get_thread_index (), new_index;
   udp_connection_t *old_c, *new_c;

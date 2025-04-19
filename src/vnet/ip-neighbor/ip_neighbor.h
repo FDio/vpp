@@ -56,7 +56,8 @@ extern void ip_neighbor_learn (const ip_neighbor_learn_t * l);
 extern void ip_neighbor_update (vnet_main_t * vnm, adj_index_t ai);
 
 extern void ip_neighbor_probe (const ip_adjacency_t * adj);
-extern void ip_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+extern void ip_neighbor_probe_dst (u32 sw_if_index,
+				   clib_thread_index_t thread_index,
 				   ip_address_family_t af,
 				   const ip46_address_t *ip);
 

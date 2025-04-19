@@ -318,10 +318,11 @@ ipsec_collect_ah_trace (vlib_buffer_t **b, vlib_node_runtime_t *node,
 
 always_inline void
 ipsec_ah_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
-			 ah_header_t *ah0, u32 thread_index, ipsec_spd_t *spd0,
-			 vlib_buffer_t **b, vlib_node_runtime_t *node,
-			 u64 *ipsec_bypassed, u64 *ipsec_dropped,
-			 u64 *ipsec_matched, u64 *ipsec_unprocessed, u16 *next)
+			 ah_header_t *ah0, clib_thread_index_t thread_index,
+			 ipsec_spd_t *spd0, vlib_buffer_t **b,
+			 vlib_node_runtime_t *node, u64 *ipsec_bypassed,
+			 u64 *ipsec_dropped, u64 *ipsec_matched,
+			 u64 *ipsec_unprocessed, u16 *next)
 
 {
   ipsec_policy_t *p0 = NULL;
@@ -452,7 +453,7 @@ ipsec_ah_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
 always_inline void
 ipsec_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
 			  udp_header_t *udp0, esp_header_t *esp0,
-			  u32 thread_index, ipsec_spd_t *spd0,
+			  clib_thread_index_t thread_index, ipsec_spd_t *spd0,
 			  vlib_buffer_t **b, vlib_node_runtime_t *node,
 			  u64 *ipsec_bypassed, u64 *ipsec_dropped,
 			  u64 *ipsec_matched, u64 *ipsec_unprocessed,
@@ -834,7 +835,7 @@ extern vlib_node_registration_t ipsec6_input_node;
 always_inline void
 ipsec6_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im,
 			   ip6_header_t *ip0, esp_header_t *esp0,
-			   u32 thread_index, ipsec_spd_t *spd0,
+			   clib_thread_index_t thread_index, ipsec_spd_t *spd0,
 			   vlib_buffer_t **b, vlib_node_runtime_t *node,
 			   u64 *ipsec_bypassed, u64 *ipsec_dropped,
 			   u64 *ipsec_matched, u64 *ipsec_unprocessed,

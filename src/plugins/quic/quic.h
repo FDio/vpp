@@ -205,7 +205,7 @@ typedef struct quic_session_cache_
 typedef struct quic_stream_data_
 {
   u32 ctx_id;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 app_rx_data_len;		/**< bytes received, to be read by external app */
   u32 app_tx_data_len;		/**< bytes sent */
 } quic_stream_data_t;
@@ -232,7 +232,7 @@ typedef struct quic_rx_packet_ctx_
   quicly_decoded_packet_t packet;
   u8 data[QUIC_MAX_PACKET_SIZE];
   u32 ctx_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   union
   {
     struct sockaddr sa;

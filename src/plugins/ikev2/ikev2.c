@@ -2223,7 +2223,7 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
 			       ikev2_child_sa_t *child, u32 sa_index,
 			       u32 child_index, u8 is_rekey, u8 kex)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   ikev2_main_t *km = &ikev2_main;
   ipsec_crypto_alg_t encr_type;
   ipsec_integ_alg_t integ_type;
@@ -3190,7 +3190,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   ikev2_stats_t _stats, *stats = &_stats;
   int res;
 

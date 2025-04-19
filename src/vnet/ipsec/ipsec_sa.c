@@ -426,7 +426,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   clib_error_t *err;
   ipsec_sa_t *sa;
   u32 sa_index, irt_sz;
-  u16 thread_index = (vlib_num_workers ()) ? ~0 : 0;
+  clib_thread_index_t thread_index = (vlib_num_workers ()) ? ~0 : 0;
   u64 rand[2];
   uword *p;
   int rv;
@@ -670,7 +670,7 @@ ipsec_sa_bind (u32 id, u32 worker, bool bind)
   ipsec_sa_t *sa;
   ipsec_sa_inb_rt_t *irt;
   ipsec_sa_outb_rt_t *ort;
-  u16 thread_index;
+  clib_thread_index_t thread_index;
 
   p = hash_get (im->sa_index_by_sa_id, id);
   if (!p)

@@ -312,7 +312,7 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
 
 vlib_buffer_t *
 vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
-			   flow_report_t *fr, u32 thread_index)
+			   flow_report_t *fr, clib_thread_index_t thread_index)
 {
   u32 bi0;
   vlib_buffer_t *b0;
@@ -343,7 +343,8 @@ vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 void
 vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 			    flow_report_t *fr, flow_report_stream_t *stream,
-			    u32 thread_index, vlib_buffer_t *b0)
+			    clib_thread_index_t thread_index,
+			    vlib_buffer_t *b0)
 {
   flow_report_main_t *frm = &flow_report_main;
   vlib_frame_t *f;

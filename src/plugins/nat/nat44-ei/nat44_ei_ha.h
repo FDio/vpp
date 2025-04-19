@@ -24,19 +24,21 @@
 #include <vnet/ip/ip.h>
 
 /* Call back functions for received HA events on passive/failover */
-typedef void (*nat_ha_sadd_cb_t) (ip4_address_t * in_addr, u16 in_port,
-				  ip4_address_t * out_addr, u16 out_port,
-				  ip4_address_t * eh_addr, u16 eh_port,
-				  ip4_address_t * ehn_addr, u16 ehn_port,
+typedef void (*nat_ha_sadd_cb_t) (ip4_address_t *in_addr, u16 in_port,
+				  ip4_address_t *out_addr, u16 out_port,
+				  ip4_address_t *eh_addr, u16 eh_port,
+				  ip4_address_t *ehn_addr, u16 ehn_port,
 				  u8 proto, u32 fib_index, u16 flags,
-				  u32 thread_index);
-typedef void (*nat_ha_sdel_cb_t) (ip4_address_t * out_addr, u16 out_port,
-				  ip4_address_t * eh_addr, u16 eh_port,
-				  u8 proto, u32 fib_index, u32 thread_index);
-typedef void (*nat_ha_sref_cb_t) (ip4_address_t * out_addr, u16 out_port,
-				  ip4_address_t * eh_addr, u16 eh_port,
+				  clib_thread_index_t thread_index);
+typedef void (*nat_ha_sdel_cb_t) (ip4_address_t *out_addr, u16 out_port,
+				  ip4_address_t *eh_addr, u16 eh_port,
+				  u8 proto, u32 fib_index,
+				  clib_thread_index_t thread_index);
+typedef void (*nat_ha_sref_cb_t) (ip4_address_t *out_addr, u16 out_port,
+				  ip4_address_t *eh_addr, u16 eh_port,
 				  u8 proto, u32 fib_index, u32 total_pkts,
-				  u64 total_bytes, u32 thread_index);
+				  u64 total_bytes,
+				  clib_thread_index_t thread_index);
 
 /**
  * @brief Enable NAT HA
@@ -106,11 +108,11 @@ void nat_ha_get_failover (ip4_address_t * addr, u16 * port,
  * @param thread_index thread index
  * @param is_resync 1 if HA resync
  */
-void nat_ha_sadd (ip4_address_t * in_addr, u16 in_port,
-		  ip4_address_t * out_addr, u16 out_port,
-		  ip4_address_t * eh_addr, u16 eh_port,
-		  ip4_address_t * ehn_addr, u16 ehn_port, u8 proto,
-		  u32 fib_index, u16 flags, u32 thread_index, u8 is_resync);
+void nat_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
+		  u16 out_port, ip4_address_t *eh_addr, u16 eh_port,
+		  ip4_address_t *ehn_addr, u16 ehn_port, u8 proto,
+		  u32 fib_index, u16 flags, clib_thread_index_t thread_index,
+		  u8 is_resync);
 
 /**
  * @brief Create session delete HA event
@@ -142,10 +144,11 @@ void nat_ha_sdel (ip4_address_t *out_addr, u16 out_port,
  * @param last_refreshed last session refresh time
  * @param now current time
  */
-void nat_ha_sref (ip4_address_t * out_addr, u16 out_port,
-		  ip4_address_t * eh_addr, u16 eh_port, u8 proto,
-		  u32 fib_index, u32 total_pkts, u64 total_bytes,
-		  u32 thread_index, f64 * last_refreshed, f64 now);
+void nat_ha_sref (ip4_address_t *out_addr, u16 out_port,
+		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		  u32 total_pkts, u64 total_bytes,
+		  clib_thread_index_t thread_index, f64 *last_refreshed,
+		  f64 now);
 
 /**
  * @brief Flush the current HA data (for testing)

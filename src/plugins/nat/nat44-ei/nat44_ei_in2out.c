@@ -247,7 +247,7 @@ nat44_ei_not_translate_fast (vlib_node_runtime_t *node, u32 sw_if_index0,
 static_always_inline int
 nat44_ei_not_translate (nat44_ei_main_t *nm, vlib_node_runtime_t *node,
 			u32 sw_if_index0, ip4_header_t *ip0, u32 proto0,
-			u32 rx_fib_index0, u32 thread_index)
+			u32 rx_fib_index0, clib_thread_index_t thread_index)
 {
   udp_header_t *udp0 = ip4_next_header (ip0);
   clib_bihash_kv_8_8_t kv0, value0;
@@ -282,7 +282,8 @@ nat44_ei_not_translate (nat44_ei_main_t *nm, vlib_node_runtime_t *node,
 static_always_inline int
 nat44_ei_not_translate_output_feature (nat44_ei_main_t *nm, ip4_header_t *ip0,
 				       u32 proto0, u16 src_port, u16 dst_port,
-				       u32 thread_index, u32 sw_if_index)
+				       clib_thread_index_t thread_index,
+				       u32 sw_if_index)
 {
   clib_bihash_kv_8_8_t kv0, value0;
   nat44_ei_interface_t *i;
@@ -368,7 +369,8 @@ static u32
 slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0, ip4_header_t *ip0,
 	   ip4_address_t i2o_addr, u16 i2o_port, u32 rx_fib_index0,
 	   nat_protocol_t nat_proto, nat44_ei_session_t **sessionp,
-	   vlib_node_runtime_t *node, u32 next0, u32 thread_index, f64 now)
+	   vlib_node_runtime_t *node, u32 next0,
+	   clib_thread_index_t thread_index, f64 now)
 {
   nat44_ei_user_t *u;
   nat44_ei_session_t *s = 0;
@@ -555,7 +557,8 @@ icmp_get_key (vlib_buffer_t *b, ip4_header_t *ip0, ip4_address_t *addr,
 }
 
 static_always_inline u32
-nat44_ei_icmp_match_in2out_slow (vlib_node_runtime_t *node, u32 thread_index,
+nat44_ei_icmp_match_in2out_slow (vlib_node_runtime_t *node,
+				 clib_thread_index_t thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *addr, u16 *port,
 				 u32 *fib_index, nat_protocol_t *proto,
@@ -658,7 +661,8 @@ out:
 }
 
 static_always_inline u32
-nat44_ei_icmp_match_in2out_fast (vlib_node_runtime_t *node, u32 thread_index,
+nat44_ei_icmp_match_in2out_fast (vlib_node_runtime_t *node,
+				 clib_thread_index_t thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *addr, u16 *port,
 				 u32 *fib_index, nat_protocol_t *proto,
@@ -726,7 +730,7 @@ out:
 
 static_always_inline u32
 nat44_ei_icmp_hairpinning (nat44_ei_main_t *nm, vlib_buffer_t *b0,
-			   u32 thread_index, ip4_header_t *ip0,
+			   clib_thread_index_t thread_index, ip4_header_t *ip0,
 			   icmp46_header_t *icmp0, u32 *required_thread_index)
 {
   clib_bihash_kv_8_8_t kv0, value0;
@@ -855,7 +859,8 @@ static_always_inline u32
 nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
 		      icmp46_header_t *icmp0, u32 sw_if_index0,
 		      u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
-		      u32 thread_index, nat44_ei_session_t **p_s0)
+		      clib_thread_index_t thread_index,
+		      nat44_ei_session_t **p_s0)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -1028,7 +1033,8 @@ nat44_ei_icmp_in2out_slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0,
 				ip4_header_t *ip0, icmp46_header_t *icmp0,
 				u32 sw_if_index0, u32 rx_fib_index0,
 				vlib_node_runtime_t *node, u32 next0, f64 now,
-				u32 thread_index, nat44_ei_session_t **p_s0)
+				clib_thread_index_t thread_index,
+				nat44_ei_session_t **p_s0)
 {
   vlib_main_t *vm = vlib_get_main ();
 
@@ -1105,8 +1111,8 @@ nat_in2out_sm_unknown_proto (nat44_ei_main_t *nm, vlib_buffer_t *b,
 
 static_always_inline int
 nat44_ei_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node,
-		      nat44_ei_main_t *nm, u32 thread_index, vlib_buffer_t *b0,
-		      ip4_header_t *ip0, udp_header_t *udp0,
+		      nat44_ei_main_t *nm, clib_thread_index_t thread_index,
+		      vlib_buffer_t *b0, ip4_header_t *ip0, udp_header_t *udp0,
 		      tcp_header_t *tcp0, u32 proto0, int do_trace,
 		      u32 *required_thread_index)
 {
@@ -1278,7 +1284,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left_from, *from;
   nat44_ei_main_t *nm = &nat44_ei_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2032,7 +2038,7 @@ nat44_ei_in2out_hairpinning_finish_inline (vlib_main_t *vm,
 					   vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat44_ei_in2out_next_t next_index;
   nat44_ei_main_t *nm = &nat44_ei_main;
   int is_hairpinning = 0;
@@ -2135,7 +2141,7 @@ VLIB_NODE_FN (nat44_ei_hairpinning_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat44_ei_hairpin_next_t next_index;
   nat44_ei_main_t *nm = &nat44_ei_main;
   vnet_feature_main_t *fm = &feature_main;

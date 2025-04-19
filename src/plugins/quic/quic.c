@@ -51,7 +51,8 @@ static void quic_update_timer (quic_ctx_t * ctx);
 static void quic_check_quic_session_connected (quic_ctx_t * ctx);
 static int quic_reset_connection (u64 udp_session_handle,
 				  quic_rx_packet_ctx_t * pctx);
-static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
+static void quic_proto_on_close (u32 ctx_index,
+				 clib_thread_index_t thread_index);
 
 static quicly_stream_open_t on_stream_open;
 static quicly_closed_by_remote_t on_closed_by_remote;
@@ -133,7 +134,7 @@ quic_crypto_context_alloc (u8 thread_index)
 }
 
 static crypto_context_t *
-quic_crypto_context_get (u32 cr_index, u32 thread_index)
+quic_crypto_context_get (u32 cr_index, clib_thread_index_t thread_index)
 {
   quic_main_t *qm = &quic_main;
   ASSERT (cr_index >> 24 == thread_index);
@@ -381,7 +382,7 @@ error:
 /*  Helper functions */
 
 static u32
-quic_ctx_alloc (u32 thread_index)
+quic_ctx_alloc (clib_thread_index_t thread_index)
 {
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
@@ -401,7 +402,7 @@ static void
 quic_ctx_free (quic_ctx_t * ctx)
 {
   QUIC_DBG (2, "Free ctx %u %x", ctx->c_thread_index, ctx->c_c_index);
-  u32 thread_index = ctx->c_thread_index;
+  clib_thread_index_t thread_index = ctx->c_thread_index;
   QUIC_ASSERT (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID);
   if (CLIB_DEBUG)
     clib_memset (ctx, 0xfb, sizeof (*ctx));
@@ -409,13 +410,13 @@ quic_ctx_free (quic_ctx_t * ctx)
 }
 
 static quic_ctx_t *
-quic_ctx_get (u32 ctx_index, u32 thread_index)
+quic_ctx_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
   return pool_elt_at_index (quic_main.ctx_pool[thread_index], ctx_index);
 }
 
 static quic_ctx_t *
-quic_ctx_get_if_valid (u32 ctx_index, u32 thread_index)
+quic_ctx_get_if_valid (u32 ctx_index, clib_thread_index_t thread_index)
 {
   if (pool_is_free_index (quic_main.ctx_pool[thread_index], ctx_index))
     return 0;
@@ -1100,7 +1101,7 @@ quic_get_time (quicly_now_t * self)
 }
 
 static u32
-quic_set_time_now (u32 thread_index)
+quic_set_time_now (clib_thread_index_t thread_index)
 {
   vlib_main_t *vlib_main = vlib_get_main ();
   f64 time = vlib_time_now (vlib_main);
@@ -1396,7 +1397,7 @@ quic_connect (transport_endpoint_cfg_t * tep)
 }
 
 static void
-quic_proto_on_close (u32 ctx_index, u32 thread_index)
+quic_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
 {
   int err;
   quic_ctx_t *ctx = quic_ctx_get_if_valid (ctx_index, thread_index);
@@ -1548,7 +1549,7 @@ quic_stop_listen (u32 lctx_index)
 }
 
 static transport_connection_t *
-quic_connection_get (u32 ctx_index, u32 thread_index)
+quic_connection_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (ctx_index, thread_index);
@@ -1600,7 +1601,7 @@ static u8 *
 format_quic_connection (u8 * s, va_list * args)
 {
   u32 qc_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
   s = format (s, "%U", format_quic_ctx, ctx, verbose);
@@ -1611,7 +1612,7 @@ static u8 *
 format_quic_half_open (u8 * s, va_list * args)
 {
   u32 qc_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
   s = format (s, "[#%d][Q] half-open app %u", thread_index,
 	      ctx->parent_app_id);
@@ -1623,7 +1624,7 @@ static u8 *
 format_quic_listener (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (tci, thread_index);
   s = format (s, "%U", format_quic_ctx, ctx, verbose);
@@ -1660,7 +1661,7 @@ quic_on_quic_session_connected (quic_ctx_t * ctx)
   session_t *quic_session;
   app_worker_t *app_wrk;
   u32 ctx_id = ctx->c_c_index;
-  u32 thread_index = ctx->c_thread_index;
+  clib_thread_index_t thread_index = ctx->c_thread_index;
   int rv;
 
   quic_session = session_alloc (thread_index);
@@ -1775,7 +1776,7 @@ static void
 quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 {
   quic_ctx_t *ctx, *temp_ctx;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   QUIC_DBG (2, "Transferring conn %u to thread %u", ctx_index, dest_thread);
 
@@ -1811,7 +1812,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   app_worker_t *app_wrk;
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   int ret;
   quicly_context_t *quicly_ctx;
 
@@ -1918,7 +1919,7 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   u32 ctx_index;
   quic_ctx_t *ctx, *lctx;
   session_t *udp_listen_session;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   udp_listen_session =
     listen_session_get_from_handle (udp_session->listener_handle);
@@ -2199,7 +2200,7 @@ quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
 {
   size_t plen;
   u32 full_len, ret;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 cur_deq = svm_fifo_max_dequeue (f) - fifo_offset;
   quicly_context_t *quicly_ctx;
   session_t *udp_session;
@@ -2281,7 +2282,7 @@ quic_udp_session_rx_callback (session_t * udp_session)
   u32 max_deq;
   u64 udp_session_handle = session_handle (udp_session);
   int rv = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 cur_deq, fifo_offset, max_packets, i;
 
   quic_rx_packet_ctx_t packets_ctx[QUIC_RCV_MAX_PACKETS];
@@ -2306,7 +2307,7 @@ rx_start:
 #endif
   for (i = 0; i < max_packets; i++)
     {
-      packets_ctx[i].thread_index = UINT32_MAX;
+      packets_ctx[i].thread_index = CLIB_INVALID_THREAD_INDEX;
       packets_ctx[i].ctx_index = UINT32_MAX;
       packets_ctx[i].ptype = QUIC_PACKET_TYPE_DROP;
 
@@ -2421,8 +2422,8 @@ quic_get_transport_listener_endpoint (u32 listener_index,
 }
 
 static void
-quic_get_transport_endpoint (u32 ctx_index, u32 thread_index,
-			     transport_endpoint_t * tep, u8 is_lcl)
+quic_get_transport_endpoint (u32 ctx_index, clib_thread_index_t thread_index,
+			     transport_endpoint_t *tep, u8 is_lcl)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (ctx_index, thread_index);

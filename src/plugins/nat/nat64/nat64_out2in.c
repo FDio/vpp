@@ -69,7 +69,7 @@ typedef struct nat64_out2in_set_ctx_t_
 {
   vlib_buffer_t *b;
   vlib_main_t *vm;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } nat64_out2in_set_ctx_t;
 
 static int
@@ -519,7 +519,7 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
   nat64_main_t *nm = &nat64_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -660,7 +660,7 @@ typedef struct nat64_out2in_frag_set_ctx_t_
   vlib_main_t *vm;
   vlib_buffer_t *b;
   u32 sess_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u8 proto;
   u8 first_frag;
 } nat64_out2in_frag_set_ctx_t;
@@ -712,7 +712,7 @@ VLIB_NODE_FN (nat64_out2in_handoff_node) (vlib_main_t * vm,
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 do_handoff = 0, same_worker = 0;
 
   from = vlib_frame_vector_args (frame);

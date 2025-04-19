@@ -114,8 +114,8 @@ openssl_async_t openssl_async_main;
 static vlib_node_registration_t tls_async_process_node;
 
 /* to avoid build warning */
-void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
-				     void *rpc_args);
+void session_send_rpc_evt_to_thread (clib_thread_index_t thread_index,
+				     void *fp, void *rpc_args);
 
 void
 evt_pool_init (vlib_main_t * vm)
@@ -528,7 +528,7 @@ openssl_async_node_enable_disable (u8 is_en)
 }
 
 int
-tls_async_do_job (int eidx, u32 thread_index)
+tls_async_do_job (int eidx, clib_thread_index_t thread_index)
 {
   tls_ctx_t *ctx;
   openssl_evt_t *event;

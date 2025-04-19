@@ -154,7 +154,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   next_index = node->cached_next_index;
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 *buffer0 = 0;
 
   while (n_left_from > 0)

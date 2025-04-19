@@ -147,7 +147,7 @@ srv6_am_localsid_fn (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {

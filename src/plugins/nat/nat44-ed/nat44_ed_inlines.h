@@ -40,8 +40,8 @@ init_ed_k (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,
 
 always_inline void
 init_ed_kv (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,
-	    u16 r_port, u32 fib_index, u8 proto, u32 thread_index,
-	    u32 session_index)
+	    u16 r_port, u32 fib_index, u8 proto,
+	    clib_thread_index_t thread_index, u32 session_index)
 {
   init_ed_k (kv, l_addr, l_port, r_addr, r_port, fib_index, proto);
   kv->value = (u64) thread_index << 32 | session_index;
@@ -207,7 +207,7 @@ nat44_session_get_timeout (snat_main_t *sm, snat_session_t *s)
 
 static_always_inline u8
 nat44_ed_maximum_sessions_exceeded (snat_main_t *sm, u32 fib_index,
-				    u32 thread_index)
+				    clib_thread_index_t thread_index)
 {
   u32 translations;
   translations = pool_elts (sm->per_thread_data[thread_index].sessions);
@@ -311,8 +311,8 @@ nat_ed_ses_o2i_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
 }
 
 always_inline void
-nat_ed_session_delete (snat_main_t *sm, snat_session_t *ses, u32 thread_index,
-		       int lru_delete
+nat_ed_session_delete (snat_main_t *sm, snat_session_t *ses,
+		       clib_thread_index_t thread_index, int lru_delete
 		       /* delete from global LRU list */)
 {
   snat_main_per_thread_data_t *tsm =
@@ -384,7 +384,8 @@ nat_lru_free_one (snat_main_t *sm, int thread_index, f64 now)
 }
 
 static_always_inline snat_session_t *
-nat_ed_session_alloc (snat_main_t *sm, u32 thread_index, f64 now, u8 proto)
+nat_ed_session_alloc (snat_main_t *sm, clib_thread_index_t thread_index,
+		      f64 now, u8 proto)
 {
   snat_session_t *s;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -407,7 +408,7 @@ nat_ed_session_alloc (snat_main_t *sm, u32 thread_index, f64 now, u8 proto)
 
 // slow path
 static_always_inline void
-per_vrf_sessions_cleanup (u32 thread_index)
+per_vrf_sessions_cleanup (clib_thread_index_t thread_index)
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm =
@@ -432,7 +433,8 @@ per_vrf_sessions_cleanup (u32 thread_index)
 
 // slow path
 static_always_inline void
-per_vrf_sessions_register_session (snat_session_t *s, u32 thread_index)
+per_vrf_sessions_register_session (snat_session_t *s,
+				   clib_thread_index_t thread_index)
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm =
@@ -474,7 +476,8 @@ done:
 
 // fast path
 static_always_inline void
-per_vrf_sessions_unregister_session (snat_session_t *s, u32 thread_index)
+per_vrf_sessions_unregister_session (snat_session_t *s,
+				     clib_thread_index_t thread_index)
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
@@ -494,7 +497,8 @@ per_vrf_sessions_unregister_session (snat_session_t *s, u32 thread_index)
 
 // fast path
 static_always_inline u8
-per_vrf_sessions_is_expired (snat_session_t *s, u32 thread_index)
+per_vrf_sessions_is_expired (snat_session_t *s,
+			     clib_thread_index_t thread_index)
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
@@ -701,7 +705,7 @@ is_interface_addr (snat_main_t *sm, vlib_node_runtime_t *node,
 }
 
 always_inline void
-nat44_ed_session_reopen (u32 thread_index, snat_session_t *s)
+nat44_ed_session_reopen (clib_thread_index_t thread_index, snat_session_t *s)
 {
   nat_syslog_nat44_sdel (0, s->in2out.fib_index, &s->in2out.addr,
 			 s->in2out.port, &s->ext_host_nat_addr,
@@ -738,7 +742,7 @@ nat44_ed_session_reopen (u32 thread_index, snat_session_t *s)
  */
 always_inline void
 nat44_set_tcp_session_state (snat_main_t *sm, f64 now, snat_session_t *ses,
-			     u8 tcp_flags, u32 thread_index,
+			     u8 tcp_flags, clib_thread_index_t thread_index,
 			     nat44_ed_dir_e dir)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -796,7 +800,8 @@ nat44_set_tcp_session_state (snat_main_t *sm, f64 now, snat_session_t *ses,
 
 always_inline void
 nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
-				 u8 tcp_flags, u32 thread_index)
+				 u8 tcp_flags,
+				 clib_thread_index_t thread_index)
 {
   return nat44_set_tcp_session_state (sm, now, ses, tcp_flags, thread_index,
 				      NAT44_ED_DIR_I2O);
@@ -804,7 +809,8 @@ nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
 
 always_inline void
 nat44_set_tcp_session_state_o2i (snat_main_t *sm, f64 now, snat_session_t *ses,
-				 u8 tcp_flags, u32 thread_index)
+				 u8 tcp_flags,
+				 clib_thread_index_t thread_index)
 {
   return nat44_set_tcp_session_state (sm, now, ses, tcp_flags, thread_index,
 				      NAT44_ED_DIR_O2I);
@@ -812,7 +818,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t *sm, f64 now, snat_session_t *ses,
 
 always_inline void
 nat44_session_update_counters (snat_session_t *s, f64 now, uword bytes,
-			       u32 thread_index)
+			       clib_thread_index_t thread_index)
 {
   // regardless of TCP state, reset the timer if data packet is seen.
   s->last_heard = now;
@@ -822,7 +828,8 @@ nat44_session_update_counters (snat_session_t *s, f64 now, uword bytes,
 
 /** \brief Per-user LRU list maintenance */
 always_inline void
-nat44_session_update_lru (snat_main_t *sm, snat_session_t *s, u32 thread_index)
+nat44_session_update_lru (snat_main_t *sm, snat_session_t *s,
+			  clib_thread_index_t thread_index)
 {
   /* don't update too often - timeout is in magnitude of seconds anyway */
   if (s->last_heard > s->last_lru_update + 1)

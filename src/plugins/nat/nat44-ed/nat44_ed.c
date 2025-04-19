@@ -205,7 +205,7 @@ nat44_ed_sm_o2i_del (snat_main_t *sm, ip4_address_t addr, u16 port,
 
 void
 nat44_ed_free_session_data (snat_main_t *sm, snat_session_t *s,
-			    u32 thread_index, u8 is_ha)
+			    clib_thread_index_t thread_index, u8 is_ha)
 {
   per_vrf_sessions_unregister_session (s, thread_index);
 

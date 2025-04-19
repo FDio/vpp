@@ -340,7 +340,7 @@ typedef struct
       u32 __pad[3];
       u32 sad_index;
       u32 protect_index;
-      u16 thread_index;
+      clib_thread_index_t thread_index;
     } ipsec;
 
     /* MAP */
@@ -502,7 +502,7 @@ typedef struct
      */
     struct
     {
-      u32 thread_index;
+      clib_thread_index_t thread_index;
       u32 pool_index;
       u32 id;
     } reass;

@@ -127,7 +127,7 @@ mbedtls_ctx_get_w_thread (u32 ctx_index, u8 thread_index)
 static int
 tls_init_ctr_seed_drbgs (void)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   mbedtls_main_t *tm = &mbedtls_main;
   u8 *pers;
   int rv;

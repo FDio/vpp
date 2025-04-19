@@ -26,7 +26,7 @@ vlib_get_n_threads ()
 }
 
 always_inline vlib_main_t *
-vlib_get_main_by_index (u32 thread_index)
+vlib_get_main_by_index (clib_thread_index_t thread_index)
 {
   vlib_main_t *vm;
   vm = vlib_global_main.vlib_mains[thread_index];

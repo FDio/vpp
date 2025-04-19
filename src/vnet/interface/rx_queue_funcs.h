@@ -20,7 +20,8 @@
 u32 vnet_hw_if_get_rx_queue_index_by_id (vnet_main_t *vnm, u32 hw_if_index,
 					 u32 queue_id);
 u32 vnet_hw_if_register_rx_queue (vnet_main_t *vnm, u32 hw_if_index,
-				  u32 queue_id, u32 thread_idnex);
+				  u32 queue_id,
+				  clib_thread_index_t thread_index);
 void vnet_hw_if_unregister_rx_queue (vnet_main_t *vnm, u32 queue_index);
 void vnet_hw_if_unregister_all_rx_queues (vnet_main_t *vnm, u32 hw_if_index);
 void vnet_hw_if_set_rx_queue_file_index (vnet_main_t *vnm, u32 queue_index,
@@ -32,7 +33,7 @@ int vnet_hw_if_set_rx_queue_mode (vnet_main_t *vnm, u32 queue_index,
 vnet_hw_if_rx_mode vnet_hw_if_get_rx_queue_mode (vnet_main_t *vnm,
 						 u32 queue_index);
 void vnet_hw_if_set_rx_queue_thread_index (vnet_main_t *vnm, u32 queue_index,
-					   u32 thread_index);
+					   clib_thread_index_t thread_index);
 vnet_hw_if_rxq_poll_vector_t *
 vnet_hw_if_generate_rxq_int_poll_vector (vlib_main_t *vm,
 					 vlib_node_runtime_t *node);

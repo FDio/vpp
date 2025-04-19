@@ -25,7 +25,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
@@ -78,7 +78,7 @@ typedef struct hs_main_
 static hts_main_t hts_main;
 
 static hts_session_t *
-hts_session_alloc (u32 thread_index)
+hts_session_alloc (clib_thread_index_t thread_index)
 {
   hts_main_t *htm = &hts_main;
   hts_session_t *hs;
@@ -92,7 +92,7 @@ hts_session_alloc (u32 thread_index)
 }
 
 static hts_session_t *
-hts_session_get (u32 thread_index, u32 hts_index)
+hts_session_get (clib_thread_index_t thread_index, u32 hts_index)
 {
   hts_main_t *htm = &hts_main;
 
@@ -620,7 +620,7 @@ hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri,
   u8 need_crypto;
   hts_session_t *hls;
   session_t *ls;
-  u32 thread_index = 0;
+  clib_thread_index_t thread_index = 0;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));

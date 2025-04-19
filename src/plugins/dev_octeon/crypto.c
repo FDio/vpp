@@ -1827,7 +1827,7 @@ oct_crypto_enqueue_aead_aad_0_dec (vlib_main_t *vm,
 
 vnet_crypto_async_frame_t *
 oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			  u32 *enqueue_thread_idx)
+			  clib_thread_index_t *enqueue_thread_idx)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
   u32 deq_head, status = VNET_CRYPTO_OP_STATUS_COMPLETED;

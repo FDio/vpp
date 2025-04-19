@@ -72,7 +72,7 @@ VLIB_NODE_FN (nat66_out2in_node) (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   nat66_out2in_next_t next_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat66_main_t *nm = &nat66_main;
 
   from = vlib_frame_vector_args (frame);

@@ -71,7 +71,7 @@ udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
 }
 
 udp_connection_t *
-udp_connection_alloc (u32 thread_index)
+udp_connection_alloc (clib_thread_index_t thread_index)
 {
   udp_worker_t *wrk = udp_worker_get (thread_index);
   udp_connection_t *uc;
@@ -115,7 +115,7 @@ udp_connection_delete (udp_connection_t * uc)
 static void
 udp_handle_cleanups (void *args)
 {
-  u32 thread_index = (u32) pointer_to_uword (args);
+  clib_thread_index_t thread_index = (u32) pointer_to_uword (args);
   udp_connection_t *uc;
   udp_worker_t *wrk;
   u32 *uc_index;
@@ -361,7 +361,7 @@ udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
 }
 
 static transport_connection_t *
-udp_session_get (u32 connection_index, u32 thread_index)
+udp_session_get (u32 connection_index, clib_thread_index_t thread_index)
 {
   udp_connection_t *uc;
   uc = udp_connection_get (connection_index, thread_index);
@@ -371,7 +371,7 @@ udp_session_get (u32 connection_index, u32 thread_index)
 }
 
 static void
-udp_session_close (u32 connection_index, u32 thread_index)
+udp_session_close (u32 connection_index, clib_thread_index_t thread_index)
 {
   udp_connection_t *uc;
 
@@ -386,7 +386,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
 }
 
 static void
-udp_session_cleanup (u32 connection_index, u32 thread_index)
+udp_session_cleanup (u32 connection_index, clib_thread_index_t thread_index)
 {
   udp_connection_t *uc;
   uc = udp_connection_get (connection_index, thread_index);
@@ -421,7 +421,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   udp_main_t *um = &udp_main;
   ip46_address_t lcl_addr;
   udp_connection_t *uc;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u16 lcl_port;
   int rv;
 
@@ -484,7 +484,7 @@ static transport_connection_t *
 udp_session_get_half_open (u32 conn_index)
 {
   udp_connection_t *uc;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   /* We don't poll main thread if we have workers */
   thread_index = transport_cl_thread ();
@@ -498,7 +498,7 @@ static u8 *
 format_udp_session (u8 * s, va_list * args)
 {
   u32 uci = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   udp_connection_t *uc;
 

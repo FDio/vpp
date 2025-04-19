@@ -40,7 +40,7 @@ extern void throttle_init (throttle_t *t, u32 n_threads, u32 buckets,
 			   f64 time);
 
 always_inline u64
-throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
+throttle_seed (throttle_t *t, clib_thread_index_t thread_index, f64 time_now)
 {
   if (time_now - t->last_seed_change_time[thread_index] > t->time)
     {
@@ -53,7 +53,8 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
 }
 
 always_inline int
-throttle_check (throttle_t * t, u32 thread_index, u64 hash, u64 seed)
+throttle_check (throttle_t *t, clib_thread_index_t thread_index, u64 hash,
+		u64 seed)
 {
   ASSERT (is_pow2 (t->buckets));
 

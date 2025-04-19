@@ -31,15 +31,17 @@
 extern vlib_packet_template_t ip6_neighbor_packet_template;
 
 extern void ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm,
-				    u32 sw_if_index, u32 thread_index,
+				    u32 sw_if_index,
+				    clib_thread_index_t thread_index,
 				    const ip6_address_t *addr);
 
-extern void ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+extern void ip6_neighbor_probe_dst (u32 sw_if_index,
+				    clib_thread_index_t thread_index,
 				    const ip6_address_t *dst);
 
 always_inline vlib_buffer_t *
 ip6_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
-		    u32 thread_index, const ip6_address_t *src,
+		    clib_thread_index_t thread_index, const ip6_address_t *src,
 		    const ip6_address_t *dst)
 {
   icmp6_neighbor_solicitation_header_t *h0;

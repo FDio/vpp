@@ -118,7 +118,7 @@ ip6_map_t_icmp (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {
@@ -494,7 +494,7 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     vlib_node_get_runtime (vm, ip6_map_t_node.index);
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

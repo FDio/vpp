@@ -336,13 +336,13 @@ vnet_get_session_main ()
 }
 
 always_inline session_worker_t *
-session_main_get_worker (u32 thread_index)
+session_main_get_worker (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (session_main.wrk, thread_index);
 }
 
 static inline session_worker_t *
-session_main_get_worker_if_valid (u32 thread_index)
+session_main_get_worker_if_valid (clib_thread_index_t thread_index)
 {
   if (thread_index > vec_len (session_main.wrk))
     return 0;
@@ -350,7 +350,7 @@ session_main_get_worker_if_valid (u32 thread_index)
 }
 
 always_inline svm_msg_q_t *
-session_main_get_vpp_event_queue (u32 thread_index)
+session_main_get_vpp_event_queue (clib_thread_index_t thread_index)
 {
   return session_main_get_worker (thread_index)->vpp_event_queue;
 }
@@ -455,7 +455,7 @@ session_evt_alloc_old (session_worker_t * wrk)
 
 int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 
-session_t *session_alloc (u32 thread_index);
+session_t *session_alloc (clib_thread_index_t thread_index);
 void session_free (session_t * s);
 void session_cleanup (session_t *s);
 void session_program_cleanup (session_t *s);
@@ -463,14 +463,14 @@ void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
-session_get (u32 si, u32 thread_index)
+session_get (u32 si, clib_thread_index_t thread_index)
 {
   ASSERT (session_is_valid (si, thread_index));
   return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
 }
 
 always_inline session_t *
-session_get_if_valid (u64 si, u32 thread_index)
+session_get_if_valid (u64 si, clib_thread_index_t thread_index)
 {
   if (thread_index >= vec_len (session_main.wrk))
     return 0;
@@ -518,7 +518,7 @@ session_get_from_handle_safe (session_handle_tu_t handle)
 }
 
 always_inline session_t *
-session_clone_safe (u32 session_index, u32 thread_index)
+session_clone_safe (u32 session_index, clib_thread_index_t thread_index)
 {
   u32 current_thread_index = vlib_get_thread_index (), new_index;
   session_t *old_s, *new_s;
@@ -550,17 +550,18 @@ int session_enqueue_notify_cl (session_t *s);
 /* Deprecated, use session_program_* functions */
 int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
 /* Deprecated, use session_program_* functions */
-int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
+int session_send_io_evt_to_thread_custom (void *data,
+					  clib_thread_index_t thread_index,
 					  session_evt_type_t evt_type);
 int session_program_tx_io_evt (session_handle_tu_t sh,
 			       session_evt_type_t evt_type);
 int session_program_rx_io_evt (session_handle_tu_t sh);
 int session_program_transport_io_evt (session_handle_tu_t sh,
 				      session_evt_type_t evt_type);
-void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
-				     void *rpc_args);
-void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
-					   void *rpc_args);
+void session_send_rpc_evt_to_thread (clib_thread_index_t thread_index,
+				     void *fp, void *rpc_args);
+void session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index,
+					   void *fp, void *rpc_args);
 void session_add_self_custom_tx_evt (transport_connection_t * tc,
 				     u8 has_prio);
 void sesssion_reschedule_tx (transport_connection_t * tc);
@@ -593,10 +594,10 @@ void session_half_open_migrate_notify (transport_connection_t *tc);
 int session_half_open_migrated_notify (transport_connection_t *tc);
 void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
-int session_stream_accept (transport_connection_t * tc, u32 listener_index,
-			   u32 thread_index, u8 notify);
-int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
-			  u32 thread_index);
+int session_stream_accept (transport_connection_t *tc, u32 listener_index,
+			   clib_thread_index_t thread_index, u8 notify);
+int session_dgram_accept (transport_connection_t *tc, u32 listener_index,
+			  clib_thread_index_t thread_index);
 
 /**
  * Initialize session layer for given transport proto and ip version
@@ -616,7 +617,7 @@ void session_register_transport (transport_proto_t transport_proto,
 transport_proto_t session_add_transport_proto (void);
 void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
-					u32 thread_index);
+					clib_thread_index_t thread_index);
 void session_queue_run_on_main_thread (vlib_main_t *vm);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
@@ -860,7 +861,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
        * flushed by calling @ref session_main_flush_enqueue_events () */
       if (!(s->flags & SESSION_F_RX_EVT))
 	{
-	  u32 thread_index =
+	  clib_thread_index_t thread_index =
 	    is_cl ? vlib_get_thread_index () : s->thread_index;
 	  session_worker_t *wrk = session_main_get_worker (thread_index);
 	  ASSERT (s->thread_index == vlib_get_thread_index () || is_cl);
@@ -959,19 +960,19 @@ transport_rx_fifo_req_deq_ntf (transport_connection_t *tc)
 }
 
 always_inline clib_time_type_t
-transport_time_now (u32 thread_index)
+transport_time_now (clib_thread_index_t thread_index)
 {
   return session_main.wrk[thread_index].last_vlib_time;
 }
 
 always_inline clib_us_time_t
-transport_us_time_now (u32 thread_index)
+transport_us_time_now (clib_thread_index_t thread_index)
 {
   return session_main.wrk[thread_index].last_vlib_us_time;
 }
 
 always_inline clib_time_type_t
-transport_seconds_per_loop (u32 thread_index)
+transport_seconds_per_loop (clib_thread_index_t thread_index)
 {
   return session_main.wrk[thread_index].vm->seconds_per_loop;
 }
@@ -1081,7 +1082,8 @@ transport_connection_t *listen_session_get_transport (session_t * s);
  * 			must exist
  */
 always_inline void
-session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
+session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
+			       u32 next_node)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   vec_add1 (wrk->pending_tx_buffers, bi);

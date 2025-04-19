@@ -139,20 +139,21 @@ next_src_nat (snat_main_t *sm, ip4_header_t *ip, u16 src_port, u16 dst_port,
 
 static void create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b,
 				   snat_session_t *s, ip4_header_t *ip,
-				   u32 rx_fib_index, u32 thread_index);
+				   u32 rx_fib_index,
+				   clib_thread_index_t thread_index);
 
 static snat_session_t *create_session_for_static_mapping_ed (
   snat_main_t *sm, vlib_buffer_t *b, ip4_address_t i2o_addr, u16 i2o_port,
   u32 i2o_fib_index, ip4_address_t o2i_addr, u16 o2i_port, u32 o2i_fib_index,
-  ip_protocol_t proto, vlib_node_runtime_t *node, u32 thread_index,
-  twice_nat_type_t twice_nat, lb_nat_type_t lb_nat, f64 now,
-  snat_static_mapping_t *mapping);
+  ip_protocol_t proto, vlib_node_runtime_t *node,
+  clib_thread_index_t thread_index, twice_nat_type_t twice_nat,
+  lb_nat_type_t lb_nat, f64 now, snat_static_mapping_t *mapping);
 
 static inline u32
 icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			  icmp46_header_t *icmp, u32 sw_if_index,
 			  u32 rx_fib_index, vlib_node_runtime_t *node,
-			  u32 next, f64 now, u32 thread_index,
+			  u32 next, f64 now, clib_thread_index_t thread_index,
 			  snat_session_t **s_p)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -271,8 +272,9 @@ static_always_inline int
 nat44_ed_alloc_i2o_port (snat_main_t *sm, snat_address_t *a, snat_session_t *s,
 			 ip4_address_t i2o_addr, u16 i2o_port,
 			 u32 i2o_fib_index, ip_protocol_t proto,
-			 u32 thread_index, u32 snat_thread_index,
-			 ip4_address_t *outside_addr, u16 *outside_port)
+			 clib_thread_index_t thread_index,
+			 u32 snat_thread_index, ip4_address_t *outside_addr,
+			 u16 *outside_port)
 {
   u32 portnum;
 
@@ -299,13 +301,11 @@ nat44_ed_alloc_i2o_port (snat_main_t *sm, snat_address_t *a, snat_session_t *s,
 }
 
 static_always_inline int
-nat44_ed_alloc_i2o_addr_and_port (snat_main_t *sm, snat_address_t *addresses,
-				  snat_session_t *s, ip4_address_t i2o_addr,
-				  u16 i2o_port, u32 i2o_fib_index,
-				  ip_protocol_t proto, u32 thread_index,
-				  u32 snat_thread_index,
-				  ip4_address_t *outside_addr,
-				  u16 *outside_port)
+nat44_ed_alloc_i2o_addr_and_port (
+  snat_main_t *sm, snat_address_t *addresses, snat_session_t *s,
+  ip4_address_t i2o_addr, u16 i2o_port, u32 i2o_fib_index, ip_protocol_t proto,
+  clib_thread_index_t thread_index, u32 snat_thread_index,
+  ip4_address_t *outside_addr, u16 *outside_port)
 {
   snat_address_t *a, *ga = 0;
   int i;
@@ -361,9 +361,9 @@ static snat_session_t *
 create_session_for_static_mapping_ed (
   snat_main_t *sm, vlib_buffer_t *b, ip4_address_t i2o_addr, u16 i2o_port,
   u32 i2o_fib_index, ip4_address_t o2i_addr, u16 o2i_port, u32 o2i_fib_index,
-  ip_protocol_t proto, vlib_node_runtime_t *node, u32 thread_index,
-  twice_nat_type_t twice_nat, lb_nat_type_t lb_nat, f64 now,
-  snat_static_mapping_t *mapping)
+  ip_protocol_t proto, vlib_node_runtime_t *node,
+  clib_thread_index_t thread_index, twice_nat_type_t twice_nat,
+  lb_nat_type_t lb_nat, f64 now, snat_static_mapping_t *mapping)
 {
   snat_session_t *s;
   ip4_header_t *ip;
@@ -558,7 +558,8 @@ create_session_for_static_mapping_ed (
 
 static void
 create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
-		       ip4_header_t *ip, u32 rx_fib_index, u32 thread_index)
+		       ip4_header_t *ip, u32 rx_fib_index,
+		       clib_thread_index_t thread_index)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -663,8 +664,8 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
 static snat_session_t *
 nat44_ed_out2in_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 					ip4_header_t *ip, u32 rx_fib_index,
-					u32 thread_index, f64 now,
-					vlib_main_t *vm,
+					clib_thread_index_t thread_index,
+					f64 now, vlib_main_t *vm,
 					vlib_node_runtime_t *node)
 {
   snat_static_mapping_t *m;
@@ -743,7 +744,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   from = vlib_frame_vector_args (frame);
@@ -1044,7 +1045,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_static_mapping_t *m;
 

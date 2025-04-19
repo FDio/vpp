@@ -102,9 +102,9 @@ next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
 }
 
 static_always_inline void
-incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
-		  u32 sw_if_index, u32 * last_sw_if_index, u32 * n_packets,
-		  u32 * n_bytes)
+incr_decap_stats (vnet_main_t *vnm, clib_thread_index_t thread_index,
+		  u32 length, u32 sw_if_index, u32 *last_sw_if_index,
+		  u32 *n_packets, u32 *n_bytes)
 {
   vnet_interface_main_t *im;
 

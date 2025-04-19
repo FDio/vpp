@@ -113,13 +113,13 @@ format_http_time_now (u8 *s, va_list *args)
 }
 
 static inline http_worker_t *
-http_worker_get (u32 thread_index)
+http_worker_get (clib_thread_index_t thread_index)
 {
   return &http_main.wrk[thread_index];
 }
 
 static inline u32
-http_conn_alloc_w_thread (u32 thread_index)
+http_conn_alloc_w_thread (clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   http_conn_t *hc;
@@ -129,14 +129,15 @@ http_conn_alloc_w_thread (u32 thread_index)
 }
 
 static inline http_conn_t *
-http_conn_get_w_thread (u32 hc_index, u32 thread_index)
+http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   return pool_elt_at_index (wrk->conn_pool, hc_index);
 }
 
 static inline http_conn_t *
-http_conn_get_w_thread_if_valid (u32 hc_index, u32 thread_index)
+http_conn_get_w_thread_if_valid (u32 hc_index,
+				 clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
   if (pool_is_free_index (wrk->conn_pool, hc_index))
@@ -983,7 +984,7 @@ http_stop_listen (u32 listener_index)
 }
 
 static void
-http_transport_close (u32 rh, u32 thread_index)
+http_transport_close (u32 rh, clib_thread_index_t thread_index)
 {
   http_conn_t *hc;
   u32 hc_index;
@@ -1014,7 +1015,7 @@ http_transport_close (u32 rh, u32 thread_index)
 }
 
 static void
-http_transport_reset (u32 rh, u32 thread_index)
+http_transport_reset (u32 rh, clib_thread_index_t thread_index)
 {
   http_conn_t *hc;
   u32 hc_index;
@@ -1037,7 +1038,7 @@ http_transport_reset (u32 rh, u32 thread_index)
 }
 
 static transport_connection_t *
-http_transport_get_connection (u32 rh, u32 thread_index)
+http_transport_get_connection (u32 rh, clib_thread_index_t thread_index)
 {
   http_req_handle_t hr_handle;
 
@@ -1107,7 +1108,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
 }
 
 static void
-http_transport_get_endpoint (u32 rh, u32 thread_index,
+http_transport_get_endpoint (u32 rh, clib_thread_index_t thread_index,
 			     transport_endpoint_t *tep, u8 is_lcl)
 {
   http_conn_t *hc;
@@ -1144,7 +1145,7 @@ static u8 *
 format_http_transport_connection (u8 *s, va_list *args)
 {
   http_req_handle_t rh = va_arg (*args, http_req_handle_t);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   u32 hc_index;
   http_conn_t *hc;

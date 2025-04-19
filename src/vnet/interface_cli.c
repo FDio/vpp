@@ -1694,7 +1694,7 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
 };
 clib_error_t *
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
-			       u32 thread_index, u8 is_main)
+			       clib_thread_index_t thread_index, u8 is_main)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
@@ -1731,7 +1731,7 @@ set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;
-  u32 thread_index = (u32) ~ 0;
+  clib_thread_index_t thread_index = CLIB_INVALID_THREAD_INDEX;
   u8 is_main = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1831,11 +1831,12 @@ set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_hw_if_tx_queue_t *txq;
   u32 queue_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   /* highest set bit in bitmap should not exceed last worker thread index */
   thread_index = clib_bitmap_last_set (bitmap);
-  if ((thread_index != ~0) && (thread_index >= vtm->n_vlib_mains))
+  if ((thread_index != CLIB_INVALID_THREAD_INDEX) &&
+      (thread_index >= vtm->n_vlib_mains))
     return VNET_API_ERROR_INVALID_VALUE;
 
   queue_index =

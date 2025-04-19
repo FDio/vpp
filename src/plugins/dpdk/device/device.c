@@ -280,7 +280,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   u32 n_packets = f->n_vectors;
   u32 n_left;
   u32 n_prep;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   int queue_id = tf->queue_id;
   u8 is_shared = tf->shared_queue;
   u8 offload_enabled = 0;

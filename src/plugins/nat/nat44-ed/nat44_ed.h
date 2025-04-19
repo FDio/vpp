@@ -335,7 +335,7 @@ typedef CLIB_PACKED(struct
   /* per vrf sessions index */
   u32 per_vrf_sessions_index;
 
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 }) snat_session_t;
 
 typedef struct
@@ -466,7 +466,7 @@ typedef struct
   u32 snat_thread_index;
 
   /* real thread index */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   per_vrf_sessions_t *per_vrf_sessions_pool;
 
@@ -651,7 +651,7 @@ typedef struct snat_main_s
 
 typedef struct
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   f64 now;
 } nat44_is_idle_session_ctx_t;
 
@@ -888,7 +888,7 @@ int nat44_ed_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
 			  u32 vrf_id, int is_in);
 
 void nat44_ed_free_session_data (snat_main_t *sm, snat_session_t *s,
-				 u32 thread_index, u8 is_ha);
+				 clib_thread_index_t thread_index, u8 is_ha);
 
 /**
  * @brief Set NAT44 session limit (session limit, vrf id)

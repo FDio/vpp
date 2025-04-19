@@ -98,9 +98,9 @@ format_nat_in2out_ed_trace (u8 * s, va_list * args)
 
 static int
 nat_ed_alloc_addr_and_port_with_snat_address (
-  snat_main_t *sm, u8 proto, u32 thread_index, snat_address_t *a,
-  u16 port_per_thread, u32 snat_thread_index, snat_session_t *s,
-  ip4_address_t *outside_addr, u16 *outside_port)
+  snat_main_t *sm, u8 proto, clib_thread_index_t thread_index,
+  snat_address_t *a, u16 port_per_thread, u32 snat_thread_index,
+  snat_session_t *s, ip4_address_t *outside_addr, u16 *outside_port)
 {
   const u16 port_thread_offset =
     (port_per_thread * snat_thread_index) + ED_USER_PORT_OFFSET;
@@ -148,10 +148,10 @@ nat_ed_alloc_addr_and_port_with_snat_address (
 static int
 nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 			    u32 tx_sw_if_index, u32 nat_proto,
-			    u32 thread_index, ip4_address_t s_addr,
-			    ip4_address_t d_addr, u32 snat_thread_index,
-			    snat_session_t *s, ip4_address_t *outside_addr,
-			    u16 *outside_port)
+			    clib_thread_index_t thread_index,
+			    ip4_address_t s_addr, ip4_address_t d_addr,
+			    u32 snat_thread_index, snat_session_t *s,
+			    ip4_address_t *outside_addr, u16 *outside_port)
 {
   if (vec_len (sm->addresses) > 0)
     {
@@ -434,7 +434,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	      ip4_address_t l_addr, ip4_address_t r_addr, u16 l_port,
 	      u16 r_port, u8 proto, u32 rx_fib_index, u32 tx_sw_if_index,
 	      snat_session_t **sessionp, vlib_node_runtime_t *node, u32 next,
-	      u32 thread_index, f64 now)
+	      clib_thread_index_t thread_index, f64 now)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   ip4_address_t outside_addr;
@@ -679,9 +679,10 @@ nat44_ed_not_translate (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static_always_inline int
-nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
-				      u32 thread_index, f64 now,
-				      vlib_main_t * vm, vlib_buffer_t * b)
+nat_not_translate_output_feature_fwd (snat_main_t *sm, ip4_header_t *ip,
+				      clib_thread_index_t thread_index,
+				      f64 now, vlib_main_t *vm,
+				      vlib_buffer_t *b)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_session_t *s = 0;
@@ -747,7 +748,8 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 static_always_inline int
 nat44_ed_not_translate_output_feature (snat_main_t *sm, vlib_buffer_t *b,
 				       ip4_header_t *ip, u16 src_port,
-				       u16 dst_port, u32 thread_index,
+				       u16 dst_port,
+				       clib_thread_index_t thread_index,
 				       u32 rx_sw_if_index, u32 tx_sw_if_index,
 				       int is_multi_worker)
 {
@@ -822,8 +824,8 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			  icmp46_header_t *icmp, u32 sw_if_index,
 			  u32 tx_sw_if_index, u32 rx_fib_index,
 			  vlib_node_runtime_t *node, u32 next, f64 now,
-			  u32 thread_index, snat_session_t **s_p,
-			  int is_multi_worker)
+			  clib_thread_index_t thread_index,
+			  snat_session_t **s_p, int is_multi_worker)
 {
   vlib_main_t *vm = vlib_get_main ();
   u16 checksum;
@@ -904,8 +906,8 @@ out:
 static snat_session_t *
 nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 					ip4_header_t *ip, u32 rx_fib_index,
-					u32 thread_index, f64 now,
-					vlib_main_t *vm,
+					clib_thread_index_t thread_index,
+					f64 now, vlib_main_t *vm,
 					vlib_node_runtime_t *node)
 {
   clib_bihash_kv_16_8_t s_kv, s_value;
@@ -1045,7 +1047,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 def_slow = is_output_feature ? NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH
     : NAT_NEXT_IN2OUT_ED_SLOW_PATH;
@@ -1340,7 +1342,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   from = vlib_frame_vector_args (frame);

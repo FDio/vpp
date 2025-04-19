@@ -154,10 +154,13 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
  * @returns NAT44_EI session if successfully created otherwise 0.
  */
 static inline nat44_ei_session_t *
-create_session_for_static_mapping (
-  nat44_ei_main_t *nm, vlib_buffer_t *b0, ip4_address_t i2o_addr, u16 i2o_port,
-  u32 i2o_fib_index, ip4_address_t o2i_addr, u16 o2i_port, u32 o2i_fib_index,
-  nat_protocol_t proto, vlib_node_runtime_t *node, u32 thread_index, f64 now)
+create_session_for_static_mapping (nat44_ei_main_t *nm, vlib_buffer_t *b0,
+				   ip4_address_t i2o_addr, u16 i2o_port,
+				   u32 i2o_fib_index, ip4_address_t o2i_addr,
+				   u16 o2i_port, u32 o2i_fib_index,
+				   nat_protocol_t proto,
+				   vlib_node_runtime_t *node,
+				   clib_thread_index_t thread_index, f64 now)
 {
   nat44_ei_user_t *u;
   nat44_ei_session_t *s;
@@ -297,7 +300,8 @@ icmp_get_key (vlib_buffer_t *b, ip4_header_t *ip0, ip4_address_t *addr,
  * @param e                      optional parameter
  */
 u32
-nat44_ei_icmp_match_out2in_slow (vlib_node_runtime_t *node, u32 thread_index,
+nat44_ei_icmp_match_out2in_slow (vlib_node_runtime_t *node,
+				 clib_thread_index_t thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *addr, u16 *port,
 				 u32 *fib_index, nat_protocol_t *proto,
@@ -423,7 +427,8 @@ out:
 
 #ifndef CLIB_MARCH_VARIANT
 u32
-nat44_ei_icmp_match_out2in_fast (vlib_node_runtime_t *node, u32 thread_index,
+nat44_ei_icmp_match_out2in_fast (vlib_node_runtime_t *node,
+				 clib_thread_index_t thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *mapping_addr,
 				 u16 *mapping_port, u32 *mapping_fib_index,
@@ -486,7 +491,7 @@ out:
 u32 nat44_ei_icmp_out2in (vlib_buffer_t *b0, ip4_header_t *ip0,
 			  icmp46_header_t *icmp0, u32 sw_if_index0,
 			  u32 rx_fib_index0, vlib_node_runtime_t *node,
-			  u32 next0, u32 thread_index,
+			  u32 next0, clib_thread_index_t thread_index,
 			  nat44_ei_session_t **p_s0);
 
 #ifndef CLIB_MARCH_VARIANT
@@ -494,7 +499,8 @@ u32
 nat44_ei_icmp_out2in (vlib_buffer_t *b0, ip4_header_t *ip0,
 		      icmp46_header_t *icmp0, u32 sw_if_index0,
 		      u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
-		      u32 thread_index, nat44_ei_session_t **p_s0)
+		      clib_thread_index_t thread_index,
+		      nat44_ei_session_t **p_s0)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
@@ -643,7 +649,8 @@ nat44_ei_icmp_out2in_slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0,
 				ip4_header_t *ip0, icmp46_header_t *icmp0,
 				u32 sw_if_index0, u32 rx_fib_index0,
 				vlib_node_runtime_t *node, u32 next0, f64 now,
-				u32 thread_index, nat44_ei_session_t **p_s0)
+				clib_thread_index_t thread_index,
+				nat44_ei_session_t **p_s0)
 {
   vlib_main_t *vm = vlib_get_main ();
 
@@ -692,7 +699,7 @@ VLIB_NODE_FN (nat44_ei_out2in_node)
   u32 n_left_from, *from;
   nat44_ei_main_t *nm = &nat44_ei_main;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat44_ei_main_per_thread_data_t *tnm = &nm->per_thread_data[thread_index];
 
   from = vlib_frame_vector_args (frame);

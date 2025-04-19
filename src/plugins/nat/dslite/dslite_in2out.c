@@ -32,8 +32,9 @@ static char *dslite_in2out_error_strings[] = {
 };
 
 static u32
-slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
-	   dslite_session_t ** sp, u32 next, u8 * error, u32 thread_index)
+slow_path (dslite_main_t *dm, dslite_session_key_t *in2out_key,
+	   dslite_session_t **sp, u32 next, u8 *error,
+	   clib_thread_index_t thread_index)
 {
   dslite_b4_t *b4;
   clib_bihash_kv_16_8_t b4_kv, b4_value;
@@ -180,9 +181,9 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 }
 
 static inline u32
-dslite_icmp_in2out (dslite_main_t * dm, ip6_header_t * ip6,
-		    ip4_header_t * ip4, dslite_session_t ** sp, u32 next,
-		    u8 * error, u32 thread_index)
+dslite_icmp_in2out (dslite_main_t *dm, ip6_header_t *ip6, ip4_header_t *ip4,
+		    dslite_session_t **sp, u32 next, u8 *error,
+		    clib_thread_index_t thread_index)
 {
   dslite_session_t *s = 0;
   icmp46_header_t *icmp = ip4_next_header (ip4);
@@ -253,7 +254,7 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   dslite_in2out_next_t next_index;
   u32 node_index;
   vlib_node_runtime_t *error_node;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   f64 now = vlib_time_now (vm);
   dslite_main_t *dm = &dslite_main;
 

@@ -75,7 +75,7 @@ typedef struct nat64_in2out_set_ctx_t_
 {
   vlib_buffer_t *b;
   vlib_main_t *vm;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } nat64_in2out_set_ctx_t;
 
 static inline u8
@@ -455,7 +455,7 @@ typedef struct unk_proto_st_walk_ctx_t_
   ip6_address_t dst_addr;
   ip4_address_t out_addr;
   u32 fib_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u8 proto;
 } unk_proto_st_walk_ctx_t;
 
@@ -642,9 +642,9 @@ nat64_in2out_unk_proto (vlib_main_t * vm, vlib_buffer_t * p, u8 l4_protocol,
 }
 
 static int
-nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
-				  ip6_header_t * ip6, u32 l4_offset,
-				  u32 thread_index)
+nat64_in2out_tcp_udp_hairpinning (vlib_main_t *vm, vlib_buffer_t *b,
+				  ip6_header_t *ip6, u32 l4_offset,
+				  clib_thread_index_t thread_index)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
@@ -774,8 +774,9 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static int
-nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
-			       ip6_header_t * ip6, u32 thread_index)
+nat64_in2out_icmp_hairpinning (vlib_main_t *vm, vlib_buffer_t *b,
+			       ip6_header_t *ip6,
+			       clib_thread_index_t thread_index)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
@@ -898,8 +899,9 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static int
-nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
-				    ip6_header_t * ip6, u32 thread_index)
+nat64_in2out_unk_proto_hairpinning (vlib_main_t *vm, vlib_buffer_t *b,
+				    ip6_header_t *ip6,
+				    clib_thread_index_t thread_index)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
@@ -1023,7 +1025,7 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, *from, *to_next;
   nat64_in2out_next_t next_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat64_main_t *nm = &nat64_main;
 
   from = vlib_frame_vector_args (frame);
@@ -1263,7 +1265,7 @@ typedef struct nat64_in2out_frag_set_ctx_t_
 {
   vlib_main_t *vm;
   u32 sess_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u16 l4_offset;
   u8 proto;
   u8 first_frag;
@@ -1317,7 +1319,7 @@ VLIB_NODE_FN (nat64_in2out_handoff_node) (vlib_main_t * vm,
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 do_handoff = 0, same_worker = 0;
 
   from = vlib_frame_vector_args (frame);

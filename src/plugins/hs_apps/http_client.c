@@ -22,7 +22,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u64 to_recv;
   u8 is_closed;
   hc_stats_t stats;
@@ -35,7 +35,7 @@ typedef struct
 typedef struct
 {
   hc_session_t *sessions;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   vlib_main_t *vlib_main;
   u8 *headers_buf;
   http_headers_ctx_t req_headers;
@@ -98,13 +98,13 @@ static hc_main_t hc_main;
 static hc_stats_t hc_stats;
 
 static inline hc_worker_t *
-hc_worker_get (u32 thread_index)
+hc_worker_get (clib_thread_index_t thread_index)
 {
   return &hc_main.wrk[thread_index];
 }
 
 static inline hc_session_t *
-hc_session_get (u32 session_index, u32 thread_index)
+hc_session_get (u32 session_index, clib_thread_index_t thread_index)
 {
   hc_worker_t *wrk = hc_worker_get (thread_index);
   wrk->vlib_main = vlib_get_main_by_index (thread_index);

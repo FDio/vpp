@@ -82,7 +82,7 @@ typedef struct
   ip4_address_t out_addr;
   u16 out_port;
   u32 fib_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u8 proto;
   u8 is_add;
   u8 done;
@@ -225,8 +225,8 @@ extern vlib_node_registration_t nat64_out2in_node;
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_pool_addr (u32 thread_index,
-			     ip4_address_t * addr, u32 vrf_id, u8 is_add);
+int nat64_add_del_pool_addr (clib_thread_index_t thread_index,
+			     ip4_address_t *addr, u32 vrf_id, u8 is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 pool, non-zero
@@ -316,8 +316,8 @@ int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
-				   ip4_address_t * addr, u16 * port,
-				   u32 thread_index);
+				   ip4_address_t *addr, u16 *port,
+				   clib_thread_index_t thread_index);
 
 /**
  * @brief Set UDP session timeout.

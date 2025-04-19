@@ -20,10 +20,12 @@
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
 
-extern void ip4_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+extern void ip4_neighbor_probe_dst (u32 sw_if_index,
+				    clib_thread_index_t thread_index,
 				    const ip4_address_t *dst);
 extern void ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm,
-				    u32 sw_if_index, u32 thread_index,
+				    u32 sw_if_index,
+				    clib_thread_index_t thread_index,
 				    const ip4_address_t *addr);
 
 always_inline vlib_buffer_t *

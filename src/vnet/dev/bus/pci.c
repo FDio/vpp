@@ -318,7 +318,8 @@ vnet_dev_pci_msix_add_handler (vlib_main_t *vm, vnet_dev_t *dev,
 
 void
 vnet_dev_pci_msix_set_polling_thread (vlib_main_t *vm, vnet_dev_t *dev,
-				      u16 line, u16 thread_index)
+				      u16 line,
+				      clib_thread_index_t thread_index)
 {
   vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
   u32 index;

@@ -211,9 +211,9 @@ int oct_crypto_enqueue_aead_aad_12_dec (vlib_main_t *vm,
 					vnet_crypto_async_frame_t *frame);
 int oct_crypto_enqueue_aead_aad_0_dec (vlib_main_t *vm,
 				       vnet_crypto_async_frame_t *frame);
-vnet_crypto_async_frame_t *oct_crypto_frame_dequeue (vlib_main_t *vm,
-						     u32 *nb_elts_processed,
-						     u32 *enqueue_thread_idx);
+vnet_crypto_async_frame_t *
+oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
+			  clib_thread_index_t *enqueue_thread_idx);
 int oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev);
 int oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev,
 		       oct_crypto_dev_t *ocd);

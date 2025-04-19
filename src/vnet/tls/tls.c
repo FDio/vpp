@@ -21,7 +21,7 @@
 static tls_main_t tls_main;
 tls_engine_vft_t *tls_vfts;
 
-void tls_disconnect (u32 ctx_handle, u32 thread_index);
+void tls_disconnect (u32 ctx_handle, clib_thread_index_t thread_index);
 
 void
 tls_disconnect_transport (tls_ctx_t * ctx)
@@ -684,7 +684,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 }
 
 void
-tls_disconnect (u32 ctx_handle, u32 thread_index)
+tls_disconnect (u32 ctx_handle, clib_thread_index_t thread_index)
 {
   tls_ctx_t *ctx;
 
@@ -820,7 +820,7 @@ tls_stop_listen (u32 lctx_index)
 }
 
 transport_connection_t *
-tls_connection_get (u32 ctx_index, u32 thread_index)
+tls_connection_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
   tls_ctx_t *ctx;
   ctx = tls_ctx_get_w_thread (ctx_index, thread_index);
@@ -959,7 +959,7 @@ u8 *
 format_tls_connection (u8 * s, va_list * args)
 {
   u32 ctx_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   tls_ctx_t *ctx;
 
@@ -1013,8 +1013,8 @@ format_tls_half_open (u8 * s, va_list * args)
 }
 
 static void
-tls_transport_endpoint_get (u32 ctx_handle, u32 thread_index,
-			    transport_endpoint_t * tep, u8 is_lcl)
+tls_transport_endpoint_get (u32 ctx_handle, clib_thread_index_t thread_index,
+			    transport_endpoint_t *tep, u8 is_lcl)
 {
   tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
   session_t *ts;
@@ -1179,7 +1179,7 @@ dtls_half_open_get (u32 ho_index)
 }
 
 static void
-dtls_cleanup_callback (u32 ctx_index, u32 thread_index)
+dtls_cleanup_callback (u32 ctx_index, clib_thread_index_t thread_index)
 {
   /* No op */
 }

@@ -1312,8 +1312,9 @@ nat44_ei_plugin_disable ()
 
 int
 nat44_ei_set_outside_address_and_port (nat44_ei_address_t *addresses,
-				       u32 thread_index, ip4_address_t addr,
-				       u16 port, nat_protocol_t protocol)
+				       clib_thread_index_t thread_index,
+				       ip4_address_t addr, u16 port,
+				       nat_protocol_t protocol)
 {
   nat44_ei_address_t *a = 0;
   u32 address_index;
@@ -1363,8 +1364,9 @@ nat44_ei_add_del_address_dpo (ip4_address_t addr, u8 is_add)
 
 void
 nat44_ei_free_outside_address_and_port (nat44_ei_address_t *addresses,
-					u32 thread_index, ip4_address_t *addr,
-					u16 port, nat_protocol_t protocol)
+					clib_thread_index_t thread_index,
+					ip4_address_t *addr, u16 port,
+					nat_protocol_t protocol)
 {
   nat44_ei_address_t *a;
   u32 address_index;
@@ -1386,7 +1388,7 @@ nat44_ei_free_outside_address_and_port (nat44_ei_address_t *addresses,
 
 void
 nat44_ei_free_session_data_v2 (nat44_ei_main_t *nm, nat44_ei_session_t *s,
-			       u32 thread_index, u8 is_ha)
+			       clib_thread_index_t thread_index, u8 is_ha)
 {
   clib_bihash_kv_8_8_t kv;
 
@@ -1429,7 +1431,7 @@ nat44_ei_free_session_data_v2 (nat44_ei_main_t *nm, nat44_ei_session_t *s,
 
 nat44_ei_user_t *
 nat44_ei_user_get_or_create (nat44_ei_main_t *nm, ip4_address_t *addr,
-			     u32 fib_index, u32 thread_index)
+			     u32 fib_index, clib_thread_index_t thread_index)
 {
   nat44_ei_user_t *u = 0;
   nat44_ei_user_key_t user_key;
@@ -1488,7 +1490,7 @@ nat44_ei_user_get_or_create (nat44_ei_main_t *nm, ip4_address_t *addr,
 
 nat44_ei_session_t *
 nat44_ei_session_alloc_or_recycle (nat44_ei_main_t *nm, nat44_ei_user_t *u,
-				   u32 thread_index, f64 now)
+				   clib_thread_index_t thread_index, f64 now)
 {
   nat44_ei_session_t *s;
   nat44_ei_main_per_thread_data_t *tnm = &nm->per_thread_data[thread_index];
@@ -1560,7 +1562,7 @@ nat44_ei_session_alloc_or_recycle (nat44_ei_main_t *nm, nat44_ei_user_t *u,
 
 void
 nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
-			    u32 thread_index, u8 is_ha)
+			    clib_thread_index_t thread_index, u8 is_ha)
 {
   clib_bihash_kv_8_8_t kv;
 
@@ -1597,7 +1599,8 @@ nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
 }
 
 static_always_inline void
-nat44_ei_user_del_sessions (nat44_ei_user_t *u, u32 thread_index)
+nat44_ei_user_del_sessions (nat44_ei_user_t *u,
+			    clib_thread_index_t thread_index)
 {
   dlist_elt_t *elt;
   nat44_ei_session_t *s;
@@ -1735,11 +1738,11 @@ nat44_ei_get_in2out_worker_index (ip4_header_t *ip0, u32 rx_fib_index0,
   return next_worker_index;
 }
 
-u32
+clib_thread_index_t
 nat44_ei_get_thread_idx_by_port (u16 e_port)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
-  u32 thread_idx = nm->num_workers;
+  clib_thread_index_t thread_idx = nm->num_workers;
   if (nm->num_workers > 1)
     {
       thread_idx = nm->first_worker_index +
@@ -1834,9 +1837,9 @@ nat44_ei_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip0,
 
 static int
 nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
-			   u32 thread_index, nat_protocol_t proto,
-			   ip4_address_t s_addr, ip4_address_t *addr,
-			   u16 *port, u16 port_per_thread,
+			   clib_thread_index_t thread_index,
+			   nat_protocol_t proto, ip4_address_t s_addr,
+			   ip4_address_t *addr, u16 *port, u16 port_per_thread,
 			   u32 snat_thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1943,9 +1946,10 @@ nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
 
 static int
 nat44_ei_alloc_range_cb (nat44_ei_address_t *addresses, u32 fib_index,
-			 u32 thread_index, nat_protocol_t proto,
-			 ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
-			 u16 port_per_thread, u32 snat_thread_index)
+			 clib_thread_index_t thread_index,
+			 nat_protocol_t proto, ip4_address_t s_addr,
+			 ip4_address_t *addr, u16 *port, u16 port_per_thread,
+			 u32 snat_thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_address_t *a = addresses;
@@ -1980,7 +1984,7 @@ exhausted:
 
 static int
 nat44_ei_alloc_mape_cb (nat44_ei_address_t *addresses, u32 fib_index,
-			u32 thread_index, nat_protocol_t proto,
+			clib_thread_index_t thread_index, nat_protocol_t proto,
 			ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
 			u16 port_per_thread, u32 snat_thread_index)
 {
@@ -2051,7 +2055,7 @@ nat44_ei_set_alloc_mape (u16 psid, u16 psid_offset, u16 psid_length)
 
 void
 nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
-			 u32 thread_index)
+			 clib_thread_index_t thread_index)
 {
   nat44_ei_main_per_thread_data_t *tnm =
     vec_elt_at_index (nm->per_thread_data, thread_index);
@@ -2100,7 +2104,7 @@ nat44_ei_del_session (nat44_ei_main_t *nm, ip4_address_t *addr, u16 port,
     {
       // this is called from API/CLI, so the world is stopped here
       // it's safe to manipulate arbitrary per-thread data
-      u32 thread_index = nat_value_get_thread_index (&value);
+      clib_thread_index_t thread_index = nat_value_get_thread_index (&value);
       tnm = vec_elt_at_index (nm->per_thread_data, thread_index);
       u32 session_index = nat_value_get_session_index (&value);
       if (pool_is_free_index (tnm->sessions, session_index))
@@ -2147,7 +2151,7 @@ nat44_ei_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len, u32 sw_if_index,
 int
 nat44_ei_reserve_port (ip4_address_t addr, u16 port, nat_protocol_t proto)
 {
-  u32 ti = nat44_ei_get_thread_idx_by_port (port);
+  clib_thread_index_t ti = nat44_ei_get_thread_idx_by_port (port);
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_address_t *a = 0;
   int i;
@@ -2177,7 +2181,7 @@ nat44_ei_reserve_port (ip4_address_t addr, u16 port, nat_protocol_t proto)
 int
 nat44_ei_free_port (ip4_address_t addr, u16 port, nat_protocol_t proto)
 {
-  u32 ti = nat44_ei_get_thread_idx_by_port (port);
+  clib_thread_index_t ti = nat44_ei_get_thread_idx_by_port (port);
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_address_t *a = 0;
   int i;
