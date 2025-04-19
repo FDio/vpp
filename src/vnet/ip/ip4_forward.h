@@ -59,7 +59,7 @@ ip4_lookup_inline (vlib_main_t * vm,
   ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left, *from;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;

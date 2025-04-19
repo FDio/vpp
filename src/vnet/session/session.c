@@ -36,7 +36,8 @@ typedef enum
 } session_evt_family_t;
 
 static inline int
-session_send_evt_to_thread (void *data, void *args, u32 thread_index,
+session_send_evt_to_thread (void *data, void *args,
+			    clib_thread_index_t thread_index,
 			    session_evt_type_t evt_type,
 			    session_evt_family_t family)
 {
@@ -105,7 +106,8 @@ session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 
 /* Deprecated, use session_program_* functions */
 int
-session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
+session_send_io_evt_to_thread_custom (void *data,
+				      clib_thread_index_t thread_index,
 				      session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread (data, 0, thread_index, evt_type,
@@ -154,15 +156,16 @@ session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 }
 
 void
-session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
-				      void *rpc_args)
+session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index,
+				      void *fp, void *rpc_args)
 {
   session_send_evt_to_thread (fp, rpc_args, thread_index, SESSION_CTRL_EVT_RPC,
 			      SESSION_EVT_RPC);
 }
 
 void
-session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
+session_send_rpc_evt_to_thread (clib_thread_index_t thread_index, void *fp,
+				void *rpc_args)
 {
   if (thread_index != vlib_get_thread_index ())
     session_send_rpc_evt_to_thread_force (thread_index, fp, rpc_args);
@@ -225,7 +228,7 @@ sesssion_reschedule_tx (transport_connection_t * tc)
 static void
 session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   session_evt_elt_t *elt;
   session_worker_t *wrk;
 
@@ -247,7 +250,7 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
 }
 
 session_t *
-session_alloc (u32 thread_index)
+session_alloc (clib_thread_index_t thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
@@ -466,7 +469,7 @@ session_t *
 session_alloc_for_connection (transport_connection_t * tc)
 {
   session_t *s;
-  u32 thread_index = tc->thread_index;
+  clib_thread_index_t thread_index = tc->thread_index;
 
   ASSERT (thread_index == vlib_get_thread_index ()
 	  || transport_protocol_is_cl (tc->proto));
@@ -638,7 +641,7 @@ session_dequeue_notify (session_t *s)
  */
 void
 session_main_flush_enqueue_events (transport_proto_t transport_proto,
-				   u32 thread_index)
+				   clib_thread_index_t thread_index)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   session_handle_t *handles;
@@ -772,7 +775,7 @@ session_switch_pool_closed_rpc (void *arg)
 typedef struct _session_switch_pool_args
 {
   u32 session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 new_thread_index;
   u32 new_session_index;
 } session_switch_pool_args_t;
@@ -1064,8 +1067,8 @@ session_stream_accept_notify (transport_connection_t * tc)
  * Accept a stream session. Optionally ping the server by callback.
  */
 int
-session_stream_accept (transport_connection_t * tc, u32 listener_index,
-		       u32 thread_index, u8 notify)
+session_stream_accept (transport_connection_t *tc, u32 listener_index,
+		       clib_thread_index_t thread_index, u8 notify)
 {
   session_t *s;
   int rv;
@@ -1099,8 +1102,8 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
-session_dgram_accept (transport_connection_t * tc, u32 listener_index,
-		      u32 thread_index)
+session_dgram_accept (transport_connection_t *tc, u32 listener_index,
+		      clib_thread_index_t thread_index)
 {
   app_worker_t *app_wrk;
   session_t *s;

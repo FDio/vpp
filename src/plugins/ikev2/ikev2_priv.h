@@ -661,7 +661,7 @@ clib_error_t *ikev2_profile_natt_disable (u8 * name);
 static_always_inline ikev2_main_per_thread_data_t *
 ikev2_get_per_thread_data ()
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   return vec_elt_at_index (ikev2_main.per_thread_data, thread_index);
 }
 #endif /* __included_ikev2_priv_h__ */

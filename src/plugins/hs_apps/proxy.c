@@ -112,7 +112,8 @@ proxy_do_connect (vnet_connect_args_t *a)
 static void
 proxy_handle_connects_rpc (void *args)
 {
-  u32 thread_index = pointer_to_uword (args), n_connects = 0, n_pending;
+  clib_thread_index_t thread_index = pointer_to_uword (args), n_connects = 0,
+		      n_pending;
   proxy_worker_t *wrk;
   u32 max_connects;
 

@@ -55,7 +55,7 @@ static uword
 vnet_dev_rt_mgmt_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlib_frame_t *frame)
 {
-  u16 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vnet_dev_rt_op_t *op, *ops = __atomic_load_n (&rt_ops, __ATOMIC_ACQUIRE);
   u32 n_pending = 0;
   uword rv = 0;

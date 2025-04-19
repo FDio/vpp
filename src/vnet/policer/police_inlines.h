@@ -74,7 +74,7 @@ vnet_policer_police (vlib_main_t *vm, vlib_buffer_t *b, u32 policer_index,
 
   if (handoff)
     {
-      if (PREDICT_FALSE (pol->thread_index == ~0))
+      if (PREDICT_FALSE (pol->thread_index == CLIB_INVALID_THREAD_INDEX))
 	/*
 	 * This is the first packet to use this policer. Set the
 	 * thread index in the policer to this thread and any

@@ -38,7 +38,7 @@ typedef struct hss_session_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
   /** rx thread index */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   /** vpp session index, handle */
   u32 vpp_session_index;
   session_handle_t vpp_session_handle;
@@ -77,7 +77,7 @@ typedef struct hss_session_handle_
     struct
     {
       u32 session_index;
-      u32 thread_index;
+      clib_thread_index_t thread_index;
     };
     u64 as_u64;
   };
@@ -219,7 +219,8 @@ void hss_register_url_handler (hss_url_handler_fn fp, const char *url,
 			       http_req_method_t type);
 void hss_session_send_data (hss_url_handler_args_t *args);
 void hss_builtinurl_json_handlers_init (void);
-hss_session_t *hss_session_get (u32 thread_index, u32 hs_index);
+hss_session_t *hss_session_get (clib_thread_index_t thread_index,
+				u32 hs_index);
 
 #endif /* __included_http_static_h__ */
 

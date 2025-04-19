@@ -41,7 +41,7 @@ typedef enum
 
 typedef struct
 {
-  u16 thread_index;
+  clib_thread_index_t thread_index;
   u8 level; /* vlib_log_level_t */
   vlib_log_class_t class;
   f64 timestamp;

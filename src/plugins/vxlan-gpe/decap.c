@@ -210,7 +210,7 @@ vxlan_gpe_input (vlib_main_t * vm,
   vxlan4_gpe_tunnel_cache_t last4;
   vxlan6_gpe_tunnel_cache_t last6;
   u32 pkts_decapsulated = 0;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   if (is_ip4)

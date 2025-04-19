@@ -463,7 +463,8 @@ cryptodev_post_dequeue (void *frame, u32 index, u8 is_op_success)
 }
 
 static_always_inline u8
-cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *enqueue_thread_idx)
+cryptodev_raw_dequeue_internal (vlib_main_t *vm,
+				clib_thread_index_t *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
@@ -537,7 +538,7 @@ cryptodev_enqueue_frame_to_qat (vlib_main_t *vm,
 
 static_always_inline vnet_crypto_async_frame_t *
 cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-		       u32 *enqueue_thread_idx)
+		       clib_thread_index_t *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_main_t *cm = &crypto_main;

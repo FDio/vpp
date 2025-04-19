@@ -246,7 +246,8 @@ total_drops (sflow_main_t *smp)
 {
   // sum sendmsg and worker-fifo drops
   u32 all_drops = smp->psample_send_drops;
-  for (u32 thread_index = 0; thread_index < smp->total_threads; thread_index++)
+  for (clib_thread_index_t thread_index = 0; thread_index < smp->total_threads;
+       thread_index++)
     {
       sflow_per_thread_data_t *sfwk =
 	vec_elt_at_index (smp->per_thread_data, thread_index);
@@ -321,8 +322,8 @@ read_worker_fifos (sflow_main_t *smp)
   for (; batch < SFLOW_READ_BATCH; batch++)
     {
       u32 psample_send = 0, psample_send_fail = 0;
-      for (u32 thread_index = 0; thread_index < smp->total_threads;
-	   thread_index++)
+      for (clib_thread_index_t thread_index = 0;
+	   thread_index < smp->total_threads; thread_index++)
 	{
 	  sflow_per_thread_data_t *sfwk =
 	    vec_elt_at_index (smp->per_thread_data, thread_index);
@@ -388,7 +389,8 @@ read_node_counters (sflow_main_t *smp, sflow_err_ctrs_t *ctrs)
 {
   for (u32 ec = 0; ec < SFLOW_N_ERROR; ec++)
     ctrs->counters[ec] = 0;
-  for (u32 thread_index = 0; thread_index < smp->total_threads; thread_index++)
+  for (clib_thread_index_t thread_index = 0; thread_index < smp->total_threads;
+       thread_index++)
     {
       sflow_per_thread_data_t *sfwk =
 	vec_elt_at_index (smp->per_thread_data, thread_index);
@@ -487,7 +489,8 @@ sflow_set_worker_sampling_state (sflow_main_t *smp)
   vlib_thread_main_t *tm = &vlib_thread_main;
   smp->total_threads = 1 + tm->n_threads;
   vec_validate (smp->per_thread_data, smp->total_threads);
-  for (u32 thread_index = 0; thread_index < smp->total_threads; thread_index++)
+  for (clib_thread_index_t thread_index = 0; thread_index < smp->total_threads;
+       thread_index++)
     {
       sflow_per_thread_data_t *sfwk =
 	vec_elt_at_index (smp->per_thread_data, thread_index);

@@ -461,7 +461,8 @@ error_exit:
 }
 
 static_always_inline u8
-cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *enqueue_thread_idx)
+cryptodev_frame_dequeue_internal (vlib_main_t *vm,
+				  clib_thread_index_t *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
@@ -563,7 +564,7 @@ cryptodev_enqueue_frame (vlib_main_t *vm, cryptodev_cache_ring_elt_t *ring_elt)
 
 static_always_inline vnet_crypto_async_frame_t *
 cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			 u32 *enqueue_thread_idx)
+			 clib_thread_index_t *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -670,7 +671,7 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
 
   vec_foreach (cet, cmt->per_thread_data)
     {
-      u32 thread_index = cet - cmt->per_thread_data;
+      clib_thread_index_t thread_index = cet - cmt->per_thread_data;
       u32 numa = vlib_get_main_by_index (thread_index)->numa_node;
       name = format (0, "vpp_cop_pool_%u_%u", numa, thread_index);
       cet->cop_pool = rte_mempool_create (

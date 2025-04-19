@@ -698,7 +698,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   vlib_buffer_t *lb;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vnet_crypto_op_t **crypto_ops;
   const u16 drop_next = WG_INPUT_NEXT_PUNT;
   message_type_t header_type;

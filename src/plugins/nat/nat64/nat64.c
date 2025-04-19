@@ -366,8 +366,8 @@ nat64_free_hash ()
 }
 
 int
-nat64_add_del_pool_addr (u32 thread_index,
-			 ip4_address_t * addr, u32 vrf_id, u8 is_add)
+nat64_add_del_pool_addr (clib_thread_index_t thread_index, ip4_address_t *addr,
+			 u32 vrf_id, u8 is_add)
 {
   nat64_main_t *nm = &nat64_main;
   nat64_address_t *a = 0;
@@ -660,13 +660,11 @@ nat64_random_port (u16 min, u16 max)
 }
 
 static_always_inline int
-nat64_alloc_addr_and_port_default (nat64_address_t * addresses,
-				   u32 fib_index,
-				   u32 thread_index,
-				   nat_protocol_t proto,
-				   ip4_address_t * addr,
-				   u16 * port,
-				   u16 port_per_thread, u32 nat_thread_index)
+nat64_alloc_addr_and_port_default (nat64_address_t *addresses, u32 fib_index,
+				   clib_thread_index_t thread_index,
+				   nat_protocol_t proto, ip4_address_t *addr,
+				   u16 *port, u16 port_per_thread,
+				   u32 nat_thread_index)
 {
   int i;
   nat64_address_t *a, *ga = 0;
@@ -748,8 +746,8 @@ nat64_alloc_addr_and_port_default (nat64_address_t * addresses,
 
 int
 nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
-			       ip4_address_t * addr, u16 * port,
-			       u32 thread_index)
+			       ip4_address_t *addr, u16 *port,
+			       clib_thread_index_t thread_index)
 {
   nat64_main_t *nm = &nat64_main;
   u32 worker_index = 0;
@@ -771,7 +769,7 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
 			      u16 port, u8 protocol)
 {
   nat64_main_t *nm = &nat64_main;
-  u32 thread_index = db - nm->db;
+  clib_thread_index_t thread_index = db - nm->db;
   nat_protocol_t proto = ip_proto_to_nat_proto (protocol);
   u16 port_host_byte_order = clib_net_to_host_u16 (port);
   nat64_address_t *a;
@@ -809,7 +807,7 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			    vlib_frame_t * f)
 {
   nat64_main_t *nm = &nat64_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat64_db_t *db = &nm->db[thread_index];
   nat64_static_bib_to_update_t *static_bib;
   nat64_db_bib_entry_t *bibe;
@@ -877,7 +875,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   ip46_address_t addr;
   int i;
   nat64_address_t *a;
-  u32 thread_index = 0;
+  clib_thread_index_t thread_index = 0;
   nat64_db_t *db;
   nat64_static_bib_to_update_t *static_bib;
   vlib_main_t *worker_vm;
@@ -1393,7 +1391,7 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 			     vlib_frame_t * f)
 {
   nat64_main_t *nm = &nat64_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   nat64_db_t *db;
   u32 now;
 

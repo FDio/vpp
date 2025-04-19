@@ -231,7 +231,7 @@ typedef struct
   u16 last_kick;
   u8 first_kick;
   u32 queue_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } vhost_user_vring_t;
 
 #define VHOST_USER_EVENT_START_TIMER 1

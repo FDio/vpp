@@ -31,7 +31,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 rx_offset;
   u32 vpp_session_index;
   u64 to_recv;
@@ -41,7 +41,7 @@ typedef struct
 typedef struct
 {
   hcc_session_t *sessions;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } hcc_worker_t;
 
 typedef struct
@@ -76,7 +76,7 @@ typedef enum
 static hcc_main_t hcc_main;
 
 static hcc_worker_t *
-hcc_worker_get (u32 thread_index)
+hcc_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (hcc_main.wrk, thread_index);
 }
@@ -92,7 +92,7 @@ hcc_session_alloc (hcc_worker_t *wrk)
 }
 
 static hcc_session_t *
-hcc_session_get (u32 hs_index, u32 thread_index)
+hcc_session_get (u32 hs_index, clib_thread_index_t thread_index)
 {
   hcc_worker_t *wrk = hcc_worker_get (thread_index);
   return pool_elt_at_index (wrk->sessions, hs_index);

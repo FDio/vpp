@@ -115,16 +115,16 @@ fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
 }
 
 always_inline fa_session_t *
-get_session_ptr_no_check (acl_main_t * am, u16 thread_index,
+get_session_ptr_no_check (acl_main_t *am, clib_thread_index_t thread_index,
 			  u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   return pool_elt_at_index (pw->fa_sessions_pool, session_index);
 }
 
-
 always_inline fa_session_t *
-get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
+get_session_ptr (acl_main_t *am, clib_thread_index_t thread_index,
+		 u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
@@ -135,7 +135,8 @@ get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
 }
 
 always_inline int
-is_valid_session_ptr (acl_main_t * am, u16 thread_index, fa_session_t * sess)
+is_valid_session_ptr (acl_main_t *am, clib_thread_index_t thread_index,
+		      fa_session_t *sess)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   return ((sess != 0)
@@ -470,10 +471,10 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 	  am->fa_conn_table_max_entries);
 }
 
-
 always_inline void
-acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
-			    u32 sw_if_index, u64 now)
+acl_fa_try_recycle_session (acl_main_t *am, int is_input,
+			    clib_thread_index_t thread_index, u32 sw_if_index,
+			    u64 now)
 {
   /* try to recycle a TCP transient session */
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];

@@ -109,13 +109,11 @@ nat_random_port (u32 * random_seed, u16 min, u16 max)
 }
 
 int
-nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
-					u32 fib_index,
-					u32 thread_index,
+nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t *pool, u32 fib_index,
+					clib_thread_index_t thread_index,
 					u32 nat_thread_index,
-					u16 port_per_thread,
-					u16 protocol,
-					nat_ip4_addr_port_t * out)
+					u16 port_per_thread, u16 protocol,
+					nat_ip4_addr_port_t *out)
 {
   nat_ip4_pool_addr_t *a, *ga = 0;
   u32 i;
@@ -192,12 +190,10 @@ nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
 }
 
 int
-nat_alloc_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			     u32 fib_index,
-			     u32 thread_index,
-			     u32 nat_thread_index,
-			     u16 port_per_thread,
-			     u16 protocol, nat_ip4_addr_port_t * out)
+nat_alloc_ip4_addr_and_port (nat_ip4_pool_t *pool, u32 fib_index,
+			     clib_thread_index_t thread_index,
+			     u32 nat_thread_index, u16 port_per_thread,
+			     u16 protocol, nat_ip4_addr_port_t *out)
 {
   return pool->alloc_addr_and_port_cb (pool,
 				       fib_index,
@@ -208,9 +204,9 @@ nat_alloc_ip4_addr_and_port (nat_ip4_pool_t * pool,
 
 // TODO: consider using standard u16 port and ip4_address_t as input ?
 int
-nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			    u32 thread_index,
-			    u16 protocol, nat_ip4_addr_port_t * addr_port)
+nat_free_ip4_addr_and_port (nat_ip4_pool_t *pool,
+			    clib_thread_index_t thread_index, u16 protocol,
+			    nat_ip4_addr_port_t *addr_port)
 {
   nat_ip4_pool_addr_t *a = 0;
   u32 i;

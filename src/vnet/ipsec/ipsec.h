@@ -361,8 +361,9 @@ ipsec_spinlock_unlock (i32 *lock)
  */
 always_inline void
 ipsec_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
-		      u32 thread_index, u32 err, u32 ipsec_sa_err, u16 index,
-		      u16 *nexts, u16 drop_next, u32 sa_index)
+		      clib_thread_index_t thread_index, u32 err,
+		      u32 ipsec_sa_err, u16 index, u16 *nexts, u16 drop_next,
+		      u32 sa_index)
 {
   nexts[index] = drop_next;
   b->error = node->errors[err];

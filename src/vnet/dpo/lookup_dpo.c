@@ -290,7 +290,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
                        int table_from_interface)
 {
     u32 n_left_from, next_index, * from, * to_next;
-    u32 thread_index = vlib_get_thread_index();
+    clib_thread_index_t thread_index = vlib_get_thread_index ();
     vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
 
     from = vlib_frame_vector_args (from_frame);
@@ -647,7 +647,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 {
     vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
     u32 n_left_from, next_index, * from, * to_next;
-    u32 thread_index = vlib_get_thread_index();
+    clib_thread_index_t thread_index = vlib_get_thread_index ();
 
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
@@ -989,7 +989,7 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
                        int table_from_interface)
 {
     u32 n_left_from, next_index, * from, * to_next;
-    u32 thread_index = vlib_get_thread_index();
+    clib_thread_index_t thread_index = vlib_get_thread_index ();
     vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
 
     from = vlib_frame_vector_args (from_frame);

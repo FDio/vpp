@@ -173,7 +173,7 @@ srv6_localsid_sample_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   while (n_left_from > 0)
   {

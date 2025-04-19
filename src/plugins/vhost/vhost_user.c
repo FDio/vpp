@@ -347,7 +347,7 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
   u16 q = vui->vrings[qid].qid;
   u32 queue_index = vui->vrings[qid].queue_index;
   u32 mode = vui->vrings[qid].mode;
-  u32 thread_index = vui->vrings[qid].thread_index;
+  clib_thread_index_t thread_index = vui->vrings[qid].thread_index;
   vhost_user_vring_init (vui, qid);
   vui->vrings[qid].qid = q;
   vui->vrings[qid].queue_index = queue_index;
@@ -1441,7 +1441,7 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
     vhost_user_vring_t *txvq = &vui->vrings[qid];
 
     if ((txvq->mode == VNET_HW_IF_RX_MODE_POLLING) &&
-	(txvq->thread_index != ~0))
+	(txvq->thread_index != CLIB_INVALID_THREAD_INDEX))
       {
 	vhost_cpu_t *cpu = vec_elt_at_index (vum->cpus, txvq->thread_index);
 	ASSERT (cpu->polling_q_count != 0);

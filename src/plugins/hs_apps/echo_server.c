@@ -40,7 +40,7 @@ typedef struct
   es_session_t *sessions;
   u8 *rx_buf; /**< Per-thread RX buffer */
   svm_msg_q_t *vpp_event_queue;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } es_worker_t;
 
 typedef struct
@@ -87,7 +87,7 @@ echo_server_main_t echo_server_main;
 #define es_cli(_fmt, _args...) vlib_cli_output (vm, _fmt, ##_args)
 
 static inline es_worker_t *
-es_worker_get (u32 thread_index)
+es_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (echo_server_main.wrk, thread_index);
 }
@@ -277,7 +277,7 @@ es_wrk_cleanup_sessions (void *args)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = {}, *a = &_a;
-  u32 thread_index = pointer_to_uword (args);
+  clib_thread_index_t thread_index = pointer_to_uword (args);
   es_session_t *es;
   es_worker_t *wrk;
 
@@ -373,7 +373,7 @@ echo_server_rx_callback (session_t * s)
   int actual_transfer;
   svm_fifo_t *tx_fifo, *rx_fifo;
   echo_server_main_t *esm = &echo_server_main;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   es_worker_t *wrk;
   es_session_t *es;
 

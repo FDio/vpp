@@ -29,7 +29,7 @@ typedef struct ec_session_
   foreach_app_session_field
 #undef _
     u32 vpp_session_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u64 bytes_to_send;
   u64 bytes_sent;
   u64 bytes_to_receive;
@@ -45,7 +45,7 @@ typedef struct ec_worker_
   u32 *conn_indices;		/**< sessions handled by worker */
   u32 *conns_this_batch;	/**< sessions handled in batch */
   svm_msg_q_t *vpp_event_queue; /**< session layer worker mq */
-  u32 thread_index;		/**< thread index for worker */
+  clib_thread_index_t thread_index; /**< thread index for worker */
 } ec_worker_t;
 
 typedef struct

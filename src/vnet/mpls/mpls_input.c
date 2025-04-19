@@ -75,7 +75,7 @@ mpls_input_inline (vlib_main_t * vm,
 {
   u32 n_left_from, next_index, * from, * to_next;
   mpls_main_t * mm = &mpls_main;
-  u32 thread_index = vlib_get_thread_index();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   vlib_simple_counter_main_t * cm;
   vnet_main_t * vnm = vnet_get_main();
 

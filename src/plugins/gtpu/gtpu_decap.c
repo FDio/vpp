@@ -85,7 +85,7 @@ gtpu_input (vlib_main_t * vm,
   gtpu4_tunnel_key_t last_key4;
   gtpu6_tunnel_key_t last_key6;
   u32 pkts_decapsulated = 0;
-  u32 thread_index = vlib_get_thread_index();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   if (is_ip4)
@@ -1838,7 +1838,7 @@ gtpu_flow_input (vlib_main_t * vm,
   vnet_main_t * vnm = gtm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_decapsulated = 0;
-  u32 thread_index = vlib_get_thread_index();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u8 ip_err0, ip_err1, udp_err0, udp_err1, csum_err0, csum_err1;
 

@@ -66,10 +66,9 @@ nat64_db_free (nat64_db_t * db)
 }
 
 nat64_db_bib_entry_t *
-nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
-			   ip6_address_t * in_addr,
-			   ip4_address_t * out_addr, u16 in_port,
-			   u16 out_port, u32 fib_index, u8 proto,
+nat64_db_bib_entry_create (clib_thread_index_t thread_index, nat64_db_t *db,
+			   ip6_address_t *in_addr, ip4_address_t *out_addr,
+			   u16 in_port, u16 out_port, u32 fib_index, u8 proto,
 			   u8 is_static)
 {
   nat64_db_bib_entry_t *bibe;
@@ -139,8 +138,8 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
 }
 
 void
-nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
-			 nat64_db_bib_entry_t * bibe)
+nat64_db_bib_entry_free (clib_thread_index_t thread_index, nat64_db_t *db,
+			 nat64_db_bib_entry_t *bibe)
 {
   nat64_db_bib_entry_key_t bibe_key;
   clib_bihash_kv_24_8_t kv;
@@ -366,10 +365,9 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
 }
 
 nat64_db_st_entry_t *
-nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
-			  nat64_db_bib_entry_t * bibe,
-			  ip6_address_t * in_r_addr,
-			  ip4_address_t * out_r_addr, u16 r_port)
+nat64_db_st_entry_create (clib_thread_index_t thread_index, nat64_db_t *db,
+			  nat64_db_bib_entry_t *bibe, ip6_address_t *in_r_addr,
+			  ip4_address_t *out_r_addr, u16 r_port)
 {
   nat64_db_st_entry_t *ste;
   nat64_db_bib_entry_t *bib;
@@ -459,8 +457,8 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
 }
 
 void
-nat64_db_st_entry_free (u32 thread_index,
-			nat64_db_t * db, nat64_db_st_entry_t * ste)
+nat64_db_st_entry_free (clib_thread_index_t thread_index, nat64_db_t *db,
+			nat64_db_st_entry_t *ste)
 {
   nat64_db_st_entry_t *st;
   nat64_db_bib_entry_t *bib, *bibe;
@@ -629,7 +627,8 @@ nat64_db_st_entry_by_index (nat64_db_t * db, u8 proto, u32 ste_index)
 }
 
 void
-nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
+nad64_db_st_free_expired (clib_thread_index_t thread_index, nat64_db_t *db,
+			  u32 now)
 {
   u32 *ste_to_be_free = 0, *ste_index;
   nat64_db_st_entry_t *st, *ste;
@@ -661,8 +660,8 @@ nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
 }
 
 void
-nat64_db_free_out_addr (u32 thread_index,
-			nat64_db_t * db, ip4_address_t * out_addr)
+nat64_db_free_out_addr (clib_thread_index_t thread_index, nat64_db_t *db,
+			ip4_address_t *out_addr)
 {
   u32 *ste_to_be_free = 0, *ste_index;
   nat64_db_st_entry_t *st, *ste;

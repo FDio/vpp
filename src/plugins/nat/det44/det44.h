@@ -244,26 +244,24 @@ int snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
 		      ip4_address_t * out_addr, u8 out_plen, int is_add);
 
 /* icmp session match functions */
-u32 icmp_match_out2in_det (vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
-u32 icmp_match_in2out_det (vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
-u32 det44_icmp_in2out (vlib_buffer_t * b0, ip4_header_t * ip0,
-		       icmp46_header_t * icmp0, u32 sw_if_index0,
-		       u32 rx_fib_index0, vlib_node_runtime_t * node,
-		       u32 next0, u32 thread_index, void *d, void *e);
-u32 det44_icmp_out2in (vlib_buffer_t * b0, ip4_header_t * ip0,
-		       icmp46_header_t * icmp0, u32 sw_if_index0,
-		       u32 rx_fib_index0, vlib_node_runtime_t * node,
-		       u32 next0, u32 thread_index, void *d, void *e);
+u32 icmp_match_out2in_det (vlib_node_runtime_t *node,
+			   clib_thread_index_t thread_index, vlib_buffer_t *b0,
+			   ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			   u32 *fib_index, nat_protocol_t *proto, void *d,
+			   void *e, u8 *dont_translate);
+u32 icmp_match_in2out_det (vlib_node_runtime_t *node,
+			   clib_thread_index_t thread_index, vlib_buffer_t *b0,
+			   ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			   u32 *fib_index, nat_protocol_t *proto, void *d,
+			   void *e, u8 *dont_translate);
+u32 det44_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
+		       icmp46_header_t *icmp0, u32 sw_if_index0,
+		       u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
+		       clib_thread_index_t thread_index, void *d, void *e);
+u32 det44_icmp_out2in (vlib_buffer_t *b0, ip4_header_t *ip0,
+		       icmp46_header_t *icmp0, u32 sw_if_index0,
+		       u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
+		       clib_thread_index_t thread_index, void *d, void *e);
 
 static_always_inline int
 is_addr_in_net (ip4_address_t * addr, ip4_address_t * net, u8 plen)
@@ -375,9 +373,9 @@ snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
 }
 
 static_always_inline snat_det_session_t *
-snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
-		     ip4_address_t * in_addr, u16 in_port,
-		     snat_det_out_key_t * out)
+snat_det_ses_create (clib_thread_index_t thread_index, snat_det_map_t *dm,
+		     ip4_address_t *in_addr, u16 in_port,
+		     snat_det_out_key_t *out)
 {
   u32 user_offset;
   u16 i;

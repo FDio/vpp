@@ -108,7 +108,7 @@ u8 *format_lb_main (u8 * s, va_list * args)
   s = format(s, " #vips: %u\n", pool_elts(lbm->vips));
   s = format(s, " #ass: %u\n", pool_elts(lbm->ass) - 1);
 
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
     lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
     if (h) {
@@ -764,7 +764,7 @@ next:
 int
 lb_flush_vip_as (u32 vip_index, u32 as_index)
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   vlib_thread_main_t *tm = vlib_get_thread_main();
   lb_main_t *lbm = &lb_main;
 

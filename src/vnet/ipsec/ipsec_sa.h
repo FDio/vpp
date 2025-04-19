@@ -157,7 +157,7 @@ typedef struct
   u8 cipher_iv_size;
   u8 integ_icv_size;
   u8 udp_sz;
-  u16 thread_index;
+  clib_thread_index_t thread_index;
   u32 salt;
   u64 seq64;
   u16 async_op_id;
@@ -187,7 +187,7 @@ typedef struct
   u8 integ_icv_size;
   ip_dscp_t t_dscp;
   tunnel_encap_decap_flags_t tunnel_flags;
-  u16 thread_index;
+  clib_thread_index_t thread_index;
   u16 async_op_id;
   u32 salt;
   u32 spi_be;
@@ -687,8 +687,9 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_inb_rt_t *irt, u32 window_size,
  * the branch cost.
  */
 always_inline u64
-ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt, u32 thread_index,
-			      u32 seq, u32 hi_seq)
+ipsec_sa_anti_replay_advance (ipsec_sa_inb_rt_t *irt,
+			      clib_thread_index_t thread_index, u32 seq,
+			      u32 hi_seq)
 {
   u64 n_lost = 0;
   u32 window_size = irt->anti_replay_window_size;

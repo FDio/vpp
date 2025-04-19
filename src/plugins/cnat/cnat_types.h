@@ -192,7 +192,7 @@ typedef struct cnat_timestamp_mpool_t_
 typedef struct cnat_node_ctx_
 {
   f64 now;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   ip_address_family_t af;
   u8 do_trace;
 } cnat_node_ctx_t;

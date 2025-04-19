@@ -340,8 +340,9 @@ dpdk_process_lro_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
 }
 
 static_always_inline u32
-dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
-		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
+dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
+		   vlib_node_runtime_t *node, clib_thread_index_t thread_index,
+		   u16 queue_id)
 {
   uword n_rx_packets = 0, n_rx_bytes;
   dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, queue_id);
@@ -543,7 +544,7 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
   vnet_hw_if_rxq_poll_vector_t *pv;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   /*
    * Poll all devices on this cpu for input/interrupts.

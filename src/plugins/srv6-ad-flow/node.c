@@ -583,7 +583,7 @@ srv6_ad_flow_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   ip6_sr_main_t *srm = &sr_main;
   f64 now = vlib_time_now (vm);
   u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

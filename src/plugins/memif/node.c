@@ -504,7 +504,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left_to_next;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   vlib_buffer_t *buffer_ptrs[MEMIF_RX_VECTOR_SZ];
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd =
     vec_elt_at_index (mm->per_thread_data, thread_index);
   u16 cur_slot, ring_size, n_slots, mask;
@@ -763,7 +763,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 slot, s0;
   memif_desc_t *d0;
   vlib_buffer_t *b0, *b1, *b2, *b3;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
   u16 cur_slot, last_slot, ring_size, n_slots, mask, head;
@@ -1061,7 +1061,7 @@ CLIB_MARCH_FN (memif_dma_completion_cb, void, vlib_main_t *vm,
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif = vec_elt_at_index (mm->interfaces, b->cookie >> 16);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 n_left_to_next = 0;
   u16 nexts[MEMIF_RX_VECTOR_SZ], *next;
   u32 _to_next_bufs[MEMIF_RX_VECTOR_SZ], *to_next_bufs = _to_next_bufs, *bi;

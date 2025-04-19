@@ -63,8 +63,8 @@ init_nat_k (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
 
 always_inline void
 init_nat_kv (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
-	     u32 fib_index, nat_protocol_t proto, u32 thread_index,
-	     u32 session_index)
+	     u32 fib_index, nat_protocol_t proto,
+	     clib_thread_index_t thread_index, u32 session_index)
 {
   init_nat_k (kv, addr, port, fib_index, proto);
   kv->value = (u64) thread_index << 32 | session_index;
@@ -79,7 +79,7 @@ init_nat_i2o_k (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s)
 
 always_inline void
 init_nat_i2o_kv (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s,
-		 u32 thread_index, u32 session_index)
+		 clib_thread_index_t thread_index, u32 session_index)
 {
   init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
 	      s->nat_proto);
@@ -95,7 +95,7 @@ init_nat_o2i_k (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s)
 
 always_inline void
 init_nat_o2i_kv (clib_bihash_kv_8_8_t *kv, nat44_ei_session_t *s,
-		 u32 thread_index, u32 session_index)
+		 clib_thread_index_t thread_index, u32 session_index)
 {
   init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
 	      s->nat_proto);
@@ -151,7 +151,7 @@ nat44_ei_is_interface_addr (ip4_main_t *im, vlib_node_runtime_t *node,
 /** \brief Per-user LRU list maintenance */
 always_inline void
 nat44_ei_session_update_lru (nat44_ei_main_t *nm, nat44_ei_session_t *s,
-			     u32 thread_index)
+			     clib_thread_index_t thread_index)
 {
   /* don't update too often - timeout is in magnitude of seconds anyway */
   if (s->last_heard > s->last_lru_update + 1)
@@ -179,7 +179,7 @@ nat44_ei_user_session_increment (nat44_ei_main_t *nm, nat44_ei_user_t *u,
 
 always_inline void
 nat44_ei_delete_user_with_no_session (nat44_ei_main_t *nm, nat44_ei_user_t *u,
-				      u32 thread_index)
+				      clib_thread_index_t thread_index)
 {
   clib_bihash_kv_8_8_t kv;
   nat44_ei_user_key_t u_key;
@@ -200,7 +200,8 @@ nat44_ei_delete_user_with_no_session (nat44_ei_main_t *nm, nat44_ei_user_t *u,
 }
 
 static_always_inline u8
-nat44_ei_maximum_sessions_exceeded (nat44_ei_main_t *nm, u32 thread_index)
+nat44_ei_maximum_sessions_exceeded (nat44_ei_main_t *nm,
+				    clib_thread_index_t thread_index)
 {
   if (pool_elts (nm->per_thread_data[thread_index].sessions) >=
       nm->max_translations_per_thread)
@@ -210,7 +211,7 @@ nat44_ei_maximum_sessions_exceeded (nat44_ei_main_t *nm, u32 thread_index)
 
 always_inline void
 nat44_ei_session_update_counters (nat44_ei_session_t *s, f64 now, uword bytes,
-				  u32 thread_index)
+				  clib_thread_index_t thread_index)
 {
   s->last_heard = now;
   s->total_pkts++;

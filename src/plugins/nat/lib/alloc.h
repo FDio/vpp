@@ -30,13 +30,10 @@ typedef struct nat_ip4_pool_s nat_ip4_pool_t;
 typedef void (nat_add_del_ip4_pool_addr_cb_t) (ip4_address_t addr,
 					       u8 is_add, void *opaque);
 
-typedef int (nat_alloc_ip4_addr_and_port_cb_t) (nat_ip4_pool_t * pool,
-						u32 fib_index,
-						u32 thread_index,
-						u32 nat_thread_index,
-						u16 port_per_thread,
-						u16 protocol,
-						nat_ip4_addr_port_t * out);
+typedef int (nat_alloc_ip4_addr_and_port_cb_t) (
+  nat_ip4_pool_t *pool, u32 fib_index, clib_thread_index_t thread_index,
+  u32 nat_thread_index, u16 port_per_thread, u16 protocol,
+  nat_ip4_addr_port_t *out);
 
 struct nat_ip4_pool_addr_s
 {
@@ -73,27 +70,21 @@ nat_add_del_ip4_pool_addrs (nat_ip4_pool_t * pool,
 			    ip4_address_t addr,
 			    u32 count, u8 is_add, void *opaque);
 
-int
-nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
-					u32 fib_index,
-					u32 thread_index,
-					u32 nat_thread_index,
-					u16 port_per_thread,
-					u16 protocol,
-					nat_ip4_addr_port_t * out);
+int nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t *pool,
+					    u32 fib_index,
+					    clib_thread_index_t thread_index,
+					    u32 nat_thread_index,
+					    u16 port_per_thread, u16 protocol,
+					    nat_ip4_addr_port_t *out);
 
-int
-nat_alloc_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			     u32 fib_index,
-			     u32 thread_index,
-			     u32 nat_thread_index,
-			     u16 port_per_thread,
-			     u16 protocol, nat_ip4_addr_port_t * out);
+int nat_alloc_ip4_addr_and_port (nat_ip4_pool_t *pool, u32 fib_index,
+				 clib_thread_index_t thread_index,
+				 u32 nat_thread_index, u16 port_per_thread,
+				 u16 protocol, nat_ip4_addr_port_t *out);
 
-int
-nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			    u32 thread_index,
-			    u16 protocol, nat_ip4_addr_port_t * in);
+int nat_free_ip4_addr_and_port (nat_ip4_pool_t *pool,
+				clib_thread_index_t thread_index, u16 protocol,
+				nat_ip4_addr_port_t *in);
 
 #endif /* included_nat_lib_alloc_h__ */
 

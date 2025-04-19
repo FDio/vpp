@@ -155,7 +155,7 @@ clib_file_del_by_index (clib_file_main_t *fm, uword index)
 }
 
 always_inline void
-clib_file_free_deleted (clib_file_main_t *fm, u32 thread_index)
+clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 {
   u32 n_keep = 0;
 
@@ -179,7 +179,7 @@ clib_file_free_deleted (clib_file_main_t *fm, u32 thread_index)
 
 always_inline void
 clib_file_set_polling_thread (clib_file_main_t *fm, uword index,
-			      u32 thread_index)
+			      clib_thread_index_t thread_index)
 {
   clib_file_t *f = clib_file_get (fm, index);
   fm->file_update (f, UNIX_FILE_UPDATE_DELETE);

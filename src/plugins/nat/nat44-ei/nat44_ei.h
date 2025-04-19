@@ -79,9 +79,9 @@ clib_error_t *nat44_ei_api_hookup (vlib_main_t *vm);
 
 /* NAT address and port allocation function */
 typedef int (nat44_ei_alloc_out_addr_and_port_function_t) (
-  nat44_ei_address_t *addresses, u32 fib_index, u32 thread_index,
-  nat_protocol_t proto, ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
-  u16 port_per_thread, u32 snat_thread_index);
+  nat44_ei_address_t *addresses, u32 fib_index,
+  clib_thread_index_t thread_index, nat_protocol_t proto, ip4_address_t s_addr,
+  ip4_address_t *addr, u16 *port, u16 port_per_thread, u32 snat_thread_index);
 
 typedef struct
 {
@@ -292,7 +292,7 @@ typedef struct
   u32 snat_thread_index;
 
   /* real thread index */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
 } nat44_ei_main_per_thread_data_t;
 
@@ -304,7 +304,7 @@ typedef struct
 
 typedef struct
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   f64 now;
 } nat44_ei_is_idle_session_ctx_t;
 
@@ -588,37 +588,37 @@ int nat44_ei_static_mapping_match (ip4_address_t match_addr, u16 match_port,
  */
 void nat44_ei_sessions_clear ();
 
-nat44_ei_user_t *nat44_ei_user_get_or_create (nat44_ei_main_t *nm,
-					      ip4_address_t *addr,
-					      u32 fib_index, u32 thread_index);
+nat44_ei_user_t *
+nat44_ei_user_get_or_create (nat44_ei_main_t *nm, ip4_address_t *addr,
+			     u32 fib_index, clib_thread_index_t thread_index);
 
-nat44_ei_session_t *nat44_ei_session_alloc_or_recycle (nat44_ei_main_t *nm,
-						       nat44_ei_user_t *u,
-						       u32 thread_index,
-						       f64 now);
+nat44_ei_session_t *
+nat44_ei_session_alloc_or_recycle (nat44_ei_main_t *nm, nat44_ei_user_t *u,
+				   clib_thread_index_t thread_index, f64 now);
 
 void nat44_ei_free_session_data_v2 (nat44_ei_main_t *nm, nat44_ei_session_t *s,
-				    u32 thread_index, u8 is_ha);
+				    clib_thread_index_t thread_index,
+				    u8 is_ha);
 
 void nat44_ei_free_outside_address_and_port (nat44_ei_address_t *addresses,
-					     u32 thread_index,
+					     clib_thread_index_t thread_index,
 					     ip4_address_t *addr, u16 port,
 					     nat_protocol_t protocol);
 
 int nat44_ei_set_outside_address_and_port (nat44_ei_address_t *addresses,
-					   u32 thread_index,
+					   clib_thread_index_t thread_index,
 					   ip4_address_t addr, u16 port,
 					   nat_protocol_t protocol);
 
 void nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
-				 u32 thread_index, u8 is_ha);
+				 clib_thread_index_t thread_index, u8 is_ha);
 
 int nat44_ei_set_workers (uword *bitmap);
 
 void nat44_ei_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 
 void nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
-			      u32 thread_index);
+			      clib_thread_index_t thread_index);
 
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);

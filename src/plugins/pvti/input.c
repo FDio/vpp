@@ -124,7 +124,7 @@ pvti_input_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   pvti_main_t *pvm = &pvti_main;
 
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   pvti_per_thread_data_t *ptd =
     vec_elt_at_index (pvm->per_thread_data[is_ip6], thread_index);
 

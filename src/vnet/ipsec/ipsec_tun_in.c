@@ -114,7 +114,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_interface_main_t *vim = &vnm->interface_main;
 
   int is_trace = node->flags & VLIB_NODE_FLAG_TRACE;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   u32 n_left_from, *from;
   u16 nexts[VLIB_FRAME_SIZE], *next;

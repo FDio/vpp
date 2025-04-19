@@ -264,18 +264,19 @@ typedef struct http_main_
 typedef struct http_engine_vft_
 {
   const char *name;
-  u32 (*hc_index_get_by_req_index) (u32 req_index, u32 thread_index);
-  transport_connection_t *(*req_get_connection) (u32 req_index,
-						 u32 thread_index);
+  u32 (*hc_index_get_by_req_index) (u32 req_index,
+				    clib_thread_index_t thread_index);
+  transport_connection_t *(*req_get_connection) (
+    u32 req_index, clib_thread_index_t thread_index);
   u8 *(*format_req) (u8 *s, va_list *args);
   void (*app_tx_callback) (http_conn_t *hc, u32 req_index,
 			   transport_send_params_t *sp);
   void (*app_rx_evt_callback) (http_conn_t *hc, u32 req_index,
-			       u32 thread_index);
+			       clib_thread_index_t thread_index);
   void (*app_close_callback) (http_conn_t *hc, u32 req_index,
-			      u32 thread_index);
+			      clib_thread_index_t thread_index);
   void (*app_reset_callback) (http_conn_t *hc, u32 req_index,
-			      u32 thread_index);
+			      clib_thread_index_t thread_index);
   int (*transport_connected_callback) (http_conn_t *hc);
   void (*transport_rx_callback) (http_conn_t *hc);
   void (*transport_close_callback) (http_conn_t *hc);

@@ -87,7 +87,7 @@ mactime_node_inline (vlib_main_t * vm,
   clib_bihash_8_8_t *lut = &mm->lookup_table;
   u32 packets_ok = 0;
   f64 now;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   u8 arc = im->output_feature_arc_index;

@@ -46,7 +46,7 @@ typedef CLIB_PACKED (struct
 typedef struct
 {
   ct6_session_key_t key;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 next_index;
   u32 prev_index;
   u32 hits;
@@ -95,7 +95,7 @@ static inline void
 ct6_lru_remove (ct6_main_t * cmp, ct6_session_t * s0)
 {
   ct6_session_t *next_sess, *prev_sess;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 s0_index;
 
   thread_index = s0->thread_index;
@@ -128,7 +128,7 @@ static inline void
 ct6_lru_add (ct6_main_t * cmp, ct6_session_t * s0, f64 now)
 {
   ct6_session_t *next_sess;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 s0_index;
 
   s0->hits++;

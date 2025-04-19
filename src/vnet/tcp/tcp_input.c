@@ -498,7 +498,7 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 static void
 tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 {
-  u32 thread_index = wrk->vm->thread_index;
+  clib_thread_index_t thread_index = wrk->vm->thread_index;
   u32 *pending_deq_acked;
   tcp_connection_t *tc;
   int i;
@@ -1011,7 +1011,8 @@ tcp_program_disconnect (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 static void
 tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 {
-  u32 thread_index, *pending_disconnects, *pending_resets;
+  clib_thread_index_t thread_index;
+  u32 *pending_disconnects, *pending_resets;
   tcp_connection_t *tc;
   int i;
 
@@ -1397,7 +1398,8 @@ always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, n_left_from, *from;
+  clib_thread_index_t thread_index = vm->thread_index;
+  u32 n_left_from, *from;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[TCP_N_ERROR] = { 0 };
@@ -2025,7 +2027,7 @@ static void
 tcp46_rcv_process_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 			       u32 *from, u32 n_bufs)
 {
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   tcp_connection_t *tc = 0;
   tcp_rx_trace_t *t;
   vlib_buffer_t *b;
@@ -2051,7 +2053,8 @@ always_inline uword
 tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlib_frame_t *frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, n_left_from, *from, max_deq;
+  clib_thread_index_t thread_index = vm->thread_index;
+  u32 n_left_from, *from, max_deq;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
 
@@ -2544,7 +2547,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   u32 n_left_from, *from, n_syns = 0;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 tw_iss = 0;
 
   from = vlib_frame_vector_args (frame);

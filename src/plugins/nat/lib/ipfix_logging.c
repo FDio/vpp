@@ -549,9 +549,10 @@ nat_ipfix_send (flow_report_main_t *frm, vlib_frame_t *f, vlib_buffer_t *b0,
 }
 
 static void
-nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
-			     u32 nat_src_ip, ip_protocol_t proto, u16 src_port,
-			     u16 nat_src_port, u32 fib_index, int do_flush)
+nat_ipfix_logging_nat44_ses (clib_thread_index_t thread_index, u8 nat_event,
+			     u32 src_ip, u32 nat_src_ip, ip_protocol_t proto,
+			     u16 src_port, u16 nat_src_port, u32 fib_index,
+			     int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -652,7 +653,8 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
 }
 
 static void
-nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
+nat_ipfix_logging_addr_exhausted (clib_thread_index_t thread_index,
+				  u32 pool_id, int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -736,8 +738,8 @@ nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
 }
 
 static void
-nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
-                                        u32 limit, u32 src_ip, int do_flush)
+nat_ipfix_logging_max_entries_per_usr (clib_thread_index_t thread_index,
+				       u32 limit, u32 src_ip, int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -829,7 +831,8 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
 }
 
 static void
-nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
+nat_ipfix_logging_max_ses (clib_thread_index_t thread_index, u32 limit,
+			   int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -917,7 +920,8 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
 }
 
 static void
-nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
+nat_ipfix_logging_max_bib (clib_thread_index_t thread_index, u32 limit,
+			   int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -1005,10 +1009,10 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
 }
 
 static void
-nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
-                              ip6_address_t * src_ip, u32 nat_src_ip,
-                              u8 proto, u16 src_port, u16 nat_src_port,
-                              u32 vrf_id, int do_flush)
+nat_ipfix_logging_nat64_bibe (clib_thread_index_t thread_index, u8 nat_event,
+			      ip6_address_t *src_ip, u32 nat_src_ip, u8 proto,
+			      u16 src_port, u16 nat_src_port, u32 vrf_id,
+			      int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -1106,12 +1110,12 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
 }
 
 static void
-nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
-                             ip6_address_t * src_ip, u32 nat_src_ip,
-                             u8 proto, u16 src_port, u16 nat_src_port,
-                             ip6_address_t * dst_ip, u32 nat_dst_ip,
-                             u16 dst_port, u16 nat_dst_port,
-                             u32 vrf_id, int do_flush)
+nat_ipfix_logging_nat64_ses (clib_thread_index_t thread_index, u8 nat_event,
+			     ip6_address_t *src_ip, u32 nat_src_ip, u8 proto,
+			     u16 src_port, u16 nat_src_port,
+			     ip6_address_t *dst_ip, u32 nat_dst_ip,
+			     u16 dst_port, u16 nat_dst_port, u32 vrf_id,
+			     int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -1221,7 +1225,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
 }
 
 void
-nat_ipfix_flush (u32 thread_index)
+nat_ipfix_flush (clib_thread_index_t thread_index)
 {
   int do_flush = 1;
 
@@ -1281,10 +1285,10 @@ nat_ipfix_flush_from_main (void)
  * @brief Generate NAT44 session create event
  */
 void
-nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
-				    u32 nat_src_ip, ip_protocol_t proto,
-				    u16 src_port, u16 nat_src_port,
-				    u32 fib_index)
+nat_ipfix_logging_nat44_ses_create (clib_thread_index_t thread_index,
+				    u32 src_ip, u32 nat_src_ip,
+				    ip_protocol_t proto, u16 src_port,
+				    u16 nat_src_port, u32 fib_index)
 {
   skip_if_disabled ();
 
@@ -1297,10 +1301,10 @@ nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
  * @brief Generate NAT44 session delete event
  */
 void
-nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
-				    u32 nat_src_ip, ip_protocol_t proto,
-				    u16 src_port, u16 nat_src_port,
-				    u32 fib_index)
+nat_ipfix_logging_nat44_ses_delete (clib_thread_index_t thread_index,
+				    u32 src_ip, u32 nat_src_ip,
+				    ip_protocol_t proto, u16 src_port,
+				    u16 nat_src_port, u32 fib_index)
 {
   skip_if_disabled ();
 
@@ -1316,7 +1320,8 @@ nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
  * @param pool_id NAT pool ID
  */
 void
-nat_ipfix_logging_addresses_exhausted (u32 thread_index, u32 pool_id)
+nat_ipfix_logging_addresses_exhausted (clib_thread_index_t thread_index,
+				       u32 pool_id)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   static f64 *last_sent = 0;
@@ -1346,7 +1351,8 @@ nat_ipfix_logging_addresses_exhausted (u32 thread_index, u32 pool_id)
  * @param src_ip source IPv4 address
  */
 void
-nat_ipfix_logging_max_entries_per_user (u32 thread_index, u32 limit, u32 src_ip)
+nat_ipfix_logging_max_entries_per_user (clib_thread_index_t thread_index,
+					u32 limit, u32 src_ip)
 {
   //TODO: This event SHOULD be rate limited
   skip_if_disabled ();
@@ -1373,7 +1379,7 @@ deterministic_nat_data_callback
  * @param limit configured limit
  */
 void
-nat_ipfix_logging_max_sessions (u32 thread_index, u32 limit)
+nat_ipfix_logging_max_sessions (clib_thread_index_t thread_index, u32 limit)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   static f64 last_sent = 0;
@@ -1401,7 +1407,7 @@ nat_ipfix_logging_max_sessions (u32 thread_index, u32 limit)
  * @param limit configured limit
  */
 void
-nat_ipfix_logging_max_bibs (u32 thread_index, u32 limit)
+nat_ipfix_logging_max_bibs (clib_thread_index_t thread_index, u32 limit)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   static f64 last_sent = 0;
@@ -1435,10 +1441,10 @@ nat_ipfix_logging_max_bibs (u32 thread_index, u32 limit)
  * @param is_create    non-zero value if create event otherwise delete event
  */
 void
-nat_ipfix_logging_nat64_bib (u32 thread_index, ip6_address_t * src_ip,
-                             ip4_address_t * nat_src_ip, u8 proto,
-                             u16 src_port, u16 nat_src_port, u32 vrf_id,
-                             u8 is_create)
+nat_ipfix_logging_nat64_bib (clib_thread_index_t thread_index,
+			     ip6_address_t *src_ip, ip4_address_t *nat_src_ip,
+			     u8 proto, u16 src_port, u16 nat_src_port,
+			     u32 vrf_id, u8 is_create)
 {
   u8 nat_event;
 
@@ -1468,13 +1474,13 @@ nat_ipfix_logging_nat64_bib (u32 thread_index, ip6_address_t * src_ip,
  * @param is_create    non-zero value if create event otherwise delete event
  */
 void
-nat_ipfix_logging_nat64_session (u32 thread_index,
-                                 ip6_address_t * src_ip,
-                                 ip4_address_t * nat_src_ip, u8 proto,
-                                 u16 src_port, u16 nat_src_port,
-                                 ip6_address_t * dst_ip,
-                                 ip4_address_t * nat_dst_ip, u16 dst_port,
-                                 u16 nat_dst_port, u32 vrf_id, u8 is_create)
+nat_ipfix_logging_nat64_session (clib_thread_index_t thread_index,
+				 ip6_address_t *src_ip,
+				 ip4_address_t *nat_src_ip, u8 proto,
+				 u16 src_port, u16 nat_src_port,
+				 ip6_address_t *dst_ip,
+				 ip4_address_t *nat_dst_ip, u16 dst_port,
+				 u16 nat_dst_port, u32 vrf_id, u8 is_create)
 {
   u8 nat_event;
 

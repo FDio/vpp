@@ -523,7 +523,7 @@ typedef struct
   u32 mode;
   u8 buffer_pool_index;
   u32 queue_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   vmxnet3_rx_ring rx_ring[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_desc *rx_desc[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_comp *rx_comp;

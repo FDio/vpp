@@ -63,7 +63,7 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 					vlib_node_runtime_t * node,
 					vlib_frame_t * frame)
 {
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 n_left_from, *from, *to_next;
   u32 next_index;

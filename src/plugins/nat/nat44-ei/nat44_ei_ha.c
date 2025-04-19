@@ -65,7 +65,7 @@ typedef struct
   /* sequence number */
   u32 sequence_number;
   /* thread index where events originated */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } __attribute__ ((packed)) nat_ha_message_header_t;
 
 /* NAT HA protocol event data */
@@ -174,7 +174,7 @@ static_always_inline void
 nat44_ei_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
 		  u16 out_port, ip4_address_t *eh_addr, u16 eh_port,
 		  ip4_address_t *ehn_addr, u16 ehn_port, u8 proto,
-		  u32 fib_index, u16 flags, u32 thread_index)
+		  u32 fib_index, u16 flags, clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_main_per_thread_data_t *tnm = &nm->per_thread_data[thread_index];
@@ -254,7 +254,7 @@ nat44_ei_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
 static_always_inline void
 nat44_ei_ha_sdel (ip4_address_t *out_addr, u16 out_port,
 		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
-		  u32 thread_index)
+		  clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   clib_bihash_kv_8_8_t kv, value;
@@ -275,7 +275,8 @@ nat44_ei_ha_sdel (ip4_address_t *out_addr, u16 out_port,
 static_always_inline void
 nat44_ei_ha_sref (ip4_address_t *out_addr, u16 out_port,
 		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
-		  u32 total_pkts, u64 total_bytes, u32 thread_index)
+		  u32 total_pkts, u64 total_bytes,
+		  clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   clib_bihash_kv_8_8_t kv, value;
@@ -337,7 +338,7 @@ nat_ha_resend_queue_add (vlib_main_t *vm, u32 seq, u8 *data, u8 data_len,
 }
 
 static_always_inline void
-nat_ha_ack_recv (u32 seq, u32 thread_index)
+nat_ha_ack_recv (u32 seq, clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
@@ -368,7 +369,7 @@ nat_ha_ack_recv (u32 seq, u32 thread_index)
 
 /* scan non-ACKed HA NAT for retry */
 static void
-nat_ha_resend_scan (vlib_main_t *vm, u32 thread_index)
+nat_ha_resend_scan (vlib_main_t *vm, clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
@@ -563,7 +564,8 @@ nat_ha_get_failover (ip4_address_t * addr, u16 * port,
 }
 
 static_always_inline void
-nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_recv_add (nat_ha_event_t *event, f64 now,
+		 clib_thread_index_t thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t in_addr, out_addr, eh_addr, ehn_addr;
@@ -586,7 +588,7 @@ nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
 }
 
 static_always_inline void
-nat_ha_recv_del (nat_ha_event_t * event, u32 thread_index)
+nat_ha_recv_del (nat_ha_event_t *event, clib_thread_index_t thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t out_addr, eh_addr;
@@ -604,7 +606,8 @@ nat_ha_recv_del (nat_ha_event_t * event, u32 thread_index)
 }
 
 static_always_inline void
-nat_ha_recv_refresh (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_recv_refresh (nat_ha_event_t *event, f64 now,
+		     clib_thread_index_t thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t out_addr, eh_addr;
@@ -627,7 +630,8 @@ nat_ha_recv_refresh (nat_ha_event_t * event, f64 now, u32 thread_index)
 
 /* process received NAT HA event */
 static_always_inline void
-nat_ha_event_process (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_event_process (nat_ha_event_t *event, f64 now,
+		      clib_thread_index_t thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   switch (event->event_type)
@@ -649,7 +653,8 @@ nat_ha_event_process (nat_ha_event_t * event, f64 now, u32 thread_index)
 }
 
 static inline void
-nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
+nat_ha_header_create (vlib_buffer_t *b, u32 *offset,
+		      clib_thread_index_t thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_message_header_t *h;
@@ -831,10 +836,10 @@ nat_ha_flush (u8 is_resync)
 }
 
 void
-nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
-	     u16 out_port, ip4_address_t * eh_addr, u16 eh_port,
-	     ip4_address_t * ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
-	     u16 flags, u32 thread_index, u8 is_resync)
+nat_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
+	     u16 out_port, ip4_address_t *eh_addr, u16 eh_port,
+	     ip4_address_t *ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
+	     u16 flags, clib_thread_index_t thread_index, u8 is_resync)
 {
   nat_ha_event_t event;
 
@@ -876,9 +881,10 @@ nat_ha_sdel (ip4_address_t *out_addr, u16 out_port, ip4_address_t *eh_addr,
 }
 
 void
-nat_ha_sref (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
+nat_ha_sref (ip4_address_t *out_addr, u16 out_port, ip4_address_t *eh_addr,
 	     u16 eh_port, u8 proto, u32 fib_index, u32 total_pkts,
-	     u64 total_bytes, u32 thread_index, f64 * last_refreshed, f64 now)
+	     u64 total_bytes, clib_thread_index_t thread_index,
+	     f64 *last_refreshed, f64 now)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_event_t event;
@@ -914,7 +920,7 @@ static uword
 nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  vlib_frame_t * f)
 {
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   if (plugin_enabled () == 0)
     return 0;
@@ -1033,7 +1039,7 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, *from, next_index, *to_next;
   f64 now = vlib_time_now (vm);
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 pkts_processed = 0;
   ip4_main_t *i4m = &ip4_main;
   u8 host_config_ttl = i4m->host_config.ttl;
@@ -1224,7 +1230,7 @@ nat_ha_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 do_handoff = 0, same_worker = 0;
 
   from = vlib_frame_vector_args (frame);

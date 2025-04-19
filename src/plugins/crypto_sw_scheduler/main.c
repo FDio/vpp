@@ -446,7 +446,7 @@ convert_async_crypto_id (vnet_crypto_op_id_t async_op_id, u32 *crypto_op,
 
 static_always_inline vnet_crypto_async_frame_t *
 crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			     u32 *enqueue_thread_idx)
+			     clib_thread_index_t *enqueue_thread_idx)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd =

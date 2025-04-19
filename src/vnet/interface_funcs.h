@@ -426,7 +426,8 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 
 /* Set rx-placement on the interface */
 clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
-					     u32 thread_index, u8 is_main);
+					     clib_thread_index_t thread_index,
+					     u8 is_main);
 /* Set tx-queue placement on the interface */
 int set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap);
 

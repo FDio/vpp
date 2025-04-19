@@ -30,9 +30,9 @@ static char *dslite_out2in_error_strings[] = {
 };
 
 static inline u32
-dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
-		    dslite_session_t ** sp, u32 next, u8 * error,
-		    u32 thread_index)
+dslite_icmp_out2in (dslite_main_t *dm, ip4_header_t *ip4,
+		    dslite_session_t **sp, u32 next, u8 *error,
+		    clib_thread_index_t thread_index)
 {
   dslite_session_t *s = 0;
   icmp46_header_t *icmp = ip4_next_header (ip4);
@@ -100,7 +100,7 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   dslite_out2in_next_t next_index;
   vlib_node_runtime_t *error_node;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   f64 now = vlib_time_now (vm);
   dslite_main_t *dm = &dslite_main;
 

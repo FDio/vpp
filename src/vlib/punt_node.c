@@ -68,14 +68,10 @@ format_punt_trace (u8 * s, va_list * args)
 }
 
 always_inline u32
-punt_replicate (vlib_main_t * vm,
-		vlib_node_runtime_t * node,
-		u32 thread_index,
-		vlib_buffer_t * b0,
-		u32 bi0,
-		vlib_punt_reason_t pr0,
-		u32 * next_index,
-		u32 * n_left_to_next, u32 ** to_next, u32 * n_dispatched)
+punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node,
+		clib_thread_index_t thread_index, vlib_buffer_t *b0, u32 bi0,
+		vlib_punt_reason_t pr0, u32 *next_index, u32 *n_left_to_next,
+		u32 **to_next, u32 *n_dispatched)
 {
   /* multiple clients => replicate a copy to each */
   u16 n_clones0, n_cloned0, clone0;
@@ -134,13 +130,10 @@ punt_replicate (vlib_main_t * vm,
 }
 
 always_inline u32
-punt_dispatch_one (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_combined_counter_main_t * cm,
-		   u32 thread_index,
-		   u32 bi0,
-		   u32 * next_index,
-		   u32 * n_left_to_next, u32 ** to_next, u32 * n_dispatched)
+punt_dispatch_one (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_combined_counter_main_t *cm,
+		   clib_thread_index_t thread_index, u32 bi0, u32 *next_index,
+		   u32 *n_left_to_next, u32 **to_next, u32 *n_dispatched)
 {
   vlib_punt_reason_t pr0;
   vlib_buffer_t *b0;

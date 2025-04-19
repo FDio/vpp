@@ -13,9 +13,9 @@ u32 vnet_hw_if_register_tx_queue (vnet_main_t *vnm, u32 hw_if_index,
 void vnet_hw_if_unregister_tx_queue (vnet_main_t *vnm, u32 queue_index);
 void vnet_hw_if_unregister_all_tx_queues (vnet_main_t *vnm, u32 hw_if_index);
 void vnet_hw_if_tx_queue_assign_thread (vnet_main_t *vnm, u32 queue_index,
-					u32 thread_index);
+					clib_thread_index_t thread_index);
 void vnet_hw_if_tx_queue_unassign_thread (vnet_main_t *vnm, u32 queue_index,
-					  u32 thread_index);
+					  clib_thread_index_t thread_index);
 
 /* inline functions */
 

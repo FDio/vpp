@@ -36,7 +36,7 @@ typedef struct
 {
   u32 connection;
   u32 disposition;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } udp_input_trace_t;
 
 /* packet trace format function */
@@ -101,8 +101,8 @@ udp_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static udp_connection_t *
-udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
-		       u32 thread_index)
+udp_connection_accept (udp_connection_t *listener, session_dgram_hdr_t *hdr,
+		       clib_thread_index_t thread_index)
 {
   udp_connection_t *uc;
 
@@ -129,9 +129,10 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
 }
 
 static void
-udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
-			session_dgram_hdr_t * hdr0, u32 thread_index,
-			vlib_buffer_t * b, u8 queue_event, u32 * error0)
+udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
+			session_dgram_hdr_t *hdr0,
+			clib_thread_index_t thread_index, vlib_buffer_t *b,
+			u8 queue_event, u32 *error0)
 {
   int wrote0;
 
@@ -258,7 +259,8 @@ always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, u8 is_ip4)
 {
-  u32 thread_index = vm->thread_index, n_left_from, *from, *first_buffer;
+  clib_thread_index_t thread_index = vm->thread_index;
+  u32 n_left_from, *from, *first_buffer;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[UDP_N_ERROR] = { 0 };
 

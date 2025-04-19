@@ -1092,7 +1092,7 @@ ip_neighbor_register (ip_address_family_t af, const ip_neighbor_vft_t * vft)
 }
 
 void
-ip_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+ip_neighbor_probe_dst (u32 sw_if_index, clib_thread_index_t thread_index,
 		       ip_address_family_t af, const ip46_address_t *dst)
 {
   if (!vnet_sw_interface_is_admin_up (vnet_get_main (), sw_if_index))

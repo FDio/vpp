@@ -67,7 +67,7 @@ hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
 }
 
 static hss_session_t *
-hss_session_alloc (u32 thread_index)
+hss_session_alloc (clib_thread_index_t thread_index)
 {
   hss_main_t *hsm = &hss_main;
   hss_session_t *hs;
@@ -82,7 +82,7 @@ hss_session_alloc (u32 thread_index)
 }
 
 __clib_export hss_session_t *
-hss_session_get (u32 thread_index, u32 hs_index)
+hss_session_get (clib_thread_index_t thread_index, u32 hs_index)
 {
   hss_main_t *hsm = &hss_main;
   if (pool_is_free_index (hsm->sessions[thread_index], hs_index))

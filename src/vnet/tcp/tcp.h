@@ -299,7 +299,7 @@ vnet_get_tcp_main ()
 }
 
 always_inline tcp_worker_ctx_t *
-tcp_get_worker (u32 thread_index)
+tcp_get_worker (clib_thread_index_t thread_index)
 {
   ASSERT (thread_index < vec_len (tcp_main.wrk));
   return &tcp_main.wrk[thread_index];
@@ -314,8 +314,8 @@ void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
 int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 
-void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
-			   u32 thread_index, u8 is_ip4);
+void tcp_send_reset_w_pkt (tcp_connection_t *tc, vlib_buffer_t *pkt,
+			   clib_thread_index_t thread_index, u8 is_ip4);
 void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_synack (tcp_connection_t * tc);

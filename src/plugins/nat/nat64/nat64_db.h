@@ -180,13 +180,11 @@ int nat64_db_free (nat64_db_t * db);
  *
  * @returns BIB entry on success, 0 otherwise.
  */
-nat64_db_bib_entry_t *nat64_db_bib_entry_create (u32 thread_index,
-						 nat64_db_t * db,
-						 ip6_address_t * in_addr,
-						 ip4_address_t * out_addr,
-						 u16 in_port, u16 out_port,
-						 u32 fib_index, u8 proto,
-						 u8 is_static);
+nat64_db_bib_entry_t *
+nat64_db_bib_entry_create (clib_thread_index_t thread_index, nat64_db_t *db,
+			   ip6_address_t *in_addr, ip4_address_t *out_addr,
+			   u16 in_port, u16 out_port, u32 fib_index, u8 proto,
+			   u8 is_static);
 
 /**
  * @brief Free NAT64 BIB entry.
@@ -195,8 +193,8 @@ nat64_db_bib_entry_t *nat64_db_bib_entry_create (u32 thread_index,
  * @param db NAT64 DB.
  * @param bibe BIB entry.
  */
-void nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
-			      nat64_db_bib_entry_t * bibe);
+void nat64_db_bib_entry_free (clib_thread_index_t thread_index, nat64_db_t *db,
+			      nat64_db_bib_entry_t *bibe);
 
 /**
  * @brief Call back function when walking NAT64 BIB, non-zero
@@ -262,12 +260,10 @@ nat64_db_bib_entry_t *nat64_db_bib_entry_by_index (nat64_db_t * db,
  *
  * @returns BIB entry on success, 0 otherwise.
  */
-nat64_db_st_entry_t *nat64_db_st_entry_create (u32 thread_index,
-					       nat64_db_t * db,
-					       nat64_db_bib_entry_t * bibe,
-					       ip6_address_t * in_r_addr,
-					       ip4_address_t * out_r_addr,
-					       u16 r_port);
+nat64_db_st_entry_t *
+nat64_db_st_entry_create (clib_thread_index_t thread_index, nat64_db_t *db,
+			  nat64_db_bib_entry_t *bibe, ip6_address_t *in_r_addr,
+			  ip4_address_t *out_r_addr, u16 r_port);
 
 /**
  * @brief Free NAT64 session table entry.
@@ -276,8 +272,8 @@ nat64_db_st_entry_t *nat64_db_st_entry_create (u32 thread_index,
  * @param db NAT64 DB.
  * @param ste Session table entry.
  */
-void nat64_db_st_entry_free (u32 thread_index, nat64_db_t * db,
-			     nat64_db_st_entry_t * ste);
+void nat64_db_st_entry_free (clib_thread_index_t thread_index, nat64_db_t *db,
+			     nat64_db_st_entry_t *ste);
 
 /**
  * @brief Find NAT64 session table entry.
@@ -329,7 +325,8 @@ void nat64_db_st_walk (nat64_db_t * db, u8 proto,
  * @param db NAT64 DB.
  * @param now Current time.
  */
-void nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now);
+void nad64_db_st_free_expired (clib_thread_index_t thread_index,
+			       nat64_db_t *db, u32 now);
 
 /**
  * @brief Free sessions using specific outside address.
@@ -338,8 +335,8 @@ void nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now);
  * @param db NAT64 DB.
  * @param out_addr Outside address to match.
  */
-void nat64_db_free_out_addr (u32 thread_index, nat64_db_t * db,
-			     ip4_address_t * out_addr);
+void nat64_db_free_out_addr (clib_thread_index_t thread_index, nat64_db_t *db,
+			     ip4_address_t *out_addr);
 
 /*
  * @brief Get ST entry index.

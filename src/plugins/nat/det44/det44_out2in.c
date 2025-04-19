@@ -97,12 +97,11 @@ format_det44_out2in_trace (u8 * s, va_list * args)
  * @param e                      optional parameter
  */
 u32
-icmp_match_out2in_det (vlib_node_runtime_t * node,
-		       u32 thread_index, vlib_buffer_t * b0,
-		       ip4_header_t * ip0, ip4_address_t * addr,
-		       u16 * port, u32 * fib_index,
-		       nat_protocol_t * proto, void *d, void *e,
-		       u8 * dont_translate)
+icmp_match_out2in_det (vlib_node_runtime_t *node,
+		       clib_thread_index_t thread_index, vlib_buffer_t *b0,
+		       ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+		       u32 *fib_index, nat_protocol_t *proto, void *d, void *e,
+		       u8 *dont_translate)
 {
   det44_main_t *dm = &det44_main;
   icmp46_header_t *icmp0;
@@ -233,13 +232,10 @@ out:
 
 #ifndef CLIB_MARCH_VARIANT
 u32
-det44_icmp_out2in (vlib_buffer_t * b0,
-		   ip4_header_t * ip0,
-		   icmp46_header_t * icmp0,
-		   u32 sw_if_index0,
-		   u32 rx_fib_index0,
-		   vlib_node_runtime_t * node,
-		   u32 next0, u32 thread_index, void *d, void *e)
+det44_icmp_out2in (vlib_buffer_t *b0, ip4_header_t *ip0,
+		   icmp46_header_t *icmp0, u32 sw_if_index0, u32 rx_fib_index0,
+		   vlib_node_runtime_t *node, u32 next0,
+		   clib_thread_index_t thread_index, void *d, void *e)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 new_addr0, old_addr0, next0_tmp, fib_index;
@@ -374,7 +370,7 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
   u32 n_left_from, *from;
   u32 pkts_processed = 0;
   det44_main_t *dm = &det44_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

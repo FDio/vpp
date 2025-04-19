@@ -81,7 +81,7 @@ vnet_get_aggregate_rx_packets (void)
 }
 
 static inline void
-vnet_device_increment_rx_packets (u32 thread_index, u64 count)
+vnet_device_increment_rx_packets (clib_thread_index_t thread_index, u64 count)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_device_per_worker_data_t *pwd;

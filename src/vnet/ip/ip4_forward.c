@@ -117,7 +117,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left, *from;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
@@ -2113,7 +2113,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     vlib_node_get_runtime (vm, ip4_input_node.index);
 
   n_left_from = frame->n_vectors;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   clib_memset_u16 (nexts, IP4_REWRITE_NEXT_DROP, n_left_from);
