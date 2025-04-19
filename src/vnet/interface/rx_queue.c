@@ -27,7 +27,7 @@ VLIB_REGISTER_LOG_CLASS (if_rxq_log, static) = {
 #define log_err(fmt, ...)   vlib_log_err (if_rxq_log.class, fmt, __VA_ARGS__)
 
 static u32
-next_thread_index (vnet_main_t *vnm, u32 thread_index)
+next_thread_index (vnet_main_t *vnm, clib_thread_index_t thread_index)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   if (vdm->first_worker_thread_index == 0)
@@ -62,7 +62,7 @@ vnet_hw_if_get_rx_queue_index_by_id (vnet_main_t *vnm, u32 hw_if_index,
 
 u32
 vnet_hw_if_register_rx_queue (vnet_main_t *vnm, u32 hw_if_index, u32 queue_id,
-			      u32 thread_index)
+			      clib_thread_index_t thread_index)
 {
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -225,7 +225,7 @@ vnet_hw_if_get_rx_queue_mode (vnet_main_t *vnm, u32 queue_index)
 
 void
 vnet_hw_if_set_rx_queue_thread_index (vnet_main_t *vnm, u32 queue_index,
-				      u32 thread_index)
+				      clib_thread_index_t thread_index)
 {
   vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);

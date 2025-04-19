@@ -436,7 +436,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_crypto_op_t **crypto_ops;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u16 n_sync = 0;
   const u16 drop_next = WG_OUTPUT_NEXT_ERROR;
   const u8 is_async = wg_op_mode_is_set_ASYNC ();

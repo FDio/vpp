@@ -19,11 +19,11 @@
 
 static srtp_main_t srtp_main;
 
-static void srtp_disconnect (u32 ctx_handle, u32 thread_index);
+static void srtp_disconnect (u32 ctx_handle, clib_thread_index_t thread_index);
 static void srtp_disconnect_transport (srtp_tc_t *ctx);
 
 static inline u32
-srtp_ctx_alloc_w_thread (u32 thread_index)
+srtp_ctx_alloc_w_thread (clib_thread_index_t thread_index)
 {
   srtp_tc_t *ctx;
   pool_get_aligned_safe (srtp_main.ctx_pool[thread_index], ctx,
@@ -36,7 +36,7 @@ srtp_ctx_alloc_w_thread (u32 thread_index)
 }
 
 static inline srtp_tc_t *
-srtp_ctx_get_w_thread (u32 ctx_index, u32 thread_index)
+srtp_ctx_get_w_thread (u32 ctx_index, clib_thread_index_t thread_index)
 {
   return pool_elt_at_index (srtp_main.ctx_pool[thread_index], ctx_index);
 }
@@ -82,7 +82,7 @@ srtp_ctx_free (srtp_tc_t *ctx)
 }
 
 static inline u32
-srtp_ctx_attach (u32 thread_index, void *ctx_ptr)
+srtp_ctx_attach (clib_thread_index_t thread_index, void *ctx_ptr)
 {
   srtp_tc_t *ctx;
 
@@ -688,7 +688,7 @@ srtp_disconnect_transport (srtp_tc_t *ctx)
 }
 
 static void
-srtp_disconnect (u32 ctx_handle, u32 thread_index)
+srtp_disconnect (u32 ctx_handle, clib_thread_index_t thread_index)
 {
   session_t *app_session;
   srtp_tc_t *ctx;
@@ -801,7 +801,7 @@ srtp_stop_listen (u32 lctx_index)
 }
 
 transport_connection_t *
-srtp_connection_get (u32 ctx_index, u32 thread_index)
+srtp_connection_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
   srtp_tc_t *ctx;
   ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
@@ -895,7 +895,7 @@ u8 *
 format_srtp_connection (u8 *s, va_list *args)
 {
   u32 ctx_index = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
+  clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   srtp_tc_t *ctx;
 
@@ -935,7 +935,7 @@ format_srtp_half_open (u8 *s, va_list *args)
 }
 
 static void
-srtp_transport_endpoint_get (u32 ctx_handle, u32 thread_index,
+srtp_transport_endpoint_get (u32 ctx_handle, clib_thread_index_t thread_index,
 			     transport_endpoint_t *tep, u8 is_lcl)
 {
   srtp_tc_t *ctx = srtp_ctx_get_w_thread (ctx_handle, thread_index);

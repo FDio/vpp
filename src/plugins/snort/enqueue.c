@@ -93,7 +93,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   snort_main_t *sm = &snort_main;
   snort_instance_t *si = 0;
   snort_qpair_t *qp = 0;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 n_left = frame->n_vectors;
   u32 n_trace = 0;
   u32 total_enq = 0, n_unprocessed = 0;

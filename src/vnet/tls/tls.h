@@ -146,10 +146,10 @@ typedef struct tls_main_
 typedef struct tls_engine_vft_
 {
   u32 (*ctx_alloc) (void);
-  u32 (*ctx_alloc_w_thread) (u32 thread_index);
+  u32 (*ctx_alloc_w_thread) (clib_thread_index_t thread_index);
   void (*ctx_free) (tls_ctx_t * ctx);
   void *(*ctx_detach) (tls_ctx_t *ctx);
-  u32 (*ctx_attach) (u32 thread_index, void *ctx);
+  u32 (*ctx_attach) (clib_thread_index_t thread_index, void *ctx);
   tls_ctx_t *(*ctx_get) (u32 ctx_index);
   tls_ctx_t *(*ctx_get_w_thread) (u32 ctx_index, u8 thread_index);
   int (*ctx_init_client) (tls_ctx_t * ctx);

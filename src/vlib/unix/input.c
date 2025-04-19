@@ -142,8 +142,9 @@ is_int_pending (vlib_node_main_t *nm)
 }
 
 static_always_inline uword
-linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, u32 thread_index)
+linux_epoll_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame,
+			  clib_thread_index_t thread_index)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -363,7 +364,7 @@ static uword
 linux_epoll_input (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   if (thread_index == 0)
     return linux_epoll_input_inline (vm, node, frame, 0);

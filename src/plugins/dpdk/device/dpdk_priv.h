@@ -50,7 +50,7 @@ dpdk_device_flag_set (dpdk_device_t *xd, __typeof__ (xd->flags) flag, int val)
 void dpdk_counters_xstats_init (dpdk_device_t *xd);
 
 static inline void
-dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
+dpdk_get_xstats (dpdk_device_t *xd, clib_thread_index_t thread_index)
 {
   int ret;
   int i;
@@ -101,7 +101,7 @@ static inline void
 dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
   clib_memcpy_fast (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));

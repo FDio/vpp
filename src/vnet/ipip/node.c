@@ -66,7 +66,7 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   ipip_main_t *gm = &ipip_main;
   u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
   u32 tunnel_sw_if_index = ~0;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u32 len;
   vnet_interface_main_t *im = &gm->vnet_main->interface_main;
 

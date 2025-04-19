@@ -65,7 +65,7 @@ typedef union
   struct
   {
     u32 reass_index;
-    u32 thread_index;
+    clib_thread_index_t thread_index;
   };
   u64 as_u64;
 } ip4_sv_reass_val_t;
@@ -1684,7 +1684,7 @@ static char *ip4_sv_reass_handoff_error_strings[] = {
 
 typedef struct
 {
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 } ip4_sv_reass_handoff_trace_t;
 
 static u8 *

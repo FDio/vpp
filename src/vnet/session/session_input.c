@@ -35,7 +35,7 @@ app_worker_del_all_events (app_worker_t *app_wrk)
 {
   session_worker_t *wrk;
   session_event_t *evt;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   session_t *s;
 
   for (thread_index = 0; thread_index < vec_len (app_wrk->wrk_evts);
@@ -73,7 +73,8 @@ app_worker_del_all_events (app_worker_t *app_wrk)
 }
 
 always_inline int
-app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
+app_worker_flush_events_inline (app_worker_t *app_wrk,
+				clib_thread_index_t thread_index,
 				u8 is_builtin)
 {
   application_t *app = application_get (app_wrk->app_index);
@@ -285,7 +286,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 }
 
 int
-app_wrk_flush_wrk_events (app_worker_t *app_wrk, u32 thread_index)
+app_wrk_flush_wrk_events (app_worker_t *app_wrk,
+			  clib_thread_index_t thread_index)
 {
   if (app_worker_application_is_builtin (app_wrk))
     return app_worker_flush_events_inline (app_wrk, thread_index,
@@ -300,7 +302,7 @@ session_wrk_flush_events (session_worker_t *wrk)
 {
   app_worker_t *app_wrk;
   uword app_wrk_index;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
 
   thread_index = wrk->vm->thread_index;
   app_wrk_index = clib_bitmap_first_set (wrk->app_wrks_pending_ntf);
@@ -328,7 +330,7 @@ session_wrk_flush_events (session_worker_t *wrk)
 VLIB_NODE_FN (session_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   session_worker_t *wrk;
 
   wrk = session_main_get_worker (thread_index);

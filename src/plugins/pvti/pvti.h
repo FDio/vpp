@@ -223,7 +223,7 @@ extern vlib_node_registration_t pvti_periodic_node;
 always_inline u8
 pvti_get_stream_index (int is_ip6)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   ASSERT ((thread_index & 0xffffff80) == 0);
 

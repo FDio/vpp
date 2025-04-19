@@ -68,7 +68,7 @@ bier_output (vlib_main_t * vm,
 {
   vlib_combined_counter_main_t *cm = &bier_fmask_counters;
     u32 n_left_from, next_index, * from, * to_next;
-    u32 thread_index;
+    clib_thread_index_t thread_index;
 
     thread_index = vm->thread_index;
     from = vlib_frame_vector_args (from_frame);

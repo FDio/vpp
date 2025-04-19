@@ -141,7 +141,7 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2flood_next_t next_index;
   l2flood_main_t *msm = &l2flood_main;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

@@ -255,7 +255,8 @@ vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector);
  */
 vlib_buffer_t *vnet_ipfix_exp_get_buffer (vlib_main_t *vm,
 					  ipfix_exporter_t *exp,
-					  flow_report_t *fr, u32 thread_index);
+					  flow_report_t *fr,
+					  clib_thread_index_t thread_index);
 
 /*
  * Send the provided buffer. At this stage the buffer should be populated
@@ -265,7 +266,8 @@ vlib_buffer_t *vnet_ipfix_exp_get_buffer (vlib_main_t *vm,
 void vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 				 flow_report_t *fr,
 				 flow_report_stream_t *stream,
-				 u32 thread_index, vlib_buffer_t *b0);
+				 clib_thread_index_t thread_index,
+				 vlib_buffer_t *b0);
 
 #endif /* __included_vnet_flow_report_h__ */
 

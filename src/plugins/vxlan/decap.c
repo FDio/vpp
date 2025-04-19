@@ -193,7 +193,7 @@ vxlan_input (vlib_main_t * vm,
   last_tunnel_cache4 last4;
   last_tunnel_cache6 last6;
   u32 pkts_dropped = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   if (is_ip4)
     clib_memset (&last4, 0xff, sizeof last4);
@@ -1039,7 +1039,7 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
     [VXLAN_FLOW_NEXT_L2_INPUT] =
       im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
   };
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   u32 *from = vlib_frame_vector_args (f);
   u32 n_left_from = f->n_vectors;

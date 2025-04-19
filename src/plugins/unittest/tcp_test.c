@@ -1002,7 +1002,7 @@ tbt_seq_lt (u32 a, u32 b)
 }
 
 static void
-tcp_test_set_time (u32 thread_index, u32 val)
+tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
 {
   session_main.wrk[thread_index].last_vlib_time = val;
   tcp_set_time_now (&tcp_main.wrk[thread_index], val);
@@ -1011,7 +1011,7 @@ tcp_test_set_time (u32 thread_index, u32 val)
 static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 thread_index = 0, snd_una, *min_seqs = 0;
+  clib_thread_index_t thread_index = 0, snd_una, *min_seqs = 0;
   tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
   tcp_connection_t _tc, *tc = &_tc;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -1337,7 +1337,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 static int
 tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 thread_index = 0;
+  clib_thread_index_t thread_index = 0;
   tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
   tcp_connection_t _tc, *tc = &_tc;
   int __clib_unused verbose = 0, i;

@@ -340,7 +340,7 @@ pvti_output_node_common (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   u8 stream_index = pvti_get_stream_index (is_ip6);
 
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   pvti_per_thread_data_t *ptd =
     vec_elt_at_index (pvm->per_thread_data[is_ip6], thread_index);
 

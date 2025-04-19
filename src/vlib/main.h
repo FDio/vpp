@@ -204,7 +204,7 @@ typedef struct vlib_main_t
   clib_random_buffer_t random_buffer;
 
   /* thread, cpu and numa_node indices */
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 numa_node;
 
   /* control-plane API queue signal pending, length indication */
@@ -325,13 +325,10 @@ extern vlib_global_main_t vlib_global_main;
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
 {
-#if CLIB_DEBUG > 0
-  extern __thread uword __os_thread_index;
-#endif
   /*
    * Make sure folks don't pass &vlib_global_main from a worker thread.
    */
-  ASSERT (vm->thread_index == __os_thread_index);
+  ASSERT (vm->thread_index == os_get_thread_index ());
   return clib_time_now (&vm->clib_time) + vm->time_offset;
 }
 

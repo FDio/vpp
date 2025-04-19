@@ -262,7 +262,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				int checksum_offload_enabled, int packed)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 next_index;
   const int hdr_sz = vif->virtio_net_hdr_sz;

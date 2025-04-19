@@ -1068,7 +1068,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   ipsec_main_t *im = &ipsec_main;
   const u16 *next_by_next_header = im->next_header_registrations;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u16 len;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
   u32 *from = vlib_frame_vector_args (from_frame);

@@ -544,7 +544,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) working_bucket __attribute__ ((aligned (8)));
   BVT (clib_bihash_value) * working_copy;
-  u32 thread_index = os_get_thread_index ();
+  clib_thread_index_t thread_index = os_get_thread_index ();
   int log2_working_copy_length;
 
   ASSERT (h->alloc_lock[0]);
@@ -696,7 +696,7 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
   int i, limit;
   u64 new_hash;
   u32 new_log2_pages, old_log2_pages;
-  u32 thread_index = os_get_thread_index ();
+  clib_thread_index_t thread_index = os_get_thread_index ();
   int mark_bucket_linear;
   int resplit_once;
 

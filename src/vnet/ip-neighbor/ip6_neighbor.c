@@ -32,7 +32,7 @@ VLIB_REGISTER_LOG_CLASS (ip6_neighbor_log, static) = {
 #define log_debug(fmt, ...)                                                   \
   vlib_log_debug (ip6_neighbor_log.class, fmt, __VA_ARGS__)
 void
-ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+ip6_neighbor_probe_dst (u32 sw_if_index, clib_thread_index_t thread_index,
 			const ip6_address_t *dst)
 {
   ip6_address_t src;
@@ -45,7 +45,8 @@ ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
 
 void
 ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
-			u32 thread_index, const ip6_address_t *addr)
+			clib_thread_index_t thread_index,
+			const ip6_address_t *addr)
 {
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip6_main_t *i6m = &ip6_main;
@@ -129,7 +130,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop;
   u64 seed;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);

@@ -471,7 +471,8 @@ app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
   session_event_t evt = { .event_type = SESSION_CTRL_EVT_CONNECTED,
 			  .as_u64[0] = s ? s->session_index : ~0,
 			  .as_u64[1] = (u64) opaque << 32 | (u32) err };
-  u32 thread_index = s ? s->thread_index : vlib_get_thread_index ();
+  clib_thread_index_t thread_index =
+    s ? s->thread_index : vlib_get_thread_index ();
 
   app_worker_add_event_custom (app_wrk, thread_index, &evt);
   return 0;
@@ -782,7 +783,8 @@ app_worker_add_event (app_worker_t *app_wrk, session_t *s,
 }
 
 void
-app_worker_add_event_custom (app_worker_t *app_wrk, u32 thread_index,
+app_worker_add_event_custom (app_worker_t *app_wrk,
+			     clib_thread_index_t thread_index,
 			     session_event_t *evt)
 {
   clib_fifo_add1 (app_wrk->wrk_evts[thread_index], *evt);
@@ -832,13 +834,15 @@ app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
 }
 
 u8
-app_worker_mq_wrk_is_congested (app_worker_t *app_wrk, u32 thread_index)
+app_worker_mq_wrk_is_congested (app_worker_t *app_wrk,
+				clib_thread_index_t thread_index)
 {
   return app_wrk->wrk_mq_congested[thread_index] > 0;
 }
 
 void
-app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index)
+app_worker_set_mq_wrk_congested (app_worker_t *app_wrk,
+				 clib_thread_index_t thread_index)
 {
   ASSERT (thread_index == vlib_get_thread_index ());
   if (!app_wrk->wrk_mq_congested[thread_index])
@@ -849,7 +853,8 @@ app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index)
 }
 
 void
-app_worker_unset_wrk_mq_congested (app_worker_t *app_wrk, u32 thread_index)
+app_worker_unset_wrk_mq_congested (app_worker_t *app_wrk,
+				   clib_thread_index_t thread_index)
 {
   clib_atomic_fetch_sub_relax (&app_wrk->mq_congested, 1);
   ASSERT (thread_index == vlib_get_thread_index ());

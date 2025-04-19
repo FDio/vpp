@@ -23,7 +23,8 @@ tls_ctx_alloc (crypto_engine_type_t engine_type)
 }
 
 static inline u32
-tls_ctx_alloc_w_thread (crypto_engine_type_t engine_type, u32 thread_index)
+tls_ctx_alloc_w_thread (crypto_engine_type_t engine_type,
+			clib_thread_index_t thread_index)
 {
   u32 ctx_index;
   ctx_index = tls_vfts[engine_type].ctx_alloc_w_thread (thread_index);
@@ -65,7 +66,8 @@ tls_ctx_init_client (tls_ctx_t *ctx)
 }
 
 static inline u32
-tls_ctx_attach (crypto_engine_type_t engine_type, u32 thread_index, void *ctx)
+tls_ctx_attach (crypto_engine_type_t engine_type,
+		clib_thread_index_t thread_index, void *ctx)
 {
   u32 ctx_index;
   ctx_index = tls_vfts[engine_type].ctx_attach (thread_index, ctx);

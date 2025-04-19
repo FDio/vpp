@@ -1330,7 +1330,7 @@ vl_api_sw_interface_set_tx_placement_t_handler (
   size = mp->array_size;
   for (u32 i = 0; i < size; i++)
     {
-      u32 thread_index = mp->threads[i];
+      clib_thread_index_t thread_index = mp->threads[i];
       bitmap = clib_bitmap_set (bitmap, thread_index, 1);
     }
 

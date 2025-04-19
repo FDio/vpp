@@ -78,7 +78,7 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 n_elts = 0;
-  u32 enqueue_thread_idx = ~0;
+  clib_thread_index_t enqueue_thread_idx = CLIB_INVALID_THREAD_INDEX;
   vnet_crypto_async_frame_t *cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
   *n_total += n_elts;
 

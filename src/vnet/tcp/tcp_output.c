@@ -646,8 +646,8 @@ tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4)
  *  It extracts connection info out of original packet
  */
 void
-tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
-		      u32 thread_index, u8 is_ip4)
+tcp_send_reset_w_pkt (tcp_connection_t *tc, vlib_buffer_t *pkt,
+		      clib_thread_index_t thread_index, u8 is_ip4)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_main_t *vm = wrk->vm;

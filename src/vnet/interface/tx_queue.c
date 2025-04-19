@@ -107,7 +107,7 @@ vnet_hw_if_unregister_all_tx_queues (vnet_main_t *vnm, u32 hw_if_index)
 
 void
 vnet_hw_if_tx_queue_assign_thread (vnet_main_t *vnm, u32 queue_index,
-				   u32 thread_index)
+				   clib_thread_index_t thread_index)
 {
   vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, txq->hw_if_index);
@@ -122,7 +122,7 @@ vnet_hw_if_tx_queue_assign_thread (vnet_main_t *vnm, u32 queue_index,
 
 void
 vnet_hw_if_tx_queue_unassign_thread (vnet_main_t *vnm, u32 queue_index,
-				     u32 thread_index)
+				     clib_thread_index_t thread_index)
 {
   vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, txq->hw_if_index);

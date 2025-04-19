@@ -56,29 +56,29 @@ void os_out_of_memory (void);
 /* Estimate, measure or divine CPU timestamp clock frequency. */
 f64 os_cpu_clock_frequency (void);
 
-extern __thread uword __os_thread_index;
-extern __thread uword __os_numa_index;
+extern __thread clib_thread_index_t __os_thread_index;
+extern __thread clib_numa_node_index_t __os_numa_index;
 
-static_always_inline uword
+static_always_inline clib_thread_index_t
 os_get_thread_index (void)
 {
   return __os_thread_index;
 }
 
 static_always_inline void
-os_set_thread_index (uword thread_index)
+os_set_thread_index (clib_thread_index_t thread_index)
 {
   __os_thread_index = thread_index;
 }
 
-static_always_inline uword
+static_always_inline clib_numa_node_index_t
 os_get_numa_index (void)
 {
   return __os_numa_index;
 }
 
 static_always_inline void
-os_set_numa_index (uword numa_index)
+os_set_numa_index (clib_numa_node_index_t numa_index)
 {
   __os_numa_index = numa_index;
 }
@@ -94,14 +94,6 @@ os_get_cpu_number (void)
 
 uword os_get_nthreads (void);
 
-#include <vppinfra/smp.h>
+#include <vppinfra/cache.h>
 
 #endif /* included_os_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -609,7 +609,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *bif_hw, *mif_hw;
   vnet_sw_interface_t *sw;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   u32 mif_if_index;
 
   bif = bond_get_bond_if_by_sw_if_index (args->group);

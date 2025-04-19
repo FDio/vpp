@@ -490,7 +490,7 @@ vlib_node_registration_t appsl_rx_mqs_input_node;
 VLIB_NODE_FN (appsl_rx_mqs_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  u32 thread_index = vm->thread_index, n_msgs = 0;
+  clib_thread_index_t thread_index = vm->thread_index, n_msgs = 0;
   app_rx_mq_elt_t *elt, *next;
   app_main_t *am = &app_main;
   session_worker_t *wrk;
@@ -581,7 +581,7 @@ app_rx_mqs_epoll_add (application_t *app, app_rx_mq_elt_t *mqe)
 {
   clib_file_t template = { 0 };
   app_rx_mq_handle_t handle;
-  u32 thread_index;
+  clib_thread_index_t thread_index;
   int fd;
 
   thread_index = mqe - app->rx_mqs;
@@ -603,7 +603,7 @@ app_rx_mqs_epoll_add (application_t *app, app_rx_mq_elt_t *mqe)
 static void
 app_rx_mqs_epoll_del (application_t *app, app_rx_mq_elt_t *mqe)
 {
-  u32 thread_index = mqe - app->rx_mqs;
+  clib_thread_index_t thread_index = mqe - app->rx_mqs;
   app_main_t *am = &app_main;
   appsl_wrk_t *aw;
 

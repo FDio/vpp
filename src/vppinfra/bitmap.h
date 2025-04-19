@@ -381,11 +381,12 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
     @param ai - the bitmap
     @param body - the expression to evaluate for each set bit
 */
-#define clib_bitmap_foreach(i,ai)					\
-  if (ai)								\
-    for (i = clib_bitmap_first_set (ai);				\
-	 i != ~0;							\
-	 i = clib_bitmap_next_set (ai, i + 1))
+#define clib_bitmap_foreach(i, ai)                                            \
+  if (ai)                                                                     \
+    for (uword __index = clib_bitmap_first_set (ai),                          \
+	       __clib_unused __dummy = (i) = __index;                         \
+	 __index != ~0;                                                       \
+	 __index = clib_bitmap_next_set (ai, __index + 1), (i) = __index)
 
 /** Return the lowest numbered set bit in a bitmap
     @param ai - pointer to the bitmap

@@ -68,7 +68,7 @@ u32 vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm);
 /** Pre-fetch a per-thread simple counter for the given object index */
 always_inline void
 vlib_prefetch_simple_counter (const vlib_simple_counter_main_t *cm,
-			      u32 thread_index, u32 index)
+			      clib_thread_index_t thread_index, u32 index)
 {
   counter_t *my_counters;
 
@@ -86,8 +86,9 @@ vlib_prefetch_simple_counter (const vlib_simple_counter_main_t *cm,
     @param increment - (u64) quantitiy to add to the counter
 */
 always_inline void
-vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
-			       u32 thread_index, u32 index, u64 increment)
+vlib_increment_simple_counter (vlib_simple_counter_main_t *cm,
+			       clib_thread_index_t thread_index, u32 index,
+			       u64 increment)
 {
   counter_t *my_counters;
 
@@ -102,8 +103,9 @@ vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
     @param increment - (u64) quantitiy remove from the counter value
 */
 always_inline void
-vlib_decrement_simple_counter (vlib_simple_counter_main_t * cm,
-			       u32 thread_index, u32 index, u64 decrement)
+vlib_decrement_simple_counter (vlib_simple_counter_main_t *cm,
+			       clib_thread_index_t thread_index, u32 index,
+			       u64 decrement)
 {
   counter_t *my_counters;
 
@@ -121,8 +123,9 @@ vlib_decrement_simple_counter (vlib_simple_counter_main_t * cm,
     @param value - (u64) quantitiy to set to the counter
 */
 always_inline void
-vlib_set_simple_counter (vlib_simple_counter_main_t * cm,
-			 u32 thread_index, u32 index, u64 value)
+vlib_set_simple_counter (vlib_simple_counter_main_t *cm,
+			 clib_thread_index_t thread_index, u32 index,
+			 u64 value)
 {
   counter_t *my_counters;
 
@@ -246,9 +249,9 @@ void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm);
 */
 
 always_inline void
-vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
-				 u32 thread_index,
-				 u32 index, u64 n_packets, u64 n_bytes)
+vlib_increment_combined_counter (vlib_combined_counter_main_t *cm,
+				 clib_thread_index_t thread_index, u32 index,
+				 u64 n_packets, u64 n_bytes)
 {
   vlib_counter_t *my_counters;
 
@@ -261,8 +264,8 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
 
 /** Pre-fetch a per-thread combined counter for the given object index */
 always_inline void
-vlib_prefetch_combined_counter (const vlib_combined_counter_main_t * cm,
-				u32 thread_index, u32 index)
+vlib_prefetch_combined_counter (const vlib_combined_counter_main_t *cm,
+				clib_thread_index_t thread_index, u32 index)
 {
   vlib_counter_t *cpu_counters;
 

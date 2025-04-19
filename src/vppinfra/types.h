@@ -211,6 +211,10 @@ typedef uword uwordu __attribute__ ((aligned (1), __may_alias__));
        __ptr_ptr - (ARRAY_LEN (__ptr_array) - 1) < __ptr_array;               \
        __var = *++__ptr_ptr)
 
+typedef u16 clib_thread_index_t;
+typedef u8 clib_numa_node_index_t;
+#define CLIB_INVALID_THREAD_INDEX CLIB_U16_MAX
+
 #endif /* included_clib_types_h */
 
 /*

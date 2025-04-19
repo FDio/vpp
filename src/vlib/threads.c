@@ -1549,7 +1549,7 @@ vlib_workers_sync (void)
   if (!(*vlib_worker_threads->wait_at_barrier) &&
       !clib_atomic_swap_rel_n (&vlib_worker_threads->wait_before_barrier, 1))
     {
-      u32 thread_index = vlib_get_thread_index ();
+      clib_thread_index_t thread_index = vlib_get_thread_index ();
       vlib_rpc_call_main_thread (vlib_worker_sync_rpc, (u8 *) &thread_index,
 				 sizeof (thread_index));
       vlib_worker_flush_pending_rpc_requests (vlib_get_main ());

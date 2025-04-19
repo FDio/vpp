@@ -73,7 +73,7 @@ VLIB_NODE_FN (pppoe_cp_dispatch_node) (vlib_main_t * vm,
   vnet_main_t * vnm = pem->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_decapsulated = 0;
-  u32 thread_index = vlib_get_thread_index();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   pppoe_entry_key_t cached_key;
   pppoe_entry_result_t cached_result;

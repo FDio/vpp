@@ -78,7 +78,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_combined_counter_main_t *tx_counter =
     im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
   u32 pkts_encapsulated = 0;
-  u32 thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
   vxlan_tunnel_t *t0 = NULL, *t1 = NULL;

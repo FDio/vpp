@@ -750,7 +750,7 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left, *from;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   ip6_main_t *im = &ip6_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -1781,7 +1781,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {

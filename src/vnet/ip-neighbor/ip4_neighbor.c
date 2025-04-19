@@ -56,7 +56,7 @@ VLIB_REGISTER_LOG_CLASS (ip4_neighbor_log, static) = {
   vlib_log_debug (ip4_neighbor_log.class, fmt, __VA_ARGS__)
 
 void
-ip4_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+ip4_neighbor_probe_dst (u32 sw_if_index, clib_thread_index_t thread_index,
 			const ip4_address_t *dst)
 {
   ip4_address_t src;
@@ -74,7 +74,8 @@ ip4_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
 
 void
 ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
-			u32 thread_index, const ip4_address_t *addr)
+			clib_thread_index_t thread_index,
+			const ip4_address_t *addr)
 {
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip4_main_t *i4m = &ip4_main;
@@ -142,7 +143,7 @@ ip4_arp_inline (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   u32 *from, *to_next_drop;
   uword n_left_from, n_left_to_next_drop, next_index;
-  u32 thread_index = vm->thread_index;
+  clib_thread_index_t thread_index = vm->thread_index;
   u64 seed;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
