@@ -267,14 +267,20 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
   u32 next_index = ~0;
   int update_runtime = 0;
 
-  if (arc_index != vdm->eth_port_rx_feature_arc_index)
+  log_info ("feature_update_cb: starting");
+
+  if (arc_index == vdm->eth_port_rx_feature_arc_index)
     return;
+
+  log_info ("feature_update_cb: new arc index");
 
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   di = vnet_dev_get_dev_instance (hw->dev_instance);
 
   if (!di)
     return;
+
+  log_info ("feature_update_cb: instance exists");
 
   intf = di->is_primary_if ?
 	   vnet_dev_port_get_primary_if (di->port) :
@@ -285,8 +291,12 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
   if (port == 0 || intf->sw_if_index != sw_if_index)
     return;
 
+  log_debug (port->dev, "feature_update_cb: port exists");
+
   if (vnet_have_features (arc_index, sw_if_index))
     {
+      log_debug (port->dev, "feature_update_cb: old feature present");
+
       cm = &fm->feature_config_mains[arc_index];
       current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
@@ -295,6 +305,7 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
       if (intf->feature_arc == 0 || intf->rx_next_index != next_index ||
 	  intf->current_config_index != current_config_index)
 	{
+	  log_debug (port->dev, "feature_update_cb: difference detected");
 	  intf->current_config_index = current_config_index;
 	  intf->rx_next_index = next_index;
 	  intf->feature_arc_index = arc_index;
@@ -304,8 +315,12 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
     }
   else
     {
+      log_debug (port->dev, "feature_update_cb: no old feature");
+
       if (intf->feature_arc)
 	{
+	  log_debug (port->dev, "feature_update_cb: arc detected");
+
 	  intf->current_config_index = 0;
 	  intf->rx_next_index =
 	    intf->redirect_to_node ?
@@ -319,6 +334,8 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
 
   if (update_runtime)
     {
+      log_debug (port->dev, "feature_update_cb: runtime update needed");
+
       foreach_vnet_dev_port_rx_queue (rxq, port)
 	vnet_dev_rx_queue_rt_request (
 	  vm, rxq,
