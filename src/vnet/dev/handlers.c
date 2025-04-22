@@ -274,10 +274,6 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 	}
       intf->redirect_to_node = 1;
     }
-  intf->rx_next_index =
-    node_index == ~0 ?
-      vnet_dev_default_next_index_by_port_type[di->port->attr.type] :
-      node_index;
 
   if (runtime_update)
     {
