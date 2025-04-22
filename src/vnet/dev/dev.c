@@ -295,7 +295,7 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
 
   if (vnet_have_features (arc_index, sw_if_index))
     {
-      log_debug (port->dev, "feature_update_cb: old feature present");
+      log_debug (port->dev, "feature_update_cb: intended arc enabled");
 
       cm = &fm->feature_config_mains[arc_index];
       current_config_index =
@@ -315,7 +315,7 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
     }
   else
     {
-      log_debug (port->dev, "feature_update_cb: no old feature");
+      log_debug (port->dev, "feature_update_cb: intended arc not enabled");
 
       if (intf->feature_arc)
 	{
