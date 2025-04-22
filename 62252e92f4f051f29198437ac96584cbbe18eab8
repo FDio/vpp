@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b20a0cd3_855333ca",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-22T10:36:13Z",
+      "side": 1,
+      "message": "It never came up in my testing, but you\u0027re right - it may depend on the HW. Removed that clause, depending on the time threshold then.",
+      "parentUuid": "3c23c114_6e49d2ee",
+      "range": {
+        "startLine": 42,
+        "startChar": 1,
+        "endLine": 44,
+        "endChar": 97
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aab65805_39493602",
@@ -47,6 +71,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3062a32c_38586dc8",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-22T10:36:13Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "aab65805_39493602",
+      "range": {
+        "startLine": 656,
+        "startChar": 36,
+        "endLine": 656,
+        "endChar": 40
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c17fc80a_e6fe500f",
@@ -60,6 +108,30 @@
       "writtenOn": "2025-04-19T14:15:59Z",
       "side": 1,
       "message": "~0",
+      "range": {
+        "startLine": 722,
+        "startChar": 27,
+        "endLine": 722,
+        "endChar": 45
+      },
+      "revId": "62252e92f4f051f29198437ac96584cbbe18eab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "44f33388_b95365a0",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 722,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-22T10:36:13Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c17fc80a_e6fe500f",
       "range": {
         "startLine": 722,
         "startChar": 27,
