@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <http/http_content_types.h>
+#include <http/http_status_codes.h>
 
 /** @file static_server.c
  *  Static http server, sufficient to serve .html / .css / .js content.
@@ -32,7 +33,7 @@
 hss_main_t hss_main;
 
 static int file_handler_discard_body (hss_session_t *hs, session_t *ts);
-static int url_handler_wait_body (hss_session_t *hs, session_t *ts);
+static int url_handler_read_body (hss_session_t *hs, session_t *ts);
 
 static int
 hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
@@ -64,6 +65,19 @@ hss_add_header (hss_session_t *hs, http_header_name_t name, const char *value,
 	}
     }
   return 0;
+}
+
+static_always_inline void
+hss_confirm_data_read (hss_session_t *hs, u32 n_last_deq)
+{
+  session_t *ts;
+
+  ts = session_get (hs->vpp_session_index, hs->thread_index);
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_last_deq))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
 }
 
 static hss_session_t *
@@ -121,6 +135,7 @@ hss_session_disconnect_transport (hss_session_t *hs)
 static void
 start_send_data (hss_session_t *hs, http_status_code_t status)
 {
+  hss_main_t *hsm = &hss_main;
   http_msg_t msg;
   session_t *ts;
   u32 n_enq;
@@ -128,6 +143,9 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   int rv;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
+
+  if (hsm->debug_level > 0)
+    clib_warning ("status code: %U", format_http_status_code, status);
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
@@ -291,7 +309,8 @@ try_url_handler (hss_session_t *hs)
   hss_url_handler_args_t args = {};
   uword *p, *url_table;
   session_t *ts;
-  u8 *data = 0, *target_path;
+  u32 max_deq;
+  u8 *target_path;
   int rv;
 
   target_path = hs->target_path;
@@ -313,18 +332,41 @@ try_url_handler (hss_session_t *hs)
   if (!p)
     return -1;
 
+  hs->rx_buff = 0;
+
   /* Read request body */
   if (hs->left_recv)
     {
-      ts = session_get (hs->vpp_session_index, hs->thread_index);
-      if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
+      hss_listener_t *l = hss_listener_get (hs->listener_index);
+      if (hs->left_recv > l->rx_buff_thresh)
 	{
-	  hs->read_body_handler = url_handler_wait_body;
+	  /* TODO: large body (not buffered in memory) */
+	  clib_warning ("data length %u above threshold %u", hs->left_recv,
+			l->rx_buff_thresh);
+	  hs->left_recv = 0;
+	  start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
+	  hss_session_disconnect_transport (hs);
+	}
+      hs->rx_buff_offset = 0;
+      vec_validate (hs->rx_buff, hs->left_recv - 1);
+      ts = session_get (hs->vpp_session_index, hs->thread_index);
+      max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+      if (max_deq < hs->left_recv)
+	{
+	  hs->read_body_handler = url_handler_read_body;
+	  if (max_deq == 0)
+	    return 0;
+	  rv = svm_fifo_dequeue (ts->rx_fifo, max_deq, hs->rx_buff);
+	  ASSERT (rv == max_deq);
+	  hs->rx_buff_offset = max_deq;
+	  hs->left_recv -= max_deq;
+	  hss_confirm_data_read (hs, max_deq);
 	  return 0;
 	}
-      vec_validate (data, hs->left_recv - 1);
-      rv = svm_fifo_dequeue (ts->rx_fifo, hs->left_recv, data);
+      rv = svm_fifo_dequeue (ts->rx_fifo, hs->left_recv,
+			     hs->rx_buff + hs->rx_buff_offset);
       ASSERT (rv == hs->left_recv);
+      hss_confirm_data_read (hs, hs->left_recv);
       hs->left_recv = 0;
     }
 
@@ -338,13 +380,13 @@ try_url_handler (hss_session_t *hs)
 
   args.req_type = hs->rt;
   args.query = hs->target_query;
-  args.req_data = data;
+  args.req_data = hs->rx_buff;
   args.sh.thread_index = hs->thread_index;
   args.sh.session_index = hs->session_index;
 
   rv = ((hss_url_handler_fn) p[0]) (&args);
 
-  vec_free (data);
+  vec_free (hs->rx_buff);
 
   /* Wait for data from handler */
   if (rv == HSS_URL_HANDLER_ASYNC)
@@ -482,9 +524,11 @@ try_file_handler (hss_session_t *hs)
 	  svm_fifo_dequeue_drop (ts->rx_fifo, max_dequeue);
 	  hs->left_recv -= max_dequeue;
 	  hs->read_body_handler = file_handler_discard_body;
+	  hss_confirm_data_read (hs, max_dequeue);
 	  return 0;
 	}
       svm_fifo_dequeue_drop (ts->rx_fifo, hs->left_recv);
+      hss_confirm_data_read (hs, hs->left_recv);
       hs->left_recv = 0;
     }
 
@@ -599,26 +643,29 @@ file_handler_discard_body (hss_session_t *hs, session_t *ts)
   to_discard = clib_min (max_dequeue, hs->left_recv);
   svm_fifo_dequeue_drop (ts->rx_fifo, to_discard);
   hs->left_recv -= to_discard;
+  hss_confirm_data_read (hs, to_discard);
   if (hs->left_recv == 0)
     return try_file_handler (hs);
   return 0;
 }
 
 static int
-url_handler_wait_body (hss_session_t *hs, session_t *ts)
+url_handler_read_body (hss_session_t *hs, session_t *ts)
 {
-  /* TODO: add support for large content (buffer or stream data) */
-  if (svm_fifo_max_dequeue (ts->rx_fifo) < hs->left_recv)
-    {
-      clib_warning ("not all data in fifo, max deq %u, left recv %u",
-		    svm_fifo_max_dequeue (ts->rx_fifo), hs->left_recv);
-      hs->left_recv = 0;
-      start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
-      hss_session_disconnect_transport (hs);
-      return 0;
-    }
-  hs->left_recv = 0;
-  return try_url_handler (hs);
+  u32 max_dequeue, to_read;
+  int rv;
+
+  max_dequeue = svm_fifo_max_dequeue (ts->rx_fifo);
+  to_read = clib_min (max_dequeue, hs->left_recv);
+  rv =
+    svm_fifo_dequeue (ts->rx_fifo, to_read, hs->rx_buff + hs->rx_buff_offset);
+  ASSERT (rv == to_read);
+  hs->rx_buff_offset += to_read;
+  hs->left_recv -= to_read;
+  hss_confirm_data_read (hs, to_read);
+  if (hs->left_recv == 0)
+    return try_url_handler (hs);
+  return 0;
 }
 
 static int
@@ -1082,6 +1129,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->cache_size = 10 << 20;
   l->max_age = HSS_DEFAULT_MAX_AGE;
   l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
+  l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
 
   /* Get a line of input. */
@@ -1118,6 +1166,9 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
 			 &l->max_body_size))
+	;
+      else if (unformat (line_input, "rx-buff-thresh %U", unformat_memory_size,
+			 &l->rx_buff_thresh))
 	;
       else if (unformat (line_input, "keepalive-timeout %d",
 			 &l->keepalive_timeout))
@@ -1214,6 +1265,12 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "No input provided");
 
+  l->cache_size = 10 << 20;
+  l->max_age = HSS_DEFAULT_MAX_AGE;
+  l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
+  l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
+  l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "add"))
@@ -1239,6 +1296,9 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
 			 &l->max_body_size))
+	;
+      else if (unformat (line_input, "rx-buff-thresh %U", unformat_memory_size,
+			 &l->rx_buff_thresh))
 	;
       else
 	{

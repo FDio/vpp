@@ -25,6 +25,7 @@
 
 #define HSS_DEFAULT_MAX_AGE 600
 #define HSS_DEFAULT_MAX_BODY_SIZE     8192
+#define HSS_DEFAULT_RX_BUFFER_THRESH  1 << 20
 #define HSS_DEFAULT_KEEPALIVE_TIMEOUT 60
 
 /** @file http_static.h
@@ -63,6 +64,10 @@ typedef struct hss_session_
   http_headers_ctx_t resp_headers;
   /** Response header buffer */
   u8 *headers_buf;
+  /** RX buffer (POST body) */
+  u8 *rx_buff;
+  /** Current RX buffer offset */
+  u64 rx_buff_offset;
   /** POST body left to receive */
   u64 left_recv;
   /** threshold for switching to pointers */
@@ -137,6 +142,8 @@ typedef struct hss_listener_
   u64 cache_size;
   /** Maximum size of a request body (in bytes) **/
   u64 max_body_size;
+  /** Maximum size of a large memory allocation */
+  u32 rx_buff_thresh;
   /** Timeout during which client connection will stay open */
   u32 keepalive_timeout;
   /** How long a response is considered fresh (in seconds) */

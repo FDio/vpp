@@ -67,7 +67,7 @@ hss_register_url_handler (hss_url_handler_fn fp, const char *url,
 static int
 hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
 		u32 private_segment_size, u8 *www_root, u8 *uri, u32 max_age,
-		u32 keepalive_timeout, u64 max_body_size)
+		u32 keepalive_timeout, u64 max_body_size, u32 rx_buff_thresh)
 {
   hss_main_t *hsm = &hss_main;
   int rv;
@@ -81,6 +81,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   hsm->default_listener.cache_size = cache_limit;
   hsm->default_listener.max_age = max_age;
   hsm->default_listener.max_body_size = max_body_size;
+  hsm->default_listener.rx_buff_thresh = rx_buff_thresh;
   hsm->default_listener.keepalive_timeout = keepalive_timeout;
   hsm->have_default_listener = 1;
 
@@ -109,46 +110,6 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
 
 /* API message handler */
 static void
-vl_api_http_static_enable_v2_t_handler (vl_api_http_static_enable_v2_t *mp)
-{
-  vl_api_http_static_enable_v2_reply_t *rmp;
-  hss_main_t *hsm = &hss_main;
-  int rv;
-
-  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
-  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
-
-  rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
-		       ntohl (mp->prealloc_fifos),
-		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
-		       ntohl (mp->max_age), HSS_DEFAULT_KEEPALIVE_TIMEOUT,
-		       HSS_DEFAULT_MAX_BODY_SIZE);
-
-  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V2_REPLY);
-}
-
-/* API message handler */
-static void
-vl_api_http_static_enable_v3_t_handler (vl_api_http_static_enable_v3_t *mp)
-{
-  vl_api_http_static_enable_v3_reply_t *rmp;
-  hss_main_t *hsm = &hss_main;
-  int rv;
-
-  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
-  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
-
-  rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
-		       ntohl (mp->prealloc_fifos),
-		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
-		       ntohl (mp->max_age), ntohl (mp->keepalive_timeout),
-		       HSS_DEFAULT_MAX_BODY_SIZE);
-
-  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V3_REPLY);
-}
-
-/* API message handler */
-static void
 vl_api_http_static_enable_v4_t_handler (vl_api_http_static_enable_v4_t *mp)
 {
   vl_api_http_static_enable_v4_reply_t *rmp;
@@ -158,13 +119,33 @@ vl_api_http_static_enable_v4_t_handler (vl_api_http_static_enable_v4_t *mp)
   mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
   mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
 
+  rv = hss_enable_api (
+    ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+    ntohl (mp->prealloc_fifos), ntohl (mp->private_segment_size), mp->www_root,
+    mp->uri, ntohl (mp->max_age), ntohl (mp->keepalive_timeout),
+    ntohl (mp->max_body_size), HSS_DEFAULT_RX_BUFFER_THRESH);
+
+  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V4_REPLY);
+}
+
+/* API message handler */
+static void
+vl_api_http_static_enable_v5_t_handler (vl_api_http_static_enable_v5_t *mp)
+{
+  vl_api_http_static_enable_v5_reply_t *rmp;
+  hss_main_t *hsm = &hss_main;
+  int rv;
+
+  mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
+  mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
+
   rv = hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
 		       ntohl (mp->prealloc_fifos),
 		       ntohl (mp->private_segment_size), mp->www_root, mp->uri,
 		       ntohl (mp->max_age), ntohl (mp->keepalive_timeout),
-		       ntohl (mp->max_body_size));
+		       ntohl (mp->max_body_size), ntohl (mp->rx_buff_thresh));
 
-  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V4_REPLY);
+  REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_V5_REPLY);
 }
 
 #include <http_static/http_static.api.c>
