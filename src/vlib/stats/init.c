@@ -254,6 +254,4 @@ statseg_init (vlib_main_t *vm)
   return stats_segment_socket_init ();
 }
 
-VLIB_INIT_FUNCTION (statseg_init) = {
-  .runs_after = VLIB_INITS ("unix_input_init", "linux_epoll_input_init"),
-};
+VLIB_INIT_FUNCTION (statseg_init);

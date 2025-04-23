@@ -9,4 +9,5 @@
 
 extern clib_file_main_t file_main;
 
+void vlib_file_poll_init (vlib_main_t *vm);
 #endif /* __vlib_file_h__ */
