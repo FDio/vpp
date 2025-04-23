@@ -84,6 +84,8 @@ typedef struct session_cb_vft_
   /** Custom fifo allocation for proxy */
   int (*proxy_alloc_session_fifos) (session_t *s);
 
+  /** Collect and export session logs */
+  int (*hssl_session_callback) (session_t *s);
 } session_cb_vft_t;
 
 #define foreach_app_init_args			\
