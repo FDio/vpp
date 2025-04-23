@@ -1407,7 +1407,11 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
 
-  *vlib_worker_threads->wait_at_barrier = 1;
+  __atomic_store_n (vlib_worker_threads->wait_at_barrier, 1, __ATOMIC_RELEASE);
+
+  for (clib_thread_index_t ti = 1; ti < vlib_get_n_threads (); ti++)
+    vlib_thread_wakeup (ti);
+
   while (*vlib_worker_threads->workers_at_barrier != count)
     {
       if ((now = vlib_time_now (vm)) > deadline)
