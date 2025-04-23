@@ -251,6 +251,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	    }
 	  if (evt->as_u64[0] >> 32 == SESSION_CLEANUP_TRANSPORT)
 	    {
+	      if (app->cb_fns.app_evt_callback)
+		app->cb_fns.app_evt_callback (s);
 	      /* postponed cleanup requested */
 	      if (evt->as_u64[1])
 		transport_cleanup_cb ((void *) evt->as_u64[1],
