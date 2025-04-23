@@ -270,8 +270,11 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
   log_info ("starting");
   log_info ("arc %u vdm %u", arc_index, vdm->eth_port_rx_feature_arc_index);
 
-  if (arc_index != vdm->eth_port_rx_feature_arc_index)
-    return;
+  if (arc_index != 25)
+    if (arc_index != vdm->eth_port_rx_feature_arc_index)
+      return;
+
+  vdm->eth_port_rx_feature_arc_index = arc_index;
 
   log_info ("new arc index %u", vdm->eth_port_rx_feature_arc_index);
 
