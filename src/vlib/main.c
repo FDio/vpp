@@ -45,8 +45,6 @@
 #include <vlib/stats/stats.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
-#include <vlib/unix/unix.h>
-
 #define VLIB_FRAME_MAGIC (0xabadc0ed)
 
 always_inline u32 *
@@ -1579,6 +1577,11 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       cpu_time_now = clib_cpu_time_now ();
 
+      if (vm->file_poll_skip_loops)
+	vm->file_poll_skip_loops--;
+      else
+	vlib_file_poll (vm);
+
       for (vlib_node_type_t nt = 0; nt < VLIB_N_NODE_TYPE; nt++)
 	{
 	  if (node_type_attrs[nt].can_be_polled)
@@ -1975,13 +1978,14 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  vlib_tw_init (vm);
+  vlib_file_poll_init (vm);
+
   /* See unix/main.c; most likely already set up */
   if (vgm->init_functions_called == 0)
     vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
   if ((error = vlib_call_all_init_functions (vm)))
     goto done;
-
-  vlib_tw_init (vm);
 
   vec_validate (nm->process_restore_current, 10);
   vec_validate (nm->process_restore_next, 10);
@@ -2073,6 +2077,7 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
   vlib_tw_init (vm);
+  vlib_file_poll_init (vm);
 
   vm->worker_init_functions_called = hash_create (0, 0);
 

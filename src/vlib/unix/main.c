@@ -77,10 +77,7 @@ unix_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (unix_main_init) =
-{
-  .runs_before = VLIB_INITS ("unix_input_init"),
-};
+VLIB_INIT_FUNCTION (unix_main_init);
 
 static int
 unsetup_signal_handlers (int sig)
