@@ -15,6 +15,14 @@
 
 #include <vnet/feature/feature.h>
 
+VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
+  .class_name = "feature",
+  .subclass_name = "c",
+};
+#define log_info(f, ...)                                                      \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dev_log.class, "%s: " f, __func__,           \
+	    ##__VA_ARGS__)
+
 vnet_feature_main_t feature_main;
 
 typedef struct vnet_feature_upd_registration_t_
@@ -41,8 +49,10 @@ vnet_feature_reg_invoke (u32 sw_if_index, u8 arc_index, u8 is_enable)
 {
   vnet_feature_upd_registration_t *reg;
 
+  log_info ("registration invocation starting");
   vec_foreach (reg, regs)
     reg->cb (sw_if_index, arc_index, is_enable, reg->data);
+  log_info ("registration invocation ended");
 }
 
 
@@ -308,12 +318,18 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   u32 feature_index;
   u8 arc_index;
 
+  log_info ("start for arc_name %s", arc_name);
+
   arc_index = vnet_get_feature_arc_index (arc_name);
+
+  log_info ("arc_index %u", arc_index);
 
   if (arc_index == (u8) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   feature_index = vnet_get_feature_index (arc_index, node_name);
+
+  log_info ("feature_index %u", feature_index);
 
   return vnet_feature_enable_disable_with_index (arc_index, feature_index,
 						 sw_if_index, enable_disable,
