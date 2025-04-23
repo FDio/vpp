@@ -118,7 +118,6 @@ add_vpp_library(vlib
   time.c
   trace.c
   unix/cli.c
-  unix/input.c
   unix/main.c
   unix/plugin.c
   unix/util.c
