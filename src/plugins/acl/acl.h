@@ -301,6 +301,7 @@ typedef struct {
   vlib_combined_counter_main_t *combined_acl_counters;
   /* enable/disable ACL counters for interface processing */
   u32 interface_acl_counters_enabled;
+  u32 hitcount_acl_enabled;
 } acl_main_t;
 
 #define acl_log_err(...) \
