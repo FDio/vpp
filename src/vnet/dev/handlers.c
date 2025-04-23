@@ -246,6 +246,7 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
   vnet_dev_port_interface_t *intf;
   int runtime_update = 0;
 
+  log_debug (di->port->dev, "vdsinn: starting");
   if (di->is_primary_if)
     intf = vnet_dev_port_get_primary_if (di->port);
   else
@@ -253,9 +254,11 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 
   if (node_index == ~0)
     {
+      log_debug (di->port->dev, "vdsinn: no node index");
       intf->redirect_to_node_next_index = 0;
       if (intf->feature_arc == 0)
 	{
+	  log_debug (di->port->dev, "vdsinn: and no node index");
 	  intf->rx_next_index =
 	    vnet_dev_default_next_index_by_port_type[di->port->attr.type];
 	  runtime_update = 1;
@@ -266,9 +269,12 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
     {
       u16 next_index = vlib_node_add_next (vlib_get_main (),
 					   port_rx_eth_node.index, node_index);
+      log_debug (di->port->dev, "vdsinn: node index %u next index %u",
+		 node_index, next_index);
       intf->redirect_to_node_next_index = next_index;
       if (intf->feature_arc == 0)
 	{
+	  log_debug (di->port->dev, "vdsinn: and no feature arc");
 	  intf->rx_next_index = next_index;
 	  runtime_update = 1;
 	}
@@ -278,6 +284,7 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
     node_index == ~0 ?
       vnet_dev_default_next_index_by_port_type[di->port->attr.type] :
       node_index;
+  log_debug (di->port->dev, "vdsinn: rx_next_index %u", intf->rx_next_index);
 
   if (runtime_update)
     {
