@@ -22,6 +22,13 @@
 #include <vnet/bonding/node.h>
 #include <vlib/stats/stats.h>
 
+VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
+  .class_name = "bonding",
+  .subclass_name = "cli",
+};
+#define log_info(f, ...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dev_log.class, f, 0, ##__VA_ARGS__)
+
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 {
@@ -760,6 +767,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
     }
   }
 
+  log_info ("bond: enabling feature");
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  mif->sw_if_index, 1, 0, 0);
 
