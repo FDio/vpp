@@ -34,6 +34,24 @@
       "parentUuid": "6f084b73_0e360243",
       "revId": "dc4e5a7fc6a9de15f98faefa16cdf4214bf8986d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "59741d1b_702bb231",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-04-23T19:00:45Z",
+      "side": 1,
+      "message": "that is exactly what we agreed that we will not do. if there is no intention to merge patch and it is just experiment it can be declared private or WIP, both will prevent merging.",
+      "parentUuid": "6c57673a_d0788d10",
+      "revId": "dc4e5a7fc6a9de15f98faefa16cdf4214bf8986d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
