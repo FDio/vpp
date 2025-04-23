@@ -1975,13 +1975,14 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  vlib_tw_init (vm);
+  vlib_file_poll_init (vm);
+
   /* See unix/main.c; most likely already set up */
   if (vgm->init_functions_called == 0)
     vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
   if ((error = vlib_call_all_init_functions (vm)))
     goto done;
-
-  vlib_tw_init (vm);
 
   vec_validate (nm->process_restore_current, 10);
   vec_validate (nm->process_restore_next, 10);
@@ -2073,6 +2074,7 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
   vlib_tw_init (vm);
+  vlib_file_poll_init (vm);
 
   vm->worker_init_functions_called = hash_create (0, 0);
 
