@@ -3680,6 +3680,19 @@ acl_clear_aclplugin_fn (vlib_main_t * vm,
   return error;
 }
 
+static clib_error_t *
+acl_debug_flag_on_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  if (unformat (input, "on"))
+    am->hitcount_acl_enabled = 1;
+  if (unformat (input, "off"))
+    am->hitcount_acl_enabled = 0;
+  return error;
+}
+
 VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
     .path = "set acl-plugin",
     .short_help = "set acl-plugin session timeout {{udp idle}|tcp {idle|transient}} <seconds>",
@@ -3855,6 +3868,19 @@ VLIB_CLI_COMMAND (aclplugin_macip_delete_acl_command, static) = {
   .function = acl_macip_delete_aclplugin_acl_fn,
 };
 
+/*?
+ *  Add debug command for Access Control List (ACL) to get hitcount for
+ *  permit+reflect rules
+ *
+ *
+ * @cliexcmd{debug acl-plugin hitcount <on|off>}
+ ?*/
+VLIB_CLI_COMMAND (aclplugin_set_hitcount_debug_command, static) = {
+  .path = "debug acl-plugin hitcount",
+  .short_help = "debug acl-plugin hitcount <on|off>",
+  .function = acl_debug_flag_on_fn,
+};
+
 static clib_error_t *
 acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -4000,7 +4026,8 @@ acl_init (vlib_main_t * vm)
   am->fa_cleaner_cnt_unknown_event = 0;
   am->fa_cleaner_cnt_timer_restarted = 0;
   am->fa_cleaner_cnt_wait_with_timeout = 0;
-
+  // hitcount debug 0 by default
+  am->hitcount_acl_enabled = 0;
 
 #define _(N, v, s) am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, v, 1);
   foreach_acl_eh

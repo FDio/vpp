@@ -299,7 +299,9 @@ static int acl_plugin_match_5tuple (u32 lc_index,
                                            u32 * r_rule_match_p,
                                            u32 * trace_bitmap)
 {
-  return acl_plugin_match_5tuple_inline (&acl_main, lc_index, pkt_5tuple, is_ip6, r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+  return acl_plugin_match_5tuple_inline (
+    &acl_main, lc_index, pkt_5tuple, is_ip6, r_action, r_acl_pos_p,
+    r_acl_match_p, r_rule_match_p, trace_bitmap, NULL);
 }
 
 
