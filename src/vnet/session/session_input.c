@@ -5,6 +5,7 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_local.h>
+#include <vnet/session/application_logging.h>
 
 static inline int
 mq_try_lock (svm_msg_q_t *mq)
@@ -235,6 +236,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	    break;
 	  if (app->cb_fns.session_transport_closed_callback)
 	    app->cb_fns.session_transport_closed_callback (s);
+	  /* TODO: move to transport cleanup once we postpone those */
+	  if (app->cb_fns.app_log_callback)
+	    app->cb_fns.app_log_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_CLEANUP:
 	  s = session_get (evt->as_u64[0] & 0xffffffff, thread_index);
@@ -245,7 +249,13 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		app->cb_fns.session_cleanup_callback (s, evt->as_u64[0] >> 32);
 	    }
 	  if (evt->as_u64[0] >> 32 != SESSION_CLEANUP_SESSION)
-	    break;
+	    {
+	      /*
+	    if (app->cb_fns.app_log_callback)
+	      app->cb_fns.app_log_callback (s);
+	      */
+	      break;
+	    }
 	  uword_to_pointer (evt->as_u64[1], void (*) (session_t * s)) (s);
 	  break;
 	case SESSION_CTRL_EVT_HALF_CLEANUP:
