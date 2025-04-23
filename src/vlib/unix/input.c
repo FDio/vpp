@@ -51,85 +51,6 @@
 
 #include <sys/epoll.h>
 
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  int epoll_fd;
-  struct epoll_event *epoll_events;
-  int n_epoll_fds;
-
-  /* Statistics. */
-  u64 epoll_files_ready;
-  u64 epoll_waits;
-} linux_epoll_main_t;
-
-static linux_epoll_main_t *linux_epoll_mains = 0;
-
-static void
-linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
-{
-  linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains,
-					     f->polling_thread_index);
-  struct epoll_event e = { 0 };
-  int op, add_del = 0;
-
-  e.events = EPOLLIN;
-  if (f->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE)
-    e.events |= EPOLLOUT;
-  if (f->flags & UNIX_FILE_EVENT_EDGE_TRIGGERED)
-    e.events |= EPOLLET;
-  e.data.u32 = f->index;
-
-  op = -1;
-
-  switch (update_type)
-    {
-    case UNIX_FILE_UPDATE_ADD:
-      op = EPOLL_CTL_ADD;
-      add_del = 1;
-      break;
-
-    case UNIX_FILE_UPDATE_MODIFY:
-      op = EPOLL_CTL_MOD;
-      break;
-
-    case UNIX_FILE_UPDATE_DELETE:
-      op = EPOLL_CTL_DEL;
-      add_del = -1;
-      break;
-
-    default:
-      clib_warning ("unknown update_type %d", update_type);
-      return;
-    }
-
-  /* worker threads open epoll fd only if needed */
-  if (update_type == UNIX_FILE_UPDATE_ADD && em->epoll_fd == -1)
-    {
-      em->epoll_fd = epoll_create (1);
-      if (em->epoll_fd < 0)
-	{
-	  clib_unix_warning ("epoll_create");
-	  return;
-	}
-      em->n_epoll_fds = 0;
-    }
-
-  if (epoll_ctl (em->epoll_fd, op, f->file_descriptor, &e) < 0)
-    {
-      clib_unix_warning ("epoll_ctl");
-      return;
-    }
-
-  em->n_epoll_fds += add_del;
-
-  if (em->n_epoll_fds == 0)
-    {
-      close (em->epoll_fd);
-      em->epoll_fd = -1;
-    }
-}
-
 static int
 is_int_pending (vlib_node_main_t *nm)
 {
@@ -147,8 +68,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
-  linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains, thread_index);
-  struct epoll_event *e;
+  struct epoll_event *e, epoll_events[256];
   int n_fds_ready;
   int is_main = (thread_index == 0);
 
@@ -223,20 +143,18 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       }
 
     /* Allow any signal to wakeup our sleep. */
-    if (is_main || em->epoll_fd != -1)
+    if (is_main || vm->epoll_fd != -1)
       {
 	static sigset_t unblock_all_signals;
-	n_fds_ready = epoll_pwait (em->epoll_fd,
-				   em->epoll_events,
-				   vec_len (em->epoll_events),
-				   timeout_ms, &unblock_all_signals);
+	n_fds_ready =
+	  epoll_pwait (vm->epoll_fd, epoll_events, ARRAY_LEN (epoll_events),
+		       timeout_ms, &unblock_all_signals);
 
 	/* This kludge is necessary to run over absurdly old kernels */
 	if (n_fds_ready < 0 && errno == ENOSYS)
 	  {
-	    n_fds_ready = epoll_wait (em->epoll_fd,
-				      em->epoll_events,
-				      vec_len (em->epoll_events), timeout_ms);
+	    n_fds_ready = epoll_wait (vm->epoll_fd, epoll_events,
+				      ARRAY_LEN (epoll_events), timeout_ms);
 	  }
 
       }
@@ -277,10 +195,10 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       goto done;
     }
 
-  em->epoll_waits += 1;
-  em->epoll_files_ready += n_fds_ready;
+  vm->epoll_waits += 1;
+  vm->epoll_files_ready += n_fds_ready;
 
-  for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
+  for (e = epoll_events; e < epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
       clib_file_t *f;
@@ -380,31 +298,6 @@ VLIB_REGISTER_NODE (linux_epoll_input_node,static) = {
 clib_error_t *
 linux_epoll_input_init (vlib_main_t * vm)
 {
-  linux_epoll_main_t *em;
-  clib_file_main_t *fm = &file_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-
-  vec_validate_aligned (linux_epoll_mains, tm->n_vlib_mains,
-			CLIB_CACHE_LINE_BYTES);
-
-  vec_foreach (em, linux_epoll_mains)
-  {
-    /* Allocate some events. */
-    vec_resize (em->epoll_events, VLIB_FRAME_SIZE);
-
-    if (linux_epoll_mains == em)
-      {
-	em->epoll_fd = epoll_create (1);
-	if (em->epoll_fd < 0)
-	  return clib_error_return_unix (0, "epoll_create");
-      }
-    else
-      em->epoll_fd = -1;
-  }
-
-  fm->file_update = linux_epoll_file_update;
-
   return 0;
 }
 
