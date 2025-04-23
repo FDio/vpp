@@ -290,8 +290,10 @@ vnet_dev_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
     {
       foreach_vnet_dev_port_rx_queue (rxq, di->port)
 	vnet_dev_rx_queue_rt_request (
-	  vm, rxq, (vnet_dev_rx_queue_rt_req_t){ .update_next_index = 1 });
+	  vm, rxq,
+	  (vnet_dev_rx_queue_rt_req_t){ .update_next_index = 1,
+					.update_feature_arc = 1 });
       log_debug (di->port->dev, "runtime update requested due to chgange in "
-				"reditect-to-next configuration");
+				"redirect-to-next configuration");
     }
 }
