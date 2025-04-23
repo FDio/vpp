@@ -628,13 +628,18 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 }
 
 always_inline int
-hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5tuple,
-                       int is_ip6, u8 *action, u32 *acl_pos_p, u32 * acl_match_p,
-                       u32 * rule_match_p, u32 * trace_bitmap)
+hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index,
+			     fa_5tuple_t *pkt_5tuple, int is_ip6, u8 *action,
+			     u32 *acl_pos_p, u32 *acl_match_p,
+			     u32 *rule_match_p, u32 *trace_bitmap,
+			     u32 *acl_match_idx)
 {
   acl_main_t *am = p_acl_main;
   applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
   u32 match_index = multi_acl_match_get_applied_ace_index(am, is_ip6, pkt_5tuple);
+  if (acl_match_idx != NULL)
+    *acl_match_idx = match_index;
+
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
     pae->hitcount++;
@@ -647,16 +652,12 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
   return 0;
 }
 
-
-
 always_inline int
 acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap)
+				fa_5tuple_opaque_t *pkt_5tuple, int is_ip6,
+				u8 *r_action, u32 *r_acl_pos_p,
+				u32 *r_acl_match_p, u32 *r_rule_match_p,
+				u32 *trace_bitmap, u32 *acl_match_idx)
 {
   acl_main_t *am = p_acl_main;
   fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
@@ -672,8 +673,10 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
       return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
     } else {
-      return hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+	return hash_multi_acl_match_5tuple (
+	  p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+	  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap,
+	  acl_match_idx);
     }
   } else {
     return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
@@ -707,8 +710,9 @@ acl_plugin_match_5tuple_inline_and_count (void *p_acl_main, u32 lc_index,
       ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
     } else {
-      ret = hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+	ret = hash_multi_acl_match_5tuple (
+	  p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+	  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap, NULL);
     }
   } else {
     ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
