@@ -2,6 +2,7 @@
 
 import unittest
 
+import ipaddress
 import socket
 
 from scapy.packet import Raw
@@ -82,6 +83,33 @@ class TestIpSessionRedirect(VppTestCase):
             mask=mask,
         )
         return r.new_table_index
+
+    def verify_session_dump_entry(
+        self,
+        sess,
+        table_index,
+        is_punt,
+        is_ip6,
+        match_len,
+        match,
+        n_paths,
+        sess_path_ip,
+    ):
+        self.assertEqual(sess.table_index, table_index)
+        self.assertEqual(sess.is_punt, is_punt)
+        self.assertEqual(sess.is_ip6, is_ip6)
+        self.assertEqual(sess.match_length, match_len)
+        self.assertEqual(sess.match[:match_len], match)
+        self.assertEqual(sess.n_paths, n_paths)
+        for i, ip in enumerate(sess_path_ip):
+            if is_ip6:
+                self.assertEqual(
+                    sess.paths[i].nh.address.ip6, ipaddress.IPv6Address(ip)
+                )
+            else:
+                self.assertEqual(
+                    sess.paths[i].nh.address.ip4, ipaddress.IPv4Address(ip)
+                )
 
     def __test_redirect(self, sport, dport, is_punt, is_ip6):
         if is_ip6:
@@ -193,6 +221,47 @@ class TestIpSessionRedirect(VppTestCase):
         # we still have only 2 sessions, not 3
         t = self.vapi.classify_table_info(table_id=table_index)
         self.assertEqual(t.active_sessions, 2)
+
+        # update matching entry so that it is multi-path
+        paths = [
+            VppRoutePath(nh1, 0xFFFFFFFF).encode(),
+            VppRoutePath(nh2, 0xFFFFFFFF).encode(),
+        ]
+        self.vapi.ip_session_redirect_add_v2(
+            table_index=table_index,
+            match_len=len(match2),
+            match=match2,
+            is_punt=is_punt,
+            n_paths=2,
+            paths=paths,
+            proto=proto,
+        )
+
+        # verify that session dump has 2 entries
+        sessions_dump = self.vapi.ip_session_redirect_dump(table_index=table_index)
+        self.assertEqual(len(sessions_dump), 2)
+
+        # verify session dump entries
+        self.verify_session_dump_entry(
+            sessions_dump[0],
+            table_index,
+            is_punt,
+            is_ip6,
+            len(match1),
+            match1,
+            1,
+            [nh1],
+        )
+        self.verify_session_dump_entry(
+            sessions_dump[1],
+            table_index,
+            is_punt,
+            is_ip6,
+            len(match2),
+            match2,
+            2,
+            [nh1, nh2],
+        )
 
         # cleanup
         self.vapi.ip_session_redirect_del(table_index, len(match2), match2)

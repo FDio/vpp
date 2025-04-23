@@ -14,6 +14,7 @@
 #include <vlib/vlib.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/ip/ip_format_fns.h>
+#include <vnet/fib/fib_path_list.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vat/vat.h>
 #include <vlibapi/api.h>
@@ -182,6 +183,79 @@ api_ip_session_redirect_del (vat_main_t *vam)
   W (ret);
 
   return ret;
+}
+
+static int
+api_ip_session_redirect_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_session_redirect_dump_t *mp;
+  u32 table_index = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "table %d", &table_index))
+	;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (IP_SESSION_REDIRECT_DUMP, mp);
+  mp->table_index = htonl (table_index);
+
+  S (mp)
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ip_session_redirect_details_t_handler (
+  vl_api_ip_session_redirect_details_t *mp)
+{
+  vat_main_t *vam = ip_session_redirect_test_main.vat_main;
+  int rv;
+  u32 table_index;
+  u32 opaque_index;
+  u32 match_len;
+  u8 match[80];
+  u8 n_paths;
+  fib_route_path_t *paths_ = 0;
+  u8 *out = 0;
+
+  table_index = ntohl (mp->table_index);
+  opaque_index = ntohl (mp->opaque_index);
+  match_len = ntohl (mp->match_length);
+  const char *type = mp->is_punt ? "[punt]" : "[acl]";
+  const char *ip = mp->is_ip6 ? "[ip6]" : "[ip4]";
+  clib_memcpy (match, mp->match, match_len);
+  n_paths = mp->n_paths;
+
+  for (int i = 0; i < n_paths; i++)
+    {
+      fib_route_path_t path;
+      if ((rv = fib_api_path_decode (&mp->paths[i], &path)))
+	goto err;
+      vec_add1 (paths_, path);
+    }
+
+  out =
+    format (out, "table %d match %U %s %s opaque_index 0x%x\n", table_index,
+	    format_hex_bytes, match, match_len, type, ip, opaque_index);
+  out = format (out, " via:\n");
+  for (int i = 0; i < n_paths; i++)
+    {
+      fib_route_path_t *path = &paths_[i];
+      out = format (out, "  %U", format_fib_route_path, path);
+    }
+
+  fformat (vam->ofp, (char *) out);
+err:
+  vec_free (out);
 }
 
 #include "ip_session_redirect.api_test.c"
