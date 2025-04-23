@@ -618,7 +618,11 @@ class TestIPv6(TestIPv6ND):
         na = (
             Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
             / IPv6(dst=self.pg1.local_ip6, src=self.pg1.remote_hosts[1].ip6)
-            / ICMPv6ND_NA(tgt=self.pg1.remote_hosts[1].ip6)
+            / ICMPv6ND_NA(
+                tgt=self.pg1.remote_hosts[1].ip6,
+                S=1,  # Solicited flag
+                O=1,  # Override flag
+            )
             / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_hosts[1].mac)
         )
         self.send_and_assert_no_replies(self.pg1, [na])

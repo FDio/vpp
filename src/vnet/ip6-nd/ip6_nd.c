@@ -240,7 +240,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	      next0 = 0;
 	      error0 = error0 == ICMP6_ERROR_NONE ?
 		ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX : error0;
-	      c_type = IP_NEIGHBOR_CTR_REPLY;
+	      if ((clib_net_to_host_u32 (h0->advertisement_flags) &
+		   ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED) == 0)
+		c_type = IP_NEIGHBOR_CTR_GRAT;
+	      else
+		c_type = IP_NEIGHBOR_CTR_REPLY;
 	    }
 
 	  vlib_increment_simple_counter (

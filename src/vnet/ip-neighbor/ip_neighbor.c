@@ -1875,6 +1875,7 @@ VLIB_CLI_COMMAND (show_ip_neighbor_stats_cmd_node, static) = {
   .path = "show ip neighbor-stats",
   .function = ip_neighbor_stats_show,
   .short_help = "show ip neighbor-stats [interface]",
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
