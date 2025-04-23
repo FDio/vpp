@@ -221,6 +221,23 @@ process_established_session (vlib_main_t * vm, acl_main_t * am,
 	 sess->sw_if_index, sw_if_index[0]);
       action = 0;
     }
+
+  if (PREDICT_FALSE (am->hitcount_acl_enabled))
+    {
+      u32 lc_index0 = ~0;
+      if (is_input)
+	lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index[0]];
+      else
+	lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index[0]];
+
+      applied_hash_ace_entry_t **applied_hash_aces =
+	vec_elt_at_index (am->hash_entry_vec_by_lc_index, lc_index0);
+      ASSERT (sess->match_idx < vec_len ((*applied_hash_aces)));
+      applied_hash_ace_entry_t *pae =
+	vec_elt_at_index ((*applied_hash_aces), sess->match_idx);
+      pae->hitcount++;
+    }
+
   return action;
 
 }
@@ -382,6 +399,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
       u32 match_acl_in_index = ~0;
       u32 match_acl_pos = ~0;
       u32 match_rule_index = ~0;
+      u32 acl_match_idx = ~0;
 
       next[0] = 0;		/* drop by default */
 
@@ -470,13 +488,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		  am->output_lc_index_by_sw_if_index[sw_if_index[0]];
 
 	      action = 0;	/* deny by default */
-	      int is_match = acl_plugin_match_5tuple_inline (am, lc_index0,
-							     (fa_5tuple_opaque_t *) & fa_5tuple[0], is_ip6,
-							     &action,
-							     &match_acl_pos,
-							     &match_acl_in_index,
-							     &match_rule_index,
-							     &trace_bitmap);
+	      int is_match = acl_plugin_match_5tuple_inline (
+		am, lc_index0, (fa_5tuple_opaque_t *) &fa_5tuple[0], is_ip6,
+		&action, &match_acl_pos, &match_acl_in_index,
+		&match_rule_index, &trace_bitmap, &acl_match_idx);
 	      if (PREDICT_FALSE
 		  (is_match && am->interface_acl_counters_enabled))
 		{
@@ -515,11 +530,9 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		      u16 current_policy_epoch =
 			get_current_policy_epoch (am, is_input,
 						  sw_if_index[0]);
-		      fa_full_session_id_t f_sess_id =
-			acl_fa_add_session (am, is_input, is_ip6,
-					    sw_if_index[0],
-					    now, &fa_5tuple[0],
-					    current_policy_epoch);
+		      fa_full_session_id_t f_sess_id = acl_fa_add_session (
+			am, is_input, is_ip6, sw_if_index[0], now,
+			&fa_5tuple[0], current_policy_epoch, acl_match_idx);
 
 		      /* perform the accounting for the newly added session */
 		      process_established_session (vm, am,
