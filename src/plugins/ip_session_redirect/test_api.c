@@ -184,6 +184,19 @@ api_ip_session_redirect_del (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_ip_session_redirect_dump (vat_main_t *vam)
+{
+  return 0; /* not implemented */
+}
+
+static void
+vl_api_ip_session_redirect_details_t_handler (
+  vl_api_ip_session_redirect_details_t *mp)
+{
+  return; /* not implemented */
+}
+
 #include "ip_session_redirect.api_test.c"
 
 /*

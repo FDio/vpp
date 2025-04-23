@@ -18,29 +18,7 @@
 #include <vpp/app/version.h>
 #include "ip_session_redirect.h"
 
-typedef struct
-{
-  u8 *match_and_table_index;
-  dpo_id_t dpo;	   /* forwarding dpo */
-  fib_node_t node; /* linkage into the FIB graph */
-  fib_node_index_t pl;
-  u32 sibling;
-  u32 parent_node_index;
-  u32 opaque_index;
-  u32 table_index;
-  fib_forward_chain_type_t payload_type;
-  u8 is_punt : 1;
-  u8 is_ip6 : 1;
-} ip_session_redirect_t;
-
-typedef struct
-{
-  ip_session_redirect_t *pool;
-  u32 *session_by_match_and_table_index;
-  fib_node_type_t fib_node_type;
-} ip_session_redirect_main_t;
-
-static ip_session_redirect_main_t ip_session_redirect_main;
+ip_session_redirect_main_t ip_session_redirect_main;
 
 static int
 ip_session_redirect_stack (ip_session_redirect_t *ipr)
