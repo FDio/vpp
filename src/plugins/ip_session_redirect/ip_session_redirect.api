@@ -99,6 +99,47 @@ autoreply define ip_session_redirect_del
   option status="in_progress";
 };
 
+/** \brief Dump available session redirections
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_index - classifier table index
+*/
+
+define ip_session_redirect_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 table_index;
+};
+
+/** \brief Session redirection operational state response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_index - classifier table index
+    @param opaque_index - classifier session opaque index
+    @param is_punt - true = punted traffic, false = forwarded traffic
+    @param is_ip6 - true = payload proto is ip6, false = payload proto is ip4 
+    @param match_len - classifier session match length in bytes (max is 80-bytes)
+    @param match - classifier session match
+    @param n_paths - number of paths
+    @param paths - the paths of the redirect
+*/
+
+define ip_session_redirect_details
+{
+  u32 context;
+  i32 retval;
+  u32 table_index;
+  u32 opaque_index;
+  bool is_punt;
+  bool is_ip6;
+  u32 match_length;
+  u8 match[80];
+  u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

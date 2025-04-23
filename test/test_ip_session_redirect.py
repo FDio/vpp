@@ -2,6 +2,7 @@
 
 import unittest
 
+import ipaddress
 import socket
 
 from scapy.packet import Raw
@@ -194,7 +195,68 @@ class TestIpSessionRedirect(VppTestCase):
         t = self.vapi.classify_table_info(table_id=table_index)
         self.assertEqual(t.active_sessions, 2)
 
+        # Add additional session with multiple paths
+        # not matching the stream
+        paths = [VppRoutePath(nh2, 0xFFFFFFFF).encode(), VppRoutePath(nh3, 0xFFFFFFFF).encode(),  VppRoutePath(nh3, 0xFFFFFFFF).encode()]
+        match3 = self.build_match(src, sport + 20, is_ip6)
+        self.vapi.ip_session_redirect_add_v2(
+            table_index=table_index,
+            match_len=len(match3),
+            match=match3,
+            is_punt=is_punt,
+            n_paths=3,
+            paths=paths,
+            proto=proto,
+        )
+
+        # dump sessions and check that they match
+        dump = self.vapi.ip_session_redirect_dump(table_index=table_index)
+        self.assertEqual(len(dump), 3)
+
+        # TODO: cleanup approach taken to check that ip session redirect dump
+        # is correct
+        sess1 = dump[0]
+        self.assertEqual(sess1.table_index, table_index)
+        self.assertEqual(sess1.is_punt, is_punt)
+        self.assertEqual(sess1.is_ip6, is_ip6)
+        self.assertEqual(sess1.match_length, len(match1))
+        self.assertEqual(sess1.match[:len(match1)], match1)
+        self.assertEqual(sess1.n_paths, 1)
+        if is_ip6:
+            self.assertEqual(sess1.paths[0].nh.address.ip6, ipaddress.IPv6Address(nh1))
+        else:
+            self.assertEqual(sess1.paths[0].nh.address.ip4, ipaddress.IPv4Address(nh1))
+
+        sess2 = dump[1]
+        self.assertEqual(sess2.table_index, table_index)
+        self.assertEqual(sess2.is_punt, is_punt)
+        self.assertEqual(sess2.is_ip6, is_ip6)
+        self.assertEqual(sess2.match_length, len(match2))
+        self.assertEqual(sess2.match[:len(match2)], match2)
+        self.assertEqual(sess2.n_paths, 1)
+        if is_ip6: # nh3 adj is opposed
+            self.assertEqual(sess2.paths[0].nh.address.ip4, ipaddress.IPv4Address(nh3))
+        else:
+            self.assertEqual(sess2.paths[0].nh.address.ip6, ipaddress.IPv6Address(nh3))
+
+        sess3 = dump[2]
+        self.assertEqual(sess3.table_index, table_index)
+        self.assertEqual(sess3.is_punt, is_punt)
+        self.assertEqual(sess3.is_ip6, is_ip6)
+        self.assertEqual(sess3.match_length, len(match3))
+        self.assertEqual(sess3.match[:len(match3)], match3)
+        self.assertEqual(sess3.n_paths, 3)
+        if is_ip6:
+            self.assertEqual(sess3.paths[0].nh.address.ip4, ipaddress.IPv4Address(nh3))
+            self.assertEqual(sess3.paths[1].nh.address.ip4, ipaddress.IPv4Address(nh3))
+            self.assertEqual(sess3.paths[2].nh.address.ip6, ipaddress.IPv6Address(nh2))
+        else:
+            self.assertEqual(sess3.paths[0].nh.address.ip4, ipaddress.IPv4Address(nh2))
+            self.assertEqual(sess3.paths[1].nh.address.ip6, ipaddress.IPv6Address(nh3))
+            self.assertEqual(sess3.paths[2].nh.address.ip6, ipaddress.IPv6Address(nh3))
+
         # cleanup
+        self.vapi.ip_session_redirect_del(table_index, len(match3), match3)
         self.vapi.ip_session_redirect_del(table_index, len(match2), match2)
         self.vapi.ip_session_redirect_del(table_index, len(match1), match1)
         t = self.vapi.classify_table_info(table_id=table_index)
