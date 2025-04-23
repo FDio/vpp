@@ -511,11 +511,10 @@ acl_fa_try_recycle_session (acl_main_t *am, int is_input,
     }
 }
 
-
 always_inline fa_full_session_id_t
-acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
-		    u32 sw_if_index, u64 now, fa_5tuple_t * p5tuple,
-		    u16 current_policy_epoch)
+acl_fa_add_session (acl_main_t *am, int is_input, int is_ip6, u32 sw_if_index,
+		    u64 now, fa_5tuple_t *p5tuple, u16 current_policy_epoch,
+		    u32 match_idx)
 {
   fa_full_session_id_t f_sess_id;
   uword thread_index = os_get_thread_index ();
@@ -558,6 +557,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   sess->link_next_idx = FA_SESSION_BOGUS_INDEX;
   sess->deleted = 0;
   sess->is_ip6 = is_ip6;
+  sess->match_idx = match_idx;
 
   acl_fa_conn_list_add_session (am, f_sess_id, now);
 
