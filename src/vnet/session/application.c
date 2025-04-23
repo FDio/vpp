@@ -17,6 +17,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application_namespace.h>
 #include <vnet/session/application_local.h>
+#include <vnet/session/application_eventing.h>
 #include <vnet/session/session.h>
 #include <vnet/session/segment_manager.h>
 
@@ -854,6 +855,9 @@ application_alloc_and_init (app_init_args_t *a)
   if (opts[APP_OPTIONS_PCT_FIRST_ALLOC])
     props->pct_first_alloc = opts[APP_OPTIONS_PCT_FIRST_ALLOC];
   props->segment_type = seg_type;
+
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_LOG_COLLECTOR)
+    app->cb_fns.app_evt_callback = app_evt_collector_get_cb_fn ();
 
   /* Add app to lookup by api_client_index table */
   if (!application_is_builtin (app))
