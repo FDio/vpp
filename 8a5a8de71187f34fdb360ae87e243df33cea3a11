@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1923b8c1_2257ae85",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-04-23T02:26:31Z",
+      "side": 1,
+      "message": "Verified \u0027make install-opt-deps\u0027, \u0027make build\u0027, and \u0027make build-release\u0027 with vpp-opt-deps installed locally on Ubuntu 24.04 and Ubuntu 24.10",
+      "revId": "8a5a8de71187f34fdb360ae87e243df33cea3a11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
