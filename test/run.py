@@ -71,9 +71,7 @@ def get_env(args):
         "VENV_PATH": str(ws_root / "build-root" / "test" / "venv"),
         "VPP_BUILD_DIR": str(ws_root / "build-root" / "build-vpp-native" / "vpp"),
         "VPP_INSTALL_PATH": str(ws_root / "build-root" / "install-vpp-native"),
-        "VPP_BIN": str(
-            ws_root / "build-root" / "install-vpp-native" / "vpp" / "bin" / "vpp"
-        ),
+        "VPP_BIN": args.vpp_binary,
         "VPP_PLUGIN_PATH": str(
             ws_root
             / "build-root"
@@ -221,6 +219,11 @@ def run_tests_in_venv(env):
         f"--venv-dir={env['VENV_PATH']}",
         f"--vpp-ws-dir={env['WS_ROOT']}",
         f"--vpp-tag={env['TAG']}",
+        f"--vpp={env['VPP_BIN']}",
+        f"--vpp-install-dir={env['VPP_INSTALL_PATH']}",
+        f"--vpp-build-dir={env['VPP_BUILD_DIR']}",
+        f"--vpp-plugin-dir={env['VPP_PLUGIN_PATH']}",
+        f"--vpp-test-plugin-dir={env['VPP_TEST_PLUGIN_PATH']}",
         f"--failed-dir={env['FAILED_DIR']}",
         f"--verbose={env['V']}",
         f"--jobs={env['TEST_JOBS']}",
@@ -327,6 +330,16 @@ if __name__ == "__main__":
         "containing api.sock & stats.sock files.\n"
         "Default: /var/run/vpp if VPP is started as the root user, else "
         "/var/run/user/${uid}/vpp.",
+    )
+    parser.add_argument(
+        "--vpp-binary",
+        dest="vpp_binary",
+        required=False,
+        action="store",
+        default=str(
+            ws_root / "build-root" / "install-vpp-native" / "vpp" / "bin" / "vpp"
+        ),
+        help="Path to VPP Binary.",
     )
     parser.add_argument(
         "-e",
