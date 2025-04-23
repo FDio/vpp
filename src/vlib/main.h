@@ -207,6 +207,15 @@ typedef struct vlib_main_t
   u32 thread_index;
   u32 numa_node;
 
+  /* epoll and eventfd */
+  int epoll_fd;
+  int wakeup_fd;
+  int n_epoll_fds;
+  u64 epoll_files_ready;
+  u64 epoll_waits;
+  u8 wakeup_pending;
+  u8 thread_sleeps;
+
   /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;
   volatile u32 api_queue_nonempty;
