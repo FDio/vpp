@@ -74,7 +74,8 @@ ip4_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm,
   }
 
   vlib_increment_simple_counter (
-    &ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REQUEST],
+    &ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][src->as_u32 == dst->as_u32 ?
+    IP_NEIGHBOR_CTR_GRAT : IP_NEIGHBOR_CTR_REQUEST],
     vm->thread_index, adj0->rewrite_header.sw_if_index, 1);
 
   return b0;

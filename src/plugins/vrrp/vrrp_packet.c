@@ -18,6 +18,7 @@
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/ip-neighbor/ip_neighbor_types.h>
 
 #include <vrrp/vrrp.h>
 #include <vrrp/vrrp_packet.h>
@@ -526,9 +527,19 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
       vnet_buffer (b)->sw_if_index[VLIB_TX] = vr->config.sw_if_index;
 
       if (vrrp_vr_is_ipv6 (vr))
-	vrrp6_na_pkt_build (vr, b, &addr->ip6);
+      {
+        vrrp6_na_pkt_build (vr, b, &addr->ip6);
+        vlib_increment_simple_counter (
+          &ip_neighbor_counters[AF_IP6].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_GRAT],
+          vm->thread_index, vr->config.sw_if_index, 1);
+      }
       else
-	vrrp4_garp_pkt_build (vr, b, &addr->ip4);
+      {
+        vrrp4_garp_pkt_build (vr, b, &addr->ip4);
+        vlib_increment_simple_counter (
+          &ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_GRAT],
+          vm->thread_index, vr->config.sw_if_index, 1);
+      }
 
       vlib_buffer_reset (b);
 

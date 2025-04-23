@@ -27,6 +27,7 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip.api_enum.h>
 #include <vnet/ip/format.h>
+#include <vnet/ip-neighbor/ip_neighbor_types.h>
 #include <vnet/ethernet/arp_packet.h>
 
 static const u8 vrrp_prefix[] = { 0x00, 0x00, 0x5E, 0x00, 0x01 };
@@ -206,6 +207,10 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 	  (opt->header.n_data_u64s != 1))
 	return 0;		/* source link layer address option not present */
 
+      vlib_increment_simple_counter(
+          &ip_neighbor_counters[AF_IP6].ipnc[VLIB_RX][IP_NEIGHBOR_CTR_REQUEST],
+          vm->thread_index, sw_if_index, 1);
+
       bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
       macp =
 	(u8 *) hash_get_mem (bd_config->mac_by_ip6, &ndh->target_address);
@@ -229,6 +234,9 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 	    ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip, &bogus_length);
 	  clib_memcpy (eth->dst_address, eth->src_address, 6);
 	  clib_memcpy (eth->src_address, macp, 6);
+	  vlib_increment_simple_counter (
+	      &ip_neighbor_counters[AF_IP6].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REPLY],
+	      vm->thread_index, sw_if_index, 1);
 	  vlib_error_count (vm, error_node->node_index,
 			    ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_TX, 1);
 	  return 1;
@@ -327,6 +335,13 @@ arp_term_l2bd (vlib_main_t * vm,
 	  if (error0)
 	    goto drop;
 
+	  if (arp0->opcode == clib_host_to_net_u16(ETHERNET_ARP_OPCODE_request))
+	    {
+	      vlib_increment_simple_counter(
+	          &ip_neighbor_counters[AF_IP4].ipnc[VLIB_RX][IP_NEIGHBOR_CTR_REQUEST],
+	          vm->thread_index, sw_if_index0, 1);
+	    }
+
 	  /* Trash ARP packets whose ARP-level source addresses do not
 	     match, or if requester address is mcast */
 	  if (PREDICT_FALSE
@@ -379,6 +394,9 @@ arp_term_l2bd (vlib_main_t * vm,
 	  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac, macp0);
 	  clib_memcpy_fast (eth0->dst_address, eth0->src_address, 6);
 	  clib_memcpy_fast (eth0->src_address, macp0, 6);
+	  vlib_increment_simple_counter(
+		&ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REPLY],
+		vm->thread_index, sw_if_index0, 1);
 	  n_replies_sent += 1;
 
 	output_response:
