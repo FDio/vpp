@@ -976,6 +976,7 @@ list(APPEND VNET_SOURCES
   session/session_cli.c
   session/application_interface.c
   session/application_local.c
+  session/application_logging.c
   session/application_namespace.c
   session/segment_manager.c
   session/session_api.c

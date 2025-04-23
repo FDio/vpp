@@ -166,6 +166,9 @@ typedef struct application_
    * linked list maintained by the app sublayer for each worker
    */
   app_rx_mq_elt_t *rx_mqs;
+
+  /** collector index, if any */
+  u32 log_collector_index;
 } application_t;
 
 typedef struct app_rx_mq_handle_
