@@ -253,7 +253,10 @@ vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
   ASSERT (interrupts);
 
   if (vm != vlib_get_main ())
-    clib_interrupt_set_atomic (interrupts, n->runtime_index);
+    {
+      clib_interrupt_set_atomic (interrupts, n->runtime_index);
+      vlib_thread_wakeup (vm->thread_index);
+    }
   else
     clib_interrupt_set (interrupts, n->runtime_index);
 }
