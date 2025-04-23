@@ -28,7 +28,7 @@ func init() {
 	RegisterNoTopoTests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest,
 		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
-		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
+		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpStaticPostTest,
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathSanitizationTest, HttpUriDecodeTest,
@@ -227,6 +227,27 @@ func HttpPipeliningTest(s *NoTopoSuite) {
 	// make sure response for second request is not received later
 	_, err = conn.Read(reply)
 	s.AssertMatchError(err, os.ErrDeadlineExceeded, "second request response received")
+}
+
+func HttpStaticPostTest(s *NoTopoSuite) {
+	// testing url handler app do not support multi-thread
+	s.SkipIfMultiWorker()
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 1m"))
+	s.Log(vpp.Vppctl("test-url-handler enable"))
+
+	body := make([]byte, 131072)
+	_, err := rand.Read(body)
+	client := NewHttpClient(defaultHttpTimeout)
+	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test3", bytes.NewBuffer(body))
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.AssertHttpStatus(resp, 200)
+	_, err = io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 func HttpCliTest(s *VethsSuite) {

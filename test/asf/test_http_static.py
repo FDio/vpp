@@ -64,7 +64,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
         super(TestHttpStaticVapi, cls).tearDownClass()
 
     def test_http_static_vapi(self):
-        self.vapi.http_static_enable_v3(
+        self.vapi.http_static_enable_v5(
             www_root="/tmp",
             uri="tcp://0.0.0.0/80",
         )

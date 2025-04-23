@@ -3,77 +3,7 @@
     This file defines static http server control-plane API messages
 */
 
-option version = "2.4.0";
-
-/** \brief Configure and enable the static http server
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param fifo_size - size (in bytes) of the session FIFOs
-    @param cache_size_limit - size (in bytes) of the in-memory file data cache
-    @param max_age - how long a response is considered fresh (in seconds)
-    @param prealloc_fifos - number of preallocated fifos (usually 0)
-    @param private_segment_size - fifo segment size (usually 0)
-    @param www_root - html root path
-    @param uri - bind URI, defaults to "tcp://0.0.0.0/80"
-*/
-
-autoreply define http_static_enable_v2 {
-    option deprecated;
-
-    /* Client identifier, set from api_main.my_client_index */
-    u32 client_index;
-
-    /* Arbitrary context, so client can match reply to request */
-    u32 context;
-    /* Typical options */
-    u32 fifo_size;
-    u32 cache_size_limit;
-    u32 max_age [default=600];
-    /* Unusual options */
-    u32 prealloc_fifos;
-    u32 private_segment_size;
-
-    /* Root of the html path */
-    string www_root[256];
-    /* The bind URI */
-    string uri[256];
-};
-
-/** \brief Configure and enable the static http server
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param fifo_size - size (in bytes) of the session FIFOs
-    @param cache_size_limit - size (in bytes) of the in-memory file data cache
-    @param max_age - how long a response is considered fresh (in seconds)
-    @param keepalive_timeout - timeout during which client connection will stay open (in seconds)
-    @param prealloc_fifos - number of preallocated fifos (usually 0)
-    @param private_segment_size - fifo segment size (usually 0)
-    @param www_root - html root path
-    @param uri - bind URI, defaults to "tcp://0.0.0.0/80"
-*/
-
-autoreply define http_static_enable_v3 {
-    option deprecated;
-
-    /* Client identifier, set from api_main.my_client_index */
-    u32 client_index;
-
-    /* Arbitrary context, so client can match reply to request */
-    u32 context;
-    /* Typical options */
-    u32 fifo_size;
-    u32 cache_size_limit;
-    u32 max_age [default=600];
-    u32 keepalive_timeout [default=60];
-    /* Unusual options */
-    u32 prealloc_fifos;
-    u32 private_segment_size;
-
-    /* Root of the html path */
-    string www_root[256];
-    /* The bind URI */
-    string uri[256];
-};
+option version = "2.5.0";
 
 /** \brief Configure and enable the static http server
     @param client_index - opaque cookie to identify the sender
@@ -90,6 +20,8 @@ autoreply define http_static_enable_v3 {
 */
 
 autoreply define http_static_enable_v4 {
+    option deprecated;
+
     /* Client identifier, set from api_main.my_client_index */
     u32 client_index;
 
@@ -101,6 +33,45 @@ autoreply define http_static_enable_v4 {
     u32 max_age [default=600];
     u32 keepalive_timeout [default=60];
     u64 max_body_size [default=8000];
+    /* Unusual options */
+    u32 prealloc_fifos;
+    u32 private_segment_size;
+
+    /* Root of the html path */
+    string www_root[256];
+    /* The bind URI */
+    string uri[256];
+};
+
+/** \brief Configure and enable the static http server
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param fifo_size - size (in bytes) of the session FIFOs
+    @param cache_size_limit - size (in bytes) of the in-memory file data cache
+    @param max_age - how long a response is considered fresh (in seconds)
+    @param max_body_size - maximum size of a request body (in bytes)
+    @param rx_buff_thresh - maximum size of a large memory allocation (in bytes)
+    @param keepalive_timeout - timeout during which client connection will stay open (in seconds)
+    @param prealloc_fifos - number of preallocated fifos (usually 0)
+    @param private_segment_size - fifo segment size (usually 0)
+    @param www_root - html root path
+    @param uri - bind URI, defaults to "tcp://0.0.0.0/80"
+*/
+
+autoreply define http_static_enable_v5 {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+    /* Typical options */
+    u32 fifo_size;
+    u32 cache_size_limit;
+    u32 max_age [default=600];
+    u32 keepalive_timeout [default=60];
+    u64 max_body_size [default=8192];
+    u32 rx_buff_thresh [default=1048576];
     /* Unusual options */
     u32 prealloc_fifos;
     u32 private_segment_size;
