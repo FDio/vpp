@@ -7,6 +7,7 @@
 
 #include <vppinfra/clib.h>
 #include <vnet/dev/dev.h>
+#include <vnet/dev/log.h>
 
 static_always_inline void *
 vnet_dev_get_data (vnet_dev_t *dev)
@@ -343,6 +344,7 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
   ifs = rxq->port->interfaces;
   if (req.update_next_index)
     {
+      log_info ("fvdrqrh: update_next_index");
       vnet_dev_port_interface_t **si =
 	rxq->port->interfaces->secondary_interfaces;
       rxq->if_rt_data.next_index = ifs->primary_interface.rx_next_index;
@@ -353,6 +355,7 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
 
   if (req.update_feature_arc)
     {
+      log_info ("fvdrqrh: update_feature_arc");
       vnet_dev_port_interface_t **si =
 	rxq->port->interfaces->secondary_interfaces;
       vlib_buffer_template_t *bt = &rxq->if_rt_data.buffer_template;
