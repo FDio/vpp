@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "410bc037_1d6a4b0b",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 3204
+      },
+      "writtenOn": "2025-04-24T08:36:43Z",
+      "side": 1,
+      "message": "record 12 is destinationIPv4Address, not postNATSDestinationIPv4Address",
+      "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3a601c2_4909549e",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1041,
+      "author": {
+        "id": 3204
+      },
+      "writtenOn": "2025-04-24T08:36:43Z",
+      "side": 1,
+      "message": "records 11 below are destinationTransportPort not postNAPTDestinationTransportPort",
+      "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
