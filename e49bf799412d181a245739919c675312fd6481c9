@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5bbec710_545f3010",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-24T11:22:39Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2f10cc8d_4b06fe7e",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "63120790_67baa3dc",
@@ -54,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "40e5c88d_1ab50899",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-24T11:22:39Z",
+      "side": 1,
+      "message": "If we were to do the calculations earlier, we would have to separate the logic from ec_calc_tput and store the result somewhere in ecm? Not that there\u0027s anything wrong with it, but I feel like it would be a less elegant solution for effectively the same result. What do you think?",
+      "parentUuid": "63120790_67baa3dc",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4eb751ff_9ddf41f2",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 6
@@ -65,6 +101,24 @@
       "writtenOn": "2025-04-24T06:13:30Z",
       "side": 1,
       "message": "Surprised `make fixstyle` didn\u0027t remove the extra space",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0491a7c_ff7d0383",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-04-24T11:22:39Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4eb751ff_9ddf41f2",
       "revId": "e49bf799412d181a245739919c675312fd6481c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
