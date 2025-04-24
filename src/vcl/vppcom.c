@@ -1421,6 +1421,7 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
   else
     {
       vcl_set_reattach_counter ();
+      vcl_worker_detached_stop_signal_mq (wrk);
       clib_spinlock_unlock (&vcm->workers_lock);
       vcl_worker_register_with_vpp ();
     }
