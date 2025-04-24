@@ -12,8 +12,10 @@ build_type=release
 src_dir="$(dirname "$(readlink -f "$0")")"
 host_arch=$(uname -m)
 arch=${host_arch}
-native_only=no
-wipe=no
+native_only=false
+prefix_path="/opt/vpp/external/${arch}"
+wipe=false
+verbose=false
 args=()
 
 help()
@@ -24,16 +26,18 @@ VPP Build Configuration Script
 USAGE: ${0} [options]
 
 OPTIONS:
-  --help, -h              This help
   --arch, -a              Cross-compile for specified target architecture (aarch64, riscv64, i386, ...)
   --build-dir, -b         Build directory
-  --install-dir, -i       Install directory
   --build-type, -t        Build type (release, debug, ...)
+  --help, -h              This help
+  --install-dir, -i       Install directory
   --native-only, -n       Only compile for Native CPU (no multiarch)
-  --wipe, -w              Wipe whole repo (except startup.* files)
-  --sanitize, -s          Enable sanitizer (mem)
-  --platform, -p          Specify target platform
   --option, -o            Enable specific VPP options (fib8, fib16)
+  --platform, -p          Specify target platform
+  --prefix, -r            Specify prefix path (default: $prefix_path)
+  --sanitize, -s          Enable sanitizer (mem)
+  --verbose, -v           Verbose output of this script
+  --wipe, -w              Wipe whole repo (except startup.* files)
 __EOF__
 }
 
@@ -88,12 +92,25 @@ while (( "$#" )); do
         exit 1
       fi
       ;;
+    -r|--prefix)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        prefix_path=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
     -n|--native-only)
-      native_only=yes
+      native_only=true
+      shift 1
+      ;;
+    -v|--verbose)
+      verbose=true
       shift 1
       ;;
     -w|--wipe)
-      wipe=yes
+      wipe=true
       shift 1
       ;;
     -s|--sanitize)
@@ -142,16 +159,20 @@ if [ "${arch}" != "${host_arch}" ] ; then
   args+=("-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
 fi
 
-args+=("-DCMAKE_PREFIX_PATH=/opt/vpp/external/${arch}")
+args+=("-DCMAKE_PREFIX_PATH=${prefix_path}")
 args+=("-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
 args+=("-DCMAKE_INSTALL_PREFIX=${install_dir}")
 args+=("-DCMAKE_BUILD_TYPE:STRING=${build_type}")
 args+=("-DVPP_PLATFORM=${platform}")
-[ "${native_only}" == "yes" ] && args+=("-DVPP_BUILD_NATIVE_ONLY:BOOL=ON")
 
-[ "${wipe}" == "yes" ] && git clean -fdx --exclude=startup.\*
+$native_only && args+=("-DVPP_BUILD_NATIVE_ONLY:BOOL=ON")
 
-cmake ${args[@]} -G Ninja -S ${src_dir}/src -B ${build_dir}
+$wipe && git clean -fdx --exclude=startup.\*
+
+(
+  $verbose && set -o xtrace
+  cmake ${args[@]} -G Ninja -S ${src_dir}/src -B ${build_dir}
+)
 
 cat << __EOF__
 
