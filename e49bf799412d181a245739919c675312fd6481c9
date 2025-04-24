@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23215878_c9261a54",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T06:13:30Z",
+      "side": 1,
+      "message": "Quick nits",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f10cc8d_4b06fe7e",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T06:13:30Z",
+      "side": 1,
+      "message": "vlib_time_now(vm);",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63120790_67baa3dc",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T06:13:30Z",
+      "side": 1,
+      "message": "Maybe we should do the math before the sessions are connected. Once they\u0027re connected, let\u0027s just the the lower part where we order them.",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4eb751ff_9ddf41f2",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T06:13:30Z",
+      "side": 1,
+      "message": "Surprised `make fixstyle` didn\u0027t remove the extra space",
+      "revId": "e49bf799412d181a245739919c675312fd6481c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
