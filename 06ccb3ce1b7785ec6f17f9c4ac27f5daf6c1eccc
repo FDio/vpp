@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6020332_00779fab",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T19:18:05Z",
+      "side": 1,
+      "message": "Let\u0027s move these into tls_asyn.c and only initialize them if async is on.",
+      "revId": "06ccb3ce1b7785ec6f17f9c4ac27f5daf6c1eccc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "889eea59_c999973b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T19:18:05Z",
+      "side": 1,
+      "message": "Similarly, let\u0027s move this into tls_asyn.c",
+      "revId": "06ccb3ce1b7785ec6f17f9c4ac27f5daf6c1eccc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93e1c1b2_915ff288",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-24T19:18:05Z",
+      "side": 1,
+      "message": "Can\u0027t we move this into openssl_ctx_handshake_rx? Maybe we can get rid of the existing test for data in tls_session-\u003erx_fifo.",
+      "revId": "06ccb3ce1b7785ec6f17f9c4ac27f5daf6c1eccc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
