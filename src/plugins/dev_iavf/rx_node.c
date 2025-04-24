@@ -161,7 +161,10 @@ iavf_process_flow_offload (vnet_dev_port_t *port, iavf_rt_data_t *rtd,
       fle = *pool_elt_at_index (ap->flow_lookup_entries, rtd->flow_ids[n]);
 
       if (fle.next_index != (u16) ~0)
-	rtd->next[n] = fle.next_index;
+	{
+	  ASSERT (fle.next_index == (u16) ~0);
+	  rtd->next[n] = fle.next_index;
+	}
 
       if (fle.flow_id != ~0)
 	rtd->bufs[n]->flow_id = fle.flow_id;
