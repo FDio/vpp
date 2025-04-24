@@ -8,6 +8,14 @@
 #include <vppinfra/clib.h>
 #include <vnet/dev/dev.h>
 
+VLIB_REGISTER_LOG_CLASS (dev_log4h, static) = {
+  .class_name = "dev",
+  .subclass_name = "funcs",
+};
+#define log4h_info(f, ...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dev_log4h.class, "%s: " f, __func__,         \
+	    ##__VA_ARGS__)
+
 static_always_inline void *
 vnet_dev_get_data (vnet_dev_t *dev)
 {
@@ -343,6 +351,7 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
   ifs = rxq->port->interfaces;
   if (req.update_next_index)
     {
+      log4h_info ("update_next_index");
       vnet_dev_port_interface_t **si =
 	rxq->port->interfaces->secondary_interfaces;
       rxq->if_rt_data.next_index = ifs->primary_interface.rx_next_index;
@@ -353,6 +362,7 @@ foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
 
   if (req.update_feature_arc)
     {
+      log4h_info ("update_feature_arc");
       vnet_dev_port_interface_t **si =
 	rxq->port->interfaces->secondary_interfaces;
       vlib_buffer_template_t *bt = &rxq->if_rt_data.buffer_template;
