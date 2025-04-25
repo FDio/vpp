@@ -446,8 +446,8 @@ _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
     @param DST destination
     @param SRC source
 */
-#define vec_copy(DST,SRC) clib_memcpy_fast (DST, SRC, vec_len (DST) * \
-				       sizeof ((DST)[0]))
+#define vec_copy(DST, SRC)                                                    \
+  clib_memcpy_fast (DST, SRC, vec_len (DST) * _vec_elt_sz (DST))
 
 /** \brief Clone a vector. Make a new vector with the
     same size as a given vector but possibly with a different type.
@@ -480,7 +480,7 @@ _vec_zero_elts (void *v, uword first, uword count, uword elt_sz)
 {
   clib_memset_u8 (v + (first * elt_sz), 0, count * elt_sz);
 }
-#define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, sizeof ((V)[0]))
+#define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, _vec_elt_sz (V))
 
 static_always_inline void
 _vec_validate (void **vp, uword index, uword header_size, uword align,
@@ -518,7 +518,7 @@ _vec_validate (void **vp, uword index, uword header_size, uword align,
 }
 
 #define vec_validate_hap(V, I, H, A, P)                                       \
-  _vec_validate ((void **) &(V), I, H, _vec_align (V, A), 0, sizeof ((V)[0]))
+  _vec_validate ((void **) &(V), I, H, _vec_align (V, A), 0, _vec_elt_sz (V))
 
 /** \brief Make sure vector is long enough for given index
     (no header, unspecified alignment)
@@ -1228,11 +1228,13 @@ _vec_is_equal (void *v1, void *v2, uword v1_elt_sz, uword v2_elt_sz)
     @param vec vector to sort
     @param f comparison function
 */
-#define vec_sort_with_function(vec,f)                           \
-do {                                                            \
-  if (vec_len (vec) > 1)                                        \
-    qsort (vec, vec_len (vec), sizeof (vec[0]), (void *) (f));  \
-} while (0)
+#define vec_sort_with_function(vec, f)                                        \
+  do                                                                          \
+    {                                                                         \
+      if (vec_len (vec) > 1)                                                  \
+	qsort (vec, vec_len (vec), _vec_elt_sz (vec), (void *) (f));          \
+    }                                                                         \
+  while (0)
 
 /** \brief Make a vector containing a NULL terminated c-string.
 
