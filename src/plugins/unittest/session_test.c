@@ -2362,7 +2362,10 @@ session_get_memory_usage (void)
   s = format (s, "%U\n", format_clib_mem_heap, heap, 0);
   ss = strstr ((char *) s, "used:");
   if (ss)
-    sscanf (ss, "used: %f", &used);
+    {
+      if (sscanf (ss, "used: %f", &used) != 1)
+	clib_warning ("invalid 'used' value");
+    }
   else
     clib_warning ("substring 'used:' not found from show memory");
   vec_free (s);
