@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7e93ad9_84a6e893",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "can\u0027t we just assume that if list is non-empty, we can assume the TLS CTX is in use?",
+      "range": {
+        "startLine": 488,
+        "startChar": 0,
+        "endLine": 494,
+        "endChar": 12
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12a337e7_1a1d27e8",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "if any of the list is non-empty, it is in use as per above comment. isn\u0027t it?",
+      "range": {
+        "startLine": 504,
+        "startChar": 2,
+        "endLine": 509,
+        "endChar": 72
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39e024ee_1a64f83f",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 777,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "when you say early data, does it mean early data in TLS 1.3 or any TLS protocol?",
+      "range": {
+        "startLine": 777,
+        "startChar": 0,
+        "endLine": 777,
+        "endChar": 42
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b95babd_563dbbb8",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "should we return some fatal error to caller to shutdown the TLS connection when session is closed from the APP side?",
+      "range": {
+        "startLine": 807,
+        "startChar": 6,
+        "endLine": 807,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b7852a0_f78a3829",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "same as above comment",
+      "range": {
+        "startLine": 812,
+        "startChar": 4,
+        "endLine": 816,
+        "endChar": 5
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52410fad_12f1e673",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "similar comment as in read_event_handler",
+      "range": {
+        "startLine": 899,
+        "startChar": 2,
+        "endLine": 902,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47cdbb03_23d566bb",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-04-25T09:44:35Z",
+      "side": 1,
+      "message": "can you please explain why the change in logic for async and non-async case?",
+      "range": {
+        "startLine": 78,
+        "startChar": 3,
+        "endLine": 80,
+        "endChar": 48
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
