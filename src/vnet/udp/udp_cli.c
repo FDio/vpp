@@ -18,6 +18,7 @@
 #include <vppinfra/format_table.h>
 #include <vnet/udp/udp.h>
 #include <vnet/session/session_types.h>
+#include <vnet/session/session.h>
 
 u8 *
 format_udp_connection_id (u8 * s, va_list * args)
@@ -118,7 +119,8 @@ format_udp_vars (u8 * s, va_list * args)
       return s;
     }
 
-  s = format (s, " sw_if_index %d mss %u\n", uc->sw_if_index, uc->mss);
+  s = format (s, " sw_if_index %d mss %u duration %.3f\n", uc->sw_if_index,
+	      uc->mss, transport_time_now (uc->c_thread_index) - uc->start_ts);
   s = format (s, " stats: %U\n", format_udp_stats, uc);
 
   return s;

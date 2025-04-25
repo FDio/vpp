@@ -92,6 +92,7 @@ typedef struct
   u64 bytes_out;	/**< bytes sent */
   u64 dgrams_out;	/**< rfc4113 dgrams sent */
   u32 errors_in;	/**< rfc4113 dgrams in errors */
+  clib_time_type_t start_ts; /**< time stamp when connection was created */
 } udp_connection_t;
 
 #define udp_csum_offload(uc) (!((uc)->cfg_flags & UDP_CFG_F_NO_CSUM_OFFLOAD))
