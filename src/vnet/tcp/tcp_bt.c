@@ -635,6 +635,9 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
   tcp_bt_sample_t *bts;
   u32 *samples = 0, *si;
 
+  if (pool_elts (bt->samples) == 0)
+    return;
+
   vec_validate (samples, pool_elts (bt->samples) - 1);
   vec_reset_length (samples);
 
