@@ -386,6 +386,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   gid_t gid;
   int pidfd = -1;
+  int use_current_dir = 0;
 
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
@@ -409,6 +410,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else
 	if (unformat (input, "cli-listen %s", &um->cli_listen_socket.config))
 	;
+      else if (unformat (input, "use-current-dir"))
+	use_current_dir = 1;
       else if (unformat (input, "runtime-dir %s", &um->runtime_dir))
 	;
       else if (unformat (input, "cli-line-mode"))
@@ -496,6 +499,13 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
+    }
+
+  if (use_current_dir)
+    {
+      char cwd[PATH_MAX];
+      if (getcwd (cwd, PATH_MAX))
+	um->runtime_dir = format (um->runtime_dir, "%s", cwd);
     }
 
   if (um->runtime_dir == 0)
