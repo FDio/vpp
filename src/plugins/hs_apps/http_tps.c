@@ -345,6 +345,11 @@ hts_session_rx_body (hts_session_t *hs, session_t *ts)
       ASSERT (rv == n_deq);
     }
   hs->left_recv -= n_deq;
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_deq))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
 
   if (hs->close_threshold > 0)
     {
