@@ -362,9 +362,8 @@ COV_REM_DRIVERS="*rdma*" "*/plugins/af_packet/*" "*/plugins/af_xdp/*" \
 				"*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
 				"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/dev_iavf/*"
 
-COV_REM_UNUSED_FEAT="*/plugins/ioam/analyse/*" "*/plugins/ioam/lib-*/*" \
-				    "*/plugins/ioam/export-common/*" "*/vnet/srp/*" \
-					"*/lawful-intercept/*" "*/lisp/*" "*/vnet/osi/*" \
+COV_REM_UNUSED_FEAT="*/vnet/srp/*" \
+					"*/lawful-intercept/*" "*/lisp/*" "*/plugins/osi/*" \
 					"*/plugins/nsh/*"
 
 COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
@@ -387,7 +386,10 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/vnet/dpo/classify_dpo.h" "*/vnet/dpo/l3_proxy_dpo.h" \
 					 "*/vnet/ipsec/esp_format.c" "*/vnet/ethernet/sfp.c" \
 					 "*/vnet/ethernet/ethernet_format_fns.h" \
-					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
+					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c" \
+					 "*/plugins/ioam/*" "*/plugins/vxlan-gpe/*" "*/plugins/ioam/*" \
+					 "*/plugins/hsi/*" "*/api/api_format.c" "*/*/api.c" "*/*/*_api.c" \
+					 "*/plugins/http/http2/*" "*/plugins/http_static/*" "*/plugins/hs_apps/*"
 ifeq ($(HS_TEST),1)
 COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
 			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
