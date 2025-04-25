@@ -83,7 +83,8 @@ always_inline uword __vec_elt_sz (uword elt_sz, int is_void);
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
 #define _vec_is_void(P)                                                       \
   __builtin_types_compatible_p (__typeof__ ((P)[0]), void)
-#define _vec_elt_sz(V)	 __vec_elt_sz (sizeof ((V)[0]), _vec_is_void (V))
+#define _vec_elt_sz(V)                                                        \
+  __vec_elt_sz (sizeof ((V)[0]), _vec_is_void (V)) /* NOLINT */
 #define _vec_align(V, A) __vec_align (__alignof__((V)[0]), A)
 
 always_inline __clib_nosanitize_addr uword
@@ -136,7 +137,7 @@ u32 vec_len_not_inline (void *v);
 
 /** \brief Number of data bytes in vector. */
 
-#define vec_bytes(v) (vec_len (v) * sizeof (v[0]))
+#define vec_bytes(v) (vec_len (v) * _vec_elt_sz (v))
 
 /**
  * Return size of memory allocated for the vector
