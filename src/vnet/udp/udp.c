@@ -205,6 +205,7 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   clib_spinlock_init (&listener->rx_lock);
   if (!um->csum_offload)
     listener->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
+  listener->start_ts = transport_time_now (listener->c_thread_index);
 
   udp_connection_register_port (listener->c_lcl_port, lcl->is_ip4);
   return listener->c_c_index;
@@ -474,6 +475,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
     uc->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
   uc->next_node_index = rmt->next_node_index;
   uc->next_node_opaque = rmt->next_node_opaque;
+  uc->start_ts = transport_time_now (thread_index);
 
   udp_connection_register_port (uc->c_lcl_port, rmt->is_ip4);
 
