@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7b54095b_dc8d2925",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-25T16:03:07Z",
+      "side": 1,
+      "message": "Let say we have allocated one event and after the async callback, the event will handler will be triggered, but we will not be removing this at that point of time.\nSo we cant say that if the list is not empty, that ctx in use.",
+      "parentUuid": "b7e93ad9_84a6e893",
+      "range": {
+        "startLine": 488,
+        "startChar": 0,
+        "endLine": 494,
+        "endChar": 12
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "12a337e7_1a1d27e8",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 2
@@ -37,6 +61,30 @@
       "writtenOn": "2025-04-25T09:44:35Z",
       "side": 1,
       "message": "if any of the list is non-empty, it is in use as per above comment. isn\u0027t it?",
+      "range": {
+        "startLine": 504,
+        "startChar": 2,
+        "endLine": 509,
+        "endChar": 72
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68c6f8da_4350e2a8",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-25T16:03:07Z",
+      "side": 1,
+      "message": "It returns as soon as it finds some event is inflight state.",
+      "parentUuid": "12a337e7_1a1d27e8",
       "range": {
         "startLine": 504,
         "startChar": 2,
@@ -72,6 +120,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "22c12e97_7362e68d",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 777,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-25T16:03:07Z",
+      "side": 1,
+      "message": "Any TLS protocol, not specific to 1.3",
+      "parentUuid": "39e024ee_1a64f83f",
+      "range": {
+        "startLine": 777,
+        "startChar": 0,
+        "endLine": 777,
+        "endChar": 42
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9b95babd_563dbbb8",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 2
@@ -95,6 +167,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ad80bc8c_84fdc59e",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-25T16:03:07Z",
+      "side": 1,
+      "message": "This code is to handle the async event triggered after the app close.\nIt the app is already in closed state, cleanup code will trigger and proceeds with shutdown.",
+      "parentUuid": "9b95babd_563dbbb8",
+      "range": {
+        "startLine": 807,
+        "startChar": 6,
+        "endLine": 807,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3b7852a0_f78a3829",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 2
@@ -106,6 +202,30 @@
       "writtenOn": "2025-04-25T09:44:35Z",
       "side": 1,
       "message": "same as above comment",
+      "range": {
+        "startLine": 812,
+        "startChar": 4,
+        "endLine": 816,
+        "endChar": 5
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc1b84e4_f2e36322",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-25T16:03:07Z",
+      "side": 1,
+      "message": "Addressed in above comment",
+      "parentUuid": "3b7852a0_f78a3829",
       "range": {
         "startLine": 812,
         "startChar": 4,
