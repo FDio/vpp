@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a78030f0_60eb471c",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-25T02:30:19Z",
+      "side": 1,
+      "message": "http2 and http_static have tests, do we really want to remove them?",
+      "revId": "59ba537c60e1acb74d9760cce95fa8ecac656f22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
