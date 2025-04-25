@@ -16,6 +16,24 @@
       "message": "http2 and http_static have tests, do we really want to remove them?",
       "revId": "59ba537c60e1acb74d9760cce95fa8ecac656f22",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52a5c908_e30a7b2e",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-04-25T02:46:05Z",
+      "side": 1,
+      "message": "Yes because those tests run in HST and these filters are for \u0027make test\u0027.\n\ne.g. http2 coverage is 0% lines, 0% functions here.",
+      "parentUuid": "a78030f0_60eb471c",
+      "revId": "59ba537c60e1acb74d9760cce95fa8ecac656f22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
