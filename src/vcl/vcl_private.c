@@ -49,7 +49,7 @@ vcl_mq_epoll_add_api_sock (vcl_worker_t *wrk)
   struct epoll_event e = { 0 };
   int rv;
 
-  e.data.u32 = ~0;
+  e.data.u32 = VCL_EP_SAPIFD_EVT;
   rv = epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, cs->fd, &e);
   if (rv != EEXIST && rv < 0)
     return -1;
@@ -204,7 +204,7 @@ vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk)
 
   struct epoll_event evt = {};
   evt.events = EPOLLIN;
-  evt.data.u32 = wrk->detached_pipefds[0];
+  evt.data.u32 = VCL_EP_PIPEFD_EVT;
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, wrk->detached_pipefds[0],
 		 &evt) < 0)
     {
