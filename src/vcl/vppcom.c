@@ -1441,6 +1441,8 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
 static void
 vcl_api_handle_disconnect (vcl_worker_t *wrk)
 {
+  if (wrk->api_client_handle == ~0)
+    return;
   wrk->api_client_handle = ~0;
   vcl_worker_detach_sessions (wrk);
 }
@@ -3604,8 +3606,13 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 
       for (i = 0; i < n_mq_evts; i++)
 	{
-	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 >= VCL_EP_PIPEFD_EVT))
 	    {
+	      if (wrk->mq_events[i].data.u32 == VCL_EP_PIPEFD_EVT)
+		{
+		  vcl_api_retry_attach (wrk);
+		  continue;
+		}
 	      /* api socket was closed */
 	      vcl_api_handle_disconnect (wrk);
 	      continue;
