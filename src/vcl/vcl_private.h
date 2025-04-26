@@ -32,6 +32,8 @@
 #endif
 
 #define VPPCOM_DEBUG vcm->debug
+#define VCL_EP_SAPIFD_EVT ((u32) ~0)
+#define VCL_EP_PIPEFD_EVT ((u32) (~0 - 1))
 
 extern __thread uword __vcl_worker_index;
 
