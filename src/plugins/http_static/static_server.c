@@ -346,6 +346,7 @@ try_url_handler (hss_session_t *hs)
 	  hs->left_recv = 0;
 	  start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
 	  hss_session_disconnect_transport (hs);
+	  return 0;
 	}
       hs->rx_buff_offset = 0;
       vec_validate (hs->rx_buff, hs->left_recv - 1);
