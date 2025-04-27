@@ -304,6 +304,30 @@
       },
       "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "232451a0_00c93bd5",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-27T09:52:22Z",
+      "side": 1,
+      "message": "During openssl_confirm_app_close SSL_shutdown is triggered, but if it fails due to async processing, SSL_shutdown will not be finished during the context free as the passive close flag was set.\nIf we unset passive close flag (if SSL_shutdown fails) during app closure, then SSL_shutdown will take place during the context free. \n\nNow its handled during app close instead checking async mode and passive close flag here in context free.",
+      "parentUuid": "1f8f963a_5b7d1f70",
+      "range": {
+        "startLine": 78,
+        "startChar": 3,
+        "endLine": 80,
+        "endChar": 48
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
