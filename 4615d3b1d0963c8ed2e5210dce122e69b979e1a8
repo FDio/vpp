@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "db002244_b0909b66",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2025-04-27T14:11:16Z",
+      "side": 1,
+      "message": "yes, it\u0027s dst address, comment is not really correct and better needs to be changed",
+      "parentUuid": "410bc037_1d6a4b0b",
+      "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e3a601c2_4909549e",
         "filename": "test/test_nat44_ed.py",
         "patchSetId": 1
@@ -31,6 +49,42 @@
       "writtenOn": "2025-04-24T08:36:43Z",
       "side": 1,
       "message": "records 11 below are destinationTransportPort not postNAPTDestinationTransportPort",
+      "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09f3fc05_547a3343",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1041,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2025-04-27T14:11:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e3a601c2_4909549e",
+      "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee7ede57_14b79823",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1041,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2025-04-27T14:11:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e3a601c2_4909549e",
       "revId": "4615d3b1d0963c8ed2e5210dce122e69b979e1a8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
