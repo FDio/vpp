@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33836b63_d5ba5bc4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-27T20:46:58Z",
+      "side": 1,
+      "message": "Some additional quick comments.",
+      "revId": "eeaa167b5ec22d6f896c84e6debadd754b0f4aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8dc5d622_dcefdc8a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-27T20:46:58Z",
+      "side": 1,
+      "message": "For clarity, let\u0027s name these \"tls_async_init/free_events_list\", or something like that",
+      "revId": "eeaa167b5ec22d6f896c84e6debadd754b0f4aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7fe635c_81b9ca77",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-27T20:46:58Z",
+      "side": 1,
+      "message": "Let\u0027s not clear flags that track state of the connection. According to the docs it seems the result is cached, i.e., :\n\n\"SSL_shutdown() tries to send the \"close notify\" shutdown alert to the peer. Whether the operation succeeds or not, the SSL_SENT_SHUTDOWN flag is set and a currently open session is considered closed and good and will be kept in the session cache for further reuse.\"\n\nSo can we avoid this?",
+      "revId": "eeaa167b5ec22d6f896c84e6debadd754b0f4aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72a5e3df_b228d17c",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-27T20:46:58Z",
+      "side": 1,
+      "message": "guess you meant to remove inline as well",
+      "revId": "eeaa167b5ec22d6f896c84e6debadd754b0f4aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "453d88cc_4692ebb1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-04-27T20:46:58Z",
+      "side": 1,
+      "message": "Async related context keeps on growing/changing so let\u0027s create a tls_async_ctx_t structure.",
+      "revId": "eeaa167b5ec22d6f896c84e6debadd754b0f4aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
