@@ -486,12 +486,10 @@ drop_one_buffer_and_count (vlib_main_t * vm, vnet_main_t * vnm,
 }
 
 static_always_inline uword
-vnet_gso_node_inline (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_frame_t * frame,
-		      vnet_main_t * vnm,
-		      vnet_hw_interface_t * hi,
-		      int is_l2, int is_ip4, int is_ip6, int do_segmentation)
+vnet_gso_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, vnet_main_t *vnm,
+		      vnet_hw_interface_t *hi, u32 supported_caps, int is_l2,
+		      int is_ip4, int is_ip6, int do_segmentation)
 {
   u32 *to_next;
   u32 next_index = node->cached_next_index;
@@ -544,29 +542,25 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	    if (PREDICT_FALSE (hi->sw_if_index != swif0))
 	      {
 		hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-		if ((hi0->caps & VNET_HW_IF_CAP_TCP_GSO) == 0 &&
-		    (b[0]->flags & VNET_BUFFER_F_GSO))
+		if ((hi0->caps & supported_caps) != supported_caps)
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif1))
 	      {
 		hi1 = vnet_get_sup_hw_interface (vnm, swif1);
-		if (!(hi1->caps & VNET_HW_IF_CAP_TCP_GSO) &&
-		    (b[1]->flags & VNET_BUFFER_F_GSO))
+		if ((hi1->caps & supported_caps) != supported_caps)
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif2))
 	      {
 		hi2 = vnet_get_sup_hw_interface (vnm, swif2);
-		if ((hi2->caps & VNET_HW_IF_CAP_TCP_GSO) == 0 &&
-		    (b[2]->flags & VNET_BUFFER_F_GSO))
+		if ((hi2->caps & supported_caps) != supported_caps)
 		  break;
 	      }
 	    if (PREDICT_FALSE (hi->sw_if_index != swif3))
 	      {
 		hi3 = vnet_get_sup_hw_interface (vnm, swif3);
-		if (!(hi3->caps & VNET_HW_IF_CAP_TCP_GSO) &&
-		    (b[3]->flags & VNET_BUFFER_F_GSO))
+		if ((hi3->caps & supported_caps) != supported_caps)
 		  break;
 	      }
 
@@ -635,18 +629,31 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	  vnet_hw_interface_t *hi0;
 	  u32 next0 = 0;
 	  u32 do_segmentation0 = 0;
+	  u32 caps = hi->caps;
 
 	  swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	  if (PREDICT_FALSE (hi->sw_if_index != swif0))
 	    {
 	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if ((hi0->caps & VNET_HW_IF_CAP_TCP_GSO) == 0 &&
-		  (b[0]->flags & VNET_BUFFER_F_GSO))
+	      caps = hi0->caps;
+	      if ((hi0->caps & supported_caps) != supported_caps)
 		do_segmentation0 = 1;
 	    }
 	  else
 	    do_segmentation0 = do_segmentation;
 
+	  if (do_segmentation0)
+	    {
+	      u8 oflags = vnet_buffer (b[0])->oflags;
+	      if ((caps & VNET_HW_IF_CAP_TCP_GSO) == VNET_HW_IF_CAP_TCP_GSO)
+		{
+		  if (((oflags & VNET_BUFFER_OFFLOAD_F_TNL_VXLAN) !=
+		       VNET_BUFFER_OFFLOAD_F_TNL_VXLAN) &&
+		      ((oflags & VNET_BUFFER_OFFLOAD_F_TNL_IPIP) !=
+		       VNET_BUFFER_OFFLOAD_F_TNL_IPIP))
+		    do_segmentation0 = 0;
+		}
+	    }
 	  /* speculatively enqueue b0 to the current next frame */
 	  to_next[0] = bi0 = from[0];
 	  to_next += 1;
@@ -764,15 +771,19 @@ vnet_gso_inline (vlib_main_t * vm,
     {
       u32 *from = vlib_frame_vector_args (frame);
       vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
+      u32 supported_caps =
+	(VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_VXLAN_TNL_GSO |
+	 VNET_HW_IF_CAP_IPIP_TNL_GSO);
+
       hi = vnet_get_sup_hw_interface (vnm,
 				      vnet_buffer (b)->sw_if_index[VLIB_TX]);
 
-      if (hi->caps & (VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_VXLAN_TNL_GSO))
-	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
+      if ((hi->caps & supported_caps) == supported_caps)
+	return vnet_gso_node_inline (vm, node, frame, vnm, hi, supported_caps,
 				     is_l2, is_ip4, is_ip6,
 				     /* do_segmentation */ 0);
       else
-	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
+	return vnet_gso_node_inline (vm, node, frame, vnm, hi, supported_caps,
 				     is_l2, is_ip4, is_ip6,
 				     /* do_segmentation */ 1);
     }
