@@ -280,7 +280,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vlib_trace_main_t *tm;
-  vlib_trace_header_t **h, **traces;
+  vlib_trace_header_t **h, **traces = 0;
   u32 i, index = 0;
   char *fmt;
   u8 *s = 0;
@@ -307,21 +307,25 @@ cli_show_trace_buffer (vlib_main_t * vm,
     {
       fmt = "------------------- Start of thread %d %s -------------------\n";
       s = format (s, fmt, index, vlib_worker_threads[index].name);
+      index++;
 
       tm = &this_vlib_main->trace_main;
+      vec_reset_length (traces);
+
+      vlib_worker_thread_barrier_sync (vm);
 
       trace_apply_filter (this_vlib_main);
-
-      traces = 0;
       pool_foreach (h, tm->trace_buffer_pool)
 	{
 	  vec_add1 (traces, h[0]);
 	}
 
+      vlib_worker_thread_barrier_release (vm);
+
       if (vec_len (traces) == 0)
 	{
 	  s = format (s, "No packets in trace buffer\n");
-	  goto done;
+	  continue;
 	}
 
       /* Sort them by increasing time. */
@@ -335,28 +339,25 @@ cli_show_trace_buffer (vlib_main_t * vm,
 			   " To display more specify max.";
 	      vlib_cli_output (vm, warn, max);
 	      s = format (s, warn, max);
-	      goto done;
+	      continue;
 	    }
 
 	  s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace, vm,
 		      traces[i]);
 	}
-
-    done:
-      vec_free (traces);
-
-      index++;
     }
 
   vlib_cli_output (vm, "%v", s);
+  vec_free (traces);
   vec_free (s);
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_trace_cli,static) = {
+VLIB_CLI_COMMAND (show_trace_cli, static) = {
   .path = "show trace",
   .short_help = "Show trace buffer [max COUNT]",
   .function = cli_show_trace_buffer,
+  .is_mp_safe = 1,
 };
 
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
