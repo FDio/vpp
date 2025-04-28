@@ -53,3 +53,8 @@ containers:
     image: "hs-test/curl"
     is-optional: true
     run-detached: false
+
+  - name: "h2load"
+    image: "hs-test/h2load"
+    is-optional: true
+    run-detached: false

@@ -27,8 +27,9 @@ type H2Suite struct {
 		Tap *NetInterface
 	}
 	Containers struct {
-		Vpp  *Container
-		Curl *Container
+		Vpp    *Container
+		Curl   *Container
+		H2load *Container
 	}
 }
 
@@ -43,6 +44,7 @@ func (s *H2Suite) SetupSuite() {
 	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Containers.H2load = s.GetContainerByName("h2load")
 }
 
 func (s *H2Suite) SetupTest() {

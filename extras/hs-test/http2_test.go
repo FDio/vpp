@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -57,4 +57,20 @@ func Http2TcpPostTest(s *H2Suite) {
 	args := fmt.Sprintf("--max-time 10 --noproxy '*' --data-binary @%s --http2-prior-knowledge http://%s:80/test3", CurlContainerTestFile, serverAddress)
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(log, "HTTP/2 200")
+}
+
+func Http2MultiplexingTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/80")
+
+	args := fmt.Sprintf("-T10 -n20 -c1 -m100 http://%s:80/test_file_10M", serverAddress)
+	s.Containers.H2load.ExtraRunningArgs = args
+	s.Containers.H2load.Run()
+
+	o, _ := s.Containers.H2load.GetOutput()
+	s.Log(o)
+	s.AssertContains(o, "0 failed")
+	s.AssertContains(o, "0 errored")
+	s.AssertContains(o, "0 timeout")
 }
