@@ -172,6 +172,9 @@ func (c *Container) Create() error {
 	c.Suite.AssertNil(err)
 
 	for _, image := range images {
+		if len(image.RepoTags) == 0 {
+			continue
+		}
 		sliceOfImageNames = append(sliceOfImageNames, strings.Split(image.RepoTags[0], ":")[0])
 	}
 	if !slices.Contains(sliceOfImageNames, c.Image) {
