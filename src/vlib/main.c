@@ -257,11 +257,6 @@ vlib_next_frame_change_ownership (vlib_main_t * vm,
 
   node = vec_elt (nm->nodes, node_runtime->node_index);
 
-  /* Only internal & input nodes are allowed to call other nodes. */
-  ASSERT (node->type == VLIB_NODE_TYPE_INTERNAL
-	  || node->type == VLIB_NODE_TYPE_INPUT
-	  || node->type == VLIB_NODE_TYPE_PROCESS);
-
   ASSERT (vec_len (node->next_nodes) == node_runtime->n_next_nodes);
 
   next_frame =
