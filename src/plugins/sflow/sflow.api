@@ -177,6 +177,92 @@ define sflow_header_bytes_get_reply
   option in_progress;
 };
 
+/** @brief API to set sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sampling_D - direction
+*/
+
+autoreply define sflow_direction_set {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* sampling_D */
+    u32 sampling_D;
+};
+
+/** @brief API to get sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define sflow_direction_get {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+};
+
+/** \brief API go the sflow direction
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sampling_D - direction
+*/
+
+define sflow_direction_get_reply
+{
+  u32 context;
+  u32 sampling_D;
+  option in_progress;
+};
+
+/** @brief API to set sflow drop-monitoring
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param drop_M - enable drop-monitoring
+*/
+
+autoreply define sflow_drop_monitoring_set {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* drop_M */
+    u32 drop_M;
+};
+
+/** @brief API to get sflow drop-monitoring
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define sflow_drop_monitoring_get {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+};
+
+/** \brief API go the sflow drop-monitoring
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param drop_M - enable drop-monitoring
+*/
+
+define sflow_drop_monitoring_get_reply
+{
+  u32 context;
+  u32 drop_M;
+  option in_progress;
+};
+
 /** \brief Dump sflow enabled interface(s)
     @param client_index - opaque cookie to identify the sender
     @param hw_if_index - hw_if_index of a specific interface, or -1 (default)
