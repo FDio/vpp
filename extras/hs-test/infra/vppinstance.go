@@ -214,7 +214,7 @@ func (vpp *VppInstance) Start() error {
 	conn, connEv, err := govpp.AsyncConnect(
 		sockAddress,
 		maxReconnectAttempts,
-		core.DefaultReconnectInterval)
+		time.Second)
 	if err != nil {
 		vpp.getSuite().Log("async connect error: " + fmt.Sprint(err))
 		return err
