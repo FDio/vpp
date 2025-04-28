@@ -1599,7 +1599,27 @@ http2_transport_reset_callback (http_conn_t *hc)
 static void
 http2_transport_conn_reschedule_callback (http_conn_t *hc)
 {
-  /* TODO */
+  u32 req_index, stream_id;
+  http2_req_t *req;
+  http2_conn_ctx_t *h2c;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
+
+  if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
+    return;
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  hash_foreach (
+    stream_id, req_index, h2c->req_by_stream_id, ({
+      req = http2_req_get (req_index, hc->c_thread_index);
+      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED &&
+	  transport_connection_is_descheduled (&req->base.connection))
+	{
+	  HTTP_DBG (1, "req_index %u", req_index);
+	  transport_connection_reschedule (&req->base.connection);
+	}
+    }));
 }
 
 static void
