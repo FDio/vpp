@@ -180,7 +180,7 @@ func (vpp *VppInstance) Start() error {
 		return nil
 	}
 
-	maxReconnectAttempts := 3
+	maxReconnectAttempts := 6
 	// Replace default logger in govpp with our own
 	govppLogger := logrus.New()
 	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().Logger.Writer(), GinkgoWriter))
@@ -188,7 +188,7 @@ func (vpp *VppInstance) Start() error {
 
 	vpp.getSuite().Log("starting vpp")
 	if *IsVppDebug {
-		// default = 3; VPP will timeout while debugging if there are not enough attempts
+		// default = 6; VPP will timeout while debugging if there are not enough attempts
 		maxReconnectAttempts = 5000
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGQUIT)
