@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cea94fa_07658135",
+        "filename": "src/plugins/ip_session_redirect/api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-04-28T08:42:37Z",
+      "side": 1,
+      "message": "maybe use vl_msg_api_alloc_zero() instead?",
+      "revId": "7896519775f1d924132bfd7e9021c660f503dfe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09881c9e_95a1b8b3",
+        "filename": "src/plugins/ip_session_redirect/test_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-04-28T08:42:37Z",
+      "side": 1,
+      "message": "Could we implement those?",
+      "revId": "7896519775f1d924132bfd7e9021c660f503dfe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
