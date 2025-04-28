@@ -1434,18 +1434,16 @@ vnet_set_interface_output_node (vnet_main_t * vnm,
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-VNET_FEATURE_ARC_INIT(interface_drop, static) = {
+VNET_FEATURE_ARC_INIT (interface_drop, static) = {
   .arc_name = "error-drop",
-  .start_nodes = VNET_FEATURES("error-drop"),
+  .start_nodes = VNET_FEATURES ("error-drop"),
   .last_in_arc = "drop",
   .arc_index_ptr = &vnet_main.interface_main.drop_feature_arc_index,
 };
 
-VNET_FEATURE_INIT (drop, static) = {
-  .arc_name = "error-drop",
-  .node_name = "drop",
-  .runs_before = 0
-};
+VNET_FEATURE_INIT (drop, static) = { .arc_name = "error-drop",
+                                   .node_name = "drop",
+				   .runs_before = 0 };
 
 /*
  * fd.io coding-style-patch-verification: ON
