@@ -16,6 +16,23 @@
       "message": "Hi Neal,\n\nThanks for the previous review and your messages!\n\nI resolved the issues you mentioned and also added a UT and the tests are now passed successfully. \n\nI assume that the two failed tests, namely \"VCL Thru Host Stack CL UDP Echo\" and \"Test tap interfaces in L3 mode with checksum offload for IPv4/v6\", are not related to my changes in GRE.  Also the build proccess here for vpp-verify-hst-debug-master-ubuntu2204-x86_64/2444/ failed with \"no identified problem\" and I think it is happening due to a HTTP-related test being failed. \n\nI appreciate if you can provide any clue for it, if these error are related.\n\nThanks and best regards\nMasih",
       "revId": "f26380ae13dd8d4775ebef0552f562a2a7d97023",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f48c56a_43870ec5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-04-28T09:06:16Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nI would like to follow up if you have had time to have a look at the new patch.\n\nI appreciate your feedback and looking forward to your reply.\n\nRegards,\nMasih",
+      "revId": "f26380ae13dd8d4775ebef0552f562a2a7d97023",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
