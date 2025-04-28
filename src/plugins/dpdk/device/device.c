@@ -199,7 +199,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 tso = b->flags & VNET_BUFFER_F_GSO, max_pkt_len;
   u32 ip_cksum, tcp_cksum, udp_cksum, outer_hdr_len = 0;
-  u32 outer_ip_cksum, vxlan_tunnel;
+  u32 outer_ip_cksum, vxlan_tunnel, ipip_tunnel;
   u64 ol_flags;
   vnet_buffer_oflags_t oflags = 0;
 
@@ -213,6 +213,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   udp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
   outer_ip_cksum = oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM;
   vxlan_tunnel = oflags & VNET_BUFFER_OFFLOAD_F_TNL_VXLAN;
+  ipip_tunnel = oflags & VNET_BUFFER_OFFLOAD_F_TNL_IPIP;
 
   ol_flags = is_ip4 ? RTE_MBUF_F_TX_IPV4 : RTE_MBUF_F_TX_IPV6;
   ol_flags |= ip_cksum ? RTE_MBUF_F_TX_IP_CKSUM : 0;
@@ -233,6 +234,21 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
 	vnet_buffer2 (b)->outer_l3_hdr_offset - b->current_data;
       mb->outer_l3_len = vnet_buffer2 (b)->outer_l4_hdr_offset -
 			 vnet_buffer2 (b)->outer_l3_hdr_offset;
+      outer_hdr_len = mb->outer_l2_len + mb->outer_l3_len;
+    }
+  else if (ipip_tunnel)
+    {
+      ol_flags |= outer_ip_cksum ?
+		    RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM :
+		    RTE_MBUF_F_TX_OUTER_IPV6;
+      ol_flags |= RTE_MBUF_F_TX_TUNNEL_IPIP;
+      mb->l2_len = 0;
+      mb->l3_len =
+	vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset;
+      mb->outer_l2_len =
+	vnet_buffer2 (b)->outer_l3_hdr_offset - b->current_data;
+      mb->outer_l3_len =
+	vnet_buffer (b)->l3_hdr_offset - vnet_buffer2 (b)->outer_l3_hdr_offset;
       outer_hdr_len = mb->outer_l2_len + mb->outer_l3_len;
     }
   else
