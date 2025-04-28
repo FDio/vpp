@@ -24,7 +24,6 @@
 
 #include <sflow/sflow.api_enum.h>
 #include <sflow/sflow.api_types.h>
-#include <sflow/sflow_psample.h>
 #include <sflow/sflow_dlapi.h>
 
 #include <vpp-api/client/stat_client.h>
@@ -178,11 +177,11 @@ retry:
   stat_segment_data_free (res);
   vec_free (stats);
   // send the structure via netlink
-  SFLOWUSSpec spec = {};
-  SFLOWUSSpec_setMsgType (&spec, SFLOW_VPP_MSG_IF_COUNTERS);
-  SFLOWUSSpec_setAttr (&spec, SFLOW_VPP_ATTR_PORTNAME, hw->name,
-		       vec_len (hw->name));
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_IFINDEX, sfif->sw_if_index);
+  SFLOWUS *ust = &smp->sflow_usersock;
+  SFLOWUS_set_msg_type (ust, SFLOW_VPP_MSG_IF_COUNTERS);
+  SFLOWUS_set_attr (ust, SFLOW_VPP_ATTR_PORTNAME, hw->name,
+		    vec_len (hw->name));
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_IFINDEX, sfif->sw_if_index);
 
   if (smp->lcp_itf_pair_get_vif_index_by_phy)
     {
@@ -194,12 +193,11 @@ retry:
     {
       // We know the corresponding Linux ifIndex for this interface, so include
       // that here.
-      SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_OSINDEX,
-			      sfif->linux_if_index);
+      SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_OSINDEX, sfif->linux_if_index);
     }
 
   // Report consistent with vpp-snmp-agent
-  u64 ifSpeed = (hw->link_speed == ~0) ? 0 : (hw->link_speed * 1000);
+  u64 ifSpeed = (hw->link_speed == ~0) ? 0 : ((u64) hw->link_speed * 1000);
   if (startsWith (hw->name, "loop") || startsWith (hw->name, "tap"))
     ifSpeed = 1e9;
 
@@ -215,28 +213,28 @@ retry:
   u32 operUp = (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
   u32 adminUp = (sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
 
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_IFSPEED, ifSpeed);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_IFTYPE, ifType);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_IFDIRECTION, ifDirection);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_OPER_UP, operUp);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_ADMIN_UP, adminUp);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_OCTETS, ifCtrs.rx.byts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_OCTETS, ifCtrs.tx.byts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_PKTS, ifCtrs.rx.pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_PKTS, ifCtrs.tx.pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_MCASTS, ifCtrs.rx.m_pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_MCASTS, ifCtrs.tx.m_pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_BCASTS, ifCtrs.rx.b_pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_BCASTS, ifCtrs.tx.b_pkts);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_ERRORS, ifCtrs.rx.errs);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_ERRORS, ifCtrs.tx.errs);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_RX_DISCARDS, ifCtrs.rx.drps);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_TX_DISCARDS, ifCtrs.tx.drps);
-  SFLOWUSSpec_setAttr (&spec, SFLOW_VPP_ATTR_HW_ADDRESS, hw->hw_address,
-		       vec_len (hw->hw_address));
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_IFSPEED, ifSpeed);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_IFTYPE, ifType);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_IFDIRECTION, ifDirection);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_OPER_UP, operUp);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_ADMIN_UP, adminUp);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_OCTETS, ifCtrs.rx.byts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_OCTETS, ifCtrs.tx.byts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_PKTS, ifCtrs.rx.pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_PKTS, ifCtrs.tx.pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_MCASTS, ifCtrs.rx.m_pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_MCASTS, ifCtrs.tx.m_pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_BCASTS, ifCtrs.rx.b_pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_BCASTS, ifCtrs.tx.b_pkts);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_ERRORS, ifCtrs.rx.errs);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_ERRORS, ifCtrs.tx.errs);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_RX_DISCARDS, ifCtrs.rx.drps);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_TX_DISCARDS, ifCtrs.tx.drps);
+  SFLOWUS_set_attr (ust, SFLOW_VPP_ATTR_HW_ADDRESS, hw->hw_address,
+		    vec_len (hw->hw_address));
   smp->unixsock_seq++;
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_SEQ, smp->unixsock_seq);
-  if (SFLOWUSSpec_send (&smp->sflow_usersock, &spec) < 0)
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_SEQ, smp->unixsock_seq);
+  if (SFLOWUS_send (ust) < 0)
     smp->csample_send_drops++;
   smp->csample_send++;
 }
@@ -259,14 +257,14 @@ total_drops (sflow_main_t *smp)
 static void
 send_sampling_status_info (sflow_main_t *smp)
 {
-  SFLOWUSSpec spec = {};
+  SFLOWUS *ust = &smp->sflow_usersock;
   u32 all_pipeline_drops = total_drops (smp);
-  SFLOWUSSpec_setMsgType (&spec, SFLOW_VPP_MSG_STATUS);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_UPTIME_S, smp->now_mono_S);
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_DROPS, all_pipeline_drops);
+  SFLOWUS_set_msg_type (ust, SFLOW_VPP_MSG_STATUS);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_UPTIME_S, smp->now_mono_S);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_DROPS, all_pipeline_drops);
   ++smp->unixsock_seq;
-  SFLOWUSSpec_setAttrInt (&spec, SFLOW_VPP_ATTR_SEQ, smp->unixsock_seq);
-  SFLOWUSSpec_send (&smp->sflow_usersock, &spec);
+  SFLOWUS_set_attr_int (ust, SFLOW_VPP_ATTR_SEQ, smp->unixsock_seq);
+  SFLOWUS_send (ust);
 }
 
 static int
@@ -291,8 +289,137 @@ counter_polling_check (sflow_main_t *smp)
   return polled;
 }
 
+static void
+lowercase_and_replace_white (char *str, int len, char replace)
+{
+  if (str)
+    for (int ii = 0; ii < len; ii++)
+      {
+	if (isspace (str[ii]))
+	  str[ii] = replace;
+	else
+	  str[ii] = tolower (str[ii]);
+      }
+}
+
+static int
+compose_trap_str (char *buf, int buf_len, char *str, int str_len)
+{
+  int prefix_len = strlen (SFLOW_TRAP_PREFIX);
+  int max_cont_len = buf_len - prefix_len - 1;
+  int cont_len = (str_len > max_cont_len) ? max_cont_len : str_len;
+  clib_memcpy_fast (buf, SFLOW_TRAP_PREFIX, prefix_len);
+  clib_memcpy_fast (buf + prefix_len, str, cont_len);
+  lowercase_and_replace_white (buf + prefix_len, cont_len, SFLOW_TRAP_WHITE);
+  buf[prefix_len + cont_len] = '\0';
+  return prefix_len + cont_len;
+}
+
+static int
+send_packet_sample (vlib_main_t *vm, sflow_main_t *smp, sflow_sample_t *sample)
+{
+  if (sample->header_bytes > smp->headerB)
+    {
+      // We get here if header-bytes setting is reduced dynamically
+      // and a sample that was in the FIFO appears with a larger
+      // header.
+      return 0;
+    }
+  SFLOWPS *pst = &smp->sflow_psample;
+  u32 ps_group, seqNo;
+  switch (sample->sample_type)
+    {
+    case SFLOW_SAMPLETYPE_INGRESS:
+      ps_group = SFLOW_VPP_PSAMPLE_GROUP_INGRESS;
+      seqNo = ++smp->psample_seq_ingress;
+      break;
+    case SFLOW_SAMPLETYPE_EGRESS:
+      ps_group = SFLOW_VPP_PSAMPLE_GROUP_EGRESS;
+      seqNo = ++smp->psample_seq_egress;
+      break;
+    default:
+      return 0;
+    }
+  // TODO: is it always ethernet? (affects ifType counter as well)
+  u16 header_protocol = 1; /* ethernet */
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_SAMPLE_GROUP, ps_group);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_IIFINDEX,
+			sample->input_if_index);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_OIFINDEX,
+			sample->output_if_index);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_ORIGSIZE,
+			sample->sampled_packet_size);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_GROUP_SEQ, seqNo);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_SAMPLE_RATE,
+			sample->samplingN);
+  SFLOWPS_set_attr (pst, SFLOWPS_PSAMPLE_ATTR_DATA, sample->header,
+		    sample->header_bytes);
+  SFLOWPS_set_attr_int (pst, SFLOWPS_PSAMPLE_ATTR_PROTO, header_protocol);
+  if (SFLOWPS_send (pst) < 0)
+    return -1;
+  return 1;
+}
+
+static int
+send_discard_sample (vlib_main_t *vm, sflow_main_t *smp,
+		     sflow_sample_t *sample)
+{
+  SFLOWDM *dmt = &smp->sflow_dropmon;
+  if (sample->header_bytes > smp->headerB)
+    {
+      // We get here if header-bytes setting is reduced dynamically
+      // and a sample that was in the FIFO appears with a larger
+      // header.
+      return 0;
+    }
+  if (sample->sample_type != SFLOW_SAMPLETYPE_DISCARD)
+    {
+      SFLOW_ERR ("send_discard_sample sample-sample_type=%u",
+		 sample->sample_type);
+      return 0;
+    }
+  vlib_error_main_t *em = &vm->error_main;
+  if (sample->drop_reason >= vec_len (em->counters_heap))
+    return 0;
+  if (sample->drop_reason >= vec_len (vm->node_main.node_by_error))
+    return 0;
+  u32 err_node_idx = vm->node_main.node_by_error[sample->drop_reason];
+  // Are all the ones we want classed as errors, or might some be WARN or INFO?
+  // if (err->severity == VL_COUNTER_SEVERITY_ERROR)
+  // set TRAP_GROUP_NAME to "vpp_<node>"
+  char trap_grp[SFLOW_MAX_TRAP_LEN];
+  char trap[SFLOW_MAX_TRAP_LEN];
+  vlib_node_t *n = vlib_get_node (vm, err_node_idx);
+  int trap_grp_len = compose_trap_str (trap_grp, SFLOW_MAX_TRAP_LEN,
+				       (char *) n->name, vec_len (n->name));
+  // set TRAP_NAME to "vpp_<error>"
+  vlib_error_desc_t *err = &em->counters_heap[sample->drop_reason];
+  int err_name_len = clib_strnlen (err->name, SFLOW_MAX_TRAP_LEN);
+  int trap_len =
+    compose_trap_str (trap, SFLOW_MAX_TRAP_LEN, err->name, err_name_len);
+  // populate the netlink attributes
+  u16 origin = NET_DM_ORIGIN_SW;
+  SFLOWDM_set_attr_int (dmt, NET_DM_ATTR_ORIGIN, origin);
+  // include NUL termination char in netlink strings.
+  SFLOWDM_set_attr (dmt, NET_DM_ATTR_HW_TRAP_GROUP_NAME, trap_grp,
+		    trap_grp_len + 1);
+  SFLOWDM_set_attr (dmt, NET_DM_ATTR_HW_TRAP_NAME, trap, trap_len + 1);
+  SFLOWDM_set_attr_int (dmt, NET_DM_ATTR_ORIG_LEN,
+			sample->sampled_packet_size);
+  SFLOWDM_set_attr_int (dmt, NET_DM_ATTR_TRUNC_LEN, sample->header_bytes);
+  // TODO: read from header? (really just needs to be non-zero for hsflowd)
+  u16 proto = 0x0800;
+  SFLOWDM_set_attr_int (dmt, NET_DM_ATTR_PROTO, proto);
+  SFLOWDM_set_attr_int (dmt, NET_DM_ATTR_IN_PORT, sample->input_if_index);
+  SFLOWDM_set_attr (dmt, NET_DM_ATTR_PAYLOAD, sample->header,
+		    sample->header_bytes);
+  if (SFLOWDM_send (dmt) < 0)
+    return -1;
+  return 1;
+}
+
 static u32
-read_worker_fifos (sflow_main_t *smp)
+read_worker_fifos (vlib_main_t *vm, sflow_main_t *smp)
 {
   // Our maximum samples/sec is approximately:
   // (SFLOW_READ_BATCH * smp->total_threads) / SFLOW_POLL_WAIT_S
@@ -321,7 +448,9 @@ read_worker_fifos (sflow_main_t *smp)
   u32 batch = 0;
   for (; batch < SFLOW_READ_BATCH; batch++)
     {
+      u32 psample_found = 0, dropmon_found = 0;
       u32 psample_send = 0, psample_send_fail = 0;
+      u32 dropmon_send = 0, dropmon_send_fail = 0;
       for (clib_thread_index_t thread_index = 0;
 	   thread_index < smp->total_threads; thread_index++)
 	{
@@ -330,54 +459,57 @@ read_worker_fifos (sflow_main_t *smp)
 	  sflow_sample_t sample;
 	  if (sflow_fifo_dequeue (&sfwk->fifo, &sample))
 	    {
-	      if (sample.header_bytes > smp->headerB)
-		{
-		  // We get here if header-bytes setting is reduced dynamically
-		  // and a sample that was in the FIFO appears with a larger
-		  // header.
-		  continue;
-		}
-	      SFLOWPSSpec spec = {};
-	      u32 ps_group = SFLOW_VPP_PSAMPLE_GROUP_INGRESS;
-	      u32 seqNo = ++smp->psample_seq_ingress;
-	      // TODO: is it always ethernet? (affects ifType counter as well)
-	      u16 header_protocol = 1; /* ethernet */
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_GROUP,
-				      ps_group);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_IIFINDEX,
-				      sample.input_if_index);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_OIFINDEX,
-				      sample.output_if_index);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_ORIGSIZE,
-				      sample.sampled_packet_size);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_GROUP_SEQ,
-				      seqNo);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_SAMPLE_RATE,
-				      sample.samplingN);
-	      SFLOWPSSpec_setAttr (&spec, SFLOWPS_PSAMPLE_ATTR_DATA,
-				   sample.header, sample.header_bytes);
-	      SFLOWPSSpec_setAttrInt (&spec, SFLOWPS_PSAMPLE_ATTR_PROTO,
-				      header_protocol);
-	      psample_send++;
-	      if (SFLOWPSSpec_send (&smp->sflow_psample, &spec) < 0)
+	      psample_found++;
+	      int sent = send_packet_sample (vm, smp, &sample);
+	      if (sent == 1)
+		psample_send++;
+	      if (sent == -1)
 		psample_send_fail++;
 	    }
+	  if (sflow_drop_fifo_dequeue (&sfwk->drop_fifo, &sample))
+	    {
+	      dropmon_found++;
+	      int sent = send_discard_sample (vm, smp, &sample);
+	      if (sent == 1)
+		dropmon_send++;
+	      if (sent == -1)
+		dropmon_send_fail++;
+	    }
 	}
-      if (psample_send == 0)
+      if (psample_found == 0 && dropmon_found == 0)
 	{
 	  // nothing found on FIFOs this time through, so terminate batch early
 	  break;
 	}
       else
 	{
-	  vlib_node_increment_counter (smp->vlib_main, sflow_node.index,
-				       SFLOW_ERROR_PSAMPLE_SEND, psample_send);
+	  if (psample_send > 0)
+	    {
+	      vlib_node_increment_counter (smp->vlib_main, sflow_node.index,
+					   SFLOW_ERROR_PSAMPLE_SEND,
+					   psample_send);
+	      smp->psample_send += psample_send;
+	    }
 	  if (psample_send_fail > 0)
 	    {
 	      vlib_node_increment_counter (smp->vlib_main, sflow_node.index,
 					   SFLOW_ERROR_PSAMPLE_SEND_FAIL,
 					   psample_send_fail);
 	      smp->psample_send_drops += psample_send_fail;
+	    }
+	  if (dropmon_send > 0)
+	    {
+	      vlib_node_increment_counter (smp->vlib_main, sflow_node.index,
+					   SFLOW_ERROR_DROPMON_SEND,
+					   dropmon_send);
+	      smp->dropmon_send += dropmon_send;
+	    }
+	  if (dropmon_send_fail > 0)
+	    {
+	      vlib_node_increment_counter (smp->vlib_main, sflow_node.index,
+					   SFLOW_ERROR_DROPMON_SEND_FAIL,
+					   dropmon_send_fail);
+	      smp->dropmon_send_drops += dropmon_send_fail;
 	    }
 	}
     }
@@ -397,6 +529,8 @@ read_node_counters (sflow_main_t *smp, sflow_err_ctrs_t *ctrs)
       ctrs->counters[SFLOW_ERROR_PROCESSED] += sfwk->pool;
       ctrs->counters[SFLOW_ERROR_SAMPLED] += sfwk->smpl;
       ctrs->counters[SFLOW_ERROR_DROPPED] += sfwk->drop;
+      ctrs->counters[SFLOW_ERROR_DIPROCESSED] += sfwk->dsmp;
+      ctrs->counters[SFLOW_ERROR_DIDROPPED] += sfwk->ddrp;
     }
 }
 
@@ -412,9 +546,13 @@ static void
 update_node_counters (sflow_main_t *smp, sflow_err_ctrs_t *prev,
 		      sflow_err_ctrs_t *latest)
 {
+  // TODO: is it OK to assess all counters against sflow_node or do we
+  // need to distinguish sflow_drop_node and sflow_egress_node?
   update_node_cntr (smp, prev, latest, SFLOW_ERROR_PROCESSED);
   update_node_cntr (smp, prev, latest, SFLOW_ERROR_SAMPLED);
   update_node_cntr (smp, prev, latest, SFLOW_ERROR_DROPPED);
+  update_node_cntr (smp, prev, latest, SFLOW_ERROR_DIPROCESSED);
+  update_node_cntr (smp, prev, latest, SFLOW_ERROR_DIDROPPED);
   *prev = *latest; // latch for next time
 }
 
@@ -445,10 +583,18 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       // PSAMPLE channel may need extra step (e.g. to learn family_id)
       // before it is ready to send
-      EnumSFLOWPSState psState = SFLOWPS_state (&smp->sflow_psample);
-      if (psState != SFLOWPS_STATE_READY)
+      EnumSFLOWNLState psState = SFLOWPS_state (&smp->sflow_psample);
+      if (psState != SFLOWNL_STATE_READY)
 	{
 	  SFLOWPS_open_step (&smp->sflow_psample);
+	}
+
+      // DROPMON channel may need extra step (e.g. to learn family_id)
+      // before it is ready to send
+      EnumSFLOWNLState dmState = SFLOWDM_state (&smp->sflow_dropmon);
+      if (dmState != SFLOWNL_STATE_READY)
+	{
+	  SFLOWDM_open_step (&smp->sflow_dropmon);
 	}
 
       // What we want is a monotonic, per-second clock. This seems to do it
@@ -465,7 +611,7 @@ sflow_process_samples (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  counter_polling_check (smp);
 	}
       // process samples from workers
-      read_worker_fifos (smp);
+      read_worker_fifos (vm, smp);
 
       // and sync the global counters
       sflow_err_ctrs_t latest = {};
@@ -522,13 +668,22 @@ sflow_sampling_start (sflow_main_t *smp)
   // reset sequence numbers to indicated discontinuity
   smp->psample_seq_ingress = 0;
   smp->psample_seq_egress = 0;
+  smp->psample_send = 0;
   smp->psample_send_drops = 0;
+  smp->csample_send = 0;
+  smp->csample_send_drops = 0;
+  smp->dropmon_send = 0;
+  smp->dropmon_send_drops = 0;
 
   /* open PSAMPLE netlink channel for writing packet samples */
+  SFLOWPS_init (&smp->sflow_psample);
   SFLOWPS_open (&smp->sflow_psample);
   /* open USERSOCK netlink channel for writing counters */
+  SFLOWUS_init (&smp->sflow_usersock);
   SFLOWUS_open (&smp->sflow_usersock);
-  smp->sflow_usersock.group_id = SFLOW_NETLINK_USERSOCK_MULTICAST;
+  /* open DROPMON netlink channel for writing discard events */
+  SFLOWDM_init (&smp->sflow_dropmon);
+  SFLOWDM_open (&smp->sflow_dropmon);
   /* set up (or reset) sampling context for each thread */
   sflow_set_worker_sampling_state (smp);
 }
@@ -540,12 +695,14 @@ sflow_sampling_stop (sflow_main_t *smp)
   smp->running = 0;
   SFLOWPS_close (&smp->sflow_psample);
   SFLOWUS_close (&smp->sflow_usersock);
+  SFLOWDM_close (&smp->sflow_dropmon);
 }
 
 static void
 sflow_sampling_start_stop (sflow_main_t *smp)
 {
-  int run = (smp->samplingN != 0 && smp->interfacesEnabled != 0);
+  int run =
+    ((smp->samplingN != 0 && smp->interfacesEnabled != 0) || smp->dropM);
   if (run != smp->running)
     {
       if (run)
@@ -603,6 +760,71 @@ sflow_header_bytes (sflow_main_t *smp, u32 headerB)
   return 0;
 }
 
+void
+sflow_enable_disable_interface (sflow_main_t *smp,
+				sflow_per_interface_data_t *sfif)
+{
+  bool ingress_on =
+    sfif->sflow_enabled && ((smp->samplingD & SFLOW_DIRN_INGRESS) != 0);
+  bool egress_on =
+    sfif->sflow_enabled && ((smp->samplingD & SFLOW_DIRN_EGRESS) != 0);
+  bool drop_on = sfif->sflow_enabled && smp->dropM;
+  bool ingress_enabled = (vnet_feature_is_enabled ("device-input", "sflow",
+						   sfif->sw_if_index) == 1);
+  bool egress_enabled =
+    (vnet_feature_is_enabled ("interface-output", "sflow-egress",
+			      sfif->sw_if_index) == 1);
+  bool drop_enabled = (vnet_feature_is_enabled ("error-drop", "sflow-drop",
+						sfif->sw_if_index) == 1);
+
+  if (ingress_on != ingress_enabled)
+    vnet_feature_enable_disable ("device-input", "sflow", sfif->sw_if_index,
+				 ingress_on, 0, 0);
+  if (egress_on != egress_enabled)
+    vnet_feature_enable_disable ("interface-output", "sflow-egress",
+				 sfif->sw_if_index, egress_on, 0, 0);
+  if (drop_on != drop_enabled)
+    vnet_feature_enable_disable ("error-drop", "sflow-drop", sfif->sw_if_index,
+				 smp->dropM, 0, 0);
+}
+
+void
+sflow_enable_disable_all (sflow_main_t *smp)
+{
+  for (int ii = 0; ii < vec_len (smp->per_interface_data); ii++)
+    {
+      sflow_per_interface_data_t *sfif =
+	vec_elt_at_index (smp->per_interface_data, ii);
+      if (sfif && sfif->sflow_enabled)
+	sflow_enable_disable_interface (smp, sfif);
+    }
+}
+
+int
+sflow_direction (sflow_main_t *smp, u32 samplingD)
+{
+  if (samplingD != smp->samplingD)
+    {
+      // direction changed - tell all active interfaces.
+      smp->samplingD = samplingD;
+      sflow_enable_disable_all (smp);
+    }
+  return 0;
+}
+
+int
+sflow_drop_monitoring (sflow_main_t *smp, u32 dropM)
+{
+  if (dropM != smp->dropM)
+    {
+      // drop-monitoring changed.
+      smp->dropM = dropM;
+      // Tell all active interfaces.
+      sflow_enable_disable_all (smp);
+    }
+  return 0;
+}
+
 int
 sflow_enable_disable (sflow_main_t *smp, u32 sw_if_index, int enable_disable)
 {
@@ -641,8 +863,7 @@ sflow_enable_disable (sflow_main_t *smp, u32 sw_if_index, int enable_disable)
       sfif->hw_if_index = sw->hw_if_index;
       sfif->polled = 0;
       sfif->sflow_enabled = enable_disable;
-      vnet_feature_enable_disable ("device-input", "sflow", sw_if_index,
-				   enable_disable, 0, 0);
+      sflow_enable_disable_interface (smp, sfif);
       smp->interfacesEnabled += (enable_disable) ? 1 : -1;
     }
 
@@ -747,6 +968,74 @@ sflow_header_bytes_command_fn (vlib_main_t *vm, unformat_input_t *input,
 }
 
 static clib_error_t *
+sflow_direction_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  sflow_main_t *smp = &sflow_main;
+  u32 sampling_D = ~0;
+
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "rx"))
+	sampling_D = SFLOW_DIRN_INGRESS;
+      else if (unformat (input, "tx"))
+	sampling_D = SFLOW_DIRN_EGRESS;
+      else if (unformat (input, "both"))
+	sampling_D = SFLOW_DIRN_BOTH;
+      else
+	break;
+    }
+
+  if (sampling_D == ~0)
+    return clib_error_return (
+      0, "Please specify a sampling direction (rx|tx|both)...");
+
+  rv = sflow_direction (smp, sampling_D);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+    default:
+      return clib_error_return (0, "sflow_direction returned %d", rv);
+    }
+  return 0;
+}
+
+static clib_error_t *
+sflow_drop_monitoring_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
+{
+  sflow_main_t *smp = &sflow_main;
+  u32 drop_M = 1;
+
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	drop_M = 0;
+      else if (unformat (input, "enable"))
+	drop_M = 1;
+      else
+	break;
+    }
+
+  rv = sflow_drop_monitoring (smp, drop_M);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+    default:
+      return clib_error_return (0, "sflow_drop_monitoring returned %d", rv);
+    }
+  return 0;
+}
+
+static clib_error_t *
 sflow_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				 vlib_cli_command_t *cmd)
 {
@@ -760,6 +1049,8 @@ sflow_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (input, "disable"))
 	enable_disable = 0;
+      else if (unformat (input, "enable"))
+	enable_disable = 1;
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 smp->vnet_main, &sw_if_index))
 	;
@@ -793,6 +1084,21 @@ sflow_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
   return 0;
 }
 
+static const char *
+sflow_direction_str (u32 direction)
+{
+  switch (direction)
+    {
+    case SFLOW_DIRN_INGRESS:
+      return "rx";
+    case SFLOW_DIRN_EGRESS:
+      return "tx";
+    case SFLOW_DIRN_BOTH:
+      return "both";
+    }
+  return "none";
+}
+
 static clib_error_t *
 show_sflow_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
@@ -800,9 +1106,12 @@ show_sflow_command_fn (vlib_main_t *vm, unformat_input_t *input,
   sflow_main_t *smp = &sflow_main;
   clib_error_t *error = NULL;
   vlib_cli_output (vm, "sflow sampling-rate %u\n", smp->samplingN);
-  vlib_cli_output (vm, "sflow sampling-direction ingress\n");
+  vlib_cli_output (vm, "sflow direction %s\n",
+		   sflow_direction_str (smp->samplingD));
   vlib_cli_output (vm, "sflow polling-interval %u\n", smp->pollingS);
   vlib_cli_output (vm, "sflow header-bytes %u\n", smp->headerB);
+  vlib_cli_output (vm, "sflow drop-monitoring %s\n",
+		   smp->dropM ? "enable" : "disable");
   u32 itfs_enabled = 0;
   for (int ii = 0; ii < vec_len (smp->per_interface_data); ii++)
     {
@@ -818,12 +1127,14 @@ show_sflow_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
   vlib_cli_output (vm, "Status\n");
   vlib_cli_output (vm, "  interfaces enabled: %u\n", itfs_enabled);
-  vlib_cli_output (vm, "  packet samples sent: %u\n",
-		   smp->psample_seq_ingress + smp->psample_seq_egress);
+  vlib_cli_output (vm, "  packet samples sent: %u\n", smp->psample_send);
   vlib_cli_output (vm, "  packet samples dropped: %u\n", total_drops (smp));
   vlib_cli_output (vm, "  counter samples sent: %u\n", smp->csample_send);
   vlib_cli_output (vm, "  counter samples dropped: %u\n",
 		   smp->csample_send_drops);
+  vlib_cli_output (vm, "  drop samples sent: %u\n", smp->dropmon_send);
+  vlib_cli_output (vm, "  drop samples dropped: %u\n",
+		   smp->dropmon_send_drops);
   return error;
 }
 
@@ -849,6 +1160,18 @@ VLIB_CLI_COMMAND (sflow_header_bytes_command, static) = {
   .path = "sflow header-bytes",
   .short_help = "sflow header-bytes <B>",
   .function = sflow_header_bytes_command_fn,
+};
+
+VLIB_CLI_COMMAND (sflow_direction_command, static) = {
+  .path = "sflow direction",
+  .short_help = "sflow direction <rx|tx|both>",
+  .function = sflow_direction_command_fn,
+};
+
+VLIB_CLI_COMMAND (sflow_drop_monitoring_command, static) = {
+  .path = "sflow drop-monitoring",
+  .short_help = "sflow drop-monitoring <enable|disable>",
+  .function = sflow_drop_monitoring_command_fn,
 };
 
 VLIB_CLI_COMMAND (show_sflow_command, static) = {
@@ -940,6 +1263,52 @@ vl_api_sflow_header_bytes_get_t_handler (vl_api_sflow_header_bytes_get_t *mp)
 }
 
 static void
+vl_api_sflow_direction_set_t_handler (vl_api_sflow_direction_set_t *mp)
+{
+  vl_api_sflow_direction_set_reply_t *rmp;
+  sflow_main_t *smp = &sflow_main;
+  int rv;
+
+  rv = sflow_direction (smp, ntohl (mp->sampling_D));
+
+  REPLY_MACRO (VL_API_SFLOW_DIRECTION_SET_REPLY);
+}
+
+static void
+vl_api_sflow_direction_get_t_handler (vl_api_sflow_direction_get_t *mp)
+{
+  vl_api_sflow_direction_get_reply_t *rmp;
+  sflow_main_t *smp = &sflow_main;
+
+  REPLY_MACRO_DETAILS2 (VL_API_SFLOW_DIRECTION_GET_REPLY,
+			({ rmp->sampling_D = ntohl (smp->samplingD); }));
+}
+
+static void
+vl_api_sflow_drop_monitoring_set_t_handler (
+  vl_api_sflow_drop_monitoring_set_t *mp)
+{
+  vl_api_sflow_drop_monitoring_set_reply_t *rmp;
+  sflow_main_t *smp = &sflow_main;
+  int rv;
+
+  rv = sflow_drop_monitoring (smp, ntohl (mp->drop_M));
+
+  REPLY_MACRO (VL_API_SFLOW_DROP_MONITORING_SET_REPLY);
+}
+
+static void
+vl_api_sflow_drop_monitoring_get_t_handler (
+  vl_api_sflow_drop_monitoring_get_t *mp)
+{
+  vl_api_sflow_drop_monitoring_get_reply_t *rmp;
+  sflow_main_t *smp = &sflow_main;
+
+  REPLY_MACRO_DETAILS2 (VL_API_SFLOW_DROP_MONITORING_GET_REPLY,
+			({ rmp->drop_M = ntohl (smp->dropM); }));
+}
+
+static void
 send_sflow_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
 			      u32 context, const u32 hw_if_index)
 {
@@ -1001,6 +1370,8 @@ sflow_init (vlib_main_t *vm)
   smp->samplingN = SFLOW_DEFAULT_SAMPLING_N;
   smp->pollingS = SFLOW_DEFAULT_POLLING_S;
   smp->headerB = SFLOW_DEFAULT_HEADER_BYTES;
+  smp->samplingD = SFLOW_DIRN_INGRESS;
+  smp->dropM = false;
 
   /* Add our API messages to the global name_crc hash table */
   smp->msg_id_base = setup_message_id_table ();
@@ -1028,6 +1399,19 @@ VNET_FEATURE_INIT (sflow, static) = {
   .arc_name = "device-input",
   .node_name = "sflow",
   .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
+VNET_FEATURE_INIT (sflow_egress, static) = {
+  .arc_name = "interface-output",
+  .node_name = "sflow-egress",
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
+};
+
+/* Add myself to the feature arc */
+VNET_FEATURE_INIT (sflow_drop, static) = {
+  .arc_name = "error-drop",
+  .node_name = "sflow-drop",
+  .runs_before = VNET_FEATURES ("drop"),
 };
 
 VLIB_PLUGIN_REGISTER () = {
