@@ -571,7 +571,7 @@ typedef enum vnet_hw_interface_flags_t_
 
 typedef enum vnet_hw_if_caps_t_
 {
-  VNET_HW_INTERFACE_CAP_NONE,
+  VNET_HW_IF_CAP_NONE,
 #define _(bit, sfx, str) VNET_HW_IF_CAP_##sfx = (1 << (bit)),
   foreach_vnet_hw_if_caps
 #undef _
