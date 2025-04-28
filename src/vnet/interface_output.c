@@ -1434,7 +1434,7 @@ vnet_set_interface_output_node (vnet_main_t * vnm,
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-VNET_FEATURE_ARC_INIT(interface_drop, static) = {
+VNET_FEATURE_ARC_INIT (interface_drop, static) = {
   .arc_name = "error-drop",
   .start_nodes = VNET_FEATURES("error-drop"),
   .last_in_arc = "drop",

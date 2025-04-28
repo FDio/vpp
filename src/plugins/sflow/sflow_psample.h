@@ -31,6 +31,8 @@
 #include <signal.h>
 #include <ctype.h>
 
+#include <sflow/sflow_netlink.h>
+
 // #define SFLOWPS_DEBUG
 
 #define SFLOWPS_PSAMPLE_READNL_RCV_BUF 8192
@@ -45,7 +47,7 @@ typedef enum
 #define SFLOWPS_FIELDDATA(field, len, descr) field,
 #include "sflow/sflow_psample_fields.h"
 #undef SFLOWPS_FIELDDATA
-  __SFLOWPS_PSAMPLE_ATTR_MAX
+  __SFLOWPS_PSAMPLE_ATTRS
 } EnumSFLOWPSAttributes;
 
 typedef struct _SFLOWPS_field_t
@@ -61,51 +63,38 @@ static const SFLOWPS_field_t SFLOWPS_Fields[] = {
 #undef SFLOWPS_FIELDDATA
 };
 
-typedef enum
-{
-  SFLOWPS_STATE_INIT,
-  SFLOWPS_STATE_OPEN,
-  SFLOWPS_STATE_WAIT_FAMILY,
-  SFLOWPS_STATE_READY
-} EnumSFLOWPSState;
+#define SFLOWPS_FAM	      PSAMPLE_GENL_NAME
+#define SFLOWPS_FAM_LEN	      sizeof (SFLOWPS_FAM)
+#define SFLOWPS_FAM_FOOTPRINT NLMSG_ALIGN (SFLOWPS_FAM_LEN)
+#define SFLOWPS_IOV_FRAGS     ((2 * __SFLOWPS_PSAMPLE_ATTRS) + 2)
 
 typedef struct _SFLOWPS
 {
-  EnumSFLOWPSState state;
-  u32 id;
-  int nl_sock;
-  u32 nl_seq;
-  u32 genetlink_version;
-  u16 family_id;
-  u32 group_id;
+  SFLOWNL nl;
+  char fam_name[SFLOWPS_FAM_FOOTPRINT];
+  SFLOWNLAttr attr[__SFLOWPS_PSAMPLE_ATTRS];
+  struct iovec iov[SFLOWPS_IOV_FRAGS];
 } SFLOWPS;
 
-typedef struct _SFLOWPSAttr
-{
-  bool included : 1;
-  struct nlattr attr;
-  struct iovec val;
-} SFLOWPSAttr;
-
-typedef struct _SFLOWPSSpec
-{
-  struct nlmsghdr nlh;
-  struct genlmsghdr ge;
-  SFLOWPSAttr attr[__SFLOWPS_PSAMPLE_ATTR_MAX];
-  int n_attrs;
-  int attrs_len;
-} SFLOWPSSpec;
-
+EnumSFLOWNLState SFLOWPS_init (SFLOWPS *pst);
 bool SFLOWPS_open (SFLOWPS *pst);
 bool SFLOWPS_close (SFLOWPS *pst);
-EnumSFLOWPSState SFLOWPS_state (SFLOWPS *pst);
-EnumSFLOWPSState SFLOWPS_open_step (SFLOWPS *pst);
+EnumSFLOWNLState SFLOWPS_state (SFLOWPS *pst);
+EnumSFLOWNLState SFLOWPS_open_step (SFLOWPS *pst);
 
-bool SFLOWPSSpec_setAttr (SFLOWPSSpec *spec, EnumSFLOWPSAttributes field,
-			  void *buf, int len);
-#define SFLOWPSSpec_setAttrInt(spec, field, val)                              \
-  SFLOWPSSpec_setAttr ((spec), (field), &(val), sizeof (val))
+bool SFLOWPS_set_attr (SFLOWPS *pst, EnumSFLOWPSAttributes field, void *buf,
+		       int len);
+#define SFLOWPS_set_attr_int(pst, field, val)                                 \
+  SFLOWPS_set_attr ((pst), (field), &(val), sizeof (val))
 
-int SFLOWPSSpec_send (SFLOWPS *pst, SFLOWPSSpec *spec);
+int SFLOWPS_send (SFLOWPS *pst);
 
 #endif /* __included_sflow_psample_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -29,6 +29,8 @@
 #include <signal.h>
 #include <ctype.h>
 
+#include <sflow/sflow_netlink.h>
+
 // ==================== shared with hsflowd mod_vpp =========================
 // See https://github.com/sflow/host-sflow
 
@@ -67,7 +69,7 @@ typedef enum
   SFLOW_VPP_ATTR_DROPS,	      /* u32 all FIFO and netlink sendmsg drops */
   SFLOW_VPP_ATTR_SEQ,	      /* u32 send seq no */
   /* enum shared with hsflowd, so only add here */
-  __SFLOW_VPP_ATTR_MAX
+  __SFLOW_VPP_ATTRS
 } EnumSFlowVppAttributes;
 
 #define SFLOW_VPP_PSAMPLE_GROUP_INGRESS 3
@@ -96,38 +98,35 @@ typedef struct _SFLOWUS_field_t
   int len;
 } SFLOWUS_field_t;
 
+#define SFLOWUS_ATTRS __SFLOW_VPP_ATTRS
+#define SFLOWUS_IOV_FRAGS                                                     \
+  ((2 * SFLOWUS_ATTRS) + 2) // TODO: may only be +1 -- no ge header?
+
 typedef struct _SFLOWUS
 {
-  u32 id;
-  int nl_sock;
-  u32 nl_seq;
-  u32 group_id;
+  SFLOWNL nl;
+  SFLOWNLAttr attr[__SFLOW_VPP_ATTRS];
+  struct iovec iov[SFLOWUS_IOV_FRAGS];
 } SFLOWUS;
 
-typedef struct _SFLOWUSAttr
-{
-  bool included : 1;
-  struct nlattr attr;
-  struct iovec val;
-} SFLOWUSAttr;
-
-typedef struct _SFLOWUSSpec
-{
-  struct nlmsghdr nlh;
-  SFLOWUSAttr attr[__SFLOW_VPP_ATTR_MAX];
-  int n_attrs;
-  int attrs_len;
-} SFLOWUSSpec;
-
+EnumSFLOWNLState SFLOWUS_init (SFLOWUS *ust);
 bool SFLOWUS_open (SFLOWUS *ust);
 bool SFLOWUS_close (SFLOWUS *ust);
 
-bool SFLOWUSSpec_setMsgType (SFLOWUSSpec *spec, EnumSFlowVppMsgType type);
-bool SFLOWUSSpec_setAttr (SFLOWUSSpec *spec, EnumSFlowVppAttributes field,
-			  void *buf, int len);
-#define SFLOWUSSpec_setAttrInt(spec, field, val)                              \
-  SFLOWUSSpec_setAttr ((spec), (field), &(val), sizeof (val))
+bool SFLOWUS_set_msg_type (SFLOWUS *ust, EnumSFlowVppMsgType type);
+bool SFLOWUS_set_attr (SFLOWUS *ust, EnumSFlowVppAttributes field, void *buf,
+		       int len);
+#define SFLOWUS_set_attr_int(ust, field, val)                                 \
+  SFLOWUS_set_attr ((ust), (field), &(val), sizeof (val))
 
-int SFLOWUSSpec_send (SFLOWUS *ust, SFLOWUSSpec *spec);
+int SFLOWUS_send (SFLOWUS *ust);
 
 #endif /* __included_sflow_usersock_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
