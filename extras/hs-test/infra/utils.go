@@ -20,6 +20,7 @@ const containerTopologyDir string = "topo-containers/"
 const HttpCapsuleTypeDatagram = uint64(0)
 const iperfLogFileName = "iperf.log"
 const redisLogFileName = "redis-server.log"
+const h2loadLogFileName = "h2load.tsv"
 
 type Stanza struct {
 	content string
@@ -247,6 +248,21 @@ func (s *HstSuite) RedisServerLogFileName(serverContainer *Container) string {
 func (s *HstSuite) CollectRedisServerLogs(serverContainer *Container) {
 	targetDir := serverContainer.Suite.getLogDirPath()
 	source := serverContainer.GetHostWorkDir() + "/" + serverContainer.Name + "-" + redisLogFileName
+	cmd := exec.Command("cp", "-t", targetDir, source)
+	s.Log(cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+	}
+}
+
+func (s *HstSuite) H2loadLogFileName(h2loadContainer *Container) string {
+	return h2loadContainer.GetContainerWorkDir() + "/" + h2loadContainer.Name + "-" + h2loadLogFileName
+}
+
+func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
+	targetDir := h2loadContainer.Suite.getLogDirPath()
+	source := h2loadContainer.GetHostWorkDir() + "/" + h2loadContainer.Name + "-" + h2loadLogFileName
 	cmd := exec.Command("cp", "-t", targetDir, source)
 	s.Log(cmd.String())
 	err := cmd.Run()

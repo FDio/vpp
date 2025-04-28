@@ -53,3 +53,12 @@ containers:
     image: "hs-test/curl"
     is-optional: true
     run-detached: false
+
+  - name: "h2load"
+    image: "hs-test/h2load"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/h2load"
+        is-default-work-dir: true
+    is-optional: true
+    run-detached: false
