@@ -191,6 +191,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6d21e2dd_827b4edf",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-28T09:45:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ad80bc8c_84fdc59e",
+      "range": {
+        "startLine": 807,
+        "startChar": 6,
+        "endLine": 807,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3b7852a0_f78a3829",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 2
@@ -238,6 +262,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "845e4941_67edff9f",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-28T09:45:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cc1b84e4_f2e36322",
+      "range": {
+        "startLine": 812,
+        "startChar": 4,
+        "endLine": 816,
+        "endChar": 5
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "52410fad_12f1e673",
         "filename": "src/plugins/tlsopenssl/tls_async.c",
         "patchSetId": 2
@@ -249,6 +297,30 @@
       "writtenOn": "2025-04-25T09:44:35Z",
       "side": 1,
       "message": "similar comment as in read_event_handler",
+      "range": {
+        "startLine": 899,
+        "startChar": 2,
+        "endLine": 902,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "604d2a5e_41685bf8",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-04-28T09:45:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "52410fad_12f1e673",
       "range": {
         "startLine": 899,
         "startChar": 2,
