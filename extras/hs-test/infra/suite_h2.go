@@ -27,8 +27,9 @@ type H2Suite struct {
 		Tap *NetInterface
 	}
 	Containers struct {
-		Vpp  *Container
-		Curl *Container
+		Vpp    *Container
+		Curl   *Container
+		H2load *Container
 	}
 }
 
@@ -43,6 +44,7 @@ func (s *H2Suite) SetupSuite() {
 	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Containers.H2load = s.GetContainerByName("h2load")
 }
 
 func (s *H2Suite) SetupTest() {
@@ -50,9 +52,11 @@ func (s *H2Suite) SetupTest() {
 
 	// Setup test conditions
 	var sessionConfig Stanza
-	sessionConfig.NewStanza("session").Append("enable").Append("use-app-socket-api")
+	sessionConfig.NewStanza("session").Append("enable").Append("use-app-socket-api").Close()
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 
-	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig)
 
 	s.AssertNil(vpp.Start())
 	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, 1, 1), "failed to create tap interface")

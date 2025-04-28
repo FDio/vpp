@@ -98,6 +98,7 @@ docker_build hs-test/envoy envoy
 docker_build hs-test/nginx-http3 nginx-http3
 docker_build hs-test/ab ab
 docker_build hs-test/wrk wrk
+docker_build hs-test/h2load h2load
 
 # make it multi-user friendly
 if [ -d "${DOCKER_CACHE_DIR}" ] ; then
