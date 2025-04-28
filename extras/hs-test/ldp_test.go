@@ -15,7 +15,7 @@ func init() {
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
-	ldPreloadIperf(s, "-u")
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
@@ -42,7 +42,7 @@ func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs 
 	s.Containers.ClientVpp.VppInstance.Stop()
 	s.Containers.ClientVpp.Exec(false, "ip addr add dev %s %s", s.Interfaces.Client.Name(), s.Interfaces.Client.Ip4Address)
 
-	ldPreloadIperf(s, extraIperfArgs)
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, extraIperfArgs), 20)
 }
 
 func LdpIperfTcpReorderTest(s *LdpSuite) {
@@ -71,18 +71,18 @@ func LdpIperfTlsTcpTest(s *LdpSuite) {
 		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
 		c.AddEnvVar("LDP_TLS_KEY_FILE", "/key.key")
 	}
-	ldPreloadIperf(s, "")
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, ""), 100)
 }
 
 func LdpIperfTcpTest(s *LdpSuite) {
-	ldPreloadIperf(s, "")
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, ""), 100)
 }
 
 func LdpIperfUdpTest(s *LdpSuite) {
-	ldPreloadIperf(s, "-u")
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
 }
 
-func ldPreloadIperf(s *LdpSuite, extraClientArgs string) {
+func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
@@ -112,7 +112,8 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) {
 	output := <-clnRes
 	result := s.ParseJsonIperfOutput(output)
 	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 50)
+
+	return result
 }
 
 func RedisBenchmarkTest(s *LdpSuite) {
