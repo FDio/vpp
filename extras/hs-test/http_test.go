@@ -40,6 +40,7 @@ func init() {
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
+	RegisterNoTopo6Tests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -456,6 +457,68 @@ func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 	s.AssertContains(file_contents, response)
 }
 
+func HttpClientGetResponseBody6Test(s *NoTopo6Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	httpClientGet6(s, response, size, "http")
+}
+
+func HttpClientGetTlsResponseBody6Test(s *NoTopo6Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	httpClientGet6(s, response, size, "https")
+}
+
+func httpClientGet6(s *NoTopo6Suite, response string, size int, proto string) {
+	var l net.Listener
+	var err error
+	var port string
+
+	vpp := s.Containers.Vpp.VppInstance
+	server := ghttp.NewUnstartedServer()
+	serverAddress := "[" + s.HostAddr() + "]"
+
+	if proto == "https" {
+		certFile := "resources/cert/localhost.crt"
+		keyFile := "resources/cert/localhost.key"
+		cer, err := tls.LoadX509KeyPair(certFile, keyFile)
+		s.AssertNil(err)
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
+		server.HTTPTestServer.TLS = tlsConfig
+		port = "443"
+		l, err = tls.Listen("tcp", serverAddress+":443", tlsConfig)
+	} else {
+		port = "80"
+		l, err = net.Listen("tcp", serverAddress+":80")
+	}
+	s.AssertNil(err, fmt.Sprint(err))
+
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("GET", "/"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := proto + "://" + serverAddress + ":" + port + "/"
+	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
+
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "200 OK")
+	s.AssertContains(o, response)
+	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
+
+	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
+	s.AssertNil(err)
+	s.AssertContains(file_contents, response)
+}
+
 func HttpClientGetRepeatMTTest(s *NoTopoSuite) {
 	httpClientRepeat(s, "", "sessions 2")
 }
@@ -483,7 +546,7 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 
 	// recreate interfaces with RX-queues
 	s.AssertNil(vpp.DeleteTap(s.Interfaces.Tap))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, 2, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 2, 2))
 
 	s.CreateNginxServer()
 	s.AssertNil(s.Containers.NginxServer.Start())

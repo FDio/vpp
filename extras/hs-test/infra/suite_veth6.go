@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var vethTests = map[string][]func(s *VethsSuite){}
-var vethSoloTests = map[string][]func(s *VethsSuite){}
+var veth6Tests = map[string][]func(s *Veths6Suite){}
+var veth6SoloTests = map[string][]func(s *Veths6Suite){}
 
-type VethsSuite struct {
+type Veths6Suite struct {
 	HstSuite
 	Interfaces struct {
 		Server *NetInterface
@@ -27,17 +27,17 @@ type VethsSuite struct {
 	}
 }
 
-func RegisterVethTests(tests ...func(s *VethsSuite)) {
-	vethTests[getTestFilename()] = tests
+func RegisterVeth6Tests(tests ...func(s *Veths6Suite)) {
+	veth6Tests[getTestFilename()] = tests
 }
-func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
-	vethSoloTests[getTestFilename()] = tests
+func RegisterSoloVeth6Tests(tests ...func(s *Veths6Suite)) {
+	veth6SoloTests[getTestFilename()] = tests
 }
 
-func (s *VethsSuite) SetupSuite() {
+func (s *Veths6Suite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("2peerVeth")
+	s.ConfigureNetworkTopology("2peerVeth6")
 	s.LoadContainerTopology("2peerVeth")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.Server = s.GetInterfaceByName("srv")
@@ -47,7 +47,7 @@ func (s *VethsSuite) SetupSuite() {
 	s.Containers.ClientApp = s.GetContainerByName("client-app")
 }
 
-func (s *VethsSuite) SetupTest() {
+func (s *Veths6Suite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -80,26 +80,26 @@ func (s *VethsSuite) SetupTest() {
 	}
 }
 
-func (s *VethsSuite) SetupServerVpp() {
+func (s *Veths6Suite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, false)
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, true)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
 
-func (s *VethsSuite) setupClientVpp() {
+func (s *Veths6Suite) setupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false)
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, true)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
 
-var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
-	var s VethsSuite
+var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, func() {
+	var s Veths6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -115,7 +115,7 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range vethTests {
+	for filename, tests := range veth6Tests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -129,8 +129,8 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
-	var s VethsSuite
+var _ = Describe("Veths6SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+	var s Veths6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -145,7 +145,7 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range vethSoloTests {
+	for filename, tests := range veth6SoloTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()

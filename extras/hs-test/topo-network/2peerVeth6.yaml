@@ -1,0 +1,27 @@
+---
+devices:
+  - name: "hsns"
+    type: "netns"
+
+  - name: "srv"
+    ipv6: true
+    type: "veth"
+    preset-hw-address: "00:00:5e:00:53:01"
+    peer:
+      name: "srv_veth"
+      netns: "hsns"
+
+  - name: "cln"
+    ipv6: true
+    type: "veth"
+    peer:
+      name: "cln_veth"
+      netns: "hsns"
+
+  - name: "br"
+    type: "bridge"
+    netns: "hsns"
+    interfaces:
+      - srv_veth
+      - cln_veth
+
