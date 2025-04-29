@@ -120,14 +120,14 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
 {
   unformat_input_t _input, *input = &_input;
 
+  /* try to catch non-NULL terminated vectors... */
+  ASSERT (clib_mem_is_heap_object (uri) && vec_c_string_is_terminated (uri));
+
   if (cache_uri && !strncmp (uri, (char *) cache_uri, vec_len (cache_uri)))
     {
       *sep = *cache_sep;
       return 0;
     }
-
-  /* Make sure */
-  uri = (char *) format (0, "%s%c", uri, 0);
 
   /* Parse uri */
   unformat_init_string (input, uri, strlen (uri));
@@ -138,8 +138,8 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
     }
   unformat_free (input);
 
-  vec_free (cache_uri);
-  cache_uri = (u8 *) uri;
+  vec_reset_length (cache_uri);
+  cache_uri = format (cache_uri, "%s%c", uri, 0);
   if (cache_sep)
     clib_mem_free (cache_sep);
   cache_sep = clib_mem_alloc (sizeof (*sep));
