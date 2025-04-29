@@ -1377,6 +1377,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 
   /* read request target */
   target = http_get_app_target (req, &msg);
+  vec_terminate_c_string (target);
 
   request = http_get_tx_buf (hc);
   /* currently we support only GET and POST method */
