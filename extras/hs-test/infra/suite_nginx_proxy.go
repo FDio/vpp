@@ -88,8 +88,8 @@ func (s *NginxProxySuite) SetupTest() {
 	)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 1, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 1, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1, 1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1, 2))
 
 	if *DryRun {
 		s.LogStartedContainers()
