@@ -126,9 +126,6 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
       return 0;
     }
 
-  /* Make sure */
-  uri = (char *) format (0, "%s%c", uri, 0);
-
   /* Parse uri */
   unformat_init_string (input, uri, strlen (uri));
   if (!unformat (input, "%U", unformat_vnet_uri, sep))
@@ -138,8 +135,8 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
     }
   unformat_free (input);
 
-  vec_free (cache_uri);
-  cache_uri = (u8 *) uri;
+  vec_reset_length (cache_uri);
+  cache_uri = format (cache_uri, "%s%c", uri, 0);
   if (cache_sep)
     clib_mem_free (cache_sep);
   cache_sep = clib_mem_alloc (sizeof (*sep));
