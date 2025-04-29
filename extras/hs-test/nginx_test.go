@@ -13,6 +13,7 @@ func init() {
 	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
 	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest)
+	RegisterNoTopo6Tests(NginxPerfRps6Test)
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
@@ -146,4 +147,53 @@ func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
 
 func NginxPerfWrkTest(s *NoTopoSuite) {
 	s.AssertNil(runNginxPerf(s, "", "wrk", false))
+}
+
+func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers bool) error {
+	nRequests := 1000000
+	nClients := 1000
+
+	serverAddress := "[" + s.VppAddr() + "]"
+	vpp := s.Containers.Vpp.VppInstance
+
+	s.Containers.Nginx.Create()
+	s.AddNginxVclConfig(multiThreadWorkers)
+	s.CreateNginxConfig(s.Containers.Nginx, multiThreadWorkers)
+	s.Containers.Nginx.Start()
+	vpp.WaitForApp("nginx-", 5)
+
+	if ab_or_wrk == "ab" {
+		args := fmt.Sprintf("-n %d -c %d", nRequests, nClients)
+		if mode == "rps" {
+			args += " -k"
+		} else if mode != "cps" {
+			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
+		}
+		// don't exit on socket receive errors
+		args += " -r"
+		args += " http://" + serverAddress + ":80/64B.json"
+		s.Containers.Ab.ExtraRunningArgs = args
+		s.Log("Test might take up to 2 minutes to finish. Please wait")
+		s.Containers.Ab.Run()
+		o, err := s.Containers.Ab.GetOutput()
+		rps := parseString(o, "Requests per second:")
+		s.Log(rps)
+		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
+	} else {
+		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
+			serverAddress)
+		s.Containers.Wrk.ExtraRunningArgs = args
+		s.Containers.Wrk.Run()
+		s.Log("Please wait for 30s, test is running.")
+		o, err := s.Containers.Wrk.GetOutput()
+		rps := parseString(o, "requests")
+		s.Log(rps)
+		s.Log(err)
+		s.AssertEmpty(err, "err: '%s', output: '%s'", err, o)
+	}
+	return nil
+}
+
+func NginxPerfRps6Test(s *NoTopo6Suite) {
+	s.AssertNil(runNginxPerf6(s, "rps", "ab", false))
 }

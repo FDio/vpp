@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var noTopoTests = map[string][]func(s *NoTopoSuite){}
-var noTopoSoloTests = map[string][]func(s *NoTopoSuite){}
+var noTopo6Tests = map[string][]func(s *NoTopo6Suite){}
+var noTopo6SoloTests = map[string][]func(s *NoTopo6Suite){}
 
-type NoTopoSuite struct {
+type NoTopo6Suite struct {
 	HstSuite
 	Interfaces struct {
 		Tap *NetInterface
@@ -29,16 +29,16 @@ type NoTopoSuite struct {
 	NginxServerPort string
 }
 
-func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
-	noTopoTests[getTestFilename()] = tests
+func RegisterNoTopo6Tests(tests ...func(s *NoTopo6Suite)) {
+	noTopo6Tests[getTestFilename()] = tests
 }
-func RegisterNoTopoSoloTests(tests ...func(s *NoTopoSuite)) {
-	noTopoSoloTests[getTestFilename()] = tests
+func RegisterNoTopo6SoloTests(tests ...func(s *NoTopo6Suite)) {
+	noTopo6SoloTests[getTestFilename()] = tests
 }
 
-func (s *NoTopoSuite) SetupSuite() {
+func (s *NoTopo6Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.LoadNetworkTopology("tap")
+	s.LoadNetworkTopology("tap6")
 	s.LoadContainerTopology("single")
 	s.Interfaces.Tap = s.GetInterfaceByName("htaphost")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
@@ -50,7 +50,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.Containers.Ab = s.GetContainerByName("ab")
 }
 
-func (s *NoTopoSuite) SetupTest() {
+func (s *NoTopo6Suite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -70,7 +70,7 @@ func (s *NoTopoSuite) SetupTest() {
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1, 1), "failed to create tap interface")
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, true, 1, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -78,14 +78,14 @@ func (s *NoTopoSuite) SetupTest() {
 	}
 }
 
-func (s *NoTopoSuite) TearDownTest() {
+func (s *NoTopo6Suite) TearDownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxHttp3)
 	}
 	s.HstSuite.TearDownTest()
 }
 
-func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers bool) {
+func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorkers bool) {
 	var workers uint8
 	if multiThreadWorkers {
 		workers = 2
@@ -105,7 +105,7 @@ func (s *NoTopoSuite) CreateNginxConfig(container *Container, multiThreadWorkers
 }
 
 // Creates container and config.
-func (s *NoTopoSuite) CreateNginxServer() {
+func (s *NoTopo6Suite) CreateNginxServer() {
 	s.AssertNil(s.Containers.NginxServer.Create())
 	s.NginxServerPort = s.GetPortFromPpid()
 	nginxSettings := struct {
@@ -115,7 +115,7 @@ func (s *NoTopoSuite) CreateNginxServer() {
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
-		Address:   s.Interfaces.Tap.Ip4AddressString(),
+		Address:   "[" + s.Interfaces.Tap.Ip6AddressString() + "]",
 		Port:      s.NginxServerPort,
 		Timeout:   600,
 	}
@@ -126,7 +126,7 @@ func (s *NoTopoSuite) CreateNginxServer() {
 	)
 }
 
-func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
+func (s *NoTopo6Suite) AddNginxVclConfig(multiThreadWorkers bool) {
 	vclFileName := s.Containers.Nginx.GetHostWorkDir() + "/vcl.conf"
 	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
 		s.Containers.Nginx.GetContainerWorkDir())
@@ -150,19 +150,19 @@ func (s *NoTopoSuite) AddNginxVclConfig(multiThreadWorkers bool) {
 	s.AssertNil(err, fmt.Sprint(err))
 }
 
-func (s *NoTopoSuite) VppAddr() string {
-	return s.Interfaces.Tap.Peer.Ip4AddressString()
+func (s *NoTopo6Suite) VppAddr() string {
+	return s.Interfaces.Tap.Peer.Ip6AddressString()
 }
 
-func (s *NoTopoSuite) VppIfName() string {
+func (s *NoTopo6Suite) VppIfName() string {
 	return s.Interfaces.Tap.Peer.Name()
 }
 
-func (s *NoTopoSuite) HostAddr() string {
-	return s.Interfaces.Tap.Ip4AddressString()
+func (s *NoTopo6Suite) HostAddr() string {
+	return s.Interfaces.Tap.Ip6AddressString()
 }
 
-func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
+func (s *NoTopo6Suite) CreateNginxHttp3Config(container *Container) {
 	nginxSettings := struct {
 		LogPrefix string
 	}{
@@ -175,8 +175,8 @@ func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
 	)
 }
 
-var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
-	var s NoTopoSuite
+var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("IPv6"), func() {
+	var s NoTopo6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -190,7 +190,7 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for filename, tests := range noTopoTests {
+	for filename, tests := range noTopo6Tests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -204,8 +204,8 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
-	var s NoTopoSuite
+var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("IPv6"), func() {
+	var s NoTopo6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -219,7 +219,7 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for filename, tests := range noTopoSoloTests {
+	for filename, tests := range noTopo6SoloTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
