@@ -310,9 +310,7 @@ func (vpp *VppInstance) WaitForApp(appName string, timeout int) {
 	vpp.getSuite().AssertNil(1, "Timeout while waiting for app '%s'", appName)
 }
 
-func (vpp *VppInstance) createAfPacket(
-	veth *NetInterface,
-) (interface_types.InterfaceIndex, error) {
+func (vpp *VppInstance) createAfPacket(veth *NetInterface) (interface_types.InterfaceIndex, error) {
 	if *DryRun {
 		if ip4Address, err := veth.Ip4AddrAllocator.NewIp4InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
 			veth.Ip4Address = ip4Address
@@ -394,6 +392,104 @@ func (vpp *VppInstance) createAfPacket(
 	}
 
 	vpp.getSuite().Log("af-packet interface " + veth.Name() + " add address " + veth.Ip4Address)
+	if err := vpp.ApiStream.SendMsg(addressReq); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply3 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
+	err = api.RetvalToVPPApiError(reply3.Retval)
+	if err != nil {
+		return 0, err
+	}
+
+	return veth.Index, nil
+}
+
+func (vpp *VppInstance) createAfPacket6(veth *NetInterface) (interface_types.InterfaceIndex, error) {
+	if *DryRun {
+		if ip4Address, err := veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			veth.Ip4Address = ip4Address
+		} else {
+			return 0, err
+		}
+		vppCliConfig := fmt.Sprintf(
+			"create host-interface name %s\n"+
+				"set int state host-%s up\n"+
+				"set int ip addr host-%s %s\n",
+			veth.Name(),
+			veth.Name(),
+			veth.Name(), veth.Ip6Address)
+		vpp.AppendToCliConfig(vppCliConfig)
+		vpp.getSuite().Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
+		return 1, nil
+	}
+	createReq := &af_packet.AfPacketCreateV3{
+		Mode:            1,
+		UseRandomHwAddr: true,
+		HostIfName:      veth.Name(),
+		Flags:           af_packet.AfPacketFlags(11),
+	}
+	if veth.HwAddress != (MacAddress{}) {
+		createReq.UseRandomHwAddr = false
+		createReq.HwAddr = veth.HwAddress
+	}
+
+	vpp.getSuite().Log("create af-packet interface " + veth.Name())
+	if err := vpp.ApiStream.SendMsg(createReq); err != nil {
+		vpp.getSuite().HstFail()
+		return 0, err
+	}
+	replymsg, err := vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply := replymsg.(*af_packet.AfPacketCreateV3Reply)
+	err = api.RetvalToVPPApiError(reply.Retval)
+	if err != nil {
+		return 0, err
+	}
+
+	veth.Index = reply.SwIfIndex
+
+	// Set to up
+	upReq := &interfaces.SwInterfaceSetFlags{
+		SwIfIndex: veth.Index,
+		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
+	}
+
+	vpp.getSuite().Log("set af-packet interface " + veth.Name() + " up")
+	if err := vpp.ApiStream.SendMsg(upReq); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply2 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
+	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
+		return 0, err
+	}
+
+	// Add address
+	if veth.AddressWithPrefix() == (AddressWithPrefix{}) {
+		var err error
+		var ip6Address string
+		if ip6Address, err = veth.Ip6AddrAllocator.NewIp6InterfaceAddress(veth.Peer.NetworkNumber); err == nil {
+			veth.Ip4Address = ip6Address
+		} else {
+			return 0, err
+		}
+	}
+	addressReq := &interfaces.SwInterfaceAddDelAddress{
+		IsAdd:     true,
+		SwIfIndex: veth.Index,
+		Prefix:    veth.AddressWithPrefix6(),
+	}
+
+	vpp.getSuite().Log("af-packet interface " + veth.Name() + " add address " + veth.Ip6Address)
 	if err := vpp.ApiStream.SendMsg(addressReq); err != nil {
 		return 0, err
 	}
@@ -531,6 +627,121 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, numRxQueues uint16, tapId u
 	}
 
 	vpp.getSuite().Log("tap interface " + tap.Name() + " add address " + tap.Peer.Ip4Address)
+	if err := vpp.ApiStream.SendMsg(addAddressReq); err != nil {
+		return err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply2 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
+	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
+		return err
+	}
+
+	// Set interface to up
+	upReq := &interfaces.SwInterfaceSetFlags{
+		SwIfIndex: reply.SwIfIndex,
+		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
+	}
+
+	vpp.getSuite().Log("set tap interface " + tap.Name() + " up")
+	if err := vpp.ApiStream.SendMsg(upReq); err != nil {
+		return err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply3 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
+	if err = api.RetvalToVPPApiError(reply3.Retval); err != nil {
+		return err
+	}
+
+	// Get host mac
+	netIntf, err := net.InterfaceByName(tap.Name())
+	if err == nil {
+		tap.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
+	}
+
+	return nil
+}
+
+func (vpp *VppInstance) CreateTap6(tap *NetInterface, numRxQueues uint16, tapId uint32, flags ...uint32) error {
+	var tapFlags uint32 = 0
+	if len(flags) > 0 {
+		tapFlags = flags[0]
+	}
+
+	if *DryRun {
+		flagsCli := ""
+		if tapFlags == Consistent_qp {
+			flagsCli = "consistent-qp"
+		}
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s host-ip6-addr %s num-rx-queues %d %s\n"+
+			"set int ip addr tap%d %s\n"+
+			"set int state tap%d up\n",
+			tapId,
+			tap.name,
+			tap.Ip6Address,
+			numRxQueues,
+			flagsCli,
+			tapId,
+			tap.Peer.Ip4Address,
+			tapId,
+		)
+		vpp.AppendToCliConfig(vppCliConfig)
+		vpp.getSuite().Log("%s* Interface added:\n%s%s", Colors.grn, vppCliConfig, Colors.rst)
+		return nil
+	}
+
+	createTapReq := &tapv2.TapCreateV3{
+		ID:               tapId,
+		HostIfNameSet:    true,
+		HostIfName:       tap.Name(),
+		HostIP6PrefixSet: true,
+		HostIP6Prefix:    tap.Ip6AddressWithPrefix(),
+		NumRxQueues:      numRxQueues,
+		TapFlags:         tapv2.TapFlags(tapFlags),
+	}
+
+	vpp.getSuite().Log("create tap interface " + tap.Name())
+	// Create tap interface
+	if err := vpp.ApiStream.SendMsg(createTapReq); err != nil {
+		return err
+	}
+	replymsg, err := vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply := replymsg.(*tapv2.TapCreateV3Reply)
+	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
+		return err
+	}
+	tap.Peer.Index = reply.SwIfIndex
+
+	// Get name and mac
+	if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
+		SwIfIndex: reply.SwIfIndex,
+	}); err != nil {
+		return err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
+	tap.Peer.name = ifDetails.InterfaceName
+	tap.Peer.HwAddress = ifDetails.L2Address
+
+	// Add address
+	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
+		IsAdd:     true,
+		SwIfIndex: reply.SwIfIndex,
+		Prefix:    tap.Peer.AddressWithPrefix6(),
+	}
+
+	vpp.getSuite().Log("tap interface " + tap.Name() + " add address " + tap.Peer.Ip6Address)
 	if err := vpp.ApiStream.SendMsg(addAddressReq); err != nil {
 		return err
 	}

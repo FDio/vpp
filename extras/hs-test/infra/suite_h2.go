@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+
 	"time"
 
 	"github.com/summerwind/h2spec/spec"
