@@ -572,7 +572,7 @@ adj_get_rewrite (adj_index_t ai)
 
     ASSERT (rw->data_bytes != 0xfefe);
 
-    return (rw->data - rw->data_bytes);
+    return rw->data;
 }
 
 static fib_node_t *
