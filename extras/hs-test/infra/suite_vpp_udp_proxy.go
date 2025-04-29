@@ -62,8 +62,8 @@ func (s *VppUdpProxySuite) SetupTest() {
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, 1, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, 1, 2))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1, 1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1, 2))
 
 	s.proxyPort = 8080
 	s.serverPort = 80
