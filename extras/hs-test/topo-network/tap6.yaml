@@ -1,0 +1,11 @@
+---
+devices:
+  - name: "htaphost"
+    type: "tap"
+    ipv6: true
+    ip6:
+      network: 1
+    peer:
+      name: ""
+      ip6:
+        network: 1
