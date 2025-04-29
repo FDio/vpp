@@ -635,6 +635,7 @@ hcs_listen ()
   uri = (char *) hcm->uri;
   ASSERT (uri);
 
+  vec_terminate_c_string (uri);
   if (parse_uri (uri, &sep))
     return -1;
 
