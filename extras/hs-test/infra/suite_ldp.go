@@ -132,7 +132,7 @@ func (s *LdpSuite) SetupServerVpp(serverContainer *Container) {
 	serverVpp := serverContainer.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server)
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, true)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
@@ -141,7 +141,7 @@ func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	clientVpp := clientContainer.VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client)
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, true)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }

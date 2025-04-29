@@ -259,6 +259,7 @@ cleanup-hst:
 	@echo "****************************"
 	@echo "Removing IP address files:"
 	@find . -type f -regextype egrep -regex '.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' -exec sudo rm -v {} \;
+	@find . -type f -name "2001:0db8*" -exec sudo rm -v {} \;
 	@echo "****************************"
 	@echo "Removing network namespaces:"
 	@for ns in $$(ip netns list | grep $$(cat .last_hst_ppid) | awk '{print $$1}'); do \

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+
 	"time"
 
 	"github.com/summerwind/h2spec/spec"
@@ -54,7 +55,7 @@ func (s *H2Suite) SetupTest() {
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, 1, 1), "failed to create tap interface")
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
