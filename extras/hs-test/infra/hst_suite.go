@@ -56,6 +56,7 @@ type HstSuite struct {
 	NetConfigs        []NetConfig
 	NetInterfaces     map[string]*NetInterface
 	Ip4AddrAllocator  *Ip4AddressAllocator
+	Ip6AddrAllocator  *Ip6AddressAllocator
 	TestIds           map[string]string
 	CpuAllocator      *CpuAllocatorT
 	CpuContexts       []*CpuContext
@@ -251,6 +252,10 @@ func (s *HstSuite) TearDownTest() {
 
 	if s.Ip4AddrAllocator != nil {
 		s.Ip4AddrAllocator.DeleteIpAddresses()
+	}
+
+	if s.Ip6AddrAllocator != nil {
+		s.Ip6AddrAllocator.DeleteIpAddresses()
 	}
 
 	if coreDump {
@@ -628,10 +633,17 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 		Fail("unmarshal error: " + fmt.Sprint(err))
 	}
 
+	s.Ip6AddrAllocator = NewIp6AddressAllocator()
 	s.Ip4AddrAllocator = NewIp4AddressAllocator()
 	s.NetInterfaces = make(map[string]*NetInterface)
 
 	for _, elem := range yamlTopo.Devices {
+		s.Log(elem)
+		if _, ok := elem["ipv6"]; ok {
+			elem["ipv6"] = elem["ipv6"].(bool)
+		} else {
+			elem["ipv6"] = false
+		}
 		if _, ok := elem["name"]; ok {
 			elem["name"] = s.ProcessIndex + elem["name"].(string) + s.Ppid
 		}
@@ -667,12 +679,22 @@ func (s *HstSuite) LoadNetworkTopology(topologyName string) {
 			}
 		case Veth, Tap:
 			{
-				if netIf, err := newNetworkInterface(elem, s.Ip4AddrAllocator); err == nil {
-					s.NetConfigs = append(s.NetConfigs, netIf)
-					s.NetInterfaces[netIf.Name()] = netIf
+				if elem["ipv6"].(bool) {
+					if netIf, err := newNetworkInterface6(elem, s.Ip6AddrAllocator); err == nil {
+						s.NetConfigs = append(s.NetConfigs, netIf)
+						s.NetInterfaces[netIf.Name()] = netIf
+					} else {
+						Fail("network config error: " + fmt.Sprint(err))
+					}
 				} else {
-					Fail("network config error: " + fmt.Sprint(err))
+					if netIf, err := newNetworkInterface(elem, s.Ip4AddrAllocator); err == nil {
+						s.NetConfigs = append(s.NetConfigs, netIf)
+						s.NetInterfaces[netIf.Name()] = netIf
+					} else {
+						Fail("network config error: " + fmt.Sprint(err))
+					}
 				}
+
 			}
 		case Bridge:
 			{

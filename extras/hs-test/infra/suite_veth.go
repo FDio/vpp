@@ -84,7 +84,7 @@ func (s *VethsSuite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server)
+	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, false)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
@@ -93,7 +93,7 @@ func (s *VethsSuite) setupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client)
+	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotEqual(0, idx)
 }
