@@ -17,6 +17,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
+  cnat_main_t *cm = &cnat_main;
   cnat_timestamp_rewrite_t *rw = NULL;
   const cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
@@ -54,7 +55,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index);
+  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
@@ -133,6 +134,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, 
 		  ip_address_family_t af, f64 now, u8 do_trace)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
+  cnat_main_t *cm = &cnat_main;
   cnat_timestamp_t *ts;
   cnat_client_t *cc;
 
@@ -156,7 +158,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, 
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
 
-  cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
+  cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
 
   if (PREDICT_FALSE (do_trace))
@@ -220,6 +222,7 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
 		     ip_address_family_t af, f64 now, u8 do_trace)
 {
   cnat_timestamp_rewrite_t *rw = 0;
+  cnat_main_t *cm = &cnat_main;
   cnat_timestamp_t *ts = 0;
   cnat_client_t *cc;
 
@@ -242,7 +245,7 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
 	 &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
 	 NULL;
 
-  cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
+  cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
 
 trace:
