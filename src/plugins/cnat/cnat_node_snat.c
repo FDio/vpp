@@ -141,6 +141,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 		   ip_address_family_t af, f64 now, u8 do_trace)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
+  cnat_main_t *cm = &cnat_main;
   cnat_timestamp_t *ts;
 
   ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
@@ -162,7 +163,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       goto trace;
     }
 
-  cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
+  cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
 
 trace:
