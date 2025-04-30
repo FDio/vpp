@@ -247,15 +247,15 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, tls_ctx_t *ctx,
 
 	      if (err == SSL_ERROR_WANT_WRITE)
 		break;
-
-	      if (openssl_main.async && SSL_want_async (ssl))
+	      if (openssl_main.async &&
+		  (err == SSL_ERROR_WANT_ASYNC || SSL_want_async (ssl)))
 		{
 		  session_t *ts =
 		    session_get_from_handle (ctx->tls_session_handle);
 		  vpp_tls_async_init_event (ctx, tls_async_write_event_handler,
 					    ts, SSL_ASYNC_EVT_WR, sp,
 					    sp->max_burst_size);
-		  return 0;
+		  break;
 		}
 	    }
 	  break;

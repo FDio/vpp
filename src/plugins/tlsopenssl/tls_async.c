@@ -403,6 +403,8 @@ openssl_async_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl,
   ossl_check_err_is_fatal (ssl, wrote);
 
   oc->async_ctx.total_async_write -= wrote;
+  TLS_DBG (1, "CTX: %p Wrote: %d Remaining: %d", oc, wrote,
+	   oc->async_ctx.total_async_write);
   svm_fifo_dequeue_drop (f, wrote);
 
   return wrote;
@@ -479,9 +481,12 @@ vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
 #endif
   if (evt_type == SSL_ASYNC_EVT_WR)
     {
-      transport_connection_deschedule (&ctx->connection);
-      sp->flags |= TRANSPORT_SND_F_DESCHED;
-      oc->async_ctx.total_async_write = wr_size;
+      if (wr_size > 0)
+	{
+	  transport_connection_deschedule (&ctx->connection);
+	  sp->flags |= TRANSPORT_SND_F_DESCHED;
+	  oc->async_ctx.total_async_write = wr_size;
+	}
     }
   event->tran_sp = sp;
   return 1;
@@ -752,8 +757,13 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
   rv = SSL_do_handshake (oc->ssl);
   err = SSL_get_error (oc->ssl, rv);
 
-  if (err == SSL_ERROR_WANT_ASYNC)
-    return 0;
+  if (err == SSL_ERROR_WANT_ASYNC || err == SSL_ERROR_WANT_WRITE ||
+      err == SSL_ERROR_WANT_READ)
+    {
+      vpp_tls_async_init_event (ctx, tls_async_handshake_event_handler,
+				tls_session, SSL_ASYNC_EVT_INIT, NULL, 0);
+      return 0;
+    }
 
   if (err == SSL_ERROR_SSL)
     {
@@ -764,9 +774,6 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
       openssl_handle_handshake_failure (ctx);
       return 0;
     }
-
-  if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ)
-    return 0;
 
   /* client not supported */
   if (!SSL_is_server (oc->ssl))
@@ -841,7 +848,11 @@ tls_async_read_event_handler (void *async_evt, void *unused)
   err = SSL_get_error (oc->ssl, read);
 
   if (err == SSL_ERROR_WANT_ASYNC)
-    return 0;
+    {
+      vpp_tls_async_init_event (ctx, tls_async_read_event_handler, tls_session,
+				SSL_ASYNC_EVT_RD, NULL, 0);
+      return 0;
+    }
 
   if (read <= 0)
     {
@@ -896,6 +907,40 @@ ev_rd_done:
 }
 
 int
+openssl_write_from_fifo_head_into_ssl (svm_fifo_t *f, SSL *ssl, tls_ctx_t *ctx,
+				       u32 max_len)
+{
+  int wrote = 0, rv, i = 0, len;
+  u32 n_segs = 2;
+  svm_fifo_seg_t fs[n_segs];
+  openssl_ctx_t *oc;
+  oc = (openssl_ctx_t *) ctx;
+
+  max_len = clib_min (oc->async_ctx.total_async_write, max_len);
+
+  len = svm_fifo_segments (f, 0, fs, &n_segs, max_len);
+  if (len <= 0)
+    return 0;
+
+  while (wrote < len && i < n_segs)
+    {
+      rv = SSL_write (ssl, fs[i].data, fs[i].len);
+      wrote += (rv > 0) ? rv : 0;
+      if (rv < (int) fs[i].len)
+	break;
+      i++;
+    }
+
+  if (wrote)
+    {
+      oc->async_ctx.total_async_write -= wrote;
+      svm_fifo_dequeue_drop (f, wrote);
+    }
+
+  return wrote;
+}
+
+int
 tls_async_write_event_handler (void *async_evt, void *unused)
 {
   openssl_evt_t *event = (openssl_evt_t *) async_evt;
@@ -910,12 +955,13 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   oc = (openssl_ctx_t *) ctx;
   ssl = oc->ssl;
   /* write event */
-  int wrote = 0;
+  int wrote = 0, wrote_sum = 0, err;
   u32 space, enq_buf;
   svm_fifo_t *app_tx_fifo, *tls_tx_fifo;
   transport_send_params_t *sp = event->tran_sp;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
+  tls_session = session_get_from_handle (ctx->tls_session_handle);
   if (app_session->flags & SESSION_F_APP_CLOSED)
     {
       TLS_DBG (2, "Session State: App Closed");
@@ -933,10 +979,20 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   if (PREDICT_FALSE (!wrote))
     {
       if (SSL_want_async (ssl))
-	return 0;
+	{
+	  TLS_DBG (1, "Want async write");
+	  return 0;
+	}
+    }
+  err = SSL_get_error (ssl, wrote);
+  if (err == SSL_ERROR_WANT_WRITE)
+    {
+      vpp_tls_async_init_event (ctx, tls_async_write_event_handler,
+				tls_session, SSL_ASYNC_EVT_WR, sp,
+				sp->max_burst_size);
+      return 0;
     }
 
-  tls_session = session_get_from_handle (ctx->tls_session_handle);
   if (tls_session->session_state >= SESSION_STATE_APP_CLOSED)
     {
       TLS_DBG (2, "Session state: App Closed");
@@ -950,6 +1006,7 @@ tls_async_write_event_handler (void *async_evt, void *unused)
       return 0;
     }
 
+  wrote_sum += wrote;
   tls_tx_fifo = tls_session->tx_fifo;
 
   /* prepare for remaining write(s) */
@@ -957,9 +1014,42 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   /* Leave a bit of extra space for tls ctrl data, if any needed */
   space = clib_max ((int) space - TLSO_CTRL_BYTES, 0);
 
-  if (svm_fifo_needs_deq_ntf (app_tx_fifo, wrote))
-    session_dequeue_notify (app_session);
+  while (oc->async_ctx.total_async_write)
+    {
+      int rv;
+      u32 deq_max = svm_fifo_max_dequeue_cons (app_tx_fifo);
 
+      deq_max = clib_min (deq_max, space);
+      deq_max = clib_min (deq_max, sp->max_burst_size);
+      if (!deq_max)
+	goto check_tls_fifo;
+
+      if (svm_fifo_provision_chunks (tls_tx_fifo, 0, 0,
+				     deq_max + TLSO_CTRL_BYTES))
+	goto check_tls_fifo;
+
+      rv =
+	openssl_write_from_fifo_head_into_ssl (app_tx_fifo, ssl, ctx, deq_max);
+
+      /* Unrecoverable protocol error. Reset connection */
+      if (PREDICT_FALSE (rv < 0))
+	{
+	  tls_notify_app_io_error (ctx);
+	  TLS_DBG (1, "Unrecoverable protocol error. Reset connection\n");
+	  break;
+	}
+      if (!rv)
+	{
+	  if (SSL_want_async (ssl))
+	    goto check_tls_fifo;
+	}
+
+      wrote_sum += rv;
+    }
+
+check_tls_fifo:
+  if (svm_fifo_needs_deq_ntf (app_tx_fifo, wrote_sum))
+    session_dequeue_notify (app_session);
   /* we got here, async write is done */
   oc->async_ctx.total_async_write = 0;
 
@@ -969,7 +1059,7 @@ tls_async_write_event_handler (void *async_evt, void *unused)
 
   /* Deschedule and wait for deq notification if fifo is almost full */
   enq_buf = clib_min (svm_fifo_size (tls_tx_fifo) / 2, TLSO_MIN_ENQ_SPACE);
-  if (space < wrote + enq_buf)
+  if (space < wrote_sum + enq_buf)
     {
       svm_fifo_add_want_deq_ntf (tls_tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
       transport_connection_deschedule (&ctx->connection);
