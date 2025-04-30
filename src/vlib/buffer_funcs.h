@@ -1357,6 +1357,12 @@ vlib_buffer_clone_255 (vlib_main_t *vm, u32 src_buffer, u32 *buffers,
   n_buffers = vlib_buffer_alloc_from_pool (vm, buffers, n_buffers,
 					   s->buffer_pool_index);
 
+  if (PREDICT_FALSE (n_buffers == 0))
+    {
+      buffers[0] = src_buffer;
+      return 1;
+    }
+
   for (i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
@@ -1385,11 +1391,12 @@ vlib_buffer_clone_255 (vlib_main_t *vm, u32 src_buffer, u32 *buffers,
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
-  s->ref_count = n_buffers ? n_buffers : s->ref_count;
+  s->ref_count += n_buffers;
+
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       s = vlib_get_buffer (vm, s->next_buffer);
-      s->ref_count = n_buffers ? n_buffers : s->ref_count;
+      s->ref_count += n_buffers;
     }
 
   return n_buffers;
