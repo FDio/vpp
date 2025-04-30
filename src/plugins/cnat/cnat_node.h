@@ -284,9 +284,9 @@ cnat_ip4_translate_l3 (ip4_header_t *ip4, ip4_address_t new_addr[VLIB_N_DIR],
 }
 
 static_always_inline void
-cnat_tcp_update_session_lifetime (tcp_header_t *tcp, u16 *lifetime)
+cnat_tcp_update_session_lifetime (tcp_header_t *tcp, u16 *lifetime,
+				  u16 tcp_max_age)
 {
-  cnat_main_t *cm = &cnat_main;
   if (PREDICT_FALSE (tcp_fin (tcp)))
     *lifetime = CNAT_DEFAULT_TCP_RST_TIMEOUT;
 
@@ -294,7 +294,7 @@ cnat_tcp_update_session_lifetime (tcp_header_t *tcp, u16 *lifetime)
     *lifetime = CNAT_DEFAULT_TCP_RST_TIMEOUT;
 
   if (PREDICT_FALSE (tcp_syn (tcp) && tcp_ack (tcp)))
-    *lifetime = cm->tcp_max_age;
+    *lifetime = tcp_max_age;
 }
 
 static_always_inline void
@@ -405,8 +405,8 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
 
 static_always_inline void
 cnat_translation_ip4 (const cnat_5tuple_t *tuple, ip4_header_t *ip4,
-		      udp_header_t *udp, u16 *lifetime, u32 oflags,
-		      cnat_cksum_diff_t *cksum, u8 *cts_flags)
+		      udp_header_t *udp, u16 *lifetime, u16 tcp_max_age,
+		      u32 oflags, cnat_cksum_diff_t *cksum, u8 *cts_flags)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip4_address_t new_addr[VLIB_N_DIR];
@@ -422,7 +422,7 @@ cnat_translation_ip4 (const cnat_5tuple_t *tuple, ip4_header_t *ip4,
       cnat_ip4_translate_l4 (ip4, udp, &tcp->checksum, new_addr, new_port,
 			     oflags, &cksum->l4, cts_flags);
       cnat_ip4_translate_l3 (ip4, new_addr, oflags, &cksum->l3, cts_flags);
-      cnat_tcp_update_session_lifetime (tcp, lifetime);
+      cnat_tcp_update_session_lifetime (tcp, lifetime, tcp_max_age);
     }
   else if (ip4->protocol == IP_PROTOCOL_UDP)
     {
@@ -663,7 +663,8 @@ cnat_translation_icmp6_error (ip6_header_t *outer_ip6, icmp46_header_t *icmp,
 
 static_always_inline void
 cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6,
-		      udp_header_t *udp, u16 *lifetime, u32 oflags)
+		      udp_header_t *udp, u16 *lifetime, u16 tcp_max_age,
+		      u32 oflags)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip6_address_t new_addr[VLIB_N_DIR];
@@ -680,7 +681,7 @@ cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6,
       cnat_ip6_translate_l4 (ip6, udp, &sum, new_addr, new_port, oflags);
       tcp->checksum = ip_csum_fold (sum);
       cnat_ip6_translate_l3 (ip6, new_addr);
-      cnat_tcp_update_session_lifetime (tcp, lifetime);
+      cnat_tcp_update_session_lifetime (tcp, lifetime, tcp_max_age);
     }
   else if (ip6->protocol == IP_PROTOCOL_UDP)
     {
@@ -845,9 +846,9 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 
 static_always_inline cnat_ep_trk_t *
 cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
-		   ip4_header_t *ip4, ip6_header_t *ip6, u32 *dpoi_index)
+		   ip4_header_t *ip4, ip6_header_t *ip6, u32 *dpoi_index,
+		   u32 maglev_len)
 {
-  cnat_main_t *cm = &cnat_main;
   const load_balance_t *lb0;
   const dpo_id_t *dpo0;
   u32 hash_c0, bucket0;
@@ -861,7 +862,7 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
 			    ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
 
   if (PREDICT_FALSE (ct->lb_type == CNAT_LB_MAGLEV))
-    bucket0 = ct->lb_maglev[hash_c0 % cm->maglev_len];
+    bucket0 = ct->lb_maglev[hash_c0 % maglev_len];
   else
     bucket0 = hash_c0 % lb0->lb_n_buckets;
 
@@ -1018,7 +1019,8 @@ cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw,
 
 static_always_inline void
 cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
-		  cnat_timestamp_rewrite_t *rw, u16 *lifetime, u32 iph_offset)
+		  cnat_timestamp_rewrite_t *rw, u16 *lifetime, u16 tcp_max_age,
+		  u32 iph_offset)
 {
   ip4_header_t *ip4 = NULL;
   ip6_header_t *ip6 = NULL;
@@ -1036,7 +1038,7 @@ cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
       ip4 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
       udp0 = (udp_header_t *) (ip4 + 1);
       u8 cts_flags = rw->cts_flags;
-      cnat_translation_ip4 (&rw->tuple, ip4, udp0, lifetime,
+      cnat_translation_ip4 (&rw->tuple, ip4, udp0, lifetime, tcp_max_age,
 			    vnet_buffer (b)->oflags, &rw->cksum, &cts_flags);
       rw->cts_flags = cts_flags;
     }
@@ -1044,7 +1046,7 @@ cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
     {
       ip6 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
       udp0 = (udp_header_t *) (ip6 + 1);
-      cnat_translation_ip6 (&rw->tuple, ip6, udp0, lifetime,
+      cnat_translation_ip6 (&rw->tuple, ip6, udp0, lifetime, tcp_max_age,
 			    vnet_buffer (b)->oflags);
     }
 }
