@@ -69,6 +69,20 @@ static u32 num_threads;
   _ (AES_192_CBC_MD5_TAG12, EVP_aes_192_cbc, EVP_md5, 12)                     \
   _ (AES_256_CBC_MD5_TAG12, EVP_aes_256_cbc, EVP_md5, 12)
 
+#define foreach_openssl_linked_ctr_hmac_op                                    \
+  _ (AES_128_CTR_SHA1_TAG12, EVP_aes_128_ctr, EVP_sha1, 12)                   \
+  _ (AES_192_CTR_SHA1_TAG12, EVP_aes_192_ctr, EVP_sha1, 12)                   \
+  _ (AES_256_CTR_SHA1_TAG12, EVP_aes_256_ctr, EVP_sha1, 12)                   \
+  _ (AES_128_CTR_SHA256_TAG16, EVP_aes_128_ctr, EVP_sha256, 16)               \
+  _ (AES_192_CTR_SHA256_TAG16, EVP_aes_192_ctr, EVP_sha256, 16)               \
+  _ (AES_256_CTR_SHA256_TAG16, EVP_aes_256_ctr, EVP_sha256, 16)               \
+  _ (AES_128_CTR_SHA384_TAG24, EVP_aes_128_ctr, EVP_sha384, 24)               \
+  _ (AES_192_CTR_SHA384_TAG24, EVP_aes_192_ctr, EVP_sha384, 24)               \
+  _ (AES_256_CTR_SHA384_TAG24, EVP_aes_256_ctr, EVP_sha384, 24)               \
+  _ (AES_128_CTR_SHA512_TAG32, EVP_aes_128_ctr, EVP_sha512, 32)               \
+  _ (AES_192_CTR_SHA512_TAG32, EVP_aes_192_ctr, EVP_sha512, 32)               \
+  _ (AES_256_CTR_SHA512_TAG32, EVP_aes_256_ctr, EVP_sha512, 32)
+
 #define foreach_openssl_chacha20_evp_op                                       \
   _ (chacha20_poly1305, CHACHA20_POLY1305, EVP_chacha20_poly1305, 0, 0)       \
   _ (chacha20_poly1305, CHACHA20_POLY1305_TAG16_AAD0, EVP_chacha20_poly1305,  \
@@ -678,7 +692,7 @@ foreach_openssl_evp_op;
     openssl_ctx_hmac (key, kop, idx, m ());                                   \
     return NULL;                                                              \
   }
-foreach_openssl_linked_cbc_hmac_op
+foreach_openssl_linked_cbc_hmac_op foreach_openssl_linked_ctr_hmac_op
 #undef _
 
 #define _(a, b)                                                               \
@@ -737,7 +751,7 @@ crypto_openssl_init (vnet_crypto_engine_registration_t *r)
 #undef _
 
 #define _(n, c, m, t) cm->ctx_fn[VNET_CRYPTO_ALG_##n] = openssl_ctx_##n;
-  foreach_openssl_linked_cbc_hmac_op
+  foreach_openssl_linked_cbc_hmac_op foreach_openssl_linked_ctr_hmac_op
 #undef _
 
 #define _(a, b) cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;
@@ -774,7 +788,7 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
     { .opt = VNET_CRYPTO_OP_##n##_DEC,                                        \
       .fn = openssl_ops_dec_##n,                                              \
       .cfn = openssl_ops_dec_chained_##n },
-    foreach_openssl_linked_cbc_hmac_op
+    foreach_openssl_linked_cbc_hmac_op foreach_openssl_linked_ctr_hmac_op
 #undef _
 #define _(a, b)                                                               \
   { .opt = VNET_CRYPTO_OP_##a##_HMAC,                                         \
