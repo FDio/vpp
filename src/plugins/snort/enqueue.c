@@ -63,12 +63,21 @@ static_always_inline u32
 get_snort_instance_index_ip4 (snort_main_t *sm, vlib_buffer_t *b, u32 fa_data)
 {
   u32 hash;
-  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  u32 sw_if_index;
   ip4_header_t *ip = NULL;
-  u32 *instances = (fa_data == SNORT_INPUT) ?
-		     sm->interfaces[sw_if_index].input_instance_indices :
-		     sm->interfaces[sw_if_index].output_instance_indices;
+  u32 *instances;
+  if (fa_data == SNORT_INPUT)
+    {
+      sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+      instances = sm->interfaces[sw_if_index].input_instance_indices;
+    }
+  else
+    {
+      sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+      instances = sm->interfaces[sw_if_index].output_instance_indices;
+    }
   int n_instances = vec_len (instances);
+  ASSERT (n_instances);
 
   if (n_instances == 1)
     {
@@ -116,9 +125,9 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       si = get_snort_instance (sm, b[0], fa_data);
 
       /* if client isn't connected skip enqueue and take default action */
-      if (PREDICT_FALSE (si->client_index == ~0))
+      if (PREDICT_FALSE (!si || si->client_index == ~0))
 	{
-	  if (si->drop_on_disconnect)
+	  if (si && si->drop_on_disconnect)
 	    next[0] = SNORT_ENQ_NEXT_DROP;
 	  else
 	    next[0] = next_index;
