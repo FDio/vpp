@@ -16,6 +16,24 @@
       "message": "If the pair is already deleted when this callback is invoked, the value of lipi will be INDEX_INVALID and it will return without doing anything. Based on the sequence of commands that you described in the email thread, it seems like the pair would be deleted already at the point when this callback is invoked.\n\nAssuming that this is intended to handle some other sequence of events where the pair has not yet been deleted, there is an existing callback lcp_itf_interface_add_del() registered by linux-cp using VNET_SW_INTERFACE_ADD_DEL_FUNCTION(). When an interface is deleted, if there is a linux-cp pair for the interface, the pairing is deleted by lcp_itf_interface_add_del(). If lcp_itf_interface_add_del() ends up being run first, this new callback lcp_router_interface_add_del() will not find a pair and will not do anything. I\u0027m not sure if lcp_itf_interface_add_del() would be run before lcp_router_interface_add_del() or whether the relative ordering of the two can be assumed to be deterministic.\n\nThere is a way to register a callback that will be run before a pair is deleted. You can call lcp_itf_pair_register_vft() to register a pair_del_fn callback which will be called before deleting an interface pair. Doing so seems like it would ensure that action is taken before the pair disappears.",
       "revId": "bfa843b5c31a7381c7e736397c02d394329e6cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b8af5964_2bdf5205",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 617,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-05-01T16:29:13Z",
+      "side": 1,
+      "message": "Hello Matthew,\n\nI think you found the best way to address this issue. I applied it and never could reproduce my previous issue.\n\nDo you mind to take a look again?\n\nThanks,\nStan",
+      "parentUuid": "d39e3df2_7d247027",
+      "revId": "bfa843b5c31a7381c7e736397c02d394329e6cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
