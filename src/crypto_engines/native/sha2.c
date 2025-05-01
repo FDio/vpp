@@ -40,7 +40,7 @@ next:
   return n_ops;
 }
 
-static_always_inline u32
+u32
 crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			     u32 n_ops, vnet_crypto_op_chunk_t *chunks,
 			     clib_sha2_type_t type)

@@ -85,6 +85,17 @@ static ipsecmb_main_t ipsecmb_main = { };
   _ (AES_256_GCM_TAG16_AAD8, 256, 1, 8)                                       \
   _ (AES_256_GCM_TAG16_AAD12, 256, 1, 12)
 
+#define foreach_ipsecmb_linked_cipher_auth_op                                 \
+  _ (AES_128_CBC_SHA1_TAG12, 128, SHA1, CBC, 12)                              \
+  _ (AES_192_CBC_SHA1_TAG12, 192, SHA1, CBC, 12)                              \
+  _ (AES_256_CBC_SHA1_TAG12, 256, SHA1, CBC, 12)                              \
+  _ (AES_128_CTR_SHA1_TAG12, 128, SHA1, CNTR, 12)                             \
+  _ (AES_192_CTR_SHA1_TAG12, 192, SHA1, CNTR, 12)                             \
+  _ (AES_256_CTR_SHA1_TAG12, 256, SHA1, CNTR, 12)                             \
+  _ (AES_128_CTR_SHA256_TAG16, 128, SHA_256, CNTR, 16)                        \
+  _ (AES_192_CTR_SHA256_TAG16, 192, SHA_256, CNTR, 16)                        \
+  _ (AES_256_CTR_SHA256_TAG16, 256, SHA_256, CNTR, 16)
+
 #define foreach_chacha_poly_fixed_aad_lengths _ (0) _ (8) _ (12)
 
 static_always_inline vnet_crypto_op_status_t
@@ -519,9 +530,85 @@ get_mgr (vlib_main_t *vm)
 foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
+static_always_inline u32
+ipsecmb_ops_cipher_auth_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				u32 n_ops, u32 key_len, u32 tag_len,
+				IMB_CIPHER_MODE cipher_mode,
+				IMB_HASH_ALG hash_alg,
+				IMB_CIPHER_DIRECTION direction)
+{
+  ipsecmb_main_t *imbm = &ipsecmb_main;
+  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
+  IMB_JOB *job;
+  u32 i, n_fail = 0;
+
+  for (i = 0; i < n_ops; i++)
+    {
+      ipsecmb_aes_key_data_t *kd;
+      vnet_crypto_op_t *op = ops[i];
+      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+
+      job = IMB_GET_NEXT_JOB (ptd->mgr);
+
+      job->src = op->src;
+      job->dst = op->dst;
+      job->msg_len_to_cipher_in_bytes = op->len;
+      job->cipher_start_src_offset_in_bytes = 0;
+
+      job->cipher_mode = cipher_mode;
+      job->cipher_direction = direction;
+      job->hash_alg = hash_alg;
+
+      job->aes_key_len_in_bytes = key_len / 8;
+      job->enc_keys = kd->enc_key_exp;
+      job->dec_keys = kd->dec_key_exp;
+      job->iv = op->iv;
+      job->iv_len_in_bytes = IMB_AES_BLOCK_SIZE;
+
+      job->u.HMAC._hashed_auth_key_xor_ipad = kd->ipad;
+      job->u.HMAC._hashed_auth_key_xor_opad = kd->opad;
+      job->auth_tag_output = op->digest;
+      job->auth_tag_output_len_in_bytes = tag_len;
+
+      job->chain_order = (direction == IMB_DIR_ENCRYPT) ?
+			   IMB_ORDER_CIPHER_HASH :
+			   IMB_ORDER_HASH_CIPHER;
+
+      job->user_data = op;
+
+      job = IMB_SUBMIT_JOB (ptd->mgr);
+      if (job)
+	ipsecmb_retire_cipher_job (job, &n_fail);
+    }
+
+  while ((job = IMB_FLUSH_JOB (ptd->mgr)))
+    ipsecmb_retire_cipher_job (job, &n_fail);
+
+  return n_ops - n_fail;
+}
+
+#define _(n, k, h, c, t)                                                      \
+  static_always_inline u32 ipsecmb_ops_enc_##n (                              \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return ipsecmb_ops_cipher_auth_inline (vm, ops, n_ops, k, t,              \
+					   IMB_CIPHER_##c, IMB_AUTH_HMAC_##h, \
+					   IMB_DIR_ENCRYPT);                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_dec_##n (                              \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return ipsecmb_ops_cipher_auth_inline (vm, ops, n_ops, k, t,              \
+					   IMB_CIPHER_##c, IMB_AUTH_HMAC_##h, \
+					   IMB_DIR_DECRYPT);                  \
+  }
+foreach_ipsecmb_linked_cipher_auth_op
+#undef _
+
 #ifdef HAVE_IPSECMB_CHACHA_POLY
-always_inline void
-ipsecmb_retire_aead_job (IMB_JOB *job, u32 *n_fail)
+  always_inline void
+  ipsecmb_retire_aead_job (IMB_JOB *job, u32 *n_fail)
 {
   vnet_crypto_op_t *op = job->user_data;
   u32 len = op->tag_len;
@@ -963,6 +1050,12 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
 #endif
   {}
 };
+
+#define _(n, k, h, c, t)                                                      \
+  { .opt = VNET_CRYPTO_OP_##n##_ENC, .fn = ipsecmb_ops_enc_##n },             \
+    { .opt = VNET_CRYPTO_OP_##n##_DEC, .fn = ipsecmb_ops_dec_##n },
+foreach_ipsecmb_linked_cipher_auth_op
+#undef _
 
 VNET_CRYPTO_ENGINE_REGISTRATION () = {
   .name = "ipsecmb",
