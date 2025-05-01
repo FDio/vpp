@@ -131,7 +131,7 @@ prom_command_fn (vlib_main_t *vm, unformat_input_t *input,
 no_input:
 
   if (is_enable && !pm->is_enabled)
-    prom_enable (vm);
+    return prom_enable (vm);
 
   return 0;
 }

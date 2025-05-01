@@ -382,13 +382,16 @@ prom_stat_segment_client_init (void)
     stat_segment_adjust (scm, (void *) scm->shared_header->directory_vector);
 }
 
-void
+clib_error_t *
 prom_enable (vlib_main_t *vm)
 {
   prom_main_t *pm = &prom_main;
 
   pm->register_url = vlib_get_plugin_symbol ("http_static_plugin.so",
 					     "hss_register_url_handler");
+  if (pm->register_url == 0)
+    return clib_error_return (0, "http_static_plugin.so not loaded");
+
   pm->send_data =
     vlib_get_plugin_symbol ("http_static_plugin.so", "hss_session_send_data");
   pm->register_url (prom_stats_dump, "stats.prom", HTTP_REQ_GET);
@@ -400,6 +403,8 @@ prom_enable (vlib_main_t *vm)
 
   prom_scraper_process_enable (vm);
   prom_stat_segment_client_init ();
+
+  return 0;
 }
 
 static clib_error_t *

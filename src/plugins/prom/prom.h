@@ -44,7 +44,7 @@ typedef enum prom_process_evt_codes_
   PROM_SCRAPER_EVT_RUN,
 } prom_process_evt_codes_t;
 
-void prom_enable (vlib_main_t *vm);
+clib_error_t *prom_enable (vlib_main_t *vm);
 prom_main_t *prom_get_main (void);
 
 void prom_stat_patterns_set (u8 **patterns);
