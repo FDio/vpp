@@ -327,6 +327,27 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
   app_worker_cleanup_notify (app_wrk, s, ntf);
 }
 
+static void
+session_cleanup_notify_custom (session_t *s, session_cleanup_ntf_t ntf,
+			       transport_cleanup_cb_fn cb_fn)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (PREDICT_FALSE (!app_wrk))
+    {
+      if (ntf == SESSION_CLEANUP_TRANSPORT)
+	{
+	  transport_cleanup_cb (cb_fn, session_get_transport (s));
+	  return;
+	}
+
+      session_cleanup (s);
+      return;
+    }
+  app_worker_cleanup_notify_custom (app_wrk, s, ntf, cb_fn);
+}
+
 void
 session_program_cleanup (session_t *s)
 {
@@ -969,6 +990,78 @@ session_transport_delete_notify (transport_connection_t * tc)
     default:
       clib_warning ("session state %u", s->session_state);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      session_delete (s);
+      break;
+    }
+}
+
+/**
+ * Request from transport to program connection deletion
+ *
+ * Similar to session_transport_delete_notify just that transport
+ * is asking session layer to delete the transport connection after
+ * it delievers notifications to app. Must be used if transport
+ * stats are to be collected.
+ */
+void
+session_transport_delete_request (transport_connection_t *tc, void *cleanup_cb)
+{
+  session_t *s;
+
+  /* App might've been removed already */
+  if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
+    {
+      transport_cleanup_cb (cleanup_cb, tc);
+      return;
+    }
+
+  switch (s->session_state)
+    {
+    case SESSION_STATE_CREATED:
+      /* Session was created but accept notification was not yet sent to the
+       * app. Cleanup everything. */
+      session_lookup_del_session (s);
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      transport_cleanup_cb (cleanup_cb, tc);
+      session_free (s);
+      break;
+    case SESSION_STATE_ACCEPTING:
+    case SESSION_STATE_TRANSPORT_CLOSING:
+    case SESSION_STATE_CLOSING:
+    case SESSION_STATE_TRANSPORT_CLOSED:
+      /* If transport finishes or times out before we get a reply
+       * from the app, mark transport as closed and wait for reply
+       * before removing the session. Cleanup session table in advance
+       * because transport will soon be closed and closed sessions
+       * are assumed to have been removed from the lookup table */
+      session_lookup_del_session (s);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
+      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cleanup_cb);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
+      break;
+    case SESSION_STATE_APP_CLOSED:
+      /* Cleanup lookup table as transport needs to still be valid.
+       * Program transport close to ensure that all session events
+       * have been cleaned up. Once transport close is called, the
+       * session is just removed because both transport and app have
+       * confirmed the close*/
+      session_lookup_del_session (s);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
+      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cleanup_cb);
+      svm_fifo_dequeue_drop_all (s->tx_fifo);
+      session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
+      break;
+    case SESSION_STATE_TRANSPORT_DELETED:
+      transport_cleanup_cb (cleanup_cb, tc);
+      break;
+    case SESSION_STATE_CLOSED:
+      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cleanup_cb);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
+      session_delete (s);
+      break;
+    default:
+      clib_warning ("session state %u", s->session_state);
+      session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cleanup_cb);
       session_delete (s);
       break;
     }
