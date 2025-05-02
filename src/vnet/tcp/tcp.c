@@ -240,6 +240,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 {
   TCP_EVT (TCP_EVT_DELETE, tc);
 
+  clib_warning ("called");
   /* Cleanup local endpoint if this was an active connect */
   if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
     transport_release_local_endpoint (TRANSPORT_PROTO_TCP, tc->c_fib_index,
@@ -285,8 +286,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 void
 tcp_connection_del (tcp_connection_t * tc)
 {
-  session_transport_delete_notify (&tc->connection);
-  tcp_connection_cleanup (tc);
+  tcp_connection_timers_reset (tc);
+  session_transport_delete_request (&tc->connection, tcp_connection_cleanup);
 }
 
 tcp_connection_t *
@@ -1292,8 +1293,10 @@ tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
       tc = tcp_connection_get (req->connection_index, thread_index);
       if (PREDICT_FALSE (!tc))
 	continue;
-      session_transport_delete_notify (&tc->connection);
-      tcp_connection_cleanup (tc);
+      tcp_connection_timers_reset (tc);
+      session_transport_delete_request (&tc->connection,
+					tcp_connection_cleanup);
+      //       tcp_connection_cleanup (tc);
     }
 }
 

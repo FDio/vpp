@@ -55,7 +55,21 @@ app_worker_del_all_events (app_worker_t *app_wrk)
 	    case SESSION_CTRL_EVT_CLEANUP:
 	      s = session_get (evt->as_u64[0] & 0xffffffff, thread_index);
 	      if (evt->as_u64[0] >> 32 != SESSION_CLEANUP_SESSION)
-		break;
+		{
+		  if (evt->as_u64[1])
+		    {
+		      //       clib_warning ("this??");
+		      //       transport_connection_t *tc =
+		      //       session_get_transport (s); uword_to_pointer
+		      //       (evt->as_u64[1],
+		      // 			void (*)
+		      // (transport_connection_t
+		      // *)) ( 	tc);
+		      transport_cleanup_cb ((void *) evt->as_u64[1],
+					    session_get_transport (s));
+		    }
+		  break;
+		}
 	      uword_to_pointer (evt->as_u64[1], void (*) (session_t * s)) (s);
 	      break;
 	    case SESSION_CTRL_EVT_HALF_CLEANUP:
@@ -253,6 +267,15 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	    if (app->cb_fns.app_evt_callback)
 	      app->cb_fns.app_evt_callback (s);
 	      */
+	      /* postponed cleanup requested */
+	      if (evt->as_u64[1])
+		{
+		  transport_cleanup_cb ((void *) evt->as_u64[1],
+					session_get_transport (s));
+		  //   transport_connection_t *tc = session_get_transport (s);
+		  //   uword_to_pointer (evt->as_u64[1],
+		  // 		    void (*) (transport_connection_t *)) (tc);
+		}
 	      break;
 	    }
 	  uword_to_pointer (evt->as_u64[1], void (*) (session_t * s)) (s);
