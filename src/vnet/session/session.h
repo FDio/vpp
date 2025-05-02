@@ -581,6 +581,14 @@ uword unformat_transport_connection (unformat_input_t * input,
  * Interface to transport protos
  */
 
+typedef void *transport_cleanup_cb_fn;
+
+static inline void
+transport_cleanup_cb (void *cb_fn, transport_connection_t *tc)
+{
+  ((void (*) (transport_connection_t *)) cb_fn) (tc);
+}
+
 int session_stream_connect_notify (transport_connection_t * tc,
 				   session_error_t err);
 int session_dgram_connect_notify (transport_connection_t * tc,
@@ -598,6 +606,8 @@ int session_stream_accept (transport_connection_t *tc, u32 listener_index,
 			   clib_thread_index_t thread_index, u8 notify);
 int session_dgram_accept (transport_connection_t *tc, u32 listener_index,
 			  clib_thread_index_t thread_index);
+void session_transport_delete_request (transport_connection_t *tc,
+				       void *cb_arg);
 
 /**
  * Initialize session layer for given transport proto and ip version
