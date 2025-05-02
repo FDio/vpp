@@ -63,24 +63,23 @@ done:
 static clib_error_t *
 intel_dsa_map_region (intel_dsa_channel_t *ch)
 {
-  static clib_error_t *error = NULL;
   /* map one page */
   uword size = 0x1000;
   uword offset = 0;
   char path[256] = { 0 };
 
   snprintf (path, sizeof (path), "%s/wq%d.%d", DSA_DEV_PATH, ch->did, ch->qid);
-  int fd = open (path, O_RDWR);
-  if (fd < 0)
+  ch->fd = open (path, O_RDWR);
+  if (ch->fd < 0)
     return clib_error_return (0, "failed to open dsa device %s", path);
 
   ch->portal =
-    clib_mem_vm_map_shared (0, size, fd, offset, "%s", (char *) path);
+    clib_mem_vm_map_shared (0, size, ch->fd, offset, "%s", (char *) path);
   if (ch->portal == CLIB_MEM_VM_MAP_FAILED)
     {
-      error = clib_error_return (0, "mmap portal %s failed", path);
-      close (fd);
-      return error;
+      /* direct access is unavailable, submit work using write syscall */
+      dsa_log_debug ("mmap portal %s failed", path);
+      ch->portal = NULL;
     }
 
   return NULL;
@@ -102,6 +101,18 @@ intel_dsa_get_info (intel_dsa_channel_t *ch, clib_error_t **error)
   if (err)
     goto error;
   ch->numa = atoi ((char *) tmpstr);
+
+  /* Version 1 devices cannot use batch descriptors for work submitted
+   * using the write syscall.
+   */
+  vec_reset_length (f);
+  f = format (f, "%v/version%c", dev_dir_name, 0);
+  err = clib_sysfs_read ((char *) f, "%s", &tmpstr);
+  if (err)
+    goto error;
+  if (tmpstr)
+    if (!clib_strcmp ((char *) tmpstr, "0x100"))
+      ch->no_batch = ch->portal ? 0 : 1;
 
   wq_dir_name = format (0, "%s/%U", SYS_DSA_PATH, format_intel_dsa_addr, ch);
 

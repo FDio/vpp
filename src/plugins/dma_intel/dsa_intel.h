@@ -58,6 +58,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile void *portal; /* portal exposed by dedicated work queue */
+  int fd;
   u64 submitted;
   u64 completed;
   u64 sw_fallback;
@@ -77,11 +78,12 @@ typedef struct
       u16 mode : 1;
     };
   };
-  u8 lock; /* spinlock, only used if m_threads > 1 */
-  u8 numa; /* numa node */
-  u8 size; /* size of work queue */
-  u8 did;  /* dsa device id */
-  u8 qid;  /* work queue id */
+  u8 lock;     /* spinlock, only used if m_threads > 1 */
+  u8 numa;     /* numa node */
+  u8 size;     /* size of work queue */
+  u8 did;      /* dsa device id */
+  u8 qid;      /* work queue id */
+  u8 no_batch; /* batch descriptor not allowed */
 } intel_dsa_channel_t;
 
 typedef struct intel_dsa_batch

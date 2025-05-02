@@ -93,25 +93,17 @@ __movdir64b (volatile void *dst, const void *src)
 }
 #endif
 
-static_always_inline void
-intel_dsa_batch_fallback (vlib_main_t *vm, intel_dsa_batch_t *b,
-			  intel_dsa_channel_t *ch)
-{
-  for (u16 i = 0; i < b->batch.n_enq; i++)
-    {
-      intel_dsa_desc_t *desc = &b->descs[i];
-      clib_memcpy_fast (desc->dst, desc->src, desc->size);
-    }
-  b->status = INTEL_DSA_STATUS_CPU_SUCCESS;
-  return;
-}
-
-int
+static int
 intel_dsa_batch_submit (vlib_main_t *vm, struct vlib_dma_batch *vb)
 {
   intel_dsa_main_t *idm = &intel_dsa_main;
   intel_dsa_batch_t *b = (intel_dsa_batch_t *) vb;
+  u16 n_enq = 0, n_submitted = 0, n_to_submit = 0;
   intel_dsa_channel_t *ch = b->ch;
+  intel_dsa_desc_t *cmpl, *desc;
+  ssize_t n_written;
+  int i;
+
   if (PREDICT_FALSE (vb->n_enq == 0))
     {
       vec_add1 (idm->dsa_config_heap[b->config_heap_index].freelist, b);
@@ -119,60 +111,103 @@ intel_dsa_batch_submit (vlib_main_t *vm, struct vlib_dma_batch *vb)
     }
 
   intel_dsa_channel_lock (ch);
-  if (ch->n_enq >= ch->size)
-    {
-      if (!b->sw_fallback)
-	{
-	  intel_dsa_channel_unlock (ch);
-	  return 0;
-	}
-      /* skip channel limitation if first pending finished */
-      intel_dsa_batch_t *lb = NULL;
-      u32 n_pendings =
-	vec_len (idm->dsa_threads[vm->thread_index].pending_batches);
-      if (n_pendings)
-	lb =
-	  idm->dsa_threads[vm->thread_index].pending_batches[n_pendings - 1];
+  if (ch->n_enq == ch->size)
+    goto unlock;
 
-      if (!lb || lb->status != INTEL_DSA_STATUS_SUCCESS)
-	{
-	  intel_dsa_batch_fallback (vm, b, ch);
-	  goto done;
-	}
-    }
-
-  b->status = INTEL_DSA_STATUS_BUSY;
-  if (PREDICT_FALSE (vb->n_enq == 1))
+  if (ch->no_batch)
     {
-      intel_dsa_desc_t *desc = &b->descs[0];
-      desc->completion = (u64) &b->completion_cl;
-      desc->op_flags |= INTEL_DSA_FLAG_COMPLETION_ADDR_VALID |
-			INTEL_DSA_FLAG_REQUEST_COMPLETION;
-#if defined(__x86_64__) || defined(i386)
-      _mm_sfence (); /* fence before writing desc to device */
-      __movdir64b (ch->portal, (void *) desc);
-#endif
+      /* batch descriptor not allowed */
+      n_to_submit = clib_min (vb->n_enq, ch->size - ch->n_enq);
+      for (i = 0; i < n_to_submit; i++)
+	{
+	  cmpl = &b->descs[b->max_transfers + i];
+	  cmpl->pasid = INTEL_DSA_STATUS_BUSY;
+	  desc = &b->descs[i];
+	  desc->completion = (u64) cmpl;
+	  desc->op_flags |= INTEL_DSA_FLAG_COMPLETION_ADDR_VALID |
+			    INTEL_DSA_FLAG_REQUEST_COMPLETION;
+	}
+      desc = &b->descs[0];
     }
   else
     {
-      intel_dsa_desc_t *batch_desc = &b->descs[b->max_transfers];
-      batch_desc->op_flags = (INTEL_DSA_OP_BATCH << INTEL_DSA_OP_SHIFT) |
-			     INTEL_DSA_FLAG_COMPLETION_ADDR_VALID |
-			     INTEL_DSA_FLAG_REQUEST_COMPLETION;
-      batch_desc->desc_addr = (void *) (b->descs);
-      batch_desc->size = vb->n_enq;
-      batch_desc->completion = (u64) &b->completion_cl;
-#if defined(__x86_64__) || defined(i386)
-      _mm_sfence (); /* fence before writing desc to device */
-      __movdir64b (ch->portal, (void *) batch_desc);
-#endif
+      /* batch descriptor allowed */
+      n_to_submit = 1;
+      b->status = INTEL_DSA_STATUS_BUSY;
+      if (PREDICT_FALSE (vb->n_enq == 1))
+	{
+	  /* use normal descriptor */
+	  desc = &b->descs[0];
+	  desc->op_flags |= INTEL_DSA_FLAG_COMPLETION_ADDR_VALID |
+			    INTEL_DSA_FLAG_REQUEST_COMPLETION;
+	}
+      else
+	{
+	  /* use batch descriptor */
+	  desc = &b->descs[b->max_transfers];
+	  desc->op_flags = (INTEL_DSA_OP_BATCH << INTEL_DSA_OP_SHIFT) |
+			   INTEL_DSA_FLAG_COMPLETION_ADDR_VALID |
+			   INTEL_DSA_FLAG_REQUEST_COMPLETION;
+	  desc->desc_addr = (void *) (b->descs);
+	  desc->size = vb->n_enq;
+	}
+      desc->completion = (u64) &b->completion_cl;
     }
 
-  ch->submitted++;
-  ch->n_enq++;
+  if (ch->portal)
+    {
+#if defined(__x86_64__) || defined(i386)
+      _mm_sfence (); /* fence before writing desc to device */
+      __movdir64b (ch->portal, (const void *) desc);
+#endif
+      n_enq = 1;
+      n_submitted = vb->n_enq;
+    }
+  else
+    {
+      n_written =
+	write (ch->fd, (const void *) desc, n_to_submit * sizeof (*desc));
+      if (n_written < 0)
+	{
+	  dsa_log_debug ("failed to write descriptors: %d\n", n_written);
+	  n_written = 0;
+	}
+      n_enq = n_submitted = n_written / sizeof (*desc);
+      if (!ch->no_batch && n_submitted == 1)
+	n_submitted = vb->n_enq;
+    }
 
-done:
+  ch->n_enq += n_enq;
+  ch->submitted += n_submitted;
+
+unlock:
   intel_dsa_channel_unlock (ch);
+
+  if (n_submitted == 0)
+    {
+      /* error with entire submission or channel was full */
+      for (i = 0; i < vb->n_enq; i++)
+	{
+	  desc = &b->descs[i];
+	  clib_memcpy_fast (desc->dst, desc->src, desc->size);
+	}
+      b->status = INTEL_DSA_STATUS_CPU_SUCCESS;
+    }
+  else
+    {
+      /* error with part of submission and/or channel was partially full. This
+       * can only happen when using the write syscall without a batch
+       * descriptor.
+       */
+      for (i = n_submitted; i < vb->n_enq; i++)
+	{
+	  desc = &b->descs[i];
+	  clib_memcpy_fast (desc->dst, desc->src, desc->size);
+	  cmpl = &b->descs[b->max_transfers + i];
+	  cmpl->pasid = INTEL_DSA_STATUS_CPU_SUCCESS;
+	}
+    }
+
   vec_add1 (idm->dsa_threads[vm->thread_index].pending_batches, b);
   vlib_node_set_interrupt_pending (vm, intel_dsa_node.index);
   return 1;
@@ -253,15 +288,25 @@ intel_dsa_config_add_fn (vlib_main_t *vm, vlib_dma_config_data_t *cd)
     {
       intel_dsa_batch_t *idb;
       vlib_dma_batch_t *b;
+
       idc = vec_elt_at_index (idm->dsa_config_heap, index + thread);
 
-      /* size of physmem allocation for this config */
-      idc->max_transfers = cd->cfg.max_transfers;
-      idc->alloc_size = sizeof (intel_dsa_batch_t) +
-			sizeof (intel_dsa_desc_t) * (idc->max_transfers + 1);
       /* fill batch template */
       idb = &idc->batch_template;
       idb->ch = idm->dsa_threads[thread].ch;
+      idc->max_transfers = cd->cfg.max_transfers;
+      /* size of physmem allocation for this config, including enough space to
+       * store up to two descriptors per transfer, one for the request and one
+       * for the completion when batches are not allowed. The last descriptor
+       * is used as the batch descriptor when batches are allowed.
+       */
+      if (idb->ch->no_batch)
+	idc->alloc_size = sizeof (intel_dsa_batch_t) +
+			  sizeof (intel_dsa_desc_t) * (idc->max_transfers * 2);
+      else
+	idc->alloc_size = sizeof (intel_dsa_batch_t) +
+			  sizeof (intel_dsa_desc_t) * (idc->max_transfers + 1);
+
       if (intel_dsa_check_channel (idb->ch, cd))
 	return 0;
 
@@ -341,85 +386,136 @@ free_heap:
   dsa_log_debug ("config %u removed", cd->private_data);
 }
 
+static void
+intel_dsa_process_batch (vlib_main_t *vm, intel_dsa_batch_t *b)
+{
+  u16 i, n_deq = 0, n_hw = 0, n_sw = 0;
+  intel_dsa_channel_t *ch = b->ch;
+  intel_dsa_desc_t *desc;
+
+  if (ch->no_batch && b->status != INTEL_DSA_STATUS_CPU_SUCCESS)
+    {
+      for (i = 0; i < b->batch.n_enq; i++)
+	{
+	  u8 status = b->descs[b->max_transfers + i].pasid & 0x3f;
+
+	  if (status == INTEL_DSA_STATUS_SUCCESS)
+	    {
+	      n_deq++;
+	      n_hw++;
+	    }
+	  else if (status == INTEL_DSA_STATUS_CPU_SUCCESS)
+	    {
+	      /* remainder of batch will always be CPU_SUCCESS */
+	      n_sw += b->batch.n_enq - i;
+	      break;
+	    }
+	  else
+	    {
+	      n_deq++;
+	      n_sw++;
+	      desc = &b->descs[i];
+	      clib_memcpy_fast (desc->dst, desc->src, desc->size);
+	    }
+	}
+    }
+  else
+    {
+      if (b->status == INTEL_DSA_STATUS_SUCCESS)
+	{
+	  n_deq = 1;
+	  n_hw = b->batch.n_enq;
+	}
+      else if (b->status == INTEL_DSA_STATUS_CPU_SUCCESS)
+	{
+	  n_sw = b->batch.n_enq;
+	}
+      else
+	{
+	  n_deq = 1;
+	  n_sw = b->batch.n_enq;
+	  for (i = 0; i < b->batch.n_enq; i++)
+	    {
+	      desc = &b->descs[i];
+	      clib_memcpy_fast (desc->dst, desc->src, desc->size);
+	    }
+	}
+
+      if (b->batch.n_enq == 1)
+	{
+	  b->descs[0].completion = 0;
+	  b->descs[0].op_flags = (INTEL_DSA_OP_MEMMOVE << INTEL_DSA_OP_SHIFT) |
+				 INTEL_DSA_FLAG_CACHE_CONTROL;
+	  if (ch->block_on_fault)
+	    b->descs[0].op_flags |= INTEL_DSA_FLAG_BLOCK_ON_FAULT;
+	}
+    }
+
+  if (b->batch.callback_fn)
+    b->batch.callback_fn (vm, &b->batch);
+
+  b->batch.n_enq = 0;
+  b->status = INTEL_DSA_STATUS_IDLE;
+
+  intel_dsa_channel_lock (ch);
+  ch->n_enq -= n_deq;
+  ch->completed += n_hw;
+  ch->sw_fallback += n_sw;
+  intel_dsa_channel_unlock (ch);
+}
+
+/* Return 1 if any descriptor in the batch is busy */
+static int
+intel_dsa_batch_is_busy (intel_dsa_batch_t *b)
+{
+  intel_dsa_desc_t *desc;
+  u8 status;
+  u16 i;
+
+  if (b->status == INTEL_DSA_STATUS_CPU_SUCCESS)
+    return 0;
+
+  if (!b->ch->no_batch)
+    return b->status == INTEL_DSA_STATUS_BUSY;
+
+  for (i = 0; i < b->batch.n_enq; i++)
+    {
+      desc = &b->descs[b->max_transfers + i];
+      status = desc->pasid & 0x3f;
+      if (status == INTEL_DSA_STATUS_BUSY)
+	return 1;
+    }
+
+  return 0;
+}
+
 static uword
 intel_dsa_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		   vlib_frame_t *frame)
 {
   intel_dsa_main_t *idm = &intel_dsa_main;
-  intel_dsa_thread_t *t =
-    vec_elt_at_index (idm->dsa_threads, vm->thread_index);
-  u32 n_pending = 0, n = 0;
-  u8 glitch = 0, status;
+  u32 i, n_pending, n = 0;
+  intel_dsa_thread_t *t;
+  intel_dsa_batch_t *b;
+  u8 glitch = 0;
 
-  if (!t->pending_batches)
-    return 0;
-
+  t = vec_elt_at_index (idm->dsa_threads, vm->thread_index);
   n_pending = vec_len (t->pending_batches);
-
-  for (u32 i = 0; i < n_pending; i++)
+  for (i = 0; i < n_pending; i++)
     {
-      intel_dsa_batch_t *b = t->pending_batches[i];
-      intel_dsa_channel_t *ch = b->ch;
-
-      status = b->status;
-      if ((status == INTEL_DSA_STATUS_SUCCESS ||
-	   status == INTEL_DSA_STATUS_CPU_SUCCESS) &&
-	  !glitch)
-	{
-	  /* callback */
-	  if (b->batch.callback_fn)
-	    b->batch.callback_fn (vm, &b->batch);
-
-	  /* restore last descriptor fields */
-	  if (b->batch.n_enq == 1)
-	    {
-	      b->descs[0].completion = 0;
-	      b->descs[0].op_flags =
-		(INTEL_DSA_OP_MEMMOVE << INTEL_DSA_OP_SHIFT) |
-		INTEL_DSA_FLAG_CACHE_CONTROL;
-	      if (b->ch->block_on_fault)
-		b->descs[0].op_flags |= INTEL_DSA_FLAG_BLOCK_ON_FAULT;
-	    }
-	  /* add to freelist */
-	  vec_add1 (idm->dsa_config_heap[b->config_heap_index].freelist, b);
-
-	  intel_dsa_channel_lock (ch);
-	  if (status == INTEL_DSA_STATUS_SUCCESS)
-	    {
-	      ch->n_enq--;
-	      ch->completed++;
-	    }
-	  else
-	    ch->sw_fallback++;
-	  intel_dsa_channel_unlock (ch);
-
-	  b->batch.n_enq = 0;
-	  b->status = INTEL_DSA_STATUS_IDLE;
-	}
-      else if (status == INTEL_DSA_STATUS_BUSY)
+      b = t->pending_batches[i];
+      if (glitch || intel_dsa_batch_is_busy (b))
 	{
 	  glitch = 1 & b->barrier_before_last;
 	  t->pending_batches[n++] = b;
+	  continue;
 	}
-      else if (!glitch)
-	{
-	  /* fallback to software if exception happened */
-	  intel_dsa_batch_fallback (vm, b, ch);
-	  glitch = 1 & b->barrier_before_last;
-	  t->pending_batches[n++] = b;
-	}
-      else
-	{
-	  t->pending_batches[n++] = b;
-	}
+      intel_dsa_process_batch (vm, b);
+      vec_add1 (idm->dsa_config_heap[b->config_heap_index].freelist, b);
     }
   vec_set_len (t->pending_batches, n);
-
   if (n)
-    {
-      vlib_node_set_interrupt_pending (vm, intel_dsa_node.index);
-    }
-
+    vlib_node_set_interrupt_pending (vm, intel_dsa_node.index);
   return n_pending - n;
 }
 
