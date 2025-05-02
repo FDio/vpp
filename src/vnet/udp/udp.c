@@ -108,8 +108,7 @@ udp_connection_cleanup (udp_connection_t * uc)
 void
 udp_connection_delete (udp_connection_t * uc)
 {
-  session_transport_delete_notify (&uc->connection);
-  udp_connection_cleanup (uc);
+  session_transport_delete_request (&uc->connection, udp_connection_cleanup);
 }
 
 static void
