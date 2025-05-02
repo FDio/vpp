@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "892f61e9_de1b616c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-02T16:36:40Z",
+      "side": 1,
+      "message": "Do we have a \"quiet\" mode? Should we add it and only compute/print if not quiet. I\u0027m fine with defaulting with non-quiet.",
+      "revId": "776711814965dd43cc77ceae0532aa81b246aa33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
