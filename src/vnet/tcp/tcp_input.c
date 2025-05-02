@@ -118,8 +118,9 @@ tcp_handle_rst (tcp_connection_t * tc)
     {
     case TCP_STATE_SYN_RCVD:
       /* Cleanup everything. App wasn't notified yet */
-      session_transport_delete_notify (&tc->connection);
-      tcp_connection_cleanup (tc);
+      session_transport_delete_program (&tc->connection,
+					tcp_connection_cleanup);
+      //       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
       session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
@@ -2163,8 +2164,9 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      error = TCP_ERROR_MSG_QUEUE_FULL;
 	      tcp_send_reset (tc);
-	      session_transport_delete_notify (&tc->connection);
-	      tcp_connection_cleanup (tc);
+	      session_transport_delete_program (&tc->connection,
+						tcp_connection_cleanup);
+	      //       tcp_connection_cleanup (tc);
 	      goto drop;
 	    }
 	  error = TCP_ERROR_CONN_ACCEPTED;
