@@ -524,7 +524,9 @@ app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
 {
   session_event_t evt = { .event_type = SESSION_CTRL_EVT_CLEANUP,
 			  .as_u64[0] = (u64) ntf << 32 | s->session_index,
-			  .as_u64[1] = pointer_to_uword (session_cleanup) };
+			  .as_u64[1] = ntf == SESSION_CLEANUP_SESSION ?
+					 pointer_to_uword (session_cleanup) :
+					 0 };
 
   app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
 
