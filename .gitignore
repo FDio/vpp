@@ -159,5 +159,7 @@ compile_commands.json
 /cmake_install.cmake
 /startup.conf
 /startup.vpp
+/install_manifest.txt
+
 # log file archives
 /archives
