@@ -308,6 +308,9 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
   vnet_feature_enable_disable ("device-input", "bond-input",
 			       mif->sw_if_index, 0, 0, 0);
 
+  vnet_feature_enable_disable ("port-rx-eth", "bond-input", mif->sw_if_index,
+			       0, 0, 0);
+
   /* Put back the old mac */
   vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
 					mif->persistent_hw_address);
@@ -762,13 +765,20 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
 
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  mif->sw_if_index, 1, 0, 0);
+  if (args->rv)
+  {
+    args->error = clib_error_return (
+      0, "Error encountered on device input feature arc enable");
+  }
+
+  args->rv = vnet_feature_enable_disable ("port-rx-eth", "bond-input",
+					  mif->sw_if_index, 1, 0, 0);
 
   if (args->rv)
-    {
-      args->error =
-	clib_error_return (0,
-			   "Error encountered on input feature arc enable");
-    }
+  {
+    args->error =
+      clib_error_return (0, "Error encountered on port rx feature arc enable");
+  }
 }
 
 static clib_error_t *
