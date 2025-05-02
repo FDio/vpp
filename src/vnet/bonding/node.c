@@ -414,9 +414,16 @@ VLIB_REGISTER_NODE (bond_input_node) = {
 
 VLIB_INIT_FUNCTION (bond_input_init);
 
-VNET_FEATURE_INIT (bond_input, static) =
+VNET_FEATURE_INIT (bond_input_device, static) =
 {
   .arc_name = "device-input",
+  .node_name = "bond-input",
+  .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
+VNET_FEATURE_INIT (bond_input_rx, static) =
+{
+  .arc_name = "port-rx-eth",
   .node_name = "bond-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };

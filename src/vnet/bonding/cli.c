@@ -760,15 +760,23 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
     }
   }
 
+  log_info ("enabling device input feature");
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  mif->sw_if_index, 1, 0, 0);
-
   if (args->rv)
-    {
-      args->error =
-	clib_error_return (0,
-			   "Error encountered on input feature arc enable");
-    }
+  {
+    args->error = clib_error_return (
+      0, "Error encountered on device input feature arc enable");
+  }
+
+  log_info ("enabling port rx feature");
+  args->rv = vnet_feature_enable_disable ("port-rx-eth", "bond-input",
+					  mif->sw_if_index, 1, 0, 0);
+  if (args->rv)
+  {
+    args->error =
+      clib_error_return (0, "Error encountered on port rx feature arc enable");
+  }
 }
 
 static clib_error_t *
