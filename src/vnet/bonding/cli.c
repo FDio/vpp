@@ -22,6 +22,14 @@
 #include <vnet/bonding/node.h>
 #include <vlib/stats/stats.h>
 
+VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
+  .class_name = "bonding",
+  .subclass_name = "cli",
+};
+#define log_info(f, ...)                                                      \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dev_log.class, "%s: " f, __func__,           \
+	    ##__VA_ARGS__)
+
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 {
@@ -760,15 +768,23 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
     }
   }
 
+  log_info ("enabling device input feature");
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  mif->sw_if_index, 1, 0, 0);
-
   if (args->rv)
-    {
-      args->error =
-	clib_error_return (0,
-			   "Error encountered on input feature arc enable");
-    }
+  {
+    args->error = clib_error_return (
+      0, "Error encountered on device input feature arc enable");
+  }
+
+  log_info ("enabling port rx feature");
+  args->rv = vnet_feature_enable_disable ("port-rx-eth", "bond-input",
+					  mif->sw_if_index, 1, 0, 0);
+  if (args->rv)
+  {
+    args->error =
+      clib_error_return (0, "Error encountered on port rx feature arc enable");
+  }
 }
 
 static clib_error_t *
