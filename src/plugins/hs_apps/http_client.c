@@ -285,9 +285,8 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
 	}
     }
 
-  if (hcm->repeat)
-    hc_session->stats.start =
-      vlib_time_now (vlib_get_main_by_index (s->thread_index));
+  hc_session->stats.start =
+    vlib_time_now (vlib_get_main_by_index (s->thread_index));
 
   return hc_request (s, wrk, hc_session, err);
 }
@@ -452,12 +451,12 @@ hc_rx_callback (session_t *s)
 done:
   if (hc_session->to_recv == 0)
     {
+      hc_session->stats.end = vlib_time_now (wrk->vlib_main);
+      hc_session->stats.elapsed_time =
+	hc_session->stats.end - hc_session->stats.start;
       if (hcm->repeat)
 	{
 	  hc_session->stats.request_count++;
-	  hc_session->stats.end = vlib_time_now (wrk->vlib_main);
-	  hc_session->stats.elapsed_time =
-	    hc_session->stats.end - hc_session->stats.start;
 
 	  if (hc_session->stats.elapsed_time >= hcm->duration &&
 	      hc_session->stats.request_count >= hc_session->stats.req_per_wrk)
@@ -629,27 +628,32 @@ hc_get_repeat_stats (vlib_main_t *vm)
   hc_worker_t *wrk;
   hc_session_t *hc_session;
 
-  if (hcm->repeat)
+  vec_foreach (wrk, hcm->wrk)
     {
-      vec_foreach (wrk, hcm->wrk)
+      vec_foreach (hc_session, wrk->sessions)
 	{
-	  vec_foreach (hc_session, wrk->sessions)
+	  hc_stats.request_count += hc_session->stats.request_count;
+	  hc_session->stats.request_count = 0;
+	  if (hc_stats.elapsed_time < hc_session->stats.elapsed_time)
 	    {
-	      hc_stats.request_count += hc_session->stats.request_count;
-	      hc_session->stats.request_count = 0;
-	      if (hc_stats.elapsed_time < hc_session->stats.elapsed_time)
-		{
-		  hc_stats.elapsed_time = hc_session->stats.elapsed_time;
-		  hc_session->stats.elapsed_time = 0;
-		}
+	      hc_stats.elapsed_time = hc_session->stats.elapsed_time;
+	      hc_session->stats.elapsed_time = 0;
 	    }
 	}
+    }
+  if (hcm->repeat)
+    {
       vlib_cli_output (vm,
-		       "< %d request(s) in %.6fs\n< avg latency "
-		       "%.4fms\n< %.2f req/sec",
+		       "* %d request(s) in %.6fs\n"
+		       "* avg latency %.4fms\n"
+		       "* %.2f req/sec",
 		       hc_stats.request_count, hc_stats.elapsed_time,
 		       (hc_stats.elapsed_time / hc_stats.request_count) * 1000,
 		       hc_stats.request_count / hc_stats.elapsed_time);
+    }
+  else
+    {
+      vlib_cli_output (vm, "* latency: %.4fms", hc_stats.elapsed_time * 1000);
     }
 }
 
@@ -669,23 +673,20 @@ hc_get_event (vlib_main_t *vm)
     event_timeout += 5;
   vlib_process_wait_for_event_or_clock (vm, event_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
+  hc_get_repeat_stats (vm);
 
   switch (event_type)
     {
     case ~0:
-      hc_get_repeat_stats (vm);
       err = clib_error_return (0, "error: timeout");
       break;
     case HC_CONNECT_FAILED:
-      hc_get_repeat_stats (vm);
       err = clib_error_return (0, "error: failed to connect");
       break;
     case HC_TRANSPORT_CLOSED:
-      hc_get_repeat_stats (vm);
       err = clib_error_return (0, "error: transport closed");
       break;
     case HC_GENERIC_ERR:
-      hc_get_repeat_stats (vm);
       err = clib_error_return (0, "error: unknown");
       break;
     case HC_REPLY_RECEIVED:
@@ -697,7 +698,7 @@ hc_get_event (vlib_main_t *vm)
 	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "a");
 	  if (file_ptr == NULL)
 	    {
-	      vlib_cli_output (vm, "couldn't open file %v", hcm->filename);
+	      vlib_cli_output (vm, "* couldn't open file %v", hcm->filename);
 	    }
 	  else
 	    {
@@ -705,7 +706,7 @@ hc_get_event (vlib_main_t *vm)
 		       hc_session->response_status, hc_session->resp_headers,
 		       hc_session->http_response);
 	      fclose (file_ptr);
-	      vlib_cli_output (vm, "file saved (/tmp/%v)", hcm->filename);
+	      vlib_cli_output (vm, "* file saved (/tmp/%v)", hcm->filename);
 	    }
 	}
       if (hcm->verbose)
@@ -718,10 +719,8 @@ hc_get_event (vlib_main_t *vm)
 	}
       break;
     case HC_REPEAT_DONE:
-      hc_get_repeat_stats (vm);
       break;
     default:
-      hc_get_repeat_stats (vm);
       err = clib_error_return (0, "error: unexpected event %d", event_type);
       break;
     }
@@ -988,7 +987,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->appns_id = appns_id;
 
   if (hcm->repeat)
-    vlib_cli_output (vm, "Running, please wait...");
+    vlib_cli_output (vm, "* Running, please wait...");
 
   session_enable_disable_args_t args = { .is_en = 1,
 					 .rt_engine_type =
