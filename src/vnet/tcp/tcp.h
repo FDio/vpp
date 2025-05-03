@@ -311,7 +311,7 @@ tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
 void tcp_connection_free (tcp_connection_t * tc);
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
-void tcp_connection_del (tcp_connection_t * tc);
+void tcp_connection_cleanup_and_notify (tcp_connection_t *tc);
 int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 
 void tcp_send_reset_w_pkt (tcp_connection_t *tc, vlib_buffer_t *pkt,

@@ -117,9 +117,9 @@ tcp_handle_rst (tcp_connection_t * tc)
   switch (tc->rst_state)
     {
     case TCP_STATE_SYN_RCVD:
-      /* Cleanup everything. App wasn't notified yet */
-      session_transport_delete_notify (&tc->connection);
-      tcp_connection_cleanup (tc);
+      /* Cleanup everything. App wasn't notified yet, but session layer must be
+       * notified that the session needs to be cleaned up. */
+      tcp_connection_cleanup_and_notify (tc);
       break;
     case TCP_STATE_SYN_SENT:
       session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
@@ -2163,8 +2163,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      error = TCP_ERROR_MSG_QUEUE_FULL;
 	      tcp_send_reset (tc);
-	      session_transport_delete_notify (&tc->connection);
-	      tcp_connection_cleanup (tc);
+	      tcp_connection_cleanup_and_notify (tc);
 	      goto drop;
 	    }
 	  error = TCP_ERROR_CONN_ACCEPTED;
@@ -2589,7 +2588,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
 	  /* clean up the old session */
-	  tcp_connection_del (tc);
+	  tcp_connection_cleanup_and_notify (tc);
 	  /* listener was cleaned up */
 	  if (!lc)
 	    {
