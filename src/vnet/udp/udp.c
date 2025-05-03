@@ -267,6 +267,9 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
   /* reuse tcp medatada for now */
   vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
 
+  uc->bytes_out += vlib_buffer_length_in_chain (vm, b);
+  uc->dgrams_out += 1;
+
   if (!is_cless)
     {
       uh = vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port);
@@ -304,8 +307,6 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
       vnet_buffer (b)->tcp.flags |= UDP_CONN_F_LISTEN;
     }
 
-  uc->bytes_out += vlib_buffer_length_in_chain (vm, b);
-  uc->dgrams_out += 1;
   uh->checksum =
     udp_compute_checksum (vm, b, udp_csum_offload (uc), uc->c_is_ip4);
 
