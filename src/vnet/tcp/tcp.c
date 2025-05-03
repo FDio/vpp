@@ -283,7 +283,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
  * just remove the connection, call tcp_connection_cleanup instead.
  */
 void
-tcp_connection_del (tcp_connection_t * tc)
+tcp_connection_cleanup_and_notify (tcp_connection_t *tc)
 {
   session_transport_delete_notify (&tc->connection);
   tcp_connection_cleanup (tc);
@@ -356,10 +356,9 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
  * If at the end the connection is not in CLOSED state, it is not removed.
  * Instead, we rely on on TCP to advance through state machine to either
  * 1) LAST_ACK (passive close) whereby when the last ACK is received
- * tcp_connection_del is called. This notifies session of the delete and
- * calls cleanup.
- * 2) TIME_WAIT (active close) whereby after 2MSL the 2MSL timer triggers
- * and cleanup is called.
+ * tcp_connection_cleanup_and_notify is called. This notifies session of the
+ * delete and calls cleanup. 2) TIME_WAIT (active close) whereby after 2MSL the
+ * 2MSL timer triggers and cleanup is called.
  *
  */
 void
