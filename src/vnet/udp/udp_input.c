@@ -153,7 +153,7 @@ udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
 	}
       else
 	{
-	  uc0->bytes_in += wrote0;
+	  uc0->bytes_in += wrote0 - sizeof (session_dgram_hdr_t);
 	  uc0->dgrams_in += 1;
 	}
 
@@ -191,7 +191,7 @@ udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
     }
   else
     {
-      uc0->bytes_in += wrote0;
+      uc0->bytes_in += wrote0 - sizeof (session_dgram_hdr_t);
       uc0->dgrams_in += 1;
     }
 }
