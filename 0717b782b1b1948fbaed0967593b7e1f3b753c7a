@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12265a7a_a236cf80",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-04T18:40:31Z",
+      "side": 1,
+      "message": "any idea why it panic?",
+      "range": {
+        "startLine": 479,
+        "startChar": 1,
+        "endLine": 480,
+        "endChar": 28
+      },
+      "revId": "0717b782b1b1948fbaed0967593b7e1f3b753c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f41817bb_9266121a",
+        "filename": "extras/hs-test/infra/address_allocator.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-04T18:40:31Z",
+      "side": 1,
+      "message": "can we use unique local ip6 range? https://www.rfc-editor.org/rfc/rfc4193.html there is also description how to generate 40bit random part, for ip4 we use range 10.0.0.0/8 which has similar use",
+      "revId": "0717b782b1b1948fbaed0967593b7e1f3b753c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14471cc9_4f500e46",
+        "filename": "extras/hs-test/infra/vppinstance.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-04T18:40:31Z",
+      "side": 1,
+      "message": "what if we want test/setup dual stack?",
+      "range": {
+        "startLine": 318,
+        "startChar": 2,
+        "endLine": 326,
+        "endChar": 3
+      },
+      "revId": "0717b782b1b1948fbaed0967593b7e1f3b753c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfd98a32_b1c54748",
+        "filename": "extras/hs-test/infra/vppinstance.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-04T18:40:31Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 516,
+        "startChar": 1,
+        "endLine": 536,
+        "endChar": 2
+      },
+      "revId": "0717b782b1b1948fbaed0967593b7e1f3b753c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef84560e_f736ff34",
+        "filename": "extras/hs-test/nginx_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-04T18:40:31Z",
+      "side": 1,
+      "message": "is this needed because of ip6 neighbor discovery? did you try setup neighbor manually (via cli)?",
+      "range": {
+        "startLine": 158,
+        "startChar": 1,
+        "endLine": 158,
+        "endChar": 28
+      },
+      "revId": "0717b782b1b1948fbaed0967593b7e1f3b753c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
