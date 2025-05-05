@@ -128,7 +128,7 @@ http_conn_alloc_w_thread (clib_thread_index_t thread_index)
   return (hc - wrk->conn_pool);
 }
 
-static inline http_conn_t *
+http_conn_t *
 http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);

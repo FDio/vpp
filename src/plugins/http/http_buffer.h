@@ -31,6 +31,7 @@ typedef struct http_buffer_vft_ http_buffer_vft_t;
 typedef struct http_buffer_
 {
   http_buffer_vft_t *vft;
+  http_buffer_type_t type;
   u8 data[HTTP_BUFFER_DATA_SZ];
 } http_buffer_t;
 

@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -64,11 +64,27 @@ func Http2MultiplexingTest(s *H2Suite) {
 	serverAddress := s.VppAddr()
 	vpp.Vppctl("http tps uri tcp://0.0.0.0/80 no-zc")
 
-	args := fmt.Sprintf("--log-file=%s -T10 -n20 -c1 -m100 http://%s:80/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
+	args := fmt.Sprintf("--log-file=%s -T10 -n21 -c1 -m100 http://%s:80/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
 	s.Containers.H2load.ExtraRunningArgs = args
 	s.Containers.H2load.Run()
 
 	defer s.CollectH2loadLogs(s.Containers.H2load)
+
+	o, _ := s.Containers.H2load.GetOutput()
+	s.Log(o)
+	s.AssertContains(o, " 0 failed")
+	s.AssertContains(o, " 0 errored")
+	s.AssertContains(o, " 0 timeout")
+}
+
+func Http2MultiplexingMTTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/80 no-zc")
+
+	args := fmt.Sprintf("-T10 -n100 -c4 -r1 -m10 http://%s:80/test_file_20M", serverAddress)
+	s.Containers.H2load.ExtraRunningArgs = args
+	s.Containers.H2load.Run()
 
 	o, _ := s.Containers.H2load.GetOutput()
 	s.Log(o)
