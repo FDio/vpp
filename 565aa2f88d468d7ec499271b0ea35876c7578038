@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "49b65d84_6886e067",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:59:28Z",
+      "side": 1,
+      "message": "Closed most of my comments. Feel free to close those that have been handled from Venkata as well. Once everything\u0027s ready I\u0027ll give it another read. \n\nOn a separate note, are you testing with actual hw or are you using emulation/dasync? Can we add test for that in make test and/or hs-test?",
+      "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

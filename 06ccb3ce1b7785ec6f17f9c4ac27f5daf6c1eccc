@@ -140,6 +140,24 @@
       "parentUuid": "93e1c1b2_915ff288",
       "revId": "06ccb3ce1b7785ec6f17f9c4ac27f5daf6c1eccc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca7e87b6_97e31163",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:59:28Z",
+      "side": 1,
+      "message": "No need for changes in openssl_ctx_handshake_rx, still works?",
+      "parentUuid": "7d1eb124_f6eaadf1",
+      "revId": "06ccb3ce1b7785ec6f17f9c4ac27f5daf6c1eccc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
