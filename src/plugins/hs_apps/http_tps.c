@@ -198,6 +198,7 @@ hts_session_tx_no_zc (hts_session_t *hs, session_t *ts)
   sent = svm_fifo_enqueue_segments (ts->tx_fifo, seg, n_segs,
 				    1 /* allow partial */);
 
+  clib_warning ("sent %u", sent);
   if (sent <= 0)
     {
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -217,6 +218,7 @@ static inline void
 hts_session_tx (hts_session_t *hs, session_t *ts)
 {
   hts_main_t *htm = &hts_main;
+  clib_warning ("BBBBBBBBBB");
 
   if (!htm->no_zc)
     hts_session_tx_zc (hs, ts);
@@ -453,6 +455,7 @@ hs_ts_tx_callback (session_t *ts)
 {
   hts_session_t *hs;
 
+  clib_warning ("AAAAAAAAAA");
   hs = hts_session_get (ts->thread_index, ts->opaque);
   if (!hs)
     return 0;
