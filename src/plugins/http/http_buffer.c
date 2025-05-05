@@ -211,6 +211,7 @@ http_buffer_init (http_buffer_t *hb, http_buffer_type_t type, svm_fifo_t *f,
 		  u64 data_len)
 {
   hb->vft = &buf_vfts[type];
+  hb->type = type;
   hb->vft->init (hb, f, data_len);
 }
 
