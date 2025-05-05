@@ -64,7 +64,7 @@ func Http2MultiplexingTest(s *H2Suite) {
 	serverAddress := s.VppAddr()
 	vpp.Vppctl("http tps uri tcp://0.0.0.0/80 no-zc")
 
-	args := fmt.Sprintf("--log-file=%s -T10 -n20 -c1 -m100 http://%s:80/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
+	args := fmt.Sprintf("--log-file=%s -T10 -n21 -c1 -m100 http://%s:80/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
 	s.Containers.H2load.ExtraRunningArgs = args
 	s.Containers.H2load.Run()
 
