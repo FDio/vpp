@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7bcc2dc_8bc223f3",
+        "filename": "src/vnet/CMakeLists.txt",
+        "patchSetId": 31
+      },
+      "lineNbr": 995,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-05-05T14:20:34Z",
+      "side": 1,
+      "message": "add eventing?",
+      "revId": "7d52fa54a06f83c798f1f43eb87819d66d4e115f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
