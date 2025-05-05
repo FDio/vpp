@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e3ba111_1f26f62a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 50
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Nice! Thanks, Dave! \n\nSome quick comments.",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d42084b8_4bc6ffbf",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "I suspect we should move the conn and the stream to the engines.",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67d636bc_21621644",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "This patch or another? That\u0027s a decent amount of bytes :)",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8039494e_45daf170",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Hm, you want to allow dynamic registration of engines? If yes, this needs to be dynamic size. We could also do bitmap and then u32 is enough ..",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76d5841e_1c68aa7f",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Question that relates to quic_ctx_t comments, do we want to allow engines to alloc contexts or do we plan to have some opaques that allow engines to grab their internal data structures?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "590ab6c0_883ab03b",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Maybe sort the functions something like: engine control, connection (control and io), stream (control and io), format and whatever is left. And let\u0027s try to use connection and stream in names to figure out things in one glance.",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56cdba14_42771f47",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "stream_disconnect and stream_reset? Speaking of which, do we have only error_reset or end_stream as well?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4561ad1e_cade4478",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Argument is ctx, I guess.",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e992b19f_fe11a74c",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Are we missing callbacks when application closes?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae10c8ee_f761b7ff",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Should we start passing wrks around instead of qm? Also, is this an inlines candidate or maybe a separate timers file?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85180e07_63ab527c",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 50
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T04:49:20Z",
+      "side": 1,
+      "message": "Stop is in quic.h, maybe move this as well? Same comment for add and timer handlers",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
