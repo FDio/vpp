@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "60e45dd2_f1cf4f19",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7b54095b_dc8d2925",
+      "range": {
+        "startLine": 488,
+        "startChar": 0,
+        "endLine": 494,
+        "endChar": 12
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "12a337e7_1a1d27e8",
@@ -95,6 +119,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "39cc6c0d_6049e191",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "68c6f8da_4350e2a8",
+      "range": {
+        "startLine": 504,
+        "startChar": 2,
+        "endLine": 509,
+        "endChar": 72
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "39e024ee_1a64f83f",
@@ -132,6 +180,30 @@
       "side": 1,
       "message": "Any TLS protocol, not specific to 1.3",
       "parentUuid": "39e024ee_1a64f83f",
+      "range": {
+        "startLine": 777,
+        "startChar": 0,
+        "endLine": 777,
+        "endChar": 42
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db83cc82_9f4678e5",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 777,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "22c12e97_7362e68d",
       "range": {
         "startLine": 777,
         "startChar": 0,
@@ -213,6 +285,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d8b97e7_28a98ba5",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6d21e2dd_827b4edf",
+      "range": {
+        "startLine": 807,
+        "startChar": 6,
+        "endLine": 807,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3b7852a0_f78a3829",
@@ -284,6 +380,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad306806_c4d31838",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "845e4941_67edff9f",
+      "range": {
+        "startLine": 812,
+        "startChar": 4,
+        "endLine": 816,
+        "endChar": 5
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "52410fad_12f1e673",
@@ -321,6 +441,30 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "52410fad_12f1e673",
+      "range": {
+        "startLine": 899,
+        "startChar": 2,
+        "endLine": 902,
+        "endChar": 15
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ffea204a_288e219e",
+        "filename": "src/plugins/tlsopenssl/tls_async.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "604d2a5e_41685bf8",
       "range": {
         "startLine": 899,
         "startChar": 2,
@@ -392,6 +536,30 @@
       "side": 1,
       "message": "During openssl_confirm_app_close SSL_shutdown is triggered, but if it fails due to async processing, SSL_shutdown will not be finished during the context free as the passive close flag was set.\nIf we unset passive close flag (if SSL_shutdown fails) during app closure, then SSL_shutdown will take place during the context free. \n\nNow its handled during app close instead checking async mode and passive close flag here in context free.",
       "parentUuid": "1f8f963a_5b7d1f70",
+      "range": {
+        "startLine": 78,
+        "startChar": 3,
+        "endLine": 80,
+        "endChar": 48
+      },
+      "revId": "ea3988d11f160687276acf1cc8fba232406fc4cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a22d7b16_f84b23ab",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 3091
+      },
+      "writtenOn": "2025-05-05T05:29:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "232451a0_00c93bd5",
       "range": {
         "startLine": 78,
         "startChar": 3,
