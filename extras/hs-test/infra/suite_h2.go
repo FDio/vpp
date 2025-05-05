@@ -76,7 +76,7 @@ func (s *H2Suite) VppAddr() string {
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
-var _ = Describe("Http2Suite", Pending, Ordered, ContinueOnFailure, func() {
+var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
 	var s H2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -298,7 +298,7 @@ var specs = []struct {
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
-var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
+var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 	var s H2Suite
 	BeforeAll(func() {
 		s.SetupSuite()

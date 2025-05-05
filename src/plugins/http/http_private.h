@@ -287,6 +287,8 @@ typedef struct http_engine_vft_
   void (*conn_cleanup_callback) (http_conn_t *hc);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
+  void (*update_time) (f64 now,
+		       clib_thread_index_t thread_index); /* optional */
 } http_engine_vft_t;
 
 void http_register_engine (const http_engine_vft_t *vft,
@@ -329,6 +331,9 @@ typedef http_sm_result_t (*http_sm_handler) (http_conn_t *hc, http_req_t *req,
 u8 *format_http_req_state (u8 *s, va_list *va);
 u8 *format_http_conn_state (u8 *s, va_list *args);
 u8 *format_http_time_now (u8 *s, va_list *args);
+
+http_conn_t *http_conn_get_w_thread (u32 hc_index,
+				     clib_thread_index_t thread_index);
 
 /**
  * @brief Find the first occurrence of the string in the vector.
@@ -579,6 +584,14 @@ http_io_as_reset_has_read_ntf (http_req_t *req)
   svm_fifo_reset_has_deq_ntf (as->rx_fifo);
 }
 
+always_inline void
+http_io_as_dequeue_notify (http_req_t *req, u32 n_last_deq)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  if (svm_fifo_needs_deq_ntf (as->tx_fifo, n_last_deq))
+    session_dequeue_notify (as);
+}
+
 always_inline u32
 http_io_as_max_write (http_req_t *req)
 {
@@ -682,8 +695,11 @@ always_inline u32
 http_io_ts_max_write (http_conn_t *hc, transport_send_params_t *sp)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
-  return clib_min (svm_fifo_max_enqueue_prod (ts->tx_fifo),
-		   sp->max_burst_size);
+  if (sp)
+    return clib_min (svm_fifo_max_enqueue_prod (ts->tx_fifo),
+		     sp->max_burst_size);
+  else
+    return svm_fifo_max_enqueue_prod (ts->tx_fifo);
 }
 
 always_inline int
@@ -783,8 +799,11 @@ http_io_ts_write_segs (http_conn_t *hc, const svm_fifo_seg_t segs[],
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
   n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
   ASSERT (n_written > 0);
-  sp->bytes_dequeued += n_written;
-  sp->max_burst_size -= n_written;
+  if (sp)
+    {
+      sp->bytes_dequeued += n_written;
+      sp->max_burst_size -= n_written;
+    }
   return (u32) n_written;
 }
 

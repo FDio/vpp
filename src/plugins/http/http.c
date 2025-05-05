@@ -128,7 +128,7 @@ http_conn_alloc_w_thread (clib_thread_index_t thread_index)
   return (hc - wrk->conn_pool);
 }
 
-static inline http_conn_t *
+http_conn_t *
 http_conn_get_w_thread (u32 hc_index, clib_thread_index_t thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
@@ -1223,6 +1223,18 @@ http_transport_cleanup_ho (u32 ho_hc_index)
   http_ho_conn_free (ho_hc);
 }
 
+static void
+http_transport_update_time (f64 now, u8 thread_index)
+{
+  http_engine_vft_t *http_version;
+
+  vec_foreach (http_version, http_vfts)
+    {
+      if (http_version->update_time)
+	http_version->update_time (now, thread_index);
+    }
+}
+
 static const transport_proto_vft_t http_proto = {
   .enable = http_transport_enable,
   .connect = http_transport_connect,
@@ -1231,6 +1243,7 @@ static const transport_proto_vft_t http_proto = {
   .close = http_transport_close,
   .reset = http_transport_reset,
   .cleanup_ho = http_transport_cleanup_ho,
+  .update_time = http_transport_update_time,
   .custom_tx = http_app_tx_callback,
   .app_rx_evt = http_app_rx_evt_cb,
   .get_connection = http_transport_get_connection,
