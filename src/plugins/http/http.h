@@ -21,7 +21,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/ip/ip46_address.h>
 
-#define HTTP_DEBUG 0
+#define HTTP_DEBUG 3
 
 #if HTTP_DEBUG
 #define HTTP_DBG(_lvl, _fmt, _args...)                                        \
