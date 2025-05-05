@@ -34,6 +34,24 @@
       "parentUuid": "892f61e9_de1b616c",
       "revId": "776711814965dd43cc77ceae0532aa81b246aa33",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "91ecae7d_ce3387b4",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-05T18:26:38Z",
+      "side": 1,
+      "message": "Works, thanks!",
+      "parentUuid": "4b676f78_cede01b7",
+      "revId": "776711814965dd43cc77ceae0532aa81b246aa33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
