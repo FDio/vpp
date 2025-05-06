@@ -136,6 +136,15 @@ clib_file_add (clib_file_main_t *fm, clib_file_t *template)
 always_inline void
 clib_file_del (clib_file_main_t *fm, clib_file_t *f)
 {
+
+vec_foreach_pointer (ff, fm->pending_free)
+    {
+      if (ff->index == f->index) {
+        clib_warning("Already deleting %d", f->index);
+        return;
+      }
+    }
+
   fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
   if (f->dont_close == 0)
     close ((int) f->file_descriptor);
