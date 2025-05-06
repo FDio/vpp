@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81840aa2_36d4b6f8",
+        "filename": "src/plugins/dma_intel/dsa.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2025-05-06T21:06:26Z",
+      "side": 1,
+      "message": "Need to check if idb-\u003ech is NULL which can happen if the workqueue fails initialization.",
+      "revId": "92fbf48413003c689729e2b5e404c78dcaf56533",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
