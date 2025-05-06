@@ -450,6 +450,15 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
+static_always_inline void *
+vnet_buffer_get_opaque (vlib_buffer_t *b)
+{
+  return vnet_buffer (b)->unused;
+}
+
+#define VNET_BUFFER_OPAQUE_SIZE                                               \
+  (sizeof (vnet_buffer ((vlib_buffer_t *) 0)->unused))
+
 /* Full cache line (64 bytes) of additional space */
 typedef struct
 {
