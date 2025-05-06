@@ -988,7 +988,8 @@ session_transport_delete_notify (transport_connection_t * tc)
       session_delete (s);
       break;
     default:
-      clib_warning ("session state %u", s->session_state);
+      clib_warning ("session %u state %u", s->session_index, s->session_state);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       session_delete (s);
       break;
@@ -1061,7 +1062,8 @@ session_transport_delete_request (transport_connection_t *tc,
       session_delete (s);
       break;
     default:
-      clib_warning ("session state %u", s->session_state);
+      clib_warning ("session %u state %u", s->session_index, s->session_state);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
       session_delete (s);
       break;
