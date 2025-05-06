@@ -165,48 +165,35 @@ VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
 };
 
 static clib_error_t *
-snort_disconnect_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				      vlib_cli_command_t *cmd)
+snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *err = 0;
   u8 *name = 0;
-  snort_instance_t *si;
   int rv = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "please specify instance name");
+  u32 client_index = SNORT_INVALID_CLIENT_INDEX;
 
   if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     unformat (line_input, "%s", &name);
 
   if (!name)
     {
-      err = clib_error_return (0, "please specify instance name");
+      err = clib_error_return (0, "please specify client name");
       goto done;
     }
 
-  si = snort_get_instance_by_name ((char *) name);
-  if (!si)
-    rv = VNET_API_ERROR_NO_SUCH_ENTRY;
-  else
-    rv = snort_instance_disconnect (vm, si->index);
+  rv = snort_client_disconnect (vm, client_index);
 
   switch (rv)
     {
     case 0:
       break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      err = clib_error_return (0, "unknown instance '%s'", name);
-      break;
-    case VNET_API_ERROR_FEATURE_DISABLED:
-      err = clib_error_return (0, "instance '%s' is not connected", name);
-      break;
-    case VNET_API_ERROR_INVALID_VALUE:
-      err = clib_error_return (0, "failed to disconnect a broken client");
+      err = clib_error_return (0, "unknown client '%s'", name);
       break;
     default:
-      err = clib_error_return (0, "snort_instance_disconnect returned %d", rv);
+      err = clib_error_return (0, "snort_client_disconnect returned %d", rv);
       break;
     }
 
@@ -216,10 +203,10 @@ done:
   return err;
 }
 
-VLIB_CLI_COMMAND (snort_disconnect_instance_command, static) = {
-  .path = "snort disconnect instance",
-  .short_help = "snort disconnect instance <name>",
-  .function = snort_disconnect_instance_command_fn,
+VLIB_CLI_COMMAND (snort_disconnect_client_command, static) = {
+  .path = "snort disconnect client",
+  .short_help = "snort disconnect client <index>",
+  .function = snort_disconnect_client_command_fn,
 };
 
 static clib_error_t *
@@ -545,17 +532,22 @@ snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
   snort_main_t *sm = &snort_main;
-  u32 n_clients = pool_elts (sm->clients);
   snort_client_t *c;
-  snort_instance_t *si;
 
-  vlib_cli_output (vm, "number of clients: %d", n_clients);
-  if (n_clients)
-    vlib_cli_output (vm, "client  snort instance");
+  vlib_cli_output (vm, "number of clients: %d", pool_elts (sm->clients));
   pool_foreach (c, sm->clients)
     {
-      si = vec_elt_at_index (sm->instances, c->instance_index);
-      vlib_cli_output (vm, "%6d  %s", c - sm->clients, si->name);
+      snort_client_qpair_t *cqp;
+      vlib_cli_output (vm, "Client %u", c - sm->clients);
+      vec_foreach (cqp, c->qpairs)
+	{
+	  snort_instance_t *si;
+	  snort_qpair_t *qp;
+	  si = snort_get_instance_by_index (cqp->instance_index);
+	  qp = vec_elt_at_index (si->qpairs, cqp->qpair_index);
+	  vlib_cli_output (vm, "  %s:%u.%u", si->name, qp->qpair_id.thread_id,
+			   qp->qpair_id.queue_id);
+	}
     }
   return 0;
 }

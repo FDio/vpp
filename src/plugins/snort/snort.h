@@ -10,24 +10,28 @@
 #include <vppinfra/socket.h>
 #include <vppinfra/file.h>
 #include <vlib/vlib.h>
-#include <snort/daq_vpp.h>
+#include <snort/daq/daq_vpp_shared.h>
+
+#define SNORT_INVALID_CLIENT_INDEX CLIB_U32_MAX
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u8 log2_queue_size;
   daq_vpp_desc_t *descriptors;
-  volatile u32 *enq_head;
-  volatile u32 *deq_head;
-  volatile u32 *enq_ring;
-  volatile u32 *deq_ring;
-  u32 next_desc;
-  int enq_fd, deq_fd;
-  u32 deq_fd_file_index;
+  u32 *enq_head;
+  u32 *deq_head;
+  u32 *enq_ring;
+  u32 *deq_ring;
   u32 *buffer_indices;
   u16 *next_indices;
   u32 *freelist;
-  u32 ready;
+  int enq_fd, deq_fd;
+  u32 deq_fd_file_index;
+  u32 client_index;
+  u32 next_desc;
+  u8 log2_queue_size;
+  u8 ready;
+  daq_vpp_qpair_id_t qpair_id;
 
   /* temporary storeage used by enqueue node */
   u32 n_pending;
@@ -39,7 +43,6 @@ typedef struct
 typedef struct
 {
   u32 index;
-  u32 client_index;
   void *shm_base;
   u32 shm_size;
   int shm_fd;
@@ -50,17 +53,23 @@ typedef struct
 
 typedef struct
 {
-  daq_vpp_msg_t msg;
+  daq_vpp_msg_reply_t msg;
   int fds[2];
   int n_fds;
 } snort_client_msg_queue_elt;
 
 typedef struct
 {
-  clib_socket_t socket;
   u32 instance_index;
+  u32 qpair_index;
+} snort_client_qpair_t;
+
+typedef struct
+{
+  clib_socket_t socket;
   u32 file_index;
   snort_client_msg_queue_elt *msg_queue;
+  snort_client_qpair_t *qpairs;
 } snort_client_t;
 
 typedef struct
@@ -132,7 +141,8 @@ int snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 int snort_interface_disable_all (vlib_main_t *vm, u32 sw_if_index);
 int snort_set_node_mode (vlib_main_t *vm, u32 mode);
 int snort_instance_delete (vlib_main_t *vm, u32 instance_index);
-int snort_instance_disconnect (vlib_main_t *vm, u32 instance_index);
+int snort_client_disconnect (vlib_main_t *vm, u32 client_index);
+clib_error_t *snort_listener_init ();
 
 always_inline void
 snort_freelist_init (u32 *fl)
@@ -140,5 +150,9 @@ snort_freelist_init (u32 *fl)
   for (int j = 0; j < vec_len (fl); j++)
     fl[j] = j;
 }
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (snort_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
 
 #endif /* __snort_snort_h__ */

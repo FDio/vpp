@@ -27,13 +27,6 @@ static u32 snort_base_msg_id;
 #include <vlibapi/api.h>
 #include <sys/eventfd.h>
 
-VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
-  .class_name = "snort",
-};
-
-#define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
-
 static void
 vl_api_snort_instance_create_t_handler (vl_api_snort_instance_create_t *mp)
 {
@@ -116,7 +109,7 @@ send_snort_instance_details (const snort_instance_t *instance,
     VL_API_SNORT_INSTANCE_DETAILS, name_len, rp, context, ({
       rmp->instance_index = clib_host_to_net_u32 (instance->index);
       vl_api_vec_to_api_string (instance->name, &rmp->name);
-      rmp->snort_client_index = clib_host_to_net_u32 (instance->client_index);
+      rmp->snort_client_index = clib_host_to_net_u32 (0);
       rmp->shm_size = clib_host_to_net_u32 (instance->shm_size);
       rmp->shm_fd = clib_host_to_net_u32 (instance->shm_fd);
       rmp->drop_on_disconnect = instance->drop_on_disconnect;
@@ -274,23 +267,12 @@ send_snort_client_details (const snort_client_t *client,
 {
   snort_main_t *sm = snort_get_main ();
   vl_api_snort_client_details_t *rmp;
-  snort_instance_t *instance;
 
-  if (client->instance_index == ~0)
-    {
-      return;
-    }
-
-  instance = pool_elt_at_index (sm->instances, client->instance_index);
-  if (instance)
-    {
-      REPLY_MACRO_DETAILS4 (VL_API_SNORT_CLIENT_DETAILS, rp, context, ({
-			      rmp->instance_index =
-				clib_host_to_net_u32 (client->instance_index);
-			      rmp->client_index =
-				clib_host_to_net_u32 (client - sm->clients);
-			    }));
-    }
+  REPLY_MACRO_DETAILS4 (VL_API_SNORT_CLIENT_DETAILS, rp, context, ({
+			  rmp->instance_index = 0;
+			  rmp->client_index =
+			    clib_host_to_net_u32 (client - sm->clients);
+			}));
 }
 
 static void
@@ -347,21 +329,11 @@ static void
 vl_api_snort_client_disconnect_t_handler (vl_api_snort_client_disconnect_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  snort_main_t *sm = snort_get_main ();
-  snort_client_t *client;
   vl_api_snort_client_disconnect_reply_t *rmp;
   u32 client_index = clib_net_to_host_u32 (mp->snort_client_index);
   int rv = 0;
 
-  if (pool_is_free_index (sm->clients, client_index))
-    {
-      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
-    }
-  else
-    {
-      client = pool_elt_at_index (sm->clients, client_index);
-      rv = snort_instance_disconnect (vm, client->instance_index);
-    }
+  rv = snort_client_disconnect (vm, client_index);
 
   REPLY_MACRO (VL_API_SNORT_CLIENT_DISCONNECT_REPLY);
 }
@@ -370,10 +342,8 @@ static void
 vl_api_snort_instance_disconnect_t_handler (
   vl_api_snort_instance_disconnect_t *mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
   vl_api_snort_instance_disconnect_reply_t *rmp;
-  u32 instance_index = clib_net_to_host_u32 (mp->instance_index);
-  int rv = snort_instance_disconnect (vm, instance_index);
+  int rv = VNET_API_ERROR_UNIMPLEMENTED;
 
   REPLY_MACRO (VL_API_SNORT_INSTANCE_DISCONNECT_REPLY);
 }

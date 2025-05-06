@@ -8,6 +8,7 @@ add_vpp_plugin(snort
   main.c
   cli.c
   snort_api.c
+  socket.c
 
   API_FILES
   snort.api
@@ -47,7 +48,7 @@ if (NOT DAQ_VERSION_MAJOR MATCHES 3)
   return()
 endif()
 
-add_library(daq_vpp SHARED daq_vpp.c)
+add_library(daq_vpp SHARED daq/main.c daq/config.c daq/socket.c)
 set_target_properties(daq_vpp PROPERTIES SOVERSION ${VPP_LIB_VERSION})
 target_compile_options (daq_vpp PRIVATE "-fvisibility=hidden")
 target_compile_options (daq_vpp PRIVATE "-DHAVE_VISIBILITY")

@@ -114,9 +114,10 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			0 :
 			vnet_buffer (b[0])->ip.save_rewrite_length;
       si = get_snort_instance (sm, b[0], fa_data);
+      qp = vec_elt_at_index (si->qpairs, thread_index);
 
       /* if client isn't connected skip enqueue and take default action */
-      if (PREDICT_FALSE (si->client_index == ~0))
+      if (PREDICT_FALSE (qp->client_index == SNORT_INVALID_CLIENT_INDEX))
 	{
 	  if (si->drop_on_disconnect)
 	    next[0] = SNORT_ENQ_NEXT_DROP;
@@ -128,7 +129,6 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  qp = vec_elt_at_index (si->qpairs, thread_index);
 	  n = qp->n_pending++;
 	  daq_vpp_desc_t *d = qp->pending_descs + n;
 
