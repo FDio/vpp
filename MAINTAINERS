@@ -392,6 +392,24 @@ I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
 
+Plugin - General PCAP-NG
+I:	gpcapng
+Y:	src/plugins/gpcapng/FEATURE.yaml
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/gpcapng/
+
+Plugin - General PCAP-NG Simple Filter
+I:	gpcapng-simple-filter
+Y:	src/plugins/gpcapng-simple-filter/FEATURE.yaml
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/gpcapng-simple-filter/
+
+Plugin - General PCAP-NG Show Packets
+I:	gpcapng-show-packets
+Y:	src/plugins/gpcapng-show-packets/FEATURE.yaml
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/gpcapng-show-packets/
+
 Plugin - NAT
 I:	nat
 M:	Ole Troan <ot@cisco.com>

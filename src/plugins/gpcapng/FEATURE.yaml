@@ -1,0 +1,17 @@
+---
+name: Generic PCAPNG
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - GENEVE packet capture to PCAPNG format
+  - Pluggable filter architecture for packet selection
+  - Multiple output destinations (file, HTTP)
+  - Per-interface capturing capabilities
+description: |-
+        Generic PCAPNG (GPCAPNG) plugin provides high-performance packet
+        capture capabilities.
+        It implements a pluggable filter architecture that allows for
+        extensible packet filtering implementations, tailored for
+        a specific use case. Captured packets are written in PCAPNG format
+        and can be directed to multiple destinations including local files and HTTP endpoints.
+state: experimental
+properties: [API, CLI, MULTITHREAD]

@@ -1,0 +1,21 @@
+---
+name: Generic PCAPNG Simple Filter
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - GENEVE packet filtering with 5-tuple matching
+  - GENEVE option-based filtering with flexible matching
+  - Multi-architecture filter functions
+  - Global and per-interface filter configurations
+  - Filter registration and management debug CLIs
+description: |-
+        GPCAPNG Simple Filter provides the default filter implementation
+        for the Generic PCAPNG plugin. It supports comprehensive GENEVE
+        packet filtering including 5-tuple matching for both outer and
+        inner headers, as well as GENEVE option-based filtering with
+        flexible data matching capabilities. The filter implementation
+        uses VPP's multi-architecture compilation system to provide
+        per-platform variants for different CPU architectures, automatically
+        selected at runtime. However, the lookup is intentionally kept simple
+        algorithmically, so may not provide maximum possible performance.
+state: experimental
+properties: [API, CLI, MULTITHREAD]
