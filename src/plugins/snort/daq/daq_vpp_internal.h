@@ -1,0 +1,144 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
+ */
+
+#ifndef __DAQ_VPP_INTERNAL_H__
+#define __DAQ_VPP_INTERNAL_H__
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <daq_module_api.h>
+#include "daq_vpp.h"
+
+#define __unused     __attribute__ ((unused))
+#define __aligned(x) __attribute__ ((__aligned__ (x)))
+#if __x86_64__
+#define VPP_DAQ_PAUSE() __builtin_ia32_pause ()
+#elif defined(__aarch64__) || defined(__arm__)
+#define VPP_DAQ_PAUSE() __asm__ ("yield")
+#else
+#define VPP_DAQ_PAUSE()
+#endif
+#define ARRAY_LEN(x)        (sizeof (x)/sizeof (x[0]))
+
+#define DEBUG(fmt, ...)                                                       \
+  if (daq_vpp_main.debug)                                                     \
+    printf ("%s: " fmt "\n", __func__, ##__VA_ARGS__);
+
+#define SET_ERROR(modinst, ...)                                               \
+  daq_vpp_main.daq_base_api.set_errbuf (modinst, __VA_ARGS__)
+
+typedef struct
+{
+  int fd;
+  uint64_t size;
+  void *base;
+} daq_vpp_buffer_pool_t;
+
+typedef struct _vpp_qpair
+{
+  daq_vpp_desc_t *descs;
+  daq_vpp_desc_index_t *enq_head;
+  daq_vpp_desc_index_t *deq_head;
+  uint32_t *enq_ring;
+  uint32_t *deq_ring;
+  daq_vpp_desc_index_t next_desc;
+  uint16_t queue_size;
+  int enq_fd;
+  int deq_fd;
+  uint8_t lock;
+} __aligned (64) daq_vpp_qpair_t;
+
+typedef struct _vpp_desc_data
+{
+  DAQ_Msg_t msg;
+  DAQ_PktHdr_t pkthdr;
+  daq_vpp_desc_index_t index;
+  union
+  {
+    struct _vpp_desc_data *freelist_next;
+    daq_vpp_qpair_t *qpair;
+  };
+} daq_vpp_msg_pool_entry_t;
+
+typedef enum
+{
+  DAQ_VPP_INPUT_MODE_INTERRUPT = 0,
+  DAQ_VPP_INPUT_MODE_POLLING,
+} daq_vpp_input_mode_t;
+
+typedef struct daq_vpp_input_t
+{
+  /* next instance */
+  struct daq_vpp_input_t *next;
+
+  /* shared memory */
+  uint64_t shm_size;
+  void *shm_base;
+  int shm_fd;
+
+  /* queue pairs */
+  uint16_t num_qpairs;
+  daq_vpp_qpair_index_t next_qpair;
+
+  char name[DAQ_VPP_MAX_INST_NAME_LEN];
+  daq_vpp_qpair_t qpairs[];
+} daq_vpp_input_t;
+
+typedef struct _vpp_context
+{
+  /* state */
+  DAQ_ModuleInstance_h modinst;
+  uint16_t instance_id;
+
+  /* stats */
+  DAQ_Stats_t stats;
+
+  /* epoll */
+  int epoll_fd;
+
+  daq_vpp_input_t *input;
+
+  bool interrupted;
+
+  /* msg pool */
+  DAQ_MsgPoolInfo_t msg_pool_info;
+  daq_vpp_msg_pool_entry_t *msg_pool_freelist;
+  daq_vpp_msg_pool_entry_t msg_pool[];
+} daq_vpp_ctx_t;
+
+typedef struct
+{
+  uint32_t debug : 1;
+  uint32_t config_parsed : 1;
+  uint32_t connected : 1;
+  uint32_t buffer_pools_initialized : 1;
+
+  /* configured */
+  uint32_t msg_pool_size;
+  daq_vpp_input_mode_t input_mode;
+  DAQ_BaseAPI_t daq_base_api;
+
+  /* buffer pools */
+  uint8_t num_bpools;
+  daq_vpp_buffer_pool_t *bpools;
+
+  /* socket */
+  int socket_fd;
+  const char *socket_name;
+
+  /* instances */
+  struct daq_vpp_input_t *inputs;
+} daq_vpp_main_t;
+
+extern daq_vpp_main_t daq_vpp_main;
+
+/* config.c */
+int daq_vpp_get_variable_descs (const DAQ_VariableDesc_t **var_desc_table);
+void daq_vpp_parse_config (DAQ_ModuleConfig_h modcfg);
+
+/* socket.c */
+daq_vpp_rv_t daq_vpp_connect (uint16_t num_instances);
+daq_vpp_rv_t daq_vpp_find_or_add_input (char *name, daq_vpp_input_t **inp);
+
+#endif /* __DAQ_VPP_INTERNAL_H__ */
