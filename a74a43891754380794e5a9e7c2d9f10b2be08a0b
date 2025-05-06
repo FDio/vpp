@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97da347b_6d141627",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "IMHO, this would add complexity and likely make the code slower.  I\u0027d recommend leaving them here.",
+      "parentUuid": "d42084b8_4bc6ffbf",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "67d636bc_21621644",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-05-05T04:49:20Z",
       "side": 1,
       "message": "This patch or another? That\u0027s a decent amount of bytes :)",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "218135c0_b27a31cc",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "I\u0027d like to clean this up as part of the openssl quic engine implementation.",
+      "parentUuid": "67d636bc_21621644",
       "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb2c2d29_4d9558bb",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "No dynamic registration allowed.  This is needed to handle the case where any of the quic engine plugins is missing due to build/packaging issues.\n\nIn theory, if someone had a private quic engine plugin, then dynamic registration would be necessary, but that would also require making the CLI handle it as well.  I\u0027d prefer to put that off until there is an actual need for it.",
+      "parentUuid": "8039494e_45daf170",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "76d5841e_1c68aa7f",
@@ -82,6 +136,24 @@
       "writtenOn": "2025-05-05T04:49:20Z",
       "side": 1,
       "message": "Question that relates to quic_ctx_t comments, do we want to allow engines to alloc contexts or do we plan to have some opaques that allow engines to grab their internal data structures?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "608e43f1_5e2288ce",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "Engines alloc implementation specific connection/stream contexts:\n\ne.g. quicly_open_stream() allocates the stream context which is stored in the quic_ctx_t ctx.stream",
+      "parentUuid": "76d5841e_1c68aa7f",
       "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db343676_217a4506",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "Ack.  I was planning to clean the vft up while adding openssl quic engine, so I\u0027d prefer to defer this for now.",
+      "parentUuid": "590ab6c0_883ab03b",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "56cdba14_42771f47",
@@ -116,6 +206,24 @@
       "writtenOn": "2025-05-05T04:49:20Z",
       "side": 1,
       "message": "stream_disconnect and stream_reset? Speaking of which, do we have only error_reset or end_stream as well?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be1a4bfc_fe282231",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "I believe that both disconnect and reset are handled by connect_stream_error_reset.\n\nThere is only error_reset, no stream_end.",
+      "parentUuid": "56cdba14_42771f47",
       "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7695069b_76f62f55",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4561ad1e_cade4478",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e992b19f_fe11a74c",
@@ -150,6 +276,24 @@
       "writtenOn": "2025-05-05T04:49:20Z",
       "side": 1,
       "message": "Are we missing callbacks when application closes?",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af8f9de1_72c33657",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "I don\u0027t think so -- proto_on_close() is called when the application closes.",
+      "parentUuid": "e992b19f_fe11a74c",
       "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -171,6 +315,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2edd8ea5_ba8e6a53",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "Done.  Moved all timer funcs to quic/quic_timer.h",
+      "parentUuid": "ae10c8ee_f761b7ff",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "85180e07_63ab527c",
@@ -184,6 +346,24 @@
       "writtenOn": "2025-05-05T04:49:20Z",
       "side": 1,
       "message": "Stop is in quic.h, maybe move this as well? Same comment for add and timer handlers",
+      "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4dcf1595_233c95bc",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 50
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-06T03:32:02Z",
+      "side": 1,
+      "message": "Moved timer funcs to quic/quic_timer.h",
+      "parentUuid": "85180e07_63ab527c",
       "revId": "a74a43891754380794e5a9e7c2d9f10b2be08a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
