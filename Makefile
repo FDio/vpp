@@ -116,6 +116,7 @@ DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 DEB_DEPENDS += libiberty-dev
 DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
+DEB_DEPENDS += libdaq-dev
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),24.04)
@@ -173,6 +174,7 @@ RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
 RPM_DEPENDS += nasm
 RPM_DEPENDS += socat
+RPM_DEPENDS += libdaq-devel
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
