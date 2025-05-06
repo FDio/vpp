@@ -6,37 +6,6 @@
 #include <vnet/feature/feature.h>
 #include <snort/snort.h>
 
-typedef struct
-{
-  u32 next_index;
-  u32 sw_if_index;
-} snort_deq_trace_t;
-
-static u8 *
-format_snort_deq_trace (u8 *s, va_list *args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  snort_deq_trace_t *t = va_arg (*args, snort_deq_trace_t *);
-
-  s = format (s, "snort-deq: sw_if_index %d, next index %d\n", t->sw_if_index,
-	      t->next_index);
-
-  return s;
-}
-
-#define foreach_snort_deq_error                                               \
-  _ (BAD_DESC, "bad descriptor")                                              \
-  _ (BAD_DESC_INDEX, "bad descriptor index")
-
-typedef enum
-{
-#define _(sym, str) SNORT_DEQ_ERROR_##sym,
-  foreach_snort_deq_error
-#undef _
-    SNORT_DEQ_N_ERROR,
-} snort_deq_error_t;
-
 static char *snort_deq_error_strings[] = {
 #define _(sym, string) string,
   foreach_snort_deq_error
@@ -64,7 +33,7 @@ snort_deq_instance (vlib_main_t *vm, u32 instance_index, snort_qpair_t *qp,
   if (n_left > max_recv)
     {
       n_left = max_recv;
-      clib_interrupt_set (ptd->interrupts, instance_index);
+      clib_interrupt_set (ptd->interrupts, (int) instance_index);
       vlib_node_set_interrupt_pending (vm, snort_deq_node.index);
     }
 
@@ -91,7 +60,7 @@ snort_deq_instance (vlib_main_t *vm, u32 instance_index, snort_qpair_t *qp,
 	}
 
       /* put descriptor back to freelist */
-      vec_add1 (qp->freelist, desc_index);
+      qp->freelist[qp->n_freelist++] = desc_index;
       d = qp->descriptors + desc_index;
       buffer_indices++[0] = bi;
       if (d->action == DAQ_VPP_ACTION_FORWARD)
@@ -166,7 +135,7 @@ snort_deq_instance_all_interrupt (vlib_main_t *vm, u32 instance_index,
   else
     {
       *qp->enq_head = *qp->deq_head = qp->next_desc = 0;
-      snort_freelist_init (qp->freelist);
+      snort_freelist_init (qp);
       __atomic_store_n (&qp->ready, 1, __ATOMIC_RELEASE);
     }
 
@@ -174,8 +143,7 @@ snort_deq_instance_all_interrupt (vlib_main_t *vm, u32 instance_index,
 }
 
 static u32
-snort_deq_node_interrupt (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame)
+snort_deq_node_interrupt (vlib_main_t *vm, vlib_node_runtime_t *node)
 {
   snort_main_t *sm = &snort_main;
   snort_per_thread_data_t *ptd =
@@ -222,6 +190,7 @@ snort_deq_instance_poll (vlib_main_t *vm, snort_qpair_t *qp,
 {
   u32 mask = pow2_mask (qp->log2_queue_size);
   u32 head, next, n_recv = 0, n_left;
+  u32 n_bad_desc = 0, n_bad_desc_index = 0;
 
   head = __atomic_load_n (qp->deq_head, __ATOMIC_ACQUIRE);
   next = qp->next_desc;
@@ -240,24 +209,24 @@ snort_deq_instance_poll (vlib_main_t *vm, snort_qpair_t *qp,
       daq_vpp_desc_t *d;
 
       /* check if descriptor index taken from dequqe ring is valid */
-      if ((desc_index = qp->deq_ring[next & mask]) & ~mask)
+      desc_index = qp->deq_ring[next & mask];
+      if (desc_index & ~mask)
 	{
-	  vlib_node_increment_counter (vm, snort_deq_node.index,
-				       SNORT_DEQ_ERROR_BAD_DESC_INDEX, 1);
+	  n_bad_desc_index++;
 	  goto next;
 	}
 
       /* check if descriptor index taken from dequeue ring points to enqueued
        * buffer */
-      if ((bi = qp->buffer_indices[desc_index]) == ~0)
+      bi = qp->buffer_indices[desc_index];
+      if (bi == ~0)
 	{
-	  vlib_node_increment_counter (vm, snort_deq_node.index,
-				       SNORT_DEQ_ERROR_BAD_DESC, 1);
+	  n_bad_desc++;
 	  goto next;
 	}
 
       /* put descriptor back to freelist */
-      vec_add1 (qp->freelist, desc_index);
+      qp->freelist[qp->n_freelist++] = desc_index;
       d = qp->descriptors + desc_index;
       buffer_indices++[0] = bi;
       if (d->action == DAQ_VPP_ACTION_FORWARD)
@@ -276,6 +245,14 @@ snort_deq_instance_poll (vlib_main_t *vm, snort_qpair_t *qp,
 
   qp->next_desc = next;
 
+  if (n_bad_desc)
+    vlib_node_increment_counter (vm, snort_deq_node.index,
+				 SNORT_DEQ_ERROR_BAD_DESC, n_bad_desc);
+  if (n_bad_desc_index)
+    vlib_node_increment_counter (vm, snort_deq_node.index,
+				 SNORT_DEQ_ERROR_BAD_DESC_INDEX,
+				 n_bad_desc_index);
+
   return n_recv;
 }
 
@@ -289,7 +266,7 @@ snort_deq_instance_all_poll (vlib_main_t *vm, snort_qpair_t *qp,
   if (n_processed < max_recv)
     {
       *qp->enq_head = *qp->deq_head = qp->next_desc = 0;
-      snort_freelist_init (qp->freelist);
+      snort_freelist_init (qp);
       __atomic_store_n (&qp->ready, 1, __ATOMIC_RELEASE);
     }
 
@@ -297,8 +274,7 @@ snort_deq_instance_all_poll (vlib_main_t *vm, snort_qpair_t *qp,
 }
 
 static u32
-snort_deq_node_polling (vlib_main_t *vm, vlib_node_runtime_t *node,
-			vlib_frame_t *frame)
+snort_deq_node_polling (vlib_main_t *vm, vlib_node_runtime_t *node)
 {
   snort_main_t *sm = &snort_main;
   u32 buffer_indices[VLIB_FRAME_SIZE], *bi = buffer_indices;
@@ -347,8 +323,8 @@ VLIB_NODE_FN (snort_deq_node)
 {
   snort_main_t *sm = &snort_main;
   if (sm->input_mode == VLIB_NODE_STATE_POLLING)
-    return snort_deq_node_polling (vm, node, frame);
-  return snort_deq_node_interrupt (vm, node, frame);
+    return snort_deq_node_polling (vm, node);
+  return snort_deq_node_interrupt (vm, node);
 }
 
 VLIB_REGISTER_NODE (snort_deq_node) = {
