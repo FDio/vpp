@@ -373,6 +373,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     .id.class_id = pci_hdr.class << 16 | pci_hdr.subclass,
     .pci_handle = vnet_dev_get_pci_handle (dev),
   };
+  cd->msix_handler = NULL;
 
   foreach_int (i, 2, 4)
     {
@@ -383,8 +384,19 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     }
 
   STATIC_ASSERT (sizeof (cd->plt_pci_dev.name) == sizeof (dev->device_id), "");
+
+  if ((rv = vnet_dev_pci_bus_master_enable (vm, dev)))
+    return rv;
+
   strncpy ((char *) cd->plt_pci_dev.name, dev->device_id,
 	   sizeof (dev->device_id));
+
+  cd->plt_pci_dev.intr_handle = malloc (sizeof (struct oct_pci_intr_handle));
+  if (!cd->plt_pci_dev.intr_handle)
+    return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+  memset (cd->plt_pci_dev.intr_handle, 0x0,
+	  sizeof (struct oct_pci_intr_handle));
+  cd->plt_pci_dev.intr_handle->pci_handle = cd->plt_pci_dev.pci_handle;
 
   switch (cd->type)
     {
