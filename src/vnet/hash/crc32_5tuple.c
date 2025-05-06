@@ -48,17 +48,18 @@ compute_ip4_key (ip4_header_t *ip)
   return clib_crc32c_u64 (hash, ((u64) pr << 32) | l4hdr);
 }
 static_always_inline u32
-compute_ip_key (void *p)
+compute_ip_key (void *p, int ip4, int ip6)
 {
-  if ((((u8 *) p)[0] & 0xf0) == 0x40)
+  if (ip4 && (((u8 *) p)[0] & 0xf0) == 0x40)
     return compute_ip4_key (p);
-  else if ((((u8 *) p)[0] & 0xf0) == 0x60)
+  if (ip6 && (((u8 *) p)[0] & 0xf0) == 0x60)
     return compute_ip6_key (p);
   return 0;
 }
 
-void
-vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
+static_always_inline void
+vnet_crc32c_5tuple_ip_func_inline (void **p, u32 *hash, u32 n_packets, int ip4,
+				   int ip6)
 {
   u32 n_left_from = n_packets;
 
@@ -69,10 +70,10 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
       clib_prefetch_load (p[6]);
       clib_prefetch_load (p[7]);
 
-      hash[0] = compute_ip_key (p[0]);
-      hash[1] = compute_ip_key (p[1]);
-      hash[2] = compute_ip_key (p[2]);
-      hash[3] = compute_ip_key (p[3]);
+      hash[0] = compute_ip_key (p[0], ip4, ip6);
+      hash[1] = compute_ip_key (p[1], ip4, ip6);
+      hash[2] = compute_ip_key (p[2], ip4, ip6);
+      hash[3] = compute_ip_key (p[3], ip4, ip6);
 
       hash += 4;
       n_left_from -= 4;
@@ -81,7 +82,7 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from > 0)
     {
-      hash[0] = compute_ip_key (p[0]);
+      hash[0] = compute_ip_key (p[0], ip4, ip6);
 
       hash += 1;
       n_left_from -= 1;
@@ -157,12 +158,32 @@ vnet_crc32c_5tuple_ethernet_func (void **p, u32 *hash, u32 n_packets)
     }
 }
 
+static void
+vnet_crc32c_5tuple_ip46_func (void **p, u32 *hash, u32 n_packets)
+{
+  vnet_crc32c_5tuple_ip_func_inline (p, hash, n_packets, 1, 1);
+}
+
+static void
+vnet_crc32c_5tuple_ip4_func (void **p, u32 *hash, u32 n_packets)
+{
+  vnet_crc32c_5tuple_ip_func_inline (p, hash, n_packets, 1, 0);
+}
+
+static void
+vnet_crc32c_5tuple_ip6_func (void **p, u32 *hash, u32 n_packets)
+{
+  vnet_crc32c_5tuple_ip_func_inline (p, hash, n_packets, 0, 1);
+}
+
 VNET_REGISTER_HASH_FUNCTION (crc32c_5tuple, static) = {
   .name = "crc32c-5tuple",
   .description = "IPv4/IPv6 header and TCP/UDP ports",
   .priority = 50,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = vnet_crc32c_5tuple_ethernet_func,
-  .function[VNET_HASH_FN_TYPE_IP] = vnet_crc32c_5tuple_ip_func,
+  .function[VNET_HASH_FN_TYPE_IP] = vnet_crc32c_5tuple_ip46_func,
+  .function[VNET_HASH_FN_TYPE_IP4] = vnet_crc32c_5tuple_ip4_func,
+  .function[VNET_HASH_FN_TYPE_IP6] = vnet_crc32c_5tuple_ip6_func,
 };
 
 #endif
