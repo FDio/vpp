@@ -9,86 +9,15 @@
 #include <vnet/feature/feature.h>
 #include <snort/snort.h>
 
-typedef struct
-{
-  u32 next_index;
-  u32 sw_if_index;
-  u16 instance;
-  u16 qpair;
-  u32 enq_slot;
-  u32 desc_index;
-  daq_vpp_desc_t desc;
-} snort_enq_trace_t;
-
-static u8 *
-format_snort_enq_trace (u8 *s, va_list *args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  snort_enq_trace_t *t = va_arg (*args, snort_enq_trace_t *);
-  u32 indent = format_get_indent (s);
-
-  s = format (s,
-	      "sw-if-index %u next-index %u\n"
-	      "%Uinstance %u qpair %u desc-index %u slot %u\n"
-	      "%Udesc: buffer-pool %u offset %u len %u address-space-id %u\n",
-	      t->sw_if_index, t->next_index, format_white_space, indent,
-	      t->instance, t->qpair, t->desc_index, t->enq_slot,
-	      format_white_space, indent, t->desc.buffer_pool, t->desc.offset,
-	      t->desc.length, t->desc.address_space_id);
-
-  return s;
-}
-
-#define foreach_snort_enq_error                                               \
-  _ (SOCKET_ERROR, "write socket error")                                      \
-  _ (NO_INSTANCE, "no snort instance")                                        \
-  _ (NO_ENQ_SLOTS, "no enqueue slots (packet dropped)")
-
-typedef enum
-{
-#define _(sym, str) SNORT_ENQ_ERROR_##sym,
-  foreach_snort_enq_error
-#undef _
-    SNORT_ENQ_N_ERROR,
-} snort_enq_error_t;
-
 static char *snort_enq_error_strings[] = {
 #define _(sym, string) string,
   foreach_snort_enq_error
 #undef _
 };
 
-static_always_inline u32
-get_snort_instance_index_ip4 (snort_main_t *sm, vlib_buffer_t *b, u32 fa_data)
-{
-  u32 hash;
-  u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-  ip4_header_t *ip = NULL;
-  u32 *instances = (fa_data == SNORT_INPUT) ?
-		     sm->interfaces[sw_if_index].input_instance_indices :
-		     sm->interfaces[sw_if_index].output_instance_indices;
-  int n_instances = vec_len (instances);
-
-  if (n_instances == 1)
-    {
-      return instances[0];
-    }
-  ip = vlib_buffer_get_current (b);
-  hash = ip4_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT);
-  return instances[hash % n_instances];
-}
-
-static_always_inline snort_instance_t *
-get_snort_instance (snort_main_t *sm, vlib_buffer_t *b, u32 fa_data)
-{
-  u32 instance_index = get_snort_instance_index_ip4 (sm, b, fa_data);
-  return snort_get_instance_by_index (instance_index);
-}
-
 static_always_inline uword
 snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		       vlib_frame_t *frame, int with_trace)
+		       vlib_frame_t *frame, int with_trace, int is_output)
 {
   snort_main_t *sm = &snort_main;
   snort_instance_t *si = 0;
@@ -108,15 +37,18 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 next_index, n;
       /* fa_data is either SNORT_INPUT or SNORT_OUTPUT */
-      u32 fa_data =
-	*(u32 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u32));
-      u32 l3_offset = (fa_data == SNORT_INPUT) ?
-			0 :
-			vnet_buffer (b[0])->ip.save_rewrite_length;
-      si = get_snort_instance (sm, b[0], fa_data);
+      vnet_feature_next (&next_index, b[0]);
+      u32 l3_offset =
+	is_output ? 0 : vnet_buffer (b[0])->ip.save_rewrite_length;
+      u32 sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      si = pool_elt_at_index (sm->instances,
+			      is_output ?
+				sm->output_instance_by_interface[sw_if_index] :
+				sm->input_instance_by_interface[sw_if_index]);
+      qp = vec_elt_at_index (si->qpairs, thread_index);
 
       /* if client isn't connected skip enqueue and take default action */
-      if (PREDICT_FALSE (si->client_index == ~0))
+      if (PREDICT_FALSE (qp->client_index == SNORT_INVALID_CLIENT_INDEX))
 	{
 	  if (si->drop_on_disconnect)
 	    next[0] = SNORT_ENQ_NEXT_DROP;
@@ -128,7 +60,6 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  qp = vec_elt_at_index (si->qpairs, thread_index);
 	  n = qp->n_pending++;
 	  daq_vpp_desc_t *d = qp->pending_descs + n;
 
@@ -156,7 +87,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (n_unprocessed)
     {
-      vlib_node_increment_counter (vm, snort_enq_node.index,
+      vlib_node_increment_counter (vm, node->node_index,
 				   SNORT_ENQ_ERROR_NO_INSTANCE, n_unprocessed);
       vlib_buffer_enqueue_to_next (vm, node, unprocessed_bufs, nexts,
 				   n_unprocessed);
@@ -164,7 +95,8 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   pool_foreach (si, sm->instances)
     {
-      u32 head, freelist_len, n_pending, n_enq, mask;
+      u32 head, n_pending, n_enq, mask;
+      u16 n_freelist;
       u64 ctr = 1;
       qp = vec_elt_at_index (si->qpairs, thread_index);
       mask = pow2_mask (qp->log2_queue_size);
@@ -174,14 +106,14 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (n_pending == 0)
 	continue;
 
-      freelist_len = vec_len (qp->freelist);
+      n_freelist = qp->n_freelist;
 
-      if (freelist_len < n_pending)
+      if (n_freelist < n_pending)
 	{
-	  n_enq = freelist_len;
+	  n_enq = n_freelist;
 	  vlib_buffer_free (vm, qp->pending_buffers + n_enq,
 			    n_pending - n_enq);
-	  vlib_node_increment_counter (vm, snort_enq_node.index,
+	  vlib_node_increment_counter (vm, node->node_index,
 				       SNORT_ENQ_ERROR_NO_ENQ_SLOTS,
 				       n_pending - n_enq);
 	}
@@ -196,7 +128,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       for (u32 i = 0; i < n_enq; i++)
 	{
-	  u32 desc_index = qp->freelist[--freelist_len];
+	  u32 desc_index = qp->freelist[--n_freelist];
 	  qp->next_indices[desc_index] = qp->pending_nexts[i];
 	  ASSERT (qp->buffer_indices[desc_index] == ~0);
 	  qp->buffer_indices[desc_index] = qp->pending_buffers[i];
@@ -226,11 +158,11 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       __atomic_store_n (qp->enq_head, head, __ATOMIC_RELEASE);
-      vec_set_len (qp->freelist, freelist_len);
+      qp->n_freelist = n_freelist;
       if (sm->input_mode == VLIB_NODE_STATE_INTERRUPT)
 	{
 	  if (write (qp->enq_fd, &ctr, sizeof (ctr)) < 0)
-	    vlib_node_increment_counter (vm, snort_enq_node.index,
+	    vlib_node_increment_counter (vm, node->node_index,
 					 SNORT_ENQ_ERROR_SOCKET_ERROR, 1);
 	}
     }
@@ -238,17 +170,41 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return total_enq;
 }
 
-VLIB_NODE_FN (snort_enq_node)
+VLIB_NODE_FN (snort_ip4_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return snort_enq_node_inline (vm, node, frame, 1 /* is_trace*/);
+    return snort_enq_node_inline (vm, node, frame, 1 /* is_trace*/,
+				  0 /* is_output */);
   else
-    return snort_enq_node_inline (vm, node, frame, 0 /* is_trace*/);
+    return snort_enq_node_inline (vm, node, frame, 0 /* is_trace*/,
+				  0 /* is_output */);
 }
 
-VLIB_REGISTER_NODE (snort_enq_node) = {
-  .name = "snort-enq",
+VLIB_REGISTER_NODE (snort_ip4_input_node) = {
+  .name = "snort-ip4-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snort_enq_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = SNORT_ENQ_N_NEXT_NODES,
+  .next_nodes = SNORT_ENQ_NEXT_NODES,
+  .n_errors = ARRAY_LEN (snort_enq_error_strings),
+  .error_strings = snort_enq_error_strings,
+};
+
+VLIB_NODE_FN (snort_ip4_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    return snort_enq_node_inline (vm, node, frame, 1 /* is_trace*/,
+				  1 /* is_output */);
+  else
+    return snort_enq_node_inline (vm, node, frame, 0 /* is_trace*/,
+				  1 /* is_output */);
+}
+
+VLIB_REGISTER_NODE (snort_ip4_output_node) = {
+  .name = "snort-ip4-output",
   .vector_size = sizeof (u32),
   .format_trace = format_snort_enq_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

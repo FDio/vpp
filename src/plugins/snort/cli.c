@@ -20,15 +20,14 @@ format_snort_instance (u8 *s, va_list *args)
 static clib_error_t *
 snort_attach_detach_instance (vlib_main_t *vm, vnet_main_t *vnm,
 			      char *instance_name, u32 sw_if_index,
-			      int is_enable, snort_attach_dir_t dir)
+			      int is_enable, int in, int out)
 {
   clib_error_t *err = NULL;
   int rv = snort_interface_enable_disable (vm, instance_name, sw_if_index,
-					   is_enable, dir);
+					   is_enable, in, out);
   switch (rv)
     {
     case 0:
-      break;
     case VNET_API_ERROR_FEATURE_ALREADY_ENABLED:
       /* already attached to same instance */
       break;
@@ -56,32 +55,6 @@ snort_attach_detach_instance (vlib_main_t *vm, vnet_main_t *vnm,
 }
 
 static clib_error_t *
-snort_detach_all_instance (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index)
-{
-  clib_error_t *err = NULL;
-  int rv = snort_interface_disable_all (vm, sw_if_index);
-  switch (rv)
-    {
-    case 0:
-      break;
-    case VNET_API_ERROR_INSTANCE_IN_USE:
-      err = clib_error_return (
-	0, "interface %U is currently up, set state down first",
-	format_vnet_sw_if_index_name, vnm, sw_if_index);
-      break;
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      err = clib_error_return (0, "interface %U has no attached instances",
-			       format_vnet_sw_if_index_name, vnm, sw_if_index);
-      break;
-    default:
-      err =
-	clib_error_return (0, "snort_interface_disable_all returned %d", rv);
-      break;
-    }
-  return err;
-}
-
-static clib_error_t *
 snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				  vlib_cli_command_t *cmd)
 {
@@ -89,7 +62,7 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   u8 *name = 0;
   u32 queue_size = 1024;
-  u8 drop_on_diconnect = 1;
+  u8 drop_on_disconnect = 1;
   int rv = 0;
 
   /* Get a line of input. */
@@ -101,9 +74,9 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (unformat (line_input, "queue-size %u", &queue_size))
 	;
       else if (unformat (line_input, "on-disconnect drop"))
-	drop_on_diconnect = 1;
+	drop_on_disconnect = 1;
       else if (unformat (line_input, "on-disconnect pass"))
-	drop_on_diconnect = 0;
+	drop_on_disconnect = 0;
       else if (unformat (line_input, "name %s", &name))
 	;
       else
@@ -126,8 +99,12 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  rv = snort_instance_create (vm, (char *) name, min_log2 (queue_size),
-			      drop_on_diconnect);
+  rv = snort_instance_create (vm,
+			      &(snort_instance_create_args_t){
+				.log2_queue_sz = min_log2 (queue_size),
+				.drop_on_disconnect = drop_on_disconnect,
+			      },
+			      "%s", name);
 
   switch (rv)
     {
@@ -165,48 +142,35 @@ VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
 };
 
 static clib_error_t *
-snort_disconnect_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				      vlib_cli_command_t *cmd)
+snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *err = 0;
   u8 *name = 0;
-  snort_instance_t *si;
   int rv = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "please specify instance name");
+  u32 client_index = SNORT_INVALID_CLIENT_INDEX;
 
   if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     unformat (line_input, "%s", &name);
 
   if (!name)
     {
-      err = clib_error_return (0, "please specify instance name");
+      err = clib_error_return (0, "please specify client name");
       goto done;
     }
 
-  si = snort_get_instance_by_name ((char *) name);
-  if (!si)
-    rv = VNET_API_ERROR_NO_SUCH_ENTRY;
-  else
-    rv = snort_instance_disconnect (vm, si->index);
+  rv = snort_client_disconnect (vm, client_index);
 
   switch (rv)
     {
     case 0:
       break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      err = clib_error_return (0, "unknown instance '%s'", name);
-      break;
-    case VNET_API_ERROR_FEATURE_DISABLED:
-      err = clib_error_return (0, "instance '%s' is not connected", name);
-      break;
-    case VNET_API_ERROR_INVALID_VALUE:
-      err = clib_error_return (0, "failed to disconnect a broken client");
+      err = clib_error_return (0, "unknown client '%s'", name);
       break;
     default:
-      err = clib_error_return (0, "snort_instance_disconnect returned %d", rv);
+      err = clib_error_return (0, "snort_client_disconnect returned %d", rv);
       break;
     }
 
@@ -216,10 +180,10 @@ done:
   return err;
 }
 
-VLIB_CLI_COMMAND (snort_disconnect_instance_command, static) = {
-  .path = "snort disconnect instance",
-  .short_help = "snort disconnect instance <name>",
-  .function = snort_disconnect_instance_command_fn,
+VLIB_CLI_COMMAND (snort_disconnect_client_command, static) = {
+  .path = "snort disconnect client",
+  .short_help = "snort disconnect client <index>",
+  .function = snort_disconnect_client_command_fn,
 };
 
 static clib_error_t *
@@ -282,15 +246,10 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  snort_main_t *sm = &snort_main;
-  snort_instance_t *si;
   clib_error_t *err = NULL;
   u8 *name = NULL;
-  u8 **names = NULL;
   u32 sw_if_index = ~0;
-  snort_attach_dir_t direction = SNORT_INOUT;
-  u8 is_all_instances = 0;
-  int i;
+  int in = 0, out = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -302,15 +261,13 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		    vnm, &sw_if_index))
 	;
       else if (unformat (line_input, "instance %s", &name))
-	vec_add1 (names, name);
-      else if (unformat (line_input, "all-instances"))
-	is_all_instances = 1;
+	;
       else if (unformat (line_input, "input"))
-	direction = SNORT_INPUT;
+	in = 1;
       else if (unformat (line_input, "output"))
-	direction = SNORT_OUTPUT;
+	out = 1;
       else if (unformat (line_input, "inout"))
-	direction = SNORT_INOUT;
+	in = out = 1;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -325,43 +282,17 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  if (vec_len (names) == 0 && is_all_instances == 0)
+  if (!name)
     {
-      err = clib_error_return (0, "please specify instances");
+      err = clib_error_return (0, "please specify instance");
       goto done;
     }
 
-  if (is_all_instances)
-    {
-      if (vec_len (sm->instances) == 0)
-	{
-	  err = clib_error_return (0, "no snort instances have been created");
-	  goto done;
-	}
-
-      pool_foreach (si, sm->instances)
-	{
-	  snort_attach_detach_instance (vm, vnm, (char *) si->name,
-					sw_if_index, 1 /* is_enable */,
-					direction);
-	}
-    }
-  else
-    {
-      vec_foreach_index (i, names)
-	{
-	  snort_attach_detach_instance (vm, vnm, (char *) names[i],
-					sw_if_index, 1 /* is_enable */,
-					direction);
-	}
-    }
+  snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index,
+				1 /* is_enable */, in, out);
 
 done:
-  vec_foreach_index (i, names)
-    {
-      vec_free (names[i]);
-    }
-  vec_free (names);
+  vec_free (name);
   unformat_free (line_input);
   return err;
 }
@@ -383,10 +314,7 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *err = NULL;
   u8 *name = NULL;
-  u8 **names = NULL;
   u32 sw_if_index = ~0;
-  u8 is_all_instances = 0;
-  int i = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -395,9 +323,7 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "instance %s", &name))
-	vec_add1 (names, name);
-      else if (unformat (line_input, "all-instances"))
-	is_all_instances = 1;
+	;
       else if (unformat (line_input, "interface %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
@@ -415,32 +341,11 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  if (vec_len (names) == 0)
-    {
-      /* To maintain backwards compatibility */
-      is_all_instances = 1;
-    }
-
-  if (is_all_instances)
-    {
-      err = snort_detach_all_instance (vm, vnm, sw_if_index);
-    }
-  else
-    {
-      vec_foreach_index (i, names)
-	{
-	  snort_attach_detach_instance (vm, vnm, (char *) names[i],
-					sw_if_index, 0 /* is_enable */,
-					SNORT_INOUT);
-	}
-    }
+  snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index,
+				0 /* is_enable */, 1, 1);
 
 done:
-  vec_foreach_index (i, names)
-    {
-      vec_free (names[i]);
-    }
-  vec_free (names);
+  vec_free (name);
   unformat_free (line_input);
   return err;
 }
@@ -478,59 +383,36 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
-  snort_interface_data_t *interface;
-  snort_instance_t *instance;
-  snort_attach_dir_t direction;
-  u32 instance_index;
+  snort_instance_t *si;
   u32 sw_if_index;
-  u8 is_input;
-  int i, j;
+  u8 *s = 0;
 
-  vlib_cli_output (vm, "interface\tinstances\tdirection");
-  vec_foreach_index (sw_if_index, sm->interfaces)
+  vec_foreach_index (sw_if_index, sm->input_instance_by_interface)
     {
-      interface = vec_elt_at_index (sm->interfaces, sw_if_index);
-
-      /* Loop over input instances and prints all of them (with direction
-       * indicated), then continues over output instances while ignoring
-       * previously printed input instances */
-      for (i = 0; i < vec_len (interface->input_instance_indices) +
-			vec_len (interface->output_instance_indices);
-	   i++)
-	{
-	  is_input = i < vec_len (interface->input_instance_indices);
-
-	  instance_index =
-	    is_input ? interface->input_instance_indices[i] :
-		       interface->output_instance_indices
-			 [i - vec_len (interface->input_instance_indices)];
-
-	  /* When printing the output instances ignore the ones present in
-	   * input instances as we have already printed them */
-	  if (!is_input)
-	    {
-	      j =
-		vec_search (interface->input_instance_indices, instance_index);
-	      if (j != ~0)
-		continue;
-	    }
-
-	  instance = snort_get_instance_by_index (instance_index);
-	  direction = snort_get_instance_direction (instance_index, interface);
-	  if (i == 0)
-	    {
-	      vlib_cli_output (vm, "%U:\t%s\t\t%s",
-			       format_vnet_sw_if_index_name, vnm, sw_if_index,
-			       instance->name,
-			       snort_get_direction_name_by_enum (direction));
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm, "\t\t%s\t\t%s", instance->name,
-			       snort_get_direction_name_by_enum (direction));
-	    }
-	}
+      si = snort_get_instance_by_index (
+	sm->input_instance_by_interface[sw_if_index]);
+      if (si)
+	s = format (s, "%U:\t%s", format_vnet_sw_if_index_name, vnm,
+		    sw_if_index, si->name);
     }
+  if (vec_len (s))
+    vlib_cli_output (vm, "input instances:\n%v", s);
+
+  vec_reset_length (s);
+
+  vec_foreach_index (sw_if_index, sm->output_instance_by_interface)
+    {
+      si = snort_get_instance_by_index (
+	sm->output_instance_by_interface[sw_if_index]);
+      if (si)
+	s = format (s, "%U:\t%s", format_vnet_sw_if_index_name, vnm,
+		    sw_if_index, si->name);
+    }
+  if (vec_len (s))
+    vlib_cli_output (vm, "output instances:\n%v", s);
+
+  vec_free (s);
+
   return 0;
 }
 
@@ -545,17 +427,24 @@ snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
   snort_main_t *sm = &snort_main;
-  u32 n_clients = pool_elts (sm->clients);
   snort_client_t *c;
-  snort_instance_t *si;
 
-  vlib_cli_output (vm, "number of clients: %d", n_clients);
-  if (n_clients)
-    vlib_cli_output (vm, "client  snort instance");
+  vlib_cli_output (vm, "number of clients: %d", pool_elts (sm->clients));
   pool_foreach (c, sm->clients)
     {
-      si = vec_elt_at_index (sm->instances, c->instance_index);
-      vlib_cli_output (vm, "%6d  %s", c - sm->clients, si->name);
+      snort_client_qpair_t *cqp;
+      vlib_cli_output (vm, "Client %u", c - sm->clients);
+      vlib_cli_output (vm, "  number of intstances: %u", c->n_instances);
+      vlib_cli_output (vm, "  inputs:");
+      vec_foreach (cqp, c->qpairs)
+	{
+	  snort_instance_t *si;
+	  snort_qpair_t *qp;
+	  si = snort_get_instance_by_index (cqp->instance_index);
+	  qp = vec_elt_at_index (si->qpairs, cqp->qpair_index);
+	  vlib_cli_output (vm, "    %s:%u.%u", si->name,
+			   qp->qpair_id.thread_id, qp->qpair_id.queue_id);
+	}
     }
   return 0;
 }
