@@ -1,0 +1,19 @@
+---
+name: Generic PCAPNG Trivial Filter
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - Simple capture-all or capture-none filtering
+  - Multi-architecture optimized filter functions
+description: |-
+        GPCAPNG Trivial Filter provides a basic filter implementation
+        for the Generic PCAPNG plugin with two simple modes: capture
+        all packets to a specified destination, or capture no packets
+        at all. This filter is useful for testing, debugging, and
+        scenarios where simple on/off capture control is needed without
+        complex packet analysis. The filter implementation uses VPP's
+        multi-architecture compilation system to provide optimized
+        variants for different CPU architectures. It serves as both
+        a minimal working example of the filter API and a practical
+        tool for basic capture scenarios.
+state: experimental
+properties: [CLI, MULTITHREAD]
