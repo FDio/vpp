@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64e4037f_47a33f59",
+        "filename": "src/plugins/quic/quic_timer.h",
+        "patchSetId": 53
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-06T03:43:37Z",
+      "side": 1,
+      "message": "Can\u0027t we pass directly the indexed worker, that is, `wc[ctx-\u003ec_thread_index]`? I\u0027m sure that slowly we\u0027ll find more uses for it in caller",
+      "revId": "e667dd03a2c0b9422cfd1d239b035fc7e86cc444",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
