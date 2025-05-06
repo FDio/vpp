@@ -10,7 +10,7 @@
 #include <vppinfra/socket.h>
 #include <vppinfra/file.h>
 #include <vlib/vlib.h>
-#include <snort/daq_vpp.h>
+#include <snort/daq/daq_vpp_shared.h>
 
 typedef struct
 {
@@ -50,7 +50,7 @@ typedef struct
 
 typedef struct
 {
-  daq_vpp_msg_t msg;
+  daq_vpp_msg_reply_t msg;
   int fds[2];
   int n_fds;
 } snort_client_msg_queue_elt;
