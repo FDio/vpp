@@ -392,6 +392,11 @@ I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
 
+Plugin - General PCAP-NG
+I:	gpcapng
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/gpcapng/
+
 Plugin - NAT
 I:	nat
 M:	Ole Troan <ot@cisco.com>
