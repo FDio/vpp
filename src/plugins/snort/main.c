@@ -30,7 +30,8 @@ VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
   .class_name = "snort",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (snort_log.class, "%s: " fmt, __func__, __VA_ARGS__)
 #define log_err(fmt, ...)   vlib_log_err (snort_log.class, fmt, __VA_ARGS__)
 
 snort_main_t *
@@ -57,17 +58,18 @@ snort_client_disconnect (clib_file_t *uf)
 	__atomic_store_n (&qp->ready, 1, __ATOMIC_RELEASE);
 
       si->client_index = ~0;
-      clib_interrupt_set (ptd->interrupts, uf->private_data);
+      clib_interrupt_set (ptd->interrupts, (int) uf->private_data);
       vlib_node_set_interrupt_pending (vm, snort_deq_node.index);
     }
 
   clib_file_del (&file_main, uf);
   clib_socket_close (&c->socket);
+  clib_fifo_free (c->msg_queue);
   pool_put (sm->clients, c);
 }
 
 int
-snort_instance_disconnect (vlib_main_t *vm, u32 instance_index)
+snort_instance_disconnect (vlib_main_t __clib_unused *vm, u32 instance_index)
 {
   snort_main_t *sm = &snort_main;
   snort_instance_t *si;
@@ -150,49 +152,153 @@ snort_get_instance_by_index (u32 instance_index)
   return pool_elt_at_index (sm->instances, instance_index);
 }
 
+static void
+snort_msg_connect (vlib_main_t *vm, daq_vpp_msg_req_t *req,
+		   snort_client_msg_queue_elt *e)
+{
+  log_debug ("num_snort_instances %u", req->connect.num_snort_instances);
+  e->msg.connect.num_bpools = vec_len (vm->buffer_main->buffer_pools);
+}
+
+static void
+snort_msg_get_buffer_pool (vlib_main_t *vm, daq_vpp_msg_req_t *req,
+			   snort_client_msg_queue_elt *e)
+{
+  vlib_buffer_pool_t *bp;
+  vlib_physmem_map_t *pm;
+  daq_vpp_msg_reply_get_buffer_pool_t *r = &e->msg.get_buffer_pool;
+
+  log_debug ("buffer_pool_index %u", req->get_buffer_pool.buffer_pool_index);
+
+  u32 i = req->get_buffer_pool.buffer_pool_index;
+
+  if (i >= vec_len (vm->buffer_main->buffer_pools))
+    {
+      e->msg.err = DAQ_VPP_ERR_INVALID_MESSAGE;
+      return;
+    }
+
+  bp = vec_elt_at_index (vm->buffer_main->buffer_pools, i);
+  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
+  r->buffer_pool_index = i;
+  r->size = pm->n_pages << pm->log2_page_size;
+  e->fds[0] = pm->fd;
+  e->n_fds = 1;
+}
+
+static void
+snort_msg_get_input (daq_vpp_msg_req_t *req, snort_client_msg_queue_elt *e)
+{
+  daq_vpp_msg_reply_get_input_t *r = &e->msg.get_input;
+  snort_instance_t *si;
+
+  log_debug ("input name '%s'", req->get_input.input_name);
+  si = snort_get_instance_by_name (req->get_input.input_name);
+
+  if (!si)
+    {
+      e->msg.err = DAQ_VPP_ERR_UNKNOWN_INPUT;
+      return;
+    }
+
+  r->input_index = si->index;
+  r->num_qpairs = vec_len (si->qpairs);
+  r->shm_size = si->shm_size;
+  e->fds[0] = si->shm_fd;
+  e->n_fds = 1;
+}
+
+static void
+snort_msg_get_input_qpair (daq_vpp_msg_req_t *req,
+			   snort_client_msg_queue_elt *e)
+{
+  daq_vpp_msg_reply_get_input_qpair_t *r = &e->msg.get_input_qpair;
+  snort_instance_t *si;
+  snort_qpair_t *qp;
+  u8 *base;
+
+  si = snort_get_instance_by_index (req->get_input_qpair.input_index);
+
+  if (!si)
+    {
+      e->msg.err = DAQ_VPP_ERR_UNKNOWN_INPUT;
+      return;
+    }
+
+  if (req->get_input_qpair.input_index >= vec_len (si->qpairs))
+    {
+      e->msg.err = DAQ_VPP_ERR_INVALID_INDEX;
+      return;
+    }
+
+  qp = vec_elt_at_index (si->qpairs, req->get_input_qpair.qpair_index);
+
+  base = (u8 *) si->shm_base;
+  r->qpair_id.thread_id = req->get_input_qpair.qpair_index;
+  r->qpair_id.queue_id = 0;
+  r->input_index = si->index;
+  r->log2_queue_size = qp->log2_queue_size;
+  r->desc_table_offset = (u8 *) qp->descriptors - base;
+  r->enq_ring_offset = (u8 *) qp->enq_ring - base;
+  r->deq_ring_offset = (u8 *) qp->deq_ring - base;
+  r->enq_head_offset = (u8 *) qp->enq_head - base;
+  r->deq_head_offset = (u8 *) qp->deq_head - base;
+  e->fds[0] = qp->enq_fd;
+  e->fds[1] = qp->deq_fd;
+  e->n_fds = 2;
+}
+
 static clib_error_t *
 snort_conn_fd_read_ready (clib_file_t *uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   snort_main_t *sm = &snort_main;
   snort_client_t *c = pool_elt_at_index (sm->clients, uf->private_data);
-  vlib_buffer_pool_t *bp;
-  snort_instance_t *si;
-  snort_qpair_t *qp;
   snort_client_msg_queue_elt *e;
   clib_error_t *err;
-  daq_vpp_msg_t msg;
-  char *name;
-  u8 *base;
+  daq_vpp_msg_req_t req;
 
   log_debug ("fd_read_ready: client %u", uf->private_data);
 
-  if ((err = clib_socket_recvmsg (&c->socket, &msg, sizeof (msg), 0, 0)))
+  err = clib_socket_recvmsg (&c->socket, &req, sizeof (req), 0, 0);
+  if (err)
     {
       log_err ("client recvmsg error: %U", format_clib_error, err);
-      snort_client_disconnect (uf);
       clib_error_free (err);
-      return 0;
-    }
-
-  if (msg.type != DAQ_VPP_MSG_TYPE_HELLO)
-    {
-      log_err ("unexpeced message recieved from client", 0);
       snort_client_disconnect (uf);
       return 0;
     }
 
-  msg.hello.inst_name[DAQ_VPP_INST_NAME_LEN - 1] = 0;
-  name = msg.hello.inst_name;
+  clib_fifo_add2 (c->msg_queue, e);
+  *e = (snort_client_msg_queue_elt){
+    .msg.type = req.type,
+    .msg.err = DAQ_VPP_OK,
+  };
 
-  log_debug ("fd_read_ready: connect instance %s", name);
-
-  if ((si = snort_get_instance_by_name (name)) == 0)
+  switch (req.type)
     {
-      log_err ("unknown instance '%s' requested by client", name);
-      snort_client_disconnect (uf);
-      return 0;
+    case DAQ_VPP_MSG_TYPE_CONNECT:
+      snort_msg_connect (vm, &req, e);
+      break;
+
+    case DAQ_VPP_MSG_TYPE_GET_BUFFER_POOL:
+      snort_msg_get_buffer_pool (vm, &req, e);
+      break;
+
+    case DAQ_VPP_MSG_TYPE_GET_INPUT:
+      snort_msg_get_input (&req, e);
+      break;
+
+    case DAQ_VPP_MSG_TYPE_GET_INPUT_QPAIR:
+      snort_msg_get_input_qpair (&req, e);
+      break;
+
+    default:
+      e->msg.err = DAQ_VPP_ERR_INVALID_MESSAGE;
+      break;
     }
+
+#if 0
 
   vec_foreach (qp, si->qpairs)
     {
@@ -220,39 +326,7 @@ snort_conn_fd_read_ready (clib_file_t *uf)
 
   log_debug ("fd_read_ready: connect instance index %u", si->index);
 
-  clib_fifo_add2 (c->msg_queue, e);
-  e->msg.type = DAQ_VPP_MSG_TYPE_CONFIG;
-  e->msg.config.num_bpools = vec_len (vm->buffer_main->buffer_pools);
-  e->msg.config.num_qpairs = vec_len (si->qpairs);
-  e->msg.config.shm_size = si->shm_size;
-  e->fds[0] = si->shm_fd;
-  e->n_fds = 1;
-
-  vec_foreach (bp, vm->buffer_main->buffer_pools)
-    {
-      vlib_physmem_map_t *pm;
-      pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
-      clib_fifo_add2 (c->msg_queue, e);
-      e->msg.type = DAQ_VPP_MSG_TYPE_BPOOL;
-      e->msg.bpool.size = pm->n_pages << pm->log2_page_size;
-      e->fds[0] = pm->fd;
-      e->n_fds = 1;
-    }
-
-  vec_foreach (qp, si->qpairs)
-    {
-      clib_fifo_add2 (c->msg_queue, e);
-      e->msg.type = DAQ_VPP_MSG_TYPE_QPAIR;
-      e->msg.qpair.log2_queue_size = qp->log2_queue_size;
-      e->msg.qpair.desc_table_offset = (u8 *) qp->descriptors - base;
-      e->msg.qpair.enq_ring_offset = (u8 *) qp->enq_ring - base;
-      e->msg.qpair.deq_ring_offset = (u8 *) qp->deq_ring - base;
-      e->msg.qpair.enq_head_offset = (u8 *) qp->enq_head - base;
-      e->msg.qpair.deq_head_offset = (u8 *) qp->deq_head - base;
-      e->fds[0] = qp->enq_fd;
-      e->fds[1] = qp->deq_fd;
-      e->n_fds = 2;
-    }
+#endif
 
   clib_file_set_data_available_to_write (&file_main, c->file_index, 1);
   return 0;
@@ -262,14 +336,21 @@ static clib_error_t *
 snort_conn_fd_write_ready (clib_file_t *uf)
 {
   snort_main_t *sm = &snort_main;
-  snort_client_t *c = pool_elt_at_index (sm->clients, uf->private_data);
+  snort_client_t *c;
   snort_client_msg_queue_elt *e;
 
   log_debug ("fd_write_ready: client %u", uf->private_data);
-  clib_fifo_sub2 (c->msg_queue, e);
 
+  if (pool_is_free_index (sm->clients, uf->private_data))
+    {
+      clib_file_set_data_available_to_write (&file_main, uf->index, 0);
+      return 0;
+    }
+
+  c = pool_elt_at_index (sm->clients, uf->private_data);
+  clib_fifo_sub2 (c->msg_queue, e);
   if (clib_fifo_elts (c->msg_queue) == 0)
-    clib_file_set_data_available_to_write (&file_main, c->file_index, 0);
+    clib_file_set_data_available_to_write (&file_main, uf->index, 0);
 
   return clib_socket_sendmsg (&c->socket, &e->msg, sizeof (*e), e->fds,
 			      e->n_fds);
@@ -309,7 +390,7 @@ snort_deq_ready (clib_file_t *uf)
 }
 
 static clib_error_t *
-snort_conn_fd_accept_ready (clib_file_t *uf)
+snort_conn_fd_accept_ready (clib_file_t __clib_unused *uf)
 {
   snort_main_t *sm = &snort_main;
   snort_client_t *c;
@@ -341,7 +422,7 @@ snort_conn_fd_accept_ready (clib_file_t *uf)
 }
 
 static clib_error_t *
-snort_listener_init (vlib_main_t *vm)
+snort_listener_init ()
 {
   snort_main_t *sm = &snort_main;
   clib_error_t *err;
@@ -395,7 +476,7 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
   if (sm->listener == 0)
     {
       clib_error_t *err;
-      err = snort_listener_init (vm);
+      err = snort_listener_init ();
       if (err)
 	{
 	  log_err ("listener init failed: %U", format_clib_error, err);
@@ -495,7 +576,6 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
       t.description =
 	format (0, "snort dequeue for instance '%s' qpair %u", si->name, i);
       qp->deq_fd_file_index = clib_file_add (&file_main, &t);
-      qp->ready = 1;
       clib_file_set_polling_thread (&file_main, qp->deq_fd_file_index, i);
       clib_interrupt_resize (&ptd->interrupts, vec_len (sm->instances));
     }
@@ -801,7 +881,7 @@ snort_instance_delete (vlib_main_t *vm, u32 instance_index)
 }
 
 int
-snort_set_node_mode (vlib_main_t *vm, u32 mode)
+snort_set_node_mode (vlib_main_t __clib_unused *vm, u32 mode)
 {
   int i;
   snort_main.input_mode = mode;
