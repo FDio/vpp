@@ -16,6 +16,7 @@ PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)
 include ../build_common.mk
 include ../packages_common.mk
 
+include packages/daq.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
 ifneq ($(shell uname), FreeBSD)
@@ -31,16 +32,16 @@ clean:
 
 .PHONY: install
 ifeq ($(shell uname), FreeBSD)
-install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install quicly-install
+install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install quicly-install
 else
-install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install xdp-tools-install $(if $(AARCH64), octeon-roc-install)
+install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install quicly-install xdp-tools-install $(if $(AARCH64), octeon-roc-install)
 endif	# FreeBSD
 
 .PHONY: config
 ifeq ($(shell uname), FreeBSD)
-config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config quicly-build
+config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config quicly-build
 else
-config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
+config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
 endif	# FreeBSD
 
 ##############################################################################
