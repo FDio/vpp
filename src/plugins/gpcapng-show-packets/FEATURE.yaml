@@ -1,0 +1,20 @@
+---
+name: Generic PCAPNG Show Packets
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - PCAPNG file reading and parsing
+  - GENEVE packet analysis and display
+  - Detailed protocol breakdown and formatting
+  - Support for Enhanced and Simple Packet Blocks
+  - Interactive packet browsing with pagination
+description: |-
+        GPCAPNG Show Packets provides PCAPNG file analysis capabilities
+        for captured GENEVE traffic. It can read and parse PCAPNG files,
+        displaying detailed information about captured packets including
+        some protocol stack breakdown from Ethernet through GENEVE to
+        inner protocols. The plugin provides interactive CLI commands
+        for browsing captured packets with support for limiting output
+        and verbose display modes. It is intended for the use during
+        development/testing.
+state: experimental
+properties: [CLI]
