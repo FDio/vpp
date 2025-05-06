@@ -42,6 +42,7 @@ $(if $(1), \
 endef
 
 MINIMAL_STARTUP_CONF="							\
+cpu { workers 3 } \
 unix { 									\
 	interactive 							\
 	cli-listen /run/vpp/cli.sock					\
