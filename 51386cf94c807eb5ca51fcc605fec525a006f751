@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14265929_125427ba",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-05-07T08:33:42Z",
+      "side": 1,
+      "message": "I think this should be check after the offload check below: if checksum is 0 but packet is marked for offload, we still need to compute the pseudoheader checksum",
+      "revId": "51386cf94c807eb5ca51fcc605fec525a006f751",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d21a970_27f374e3",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-05-07T08:33:42Z",
+      "side": 1,
+      "message": "I think we should move the csum_fold in ip4_translate directly, because it is always done anyway and that way you don\u0027t have to check it twice",
+      "revId": "51386cf94c807eb5ca51fcc605fec525a006f751",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
