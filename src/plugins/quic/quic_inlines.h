@@ -65,7 +65,7 @@ quic_eng_crypto_context_acquire (quic_ctx_t *ctx)
 }
 
 static_always_inline void
-quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
+quic_eng_crypto_context_release (u32 crctx_index, u8 thread_index)
 {
   quic_main_t *qm = &quic_main;
 
@@ -82,7 +82,7 @@ quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
       return;
     }
   quic_engine_vfts[qm->engine_type].crypto_context_release (
-    crypto_context_index, thread_index);
+    crctx_index, thread_index);
 }
 
 static_always_inline int

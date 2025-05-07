@@ -150,7 +150,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   sctx->stream = stream;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
-  sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->crctx_index = qctx->crctx_index;
   if (quicly_stream_is_unidirectional (stream->stream_id))
     stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
@@ -364,10 +364,10 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 }
 
 void
-quic_quicly_crypto_context_release (u32 crypto_context_index, u8 thread_index)
+quic_quicly_crypto_context_release (u32 crctx_index, u8 thread_index)
 {
   crypto_context_t *crctx;
-  crctx = quic_quicly_crypto_context_get (crypto_context_index, thread_index);
+  crctx = quic_quicly_crypto_context_get (crctx_index, thread_index);
   crctx->n_subscribers--;
   quic_quicly_crypto_context_free_if_needed (crctx, thread_index);
 }
@@ -403,13 +403,13 @@ quic_quicly_crypto_context_acquire (quic_ctx_t *ctx)
     {
       crctx = quic_quicly_crypto_context_get (kv.value, ctx->c_thread_index);
       QUIC_DBG (2, "Found exisiting crypto context %d", kv.value);
-      ctx->crypto_context_index = kv.value;
+      ctx->crctx_index = kv.value;
       crctx->n_subscribers++;
       return 0;
     }
 
   crctx = quic_quicly_crypto_context_alloc (ctx->c_thread_index);
-  ctx->crypto_context_index = crctx->ctx_index;
+  ctx->crctx_index = crctx->ctx_index;
   kv.value = crctx->ctx_index;
   crctx->crypto_engine = ctx->crypto_engine;
   crctx->ckpair_index = ctx->ckpair_index;
