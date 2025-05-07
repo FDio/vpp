@@ -856,8 +856,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   int i;
 
-  qm->engine_type =
-    quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
+  qm->engine_type = quic_get_engine_type (qm->engine_type, QUIC_ENGINE_QUICLY);
   if (qm->engine_type == QUIC_ENGINE_NONE)
     {
       /* Prevent crash in transport layer callbacks with no quic engine */
@@ -1275,8 +1274,8 @@ VLIB_CLI_COMMAND (quic_set_cc, static) = {
   .function = quic_set_cc_fn,
 };
 VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER, .description = "Quic transport protocol",
-  // .default_disabled = 1,
+  .version = VPP_BUILD_VER,
+  .description = "Quic transport protocol",
 };
 
 static clib_error_t *
@@ -1287,6 +1286,7 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   uword tmp;
   u32 i;
+  u8 *engine_str = 0;
 
   qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
   qm->udp_fifo_prealloc = 0;
@@ -1311,7 +1311,21 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	qm->connection_timeout = i;
       else if (unformat (line_input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
-      // TODO: add cli selection of quic_eng_<types>
+      else if (unformat (line_input, "quic-engine %s", &engine_str))
+	{
+	  if (engine_str && !clib_strcmp ((char *) engine_str, "openssl"))
+	    qm->engine_type = QUIC_ENGINE_OPENSSL;
+	  else if (engine_str && !clib_strcmp ((char *) engine_str, "quicly"))
+	    qm->engine_type = QUIC_ENGINE_QUICLY;
+	  else
+	    {
+	      clib_warning (
+		"unknown quic-engine '%s' - defaulting to quicly engine",
+		engine_str);
+	      qm->engine_type = QUIC_ENGINE_QUICLY;
+	    }
+	  vec_free (engine_str);
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
