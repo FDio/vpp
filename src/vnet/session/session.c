@@ -966,7 +966,6 @@ session_transport_delete_notify (transport_connection_t * tc)
       session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
-      svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
     case SESSION_STATE_APP_CLOSED:
       /* Cleanup lookup table as transport needs to still be valid.
@@ -977,7 +976,6 @@ session_transport_delete_notify (transport_connection_t * tc)
       session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
-      svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       break;
     case SESSION_STATE_TRANSPORT_DELETED:
@@ -1038,7 +1036,6 @@ session_transport_delete_request (transport_connection_t *tc,
       session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
-      svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
     case SESSION_STATE_APP_CLOSED:
       /* Cleanup lookup table as transport needs to still be valid.
@@ -1049,7 +1046,6 @@ session_transport_delete_request (transport_connection_t *tc,
       session_lookup_del_session (s);
       session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify_custom (s, SESSION_CLEANUP_TRANSPORT, cb_fn);
-      svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       break;
     case SESSION_STATE_TRANSPORT_DELETED:
@@ -1095,7 +1091,6 @@ session_transport_closed_notify (transport_connection_t * tc)
   if (s->session_state == SESSION_STATE_READY)
     {
       session_transport_closing_notify (tc);
-      svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_set_state (s, SESSION_STATE_TRANSPORT_CLOSED);
     }
   /* If app close has not been received or has not yet resulted in
@@ -1121,7 +1116,6 @@ session_transport_reset_notify (transport_connection_t * tc)
   session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_dequeue_drop_all (s->tx_fifo);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
   if (s->session_state == SESSION_STATE_ACCEPTING)
