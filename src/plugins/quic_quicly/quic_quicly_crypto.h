@@ -14,12 +14,13 @@
 #include <vnet/session/session.h>
 
 static_always_inline crypto_context_t *
-quic_quicly_crypto_context_get (u32 cr_index, u32 thread_index)
+quic_quicly_crypto_context_get (u32 crctx_index)
 {
-  ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (cr_index) == thread_index);
+  clib_thread_index_t thread_index =
+    QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx_index);
   return pool_elt_at_index (
     quic_wrk_ctx_get (quic_quicly_main.qm, thread_index)->crypto_ctx_pool,
-    QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (cr_index));
+    QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (crctx_index));
 }
 
 #define QUIC_IV_LEN 17
@@ -104,8 +105,7 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type,
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
 extern ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[];
 extern int quic_quicly_crypto_context_acquire (quic_ctx_t *ctx);
-extern void quic_quicly_crypto_context_release (u32 crypto_context_index,
-						u8 thread_index);
+extern void quic_quicly_crypto_context_release (u32 crctx_index);
 extern int quic_quicly_app_cert_key_pair_delete (app_cert_key_pair_t *ckpair);
 extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
 					  ptls_t *tls, int is_encrypt,
