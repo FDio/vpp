@@ -22,6 +22,7 @@ endif	# ! FreeBSD
 
 .PHONY: clean
 clean:
+	@# DEBUG: comment out next line when debugging with gdb
 	@rm -rf $(B) $(I)
 
 .PHONY: install
@@ -58,6 +59,7 @@ deb/debian/changelog: Makefile
 
 $(DEV_DEB): deb/debian/changelog
 	@cd deb && dpkg-buildpackage -b -uc -us
+	@# DEBUG: comment out next line when debugging with gdb
 	git clean -fdx deb
 
 build-deb: $(DEV_DEB)
@@ -102,6 +104,7 @@ $(DEV_RPM): Makefile rpm/vpp-opt-deps.spec
 	  --define "_release $(PKG_SUFFIX)" \
 	  $(CURDIR)/rpm/vpp-opt-deps.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
+	@# DEBUG: comment out next line when debugging with gdb
 	@git clean -fdx rpm
 
 build-rpm: $(DEV_RPM)

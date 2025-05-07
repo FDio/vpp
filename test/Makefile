@@ -77,6 +77,9 @@ MACHINE=$(shell uname -m)
 ifeq ($(shell test -d /opt/vpp/optional/${MACHINE}/lib64 && echo yes),yes)
 VPP_OPT_DEPS_LIBRARY_PATH?=/opt/vpp/optional/${MACHINE}/lib64
 endif
+ifeq ($(shell test -d /opt/vpp/optional/${MACHINE}/lib64 && echo yes),yes)
+VPP_OPT_DEPS_SRC_PATH?=$(WS_ROOT)/build/optional/deb/_build/src-openssl
+endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
 PIP_VERSION=25.0.1
@@ -277,6 +280,12 @@ else
 ARG20=
 endif
 
+ifneq ($(VPP_OPT_DEPS_SRC_PATH),)
+ARG21=--vpp-opt-deps-src-path=$(VPP_OPT_DEPS_SRC_PATH)
+else
+ARG21=
+endif
+
 EXC_PLUGINS_ARG=
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 # convert the comma-separated list into N invocations of the argument to exclude a plugin
@@ -285,7 +294,7 @@ endif
 
 
 
-EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20)
+EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21)
 
 RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
