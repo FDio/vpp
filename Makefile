@@ -25,7 +25,7 @@ DPDK_CONFIG?=no-pci
 
 # we prefer clang by default
 ifeq ($(CC),cc)
-  CC=clang
+  CC=gcc
 endif
 
 ifeq ($(strip $(SHELL)),)
