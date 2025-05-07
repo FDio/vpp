@@ -737,12 +737,12 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  $(SUDO) $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF)
+	  $(SUDO) LD_LIBRARY_PATH=$LD_LIBRARY_PATH $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF)
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  $(SUDO) $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//')
+	  $(SUDO) LD_LIBRARY_PATH=$LD_LIBRARY_PATH $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//')
 endef
 endif
 
