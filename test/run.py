@@ -108,7 +108,17 @@ def get_env(args):
     }
     # Update values for defaults from environment variables
     # If a variable is set in os.environ, it takes priority over the defaults
-    return {key: os.environ.get(key, default) for key, default in defaults.items()}
+    # If LD_LIBRARY_PATH is set, append it to the default value
+    # to ensure that the VPP libraries are found as well as optional files
+    # installed in the vpp-opt-deps package.
+    return {
+        key: (
+            (default + ":" + os.environ.get(key))
+            if key == "LD_LIBRARY_PATH" and os.environ.get(key)
+            else os.environ.get(key, default)
+        )
+        for key, default in defaults.items()
+    }
 
 
 # Runs a test inside a spawned QEMU VM
