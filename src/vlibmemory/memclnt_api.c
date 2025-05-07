@@ -130,8 +130,10 @@ vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
   vl_api_control_ping_reply_t *rmp;
   int rv = 0;
 
-  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY,
-		({ rmp->vpe_pid = ntohl (getpid ()); }));
+  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY, ({
+		  rmp->vpe_pid = ntohl (getpid ());
+		  rmp->client_index = mp->client_index;
+		}));
 }
 
 static void
