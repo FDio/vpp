@@ -1,0 +1,811 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2025 Cisco Systems, Inc.
+ */
+
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+#include <quic/quic.h>
+#include <quic/quic_inlines.h>
+#include <vnet/session/application.h>
+#include <vppinfra/pool.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/quic.h>
+#include <openssl/core_dispatch.h>
+#include <quic_openssl/quic_openssl.h>
+#include <quic_openssl/quic_openssl_crypto.h>
+
+quic_openssl_main_t quic_openssl_main;
+
+VLIB_PLUGIN_REGISTER () = {
+  .version = VPP_BUILD_VER,
+  .description = "Openssl QUIC Engine",
+};
+
+// Stub callbacks (in a real QUIC stack, these would handle CRYPTO frames,
+// secrets, etc.)
+static int
+crypto_send_stub (SSL *s, const unsigned char *buf, size_t buf_len,
+		  size_t *consumed, void *arg)
+{
+  QUIC_DBG (2, "crypto_send: Sending %zu bytes of CRYPTO data\n", buf_len);
+  *consumed = buf_len; // Consume all for simplicity
+  // In real code: Send via QUIC CRYPTO frame using third-party stack
+  return 1;
+}
+
+static int
+crypto_recv_rcd_stub (SSL *s, const unsigned char **buf, size_t *bytes_read,
+		      void *arg)
+{
+  static unsigned char dummy_buf[1024] = { 0 }; // Dummy received data
+  *buf = dummy_buf;
+  *bytes_read = sizeof (dummy_buf);
+  QUIC_DBG (2,
+	    "crypto_recv_rcd: Providing %zu bytes of received CRYPTO data\n",
+	    *bytes_read);
+  // In real code: Receive from QUIC CRYPTO frame
+  return 1;
+}
+
+static int
+crypto_release_rcd_stub (SSL *s, size_t bytes_read, void *arg)
+{
+  QUIC_DBG (2, "crypto_release_rcd: Releasing %zu bytes\n", bytes_read);
+  // In real code: Free buffers from QUIC stack
+  return 1;
+}
+
+static int
+yield_secret_stub (SSL *s, uint32_t prot_level, int direction,
+		   const unsigned char *secret, size_t secret_len, void *arg)
+{
+  QUIC_DBG (
+    2, "yield_secret: Yielding secret for level %u, direction %d, len %zu\n",
+    prot_level, direction, secret_len);
+  // In real code: Use secret for QUIC packet protection (e.g., update keys in
+  // ngtcp2_conn)
+  return 1;
+}
+
+static int
+got_transport_params_stub (SSL *s, const unsigned char *params,
+			   size_t params_len, void *arg)
+{
+  QUIC_DBG (2, "got_transport_params: Received params of len %zu\n",
+	    params_len);
+  // In real code: Parse and apply QUIC transport params in third-party stack
+  return 1;
+}
+
+static int
+alert_stub (SSL *s, unsigned char alert_code, void *arg)
+{
+  QUIC_DBG (2, "alert: Received alert code %u\n", alert_code);
+  // In real code: Handle TLS alert in QUIC context
+  return 1;
+}
+
+OSSL_DISPATCH qt_dispatch[] = {
+  { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_SEND, (void (*) (void)) crypto_send_stub },
+  { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_RECV_RCD,
+    (void (*) (void)) crypto_recv_rcd_stub },
+  { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_RELEASE_RCD,
+    (void (*) (void)) crypto_release_rcd_stub },
+  { OSSL_FUNC_SSL_QUIC_TLS_YIELD_SECRET, (void (*) (void)) yield_secret_stub },
+  { OSSL_FUNC_SSL_QUIC_TLS_GOT_TRANSPORT_PARAMS,
+    (void (*) (void)) got_transport_params_stub },
+  { OSSL_FUNC_SSL_QUIC_TLS_ALERT, (void (*) (void)) alert_stub },
+  { 0, NULL }
+};
+
+void
+quic_openssl_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
+						 crypto_context_t *crctx)
+{
+  quic_openssl_crypto_context_data_t *data =
+    (quic_openssl_crypto_context_data_t *) crctx->data;
+  clib_memcpy_fast (kv->key, data->crctx_key, sizeof (data->crctx_key));
+}
+
+static int
+quic_openssl_app_cert_key_pair_delete (app_cert_key_pair_t *ckpair)
+{
+  quic_main_t *qm = quic_openssl_main.qm;
+  clib_bihash_24_8_t *crctx_hash = quic_openssl_main.crypto_ctx_hash;
+  crypto_context_t *crctx;
+  clib_bihash_kv_24_8_t kv;
+  int i;
+
+  for (i = 0; i < qm->num_threads; i++)
+    {
+      pool_foreach (crctx, quic_wrk_ctx_get (qm, i)->crypto_ctx_pool)
+	{
+	  if (crctx->ckpair_index == ckpair->cert_key_index)
+	    {
+	      quic_openssl_crypto_context_make_key_from_crctx (&kv, crctx);
+	      clib_bihash_add_del_24_8 (&crctx_hash[i], &kv, 0 /* is_add */);
+	    }
+	}
+    }
+  return 0;
+}
+static const u8 qo_alpn_protos[] = "\x02h3"; // ALPN Protocol list format
+static const u8 qo_alpn_protos_len = sizeof (qo_alpn_protos);
+
+static void
+quic_openssl_engine_init (quic_main_t *qm)
+{
+  quic_openssl_main_t *qom = &quic_openssl_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  int i, num_threads = 1 /* main thread */ + vtm->n_threads;
+  u8 *p;
+
+  QUIC_DBG (2, "Initializing OpenSSL QUIC engine");
+
+  /* TODO: Should the default engine be VPP or OPENSSL?
+   * Does VPP work with quic_quicly engine???
+   */
+  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+  qm->default_quic_cc = QUIC_CC_RENO;
+  qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
+  qom->qm = qm;
+
+  OPENSSL_init_ssl (
+    OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
+
+  qom->num_threads = qm->num_threads;
+  qom->available_crypto_engines = clib_bitmap_alloc (
+    qom->available_crypto_engines, app_crypto_engine_n_types ());
+
+  /* QUIC requires ALPN handshake. For now only h3, but use tls_openssl plugin
+   * compatible pattern in case configurable option added to quic in the future.
+   */
+  vec_add2 (qom->alpn_protos, p, qo_alpn_protos_len);
+  clib_memcpy_fast (p, qo_alpn_protos, qo_alpn_protos_len);
+  
+  // Initialize crypto contexts for all threads
+  for (i = 0; i < num_threads; i++)
+    {
+      quic_openssl_crypto_init_per_thread (qm, i);
+    }
+
+  QUIC_DBG (3, "OpenSSL QUIC engine initialized with %u threads",
+	    qom->num_threads);
+}
+
+static_always_inline void
+quic_openssl_debug_connection (quic_ctx_t *ctx)
+{
+#if QUIC_DEBUG >= 1
+  if (!ctx)
+    {
+      QUIC_DBG (1, "Context is NULL");
+      return;
+    }
+  if (!ctx->conn)
+    {
+      QUIC_DBG (1, "No active connection in context %u", ctx->c_c_index);
+      return;
+    }
+
+  SSL *ssl_conn = (SSL *) ctx->conn;
+  const unsigned char *alpn_selected;
+  unsigned int alpn_len;
+  char cipher_name[128];
+
+  if (!ssl_conn)
+    {
+      QUIC_DBG (1, "SSL connection is NULL in context %u", ctx->c_c_index);
+      return;
+    }
+  const SSL_CIPHER *cipher = SSL_get_current_cipher (ssl_conn);
+  if (cipher)
+    {
+      SSL_CIPHER_description (cipher, cipher_name, sizeof (cipher_name));
+    }
+  else
+    {
+      snprintf (cipher_name, sizeof (cipher_name), "unknown");
+    }
+  SSL_get0_alpn_selected (ssl_conn, &alpn_selected, &alpn_len);
+  QUIC_DBG (1, "QUIC Connection Details:");
+  QUIC_DBG (1, "  Handle: %p", ssl_conn);
+  QUIC_DBG (1, "  Context: %u (thread %u)", ctx->c_c_index,
+	    ctx->c_thread_index);
+  QUIC_DBG (1, "  Cipher: %s", cipher_name);
+
+  if (alpn_selected && alpn_len > 0)
+    {
+      char alpn_str[32];
+      clib_memcpy (alpn_str, alpn_selected,
+		   clib_min (alpn_len, sizeof (alpn_str) - 1));
+      alpn_str[clib_min (alpn_len, sizeof (alpn_str) - 1)] = '\0';
+      QUIC_DBG (1, "  ALPN: %s", alpn_str);
+    }
+  else
+    {
+      QUIC_DBG (1, "  ALPN: Not negotiated");
+    }
+#endif
+}
+
+static void
+quic_openssl_connection_migrate (quic_ctx_t *ctx)
+{
+  QUIC_ERR ("Connection migration not supported in OpenSSL engine");
+  // TODO: implementation
+}
+
+BIO_ADDR *
+sockaddr_to_bio_addr (const struct sockaddr *sa)
+{
+  BIO_ADDR *bio_addr;
+  const struct sockaddr_in *sin;
+  const struct sockaddr_in6 *sin6;
+  int ret;
+
+  bio_addr = BIO_ADDR_new ();
+  if (!bio_addr)
+    return NULL;
+
+  switch (sa->sa_family)
+    {
+    case AF_INET:
+      sin = (const struct sockaddr_in *) sa;
+      ret = BIO_ADDR_rawmake (bio_addr, AF_INET, &sin->sin_addr,
+			      sizeof (sin->sin_addr), ntohs (sin->sin_port));
+      if (ret != 1)
+	{
+	  BIO_ADDR_free (bio_addr);
+	  return NULL;
+	}
+      break;
+
+    case AF_INET6:
+      sin6 = (const struct sockaddr_in6 *) sa;
+      ret =
+	BIO_ADDR_rawmake (bio_addr, AF_INET6, &sin6->sin6_addr,
+			  sizeof (sin6->sin6_addr), ntohs (sin6->sin6_port));
+      if (ret != 1)
+	{
+	  BIO_ADDR_free (bio_addr);
+	  return NULL;
+	}
+      break;
+
+    default:
+      BIO_ADDR_free (bio_addr);
+      return NULL;
+    }
+
+  return bio_addr;
+}
+
+static int
+quic_openssl_connect (quic_ctx_t *ctx, u32 ctx_index,
+		      clib_thread_index_t thread_index, struct sockaddr *sa)
+{
+  crypto_context_t *crctx;
+  int ret;
+  BIO_ADDR *bio_addr;
+  quic_openssl_crypto_context_data_t *data;
+
+  QUIC_DBG (2, "Creating new QUIC connection for ctx %u on thread %u",
+	    ctx_index, thread_index);
+
+  // First acquire crypto context
+  if (quic_openssl_crypto_context_acquire (ctx) != 0)
+    {
+      QUIC_ERR ("Failed to acquire crypto context for connection");
+      return -1;
+    }
+
+  crctx =
+    quic_openssl_crypto_context_get (ctx->crctx_index, ctx->c_thread_index);
+  data = crctx ? (quic_openssl_crypto_context_data_t *) &crctx->data : 0;
+  if (!crctx || !data->ssl_conn)
+    {
+      QUIC_ERR ("Invalid crypto context after acquisition");
+      return -1;
+    }
+
+  bio_addr = sockaddr_to_bio_addr (sa);
+  if (!bio_addr)
+    {
+      QUIC_ERR ("Failed to convert sockaddr to BIO_ADDR");
+      return -1;
+    }
+
+  if (!SSL_set1_initial_peer_addr (data->ssl_conn, bio_addr))
+    {
+      QUIC_ERR ("Failed to set initial peer address");
+      BIO_ADDR_free (bio_addr);
+      return -1;
+    }
+
+  BIO_ADDR_free (bio_addr);
+
+  ret = SSL_connect (data->ssl_conn);
+  if (ret <= 0)
+    {
+      int err = SSL_get_error (data->ssl_conn, ret);
+      if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE)
+	{
+	  QUIC_ERR ("SSL_connect failed with error %d", err);
+	  return -1;
+	}
+    }
+
+  ctx->conn = data->ssl_conn;
+
+  QUIC_DBG (2, "QUIC connection handle=%p successfully created for ctx %u",
+	    ctx->conn, ctx_index);
+
+  quic_openssl_debug_connection (ctx);
+  return 0;
+}
+
+static int
+quic_openssl_connect_stream (void *quic_conn, void **quic_stream,
+			     quic_stream_data_t **quic_stream_data,
+			     u8 is_unidir)
+{
+  SSL *ssl_conn = (SSL *) quic_conn;
+
+  SSL *stream = SSL_new_stream (ssl_conn, is_unidir ? SSL_STREAM_FLAG_UNI : 0);
+  if (!stream)
+    {
+      QUIC_ERR ("Failed to create new QUIC stream");
+      return -1;
+    }
+
+  *quic_stream = stream;
+  if (quic_stream_data)
+    {
+      QUIC_DBG (1, "quic_openssl plugin does not use quic_stream data!");
+    }
+
+  QUIC_DBG (3, "Created new QUIC stream: %p (unidirectional: %u)", stream,
+	    is_unidir);
+  return 0;
+}
+
+#define QUIC_ERR_INTERNAL_STREAM_ERROR 0x1
+
+static_always_inline void
+log_reset_args_details (const SSL_STREAM_RESET_ARGS *args, const char *when)
+{
+#if QUIC_DBG >= 1
+  if (!args)
+    {
+      QUIC_DBG (3, "Reset args %s: NULL pointer", when);
+      return;
+    }
+
+  QUIC_DBG (3, "Reset args %s:", when);
+  QUIC_DBG (3, "  quic_error_code: 0x%llx",
+	    (unsigned long long) args->quic_error_code);
+  QUIC_DBG (3, "  struct_addr: %p", args);
+  QUIC_DBG (3, "  struct_size: %zu bytes", sizeof (*args));
+
+  // Log all potential fields by treating as array of uint64_t values
+  const uint64_t *u64_fields = (const uint64_t *) args;
+  size_t num_u64_fields = sizeof (*args) / sizeof (uint64_t);
+
+  for (size_t i = 0; i < num_u64_fields; i++)
+    {
+      QUIC_DBG (3, "  u64_field[%zu]: 0x%016llx (%llu)", i,
+		(unsigned long long) u64_fields[i],
+		(unsigned long long) u64_fields[i]);
+    }
+
+  // Log remaining bytes if structure size is not multiple of uint64_t
+  size_t remaining_bytes = sizeof (*args) % sizeof (uint64_t);
+  if (remaining_bytes > 0)
+    {
+      const uint8_t *remaining =
+	(const uint8_t *) args + (num_u64_fields * sizeof (uint64_t));
+      char hex_str[32];
+      char *p = hex_str;
+
+      for (size_t i = 0;
+	   i < remaining_bytes && (p - hex_str) < sizeof (hex_str) - 3; i++)
+	{
+	  p += snprintf (p, 4, "%02x ", remaining[i]);
+	}
+      *p = '\0';
+
+      QUIC_DBG (3, "  remaining_bytes: %s", hex_str);
+    }
+#endif
+}
+
+static void
+quic_openssl_connect_stream_error_reset (void *quic_stream)
+{
+  SSL *stream = (SSL *) quic_stream;
+
+  SSL_STREAM_RESET_ARGS reset_args = {
+    .quic_error_code = QUIC_ERR_INTERNAL_STREAM_ERROR,
+  };
+
+  QUIC_DBG (3, "Resetting QUIC stream: %p with error code 0x%x", stream,
+	    reset_args.quic_error_code);
+
+  log_reset_args_details (&reset_args, "before reset");
+
+  if (SSL_stream_reset (stream, &reset_args, sizeof (reset_args)) != 1)
+    {
+      log_reset_args_details (&reset_args, "after failed reset");
+      unsigned long ssl_err = ERR_get_error ();
+      if (ssl_err != 0)
+	{
+	  char err_buf[256];
+	  ERR_error_string_n (ssl_err, err_buf, sizeof (err_buf));
+	  QUIC_ERR ("SSL error: %s", err_buf);
+	}
+    }
+  else
+    {
+      QUIC_DBG (3, "Successfully reset QUIC stream: %p", stream);
+      log_reset_args_details (&reset_args, "after successful reset");
+    }
+}
+
+static int
+quic_openssl_send_packets (quic_ctx_t *ctx)
+{
+  crypto_context_t *crctx;
+  SSL *ssl_conn;
+  session_t *udp_session;
+  svm_fifo_t *f;
+  u8 buf[QUIC_MAX_PACKET_SIZE];
+  int bytes_read;
+  int total_sent = 0;
+  quic_openssl_crypto_context_data_t *data;
+
+  crctx =
+    quic_openssl_crypto_context_get (ctx->crctx_index, ctx->c_thread_index);
+  data = crctx ? (quic_openssl_crypto_context_data_t *) &crctx->data : 0;
+  if (!crctx || !data->ssl_conn)
+    return -1;
+
+  ssl_conn = data->ssl_conn;
+
+  // Handle SSL events first
+  SSL_handle_events (ssl_conn);
+
+  // Get UDP session for sending
+  udp_session = session_get_from_handle (ctx->udp_session_handle);
+  if (!udp_session)
+    return -1;
+
+  f = udp_session->tx_fifo;
+
+  // Read data from write BIO and send via UDP
+  while ((bytes_read = BIO_read (data->wbio, buf, sizeof (buf))) > 0)
+    {
+      // Write to UDP session TX fifo
+      session_dgram_hdr_t hdr;
+      clib_memset (&hdr, 0, sizeof (hdr));
+      hdr.data_length = bytes_read;
+      hdr.data_offset = 0;
+
+      if (svm_fifo_enqueue (f, sizeof (hdr), (u8 *) &hdr) != sizeof (hdr))
+	break;
+
+      if (svm_fifo_enqueue (f, bytes_read, buf) != bytes_read)
+	break;
+
+      total_sent += bytes_read;
+    }
+
+  if (total_sent > 0)
+    {
+      // Trigger TX event
+      session_send_io_evt_to_thread (f, SESSION_IO_EVT_TX);
+    }
+
+  return total_sent;
+}
+
+static int
+quic_openssl_udp_session_rx_packets (session_t *udp_session)
+{
+  svm_fifo_t *f = udp_session->rx_fifo;
+  u32 max_deq;
+  u32 cur_deq, fifo_offset = 0;
+  session_dgram_hdr_t ph;
+  u8 packet_data[QUIC_MAX_PACKET_SIZE];
+  quic_ctx_t *ctx;
+  crypto_context_t *crctx;
+  quic_openssl_crypto_context_data_t *data;
+  int rv = 0;
+
+  if (udp_session->flags & SESSION_F_IS_MIGRATING)
+    {
+      QUIC_DBG (3, "RX on migrating udp session");
+      return 0;
+    }
+
+  max_deq = svm_fifo_max_dequeue (f);
+  if (max_deq == 0)
+    return 0;
+
+  while (fifo_offset < max_deq)
+    {
+      cur_deq = max_deq - fifo_offset;
+      if (cur_deq < SESSION_CONN_HDR_LEN)
+	break;
+
+      // Peek the packet header
+      rv = svm_fifo_peek (f, fifo_offset, SESSION_CONN_HDR_LEN, (u8 *) &ph);
+      if (rv != SESSION_CONN_HDR_LEN)
+	break;
+
+      u32 full_len = ph.data_length + SESSION_CONN_HDR_LEN;
+      if (cur_deq < full_len)
+	break;
+
+      // Peek the packet data
+      rv = svm_fifo_peek (f, fifo_offset + SESSION_CONN_HDR_LEN,
+			  ph.data_length, packet_data);
+      if (rv != ph.data_length)
+	break;
+
+      // Get context from UDP session
+      ctx = quic_openssl_get_quic_ctx (udp_session->opaque,
+				       udp_session->thread_index);
+      if (!ctx || !ctx->conn)
+	{
+	  fifo_offset += full_len;
+	  continue;
+	}
+
+      // Get crypto context
+      crctx = quic_openssl_crypto_context_get (ctx->crctx_index,
+					       ctx->c_thread_index);
+      data = crctx ? (quic_openssl_crypto_context_data_t *) &crctx->data : 0;
+      if (!crctx || !data->rbio)
+	{
+	  fifo_offset += full_len;
+	  continue;
+	}
+
+      // Feed packet to OpenSSL QUIC
+      BIO_write (data->rbio, packet_data, ph.data_length);
+
+      // Process events
+      SSL_handle_events ((SSL *) ctx->conn);
+
+      fifo_offset += full_len;
+    }
+
+  // Dequeue processed data
+  svm_fifo_dequeue_drop (f, fifo_offset);
+
+  return 0;
+}
+
+static int
+quic_openssl_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
+{
+  SSL *stream = (SSL *) ctx->stream;
+  svm_fifo_t *f;
+  u8 buf[4096];
+  int bytes_read, bytes_written;
+  int total_written = 0;
+
+  if (!stream)
+    return -1;
+
+  f = stream_session->tx_fifo;
+
+  while ((bytes_read = svm_fifo_dequeue (f, sizeof (buf), buf)) > 0)
+    {
+      bytes_written = SSL_write (stream, buf, bytes_read);
+      if (bytes_written <= 0)
+	{
+	  int err = SSL_get_error (stream, bytes_written);
+	  if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ)
+	    {
+	      // Put data back in fifo and return
+	      svm_fifo_enqueue (f, bytes_read, buf);
+	      break;
+	    }
+	  else
+	    {
+	      QUIC_ERR ("SSL_write failed with error %d", err);
+	      return -1;
+	    }
+	}
+      total_written += bytes_written;
+    }
+
+  return total_written;
+}
+
+static void
+quic_openssl_ack_rx_data (session_t *stream_session)
+{
+  // For OpenSSL QUIC, acknowledgments are handled internally
+  // This function may need to update flow control if required
+  QUIC_DBG (4, "ACK RX data for stream session %u",
+	    stream_session->session_index);
+}
+
+static u8 *
+quic_openssl_format_stream_ctx_stream_id (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  SSL *stream = (SSL *) ctx->stream;
+
+  if (stream)
+    {
+      uint64_t stream_id = SSL_get_stream_id (stream);
+      s = format (s, "S%lx", stream_id);
+    }
+  else
+    s = format (s, "S(null)");
+
+  return s;
+}
+
+static u8 *
+quic_openssl_format_stream_connection (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  SSL *stream = (SSL *) ctx->stream;
+
+  if (stream)
+    s = format (s, "OpenSSL Stream %p", stream);
+  else
+    s = format (s, "OpenSSL Stream (null)");
+
+  return s;
+}
+
+static u8 *
+quic_openssl_format_connection_stats (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  crypto_context_t *crctx;
+  uint64_t rtt;
+  quic_openssl_crypto_context_data_t *data;
+
+  s = format (s, "[OpenSSL QUIC]");
+
+  crctx =
+    quic_openssl_crypto_context_get (ctx->crctx_index, ctx->c_thread_index);
+  data = crctx ? (quic_openssl_crypto_context_data_t *) &crctx->data : 0;
+  if (crctx && data && data->ssl_conn)
+    {
+      if (SSL_get_handshake_rtt (data->ssl_conn, &rtt) == 1)
+	s = format (s, " RTT: %lu", rtt);
+      else
+	s = format (s, " RTT: N/A");
+    }
+
+  return s;
+}
+
+static void
+quic_openssl_connection_get_stats (void *conn, quic_stats_t *stats)
+{
+  SSL *ssl_conn = (SSL *) conn;
+
+  clib_memset (stats, 0, sizeof (*stats));
+
+  uint64_t rtt = 0;
+  if (SSL_get_handshake_rtt (ssl_conn, &rtt) == 1)
+    {
+      stats->rtt_smoothed = rtt;
+      QUIC_DBG (4, "Retrieved handshake RTT: %lu", rtt);
+    }
+  else
+    {
+      QUIC_DBG (4, "Handshake RTT not available");
+    }
+
+  // Additional stats can be added as OpenSSL QUIC API evolves
+  QUIC_DBG (4, "Retrieved connection stats: RTT=%lu", stats->rtt_smoothed);
+}
+
+static_always_inline quic_ctx_t *
+quic_openssl_get_quic_ctx_if_valid (u32 ctx_index,
+				    clib_thread_index_t thread_index)
+{
+  quic_worker_ctx_t *wrk_ctx =
+    quic_wrk_ctx_get (quic_openssl_main.qm, thread_index);
+
+  if (pool_is_free_index (wrk_ctx->ctx_pool, ctx_index))
+    return 0;
+  return pool_elt_at_index (wrk_ctx->ctx_pool, ctx_index);
+}
+
+static void
+quic_openssl_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx =
+    quic_openssl_get_quic_ctx_if_valid (ctx_index, thread_index);
+
+  if (!ctx)
+    return;
+
+  QUIC_DBG (2, "Proto on close for ctx %u (thread %u)", ctx_index,
+	    thread_index);
+
+  if (quic_ctx_is_stream (ctx))
+    {
+      SSL *stream = (SSL *) ctx->stream;
+      if (stream)
+	{
+	  // Close the stream gracefully
+	  SSL_stream_conclude (stream, 0);
+	  SSL_free (stream);
+	  ctx->stream = NULL;
+	}
+    }
+  else
+    {
+      SSL *conn = (SSL *) ctx->conn;
+      if (conn)
+	{
+	  // Close connection gracefully
+	  SSL_shutdown (conn);
+	}
+
+      // Release crypto context
+      if (ctx->crctx_index != ~0)
+	{
+	  quic_openssl_crypto_context_release (ctx->crctx_index, thread_index);
+	  ctx->crctx_index = ~0;
+	}
+    }
+}
+
+/* --- VFT Registration --- */
+
+const static quic_engine_vft_t quic_openssl_engine_vft = {
+  .engine_init = quic_openssl_engine_init,
+  .app_cert_key_pair_delete = quic_openssl_app_cert_key_pair_delete,
+  .crypto_context_acquire = quic_openssl_crypto_context_acquire,
+  .crypto_context_release = quic_openssl_crypto_context_release,
+  .connect = quic_openssl_connect,
+  .connect_stream = quic_openssl_connect_stream,
+  .connect_stream_error_reset = quic_openssl_connect_stream_error_reset,
+  .connection_migrate = quic_openssl_connection_migrate,
+  .connection_get_stats = quic_openssl_connection_get_stats,
+  .udp_session_rx_packets = quic_openssl_udp_session_rx_packets,
+  .ack_rx_data = quic_openssl_ack_rx_data,
+  .stream_tx = quic_openssl_stream_tx,
+  .send_packets = quic_openssl_send_packets,
+  .format_connection_stats = quic_openssl_format_connection_stats,
+  .format_stream_connection = quic_openssl_format_stream_connection,
+  .format_stream_ctx_stream_id = quic_openssl_format_stream_ctx_stream_id,
+  .proto_on_close = quic_openssl_proto_on_close,
+};
+
+static clib_error_t *
+quic_openssl_init (vlib_main_t *vm)
+{
+  quic_register_engine_fn register_engine;
+
+  register_engine =
+    vlib_get_plugin_symbol ("quic_plugin.so", "quic_register_engine");
+  if (register_engine == 0)
+    {
+      clib_warning ("quic_plugin.so not loaded...");
+      return clib_error_return (0, "Unable to get plugin symbol: "
+				   "'quic_register_engine'");
+    }
+  (*register_engine) (&quic_openssl_engine_vft, QUIC_ENGINE_OPENSSL);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (quic_openssl_init) = {
+  .runs_after = VLIB_INITS ("quic_init"),
+};
