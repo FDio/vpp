@@ -480,11 +480,15 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         else:
             cls.logger.debug("Spawned VPP with PID: %d" % cls.vpp.pid)
             return
+        if config.vpp_opt_deps_src_path is not None:
+            cls.opt_dir = f" -d {config.vpp_opt_deps_src_path}"
+        else:
+            cls.opt_dir = ""
         print(single_line_delim)
         print("You can debug VPP using:")
         if cls.debug_gdbserver:
             print(
-                f"sudo gdb {config.vpp} "
+                f"sudo gdb{cls.opt_dir} {config.vpp} "
                 f"-ex 'target remote localhost:{cls.gdbserver_port}'"
             )
             print(
@@ -494,7 +498,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             )
             cls.gdbserver_port += 1
         elif cls.debug_gdb:
-            print(f"sudo gdb {config.vpp} -ex 'attach {cls.vpp.pid}'")
+            print(f"sudo gdb{cls.opt_dir} {config.vpp} -ex 'attach {cls.vpp.pid}'")
             print(
                 "Now is the time to attach gdb by running the above "
                 "command and set up breakpoints etc., then resume VPP from"
@@ -527,8 +531,11 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
 
         try:
+            if config.vpp_opt_deps_library_path != None:
+                env = {}
+                env["LD_LIBRARY_PATH"] = f"{config.vpp_opt_deps_library_path}"
             cls.vpp = subprocess.Popen(
-                cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                cmdline, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         except subprocess.CalledProcessError as e:
             cls.logger.critical(
