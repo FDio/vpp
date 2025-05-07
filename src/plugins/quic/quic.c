@@ -231,7 +231,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
 
   sctx->stream = stream;
-  sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->crctx_index = qctx->crctx_index;
 
   stream_session = session_alloc (qctx->c_thread_index);
   QUIC_DBG (
@@ -389,7 +389,7 @@ quic_start_listen (u32 quic_listen_session_index,
   ccfg = &ext_cfg->crypto;
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
+  QUIC_DBG (2, "Listen: app_index %u", app_wrk->app_index);
 
   clib_memset (args, 0, sizeof (*args));
   args->app_index = qm->app_index;
@@ -434,7 +434,7 @@ quic_start_listen (u32 quic_listen_session_index,
 static u32
 quic_stop_listen (u32 lctx_index)
 {
-  QUIC_DBG (2, "Called quic_stop_listen");
+  QUIC_DBG (2, "Stop listen context: ctx %u");
   if (PREDICT_TRUE (lctx_index))
     {
       quic_ctx_t *lctx;
@@ -448,9 +448,7 @@ quic_stop_listen (u32 lctx_index)
       if (vnet_unlisten (&a))
 	clib_warning ("unlisten errored");
 
-      quic_eng_crypto_context_release (
-	lctx->crypto_context_index,
-	QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (lctx->crypto_context_index));
+      quic_eng_crypto_context_release (lctx->crctx_index);
       quic_ctx_free (&quic_main, lctx);
     }
   return 0;
@@ -540,24 +538,24 @@ format_quic_listener (u8 * s, va_list * args)
 /* Session layer callbacks */
 
 static void
-quic_transfer_connection (u32 ctx_index, u32 dest_thread)
+quic_transfer_connection (quic_ctx_t *ctx, u32 dest_thread)
 {
-  quic_ctx_t *ctx, *temp_ctx;
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  quic_ctx_t *temp_ctx;
   quic_main_t *qm = &quic_main;
 
-  QUIC_DBG (2, "Transferring conn %u to thread %u", ctx_index, dest_thread);
+  QUIC_DBG (2, "Transferring ctx 0x%x, thread %u to new thread %u",
+	    ctx->c_c_index, ctx->c_thread_index, dest_thread);
 
   temp_ctx = clib_mem_alloc (sizeof (quic_ctx_t));
   QUIC_ASSERT (temp_ctx != NULL);
-  ctx = quic_ctx_get (ctx_index, thread_index);
 
   clib_memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
   quic_stop_ctx_timer (
     &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
-  QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
-  quic_eng_crypto_context_release (ctx->crypto_context_index, thread_index);
+  QUIC_DBG (4, "Stopped timer: ctx 0x%x, thread %u", ctx->c_c_index,
+	    ctx->c_thread_index);
+  quic_eng_crypto_context_release (ctx->crctx_index);
   quic_ctx_free (qm, ctx);
 
   /*  Send connection to destination thread */
@@ -577,16 +575,17 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   transport_connection_t *tc;
   app_worker_t *app_wrk;
   quic_ctx_t *ctx;
-  clib_thread_index_t thread_index;
+  session_handle_t udp_session_handle = session_handle (udp_session);
+  clib_thread_index_t thread_index =
+    session_thread_from_handle (udp_session_handle);
   int ret;
 
-  QUIC_DBG (2, "UDP Session connected: session_index %u, thread %u",
-	    udp_session->session_index, udp_session->thread_index);
+  QUIC_DBG (2, "Connected session: handle 0x%lx, thread %u",
+	    udp_session_handle, thread_index);
 
   /* Allocate session on whatever thread udp used, i.e., probably first
    * worker, although this may be main thread. If it is main, it's done
    * with a worker barrier */
-  thread_index = udp_session->thread_index;
   ASSERT (thread_index == 0 ||
 	  thread_index ==
 	    1); /* TODO: FIXME multi-worker support (e.g. thread > 1) */
@@ -603,10 +602,10 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
       return 0;
     }
 
-  QUIC_DBG (2, "UDP Session connected: quic ctx_index %u, thread %u",
-	    (ctx) ? ctx_index : ~0, thread_index);
+  QUIC_DBG (2, "New quic context: ctx 0x%x, thread %u", (ctx) ? ctx_index : ~0,
+	    thread_index);
 
-  ctx->udp_session_handle = session_handle (udp_session);
+  ctx->udp_session_handle = udp_session_handle;
   udp_session->opaque = ctx_index;
 
   /* Init QUIC lib connection
@@ -632,16 +631,20 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
 {
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
+  session_handle_t udp_session_handle = session_handle (udp_session);
+  clib_thread_index_t session_thread_index =
+    session_thread_from_handle (udp_session_handle);
 
   if (ntf != SESSION_CLEANUP_SESSION)
     return;
 
-  ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
+  ctx = quic_ctx_get (udp_session->opaque, session_thread_index);
+  QUIC_ASSERT (ctx->c_thread_index == session_thread_index);
   quic_stop_ctx_timer (
     &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
-  QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
-  quic_eng_crypto_context_release (ctx->crypto_context_index,
-				   ctx->c_thread_index);
+  QUIC_DBG (4, "Stopped timer: ctx 0x%x, thread %u", ctx->c_c_index,
+	    ctx->c_thread_index);
+  quic_eng_crypto_context_release (ctx->crctx_index);
   quic_ctx_free (qm, ctx);
 }
 
@@ -657,7 +660,8 @@ quic_udp_session_migrate_callback (session_t * s, session_handle_t new_sh)
   u32 new_thread = session_thread_from_handle (new_sh);
   quic_ctx_t *ctx;
 
-  QUIC_DBG (2, "Session %x migrated to %lx", s->session_index, new_sh);
+  QUIC_DBG (2, "Migrate session: handle 0x%lx, new handle 0x%lx", s->handle,
+	    new_sh);
   QUIC_ASSERT (vlib_get_thread_index () == s->thread_index);
   ctx = quic_ctx_get (s->opaque, s->thread_index);
   QUIC_ASSERT (ctx->udp_session_handle == session_handle (s));
@@ -666,7 +670,7 @@ quic_udp_session_migrate_callback (session_t * s, session_handle_t new_sh)
 #if QUIC_DEBUG >= 1
   s->opaque = 0xfeedface;
 #endif
-  quic_transfer_connection (ctx->c_c_index, new_thread);
+  quic_transfer_connection (ctx, new_thread);
 }
 
 int
@@ -676,18 +680,17 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   u32 ctx_index;
   quic_ctx_t *ctx, *lctx;
   session_t *udp_listen_session;
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
 
   udp_listen_session =
     listen_session_get_from_handle (udp_session->listener_handle);
 
-  ctx_index = quic_ctx_alloc (&quic_main, thread_index);
-  ctx = quic_ctx_get (ctx_index, thread_index);
+  ctx_index = quic_ctx_alloc (&quic_main, udp_session->thread_index);
+  ctx = quic_ctx_get (ctx_index, udp_session->thread_index);
   ctx->c_thread_index = udp_session->thread_index;
   ctx->c_c_index = ctx_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->udp_session_handle = session_handle (udp_session);
-  QUIC_DBG (2, "ACCEPTED UDP 0x%lx", ctx->udp_session_handle);
+  QUIC_DBG (2, "Accepted session: handle 0x%lx", ctx->udp_session_handle);
   ctx->listener_ctx_id = udp_listen_session->opaque;
   lctx = quic_ctx_get (udp_listen_session->opaque,
 		       udp_listen_session->thread_index);
@@ -760,7 +763,14 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   QUIC_DBG (3, "Stream TX event");
   quic_eng_ack_rx_data (stream_session);
   if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
-    return 0;
+    {
+      QUIC_DBG (3,
+		"Fail quic_eng_stream_tx(ctx 0x%lx, stream 0x%lx): "
+		"ctx 0x%x, handle 0x%lx, thread %u",
+		ctx, stream_session, stream_session->connection_index,
+		stream_session->handle, stream_session->thread_index);
+      return 0;
+    }
 
 tx_end:
   return quic_eng_send_packets (ctx);
@@ -859,8 +869,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u64 i;
 
-  qm->engine_type =
-    quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
+  qm->engine_type = quic_get_engine_type (qm->engine_type, QUIC_ENGINE_QUICLY);
   if (qm->engine_type == QUIC_ENGINE_NONE)
     {
       /* Prevent crash in transport layer callbacks with no quic engine */
@@ -1324,6 +1333,7 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   uword tmp;
   u32 i;
+  u8 *engine_str = 0;
 
   qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
   qm->udp_fifo_prealloc = 0;
@@ -1348,7 +1358,21 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	qm->connection_timeout = i;
       else if (unformat (line_input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
-      /* TODO: add cli selection of quic_eng_<types> */
+      else if (unformat (line_input, "quic-engine %s", &engine_str))
+	{
+	  if (engine_str && !clib_strcmp ((char *) engine_str, "openssl"))
+	    qm->engine_type = QUIC_ENGINE_OPENSSL;
+	  else if (engine_str && !clib_strcmp ((char *) engine_str, "quicly"))
+	    qm->engine_type = QUIC_ENGINE_QUICLY;
+	  else
+	    {
+	      clib_warning (
+		"unknown quic-engine '%s' - defaulting to quicly engine",
+		engine_str);
+	      qm->engine_type = QUIC_ENGINE_QUICLY;
+	    }
+	  vec_free (engine_str);
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
