@@ -22,7 +22,7 @@
  * 4 - timer events
  **/
 
-#define QUIC_DEBUG		  0
+#define QUIC_DEBUG		  4
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 #define QUIC_SESSION_INVALID ((u32) ~0 - 1)
 #define QUIC_MAX_PACKET_SIZE 1280
@@ -163,7 +163,7 @@ typedef struct quic_ctx_
   u32 parent_app_id;
   u32 ckpair_index;
   u32 crypto_engine;
-  u32 crypto_context_index;
+  u32 crctx_index;
   u8 flags;
 
   struct
@@ -361,7 +361,7 @@ typedef struct quic_engine_vft_
   void (*engine_init) (quic_main_t *qm);
   int (*app_cert_key_pair_delete) (app_cert_key_pair_t *ckpair);
   int (*crypto_context_acquire) (quic_ctx_t *ctx);
-  void (*crypto_context_release) (u32 crypto_context_index, u8 thread_index);
+  void (*crypto_context_release) (u32 crctx_index, u8 thread_index);
   int (*connect) (quic_ctx_t *ctx, u32 ctx_index,
 		  clib_thread_index_t thread_index, struct sockaddr *sa);
   int (*connect_stream) (void *conn, void **quic_stream,

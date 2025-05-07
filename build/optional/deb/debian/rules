@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 DH_VERBOSE = 1
 DEB_BUILD_OPTIONS = noddebs
-DEB_CFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects -O2
+DEB_CFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects
 DEB_LDFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects
 DEB_CFLAGS_MAINT_APPEND = -O3
 PKG=vpp-opt-deps
@@ -31,3 +31,8 @@ override_dh_install:
 
 override_dh_shlibdeps:
 	dh_shlibdeps -l$(INSTALL_DIR)lib/:$(INSTALL_DIR)lib64
+
+# Disable stripping to keep debugging symbols
+# DEBUG: uncomment out next 2 lines when debugging with gdb
+# override_dh_strip:
+#    :

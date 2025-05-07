@@ -23,8 +23,8 @@ VLIB_PLUGIN_REGISTER () = {
 static_always_inline quicly_context_t *
 quic_quicly_get_quicly_ctx_from_ctx (quic_ctx_t *ctx)
 {
-  crypto_context_t *crctx = quic_quicly_crypto_context_get (
-    ctx->crypto_context_index, ctx->c_thread_index);
+  crypto_context_t *crctx =
+    quic_quicly_crypto_context_get (ctx->crctx_index, ctx->c_thread_index);
   quic_quicly_crypto_context_data_t *data =
     (quic_quicly_crypto_context_data_t *) crctx->data;
   return &data->quicly_ctx;
