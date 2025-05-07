@@ -57,6 +57,30 @@
       },
       "revId": "ff4a8e98a1cb1aaaaf1aa26f1b8de55fbdb16cef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6fa174c9_20a6acce",
+        "filename": "extras/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-05-07T14:10:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "789f6365_4775f3b3",
+      "range": {
+        "startLine": 214,
+        "startChar": 1,
+        "endLine": 217,
+        "endChar": 14
+      },
+      "revId": "ff4a8e98a1cb1aaaaf1aa26f1b8de55fbdb16cef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
