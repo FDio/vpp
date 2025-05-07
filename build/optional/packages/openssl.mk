@@ -18,6 +18,8 @@ openssl_tarball_sha256sum   := b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81dad
 openssl_tarball_strip_dirs  := 1
 openssl_url                 := https://github.com/openssl/openssl/releases/download/openssl-$(openssl_version)/$(openssl_tarball)
 
+# DEBUG: Add the following line to openssl_config_args when debugging with gdb
+# --debug -d -g3 -ggdb -gdwarf-5 -fno-inline -O0 -fno-omit-frame-pointer -DPURIFY
 define openssl_config_args
 --prefix=$(openssl_install_dir) \
 --openssldir=$(openssl_build_dir) \
