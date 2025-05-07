@@ -9,6 +9,7 @@
 #include <vnet/session/session.h>
 
 #include <quic/quic_timer.h>
+#include <quic/quic_inlines.h>
 #include <quicly.h>
 #include <picotls/openssl.h>
 #include <pthread.h>
@@ -16,16 +17,6 @@
 #define QUICLY_EPOCH_1RTT 3
 
 vnet_crypto_main_t *cm = &crypto_main;
-
-static_always_inline void
-quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
-					      quic_ctx_t *ctx)
-{
-  application_t *app = application_get (ctx->parent_app_id);
-  kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) ctx->crypto_engine;
-  kv->key[1] = app->sm_properties.rx_fifo_size - 1;
-  kv->key[2] = app->sm_properties.tx_fifo_size - 1;
-}
 
 void
 quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
@@ -150,7 +141,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   sctx->stream = stream;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   sctx->flags |= QUIC_F_IS_STREAM;
-  sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->crctx_index = qctx->crctx_index;
   if (quicly_stream_is_unidirectional (stream->stream_id))
     stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
 
@@ -364,10 +355,10 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 }
 
 void
-quic_quicly_crypto_context_release (u32 crypto_context_index, u8 thread_index)
+quic_quicly_crypto_context_release (u32 crctx_index, u8 thread_index)
 {
   crypto_context_t *crctx;
-  crctx = quic_quicly_crypto_context_get (crypto_context_index, thread_index);
+  crctx = quic_quicly_crypto_context_get (crctx_index, thread_index);
   crctx->n_subscribers--;
   quic_quicly_crypto_context_free_if_needed (crctx, thread_index);
 }
@@ -397,19 +388,19 @@ quic_quicly_crypto_context_acquire (quic_ctx_t *ctx)
       return SESSION_E_NOCRYPTOENG;
     }
   /* Check for exisiting crypto ctx */
-  quic_quicly_crypto_context_make_key_from_ctx (&kv, ctx);
+  quic_crypto_context_make_key_from_ctx (&kv, ctx);
   if (clib_bihash_search_24_8 (&crctx_hash[ctx->c_thread_index], &kv, &kv) ==
       0)
     {
       crctx = quic_quicly_crypto_context_get (kv.value, ctx->c_thread_index);
       QUIC_DBG (2, "Found exisiting crypto context %d", kv.value);
-      ctx->crypto_context_index = kv.value;
+      ctx->crctx_index = kv.value;
       crctx->n_subscribers++;
       return 0;
     }
 
   crctx = quic_quicly_crypto_context_alloc (ctx->c_thread_index);
-  ctx->crypto_context_index = crctx->ctx_index;
+  ctx->crctx_index = crctx->ctx_index;
   kv.value = crctx->ctx_index;
   crctx->crypto_engine = ctx->crypto_engine;
   crctx->ckpair_index = ctx->ckpair_index;

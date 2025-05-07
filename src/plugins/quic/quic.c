@@ -230,7 +230,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
 
   sctx->stream = stream;
-  sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->crctx_index = qctx->crctx_index;
 
   stream_session = session_alloc (qctx->c_thread_index);
   QUIC_DBG (2, "Allocated stream_session 0x%lx ctx %u",
@@ -446,7 +446,7 @@ quic_stop_listen (u32 lctx_index)
       if (vnet_unlisten (&a))
 	clib_warning ("unlisten errored");
 
-      quic_eng_crypto_context_release (lctx->crypto_context_index,
+      quic_eng_crypto_context_release (lctx->crctx_index,
 				       0 /* thread_index */);
       quic_ctx_free (&quic_main, lctx);
     }
@@ -555,7 +555,7 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
   quic_stop_ctx_timer (
     &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
-  quic_eng_crypto_context_release (ctx->crypto_context_index, thread_index);
+  quic_eng_crypto_context_release (ctx->crctx_index, thread_index);
   quic_ctx_free (qm, ctx);
 
   /*  Send connection to destination thread */
@@ -636,7 +636,7 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
   quic_stop_ctx_timer (
     &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
-  quic_eng_crypto_context_release (ctx->crypto_context_index,
+  quic_eng_crypto_context_release (ctx->crctx_index,
 				   ctx->c_thread_index);
   quic_ctx_free (qm, ctx);
 }
@@ -856,8 +856,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   int i;
 
-  qm->engine_type =
-    quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
+  qm->engine_type = quic_get_engine_type (qm->engine_type, QUIC_ENGINE_QUICLY);
   if (qm->engine_type == QUIC_ENGINE_NONE)
     {
       /* Prevent crash in transport layer callbacks with no quic engine */
@@ -1275,8 +1274,8 @@ VLIB_CLI_COMMAND (quic_set_cc, static) = {
   .function = quic_set_cc_fn,
 };
 VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER, .description = "Quic transport protocol",
-  // .default_disabled = 1,
+  .version = VPP_BUILD_VER,
+  .description = "Quic transport protocol",
 };
 
 static clib_error_t *
@@ -1287,6 +1286,7 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   uword tmp;
   u32 i;
+  u8 *engine_str = 0;
 
   qm->udp_fifo_size = QUIC_DEFAULT_FIFO_SIZE;
   qm->udp_fifo_prealloc = 0;
@@ -1311,7 +1311,21 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	qm->connection_timeout = i;
       else if (unformat (line_input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
-      // TODO: add cli selection of quic_eng_<types>
+      else if (unformat (line_input, "quic-engine %s", &engine_str))
+	{
+	  if (engine_str && !clib_strcmp ((char *) engine_str, "openssl"))
+	    qm->engine_type = QUIC_ENGINE_OPENSSL;
+	  else if (engine_str && !clib_strcmp ((char *) engine_str, "quicly"))
+	    qm->engine_type = QUIC_ENGINE_QUICLY;
+	  else
+	    {
+	      clib_warning (
+		"unknown quic-engine '%s' - defaulting to quicly engine",
+		engine_str);
+	      qm->engine_type = QUIC_ENGINE_QUICLY;
+	    }
+	  vec_free (engine_str);
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
