@@ -23,8 +23,15 @@ MACHINE=$(shell uname -m)
 SUDO?=sudo -E
 DPDK_CONFIG?=no-pci
 
+# For 'make test' and 'make run' targets with vpp-opt-deps installed
 ifeq ($(shell test -d /opt/vpp/optional/${MACHINE}/lib64 && echo yes),yes)
 VPP_OPT_DEPS_LIBRARY_PATH?=/opt/vpp/optional/${MACHINE}/lib64
+endif
+
+# For debugging vpp-opt-deps openssl in gdb
+ifeq ($(shell test -d $(WS_ROOT)/build/optional/deb/_build/src-openssl && echo yes),yes)
+VPP_OPT_DEPS_SRC_PATH?=$(WS_ROOT)/build/optional/deb/_build/src-openssl
+GDB_DIR?= -d $(VPP_OPT_DEPS_SRC_PATH)
 endif
 
 # we prefer clang by default
@@ -57,7 +64,7 @@ $(if $(EXTRA_VPP_CONFIG), "$(EXTRA_VPP_CONFIG)",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "
 
-GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
+GDB_ARGS= $(GDB_DIR) -ex "handle SIGUSR1 noprint nostop"
 
 #
 # OS Detection
