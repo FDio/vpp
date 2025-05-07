@@ -527,8 +527,10 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
 
         try:
+            if config.vpp_opt_deps_library_path != None:
+                env = {"LD_LIBRARY_PATH": f"{config.vpp_opt_deps_library_path}"}
             cls.vpp = subprocess.Popen(
-                cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                cmdline, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         except subprocess.CalledProcessError as e:
             cls.logger.critical(
