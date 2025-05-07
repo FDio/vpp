@@ -6,6 +6,17 @@
 #define __included_quic_inlines_h__
 
 #include <quic/quic.h>
+#include <vnet/session/application.h>
+
+static_always_inline void
+quic_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t *kv,
+				       quic_ctx_t *ctx)
+{
+  application_t *app = application_get (ctx->parent_app_id);
+  kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) ctx->crypto_engine;
+  kv->key[1] = app->sm_properties.rx_fifo_size - 1;
+  kv->key[2] = app->sm_properties.tx_fifo_size - 1;
+}
 
 static_always_inline void
 quic_eng_engine_init (quic_main_t *qm)
@@ -65,7 +76,7 @@ quic_eng_crypto_context_acquire (quic_ctx_t *ctx)
 }
 
 static_always_inline void
-quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
+quic_eng_crypto_context_release (u32 crctx_index, u8 thread_index)
 {
   quic_main_t *qm = &quic_main;
 
@@ -81,8 +92,8 @@ quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
 		quic_engine_type_str (qm->engine_type));
       return;
     }
-  quic_engine_vfts[qm->engine_type].crypto_context_release (
-    crypto_context_index, thread_index);
+  quic_engine_vfts[qm->engine_type].crypto_context_release (crctx_index,
+							    thread_index);
 }
 
 static_always_inline int
