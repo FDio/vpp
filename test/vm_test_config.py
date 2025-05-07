@@ -5,6 +5,8 @@
 test_config = {
     "client_namespace": "iprf_client_ns",
     "server_namespace": "iprf_server_ns",
+    "ipip_tunnel_instance_ingress": 100,
+    "ipip_tunnel_instance_egress": 101,
     "mtus": [9001, 9000, 2048, 2049, 1500, 512],
     "ip_versions": [4, 6],
     "af_packet": {
@@ -20,6 +22,20 @@ test_config = {
         "server_ip6_prefix": "2001:1::2/64",
     },
     "L3": {
+        "client_loopback_ip4_prefix": "192.168.1.1/32",
+        "client_loopback_ip6_prefix": "fd00:1::1/128",
+        "server_loopback_ip4_prefix": "192.168.2.1/32",
+        "server_loopback_ip6_prefix": "fd00:2::1/128",
+        "vpp_ipip_client_ip4_prefix": "10.100.100.1/30",
+        "vpp_ipip_server_ip4_prefix": "10.100.101.1/30",
+        "vpp_ipip_client_ip6_prefix": "fd00:100::1/64",
+        "vpp_ipip_server_ip6_prefix": "fd00:101::1/64",
+        # IPv4 and IPv6 prefixes for the ipip tunnel on linux
+        # that terminates the ipip tunnel from vpp
+        "linux_ipip_client_ip4_prefix": "10.100.100.2/30",
+        "linux_ipip_server_ip4_prefix": "10.100.101.2/30",
+        "linux_ipip_client_ip6_prefix": "fd00:100::2/64",
+        "linux_ipip_server_ip6_prefix": "fd00:101::2/64",
         "client_ip4_prefix": "10.0.0.101/24",
         "vpp_client_ip4_prefix": "10.0.0.102/24",
         "server_ip4_prefix": "10.0.1.102/24",
@@ -327,6 +343,40 @@ test_config = {
             "server_if_version": 2,
             "server_if_checksum_offload": 0,
             "x_connect_mode": "L2",
+        },
+        {
+            "id": 28,
+            # IPIP tunnel: OriginVPP --> Linux server namespace
+            "client_if_type": "tap,ipip",
+            "client_if_version": 2,
+            "client_if_checksum_offload": 1,
+            "server_if_type": "tap",
+            "server_if_version": 2,
+            "server_if_checksum_offload": 1,
+            "x_connect_mode": "L3",
+        },
+        {
+            "id": 29,
+            # IPIP tunnel: OriginVPP --> Linux client namespace
+            "client_if_type": "tap",
+            "client_if_version": 2,
+            "client_if_checksum_offload": 1,
+            "server_if_type": "tap,ipip",
+            "server_if_version": 2,
+            "server_if_checksum_offload": 1,
+            "x_connect_mode": "L3",
+        },
+        {
+            "id": 30,
+            # IPIP tunnel1: OriginVPP --> Linux server namespace
+            # IPIP tunnel2: OriginVPP --> Linux client namespace
+            "client_if_type": "tap,ipip",
+            "client_if_version": 2,
+            "client_if_checksum_offload": 1,
+            "server_if_type": "tap,ipip",
+            "server_if_version": 2,
+            "server_if_checksum_offload": 1,
+            "x_connect_mode": "L3",
         },
     ],
 }

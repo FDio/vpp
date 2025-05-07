@@ -9,6 +9,7 @@ import time
 import random
 import string
 from multiprocessing import Lock, Process
+import ipaddress
 
 lock = Lock()
 
@@ -91,12 +92,140 @@ def add_namespace_route(ns, prefix, gw_ip):
     """
     with lock:
         try:
-            subprocess.run(
-                ["ip", "netns", "exec", ns, "ip", "route", "add", prefix, "via", gw_ip],
-                capture_output=True,
+            # Determine IP version
+            ip_net = ipaddress.ip_network(prefix, strict=False)
+            ip_cmd = ["ip", "-6"] if ip_net.version == 6 else ["ip"]
+
+            # Construct full command
+            cmd = (
+                ["ip", "netns", "exec", ns]
+                + ip_cmd
+                + [
+                    "route",
+                    "add",
+                    f"{ip_net.network_address}/{ip_net.prefixlen}",
+                    "via",
+                    gw_ip,
+                ]
             )
+            subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
-            raise Exception("Error adding route to namespace:", e.output)
+            raise Exception(
+                f"Failed to add route to namespace '{ns}': {e.stderr.decode().strip()}"
+            )
+        except ValueError:
+            raise Exception(f"Invalid network prefix: {prefix}")
+
+
+def create_ipip_tunnel_linux(
+    ip_version, tunnel_name, src_ip, dst_ip, tunnel_ip, namespace
+):
+    """
+    Create and configure an IPIP tunnel in a Linux network namespace.
+
+    Args:
+        ip_version (int): IP version (4 or 6)
+        tunnel_name (str): Name of the tunnel interface (e.g. ipip0)
+        src_ip (str): Outer source IP address (local IP)
+        dst_ip (str): Outer destination IP address (remote IP)
+        tunnel_ip (str): IP address assigned to the tunnel (e.g. 10.10.10.2/24)
+        namespace (str): Target Linux network namespace name
+    """
+    try:
+        namespace_cmd = ["ip", "netns", "exec", namespace]
+        if ip_version == 4:
+            tunnel_mode = "ipip"
+            mod = "ipip"
+            ip_cmd = ["ip"]
+            addr_cmd = ["ip", "addr", "add", tunnel_ip, "dev", tunnel_name]
+        else:
+            tunnel_mode = "ip6ip6"
+            mod = "ip6_tunnel"
+            ip_cmd = ["ip", "-6"]
+            addr_cmd = ["ip", "-6", "addr", "add", tunnel_ip, "dev", tunnel_name]
+
+        subprocess.run(["modprobe", mod], capture_output=False, check=True)
+        subprocess.run(
+            namespace_cmd
+            + ip_cmd
+            + [
+                "tunnel",
+                "add",
+                tunnel_name,
+                "mode",
+                tunnel_mode,
+                "local",
+                src_ip,
+                "remote",
+                dst_ip,
+            ],
+            capture_output=False,
+            check=True,
+        )
+        subprocess.run(
+            namespace_cmd + ["ip", "link", "set", tunnel_name, "up"],
+            capture_output=False,
+            check=True,
+        )
+        subprocess.run(namespace_cmd + addr_cmd, capture_output=False, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to create tunnel: {e}") from e
+
+
+def assign_loopback_ips(namespace, ipv4=None, ipv6=None):
+    """
+    Assign IPv4 and/or IPv6 addresses to the loopback interface in a given namespace.
+
+    Args:
+        namespace (str): Name of the network namespace.
+        ipv4 (str): IPv4 address with CIDR (e.g., '10.0.0.1/24').
+        ipv6 (str): IPv6 address with CIDR (e.g., '2001:1::2/64').
+    """
+    if not namespace:
+        raise ValueError("Namespace name is required.")
+    try:
+        subprocess.run(
+            ["ip", "netns", "exec", namespace, "ip", "link", "set", "lo", "up"],
+            capture_output=False,
+            check=True,
+        )
+        if ipv4:
+            subprocess.run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    namespace,
+                    "ip",
+                    "addr",
+                    "add",
+                    ipv4,
+                    "dev",
+                    "lo",
+                ],
+                capture_output=False,
+                check=True,
+            )
+        if ipv6:
+            subprocess.run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    namespace,
+                    "ip",
+                    "-6",
+                    "addr",
+                    "add",
+                    ipv6,
+                    "dev",
+                    "lo",
+                ],
+                capture_output=False,
+                check=True,
+            )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to assign loopback IPs: {e}") from e
 
 
 def delete_all_host_interfaces(history_file):

@@ -29,10 +29,18 @@ class VppIperf:
     iperf.server_args='-p 5202'
     """
 
-    def __init__(self, server_ns=None, client_ns=None, server_ip=None, logger=None):
+    def __init__(
+        self,
+        server_ns=None,
+        client_ns=None,
+        server_ip=None,
+        client_ip=None,
+        logger=None,
+    ):
         self.server_ns = server_ns
         self.client_ns = client_ns
         self.server_ip = server_ip
+        self.client_ip = client_ip
         self.duration = 10
         self.client_args = ""
         self.server_args = ""
@@ -64,10 +72,12 @@ class VppIperf:
             return iperf
         else:
             self.logger.error(f"Could not find an iperf executable for running tests")
-            sys.exit(1)
+            raise FileNotFoundError(
+                "Could not find an iperf executable for running tests"
+            )
 
     def start_iperf_server(self):
-        """Starts the  iperf server and returns the process cmdline args."""
+        """Starts the iperf server and returns the process cmdline args."""
         args = [
             "ip",
             "netns",
@@ -76,19 +86,34 @@ class VppIperf:
             self.iperf,
             "-s",
             "-D",
+            "-B",
+            self.server_ip,
         ]
         args.extend(self.server_args.split())
-        cmd = " ".join(args)
-        self.logger.debug(f"Starting iperf server: {cmd}")
+        self.logger.debug(f"Starting iperf server: {' '.join(args)}")
         try:
-            subprocess.run(
-                cmd,
+            # For IPv6 addresses, handle server binding issues with manual waiting
+            is_ipv6 = ":" in self.server_ip
+
+            # Run the server command
+            result = subprocess.run(
+                args,
                 timeout=self.duration + 5,
                 encoding="utf-8",
-                shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
             )
+
+            # Check if there were any errors starting the server
+            if result.returncode != 0:
+                self.logger.error(f"Error starting iperf server: {result.stderr}")
+                raise Exception(f"Error starting iperf server: {result.stderr}")
+
+            # Give the server process time to fully initialize, to avoid timeout
+            # errors - important for IPv6
+            if is_ipv6:
+                time.sleep(2)
+
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
         return args[4:]
@@ -105,15 +130,25 @@ class VppIperf:
             "-t",
             str(self.duration),
         ]
+        if self.client_ip:
+            args.extend(["-B", self.client_ip])
         args.extend(self.client_args.split())
-        args = " ".join(args)
+
         try:
+            # Check if this is an IPv6 connection
+            is_ipv6 = ":" in self.server_ip
+
+            # For IPv6, verify connectivity before launching the client
+            if is_ipv6:
+                # Allow IPv6 interfaces to fully establish
+                time.sleep(2)
+
+            # Now run the actual iperf client
             return subprocess.run(
                 args,
                 timeout=self.duration + 5,
                 encoding="utf-8",
                 capture_output=True,
-                shell=True,
             )
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
@@ -152,6 +187,8 @@ def start_iperf(
     server_ns="iprf_server_ns",
     server_ipv4_address="10.0.0.102",
     server_ipv6_address="2001:1::2",
+    client_ipv4_address=None,
+    client_ipv6_address=None,
     client_args="",
     server_args="",
     duration=10,
@@ -170,6 +207,8 @@ def start_iperf(
     server_ns - iPerf server namespace
     server_ipv4_address - ipv4 address of the server, if ip_version=4
     server_ipv6_address - ipv6 address of the server, if ip_version=6
+    client_ipv4_address - ipv4 address of the client, if ip_version=4
+    client_ipv6_address - ipv6 address of the client, if ip_version=6
     client_args - Additonal iperf control arguments to be passed
                     to the iperf client from the test (str)
     server_args - Additonal iperf control arguments to be passed
@@ -181,14 +220,17 @@ def start_iperf(
     """
     if ip_version == 4:
         iperf_server_ip = server_ipv4_address
+        iperf_client_ip = client_ipv4_address
     elif ip_version == 6:
         iperf_server_ip = server_ipv6_address
+        iperf_client_ip = client_ipv6_address
         client_args = "-V" + " " + client_args
         server_args = "-V" + " " + server_args
     iperf = VppIperf()
     iperf.client_ns = client_ns
     iperf.server_ns = server_ns
     iperf.server_ip = iperf_server_ip
+    iperf.client_ip = iperf_client_ip
     iperf.client_args = client_args
     iperf.server_args = server_args
     iperf.duration = duration
