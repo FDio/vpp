@@ -34,6 +34,24 @@
       "parentUuid": "49b65d84_6886e067",
       "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de162e28_a230f04b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3138
+      },
+      "writtenOn": "2025-05-08T09:29:43Z",
+      "side": 1,
+      "message": "Marvell\u0027s OpenSSL engine code is already upstreamed to Data Accelerator Offload(DAO).\nhttps://github.com/MarvellEmbeddedProcessors/dao\nhttps://github.com/MarvellEmbeddedProcessors/marvell-openssl-engine\nWe can use this engine code to test TLS plugin with the actual h/w instead of dasync.\nAnd Marvell\u0027s Octeon hardware is already present in CSIT lab.We can make use of this setup.",
+      "parentUuid": "2cb3f312_775a23e3",
+      "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
