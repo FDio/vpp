@@ -112,6 +112,7 @@ typedef struct
   u8 enable_packed;
   u8 enable_event_idx;
   u8 use_custom_mac;
+  u8 full_tx_queue_placement;
 
   /* return */
   u32 sw_if_index;
@@ -285,6 +286,9 @@ typedef struct
   u8 enable_packed;
 
   u8 enable_event_idx;
+
+  /* Perform tx placement for all interface queues */
+  u8 full_tx_queue_placement;
 } vhost_user_intf_t;
 
 #define FOR_ALL_VHOST_TXQ(qid, vui) for (qid = 1; qid < vui->num_qid; qid += 2)
