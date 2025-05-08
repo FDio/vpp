@@ -144,14 +144,43 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
       vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
   }
 
-  for (u32 i = 0; i < vlib_get_n_threads (); i++)
-    {
-      vhost_user_vring_t *rxvq =
-	&vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
-      u32 qi = rxvq->queue_index;
+  // if the full_tx_queue_placement option is enabled, and the number of queues is
+  // greater than the number of threads, we want to make sure every queue is assigned to a thread.
+  if (rxvq_count > vlib_get_n_threads () && vui->full_tx_queue_placement)
+   {
+      // using sw_if_index as a seed to reduce the likelihood of the first thread being
+      // always referenced first.
+      u32 thread_id = vui->sw_if_index;
 
-      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+      FOR_ALL_VHOST_RXQ (q, vui)
+      {
+        vhost_user_vring_t *rxvq = &vui->vrings[q];
+        u32 qi = rxvq->queue_index;
+
+        if (rxvq->queue_index == ~0)
+          break;
+        
+        // if queue is not enabled, we dont want to assign it
+        if (!rxvq->started || !rxvq->enabled)
+          continue;
+        
+        thread_id = thread_id % vlib_get_n_threads ();
+        vnet_hw_if_tx_queue_assign_thread (vnm, qi, thread_id);
+        thread_id += 1;
+      }
+   }
+  else
+   {
+    for (u32 i = 0; i < vlib_get_n_threads (); i++)
+      {
+        vhost_user_vring_t *rxvq =
+	    &vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
+        u32 qi = rxvq->queue_index;
+
+        vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
     }
+   }
+
 
   vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
 }
@@ -1685,6 +1714,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
+  vui->full_tx_queue_placement = args->full_tx_queue_placement;
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
   vhost_user_rx_thread_placement (vui, 1);
 
@@ -1784,6 +1814,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	args.enable_packed = 1;
       else if (unformat (line_input, "event-idx"))
 	args.enable_event_idx = 1;
+      else if (unformat (line_input, "full-tx-queue-placement"))
+	args.full_tx_queue_placement = 1;
       else if (unformat (line_input, "feature-mask 0x%llx",
 			 &args.feature_mask))
 	;
@@ -2192,6 +2224,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
 		       hw_if_indices[i]);
       vlib_cli_output (vm, "  Number of qids %u", vui->num_qid);
+      vlib_cli_output (vm, "  Full tx queue placement: %s", 
+           (vui->full_tx_queue_placement) ? "enabled" : "disabled");
       if (vui->enable_gso)
 	vlib_cli_output (vm, "  GSO enable");
       if (vui->enable_packed)
@@ -2380,7 +2414,7 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
     "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso] "
-    "[packed] [event-idx]",
+    "[packed] [event-idx] [full-tx-queue-placement]",
     .function = vhost_user_connect_command_fn,
     .is_mp_safe = 1,
 };

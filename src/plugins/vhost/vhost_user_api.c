@@ -195,6 +195,71 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
 }
 
 static void
+vl_api_create_vhost_user_if_v3_t_handler (vl_api_create_vhost_user_if_v3_t *
+					  mp)
+{
+  int rv = 0;
+  vl_api_create_vhost_user_if_v2_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u64 disabled_features = (u64) (0ULL);
+  vhost_user_create_if_args_t args = { 0 };
+
+  args.sw_if_index = (u32) ~ 0;
+  args.feature_mask = (u64) ~ (0ULL);
+  if (mp->disable_mrg_rxbuf)
+    disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
+
+  if (mp->disable_indirect_desc)
+    disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
+
+  /*
+   * GSO and PACKED are not supported by feature mask via binary API. We
+   * disable GSO and PACKED feature in the feature mask. They may be enabled
+   * explicitly via enable_gso and enable_packed argument
+   */
+  disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
+    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+
+  /* EVENT_IDX is disabled by default */
+  disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
+  args.feature_mask &= ~disabled_features;
+
+  if (mp->use_custom_mac)
+    mac_address_decode (mp->mac_address, (mac_address_t *) args.hwaddr);
+
+  args.use_custom_mac = mp->use_custom_mac;
+  args.is_server = mp->is_server;
+  args.sock_filename = (char *) mp->sock_filename;
+  args.renumber = mp->renumber;
+  args.custom_dev_instance = ntohl (mp->custom_dev_instance);
+  args.enable_gso = mp->enable_gso;
+  args.enable_packed = mp->enable_packed;
+  args.enable_event_idx = mp->enable_event_idx;
+  args.full_tx_queue_placement = mp->full_tx_queue_placement;
+  rv = vhost_user_create_if (vnm, vm, &args);
+
+  /* Remember an interface tag for the new interface */
+  if (rv == 0)
+    {
+      /* If a tag was supplied... */
+      if (mp->tag[0])
+	{
+	  /* Make sure it's a proper C-string */
+	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+	  u8 *tag = format (0, "%s%c", mp->tag, 0);
+	  vnet_set_sw_interface_tag (vnm, tag, args.sw_if_index);
+	}
+    }
+
+  REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_V3_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (args.sw_if_index);
+  }));
+}
+
+
+static void
 vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *
 					  mp)
 {
