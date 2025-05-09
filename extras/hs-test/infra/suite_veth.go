@@ -28,10 +28,10 @@ type VethsSuite struct {
 }
 
 func RegisterVethTests(tests ...func(s *VethsSuite)) {
-	vethTests[getTestFilename()] = tests
+	vethTests[GetTestFilename()] = tests
 }
 func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
-	vethSoloTests[getTestFilename()] = tests
+	vethSoloTests[GetTestFilename()] = tests
 }
 
 func (s *VethsSuite) SetupSuite() {

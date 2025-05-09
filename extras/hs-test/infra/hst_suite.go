@@ -132,7 +132,7 @@ func (s StringerStruct) String() string {
 	return s.Label
 }
 
-func getTestFilename() string {
+func GetTestFilename() string {
 	_, filename, _, _ := runtime.Caller(2)
 	return filepath.Base(filename)
 }
@@ -140,7 +140,7 @@ func getTestFilename() string {
 func (s *HstSuite) getLogDirPath() string {
 	testId := s.GetTestId()
 	testName := s.GetCurrentTestName()
-	logDirPath := logDir + testName + "/" + testId + "/"
+	logDirPath := LogDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
 	if err := cmd.Run(); err != nil {
@@ -160,7 +160,6 @@ func (s *HstSuite) newDockerClient() {
 func (s *HstSuite) SetupKindSuite() {
 	s.CreateLogger()
 	s.Log("[* SUITE SETUP]")
-	s.newDockerClient()
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
 		Fail(message, callerSkip...)
@@ -602,7 +601,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Volumes {
 		volumeMap := elem["volume"].(VolumeConfig)
 		hostDir := volumeMap["host-dir"].(string)
-		workingVolumeDir := logDir + s.GetCurrentTestName() + volumeDir
+		workingVolumeDir := LogDir + s.GetCurrentTestName() + volumeDir
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		hostDir = volDirReplacer.Replace(hostDir)
 		s.Volumes = append(s.Volumes, hostDir)
