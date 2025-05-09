@@ -34,7 +34,7 @@ type H2Suite struct {
 }
 
 func RegisterH2Tests(tests ...func(s *H2Suite)) {
-	h2Tests[getTestFilename()] = tests
+	h2Tests[GetTestFilename()] = tests
 }
 
 func (s *H2Suite) SetupSuite() {

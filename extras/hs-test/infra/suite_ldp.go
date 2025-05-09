@@ -28,10 +28,10 @@ type LdpSuite struct {
 }
 
 func RegisterLdpTests(tests ...func(s *LdpSuite)) {
-	ldpTests[getTestFilename()] = tests
+	ldpTests[GetTestFilename()] = tests
 }
 func RegisterSoloLdpTests(tests ...func(s *LdpSuite)) {
-	ldpSoloTests[getTestFilename()] = tests
+	ldpSoloTests[GetTestFilename()] = tests
 }
 
 func (s *LdpSuite) SetupSuite() {
