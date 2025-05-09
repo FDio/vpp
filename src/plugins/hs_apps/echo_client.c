@@ -653,8 +653,19 @@ ec_calc_tput (ec_main_t *ecm)
   ec_session_t *sess;
   f64 pacing_base;
   u64 bytes_paced_target;
-  /* periodic writes larger than this clog up the fifo */
-  const u64 target_size_threshold = 4344;
+  u64 target_size_threshold;
+
+  /* Choose an appropriate data size chunk threshold based on fifo size.
+     ~30k is fine for most scenarios, unless the fifo starts getting
+     smaller than 48k, where a slight curve is needed. */
+  if (PREDICT_TRUE (ecm->fifo_size > 49152))
+    target_size_threshold = 30720;
+  else if (ecm->fifo_size > 20480)
+    target_size_threshold = 12288;
+  else if (ecm->fifo_size > 10240)
+    target_size_threshold = 6144;
+  else
+    target_size_threshold = ecm->fifo_size;
 
   /* find a suitable pacing window length & data chunk size */
   bytes_paced_target =
