@@ -586,6 +586,10 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	  if (unix_error_is_fatal (errno))
 	    {
 	      counter = AF_PACKET_TX_ERROR_TXRING_FATAL;
+	      vlib_log_err (apm->log_class,
+			    "af_packet_%s sendto failed: %d %s",
+			    apif->host_if_name, errno, strerror (errno));
+	      /* TODO attempt to reattach */
 	    }
 	  else
 	    {
