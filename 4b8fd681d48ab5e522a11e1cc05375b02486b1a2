@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7326faf4_3a94e83c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 56
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "A few more. One more round or so and we should be getting ready to merge this",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba90ba97_17c9d957",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "If it\u0027s not too many changes, let\u0027s move the ctx_pool into wrk_ctx. If it is, let\u0027s do it in a subsequent patch",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9893e15_cc76e5ef",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "Maybe add a `quic_ctx_get` here and use it in quic_quickly?",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74f34cfb_b8216a0e",
+        "filename": "src/plugins/quic/quic_timer.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "I suspect this is not right since it\u0027s not indexed. As mentioned in the other places, let\u0027s get wc indexed as param to these functions.",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "109bc26c_17f153e1",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "Let\u0027s add a `quic_wrk_ctx_get (\u003cthread_index\u003e)` and let\u0027s just reuse it all over the place",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "931c752c_248351bc",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "Print maybe in the time in the caller (line 331) as we can grab wc only once per dispatch?",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1bac43f_0883c67f",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 1227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "Should we move this to quic timers and have quic framework call it? If we have dependencies issues, at least move it to quic framework.",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5a44de6_6e76fdcf",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T02:39:31Z",
+      "side": 1,
+      "message": "More of these (some lower) :-)",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
