@@ -90,6 +90,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c512a31_a2418296",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T16:58:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0fb3e95d_72f09f8f",
+      "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "455cd571_1a099231",
@@ -121,6 +139,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "455cd571_1a099231",
+      "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "43e09e49_3413b9f0",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-09T16:58:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e953c08d_318ca28c",
       "revId": "565aa2f88d468d7ec499271b0ea35876c7578038",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
