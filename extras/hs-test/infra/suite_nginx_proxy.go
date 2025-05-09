@@ -29,10 +29,10 @@ type NginxProxySuite struct {
 }
 
 func RegisterNginxProxyTests(tests ...func(s *NginxProxySuite)) {
-	nginxProxyTests[getTestFilename()] = tests
+	nginxProxyTests[GetTestFilename()] = tests
 }
 func RegisterNginxProxySoloTests(tests ...func(s *NginxProxySuite)) {
-	nginxProxySoloTests[getTestFilename()] = tests
+	nginxProxySoloTests[GetTestFilename()] = tests
 }
 
 func (s *NginxProxySuite) SetupSuite() {

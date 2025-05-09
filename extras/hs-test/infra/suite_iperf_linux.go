@@ -25,10 +25,10 @@ var iperfTests = map[string][]func(s *IperfSuite){}
 var iperfSoloTests = map[string][]func(s *IperfSuite){}
 
 func RegisterIperfTests(tests ...func(s *IperfSuite)) {
-	iperfTests[getTestFilename()] = tests
+	iperfTests[GetTestFilename()] = tests
 }
 func RegisterIperfSoloTests(tests ...func(s *IperfSuite)) {
-	iperfSoloTests[getTestFilename()] = tests
+	iperfSoloTests[GetTestFilename()] = tests
 }
 
 func (s *IperfSuite) SetupSuite() {

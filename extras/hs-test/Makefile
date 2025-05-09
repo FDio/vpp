@@ -77,7 +77,8 @@ help:
 	@echo " setup-cluster            - setup KinD cluster for performance testing"
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " fixstyle-go              - format .go source files"
-	@echo " cleanup-hst              - stops and removes all docker contaiers and namespaces"
+	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
+	@echo " cleanup-perf             - removes all kubernetes pods and namespaces from last test run"
 	@echo " list-tests               - list all tests"
 	@echo
 	@echo "'make build' and 'make test' arguments:"
@@ -266,6 +267,22 @@ cleanup-hst:
 		echo $$ns; \
     	sudo ip netns delete $$ns; \
 	done
+	@echo "****************************"
+	@echo "Done."
+	@echo "****************************"
+
+.PHONY: cleanup-perf
+cleanup-perf:
+	@if [ ! -f ".last_hst_ppid" ]; then \
+		echo "'.last_hst_ppid' file does not exist."; \
+		exit 1; \
+	fi
+	@echo "****************************"
+	@echo "Removing kubernetes pods:"
+	@kubectl delete pods --all --grace-period=0 -n namespace$$(cat .last_hst_ppid)
+	@echo "****************************"
+	@echo "Removing kubernetes namespace:"
+	@kubectl delete namespace namespace$$(cat .last_hst_ppid)
 	@echo "****************************"
 	@echo "Done."
 	@echo "****************************"

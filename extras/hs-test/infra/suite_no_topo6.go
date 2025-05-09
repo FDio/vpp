@@ -30,10 +30,10 @@ type NoTopo6Suite struct {
 }
 
 func RegisterNoTopo6Tests(tests ...func(s *NoTopo6Suite)) {
-	noTopo6Tests[getTestFilename()] = tests
+	noTopo6Tests[GetTestFilename()] = tests
 }
 func RegisterNoTopo6SoloTests(tests ...func(s *NoTopo6Suite)) {
-	noTopo6SoloTests[getTestFilename()] = tests
+	noTopo6SoloTests[GetTestFilename()] = tests
 }
 
 func (s *NoTopo6Suite) SetupSuite() {

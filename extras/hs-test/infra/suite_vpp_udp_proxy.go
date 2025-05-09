@@ -30,11 +30,11 @@ var vppUdpProxyTests = map[string][]func(s *VppUdpProxySuite){}
 var vppUdpProxySoloTests = map[string][]func(s *VppUdpProxySuite){}
 
 func RegisterVppUdpProxyTests(tests ...func(s *VppUdpProxySuite)) {
-	vppUdpProxyTests[getTestFilename()] = tests
+	vppUdpProxyTests[GetTestFilename()] = tests
 }
 
 func RegisterVppUdpProxySoloTests(tests ...func(s *VppUdpProxySuite)) {
-	vppUdpProxySoloTests[getTestFilename()] = tests
+	vppUdpProxySoloTests[GetTestFilename()] = tests
 }
 
 func (s *VppUdpProxySuite) SetupSuite() {
