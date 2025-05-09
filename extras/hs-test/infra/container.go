@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	logDir    string = "/tmp/hs-test/"
+	LogDir    string = "/tmp/hs-test/"
 	volumeDir string = "/volumes"
 )
 
@@ -93,7 +93,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + suite.GetCurrentTestName() + volumeDir
+		workingVolumeDir := LogDir + suite.GetCurrentTestName() + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -553,7 +553,7 @@ func (c *Container) stop() error {
 func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
-	f, err := os.CreateTemp(logDir, "hst-config")
+	f, err := os.CreateTemp(LogDir, "hst-config")
 	c.Suite.AssertNil(err, err)
 	defer os.Remove(f.Name())
 
@@ -567,7 +567,7 @@ func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateNa
 }
 
 func init() {
-	cmd := exec.Command("mkdir", "-p", logDir)
+	cmd := exec.Command("mkdir", "-p", LogDir)
 	if err := cmd.Run(); err != nil {
 		panic(err)
 	}
