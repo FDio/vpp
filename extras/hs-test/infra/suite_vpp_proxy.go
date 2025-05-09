@@ -41,11 +41,11 @@ var vppProxyTests = map[string][]func(s *VppProxySuite){}
 var vppProxySoloTests = map[string][]func(s *VppProxySuite){}
 
 func RegisterVppProxyTests(tests ...func(s *VppProxySuite)) {
-	vppProxyTests[getTestFilename()] = tests
+	vppProxyTests[GetTestFilename()] = tests
 }
 
 func RegisterVppProxySoloTests(tests ...func(s *VppProxySuite)) {
-	vppProxySoloTests[getTestFilename()] = tests
+	vppProxySoloTests[GetTestFilename()] = tests
 }
 
 func (s *VppProxySuite) SetupSuite() {

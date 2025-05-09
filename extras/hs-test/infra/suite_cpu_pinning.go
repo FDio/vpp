@@ -24,11 +24,11 @@ type CpuPinningSuite struct {
 }
 
 func RegisterCpuPinningTests(tests ...func(s *CpuPinningSuite)) {
-	cpuPinningTests[getTestFilename()] = tests
+	cpuPinningTests[GetTestFilename()] = tests
 }
 
 func RegisterCpuPinningSoloTests(tests ...func(s *CpuPinningSuite)) {
-	cpuPinningSoloTests[getTestFilename()] = tests
+	cpuPinningSoloTests[GetTestFilename()] = tests
 }
 
 func (s *CpuPinningSuite) SetupSuite() {

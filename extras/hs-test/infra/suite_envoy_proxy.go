@@ -36,11 +36,11 @@ var envoyProxyTests = map[string][]func(s *EnvoyProxySuite){}
 var envoyProxySoloTests = map[string][]func(s *EnvoyProxySuite){}
 
 func RegisterEnvoyProxyTests(tests ...func(s *EnvoyProxySuite)) {
-	envoyProxyTests[getTestFilename()] = tests
+	envoyProxyTests[GetTestFilename()] = tests
 }
 
 func RegisterEnvoyProxySoloTests(tests ...func(s *EnvoyProxySuite)) {
-	envoyProxySoloTests[getTestFilename()] = tests
+	envoyProxySoloTests[GetTestFilename()] = tests
 }
 
 func (s *EnvoyProxySuite) SetupSuite() {
