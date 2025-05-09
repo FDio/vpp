@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f0e9cf6_1cf2a7eb",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-09T15:07:03Z",
+      "side": 1,
+      "message": "you don\u0027t need it here, ab is not running with ldp",
+      "revId": "62b82f7f9b75c9e197254ee8190662a7abaecd97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e44d0436_820da65e",
+        "filename": "extras/hs-test/kubernetes/setupCluster.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-09T15:07:03Z",
+      "side": 1,
+      "message": "isn\u0027t this just building containers (and vpp)?",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 15
+      },
+      "revId": "62b82f7f9b75c9e197254ee8190662a7abaecd97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
