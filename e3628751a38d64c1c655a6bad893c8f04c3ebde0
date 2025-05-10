@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9550612_72928c65",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-10T01:26:19Z",
+      "side": 1,
+      "message": "This might have an impact in deployments where it\u0027s already on, not because of this patch but because session node is not handling these cb efficiently and is going to spend a decent amount of time doing empty cb updates for all transports. As more transports request updates, bigger impact (I noticed it first with quic). \n\nIdeally we should force transports to register with session layer only if we have sessions and take themselves out when they\u0027re running empty. Let\u0027s chat about it next week.",
+      "revId": "e3628751a38d64c1c655a6bad893c8f04c3ebde0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
