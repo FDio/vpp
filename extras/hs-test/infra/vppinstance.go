@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	. "fd.io/hs-test/infra/common"
 	"go.fd.io/govpp/binapi/ethernet_types"
 
 	"github.com/edwarnicke/exechelper"
@@ -272,7 +273,7 @@ func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
 			vpp.getSuite().AssertNil(err)
 		} else {
 			fn := runtime.FuncForPC(pc)
-			if fn != nil && strings.Contains(fn.Name(), "TearDownTest") {
+			if fn != nil && strings.Contains(fn.Name(), "TeardownTest") {
 				vpp.getSuite().Log("vppctl failed in test teardown (skipping assert): %v", err)
 			} else {
 				vpp.getSuite().AssertNil(err)

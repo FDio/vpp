@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/summerwind/h2spec/spec"
-
 	"fd.io/hs-test/h2spec_extras"
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/generic"
 	"github.com/summerwind/h2spec/hpack"
 	"github.com/summerwind/h2spec/http2"
+	"github.com/summerwind/h2spec/spec"
 )
 
 var h2Tests = map[string][]func(s *H2Suite){}
@@ -67,8 +67,8 @@ func (s *H2Suite) SetupTest() {
 	}
 }
 
-func (s *H2Suite) TearDownTest() {
-	s.HstSuite.TearDownTest()
+func (s *H2Suite) TeardownTest() {
+	s.HstSuite.TeardownTest()
 }
 
 func (s *H2Suite) VppAddr() string {
@@ -85,10 +85,10 @@ var _ = Describe("Http2Suite", Pending, Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range h2Tests {
@@ -307,10 +307,10 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for _, sp := range specs {

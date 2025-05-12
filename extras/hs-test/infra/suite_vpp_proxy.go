@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -87,7 +88,7 @@ func (s *VppProxySuite) SetupTest() {
 	}
 }
 
-func (s *VppProxySuite) TearDownTest() {
+func (s *VppProxySuite) TeardownTest() {
 	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
@@ -95,7 +96,7 @@ func (s *VppProxySuite) TearDownTest() {
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 		s.CollectIperfLogs(s.Containers.IperfS)
 	}
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 }
 
 func (s *VppProxySuite) SetupNginxServer() {
@@ -221,10 +222,10 @@ var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range vppProxyTests {
@@ -250,10 +251,10 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func()
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range vppProxySoloTests {

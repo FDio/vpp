@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -78,11 +79,11 @@ func (s *NoTopo6Suite) SetupTest() {
 	}
 }
 
-func (s *NoTopo6Suite) TearDownTest() {
+func (s *NoTopo6Suite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxHttp3)
 	}
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 }
 
 func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorkers bool) {
@@ -184,10 +185,10 @@ var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("IPv6"), func
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range noTopo6Tests {
@@ -213,10 +214,10 @@ var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range noTopo6SoloTests {

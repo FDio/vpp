@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 

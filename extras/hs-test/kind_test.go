@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	. "fd.io/hs-test/infra/infra_kind"
+	. "fd.io/hs-test/infra/kind"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -12,7 +12,8 @@ func init() {
 }
 
 func KindIperfVclTest(s *KindSuite) {
-	s.DeployServerClient(s.ImageNames.HstVpp, s.ImageNames.HstVpp, s.PodNames.ServerVpp, s.PodNames.ClientVpp)
+	s.DeployPod(s.Pods.ClientGeneric)
+	s.DeployPod(s.Pods.ServerGeneric)
 
 	vclPath := "/vcl.conf"
 	ldpPath := "/usr/lib/libvcl_ldpreload.so"
@@ -34,25 +35,26 @@ func KindIperfVclTest(s *KindSuite) {
 		"app-socket-api abstract:vpp/session\n" +
 		"}\" > /vcl.conf"
 
-	s.Exec(s.PodNames.ClientVpp, s.ContainerNames.Client, []string{"/bin/bash", "-c", symLink})
-	s.Exec(s.PodNames.ServerVpp, s.ContainerNames.Server, []string{"/bin/bash", "-c", symLink})
+	s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c", symLink})
+	s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c", symLink})
 
-	_, err := s.Exec(s.PodNames.ClientVpp, s.ContainerNames.Client, []string{"/bin/bash", "-c", vclConf})
+	_, err := s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c", vclConf})
 	s.AssertNil(err)
-	_, err = s.Exec(s.PodNames.ServerVpp, s.ContainerNames.Server, []string{"/bin/bash", "-c", vclConf})
+	_, err = s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c", vclConf})
 	s.AssertNil(err)
 
-	_, err = s.Exec(s.PodNames.ServerVpp, s.ContainerNames.Server, []string{"/bin/bash", "-c",
+	_, err = s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c",
 		"VCL_CONFIG=" + vclPath + " LD_PRELOAD=" + ldpPath + " iperf3 -s -D -4"})
 	s.AssertNil(err)
-	output, err := s.Exec(s.PodNames.ClientVpp, s.ContainerNames.Client, []string{"/bin/bash", "-c",
-		"VCL_CONFIG=" + vclPath + " LD_PRELOAD=" + ldpPath + " iperf3 -c " + s.ServerIp})
+	output, err := s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c",
+		"VCL_CONFIG=" + vclPath + " LD_PRELOAD=" + ldpPath + " iperf3 -c " + s.Pods.ServerGeneric.IpAddress})
 	s.Log(output)
 	s.AssertNil(err)
 }
 
 func NginxRpsTest(s *KindSuite) {
-	s.DeployServerClient(s.ImageNames.Nginx, s.ImageNames.Ab, s.PodNames.Nginx, s.PodNames.Ab)
+	s.DeployPod(s.Pods.Nginx)
+	s.DeployPod(s.Pods.Ab)
 	s.CreateNginxConfig()
 	vcl := "VCL_CONFIG=/vcl.conf"
 	ldp := "LD_PRELOAD=/usr/lib/libvcl_ldpreload.so"
@@ -77,21 +79,21 @@ func NginxRpsTest(s *KindSuite) {
 		"app-socket-api abstract:vpp/session\n" +
 		"}\" > /vcl.conf"
 
-	out, err := s.Exec(s.PodNames.Nginx, s.ContainerNames.Server, []string{"/bin/bash", "-c", symLink})
+	out, err := s.Exec(s.Pods.Nginx, []string{"/bin/bash", "-c", symLink})
 	s.AssertNil(err, out)
 
-	out, err = s.Exec(s.PodNames.Nginx, s.ContainerNames.Server, []string{"/bin/bash", "-c", vclConf})
+	out, err = s.Exec(s.Pods.Nginx, []string{"/bin/bash", "-c", vclConf})
 	s.AssertNil(err, out)
 
 	go func() {
 		defer GinkgoRecover()
-		out, err := s.Exec(s.PodNames.Nginx, s.ContainerNames.Server, []string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
+		out, err := s.Exec(s.Pods.Nginx, []string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
 		s.AssertNil(err, out)
 	}()
 
 	// wait for nginx to start up
 	time.Sleep(time.Second * 2)
-	out, err = s.Exec(s.PodNames.Ab, s.ContainerNames.Client, []string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.ServerIp + ":80/64B.json"})
+	out, err = s.Exec(s.Pods.Ab, []string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":80/64B.json"})
 	s.Log(out)
 	s.AssertNil(err)
 }

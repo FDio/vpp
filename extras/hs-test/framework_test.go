@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	. "fd.io/hs-test/infra"
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -96,7 +97,7 @@ func (s *LdpSuite) SetupTest() {
 	}
 }
 
-func (s *LdpSuite) TearDownTest() {
+func (s *LdpSuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectIperfLogs(s.Containers.ServerVpp)
 		s.CollectRedisServerLogs(s.Containers.ServerVpp)
@@ -106,7 +107,7 @@ func (s *LdpSuite) TearDownTest() {
 		delete(container.EnvVars, "LD_PRELOAD")
 		delete(container.EnvVars, "VCL_CONFIG")
 	}
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 
 }
 
@@ -155,11 +156,11 @@ var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
@@ -186,10 +187,10 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
