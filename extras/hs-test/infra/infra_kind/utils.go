@@ -1,4 +1,4 @@
-package hst
+package hst_kind
 
 import (
 	"bytes"
@@ -15,16 +15,16 @@ func (s *KindSuite) CopyToPod(podName string, namespace string, src string, dst 
 	s.AssertNil(err, string(out))
 }
 
-func (s *KindSuite) Exec(podName string, containerName string, command []string) (string, error) {
+func (s *KindSuite) Exec(pod *Pod, command []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 
 	// Prepare the request
 	req := s.ClientSet.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Name(podName).
+		Name(pod.Name).
 		Namespace(s.Namespace).
 		SubResource("exec").
-		Param("container", containerName).
+		Param("container", pod.ContainerName).
 		Param("stdout", "true").
 		Param("stderr", "true").
 		Param("tty", "true")
@@ -32,7 +32,7 @@ func (s *KindSuite) Exec(podName string, containerName string, command []string)
 	for _, cmd := range command {
 		req = req.Param("command", cmd)
 	}
-	s.Log("%s: %s", podName, command)
+	s.Log("%s: %s", pod.Name, command)
 
 	executor, err := remotecommand.NewSPDYExecutor(s.Config, "POST", req.URL())
 	if err != nil {
@@ -55,24 +55,6 @@ func (s *KindSuite) Exec(podName string, containerName string, command []string)
 	}
 
 	return output, nil
-}
-
-// Alternative exec function. Use if regular Exec() doesn't work.
-func (s *KindSuite) ExecAlt(podName string, containerName string, namespace string, command []string) (string, error) {
-	baseCmd := []string{
-		"kubectl",
-		"--kubeconfig=" + s.KubeconfigPath,
-		"-n", namespace,
-		"exec",
-		podName,
-		"--",
-	}
-	fullCmd := append(baseCmd, command...)
-	cmd := exec.Command(fullCmd[0], fullCmd[1:]...)
-	s.Log(cmd)
-	out, err := cmd.CombinedOutput()
-
-	return string(out), err
 }
 
 func boolPtr(b bool) *bool {

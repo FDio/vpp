@@ -1,54 +1,36 @@
-package hst
+package hst_kind
 
 import (
-	"context"
-	"errors"
 	"os"
-	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
 	"text/template"
 	"time"
 
-	. "fd.io/hs-test/infra"
+	. "fd.io/hs-test/infra/infra_common"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type KindSuite struct {
-	HstSuite
-	ClientSet      *kubernetes.Clientset
-	Config         *rest.Config
-	ServerIp       string
-	Namespace      string
-	KubeconfigPath string
-	ImageNames
-	PodNames
-	ContainerNames
-}
-
-type ImageNames struct {
-	HstVpp string
-	Nginx  string
-	Ab     string
-}
-
-type PodNames struct {
-	ClientVpp        string
-	ServerVpp        string
-	Nginx            string
-	Ab               string
+	HstCommon
+	ClientSet        *kubernetes.Clientset
+	Config           *rest.Config
+	Namespace        string
+	KubeconfigPath   string
 	CurrentlyRunning []string
-}
-
-type ContainerNames struct {
-	Server string
-	Client string
+	images           []string
+	Pods             struct {
+		ServerGeneric *Pod
+		ClientGeneric *Pod
+		Nginx         *Pod
+		Ab            *Pod
+	}
 }
 
 var kindTests = map[string][]func(s *KindSuite){}
@@ -57,52 +39,17 @@ func RegisterKindTests(tests ...func(s *KindSuite)) {
 	kindTests[GetTestFilename()] = tests
 }
 
-func deletePod(clientset *kubernetes.Clientset, namespace, podName string) error {
-	return clientset.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
-}
-
-func deleteNamespace(clientset *kubernetes.Clientset, namespace string) error {
-	return clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
-}
-
-func (s *KindSuite) loadDockerImages() {
-	s.Log("This may take a while. If you encounter problems, " +
-		"try loading docker images manually: 'kind load docker-image [image]'")
-	value := reflect.ValueOf(s.ImageNames)
-	reflType := reflect.TypeOf(s.ImageNames)
-	var cmd *exec.Cmd
-	var out []byte
-	var err error
-
-	if reflType.Kind() == reflect.Struct {
-		for i := range value.NumField() {
-			if value.Field(i).Kind() == reflect.String {
-				fieldValue := value.Field(i).Interface().(string)
-				s.Log("loading docker image %s...", fieldValue)
-				cmd = exec.Command("kind", "load", "docker-image", fieldValue)
-				out, err = cmd.CombinedOutput()
-				s.Log(string(out))
-				s.AssertNil(err, string(out))
-			}
-		}
-	} else {
-		s.AssertNil(errors.New("not a struct"))
-	}
+func (s *KindSuite) SetupTest() {
+	s.HstCommon.SetupTest()
 }
 
 func (s *KindSuite) SetupSuite() {
-	s.SetupKindSuite()
-	s.ImageNames.Ab = "hs-test/ab:latest"
-	s.ImageNames.Nginx = "hs-test/nginx-ldp:latest"
-	s.ImageNames.HstVpp = "hs-test/vpp:latest"
-	s.PodNames.ServerVpp = "server" + s.Ppid
-	s.PodNames.ClientVpp = "client" + s.Ppid
-	s.PodNames.Nginx = "nginx-ldp" + s.Ppid
-	s.PodNames.Ab = "ab" + s.Ppid
-	s.Namespace = "namespace" + s.Ppid
-	s.ContainerNames.Client = "client"
-	s.ContainerNames.Server = "server"
+	s.HstCommon.SetupSuite()
+	RegisterFailHandler(func(message string, callerSkip ...int) {
+		Fail(message, callerSkip...)
+	})
 
+	s.initPods()
 	s.loadDockerImages()
 
 	var err error
@@ -118,30 +65,22 @@ func (s *KindSuite) SetupSuite() {
 	s.ClientSet, err = kubernetes.NewForConfig(s.Config)
 	s.AssertNil(err)
 
-	s.CreateNamespace(s.Namespace)
+	s.createNamespace(s.Namespace)
 }
 
 func (s *KindSuite) TeardownTest() {
-	if *IsPersistent {
-		return
-	}
-	s.Log("[TEST TEARDOWN]")
-	s.ServerIp = ""
+	s.HstCommon.TeardownTest()
 	if len(s.CurrentlyRunning) != 0 {
 		for _, pod := range s.CurrentlyRunning {
 			s.Log("   %s", pod)
-			deletePod(s.ClientSet, s.Namespace, pod)
+			s.deletePod(s.Namespace, pod)
 		}
 	}
 }
 
 func (s *KindSuite) TeardownSuite() {
-	if *IsPersistent {
-		return
-	}
-	s.Log("[SUITE TEARDOWN]")
 	s.Log("   %s", s.Namespace)
-	s.AssertNil(deleteNamespace(s.ClientSet, s.Namespace))
+	s.AssertNil(s.deleteNamespace(s.Namespace))
 }
 
 func (s *KindSuite) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
@@ -157,7 +96,7 @@ func (s *KindSuite) CreateConfigFromTemplate(targetConfigName string, templateNa
 	err = f.Close()
 	s.AssertNil(err, err)
 
-	s.CopyToPod(s.PodNames.Nginx, s.Namespace, f.Name(), targetConfigName)
+	s.CopyToPod(s.Pods.Nginx.Name, s.Namespace, f.Name(), targetConfigName)
 }
 
 func (s *KindSuite) CreateNginxConfig() {
@@ -177,6 +116,9 @@ var _ = Describe("KindSuite", Ordered, ContinueOnFailure, Label("Perf"), func() 
 	var s KindSuite
 	BeforeAll(func() {
 		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
 	})
 	AfterEach(func() {
 		s.TeardownTest()

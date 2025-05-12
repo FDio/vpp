@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "fd.io/hs-test/infra"
+	hst_common "fd.io/hs-test/infra/infra_common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -82,7 +83,7 @@ func LdpIperfUdpTest(s *LdpSuite) {
 	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
 }
 
-func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
+func ldPreloadIperf(s *LdpSuite, extraClientArgs string) hst_common.IPerfResult {
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)

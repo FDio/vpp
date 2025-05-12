@@ -1,8 +1,9 @@
-package hst
+package hst_kind
 
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -10,31 +11,51 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (s *KindSuite) CreateNamespace(name string) {
+func (s *KindSuite) loadDockerImages() {
+	s.Log("This may take a while. If you encounter problems, " +
+		"try loading docker images manually: 'kind load docker-image [image]'")
+
+	var cmd *exec.Cmd
+	var out []byte
+	var err error
+	for _, image := range s.images {
+		s.Log("loading docker image %s...", image)
+		cmd = exec.Command("kind", "load", "docker-image", image)
+		out, err = cmd.CombinedOutput()
+		s.Log(string(out))
+		s.AssertNil(err, string(out))
+	}
+}
+
+func (s *KindSuite) createNamespace(name string) {
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: s.Namespace,
+			Name: name,
 		},
 	}
 
 	// Create the namespace in the cluster
 	_, err := s.ClientSet.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
 	s.AssertNil(err)
-	s.Log("Namespace '%s' created", s.Namespace)
+	s.Log("Namespace '%s' created", name)
 }
 
-func (s *KindSuite) DeployServerClient(imageNameServer string, imageNameClient string, serverPod string, clientPod string) {
-	var err error
-	var counter uint8
-	var serverDetails *corev1.Pod
-	s.CurrentlyRunning = append(s.CurrentlyRunning, serverPod, clientPod)
+func (s *KindSuite) deletePod(namespace string, podName string) error {
+	return s.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
+}
 
-	server := &corev1.Pod{
+func (s *KindSuite) deleteNamespace(namespace string) error {
+	return s.ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
+}
+
+func (s *KindSuite) DeployPod(pod *Pod) {
+	s.CurrentlyRunning = append(s.CurrentlyRunning, pod.Name)
+	pod.CreatedPod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
-			Name:      serverPod,
+			Name:      pod.Name,
 			Labels: map[string]string{
-				"app": serverPod,
+				"app": "HST",
 			},
 			Annotations: map[string]string{
 				"cni.projectcalico.org/vppVcl": "enable",
@@ -43,8 +64,8 @@ func (s *KindSuite) DeployServerClient(imageNameServer string, imageNameClient s
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "server",
-					Image: imageNameServer,
+					Name:  pod.ContainerName,
+					Image: pod.Image,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: boolPtr(true),
 					},
@@ -57,20 +78,21 @@ func (s *KindSuite) DeployServerClient(imageNameServer string, imageNameClient s
 					},
 				},
 			},
-			NodeName: "kind-worker",
+			NodeName: pod.Worker,
 		},
 	}
 
 	// Create the Pod
-	_, err = s.ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), server, metav1.CreateOptions{})
+	_, err := s.ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), pod.CreatedPod, metav1.CreateOptions{})
 	s.AssertNil(err)
-	s.Log("Pod '%s' created", serverPod)
+	s.Log("Pod '%s' created", pod.Name)
 
 	// Get IP
-	s.Log("Obtaining IP from '%s'", server.Name)
-	for s.ServerIp == "" {
-		serverDetails, err = s.ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), serverPod, metav1.GetOptions{})
-		s.ServerIp = serverDetails.Status.PodIP
+	s.Log("Obtaining IP from '%s'", pod.Name)
+	counter := 1
+	for pod.IpAddress == "" {
+		pod.CreatedPod, err = s.ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		pod.IpAddress = pod.CreatedPod.Status.PodIP
 		time.Sleep(time.Second * 1)
 		counter++
 		if counter >= 10 {
@@ -78,41 +100,5 @@ func (s *KindSuite) DeployServerClient(imageNameServer string, imageNameClient s
 		}
 	}
 
-	s.Log("IP: %s", s.ServerIp)
-
-	client := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: s.Namespace,
-			Name:      clientPod,
-			Annotations: map[string]string{
-				"cni.projectcalico.org/vppVcl": "enable",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:            "client",
-					Image:           imageNameClient,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"tail", "-f", "/dev/null"},
-					Ports: []corev1.ContainerPort{
-						{
-							ContainerPort: 5201,
-						},
-					},
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: boolPtr(true),
-					},
-				},
-			},
-			NodeName: "kind-worker2",
-		},
-	}
-
-	_, err = s.ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), client, metav1.CreateOptions{})
-	s.AssertNil(err)
-	s.Log("Pod '%s' created", clientPod)
-
-	// let pods start properly
-	time.Sleep(time.Second * 5)
+	s.Log("IP: %s", pod.IpAddress)
 }
