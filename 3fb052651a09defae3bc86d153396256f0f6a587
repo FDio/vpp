@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d4941f6_f1a48e53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-12T15:34:55Z",
+      "side": 1,
+      "message": "please update readme too",
+      "revId": "3fb052651a09defae3bc86d153396256f0f6a587",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "332ef905_553e2c9d",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-12T15:34:55Z",
+      "side": 1,
+      "message": "why you don\u0027t use dot import?",
+      "range": {
+        "startLine": 9,
+        "startChar": 1,
+        "endLine": 9,
+        "endChar": 46
+      },
+      "revId": "3fb052651a09defae3bc86d153396256f0f6a587",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
