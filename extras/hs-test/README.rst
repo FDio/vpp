@@ -22,7 +22,7 @@ Anatomy of a test case
 * Install hs-test dependencies with ``make install-deps``
 * `Install Go <https://go.dev/doc/install>`_, it has to be in path of both the running user (follow instructions on Go installation page) and root (run ``sudo visudo`` and edit ``secure_path`` line, run ``sudo go version`` to verify)
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
-* Tests use *hs-test*'s own docker image, they are rebuild automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
+* Tests use *hs-test*'s own docker image, they are rebuilt automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
 
 **Action flow when running a test case**:
 
@@ -50,12 +50,11 @@ For adding a new suite, please see `Modifying the framework`_ below.
 #. Declare method whose name ends with ``Test`` and specifies its parameter as a pointer to the suite's struct (defined in ``infra/suite_*.go``)
 #. Implement test behaviour inside the test method. This typically includes the following:
 
-   #. Import ``. "fd.io/hs-test/infra"``
-   #. Retrieve a running container in which to run some action. Method ``GetContainerByName``
-      from ``HstSuite`` struct serves this purpose
+   #. Import ``. "fd.io/hs-test/infra"`` and ``. "fd.io/hs-test/infra/infra_common"``
+   #. Retrieve a running container in which to run some action. Each suite has a struct called ``Containers``
    #. Interact with VPP through the ``VppInstance`` struct embedded in container. It provides ``Vppctl`` method to access debug CLI
    #. Run arbitrary commands inside the containers with ``Exec`` method
-   #. Run other external tool with one of the preexisting functions in the ``infra/utils.go`` file.
+   #. Run other external tool with one of the preexisting functions in the ``infra/utils.go`` or ``infra/infra_common/utils_common.go`` file.
       For example, use ``wget`` with ``StartWget`` function
    #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
    #. Verify results of your tests using ``Assert`` methods provided by the test suite.
@@ -103,13 +102,15 @@ when running in parallel.
 Filtering test cases
 --------------------
 
-The framework allows us to filter test cases in a few different ways, using ``make test TEST=``:
+The framework allows us to filter test cases in a few different ways, using ``make test TEST=xyz SKIP=xyz``:
 
         * Suite name
         * File name
         * Test name
         * All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
         * Multiple tests/suites: ``make test TEST=HttpClient,LdpSuite``
+
+All of the above also applies to ``SKIP``
 
 **Names are case sensitive!**
 
@@ -227,10 +228,10 @@ Modifying the framework
         		s.SetupTest()
         	})
         	AfterAll(func() {
-        		s.TearDownSuite()
+        		s.TeardownSuite()
         	})
         	AfterEach(func() {
-        		s.TearDownTest()
+        		s.TeardownTest()
         	})
 
         	for filename, tests := range myTests {
@@ -361,7 +362,7 @@ Utility methods
 **Packet Capture**
 
 It is possible to use VPP pcap trace to capture received and sent packets.
-You just need to add ``EnablePcapTrace`` to ``SetupTest`` method in test suite and ``CollectPcapTrace`` to ``TearDownTest``.
+You just need to add ``EnablePcapTrace`` to ``SetupTest`` method in test suite and ``CollectPcapTrace`` to ``TeardownTest``.
 This way pcap trace is enabled on all interfaces and to capture maximum 10000 packets.
 Your pcap file will be located in the test execution directory.
 
@@ -369,7 +370,7 @@ Your pcap file will be located in the test execution directory.
 
 ``clib_warning`` is a handy way to add debugging output, but in some cases it's not appropriate for per-packet use in data plane code.
 In this case VPP event logger is better option, for example you can enable it for TCP or session layer in build time.
-To collect traces when test ends you just need to add ``CollectEventLogs`` method to ``TearDownTest`` in the test suite.
+To collect traces when test ends you just need to add ``CollectEventLogs`` method to ``TeardownTest`` in the test suite.
 Your event logger file will be located in the test execution directory.
 To view events you can use :ref:`G2 graphical event viewer <eventviewer>` or ``convert_evt`` tool, located in ``src/scripts/host-stack/``,
 which convert event logs to human readable text.
