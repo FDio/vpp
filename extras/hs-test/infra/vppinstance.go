@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	. "fd.io/hs-test/infra/infra_common"
 	"go.fd.io/govpp/binapi/ethernet_types"
 
 	"github.com/edwarnicke/exechelper"

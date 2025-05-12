@@ -22,7 +22,7 @@ Anatomy of a test case
 * Install hs-test dependencies with ``make install-deps``
 * `Install Go <https://go.dev/doc/install>`_, it has to be in path of both the running user (follow instructions on Go installation page) and root (run ``sudo visudo`` and edit ``secure_path`` line, run ``sudo go version`` to verify)
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
-* Tests use *hs-test*'s own docker image, they are rebuild automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
+* Tests use *hs-test*'s own docker image, they are rebuilt automatically when needed, you can run ``make build[-debug]`` to do so or use ``FORCE_BUILD=true`` make parameter
 
 **Action flow when running a test case**:
 
@@ -50,12 +50,11 @@ For adding a new suite, please see `Modifying the framework`_ below.
 #. Declare method whose name ends with ``Test`` and specifies its parameter as a pointer to the suite's struct (defined in ``infra/suite_*.go``)
 #. Implement test behaviour inside the test method. This typically includes the following:
 
-   #. Import ``. "fd.io/hs-test/infra"``
-   #. Retrieve a running container in which to run some action. Method ``GetContainerByName``
-      from ``HstSuite`` struct serves this purpose
+   #. Import ``. "fd.io/hs-test/infra"`` and ``. "fd.io/hs-test/infra/infra_common"``
+   #. Retrieve a running container in which to run some action. Each suite has a struct called ``Containers``
    #. Interact with VPP through the ``VppInstance`` struct embedded in container. It provides ``Vppctl`` method to access debug CLI
    #. Run arbitrary commands inside the containers with ``Exec`` method
-   #. Run other external tool with one of the preexisting functions in the ``infra/utils.go`` file.
+   #. Run other external tool with one of the preexisting functions in the ``infra/utils.go`` or ``infra/infra_common/utils_common.go`` file.
       For example, use ``wget`` with ``StartWget`` function
    #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
    #. Verify results of your tests using ``Assert`` methods provided by the test suite.
@@ -103,13 +102,15 @@ when running in parallel.
 Filtering test cases
 --------------------
 
-The framework allows us to filter test cases in a few different ways, using ``make test TEST=``:
+The framework allows us to filter test cases in a few different ways, using ``make test TEST=xyz SKIP=xyz``:
 
         * Suite name
         * File name
         * Test name
         * All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
         * Multiple tests/suites: ``make test TEST=HttpClient,LdpSuite``
+
+All of the above also applies to ``SKIP``
 
 **Names are case sensitive!**
 

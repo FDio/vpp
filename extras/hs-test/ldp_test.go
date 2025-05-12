@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "fd.io/hs-test/infra"
+	. "fd.io/hs-test/infra/infra_common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
