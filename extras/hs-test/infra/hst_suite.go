@@ -4,53 +4,39 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/edwarnicke/exechelper"
-
+	. "fd.io/hs-test/infra/common"
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/onsi/gomega/gmeasure"
-	"gopkg.in/yaml.v3"
-
+	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gmeasure"
+	"gopkg.in/yaml.v3"
 )
 
 const (
 	DEFAULT_NETWORK_NUM int = 1
 )
 
-var IsPersistent = flag.Bool("persist", false, "persists topology config")
-var IsVerbose = flag.Bool("verbose", false, "verbose test output")
-var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
 var IsUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
-var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var NConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different with debug build")
 var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
 var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
-var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
-var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
-var SudoUser = flag.String("sudo_user", "root", "what user ran hs-test with sudo")
-var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
-var NumaAwareCpuAlloc bool
-var TestTimeout time.Duration
-var RunningInCi bool
 
 type HstSuite struct {
+	HstCommon
 	AllContainers     map[string]*Container
 	StartedContainers []*Container
 	Volumes           []string
@@ -62,10 +48,6 @@ type HstSuite struct {
 	CpuAllocator      *CpuAllocatorT
 	CpuContexts       []*CpuContext
 	CpuCount          int
-	Ppid              string
-	ProcessIndex      string
-	Logger            *log.Logger
-	LogFile           *os.File
 	Docker            *client.Client
 	CoverageRun       bool
 }
@@ -110,19 +92,6 @@ type StringerStruct struct {
 	Label string
 }
 
-var testCounter uint16
-var startTime time.Time = time.Now()
-
-func testCounterFunc() {
-	if ParallelTotal.Value.String() != "1" {
-		return
-	}
-	testCounter++
-	fmt.Printf("Test counter: %d\n"+
-		"Time elapsed: %.2fs\n",
-		testCounter, time.Since(startTime).Seconds())
-}
-
 // ColorableString for ReportEntry to use
 func (s StringerStruct) ColorableString() string {
 	return fmt.Sprintf("{{red}}%s{{/}}", s.Label)
@@ -131,11 +100,6 @@ func (s StringerStruct) ColorableString() string {
 // non-colorable String() is used by go's string formatting support but ignored by ReportEntry
 func (s StringerStruct) String() string {
 	return s.Label
-}
-
-func GetTestFilename() string {
-	_, filename, _, _ := runtime.Caller(2)
-	return filepath.Base(filename)
 }
 
 func (s *HstSuite) getLogDirPath() string {
@@ -158,32 +122,15 @@ func (s *HstSuite) newDockerClient() {
 	s.Log("docker client created")
 }
 
-func (s *HstSuite) SetupKindSuite() {
-	s.CreateLogger()
-	s.Log("[* SUITE SETUP]")
-	RegisterFailHandler(func(message string, callerSkip ...int) {
-		s.HstFail()
-		Fail(message, callerSkip...)
-	})
-	s.Ppid = fmt.Sprint(os.Getppid())
-	// remove last number so we have space to prepend a process index (interfaces have a char limit)
-	s.Ppid = s.Ppid[:len(s.Ppid)-1]
-	s.ProcessIndex = fmt.Sprint(GinkgoParallelProcess())
-}
-
 func (s *HstSuite) SetupSuite() {
-	s.CreateLogger()
-	s.Log("[* SUITE SETUP]")
-	s.newDockerClient()
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
 		Fail(message, callerSkip...)
 	})
+	s.HstCommon.SetupSuite()
+	s.newDockerClient()
+
 	var err error
-	s.Ppid = fmt.Sprint(os.Getppid())
-	// remove last number so we have space to prepend a process index (interfaces have a char limit)
-	s.Ppid = s.Ppid[:len(s.Ppid)-1]
-	s.ProcessIndex = fmt.Sprint(GinkgoParallelProcess())
 	s.CpuAllocator, err = CpuAllocator()
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
@@ -232,21 +179,15 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 	s.CpuContexts = append(s.CpuContexts, cpuCtx)
 }
 
-func (s *HstSuite) TearDownSuite() {
+func (s *HstSuite) TeardownSuite() {
+	s.HstCommon.TeardownSuite()
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
-	if *IsPersistent || *DryRun {
-		return
-	}
-	s.Log("[* SUITE TEARDOWN]")
 	s.UnconfigureNetworkTopology()
 }
 
-func (s *HstSuite) TearDownTest() {
-	s.Log("[* TEST TEARDOWN]")
-	if *IsPersistent || *DryRun {
-		return
-	}
+func (s *HstSuite) TeardownTest() {
+	s.HstCommon.TeardownTest()
 	coreDump := s.WaitForCoreDump()
 	s.ResetContainers()
 
@@ -276,8 +217,7 @@ func (s *HstSuite) SkipIfNotCoverage() {
 }
 
 func (s *HstSuite) SetupTest() {
-	testCounterFunc()
-	s.Log("[* TEST SETUP]")
+	s.HstCommon.SetupTest()
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SkipIfUnconfiguring()
 	s.SetupContainers()
@@ -338,125 +278,6 @@ func (s *HstSuite) HstFail() {
 			"^^^^^^^^^^^^^^^\n\n")
 		s.LogVppInstance(container, 20)
 	}
-}
-
-func (s *HstSuite) AssertNil(object interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, object).To(BeNil(), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertNotNil(object interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, object).ToNot(BeNil(), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).To(Equal(expected), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertNotEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).ToNot(Equal(expected), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).To(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).ToNot(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, object).To(BeEmpty(), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, object).ToNot(BeEmpty(), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertMatchError(actual, expected error, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).To(MatchError(expected), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertGreaterThan(actual, expected interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).Should(BeNumerically(">=", expected), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertEqualWithinThreshold(actual, expected, threshold interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).Should(BeNumerically("~", expected, threshold), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertTimeEqualWithinThreshold(actual, expected time.Time, threshold time.Duration, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, actual).Should(BeTemporally("~", expected, threshold), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertHttpStatus(resp *http.Response, expectedStatus int, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, resp).To(HaveHTTPStatus(expectedStatus), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertHttpHeaderWithValue(resp *http.Response, key string, value interface{}, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue(key, value), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertHttpHeaderNotPresent(resp *http.Response, key string, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, resp.Header.Get(key)).To(BeEmpty(), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertHttpContentLength(resp *http.Response, expectedContentLen int64, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue("Content-Length", strconv.FormatInt(expectedContentLen, 10)), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertHttpBody(resp *http.Response, expectedBody string, msgAndArgs ...interface{}) {
-	ExpectWithOffset(2, resp).To(HaveHTTPBody(expectedBody), msgAndArgs...)
-}
-
-func (s *HstSuite) AssertChannelClosed(timeout time.Duration, channel chan error) {
-	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
-}
-
-// Pass the parsed result struct and the minimum amount of data transferred in MB.
-// Won't do anything when testing a coverage build.
-func (s *HstSuite) AssertIperfMinTransfer(result IPerfResult, minTransferred int) {
-	if *IsCoverage {
-		s.Log("Coverage build; not asserting")
-		return
-	}
-	if result.Start.Details.Protocol == "TCP" {
-		s.AssertGreaterThan(result.End.TcpReceived.MBytes, minTransferred)
-	} else {
-		s.AssertGreaterThan(result.End.Udp.MBytes, minTransferred)
-	}
-}
-
-func (s *HstSuite) CreateLogger() {
-	suiteName := s.GetCurrentSuiteName()
-	var err error
-	s.LogFile, err = os.Create("summary/" + suiteName + ".log")
-	if err != nil {
-		Fail("Unable to create log file.")
-	}
-	s.Logger = log.New(io.Writer(s.LogFile), "", log.LstdFlags)
-}
-
-// Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
-// to keep console tidy
-func (s *HstSuite) Log(log any, arg ...any) {
-	var logStr string
-	if len(arg) == 0 {
-		logStr = fmt.Sprint(log)
-	} else {
-		logStr = fmt.Sprintf(fmt.Sprint(log), arg...)
-	}
-	logs := strings.Split(logStr, "\n")
-
-	for _, line := range logs {
-		s.Logger.Println(line)
-	}
-	if *IsVerbose {
-		GinkgoWriter.Println(logStr)
-	}
-}
-
-func (s *HstSuite) Skip(args string) {
-	Skip(args)
 }
 
 func (s *HstSuite) SkipIfMultiWorker(args ...any) {
@@ -602,7 +423,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Volumes {
 		volumeMap := elem["volume"].(VolumeConfig)
 		hostDir := volumeMap["host-dir"].(string)
-		workingVolumeDir := LogDir + s.GetCurrentTestName() + volumeDir
+		workingVolumeDir := LogDir + s.GetCurrentTestName() + VolumeDir
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		hostDir = volDirReplacer.Replace(hostDir)
 		s.Volumes = append(s.Volumes, hostDir)

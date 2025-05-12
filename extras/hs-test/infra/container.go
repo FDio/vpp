@@ -13,20 +13,15 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/docker/go-units"
-
+	. "fd.io/hs-test/infra/common"
 	"github.com/cilium/cilium/pkg/sysctl"
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/go-units"
 	"github.com/edwarnicke/exechelper"
-	. "github.com/onsi/ginkgo/v2"
-)
-
-const (
-	LogDir    string = "/tmp/hs-test/"
-	volumeDir string = "/volumes"
+	"github.com/onsi/ginkgo/v2"
 )
 
 var (
@@ -93,7 +88,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := LogDir + suite.GetCurrentTestName() + volumeDir
+		workingVolumeDir := LogDir + suite.GetCurrentTestName() + VolumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -458,7 +453,7 @@ func (c *Container) ExecServer(useEnvVars bool, command string, arguments ...any
 		envVars = ""
 	}
 	containerExecCommand := fmt.Sprintf("docker exec -d %s %s %s", envVars, c.Name, serverCommand)
-	GinkgoHelper()
+	ginkgo.GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
 	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
 }
@@ -472,7 +467,7 @@ func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) (str
 		envVars = ""
 	}
 	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
-	GinkgoHelper()
+	ginkgo.GinkgoHelper()
 	c.Suite.Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
 	return string(byteOutput), err

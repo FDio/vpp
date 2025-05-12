@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -101,12 +102,12 @@ func (s *NginxProxySuite) SetupTest() {
 	s.AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
-func (s *NginxProxySuite) TearDownTest() {
+func (s *NginxProxySuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxProxy)
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 }
 
 func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThreadWorkers bool) {
@@ -186,10 +187,10 @@ var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range nginxProxyTests {
@@ -215,10 +216,10 @@ var _ = Describe("NginxProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range nginxProxySoloTests {

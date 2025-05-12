@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -56,11 +57,11 @@ func (s *CpuPinningSuite) SetupTest() {
 	}
 }
 
-func (s *CpuPinningSuite) TearDownTest() {
+func (s *CpuPinningSuite) TeardownTest() {
 	// reset vars
 	s.CpuCount = *NConfiguredCpus
 	s.CpuAllocator.maxContainerCount = s.previousMaxContainerCount
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 
 }
 
@@ -73,11 +74,11 @@ var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
@@ -104,10 +105,10 @@ var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, func
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range cpuPinningSoloTests {

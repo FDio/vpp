@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -142,12 +143,12 @@ func (s *EnvoyProxySuite) SetupTest() {
 	s.AssertNil(s.Containers.EnvoyProxy.Start())
 }
 
-func (s *EnvoyProxySuite) TearDownTest() {
+func (s *EnvoyProxySuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 		s.CollectEnvoyLogs(s.Containers.EnvoyProxy)
 	}
-	s.HstSuite.TearDownTest()
+	s.HstSuite.TeardownTest()
 }
 
 func (s *EnvoyProxySuite) ProxyPort() uint16 {
@@ -182,10 +183,10 @@ var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range envoyProxyTests {
@@ -211,10 +212,10 @@ var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, func() {
 		s.SetupTest()
 	})
 	AfterAll(func() {
-		s.TearDownSuite()
+		s.TeardownSuite()
 	})
 	AfterEach(func() {
-		s.TearDownTest()
+		s.TeardownTest()
 	})
 
 	for filename, tests := range envoyProxySoloTests {
