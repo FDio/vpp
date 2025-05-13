@@ -61,6 +61,23 @@ static struct
 #undef _
 };
 
+static vnet_dev_arg_t oct_port_args[] = {
+  {
+    .id = OCT_PORT_ARG_EN_ETH_PAUSE_FRAME,
+    .name = "eth_pause_frame",
+    .desc = "Enable ethernet pause frame support, applicable to network "
+	    "devices only",
+    .type = VNET_DEV_ARG_TYPE_BOOL,
+    .default_val.boolean = false,
+  },
+  {
+    .id = OCT_PORT_ARG_END,
+    .name = "end",
+    .desc = "Argument end",
+    .type = VNET_DEV_ARG_END,
+  },
+};
+
 static vnet_dev_arg_t oct_dev_args[] = {
   {
     .id = OCT_DEV_ARG_CRYPTO_N_DESC,
@@ -168,6 +185,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .data_size = sizeof (oct_port_t),
       .initial_data = &oct_port,
+      .args = oct_port_args,
     },
     .rx_node = &oct_rx_node,
     .tx_node = &oct_tx_node,

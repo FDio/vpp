@@ -132,10 +132,18 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_port_interfaces_t *ifs = port->interfaces;
   u8 mac_addr[PLT_ETHER_ADDR_LEN];
   struct roc_nix *nix = cd->nix;
+  bool is_pause_frame_enable = false;
   vnet_dev_rv_t rv;
   int rrv;
 
   log_debug (dev, "port init: port %u", port->port_id);
+
+  foreach_vnet_dev_port_args (arg, port)
+    {
+      if (arg->id == OCT_PORT_ARG_EN_ETH_PAUSE_FRAME &&
+	  vnet_dev_arg_get_bool (arg))
+	is_pause_frame_enable = true;
+    }
 
   if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,
 			       rxq_cfg)))
@@ -221,7 +229,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
 
   /* Configure pause frame flow control*/
-  if ((rv = oct_port_pause_flow_control_init (vm, port)))
+
+  if (is_pause_frame_enable &&
+      (rv = oct_port_pause_flow_control_init (vm, port)))
     {
       oct_port_deinit (vm, port);
       return rv;
