@@ -61,6 +61,10 @@ ifeq ($(NO_COLOR),)
 VERBOSE=false
 endif
 
+ifeq ($(TIMEOUT),)
+TIMEOUT=5
+endif
+
 FORCE_BUILD?=true
 
 .PHONY: help
@@ -99,6 +103,7 @@ help:
 	@echo " CPU0=[true|false]        - use cpu0"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
+	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
 
 .PHONY: list-tests
 list-tests:
@@ -132,7 +137,7 @@ test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
+		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -141,7 +146,7 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: wipe-lcov
@@ -153,13 +158,14 @@ test-cov: FORCE_BUILD=false
 test-cov: .deps.ok .build.cov.ok wipe-lcov
 	@bash ./hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR); \
+		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
+		--timeout=$(TIMEOUT); \
 		./script/compress.sh $$?
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
-	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC)
+	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT)
 
 .PHONY: test-perf
 test-perf: FORCE_BUILD=false

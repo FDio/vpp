@@ -115,6 +115,9 @@ case "${i}" in
     --perf=*)
         perf="${i#*=}"
         ;;
+    --timeout=*)
+        args="$args -timeout ${i#*=}"
+        ;;
 esac
 done
 
