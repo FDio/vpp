@@ -45,6 +45,7 @@ var IsLeakCheck = flag.Bool("leak_check", false, "run leak-check tests")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var SudoUser = flag.String("sudo_user", "root", "what user ran hs-test with sudo")
+var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool

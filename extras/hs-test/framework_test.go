@@ -30,7 +30,7 @@ func TestHst(t *testing.T) {
 		// 30 minute timeout so that the framework won't timeout while debugging
 		TestTimeout = time.Minute * 30
 	} else {
-		TestTimeout = time.Minute * 5
+		TestTimeout = time.Minute * time.Duration(*Timeout)
 	}
 
 	RunningInCi = os.Getenv("BUILD_NUMBER") != ""
