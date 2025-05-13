@@ -25,6 +25,12 @@
 
 typedef enum
 {
+  OCT_PORT_ARG_EN_ETH_PAUSE_FRAME = 1,
+  OCT_PORT_ARG_END
+} oct_port_args_t;
+
+typedef enum
+{
   OCT_DEV_ARG_CRYPTO_N_DESC = 1,
   OCT_DEV_ARG_END,
 } oct_dev_args_t;
