@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sched.h>
 #include <vcl/vppcom.h>
 #include <vcl/vcl_debug.h>
 #include <vcl/vcl_private.h>
@@ -2332,11 +2333,15 @@ vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
 always_inline u8
 vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
 {
+  u8 writeable = 0;
   u32 max_enq = svm_fifo_max_enqueue_prod (f);
   if (is_dgram)
-    return max_enq >= (sizeof (session_dgram_hdr_t) + len);
+    writeable = max_enq >= (sizeof (session_dgram_hdr_t) + len);
   else
-    return max_enq > 0;
+    writeable = max_enq > 0;
+  if (!writeable)
+    sched_yield ();
+  return writeable;
 }
 
 always_inline int
