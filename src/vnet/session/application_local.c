@@ -95,6 +95,7 @@ ct_connection_alloc (clib_thread_index_t thread_index)
   ct->server_wrk = ~0;
   ct->seg_ctx_index = ~0;
   ct->ct_seg_index = ~0;
+  ct->peer_index = ~0;
   return ct;
 }
 
@@ -1109,7 +1110,7 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
 	}
       else
 	{
-	  ct_connection_free (ct);
+	  ct_session_cleanup_server_session (s);
 	}
     }
 }

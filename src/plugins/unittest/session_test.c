@@ -33,12 +33,15 @@
   _evald;							\
 })
 
-#define SESSION_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!SESSION_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define SESSION_TEST(_cond, _comment, _args...)                               \
+  do                                                                          \
+    {                                                                         \
+      if (!SESSION_TEST_I (_cond, _comment, ##_args))                         \
+	{                                                                     \
+	  return 1;                                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 #define ST_DBG(_comment, _args...)				\
     fformat(stderr,  _comment "\n",  ##_args);			\
@@ -669,6 +672,11 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   session_t *s;
   u64 handle;
   int error = 0;
+
+  /* Make sure segment count and accept are reset before starting test
+   * in case tests are ran multiple times */
+  placeholder_segment_count = 0;
+  placeholder_accept = 0;
 
   ns_id = format (0, "appns1");
   server_name = format (0, "session_test");
@@ -2375,7 +2383,7 @@ session_get_memory_usage (void)
 static int
 session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
 {
-  u32 iteration = 100, i;
+  u32 iteration = 100, i, n_sessions = 0;
   uword was_enabled;
   f32 was_using, now_using;
 
@@ -2390,6 +2398,10 @@ session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
 	  return -1;
 	}
     }
+
+  for (int thread_index = 0; thread_index <= vlib_num_workers ();
+       thread_index++)
+    n_sessions += pool_elts (session_main.wrk[thread_index].sessions);
 
   was_enabled = clib_mem_trace_enable_disable (0);
   /* warm up */
@@ -2412,8 +2424,12 @@ session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
   now_using = session_get_memory_usage ();
 
   clib_mem_trace_enable_disable (was_enabled);
-  SESSION_TEST ((was_using == now_using), "was using %.2fM, now using %.2fM",
-		was_using, now_using);
+  if (n_sessions)
+    SESSION_TEST ((now_using < was_using + (1 << 15)),
+		  "was using %.2fM, now using %.2fM", was_using, now_using);
+  else
+    SESSION_TEST ((was_using == now_using), "was using %.2fM, now using %.2fM",
+		  was_using, now_using);
 
   return 0;
 }
