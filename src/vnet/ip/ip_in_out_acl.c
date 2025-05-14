@@ -306,6 +306,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
 		    }
 		}
+	      else
+		{
+		  if (e[0]->action == CLASSIFY_ACTION_MARK_FLOW)
+		    b[0]->flow_id = e[0]->metadata;
+		}
 	    }
 	  else
 	    {
@@ -359,6 +364,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 			      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
 			    }
 			}
+		      else
+			{
+			  if (e[0]->action == CLASSIFY_ACTION_MARK_FLOW)
+			    b[0]->flow_id = e[0]->metadata;
+			}
 		      break;
 		    }
 		}
@@ -390,6 +400,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 		      /* For source check in case we skip the lookup node */
 		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
 		    }
+		}
+	      else
+		{
+		  if (e[1]->action == CLASSIFY_ACTION_MARK_FLOW)
+		    b[1]->flow_id = e[1]->metadata;
 		}
 	    }
 	  else
@@ -443,6 +458,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 			       * node */
 			      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
 			    }
+			}
+		      else
+			{
+			  if (e[1]->action == CLASSIFY_ACTION_MARK_FLOW)
+			    b[1]->flow_id = e[1]->metadata;
 			}
 		      break;
 		    }
@@ -569,6 +589,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
 		    }
 		}
+	      else
+		{
+		  if (e0->action == CLASSIFY_ACTION_MARK_FLOW)
+		    b[0]->flow_id = e0->metadata;
+		}
 	    }
 	  else
 	    {
@@ -619,6 +644,11 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 			       * node */
 			      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
 			    }
+			}
+		      else
+			{
+			  if (e0->action == CLASSIFY_ACTION_MARK_FLOW)
+			    b[0]->flow_id = e0->metadata;
 			}
 		      break;
 		    }
