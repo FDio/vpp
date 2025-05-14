@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6b2d077_b21962aa",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T19:30:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "76e82c29_3a828127",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f9893e15_cc76e5ef",
@@ -120,6 +138,24 @@
       "side": 1,
       "message": "Just sanitizing our apis, to avoid direct access to pools",
       "parentUuid": "cd22f964_8b8f0f15",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09e7a551_de961d9c",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T19:30:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "99842bf6_80705c68",
       "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
