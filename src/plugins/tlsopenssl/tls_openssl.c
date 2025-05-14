@@ -269,6 +269,14 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, tls_ctx_t *ctx,
   return wrote;
 }
 
+u8 *
+format_openssl_alpn_proto (u8 *s, va_list *va)
+{
+  const unsigned char *proto = va_arg (*va, const unsigned char *);
+  unsigned int proto_len = va_arg (*va, unsigned int);
+  return format (s, "%U", format_ascii_bytes, proto, proto_len);
+}
+
 void
 openssl_handle_handshake_failure (tls_ctx_t *ctx)
 {
@@ -345,6 +353,29 @@ openssl_ctx_handshake_rx (tls_ctx_t *ctx, session_t *tls_session)
   /*
    * Handshake complete
    */
+  if (ctx->alpn_list)
+    {
+      const unsigned char *proto = 0;
+      unsigned int proto_len;
+      SSL_get0_alpn_selected (oc->ssl, &proto, &proto_len);
+      if (proto_len)
+	{
+	  TLS_DBG (1, "Selected ALPN protocol: %U", format_openssl_alpn_proto,
+		   proto, proto_len);
+	  if (proto_len == 2)
+	    {
+	      if (proto[0] == 'h' && proto[1] == '2')
+		ctx->alpn_selected = TLS_ALPN_PROTO_HTTP2;
+	    }
+	  else if (proto_len == 8)
+	    {
+	      if (!memcmp (proto, "http/1.1", proto_len))
+		ctx->alpn_selected = TLS_ALPN_PROTO_HTTP1;
+	    }
+	}
+      else
+	TLS_DBG (1, "No ALPN negotiated");
+    }
   if (!SSL_is_server (oc->ssl))
     {
       /*
@@ -847,6 +878,21 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
+openssl_alpn_select_cb (SSL *ssl, const unsigned char **out,
+			unsigned char *outlen, const unsigned char *in,
+			unsigned int inlen, void *arg)
+{
+  u8 *proto_list = arg;
+  if (SSL_select_next_proto (
+	(unsigned char **) out, outlen, (const unsigned char *) proto_list,
+	vec_len (proto_list), in, inlen) != OPENSSL_NPN_NEGOTIATED)
+    {
+      return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static int
 openssl_start_listen (tls_ctx_t * lctx)
 {
   const SSL_METHOD *method;
@@ -987,6 +1033,10 @@ openssl_start_listen (tls_ctx_t * lctx)
     }
 
   BIO_free (cert_bio);
+
+  if (lctx->alpn_list)
+    SSL_CTX_set_alpn_select_cb (ssl_ctx, openssl_alpn_select_cb,
+				(void *) lctx->alpn_list);
 
   olc_index = openssl_listen_ctx_alloc ();
   olc = openssl_lctx_get (olc_index);
