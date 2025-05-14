@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5b02820b_4c579357",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 3199
+      },
+      "writtenOn": "2025-05-14T15:07:13Z",
+      "side": 1,
+      "message": "Happy to remove the leading tabs. I assume I should replace them with spaces, correct? Just so you are aware, my editor shows that the file uses both tabs and spaces throughout, but it looks like it mostly uses tabs, which is why I used tabs in the sections I added. But I prefer spaces and I\u0027m happy to make the change, if that\u0027s what the project wants.",
+      "parentUuid": "43150c3e_cbe48234",
+      "range": {
+        "startLine": 64,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 6
+      },
+      "revId": "8c787d37b21798eb0bc832b163da825d4cff005d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "08376aaf_6d6cb270",
         "filename": "extras/deprecated/vom/vom.mk",
         "patchSetId": 3
@@ -37,6 +61,24 @@
       "writtenOn": "2025-04-17T16:11:34Z",
       "side": 1,
       "message": "VOM is deprecated, so these changes are not necessary.\n\nHowever, if you are using VOM on RHEL-8, then this is ok with me as long as the leading tabs are removed per comment in main Makefile.",
+      "revId": "8c787d37b21798eb0bc832b163da825d4cff005d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b3ae4cc8_63d1fb4b",
+        "filename": "extras/deprecated/vom/vom.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 3199
+      },
+      "writtenOn": "2025-05-14T15:07:13Z",
+      "side": 1,
+      "message": "I\u0027m not intending to use VOM, but I did get a build error that referenced this file - so I updated it and the error cleared. If I revert this change, it doesn\u0027t build for me. How would you like to handle this one?",
+      "parentUuid": "08376aaf_6d6cb270",
       "revId": "8c787d37b21798eb0bc832b163da825d4cff005d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
