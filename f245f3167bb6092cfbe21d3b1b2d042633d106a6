@@ -34,6 +34,24 @@
       "parentUuid": "31063690_1f8de4c1",
       "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5cb7278_81058288",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3212
+      },
+      "writtenOn": "2025-05-14T16:28:00Z",
+      "side": 1,
+      "message": "So, to clarify, you\u0027re saying that \n\n- the list of enabled queues changes inside the VM, the thread-queue would need to change for the interface to continue to work correctly\n\n- changing the list of enabled queues inside the VM does not generate this event\n\n- therefore, using an API in response to his event, as Mohsin suggests, will not change the pinning when it needs to be changed\n\nIs that it?",
+      "parentUuid": "5a3ef2cb_9b8fdd95",
+      "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
