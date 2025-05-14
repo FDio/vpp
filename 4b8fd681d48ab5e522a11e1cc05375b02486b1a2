@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a6bfd06c_259b381d",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Is there really a need for a ctx_pool for each thread?  If so, let\u0027s do it in a subsequent patch.",
+      "parentUuid": "ba90ba97_17c9d957",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f9893e15_cc76e5ef",
         "filename": "src/plugins/quic/quic.h",
         "patchSetId": 56
@@ -48,6 +66,24 @@
       "writtenOn": "2025-05-09T02:39:31Z",
       "side": 1,
       "message": "Maybe add a `quic_ctx_get` here and use it in quic_quickly?",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd22f964_8b8f0f15",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Is this in support of per-thread ctx pool lookup?  If so, let\u0027s do this later along with the above comment.",
+      "parentUuid": "f9893e15_cc76e5ef",
       "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a50dc48_d0ee1c54",
+        "filename": "src/plugins/quic/quic_timer.h",
+        "patchSetId": 56
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Actually, I changed all of the calls to pass a pointer to the indexed worker context instead of the head of the worker context array.  But didn\u0027t change the api signature.  Renamed to \u0027thread_wc\u0027 to make it clearer.",
+      "parentUuid": "74f34cfb_b8216a0e",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "109bc26c_17f153e1",
@@ -82,6 +136,24 @@
       "writtenOn": "2025-05-09T02:39:31Z",
       "side": 1,
       "message": "Let\u0027s add a `quic_wrk_ctx_get (\u003cthread_index\u003e)` and let\u0027s just reuse it all over the place",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b871567_4ab98208",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "109bc26c_17f153e1",
       "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "86273c17_5a3f6ba2",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "931c752c_248351bc",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a1bac43f_0883c67f",
@@ -120,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cac43767_e9e8e783",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 1227,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Let\u0027s hold off on this and refactor it during the openssl quic engine implementation. My guess is that there\u0027s not a lot of gain to be had by moving it to the quic framework.\n\nAdded this comment to a TODO comment for now.",
+      "parentUuid": "a1bac43f_0883c67f",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a5a44de6_6e76fdcf",
@@ -133,6 +241,24 @@
       "writtenOn": "2025-05-09T02:39:31Z",
       "side": 1,
       "message": "More of these (some lower) :-)",
+      "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5e5e2cf_f65a3534",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 56
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T03:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a5a44de6_6e76fdcf",
       "revId": "4b8fd681d48ab5e522a11e1cc05375b02486b1a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
