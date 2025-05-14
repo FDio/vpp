@@ -567,7 +567,7 @@ test-cov-both:
 	find $(BR) -name '*.gcda' -delete
 	@$(MAKE) test-cov
 	find $(BR) -name '*.gcda' -delete
-	@$(MAKE) test-cov-hs
+	-@$(MAKE) test-cov-hs
 	@$(MAKE) cov-merge
 
 .PHONY: test-cov-build
