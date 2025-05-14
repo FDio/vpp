@@ -16,6 +16,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/tls/tls_types.h>
 #include <vppinfra/lock.h>
 
 #ifndef SRC_VNET_TLS_TLS_H_
@@ -121,6 +122,8 @@ typedef struct tls_ctx_
   u8 *srv_hostname;
   u32 ckpair_index;
   transport_proto_t tls_type;
+  u8 *alpn_list;
+  tls_alpn_proto_t alpn_selected;
 } tls_ctx_t;
 
 typedef struct tls_main_
@@ -133,6 +136,7 @@ typedef struct tls_main_
   u8 **rx_bufs;
   u8 **tx_bufs;
 
+  uword *alpn_proto_by_str;
   /*
    * Config
    */
