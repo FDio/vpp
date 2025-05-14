@@ -11,8 +11,8 @@
 #include <vnet/fib/fib_table.h>
 #include <vppinfra/lock.h>
 #include <vnet/classify/trace_classify.h>
-
-
+#include <vppinfra/hash.h>
+#include <vppinfra/format.h>
 
 /**
  * @file
@@ -381,6 +381,7 @@ vnet_classify_entry_claim_resource (vnet_classify_entry_t * e)
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
       fib_table_lock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
       break;
+    case CLASSIFY_ACTION_MARK_FLOW:
     case CLASSIFY_ACTION_SET_METADATA:
     case CLASSIFY_ACTION_NONE:
       break;
@@ -398,6 +399,7 @@ vnet_classify_entry_release_resource (vnet_classify_entry_t * e)
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
       fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
       break;
+    case CLASSIFY_ACTION_MARK_FLOW:
     case CLASSIFY_ACTION_SET_METADATA:
     case CLASSIFY_ACTION_NONE:
       break;
@@ -2797,6 +2799,9 @@ vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
   else
     e->metadata = 0;
 
+  if (action == CLASSIFY_ACTION_MARK_FLOW && is_add)
+    e->metadata = metadata;
+
   /* Copy key data, honoring skip_n_vectors */
   clib_memcpy_fast (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
 		    t->match_n_vectors * sizeof (u32x4));
@@ -2828,6 +2833,7 @@ classify_session_command_fn (vlib_main_t * vm,
   i32 advance = 0;
   u32 action = 0;
   u32 metadata = 0;
+  u8 *flow_name = 0;
   int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -2868,6 +2874,8 @@ classify_session_command_fn (vlib_main_t * vm,
 	action = 2;
       else if (unformat (input, "action set-sr-policy-index %d", &metadata))
 	action = 3;
+      else if (unformat (input, "action mark-flow %s", &flow_name))
+	action = CLASSIFY_ACTION_MARK_FLOW;
       else
 	{
 	  /* Try registered opaque-index unformat fns */
@@ -2889,6 +2897,20 @@ classify_session_command_fn (vlib_main_t * vm,
   if (is_add && match == 0)
     return clib_error_return (0, "Match value required");
 
+  if (action == CLASSIFY_ACTION_MARK_FLOW && is_add)
+    {
+      if (!flow_name)
+	return clib_error_return (0,
+				  "Flow name required for mark-flow action");
+
+      uword *value = hash_get_mem (flow_name_to_id_hash, flow_name);
+      if (!value)
+	return clib_error_return (0, "Invalid flow name: %s", flow_name);
+
+      metadata =
+	(u32) (*value); // Dereference the pointer to get the actual value
+    }
+
   rv = vnet_classify_add_del_session (cm, table_index, match,
 				      hit_next_index,
 				      opaque_index, advance,
@@ -2909,13 +2931,14 @@ classify_session_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (classify_session_command, static) = {
-    .path = "classify session",
-    .short_help =
+  .path = "classify session",
+  .short_help =
     "classify session [hit-next|l2-input-hit-next|l2-output-hit-next|"
     "acl-hit-next <next_index>|policer-hit-next <policer_name>]"
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]"
-    "\n [action set-ip4-fib-id|set-ip6-fib-id|set-sr-policy-index <n>] [del]",
-    .function = classify_session_command_fn,
+    "\n [action set-ip4-fib-id|set-ip6-fib-id|set-sr-policy-index <n>|"
+    "mark-flow <flow_name>] [del]",
+  .function = classify_session_command_fn,
 };
 
 static uword
