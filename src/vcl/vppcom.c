@@ -1282,7 +1282,7 @@ vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle,
    * as we'd like to only be woken up on events, but since multiple threads may
    * be waiting on the same mq, events may be missed. If waiting on session io
    * events, return if session is ready. Otherwise return if mq has event */
-  while (svm_msg_q_timedwait (wrk->app_event_queue, 1e-3))
+  while (svm_msg_q_timedwait (wrk->app_event_queue, 1e-2))
     {
       if (s)
 	{
