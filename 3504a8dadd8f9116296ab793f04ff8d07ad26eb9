@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88a5e163_89f70c46",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 568,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-14T15:55:45Z",
+      "side": 1,
+      "message": "Let\u0027s do the same for \u0027make test-cov\u0027 -- ignore errors here and look for any directories named \u0027*-FAILED\u0027 in the workspace archives dir ($WORKSPACE/archives) in the job script in the ci-management repo.\n\nFor example, vpp-unittest-TestVPPInterfacesQemuMemifL2-FAILED from https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-cov-verify-master-ubuntu2404-x86_64/143/",
+      "revId": "3504a8dadd8f9116296ab793f04ff8d07ad26eb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
