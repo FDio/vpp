@@ -430,6 +430,12 @@ static void vl_api_classify_add_del_session_t_handler
       goto out;
     }
 
+  if (action == CLASSIFY_ACTION_MARK_FLOW && metadata == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
   rv = vnet_classify_add_del_session
     (cm, table_index, mp->match, hit_next_index, opaque_index,
      advance, action, metadata, mp->is_add);
