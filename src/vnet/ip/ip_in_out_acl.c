@@ -322,6 +322,14 @@ ip_in_out_acl_inline_trace (
 						      b[0]);
 		    }
 		}
+	      else
+		{
+		  if (e[0]->action == CLASSIFY_ACTION_MARK_FLOW)
+		    {
+		      b[0]->flow_id = e[0]->metadata;
+		      b[0]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
+		    }
+		}
 	    }
 	  else
 	    {
@@ -392,6 +400,14 @@ ip_in_out_acl_inline_trace (
 				fib_index_by_sw_if_index, b[0]);
 			    }
 			}
+		      else
+			{
+			  if (e[0]->action == CLASSIFY_ACTION_MARK_FLOW)
+			    {
+			      b[0]->flow_id = e[0]->metadata;
+			      b[0]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
+			    }
+			}
 		      break;
 		    }
 		}
@@ -428,6 +444,14 @@ ip_in_out_acl_inline_trace (
 		      /* For source check in case we skip the lookup node */
 		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index,
 						      b[1]);
+		    }
+		}
+	      else
+		{
+		  if (e[1]->action == CLASSIFY_ACTION_MARK_FLOW)
+		    {
+		      b[1]->flow_id = e[1]->metadata;
+		      b[1]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
 		    }
 		}
 	    }
@@ -498,6 +522,14 @@ ip_in_out_acl_inline_trace (
 			       * node */
 			      ip_lookup_set_buffer_fib_index (
 				fib_index_by_sw_if_index, b[1]);
+			    }
+			}
+		      else
+			{
+			  if (e[1]->action == CLASSIFY_ACTION_MARK_FLOW)
+			    {
+			      b[1]->flow_id = e[1]->metadata;
+			      b[1]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
 			    }
 			}
 		      break;
@@ -633,6 +665,14 @@ ip_in_out_acl_inline_trace (
 						      b[0]);
 		    }
 		}
+	      else
+		{
+		  if (e0->action == CLASSIFY_ACTION_MARK_FLOW)
+		    {
+		      b[0]->flow_id = e0->metadata;
+		      b[0]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
+		    }
+		}
 	    }
 	  else
 	    {
@@ -697,6 +737,14 @@ ip_in_out_acl_inline_trace (
 			       * node */
 			      ip_lookup_set_buffer_fib_index (
 				fib_index_by_sw_if_index, b[0]);
+			    }
+			}
+		      else
+			{
+			  if (e0->action == CLASSIFY_ACTION_MARK_FLOW)
+			    {
+			      b[0]->flow_id = e0->metadata;
+			      b[0]->flags |= VNET_BUFFER_F_TM_QUEUE_VALID;
 			    }
 			}
 		      break;
