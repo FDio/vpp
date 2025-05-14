@@ -83,6 +83,7 @@ enum classify_action : u8
   CLASSIFY_API_ACTION_SET_IP4_FIB_INDEX = 1,
   CLASSIFY_API_ACTION_SET_IP6_FIB_INDEX = 2,
   CLASSIFY_API_ACTION_SET_METADATA = 3,
+  CLASSIFY_API_ACTION_MARK_FLOW = 4,
 };
 
 /** \brief Classify add / del session request
@@ -109,6 +110,7 @@ enum classify_action : u8
     @param metadata - valid only if action != 0
            VRF id if action is 1 or 2.
            sr policy index if action is 3.
+           global tm flow id if action is 4.
     @param match_len - length of match, should be equal to skip_n_vectors plus match_n_vectors
                        of target table times sizeof (u32x4)
     @param match - for add, match value for session, required,
