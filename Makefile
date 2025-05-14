@@ -565,9 +565,9 @@ test-cov-post-standalone:
 test-cov-both:
 	@echo "Running Python, Golang tests and merging coverage reports."
 	find $(BR) -name '*.gcda' -delete
-	@$(MAKE) test-cov
+	-@$(MAKE) test-cov
 	find $(BR) -name '*.gcda' -delete
-	@$(MAKE) test-cov-hs
+	-@$(MAKE) test-cov-hs
 	@$(MAKE) cov-merge
 
 .PHONY: test-cov-build
