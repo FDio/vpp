@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc0571dc_d628d76a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-14T19:06:57Z",
+      "side": 1,
+      "message": "Naive question, any reason why not `infra/kind` and `infra/common` instead of adding an \"infra\" prefix?",
+      "revId": "a8c2379e13319172b8bc586b45dd14b8c852b8a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
