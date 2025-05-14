@@ -23,6 +23,12 @@ tls_engine_vft_t *tls_vfts;
 
 void tls_disconnect (u32 ctx_handle, clib_thread_index_t thread_index);
 
+static const tls_alpn_proto_id_t tls_alpn_proto_ids[] = {
+#define _(sym, str) { (u8) (sizeof (str) - 1), (u8 *) str },
+  foreach_tls_alpn_protos
+#undef _
+};
+
 void
 tls_disconnect_transport (tls_ctx_t * ctx)
 {
@@ -90,6 +96,27 @@ tls_add_app_q_evt (app_worker_t *app_wrk, session_t *app_session)
 {
   app_worker_add_event (app_wrk, app_session, SESSION_IO_EVT_RX);
   return 0;
+}
+
+tls_alpn_proto_t
+tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id)
+{
+  tls_main_t *tm = &tls_main;
+  uword *p;
+
+  p = hash_get_mem (tm->alpn_proto_by_str, alpn_id);
+  if (p)
+    return p[0];
+
+  return TLS_ALPN_PROTO_NONE;
+}
+
+tls_alpn_proto_t
+tls_get_alpn_selected (u32 ctx_handle)
+{
+  tls_ctx_t *ctx;
+  ctx = tls_ctx_get (ctx_handle);
+  return ctx->alpn_selected;
 }
 
 u32
@@ -712,7 +739,9 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   tls_ctx_t *lctx;
   u32 lctx_index;
   transport_endpt_ext_cfg_t *ext_cfg;
-  int rv;
+  int rv, i;
+  u8 *p;
+  const tls_alpn_proto_id_t *alpn_proto;
 
   sep = (session_endpoint_cfg_t *) tep;
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
@@ -762,6 +791,13 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->ckpair_index = ccfg->ckpair_index;
   lctx->c_s_index = app_listener_index;
   lctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  for (i = 0; i < sizeof (ccfg->alpn_protos) && ccfg->alpn_protos[i]; i++)
+    {
+      alpn_proto = &tls_alpn_proto_ids[ccfg->alpn_protos[i]];
+      vec_add2 (lctx->alpn_list, p, alpn_proto->len + 1);
+      *p++ = alpn_proto->len;
+      clib_memcpy_fast (p, alpn_proto->base, alpn_proto->len);
+    }
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
@@ -1249,6 +1285,7 @@ tls_init (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   tls_main_t *tm = &tls_main;
   u32 num_threads;
+  const tls_alpn_proto_id_t *alpn_proto;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -1274,7 +1311,18 @@ tls_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_DTLS, &dtls_proto,
 			       FIB_PROTOCOL_IP6, ~0);
-  return 0;
+
+  tm->alpn_proto_by_str = hash_create2 (
+    0, sizeof (tls_alpn_proto_id_t), sizeof (uword),
+    tls_alpn_proto_hash_key_sum, tls_alpn_proto_hash_key_equal, 0, 0);
+
+#define _(sym, str)                                                           \
+  alpn_proto = &tls_alpn_proto_ids[TLS_ALPN_PROTO_##sym];                     \
+  hash_set_mem (tm->alpn_proto_by_str, alpn_proto, TLS_ALPN_PROTO_##sym);
+  foreach_tls_alpn_protos
+#undef _
+
+    return 0;
 }
 
 VLIB_INIT_FUNCTION (tls_init);
