@@ -81,6 +81,7 @@ typedef union
 typedef struct vnet_dev_bus_registration vnet_dev_bus_registration_t;
 typedef struct vnet_dev_driver_registration vnet_dev_driver_registration_t;
 
+typedef struct vnet_dev_driver vnet_dev_driver_t;
 typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
@@ -91,6 +92,7 @@ typedef struct vnet_dev_counter vnet_dev_counter_t;
 typedef struct vnet_dev_counter_main vnet_dev_counter_main_t;
 typedef struct vnet_dev_port_cfg_change_req vnet_dev_port_cfg_change_req_t;
 
+typedef vnet_dev_rv_t (vnet_dev_drv_op_t) (vlib_main_t *, vnet_dev_driver_t *);
 typedef vnet_dev_rv_t (vnet_dev_op_t) (vlib_main_t *, vnet_dev_t *);
 typedef vnet_dev_rv_t (vnet_dev_port_op_t) (vlib_main_t *, vnet_dev_port_t *);
 typedef vnet_dev_rv_t (vnet_dev_port_cfg_change_op_t) (
@@ -234,6 +236,7 @@ typedef struct
 
 typedef struct
 {
+  vnet_dev_drv_op_t *config_args;
   vnet_dev_op_t *alloc;
   vnet_dev_op_t *init;
   vnet_dev_op_no_rv_t *deinit;
@@ -466,6 +469,7 @@ struct vnet_dev_driver_registration
   int priority;
   vnet_dev_ops_t ops;
   vnet_dev_arg_t *args;
+  vnet_dev_arg_t *drv_args;
 };
 
 typedef struct
@@ -475,7 +479,7 @@ typedef struct
   vnet_dev_bus_ops_t ops;
 } vnet_dev_bus_t;
 
-typedef struct
+typedef struct vnet_dev_driver
 {
   u32 index;
   void *dev_data;
@@ -483,6 +487,7 @@ typedef struct
   u32 dev_class_index;
   vnet_dev_bus_index_t bus_index;
   vnet_dev_ops_t ops;
+  vnet_dev_arg_t *args;
 } vnet_dev_driver_t;
 
 typedef struct
