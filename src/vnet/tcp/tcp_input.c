@@ -1173,27 +1173,37 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 static int
 tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
 {
-  u32 discard, first = b->current_length;
-  vlib_main_t *vm = vlib_get_main ();
-
   /* Handle multi-buffer segments */
   if (n_bytes_to_drop > b->current_length)
     {
+      u32 n_to_drop, first = b->current_length;
+      vlib_main_t *vm = vlib_get_main ();
+
       if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT) ||
 	  (first + b->total_length_not_including_first_buffer <
 	   n_bytes_to_drop))
 	return -1;
       b->total_length_not_including_first_buffer -= n_bytes_to_drop - first;
+      n_to_drop = n_bytes_to_drop;
       do
 	{
-	  discard = clib_min (n_bytes_to_drop, b->current_length);
-	  vlib_buffer_advance (b, discard);
+	  /* Not calling vlib_buffer_advance to avoid min chain seg size
+	   * asserts that are not relevant for chained buffers that are about
+	   * to be freed */
+	  if (n_to_drop <= b->current_length)
+	    {
+	      b->current_length -= n_to_drop;
+	      b->current_data += n_to_drop;
+	      break;
+	    }
+	  n_to_drop -= b->current_length;
+	  b->current_data += b->current_length;
+	  b->current_length = 0;
 	  b = vlib_get_buffer (vm, b->next_buffer);
-	  n_bytes_to_drop -= discard;
-	  if (!b && n_bytes_to_drop)
+	  if (!b)
 	    return -1;
 	}
-      while (n_bytes_to_drop);
+      while (n_to_drop);
     }
   else
     vlib_buffer_advance (b, n_bytes_to_drop);
