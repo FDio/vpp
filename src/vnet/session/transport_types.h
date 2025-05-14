@@ -291,6 +291,7 @@ typedef enum transport_endpt_ext_cfg_type_
 typedef struct transport_endpt_crypto_cfg_
 {
   u32 ckpair_index;
+  u8 alpn_protos[4]; /**< ordered by preference for server */
   u8 crypto_engine;
   u8 hostname[256]; /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;

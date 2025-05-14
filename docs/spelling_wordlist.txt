@@ -26,6 +26,7 @@ alloc
 allocatable
 allocator
 allowlist
+alpn
 Altivec
 amine
 analyse

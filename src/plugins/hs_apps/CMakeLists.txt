@@ -16,6 +16,8 @@
 ##############################################################################
 add_vpp_plugin(hs_apps
   SOURCES
+  alpn_client.c
+  alpn_server.c
   echo_client.c
   echo_server.c
   hs_apps.c
