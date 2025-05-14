@@ -16,6 +16,24 @@
       "message": "Please use multi-txq APIs.",
       "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a3ef2cb_9b8fdd95",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3209
+      },
+      "writtenOn": "2025-05-14T15:02:58Z",
+      "side": 1,
+      "message": "thanks for the feedback.\ni dont think a link status change is the right trigger for that because we dont seem to get a notification if the vhost-user server changes the queue states (enables or disables queues individually). if this happens, vpp would rejiggle my tx assignments without letting me know. and there\u0027s no way today i can use the api to query each vhost user vring state. \nit sounds to me that leveraging the trigger in the vhost-user code in vpp and having it doing the assignment is a simpler approach here.",
+      "parentUuid": "31063690_1f8de4c1",
+      "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
