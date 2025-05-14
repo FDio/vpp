@@ -53,6 +53,66 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
     }
   return err;
 }
+
+static clib_error_t *
+vnet_dev_config_driver_args (vlib_main_t *vm, unformat_input_t *input,
+			     char *driver_name)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  clib_error_t *err = 0;
+  u8 *args;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "args %U", unformat_single_quoted_string, &args))
+	;
+      else
+	{
+	  err = clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, input);
+	  break;
+	}
+    }
+
+  if (err == 0)
+    {
+      vnet_dev_driver_t *driver;
+      vnet_dev_rv_t rv = VNET_DEV_OK;
+
+      vec_foreach (driver, dm->drivers)
+	{
+	  if (driver_name[0] &&
+	      strcmp (driver_name, driver->registration->name))
+	    continue;
+	  if (driver->registration->drv_args)
+	    {
+	      for (vnet_dev_arg_t *a = driver->registration->drv_args;
+		   a->type != VNET_DEV_ARG_END; a++)
+		vec_add1 (driver->args, *a);
+
+	      if (args)
+		{
+		  rv = vnet_dev_arg_parse (vm, NULL, driver->args, args);
+		  if (rv != VNET_DEV_OK)
+		    goto done;
+
+		  if (driver->ops.config_args)
+		    rv = driver->ops.config_args (vm, driver);
+		  break;
+		}
+	    }
+	}
+    done:
+      vec_free (args);
+
+      if (rv != VNET_DEV_OK)
+	err = clib_error_return (0, "error: %U for driver '%s'",
+				 format_vnet_dev_rv, rv, driver_name);
+    }
+
+  return err;
+}
+
 static clib_error_t *
 vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 			    char *device_id)
@@ -128,6 +188,7 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
 			    vlib_frame_t *f)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
+  vnet_dev_driver_name_t driver_name;
   unformat_input_t input;
   clib_error_t *err = 0;
 
@@ -155,6 +216,13 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	  unformat_init_vector (&no_input, 0);
 	  err = vnet_dev_config_one_device (vm, &no_input, device_id);
 	  unformat_free (&no_input);
+	}
+      else if (unformat (&input, "driver %U %U", unformat_c_string_array,
+			 driver_name, sizeof (driver_name),
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  err = vnet_dev_config_driver_args (vm, &sub_input, driver_name);
+	  unformat_free (&sub_input);
 	}
       else
 	err = clib_error_return (0, "unknown input '%U'",
