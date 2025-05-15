@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02acaa9c_be5c1420",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-15T22:56:54Z",
+      "side": 1,
+      "message": "Definitely good. Quick nit",
+      "revId": "f103aee581870c90470c5c1b92fbaf96b5b0ed24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a90eb4f4_217a65e2",
+        "filename": "src/plugins/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-15T22:56:54Z",
+      "side": 1,
+      "message": "Should we make our `af_packet_error_is_fatal`?",
+      "revId": "f103aee581870c90470c5c1b92fbaf96b5b0ed24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
