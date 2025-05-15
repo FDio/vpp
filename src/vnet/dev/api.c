@@ -206,7 +206,8 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
       a.num_rx_queues = args->num_rx_queues;
     }
   else
-    a.num_rx_queues = clib_min (port->attr.max_tx_queues, 1);
+    a.num_rx_queues = clib_min (port->attr.max_rx_queues,
+				n_threads - 1 /* Number of workers */);
 
   if (args->num_tx_queues)
     {
