@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a92123c_40f3ea1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-05-15T07:49:50Z",
+      "side": 1,
+      "message": "Can we make this behavior optional? I\u0027m afraid of potential side effects, eg. a low-importance afpacket interface failing and reinit crashing the VPP.",
+      "revId": "52dc27dcf5fc1b0377065ccd519735609d7ef6f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
