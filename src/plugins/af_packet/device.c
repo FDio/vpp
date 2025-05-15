@@ -583,7 +583,8 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	   */
 	  uword counter;
 
-	  if (unix_error_is_fatal (errno))
+	  if (unix_error_is_fatal (errno) && errno != ENOBUFS &&
+	      errno != EAGAIN)
 	    {
 	      counter = AF_PACKET_TX_ERROR_TXRING_FATAL;
 	      vlib_log_err (apm->log_class,
