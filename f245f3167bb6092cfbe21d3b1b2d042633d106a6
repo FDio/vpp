@@ -52,6 +52,24 @@
       "parentUuid": "5a3ef2cb_9b8fdd95",
       "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68181116_94f9e4b3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3209
+      },
+      "writtenOn": "2025-05-15T06:00:00Z",
+      "side": 1,
+      "message": "yes. that sounds correct.\ni have tried changing the enabled queues on a linux vm on qemu but did not see an event come out of vpp.\nin addition to that, there is no api message or field that lets me know which queues are actually active (ex: a vhost-user frontend may negotiate 8 queues but only 2 queues are enabled) - and if i do any assignment on disabled queues packets would be blackholed",
+      "parentUuid": "c5cb7278_81058288",
+      "revId": "f245f3167bb6092cfbe21d3b1b2d042633d106a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
