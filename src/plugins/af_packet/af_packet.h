@@ -46,6 +46,7 @@ typedef enum
   AF_PACKET_IF_FLAGS_CKSUM_GSO = 2,
   AF_PACKET_IF_FLAGS_FANOUT = 4,
   AF_PACKET_IF_FLAGS_VERSION_2 = 8,
+  AF_PACKET_IF_FLAGS_AUTO_RECONNECT = 16,
 } af_packet_if_flags_t;
 
 typedef struct
@@ -121,6 +122,7 @@ typedef struct
   af_packet_ring_t *rings;
   u8 is_qdisc_bypass_enabled;
   u8 is_fanout_enabled;
+  u8 is_reconnect_enabled;
   int *fds;
   u32 host_interface_oflags;
 } af_packet_if_t;
@@ -168,6 +170,7 @@ int af_packet_delete_if (u8 *host_if_name);
 int af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set);
 int af_packet_enable_disable_qdisc_bypass (u32 sw_if_index, u8 enable_disable);
 int af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs);
+void af_packet_device_reinit_rpc (void *args);
 
 format_function_t format_af_packet_device_name;
 

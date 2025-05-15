@@ -87,6 +87,8 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	arg->flags &= ~AF_PACKET_IF_FLAGS_QDISC_BYPASS;
       else if (unformat (line_input, "cksum-gso-disable"))
 	arg->flags &= ~AF_PACKET_IF_FLAGS_CKSUM_GSO;
+      else if (unformat (line_input, "auto-reconnect"))
+	arg->flags |= AF_PACKET_IF_FLAGS_AUTO_RECONNECT;
       else if (unformat (line_input, "mode ip"))
 	arg->mode = AF_PACKET_IF_MODE_IP;
       else if (unformat (line_input, "v2"))
