@@ -889,35 +889,14 @@ af_packet_ring_free (af_packet_if_t *apif, af_packet_ring_t *ring)
   return 0;
 }
 
-int
-af_packet_delete_if (u8 *host_if_name)
+static void
+af_packet_cleanup_if (af_packet_if_t *apif)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  af_packet_main_t *apm = &af_packet_main;
-  af_packet_if_t *apif;
   af_packet_queue_t *rx_queue;
   af_packet_queue_t *tx_queue;
   af_packet_ring_t *ring;
-  uword *p;
-  u32 i = 0;
+  int i;
 
-  p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
-  if (p == NULL)
-    {
-      vlib_log_warn (apm->log_class, "Host interface %s does not exist",
-		     host_if_name);
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
-  apif = pool_elt_at_index (apm->interfaces, p[0]);
-
-  /* bring down the interface */
-  vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
-  if (apif->mode != AF_PACKET_IF_MODE_IP)
-    ethernet_delete_interface (vnm, apif->hw_if_index);
-  else
-    vnet_delete_hw_interface (vnm, apif->hw_if_index);
-
-  /* clean up */
   vec_foreach_index (i, apif->fds)
     if (apif->fds[i] != -1)
       close (apif->fds[i]);
@@ -940,6 +919,33 @@ af_packet_delete_if (u8 *host_if_name)
   vec_free (apif->host_if_name);
   apif->host_if_name = NULL;
   apif->host_if_index = -1;
+}
+
+int
+af_packet_delete_if (u8 *host_if_name)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
+  uword *p;
+
+  p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
+  if (p == NULL)
+    {
+      vlib_log_warn (apm->log_class, "Host interface %s does not exist",
+		     host_if_name);
+      return VNET_API_ERROR_SYSCALL_ERROR_1;
+    }
+  apif = pool_elt_at_index (apm->interfaces, p[0]);
+
+  /* bring down the interface */
+  vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
+  if (apif->mode != AF_PACKET_IF_MODE_IP)
+    ethernet_delete_interface (vnm, apif->hw_if_index);
+  else
+    vnet_delete_hw_interface (vnm, apif->hw_if_index);
+
+  af_packet_cleanup_if (apif);
 
   mhash_unset (&apm->if_index_by_host_if_name, host_if_name, p);
 
@@ -947,6 +953,58 @@ af_packet_delete_if (u8 *host_if_name)
   pool_put (apm->interfaces, apif);
 
   return 0;
+}
+
+static int
+af_packet_device_reinit (af_packet_if_t *apif)
+{
+  af_packet_create_if_arg_t _args = {}, *args = &_args;
+  af_packet_main_t *apm = &af_packet_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  int ret;
+
+  args->num_rxqs = apif->num_rxqs;
+  args->num_txqs = apif->num_txqs;
+  args->rx_frames_per_block = apif->rx_queues[0].rx_req->req.tp_frame_nr;
+  args->tx_frames_per_block = apif->tx_queues[0].tx_req->req.tp_frame_nr;
+  args->rx_frame_size = apif->rx_queues[0].rx_req->req.tp_frame_size;
+  args->tx_frame_size = apif->tx_queues[0].tx_req->req.tp_frame_size;
+  args->flags |= apif->is_cksum_gso_enabled ? AF_PACKET_IF_FLAGS_CKSUM_GSO : 0;
+  args->flags |= apif->is_fanout_enabled ? AF_PACKET_IF_FLAGS_FANOUT : 0;
+  args->flags |=
+    apif->is_qdisc_bypass_enabled ? AF_PACKET_IF_FLAGS_QDISC_BYPASS : 0;
+
+  /* delete rx & tx queues */
+  vnet_hw_if_unregister_all_rx_queues (vnm, apif->hw_if_index);
+  vnet_hw_if_unregister_all_tx_queues (vnm, apif->hw_if_index);
+  vnet_hw_if_update_runtime_data (vnm, apif->hw_if_index);
+
+  af_packet_cleanup_if (apif);
+  if ((ret = af_packet_device_init (vm, apif, args)))
+    {
+      vlib_log_err (apm->log_class, "Failed to reinit device %s",
+		    apif->host_if_name);
+      return -1;
+    }
+
+  af_packet_set_rx_queues (vm, apif);
+  af_packet_set_tx_queues (vm, apif);
+
+  vlib_log_info (apm->log_class, "Reinitialized device %s",
+		 apif->host_if_name);
+
+  return 0;
+}
+
+void
+af_packet_device_reinit_rpc (void *args)
+{
+  u32 apif_index = *(u32 *) args;
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, apif_index);
+
+  af_packet_device_reinit (apif);
 }
 
 int
