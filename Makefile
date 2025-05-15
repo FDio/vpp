@@ -59,7 +59,7 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
-ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
+ifeq ($(filter elxr ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 PKG=deb
 else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux,$(OS_ID)),$(OS_ID))
 PKG=rpm
@@ -125,6 +125,11 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-12)
 	DEB_DEPENDS += clang-14 clang-format-15
 	# for extras/scripts/checkstyle.sh
 	# TODO: remove once ubuntu 20.04 is deprecated and extras/scripts/checkstyle.sh is upgraded to -15
+	export CLANG_FORMAT_VER=15
+	LIBFFI=libffi8
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),elxr-12)
+	DEB_DEPENDS += virtualenv
+	DEB_DEPENDS += clang-14 clang-format-15
 	export CLANG_FORMAT_VER=15
 	LIBFFI=libffi8
 else
@@ -343,7 +348,7 @@ $(BR)/.deps.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
 	$(MAKE) install-dep
 endif
-ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
+ifeq ($(filter elxr ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
@@ -371,7 +376,7 @@ bootstrap:
 
 .PHONY: install-dep
 install-dep:
-ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
+ifeq ($(filter elxr ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
@@ -408,7 +413,7 @@ else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION
 else ifeq ($(OS_ID), freebsd)
 	@sudo pkg install -y $(FBSD_DEPS)
 else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, openSUSE-leap or FreeBSD systems")
+	$(error "This option currently works only on eLxr, Ubuntu, Debian, RHEL, CentOS, openSUSE-leap or FreeBSD systems")
 endif
 	git config commit.template .git_commit_template.txt
 
