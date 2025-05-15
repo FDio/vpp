@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9fab63fc_90e304dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2025-05-15T22:01:14Z",
+      "side": 1,
+      "message": "is this packaging as debian or rpm ? I thought Windriver packages are rpm ?",
+      "revId": "eb7c7ab0c81f115ada4e2f36f130a53dbb7f0d0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
