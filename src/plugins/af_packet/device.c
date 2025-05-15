@@ -72,6 +72,21 @@ typedef struct
   vlib_buffer_t buffer;
 } af_packet_tx_trace_t;
 
+always_inline word
+af_packet_error_is_fatal (word error)
+{
+  switch (error)
+    {
+#ifdef CLIB_UNIX
+    case EAGAIN:
+    case ENOBUFS:
+    case EINTR:
+      return 0;
+#endif
+    }
+  return 1;
+}
+
 #ifndef CLIB_MARCH_VARIANT
 u8 *
 format_af_packet_device_name (u8 * s, va_list * args)
@@ -583,7 +598,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	   */
 	  uword counter;
 
-	  if (unix_error_is_fatal (errno))
+	  if (af_packet_error_is_fatal (errno))
 	    {
 	      counter = AF_PACKET_TX_ERROR_TXRING_FATAL;
 	      vlib_log_err (apm->log_class,
