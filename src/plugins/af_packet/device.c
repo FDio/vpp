@@ -589,7 +589,11 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	      vlib_log_err (apm->log_class,
 			    "af_packet_%s sendto failed: %d %s",
 			    apif->host_if_name, errno, strerror (errno));
-	      /* TODO attempt to reattach */
+	      /* Try to reinit device */
+	      u32 apif_index = rd->dev_instance;
+	      vlib_rpc_call_main_thread (af_packet_device_reinit_rpc,
+					 (u8 *) &apif_index,
+					 sizeof (apif_index));
 	    }
 	  else
 	    {
