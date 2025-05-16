@@ -253,18 +253,28 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 	  s->flags |= VCL_SESSION_F_LISTEN_NO_MQ;
 	  continue;
 	}
-      if ((s->flags & VCL_SESSION_F_IS_VEP) ||
-	  s->session_state == VCL_STATE_CLOSED)
+      if ((s->flags & VCL_SESSION_F_IS_VEP))
 	continue;
 
-      hash_set (seg_indices_map, s->tx_fifo->segment_index, 1);
+      /* App closed, vpp detached, free session */
+      if (s->session_state == VCL_STATE_CLOSED)
+	{
+	  vcl_session_free (wrk, s);
+	  continue;
+	}
+
+      /* In other states expect close from app */
+      if (s->session_state == VCL_STATE_READY)
+	{
+	  hash_set (seg_indices_map, s->tx_fifo->segment_index, 1);
+	  vec_add2 (wrk->unhandled_evts_vector, e, 1);
+	  e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+	  e->session_index = s->session_index;
+	  e->postponed = 1;
+	}
 
       s->session_state = VCL_STATE_DETACHED;
       s->flags |= VCL_SESSION_F_APP_CLOSING;
-      vec_add2 (wrk->unhandled_evts_vector, e, 1);
-      e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
-      e->session_index = s->session_index;
-      e->postponed = 1;
     }
 
   hash_foreach (seg_index, val, seg_indices_map,
