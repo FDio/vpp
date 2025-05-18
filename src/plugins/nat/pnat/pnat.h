@@ -65,7 +65,7 @@ typedef struct {
     /* Feature chain enabled on interface */
     bool enabled[PNAT_ATTACHMENT_POINT_MAX];
 
-    u32 refcount;
+    u32 refcount[PNAT_ATTACHMENT_POINT_MAX];
 } pnat_interface_t;
 
 /* Globals */

@@ -127,7 +127,7 @@ static clib_error_t *pnat_enable_interface(u32 sw_if_index,
         }
     }
 
-    interface->refcount++;
+    interface->refcount[attachment]++;
 
     return 0;
 }
@@ -142,8 +142,12 @@ static int pnat_disable_interface(u32 sw_if_index,
 
     if (!interface)
         return 0;
-    if (interface->refcount == 0)
+    if (interface->refcount[attachment] == 0)
         return 0;
+    if (interface->refcount[attachment] > 1) {
+        interface->refcount[attachment]--;
+        return 0;
+    }
 
     if (interface->enabled[attachment] && attachment == PNAT_IP4_INPUT) {
         if (ip4_sv_reass_enable_disable_with_refcnt(sw_if_index, 0) != 0)
@@ -162,12 +166,14 @@ static int pnat_disable_interface(u32 sw_if_index,
 
     interface->lookup_mask[attachment] = 0;
     interface->enabled[attachment] = false;
+    interface->refcount[attachment] = 0;
 
-    interface->refcount--;
-    if (interface->refcount == 0) {
+    if (interface->refcount[PNAT_IP4_INPUT] == 0 &&
+        interface->refcount[PNAT_IP4_OUTPUT] == 0) {
         pm->interface_by_sw_if_index[sw_if_index] = ~0;
         pool_put(pm->interfaces, interface);
     }
+
     return 0;
 }
 
