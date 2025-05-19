@@ -16,6 +16,24 @@
       "message": "this is wrong, we should be able to support number of tx queues smaller than number of workers, also, main thread deserves one...",
       "revId": "b26a8ed3f0872a135cc1784397aae5188afe21df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d18bcba_047936a3",
+        "filename": "src/vnet/dev/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-05-19T11:27:14Z",
+      "side": 1,
+      "message": "Here trying to set default rx queues equivalent to number of worker or max-rx-queues.\nThere is no change in number of tx-queues.",
+      "parentUuid": "c46fedaa_0dc2e222",
+      "revId": "b26a8ed3f0872a135cc1784397aae5188afe21df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
