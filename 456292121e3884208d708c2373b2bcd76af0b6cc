@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "913be080_c4d1ff0a",
+        "filename": "docs/interfacing/python/index.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2025-05-19T10:21:03Z",
+      "side": 1,
+      "message": "Make it clearer that it is either of these steps. Not both.",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 0
+      },
+      "revId": "456292121e3884208d708c2373b2bcd76af0b6cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
