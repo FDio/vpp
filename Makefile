@@ -568,7 +568,7 @@ test-cov-both:
 	-@$(MAKE) test-cov
 	find $(BR) -name '*.gcda' -delete
 	-@$(MAKE) test-cov-hs
-	@$(MAKE) cov-merge
+	-@$(MAKE) cov-merge
 
 .PHONY: test-cov-build
 test-cov-build:
@@ -588,7 +588,7 @@ test-cov-post:
 
 .PHONY: cov-merge
 cov-merge:
-	@lcov --add-tracefile $(BR)/test-coverage-merged/coverage-filtered.info \
+	-@lcov --add-tracefile $(BR)/test-coverage-merged/coverage-filtered.info \
 		-a $(BR)/test-coverage-merged/coverage-filtered1.info -o $(BR)/test-coverage-merged/coverage-merged.info
 	@genhtml $(BR)/test-coverage-merged/coverage-merged.info \
 		--output-directory $(BR)/test-coverage-merged/html
