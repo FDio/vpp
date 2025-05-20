@@ -1132,6 +1132,7 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertHttpStatus(resp, 200)
+	s.AssertEqual(1, resp.ProtoMajor)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "vpp_details")

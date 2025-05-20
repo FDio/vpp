@@ -16,6 +16,7 @@
 #include <vpp/app/version.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
+#include <vnet/tls/tls_types.h>
 
 #include <http/http.h>
 #include <http/http_private.h>
@@ -438,6 +439,7 @@ http_ts_accept_callback (session_t *ts)
   u32 hc_index, thresh;
   http_conn_handle_t hc_handle;
   transport_proto_t tp;
+  tls_alpn_proto_t alpn_proto;
 
   ts_listener = listen_session_get_from_handle (ts->listener_handle);
   lhc = http_listener_get (ts_listener->opaque);
@@ -457,14 +459,30 @@ http_ts_accept_callback (session_t *ts)
   tp = session_get_transport_proto (ts);
   if (tp == TRANSPORT_PROTO_TLS)
     {
-      /* TODO: set by ALPN result */
-      hc->version = HTTP_VERSION_1;
+      alpn_proto = tls_get_alpn_selected (ts->connection_index);
+      HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
+      switch (alpn_proto)
+	{
+	case TLS_ALPN_PROTO_HTTP_2:
+	  hc->version = HTTP_VERSION_2;
+	  http_vfts[hc->version].conn_accept_callback (hc);
+	  break;
+	case TLS_ALPN_PROTO_HTTP_1_1:
+	case TLS_ALPN_PROTO_NONE:
+	  hc->version = HTTP_VERSION_1;
+	  break;
+	default:
+	  ASSERT (0);
+	  return -1;
+	}
     }
   else
     {
       /* going to decide in http_ts_rx_callback */
       hc->version = HTTP_VERSION_NA;
     }
+
+  HTTP_DBG (1, "identified HTTP/%u", hc->version == HTTP_VERSION_1 ? 1 : 2);
   hc_handle.version = hc->version;
   hc_handle.conn_index = hc_index;
   ts->opaque = hc_handle.as_u32;
@@ -492,6 +510,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   http_conn_t *hc, *ho_hc;
   app_worker_t *app_wrk;
   http_conn_handle_t hc_handle;
+  transport_proto_t tp;
+  tls_alpn_proto_t alpn_proto;
   int rv;
 
   ho_hc = http_ho_conn_get (ho_hc_index);
@@ -524,7 +544,29 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
   ts->session_state = SESSION_STATE_READY;
   hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
-  /* TODO: TLS set by ALPN result, TCP: prior knowledge (set in ho) */
+  tp = session_get_transport_proto (ts);
+  /* TLS set by ALPN result, TCP: prior knowledge (set in ho) */
+  if (tp == TRANSPORT_PROTO_TLS)
+    {
+      alpn_proto = tls_get_alpn_selected (ts->connection_index);
+      HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
+      switch (alpn_proto)
+	{
+	case TLS_ALPN_PROTO_HTTP_2:
+	  hc->version = HTTP_VERSION_2;
+	  http_vfts[hc->version].conn_accept_callback (hc);
+	  break;
+	case TLS_ALPN_PROTO_HTTP_1_1:
+	case TLS_ALPN_PROTO_NONE:
+	  hc->version = HTTP_VERSION_1;
+	  break;
+	default:
+	  ASSERT (0);
+	  return -1;
+	}
+    }
+
+  HTTP_DBG (1, "identified HTTP/%u", hc->version == HTTP_VERSION_1 ? 1 : 2);
   hc_handle.version = hc->version;
   hc_handle.conn_index = new_hc_index;
   ts->opaque = hc_handle.as_u32;
@@ -617,14 +659,8 @@ http_ts_rx_callback (session_t *ts)
 	  if (memcmp (rx_buf, http2_conn_preface.base,
 		      http2_conn_preface.len) == 0)
 	    {
-#if HTTP_2_ENABLE > 0
 	      hc->version = HTTP_VERSION_2;
 	      http_vfts[hc->version].conn_accept_callback (hc);
-#else
-	      svm_fifo_dequeue_drop_all (ts->rx_fifo);
-	      http_disconnect_transport (hc);
-	      return 0;
-#endif
 	    }
 	  else
 	    hc->version = HTTP_VERSION_1;
@@ -920,6 +956,13 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
     {
       HTTP_DBG (1, "app set tls");
       tp = TRANSPORT_PROTO_TLS;
+      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+	{
+	  HTTP_DBG (1,
+		    "app do not set alpn list, using default (h2,http/1.1)");
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	}
     }
   args->sep_ext.transport_proto = tp;
 
