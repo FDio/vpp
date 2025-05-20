@@ -2094,6 +2094,39 @@ vl_api_ip_punt_redirect_v2_dump_t_handler (
 }
 
 void
+vl_api_ip6_destination_options_enable_disable_t_handler (
+  vl_api_ip6_destination_options_enable_disable_t *mp)
+{
+  vl_api_ip6_destination_options_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable)
+    {
+      rv = ip6_destination_options_enable_disable (1 /* enable */);
+    }
+  else
+    {
+      rv = ip6_destination_options_disable_disable (0 /* disable */);
+    }
+
+  REPLY_MACRO (VL_API_IP6_DESTINATION_OPTIONS_ENABLE_DISABLE_REPLY);
+}
+
+void
+vl_api_ip6_destination_options_get_enable_disable_t_handler (
+  vl_api_ip6_destination_options_get_enable_disable_t *mp)
+{
+  vl_api_ip6_destination_options_get_enable_disable_reply_t *rmp;
+  int rv = 0;
+  u8 is_enabled;
+
+  is_enabled = ip6_destination_options_is_enabled ();
+
+  REPLY_MACRO2 (VL_API_IP6_DESTINATION_OPTIONS_GET_ENABLE_DISABLE_REPLY,
+		({ rmp->is_enabled = is_enabled; }));
+}
+
+void
 vl_api_ip_path_mtu_update_t_handler (vl_api_ip_path_mtu_update_t *mp)
 {
   vl_api_ip_path_mtu_update_reply_t *rmp;

@@ -1158,6 +1158,37 @@ class TestIPIP6(VppTestCase):
         err = self.statistics.get_err_counter("/err/ipip6-input/packets decapsulated")
         self.assertEqual(err, n_packets_decapped)
 
+    def test_ip6_destination_options(self):
+        """Test IPv6 destination options in IPIP6 tunnel"""
+
+        #create the encap limit scapy ip6o6 packet to test the destination options header
+        # IPv6 transport
+	tun = VppIpIpTunInterface(
+	    self, self.pg0, self.pg0.local_ip6, self.pg1.remote_ip6
+	)
+	tun.add_vpp_config()
+
+	# Create a packet with destination options header in encapsulation
+	# and send it through the tunnel
+	ipip6o6_with_encap = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+	    / IPv6(src=self.pg1.remote_ip6, dst=self.pg0.local_ip6, nh="IPv6ExtHdrDestOpt")
+	    / IPv6ExtHdrDestOpt(options=[IPv6ExtOptEncapLimit(4), IPv6ExtOptPadN(length=8)])
+            / IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
+	    / UDP(sport=1234, dport=4321)
+	    / Raw(b"X" * 100)
+        	
+	rxs = self.send_and_expect(self.pg1, ipip6o6_with_encap * N_PACKETS, self.pg0)
+	# Check that the packet is received correctly
+	for p in rxs:
+	    self.assertEqual(p[IPv6].src, "1:2:3::4")
+	    self.assertEqual(p[IPv6].dst, self.pg0.remote_ip6)
+	    self.assertEqual(p[UDP].sport, 1234)
+	    self.assertEqual(p[UDP].dport, 4321)
+
+	# Clean up the tunnel interface
+	tun.remove_vpp_config()
+
+
     def test_frag(self):
         """ip{v4,v6} over ip6 test frag"""
 
@@ -1330,6 +1361,9 @@ class TestIPIP6(VppTestCase):
 
     def payload(self, len):
         return "x" * len
+
+// Implement destionation option function to test with encap limit to 4 for ipip6o6 tunnel, use api call to enable the ip6_destionaln_options using ip6_destination_options_enable_disable() function
+
 
 
 class TestIPIPMPLS(VppTestCase):
