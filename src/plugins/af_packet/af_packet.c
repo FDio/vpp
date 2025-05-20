@@ -61,20 +61,6 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 /*defined in net/if.h but clashes with dpdk headers */
 unsigned int if_nametoindex (const char *ifname);
 
-#define AF_PACKET_OFFLOAD_FLAG_RXCKSUM (1 << 0)
-#define AF_PACKET_OFFLOAD_FLAG_TXCKSUM (1 << 1)
-#define AF_PACKET_OFFLOAD_FLAG_SG      (1 << 2)
-#define AF_PACKET_OFFLOAD_FLAG_TSO     (1 << 3)
-#define AF_PACKET_OFFLOAD_FLAG_UFO     (1 << 4)
-#define AF_PACKET_OFFLOAD_FLAG_GSO     (1 << 5)
-#define AF_PACKET_OFFLOAD_FLAG_GRO     (1 << 6)
-
-#define AF_PACKET_OFFLOAD_FLAG_MASK                                           \
-  (AF_PACKET_OFFLOAD_FLAG_RXCKSUM | AF_PACKET_OFFLOAD_FLAG_TXCKSUM |          \
-   AF_PACKET_OFFLOAD_FLAG_SG | AF_PACKET_OFFLOAD_FLAG_TSO |                   \
-   AF_PACKET_OFFLOAD_FLAG_UFO | AF_PACKET_OFFLOAD_FLAG_GSO |                  \
-   AF_PACKET_OFFLOAD_FLAG_GRO)
-
 #define AF_PACKET_IOCTL(fd, a, ...)                                           \
   if (ioctl (fd, a, __VA_ARGS__) < 0)                                         \
     {                                                                         \
@@ -83,7 +69,7 @@ unsigned int if_nametoindex (const char *ifname);
       goto done;                                                              \
     }
 
-static u32
+u32
 af_packet_get_if_capabilities (u8 *host_if_name)
 {
   struct ifreq ifr;
