@@ -16,6 +16,24 @@
       "message": "should we call this tls_types and maybe over time start moving some of the protocol specific types here or just include them.",
       "revId": "3127cc361e96670a3e1fcb8a7e89faffc1afb85d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbba4380_6c057e50",
+        "filename": "src/vnet/tls/tls_alpn.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-20T10:25:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "53575c0a_97216387",
+      "revId": "3127cc361e96670a3e1fcb8a7e89faffc1afb85d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
