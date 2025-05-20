@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -9,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest, Http2TlsTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -91,4 +93,23 @@ func Http2MultiplexingMTTest(s *H2Suite) {
 	s.AssertContains(o, " 0 failed")
 	s.AssertContains(o, " 0 errored")
 	s.AssertContains(o, " 0 timeout")
+}
+
+func Http2TlsTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/443 url-handlers debug"))
+
+	client := NewHttpClient(defaultHttpTimeout)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+":443/version.json", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertEqual(2, resp.ProtoMajor)
+	data, err := io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(string(data), "version")
 }
