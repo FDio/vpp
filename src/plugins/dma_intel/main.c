@@ -161,9 +161,17 @@ intel_dsa_get_info (intel_dsa_channel_t *ch, clib_error_t **error)
   vec_reset_length (f);
   f = format (f, "%v/ats_disable%c", wq_dir_name, 0);
   err = clib_sysfs_read ((char *) f, "%s", &tmpstr);
-  if (err)
+  if (err && err->code == ENOENT)
+    {
+      /* ats_disable is not supported when it is invisible */
+      ch->ats_disable = 0;
+      vec_free (err);
+      err = NULL;
+    }
+  else if (err)
     goto error;
-  ch->ats_disable = atoi ((char *) tmpstr);
+  else
+    ch->ats_disable = atoi ((char *) tmpstr);
 
   vec_reset_length (f);
   f = format (f, "%v/block_on_fault%c", wq_dir_name, 0);
