@@ -101,6 +101,21 @@ format_af_packet_device_name (u8 * s, va_list * args)
 #endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
+format_af_packet_offload_flag (u8 *s, va_list *args)
+{
+  af_packet_offload_flag_t af_oflags =
+    va_arg (*args, af_packet_offload_flag_t);
+  u32 indent = va_arg (*args, u32);
+
+#define _(o, n, str)                                                          \
+  if (af_oflags & AF_PACKET_OFFLOAD_FLAG_##o)                                 \
+    s = format (s, "\n%U%s", format_white_space, indent + 3, str);
+  foreach_af_packet_offload_flag
+#undef _
+    return s;
+}
+
+static u8 *
 format_af_packet_device (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -121,6 +136,13 @@ format_af_packet_device (u8 * s, va_list * args)
     s = format (s, "\n%Ucksum-gso-enabled", format_white_space, indent + 2);
   if (apif->is_fanout_enabled)
     s = format (s, "\n%Ufanout-enabled", format_white_space, indent + 2);
+  s = format (s, "\n%UHost Interface Offload:", format_white_space, indent);
+  s = format (s, "\n%Ucreation time:%U", format_white_space, indent + 2,
+	      format_af_packet_offload_flag, apif->host_interface_oflags,
+	      indent);
+  s = format (s, "\n%Unow:%U", format_white_space, indent + 2,
+	      format_af_packet_offload_flag,
+	      af_packet_get_if_capabilities (apif->host_if_name), indent);
 
   vec_foreach (rx_queue, apif->rx_queues)
     {
