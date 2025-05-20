@@ -1091,6 +1091,24 @@ vl_api_ip_reassembly_get_reply_t_handler (vl_api_ip_reassembly_get_reply_t *mp)
 {
 }
 
+static int
+api_ip6_destination_options_enable_disable (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
+api_ip6_destination_options_get (vat_main_t *vat)
+{
+  return -1;
+}
+
+static void
+vl_api_ip6_destination_options_get_reply_t_handler (
+  vl_api_ip6_destination_options_get_reply_t *mp)
+{
+}
+
 int
 api_ip_source_and_port_range_check_interface_add_del (vat_main_t *vam)
 {
