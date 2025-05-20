@@ -435,6 +435,88 @@ format_ip6_frag_hdr (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_ip6_destination_option_header (u8 *s, va_list *args)
+{
+  ip6_ext_header_t *dest_opt = va_arg (*args, ip6_ext_header_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  u32 header_bytes = ip6_ext_header_len (dest_opt);
+
+  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
+    return format (s, "ipv6 destination option header truncated");
+
+  s = format (s, "IPV6_DEST_OPT_HDR: next_hdr: %u, hdr_ext_len: %u",
+	      dest_opt->next_hdr, header_bytes);
+
+  u8 *opt = (u8 *) dest_opt + sizeof (ip6_ext_header_t);
+  header_bytes -= sizeof (ip6_ext_header_t);
+
+  while (header_bytes > 0)
+    {
+      u8 type = opt[0];
+
+      switch (type)
+	{
+	case 0x00: // Pad1
+	  s = format (s, "\n  Option: Pad1 (0x00)");
+	  opt += 1;
+	  header_bytes -= 1;
+	  break;
+
+	case 0x01: // PadN
+	  if (header_bytes < 2)
+	    return format (s, "\n  Malformed PadN option (too short)");
+	  {
+	    u8 len = opt[1];
+	    s = format (s, "\n  Option: PadN (0x01), len: %u", len);
+	    if (header_bytes >= len + 2)
+	      {
+		opt += 2 + len;
+		header_bytes -= 2 + len;
+	      }
+	    else
+	      return format (s, "\n  Malformed PadN option truncated");
+	  }
+	  break;
+
+	case 0x04: // Tunnel Encapsulation Limit
+	  if (header_bytes < 3)
+	    return format (
+	      s, "\n  Malformed Encapsulation Limit option (too short)");
+	  {
+	    u8 len = opt[1];
+	    if (len != 1)
+	      return format (s, "\n  Invalid Encapsulation Limit length: %u",
+			     len);
+	    u8 limit = opt[2];
+	    s = format (s, "\n  Option: Encapsulation Limit (0x04), limit: %u",
+			limit);
+	    opt += 3;
+	    header_bytes -= 3;
+	  }
+	  break;
+
+	default:
+	  s = format (s, "\n  Unknown option type: 0x%02x", type);
+	  if (header_bytes < 2)
+	    return format (s, "\n  Malformed option (too short)");
+	  {
+	    u8 len = opt[1];
+	    if (header_bytes >= len + 2)
+	      {
+		opt += 2 + len;
+		header_bytes -= 2 + len;
+	      }
+	    else
+	      return format (s, "\n  Unknown option truncated");
+	  }
+	  break;
+	}
+    }
+
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

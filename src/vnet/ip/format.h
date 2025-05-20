@@ -94,6 +94,7 @@ format_function_t format_ip6_address_and_mask;
 unformat_function_t unformat_ip6_header;
 format_function_t format_ip6_header;
 format_function_t format_ip6_frag_hdr;
+format_function_t format_ip6_destination_option_header;
 unformat_function_t unformat_pg_ip6_header;
 
 /* Format a TCP/UDP headers. */
