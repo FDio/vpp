@@ -8,10 +8,6 @@
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
-#ifndef HTTP_2_ENABLE
-#define HTTP_2_ENABLE 0
-#endif
-
 #define HTTP2_WIN_SIZE_MAX     0x7FFFFFFF
 #define HTTP2_INITIAL_WIN_SIZE 65535
 /* connection-level flow control window kind of mirrors TCP flow control */
@@ -1966,8 +1962,6 @@ http2_init (vlib_main_t *vm)
   return 0;
 }
 
-#if HTTP_2_ENABLE > 0
 VLIB_INIT_FUNCTION (http2_init) = {
   .runs_after = VLIB_INITS ("http_transport_init"),
 };
-#endif

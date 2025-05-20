@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest, Http2TlsTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -91,4 +91,17 @@ func Http2MultiplexingMTTest(s *H2Suite) {
 	s.AssertContains(o, " 0 failed")
 	s.AssertContains(o, " 0 errored")
 	s.AssertContains(o, " 0 timeout")
+}
+
+func Http2TlsTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/443 url-handlers debug"))
+
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' -k https://%s:443/version.json", serverAddress)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
+	s.Log(vpp.Vppctl("show session verbose 2"))
+	s.AssertContains(log, "HTTP/2 200")
+	s.AssertContains(log, "ALPN: server accepted h2")
+	s.AssertContains(writeOut, "version")
 }
