@@ -931,6 +931,26 @@ define ip_local_reass_get_reply
   bool ip6_is_enabled;
 };
 
+autoreply define ip6_destination_options_enable_disable
+{
+  u32 context;
+  u32 client_index;
+  bool enable;  /* set to true if enable */
+};
+
+define ip6_destination_options_get
+{
+  u32 context;
+  u32 client_index;
+};
+
+define ip6_destination_options_get_reply
+{
+  u32 context;
+  i32 retval;
+  bool is_enabled;
+};
+
 /**
     @brief Set a Path MTU value. i.e. a MTU value for a given neighbour.
            The neighbour can be described as attached (w/ interface and next-hop)

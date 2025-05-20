@@ -321,6 +321,8 @@ int ip6_hbh_register_option (u8 option,
 					 ip6_hop_by_hop_option_t * opt));
 int ip6_hbh_unregister_option (u8 option);
 void ip6_hbh_set_next_override (uword next);
+int ip6_destination_options_is_enabled (void);
+int ip6_destination_options_enable_disable (u8 enable);
 
 always_inline u32
 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b)
