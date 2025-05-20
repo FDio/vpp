@@ -85,6 +85,7 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip60;
 	  u32 next0 = IPIP_INPUT_NEXT_DROP;
 	  u8 inner_protocol0;
+	  u8 ext_len = 0;
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -102,18 +103,26 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (is_ipv6)
 	    {
 	      ip60 = vlib_buffer_get_current (b0);
+	      inner_protocol0 = ip60->protocol;
 	      /* Check for outer fragmentation */
-	      if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	      if (inner_protocol0 == IP_PROTOCOL_IPV6_FRAGMENTATION)
 		{
 		  next0 = IPIP_INPUT_NEXT_DROP;
 		  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
 		  goto drop;
 		}
+	      if (inner_protocol0 == IP_PROTOCOL_IP6_DESTINATION_OPTIONS)
+		{
+		  ip6_ext_header_t *dest_opts =
+		    (ip6_ext_header_t *) (ip60 + 1);
+		  ext_len = ip6_ext_header_len_s (
+		    IP_PROTOCOL_IP6_DESTINATION_OPTIONS, (u8 *) (ip60 + 1));
+		  inner_protocol0 = dest_opts->next_hdr;
+		}
 
-	      vlib_buffer_advance (b0, sizeof (*ip60));
+	      vlib_buffer_advance (b0, sizeof (*ip60) + ext_len);
 	      ip_set (&key0.dst, &ip60->src_address, false);
 	      ip_set (&key0.src, &ip60->dst_address, false);
-	      inner_protocol0 = ip60->protocol;
 	      key0.transport = IPIP_TRANSPORT_IP6;
 	    }
 	  else
@@ -161,31 +170,29 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = IPIP_INPUT_NEXT_IP6_INPUT;
 
 	      if (is_ipv6)
-		tunnel_decap_fixup_6o6 (t0->flags, (ip60 + 1), ip60);
+		tunnel_decap_fixup_6o6 (t0->flags, (ip6_header_t *) b0, ip60);
 	      else
-		tunnel_decap_fixup_6o4 (t0->flags,
-					(ip6_header_t *) (ip40 + 1), ip40);
+		tunnel_decap_fixup_6o4 (t0->flags, (ip6_header_t *) b0, ip40);
 	    }
 	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP4_INPUT;
 
 	      if (is_ipv6)
-		tunnel_decap_fixup_4o6 (t0->flags,
-					(ip4_header_t *) (ip60 + 1), ip60);
+		tunnel_decap_fixup_4o6 (t0->flags, (ip4_header_t *) b0, ip60);
 	      else
-		tunnel_decap_fixup_4o4 (t0->flags, ip40 + 1, ip40);
+		tunnel_decap_fixup_4o4 (t0->flags, (ip4_header_t *) b0, ip40);
 	    }
 	  else if (inner_protocol0 == IP_PROTOCOL_MPLS_IN_IP)
 	    {
 	      next0 = IPIP_INPUT_NEXT_MPLS_INPUT;
 
 	      if (is_ipv6)
-		tunnel_decap_fixup_mplso6 (
-		  t0->flags, (mpls_unicast_header_t *) (ip60 + 1), ip60);
+		tunnel_decap_fixup_mplso6 (t0->flags,
+					   (mpls_unicast_header_t *) b0, ip60);
 	      else
-		tunnel_decap_fixup_mplso4 (
-		  t0->flags, (mpls_unicast_header_t *) ip40 + 1, ip40);
+		tunnel_decap_fixup_mplso4 (t0->flags,
+					   (mpls_unicast_header_t *) b0, ip40);
 	    }
 
 	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD
