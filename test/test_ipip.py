@@ -2,7 +2,10 @@
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
+from scapy.packet import Raw
+from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
+from scapy.layers.inet6 import IPv6ExtHdrDestOpt, Pad1, PadN
+from scapy.fields import ByteField
 from scapy.contrib.mpls import MPLS
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase
@@ -17,6 +20,7 @@ from vpp_ip_route import (
     VppMplsTable,
 )
 from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_ip6_destination_options import IPv6DestOptEncapLimit
 from vpp_teib import VppTeib
 from vpp_papi import VppEnum
 from util import reassemble4
@@ -1157,6 +1161,47 @@ class TestIPIP6(VppTestCase):
 
         err = self.statistics.get_err_counter("/err/ipip6-input/packets decapsulated")
         self.assertEqual(err, n_packets_decapped)
+
+    def test_ip6_destination_options(self):
+        """Test IPv6 destination options in IPIP6 tunnel"""
+
+        # create the encap limit scapy ip6o6 packet to test the destination options header
+        # IPv6 transport
+
+        # Create a packet with destination options header in encapsulation
+        # and send it through the tunnel
+        p_Ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        p_IPv6 = IPv6(src=self.pg1.remote_ip6, dst=self.pg0.local_ip6)
+        p_IPv6_Ext = IPv6ExtHdrDestOpt(options=[IPv6DestOptEncapLimit(EncapLimit=1)])
+        p_IPv6_In = (
+            IPv6(src="1:2:3::4", dst=self.pg0.remote_ip6)
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 100)
+        )
+
+        ipip6o6_with_encap = p_Ether / p_IPv6 / p_IPv6_Ext / p_IPv6_In
+        rxs = self.send_and_expect(self.pg1, ipip6o6_with_encap * N_PACKETS, self.pg0)
+        # Check that the packet is received correctly
+        for p in rxs:
+            self.assertEqual(p[IPv6].src, "1:2:3::4")
+            self.assertEqual(p[IPv6].dst, self.pg0.remote_ip6)
+            self.assertEqual(p[UDP].sport, 1234)
+            self.assertEqual(p[UDP].dport, 4321)
+
+        # disable destination header options processing
+        self.vapi.ip6_destination_options_enable_disable(enable=0)
+        r = self.vapi.ip6_destination_options_get()
+        self.assertEqual(r.is_enabled, 0)
+
+        # all packets with destination options should be dropped
+        self.send_and_assert_no_replies(
+            self.pg1, ipip6o6_with_encap * N_PACKETS, self.pg0
+        )
+
+        # enable destination header options processing
+        self.vapi.ip6_destination_options_enable_disable(enable=1)
+        r = self.vapi.ip6_destination_options_get()
+        self.assertEqual(r.is_enabled, 1)
 
     def test_frag(self):
         """ip{v4,v6} over ip6 test frag"""

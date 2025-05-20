@@ -380,6 +380,7 @@ list(APPEND VNET_SOURCES
   ip/ip4_source_and_port_range_check.c
   ip/reass/ip4_full_reass.c
   ip/reass/ip4_sv_reass.c
+  ip/ip6_destination_options.c
   ip/ip6_format.c
   ip/ip6_forward.c
   ip/ip6_ll_table.c
