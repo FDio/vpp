@@ -76,7 +76,7 @@ func (s *H2Suite) VppAddr() string {
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
-var _ = Describe("Http2Suite", Pending, Ordered, ContinueOnFailure, func() {
+var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
 	var s H2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -170,8 +170,7 @@ var hpackTests = []h2specTest{
 
 var http2Tests = []h2specTest{
 	{desc: "http2/3.5/1"},
-	// TODO: need to be tested with TLS, otherwise we consider invalid preface as bogus HTTP/1 request
-	// {desc: "http2/3.5/2"},
+	{desc: "http2/3.5/2"},
 	{desc: "http2/4.1/1"},
 	{desc: "http2/4.1/2"},
 	{desc: "http2/4.1/3"},
@@ -298,7 +297,7 @@ var specs = []struct {
 }
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
-var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
+var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 	var s H2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -321,15 +320,15 @@ var _ = Describe("H2SpecSuite", Pending, Ordered, ContinueOnFailure, func() {
 				s.Log(testName + ": BEGIN")
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
-				s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug 2"))
+				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/443 url-handlers debug 2"))
 				s.Log(vpp.Vppctl("test-url-handler enable"))
 				conf := &config.Config{
 					Host:         serverAddress,
-					Port:         80,
+					Port:         443,
 					Path:         "/test1",
 					Timeout:      time.Second * 5,
 					MaxHeaderLen: 1024,
-					TLS:          false,
+					TLS:          true,
 					Insecure:     true,
 					Sections:     []string{test.desc},
 					Verbose:      true,
