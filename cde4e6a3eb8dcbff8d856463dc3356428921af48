@@ -50,6 +50,23 @@
       "message": "perftest-3n-emr mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDethip4-ip4base",
       "revId": "cde4e6a3eb8dcbff8d856463dc3356428921af48",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc854500_c1efc47a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-20T15:15:35Z",
+      "side": 1,
+      "message": "Restore jjb vote that was removed during csit testing.",
+      "revId": "cde4e6a3eb8dcbff8d856463dc3356428921af48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
