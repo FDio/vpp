@@ -422,7 +422,10 @@ openssl_confirm_app_close (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   SSL_shutdown (oc->ssl);
-  tls_disconnect_transport (ctx);
+  if (ctx->flags & TLS_CONN_F_SHUTDOWN_TRANSPORT)
+    tls_shutdown_transport (ctx);
+  else
+    tls_disconnect_transport (ctx);
   session_transport_closed_notify (&ctx->connection);
 }
 

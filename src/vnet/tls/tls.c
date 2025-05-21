@@ -41,6 +41,18 @@ tls_disconnect_transport (tls_ctx_t * ctx)
     clib_warning ("disconnect returned");
 }
 
+void
+tls_shutdown_transport (tls_ctx_t *ctx)
+{
+  vnet_shutdown_args_t a = {
+    .handle = ctx->tls_session_handle,
+    .app_index = ctx->ts_app_index,
+  };
+
+  if (vnet_shutdown_session (&a))
+    clib_warning ("shutdown returned");
+}
+
 crypto_engine_type_t
 tls_get_available_engine (void)
 {
@@ -739,6 +751,19 @@ tls_connect (transport_endpoint_cfg_t * tep)
 }
 
 void
+tls_shutdown (u32 ctx_handle, clib_thread_index_t thread_index)
+{
+  tls_ctx_t *ctx;
+
+  TLS_DBG (1, "Disconnecting %x", ctx_handle);
+
+  ctx = tls_ctx_get (ctx_handle);
+  ctx->flags |= TLS_CONN_F_APP_CLOSED;
+  ctx->flags |= TLS_CONN_F_SHUTDOWN_TRANSPORT;
+  tls_ctx_app_close (ctx);
+}
+
+void
 tls_disconnect (u32 ctx_handle, clib_thread_index_t thread_index)
 {
   tls_ctx_t *ctx;
@@ -1150,6 +1175,7 @@ tls_enable (vlib_main_t * vm, u8 is_en)
 static const transport_proto_vft_t tls_proto = {
   .enable = tls_enable,
   .connect = tls_connect,
+  .half_close = tls_shutdown,
   .close = tls_disconnect,
   .start_listen = tls_start_listen,
   .stop_listen = tls_stop_listen,

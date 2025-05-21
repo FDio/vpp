@@ -81,7 +81,8 @@ STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
   _ (NO_APP_SESSION, "no-app-session")                                        \
   _ (RESUME, "resume")                                                        \
   _ (HS_DONE, "handshake-done")                                               \
-  _ (ASYNC_RD, "async-read")
+  _ (ASYNC_RD, "async-read")                                                  \
+  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")
 
 typedef enum tls_conn_flags_bit_
 {
@@ -183,6 +184,7 @@ int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 void tls_notify_app_io_error (tls_ctx_t *ctx);
 void tls_disconnect_transport (tls_ctx_t * ctx);
+void tls_shutdown_transport (tls_ctx_t *ctx);
 
 void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();
