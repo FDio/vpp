@@ -710,11 +710,12 @@ static_always_inline quic_ctx_t *
 quic_quicly_get_quic_ctx_if_valid (u32 ctx_index,
 				   clib_thread_index_t thread_index)
 {
-  quic_main_t *qm = quic_quicly_main.qm;
+  quic_worker_ctx_t *wrk_ctx =
+    quic_wrk_ctx_get (quic_quicly_main.qm, thread_index);
 
-  if (pool_is_free_index (qm->ctx_pool[thread_index], ctx_index))
+  if (pool_is_free_index (wrk_ctx->ctx_pool, ctx_index))
     return 0;
-  return pool_elt_at_index (qm->ctx_pool[thread_index], ctx_index);
+  return pool_elt_at_index (wrk_ctx->ctx_pool, ctx_index);
 }
 
 static void

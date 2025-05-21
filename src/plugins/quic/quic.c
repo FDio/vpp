@@ -142,7 +142,8 @@ done:
 static_always_inline quic_ctx_t *
 quic_ctx_get (u32 ctx_index, clib_thread_index_t thread_index)
 {
-  return pool_elt_at_index (quic_main.ctx_pool[thread_index], ctx_index);
+  return pool_elt_at_index (
+    quic_wrk_ctx_get (&quic_main, thread_index)->ctx_pool, ctx_index);
 }
 
 /* Transport proto functions */
@@ -886,8 +887,6 @@ quic_init (vlib_main_t * vm)
       return clib_error_return (0, "failed to attach quic app");
     }
 
-  vec_validate (qm->ctx_pool, qm->num_threads - 1);
-
   qm->app_index = a->app_index;
 
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
@@ -903,22 +902,28 @@ static void
 quic_engine_init ()
 {
   quic_main_t *qm = &quic_main;
+  quic_worker_ctx_t *wrk_ctx;
+  quic_ctx_t *ctx;
   crypto_context_t *crctx;
   int i;
 
   vec_validate (quic_main.wrk_ctx, qm->num_threads - 1);
-  vec_validate (quic_main.ctx_pool, qm->num_threads - 1);
 
   QUIC_DBG (1, "Initializing quic engine to %s",
 	    quic_engine_type_str (qm->engine_type));
 
   for (i = 0; i < qm->num_threads; i++)
     {
-      pool_get_aligned_safe (quic_wrk_ctx_get (qm, i)->crypto_ctx_pool, crctx,
+      wrk_ctx = quic_wrk_ctx_get (qm, i);
+      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
 			     CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc (
-	(void **) &quic_wrk_ctx_get (qm, i)->crypto_ctx_pool,
-	QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE, CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
+				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
+      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
+				 QUIC_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
     }
 
   quic_eng_engine_init (qm);
@@ -1039,7 +1044,7 @@ quic_show_aggregated_stats (vlib_main_t * vm)
   clib_memset (&agg_stats, 0, sizeof (agg_stats));
   for (i = 0; i < num_workers + 1; i++)
     {
-      pool_foreach (ctx, quic_main.ctx_pool[i])
+      pool_foreach (ctx, quic_main.wrk_ctx[i].ctx_pool)
 	{
 	  if (quic_ctx_is_conn (ctx) && ctx->conn)
 	    {
@@ -1181,7 +1186,7 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   for (int i = 0; i < num_workers + 1; i++)
     {
-      pool_foreach (ctx, quic_main.ctx_pool[i])
+      pool_foreach (ctx, quic_main.wrk_ctx[i].ctx_pool)
 	{
 	  if (quic_ctx_is_stream (ctx) && show_stream)
 	    vlib_cli_output (vm, "%U", quic_format_stream_ctx, ctx);

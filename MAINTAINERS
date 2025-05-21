@@ -672,6 +672,7 @@ M:	Dave Wallace <dwallacelf@gmail.com>
 M:	Florin Coras <fcoras@cisco.com>
 Y:	src/plugins/quic/FEATURE.yaml
 F:	src/plugins/quic/
+F:	src/plugins/quic_quicly/
 
 Plugin - snort plugin
 I:	snort

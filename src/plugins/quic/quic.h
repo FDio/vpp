@@ -40,6 +40,7 @@
 #define QUIC_DECRYPT_PACKET_ERROR 2
 
 #define DEFAULT_MAX_PACKETS_PER_KEY	     16777216
+#define QUIC_CTX_POOL_PER_THREAD_SIZE	     256
 #define QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE 256
 
 #if QUIC_DEBUG
@@ -227,6 +228,7 @@ typedef struct quic_worker_ctx_
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;
   tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;
+  quic_ctx_t *ctx_pool;
   crypto_context_t *crypto_ctx_pool;
 } quic_worker_ctx_t;
 
@@ -234,7 +236,6 @@ typedef struct quic_main_
 {
   vlib_node_registration_t *quic_input_node;
   u32 app_index;
-  quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
 
   u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE
@@ -264,15 +265,15 @@ quic_ctx_alloc (quic_main_t *qm, clib_thread_index_t thread_index)
 {
   quic_ctx_t *ctx;
 
-  pool_get_aligned_safe (qm->ctx_pool[thread_index], ctx,
+  pool_get_aligned_safe (qm->wrk_ctx[thread_index].ctx_pool, ctx,
 			 CLIB_CACHE_LINE_BYTES);
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
   ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   QUIC_DBG (3, "Allocated quic_ctx %u on thread %u",
-	    ctx - qm->ctx_pool[thread_index], thread_index);
-  return ctx - qm->ctx_pool[thread_index];
+	    ctx - qm->wrk_ctx[thread_index].ctx_pool, thread_index);
+  return ctx - qm->wrk_ctx[thread_index].ctx_pool;
 }
 
 static_always_inline void
@@ -283,7 +284,7 @@ quic_ctx_free (quic_main_t *qm, quic_ctx_t *ctx)
   QUIC_ASSERT (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID);
   if (CLIB_DEBUG)
     clib_memset (ctx, 0xfb, sizeof (*ctx));
-  pool_put (qm->ctx_pool[thread_index], ctx);
+  pool_put (qm->wrk_ctx[thread_index].ctx_pool, ctx);
 }
 
 static_always_inline void
