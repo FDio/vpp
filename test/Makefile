@@ -437,7 +437,9 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 
 .PHONY: cov
 cov:
-	$(MAKE) -C . cov-prep test cov-post
+	$(MAKE) -C . cov-prep
+	-$(MAKE) -C . test
+	$(MAKE) -C . cov-post
 
 .PHONY: wipe-cov
 wipe-cov: wipe
