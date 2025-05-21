@@ -74,8 +74,8 @@ extern void quic_quicly_check_quic_session_connected (quic_ctx_t *ctx);
 static_always_inline quic_ctx_t *
 quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)
 {
-  return pool_elt_at_index (quic_quicly_main.qm->ctx_pool[thread_index],
-			    ctx_index);
+  return pool_elt_at_index (
+    quic_wrk_ctx_get (quic_quicly_main.qm, thread_index)->ctx_pool, ctx_index);
 }
 
 static_always_inline quic_session_connected_t
