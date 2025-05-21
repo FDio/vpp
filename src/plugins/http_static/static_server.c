@@ -15,6 +15,7 @@
 
 #include <http_static/http_static.h>
 #include <vnet/session/application.h>
+#include <vnet/tls/tls_types.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -991,6 +992,8 @@ hss_listen (hss_listener_t *l, session_handle_t *lh)
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
+      if (l->http1_only)
+	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
     }
 
   if (!(rv = vnet_listen (a)))
@@ -1132,6 +1135,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
+  l->http1_only = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1177,6 +1181,8 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "ptr-thresh %U", unformat_memory_size,
 			 &l->use_ptr_thresh))
 	;
+      else if (unformat (line_input, "http1-only"))
+	l->http1_only = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1235,9 +1241,10 @@ done:
  * @clistart
  * http static server www-root /tmp/www uri tcp://0.0.0.0/80 cache-size 2m
  * @cliend
- * @cliexcmd{http static server www-root <path> [prealloc-fios <nn>]
- *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]
- *   [keepalive-timeout <nn>]}
+ * @cliexcmd{http static server www-root <path> [url-handlers]
+ *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]
+ *   [uri <uri>] [ptr-thresh <nn>] [prealloc-fifos <nn>] [debug [nn]]
+ *   [keepalive-timeout <nn>] [max-body-size <nn>] [http1-only]}
 ?*/
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
@@ -1245,7 +1252,7 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
     "http static server [www-root <path>] [url-handlers]\n"
     "[private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]\n"
     "[uri <uri>] [ptr-thresh <nn>] [prealloc-fifos <nn>] [debug [nn]]\n"
-    "[keepalive-timeout <nn>] [max-body-size <nn>]\n",
+    "[keepalive-timeout <nn>] [max-body-size <nn>] [http1-only]\n",
   .function = hss_create_command_fn,
 };
 
@@ -1271,6 +1278,7 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
+  l->http1_only = 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1355,7 +1363,7 @@ done:
 VLIB_CLI_COMMAND (hss_add_del_listener_command, static) = {
   .path = "http static listener",
   .short_help = "http static listener [add|del] uri <uri>\n"
-		"[www-root <path>] [url-handlers] \n",
+		"[www-root <path>] [url-handlers] [http1-only]\n",
   .function = hss_add_del_listener_command_fn,
 };
 
