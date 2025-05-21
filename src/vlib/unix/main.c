@@ -505,7 +505,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
     {
       char cwd[PATH_MAX];
       if (getcwd (cwd, PATH_MAX))
-	um->runtime_dir = format (um->runtime_dir, "%s", cwd);
+	um->runtime_dir = format (um->runtime_dir, "%s%c", cwd, 0);
     }
 
   if (um->runtime_dir == 0)
