@@ -29,14 +29,16 @@ vnet_hash_fn_t
 vnet_hash_default_function (vnet_hash_fn_type_t ftype)
 {
   vnet_hash_function_registration_t *hash = vnet_hash_main.hash_registrations;
-  vnet_hash_function_registration_t *tmp_hash = hash;
+  vnet_hash_function_registration_t *selected = 0;
+
   while (hash)
     {
-      if (hash->priority > tmp_hash->priority)
-	tmp_hash = hash;
+      if (hash->function[ftype] &&
+	  (!selected || hash->priority > selected->priority))
+	selected = hash;
       hash = hash->next;
     }
-  return tmp_hash->function[ftype];
+  return selected ? selected->function[ftype] : 0;
 }
 
 vnet_hash_fn_t
