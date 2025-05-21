@@ -156,6 +156,8 @@ typedef struct hss_listener_
   u32 l_index;
   /** Listener session handle */
   session_handle_t session_handle;
+  /** Enable only HTTP/1.1 in TLS ALPN list */
+  u8 http1_only;
 } hss_listener_t;
 
 /** \brief Main data structure
