@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ecb547a9_a6e277cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "ACK on the merge of the feature-arc and sflow-egress/dropmon.\nI found the user interface (API) a bit confusing. Using u32 while the semantic is either an enum (direction) or bool (dropmon enable/disable).",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b1c9f19_79e8d470",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "it does not become clear here what the values are of \u0027sampling_D\u0027. \n\u0027ingress 1\u0027,\u0027egress 2\u0027,\u0027both 3\u0027 per src/plugins/sflow/sflow_common.h\n\nShould it be an enum instead?  Inspiration can be found in lcp.api for example enum lcp_itf_host_type",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d842d8c3_3e6646a5",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "nit: \"API to the flow\" -\u003e \"API to get the flow\"",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8eeee76f_a75c906e",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "It does not become clear what are permissible values of drop_M. I assume \u0027off 0\u0027 and \u0027on 1\u0027. Why not make this a bool instead, as that\u0027s what you have in the sflow struct?\n\nIt matches then the CLI sflow drop-monitoring \u003cenable|disable\u003e\n\nIt will auto-document itself if the field is called is_enabled. Same in the getter.",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "710ddc8a_47d62420",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 809,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "samplingD needs to be one of 0 (off?), 1 (egress), 2 (egress) and 3 (both).\nAny other value will yield unpredictable results. I think you should switch to an enum here, or at the least throw an error (also in the API) if using a u32.",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ede5a54_9a140402",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "I suggest a prototype of sflow_drop_monitoring(smp, bool is_enabled) here.\nIt is not clear what \u0027dropM\u0027 means or what it can be set to (0 or 1 is what you have in mind).",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b770f0e8_4392c13e",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 1436,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-21T07:45:57Z",
+      "side": 1,
+      "message": "@dwallacelf can you double check this; it adds a feature arc on drop so we can inspect packets that are about to get discarded. It looks good to me, as also in my functional/regression tests at IPng. But it could use a second review from a committer.",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
