@@ -37,7 +37,7 @@ func init() {
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest)
+		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -1165,6 +1165,25 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	s.AssertHttpStatus(resp, 400)
 	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
 	s.AssertHttpContentLength(resp, int64(0))
+}
+
+func HttpStaticHttp1OnlyTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/80 url-handlers http1-only debug"))
+
+	client := NewHttpClient(defaultHttpTimeout, true)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+":80/version.json", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertHttpStatus(resp, 200)
+	s.AssertEqual(1, resp.ProtoMajor)
+	data, err := io.ReadAll(resp.Body)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(string(data), "version")
 }
 
 func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
