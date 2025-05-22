@@ -73,6 +73,7 @@ typedef struct hs_main_
   u8 no_zc;
   u8 *default_uri;
   u32 seed;
+  u8 *dummy_header_value;
 } hts_main_t;
 
 static hts_main_t hts_main;
@@ -370,8 +371,10 @@ hts_ts_rx_callback (session_t *ts)
 {
   hts_main_t *htm = &hts_main;
   hts_session_t *hs;
-  u8 *target = 0;
+  u8 *target = 0, *query = 0;
   http_msg_t msg;
+  unformat_input_t input;
+  u64 dummy_header_len;
   int rv;
 
   hs = hts_session_get (ts->thread_index, ts->opaque);
@@ -414,6 +417,35 @@ hts_ts_rx_callback (session_t *ts)
 	clib_warning ("%s request target: %v",
 		      msg.method_type == HTTP_REQ_GET ? "GET" : "POST",
 		      target);
+
+      if (msg.data.target_query_len != 0)
+	{
+	  vec_validate (query, msg.data.target_query_len - 1);
+	  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_query_offset,
+			      msg.data.target_query_len, query);
+	  ASSERT (rv == msg.data.target_query_len);
+	  if (htm->debug_level)
+	    clib_warning ("query: %v", query);
+	  unformat_init_vector (&input, query);
+	  if (unformat (&input, "dummy_header=%U", unformat_memory_size,
+			&dummy_header_len))
+	    {
+	      if (dummy_header_len > vec_len (htm->dummy_header_value))
+		{
+		  dummy_header_len = vec_len (htm->dummy_header_value);
+		  clib_warning ("dummy_header_len too big, truncated to %U",
+				format_memory_size, dummy_header_len);
+		}
+	      vec_resize (hs->resp_headers_buf,
+			  sizeof (http_app_header_t) + dummy_header_len);
+	      hs->resp_headers.len = vec_len (hs->resp_headers_buf);
+	      hs->resp_headers.buf = hs->resp_headers_buf;
+	      http_add_custom_header (
+		&hs->resp_headers, http_token_lit ("x-dummy"),
+		(const char *) htm->dummy_header_value, dummy_header_len);
+	    }
+	  vec_free (query);
+	}
 
       if (msg.method_type == HTTP_REQ_GET)
 	{
@@ -765,6 +797,9 @@ hts_create (vlib_main_t *vm)
 
   if (htm->no_zc)
     vec_validate (htm->test_data, (64 << 10) - 1);
+
+  vec_validate_init_empty (htm->dummy_header_value, htm->fifo_size - 1024,
+			   'x');
 
   if (hts_attach (htm))
     {
