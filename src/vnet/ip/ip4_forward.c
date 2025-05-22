@@ -2022,6 +2022,14 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	}
       else
 	{
+	  if (b->flags & VNET_BUFFER_F_OFFLOAD &&
+	      !(b->flags & VNET_BUFFER_F_GSO))
+	    {
+	      vlib_main_t *vm = vlib_get_main ();
+	      vnet_calc_checksums_inline (vm, b, 1 /* is_v4 */, 0 /* is_v6 */);
+	      vnet_calc_outer_checksums_inline (vm, b);
+	    }
+
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
 				   (is_midchain ?
