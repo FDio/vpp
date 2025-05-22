@@ -74,11 +74,25 @@ VLIB_REGISTER_NODE (http_timer_process_node) = {
 };
 
 void
+http_timers_set_state (vlib_main_t *vm, bool enabled)
+{
+  vlib_node_t *n;
+
+  vlib_node_set_state (
+    vm, http_timer_process_node.index,
+    (enabled ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED));
+  if (enabled)
+    {
+      n = vlib_get_node (vm, http_timer_process_node.index);
+      vlib_start_process (vm, n->runtime_index);
+    }
+}
+
+void
 http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
 		  http_conn_invalidate_timer_fn *invalidate_cb)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
-  vlib_node_t *n;
 
   ASSERT (twc->tw.timers == 0);
 
@@ -88,10 +102,7 @@ http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
   twc->rpc_cb = rpc_cb;
   twc->invalidate_cb = invalidate_cb;
 
-  vlib_node_set_state (vm, http_timer_process_node.index,
-		       VLIB_NODE_STATE_POLLING);
-  n = vlib_get_node (vm, http_timer_process_node.index);
-  vlib_start_process (vm, n->runtime_index);
+  http_timers_set_state (vm, true);
 }
 
 /*

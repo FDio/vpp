@@ -756,6 +756,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       da->app_index = hm->app_index;
       da->api_client_index = APP_INVALID_INDEX;
       vnet_application_detach (da);
+      http_timers_set_state (vm, false);
       return 0;
     }
 
@@ -783,7 +784,10 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   vec_free (a->name);
 
   if (hm->is_init)
-    return 0;
+    {
+      http_timers_set_state (vm, true);
+      return 0;
+    }
 
   vec_validate (hm->wrk, num_threads - 1);
   vec_validate (hm->rx_bufs, num_threads - 1);
