@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest)
 	RegisterH2SoloTests(Http2MultiplexingMTTest)
 }
 
@@ -105,4 +106,17 @@ func Http2TlsTest(s *H2Suite) {
 	s.AssertContains(log, "HTTP/2 200")
 	s.AssertContains(log, "ALPN: server accepted h2")
 	s.AssertContains(writeOut, "version")
+}
+
+func Http2ContinuationTxTest(s *H2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	vpp.Vppctl("http tps uri tcp://" + serverAddress + " no-zc")
+	args := fmt.Sprintf("-w %%{size_header} --max-time 10 --noproxy '*' --http2-prior-knowledge http://%s/test_file_64?dummy_header=32k", serverAddress)
+	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
+	s.AssertContains(log, "HTTP/2 200")
+	s.AssertContains(log, "[64 bytes data]")
+	sizeHeader, err := strconv.Atoi(strings.ReplaceAll(writeOut, "\x00", ""))
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertGreaterThan(sizeHeader, 32768)
 }
