@@ -25,6 +25,7 @@ N_PKTS = 15
 N_REMOTE_HOSTS = 3
 N_SESSIONS_MAX = 256
 N_SESSIONS_PER_VRF = 200
+CNAT_TR_FLAG_NO_CLIENT = 8
 
 SRC = 0
 DST = 1
@@ -134,7 +135,7 @@ class Translation(VppObject):
             for (src, dst) in self.paths
         ]
 
-    def add_vpp_config(self):
+    def add_vpp_config(self, flags=0):
         r = self._test.vapi.cnat_translation_update(
             {
                 "vip": self.vip.encode(),
@@ -142,6 +143,7 @@ class Translation(VppObject):
                 "n_paths": len(self.paths),
                 "paths": self._encoded_paths(),
                 "flow_hash_config": self.fhc,
+                "flags": flags,
             }
         )
         self._test.registry.register(self, self._test.logger)
@@ -374,6 +376,8 @@ class TestCNatTranslation(CnatCommonTestCase):
     def tearDown(self):
         for translation in self.translations:
             translation.remove_vpp_config()
+        for translation in self.mbtranslations:
+            translation.remove_vpp_config()
 
         self.vapi.cnat_session_purge()
         self.assertFalse(self.vapi.cnat_session_dump())
@@ -419,6 +423,101 @@ class TestCNatTranslation(CnatCommonTestCase):
 
                 ctx._test.assertEqual(dport1, dport2)
 
+    def cnat_enable_features(self, enable=1):
+        for idx, feat in product(
+            [self.pg0.sw_if_index, self.pg1.sw_if_index],
+            ["cnat-input-ip4", "cnat-lookup-ip4"],
+        ):
+            self.vapi.feature_enable_disable(
+                enable=enable,
+                arc_name="ip4-unicast",
+                feature_name=feat,
+                sw_if_index=idx,
+            )
+        for idx, feat in product(
+            [self.pg0.sw_if_index, self.pg1.sw_if_index],
+            ["cnat-output-ip4", "cnat-writeback-ip4"],
+        ):
+            self.vapi.feature_enable_disable(
+                enable=enable,
+                arc_name="ip4-output",
+                feature_name=feat,
+                sw_if_index=idx,
+            )
+
+    def cnat_delete(self):
+        """CNat Delete translation"""
+        for nbr, translation in enumerate(self.translations):
+            vip = translation.vip
+
+            #
+            # Test Flows to the VIP
+            #
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
+                # from client to vip
+                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                dst_port = translation.paths[0][DST].port
+                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dst_port)
+                # from vip to client
+                ctx.cnat_send_return().cnat_expect_return()
+        self.logger.info(self.vapi.cli("sh cnat client"))
+        self.logger.info(self.vapi.cli("sh cnat translation"))
+        self.logger.info(self.vapi.cli("sh cnat session verbose"))
+        self.logger.info(self.vapi.cli("sh cnat timestamp verbose"))
+        sessions = self.vapi.cnat_session_dump()
+        assert len(sessions) == N_REMOTE_HOSTS * 2 * len(self.translations) * 2
+
+        for nbr, translation in enumerate(self.translations):
+            #
+            # Delete translation
+            #
+            translation.remove_vpp_config()
+            # deleting translation results in deleting corresponding sessions
+            sessions = self.vapi.cnat_session_dump()
+            assert len(sessions) == N_REMOTE_HOSTS * 2 * 2 * (
+                len(self.translations) - (nbr + 1)
+            )
+        # all sessions should be gone
+        self.assertFalse(sessions)
+
+    def cnat_update(self):
+        """CNat Update translation"""
+        number_of_sessions = 0
+        for nbr, translation in enumerate(self.mbtranslations):
+            vip = translation.vip
+            sessions_per_backend = {
+                translation.paths[0][DST].port: 0,
+                translation.paths[1][DST].port: 0,
+            }
+            #
+            # Test Flows to the VIP
+            #
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
+                # from client to vip
+                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                dport1 = ctx.rxs[0][ctx.L4PROTO].dport
+                ctx._test.assertIn(
+                    dport1,
+                    [translation.paths[0][DST].port, translation.paths[1][DST].port],
+                )
+                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dport1)
+                # from vip to client
+                ctx.cnat_send_return().cnat_expect_return()
+                sessions_per_backend[dport1] += 2
+                sessions = self.vapi.cnat_session_dump()
+            number_of_sessions += N_REMOTE_HOSTS * 2 * 2
+            assert len(sessions) == number_of_sessions
+            old_port_1 = translation.paths[1][DST].port
+            translation.paths[1][DST].udpate(
+                pg=self.pg2, pgi=0, port=5000, is_v6=vip.is_v6
+            )
+            translation.add_vpp_config()
+            sessions = self.vapi.cnat_session_dump()
+            number_of_sessions -= sessions_per_backend[old_port_1]
+            assert len(sessions) == number_of_sessions
+
     def cnat_translation(self):
         """CNat Translation"""
         self.logger.info(self.vapi.cli("sh cnat client"))
@@ -462,19 +561,6 @@ class TestCNatTranslation(CnatCommonTestCase):
                 pg=self.pg2, pgi=0, port=5000, is_v6=vip.is_v6
             )
             translation.add_vpp_config()
-
-            #
-            # existing flows follow the old path
-            #
-            for src_pgi in range(N_REMOTE_HOSTS):
-                for sport in [1234, 1233]:
-                    # from client to vip
-                    ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
-                    ctx.cnat_expect(
-                        self.pg0, src_pgi, sport, self.pg1, nbr, old_dst_port
-                    )
-                    # from vip to client
-                    ctx.cnat_send_return().cnat_expect_return()
 
             #
             # new flows go to the new backend
@@ -532,7 +618,7 @@ class TestCNatTranslation(CnatCommonTestCase):
             ctx.cnat_expect(self.pg0, 0, 1234, self.pg2, 0, vip.port)
             ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
 
-    def _make_multi_backend_translations(self):
+    def _make_multi_backend_translations(self, flags=0):
         self.translations = []
         self.mbtranslations = []
         self.mbtranslations.append(
@@ -551,7 +637,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                     ),
                 ],
                 0x03,  # hash only on dst ip and src ip
-            ).add_vpp_config()
+            ).add_vpp_config(flags)
         )
         self.mbtranslations.append(
             Translation(
@@ -569,11 +655,12 @@ class TestCNatTranslation(CnatCommonTestCase):
                     ),
                 ],
                 0x08,  # hash only on dst port
-            ).add_vpp_config()
+            ).add_vpp_config(flags)
         )
 
-    def _make_translations_v4(self):
+    def _make_translations_v4(self, flags=0):
         self.translations = []
+        self.mbtranslations = []
         self.translations.append(
             Translation(
                 self,
@@ -586,7 +673,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                     )
                 ],
                 0x9F,
-            ).add_vpp_config()
+            ).add_vpp_config(flags)
         )
         self.translations.append(
             Translation(
@@ -600,7 +687,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                     )
                 ],
                 0x9F,
-            ).add_vpp_config()
+            ).add_vpp_config(flags)
         )
         self.translations.append(
             Translation(
@@ -614,11 +701,12 @@ class TestCNatTranslation(CnatCommonTestCase):
                     )
                 ],
                 0x9F,
-            ).add_vpp_config()
+            ).add_vpp_config(flags)
         )
 
     def _make_translations_v6(self):
         self.translations = []
+        self.mbtranslations = []
         self.translations.append(
             Translation(
                 self,
@@ -681,6 +769,34 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation ipv4 """
         self._make_translations_v4()
         self.cnat_translation()
+
+    def test_fib_delete_translation(self):
+        # """ CNat Translation deletion """
+        self._make_translations_v4()
+        self.cnat_delete()
+        self._make_translations_v4()  # this is done for teardown to work properly
+
+    def test_delete_translation(self):
+        # """ CNat Translation deletion """
+        self._make_translations_v4(CNAT_TR_FLAG_NO_CLIENT)
+        self.cnat_enable_features()
+        self.cnat_delete()
+        self.cnat_enable_features(0)
+        self._make_translations_v4(
+            CNAT_TR_FLAG_NO_CLIENT
+        )  # this is done for teardown to work properly
+
+    def test_fib_update_translation(self):
+        # """ CNat Translation update """
+        self._make_multi_backend_translations()
+        self.cnat_update()
+
+    def test_update_translation(self):
+        # """ CNat Translation update """
+        self._make_multi_backend_translations(CNAT_TR_FLAG_NO_CLIENT)
+        self.cnat_enable_features()
+        self.cnat_update()
+        self.cnat_enable_features(0)
 
     def test_cnat_fhc(self):
         # """ CNat Translation flow hash config """

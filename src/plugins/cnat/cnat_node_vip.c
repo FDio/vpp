@@ -65,6 +65,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   /* add the rewrite object */
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
+  ts->cti = ct->index;
 
   trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index);
   if (PREDICT_FALSE (!trk0))
@@ -74,6 +75,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       return (rw);
     }
 
+  ts->trk = trk0;
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */,
 			   0 /* swap */);
 

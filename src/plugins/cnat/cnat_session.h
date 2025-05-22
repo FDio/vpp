@@ -133,7 +133,7 @@ STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (cnat_bihash_kv_t),
 extern cnat_bihash_t cnat_session_db;
 
 /**
- * Callback function invoked during a walk of all translations
+ * Callback function invoked during a walk of all sessions
  */
 typedef walk_rc_t (*cnat_session_walk_cb_t) (const cnat_session_t *
 					     session, void *ctx);
@@ -142,6 +142,11 @@ typedef walk_rc_t (*cnat_session_walk_cb_t) (const cnat_session_t *
  * Walk/visit each of the cnat session
  */
 extern void cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx);
+
+/**
+ * Delete a session by index
+ */
+extern void cnat_session_delete (u32 session_index);
 
 /**
  * Scan the session DB for expired sessions
