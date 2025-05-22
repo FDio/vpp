@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec19d6bd_e5e3ebbf",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T23:01:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b1c9f19_79e8d470",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d842d8c3_3e6646a5",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dddba3eb_0fa85e74",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T23:01:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d842d8c3_3e6646a5",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8eeee76f_a75c906e",
@@ -65,6 +101,24 @@
       "writtenOn": "2025-05-21T07:45:57Z",
       "side": 1,
       "message": "It does not become clear what are permissible values of drop_M. I assume \u0027off 0\u0027 and \u0027on 1\u0027. Why not make this a bool instead, as that\u0027s what you have in the sflow struct?\n\nIt matches then the CLI sflow drop-monitoring \u003cenable|disable\u003e\n\nIt will auto-document itself if the field is called is_enabled. Same in the getter.",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f846c505_9dde000a",
+        "filename": "src/plugins/sflow/sflow.api",
+        "patchSetId": 16
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T23:01:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8eeee76f_a75c906e",
       "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -104,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "779c351c_77495a7c",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 809,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T23:01:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d115e28_a27ec56b",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4ede5a54_9a140402",
@@ -117,6 +189,24 @@
       "writtenOn": "2025-05-21T07:45:57Z",
       "side": 1,
       "message": "I suggest a prototype of sflow_drop_monitoring(smp, bool is_enabled) here.\nIt is not clear what \u0027dropM\u0027 means or what it can be set to (0 or 1 is what you have in mind).",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ee000ab_eb75daf4",
+        "filename": "src/plugins/sflow/sflow.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T23:01:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ede5a54_9a140402",
       "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
