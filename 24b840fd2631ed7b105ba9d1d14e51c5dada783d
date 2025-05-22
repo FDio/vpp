@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cdc4b55_52797eca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-22T07:59:26Z",
+      "side": 1,
+      "message": "Looks great and tested well on my bench. Over to a committer to merge!",
+      "revId": "24b840fd2631ed7b105ba9d1d14e51c5dada783d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
