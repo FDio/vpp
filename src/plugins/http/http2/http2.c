@@ -60,6 +60,7 @@ typedef struct http2_req_
 
 #define foreach_http2_conn_flags                                              \
   _ (EXPECT_PREFACE, "expect-preface")                                        \
+  _ (EXPECT_CONTINUATION, "expect-continuation")                              \
   _ (PREFACE_VERIFIED, "preface-verified")                                    \
   _ (TS_DESCHED, "ts-descheduled")
 
@@ -92,6 +93,7 @@ typedef struct http2_conn_ctx_
   clib_llist_index_t old_tx_streams; /* data */
   http2_conn_settings_t settings;
   clib_llist_anchor_t sched_list;
+  u8 *unparsed_headers; /* temporary storing fragmented headers */
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -707,8 +709,8 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   h2c = http2_conn_ctx_get_w_thread (hc);
 
   /* TODO: configurable buf size with bigger default value */
-  vec_validate_init_empty (buf, 1023, 0);
-  *error = hpack_parse_request (req->payload, req->payload_len, buf, 1023,
+  vec_validate_init_empty (buf, (1 << 16) - 1, 0);
+  *error = hpack_parse_request (req->payload, req->payload_len, buf, 1 << 16,
 				&control_data, &req->base.headers,
 				&h2c->decoder_dynamic_table);
   if (*error != HTTP2_ERROR_NO_ERROR)
@@ -716,6 +718,9 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
       HTTP_DBG (1, "hpack_parse_request failed");
       return HTTP_SM_ERROR;
     }
+
+  HTTP_DBG (1, "decompressed headers size %u", control_data.headers_len);
+  HTTP_DBG (1, "dynamic table size %u", h2c->decoder_dynamic_table.used);
 
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
     {
@@ -982,15 +987,11 @@ static http2_error_t
 http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
   http2_req_t *req;
-  u8 *rx_buf;
+  u8 *rx_buf, *headers_start;
+  u32 headers_len;
+  uword n_del, n_dec;
   http2_error_t rv;
   http2_conn_ctx_t *h2c;
-
-  if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
-    {
-      /* TODO: fragmented headers */
-      return HTTP2_ERROR_INTERNAL_ERROR;
-    }
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
     {
@@ -1031,6 +1032,31 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	}
       if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
 	req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+
+      if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
+	{
+	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
+	  h2c->flags |= HTTP2_CONN_F_EXPECT_CONTINUATION;
+	  vec_validate (h2c->unparsed_headers, fh->length - 1);
+	  http_io_ts_read (hc, h2c->unparsed_headers, fh->length, 0);
+	  rv = http2_frame_read_headers (&headers_start, &headers_len,
+					 h2c->unparsed_headers, fh->length,
+					 fh->flags);
+	  if (rv != HTTP2_ERROR_NO_ERROR)
+	    return rv;
+
+	  /* in case frame has padding */
+	  if (PREDICT_FALSE (headers_start != h2c->unparsed_headers))
+	    {
+	      n_dec = fh->length - headers_len;
+	      n_del = headers_start - h2c->unparsed_headers;
+	      n_dec -= n_del;
+	      vec_delete (h2c->unparsed_headers, n_del, 0);
+	      vec_dec_len (h2c->unparsed_headers, n_dec);
+	    }
+
+	  return HTTP2_ERROR_NO_ERROR;
+	}
     }
   else
     {
@@ -1049,6 +1075,53 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 
   HTTP_DBG (1, "run state machine");
   return http2_req_run_state_machine (hc, req, 0, 0);
+}
+
+static http2_error_t
+http2_handle_continuation_frame (http_conn_t *hc, http2_frame_header_t *fh)
+{
+  http2_req_t *req;
+  http2_conn_ctx_t *h2c;
+  u8 *p;
+  http2_error_t rv = HTTP2_ERROR_NO_ERROR;
+
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    {
+      h2c = http2_conn_ctx_get_w_thread (hc);
+
+      if (!(h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION))
+	{
+	  HTTP_DBG (1, "unexpected CONTINUATION frame");
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
+
+      if (fh->stream_id != h2c->last_opened_stream_id)
+	{
+	  HTTP_DBG (1, "invalid stream id %u", fh->stream_id);
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
+
+      vec_add2 (h2c->unparsed_headers, p, fh->length);
+      http_io_ts_read (hc, p, fh->length, 0);
+
+      if (fh->flags & HTTP2_FRAME_FLAG_END_HEADERS)
+	{
+	  req = http2_conn_get_req (hc, fh->stream_id);
+	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_CONTINUATION;
+	  req->payload = h2c->unparsed_headers;
+	  req->payload_len = vec_len (h2c->unparsed_headers);
+	  HTTP_DBG (1, "run state machine");
+	  rv = http2_req_run_state_machine (hc, req, 0, 0);
+	  vec_free (h2c->unparsed_headers);
+	}
+    }
+  else
+    {
+      /* TODO: client */
+      return HTTP2_ERROR_INTERNAL_ERROR;
+    }
+
+  return rv;
 }
 
 static http2_error_t
@@ -1669,7 +1742,16 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
-      HTTP_DBG (1, "frame type 0x%02x", fh.type);
+      HTTP_DBG (1, "frame type 0x%02x len %u", fh.type, fh.length);
+
+      if ((h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION) &&
+	  fh.type != HTTP2_FRAME_TYPE_CONTINUATION)
+	{
+	  HTTP_DBG (1, "expected CONTINUATION frame");
+	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	  return;
+	}
+
       switch (fh.type)
 	{
 	case HTTP2_FRAME_TYPE_HEADERS:
@@ -1694,8 +1776,7 @@ http2_transport_rx_callback (http_conn_t *hc)
 	  rv = http2_handle_ping_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_CONTINUATION:
-	  /* TODO */
-	  rv = HTTP2_ERROR_INTERNAL_ERROR;
+	  rv = http2_handle_continuation_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_PUSH_PROMISE:
 	  rv = http2_handle_push_promise (hc, &fh);
