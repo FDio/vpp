@@ -219,6 +219,19 @@ void http2_frame_write_headers_header (u32 headers_len, u32 stream_id,
 				       u8 flags, u8 *dst);
 
 /**
+ * Write CONTINUATION frame header
+ *
+ * @param headers_len Header block fragment length
+ * @param stream_id   Stream ID, except 0
+ * @param flags       Frame header flags
+ * @param dst         Pointer where frame header will be written
+ *
+ * @note Use @c http2_frame_header_alloc before
+ */
+void http2_frame_write_continuation_header (u32 headers_len, u32 stream_id,
+					    u8 flags, u8 *dst);
+
+/**
  * Parse DATA frame payload
  *
  * @param headers     Pointer to data

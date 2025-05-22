@@ -308,6 +308,19 @@ http2_frame_write_headers_header (u32 headers_len, u32 stream_id, u8 flags,
   http2_frame_header_write (&fh, dst);
 }
 
+void
+http2_frame_write_continuation_header (u32 headers_len, u32 stream_id,
+				       u8 flags, u8 *dst)
+{
+  ASSERT (stream_id > 0 && stream_id <= 0x7FFFFFFF);
+
+  http2_frame_header_t fh = { .type = HTTP2_FRAME_TYPE_CONTINUATION,
+			      .length = headers_len,
+			      .flags = flags,
+			      .stream_id = stream_id };
+  http2_frame_header_write (&fh, dst);
+}
+
 __clib_export http2_error_t
 http2_frame_read_data (u8 **data, u32 *data_len, u8 *payload, u32 payload_len,
 		       u8 flags)

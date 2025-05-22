@@ -1169,11 +1169,11 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 
 func HttpStaticHttp1OnlyTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/80 url-handlers http1-only debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers http1-only debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, true)
-	req, err := http.NewRequest("GET", "https://"+serverAddress+":80/version.json", nil)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
