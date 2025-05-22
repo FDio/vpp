@@ -86,6 +86,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   /* add the rewrite object */
   rw = &ts->cts_rewrites[CNAT_LOCATION_INPUT];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_INPUT;
+  ts->cti = ct->index;
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
@@ -110,6 +111,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
       rw->tuple.port[VLIB_TX];
 
+  ts->trk = trk0;
   if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
     {
       const dpo_id_t *dpo0;

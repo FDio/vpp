@@ -241,6 +241,29 @@ cnat_translation_stack (cnat_translation_t * ct)
   ct->flags |= CNAT_TR_FLAG_STACKED;
 }
 
+void
+cnat_delete_sessions_for_translation (cnat_translation_t *ct,
+				      cnat_ep_trk_t *trk)
+{
+  // delete all timestamps sessions for this ct
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 pidx, session_idx;
+  vec_foreach_index (pidx, ctm->ts_pools)
+    {
+      cnat_timestamp_t *ts_pool = vec_elt (ctm->ts_pools, pidx);
+      u32 idx = 0;
+      vec_foreach_index (idx, ts_pool)
+	{
+	  cnat_timestamp_t ts = vec_elt (ts_pool, idx);
+	  if ((ts.cti == ct->index) && (trk == NULL || ts.trk == trk))
+	    {
+	      session_idx = pidx << ctm->log2_pool_sz | idx;
+	      cnat_session_delete (session_idx);
+	    }
+	}
+    }
+}
+
 int
 cnat_translation_delete (u32 id, u32 fib_index)
 {
@@ -257,12 +280,22 @@ cnat_translation_delete (u32 id, u32 fib_index)
   vec_foreach (trk, ct->ct_active_paths)
     cnat_tracker_release (trk);
 
+  cnat_delete_sessions_for_translation (ct, NULL);
+
   cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
   cnat_client_translation_deleted (ct->ct_cci, fib_index);
   cnat_translation_unwatch_addr (id, CNAT_RESOLV_ADDR_ANY);
   pool_put (cnat_translation_pool, ct);
 
   return (0);
+}
+
+int
+cnat_endpoint_cmp (cnat_endpoint_t *ep1, cnat_endpoint_t *ep2)
+{
+  return ip_address_cmp (&ep1->ce_ip, &ep2->ce_ip) ||
+	 (ep1->ce_port != ep2->ce_port) ||
+	 (ep1->ce_sw_if_index != ep2->ce_sw_if_index);
 }
 
 u32
@@ -319,6 +352,28 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   vec_foreach (trk, ct->ct_paths)
   {
     cnat_tracker_release (trk);
+  }
+
+  // for every old path that is to be deleted, go through all timestamps and
+  // delete the sessions that use this path.
+  vec_foreach (trk, ct->ct_active_paths)
+  {
+    int deleted = 1;
+    vec_foreach (path, paths)
+	{
+	  if (!cnat_endpoint_cmp (&trk->ct_ep[VLIB_TX], &path->dst_ep) &&
+	      !cnat_endpoint_cmp (&trk->ct_ep[VLIB_RX], &path->src_ep))
+	    {
+	      // found old path in new list
+	      deleted = 0;
+	      goto found;
+	    }
+	}
+  found:
+    if (deleted)
+	{
+	  cnat_delete_sessions_for_translation (ct, trk);
+	}
   }
 
   vec_reset_length (ct->ct_paths);
