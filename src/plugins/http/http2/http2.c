@@ -56,10 +56,13 @@ typedef struct http2_req_
   u8 *payload;
   u32 payload_len;
   clib_llist_anchor_t sched_list;
+  void (*dispatch_headers_cb) (struct http2_req_ *req, http_conn_t *hc,
+			       u8 *n_emissions, clib_llist_index_t *next_ri);
 } http2_req_t;
 
 #define foreach_http2_conn_flags                                              \
   _ (EXPECT_PREFACE, "expect-preface")                                        \
+  _ (EXPECT_CONTINUATION, "expect-continuation")                              \
   _ (PREFACE_VERIFIED, "preface-verified")                                    \
   _ (TS_DESCHED, "ts-descheduled")
 
@@ -92,6 +95,9 @@ typedef struct http2_conn_ctx_
   clib_llist_index_t old_tx_streams; /* data */
   http2_conn_settings_t settings;
   clib_llist_anchor_t sched_list;
+  u8 *unparsed_headers; /* temporary storing rx fragmented headers */
+  u8 *unsent_headers;	/* temporary storing tx fragmented headers */
+  u32 unsent_headers_offset;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -99,6 +105,7 @@ typedef struct http2_worker_ctx_
   http2_conn_ctx_t *conn_pool;
   http2_req_t *req_pool;
   clib_llist_index_t sched_head;
+  u8 *header_list; /* buffer for headers decompression */
 } http2_worker_ctx_t;
 
 typedef struct http2_main_
@@ -111,6 +118,7 @@ typedef struct http2_main_
 typedef enum
 {
   HTTP2_SCHED_WEIGHT_DATA_PTR = 1,
+  HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION = 1,
   HTTP2_SCHED_WEIGHT_DATA_INLINE = 2,
   HTTP2_SCHED_WEIGHT_HEADERS_PTR = 3,
   HTTP2_SCHED_WEIGHT_HEADERS_INLINE = 4,
@@ -450,16 +458,76 @@ http2_send_server_preface (http_conn_t *hc)
 /***********************/
 
 static void
+http2_sched_dispatch_continuation (http2_req_t *req, http_conn_t *hc,
+				   u8 *n_emissions,
+				   clib_llist_index_t *next_ri)
+{
+  u8 fh[HTTP2_FRAME_HEADER_SIZE];
+  u8 flags = 0;
+  u32 n_written, stream_id, max_write, headers_len, headers_left;
+  http2_conn_ctx_t *h2c;
+  http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
+
+  *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION;
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+
+  max_write = http_io_ts_max_write (hc, 0);
+  max_write -= HTTP2_FRAME_HEADER_SIZE;
+  max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
+
+  stream_id = req->stream_id;
+
+  ASSERT (vec_len (h2c->unsent_headers) > h2c->unsent_headers_offset);
+  headers_left = vec_len (h2c->unsent_headers) - h2c->unsent_headers_offset;
+  headers_len = clib_min (max_write, headers_left);
+  flags |= (headers_len == headers_left) ? HTTP2_FRAME_FLAG_END_HEADERS : 0;
+  http2_frame_write_continuation_header (headers_len, stream_id, flags, fh);
+  svm_fifo_seg_t segs[2] = {
+    { fh, HTTP2_FRAME_HEADER_SIZE },
+    { h2c->unsent_headers + h2c->unsent_headers_offset, headers_len }
+  };
+  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
+  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
+  http_io_ts_after_write (hc, 0);
+
+  if (headers_len == headers_left)
+    {
+      HTTP_DBG (1, "sent last headers fragment");
+      vec_free (h2c->unsent_headers);
+      *next_ri = clib_llist_next_index (req, sched_list);
+      clib_llist_remove (wrk->req_pool, sched_list, req);
+      flags |= HTTP2_FRAME_FLAG_END_HEADERS;
+      if (http_buffer_bytes_left (&req->base.tx_buf))
+	{
+	  /* start sending the actual data */
+	  HTTP_DBG (1, "adding to data queue req_index %x",
+		    ((http_req_handle_t) req->base.hr_req_handle).req_index);
+	  http2_req_schedule_data_tx (hc, req);
+	}
+      else
+	http2_stream_close (req, hc);
+    }
+  else
+    {
+      HTTP_DBG (1, "need another headers fragment");
+      *next_ri = clib_llist_entry_index (wrk->req_pool, req);
+      h2c->unsent_headers_offset += headers_len;
+    }
+}
+
+static void
 http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
-			      u8 *n_emissions)
+			      u8 *n_emissions, clib_llist_index_t *next_ri)
 {
   http_msg_t msg;
   u8 *response, *date, *app_headers = 0;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   hpack_response_control_data_t control_data;
-  u8 flags = HTTP2_FRAME_FLAG_END_HEADERS;
-  u32 n_written, stream_id, n_deq;
+  u8 flags = 0;
+  u32 n_written, stream_id, n_deq, max_write, headers_len, headers_left;
   http2_conn_ctx_t *h2c;
+  http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
 
   http_get_app_msg (&req->base, &msg);
   ASSERT (msg.type == HTTP_MSG_REPLY);
@@ -488,38 +556,62 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
   hpack_serialize_response (app_headers, msg.data.headers_len, &control_data,
 			    &response);
   vec_free (date);
+  headers_len = vec_len (response);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
-  if (vec_len (response) > h2c->peer_settings.max_frame_size)
-    {
-      /* TODO: CONTINUATION (headers fragmentation) */
-      clib_warning ("resp headers greater than SETTINGS_MAX_FRAME_SIZE");
-      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, 0);
-      return;
-    }
+
+  max_write = http_io_ts_max_write (hc, 0);
+  max_write -= HTTP2_FRAME_HEADER_SIZE;
+  max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
 
   stream_id = req->stream_id;
+
+  /* END_STREAM flag need to be set in HEADERS frame */
   if (msg.data.body_len)
     {
-      /* start sending the actual data */
       http_req_tx_buffer_init (&req->base, &msg);
-      HTTP_DBG (1, "adding to data queue req_index %x",
-		((http_req_handle_t) req->base.hr_req_handle).req_index);
-      http2_req_schedule_data_tx (hc, req);
       http_io_as_dequeue_notify (&req->base, n_deq);
     }
   else
+    flags |= HTTP2_FRAME_FLAG_END_STREAM;
+
+  if (headers_len <= max_write)
     {
-      /* no response body, we are done */
-      flags |= HTTP2_FRAME_FLAG_END_STREAM;
-      http2_stream_close (req, hc);
+      *next_ri = clib_llist_next_index (req, sched_list);
+      clib_llist_remove (wrk->req_pool, sched_list, req);
+      flags |= HTTP2_FRAME_FLAG_END_HEADERS;
+      if (msg.data.body_len)
+	{
+	  /* start sending the actual data */
+	  HTTP_DBG (1, "adding to data queue req_index %x",
+		    ((http_req_handle_t) req->base.hr_req_handle).req_index);
+	  http2_req_schedule_data_tx (hc, req);
+	}
+      else
+	http2_stream_close (req, hc);
+    }
+  else
+    {
+      /* we need to send CONTINUATION frame as next */
+      HTTP_DBG (1, "response headers need to be fragmented");
+      *next_ri = clib_llist_entry_index (wrk->req_pool, req);
+      headers_len = max_write;
+      headers_left = vec_len (response) - headers_len;
+      req->dispatch_headers_cb = http2_sched_dispatch_continuation;
+      /* move unsend portion of headers to connection ctx */
+      ASSERT (h2c->unsent_headers == 0);
+      vec_validate (h2c->unsent_headers, headers_left - 1);
+      clib_memcpy_fast (h2c->unsent_headers, response + headers_len,
+			headers_left);
+      h2c->unsent_headers_offset = 0;
+      *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION;
     }
 
-  http2_frame_write_headers_header (vec_len (response), stream_id, flags, fh);
+  http2_frame_write_headers_header (headers_len, stream_id, flags, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
-			     { response, vec_len (response) } };
+			     { response, headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
-  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + vec_len (response)));
+  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_io_ts_after_write (hc, 0);
 }
 
@@ -641,11 +733,9 @@ http2_update_time_callback (f64 now, u8 thread_index)
 	     n_emissions < HTTP2_SCHED_MAX_EMISSIONS)
 	{
 	  req = clib_llist_elt (wrk->req_pool, ri);
-	  ri = clib_llist_next_index (req, sched_list);
 	  HTTP_DBG (1, "sending headers req_index %x",
 		    ((http_req_handle_t) req->base.hr_req_handle).req_index);
-	  clib_llist_remove (wrk->req_pool, sched_list, req);
-	  http2_sched_dispatch_headers (req, hc, &n_emissions);
+	  req->dispatch_headers_cb (req, hc, &n_emissions, &ri);
 	}
 
       /* handle old responses (data frames), if we had any prior to processing
@@ -699,23 +789,25 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
 {
   http2_conn_ctx_t *h2c;
   hpack_request_control_data_t control_data;
-  u8 *buf = 0;
   http_msg_t msg;
   int rv;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
+  http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
-  /* TODO: configurable buf size with bigger default value */
-  vec_validate_init_empty (buf, 1023, 0);
-  *error = hpack_parse_request (req->payload, req->payload_len, buf, 1023,
-				&control_data, &req->base.headers,
-				&h2c->decoder_dynamic_table);
+  *error =
+    hpack_parse_request (req->payload, req->payload_len, wrk->header_list,
+			 vec_len (wrk->header_list), &control_data,
+			 &req->base.headers, &h2c->decoder_dynamic_table);
   if (*error != HTTP2_ERROR_NO_ERROR)
     {
       HTTP_DBG (1, "hpack_parse_request failed");
       return HTTP_SM_ERROR;
     }
+
+  HTTP_DBG (1, "decompressed headers size %u", control_data.headers_len);
+  HTTP_DBG (1, "dynamic table size %u", h2c->decoder_dynamic_table.used);
 
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
     {
@@ -759,13 +851,13 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
     }
 
   req->base.control_data_len = control_data.control_data_len;
-  req->base.headers_offset = control_data.headers - buf;
+  req->base.headers_offset = control_data.headers - wrk->header_list;
   req->base.headers_len = control_data.headers_len;
   if (control_data.content_len_header_index != ~0)
     {
       req->base.content_len_header_index =
 	control_data.content_len_header_index;
-      rv = http_parse_content_length (&req->base, buf);
+      rv = http_parse_content_length (&req->base, wrk->header_list);
       if (rv)
 	{
 	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
@@ -784,20 +876,20 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   req->base.to_recv = req->base.body_len;
 
   req->base.target_path_len = control_data.path_len;
-  req->base.target_path_offset = control_data.path - buf;
+  req->base.target_path_offset = control_data.path - wrk->header_list;
   /* drop leading slash */
   req->base.target_path_offset++;
   req->base.target_path_len--;
   req->base.target_query_offset = 0;
   req->base.target_query_len = 0;
-  http_identify_optional_query (&req->base, buf);
+  http_identify_optional_query (&req->base, wrk->header_list);
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = control_data.method;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = req->base.connection_header_index;
   msg.data.scheme = control_data.scheme;
-  msg.data.target_authority_offset = control_data.authority - buf;
+  msg.data.target_authority_offset = control_data.authority - wrk->header_list;
   msg.data.target_authority_len = control_data.authority_len;
   msg.data.target_path_offset = req->base.target_path_offset;
   msg.data.target_path_len = req->base.target_path_len;
@@ -811,8 +903,10 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   msg.data.body_len = req->base.body_len;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
-			     { buf, req->base.control_data_len } };
-  HTTP_DBG (3, "%U", format_http_bytes, buf, req->base.control_data_len);
+			     { wrk->header_list,
+			       req->base.control_data_len } };
+  HTTP_DBG (3, "%U", format_http_bytes, wrk->header_list,
+	    req->base.control_data_len);
   http_io_as_write_segs (&req->base, segs, 2);
   http_req_state_change (&req->base, new_state);
   http_app_worker_rx_notify (&req->base);
@@ -982,15 +1076,11 @@ static http2_error_t
 http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
   http2_req_t *req;
-  u8 *rx_buf;
+  u8 *rx_buf, *headers_start;
+  u32 headers_len;
+  uword n_del, n_dec;
   http2_error_t rv;
   http2_conn_ctx_t *h2c;
-
-  if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
-    {
-      /* TODO: fragmented headers */
-      return HTTP2_ERROR_INTERNAL_ERROR;
-    }
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
     {
@@ -1018,6 +1108,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  return HTTP2_ERROR_NO_ERROR;
 	}
       req = http2_conn_alloc_req (hc, fh->stream_id);
+      req->dispatch_headers_cb = http2_sched_dispatch_headers;
       http_conn_accept_request (hc, &req->base);
       http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
       req->stream_state = HTTP2_STREAM_STATE_OPEN;
@@ -1031,6 +1122,31 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	}
       if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
 	req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+
+      if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
+	{
+	  HTTP_DBG (1, "fragmented headers stream id %u", fh->stream_id);
+	  h2c->flags |= HTTP2_CONN_F_EXPECT_CONTINUATION;
+	  vec_validate (h2c->unparsed_headers, fh->length - 1);
+	  http_io_ts_read (hc, h2c->unparsed_headers, fh->length, 0);
+	  rv = http2_frame_read_headers (&headers_start, &headers_len,
+					 h2c->unparsed_headers, fh->length,
+					 fh->flags);
+	  if (rv != HTTP2_ERROR_NO_ERROR)
+	    return rv;
+
+	  /* in case frame has padding */
+	  if (PREDICT_FALSE (headers_start != h2c->unparsed_headers))
+	    {
+	      n_dec = fh->length - headers_len;
+	      n_del = headers_start - h2c->unparsed_headers;
+	      n_dec -= n_del;
+	      vec_delete (h2c->unparsed_headers, n_del, 0);
+	      vec_dec_len (h2c->unparsed_headers, n_dec);
+	    }
+
+	  return HTTP2_ERROR_NO_ERROR;
+	}
     }
   else
     {
@@ -1049,6 +1165,53 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 
   HTTP_DBG (1, "run state machine");
   return http2_req_run_state_machine (hc, req, 0, 0);
+}
+
+static http2_error_t
+http2_handle_continuation_frame (http_conn_t *hc, http2_frame_header_t *fh)
+{
+  http2_req_t *req;
+  http2_conn_ctx_t *h2c;
+  u8 *p;
+  http2_error_t rv = HTTP2_ERROR_NO_ERROR;
+
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    {
+      h2c = http2_conn_ctx_get_w_thread (hc);
+
+      if (!(h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION))
+	{
+	  HTTP_DBG (1, "unexpected CONTINUATION frame");
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
+
+      if (fh->stream_id != h2c->last_opened_stream_id)
+	{
+	  HTTP_DBG (1, "invalid stream id %u", fh->stream_id);
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
+
+      vec_add2 (h2c->unparsed_headers, p, fh->length);
+      http_io_ts_read (hc, p, fh->length, 0);
+
+      if (fh->flags & HTTP2_FRAME_FLAG_END_HEADERS)
+	{
+	  req = http2_conn_get_req (hc, fh->stream_id);
+	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_CONTINUATION;
+	  req->payload = h2c->unparsed_headers;
+	  req->payload_len = vec_len (h2c->unparsed_headers);
+	  HTTP_DBG (1, "run state machine");
+	  rv = http2_req_run_state_machine (hc, req, 0, 0);
+	  vec_free (h2c->unparsed_headers);
+	}
+    }
+  else
+    {
+      /* TODO: client */
+      return HTTP2_ERROR_INTERNAL_ERROR;
+    }
+
+  return rv;
 }
 
 static http2_error_t
@@ -1325,7 +1488,8 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
   if (rv != HTTP2_ERROR_NO_ERROR)
     return rv;
 
-  HTTP_DBG (1, "received GOAWAY %U", format_http2_error, error_code);
+  HTTP_DBG (1, "received GOAWAY %U, last stream id %u", format_http2_error,
+	    error_code, last_stream_id);
 
   if (error_code == HTTP2_ERROR_NO_ERROR)
     {
@@ -1333,6 +1497,10 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
     }
   else
     {
+      if (fh->length > HTTP2_GOAWAY_MIN_SIZE)
+	clib_warning ("additional debug data: %U", format_http_bytes,
+		      rx_buf + HTTP2_GOAWAY_MIN_SIZE,
+		      fh->length - HTTP2_GOAWAY_MIN_SIZE);
       /* connection error */
       h2c = http2_conn_ctx_get_w_thread (hc);
       hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
@@ -1669,7 +1837,16 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
-      HTTP_DBG (1, "frame type 0x%02x", fh.type);
+      HTTP_DBG (1, "frame type 0x%02x len %u", fh.type, fh.length);
+
+      if ((h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION) &&
+	  fh.type != HTTP2_FRAME_TYPE_CONTINUATION)
+	{
+	  HTTP_DBG (1, "expected CONTINUATION frame");
+	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	  return;
+	}
+
       switch (fh.type)
 	{
 	case HTTP2_FRAME_TYPE_HEADERS:
@@ -1694,8 +1871,7 @@ http2_transport_rx_callback (http_conn_t *hc)
 	  rv = http2_handle_ping_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_CONTINUATION:
-	  /* TODO */
-	  rv = HTTP2_ERROR_INTERNAL_ERROR;
+	  rv = http2_handle_continuation_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_PUSH_PROMISE:
 	  rv = http2_handle_push_promise (hc, &fh);
@@ -1867,6 +2043,7 @@ http2_enable_callback (void)
     {
       wrk = &h2m->wrk_ctx[i];
       wrk->sched_head = clib_llist_make_head (wrk->conn_pool, sched_list);
+      vec_validate (wrk->header_list, h2m->settings.max_header_list_size - 1);
     }
 }
 
@@ -1957,6 +2134,7 @@ http2_init (vlib_main_t *vm)
   clib_warning ("http/2 enabled");
   h2m->settings = http2_default_conn_settings;
   h2m->settings.max_concurrent_streams = 100; /* by default unlimited */
+  h2m->settings.max_header_list_size = 1 << 14; /* by default unlimited */
   http_register_engine (&http2_engine, HTTP_VERSION_2);
 
   return 0;
