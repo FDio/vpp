@@ -37,6 +37,7 @@ extern http_tw_ctx_t http_tw_ctx;
 
 void http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
 		       http_conn_invalidate_timer_fn *invalidate_cb);
+void http_timers_set_state (vlib_main_t *vm, bool enabled);
 
 static inline void
 http_conn_timer_start (http_conn_t *hc)
