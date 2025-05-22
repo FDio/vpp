@@ -18,6 +18,9 @@
 
 http_tw_ctx_t http_tw_ctx;
 
+static uword http_timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+				 vlib_frame_t *f);
+
 static void
 http_timer_process_expired_cb (u32 *expired_timers)
 {
@@ -42,6 +45,13 @@ http_timer_process_expired_cb (u32 *expired_timers)
     }
 }
 
+VLIB_REGISTER_NODE (http_timer_process_node) = {
+  .function = http_timer_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "http-timer-process",
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+
 static uword
 http_timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
@@ -50,7 +60,8 @@ http_timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
   uword *event_data = 0;
   uword __clib_unused event_type;
 
-  while (1)
+  while (vlib_node_get_state (vm, http_timer_process_node.index) !=
+	 VLIB_NODE_STATE_DISABLED)
     {
       vlib_process_wait_for_event_or_clock (vm, timeout);
       now = vlib_time_now (vm);
@@ -66,19 +77,26 @@ http_timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
   return 0;
 }
 
-VLIB_REGISTER_NODE (http_timer_process_node) = {
-  .function = http_timer_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "http-timer-process",
-  .state = VLIB_NODE_STATE_DISABLED,
-};
+void
+http_timers_set_state (vlib_main_t *vm, bool enabled)
+{
+  vlib_node_t *n;
+
+  vlib_node_set_state (
+    vm, http_timer_process_node.index,
+    (enabled ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED));
+  if (enabled)
+    {
+      n = vlib_get_node (vm, http_timer_process_node.index);
+      vlib_start_process (vm, n->runtime_index);
+    }
+}
 
 void
 http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
 		  http_conn_invalidate_timer_fn *invalidate_cb)
 {
   http_tw_ctx_t *twc = &http_tw_ctx;
-  vlib_node_t *n;
 
   ASSERT (twc->tw.timers == 0);
 
@@ -88,10 +106,7 @@ http_timers_init (vlib_main_t *vm, http_conn_timeout_fn *rpc_cb,
   twc->rpc_cb = rpc_cb;
   twc->invalidate_cb = invalidate_cb;
 
-  vlib_node_set_state (vm, http_timer_process_node.index,
-		       VLIB_NODE_STATE_POLLING);
-  n = vlib_get_node (vm, http_timer_process_node.index);
-  vlib_start_process (vm, n->runtime_index);
+  http_timers_set_state (vm, true);
 }
 
 /*
