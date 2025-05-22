@@ -161,14 +161,14 @@ void http2_frame_write_rst_stream (http2_error_t error_code, u32 stream_id,
 /**
  * Parse GOAWAY frame payload
  *
- * @param last_stream_id Parsed last stream ID
  * @param error_code     Parsed error code
+ * @param last_stream_id Parsed last stream ID
  * @param payload        Payload to parse
  * @param payload_len    Payload length
  *
  * @return @c HTTP2_ERROR_NO_ERROR on success, error otherwise
  */
-http2_error_t http2_frame_read_goaway (u32 *last_stream_id, u32 *error_code,
+http2_error_t http2_frame_read_goaway (u32 *error_code, u32 *last_stream_id,
 				       u8 *payload, u32 payload_len);
 
 /**
@@ -217,6 +217,19 @@ http2_error_t http2_frame_read_headers (u8 **headers, u32 *headers_len,
  */
 void http2_frame_write_headers_header (u32 headers_len, u32 stream_id,
 				       u8 flags, u8 *dst);
+
+/**
+ * Write CONTINUATION frame header
+ *
+ * @param headers_len Header block fragment length
+ * @param stream_id   Stream ID, except 0
+ * @param flags       Frame header flags
+ * @param dst         Pointer where frame header will be written
+ *
+ * @note Use @c http2_frame_header_alloc before
+ */
+void http2_frame_write_continuation_header (u32 headers_len, u32 stream_id,
+					    u8 flags, u8 *dst);
 
 /**
  * Parse DATA frame payload
