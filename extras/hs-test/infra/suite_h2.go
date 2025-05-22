@@ -230,26 +230,21 @@ var http2Tests = []h2specTest{
 	{desc: "http2/5.1/1"},
 	{desc: "http2/5.1/2"},
 	{desc: "http2/5.1/3"},
-	// TODO: CONTINUATION
-	// {desc: "http2/5.1/4"},
+	{desc: "http2/5.1/4"},
 	{desc: "http2/5.1/5"},
 	{desc: "http2/5.1/6"},
-	// TODO: CONTINUATION
-	// {desc: "http2/5.1/7"},
+	{desc: "http2/5.1/7"},
 	{desc: "http2/5.1/8"},
 	{desc: "http2/5.1/9"},
-	// TODO: CONTINUATION
-	// {desc: "http2/5.1/10"},
+	{desc: "http2/5.1/10"},
 	{desc: "http2/5.1/11"},
 	{desc: "http2/5.1/12"},
-	// TODO: CONTINUATION
-	// {desc: "http2/5.1/13"},
+	{desc: "http2/5.1/13"},
 	// http2/5.3.1/* PRIORITY is deprecated
 	{desc: "http2/5.4.1/1"},
 	{desc: "http2/5.4.1/2"},
 	{desc: "http2/5.5/1"},
-	// TODO: CONTINUATION
-	// {desc: "http2/5.5/2"},
+	{desc: "http2/5.5/2"},
 	{desc: "http2/6.1/1"},
 	{desc: "http2/6.1/2"},
 	{desc: "http2/6.1/3"},
@@ -287,13 +282,12 @@ var http2Tests = []h2specTest{
 	// TODO: message framing without content length using END_STREAM flag
 	// {desc: "http2/6.9/2"},
 	{desc: "http2/6.9/3"},
-	// TODO: CONTINUATION
-	// {desc: "http2/6.10/1"},
-	// {desc: "http2/6.10/2"},
-	// {desc: "http2/6.10/3"},
-	// {desc: "http2/6.10/4"},
-	// {desc: "http2/6.10/5"},
-	// {desc: "http2/6.10/6"},
+	{desc: "http2/6.10/1"},
+	{desc: "http2/6.10/2"},
+	{desc: "http2/6.10/3"},
+	{desc: "http2/6.10/4"},
+	{desc: "http2/6.10/5"},
+	{desc: "http2/6.10/6"},
 	{desc: "http2/7/1"},
 	// TODO: message framing without content length using END_STREAM flag
 	// {desc: "http2/7/2"},
@@ -363,14 +357,14 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 				s.Log(testName + ": BEGIN")
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
-				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2"))
+				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
 				s.Log(vpp.Vppctl("test-url-handler enable"))
 				conf := &config.Config{
 					Host:         serverAddress,
 					Port:         s.Ports.Port1AsInt,
 					Path:         "/test1",
 					Timeout:      time.Second * 5,
-					MaxHeaderLen: 1024,
+					MaxHeaderLen: 4096,
 					TLS:          true,
 					Insecure:     true,
 					Sections:     []string{test.desc},
