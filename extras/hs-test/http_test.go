@@ -37,7 +37,7 @@ func init() {
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest)
+		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -1374,6 +1374,23 @@ func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	resp, err = TcpSendReceive(serverAddress, "GET / HTTP1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP1.1' invalid http version not allowed")
+}
+
+func HttpTimerSessionDisable(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress))
+	time.Sleep(250 * time.Millisecond)
+	resp := vpp.Vppctl("show node http-timer-process")
+	s.AssertContains(resp, "node http-timer-process, type process, state \"any wait\"")
+	vpp.Vppctl("session disable")
+	time.Sleep(1 * time.Second)
+	resp = vpp.Vppctl("show node http-timer-process")
+	s.AssertContains(resp, "node http-timer-process, type process, state \"not started\"")
+	vpp.Vppctl("session enable")
+	time.Sleep(100 * time.Millisecond)
+	resp = vpp.Vppctl("show node http-timer-process")
+	s.AssertContains(resp, "node http-timer-process, type process, state \"any wait\"")
 }
 
 func HttpRequestLineTest(s *NoTopoSuite) {
