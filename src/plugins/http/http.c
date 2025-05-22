@@ -317,6 +317,7 @@ http_get_app_header_list (http_req_t *req, http_msg_t *msg)
   else
     {
       app_headers = hm->app_header_lists[as->thread_index];
+      vec_validate (app_headers, msg->data.headers_len - 1);
       rv = svm_fifo_dequeue (as->tx_fifo, msg->data.headers_len, app_headers);
       ASSERT (rv == msg->data.headers_len);
     }
@@ -837,7 +838,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       vec_validate (hm->tx_bufs[i],
 		    HTTP_UDP_PAYLOAD_MAX_LEN +
 		      HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
-      vec_validate (hm->app_header_lists[i], 32 << 10);
+      vec_validate (hm->app_header_lists[i], 64 << 10);
     }
 
   clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
