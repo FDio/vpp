@@ -891,6 +891,12 @@ openssl_alpn_select_cb (SSL *ssl, const unsigned char **out,
 			unsigned int inlen, void *arg)
 {
   u8 *proto_list = arg;
+  unsigned int i;
+  for (i = 0; i < inlen;)
+    {
+      clib_warning ("%U", format_openssl_alpn_proto, &in[i + 1], in[i]);
+      i += in[i] + 1;
+    }
   if (SSL_select_next_proto (
 	(unsigned char **) out, outlen, (const unsigned char *) proto_list,
 	vec_len (proto_list), in, inlen) != OPENSSL_NPN_NEGOTIATED)
@@ -898,6 +904,7 @@ openssl_alpn_select_cb (SSL *ssl, const unsigned char **out,
       TLS_DBG (1, "server support no alpn proto advertised by client");
       return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
+  clib_warning ("selected %U", format_openssl_alpn_proto, *out, *outlen);
   return SSL_TLSEXT_ERR_OK;
 }
 
