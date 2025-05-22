@@ -845,7 +845,8 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 
 static_always_inline cnat_ep_trk_t *
 cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
-		   ip4_header_t *ip4, ip6_header_t *ip6, u32 *dpoi_index)
+		   ip4_header_t *ip4, ip6_header_t *ip6,
+		   u32 *dpoi_index) // dpoi_index seems no op
 {
   cnat_main_t *cm = &cnat_main;
   const load_balance_t *lb0;
