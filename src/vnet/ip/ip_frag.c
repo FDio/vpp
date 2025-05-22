@@ -22,6 +22,7 @@
 #include "ip_frag.h"
 
 #include <vnet/ip/ip.h>
+#include <vnet/interface_output.h>
 
 typedef struct
 {
@@ -99,6 +100,14 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u8 *org_from_packet, more;
 
   from_b = vlib_get_buffer (vm, from_bi);
+
+  if (from_b->flags & VNET_BUFFER_F_OFFLOAD)
+    {
+      ASSERT ((from_b->flags & VNET_BUFFER_F_GSO) == 0);
+      vnet_calc_checksums_inline (vm, from_b, 1 /* is_v4 */, 0 /* is_v6 */);
+      vnet_calc_outer_checksums_inline (vm, from_b);
+    }
+
   org_from_packet = vlib_buffer_get_current (from_b);
   ip4 = vlib_buffer_get_current (from_b) + l2unfragmentablesize;
 
@@ -172,15 +181,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       vlib_buffer_copy_trace_flag (vm, from_b, to_bi);
       to_b->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
-      if (from_b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
-	{
-	  vnet_buffer (to_b)->l4_hdr_offset =
-	    (vnet_buffer (to_b)->l3_hdr_offset +
-	     (vnet_buffer (from_b)->l4_hdr_offset -
-	      vnet_buffer (from_b)->l3_hdr_offset));
-	  to_b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
-	}
-
       /* Spin through from buffers filling up the to buffer */
       u16 left_in_to_buffer = len, to_ptr = 0;
       while (1)
@@ -220,9 +220,6 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	clib_host_to_net_u16 (((len != rem) || more) << 13);
       to_ip4->length = clib_host_to_net_u16 (len + sizeof (ip4_header_t));
       to_ip4->checksum = ip4_header_checksum (to_ip4);
-
-      /* we've just done the IP checksum .. */
-      vnet_buffer_offload_flags_clear (to_b, VNET_BUFFER_OFFLOAD_F_IP_CKSUM);
 
       rem -= len;
       fo += len;
@@ -385,6 +382,14 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u16 head_bytes;
 
   from_b = vlib_get_buffer (vm, from_bi);
+
+  if (from_b->flags & VNET_BUFFER_F_OFFLOAD &&
+      !(from_b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_calc_checksums_inline (vm, from_b, 0 /* is_v4 */, 1 /* is_v6 */);
+      vnet_calc_outer_checksums_inline (vm, from_b);
+    }
+
   org_from_packet = vlib_buffer_get_current (from_b);
   ip6 = vlib_buffer_get_current (from_b) + l2unfragmentablesize;
 
@@ -443,15 +448,6 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       vnet_buffer (to_b)->l3_hdr_offset = to_b->current_data;
       to_b->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
-
-      if (from_b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
-	{
-	  vnet_buffer (to_b)->l4_hdr_offset =
-	    (vnet_buffer (to_b)->l3_hdr_offset +
-	     (vnet_buffer (from_b)->l4_hdr_offset -
-	      vnet_buffer (from_b)->l3_hdr_offset));
-	  to_b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
-	}
       to_b->flags |= VNET_BUFFER_F_IS_IP6;
 
       /* Spin through from buffers filling up the to buffer */
