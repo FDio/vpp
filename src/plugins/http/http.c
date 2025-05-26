@@ -906,7 +906,7 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
     hc->host = format (0, "%U:%d", format_ip4_address, &sep->ip.ip4,
 		       clib_net_to_host_u16 (sep->port));
   else
-    hc->host = format (0, "%U:%d", format_ip6_address, &sep->ip.ip6,
+    hc->host = format (0, "[%U]:%d", format_ip6_address, &sep->ip.ip6,
 		       clib_net_to_host_u16 (sep->port));
 
   HTTP_DBG (1, "hc ho_index %x", hc_index);
