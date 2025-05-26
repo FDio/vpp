@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8b08240_e514c3b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-26T15:51:50Z",
+      "side": 1,
+      "message": "what about hardcoded ports in envoy/proxy.yaml, nginx_http3.conf and nginx_server_mirroring.conf ?",
+      "revId": "8459852554379c765dfbad2cd08bb6127d8878b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
