@@ -36,7 +36,8 @@ func init() {
 		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
-		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest)
+		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
+		HttpClientInvalidHeaderNameTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -333,6 +334,53 @@ func HttpClientTest(s *NoTopoSuite) {
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func HttpClientInvalidHeaderNameTest(s *NoTopoSuite) {
+	serverAddress := s.HostAddr()
+	l, err := net.Listen("tcp", serverAddress+":80")
+	s.AssertNil(err, fmt.Sprint(err))
+	defer l.Close()
+	go func() {
+		b := make([]byte, 512)
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		_, err = conn.Read(b)
+		if err != nil {
+			return
+		}
+		_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\xE0\x81\x9C\r\n\r\n"))
+		if err != nil {
+			return
+		}
+	}()
+	uri := "http://" + serverAddress + "/index.html"
+	vpp := s.Containers.Vpp.VppInstance
+	o := vpp.Vppctl("http client uri " + uri + " timeout 5")
+	s.Log(o)
+	s.AssertContains(o, "transport closed")
+
+	/* wait until cleanup to be sure we don't crash */
+	httpCleanupDone := false
+	tcpSessionCleanupDone := false
+	for nTries := 0; nTries < 60; nTries++ {
+		o := vpp.Vppctl("show session verbose 2")
+		if !strings.Contains(o, "[T]") {
+			tcpSessionCleanupDone = true
+		}
+		if !strings.Contains(o, "[H1]") {
+			httpCleanupDone = true
+		}
+		if httpCleanupDone && tcpSessionCleanupDone {
+			s.Log(o)
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleanup")
+	s.AssertEqual(true, httpCleanupDone, "HTTP not cleanup")
 }
 
 func HttpClientErrRespTest(s *NoTopoSuite) {
