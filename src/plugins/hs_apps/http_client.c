@@ -107,7 +107,6 @@ static inline hc_session_t *
 hc_session_get (u32 session_index, clib_thread_index_t thread_index)
 {
   hc_worker_t *wrk = hc_worker_get (thread_index);
-  wrk->vlib_main = vlib_get_main_by_index (thread_index);
   return pool_elt_at_index (wrk->sessions, session_index);
 }
 
@@ -197,16 +196,17 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_session_t *hc_session;
   hc_http_header_t *header;
 
+  wrk = hc_worker_get (s->thread_index);
+
   if (err)
     {
       clib_warning ("hc_session_index[%d] connected error: %U",
 		    hc_session_index, format_session_error, err);
-      vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
+      vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				    HC_CONNECT_FAILED, 0);
       return -1;
     }
 
-  wrk = hc_worker_get (s->thread_index);
   hc_session = hc_session_alloc (wrk);
   clib_spinlock_lock_if_init (&hcm->lock);
   hcm->connected_counter++;
@@ -285,8 +285,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
 	}
     }
 
-  hc_session->stats.start =
-    vlib_time_now (vlib_get_main_by_index (s->thread_index));
+  hc_session->stats.start = vlib_time_now (wrk->vlib_main);
 
   return hc_request (s, wrk, hc_session, err);
 }
@@ -751,6 +750,7 @@ hc_run (vlib_main_t *vm)
     {
       wrk->has_common_headers = false;
       wrk->thread_index = wrk - hcm->wrk;
+      wrk->vlib_main = vlib_get_main_by_index (wrk->thread_index);
       /* 4k for headers should be enough */
       vec_validate (wrk->headers_buf, 4095);
       http_init_headers_ctx (&wrk->req_headers, wrk->headers_buf,
