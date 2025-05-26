@@ -24,6 +24,7 @@ typedef enum http_buffer_type_
 {
   HTTP_BUFFER_FIFO,
   HTTP_BUFFER_PTR,
+  HTTP_BUFFER_STREAMING,
 } http_buffer_type_t;
 
 typedef struct http_buffer_vft_ http_buffer_vft_t;
@@ -47,6 +48,8 @@ struct http_buffer_vft_
 
 void http_buffer_init (http_buffer_t *hb, http_buffer_type_t type,
 		       svm_fifo_t *f, u64 data_len);
+
+u8 http_buffer_is_streaming (http_buffer_t *hb);
 
 static inline void
 http_buffer_free (http_buffer_t *hb)

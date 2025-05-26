@@ -55,6 +55,17 @@ static const char *post_request_template = "POST %s HTTP/1.1\r\n"
 					   "User-Agent: %v\r\n"
 					   "Content-Length: %llu\r\n";
 
+static const char *put_request_template = "PUT %s HTTP/1.1\r\n"
+					  "Host: %v\r\n"
+					  "User-Agent: %v\r\n"
+					  "Content-Length: %llu\r\n";
+
+static const char *put_chunked_request_template =
+  "PUT %s HTTP/1.1\r\n"
+  "Host: %v\r\n"
+  "User-Agent: %v\r\n"
+  "Transfer-Encoding: chunked\r\n";
+
 always_inline http_req_t *
 http1_conn_alloc_req (http_conn_t *hc)
 {
@@ -303,6 +314,12 @@ http1_parse_request_line (http_req_t *req, u8 *rx_buf, http_status_code_t *ec)
       HTTP_DBG (0, "POST method");
       req->method = HTTP_REQ_POST;
       req->target_path_offset = method_offset + 5;
+    }
+  else if (!memcmp (rx_buf + method_offset, "PUT ", 4))
+    {
+      HTTP_DBG (0, "PUT method");
+      req->method = HTTP_REQ_PUT;
+      req->target_path_offset = method_offset + 4;
     }
   else if (!memcmp (rx_buf + method_offset, "CONNECT ", 8))
     {
@@ -1123,6 +1140,41 @@ http1_req_state_tunnel_rx (http_conn_t *hc, http_req_t *req,
 }
 
 static http_sm_result_t
+http1_req_state_streaming_transport_io_more_data (http_conn_t *hc,
+						  http_req_t *req,
+						  transport_send_params_t *sp)
+{
+  u32 max_deq, max_enq, max_read, n_segs = 2;
+  svm_fifo_seg_t segs[n_segs];
+  int n_written = 0;
+
+  HTTP_DBG (1, "streaming received data from client");
+
+  max_deq = http_io_ts_max_read (hc);
+  if (PREDICT_FALSE (max_deq == 0))
+    {
+      HTTP_DBG (1, "max_deq == 0");
+      return HTTP_SM_STOP;
+    }
+  max_enq = http_io_as_max_write (req);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "app's rx fifo full");
+      http_io_as_add_want_deq_ntf (req);
+      return HTTP_SM_STOP;
+    }
+  max_read = clib_min (max_enq, max_deq);
+  http_io_ts_read_segs (hc, segs, &n_segs, max_read);
+  n_written = http_io_as_write_segs (req, segs, n_segs);
+  http_io_ts_drain (hc, n_written);
+  HTTP_DBG (1, "transfered %u bytes", n_written);
+  http_app_worker_rx_notify (req);
+  http_io_ts_after_read (hc, 0);
+
+  return HTTP_SM_STOP;
+}
+
+static http_sm_result_t
 http1_req_state_udp_tunnel_rx (http_conn_t *hc, http_req_t *req,
 			       transport_send_params_t *sp)
 {
@@ -1249,7 +1301,7 @@ http1_req_state_wait_app_reply (http_conn_t *hc, http_req_t *req,
 
   http_get_app_msg (req, &msg);
 
-  if (msg.data.type > HTTP_MSG_DATA_PTR)
+  if (msg.data.type > HTTP_MSG_DATA_STREAMING)
     {
       clib_warning ("no data");
       sc = HTTP_STATUS_INTERNAL_ERROR;
@@ -1363,7 +1415,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 
   http_get_app_msg (req, &msg);
 
-  if (msg.data.type > HTTP_MSG_DATA_PTR)
+  if (msg.data.type > HTTP_MSG_DATA_STREAMING)
     {
       clib_warning ("no data");
       goto error;
@@ -1431,6 +1483,55 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
       next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
     }
+  else if (msg.method_type == HTTP_REQ_PUT)
+    {
+      /* Check if this is a streaming PUT */
+      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+	{
+	  /*
+	   * Streaming PUT with chunked transfer encoding
+	   */
+	  request = format (request, put_chunked_request_template,
+			    /* target */
+			    target,
+			    /* Host */
+			    hc->host,
+			    /* User-Agent */
+			    hc->app_name);
+
+	  http_req_tx_buffer_init (req, &msg);
+
+	  /* For streaming, we need a different state */
+	  next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
+	  sm_result = HTTP_SM_CONTINUE;
+	}
+      else
+	{
+	  if (!msg.data.body_len)
+	    {
+	      clib_warning ("PUT request should include data");
+	      goto error;
+	    }
+	  /*
+	   * Regular PUT with Content-Length
+	   */
+	  request = format (request, put_request_template,
+			    /* target */
+			    target,
+			    /* Host */
+			    hc->host,
+			    /* User-Agent */
+			    hc->app_name,
+			    /* Content-Length */
+			    msg.data.body_len);
+
+	  http_req_tx_buffer_init (req, &msg);
+
+	  next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
+	  sm_result = HTTP_SM_CONTINUE;
+	}
+    }
+
   else
     {
       clib_warning ("unsupported method %d", msg.method_type);
@@ -1479,8 +1580,29 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
   http_buffer_t *hb = &req->tx_buf;
   svm_fifo_seg_t *seg;
   u8 finished = 0;
+  u8 is_streaming = http_buffer_is_streaming (hb);
 
-  ASSERT (http_buffer_bytes_left (hb) > 0);
+  /* For streaming, check if we have data available */
+  max_write = http_io_ts_max_write (hc, sp);
+  if (is_streaming)
+    {
+      /*
+       * do not drain more than we are going to write at a max - which
+       * is max_write minus 20 bytes to leave the room for chunk headers.
+       */
+      n_read = http_buffer_get_segs (hb, max_write - 20, &seg, &n_segs);
+      if (n_read == 0)
+	{
+	  /* No data available right now, wait for more */
+	  HTTP_DBG (1, "streaming: no data available");
+	  return HTTP_SM_STOP;
+	}
+    }
+  else
+    {
+      ASSERT (http_buffer_bytes_left (hb) > 0);
+    }
+
   max_write = http_io_ts_max_write (hc, sp);
   if (max_write == 0)
     {
@@ -1488,20 +1610,62 @@ http1_req_state_app_io_more_data (http_conn_t *hc, http_req_t *req,
       goto check_fifo;
     }
 
-  n_read = http_buffer_get_segs (hb, max_write, &seg, &n_segs);
-  if (n_read == 0)
+  if (is_streaming)
     {
-      HTTP_DBG (1, "no data to deq");
-      goto check_fifo;
+      /* Send data in chunked format */
+      u32 chunk_size = 0;
+      int i;
+
+      /* Calculate total chunk size */
+      for (i = 0; i < n_segs; i++)
+	chunk_size += seg[i].len;
+
+      chunk_size = clib_min (
+	chunk_size, max_write - 20); /* leave room for chunk headers */
+
+      if (chunk_size > 0)
+	{
+	  u8 chunk_hdr[32];
+	  int hdr_len;
+
+	  /* Write chunk size in hex */
+	  hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n",
+			      chunk_size);
+	  http_io_ts_write (hc, chunk_hdr, hdr_len, sp);
+
+	  /* Write chunk data */
+	  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
+
+	  /* Write chunk trailer */
+	  http_io_ts_write (hc, (u8 *) "\r\n", 2, sp);
+
+	  http_buffer_drain (hb, n_written);
+	}
     }
+  else
+    {
+      /* Regular non-chunked send */
+      n_read = http_buffer_get_segs (hb, max_write, &seg, &n_segs);
+      if (n_read == 0)
+	{
+	  HTTP_DBG (1, "no data to deq");
+	  goto check_fifo;
+	}
 
-  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
+      n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
 
-  http_buffer_drain (hb, n_written);
-  finished = http_buffer_bytes_left (hb) == 0;
+      http_buffer_drain (hb, n_written);
+      finished = http_buffer_bytes_left (hb) == 0;
+    }
 
   if (finished)
     {
+      if (is_streaming)
+	{
+	  /* Send final chunk (0-sized) */
+	  http_io_ts_write (hc, (u8 *) "0\r\n\r\n", 5, sp);
+	}
+
       /* Finished transaction:
        * server back to HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD
        * client to HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY */
@@ -1623,7 +1787,7 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http1_req_state_transport_io_more_data,
   http1_req_state_wait_transport_method,
   0, /* wait app reply */
-  0, /* app io more data */
+  http1_req_state_streaming_transport_io_more_data,
   http1_req_state_tunnel_rx,
   http1_req_state_udp_tunnel_rx,
 };
