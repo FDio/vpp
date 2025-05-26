@@ -15,7 +15,6 @@ var nginxProxySoloTests = map[string][]func(s *NginxProxySuite){}
 
 type NginxProxySuite struct {
 	HstSuite
-	proxyPort  uint16
 	maxTimeout int
 	Interfaces struct {
 		Server *NetInterface
@@ -26,6 +25,9 @@ type NginxProxySuite struct {
 		NginxServerTransient *Container
 		Vpp                  *Container
 		Curl                 *Container
+	}
+	Ports struct {
+		Proxy uint16
 	}
 }
 
@@ -52,6 +54,7 @@ func (s *NginxProxySuite) SetupSuite() {
 	s.Containers.NginxServerTransient = s.GetTransientContainerByName("nginx-server")
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Ports.Proxy = s.GeneratePortAsInt()
 }
 
 func (s *NginxProxySuite) SetupTest() {
@@ -69,7 +72,6 @@ func (s *NginxProxySuite) SetupTest() {
 
 	// nginx proxy
 	s.AssertNil(s.Containers.NginxProxy.Create())
-	s.proxyPort = 80
 
 	// nginx HTTP server
 	s.AssertNil(s.Containers.NginxServerTransient.Create())
@@ -128,7 +130,7 @@ func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThre
 		LogPrefix: container.Name,
 		Proxy:     s.Interfaces.Client.Peer.Ip4AddressString(),
 		Server:    s.Interfaces.Server.Ip4AddressString(),
-		Port:      s.proxyPort,
+		Port:      s.Ports.Proxy,
 	}
 	container.CreateConfigFromTemplate(
 		"/nginx.conf",
@@ -138,7 +140,7 @@ func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThre
 }
 
 func (s *NginxProxySuite) ProxyPort() uint16 {
-	return s.proxyPort
+	return s.Ports.Proxy
 }
 
 func (s *NginxProxySuite) ProxyAddr() string {

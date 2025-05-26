@@ -26,6 +26,9 @@ type LdpSuite struct {
 		ServerApp *Container
 		ClientApp *Container
 	}
+	Ports struct {
+		Port1 string
+	}
 }
 
 func RegisterLdpTests(tests ...func(s *LdpSuite)) {
@@ -46,6 +49,7 @@ func (s *LdpSuite) SetupSuite() {
 	s.Containers.ClientVpp = s.GetContainerByName("client-vpp")
 	s.Containers.ServerApp = s.GetContainerByName("server-app")
 	s.Containers.ClientApp = s.GetContainerByName("client-app")
+	s.Ports.Port1 = s.GeneratePort()
 }
 
 func (s *LdpSuite) SetupTest() {

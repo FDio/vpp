@@ -11,8 +11,9 @@ import (
 )
 
 func init() {
-	RegisterLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest, LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest,
-		LdpIperfReverseTcpReorderTest, LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
+	RegisterSoloLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
+		LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
+		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
@@ -96,7 +97,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -4 -s -p " + s.GetPortFromPpid() + " --logfile " + s.IperfLogFileName(s.Containers.ServerVpp)
+		cmd := "iperf3 -4 -s -p " + s.Ports.Port1 + " --logfile " + s.IperfLogFileName(s.Containers.ServerVpp)
 		s.StartServerApp(s.Containers.ServerVpp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
@@ -105,7 +106,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.GetPortFromPpid() + " " + extraClientArgs
+		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.Ports.Port1 + " " + extraClientArgs
 		s.StartClientApp(s.Containers.ClientVpp, cmd, clnCh, clnRes)
 	}()
 

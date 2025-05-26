@@ -584,8 +584,8 @@ func (s *HstSuite) GetCurrentSuiteName() string {
 }
 
 // Returns last 3 digits of PID + Ginkgo process index as the 4th digit. If the port is in the 'reservedPorts' slice,
-// increment port number by ten and check again.
-func (s *HstSuite) GetPortFromPpid() string {
+// increment port number by ten and check again. Generates a new port after each use.
+func (s *HstSuite) GeneratePort() string {
 	port := s.Ppid
 	var err error
 	var portInt int
@@ -598,8 +598,15 @@ func (s *HstSuite) GetPortFromPpid() string {
 		s.AssertNil(err)
 		portInt += 10
 		port = fmt.Sprintf("%d", portInt)
+		reservedPorts = append(reservedPorts, port)
 	}
 	return port
+}
+
+func (s *HstSuite) GeneratePortAsInt() uint16 {
+	port, err := strconv.Atoi(s.GeneratePort())
+	s.AssertNil(err)
+	return uint16(port)
 }
 
 /*
