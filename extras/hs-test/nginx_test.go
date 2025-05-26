@@ -10,10 +10,10 @@ import (
 )
 
 func init() {
-	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
+	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest)
+	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
-	RegisterNoTopoSoloTests(NginxPerfRpsMultiThreadTest, NginxPerfCpsMultiThreadTest)
-	RegisterNoTopo6Tests(NginxPerfRps6Test)
+	RegisterNoTopo6SoloTests(NginxPerfRps6Test)
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
@@ -56,7 +56,7 @@ func NginxAsServerTest(s *NoTopoSuite) {
 	defer func() { os.Remove(query) }()
 	go func() {
 		defer GinkgoRecover()
-		s.StartWget(finished, serverAddress, "80", query, "")
+		s.StartWget(finished, serverAddress, s.Ports.NginxServer, query, "")
 	}()
 	s.AssertNil(<-finished)
 }
@@ -75,7 +75,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers boo
 	nRequests := 1000000
 	nClients := 1000
 
-	serverAddress := s.VppAddr()
+	serverAddress := s.VppAddr() + ":" + s.Ports.NginxServer
 
 	vpp := s.Containers.Vpp.VppInstance
 
@@ -94,7 +94,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers boo
 		}
 		// don't exit on socket receive errors
 		args += " -r"
-		args += " http://" + serverAddress + ":80/64B.json"
+		args += " http://" + serverAddress + "/64B.json"
 		s.Containers.Ab.ExtraRunningArgs = args
 		s.Log("Test might take up to 2 minutes to finish. Please wait")
 		s.Containers.Ab.Run()
@@ -103,7 +103,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string, multiThreadWorkers boo
 		s.Log(rps)
 		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
-		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
+		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
 			serverAddress)
 		s.Containers.Wrk.ExtraRunningArgs = args
 		s.Containers.Wrk.Run()
@@ -153,7 +153,7 @@ func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers b
 	nRequests := 1000000
 	nClients := 1000
 
-	serverAddress := "[" + s.VppAddr() + "]"
+	serverAddress := "[" + s.VppAddr() + "]:" + s.Ports.NginxServer
 	vpp := s.Containers.Vpp.VppInstance
 
 	s.Containers.Nginx.Create()
@@ -171,7 +171,7 @@ func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers b
 		}
 		// don't exit on socket receive errors
 		args += " -r"
-		args += " http://" + serverAddress + ":80/64B.json"
+		args += " http://" + serverAddress + "/64B.json"
 		s.Containers.Ab.ExtraRunningArgs = args
 		s.Log("Test might take up to 2 minutes to finish. Please wait")
 		s.Containers.Ab.Run()
@@ -180,7 +180,7 @@ func runNginxPerf6(s *NoTopo6Suite, mode, ab_or_wrk string, multiThreadWorkers b
 		s.Log(rps)
 		s.AssertContains(err, "Finished "+fmt.Sprint(nRequests))
 	} else {
-		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
+		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s/64B.json", nClients,
 			serverAddress)
 		s.Containers.Wrk.ExtraRunningArgs = args
 		s.Containers.Wrk.Run()
