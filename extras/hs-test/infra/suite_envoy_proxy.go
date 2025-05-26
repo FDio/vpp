@@ -18,8 +18,6 @@ import (
 
 type EnvoyProxySuite struct {
 	HstSuite
-	nginxPort  uint16
-	proxyPort  uint16
 	maxTimeout int
 	Interfaces struct {
 		Server *NetInterface
@@ -30,6 +28,10 @@ type EnvoyProxySuite struct {
 		NginxServerTransient *Container
 		Vpp                  *Container
 		Curl                 *Container
+	}
+	Ports struct {
+		Nginx uint16
+		Proxy uint16
 	}
 }
 
@@ -60,6 +62,8 @@ func (s *EnvoyProxySuite) SetupSuite() {
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.EnvoyProxy = s.GetContainerByName("envoy-vcl")
 	s.Containers.Curl = s.GetContainerByName("curl")
+	s.Ports.Nginx = s.GeneratePortAsInt()
+	s.Ports.Proxy = s.GeneratePortAsInt()
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
@@ -79,7 +83,6 @@ func (s *EnvoyProxySuite) SetupTest() {
 
 	// nginx HTTP server
 	s.AssertNil(s.Containers.NginxServerTransient.Create())
-	s.nginxPort = 80
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -88,7 +91,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Ip4AddressString(),
-		Port:      s.nginxPort,
+		Port:      s.Ports.Nginx,
 		Timeout:   s.maxTimeout,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
@@ -100,7 +103,6 @@ func (s *EnvoyProxySuite) SetupTest() {
 	// Envoy
 	s.AssertNil(s.Containers.EnvoyProxy.Create())
 
-	s.proxyPort = 8080
 	envoySettings := struct {
 		LogPrefix     string
 		ServerAddress string
@@ -109,8 +111,8 @@ func (s *EnvoyProxySuite) SetupTest() {
 	}{
 		LogPrefix:     s.Containers.EnvoyProxy.Name,
 		ServerAddress: s.Interfaces.Server.Ip4AddressString(),
-		ServerPort:    s.nginxPort,
-		ProxyPort:     s.proxyPort,
+		ServerPort:    s.Ports.Nginx,
+		ProxyPort:     s.Ports.Proxy,
 	}
 	s.Containers.EnvoyProxy.CreateConfigFromTemplate(
 		"/etc/envoy/envoy.yaml",
@@ -134,7 +136,7 @@ func (s *EnvoyProxySuite) SetupTest() {
 	if *DryRun {
 		vpp.AppendToCliConfig(arp)
 		s.LogStartedContainers()
-		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.ProxyPort(), Colors.rst)
+		s.Log("%s* Proxy IP used in tests: %s:%d%s", Colors.pur, s.ProxyAddr(), s.Ports.Proxy, Colors.rst)
 		s.Skip("Dry run mode = true")
 	}
 
@@ -149,10 +151,6 @@ func (s *EnvoyProxySuite) TeardownTest() {
 		s.CollectEnvoyLogs(s.Containers.EnvoyProxy)
 	}
 	s.HstSuite.TeardownTest()
-}
-
-func (s *EnvoyProxySuite) ProxyPort() uint16 {
-	return s.proxyPort
 }
 
 func (s *EnvoyProxySuite) ProxyAddr() string {

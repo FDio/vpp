@@ -15,8 +15,6 @@ import (
 
 type VppUdpProxySuite struct {
 	HstSuite
-	proxyPort  int
-	serverPort int
 	MaxTimeout time.Duration
 	Interfaces struct {
 		Client *NetInterface
@@ -24,6 +22,10 @@ type VppUdpProxySuite struct {
 	}
 	Containers struct {
 		VppProxy *Container
+	}
+	Ports struct {
+		Proxy  int
+		Server int
 	}
 }
 
@@ -45,6 +47,8 @@ func (s *VppUdpProxySuite) SetupSuite() {
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
 	s.Containers.VppProxy = s.GetContainerByName("vpp")
+	s.Ports.Proxy = int(s.GeneratePortAsInt())
+	s.Ports.Server = int(s.GeneratePortAsInt())
 
 	if *IsVppDebug {
 		s.MaxTimeout = time.Second * 600
@@ -65,9 +69,6 @@ func (s *VppUdpProxySuite) SetupTest() {
 	s.AssertNil(vpp.Start())
 	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1, 1))
 	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1, 2))
-
-	s.proxyPort = 8080
-	s.serverPort = 80
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.Peer.Name(),
@@ -99,16 +100,8 @@ func (s *VppUdpProxySuite) VppProxyAddr() string {
 	return s.Interfaces.Client.Peer.Ip4AddressString()
 }
 
-func (s *VppUdpProxySuite) ProxyPort() int {
-	return s.proxyPort
-}
-
 func (s *VppUdpProxySuite) ServerAddr() string {
 	return s.Interfaces.Server.Ip4AddressString()
-}
-
-func (s *VppUdpProxySuite) ServerPort() int {
-	return s.serverPort
 }
 
 func (s *VppUdpProxySuite) ClientAddr() string {
@@ -116,7 +109,7 @@ func (s *VppUdpProxySuite) ClientAddr() string {
 }
 
 func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(s.ServerAddr()), Port: s.ServerPort()})
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(s.ServerAddr()), Port: s.Ports.Server})
 	s.AssertNil(err, fmt.Sprint(err))
 	go func() {
 		for {
@@ -130,14 +123,14 @@ func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {
 			}
 		}
 	}()
-	s.Log("* started udp echo server " + s.ServerAddr() + ":" + strconv.Itoa(s.ServerPort()))
+	s.Log("* started udp echo server " + s.ServerAddr() + ":" + strconv.Itoa(s.Ports.Server))
 	return conn
 }
 
 func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (int, error) {
 	proxiedConn, err := net.DialUDP("udp",
 		&net.UDPAddr{IP: net.ParseIP(s.ClientAddr()), Port: 0},
-		&net.UDPAddr{IP: net.ParseIP(s.VppProxyAddr()), Port: s.ProxyPort()})
+		&net.UDPAddr{IP: net.ParseIP(s.VppProxyAddr()), Port: s.Ports.Proxy})
 	if err != nil {
 		return 0, err
 	}

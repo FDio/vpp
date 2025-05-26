@@ -23,7 +23,6 @@ const (
 
 type VppProxySuite struct {
 	HstSuite
-	serverPort uint16
 	maxTimeout int
 	Interfaces struct {
 		Client *NetInterface
@@ -35,6 +34,10 @@ type VppProxySuite struct {
 		NginxServerTransient *Container
 		IperfS               *Container
 		IperfC               *Container
+	}
+	Ports struct {
+		Server uint16
+		Proxy  uint16
 	}
 }
 
@@ -53,8 +56,9 @@ func (s *VppProxySuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("vppProxy")
+	s.Ports.Server = s.GeneratePortAsInt()
+	s.Ports.Proxy = s.GeneratePortAsInt()
 
-	s.serverPort = 80
 	if *IsVppDebug {
 		s.maxTimeout = 600
 	} else {
@@ -109,7 +113,7 @@ func (s *VppProxySuite) SetupNginxServer() {
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Ip4AddressString(),
-		Port:      s.serverPort,
+		Port:      s.Ports.Server,
 		Timeout:   s.maxTimeout,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
@@ -118,10 +122,6 @@ func (s *VppProxySuite) SetupNginxServer() {
 		nginxSettings,
 	)
 	s.AssertNil(s.Containers.NginxServerTransient.Start())
-}
-
-func (s *VppProxySuite) ServerPort() uint16 {
-	return s.serverPort
 }
 
 func (s *VppProxySuite) ServerAddr() string {
@@ -198,7 +198,7 @@ func handleConn(conn net.Conn) {
 }
 
 func (s *VppProxySuite) StartEchoServer() *net.TCPListener {
-	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(s.ServerAddr()), Port: int(s.ServerPort())})
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(s.ServerAddr()), Port: int(s.Ports.Server)})
 	s.AssertNil(err, fmt.Sprint(err))
 	go func() {
 		for {
@@ -209,7 +209,7 @@ func (s *VppProxySuite) StartEchoServer() *net.TCPListener {
 			go handleConn(conn)
 		}
 	}()
-	s.Log("* started tcp echo server " + s.ServerAddr() + ":" + strconv.Itoa(int(s.ServerPort())))
+	s.Log("* started tcp echo server " + s.ServerAddr() + ":" + strconv.Itoa(int(s.Ports.Server)))
 	return listener
 }
 
