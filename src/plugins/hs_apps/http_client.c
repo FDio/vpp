@@ -751,6 +751,7 @@ hc_run (vlib_main_t *vm)
     {
       wrk->has_common_headers = false;
       wrk->thread_index = wrk - hcm->wrk;
+      wrk->vlib_main = vlib_get_main_by_index (wrk->thread_index);
       /* 4k for headers should be enough */
       vec_validate (wrk->headers_buf, 4095);
       http_init_headers_ctx (&wrk->req_headers, wrk->headers_buf,
