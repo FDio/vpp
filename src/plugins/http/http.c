@@ -28,6 +28,7 @@ static http_engine_vft_t *http_vfts;
 const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
+  [HTTP_MSG_DATA_STREAMING] = HTTP_BUFFER_STREAMING,
 };
 
 void
