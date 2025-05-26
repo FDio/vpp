@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	RegisterIperfTests(IperfUdpLinuxTest)
+	RegisterIperfSoloTests(IperfUdpLinuxTest)
 }
 
 func IperfUdpLinuxTest(s *IperfSuite) {
@@ -27,7 +27,7 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -4 -s -B " + serverIpAddress + " -p " + s.GetPortFromPpid()
+		cmd := "iperf3 -4 -s -B " + serverIpAddress + " -p " + s.Ports.Port1
 		s.StartServerApp(s.Containers.Server, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 	err := <-srvCh
@@ -37,7 +37,7 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -c " + serverIpAddress + " -B " + clientIpAddress +
-			" -u -l 1460 -b 10g -J -p " + s.GetPortFromPpid()
+			" -u -l 1460 -b 10g -J -p " + s.Ports.Port1
 		s.StartClientApp(s.Containers.Client, cmd, clnCh, clnRes)
 	}()
 	s.AssertChannelClosed(time.Minute*3, clnCh)
