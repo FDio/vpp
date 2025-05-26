@@ -40,7 +40,7 @@ func init() {
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
-	RegisterNoTopo6Tests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
+	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -70,9 +70,9 @@ func HttpGetTpsInterruptModeTest(s *NoTopoSuite) {
 func HttpGetTpsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":8080/test_file_10M"
+	url := "http://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Http)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
@@ -80,9 +80,9 @@ func HttpGetTpsTest(s *NoTopoSuite) {
 func HttpGetTpsTlsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	url := "https://" + serverAddress + ":8080/test_file_10M"
+	url := "https://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://0.0.0.0/8080")
+	vpp.Vppctl("http tps uri tls://0.0.0.0/" + s.Ports.Http)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
@@ -113,9 +113,9 @@ func HttpPostTpsInterruptModeTest(s *NoTopoSuite) {
 func HttpPostTpsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":8080/test_file_10M"
+	url := "http://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/8080")
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Http)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
@@ -123,9 +123,9 @@ func HttpPostTpsTest(s *NoTopoSuite) {
 func HttpPostTpsTlsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	url := "https://" + serverAddress + ":8080/test_file_10M"
+	url := "https://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://0.0.0.0/8080")
+	vpp.Vppctl("http tps uri tls://0.0.0.0/" + s.Ports.Http)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
@@ -134,8 +134,8 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 
 	transport := http.DefaultTransport
@@ -149,7 +149,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 		}}
 
 	body := []byte("{\"sandwich\": {\"spam\": 2, \"eggs\": 1}}")
-	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test3", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "http://"+serverAddress+"/test3", bytes.NewBuffer(body))
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -161,7 +161,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.Log(o1)
 	s.AssertContains(o1, "established")
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test1", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+"/test1", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	clientTrace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
@@ -180,7 +180,7 @@ func HttpPersistentConnectionTest(s *NoTopoSuite) {
 	s.AssertContains(o2, "established")
 	s.AssertEqual(o1, o2)
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/test2", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+"/test2", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), clientTrace))
 	resp, err = client.Do(req)
@@ -199,14 +199,14 @@ func HttpPipeliningTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 
-	req1 := "GET /test_delayed HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
-	req2 := "GET /test1 HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
+	req1 := "GET /test_delayed HTTP/1.1\r\nHost:" + serverAddress + "\r\nUser-Agent:test\r\n\r\n"
+	req2 := "GET /test1 HTTP/1.1\r\nHost:" + serverAddress + "\r\nUser-Agent:test\r\n\r\n"
 
-	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer conn.Close()
 	err = conn.SetDeadline(time.Now().Add(time.Second * 15))
@@ -234,14 +234,14 @@ func HttpStaticPostTest(s *NoTopoSuite) {
 	// testing url handler app do not support multi-thread
 	s.SkipIfMultiWorker()
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 1m"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug max-body-size 1m"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 
 	body := make([]byte, 131072)
 	_, err := rand.Read(body)
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test3", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "http://"+serverAddress+"/test3", bytes.NewBuffer(body))
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -252,12 +252,13 @@ func HttpStaticPostTest(s *NoTopoSuite) {
 }
 
 func HttpCliTest(s *VethsSuite) {
-	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server")
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 
-	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + "/80"
+	cliServerCmd := "http cli server uri http://" + serverAddress
+	s.Containers.ServerVpp.VppInstance.Vppctl(cliServerCmd)
 
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri " + uri + " query /show/vlib/graph")
+		" uri http://" + serverAddress + " query /show/vlib/graph")
 
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
@@ -267,7 +268,7 @@ func HttpCliTest(s *VethsSuite) {
 	clientCleanupDone := false
 	for nTries := 0; nTries < 30; nTries++ {
 		o := s.Containers.ClientVpp.VppInstance.Vppctl("show session verbose 2")
-		if !strings.Contains(o, "->"+s.Interfaces.Server.Ip4AddressString()+":80") {
+		if !strings.Contains(o, "->"+serverAddress) {
 			clientCleanupDone = true
 			break
 		}
@@ -276,13 +277,13 @@ func HttpCliTest(s *VethsSuite) {
 	s.AssertEqual(true, clientCleanupDone)
 
 	/* test server app stop listen */
-	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server listener del")
+	s.Containers.ServerVpp.VppInstance.Vppctl(cliServerCmd + " listener del")
 	o = s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose proto http")
 	s.AssertNotContains(o, "LISTEN")
 }
 
 func HttpCliTlsTest(s *VethsSuite) {
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/443"
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
 
 	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server uri " + uri)
 
@@ -311,9 +312,9 @@ func HttpCliConnectErrorTest(s *VethsSuite) {
 }
 
 func HttpClientTest(s *NoTopoSuite) {
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -326,7 +327,7 @@ func HttpClientTest(s *NoTopoSuite) {
 		))
 	server.Start()
 	defer server.Close()
-	uri := "http://" + serverAddress + "/80"
+	uri := "http://" + serverAddress
 	vpp := s.Containers.Vpp.VppInstance
 	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
 
@@ -336,9 +337,9 @@ func HttpClientTest(s *NoTopoSuite) {
 }
 
 func HttpClientErrRespTest(s *NoTopoSuite) {
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -349,7 +350,7 @@ func HttpClientErrRespTest(s *NoTopoSuite) {
 		))
 	server.Start()
 	defer server.Close()
-	uri := "http://" + serverAddress + "/80"
+	uri := "http://" + serverAddress
 	vpp := s.Containers.Vpp.VppInstance
 	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
 
@@ -358,11 +359,11 @@ func HttpClientErrRespTest(s *NoTopoSuite) {
 }
 
 func HttpClientPostFormTest(s *NoTopoSuite) {
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	body := "field1=value1&field2=value2"
 
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -405,10 +406,9 @@ func HttpClientGetTlsNoRespBodyTest(s *NoTopoSuite) {
 func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 	var l net.Listener
 	var err error
-	var port string
 	vpp := s.Containers.Vpp.VppInstance
 	server := ghttp.NewUnstartedServer()
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 
 	if proto == "https" {
 		certFile := "resources/cert/localhost.crt"
@@ -417,11 +417,9 @@ func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 		s.AssertNil(err)
 		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
 		server.HTTPTestServer.TLS = tlsConfig
-		port = "443"
-		l, err = tls.Listen("tcp", serverAddress+":443", tlsConfig)
+		l, err = tls.Listen("tcp", serverAddress, tlsConfig)
 	} else {
-		port = "80"
-		l, err = net.Listen("tcp", serverAddress+":80")
+		l, err = net.Listen("tcp", serverAddress)
 	}
 	s.AssertNil(err, fmt.Sprint(err))
 
@@ -437,7 +435,7 @@ func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 	server.Start()
 	defer server.Close()
 
-	uri := proto + "://" + serverAddress + ":" + port
+	uri := proto + "://" + serverAddress
 	cmd := "http client use-ptr verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
 
 	o := vpp.Vppctl(cmd)
@@ -457,12 +455,14 @@ func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 	s.AssertContains(file_contents, response)
 }
 
+// registered as a solo test and not using generated ports
 func HttpClientGetResponseBody6Test(s *NoTopo6Suite) {
 	response := "<body>hello world</body>"
 	size := len(response)
 	httpClientGet6(s, response, size, "http")
 }
 
+// registered as a solo test and not using generated ports
 func HttpClientGetTlsResponseBody6Test(s *NoTopo6Suite) {
 	response := "<body>hello world</body>"
 	size := len(response)
@@ -538,7 +538,7 @@ func HttpClientPostRepeatTest(s *NoTopoSuite) {
 func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	vpp := s.Containers.Vpp.VppInstance
 	logPath := s.Containers.NginxServer.GetContainerWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
-	serverAddress := s.Interfaces.Tap.Ip4AddressString()
+	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxServer
 	replyCountInt := 0
 	repeatAmount := 10000
 	durationInSec := 10
@@ -558,7 +558,7 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 		requestMethod += " file /tmp/test_file.txt"
 	}
 
-	uri := "http://" + serverAddress + ":" + s.GetPortFromPpid() + "/index"
+	uri := "http://" + serverAddress + "/index"
 	cmd := fmt.Sprintf("http client %s %s duration %d header Hello:World uri %s",
 		requestMethod, clientArgs, durationInSec, uri)
 
@@ -602,11 +602,11 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 }
 
 func HttpClientGetTimeout(s *NoTopoSuite) {
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	vpp := s.Containers.Vpp.VppInstance
 
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":"+s.GetPortFromPpid())
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -620,7 +620,7 @@ func HttpClientGetTimeout(s *NoTopoSuite) {
 		))
 	server.Start()
 	defer server.Close()
-	uri := "http://" + serverAddress + ":" + s.GetPortFromPpid() + "/timeout"
+	uri := "http://" + serverAddress + "/timeout"
 	cmd := "http client verbose timeout 1 uri " + uri
 
 	o := vpp.Vppctl(cmd)
@@ -629,14 +629,14 @@ func HttpClientGetTimeout(s *NoTopoSuite) {
 }
 
 func httpClientPostFile(s *NoTopoSuite, usePtr bool, fileSize int) {
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	vpp := s.Containers.Vpp.VppInstance
 	fileName := "/tmp/test_file.txt"
 	s.Log(vpp.Container.Exec(false, "fallocate -l "+strconv.Itoa(fileSize)+" "+fileName))
 	s.Log(vpp.Container.Exec(false, "ls -la "+fileName))
 
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -672,12 +672,12 @@ func HttpClientPostFilePtrTest(s *NoTopoSuite) {
 func HttpStaticPromTest(s *NoTopoSuite) {
 	query := "stats.prom"
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/"+query, nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/"+query, nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -710,10 +710,10 @@ func promReqWg(s *NoTopoSuite, url string, wg *sync.WaitGroup) {
 
 func PromConcurrentConnectionsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":80/stats.prom"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "http://" + serverAddress + "/stats.prom"
 
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
 
@@ -728,10 +728,10 @@ func PromConcurrentConnectionsTest(s *NoTopoSuite) {
 
 func PromConsecutiveConnectionsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":80/stats.prom"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "http://" + serverAddress + "/stats.prom"
 
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
 
@@ -744,13 +744,13 @@ func PromMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":80/stats.prom"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "http://" + serverAddress + "/stats.prom"
 
 	/* no goVPP less noise */
 	vpp.Disconnect()
 
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 3)
 
@@ -784,9 +784,9 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	/* no goVPP less noise */
 	clientVpp.Disconnect()
 
-	serverVpp.Vppctl("http cli server")
+	serverVpp.Vppctl("http cli server uri " + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
-	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + "/80"
+	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
 
 	/* warmup request (FIB) */
 	clientVpp.Vppctl("http cli client uri " + uri + " query /show/version")
@@ -811,17 +811,17 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 func HttpClientPostMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
-	serverAddress := s.HostAddr()
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	body := "field1=value1&field2=value2"
 
-	uri := "http://" + serverAddress + "/80"
+	uri := "http://" + serverAddress
 	vpp := s.Containers.Vpp.VppInstance
 
 	/* no goVPP less noise */
 	vpp.Disconnect()
 
 	server := ghttp.NewUnstartedServer()
-	l, err := net.Listen("tcp", serverAddress+":80")
+	l, err := net.Listen("tcp", serverAddress)
 	s.AssertNil(err, fmt.Sprint(err))
 	server.HTTPTestServer.Listener = l
 	server.AppendHandlers(
@@ -861,7 +861,7 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 	s.SkipUnlessLeakCheck()
 
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 
 	/* no goVPP less noise */
 	vpp.Disconnect()
@@ -869,7 +869,7 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 	vpp.Vppctl("http cli server")
 
 	/* warmup request (FIB) */
-	_, err := TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	_, err := TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 
 	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
@@ -879,7 +879,7 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 	traces1, err := vpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
 
-	_, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	_, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 
 	/* let's give it some time to clean up sessions */
@@ -893,9 +893,9 @@ func HttpInvalidClientRequestMemLeakTest(s *NoTopoSuite) {
 
 func runWrkPerf(s *NoTopoSuite) {
 	nConnections := 1000
-	serverAddress := s.VppAddr()
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 
-	args := fmt.Sprintf("-c %d -t 2 -d 30s http://%s:80/64B", nConnections, serverAddress)
+	args := fmt.Sprintf("-c %d -t 2 -d 30s http://%s/64B", nConnections, serverAddress)
 	s.Containers.Wrk.ExtraRunningArgs = args
 	s.Containers.Wrk.Run()
 	s.Log("Please wait for 30s, test is running.")
@@ -906,19 +906,19 @@ func runWrkPerf(s *NoTopoSuite) {
 
 func HttpStaticFileHandlerWrkTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
 	content := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	err := vpp.Container.CreateFile(wwwRootPath+"/64B", content)
 	s.AssertNil(err, fmt.Sprint(err))
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 private-segment-size 256m"))
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " private-segment-size 256m"))
 	runWrkPerf(s)
 }
 
 func HttpStaticUrlHandlerWrkTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers private-segment-size 256m"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers private-segment-size 256m"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
 	runWrkPerf(s)
 }
@@ -949,11 +949,11 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertNil(err, fmt.Sprint(err))
 	err = vpp.Container.CreateFile(wwwRootPath+"/page.html", content2)
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug cache-size 2m " + maxAgeFormatted))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " debug cache-size 2m " + maxAgeFormatted))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/index.html", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/index.html", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -982,7 +982,7 @@ func HttpStaticFileHandlerTestFunction(s *NoTopoSuite, max_age string) {
 	s.AssertHttpContentLength(resp, int64(len([]rune(content))))
 	s.AssertHttpBody(resp, content)
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/page.html", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+"/page.html", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1007,11 +1007,11 @@ func HttpStaticPathSanitizationTest(s *NoTopoSuite) {
 	indexContent := "<html><body>index</body></html>"
 	err = vpp.Container.CreateFile(wwwRootPath+"/index.html", indexContent)
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/../secret_folder/secret_file.txt", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/../secret_folder/secret_file.txt", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1022,7 +1022,7 @@ func HttpStaticPathSanitizationTest(s *NoTopoSuite) {
 	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
 	s.AssertHttpContentLength(resp, int64(0))
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80//////fake/directory///../././//../../secret_folder/secret_file.txt", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+"//////fake/directory///../././//../../secret_folder/secret_file.txt", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1033,14 +1033,14 @@ func HttpStaticPathSanitizationTest(s *NoTopoSuite) {
 	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
 	s.AssertHttpContentLength(resp, int64(0))
 
-	req, err = http.NewRequest("GET", "http://"+serverAddress+":80/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////", nil)
+	req, err = http.NewRequest("GET", "http://"+serverAddress+"/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err = client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertHttpStatus(resp, 301)
-	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+serverAddress+"/index.html")
+	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+s.VppAddr()+"/index.html")
 }
 
 func HttpStaticMovedTest(s *NoTopoSuite) {
@@ -1049,10 +1049,10 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
 	s.AssertNil(err, fmt.Sprint(err))
 	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/" + s.Ports.Http + " debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/tmp.aaa", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":"+s.Ports.Http+"/tmp.aaa", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1068,11 +1068,11 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/notfound.html", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/notfound.html", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1086,11 +1086,11 @@ func HttpStaticNotFoundTest(s *NoTopoSuite) {
 
 func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test", nil)
+	req, err := http.NewRequest("POST", "http://"+serverAddress+"/test", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1104,11 +1104,11 @@ func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 
 func HttpCliBadRequestTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress, nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1121,11 +1121,11 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 
 func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "https://"+serverAddress+":80/version.json", nil)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1146,11 +1146,11 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 
 func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json?verbose=true", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/version.json?verbose=true", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1170,11 +1170,11 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 
 func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/interface_list.json", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/interface_list.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1190,11 +1190,11 @@ func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
 
 func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/interface_stats.json", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/interface_stats.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1218,13 +1218,13 @@ func validatePostInterfaceStats(s *NoTopoSuite, data string) {
 
 func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 	body := []byte(s.VppIfName())
 
 	client := NewHttpClient(defaultHttpTimeout, false)
 	req, err := http.NewRequest("POST",
-		"http://"+serverAddress+":80/interface_stats.json", bytes.NewBuffer(body))
+		"http://"+serverAddress+"/interface_stats.json", bytes.NewBuffer(body))
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1239,12 +1239,12 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 
 func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 	s.Log(vpp.Vppctl("mactime enable-disable " + s.VppIfName()))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/mactime.json", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/mactime.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1265,56 +1265,56 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 
 func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", " GET / HTTP/1.1")
+	resp, err := TcpSendReceive(serverAddress, " GET / HTTP/1.1")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "\rGET / HTTP/1.1")
+	resp, err = TcpSendReceive(serverAddress, "\rGET / HTTP/1.1")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "\nGET / HTTP/1.1")
+	resp, err = TcpSendReceive(serverAddress, "\nGET / HTTP/1.1")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1")
+	resp, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "HTTP-version must be present")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "request-target must be present")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET  HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET  HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "request-target must be present")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP/x\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET / HTTP/x\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP/x' invalid http version not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET / HTTP1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET / HTTP1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP1.1' invalid http version not allowed")
 }
 
 func HttpRequestLineTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", "\r\nGET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "\r\nGET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 200 OK")
 	s.AssertContains(resp, "<html>", "html content not found")
@@ -1322,78 +1322,78 @@ func HttpRequestLineTest(s *NoTopoSuite) {
 
 func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET /interface|stats.json HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET /interface|stats.json HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'|' not allowed in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /interface#stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface#stats.json HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'#' not allowed in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /interface%stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /interface%1stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%1stats.json HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /interface%Bstats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%Bstats.json HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /interface%stats.json%B HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json%B HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /version.json?verbose>true HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose>true HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'>' not allowed in target query")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /version.json?verbose%true HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose%true HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target query")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /version.json?verbose=%1 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose=%1 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target query")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET * HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET * HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "asterisk-form is only used for a server-wide OPTIONS request")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET www.example.com:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET www.example.com:80 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "authority-form is only used for CONNECT requests")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "CONNECT https://www.example.com/tunnel HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT https://www.example.com/tunnel HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "CONNECT requests must use authority-form only")
 }
 
 func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length:\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length:\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length: \r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: \r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length: a\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: a\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"Content-Length value other than digit not allowed")
@@ -1402,7 +1402,7 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 func HttpContentLengthTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 12"))
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + ":80 url-handlers debug max-body-size 12"))
 	ifName := s.VppIfName()
 
 	resp, err := TcpSendReceive(serverAddress+":80",
@@ -1423,10 +1423,10 @@ func HttpContentLengthTest(s *NoTopoSuite) {
 
 func HttpHeaderErrorConnectionDropTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug max-body-size 12"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug max-body-size 12"))
 	request := "POST /interface_stats.json HTTP/1.1\r\nContent-Length: 18234234\r\n\r\n" + s.VppIfName()
-	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
 	s.AssertNil(err, fmt.Sprint(err))
 	err = conn.SetDeadline(time.Now().Add(time.Second * 10))
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1442,11 +1442,11 @@ func HttpHeaderErrorConnectionDropTest(s *NoTopoSuite) {
 }
 func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("OPTIONS", "http://"+serverAddress+":80/show/version", nil)
+	req, err := http.NewRequest("OPTIONS", "http://"+serverAddress+"/show/version", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1459,21 +1459,21 @@ func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 
 func HttpVersionNotSupportedTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET / HTTP/2\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET / HTTP/2\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 505 HTTP Version Not Supported")
 }
 
 func HttpUriDecodeTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/sh%6fw%20versio%6E%20verbose", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/sh%6fw%20versio%6E%20verbose", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1489,60 +1489,60 @@ func HttpUriDecodeTest(s *NoTopoSuite) {
 
 func HttpAbsoluteFormUriTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET http://"+serverAddress+"/show/version HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET http://"+serverAddress+"/show/version HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 200 OK")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET http://"+serverAddress+":80/show/version HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET http://"+serverAddress+":80/show/version HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 200 OK")
 }
 
 func HttpInvalidAuthorityFormUriTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s/8080", serverAddress)
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s", serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.3.4:80a HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80a HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.3.4:80000000 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80000000 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2a3.4:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2a3.4:80 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT 1.2.4:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.4:80 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT [dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT [dead:beef::1234:443 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT [zyx:beef::1234]:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT [zyx:beef::1234]:443 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT dead:beef::1234:443 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress+":8080", "CONNECT example.org:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT example.org:443 HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "name resolution not supported")
 }
 
 func HttpHeadersTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	transport := http.DefaultTransport
 	transport.(*http.Transport).Proxy = nil
@@ -1552,7 +1552,7 @@ func HttpHeadersTest(s *NoTopoSuite) {
 		Timeout:   time.Second * 30,
 	}
 
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/show/version", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	req.Header.Add("Accept", "text/xml")
 	req.Header.Add("Accept-Language", "*")
@@ -1568,7 +1568,7 @@ func HttpHeadersTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertNotContains(string(data), "<html>", "html content received instead of plain text")
 
-	req2, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
+	req2, err := http.NewRequest("GET", "http://"+serverAddress+"/show/version", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	req2.Header.Add("Accept", "text/html")
 	resp2, err := client.Do(req2)
@@ -1585,7 +1585,7 @@ func HttpHeadersTest(s *NoTopoSuite) {
 	client.CloseIdleConnections()
 	for nTries := 0; nTries < 10; nTries++ {
 		o := vpp.Vppctl("show session verbose 2")
-		if !strings.Contains(o, serverAddress+":80->"+s.HostAddr()) {
+		if !strings.Contains(o, serverAddress+"->"+s.HostAddr()) {
 			break
 		}
 		time.Sleep(1 * time.Second)
@@ -1594,49 +1594,49 @@ func HttpHeadersTest(s *NoTopoSuite) {
 
 func HttpInvalidHeadersTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nUser-Agent: test\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nUser-Agent: test\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "Header section must end with CRLF CRLF")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser@Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser@Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'@' not allowed in field name")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "incomplete field line not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\n: test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\n: test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field name not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\rUser-Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\rUser-Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\nUser-Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\nUser-Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
 
-	resp, err = TcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:    \r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:    \r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
 }
 
 func HeaderServerTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	vpp.Vppctl("http cli server")
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/show/version", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1649,11 +1649,11 @@ func HeaderServerTest(s *NoTopoSuite) {
 
 func HttpConnTimeoutTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug keepalive-timeout 2"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug keepalive-timeout 2"))
 
-	req := "GET /version.json HTTP/1.1\r\nHost:" + serverAddress + ":80\r\nUser-Agent:test\r\n\r\n"
-	conn, err := net.DialTimeout("tcp", serverAddress+":80", time.Second*30)
+	req := "GET /version.json HTTP/1.1\r\nHost:" + serverAddress + "\r\nUser-Agent:test\r\n\r\n"
+	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer conn.Close()
 	err = conn.SetDeadline(time.Now().Add(time.Second * 30))
@@ -1679,8 +1679,8 @@ func HttpConnTimeoutTest(s *NoTopoSuite) {
 
 func HttpIgnoreH2UpgradeTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers"))
 
 	transport := http.DefaultTransport
 	transport.(*http.Transport).Proxy = nil
@@ -1690,7 +1690,7 @@ func HttpIgnoreH2UpgradeTest(s *NoTopoSuite) {
 		Timeout:   time.Second * 30,
 	}
 
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/version.json", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	req.Header.Add("Connection", "Upgrade")
 	req.Header.Add("Upgrade", "HTTP/2.0")
