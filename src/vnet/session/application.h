@@ -214,16 +214,6 @@ typedef struct app_main_
   uword *app_by_name;
 
   /**
-   * Pool from which we allocate certificates (key, cert)
-   */
-  app_cert_key_pair_t *cert_key_pair_store;
-
-  /*
-   * Last registered crypto engine type
-   */
-  crypto_engine_type_t last_crypto_engine;
-
-  /**
    * App sublayer per-worker state
    */
   appsl_wrk_t *wrk;
@@ -401,22 +391,14 @@ session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 				      u8 transport_proto);
 void app_worker_del_detached_sm (app_worker_t * app_wrk, u32 sm_index);
 u8 *format_app_worker (u8 * s, va_list * args);
-u8 *format_app_worker_listener (u8 * s, va_list * args);
-u8 *format_crypto_engine (u8 * s, va_list * args);
+u8 *format_app_worker_listener (u8 *s, va_list *args);
 u8 *format_crypto_context (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
-app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
-app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
-app_cert_key_pair_t *app_cert_key_pair_get_default ();
-
 void sapi_socket_close_w_handle (u32 api_handle);
-
-crypto_engine_type_t app_crypto_engine_type_add (void);
-u8 app_crypto_engine_n_types (void);
 
 static inline u8
 app_worker_application_is_builtin (app_worker_t *app_wrk)

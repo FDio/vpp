@@ -978,6 +978,7 @@ list(APPEND VNET_SOURCES
   session/application_interface.c
   session/application_local.c
   session/application_namespace.c
+  session/application_crypto.c
   session/segment_manager.c
   session/session_api.c
   session/session_sdl.c
@@ -996,6 +997,7 @@ list(APPEND VNET_HEADERS
   session/application_eventing.h
   session/application_local.h
   session/application_namespace.h
+  session/application_crypto.h
   session/session_debug.h
   session/segment_manager.h
   session/mma_template.h
