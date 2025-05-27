@@ -839,6 +839,7 @@ vapi_sock_client_send_disconnect (vapi_ctx_t ctx)
   mp = vapi_msg_alloc (ctx, sizeof (vl_api_sockclnt_delete_t));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SOCKCLNT_DELETE);
+  mp->index = ctx->my_client_index;
   mp->client_index = ctx->my_client_index;
 
   return vapi_sock_send (ctx, (void *) mp);
