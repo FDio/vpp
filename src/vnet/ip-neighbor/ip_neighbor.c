@@ -318,6 +318,7 @@ ip_af_type_pfx_len (ip_address_family_t type)
 static void
 ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
 {
+
   ip_address_family_t af;
 
   af = ip_neighbor_get_af (ipn);
@@ -335,6 +336,8 @@ ip_neighbor_adj_fib_add (ip_neighbor_t * ipn, u32 fib_index)
     }
   else
     {
+      if (INDEX_INVALID == fib_index)
+	return;
       fib_protocol_t fproto;
 
       fproto = ip_address_family_to_fib_proto (af);
@@ -551,6 +554,9 @@ ip_neighbor_add (const ip_address_t * ip,
 
   /* main thread only */
   ASSERT (0 == vlib_get_thread_index ());
+
+  if (!vnet_sw_interface_is_valid (vnet_get_main (), sw_if_index))
+    return 0;
 
   fproto = ip_address_family_to_fib_proto (ip_addr_version (ip));
 
