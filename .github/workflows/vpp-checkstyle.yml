@@ -5,10 +5,12 @@ on:
     branches:
       - master
       - stable/**
+      - '**'  # any branch for testing
   push:
     branches:
       - master
       - stable/**
+      - '**'  # any branch for testing
   workflow_dispatch:
 
 jobs:
