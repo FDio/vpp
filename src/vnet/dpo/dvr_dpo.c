@@ -66,14 +66,14 @@ dvr_dpo_unlock (dpo_id_t *dpo)
             vnet_feature_enable_disable ("ip4-output", "ip4-dvr-reinject",
                                          dd->dd_sw_if_index, 0, 0, 0);
         }
-        else
-        {
-            vnet_feature_enable_disable ("ip6-output", "ip6-dvr-reinject",
-                                         dd->dd_sw_if_index, 0, 0, 0);
-        }
+	else if (DPO_PROTO_IP6 == dd->dd_proto)
+	{
+	    vnet_feature_enable_disable ("ip6-output", "ip6-dvr-reinject",
+					 dd->dd_sw_if_index, 0, 0, 0);
+	}
 
-        dvr_dpo_db[dd->dd_proto][dd->dd_sw_if_index] = INDEX_INVALID;
-        pool_put(dvr_dpo_pool, dd);
+	dvr_dpo_db[dd->dd_proto][dd->dd_sw_if_index] = INDEX_INVALID;
+	pool_put (dvr_dpo_pool, dd);
     }
 }
 
@@ -129,6 +129,31 @@ dvr_dpo_add_or_lock (u32 sw_if_index,
 
     dpo_set(dpo, DPO_DVR, dproto, dvr_dpo_get_index(dd));
 }
+
+static int
+unlock_dvr_dpo_interface_dproto (u32 sw_if_index, dpo_proto_t dproto)
+{
+    if (vec_len (dvr_dpo_db[dproto]) > sw_if_index &&
+	INDEX_INVALID != dvr_dpo_db[dproto][sw_if_index])
+    {
+	index_t ind = dvr_dpo_db[dproto][sw_if_index];
+	if (!pool_is_free_index (dvr_dpo_pool, ind))
+	    {
+	    dpo_id_t dpo = { .dpoi_type = DPO_DVR,
+			     .dpoi_index = ind,
+			     .dpoi_proto = dproto };
+	    dvr_dpo_t *dd;
+	    dd = dvr_dpo_get_from_dpo (&dpo);
+	    if (dd->dd_locks > 0)
+	      {
+		dvr_dpo_unlock (&dpo);
+		return 0;
+	      }
+	    }
+    }
+    return -1;
+}
+
 #endif /* CLIB_MARCH_VARIANT */
 
 
@@ -164,6 +189,15 @@ dvr_dpo_interface_delete (vnet_main_t * vnm,
                                 u32 sw_if_index,
                                 u32 is_add)
 {
+#ifndef CLIB_MARCH_VARIANT
+    if (!is_add)
+    {
+	for (int i = 0; i < DPO_PROTO_NUM; i++)
+	    while (unlock_dvr_dpo_interface_dproto (sw_if_index, i) == 0)
+	    {
+	    }
+    }
+#endif
     return (NULL);
 }
 
@@ -257,6 +291,9 @@ dvr_dpo_module_init (void)
 typedef struct dvr_dpo_trace_t_
 {
     u32 sw_if_index;
+    dvr_dpo_reinject_t dd_reinject;
+    u32 rx_sw_if_index;
+    u32 output_feature_arc_index;
 } dvr_dpo_trace_t;
 
 always_inline uword
@@ -338,73 +375,80 @@ dvr_dpo_inline (vlib_main_t * vm,
 
                 tr0 = vlib_add_trace (vm, node, b0, sizeof (*tr0));
                 tr0->sw_if_index = dd0->dd_sw_if_index;
-            }
-            if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                dvr_dpo_trace_t *tr1;
+		tr0->dd_reinject = dd0->dd_reinject;
+		tr0->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		tr0->output_feature_arc_index = lm->output_feature_arc_index;
+	    }
+	    if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		dvr_dpo_trace_t *tr1;
 
-                tr1 = vlib_add_trace (vm, node, b1, sizeof (*tr1));
-                tr1->sw_if_index = dd1->dd_sw_if_index;
-            }
+		tr1 = vlib_add_trace (vm, node, b1, sizeof (*tr1));
+		tr1->sw_if_index = dd1->dd_sw_if_index;
+		tr1->dd_reinject = dd1->dd_reinject;
+		tr1->rx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+		tr1->output_feature_arc_index = lm->output_feature_arc_index;
+	    }
 
-            vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, bi1,
-                                            next0, next1);
-        }
+	    vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, bi1, next0,
+					     next1);
+	}
 
-        while (n_left_from > 0 && n_left_to_next > 0)
-        {
-            const dvr_dpo_t * dd0;
-            vlib_buffer_t * b0;
-            u32 bi0, ddi0;
-            u32 next0;
-            u8 len0;
+	while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	    const dvr_dpo_t *dd0;
+	    vlib_buffer_t *b0;
+	    u32 bi0, ddi0;
+	    u32 next0;
+	    u8 len0;
 
-            bi0 = from[0];
-            to_next[0] = bi0;
-            from += 1;
-            to_next += 1;
-            n_left_from -= 1;
-            n_left_to_next -= 1;
-            next0 = 0;
+	    bi0 = from[0];
+	    to_next[0] = bi0;
+	    from += 1;
+	    to_next += 1;
+	    n_left_from -= 1;
+	    n_left_to_next -= 1;
+	    next0 = 0;
 
-            b0 = vlib_get_buffer (vm, bi0);
+	    b0 = vlib_get_buffer (vm, bi0);
 
-            ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            dd0 = dvr_dpo_get(ddi0);
+	    ddi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	    dd0 = dvr_dpo_get (ddi0);
 
-            vnet_buffer(b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
 
-            /*
-             * take that, rewind it back...
-             */
-            len0 = ((u8*)vlib_buffer_get_current(b0) -
-                    (u8*)ethernet_buffer_get_header(b0));
-            vnet_buffer(b0)->l2.l2_len =
-                vnet_buffer(b0)->ip.save_rewrite_length =
-                    len0;
-            b0->flags |= VNET_BUFFER_F_IS_DVR;
-            vlib_buffer_advance(b0, -len0);
+	    /*
+	     * take that, rewind it back...
+	     */
+	    len0 = ((u8 *) vlib_buffer_get_current (b0) -
+		    (u8 *) ethernet_buffer_get_header (b0));
+	    vnet_buffer (b0)->l2.l2_len =
+	      vnet_buffer (b0)->ip.save_rewrite_length = len0;
+	    b0->flags |= VNET_BUFFER_F_IS_DVR;
+	    vlib_buffer_advance (b0, -len0);
 
-            /*
-             * start processing the ipX output features
-             */
-            vnet_feature_arc_start(lm->output_feature_arc_index,
-                                   dd0->dd_sw_if_index, &next0, b0);
+	    /*
+	     * start processing the ipX output features
+	     */
+	    vnet_feature_arc_start (lm->output_feature_arc_index,
+				    dd0->dd_sw_if_index, &next0, b0);
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                dvr_dpo_trace_t *tr;
+	    if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		dvr_dpo_trace_t *tr;
 
-                tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-                tr->sw_if_index = dd0->dd_sw_if_index;
-            }
+		tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+		tr->sw_if_index = dd0->dd_sw_if_index;
+		tr->dd_reinject = dd0->dd_reinject;
+		tr->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		tr->output_feature_arc_index = lm->output_feature_arc_index;
+	    }
 
-            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0,
-                                            next0);
-        }
-        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, next0);
+	}
+	vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
     return from_frame->n_vectors;
 }
@@ -416,9 +460,12 @@ format_dvr_dpo_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     dvr_dpo_trace_t * t = va_arg (*args, dvr_dpo_trace_t *);
     u32 indent = format_get_indent (s);
-    s = format (s, "%U sw_if_index:%d",
-                format_white_space, indent,
-                t->sw_if_index);
+    s = format (s,
+		"%U sw_if_index:%d output_feature_arc_index %d rx_sw_if_index "
+		"%d reinject %s",
+		format_white_space, indent, t->sw_if_index,
+		t->output_feature_arc_index, t->rx_sw_if_index,
+		(t->dd_reinject == DVR_REINJECT_L2 ? "L2" : "L3"));
     return s;
 }
 
@@ -520,59 +567,62 @@ dvr_reinject_inline (vlib_main_t * vm,
 
                 tr0 = vlib_add_trace (vm, node, b0, sizeof (*tr0));
                 tr0->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-            }
-            if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                dvr_dpo_trace_t *tr1;
+		tr0->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	    }
+	    if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		dvr_dpo_trace_t *tr1;
 
-                tr1 = vlib_add_trace (vm, node, b1, sizeof (*tr1));
-                tr1->sw_if_index = vnet_buffer(b1)->sw_if_index[VLIB_TX];
-            }
+		tr1 = vlib_add_trace (vm, node, b1, sizeof (*tr1));
+		tr1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+		tr1->rx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	    }
 
-            vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, bi1,
-                                            next0, next1);
-        }
+	    vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, bi1, next0,
+					     next1);
+	}
 
-        while (n_left_from > 0 && n_left_to_next > 0)
-        {
-            dvr_reinject_next_t next0;
-            const dvr_dpo_t *dd0;
-            vlib_buffer_t * b0;
-            u32 bi0, ddi0;
+	while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	    dvr_reinject_next_t next0;
+	    const dvr_dpo_t *dd0;
+	    vlib_buffer_t *b0;
+	    u32 bi0, ddi0;
 
-            bi0 = from[0];
-            to_next[0] = bi0;
-            from += 1;
-            to_next += 1;
-            n_left_from -= 1;
-            n_left_to_next -= 1;
+	    bi0 = from[0];
+	    to_next[0] = bi0;
+	    from += 1;
+	    to_next += 1;
+	    n_left_from -= 1;
+	    n_left_to_next -= 1;
 
-            b0 = vlib_get_buffer (vm, bi0);
+	    b0 = vlib_get_buffer (vm, bi0);
 
-            if (b0->flags & VNET_BUFFER_F_IS_DVR)
-            {
-                ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-                dd0 = dvr_dpo_get(ddi0);
-                next0 = (dd0->dd_reinject == DVR_REINJECT_L2 ?
-                         DVR_REINJECT_NEXT_L2 :
-                         DVR_REINJECT_NEXT_L3);
-            }
-            else
-                vnet_feature_next( &next0, b0);
+	    if (b0->flags & VNET_BUFFER_F_IS_DVR)
+	    {
+		ddi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+		dd0 = dvr_dpo_get (ddi0);
+		next0 =
+		  (dd0->dd_reinject == DVR_REINJECT_L2 ? DVR_REINJECT_NEXT_L2 :
+							 DVR_REINJECT_NEXT_L3);
+	    }
+	    else
+	    vnet_feature_next (&next0, b0);
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                dvr_dpo_trace_t *tr;
+	    if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		dvr_dpo_trace_t *tr;
 
-                tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-                tr->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-            }
+		tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+		tr->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+		tr->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	    }
 
-            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, next0);
-        }
-        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					     n_left_to_next, bi0, next0);
+	}
+	vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
     return from_frame->n_vectors;
 }

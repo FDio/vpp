@@ -558,7 +558,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
       feature_arc = areg->feature_arc_index;
       vcm = &(cm[feature_arc].config_main);
 
-      vlib_cli_output (vm, "\n%s:", areg->arc_name);
+      vlib_cli_output (vm, "\n[%d]%s:", feature_arc, areg->arc_name);
       areg = areg->next;
 
       if (!vnet_have_features (feature_arc, sw_if_index))
