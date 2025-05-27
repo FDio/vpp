@@ -1,0 +1,63 @@
+name: vpp-checkstyle-x86_64
+
+on:
+  pull_request:
+    branches:
+      - master
+      - stable/**
+  push:
+    branches:
+      - master
+      - stable/**
+
+jobs:
+  checkstyle:
+    name: Checkstyle - ${{ matrix.branch }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        stream: [master, stable/2410, stable/2502, stable/2506]
+        include:
+          - stream: master
+            branch: master
+            os: ubuntu-24.04
+          - stream: stable/2410
+            branch: stable/2410
+            os: ubuntu-22.04
+          - stream: stable/2502
+            branch: stable/2502
+            os: ubuntu-24.04
+          - stream: stable/2506
+            branch: stable/2506
+            os: ubuntu-24.04
+    steps:
+      - name: Checkout VPP repository with PR changes
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y spell
+          .ci/scripts/setup_executor_env.sh
+
+      - name: Run Checkstyle Scripts
+        run: |
+          .ci/scripts/vpp/checkstyle.sh
+          .ci/scripts/vpp/test-checkstyle.sh
+          .ci/scripts/vpp/api-checkstyle.sh
+          .ci/scripts/vpp/commitmsg.sh
+          .ci/scripts/vpp/docs_spell.sh
+
+      - name: Archive Checkstyle Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-logs-${{ matrix.branch }}-${{ matrix.os }}
+          path: logs/
+
+      - name: Report Success
+        if: success()
+        run: echo "Checkstyle passed for ${{ matrix.branch }} on ${{ matrix.os }}"
