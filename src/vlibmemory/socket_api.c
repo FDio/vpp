@@ -546,7 +546,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
   vl_api_registration_t *regp;
   vl_api_sockclnt_delete_reply_t *rp;
 
-  regp = vl_api_client_index_to_registration (mp->client_index);
+  regp = vl_api_client_index_to_registration (mp->index);
   if (!regp)
     return;
 
