@@ -226,6 +226,24 @@
       "message": "@dwallacelf can you double check this; it adds a feature arc on drop so we can inspect packets that are about to get discarded. It looks good to me, as also in my functional/regression tests at IPng. But it could use a second review from a committer.",
       "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "286a9f1f_e6265f70",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 1436,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-05-28T21:33:20Z",
+      "side": 1,
+      "message": "LGTM",
+      "parentUuid": "b770f0e8_4392c13e",
+      "revId": "8aa76328cd61b4863257739a0846fb96bb08a0a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
