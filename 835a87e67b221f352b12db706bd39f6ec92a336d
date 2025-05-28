@@ -16,6 +16,23 @@
       "message": "we\u0027ll need a rebase for this one",
       "revId": "835a87e67b221f352b12db706bd39f6ec92a336d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef02e14d_da5df1ff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-05-28T10:07:39Z",
+      "side": 1,
+      "message": "when doing rebase please update test, no more hardcoded ports see https://gerrit.fd.io/r/c/vpp/+/42892",
+      "revId": "835a87e67b221f352b12db706bd39f6ec92a336d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
