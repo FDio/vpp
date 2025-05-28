@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a855d405_2811a82a",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 1382,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-05-28T14:03:20Z",
+      "side": 1,
+      "message": "serverAddress :\u003d s.VppAddr() + \":\" + s.Ports.Http",
+      "range": {
+        "startLine": 1381,
+        "startChar": 1,
+        "endLine": 1382,
+        "endChar": 31
+      },
+      "revId": "b8a3ca1918a36f43e0fa1debb1f748278c42519b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
