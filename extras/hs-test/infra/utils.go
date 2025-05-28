@@ -234,53 +234,6 @@ func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
 	}
 }
 
-func (s *HstSuite) StartIperfServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.GeneratePort())
-	if env != nil {
-		cmd.Env = env
-	}
-	s.Log(cmd)
-	err := cmd.Start()
-	if err != nil {
-		msg := fmt.Errorf("failed to start iperf server: %v", err)
-		running <- msg
-		return
-	}
-	running <- nil
-	<-done
-	cmd.Process.Kill()
-}
-
-func (s *HstSuite) StartIperfClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
-	defer func() {
-		clnCh <- nil
-	}()
-
-	nTries := 0
-
-	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.GeneratePort())
-		if env != nil {
-			cmd.Env = env
-		}
-		s.Log(cmd)
-		o, err := cmd.CombinedOutput()
-		if err != nil {
-			if nTries > 5 {
-				clnRes <- ""
-				clnCh <- fmt.Errorf("failed to start client app '%s'.\n%s", err, o)
-				return
-			}
-			time.Sleep(1 * time.Second)
-			nTries++
-			continue
-		} else {
-			clnRes <- fmt.Sprintf("Client output: %s", o)
-		}
-		break
-	}
-}
-
 func (s *HstSuite) StartHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
 	cmd := newCommand([]string{"./http_server", addressPort, s.Ppid, s.ProcessIndex}, netNs)
 	err := cmd.Start()
