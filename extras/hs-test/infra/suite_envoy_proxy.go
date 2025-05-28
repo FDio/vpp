@@ -148,6 +148,8 @@ func (s *EnvoyProxySuite) SetupTest() {
 	s.Containers.Vpp.VppInstance.Vppctl(arp)
 	s.AssertNil(s.Containers.NginxServerTransient.Start())
 	s.AssertNil(s.Containers.EnvoyProxy.Start())
+	// give envoy some time to start
+	time.Sleep(time.Second * 2)
 }
 
 func (s *EnvoyProxySuite) TeardownTest() {
