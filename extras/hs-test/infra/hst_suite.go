@@ -66,6 +66,7 @@ var Colors = colors{
 
 // ../../src/vnet/udp/udp_local.h:foreach_udp4_dst_port
 var reservedPorts = []string{
+	"22",
 	"53",
 	"67",
 	"68",
@@ -184,6 +185,13 @@ func (s *HstSuite) TeardownSuite() {
 	s.HstCommon.TeardownSuite()
 	// allow ports to be reused by removing them from reservedPorts slice
 	reservedPorts = reservedPorts[:len(reservedPorts)-s.numOfNewPorts]
+	if s.Ip4AddrAllocator != nil {
+		s.Ip4AddrAllocator.DeleteIpAddresses()
+	}
+
+	if s.Ip6AddrAllocator != nil {
+		s.Ip6AddrAllocator.DeleteIpAddresses()
+	}
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
 	s.UnconfigureNetworkTopology()
@@ -193,14 +201,6 @@ func (s *HstSuite) TeardownTest() {
 	s.HstCommon.TeardownTest()
 	coreDump := s.WaitForCoreDump()
 	s.ResetContainers()
-
-	if s.Ip4AddrAllocator != nil {
-		s.Ip4AddrAllocator.DeleteIpAddresses()
-	}
-
-	if s.Ip6AddrAllocator != nil {
-		s.Ip6AddrAllocator.DeleteIpAddresses()
-	}
 
 	if coreDump {
 		Fail("VPP crashed")
@@ -587,6 +587,7 @@ func (s *HstSuite) GeneratePort() string {
 		port += "0"
 	}
 	port = port[len(port)-3:] + s.ProcessIndex
+	port = strings.TrimLeft(port, "0")
 	for slices.Contains(reservedPorts, port) {
 		portInt, err = strconv.Atoi(port)
 		s.AssertNil(err)
