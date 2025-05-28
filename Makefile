@@ -592,6 +592,7 @@ cov-merge:
 		-a $(BR)/test-coverage-merged/coverage-filtered1.info -o $(BR)/test-coverage-merged/coverage-merged.info
 	@genhtml $(BR)/test-coverage-merged/coverage-merged.info \
 		--output-directory $(BR)/test-coverage-merged/html
+	-@rm -f $(BR)/test-coverage-merged/html/cmd_line
 	@echo "Code coverage report is in $(BR)/test-coverage-merged/html/index.html"
 
 .PHONY: test-all
