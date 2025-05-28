@@ -22,7 +22,7 @@ import (
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
-		VppConnectProxyGetTest, VppConnectProxyPutTest)
+		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest)
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
@@ -34,12 +34,12 @@ func init() {
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s/%d", proto, s.VppProxyAddr(), proxyPort)
-	if proto != "http" && proto != "udp" {
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s:%d", proto, s.VppProxyAddr(), proxyPort)
+	if proto != "http" && proto != "https" && proto != "udp" {
 		proto = "tcp"
 	}
-	if proto != "http" {
-		cmd += fmt.Sprintf(" client-uri %s://%s/%d", proto, s.ServerAddr(), s.Ports.Server)
+	if proto != "http" && proto != "https" {
+		cmd += fmt.Sprintf(" client-uri %s://%s:%d", proto, s.ServerAddr(), s.Ports.Server)
 	}
 
 	output := vppProxy.Vppctl(cmd)
@@ -177,6 +177,15 @@ func VppConnectProxyGetTest(s *VppProxySuite) {
 
 	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
+}
+
+func VppHttpsConnectProxyGetTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	configureVppProxy(s, "https", s.Ports.Proxy)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
 }
 
