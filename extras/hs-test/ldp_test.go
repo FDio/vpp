@@ -97,7 +97,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "sh -c \"iperf3 -4 -s -p " + s.Ports.Port1 + " > " + s.IperfLogFileName(s.Containers.ServerApp) + " 2>&1\""
+		cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s -B %s -p %s > %s 2>&1\"", serverVethAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
 		s.StartServerApp(s.Containers.ServerApp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
@@ -106,7 +106,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.Ports.Port1 + " " + extraClientArgs
+		cmd := fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -b 10g -J -p %s %s", serverVethAddress, s.Interfaces.Client.Ip4AddressString(), s.Ports.Port1, extraClientArgs)
 		s.StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
 	}()
 
