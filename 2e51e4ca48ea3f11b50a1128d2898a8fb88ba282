@@ -16,6 +16,24 @@
       "message": "Shouldn\u0027t we offload gso now as well, if fragmentation is to be performed?",
       "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f5c75d9_0fdb6191",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-05-28T10:21:27Z",
+      "side": 1,
+      "message": "GSO packets are not expected to reach this point, as the IP rewrite node performs an MTU check and, if the packet has the GSO flag set, it continues processing it without directing it to the fragmentation node.",
+      "parentUuid": "46426833_52983c49",
+      "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
