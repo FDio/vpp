@@ -608,7 +608,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
       if (m && m->name)
 	{
 	  ed->c = elog_string (am->elog_main, (char *) m->name);
-	  ed->barrier = !m->is_mp_safe;
+	  ed->barrier = m->is_mp_safe;
 	}
       else
 	{
