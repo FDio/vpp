@@ -33,6 +33,24 @@
       "message": "when doing rebase please update test, no more hardcoded ports see https://gerrit.fd.io/r/c/vpp/+/42892",
       "revId": "835a87e67b221f352b12db706bd39f6ec92a336d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "28627235_7addef0f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-05-28T12:45:19Z",
+      "side": 1,
+      "message": "addressed",
+      "parentUuid": "ef02e14d_da5df1ff",
+      "revId": "835a87e67b221f352b12db706bd39f6ec92a336d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
