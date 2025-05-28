@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46426833_52983c49",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-28T05:53:41Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we offload gso now as well, if fragmentation is to be performed?",
+      "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
