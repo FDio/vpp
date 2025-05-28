@@ -70,20 +70,20 @@ func HttpGetTpsInterruptModeTest(s *NoTopoSuite) {
 
 func HttpGetTpsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "http://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Http)
+	vpp.Vppctl("http tps uri tcp://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
 
 func HttpGetTpsTlsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "https://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "https://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://0.0.0.0/" + s.Ports.Http)
+	vpp.Vppctl("http tps uri tls://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
@@ -113,20 +113,20 @@ func HttpPostTpsInterruptModeTest(s *NoTopoSuite) {
 
 func HttpPostTpsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "http://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "http://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Http)
+	vpp.Vppctl("http tps uri tcp://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
 
 func HttpPostTpsTlsTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	url := "https://" + serverAddress + ":" + s.Ports.Http + "/test_file_10M"
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	url := "https://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://0.0.0.0/" + s.Ports.Http)
+	vpp.Vppctl("http tps uri tls://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
