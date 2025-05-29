@@ -366,7 +366,7 @@ COV_REM_UNUSED_FEAT="*/vnet/srp/*" \
 					"*/lawful-intercept/*" "*/lisp/*" "*/plugins/osi/*" \
 					"*/plugins/nsh/*"
 
-COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
+COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
 					 "*/plugins/tlspicotls/*" "*/plugins/tlsmbedtls/*" \
 					 "*/vppinfra/perfmon/*" "*/plugins/ila/*" \
 					 "*/vlib/linux/*" "*/vnet/util/radix.c" "*/vapi/vapi.hpp" \
@@ -389,7 +389,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
 					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c" \
 					 "*/plugins/ioam/*" "*/plugins/vxlan-gpe/*" "*/plugins/ioam/*" \
 					 "*/plugins/hsi/*" "*/api/api_format.c" "*/*/api.c" "*/*/*_api.c" \
-					 "*/plugins/http_static/*" "*/plugins/hs_apps/*"
+					 "*/plugins/hs_apps/*"
 ifeq ($(HS_TEST),1)
 COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
 			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
@@ -400,7 +400,7 @@ COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*
 					 "*/vnet/tunnel/*" "*/vpp-api/vapi/*" "*/vpp/app/vpe_cli.c" \
 					 "*/vppinfra/pcap.c" "*/vppinfra/pcap_funcs.h"
 else
-COV_REM_TODO_NO_TEST := $(COV_REM_TODO_NO_TEST) "*/plugins/http/http2/*"
+COV_REM_TODO_NO_TEST := $(COV_REM_TODO_NO_TEST) "*/plugins/http/http2/*" "*/plugins/prom/*"
 endif
 
 LCOV_VERSION=$(shell lcov --version | sed -E 's/^lcov: LCOV version ([0-9]+)[.].*/\1/')
