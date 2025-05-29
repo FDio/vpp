@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,7 +20,6 @@ import (
 )
 
 var h2Tests = map[string][]func(s *H2Suite){}
-var h2SoloTests = map[string][]func(s *H2Suite){}
 
 type H2Suite struct {
 	HstSuite
@@ -33,17 +31,10 @@ type H2Suite struct {
 		Curl   *Container
 		H2load *Container
 	}
-	Ports struct {
-		Port1      string
-		Port1AsInt int
-	}
 }
 
 func RegisterH2Tests(tests ...func(s *H2Suite)) {
 	h2Tests[GetTestFilename()] = tests
-}
-func RegisterH2SoloTests(tests ...func(s *H2Suite)) {
-	h2SoloTests[GetTestFilename()] = tests
 }
 
 func (s *H2Suite) SetupSuite() {
@@ -54,10 +45,6 @@ func (s *H2Suite) SetupSuite() {
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.H2load = s.GetContainerByName("h2load")
-	s.Ports.Port1 = s.GeneratePort()
-	var err error
-	s.Ports.Port1AsInt, err = strconv.Atoi(s.Ports.Port1)
-	s.AssertNil(err)
 }
 
 func (s *H2Suite) SetupTest() {
@@ -111,36 +98,6 @@ var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.Log(testName + ": BEGIN")
-				test(&s)
-			}, SpecTimeout(TestTimeout))
-		}
-	}
-})
-
-// Marked as pending since http plugin is not build with http/2 enabled by default
-var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
-	var s H2Suite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		s.SetupTest()
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
-
-	for filename, tests := range h2SoloTests {
-		for _, test := range tests {
-			test := test
-			pc := reflect.ValueOf(test).Pointer()
-			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -363,11 +320,11 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 				s.Log(testName + ": BEGIN")
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
-				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2"))
+				s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/443 url-handlers debug 2"))
 				s.Log(vpp.Vppctl("test-url-handler enable"))
 				conf := &config.Config{
 					Host:         serverAddress,
-					Port:         s.Ports.Port1AsInt,
+					Port:         443,
 					Path:         "/test1",
 					Timeout:      time.Second * 5,
 					MaxHeaderLen: 1024,

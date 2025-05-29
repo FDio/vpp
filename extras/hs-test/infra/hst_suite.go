@@ -50,7 +50,6 @@ type HstSuite struct {
 	CpuCount          int
 	Docker            *client.Client
 	CoverageRun       bool
-	numOfNewPorts     int
 }
 
 type colors struct {
@@ -182,8 +181,6 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 
 func (s *HstSuite) TeardownSuite() {
 	s.HstCommon.TeardownSuite()
-	// allow ports to be reused by removing them from reservedPorts slice
-	reservedPorts = reservedPorts[:len(reservedPorts)-s.numOfNewPorts]
 	defer s.LogFile.Close()
 	defer s.Docker.Close()
 	s.UnconfigureNetworkTopology()
@@ -587,8 +584,8 @@ func (s *HstSuite) GetCurrentSuiteName() string {
 }
 
 // Returns last 3 digits of PID + Ginkgo process index as the 4th digit. If the port is in the 'reservedPorts' slice,
-// increment port number by ten and check again. Generates a new port after each use.
-func (s *HstSuite) GeneratePort() string {
+// increment port number by ten and check again.
+func (s *HstSuite) GetPortFromPpid() string {
 	port := s.Ppid
 	var err error
 	var portInt int
@@ -602,15 +599,7 @@ func (s *HstSuite) GeneratePort() string {
 		portInt += 10
 		port = fmt.Sprintf("%d", portInt)
 	}
-	reservedPorts = append(reservedPorts, port)
-	s.numOfNewPorts++
 	return port
-}
-
-func (s *HstSuite) GeneratePortAsInt() uint16 {
-	port, err := strconv.Atoi(s.GeneratePort())
-	s.AssertNil(err)
-	return uint16(port)
 }
 
 /*

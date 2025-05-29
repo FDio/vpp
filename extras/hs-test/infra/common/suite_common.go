@@ -59,14 +59,14 @@ func (s *HstCommon) SetupSuite() {
 
 func (s *HstCommon) TeardownTest() {
 	if *IsPersistent || *DryRun {
-		s.Skip("Skipping test teardown")
+		return
 	}
 	s.Log("[* TEST TEARDOWN]")
 }
 
 func (s *HstCommon) TeardownSuite() {
 	if *IsPersistent || *DryRun {
-		s.Skip("Skipping suite teardown")
+		return
 	}
 	s.Log("[* SUITE TEARDOWN]")
 }

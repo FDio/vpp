@@ -9,16 +9,15 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest)
-	RegisterH2SoloTests(Http2MultiplexingMTTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2MultiplexingMTTest, Http2TlsTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	vpp.Vppctl("http cli server listener add uri tcp://" + serverAddress)
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http cli server")
 	s.Log(vpp.Vppctl("show session verbose 2"))
-	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge http://%s/show/version", serverAddress)
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge http://%s:80/show/version", serverAddress)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	s.AssertContains(log, "HTTP/2 200")
@@ -30,7 +29,7 @@ func Http2TcpGetTest(s *H2Suite) {
 	tcpSessionCleanupDone := false
 	for nTries := 0; nTries < 30; nTries++ {
 		o := vpp.Vppctl("show session verbose 2")
-		if !strings.Contains(o, "[T] "+serverAddress+"->10.") {
+		if !strings.Contains(o, "[T] "+serverAddress+":80->") {
 			tcpSessionCleanupDone = true
 		}
 		if !strings.Contains(o, "[H2]") {
@@ -41,31 +40,31 @@ func Http2TcpGetTest(s *H2Suite) {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	s.AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleaned up")
-	s.AssertEqual(true, httpStreamCleanupDone, "HTTP/2 stream not cleaned up")
+	s.AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleanup")
+	s.AssertEqual(true, httpStreamCleanupDone, "HTTP/2 stream not cleanup")
 
 	/* test server app stop listen */
-	vpp.Vppctl("http cli server listener del uri tcp://" + serverAddress)
+	vpp.Vppctl("http cli server listener del")
 	o := vpp.Vppctl("show session verbose proto http")
 	s.AssertNotContains(o, "LISTEN")
 }
 
 func Http2TcpPostTest(s *H2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers max-body-size 20m rx-buff-thresh 20m fifo-size 65k debug 2"))
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers max-body-size 20m rx-buff-thresh 20m fifo-size 65k debug 2"))
 	s.Log(vpp.Vppctl("test-url-handler enable"))
-	args := fmt.Sprintf("--max-time 10 --noproxy '*' --data-binary @%s --http2-prior-knowledge http://%s/test3", CurlContainerTestFile, serverAddress)
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' --data-binary @%s --http2-prior-knowledge http://%s:80/test3", CurlContainerTestFile, serverAddress)
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(log, "HTTP/2 200")
 }
 
 func Http2MultiplexingTest(s *H2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Port1 + " no-zc")
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/80 no-zc")
 
-	args := fmt.Sprintf("--log-file=%s -T10 -n21 -c1 -m100 http://%s/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
+	args := fmt.Sprintf("--log-file=%s -T10 -n21 -c1 -m100 http://%s:80/test_file_20M", s.H2loadLogFileName(s.Containers.H2load), serverAddress)
 	s.Containers.H2load.ExtraRunningArgs = args
 	s.Containers.H2load.Run()
 
@@ -80,10 +79,10 @@ func Http2MultiplexingTest(s *H2Suite) {
 
 func Http2MultiplexingMTTest(s *H2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	vpp.Vppctl("http tps uri tcp://0.0.0.0/" + s.Ports.Port1 + " no-zc")
+	serverAddress := s.VppAddr()
+	vpp.Vppctl("http tps uri tcp://0.0.0.0/80 no-zc")
 
-	args := fmt.Sprintf("-T10 -n100 -c4 -r1 -m10 http://%s/test_file_20M", serverAddress)
+	args := fmt.Sprintf("-T10 -n100 -c4 -r1 -m10 http://%s:80/test_file_20M", serverAddress)
 	s.Containers.H2load.ExtraRunningArgs = args
 	s.Containers.H2load.Run()
 
@@ -96,10 +95,10 @@ func Http2MultiplexingMTTest(s *H2Suite) {
 
 func Http2TlsTest(s *H2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers debug"))
+	serverAddress := s.VppAddr()
+	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/443 url-handlers debug"))
 
-	args := fmt.Sprintf("--max-time 10 --noproxy '*' -k https://%s/version.json", serverAddress)
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' -k https://%s:443/version.json", serverAddress)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	s.AssertContains(log, "HTTP/2 200")

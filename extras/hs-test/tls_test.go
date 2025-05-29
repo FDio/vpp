@@ -9,9 +9,9 @@ func init() {
 }
 
 func TlsAlpMatchTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 2 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "connect failed")
@@ -21,9 +21,9 @@ func TlsAlpMatchTest(s *VethsSuite) {
 }
 
 func TlsAlpnOverlapMatchTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 2 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "connect failed")
@@ -33,9 +33,9 @@ func TlsAlpnOverlapMatchTest(s *VethsSuite) {
 }
 
 func TlsAlpnServerPriorityMatchTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 1 alpn-proto2 2 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "connect failed")
@@ -45,9 +45,9 @@ func TlsAlpnServerPriorityMatchTest(s *VethsSuite) {
 }
 
 func TlsAlpnMismatchTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 4 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "timeout")
@@ -57,9 +57,9 @@ func TlsAlpnMismatchTest(s *VethsSuite) {
 }
 
 func TlsAlpnEmptyServerListTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 1 alpn-proto2 2 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "connect failed")
@@ -69,9 +69,9 @@ func TlsAlpnEmptyServerListTest(s *VethsSuite) {
 }
 
 func TlsAlpnEmptyClientListTest(s *VethsSuite) {
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:" + s.Ports.Port1))
+	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri tls://0.0.0.0:123"))
 
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":123"
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "connect failed")

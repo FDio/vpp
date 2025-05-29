@@ -235,7 +235,7 @@ func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
 }
 
 func (s *HstSuite) StartIperfServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.GeneratePort())
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.GetPortFromPpid())
 	if env != nil {
 		cmd.Env = env
 	}
@@ -259,7 +259,7 @@ func (s *HstSuite) StartIperfClientApp(ipAddress string, env []string, clnCh cha
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.GeneratePort())
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.GetPortFromPpid())
 		if env != nil {
 			cmd.Env = env
 		}

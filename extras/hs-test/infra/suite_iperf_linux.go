@@ -20,9 +20,6 @@ type IperfSuite struct {
 		Server *Container
 		Client *Container
 	}
-	Ports struct {
-		Port1 string
-	}
 }
 
 var iperfTests = map[string][]func(s *IperfSuite){}
@@ -44,7 +41,6 @@ func (s *IperfSuite) SetupSuite() {
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
 	s.Containers.Server = s.GetContainerByName("server")
 	s.Containers.Client = s.GetContainerByName("client")
-	s.Ports.Port1 = s.GeneratePort()
 }
 
 var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, func() {

@@ -29,7 +29,8 @@ func init() {
 		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest)
 	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest, VppConnectUdpStressMTTest, VppConnectUdpStressTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
-	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterNginxProxyTests(NginxMirroringTest)
+	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
 }
 
 func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
@@ -39,7 +40,7 @@ func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
 		proto = "tcp"
 	}
 	if proto != "http" {
-		cmd += fmt.Sprintf(" client-uri %s://%s/%d", proto, s.ServerAddr(), s.Ports.Server)
+		cmd += fmt.Sprintf(" client-uri %s://%s/%d", proto, s.ServerAddr(), s.ServerPort())
 	}
 
 	output := vppProxy.Vppctl(cmd)
@@ -62,6 +63,8 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	s.Containers.IperfC.Run()
 	s.Containers.IperfS.Run()
 	vppProxy := s.Containers.VppProxy.VppInstance
+	proxyPort, err := strconv.Atoi(s.GetPortFromPpid())
+	s.AssertNil(err)
 
 	// tap interfaces are created on test setup with 1 rx-queue,
 	// need to recreate them with 2 + consistent-qp
@@ -71,9 +74,9 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
 	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
+	configureVppProxy(s, "tcp", uint16(proxyPort))
 	if proto == "udp" {
-		configureVppProxy(s, "udp", s.Ports.Proxy)
+		configureVppProxy(s, "udp", uint16(proxyPort))
 		proto = "-u"
 	} else {
 		proto = ""
@@ -90,16 +93,16 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s --logfile %s", s.ServerAddr(), fmt.Sprint(s.Ports.Server), s.IperfLogFileName(s.Containers.IperfS))
+		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s --logfile %s", s.ServerAddr(), fmt.Sprint(s.ServerPort()), s.IperfLogFileName(s.Containers.IperfS))
 		s.StartServerApp(s.Containers.IperfS, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
-	err := <-srvCh
+	err = <-srvCh
 	s.AssertNil(err, fmt.Sprint(err))
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr(), proto)
+		cmd := fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s", s.VppProxyAddr(), proxyPort, s.ClientAddr(), proto)
 		s.StartClientApp(s.Containers.IperfC, cmd, clnCh, clnRes)
 	}()
 
@@ -110,16 +113,18 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 }
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
-	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
+	configureVppProxy(s, "tcp", proxyPort)
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResource(uri)
 }
 
 func VppProxyHttpGetTlsTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "tls", s.Ports.Proxy)
-	uri := fmt.Sprintf("https://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
+	configureVppProxy(s, "tls", proxyPort)
+	uri := fmt.Sprintf("https://%s:%d/httpTestFile", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResource(uri)
 }
 
@@ -128,26 +133,28 @@ func VppProxyHttpPutTcpMTTest(s *VppProxySuite) {
 }
 
 func VppProxyHttpPutTcpTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
-	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.VppProxyAddr(), s.Ports.Proxy)
+	configureVppProxy(s, "tcp", proxyPort)
+	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.VppProxyAddr(), proxyPort)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
 func VppProxyHttpPutTlsTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "tls", s.Ports.Proxy)
-	uri := fmt.Sprintf("https://%s:%d/upload/testFile", s.VppProxyAddr(), s.Ports.Proxy)
+	configureVppProxy(s, "tls", proxyPort)
+	uri := fmt.Sprintf("https://%s:%d/upload/testFile", s.VppProxyAddr(), proxyPort)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
 func EnvoyProxyHttpGetTcpTest(s *EnvoyProxySuite) {
-	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.Ports.Proxy)
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }
 
 func EnvoyProxyHttpPutTcpTest(s *EnvoyProxySuite) {
-	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ProxyAddr(), s.Ports.Proxy)
+	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
@@ -155,7 +162,6 @@ func MirrorMultiThreadTest(s *NginxProxySuite) {
 	nginxMirroring(s, true)
 }
 
-// unstable, registered as solo
 func NginxMirroringTest(s *NginxProxySuite) {
 	nginxMirroring(s, false)
 }
@@ -167,35 +173,38 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 	s.CreateNginxProxyConfig(s.Containers.NginxProxy, multiThreadWorkers)
 	s.Containers.NginxProxy.Start()
 	vpp.WaitForApp("nginx-", 5)
-	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.Ports.Proxy)
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.ProxyPort())
 	s.CurlDownloadResource(uri)
 }
 
 func VppConnectProxyGetTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	configureVppProxy(s, "http", proxyPort)
 
-	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
-	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.ServerPort())
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
 }
 
 func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	configureVppProxy(s, "http", proxyPort)
 
-	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server+1)
-	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.ServerPort()+1)
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
 	_, log := s.CurlRequestViaTunnel(targetUri, proxyUri)
 	s.AssertContains(log, "HTTP/1.1 502 Bad Gateway")
 }
 
 func VppConnectProxyPutTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	configureVppProxy(s, "http", proxyPort)
 
-	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
+	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), proxyPort)
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.ServerPort())
 	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
 }
 
@@ -205,7 +214,7 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 		wg                                                               sync.WaitGroup
 	)
 	stop := make(chan struct{})
-	targetUri := fmt.Sprintf("%s:%d", s.ServerAddr(), s.Ports.Server)
+	targetUri := fmt.Sprintf("%s:%d", s.ServerAddr(), s.ServerPort())
 	s.Log("Running 30s test @ " + targetUri)
 
 	for i := 0; i < 1000; i++ {
@@ -308,18 +317,20 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 }
 
 func VppConnectProxyStressTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	configureVppProxy(s, "http", proxyPort)
 
 	// no goVPP less noise
 	s.Containers.VppProxy.VppInstance.Disconnect()
 
-	vppConnectProxyStressLoad(s, strconv.Itoa(int(s.Ports.Proxy)))
+	vppConnectProxyStressLoad(s, strconv.Itoa(int(proxyPort)))
 }
 
 func VppConnectProxyStressMTTest(s *VppProxySuite) {
+	var proxyPort uint16 = 8080
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
@@ -331,12 +342,12 @@ func VppConnectProxyStressMTTest(s *VppProxySuite) {
 	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
 	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	configureVppProxy(s, "http", proxyPort)
 
 	// no goVPP less noise
 	vppProxy.Disconnect()
 
-	vppConnectProxyStressLoad(s, strconv.Itoa(int(s.Ports.Proxy)))
+	vppConnectProxyStressLoad(s, strconv.Itoa(int(proxyPort)))
 }
 
 func VppProxyUdpTest(s *VppUdpProxySuite) {
@@ -344,8 +355,8 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
-	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.Ports.Server)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
 	b := make([]byte, 1500)
@@ -359,8 +370,8 @@ func VppProxyUdpMigrationMTTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
-	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.Ports.Server)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri udp://%s/%d", s.VppProxyAddr(), s.ProxyPort())
+	cmd += fmt.Sprintf(" client-uri udp://%s/%d", s.ServerAddr(), s.ServerPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
 	b := make([]byte, 1500)
@@ -381,11 +392,11 @@ func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
 	c := s.NewConnectUdpClient(s.MaxTimeout, true)
 	err := c.Dial(proxyAddress, targetUri)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -402,22 +413,22 @@ func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
 
 func VppConnectUdpInvalidTargetTest(s *VppUdpProxySuite) {
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
 
-	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/example.com/80/", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/example.com/80/", s.VppProxyAddr(), s.ProxyPort())
 	c := s.NewConnectUdpClient(s.MaxTimeout, true)
 	err := c.Dial(proxyAddress, targetUri)
 	s.AssertNotNil(err, "name resolution not supported")
 
-	targetUri = fmt.Sprintf("http://%s:%d/.well-known/masque/udp/1.2.3.4/800000000/", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri = fmt.Sprintf("http://%s:%d/.well-known/masque/udp/1.2.3.4/800000000/", s.VppProxyAddr(), s.ProxyPort())
 	c = s.NewConnectUdpClient(s.MaxTimeout, true)
 	err = c.Dial(proxyAddress, targetUri)
 	s.AssertNotNil(err, "invalid port number")
 
-	targetUri = fmt.Sprintf("http://%s:%d/masque/udp/1.2.3.4/80/", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri = fmt.Sprintf("http://%s:%d/masque/udp/1.2.3.4/80/", s.VppProxyAddr(), s.ProxyPort())
 	c = s.NewConnectUdpClient(s.MaxTimeout, true)
 	err = c.Dial(proxyAddress, targetUri)
 	s.AssertNotNil(err, "invalid prefix")
@@ -428,11 +439,11 @@ func VppConnectUdpInvalidCapsuleTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
 	c := s.NewConnectUdpClient(s.MaxTimeout, true)
 	err := c.Dial(proxyAddress, targetUri)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -458,11 +469,11 @@ func VppConnectUdpUnknownCapsuleTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
 	c := s.NewConnectUdpClient(s.MaxTimeout, true)
 	err := c.Dial(proxyAddress, targetUri)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -487,18 +498,18 @@ func VppConnectUdpClientCloseTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.ProxyPort(), s.ServerAddr(), s.ServerPort())
 	c := s.NewConnectUdpClient(s.MaxTimeout, true)
 	err := c.Dial(proxyAddress, targetUri)
 	s.AssertNil(err, fmt.Sprint(err))
 
 	err = c.Close()
 	s.AssertNil(err, fmt.Sprint(err))
-	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr())
+	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.ProxyPort(), s.ClientAddr())
 	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Peer.Ip4AddressString())
 	for nTries := 0; nTries < 10; nTries++ {
 		o := vppProxy.Vppctl("show session verbose 2")
@@ -519,8 +530,8 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 		wg                                                               sync.WaitGroup
 	)
 
-	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
-	targetUri := fmt.Sprintf("http://%s/.well-known/masque/udp/%s/%d/", proxyAddress, s.ServerAddr(), s.Ports.Server)
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.ProxyPort())
+	targetUri := fmt.Sprintf("http://%s/.well-known/masque/udp/%s/%d/", proxyAddress, s.ServerAddr(), s.ServerPort())
 
 	// warm-up
 	warmUp := s.NewConnectUdpClient(s.MaxTimeout, false)
@@ -618,7 +629,7 @@ func VppConnectUdpStressTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
 	// no goVPP less noise
@@ -633,7 +644,7 @@ func VppConnectUdpStressMTTest(s *VppUdpProxySuite) {
 
 	vppProxy := s.Containers.VppProxy.VppInstance
 	vppProxy.Disconnect()
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.ProxyPort())
 	s.Log(vppProxy.Vppctl(cmd))
 
 	// no goVPP less noise

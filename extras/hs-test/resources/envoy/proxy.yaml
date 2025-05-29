@@ -1,14 +1,14 @@
 admin:
   address:
     socket_address:
-      address: {{.ServerAddress}}
-      port_value: {{.EnvoyAdminPort}}
+      address: 0.0.0.0
+      port_value: 8081
 static_resources:
   listeners:
   - address:
       socket_address:
         protocol: TCP
-        address: {{.ProxyAddr}}
+        address: 0.0.0.0
         port_value: {{.ProxyPort}}
     filter_chains:
     - filters:

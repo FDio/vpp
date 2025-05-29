@@ -26,9 +26,6 @@ type Veths6Suite struct {
 		ServerApp *Container
 		ClientApp *Container
 	}
-	Ports struct {
-		Port1 string
-	}
 }
 
 func RegisterVeth6Tests(tests ...func(s *Veths6Suite)) {
@@ -49,7 +46,6 @@ func (s *Veths6Suite) SetupSuite() {
 	s.Containers.ClientVpp = s.GetContainerByName("client-vpp")
 	s.Containers.ServerApp = s.GetContainerByName("server-app")
 	s.Containers.ClientApp = s.GetContainerByName("client-app")
-	s.Ports.Port1 = s.GeneratePort()
 }
 
 func (s *Veths6Suite) SetupTest() {

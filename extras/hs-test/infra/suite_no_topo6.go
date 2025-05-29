@@ -27,10 +27,7 @@ type NoTopo6Suite struct {
 		Curl        *Container
 		Ab          *Container
 	}
-	Ports struct {
-		NginxServer string
-		Http        string
-	}
+	NginxServerPort string
 }
 
 func RegisterNoTopo6Tests(tests ...func(s *NoTopo6Suite)) {
@@ -52,8 +49,6 @@ func (s *NoTopo6Suite) SetupSuite() {
 	s.Containers.Wrk = s.GetContainerByName("wrk")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.Ab = s.GetContainerByName("ab")
-	s.Ports.Http = s.GeneratePort()
-	s.Ports.NginxServer = s.GeneratePort()
 }
 
 func (s *NoTopo6Suite) SetupTest() {
@@ -100,10 +95,8 @@ func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorker
 	}
 	values := struct {
 		Workers uint8
-		Port    string
 	}{
 		Workers: workers,
-		Port:    s.Ports.NginxServer,
 	}
 	container.CreateConfigFromTemplate(
 		"/nginx.conf",
@@ -115,6 +108,7 @@ func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorker
 // Creates container and config.
 func (s *NoTopo6Suite) CreateNginxServer() {
 	s.AssertNil(s.Containers.NginxServer.Create())
+	s.NginxServerPort = s.GetPortFromPpid()
 	nginxSettings := struct {
 		LogPrefix string
 		Address   string
@@ -123,7 +117,7 @@ func (s *NoTopo6Suite) CreateNginxServer() {
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   "[" + s.Interfaces.Tap.Ip6AddressString() + "]",
-		Port:      s.Ports.NginxServer,
+		Port:      s.NginxServerPort,
 		Timeout:   600,
 	}
 	s.Containers.NginxServer.CreateConfigFromTemplate(

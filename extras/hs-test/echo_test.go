@@ -17,13 +17,13 @@ func EchoBuiltinTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
-		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	o := clientVpp.Vppctl("test echo client nclients 100 bytes 1 verbose" +
 		" syn-timeout 100 test-timeout 100" +
-		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
 	s.Log(o)
 	s.AssertNotContains(o, "failed:")
 }
@@ -33,12 +33,12 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
-		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	o := clientVpp.Vppctl("test echo client nclients 4 bytes 8m throughput 16m" +
-		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/1234")
 	s.Log(o)
 	s.AssertContains(o, "Test started")
 	s.AssertContains(o, "Test finished")
@@ -60,7 +60,7 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 func TcpWithLossTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri tcp://%s/"+s.Ports.Port1,
+	serverVpp.Vppctl("test echo server uri tcp://%s/20022",
 		s.Interfaces.Server.Ip4AddressString())
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
@@ -72,8 +72,8 @@ func TcpWithLossTest(s *VethsSuite) {
 	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Server.Name())
 
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
-		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	output := clientVpp.Vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes bytes 50m",
+		s.Interfaces.Server.Ip4AddressString())
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
@@ -82,8 +82,8 @@ func TcpWithLossTest(s *VethsSuite) {
 func TcpWithLoss6Test(s *Veths6Suite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri tcp://%s/%s",
-		s.Interfaces.Server.Ip6AddressString(), s.Ports.Port1)
+	serverVpp.Vppctl("test echo server uri tcp://%s/20022",
+		s.Interfaces.Server.Ip6AddressString())
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -94,8 +94,8 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Server.Name())
 
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
-		s.Interfaces.Server.Ip6AddressString(), s.Ports.Port1)
+	output := clientVpp.Vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes bytes 50m",
+		s.Interfaces.Server.Ip6AddressString())
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
