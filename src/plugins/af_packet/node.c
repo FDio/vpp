@@ -149,15 +149,17 @@ buffer_add_to_chain (vlib_buffer_t *b, vlib_buffer_t *first_b,
 }
 
 static_always_inline void
-fill_gso_offload (vlib_buffer_t *b, u32 gso_size, u8 l4_hdr_sz)
+fill_gso_offload (vlib_buffer_t *b, vnet_virtio_net_hdr_t *vnet_hdr,
+		  u8 l4_hdr_sz)
 {
   b->flags |= VNET_BUFFER_F_GSO;
-  vnet_buffer2 (b)->gso_size = gso_size;
+  vnet_buffer2 (b)->gso_size = vnet_hdr->gso_size;
   vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_sz;
 }
 
 static_always_inline void
-fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
+fill_cksum_offload (vlib_buffer_t *b, vnet_virtio_net_hdr_t *vnet_hdr,
+		    u8 *l4_hdr_sz, u8 is_ip)
 {
   vnet_buffer_oflags_t oflags = 0;
   u16 l2hdr_sz = 0;
@@ -248,6 +250,12 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
 
   if (oflags)
     vnet_buffer_offload_flags_set (b, oflags);
+
+  if ((oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+		 VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)) == 0)
+    {
+      ASSERT (vnet_buffer (b)->l4_hdr_offset == vnet_hdr->csum_start);
+    }
 }
 
 always_inline uword
@@ -416,11 +424,11 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      if (is_cksum_gso_enabled)
 			{
 			  if (vnet_hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-			    fill_cksum_offload (first_b0, &l4_hdr_sz, is_ip);
+			    fill_cksum_offload (first_b0, vnet_hdr, &l4_hdr_sz,
+						is_ip);
 			  if (vnet_hdr->gso_type & (VIRTIO_NET_HDR_GSO_TCPV4 |
 						    VIRTIO_NET_HDR_GSO_TCPV6))
-			    fill_gso_offload (first_b0, vnet_hdr->gso_size,
-					      l4_hdr_sz);
+			    fill_gso_offload (first_b0, vnet_hdr, l4_hdr_sz);
 			}
 		    }
 		  else
@@ -670,11 +678,11 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  if (is_cksum_gso_enabled)
 		    {
 		      if (vnet_hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-			fill_cksum_offload (first_b0, &l4_hdr_sz, is_ip);
+			fill_cksum_offload (first_b0, vnet_hdr, &l4_hdr_sz,
+					    is_ip);
 		      if (vnet_hdr->gso_type & (VIRTIO_NET_HDR_GSO_TCPV4 |
 						VIRTIO_NET_HDR_GSO_TCPV6))
-			fill_gso_offload (first_b0, vnet_hdr->gso_size,
-					  l4_hdr_sz);
+			fill_gso_offload (first_b0, vnet_hdr, l4_hdr_sz);
 		    }
 		}
 	      else
