@@ -149,15 +149,17 @@ buffer_add_to_chain (vlib_buffer_t *b, vlib_buffer_t *first_b,
 }
 
 static_always_inline void
-fill_gso_offload (vlib_buffer_t *b, u32 gso_size, u8 l4_hdr_sz)
+fill_gso_offload (vlib_buffer_t *b, vnet_virtio_net_hdr_t *vnet_hdr,
+		  u8 l4_hdr_sz)
 {
   b->flags |= VNET_BUFFER_F_GSO;
-  vnet_buffer2 (b)->gso_size = gso_size;
+  vnet_buffer2 (b)->gso_size = vnet_hdr->gso_size;
   vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_sz;
 }
 
 static_always_inline void
-fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
+fill_cksum_offload (vlib_buffer_t *b, vnet_virtio_net_hdr_t *vnet_hdr,
+		    u8 *l4_hdr_sz, u8 is_ip)
 {
   vnet_buffer_oflags_t oflags = 0;
   u16 l2hdr_sz = 0;
@@ -208,6 +210,37 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
 		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 
       l4_proto = ip4->protocol;
+      if (l4_proto == IP_PROTOCOL_IP_IN_IP)
+	{
+	  vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
+	  ip4_header_t *ip4 =
+	    (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+	  vnet_buffer (b)->l4_hdr_offset =
+	    vnet_buffer (b)->l3_hdr_offset + ip4_header_bytes (ip4);
+	  l4_proto = ip4->protocol;
+	}
+      else if (l4_proto == IP_PROTOCOL_IPV6)
+	{
+	  vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
+	  ip6_header_t *ip6 =
+	    (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+	  u16 ip6_hdr_len = sizeof (ip6_header_t);
+	  if (ip6_ext_hdr (ip6->protocol))
+	    {
+	      ip6_ext_header_t *p = (void *) (ip6 + 1);
+	      ip6_hdr_len += ip6_ext_header_len (p);
+	      while (ip6_ext_hdr (p->next_hdr))
+		{
+		  ip6_hdr_len += ip6_ext_header_len (p);
+		  p = ip6_ext_next_header (p);
+		}
+	      l4_proto = p->next_hdr;
+	    }
+	  else
+	    l4_proto = ip6->protocol;
+	  vnet_buffer (b)->l4_hdr_offset =
+	    vnet_buffer (b)->l3_hdr_offset + ip6_hdr_len;
+	}
     }
   else if (ethertype == ETHERNET_TYPE_IP6)
     {
@@ -416,11 +449,11 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      if (is_cksum_gso_enabled)
 			{
 			  if (vnet_hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-			    fill_cksum_offload (first_b0, &l4_hdr_sz, is_ip);
+			    fill_cksum_offload (first_b0, vnet_hdr, &l4_hdr_sz,
+						is_ip);
 			  if (vnet_hdr->gso_type & (VIRTIO_NET_HDR_GSO_TCPV4 |
 						    VIRTIO_NET_HDR_GSO_TCPV6))
-			    fill_gso_offload (first_b0, vnet_hdr->gso_size,
-					      l4_hdr_sz);
+			    fill_gso_offload (first_b0, vnet_hdr, l4_hdr_sz);
 			}
 		    }
 		  else
@@ -670,11 +703,11 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  if (is_cksum_gso_enabled)
 		    {
 		      if (vnet_hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
-			fill_cksum_offload (first_b0, &l4_hdr_sz, is_ip);
+			fill_cksum_offload (first_b0, vnet_hdr, &l4_hdr_sz,
+					    is_ip);
 		      if (vnet_hdr->gso_type & (VIRTIO_NET_HDR_GSO_TCPV4 |
 						VIRTIO_NET_HDR_GSO_TCPV6))
-			fill_gso_offload (first_b0, vnet_hdr->gso_size,
-					  l4_hdr_sz);
+			fill_gso_offload (first_b0, vnet_hdr, l4_hdr_sz);
 		    }
 		}
 	      else
