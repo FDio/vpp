@@ -16,6 +16,23 @@
       "message": "Fixed all issues with test + API cleanliness. Thank you!\n\nTested further with this:\n$ grep vpp.api ~/sflow.py \nvpp \u003d VPPApiClient(bootstrapapi\u003dTrue, server_address\u003d\"/run/vpp/api.sock\")\napi_reply \u003d vpp.api.show_version()\napi_reply \u003d vpp.api.sflow_polling_interval_get()\napi_reply \u003d vpp.api.sflow_drop_monitoring_set(drop_M\u003dTrue)\napi_reply \u003d vpp.api.sflow_drop_monitoring_get()\n\nwhich outputs:\n\n$ ~/sflow.py \nshow_version_reply(_0\u003d1510, context\u003d2, retval\u003d0, program\u003d\u0027vpe\u0027, version\u003d\u002725.06-rc0~241-g69b46cf81\u0027, build_date\u003d\u00272025-05-22T22:23:43\u0027, build_directory\u003d\u0027/home/pim/src/vpp\u0027)\nsflow_polling_interval_get_reply(_0\u003d667, context\u003d3, polling_S\u003d20)\nsflow_drop_monitoring_set_reply(_0\u003d677, context\u003d4, retval\u003d0)\nsflow_drop_monitoring_get_reply(_0\u003d679, context\u003d5, drop_M\u003d1)\n\nLooks great. Can be merged as soon as CI passes.",
       "revId": "69b46cf818543209577cf5b015680d4294ad046e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab4d9ec4_674c8bf4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 26
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-29T12:52:50Z",
+      "side": 1,
+      "message": "I think we are good to merge. Dave, can you assist with +2 ?",
+      "revId": "69b46cf818543209577cf5b015680d4294ad046e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

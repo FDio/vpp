@@ -33,6 +33,24 @@
       "message": "Test failure is relevant\n\n03:13:25     ERROR: test_basic (test_sflow_drop.SFlowDropTestCase.test_basic) [test_sflow_drop.SFlowDropTestCase.test_basic]\n03:13:27 AttributeError: \u0027VppApiDynamicMethodHolder\u0027 object has no attribute \u0027sflow_drop_monitoring_set\u0027\n\nYou renamed it in PS #19 to simply `sflow_drop_monitoring`. Updating tests now.",
       "revId": "24b840fd2631ed7b105ba9d1d14e51c5dada783d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ca4077d_8fa88025",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-05-29T12:52:50Z",
+      "side": 1,
+      "message": "Tests are fixed!",
+      "parentUuid": "a659bd69_9ce2eb81",
+      "revId": "24b840fd2631ed7b105ba9d1d14e51c5dada783d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
