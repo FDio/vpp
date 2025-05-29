@@ -105,6 +105,8 @@ func (s *LdpSuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.CollectIperfLogs(s.Containers.ServerVpp)
 		s.CollectRedisServerLogs(s.Containers.ServerVpp)
+		s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error"))
+		s.Log(s.Containers.ClientVpp.VppInstance.Vppctl("show error"))
 	}
 
 	for _, container := range s.StartedContainers {
