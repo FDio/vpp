@@ -553,7 +553,7 @@ static_always_inline void
 vnet_buffer_offload_flags_clear (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 {
   vnet_buffer (b)->oflags &= ~oflags;
-  if (0 == vnet_buffer (b)->oflags)
+  if (0 == (vnet_buffer (b)->oflags & ~VNET_BUFFER_OFFLOAD_F_TNL_MASK))
     b->flags &= ~VNET_BUFFER_F_OFFLOAD;
 }
 

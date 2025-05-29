@@ -210,37 +210,6 @@ fill_cksum_offload (vlib_buffer_t *b, vnet_virtio_net_hdr_t *vnet_hdr,
 		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 
       l4_proto = ip4->protocol;
-      if (l4_proto == IP_PROTOCOL_IP_IN_IP)
-	{
-	  vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
-	  ip4_header_t *ip4 =
-	    (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-	  vnet_buffer (b)->l4_hdr_offset =
-	    vnet_buffer (b)->l3_hdr_offset + ip4_header_bytes (ip4);
-	  l4_proto = ip4->protocol;
-	}
-      else if (l4_proto == IP_PROTOCOL_IPV6)
-	{
-	  vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
-	  ip6_header_t *ip6 =
-	    (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-	  u16 ip6_hdr_len = sizeof (ip6_header_t);
-	  if (ip6_ext_hdr (ip6->protocol))
-	    {
-	      ip6_ext_header_t *p = (void *) (ip6 + 1);
-	      ip6_hdr_len += ip6_ext_header_len (p);
-	      while (ip6_ext_hdr (p->next_hdr))
-		{
-		  ip6_hdr_len += ip6_ext_header_len (p);
-		  p = ip6_ext_next_header (p);
-		}
-	      l4_proto = p->next_hdr;
-	    }
-	  else
-	    l4_proto = ip6->protocol;
-	  vnet_buffer (b)->l4_hdr_offset =
-	    vnet_buffer (b)->l3_hdr_offset + ip6_hdr_len;
-	}
     }
   else if (ethertype == ETHERNET_TYPE_IP6)
     {
