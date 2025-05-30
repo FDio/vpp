@@ -1282,8 +1282,6 @@ proxy_server_listen ()
 	    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	    sizeof (transport_endpt_crypto_cfg_t));
 	  ext_cfg->crypto.ckpair_index = pm->ckpair_index;
-	  /* TODO: remove when http/2 connect done */
-	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
 	}
     }
   else
