@@ -22,7 +22,8 @@ import (
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
-		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest)
+		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest,
+		VppH2ConnectProxyPutTest)
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
@@ -30,20 +31,6 @@ func init() {
 	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest, VppConnectUdpStressMTTest, VppConnectUdpStressTest)
 	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
-}
-
-func configureVppProxy(s *VppProxySuite, proto string, proxyPort uint16) {
-	vppProxy := s.Containers.VppProxy.VppInstance
-	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s:%d", proto, s.VppProxyAddr(), proxyPort)
-	if proto != "http" && proto != "https" && proto != "udp" {
-		proto = "tcp"
-	}
-	if proto != "http" && proto != "https" {
-		cmd += fmt.Sprintf(" client-uri %s://%s:%d", proto, s.ServerAddr(), s.Ports.Server)
-	}
-
-	output := vppProxy.Vppctl(cmd)
-	s.Log("proxy configured: " + output)
 }
 
 func VppProxyHttpGetTcpMTTest(s *VppProxySuite) {
@@ -71,9 +58,9 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
 	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
+	s.ConfigureVppProxy("tcp", s.Ports.Proxy)
 	if proto == "udp" {
-		configureVppProxy(s, "udp", s.Ports.Proxy)
+		s.ConfigureVppProxy("udp", s.Ports.Proxy)
 		proto = "-u"
 	} else {
 		proto = ""
@@ -111,14 +98,14 @@ func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
+	s.ConfigureVppProxy("tcp", s.Ports.Proxy)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResource(uri)
 }
 
 func VppProxyHttpGetTlsTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "tls", s.Ports.Proxy)
+	s.ConfigureVppProxy("tls", s.Ports.Proxy)
 	uri := fmt.Sprintf("https://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResource(uri)
 }
@@ -129,14 +116,14 @@ func VppProxyHttpPutTcpMTTest(s *VppProxySuite) {
 
 func VppProxyHttpPutTcpTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "tcp", s.Ports.Proxy)
+	s.ConfigureVppProxy("tcp", s.Ports.Proxy)
 	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
 func VppProxyHttpPutTlsTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "tls", s.Ports.Proxy)
+	s.ConfigureVppProxy("tls", s.Ports.Proxy)
 	uri := fmt.Sprintf("https://%s:%d/upload/testFile", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
@@ -173,7 +160,7 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 
 func VppConnectProxyGetTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
 	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
@@ -182,16 +169,27 @@ func VppConnectProxyGetTest(s *VppProxySuite) {
 
 func VppHttpsConnectProxyGetTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "https", s.Ports.Proxy)
+	s.ConfigureVppProxy("https", s.Ports.Proxy)
 
 	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
 	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
 }
 
+func VppH2ConnectProxyGetTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	s.ConfigureVppProxy("https", s.Ports.Proxy)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	_, log := s.CurlDownloadResourceViaTunnel(targetUri, proxyUri, "--proxy-http2")
+	// ALPN result check
+	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
+}
+
 func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
 	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server+1)
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
@@ -201,11 +199,22 @@ func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
 
 func VppConnectProxyPutTest(s *VppProxySuite) {
 	s.SetupNginxServer()
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
 	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
+}
+
+func VppH2ConnectProxyPutTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	s.ConfigureVppProxy("https", s.Ports.Proxy)
+
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
+	_, log := s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile, "--proxy-http2")
+	// ALPN result check
+	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
 }
 
 func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
@@ -320,7 +329,7 @@ func VppConnectProxyStressTest(s *VppProxySuite) {
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
 	// no goVPP less noise
 	s.Containers.VppProxy.VppInstance.Disconnect()
@@ -340,7 +349,7 @@ func VppConnectProxyStressMTTest(s *VppProxySuite) {
 	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
 	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
-	configureVppProxy(s, "http", s.Ports.Proxy)
+	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
 	// no goVPP less noise
 	vppProxy.Disconnect()
