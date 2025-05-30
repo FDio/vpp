@@ -36,10 +36,10 @@ func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs 
 	o, err := cmd.CombinedOutput()
 	s.AssertNil(err, string(o))
 
-	delete(s.Containers.ClientVpp.EnvVars, "VCL_CONFIG")
-	delete(s.Containers.ClientVpp.EnvVars, "LD_PRELOAD")
-	delete(s.Containers.ClientVpp.EnvVars, "VCL_DEBUG")
-	delete(s.Containers.ClientVpp.EnvVars, "LDP_DEBUG")
+	delete(s.Containers.ClientApp.EnvVars, "VCL_CONFIG")
+	delete(s.Containers.ClientApp.EnvVars, "LD_PRELOAD")
+	delete(s.Containers.ClientApp.EnvVars, "VCL_DEBUG")
+	delete(s.Containers.ClientApp.EnvVars, "LDP_DEBUG")
 	s.Containers.ClientVpp.VppInstance.Disconnect()
 	s.Containers.ClientVpp.VppInstance.Stop()
 	s.Containers.ClientVpp.Exec(false, "ip addr add dev %s %s", s.Interfaces.Client.Name(), s.Interfaces.Client.Ip4Address)
@@ -97,8 +97,8 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -4 -s -p " + s.Ports.Port1 + " --logfile " + s.IperfLogFileName(s.Containers.ServerVpp)
-		s.StartServerApp(s.Containers.ServerVpp, "iperf3", cmd, srvCh, stopServerCh)
+		cmd := "iperf3 -4 -s -p " + s.Ports.Port1 + " --logfile " + s.IperfLogFileName(s.Containers.ServerApp)
+		s.StartServerApp(s.Containers.ServerApp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
 	err := <-srvCh
@@ -107,7 +107,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 	go func() {
 		defer GinkgoRecover()
 		cmd := "iperf3 -c " + serverVethAddress + " -l 1460 -b 10g -J -p " + s.Ports.Port1 + " " + extraClientArgs
-		s.StartClientApp(s.Containers.ClientVpp, cmd, clnCh, clnRes)
+		s.StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
 	}()
 
 	s.AssertChannelClosed(time.Minute*4, clnCh)
