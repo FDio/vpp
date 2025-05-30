@@ -6,15 +6,21 @@
 package hst
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
+	"fd.io/hs-test/h2spec_extras"
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/summerwind/h2spec/config"
 )
 
 const (
@@ -124,6 +130,20 @@ func (s *VppProxySuite) SetupNginxServer() {
 	s.AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
+func (s *VppProxySuite) ConfigureVppProxy(proto string, proxyPort uint16) {
+	vppProxy := s.Containers.VppProxy.VppInstance
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri %s://%s:%d", proto, s.VppProxyAddr(), proxyPort)
+	if proto != "http" && proto != "https" && proto != "udp" {
+		proto = "tcp"
+	}
+	if proto != "http" && proto != "https" {
+		cmd += fmt.Sprintf(" client-uri %s://%s:%d", proto, s.ServerAddr(), s.Ports.Server)
+	}
+
+	output := vppProxy.Vppctl(cmd)
+	s.Log("proxy configured: " + output)
+}
+
 func (s *VppProxySuite) ServerAddr() string {
 	return s.Interfaces.Server.Ip4AddressString()
 }
@@ -163,23 +183,45 @@ func (s *VppProxySuite) CurlUploadResource(uri, file string) {
 	s.AssertNotContains(log, "Operation timed out")
 }
 
-func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string) {
-	args := fmt.Sprintf("-w @/tmp/write_out_download_connect --max-time %d --insecure --proxy-insecure -p -x %s --remote-name --output-dir /tmp %s", s.maxTimeout, proxyUri, uri)
+func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string, extraArgs ...string) (string, string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+		extras += " "
+	}
+	args := fmt.Sprintf("%s-w @/tmp/write_out_download_connect --max-time %d --insecure --proxy-insecure -p -x %s --remote-name --output-dir /tmp %s", extras, s.maxTimeout, proxyUri, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "CONNECT response code: 200")
+	if strings.Contains(extras, "proxy-http2") {
+		// in case of h2 connect response code is 000 in write out
+		s.AssertContains(log, "CONNECT tunnel established, response 200")
+	} else {
+		s.AssertContains(writeOut, "CONNECT response code: 200")
+	}
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
 	s.AssertNotContains(log, "Upgrade:")
+	return writeOut, log
 }
 
-func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
-	args := fmt.Sprintf("-w @/tmp/write_out_upload_connect --max-time %d --insecure --proxy-insecure -p -x %s -T %s %s", s.maxTimeout, proxyUri, file, uri)
+func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string, extraArgs ...string) (string, string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+		extras += " "
+	}
+	args := fmt.Sprintf("%s-w @/tmp/write_out_upload_connect --max-time %d --insecure --proxy-insecure -p -x %s -T %s %s", extras, s.maxTimeout, proxyUri, file, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
-	s.AssertContains(writeOut, "CONNECT response code: 200")
+	if strings.Contains(extras, "proxy-http2") {
+		// in case of h2 connect response code is 000 in write out
+		s.AssertContains(log, "CONNECT tunnel established, response 200")
+	} else {
+		s.AssertContains(writeOut, "CONNECT response code: 200")
+	}
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
 	s.AssertNotContains(log, "Upgrade:")
+	return writeOut, log
 }
 
 func handleConn(conn net.Conn) {
@@ -269,4 +311,73 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func()
 			}, SpecTimeout(TestTimeout))
 		}
 	}
+})
+
+var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, func() {
+	var s VppProxySuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	testCases := []struct {
+		desc string
+	}{
+		{desc: "extras/2/1"},
+		{desc: "extras/2/2"},
+		{desc: "extras/2/3"},
+		{desc: "extras/2/4"},
+	}
+
+	for _, test := range testCases {
+		test := test
+		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
+		It(testName, func(ctx SpecContext) {
+			s.Log(testName + ": BEGIN")
+			s.SetupNginxServer()
+			s.ConfigureVppProxy("https", s.Ports.Proxy)
+			path := fmt.Sprintf("%s:%d", s.ServerAddr(), s.Ports.Server)
+			conf := &config.Config{
+				Host:         s.VppProxyAddr(),
+				Port:         int(s.Ports.Proxy),
+				Path:         path,
+				Timeout:      time.Second * time.Duration(s.maxTimeout),
+				MaxHeaderLen: 4096,
+				TLS:          true,
+				Insecure:     true,
+				Sections:     []string{test.desc},
+				Verbose:      true,
+			}
+			// capture h2spec output so it will be in log
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			tg := h2spec_extras.Spec()
+			tg.Test(conf)
+
+			oChan := make(chan string)
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				oChan <- buf.String()
+			}()
+
+			// restore to normal state
+			w.Close()
+			os.Stdout = oldStdout
+			o := <-oChan
+			s.Log(o)
+			s.AssertEqual(0, tg.FailedCount)
+		})
+	}
+
 })
