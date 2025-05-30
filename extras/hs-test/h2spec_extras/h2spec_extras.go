@@ -6,6 +6,7 @@ import (
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/spec"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 )
 
 var key = "extras"
@@ -25,6 +26,7 @@ func Spec() *spec.TestGroup {
 	}
 
 	tg.AddTestGroup(FlowControl())
+	tg.AddTestGroup(ConnectMethod())
 
 	return tg
 }
@@ -164,6 +166,134 @@ func FlowControl() *spec.TestGroup {
 			// we don't send stream window update if stream is half-closed, so HEADERS frame should be received
 			conn.WriteData(streamID, true, []byte("CCC"))
 			return spec.VerifyHeadersFrame(conn, streamID)
+		},
+	})
+	return tg
+}
+
+func ConnectHeaders(c *config.Config) []hpack.HeaderField {
+
+	return []hpack.HeaderField{
+		spec.HeaderField(":method", "CONNECT"),
+		spec.HeaderField(":authority", c.Path),
+	}
+}
+
+func ConnectMethod() *spec.TestGroup {
+	tg := NewTestGroup("2", "CONNECT method")
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Tunnel closed by target",
+		Requirement: "A proxy that receives a TCP segment with the FIN bit set sends a DATA frame with the END_STREAM flag set.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			// send http/1.0 so target will close connection when send response
+			conn.WriteData(streamID, false, []byte("GET /index.html HTTP/1.0\r\n\r\n"))
+
+			// wait for DATA frame with END_STREAM flag set
+			var streamClosed = false
+			var lastEvent spec.Event
+			for !conn.Closed {
+				ev := conn.WaitEvent()
+				lastEvent = ev
+				switch event := ev.(type) {
+				case spec.DataFrameEvent:
+					if event.StreamEnded() {
+						streamClosed = true
+						goto done
+					}
+				case spec.TimeoutEvent:
+					goto done
+				}
+			}
+		done:
+			if !streamClosed {
+				return &spec.TestError{
+					Expected: []string{spec.ExpectedStreamClosed},
+					Actual:   lastEvent.String(),
+				}
+			}
+
+			// client is expected to send DATA frame with the END_STREAM flag set
+			conn.WriteData(streamID, true, []byte(""))
+
+			return nil
+		},
+	})
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Tunnel closed by client",
+		Requirement: "A proxy that receives a DATA frame with the END_STREAM flag set sends the attached data with the FIN bit set on the last TCP segment.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			conn.WriteData(streamID, false, []byte("GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n"))
+
+			// verify reception of response DATA frame
+			err = spec.VerifyEventType(conn, spec.EventDataFrame)
+			if err != nil {
+				return err
+			}
+
+			// close tunnel
+			conn.WriteData(streamID, true, []byte(""))
+
+			// verify reception of DATA frame with end stream flag set
+			actual, passed := conn.WaitEventByType(spec.EventDataFrame)
+			switch event := actual.(type) {
+			case spec.DataFrameEvent:
+				if event.StreamEnded() && event.Header().Length == 0 {
+					passed = true
+				} else {
+					passed = false
+				}
+			default:
+				passed = false
+			}
+
+			if !passed {
+				return &spec.TestError{
+					Expected: []string{spec.ExpectedStreamClosed},
+					Actual:   actual.String(),
+				}
+			}
+			return nil
 		},
 	})
 	return tg
