@@ -22,7 +22,8 @@ import (
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
-		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest)
+		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest,
+		VppH2ConnectProxyPutTest)
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
@@ -189,6 +190,17 @@ func VppHttpsConnectProxyGetTest(s *VppProxySuite) {
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
 }
 
+func VppH2ConnectProxyGetTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	configureVppProxy(s, "https", s.Ports.Proxy)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	_, log := s.CurlDownloadResourceViaTunnel(targetUri, proxyUri, "--proxy-http2")
+	// ALPN result check
+	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
+}
+
 func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
 	s.SetupNginxServer()
 	configureVppProxy(s, "http", s.Ports.Proxy)
@@ -206,6 +218,17 @@ func VppConnectProxyPutTest(s *VppProxySuite) {
 	proxyUri := fmt.Sprintf("http://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
 	s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile)
+}
+
+func VppH2ConnectProxyPutTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	configureVppProxy(s, "https", s.Ports.Proxy)
+
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
+	_, log := s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile, "--proxy-http2")
+	// ALPN result check
+	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
 }
 
 func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
