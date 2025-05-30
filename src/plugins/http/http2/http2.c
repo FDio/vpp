@@ -7,6 +7,7 @@
 #include <http/http2/frame.h>
 #include <http/http_private.h>
 #include <http/http_timer.h>
+#include <http/http_status_codes.h>
 
 #define HTTP2_WIN_SIZE_MAX     0x7FFFFFFF
 #define HTTP2_INITIAL_WIN_SIZE 65535
@@ -566,14 +567,19 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
 
   stream_id = req->stream_id;
 
+  /* tunnel established if 2xx (Successful) response to CONNECT */
+  req->base.is_tunnel =
+    (req->base.is_tunnel && http_status_code_str[msg.code][0] == '2');
+
   /* END_STREAM flag need to be set in HEADERS frame */
   if (msg.data.body_len)
     {
+      ASSERT (req->base.is_tunnel == 0);
       http_req_tx_buffer_init (&req->base, &msg);
       http_io_as_dequeue_notify (&req->base, n_deq);
     }
   else
-    flags |= HTTP2_FRAME_FLAG_END_STREAM;
+    flags |= req->base.is_tunnel ? 0 : HTTP2_FRAME_FLAG_END_STREAM;
 
   if (headers_len <= max_write)
     {
@@ -587,8 +593,16 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
 		    ((http_req_handle_t) req->base.hr_req_handle).req_index);
 	  http2_req_schedule_data_tx (hc, req);
 	}
+      else if (req->base.is_tunnel)
+	{
+	  /* cleanup some stuff we don't need anymore in tunnel mode */
+	  vec_free (req->base.headers);
+	}
       else
-	http2_stream_close (req, hc);
+	{
+	  /* otherwise we are done */
+	  http2_stream_close (req, hc);
+	}
     }
   else
     {
@@ -790,6 +804,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   http2_conn_ctx_t *h2c;
   hpack_request_control_data_t control_data;
   http_msg_t msg;
+  u8 *p;
   int rv;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
@@ -815,8 +830,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
       return HTTP_SM_STOP;
     }
-  if (control_data.method == HTTP_REQ_UNKNOWN ||
-      control_data.method == HTTP_REQ_CONNECT)
+  if (control_data.method == HTTP_REQ_UNKNOWN)
     {
       HTTP_DBG (1, "unsupported method");
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
@@ -842,12 +856,44 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
       return HTTP_SM_STOP;
     }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_AUTHORITY_PARSED) &&
-      control_data.method != HTTP_REQ_CONNECT)
+  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_AUTHORITY_PARSED))
     {
       HTTP_DBG (1, ":path pseudo-header missing in request");
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
       return HTTP_SM_STOP;
+    }
+  if (control_data.method == HTTP_REQ_CONNECT)
+    {
+      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
+	  control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+	{
+	  HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
+		       "CONNECT method");
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	  return HTTP_SM_STOP;
+	}
+      /* quick check if port is present */
+      p = control_data.authority + control_data.authority_len;
+      p--;
+      if (!isdigit (*p))
+	{
+	  HTTP_DBG (1, "port not present in authority");
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	  return HTTP_SM_STOP;
+	}
+      p--;
+      for (; p > control_data.authority; p--)
+	{
+	  if (!isdigit (*p))
+	    break;
+	}
+      if (*p != ':')
+	{
+	  HTTP_DBG (1, "port not present in authority");
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	  return HTTP_SM_STOP;
+	}
+      req->base.is_tunnel = 1;
     }
 
   req->base.control_data_len = control_data.control_data_len;
@@ -867,7 +913,9 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
       http_io_as_add_want_read_ntf (&req->base);
     }
   /* TODO: message framing without content length using END_STREAM flag */
-  if (req->base.body_len == 0 && req->stream_state == HTTP2_STREAM_STATE_OPEN)
+  if (req->base.body_len == 0 &&
+      req->stream_state == HTTP2_STREAM_STATE_OPEN &&
+      control_data.method != HTTP_REQ_CONNECT)
     {
       HTTP_DBG (1, "no content-length and DATA frame expected");
       *error = HTTP2_ERROR_INTERNAL_ERROR;
@@ -875,14 +923,22 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
     }
   req->base.to_recv = req->base.body_len;
 
-  req->base.target_path_len = control_data.path_len;
-  req->base.target_path_offset = control_data.path - wrk->header_list;
-  /* drop leading slash */
-  req->base.target_path_offset++;
-  req->base.target_path_len--;
   req->base.target_query_offset = 0;
   req->base.target_query_len = 0;
-  http_identify_optional_query (&req->base, wrk->header_list);
+  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+    {
+      req->base.target_path_len = control_data.path_len;
+      req->base.target_path_offset = control_data.path - wrk->header_list;
+      /* drop leading slash */
+      req->base.target_path_offset++;
+      req->base.target_path_len--;
+      http_identify_optional_query (&req->base, wrk->header_list);
+    }
+  else
+    {
+      req->base.target_path_len = 0;
+      req->base.target_path_offset = 0;
+    }
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = control_data.method;
@@ -953,6 +1009,14 @@ http2_req_state_transport_io_more_data (http_conn_t *hc, http2_req_t *req,
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
+			   transport_send_params_t *sp, http2_error_t *error)
+{
+  HTTP_DBG (1, "tunnel received data from client");
+  return HTTP_SM_STOP;
+}
+
 /*************************************/
 /* request state machine handlers TX */
 /*************************************/
@@ -976,7 +1040,9 @@ http2_req_state_wait_app_reply (http_conn_t *hc, http2_req_t *req,
   clib_llist_add_tail (wrk->req_pool, sched_list, req, he);
   http2_conn_schedule (h2c, hc->c_thread_index);
 
-  http_req_state_change (&req->base, HTTP_REQ_STATE_APP_IO_MORE_DATA);
+  http_req_state_change (&req->base, req->base.is_tunnel ?
+				       HTTP_REQ_STATE_TUNNEL :
+				       HTTP_REQ_STATE_APP_IO_MORE_DATA);
   http_req_deschedule (&req->base, sp);
 
   return HTTP_SM_STOP;
@@ -1004,6 +1070,14 @@ http2_req_state_app_io_more_data (http_conn_t *hc, http2_req_t *req,
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http2_req_state_tunnel_tx (http_conn_t *hc, http2_req_t *req,
+			   transport_send_params_t *sp, http2_error_t *error)
+{
+  HTTP_DBG (1, "tunnel received data from target");
+  return HTTP_SM_STOP;
+}
+
 /*************************/
 /* request state machine */
 /*************************/
@@ -1021,7 +1095,7 @@ static http2_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait transport method */
   http2_req_state_wait_app_reply,
   http2_req_state_app_io_more_data,
-  0, /* tunnel */
+  http2_req_state_tunnel_tx,
   0, /* udp tunnel */
 };
 
@@ -1033,7 +1107,7 @@ static http2_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http2_req_state_wait_transport_method,
   0, /* wait app reply */
   0, /* app io more data */
-  0, /* tunnel */
+  http2_req_state_tunnel_rx,
   0, /* udp tunnel */
 };
 
