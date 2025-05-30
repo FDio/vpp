@@ -163,23 +163,35 @@ func (s *VppProxySuite) CurlUploadResource(uri, file string) {
 	s.AssertNotContains(log, "Operation timed out")
 }
 
-func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string) {
-	args := fmt.Sprintf("-w @/tmp/write_out_download_connect --max-time %d --insecure --proxy-insecure -p -x %s --remote-name --output-dir /tmp %s", s.maxTimeout, proxyUri, uri)
+func (s *VppProxySuite) CurlDownloadResourceViaTunnel(uri string, proxyUri string, extraArgs ...string) (string, string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+		extras += " "
+	}
+	args := fmt.Sprintf("%s-w @/tmp/write_out_download_connect --max-time %d --insecure --proxy-insecure -p -x %s --remote-name --output-dir /tmp %s", extras, s.maxTimeout, proxyUri, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "CONNECT response code: 200")
 	s.AssertContains(writeOut, "GET response code: 200")
 	s.AssertNotContains(log, "bytes remaining to read")
 	s.AssertNotContains(log, "Operation timed out")
 	s.AssertNotContains(log, "Upgrade:")
+	return writeOut, log
 }
 
-func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string) {
-	args := fmt.Sprintf("-w @/tmp/write_out_upload_connect --max-time %d --insecure --proxy-insecure -p -x %s -T %s %s", s.maxTimeout, proxyUri, file, uri)
+func (s *VppProxySuite) CurlUploadResourceViaTunnel(uri, proxyUri, file string, extraArgs ...string) (string, string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+		extras += " "
+	}
+	args := fmt.Sprintf("%s-w @/tmp/write_out_upload_connect --max-time %d --insecure --proxy-insecure -p -x %s -T %s %s", extras, s.maxTimeout, proxyUri, file, uri)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(writeOut, "CONNECT response code: 200")
 	s.AssertContains(writeOut, "PUT response code: 201")
 	s.AssertNotContains(log, "Operation timed out")
 	s.AssertNotContains(log, "Upgrade:")
+	return writeOut, log
 }
 
 func handleConn(conn net.Conn) {

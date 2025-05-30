@@ -22,7 +22,7 @@ import (
 
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
-		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest)
+		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest)
 	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
 		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
@@ -187,6 +187,16 @@ func VppHttpsConnectProxyGetTest(s *VppProxySuite) {
 	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
 	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResourceViaTunnel(targetUri, proxyUri)
+}
+
+func VppH2ConnectProxyGetTest(s *VppProxySuite) {
+	s.SetupNginxServer()
+	configureVppProxy(s, "https", s.Ports.Proxy)
+
+	targetUri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
+	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	_, log := s.CurlDownloadResourceViaTunnel(targetUri, proxyUri, "--proxy-http2")
+	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
 }
 
 func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
