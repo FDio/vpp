@@ -42,7 +42,7 @@ func (s *LdpSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2peerVeth")
-	s.LoadContainerTopology("2peerVethLdp")
+	s.LoadContainerTopology("2peerVeth")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.Server = s.GetInterfaceByName("srv")
 	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
@@ -77,17 +77,15 @@ func (s *LdpSuite) SetupTest() {
 	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
-	s.Containers.ServerVpp.AddEnvVar("VCL_CONFIG", s.Containers.ServerVpp.GetContainerWorkDir()+"/vcl.conf")
-	s.Containers.ClientVpp.AddEnvVar("VCL_CONFIG", s.Containers.ClientVpp.GetContainerWorkDir()+"/vcl.conf")
-
 	for _, container := range s.StartedContainers {
+		container.AddEnvVar("VCL_CONFIG", container.GetContainerWorkDir()+"/vcl.conf")
 		container.AddEnvVar("LD_PRELOAD", "/usr/lib/libvcl_ldpreload.so")
 		container.AddEnvVar("LDP_DEBUG", "0")
 		container.AddEnvVar("VCL_DEBUG", "0")
 	}
 
-	s.CreateVclConfig(s.Containers.ServerVpp)
-	s.CreateVclConfig(s.Containers.ClientVpp)
+	s.CreateVclConfig(s.Containers.ServerApp)
+	s.CreateVclConfig(s.Containers.ClientApp)
 	s.SetupServerVpp(s.Containers.ServerVpp)
 	s.setupClientVpp(s.Containers.ClientVpp)
 
@@ -103,10 +101,10 @@ func (s *LdpSuite) SetupTest() {
 
 func (s *LdpSuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
-		s.CollectIperfLogs(s.Containers.ServerVpp)
-		s.CollectRedisServerLogs(s.Containers.ServerVpp)
-		s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error"))
-		s.Log(s.Containers.ClientVpp.VppInstance.Vppctl("show error"))
+		s.CollectIperfLogs(s.Containers.ServerApp)
+		s.CollectRedisServerLogs(s.Containers.ServerApp)
+		s.Log(s.Containers.ServerApp.VppInstance.Vppctl("show error"))
+		s.Log(s.Containers.ServerApp.VppInstance.Vppctl("show error"))
 	}
 
 	for _, container := range s.StartedContainers {
