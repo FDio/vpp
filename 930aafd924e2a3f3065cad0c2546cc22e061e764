@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "930aafd924e2a3f3065cad0c2546cc22e061e764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "568ce286_57f84824",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-05-31T21:21:16Z",
+      "side": 1,
+      "message": "I wonder what\u0027s going on here. It works locally but not in CI?",
+      "revId": "930aafd924e2a3f3065cad0c2546cc22e061e764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
