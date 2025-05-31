@@ -97,7 +97,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	go func() {
 		defer GinkgoRecover()
-		cmd := "iperf3 -4 -s -p " + s.Ports.Port1 + " --logfile " + s.IperfLogFileName(s.Containers.ServerApp)
+		cmd := "sh -c \"iperf3 -4 -s -p " + s.Ports.Port1 + " > " + s.IperfLogFileName(s.Containers.ServerApp) + " 2>&1\""
 		s.StartServerApp(s.Containers.ServerApp, "iperf3", cmd, srvCh, stopServerCh)
 	}()
 
@@ -112,7 +112,15 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	s.AssertChannelClosed(time.Minute*4, clnCh)
 	output := <-clnRes
-	result := s.ParseJsonIperfOutput(output)
+	// VCL/LDP debugging can pollute output so find the first occurrence of a curly brace to locate the start of JSON data
+	jsonStart := 0
+	for i, b := range output {
+		if b == '{' {
+			jsonStart = i
+			break
+		}
+	}
+	result := s.ParseJsonIperfOutput(output[jsonStart:])
 	s.LogJsonIperfOutput(result)
 
 	return result
