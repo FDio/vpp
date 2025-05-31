@@ -2813,8 +2813,13 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
 
       for (i = 0; i < n_mq_evts; i++)
 	{
-	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 >= VCL_EP_PIPEFD_EVT))
 	    {
+	      if (wrk->mq_events[i].data.u32 == VCL_EP_PIPEFD_EVT)
+		{
+		  vcl_api_retry_attach (wrk);
+		  continue;
+		}
 	      vcl_api_handle_disconnect (wrk);
 	      continue;
 	    }
