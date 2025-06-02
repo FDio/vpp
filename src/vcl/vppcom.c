@@ -1482,6 +1482,7 @@ vppcom_app_create (const char *app_name)
   vcm->main_cpu = pthread_self ();
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
+  vcl_init_epoll_fns ();
   fifo_segment_main_init (&vcm->segment_main, (uword) ~0,
 			  20 /* timeout in secs */);
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
@@ -2797,8 +2798,8 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
 
   do
     {
-      n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			      vec_len (wrk->mq_events), time_to_wait);
+      n_mq_evts = vcm->vcl_epoll_wait (wrk->mqs_epfd, wrk->mq_events,
+				       vec_len (wrk->mq_events), time_to_wait);
       if (n_mq_evts < 0)
 	{
 	  if (errno == EINTR)
@@ -3597,8 +3598,8 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 
   do
     {
-      n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			      vec_len (wrk->mq_events), timeout_ms);
+      n_mq_evts = vcm->vcl_epoll_wait (wrk->mqs_epfd, wrk->mq_events,
+				       vec_len (wrk->mq_events), timeout_ms);
       if (n_mq_evts < 0)
 	{
 	  if (errno == EINTR)
