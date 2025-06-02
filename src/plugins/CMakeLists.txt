@@ -25,7 +25,7 @@ FILE(GLOB files RELATIVE
 )
 
 set(VPP_EXCLUDED_PLUGINS
-  ""
+  "af_xdp"
   CACHE
   STRING "Comma-separated list of core plugins excluded from packaging and tests"
 )
