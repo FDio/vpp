@@ -28,7 +28,7 @@ func init() {
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
 		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest)
 	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest, VppConnectUdpStressMTTest, VppConnectUdpStressTest)
-	RegisterEnvoyProxyTests(EnvoyProxyHttpGetTcpTest, EnvoyProxyHttpPutTcpTest)
+	RegisterEnvoyProxySoloTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
 }
 
@@ -141,12 +141,12 @@ func VppProxyHttpPutTlsTest(s *VppProxySuite) {
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
 
-func EnvoyProxyHttpGetTcpTest(s *EnvoyProxySuite) {
+func EnvoyHttpGetTcpTest(s *EnvoyProxySuite) {
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResource(uri)
 }
 
-func EnvoyProxyHttpPutTcpTest(s *EnvoyProxySuite) {
+func EnvoyHttpPutTcpTest(s *EnvoyProxySuite) {
 	uri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ProxyAddr(), s.Ports.Proxy)
 	s.CurlUploadResource(uri, CurlContainerTestFile)
 }
