@@ -39,6 +39,18 @@ OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
 
+# Set up the local registry before creating containers
+echo "=== Setting up local registry ==="
+if [ -x "$(dirname "$0")/../docker/setup-local-registry.sh" ]; then
+  "$(dirname "$0")/../docker/setup-local-registry.sh"
+else
+  echo "Warning: setup-local-registry.sh not found or not executable"
+  echo "Attempting to create and use local registry at localhost:5000"
+  if ! docker ps | grep -q "local-registry"; then
+    docker run -d --restart=always -p 5000:5000 --name local-registry registry:2
+  fi
+fi
+
 if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   mkdir -p "${DOCKER_CACHE_DIR}"
   DOCKER_HST_BUILDER="hst_builder"
@@ -74,31 +86,28 @@ if [ "$res" -ne 0 ]; then
 	exit 1
 fi
 
-docker_build () {
-    tag=$1
-    dockername=$2
-    set -ex
-    # shellcheck disable=2086
-    docker buildx build ${DOCKER_CACHE_ARGS}  \
-      --build-arg UBUNTU_VERSION              \
-      --build-arg OS_ARCH="$OS_ARCH"          \
-      --build-arg http_proxy="$HTTP_PROXY"    \
-      --build-arg https_proxy="$HTTP_PROXY"   \
-      --build-arg HTTP_PROXY="$HTTP_PROXY"    \
-      --build-arg HTTPS_PROXY="$HTTP_PROXY"   \
-      -t "$tag" -f docker/Dockerfile."$dockername" .
-    set +ex
-}
+# Use the build-images.sh script to build all containers
+echo "=== Building all containers using build-images.sh ==="
+(
+    # Export necessary environment variables for build-images.sh
+    export BASE_TAG="localhost:5000/vpp-test-base:latest"
+    export OS_ARCH
+    export UBUNTU_VERSION
+    export HTTP_PROXY
+    export HTTPS_PROXY
+    export NO_PROXY
+    export DOCKER_CACHE_DIR="${DOCKER_CACHE_DIR}"
+    export DOCKER_HST_BUILDER="${DOCKER_HST_BUILDER}"
 
-docker_build hs-test/vpp vpp
-docker_build hs-test/nginx-ldp nginx
-docker_build hs-test/nginx-server nginx-server
-docker_build hs-test/curl curl
-docker_build hs-test/envoy envoy
-docker_build hs-test/nginx-http3 nginx-http3
-docker_build hs-test/ab ab
-docker_build hs-test/wrk wrk
-docker_build hs-test/h2load h2load
+    # Run the build script
+    ./script/build-images.sh
+)
+
+# Check if the build was successful
+if [ $? -ne 0 ]; then
+    echo "Failed to build Docker images. Check the output above for errors."
+    exit 1
+fi
 
 # make it multi-user friendly
 if [ -d "${DOCKER_CACHE_DIR}" ] ; then
