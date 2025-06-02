@@ -25,8 +25,10 @@ typedef struct
   clib_thread_index_t thread_index;
   u64 to_recv;
   u8 is_closed;
+  u8 body_over_limit;
   hc_stats_t stats;
   u64 data_offset;
+  u64 body_recv;
   u8 *resp_headers;
   u8 *http_response;
   u8 *response_status;
@@ -78,11 +80,13 @@ typedef struct
   u32 private_segment_size;
   u32 prealloc_fifos;
   u32 fifo_size;
+  u32 rx_fifo_size;
   u8 *appns_id;
   u64 appns_secret;
   clib_spinlock_t lock;
   bool was_transport_closed;
   u32 ckpair_index;
+  u64 max_body_size;
 } hc_main_t;
 
 typedef enum
@@ -213,6 +217,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   clib_spinlock_unlock_if_init (&hcm->lock);
 
   hc_session->thread_index = s->thread_index;
+  hc_session->body_recv = 0;
   s->opaque = hc_session->session_index;
   wrk->session_index = hc_session->session_index;
 
@@ -422,11 +427,17 @@ hc_rx_callback (session_t *s)
 	{
 	  goto done;
 	}
-      vec_validate (hc_session->http_response, msg.data.body_len - 1);
+      if (msg.data.body_len > hcm->max_body_size)
+	hc_session->body_over_limit = true;
+      vec_validate (hc_session->http_response,
+		    (hc_session->body_over_limit ? hcm->rx_fifo_size - 1 :
+						   msg.data.body_len - 1));
       vec_reset_length (hc_session->http_response);
     }
 
-  max_deq = svm_fifo_max_dequeue (s->rx_fifo);
+  max_deq = (svm_fifo_max_dequeue (s->rx_fifo) > hcm->max_body_size ?
+	       hcm->rx_fifo_size :
+	       svm_fifo_max_dequeue (s->rx_fifo));
   if (!max_deq)
     {
       goto done;
@@ -443,9 +454,11 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
-  vec_set_len (hc_session->http_response, curr + n_deq);
+  if (!hc_session->body_over_limit)
+    vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
+  hc_session->body_recv += rv;
 
 done:
   if (hc_session->to_recv == 0)
@@ -547,6 +560,7 @@ hc_attach ()
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hcm->prealloc_fifos;
   a->options[APP_OPTIONS_TLS_ENGINE] = CRYPTO_ENGINE_OPENSSL;
+  hcm->rx_fifo_size = a->options[APP_OPTIONS_RX_FIFO_SIZE];
   if (hcm->appns_id)
     {
       a->namespace_id = hcm->appns_id;
@@ -718,9 +732,14 @@ hc_get_event (vlib_main_t *vm)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
-			   hc_session->resp_headers,
-			   hc_session->http_response);
+	  vlib_cli_output (vm, "< %v\n< %v\n", hc_session->response_status,
+			   hc_session->resp_headers);
+	  if (hc_session->body_over_limit)
+	    vlib_cli_output (
+	      vm, "* message body over limit, read total %llu bytes",
+	      hc_session->body_recv);
+	  else
+	    vlib_cli_output (vm, "%v", hc_session->http_response);
 	}
       break;
     case HC_REPEAT_DONE:
@@ -853,6 +872,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
   hcm->was_transport_closed = false;
+  /* default max - 64MB */
+  hcm->max_body_size = 64 << 20;
   hc_stats.request_count = 0;
   hc_stats.elapsed_time = 0;
 
@@ -916,6 +937,9 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
       else if (unformat (line_input, "prealloc-fifos %d",
 			 &hcm->prealloc_fifos))
+	;
+      else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
+			 &hcm->max_body_size))
 	;
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &mem_size))
@@ -1031,7 +1055,8 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[save-to <filename>] [header <Key:Value>] [verbose] "
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
-    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]",
+    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
+    "[max-body-size <nM|G>]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
