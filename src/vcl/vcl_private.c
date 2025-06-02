@@ -15,8 +15,6 @@
 
 #include <vcl/vcl_private.h>
 
-static pthread_key_t vcl_worker_stop_key;
-
 vcl_mq_evt_conn_t *
 vcl_mq_evt_conn_alloc (vcl_worker_t * wrk)
 {
@@ -170,22 +168,6 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
   clib_bitmap_free (wrk->ex_bitmap);
   vcl_worker_free (wrk);
   clib_spinlock_unlock (&vcm->workers_lock);
-}
-
-static void
-vcl_worker_cleanup_cb (void *arg)
-{
-  vcl_worker_t *wrk;
-  u32 wrk_index;
-
-  wrk_index = vcl_get_worker_index ();
-  wrk = vcl_worker_get_if_valid (wrk_index);
-  if (!wrk)
-    return;
-
-  vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
-  vcl_set_worker_index (~0);
-  VDBG (0, "cleaned up worker %u", wrk_index);
 }
 
 void
@@ -379,10 +361,6 @@ vcl_worker_register_with_vpp (void)
       clib_spinlock_unlock (&vcm->workers_lock);
       return -1;
     }
-  if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup_cb))
-    VDBG (0, "failed to add pthread cleanup function");
-  if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
-    VDBG (0, "failed to setup key value");
 
   clib_spinlock_unlock (&vcm->workers_lock);
 
