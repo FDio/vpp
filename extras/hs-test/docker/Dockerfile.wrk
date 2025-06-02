@@ -1,9 +1,7 @@
+# wrk HTTP benchmarking container that uses the base image
 ARG UBUNTU_VERSION=22.04
+FROM localhost:5000/vpp-test-base:latest
 
-FROM ubuntu:${UBUNTU_VERSION}
-
-RUN apt-get update \
- && apt-get install -y wrk \
- && rm -rf /var/lib/apt/lists/*
+# wrk is installed in the base image
 
 ENTRYPOINT ["wrk"]
