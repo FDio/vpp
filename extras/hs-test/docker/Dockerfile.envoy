@@ -1,5 +1,8 @@
+# Envoy container 
+# Note: This doesn't use our base image as it requires the specific envoy-contrib base
 FROM envoyproxy/envoy-contrib:v1.31-latest
 
+# Add any extra configuration/setup needed
 RUN chmod go+r /etc/envoy/envoy.yaml
 RUN chown envoy:envoy /dev/stdout /dev/stderr
 
