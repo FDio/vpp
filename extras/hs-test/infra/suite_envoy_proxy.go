@@ -65,6 +65,7 @@ func (s *EnvoyProxySuite) SetupSuite() {
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Ports.Nginx = s.GeneratePortAsInt()
 	s.Ports.Proxy = s.GeneratePortAsInt()
+	s.Ports.EnvoyAdmin = s.GeneratePortAsInt()
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
