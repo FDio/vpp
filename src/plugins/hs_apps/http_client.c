@@ -25,6 +25,7 @@ typedef struct
   clib_thread_index_t thread_index;
   u64 to_recv;
   u8 is_closed;
+  u8 body_over_limit;
   hc_stats_t stats;
   u64 data_offset;
   u8 *resp_headers;
@@ -54,6 +55,7 @@ typedef struct
 {
   u32 app_index;
   u32 cli_node_index;
+  vlib_main_t *cli_main;
   u8 attached;
   u8 *uri;
   session_endpoint_cfg_t connect_sep;
@@ -83,6 +85,7 @@ typedef struct
   clib_spinlock_t lock;
   bool was_transport_closed;
   u32 ckpair_index;
+  u64 max_body_size;
 } hc_main_t;
 
 typedef enum
@@ -96,6 +99,7 @@ typedef enum
 
 static hc_main_t hc_main;
 static hc_stats_t hc_stats;
+const u64 rx_ignore_buffer_size = 8 << 20;
 
 static inline hc_worker_t *
 hc_worker_get (clib_thread_index_t thread_index)
@@ -422,11 +426,23 @@ hc_rx_callback (session_t *s)
 	{
 	  goto done;
 	}
-      vec_validate (hc_session->http_response, msg.data.body_len - 1);
+      if (msg.data.body_len > hcm->max_body_size)
+	{
+	  vlib_cli_output (hcm->cli_main,
+			   "Response body too large (%llu bytes), finishing "
+			   "the request and ignoring the body!",
+			   msg.data.body_len);
+	  hc_session->body_over_limit = true;
+	}
+      vec_validate (hc_session->http_response,
+		    (hc_session->body_over_limit ? rx_ignore_buffer_size :
+						   msg.data.body_len - 1));
       vec_reset_length (hc_session->http_response);
     }
 
-  max_deq = svm_fifo_max_dequeue (s->rx_fifo);
+  max_deq = (svm_fifo_max_dequeue (s->rx_fifo) > hcm->max_body_size ?
+	       rx_ignore_buffer_size :
+	       svm_fifo_max_dequeue (s->rx_fifo));
   if (!max_deq)
     {
       goto done;
@@ -443,7 +459,8 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
-  vec_set_len (hc_session->http_response, curr + n_deq);
+  if (!hc_session->body_over_limit)
+    vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
 
@@ -853,6 +870,9 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
   hcm->was_transport_closed = false;
+  hcm->cli_main = vm;
+  /* default max - 64MB */
+  hcm->max_body_size = 64 << 20;
   hc_stats.request_count = 0;
   hc_stats.elapsed_time = 0;
 
@@ -916,6 +936,9 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
       else if (unformat (line_input, "prealloc-fifos %d",
 			 &hcm->prealloc_fifos))
+	;
+      else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
+			 &hcm->max_body_size))
 	;
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &mem_size))
@@ -1031,7 +1054,8 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[save-to <filename>] [header <Key:Value>] [verbose] "
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
-    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]",
+    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
+    "[max-body-size <nM|G>]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
