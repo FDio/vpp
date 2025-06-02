@@ -52,6 +52,24 @@
       "parentUuid": "3f5c75d9_0fdb6191",
       "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5d61486_770450fa",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-06-02T09:54:31Z",
+      "side": 1,
+      "message": "GSO is implemented as a feature arc, and it must be explicitly enabled on tunnel and virtual interfaces to function.",
+      "parentUuid": "3035b7d7_ef6b44ac",
+      "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
