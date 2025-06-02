@@ -24,6 +24,13 @@
 #define VLS_WORKER_RPC_TIMEOUT 3 /* timeout to wait rpc response. */
 
 typedef int vls_handle_t;
+typedef struct vls_epoll_fns_
+{
+  int (*epoll_create1_fn) (int flags);
+  int (*epoll_ctl_fn) (int epfd, int op, int fd, struct epoll_event *event);
+  int (*epoll_wait_fn) (int epfd, struct epoll_event *events, int maxevents,
+			int timeout);
+} vls_epoll_fns_t;
 
 vls_handle_t vls_create (uint8_t proto, uint8_t is_nonblocking);
 int vls_shutdown (vls_handle_t vlsh, int how);
@@ -57,9 +64,9 @@ vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 int vls_app_create (char *app_name);
 unsigned char vls_use_eventfd (void);
 unsigned char vls_mt_wrk_supported (void);
-int vls_use_real_epoll (void);
 int vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd);
 int vls_get_libc_epfd (vls_handle_t ep_vlsh);
+void vls_set_epoll_fns (vls_epoll_fns_t ep_fns);
 void vls_register_vcl_worker (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */

@@ -48,7 +48,7 @@ vcl_mq_epoll_add_api_sock (vcl_worker_t *wrk)
   int rv;
 
   e.data.u32 = VCL_EP_SAPIFD_EVT;
-  rv = epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, cs->fd, &e);
+  rv = vcm->vcl_epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, cs->fd, &e);
   if (rv != EEXIST && rv < 0)
     return -1;
 
@@ -77,7 +77,7 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
 
   e.events = EPOLLIN;
   e.data.u32 = mqc_index;
-  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
+  if (vcm->vcl_epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
     {
       VDBG (0, "failed to add mq eventfd to mq epoll fd");
       return -1;
@@ -101,7 +101,7 @@ vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index)
     return -1;
 
   mqc = vcl_mq_evt_conn_get (wrk, mqc_index);
-  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, mqc->mq_fd, 0) < 0)
+  if (vcm->vcl_epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, mqc->mq_fd, 0) < 0)
     {
       VDBG (0, "failed to del mq eventfd to mq epoll fd");
       return -1;
@@ -187,8 +187,8 @@ vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk)
   struct epoll_event evt = {};
   evt.events = EPOLLIN;
   evt.data.u32 = VCL_EP_PIPEFD_EVT;
-  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, wrk->detached_pipefds[0],
-		 &evt) < 0)
+  if (vcm->vcl_epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD,
+			  wrk->detached_pipefds[0], &evt) < 0)
     {
       VDBG (0, "failed to add mq eventfd to mq epoll fd");
       exit (1);
@@ -211,8 +211,8 @@ vcl_worker_detached_signal_mq (vcl_worker_t *wrk)
 void
 vcl_worker_detached_stop_signal_mq (vcl_worker_t *wrk)
 {
-  if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, wrk->detached_pipefds[0], 0) <
-      0)
+  if (vcm->vcl_epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL,
+			  wrk->detached_pipefds[0], 0) < 0)
     {
       VDBG (0, "failed to del mq eventfd to mq epoll fd");
       exit (1);
@@ -325,7 +325,7 @@ vcl_worker_alloc_and_init ()
   if (vcm->cfg.use_mq_eventfd)
     {
       wrk->vcl_needs_real_epoll = 1;
-      wrk->mqs_epfd = epoll_create (1);
+      wrk->mqs_epfd = vcm->vcl_epoll_create1 (0);
       wrk->vcl_needs_real_epoll = 0;
       if (wrk->mqs_epfd < 0)
 	{
@@ -372,6 +372,17 @@ svm_msg_q_t *
 vcl_worker_ctrl_mq (vcl_worker_t * wrk)
 {
   return wrk->ctrl_mq;
+}
+
+void
+vcl_init_epoll_fns ()
+{
+  if (!vcm->vcl_epoll_create1)
+    vcm->vcl_epoll_create1 = epoll_create1;
+  if (!vcm->vcl_epoll_ctl)
+    vcm->vcl_epoll_ctl = epoll_ctl;
+  if (!vcm->vcl_epoll_wait)
+    vcm->vcl_epoll_wait = epoll_wait;
 }
 
 int
