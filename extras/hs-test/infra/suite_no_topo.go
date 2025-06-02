@@ -84,6 +84,7 @@ func (s *NoTopoSuite) SetupTest() {
 		s.LogStartedContainers()
 		s.Skip("Dry run mode = true")
 	}
+	fmt.Println(s.Containers.Vpp.Volumes)
 }
 
 func (s *NoTopoSuite) TeardownTest() {
