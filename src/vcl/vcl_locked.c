@@ -156,6 +156,8 @@ typedef struct vls_main_
 
 vls_main_t *vlsm;
 
+static pthread_key_t vls_mt_pthread_stop_key;
+
 typedef enum
 {
   VLS_RPC_STATE_INIT,
@@ -323,6 +325,37 @@ vls_mt_add (void)
   /* Only allow new pthread to be cancled in vls_mt_mq_lock */
   if (vlsl->vls_mt_n_threads >= 2)
     pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
+
+  if (pthread_setspecific (vls_mt_pthread_stop_key, vcl_worker_get_current ()))
+    VDBG (0, "failed to setup key value");
+}
+
+static void
+vls_mt_del (void *arg)
+{
+  vcl_worker_t *wrk = (vcl_worker_t *) arg;
+
+  VDBG (0, "vls worker %u vcl worker %u nthreads %u cleaning up pthread",
+	vlsl->vls_wrk_index, vcl_get_worker_index (), vlsl->vls_mt_n_threads);
+
+  if (wrk != vcl_worker_get_current ())
+    {
+      VDBG (0, "vls_mt_del called with wrong worker %u != %u", wrk->wrk_index,
+	    vcl_get_worker_index ());
+      return;
+    }
+
+  vlsl->vls_mt_n_threads -= 1;
+
+  if (vls_mt_wrk_supported ())
+    {
+      vppcom_worker_unregister ();
+    }
+  else
+    {
+      if (!vlsl->vls_mt_n_threads)
+	vppcom_worker_unregister ();
+    }
 }
 
 static inline void
@@ -2138,6 +2171,12 @@ vls_app_create (char *app_name)
 {
   int rv;
 
+  if (pthread_key_create (&vls_mt_pthread_stop_key, vls_mt_del))
+    {
+      VDBG (0, "failed to add pthread cleanup function");
+      return -1;
+    }
+
   if ((rv = vppcom_app_create (app_name)))
     return rv;
 
@@ -2153,6 +2192,8 @@ vls_app_create (char *app_name)
   vls_worker_alloc ();
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->vls_mt_n_threads = 1;
+  if (pthread_setspecific (vls_mt_pthread_stop_key, vcl_worker_get_current ()))
+    VDBG (0, "failed to setup key value");
   clib_rwlock_init (&vlsl->vls_pool_lock);
   vls_mt_locks_init ();
   vcm->wrk_rpc_fn = vls_rpc_handler;
