@@ -1,7 +1,7 @@
 ---
 volumes:
   - volume: &shared-vol
-      host-dir: "$HST_VOLUME_DIR/shared-vol"
+      host-dir: "$HST_VOLUME_DIR/shared"
 
 containers:
   - name: "vpp"

@@ -1,12 +1,12 @@
 ---
 volumes:
   - volume: &server-vol
-      host-dir: "$HST_VOLUME_DIR/server-share"
-      container-dir: "/tmp/server-share"
+      host-dir: "$HST_VOLUME_DIR/server"
+      container-dir: "/tmp/server"
       is-default-work-dir: true
   - volume: &client-vol
-      host-dir: "$HST_VOLUME_DIR/client-share"
-      container-dir: "/tmp/client-share"
+      host-dir: "$HST_VOLUME_DIR/client"
+      container-dir: "/tmp/client"
       is-default-work-dir: true
 
 containers:
