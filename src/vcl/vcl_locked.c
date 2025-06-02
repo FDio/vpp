@@ -2217,15 +2217,6 @@ vls_mt_wrk_supported (void)
 }
 
 int
-vls_use_real_epoll (void)
-{
-  if (vcl_get_worker_index () == ~0)
-    return 0;
-
-  return vcl_worker_get_current ()->vcl_needs_real_epoll;
-}
-
-int
 vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd)
 {
   vcl_locked_session_t *vls;
@@ -2269,6 +2260,14 @@ vls_get_libc_epfd (vls_handle_t ep_vlsh)
   vls_mt_pool_runlock ();
 
   return rv;
+}
+
+void
+vls_set_epoll_fns (vls_epoll_fns_t ep_fns)
+{
+  vcm->vcl_epoll_create1 = ep_fns.epoll_create1_fn;
+  vcm->vcl_epoll_ctl = ep_fns.epoll_ctl_fn;
+  vcm->vcl_epoll_wait = ep_fns.epoll_wait_fn;
 }
 
 void
