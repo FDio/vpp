@@ -33,6 +33,24 @@
       "message": "I wonder what\u0027s going on here. It works locally but not in CI?",
       "revId": "930aafd924e2a3f3065cad0c2546cc22e061e764",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "58752216_adbfc902",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-06-02T10:45:50Z",
+      "side": 1,
+      "message": "Looks like it. Tested locally and on vpp-m7-6 and had no issues.\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-verify-hst-debug-master-ubuntu2204-aarch64/128/\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-verify-hst-master-ubuntu2204-x86_64/128/",
+      "parentUuid": "568ce286_57f84824",
+      "revId": "930aafd924e2a3f3065cad0c2546cc22e061e764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
