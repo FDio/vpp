@@ -258,6 +258,14 @@ func (vpp *VppInstance) Stop() {
 }
 
 func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
+	   defer func() {
+        if r := recover(); r != nil {
+            fmt.Printf("\n*******************************************************************************\n"+
+			"[%v]\nyou probably used Vppctl() without creating a vppinstance first or used Vppctl() on the wrong container\n"+
+			"*******************************************************************************\n", r)
+        }
+    }()
+
 	vppCliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.Container.Name, vpp.getCliSocket(), vppCliCommand)
