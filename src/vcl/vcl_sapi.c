@@ -26,8 +26,6 @@ vcl_api_connect_app_socket (vcl_worker_t * wrk)
   cs->flags =
     CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_BLOCKING;
 
-  wrk->vcl_needs_real_epoll = 1;
-
   if ((err = clib_socket_init (cs)))
     {
       /* don't report the error to avoid flood of error messages during
@@ -38,8 +36,6 @@ vcl_api_connect_app_socket (vcl_worker_t * wrk)
     }
 
 done:
-
-  wrk->vcl_needs_real_epoll = 0;
 
   return rv;
 }

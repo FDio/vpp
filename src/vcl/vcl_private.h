@@ -320,8 +320,6 @@ typedef struct vcl_worker_
   int session_attr_op_rv;
   transport_endpt_attr_t session_attr_rv;
 
-  /** vcl needs next epoll_create to go to libc_epoll */
-  u8 vcl_needs_real_epoll;
   volatile int rpc_done;
 
   /* functions to be called pre/post wait if vcl managed by vls */
@@ -380,6 +378,14 @@ typedef struct vppcom_main_t_
   fifo_segment_main_t segment_main;
 
   vcl_rpc_fn_t *wrk_rpc_fn;
+
+  /*
+   * Pointers to libc epoll fns to avoid loops when ldp is on
+   */
+  int (*vcl_epoll_create1) (int flags);
+  int (*vcl_epoll_ctl) (int epfd, int op, int fd, struct epoll_event *event);
+  int (*vcl_epoll_wait) (int epfd, struct epoll_event *events, int maxevents,
+			 int timeout);
 
   /*
    * Binary api context
@@ -807,6 +813,9 @@ void vcl_worker_set_wait_mq_fns (vcl_worker_wait_mq_fn pre_wait,
 void vcl_worker_detached_start_signal_mq (vcl_worker_t *wrk);
 void vcl_worker_detached_signal_mq (vcl_worker_t *wrk);
 void vcl_worker_detached_stop_signal_mq (vcl_worker_t *wrk);
+
+void vcl_init_epoll_fns (void);
+
 /*
  * VCL Binary API
  */
