@@ -1,10 +1,8 @@
+# nginx container that uses the base image
 ARG UBUNTU_VERSION=22.04
+FROM localhost:5000/vpp-test-base:latest
 
-FROM ubuntu:${UBUNTU_VERSION}
-
-RUN apt-get update \
- && apt-get install -y nginx gdb less libunwind-dev \
- && rm -rf /var/lib/apt/lists/*
+# nginx is now installed in the base image
 
 COPY resources/nginx/nginx.conf /nginx.conf
 COPY script/nginx_ldp.sh /usr/bin/nginx_ldp.sh
