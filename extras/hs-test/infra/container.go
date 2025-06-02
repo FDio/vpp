@@ -47,6 +47,7 @@ type Container struct {
 	VppInstance      *VppInstance
 	AllocatedCpus    []int
 	ctx              context.Context
+	volumeYamlConf   []any
 }
 
 func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
@@ -88,21 +89,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := LogDir + suite.GetCurrentTestName() + VolumeDir
-		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
-		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
-		for _, volu := range yamlInput["volumes"].([]interface{}) {
-			volumeMap := volu.(ContainerConfig)
-			hostDir := workDirReplacer.Replace(volumeMap["host-dir"].(string))
-			hostDir = volDirReplacer.Replace(hostDir)
-			containerDir := volumeMap["container-dir"].(string)
-			isDefaultWorkDir := false
-
-			if isDefault, ok := volumeMap["is-default-work-dir"]; ok {
-				isDefaultWorkDir = isDefault.(bool)
-			}
-			container.addVolume(hostDir, containerDir, isDefaultWorkDir)
-		}
+		container.volumeYamlConf = yamlInput["volumes"].([]any)
 	}
 
 	if _, ok := yamlInput["vars"]; ok {
@@ -162,6 +149,8 @@ func (c *Container) PullDockerImage(name string, ctx context.Context) {
 
 // Creates a container
 func (c *Container) Create() error {
+	c.createVolumePaths()
+
 	var sliceOfImageNames []string
 	images, err := c.Suite.Docker.ImageList(c.ctx, image.ListOptions{})
 	c.Suite.AssertNil(err)
@@ -310,12 +299,36 @@ func (c *Container) Run() {
 	c.Suite.AssertNil(c.Start())
 }
 
+func (c *Container) createVolumePaths() {
+	workingVolumeDir := LogDir + c.Suite.GetCurrentTestName() + VolumeDir
+	workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
+	volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
+
+	for _, volu := range c.volumeYamlConf {
+		volumeMap := volu.(ContainerConfig)
+		hostDir := workDirReplacer.Replace(volumeMap["host-dir"].(string))
+		hostDir = volDirReplacer.Replace(hostDir)
+		containerDir := volumeMap["container-dir"].(string)
+		isDefaultWorkDir := false
+
+		if isDefault, ok := volumeMap["is-default-work-dir"]; ok {
+			isDefaultWorkDir = isDefault.(bool)
+		}
+		c.addVolume(hostDir, containerDir, isDefaultWorkDir)
+	}
+}
+
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
 	var volume Volume
-	volume.HostDir = strings.Replace(hostDir, "volumes", c.Suite.GetTestId()+"/"+"volumes", 1)
+	volume.HostDir = strings.Replace(hostDir, "vol", c.Suite.GetTestId()+"/"+"vol", 1)
 	volume.ContainerDir = containerDir
 	volume.IsDefaultWorkDir = isDefaultWorkDir
 	c.Volumes[hostDir] = volume
+	if volume.IsDefaultWorkDir && len(volume.HostDir)+len(defaultApiSocketFilePath) > 108 {
+		c.Suite.Log("**************************************************************\n" +
+			"Default api socket file path exceeds 108 bytes. Test may fail.\n" +
+			"**************************************************************")
+	}
 }
 
 func (c *Container) getVolumesAsSlice() []string {
@@ -542,6 +555,13 @@ func (c *Container) stop() error {
 	if err := c.Suite.Docker.ContainerStop(c.ctx, c.ID, containerTypes.StopOptions{Timeout: &timeout}); err != nil {
 		return err
 	}
+
+	for n, v := range c.Volumes {
+		if v.IsDefaultWorkDir {
+			delete(c.Volumes, n)
+		}
+	}
+
 	return nil
 }
 
@@ -558,7 +578,7 @@ func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateNa
 	err = f.Close()
 	c.Suite.AssertNil(err, err)
 
-	c.copy(f.Name(), targetConfigName)
+	c.Suite.AssertNil(c.copy(f.Name(), targetConfigName))
 }
 
 func init() {

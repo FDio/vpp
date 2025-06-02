@@ -39,7 +39,6 @@ type HstSuite struct {
 	HstCommon
 	AllContainers     map[string]*Container
 	StartedContainers []*Container
-	Volumes           []string
 	NetConfigs        []NetConfig
 	NetInterfaces     map[string]*NetInterface
 	Ip4AddrAllocator  *Ip4AddressAllocator
@@ -424,15 +423,6 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 		Fail("unmarshal error: " + fmt.Sprint(err))
 	}
 
-	for _, elem := range yamlTopo.Volumes {
-		volumeMap := elem["volume"].(VolumeConfig)
-		hostDir := volumeMap["host-dir"].(string)
-		workingVolumeDir := LogDir + s.GetCurrentTestName() + VolumeDir
-		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
-		hostDir = volDirReplacer.Replace(hostDir)
-		s.Volumes = append(s.Volumes, hostDir)
-	}
-
 	s.AllContainers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
@@ -573,7 +563,7 @@ func (s *HstSuite) GetTestId() string {
 	}
 
 	if _, ok := s.TestIds[testName]; !ok {
-		s.TestIds[testName] = time.Now().Format("2006-01-02_15-04-05")
+		s.TestIds[testName] = time.Now().Format("060102_150405")
 	}
 
 	return s.TestIds[testName]

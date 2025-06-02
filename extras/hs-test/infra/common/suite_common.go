@@ -29,7 +29,7 @@ var RunningInCi bool
 
 const (
 	LogDir    string = "/tmp/hs-test/"
-	VolumeDir string = "/volumes"
+	VolumeDir string = "/vol"
 )
 
 type HstCommon struct {
