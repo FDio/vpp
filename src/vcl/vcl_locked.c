@@ -2272,6 +2272,13 @@ vls_get_libc_epfd (vls_handle_t ep_vlsh)
 }
 
 void
+vls_set_epoll_wait_fn (int (*epoll_wait_fn) (vls_handle_t,
+					     struct epoll_event *, int, int))
+{
+  vcm->vcl_epoll_wait = epoll_wait_fn;
+}
+
+void
 vls_register_vcl_worker (void)
 {
   vls_mt_add ();

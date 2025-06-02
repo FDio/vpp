@@ -303,6 +303,7 @@ ldp_init (void)
       return rv;
     }
   ldp->vcl_needs_real_epoll = 0;
+  vls_set_epoll_wait_fn (libc_epoll_wait);
 
   LDBG (0, "LDP initialization: done!");
 
@@ -2528,8 +2529,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
     vls_register_vcl_worker ();
 
   ldpw = ldp_worker_get_current ();
-  if (epfd == ldpw->vcl_mq_epfd)
-    return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
+  //   if (epfd == ldpw->vcl_mq_epfd)
+  //     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
   ep_vlsh = ldp_fd_to_vlsh (epfd);
   if (PREDICT_FALSE (ep_vlsh == VLS_INVALID_HANDLE))
@@ -2611,8 +2612,9 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
     vls_register_vcl_worker ();
 
   ldpw = ldp_worker_get_current ();
-  if (epfd == ldpw->vcl_mq_epfd)
-    return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
+
+  //   if (epfd == ldpw->vcl_mq_epfd)
+  //     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
   ep_vlsh = ldp_fd_to_vlsh (epfd);
   if (PREDICT_FALSE (ep_vlsh == VLS_INVALID_HANDLE))
@@ -2642,28 +2644,26 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 	  goto done;
 	}
     }
-  if (PREDICT_FALSE (libc_epfd <= 0))
-    {
-      errno = -libc_epfd;
-      rv = -1;
-      goto done;
-    }
-
   if (PREDICT_FALSE (!ldpw->mq_epfd_added))
     {
-      struct epoll_event e = { 0 };
       ldpw->vcl_mq_epfd = vppcom_mq_epoll_fd ();
+      ldpw->mq_epfd_added = 1;
+      struct epoll_event e = { 0 };
       e.events = EPOLLIN;
       e.data.fd = ldpw->vcl_mq_epfd;
-      if (libc_epoll_ctl (libc_epfd, EPOLL_CTL_ADD, ldpw->vcl_mq_epfd, &e) <
-	  0)
+      if (libc_epoll_ctl (libc_epfd, EPOLL_CTL_ADD, ldpw->vcl_mq_epfd, &e) < 0)
 	{
 	  LDBG (0, "epfd %d, add libc mq epoll fd %d to libc epoll fd %d",
 		epfd, ldpw->vcl_mq_epfd, libc_epfd);
 	  rv = -1;
 	  goto done;
 	}
-      ldpw->mq_epfd_added = 1;
+    }
+  if (PREDICT_FALSE (libc_epfd <= 0))
+    {
+      errno = -libc_epfd;
+      rv = -1;
+      goto done;
     }
 
   /* Request to only drain unhandled to prevent libc_epoll_wait starved */
