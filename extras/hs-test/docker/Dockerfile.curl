@@ -1,16 +1,10 @@
+# curl container that uses the base image
 ARG UBUNTU_VERSION=22.04
+FROM localhost:5000/vpp-test-base:latest
 
-FROM ubuntu:${UBUNTU_VERSION}
+# Note: wget and xz-utils are already in the base image
 
-ARG TARGETARCH
-
-RUN apt-get update \
- && apt-get install -y xz-utils wget \
- && rm -rf /var/lib/apt/lists/*
-
-COPY script/build_curl.sh /build_curl.sh
 COPY resources/curl/* /tmp/
 RUN fallocate -l 10MB /tmp/testFile
-RUN /build_curl.sh
 
 CMD ["/bin/sh"]
