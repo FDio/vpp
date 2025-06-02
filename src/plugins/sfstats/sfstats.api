@@ -1,0 +1,3 @@
+autoreply define show_sfstats_counters {
+    u8 counter; 
+};
