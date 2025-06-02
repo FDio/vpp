@@ -58,11 +58,10 @@ func (s *CpuPinningSuite) SetupTest() {
 }
 
 func (s *CpuPinningSuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	// reset vars
 	s.CpuCount = *NConfiguredCpus
 	s.CpuAllocator.maxContainerCount = s.previousMaxContainerCount
-	s.HstSuite.TeardownTest()
-
 }
 
 var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
