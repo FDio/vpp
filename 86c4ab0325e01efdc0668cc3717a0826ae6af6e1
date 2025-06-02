@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5407b2fa_80d94456",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-02T15:19:35Z",
+      "side": 1,
+      "message": "this might be different worker than main thread",
+      "range": {
+        "startLine": 429,
+        "startChar": 20,
+        "endLine": 429,
+        "endChar": 34
+      },
+      "revId": "86c4ab0325e01efdc0668cc3717a0826ae6af6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4a2d668_6690fe72",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-02T15:19:35Z",
+      "side": 1,
+      "message": "clib_min",
+      "range": {
+        "startLine": 441,
+        "startChar": 13,
+        "endLine": 443,
+        "endChar": 41
+      },
+      "revId": "86c4ab0325e01efdc0668cc3717a0826ae6af6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b3202913_0801deea",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 872,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-02T15:19:35Z",
+      "side": 1,
+      "message": "8\u003c\u003c20",
+      "range": {
+        "startLine": 872,
+        "startChar": 23,
+        "endLine": 872,
+        "endChar": 30
+      },
+      "revId": "86c4ab0325e01efdc0668cc3717a0826ae6af6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
