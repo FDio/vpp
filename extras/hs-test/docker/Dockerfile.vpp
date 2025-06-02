@@ -1,12 +1,9 @@
+# VPP container that uses the base image
 ARG UBUNTU_VERSION=22.04
+FROM localhost:5000/vpp-test-base:latest
 
-FROM ubuntu:${UBUNTU_VERSION}
-
-RUN apt-get update \
- && apt-get install -y openssl libapr1 libnuma1 libsubunit0 \
-    iproute2 libnl-3-dev libnl-route-3-dev python3 iputils-ping  \
-    vim gdb libunwind-dev redis redis-tools iperf3 \
- && rm -rf /var/lib/apt/lists/*
+# We don't need to install these packages as they're in the base image
+# Just install anything specific to VPP that isn't in the base
 
 ARG OS_ARCH
 RUN echo "I'm building for $OS_ARCH"
@@ -34,6 +31,6 @@ COPY vpp-data/bin/vpp_echo /usr/bin/
 COPY vpp-data/bin/vcl_* /usr/bin/
 COPY vpp-data/lib/*.so /usr/lib/
 
-RUN addgroup vpp
+# Group already created in base image
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
