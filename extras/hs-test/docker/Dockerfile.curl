@@ -1,12 +1,9 @@
+# curl container that uses the base image
 ARG UBUNTU_VERSION=22.04
-
-FROM ubuntu:${UBUNTU_VERSION}
+FROM localhost:5000/vpp-test-base:latest
 
 ARG TARGETARCH
-
-RUN apt-get update \
- && apt-get install -y xz-utils wget \
- && rm -rf /var/lib/apt/lists/*
+# Note: wget and xz-utils are already in the base image
 
 COPY script/build_curl.sh /build_curl.sh
 COPY resources/curl/* /tmp/
