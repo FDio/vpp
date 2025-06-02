@@ -100,6 +100,7 @@ func (s *LdpSuite) SetupTest() {
 }
 
 func (s *LdpSuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
 		s.CollectIperfLogs(s.Containers.ServerApp)
 		s.CollectRedisServerLogs(s.Containers.ServerApp)
@@ -111,8 +112,6 @@ func (s *LdpSuite) TeardownTest() {
 		delete(container.EnvVars, "LD_PRELOAD")
 		delete(container.EnvVars, "VCL_CONFIG")
 	}
-	s.HstSuite.TeardownTest()
-
 }
 
 func (s *LdpSuite) CreateVclConfig(container *Container) {
