@@ -1,7 +1,7 @@
 ---
 volumes:
   - volume: &shared-vol-nginx-proxy
-      host-dir: "$HST_VOLUME_DIR/shared-vol-nginx-proxy"
+      host-dir: "$HST_VOLUME_DIR/shared"
 
 containers:
   - name: "vpp"

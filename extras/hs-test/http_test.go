@@ -585,7 +585,6 @@ func HttpClientPostRepeatTest(s *NoTopoSuite) {
 
 func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	vpp := s.Containers.Vpp.VppInstance
-	logPath := s.Containers.NginxServer.GetContainerWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
 	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxServer
 	replyCountInt := 0
 	repeatAmount := 10000
@@ -598,6 +597,7 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 
 	s.CreateNginxServer()
 	s.AssertNil(s.Containers.NginxServer.Start())
+	logPath := s.Containers.NginxServer.GetContainerWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
 
 	if requestMethod == "post" {
 		fileName := "/tmp/test_file.txt"
