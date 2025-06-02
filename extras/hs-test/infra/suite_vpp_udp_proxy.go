@@ -88,12 +88,12 @@ func (s *VppUdpProxySuite) SetupTest() {
 }
 
 func (s *VppUdpProxySuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
 		s.Log(vpp.Vppctl("show error"))
 	}
-	s.HstSuite.TeardownTest()
 }
 
 func (s *VppUdpProxySuite) VppProxyAddr() string {

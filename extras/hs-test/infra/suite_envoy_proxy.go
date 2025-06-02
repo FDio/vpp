@@ -153,11 +153,11 @@ func (s *EnvoyProxySuite) SetupTest() {
 }
 
 func (s *EnvoyProxySuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 		s.CollectEnvoyLogs(s.Containers.EnvoyProxy)
 	}
-	s.HstSuite.TeardownTest()
 }
 
 func (s *EnvoyProxySuite) ProxyAddr() string {

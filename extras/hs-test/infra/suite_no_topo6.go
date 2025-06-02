@@ -85,10 +85,10 @@ func (s *NoTopo6Suite) SetupTest() {
 }
 
 func (s *NoTopo6Suite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxHttp3)
 	}
-	s.HstSuite.TeardownTest()
 }
 
 func (s *NoTopo6Suite) CreateNginxConfig(container *Container, multiThreadWorkers bool) {

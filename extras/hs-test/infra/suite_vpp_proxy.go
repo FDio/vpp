@@ -93,6 +93,7 @@ func (s *VppProxySuite) SetupTest() {
 }
 
 func (s *VppProxySuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	vpp := s.Containers.VppProxy.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
@@ -100,7 +101,6 @@ func (s *VppProxySuite) TeardownTest() {
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 		s.CollectIperfLogs(s.Containers.IperfS)
 	}
-	s.HstSuite.TeardownTest()
 }
 
 func (s *VppProxySuite) SetupNginxServer() {
