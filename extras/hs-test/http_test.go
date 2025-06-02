@@ -37,7 +37,7 @@ func init() {
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable)
+		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -335,6 +335,29 @@ func HttpClientTest(s *NoTopoSuite) {
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
+}
+
+func HttpClientBodySizeTest(s *NoTopoSuite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest("GET", "/test"),
+			ghttp.RespondWith(http.StatusOK, "<html><body><p>Hello</p></body></html>"),
+		))
+	server.Start()
+	defer server.Close()
+	uri := "http://" + serverAddress + "/test"
+	vpp := s.Containers.Vpp.VppInstance
+	o := vpp.Vppctl("http client max-body-size 5 verbose uri " + uri)
+
+	s.Log(o)
+	s.AssertContains(o, "Response body too large", "")
+	s.AssertNotContains(o, "<html>", "<html> found in the result!")
 }
 
 func HttpClientInvalidHeaderNameTest(s *NoTopoSuite) {
