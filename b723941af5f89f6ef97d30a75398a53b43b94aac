@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a62a3d94_94282132",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 3168
+      },
+      "writtenOn": "2025-06-02T07:18:01Z",
+      "side": 1,
+      "message": "This follows previous behaviour, but it looks to me that it is not required here... Any thoughts?",
+      "revId": "b723941af5f89f6ef97d30a75398a53b43b94aac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

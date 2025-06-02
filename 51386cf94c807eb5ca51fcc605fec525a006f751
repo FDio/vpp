@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6c82d15b_bf86e7c1",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 3168
+      },
+      "writtenOn": "2025-06-02T07:18:01Z",
+      "side": 1,
+      "message": "Ok, fixed.",
+      "parentUuid": "14265929_125427ba",
+      "revId": "51386cf94c807eb5ca51fcc605fec525a006f751",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9d21a970_27f374e3",
         "filename": "src/plugins/cnat/cnat_node.h",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2025-05-07T08:33:42Z",
       "side": 1,
       "message": "I think we should move the csum_fold in ip4_translate directly, because it is always done anyway and that way you don\u0027t have to check it twice",
+      "revId": "51386cf94c807eb5ca51fcc605fec525a006f751",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22c681f8_131610fb",
+        "filename": "src/plugins/cnat/cnat_node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 3168
+      },
+      "writtenOn": "2025-06-02T07:18:01Z",
+      "side": 1,
+      "message": "Didn\u0027t want to touch tcp related code initially, should be fixed.",
+      "parentUuid": "9d21a970_27f374e3",
       "revId": "51386cf94c807eb5ca51fcc605fec525a006f751",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
