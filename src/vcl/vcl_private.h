@@ -337,6 +337,8 @@ STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
 STATIC_ASSERT (sizeof (session_reset_msg_t) <= 16,
 	       "disconnected must fit in session_event_t");
 
+typedef int (vcl_libc_epoll_wait_fn_t) (int epfd, struct epoll_event *events,
+					int maxevents, int timeout);
 typedef void (vcl_rpc_fn_t) (void *args);
 
 typedef struct vppcom_main_t_
@@ -380,6 +382,8 @@ typedef struct vppcom_main_t_
   fifo_segment_main_t segment_main;
 
   vcl_rpc_fn_t *wrk_rpc_fn;
+
+  vcl_libc_epoll_wait_fn_t *vcl_epoll_wait;
 
   /*
    * Binary api context
