@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "653248fc_9bb67fae",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-02T08:35:27Z",
+      "side": 1,
+      "message": "can you document the scenario here too? I think what you have in the email is good",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "843bb562_e5199a24",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-02T08:35:27Z",
+      "side": 1,
+      "message": "Should we have these checks only in ip_neighbor_learn() instead?",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "649d4db5_175f6b7e",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-02T08:35:27Z",
+      "side": 1,
+      "message": "why is it needed here? I understand the interface could have been removed but I\u0027m unsure how we can end up here?",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef3d942a_054f3292",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-02T08:35:27Z",
+      "side": 1,
+      "message": "you can use vnet_sw_interface_is_valid() instead",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
