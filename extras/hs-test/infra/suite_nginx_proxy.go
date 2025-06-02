@@ -117,11 +117,11 @@ func (s *NginxProxySuite) SetupTest() {
 }
 
 func (s *NginxProxySuite) TeardownTest() {
+	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxProxy)
 		s.CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
-	s.HstSuite.TeardownTest()
 }
 
 func (s *NginxProxySuite) CreateNginxProxyConfig(container *Container, multiThreadWorkers bool) {
