@@ -193,6 +193,7 @@ set(VPPINFRA_HEADERS
   random.h
   random_isaac.h
   rbtree.h
+  ring.h
   serialize.h
   smp.h
   socket.h
