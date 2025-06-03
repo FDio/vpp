@@ -106,6 +106,24 @@
       "parentUuid": "dfa8ff6c_19e501f7",
       "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb684607_8e73f7c3",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-03T18:13:29Z",
+      "side": 1,
+      "message": "So then just assert that packet should not have GSO flag set?",
+      "parentUuid": "27d2ca88_929cc897",
+      "revId": "2e51e4ca48ea3f11b50a1128d2898a8fb88ba282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
