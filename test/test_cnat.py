@@ -7,6 +7,16 @@ from asfframework import VppTestRunner
 from vpp_ip import INVALID_INDEX
 from itertools import product
 from config import config
+from vpp_papi import VppEnum
+from vpp_ip_route import (
+    VppIpRoute,
+    VppRoutePath,
+    VppIpTable,
+    FibPathProto,
+    VppMplsLabel,
+    VppMplsRoute,
+    VppMplsTable,
+)
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -203,7 +213,7 @@ class CnatTestContext(object):
         if isinstance(src_id, int):
             self.src_addr = self.get_ip46(src_pg.remote_hosts[src_id])
         else:
-            self.dst_addr = src_id
+            self.src_addr = src_id
         if isinstance(dst_id, int):
             self.dst_addr = self.get_ip46(dst_pg.remote_hosts[dst_id])
         else:
@@ -425,7 +435,7 @@ class TestCNatTranslation(CnatCommonTestCase):
 
     def cnat_enable_features(self, enable=1):
         for idx, feat in product(
-            [self.pg0.sw_if_index, self.pg1.sw_if_index],
+            [self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg2.sw_if_index],
             ["cnat-input-ip4", "cnat-lookup-ip4"],
         ):
             self.vapi.feature_enable_disable(
@@ -435,7 +445,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                 sw_if_index=idx,
             )
         for idx, feat in product(
-            [self.pg0.sw_if_index, self.pg1.sw_if_index],
+            [self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg2.sw_if_index],
             ["cnat-output-ip4", "cnat-writeback-ip4"],
         ):
             self.vapi.feature_enable_disable(
@@ -444,6 +454,110 @@ class TestCNatTranslation(CnatCommonTestCase):
                 feature_name=feat,
                 sw_if_index=idx,
             )
+
+    def get_ip46(self, obj):
+        return obj.ip4
+
+    def make_encap(self):
+        rv = self.vapi.ipip_add_tunnel(
+            tunnel={
+                "src": self.get_ip46(self.pg1.remote_hosts[0]),
+                "dst": self.get_ip46(self.pg2.remote_hosts[0]),
+                "table_id": 0,
+                "instance": 0xFFFFFFFF,
+                "dscp": 0x0,
+                "flags": 0,
+            }
+        )
+        rrv = self.vapi.ipip_add_tunnel(
+            tunnel={
+                "src": self.get_ip46(self.pg2.remote_hosts[0]),
+                "dst": self.get_ip46(self.pg1.remote_hosts[0]),
+                "table_id": 0,
+                "instance": 0xFFFFFFFF,
+                "dscp": 0x0,
+                "flags": 0,
+            }
+        )
+
+        self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=self.pg1.sw_if_index, unnumbered_sw_if_index=rv.sw_if_index
+        )
+        self.vapi.sw_interface_set_flags(
+            rv.sw_if_index,
+            flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
+        )
+        self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=self.pg2.sw_if_index, unnumbered_sw_if_index=rrv.sw_if_index
+        )
+        self.vapi.sw_interface_set_flags(
+            rrv.sw_if_index,
+            flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
+        )
+        ip4_via_tunnel = VppIpRoute(
+            self,
+            "2.2.2.2",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    rv.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
+        ip4_via_tunnel.add_vpp_config()
+        rip4_via_tunnel = VppIpRoute(
+            self,
+            "3.3.3.3",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    rrv.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
+        rip4_via_tunnel.add_vpp_config()
+        self.logger.info(self.vapi.cli("sh ipip tunnel"))
+        self.logger.info(self.vapi.cli("sh int addr"))
+        self.logger.info(self.vapi.cli("sh ip fib"))
+
+    def cnat_encap(self):
+        """CNat WIP translation"""
+        for nbr, translation in enumerate(self.translations):
+            vip = translation.vip
+
+            #
+            # Test Flows to the VIP
+            #
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            # ctx.cnat_send(self.pg0, 0, 1234, self.pg1, "2.2.2.2", 3434)
+            for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
+                # from client to vip
+                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg2, vip.ip, vip.port)
+                dst_port = translation.paths[0][DST].port
+                ctx.cnat_expect(self.pg1, 0, sport, self.pg2, nbr, dst_port)
+                # from vip to client
+                ctx.cnat_send(self.pg2, "2.2.2.2", dst_port, self.pg0, src_pgi, sport)
+                ctx.cnat_expect(self.pg2, vip.ip, vip.port, self.pg0, src_pgi, sport)
+
+        self.logger.info(self.vapi.cli("sh cnat session verbose"))
+        self.logger.info(self.vapi.cli("sh cnat timestamp verbose"))
+        # test no nat encap
+        for nbr, translation in enumerate(self.translations):
+            vip = translation.vip
+
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            for sport in range(1234, 1233):
+                # no nat packets are encapsulated
+                ctx.cnat_send(self.pg0, "3.3.3.3", sport, self.pg2, "2.2.2.2", 4455)
+                ctx.cnat_expect(self.pg1, 0, sport, self.pg2, nbr, 4455)
+
+                ctx.cnat_send(self.pg2, "2.2.2.2", sport, self.pg1, "3.3.3.3", 4455)
+                ctx.cnat_expect(self.pg2, nbr, sport, self.pg1, nbr, 4455)
+                # from vip to client
 
     def cnat_delete(self):
         """CNat Delete translation"""
@@ -556,7 +670,6 @@ class TestCNatTranslation(CnatCommonTestCase):
             #
             # modify the translation to use a different backend
             #
-            old_dst_port = translation.paths[0][DST].port
             translation.paths[0][DST].udpate(
                 pg=self.pg2, pgi=0, port=5000, is_v6=vip.is_v6
             )
@@ -655,6 +768,24 @@ class TestCNatTranslation(CnatCommonTestCase):
                     ),
                 ],
                 0x08,  # hash only on dst port
+            ).add_vpp_config(flags)
+        )
+
+    def _make_remote_backend_translation_v4(self, flags=0):
+        self.translations = []
+        self.mbtranslations = []
+        self.translations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30.0.0.7", port=7777, is_v6=False),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(ip="2.2.2.2", port=4001, is_v6=False),
+                    )
+                ],
+                0x9F,
             ).add_vpp_config(flags)
         )
 
@@ -769,6 +900,14 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation ipv4 """
         self._make_translations_v4()
         self.cnat_translation()
+
+    def test_cnat_with_encap(self):
+        # """ CNat Translation ENCAP """
+        self._make_remote_backend_translation_v4(CNAT_TR_FLAG_NO_CLIENT)
+        self.cnat_enable_features()
+        self.make_encap()
+        self.cnat_encap()
+        self.cnat_enable_features(0)
 
     def test_fib_delete_translation(self):
         # """ CNat Translation deletion """

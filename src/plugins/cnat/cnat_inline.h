@@ -213,6 +213,8 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
 	ksession->value.cs_session_index;
       vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_NEW;
       cnat_log_session_create (ksession);
+      cnat_timestamp_t *ts = cnat_timestamp_get (session_index);
+      ts->fw_session_5tuple = ksession->key.cs_5tuple;
     }
   else if (session->key.cs_5tuple.iproto != 0)
     {

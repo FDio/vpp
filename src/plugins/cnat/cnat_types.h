@@ -281,6 +281,7 @@ typedef struct cnat_timestamp_t_
 
   u8 ts_rw_bm;
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
+  cnat_5tuple_t fw_session_5tuple;
 
 } cnat_timestamp_t;
 STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");

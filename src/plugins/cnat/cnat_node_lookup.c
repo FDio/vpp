@@ -114,9 +114,13 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
   iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  cnat_5tuple_t *rewrite_from;
+  if (ts->cts_rewrites[0].tuple.iproto != 0)
+    rewrite_from = &ts->cts_rewrites[0].tuple;
+  else
+    rewrite_from = &ts->fw_session_5tuple;
   cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset,
-			   1 /* swap */);
-
+			   1 /* swap */, rewrite_from);
   session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
 

@@ -76,8 +76,8 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
     }
 
   ts->trk = trk0;
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */,
-			   0 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */,
+			   0);
 
   ip46_address_copy (&rw->tuple.ip[VLIB_TX],
 		     &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
@@ -137,7 +137,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       rrw->cts_lbi = (u32) ~0;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */,
-			       1 /* swap */);
+			       1 /* swap */, 0);
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 

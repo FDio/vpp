@@ -26,7 +26,7 @@
  * A session represents the memory of a translation.
  * In the tx direction (from behind to in front of the NAT), the
  * session is preserved so subsequent packets follow the same path
- * even if the translation has been updated. In the tx direction
+ * In the tx direction
  * the session represents the swap from the VIP to the server address
  * In the RX direction the swap is from the server address/port to VIP.
  *
