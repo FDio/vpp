@@ -6,6 +6,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
@@ -26,6 +27,7 @@ typedef struct
   u64 to_recv;
   u8 is_closed;
   u8 body_over_limit;
+  u8 no_print;
   hc_stats_t stats;
   u64 data_offset;
   u8 *resp_headers;
@@ -219,6 +221,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_session->thread_index = s->thread_index;
   s->opaque = hc_session->session_index;
   wrk->session_index = hc_session->session_index;
+  hc_session->no_print = false;
 
   if (hcm->multi_session)
     {
@@ -400,6 +403,9 @@ hc_rx_callback (session_t *s)
 	    hc_session->response_status =
 	      format (0, "%U", format_http_status_code, msg.code);
 
+	  http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
+	  http_init_header_table_buf (&ht, msg);
+
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
 	  vec_validate (hc_session->resp_headers, msg.data.headers_len - 1);
@@ -411,6 +417,18 @@ hc_rx_callback (session_t *s)
 	  HTTP_DBG (1, (char *) format (0, "%v", hc_session->resp_headers));
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
+	  clib_memcpy (ht.buf, hc_session->resp_headers,
+		       msg.data.headers_len - 1);
+
+	  http_build_header_table (&ht, msg);
+	  const http_token_t *content_type = http_get_header (
+	    &ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
+	  if (content_type)
+	    {
+	      if (clib_strcmp (content_type->base, "text/") < 0)
+		hc_session->no_print = true;
+	    }
+	  http_free_header_table (&ht);
 	}
 
       if (msg.data.body_len == 0)
@@ -736,8 +754,9 @@ hc_get_event (vlib_main_t *vm)
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
 	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
-			   hc_session->resp_headers,
-			   hc_session->http_response);
+			   hc_session->resp_headers);
+	  if (!hc_session->no_print)
+	    vlib_cli_output (vm, "%v", hc_session->http_response);
 	}
       break;
     case HC_REPEAT_DONE:
