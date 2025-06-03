@@ -37,7 +37,7 @@ func init() {
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest)
+		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest, HttpClientNoPrintTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -455,6 +455,29 @@ func HttpClientPostFormTest(s *NoTopoSuite) {
 
 	s.Log(o)
 	s.AssertContains(o, "200 OK")
+}
+
+func HttpClientNoPrintTest(s *NoTopoSuite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest("GET", "/"),
+			// Bogus header just for testing
+			ghttp.RespondWith(http.StatusOK, "<html><body><p>Hello</p></body></html>", http.Header{"Content-Type": {"image/jpeg"}}),
+		))
+	server.Start()
+	defer server.Close()
+	uri := "http://" + serverAddress
+	vpp := s.Containers.Vpp.VppInstance
+	o := vpp.Vppctl("http client uri " + uri)
+
+	s.Log(o)
+	s.AssertNotContains(o, "</html>", "</html> found in the result!")
 }
 
 func HttpClientGetResponseBodyTest(s *NoTopoSuite) {

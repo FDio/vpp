@@ -6,6 +6,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
@@ -24,8 +25,7 @@ typedef struct
   u32 session_index;
   clib_thread_index_t thread_index;
   u64 to_recv;
-  u8 is_closed;
-  u8 body_over_limit;
+  u8 session_info;
   hc_stats_t stats;
   u64 data_offset;
   u64 body_recv;
@@ -98,6 +98,31 @@ typedef enum
   HC_REPEAT_DONE,
 } hc_cli_signal_t;
 
+#define foreach_hc_s_opt                                                      \
+  _ (1, IS_CLOSED)                                                            \
+  _ (2, PRINTABLE_BODY)                                                       \
+  _ (4, BODY_OVER_LIMIT)
+
+typedef enum hc_s_opt_
+{
+#define _(n, s) HC_S_OPT_##s = n,
+  foreach_hc_s_opt
+#undef _
+} hc_s_opt;
+
+#define mime_printable_max_len 35
+const char mime_printable[][mime_printable_max_len] = {
+  "text/\0",
+  "application/json\0",
+  "application/javascript\0",
+  "application/x-yaml\0",
+  "application/x-www-form-urlencoded\0",
+  "application/xml\0",
+  "application/x-sh\0",
+  "application/x-tex\0",
+  "application/x-javascript\0",
+  "application/x-powershell\0"
+};
 static hc_main_t hc_main;
 static hc_stats_t hc_stats;
 
@@ -220,6 +245,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_session->body_recv = 0;
   s->opaque = hc_session->session_index;
   wrk->session_index = hc_session->session_index;
+  hc_session->session_info = 0;
 
   if (hcm->multi_session)
     {
@@ -350,7 +376,7 @@ hc_session_reset_callback (session_t *s)
   int rv;
 
   hc_session = hc_session_get (s->opaque, s->thread_index);
-  hc_session->is_closed = 1;
+  hc_session->session_info |= HC_S_OPT_IS_CLOSED;
 
   a->handle = session_handle (s);
   a->app_index = hcm->app_index;
@@ -371,7 +397,7 @@ hc_rx_callback (session_t *s)
   session_error_t session_err = 0;
   int send_err = 0;
 
-  if (hc_session->is_closed)
+  if (hc_session->session_info & HC_S_OPT_IS_CLOSED)
     {
       clib_warning ("hc_session_index[%d] is closed", s->opaque);
       return -1;
@@ -401,17 +427,43 @@ hc_rx_callback (session_t *s)
 	    hc_session->response_status =
 	      format (0, "%U", format_http_status_code, msg.code);
 
+	  http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
+
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
 	  vec_validate (hc_session->resp_headers, msg.data.headers_len - 1);
 	  vec_set_len (hc_session->resp_headers, msg.data.headers_len);
 	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
 				 hc_session->resp_headers);
+	  ht.buf = hc_session->resp_headers;
 
 	  ASSERT (rv == msg.data.headers_len);
 	  HTTP_DBG (1, (char *) format (0, "%v", hc_session->resp_headers));
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
+
+	  http_build_header_table (&ht, msg);
+	  const http_token_t *content_type = http_get_header (
+	    &ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
+	  if (content_type)
+	    {
+	      for (u8 i = 0; i < sizeof (mime_printable) /
+				   (sizeof (char) * mime_printable_max_len);
+		   i++)
+		{
+		  u8 mime_len =
+		    clib_strnlen (mime_printable[i], mime_printable_max_len);
+		  if (content_type->len >= mime_len &&
+		      clib_strncmp (content_type->base, mime_printable[i],
+				    mime_len) == 0)
+		    {
+		      hc_session->session_info |= HC_S_OPT_PRINTABLE_BODY;
+		      break;
+		    }
+		}
+	    }
+	  ht.buf = NULL;
+	  http_free_header_table (&ht);
 	}
 
       if (msg.data.body_len == 0)
@@ -428,10 +480,11 @@ hc_rx_callback (session_t *s)
 	  goto done;
 	}
       if (msg.data.body_len > hcm->max_body_size)
-	hc_session->body_over_limit = true;
+	hc_session->session_info |= HC_S_OPT_BODY_OVER_LIMIT;
       vec_validate (hc_session->http_response,
-		    (hc_session->body_over_limit ? hcm->rx_fifo_size - 1 :
-						   msg.data.body_len - 1));
+		    (hc_session->session_info & HC_S_OPT_BODY_OVER_LIMIT ?
+		       hcm->rx_fifo_size - 1 :
+		       msg.data.body_len - 1));
       vec_reset_length (hc_session->http_response);
     }
 
@@ -454,7 +507,7 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
-  if (!hc_session->body_over_limit)
+  if (!(hc_session->session_info & HC_S_OPT_BODY_OVER_LIMIT))
     vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
@@ -732,14 +785,21 @@ hc_get_event (vlib_main_t *vm)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  vlib_cli_output (vm, "< %v\n< %v\n", hc_session->response_status,
+	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
 			   hc_session->resp_headers);
-	  if (hc_session->body_over_limit)
+	  if (hc_session->session_info & HC_S_OPT_BODY_OVER_LIMIT)
 	    vlib_cli_output (
 	      vm, "* message body over limit, read total %llu bytes",
 	      hc_session->body_recv);
 	  else
-	    vlib_cli_output (vm, "%v", hc_session->http_response);
+	    {
+	      if (hc_session->session_info & HC_S_OPT_PRINTABLE_BODY)
+		vlib_cli_output (vm, "%v", hc_session->http_response);
+	      else
+		vlib_cli_output (vm,
+				 "* binary file, not printing!\n* consider "
+				 "saving to file with the 'file' option");
+	    }
 	}
       break;
     case HC_REPEAT_DONE:
