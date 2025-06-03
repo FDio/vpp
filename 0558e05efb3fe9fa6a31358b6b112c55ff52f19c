@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "14ee79f7_06249a43",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-06-03T11:02:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "653248fc_9bb67fae",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "843bb562_e5199a24",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 4
@@ -31,6 +49,24 @@
       "writtenOn": "2025-06-02T08:35:27Z",
       "side": 1,
       "message": "Should we have these checks only in ip_neighbor_learn() instead?",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8cd107b7_be0a3202",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-06-03T11:02:03Z",
+      "side": 1,
+      "message": "The appropriate parameters are nested there , so I think it is better to check where use it",
+      "parentUuid": "843bb562_e5199a24",
       "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f20fd2fb_39ddc3fa",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-06-03T11:02:03Z",
+      "side": 1,
+      "message": "We remove not only interfaces but also VRFs ( FIBs )",
+      "parentUuid": "649d4db5_175f6b7e",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ef3d942a_054f3292",
@@ -65,6 +119,24 @@
       "writtenOn": "2025-06-02T08:35:27Z",
       "side": 1,
       "message": "you can use vnet_sw_interface_is_valid() instead",
+      "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "53fbcebb_9f1cf950",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-06-03T11:02:03Z",
+      "side": 1,
+      "message": "Fixed, thanks",
+      "parentUuid": "ef3d942a_054f3292",
       "revId": "0558e05efb3fe9fa6a31358b6b112c55ff52f19c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
