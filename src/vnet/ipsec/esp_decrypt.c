@@ -507,9 +507,10 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   vnet_crypto_op_t _op, *op = &_op;
   const u8 esp_sz = sizeof (esp_header_t);
 
-  if (PREDICT_TRUE (irt->integ_op_id != VNET_CRYPTO_OP_NONE))
+  if (PREDICT_TRUE (vnet_crypto_get_integ_op_id (irt->op_id) !=
+		    VNET_CRYPTO_OP_NONE))
     {
-      vnet_crypto_op_init (op, irt->integ_op_id);
+      vnet_crypto_op_init (op, vnet_crypto_get_integ_op_id (irt->op_id));
       op->key_index = irt->integ_key_index;
       op->src = payload;
       op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
@@ -576,9 +577,9 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   payload += esp_sz;
   len -= esp_sz;
 
-  if (irt->cipher_op_id != VNET_CRYPTO_OP_NONE)
+  if (vnet_crypto_get_crypto_op_id (irt->op_id) != VNET_CRYPTO_OP_NONE)
     {
-      vnet_crypto_op_init (op, irt->cipher_op_id);
+      vnet_crypto_op_init (op, vnet_crypto_get_crypto_op_id (irt->op_id));
       op->key_index = irt->cipher_key_index;
       op->iv = payload;
 
@@ -661,7 +662,8 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       /* linked algs */
       integ_start_offset = payload - b->data;
       integ_len = len;
-      if (PREDICT_TRUE (irt->integ_op_id != VNET_CRYPTO_OP_NONE))
+      if (PREDICT_TRUE (vnet_crypto_get_integ_op_id (irt->op_id) !=
+			VNET_CRYPTO_OP_NONE))
 	flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 
       if (pd->is_chain)
@@ -1215,7 +1217,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (is_async)
 	{
-	  async_op = irt->async_op_id;
+	  async_op = vnet_crypto_get_crypto_op_id (irt->op_id);
 
 	  /* get a frame for this op if we don't yet have one or it's full
 	   */

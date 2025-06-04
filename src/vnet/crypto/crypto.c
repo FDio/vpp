@@ -487,6 +487,31 @@ vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
     return ~0;
 }
 
+vnet_crypto_op_id_t
+vnet_crypto_get_integ_op_id (vnet_crypto_op_id_t link_op_id)
+{
+#define _(c, h, s, k, d)                                                      \
+  if (link_op_id == VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC ||                \
+      link_op_id == VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC)                  \
+    return VNET_CRYPTO_OP_##h##_HMAC;
+  foreach_crypto_link_async_alg
+#undef _
+    return VNET_CRYPTO_OP_NONE;
+}
+
+vnet_crypto_op_id_t
+vnet_crypto_get_crypto_op_id (vnet_crypto_op_id_t link_op_id)
+{
+#define _(c, h, s, k, d)                                                      \
+  if (link_op_id == VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC)                  \
+    return VNET_CRYPTO_OP_##c##_ENC;                                          \
+  if (link_op_id == VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC)                  \
+    return VNET_CRYPTO_OP_##c##_DEC;
+  foreach_crypto_link_async_alg
+#undef _
+    return VNET_CRYPTO_OP_NONE;
+}
+
 u32
 vnet_crypto_key_add_linked (vlib_main_t * vm,
 			    vnet_crypto_key_index_t index_crypto,
