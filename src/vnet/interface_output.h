@@ -144,6 +144,7 @@ vnet_calc_outer_checksums_inline (vlib_main_t *vm, vlib_buffer_t *b)
       vnet_buffer_offload_flags_clear (b,
 				       VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM);
     }
+  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_TNL_MASK);
 }
 #endif
 
