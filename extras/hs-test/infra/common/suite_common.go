@@ -172,7 +172,12 @@ func (s *HstCommon) AssertHttpBody(resp *http.Response, expectedBody string, msg
 	ExpectWithOffset(2, resp).To(HaveHTTPBody(expectedBody), msgAndArgs...)
 }
 
+// Coverage builds take longer to finish -> assert timeout is set to 'TestTimeout - 30 seconds' to let the test finish properly
 func (s *HstCommon) AssertChannelClosed(timeout time.Duration, channel chan error) {
+	if *IsCoverage && timeout > time.Second*30 {
+		s.Log("Coverage build, assert timeout is set to %s", timeout.String())
+		timeout = TestTimeout - time.Second*30
+	}
 	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
 }
 
