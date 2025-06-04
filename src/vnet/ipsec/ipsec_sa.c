@@ -152,6 +152,22 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
   sa->crypto_sync_enc_op_id = alg->enc_op_id;
   sa->crypto_sync_dec_op_id = alg->dec_op_id;
   sa->crypto_calg = alg->alg;
+
+  if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
+    {
+#define _(c, h, ch, d)                                                        \
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_##c &&                               \
+      sa->integ_alg == IPSEC_INTEG_ALG_##h)                                   \
+    {                                                                         \
+      sa->crypto_sync_enc_op_id = VNET_CRYPTO_OP_##ch##_TAG##d##_ENC;         \
+      sa->crypto_sync_dec_op_id = VNET_CRYPTO_OP_##ch##_TAG##d##_DEC;         \
+      sa->integ_sync_op_id = ~0;                                              \
+      return;                                                                 \
+    }
+
+      foreach_ipsec_link_combined_sync_op_id
+#undef _
+    }
 }
 
 void
