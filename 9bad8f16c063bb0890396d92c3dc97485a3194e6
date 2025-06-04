@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2d3e7f1_863eea42",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T08:19:29Z",
+      "side": 1,
+      "message": "this is quite big compare to default fifo size",
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b90347ac_e29fa9ce",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T08:19:29Z",
+      "side": 1,
+      "message": "this do not work as expected\nanyway can we just show something simple like \"\u003cn\u003e bytes read\" instead of body content",
+      "range": {
+        "startLine": 431,
+        "startChar": 3,
+        "endLine": 434,
+        "endChar": 25
+      },
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6841a6af_bd4a7cde",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T08:19:29Z",
+      "side": 1,
+      "message": "you should subtract 1 in both cases",
+      "range": {
+        "startLine": 439,
+        "startChar": 27,
+        "endLine": 439,
+        "endChar": 30
+      },
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
