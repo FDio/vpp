@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e50d1ce2_fad51ca2",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-04T13:20:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c2d3e7f1_863eea42",
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b90347ac_e29fa9ce",
@@ -41,6 +59,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ad38fd8_c2328a6c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-04T13:20:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b90347ac_e29fa9ce",
+      "range": {
+        "startLine": 431,
+        "startChar": 3,
+        "endLine": 434,
+        "endChar": 25
+      },
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6841a6af_bd4a7cde",
@@ -54,6 +96,30 @@
       "writtenOn": "2025-06-04T08:19:29Z",
       "side": 1,
       "message": "you should subtract 1 in both cases",
+      "range": {
+        "startLine": 439,
+        "startChar": 27,
+        "endLine": 439,
+        "endChar": 30
+      },
+      "revId": "9bad8f16c063bb0890396d92c3dc97485a3194e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "275bbe7c_c5a9dc09",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-04T13:20:31Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6841a6af_bd4a7cde",
       "range": {
         "startLine": 439,
         "startChar": 27,
