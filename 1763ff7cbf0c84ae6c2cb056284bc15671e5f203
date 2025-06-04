@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2d6c8b7_654a4234",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T13:41:22Z",
+      "side": 1,
+      "message": "s.AsserContains(o, \"read total.... ?",
+      "revId": "1763ff7cbf0c84ae6c2cb056284bc15671e5f203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25c260c7_5e7fe670",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T13:41:22Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "1763ff7cbf0c84ae6c2cb056284bc15671e5f203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6374869f_968825ea",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 740,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-04T13:41:22Z",
+      "side": 1,
+      "message": "llu?",
+      "range": {
+        "startLine": 740,
+        "startChar": 48,
+        "endLine": 740,
+        "endChar": 49
+      },
+      "revId": "1763ff7cbf0c84ae6c2cb056284bc15671e5f203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
