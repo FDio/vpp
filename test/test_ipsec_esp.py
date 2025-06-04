@@ -954,6 +954,42 @@ class MyParameters:
                 "salt": 0,
                 "key": b"JPjyOWBeVEQiMe7h",
             },
+            "AES-CBC-128/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CBC",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
+                "key": b"JPjyOWBeVEQiMe7h",
+            },
+            "AES-CBC-192/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_192
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CBC",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
+                "key": b"JPjyOWBeVEQiMe7hJPjyOWBe",
+            },
+            "AES-CBC-256/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_256
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CBC",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
+                "key": b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
+            },
             "AES-CBC-192/SHA1-96": {
                 "vpp-crypto": (
                     VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_192
@@ -1036,6 +1072,42 @@ class MyParameters:
                 "scapy-crypto": "AES-CTR",
                 "scapy-integ": "HMAC-SHA1-96",
                 "salt": 2020,
+                "key": b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
+            },
+            "AES-CTR-128/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CTR_128
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CTR",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
+                "key": b"JPjyOWBeVEQiMe7h",
+            },
+            "AES-CTR-192/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CTR_192
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CTR",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
+                "key": b"JPjyOWBeVEQiMe7hJPjyOWBe",
+            },
+            "AES-CTR-256/SHA256-128": {
+                "vpp-crypto": (
+                    VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CTR_256
+                ),
+                "vpp-integ": (
+                    VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128
+                ),
+                "scapy-crypto": "AES-CTR",
+                "scapy-integ": "SHA2-256-128",
+                "salt": 0,
                 "key": b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h",
             },
             "AES-NULL-GMAC-128/NONE": {
@@ -1290,6 +1362,30 @@ class Test_native_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_native_ESNon_ARon_AES_CBC_128_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CBC-128/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CBC-128/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_native_ESNon_ARon_AES_CBC_192_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CBC-192/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CBC-192/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_native_ESNon_ARon_AES_CBC_256_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CBC-256/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CBC-256/SHA256-128 IPSec test"""
+        self.run_test()
+
+
 class Test_native_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """native ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -1343,6 +1439,30 @@ class Test_native_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
 
     def test_ipsec(self):
         """native ESNon ARon AES-CTR-256/SHA1-96 IPSec test"""
+        self.run_test()
+
+
+class Test_native_ESNon_ARon_AES_CTR_128_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_native_ESNon_ARon_AES_CTR_192_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_native_ESNon_ARon_AES_CTR_256_SHA256_128(RunTestIpsecEspAll):
+    """native ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """native ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
         self.run_test()
 
 
@@ -1698,6 +1818,30 @@ class Test_ipsecmb_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_ipsecmb_ESNon_ARon_AES_CTR_128_SHA256_128(RunTestIpsecEspAll):
+    """ipsecmb ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """ipsecmb ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_ipsecmb_ESNon_ARon_AES_CTR_192_SHA256_128(RunTestIpsecEspAll):
+    """ipsecmb ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """ipsecmb ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_ipsecmb_ESNon_ARon_AES_CTR_256_SHA256_128(RunTestIpsecEspAll):
+    """ipsecmb ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """ipsecmb ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
+        self.run_test()
+
+
 class Test_ipsecmb_ESNon_ARoff_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """ipsecmb ESNon ARoff AES-GCM-128/NONE IPSec test"""
 
@@ -2010,6 +2154,30 @@ class Test_openssl_ESNon_ARon_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+class Test_openssl_ESNon_ARon_AES_CBC_128_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CBC-128/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CBC-128/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_openssl_ESNon_ARon_AES_CBC_192_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CBC-192/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CBC-192/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_openssl_ESNon_ARon_AES_CBC_256_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CBC-256/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CBC-256/SHA256-128 IPSec test"""
+        self.run_test()
+
+
 class Test_openssl_ESNon_ARon_3DES_CBC_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon 3DES-CBC/SHA1-96 IPSec test"""
 
@@ -2047,6 +2215,30 @@ class Test_openssl_ESNon_ARon_AES_CTR_256_SHA1_96(RunTestIpsecEspAll):
 
     def test_ipsec(self):
         """openssl ESNon ARon AES-CTR-256/SHA1-96 IPSec test"""
+        self.run_test()
+
+
+class Test_openssl_ESNon_ARon_AES_CTR_128_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CTR-128/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_openssl_ESNon_ARon_AES_CTR_192_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CTR-192/SHA256-128 IPSec test"""
+        self.run_test()
+
+
+class Test_openssl_ESNon_ARon_AES_CTR_256_SHA256_128(RunTestIpsecEspAll):
+    """openssl ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
+
+    def test_ipsec(self):
+        """openssl ESNon ARon AES-CTR-256/SHA256-128 IPSec test"""
         self.run_test()
 
 

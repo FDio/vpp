@@ -481,6 +481,8 @@ u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
 
 vnet_crypto_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 					 vnet_crypto_alg_t integ_alg);
+vnet_crypto_op_id_t
+vnet_crypto_get_integ_op_id (vnet_crypto_op_id_t link_op_id);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;

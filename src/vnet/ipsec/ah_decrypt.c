@@ -232,7 +232,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, irt->integ_op_id);
+	  vnet_crypto_op_init (op, vnet_crypto_get_integ_op_id (irt->op_id));
 
 	  op->src = (u8 *) ih4;
 	  op->len = b[0]->current_length;
