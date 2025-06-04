@@ -37,7 +37,7 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
 
   if (PREDICT_TRUE(TUNNEL_ENCAP_DECAP_FLAG_NONE == flags))
     {
-      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_OFFLOAD))
        {
          vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
          vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_TNL_IPIP |
@@ -57,7 +57,7 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
   else
     {
       tunnel_encap_fixup_4o4 (flags, ip4 + 1, ip4);
-      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_OFFLOAD))
        {
          vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
          vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_TNL_IPIP |
