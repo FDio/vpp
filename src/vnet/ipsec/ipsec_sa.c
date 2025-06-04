@@ -164,6 +164,22 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 }
 
 static void
+ipsec_sa_set_sync_combined_op_ids(ipsec_sa_t *sa)
+{
+#define _(c, h, s, k, d) \
+  if (sa->crypto_sync_enc_op_id == VNET_CRYPTO_OP_##c##_ENC &&                \
+      sa->integ_sync_op_id == VNET_CRYPTO_OP_##h##_HMAC) \
+    { \
+      sa->crypto_sync_enc_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC; \
+      sa->crypto_sync_dec_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC; \
+      sa->integ_sync_op_id = ~0; \
+      return; \
+    }
+  foreach_crypto_link_async_alg
+#undef _
+}
+
+static void
 ipsec_sa_set_async_op_ids (ipsec_sa_t *sa)
 {
   if (ipsec_sa_is_set_USE_ESN (sa))
@@ -496,6 +512,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
     }
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
+  ipsec_sa_set_sync_combined_op_ids (sa);
   ipsec_sa_set_async_op_ids (sa);
 
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
