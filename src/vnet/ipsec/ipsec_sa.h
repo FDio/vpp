@@ -39,10 +39,42 @@
   _ (9, AES_GCM_256, "aes-gcm-256")                                           \
   _ (10, DES_CBC, "des-cbc")                                                  \
   _ (11, 3DES_CBC, "3des-cbc")                                                \
-  _ (12, CHACHA20_POLY1305, "chacha20-poly1305")                              \
-  _ (13, AES_NULL_GMAC_128, "aes-null-gmac-128")                              \
-  _ (14, AES_NULL_GMAC_192, "aes-null-gmac-192")                              \
-  _ (15, AES_NULL_GMAC_256, "aes-null-gmac-256")
+  _ (12, AES_CBC_128_SHA1_96, "aes-cbc-128-sha1-96")                          \
+  _ (13, AES_CBC_192_SHA1_96, "aes-cbc-192-sha1-96")                          \
+  _ (14, AES_CBC_256_SHA1_96, "aes-cbc-256-sha1-96")                          \
+  _ (15, 3DES_CBC_SHA1_96, "3des-cbc-sha1-96")                                \
+  _ (16, AES_CTR_128_SHA1_96, "aes-ctr-128-sha1-96")                          \
+  _ (17, AES_CTR_192_SHA1_96, "aes-ctr-192-sha1-96")                          \
+  _ (18, AES_CTR_256_SHA1_96, "aes-ctr-256-sha1-96")                          \
+  _ (19, AES_CBC_128_SHA_256_128, "aes-cbc-128-sha-256-128")                  \
+  _ (20, AES_CBC_192_SHA_256_128, "aes-cbc-192-sha-256-128")                  \
+  _ (21, AES_CBC_256_SHA_256_128, "aes-cbc-256-sha-256-128")                  \
+  _ (22, 3DES_CBC_SHA_256_128, "3des-cbc-sha-256-128")                        \
+  _ (23, AES_CTR_128_SHA_256_128, "aes-ctr-128-sha-256-128")                  \
+  _ (24, AES_CTR_192_SHA_256_128, "aes-ctr-192-sha-256-128")                  \
+  _ (25, AES_CTR_256_SHA_256_128, "aes-ctr-256-sha-256-128")                  \
+  _ (26, AES_CBC_128_SHA_384_192, "aes-cbc-128-sha-384-192")                  \
+  _ (27, AES_CBC_192_SHA_384_192, "aes-cbc-192-sha-384-192")                  \
+  _ (28, AES_CBC_256_SHA_384_192, "aes-cbc-256-sha-384-192")                  \
+  _ (29, 3DES_CBC_SHA_384_192, "3des-cbc-sha-384-192")                        \
+  _ (30, AES_CTR_128_SHA_384_192, "aes-ctr-128-sha-384-192")                  \
+  _ (31, AES_CTR_192_SHA_384_192, "aes-ctr-192-sha-384-192")                  \
+  _ (32, AES_CTR_256_SHA_384_192, "aes-ctr-256-sha-384-192")                  \
+  _ (33, AES_CBC_128_SHA_512_256, "aes-cbc-128-sha-512-256")                  \
+  _ (34, AES_CBC_192_SHA_512_256, "aes-cbc-192-sha-512-256")                  \
+  _ (35, AES_CBC_256_SHA_512_256, "aes-cbc-256-sha-512-256")                  \
+  _ (36, 3DES_CBC_SHA_512_256, "3des-cbc-sha-512-256")                        \
+  _ (37, AES_CTR_128_SHA_512_256, "aes-ctr-128-sha-512-256")                  \
+  _ (38, AES_CTR_192_SHA_512_256, "aes-ctr-192-sha-512-256")                  \
+  _ (39, AES_CTR_256_SHA_512_256, "aes-ctr-256-sha-512-256")                  \
+  _ (40, AES_CBC_128_MD5, "aes-cbc-128-md5")                                  \
+  _ (41, AES_CBC_192_MD5, "aes-cbc-192-md5")                                  \
+  _ (42, AES_CBC_256_MD5, "aes-cbc-256-md5")                                  \
+  _ (43, 3DES_CBC_MD5, "3des-cbc-md5")                                        \
+  _ (44, CHACHA20_POLY1305, "chacha20-poly1305")                              \
+  _ (45, AES_NULL_GMAC_128, "aes-null-gmac-128")                              \
+  _ (46, AES_NULL_GMAC_192, "aes-null-gmac-192")                              \
+  _ (47, AES_NULL_GMAC_256, "aes-null-gmac-256")
 
 typedef enum
 {
