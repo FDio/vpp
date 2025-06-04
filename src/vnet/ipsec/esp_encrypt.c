@@ -379,11 +379,11 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 		     u8 icv_sz, u32 bi, vlib_buffer_t **b, vlib_buffer_t *lb,
 		     u32 hdr_len, esp_header_t *esp)
 {
-  if (ort->cipher_op_id)
+  if (ort->op_id)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->cipher_op_id);
+      vnet_crypto_op_init (op, ort->op_id);
       u8 *crypto_start = payload;
       /* esp_add_footer_and_icv() in esp_encrypt_inline() makes sure we always
        * have enough space for ESP header and footer which includes ICV */
@@ -451,11 +451,11 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	}
     }
 
-  if (ort->integ_op_id)
+  if (vnet_crypto_get_integ_op_id (ort->op_id) != VNET_CRYPTO_OP_NONE)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->integ_op_id);
+      vnet_crypto_op_init (op, vnet_crypto_get_integ_op_id (ort->op_id));
       op->src = payload - iv_sz - sizeof (esp_header_t);
       op->digest = payload + payload_len - icv_sz;
       op->key_index = ort->integ_key_index;
@@ -555,7 +555,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	crypto_total_len + icv_sz, 0);
     }
 
-  if (ort->integ_op_id)
+  if (vnet_crypto_get_integ_op_id (ort->op_id) != VNET_CRYPTO_OP_NONE)
     {
       integ_start_offset -= iv_sz + sizeof (esp_header_t);
       integ_total_len += iv_sz + sizeof (esp_header_t);

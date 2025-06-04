@@ -42,7 +42,39 @@
   _ (12, CHACHA20_POLY1305, "chacha20-poly1305")                              \
   _ (13, AES_NULL_GMAC_128, "aes-null-gmac-128")                              \
   _ (14, AES_NULL_GMAC_192, "aes-null-gmac-192")                              \
-  _ (15, AES_NULL_GMAC_256, "aes-null-gmac-256")
+  _ (15, AES_NULL_GMAC_256, "aes-null-gmac-256")                              \
+  _ (16, AES_CBC_128_SHA1_96, "aes-cbc-128-sha1-96")                          \
+  _ (17, AES_CBC_192_SHA1_96, "aes-cbc-192-sha1-96")                          \
+  _ (18, AES_CBC_256_SHA1_96, "aes-cbc-256-sha1-96")                          \
+  _ (19, 3DES_CBC_SHA1_96, "3des-cbc-sha1-96")                                \
+  _ (20, AES_CTR_128_SHA1_96, "aes-ctr-128-sha1-96")                          \
+  _ (21, AES_CTR_192_SHA1_96, "aes-ctr-192-sha1-96")                          \
+  _ (22, AES_CTR_256_SHA1_96, "aes-ctr-256-sha1-96")                          \
+  _ (23, AES_CBC_128_SHA_256_128, "aes-cbc-128-sha-256-128")                  \
+  _ (24, AES_CBC_192_SHA_256_128, "aes-cbc-192-sha-256-128")                  \
+  _ (25, AES_CBC_256_SHA_256_128, "aes-cbc-256-sha-256-128")                  \
+  _ (26, 3DES_CBC_SHA_256_128, "3des-cbc-sha-256-128")                        \
+  _ (27, AES_CTR_128_SHA_256_128, "aes-ctr-128-sha-256-128")                  \
+  _ (28, AES_CTR_192_SHA_256_128, "aes-ctr-192-sha-256-128")                  \
+  _ (29, AES_CTR_256_SHA_256_128, "aes-ctr-256-sha-256-128")                  \
+  _ (30, AES_CBC_128_SHA_384_192, "aes-cbc-128-sha-384-192")                  \
+  _ (31, AES_CBC_192_SHA_384_192, "aes-cbc-192-sha-384-192")                  \
+  _ (32, AES_CBC_256_SHA_384_192, "aes-cbc-256-sha-384-192")                  \
+  _ (33, 3DES_CBC_SHA_384_192, "3des-cbc-sha-384-192")                        \
+  _ (34, AES_CTR_128_SHA_384_192, "aes-ctr-128-sha-384-192")                  \
+  _ (35, AES_CTR_192_SHA_384_192, "aes-ctr-192-sha-384-192")                  \
+  _ (36, AES_CTR_256_SHA_384_192, "aes-ctr-256-sha-384-192")                  \
+  _ (37, AES_CBC_128_SHA_512_256, "aes-cbc-128-sha-512-256")                  \
+  _ (38, AES_CBC_192_SHA_512_256, "aes-cbc-192-sha-512-256")                  \
+  _ (39, AES_CBC_256_SHA_512_256, "aes-cbc-256-sha-512-256")                  \
+  _ (40, 3DES_CBC_SHA_512_256, "3des-cbc-sha-512-256")                        \
+  _ (41, AES_CTR_128_SHA_512_256, "aes-ctr-128-sha-512-256")                  \
+  _ (42, AES_CTR_192_SHA_512_256, "aes-ctr-192-sha-512-256")                  \
+  _ (43, AES_CTR_256_SHA_512_256, "aes-ctr-256-sha-512-256")                  \
+  _ (44, AES_CBC_128_MD5, "aes-cbc-128-md5")                                  \
+  _ (45, AES_CBC_192_MD5, "aes-cbc-192-md5")                                  \
+  _ (46, AES_CBC_256_MD5, "aes-cbc-256-md5")                                  \
+  _ (47, 3DES_CBC_MD5, "3des-cbc-md5")
 
 typedef enum
 {
@@ -180,8 +212,7 @@ typedef struct
   u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
-  u16 cipher_op_id;
-  u16 integ_op_id;
+  u16 op_id;
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
@@ -232,13 +263,6 @@ typedef struct
   u32 crypto_sync_key_index;
   u32 integ_sync_key_index;
   u32 linked_key_index;
-
-  /* elements with u16 size */
-  u16 crypto_sync_enc_op_id;
-  u16 crypto_sync_dec_op_id;
-  u16 integ_sync_op_id;
-  u16 crypto_async_enc_op_id;
-  u16 crypto_async_dec_op_id;
 
   /* else u8 packed */
   ipsec_crypto_alg_t crypto_alg;
@@ -305,10 +329,6 @@ extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
-				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
-				    ipsec_integ_alg_t integ_alg);
 extern void ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled);
 
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);
