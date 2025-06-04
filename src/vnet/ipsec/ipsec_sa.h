@@ -69,6 +69,38 @@ typedef enum
     IPSEC_INTEG_N_ALG,
 } __clib_packed ipsec_integ_alg_t;
 
+#define foreach_ipsec_link_combined_sync_op_id                                \
+  _ (AES_CBC_128, MD5_96, AES_CBC_128_MD5, 12)                                \
+  _ (AES_CBC_128, SHA1_96, AES_CBC_128_SHA1, 12)                              \
+  _ (AES_CBC_128, SHA224, AES_CBC_128_SHA224, 14)                             \
+  _ (AES_CBC_128, SHA_256_128, AES_CBC_128_SHA256, 16)                        \
+  _ (AES_CBC_128, SHA_384_192, AES_CBC_128_SHA384, 24)                        \
+  _ (AES_CBC_128, SHA_512_256, AES_CBC_128_SHA512, 32)                        \
+  _ (AES_CBC_192, MD5_96, AES_CBC_192_MD5, 12)                                \
+  _ (AES_CBC_192, SHA1_96, AES_CBC_192_SHA1, 12)                              \
+  _ (AES_CBC_192, SHA224, AES_CBC_192_SHA224, 14)                             \
+  _ (AES_CBC_192, SHA_256_128, AES_CBC_192_SHA256, 16)                        \
+  _ (AES_CBC_192, SHA_384_192, AES_CBC_192_SHA384, 24)                        \
+  _ (AES_CBC_192, SHA_512_256, AES_CBC_192_SHA512, 32)                        \
+  _ (AES_CBC_256, MD5_96, AES_CBC_256_MD5, 12)                                \
+  _ (AES_CBC_256, SHA1_96, AES_CBC_256_SHA1, 12)                              \
+  _ (AES_CBC_256, SHA224, AES_CBC_256_SHA224, 14)                             \
+  _ (AES_CBC_256, SHA_256_128, AES_CBC_256_SHA256, 16)                        \
+  _ (AES_CBC_256, SHA_384_192, AES_CBC_256_SHA384, 24)                        \
+  _ (AES_CBC_256, SHA_512_256, AES_CBC_256_SHA512, 32)                        \
+  _ (AES_CTR_128, SHA1_96, AES_CTR_128_SHA1, 12)                              \
+  _ (AES_CTR_128, SHA_256_128, AES_CTR_128_SHA256, 16)                        \
+  _ (AES_CTR_128, SHA_384_192, AES_CTR_128_SHA384, 24)                        \
+  _ (AES_CTR_128, SHA_512_256, AES_CTR_128_SHA512, 32)                        \
+  _ (AES_CTR_192, SHA1_96, AES_CTR_192_SHA1, 12)                              \
+  _ (AES_CTR_192, SHA_256_128, AES_CTR_192_SHA256, 16)                        \
+  _ (AES_CTR_192, SHA_384_192, AES_CTR_192_SHA384, 24)                        \
+  _ (AES_CTR_192, SHA_512_256, AES_CTR_192_SHA512, 32)                        \
+  _ (AES_CTR_256, SHA1_96, AES_CTR_256_SHA1, 12)                              \
+  _ (AES_CTR_256, SHA_256_128, AES_CTR_256_SHA256, 16)                        \
+  _ (AES_CTR_256, SHA_384_192, AES_CTR_256_SHA384, 24)                        \
+  _ (AES_CTR_256, SHA_512_256, AES_CTR_256_SHA512, 32)
+
 typedef enum
 {
   IPSEC_PROTOCOL_AH = 0,

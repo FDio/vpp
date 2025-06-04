@@ -1109,6 +1109,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, sync_bufs,
 			       sync_nexts, ptd->chunks, drop_next);
 
+      ipsec_sa_t *sa = pool_elt_at_index (im->sa_pool, current_sa_index);
+      if (sa->integ_sync_op_id != UINT16_MAX)
+	{
+	  esp_process_ops (vm, node, ptd->integ_ops, sync_bufs, sync_nexts,
+			   drop_next);
+	  esp_process_chained_ops (vm, node, ptd->chained_integ_ops, sync_bufs,
+				   sync_nexts, ptd->chunks, drop_next);
+	}
+
       esp_process_ops (vm, node, ptd->integ_ops, sync_bufs, sync_nexts,
 		       drop_next);
       esp_process_chained_ops (vm, node, ptd->chained_integ_ops, sync_bufs,
