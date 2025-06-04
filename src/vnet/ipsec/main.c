@@ -160,6 +160,306 @@ ipsec_main_t ipsec_main = {
       .is_aead = 1,
       .is_null_gmac = 1,
     },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_128_MD5] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CBC_MD5_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CBC_MD5_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CBC_MD5_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_192_MD5] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CBC_MD5_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CBC_MD5_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CBC_MD5_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_256_MD5] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_MD5_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_MD5_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CBC_MD5_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_3DES_CBC_MD5] = {
+      .enc_op_id = VNET_CRYPTO_OP_3DES_CBC_MD5_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_3DES_CBC_MD5_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_3DES_CBC_MD5_TAG12,
+      .iv_size = 8,
+      .block_align = 8,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_128_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA1_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_192_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CBC_SHA1_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_256_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CBC_SHA1_TAG12,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_3DES_CBC_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_3DES_CBC_SHA1_TAG12,
+      .iv_size = 8,
+      .block_align = 8,
+      .icv_size = 12,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_128_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA1_TAG12,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 12,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_192_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CTR_SHA1_TAG12,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 12,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_256_SHA1_96] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA1_TAG12_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA1_TAG12_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CTR_SHA1_TAG12,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 12,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_128_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA256_TAG16,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 16,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_192_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CBC_SHA256_TAG16,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 16,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_256_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CBC_SHA256_TAG16,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 16,
+    },
+
+    [IPSEC_CRYPTO_ALG_3DES_CBC_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_3DES_CBC_SHA256_TAG16,
+      .iv_size = 8,
+      .block_align = 8,
+      .icv_size = 16,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_128_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA256_TAG16,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 16,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_192_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CTR_SHA256_TAG16,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 16,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_256_SHA_256_128] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA256_TAG16_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA256_TAG16_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CTR_SHA256_TAG16,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 16,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_128_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA384_TAG24,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 24,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_192_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CBC_SHA384_TAG24,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 24,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_256_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CBC_SHA384_TAG24,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 24,
+    },
+
+    [IPSEC_CRYPTO_ALG_3DES_CBC_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_3DES_CBC_SHA384_TAG24,
+      .iv_size = 8,
+      .block_align = 8,
+      .icv_size = 24,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_128_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA384_TAG24,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 24,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_192_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CTR_SHA384_TAG24,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 24,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_256_SHA_384_192] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA384_TAG24_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA384_TAG24_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CTR_SHA384_TAG24,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 24,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_128_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CBC_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CBC_SHA512_TAG32,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 32,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_192_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CBC_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CBC_SHA512_TAG32,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 32,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CBC_256_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CBC_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CBC_SHA512_TAG32,
+      .iv_size = 16,
+      .block_align = 16,
+      .icv_size = 32,
+    },
+
+    [IPSEC_CRYPTO_ALG_3DES_CBC_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_3DES_CBC_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_3DES_CBC_SHA512_TAG32,
+      .iv_size = 8,
+      .block_align = 8,
+      .icv_size = 32,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_128_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_128_CTR_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_128_CTR_SHA512_TAG32,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 32,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_192_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_192_CTR_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_192_CTR_SHA512_TAG32,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 32,
+      .is_ctr = 1,
+    },
+
+    [IPSEC_CRYPTO_ALG_AES_CTR_256_SHA_512_256] = {
+      .enc_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA512_TAG32_ENC,
+      .dec_op_id = VNET_CRYPTO_OP_AES_256_CTR_SHA512_TAG32_DEC,
+      .alg = VNET_CRYPTO_ALG_AES_256_CTR_SHA512_TAG32,
+      .iv_size = 8,
+      .block_align = 1,
+      .icv_size = 32,
+      .is_ctr = 1,
+    },
   },
   .integ_algs = {
     [IPSEC_INTEG_ALG_MD5_96] = {
