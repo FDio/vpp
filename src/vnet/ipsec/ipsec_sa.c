@@ -144,6 +144,41 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
 }
 
 void
+ipsec_sa_set_alg_op_ids (ipsec_sa_t *sa, ipsec_integ_alg_t integ_alg,
+			 ipsec_crypto_alg_t crypto_alg)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *vnet_calg = im->crypto_algs + crypto_alg;
+  ipsec_main_integ_alg_t *vnet_ialg = im->integ_algs + integ_alg;
+
+  if (integ_alg != IPSEC_INTEG_ALG_NONE)
+    {
+#define _(c, h, s, k, d)                                                      \
+  if (vnet_calg->alg == VNET_CRYPTO_ALG_##c &&                                \
+      vnet_ialg->alg == VNET_CRYPTO_ALG_HMAC_##h)                             \
+    {                                                                         \
+      sa->crypto_calg = VNET_CRYPTO_ALG_##c##_##h##_TAG##d;                   \
+      sa->crypto_sync_enc_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC;    \
+      sa->crypto_sync_dec_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;    \
+    }
+      foreach_crypto_link_async_alg
+#undef _
+	for (int i = 0; i < IPSEC_CRYPTO_N_ALG; i++)
+      {
+	if (im->crypto_algs[i].alg == sa->crypto_calg)
+	  {
+	    sa->crypto_alg = (ipsec_crypto_alg_t) i;
+	    return;
+	  }
+      }
+    }
+  sa->crypto_alg = crypto_alg;
+  sa->crypto_calg = vnet_calg->alg;
+  sa->crypto_sync_enc_op_id = vnet_calg->enc_op_id;
+  sa->crypto_sync_dec_op_id = vnet_calg->dec_op_id;
+}
+
+void
 ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -490,13 +525,15 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->protocol = proto;
   sa->salt = salt;
 
+  // ipsec_sa_set_alg_op_ids (sa, integ_alg, crypto_alg); // TODO: use this
+  // call
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
-      ipsec_sa_set_integ_alg (sa, integ_alg);
+      ipsec_sa_set_integ_alg (sa, integ_alg); // TODO: remove
       clib_memcpy (&sa->integ_key, ik, sizeof (sa->integ_key));
     }
-  ipsec_sa_set_crypto_alg (sa, crypto_alg);
-  ipsec_sa_set_async_op_ids (sa);
+  ipsec_sa_set_crypto_alg (sa, crypto_alg); // TODO: remove
+  ipsec_sa_set_async_op_ids (sa);	    // TODO: remove
 
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
 
