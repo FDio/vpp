@@ -16,6 +16,24 @@
       "message": "I think this should be checked only for non link-local address (the 2nd branch below) as it is not used for LL address anyway.\nAnd it\u0027s a nitpick but for fib indexes we usually check against INDEX_INVALID (eg. if (INDEX_INVALID \u003d\u003d fib_index)...).",
       "revId": "9df33d2fca8c5dc6978ea26d02f9adf1226803c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2af9b5f6_263bed3f",
+        "filename": "src/vnet/ip-neighbor/ip_neighbor.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-06-05T07:54:39Z",
+      "side": 1,
+      "message": "Done, Thank you for the review",
+      "parentUuid": "2db841f7_f063c9a7",
+      "revId": "9df33d2fca8c5dc6978ea26d02f9adf1226803c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
