@@ -153,11 +153,11 @@ func RedisBenchmarkTest(s *LdpSuite) {
 	go func() {
 		defer GinkgoRecover()
 		// Avoid redis warning during startup
-		s.Containers.ServerVpp.Exec(false, "sysctl vm.overcommit_memory=1")
+		s.Containers.ServerApp.Exec(false, "sysctl vm.overcommit_memory=1")
 		// Note: --save "" disables snapshotting which during upgrade to ubuntu 24.04 was
 		// observed to corrupt vcl memory / heap. Needs more debugging.
-		cmd := "redis-server --daemonize yes --protected-mode no --save \"\" --bind " + serverVethAddress + " --loglevel notice --logfile " + s.RedisServerLogFileName(s.Containers.ServerVpp)
-		s.StartServerApp(s.Containers.ServerVpp, "redis-server", cmd, runningSrv, doneSrv)
+		cmd := "redis-server --daemonize yes --protected-mode no --save \"\" --bind " + serverVethAddress + " --loglevel notice --logfile " + s.RedisServerLogFileName(s.Containers.ServerApp)
+		s.StartServerApp(s.Containers.ServerApp, "redis-server", cmd, runningSrv, doneSrv)
 	}()
 
 	err := <-runningSrv
@@ -167,11 +167,11 @@ func RedisBenchmarkTest(s *LdpSuite) {
 		defer GinkgoRecover()
 		var cmd string
 		if *NConfiguredCpus == 1 {
-			cmd = "redis-benchmark --threads 1 -h " + serverVethAddress
+			cmd = "redis-benchmark -q --threads 1 -h " + serverVethAddress
 		} else {
-			cmd = "redis-benchmark --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
+			cmd = "redis-benchmark -q --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
 		}
-		s.StartClientApp(s.Containers.ClientVpp, cmd, clnCh, clnRes)
+		s.StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
 
 	}()
 
