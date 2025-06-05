@@ -172,11 +172,11 @@ test-perf: FORCE_BUILD=false
 test-perf: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--test=$(TEST) --vppsrc=$(VPPSRC) --repeat=$(REPEAT) \
-		--skip=$(SKIP) --no_color=$(NO_COLOR) --perf=true; \
+		--skip=$(SKIP) --no_color=$(NO_COLOR) --perf=true --timeout=$(TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: setup-cluster
-setup-cluster:
+setup-cluster: .kind_deps.ok
 	@bash ./kubernetes/setupCluster.sh
 
 .PHONY: build-go
@@ -204,9 +204,39 @@ build-debug: .deps.ok build-vpp-debug build-go
 .deps.ok:
 	@$(MAKE) install-deps
 
+.kind_deps.ok:
+	@$(MAKE) install-kind-deps
+
+.PHONY: install-kind-deps
+install-kind-deps: .deps.ok
+	@go install sigs.k8s.io/kind@v0.29.0
+	-@if which kind > /dev/null 2>&1; then \
+        sudo ln -s $$(which kind) /usr/bin/kind; \
+	fi
+	@if ! command -v kubectl >/dev/null 2>&1; then \
+        echo "kubectl not found. Installing kubectl..."; \
+        sudo -E apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl gnupg; \
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
+        sudo -E chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list; \
+        sudo -E chmod 644 /etc/apt/sources.list.d/kubernetes.list; \
+        sudo apt-get update && sudo apt-get install -y kubectl; \
+    else \
+        echo "kubectl is already installed. Skipping installation."; \
+	fi
+	@touch .kind_deps.ok
+
 .PHONY: install-deps
 install-deps:
 	@rm -f .deps.ok
+	@if [ -d "/usr/local/go" ]; then \
+        echo "Go is already installed. You may have to update it manually if version < 1.22"; \
+		go version; \
+    else \
+        echo "Installing Go 1.22"; \
+		wget https://go.dev/dl/go1.22.12.linux-amd64.tar.gz -O /tmp/go1.22.12.linux-amd64.tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.22.12.linux-amd64.tar.gz; \
+		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
+	fi
 	@sudo -E apt-get update
 	@sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
 		bridge-utils gpg
