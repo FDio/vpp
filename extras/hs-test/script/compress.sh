@@ -16,7 +16,7 @@ then
             logDir=/tmp/hs-test/$dirName
             if [ -d "$logDir" ]; then
                 mkdir -p ${WORKSPACE}/archives/summary
-                rsync -a --exclude 'volumes' $logDir ${WORKSPACE}/archives/summary/
+                rsync -a --exclude 'vol' $logDir ${WORKSPACE}/archives/summary/
             fi
         done
         echo "Done."
