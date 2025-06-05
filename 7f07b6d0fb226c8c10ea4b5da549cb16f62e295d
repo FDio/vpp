@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e05821e_abf0d171",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-05T15:44:49Z",
+      "side": 1,
+      "message": "this return empty output (not running with verbose?)\nadd AssertContain(o, \"binary file...",
+      "range": {
+        "startLine": 477,
+        "startChar": 1,
+        "endLine": 480,
+        "endChar": 66
+      },
+      "revId": "7f07b6d0fb226c8c10ea4b5da549cb16f62e295d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
