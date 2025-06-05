@@ -1,8 +1,10 @@
 package hst_kind
 
 import (
+	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"text/template"
@@ -78,8 +80,36 @@ func (s *KindSuite) TeardownTest() {
 }
 
 func (s *KindSuite) TeardownSuite() {
+	s.HstCommon.TeardownSuite()
 	s.Log("   %s", s.Namespace)
 	s.AssertNil(s.deleteNamespace(s.Namespace))
+}
+
+// Quick and dirty fix for now. Runs 'ldd /usr/lib/libvcl_ldpreload.so'
+// and searches for the first version string, then creates symlinks.
+func (s *KindSuite) FixVersionNumber(pods... *Pod) {
+	regex := regexp.MustCompile(`lib.*\.so\.([0-9]+\.[0-9]+)`)
+	o, _ := s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c",
+		"ldd /usr/lib/libvcl_ldpreload.so"})
+    match := regex.FindStringSubmatch(o)
+
+    if len(match) > 1 {
+        version := match[1]
+        s.Log("Found version: %s", version)
+		cmd := fmt.Sprintf("for file in /usr/lib/*.so; do\n" +
+		"if [ -e \"$file\" ]; then\n" +
+		"base=$(basename \"$file\")\n" +
+		"newlink=\"/usr/lib/${base}.%s\"\n" +
+		"ln -s \"$file\" \"$newlink\"\n" +
+		"fi\n" +
+		"done", version)
+		for _, pod := range pods {
+			s.Exec(pod, []string{"/bin/bash", "-c", cmd})
+		}
+
+    } else {
+        s.Log("Couldn't find version.")
+    }
 }
 
 func (s *KindSuite) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
@@ -101,8 +131,10 @@ func (s *KindSuite) CreateConfigFromTemplate(targetConfigName string, templateNa
 func (s *KindSuite) CreateNginxConfig() {
 	values := struct {
 		Workers uint8
+		Port uint16
 	}{
 		Workers: 1,
+		Port: 8081,
 	}
 	s.CreateConfigFromTemplate(
 		"/nginx.conf",

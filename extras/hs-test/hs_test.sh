@@ -114,6 +114,7 @@ case "${i}" in
         ;;
     --perf=*)
         perf="${i#*=}"
+        args="$args -perf"
         ;;
     --timeout=*)
         args="$args -timeout ${i#*=}"
