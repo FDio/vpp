@@ -65,12 +65,6 @@ typedef enum
 
 typedef struct
 {
-  u16 identifier;
-  u16 sequence;
-} icmp_echo_header_t;
-
-typedef struct
-{
   u16 src_port, dst_port;
 } tcp_udp_header_t;
 

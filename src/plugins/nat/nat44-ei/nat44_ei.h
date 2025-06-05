@@ -85,12 +85,6 @@ typedef int (nat44_ei_alloc_out_addr_and_port_function_t) (
 
 typedef struct
 {
-  u16 identifier;
-  u16 sequence;
-} icmp_echo_header_t;
-
-typedef struct
-{
   u16 src_port, dst_port;
 } tcp_udp_header_t;
 
