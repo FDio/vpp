@@ -83,6 +83,7 @@ typedef struct
   u32 file_index;
   u32 daq_version;
   u16 n_instances;
+  u8 mode;
   snort_client_msg_queue_elt *msg_queue;
   snort_client_qpair_t *qpairs;
 } snort_client_t;
@@ -137,9 +138,11 @@ clib_error_t *snort_listener_init ();
 /* format.c */
 format_function_t format_snort_enq_trace;
 format_function_t format_snort_arc_input_trace;
+format_function_t format_snort_arc_next_trace;
 format_function_t format_snort_deq_trace;
 format_function_t format_snort_daq_version;
 format_function_t format_snort_verdict;
+format_function_t format_snort_mode;
 
 /* enqueue.c */
 typedef struct
@@ -175,7 +178,15 @@ typedef struct
 {
   u32 next_index;
   u32 sw_if_index;
+  u32 buffer_index;
+  u8 verdict;
 } snort_deq_trace_t;
+
+typedef struct
+{
+  u32 buffer_index;
+  u32 next_index;
+} snort_arc_next_trace_t;
 
 #define foreach_snort_deq_error                                               \
   _ (BAD_DESC, "bad descriptor")                                              \

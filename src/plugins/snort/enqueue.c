@@ -9,8 +9,6 @@
 #include <vppinfra/vector/array_mask.h>
 #include <snort/snort.h>
 
-#include <daq_common.h>
-
 static char *snort_enq_error_strings[] = {
 #define _(sym, string) string,
   foreach_snort_enq_error
@@ -254,14 +252,9 @@ VLIB_NODE_FN (snort_enq_node)
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     {
-      u32 n_trace = vlib_get_trace_count (vm, node);
-
       for (u32 i = 0; i < n_from; i++)
 	{
-	  if (n_trace == 0)
-	    break;
-
-	  if (bufs[0]->flags & VLIB_BUFFER_IS_TRACED)
+	  if (bufs[i]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      snort_enq_trace_t *t =
 		vlib_add_trace (vm, node, bufs[i], sizeof (*t));
@@ -271,10 +264,8 @@ VLIB_NODE_FN (snort_enq_node)
 	      t->desc = descs[i];
 	      t->qpair_id.thread_id = vm->thread_index;
 	      t->qpair_id.queue_id = qpairs_per_thread > 1 ? hashes[i] : 0;
-	      n_trace--;
 	    }
 	}
-      vlib_set_trace_count (vm, node, n_trace);
     }
 
   if (qpairs_per_thread == 1)
@@ -347,8 +338,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     {
-      u32 n_trace = vlib_get_trace_count (vm, node);
-      for (u32 i = 0; n_trace && i < n_pkts; i++)
+      for (u32 i = 0; i < n_pkts; i++)
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
 	  if (b->flags & VLIB_BUFFER_IS_TRACED)
@@ -357,10 +347,8 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
 		vlib_add_trace (vm, node, b, sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 	      t->instance = instance_indices[i];
-	      n_trace--;
 	    }
 	}
-      vlib_set_trace_count (vm, node, n_trace);
     }
 
   while (n_total_left)

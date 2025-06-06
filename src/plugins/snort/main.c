@@ -167,7 +167,7 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
     vm, si->dequeue_node_index, "snort-ip4-output-next");
   vlib_worker_thread_node_runtime_update ();
 
-  log_debug ("instnce '%s' createed with fd %d at %p, len %u", name, fd, base,
+  log_debug ("instnce '%s' created with fd %d at %p, len %u", name, fd, base,
 	     size);
 
   vec_validate_aligned (si->qpairs, total_qpairs - 1, CLIB_CACHE_LINE_BYTES);

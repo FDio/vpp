@@ -46,13 +46,15 @@ static void
 snort_msg_connect (vlib_main_t *vm, snort_client_t *c, daq_vpp_msg_req_t *req,
 		   snort_client_msg_queue_elt *e)
 {
-  log_debug ("daq_version %U num_snort_instances %u mode %u",
+  log_debug ("daq_version %U num_snort_instances %u mode %U",
 	     format_snort_daq_version, req->connect.daq_version,
-	     req->connect.num_snort_instances, req->connect.mode);
+	     req->connect.num_snort_instances, format_snort_mode,
+	     req->connect.mode);
 
   e->msg.connect.num_bpools = vec_len (vm->buffer_main->buffer_pools);
   c->n_instances = req->connect.num_snort_instances;
   c->daq_version = req->connect.daq_version;
+  c->mode = req->connect.mode;
 }
 
 static void
