@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd6de4a7_5532ba8a",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-06T08:16:36Z",
+      "side": 1,
+      "message": "this is not good, works fine now but when you add next one it will be broken\nsee how to do it properly: https://github.com/FDio/vpp/blob/cdfdbebe38dd27c72fd17af81d8203e5e27dff07/src/plugins/http/http_private.h#L170",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 0
+      },
+      "revId": "224e04e762d8579b327e6b15c9e9f88d95af7615",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
