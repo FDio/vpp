@@ -73,6 +73,7 @@ more:
       u32 desc_index = qp->deq_ring[tail & mask];
       snort_qpair_entry_t *qpe = qp->entries + desc_index;
       daq_vpp_desc_t *d;
+      vlib_buffer_t *b;
       u32 bi;
       u8 verdict;
 
@@ -105,7 +106,8 @@ more:
 	nexts[0] = qpe->next_index;
       n_verdicsts[verdict]++;
       qpe->buffer_index = ~0;
-      *snort_get_buffer_metadata (vlib_get_buffer (vm, bi)) = d->metadata;
+      b = vlib_get_buffer (vm, bi);
+      *snort_get_buffer_metadata (b) = d->metadata;
 
       /* put descriptor back to freelist */
       qpe->freelist_next = next_free;
@@ -113,6 +115,15 @@ more:
 
       /* next */
       tail++;
+
+      if (b->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_deq_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  t->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+	  t->next_index = nexts[0];
+	  t->buffer_index = bi;
+	  t->verdict = verdict;
+	}
     }
 
   n_deq = tail - old_tail;
@@ -184,6 +195,38 @@ snort_arc_next_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_feature_next_u16 (ni + 1, b1);
       vnet_feature_next_u16 (ni + 2, b2);
       vnet_feature_next_u16 (ni + 3, b3);
+
+      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_arc_next_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->buffer_index = bi[0];
+	  t->next_index = ni[0];
+	}
+
+      if (b1->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_arc_next_trace_t *t =
+	    vlib_add_trace (vm, node, b1, sizeof (*t));
+	  t->buffer_index = bi[1];
+	  t->next_index = ni[1];
+	}
+
+      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_arc_next_trace_t *t =
+	    vlib_add_trace (vm, node, b2, sizeof (*t));
+	  t->buffer_index = bi[2];
+	  t->next_index = ni[2];
+	}
+
+      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_arc_next_trace_t *t =
+	    vlib_add_trace (vm, node, b3, sizeof (*t));
+	  t->buffer_index = bi[3];
+	  t->next_index = ni[3];
+	}
     }
 
   for (; n_left > 0; n_left -= 1, bi += 1, ni += 1)
@@ -192,6 +235,13 @@ snort_arc_next_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       b0 = vlib_get_buffer (vm, bi[0]);
       vnet_feature_next_u16 (ni + 0, b0);
+      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  snort_arc_next_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->buffer_index = bi[0];
+	  t->next_index = ni[0];
+	}
     }
 
   vlib_buffer_enqueue_to_next (vm, node, buffer_indices, next_indices, n_pkts);
@@ -208,6 +258,7 @@ VLIB_REGISTER_NODE (snort_ip4_input_next_node) = {
   .name = "snort-ip4-input-next",
   .vector_size = sizeof (u32),
   .aux_size = sizeof (u16),
+  .format_trace = format_snort_arc_next_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "snort-ip4-input",
 };
@@ -222,6 +273,7 @@ VLIB_REGISTER_NODE (snort_ip4_output_next_node) = {
   .name = "snort-ip4-output-next",
   .vector_size = sizeof (u32),
   .aux_size = sizeof (u16),
+  .format_trace = format_snort_arc_next_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "snort-ip4-output",
 };
