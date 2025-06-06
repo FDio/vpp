@@ -1135,6 +1135,7 @@ Tahr
 tapcli
 tcp
 tcpcontrolbits
+taskset
 te
 teardown
 tearDown
