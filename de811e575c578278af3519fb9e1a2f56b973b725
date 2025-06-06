@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c618f5b3_c248a1d4",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-06T08:11:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "cda2e0ba_0ed879a4",
+      "revId": "de811e575c578278af3519fb9e1a2f56b973b725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "644de2c3_6aa30ed7",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-06-05T21:29:06Z",
       "side": 1,
       "message": "Should be fine without because we should always allocate objects from pools with `pool_get_zero`",
+      "revId": "de811e575c578278af3519fb9e1a2f56b973b725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa462ac5_19adefd0",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-06T08:11:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "644de2c3_6aa30ed7",
       "revId": "de811e575c578278af3519fb9e1a2f56b973b725",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
