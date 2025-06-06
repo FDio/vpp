@@ -26,8 +26,8 @@ format_snort_enq_trace (u8 *s, va_list *args)
 	    indent, t->desc.buffer_pool, t->desc.offset, t->desc.length);
   s =
     format (s, "\n%Umetadata: address-space-id %u flags 0x%x ingress_index %d",
-	    t->desc.metadata.address_space_id, t->desc.metadata.flags,
-	    t->desc.metadata.ingress_index);
+	    format_white_space, indent, t->desc.metadata.address_space_id,
+	    t->desc.metadata.flags, t->desc.metadata.ingress_index);
 
   return s;
 }
@@ -48,11 +48,25 @@ format_snort_deq_trace (u8 *s, va_list *args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   snort_deq_trace_t *t = va_arg (*args, snort_deq_trace_t *);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "snort-deq: sw_if_index %d, next index %d\n", t->sw_if_index,
 	      t->next_index);
+  s = format (s, "%U buffer index %d, verdict %U", format_white_space, indent,
+	      t->buffer_index, format_snort_verdict, t->verdict);
 
   return s;
+}
+
+u8 *
+format_snort_arc_next_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  snort_arc_next_trace_t *t = va_arg (*args, snort_arc_next_trace_t *);
+
+  return format (s, "buffer-index %u next_index %u", t->buffer_index,
+		 t->next_index);
 }
 
 u8 *
@@ -77,6 +91,23 @@ format_snort_verdict (u8 *s, va_list *args)
   };
 
   if (v >= MAX_DAQ_VERDICT || strings[v] == 0)
+    return format (s, "unknown (%d)", v);
+
+  return format (s, "%s", strings[v]);
+}
+
+u8 *
+format_snort_mode (u8 *s, va_list *args)
+{
+  DAQ_Mode v = va_arg (*args, DAQ_Mode);
+  static char *strings[MAX_DAQ_MODE] = {
+    [DAQ_MODE_NONE] = "none",
+    [DAQ_MODE_PASSIVE] = "passive",
+    [DAQ_MODE_INLINE] = "inline",
+    [DAQ_MODE_READ_FILE] = "read-file",
+  };
+
+  if (v >= MAX_DAQ_MODE || strings[v] == 0)
     return format (s, "unknown (%d)", v);
 
   return format (s, "%s", strings[v]);

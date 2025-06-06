@@ -742,7 +742,8 @@ const DAQ_ModuleAPI_t DAQ_MODULE_DATA = {
   .api_version = DAQ_MODULE_API_VERSION,
   .api_size = sizeof (DAQ_ModuleAPI_t),
   .module_version = DAQ_VPP_VERSION,
-  .type = DAQ_TYPE_INTF_CAPABLE | DAQ_TYPE_MULTI_INSTANCE,
+  .type =
+    DAQ_TYPE_INTF_CAPABLE | DAQ_TYPE_MULTI_INSTANCE | DAQ_TYPE_INLINE_CAPABLE,
   .load = daq_vpp_module_load,
   .unload = daq_vpp_module_unload,
   .get_variable_descs = daq_vpp_get_variable_descs,
