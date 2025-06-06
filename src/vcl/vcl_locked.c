@@ -136,6 +136,7 @@ typedef struct vls_local_
 {
   int vls_wrk_index;		      /**< vls wrk index, 1 per process */
   volatile int vls_mt_n_threads;      /**< number of threads detected */
+  int vls_mt_needs_locks;	      /**< mt single vcl wrk needs locks */
   clib_rwlock_t vls_pool_lock;	      /**< per process/wrk vls pool locks */
   pthread_mutex_t vls_mt_mq_mlock;    /**< vcl mq lock */
   pthread_mutex_t vls_mt_spool_mlock; /**< vcl select or pool lock */
@@ -267,28 +268,28 @@ vls_shared_data_pool_runlock (void)
 static inline void
 vls_mt_pool_rlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_needs_locks)
     clib_rwlock_reader_lock (&vlsl->vls_pool_lock);
 }
 
 static inline void
 vls_mt_pool_runlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_needs_locks)
     clib_rwlock_reader_unlock (&vlsl->vls_pool_lock);
 }
 
 static inline void
 vls_mt_pool_wlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_needs_locks)
     clib_rwlock_writer_lock (&vlsl->vls_pool_lock);
 }
 
 static inline void
 vls_mt_pool_wunlock (void)
 {
-  if (vlsl->vls_mt_n_threads > 1)
+  if (vlsl->vls_mt_needs_locks)
     clib_rwlock_writer_unlock (&vlsl->vls_pool_lock);
 }
 
@@ -310,6 +311,7 @@ static void
 vls_mt_add (void)
 {
   vlsl->vls_mt_n_threads += 1;
+  vlsl->vls_mt_needs_locks = 1;
 
   /* If multi-thread workers are supported, for each new thread register a new
    * vcl worker with vpp. Otherwise, all threads use the same vcl worker, so
@@ -404,14 +406,14 @@ vls_is_shared (vcl_locked_session_t * vls)
 static inline void
 vls_lock (vcl_locked_session_t * vls)
 {
-  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
+  if (vlsl->vls_mt_needs_locks || vls_is_shared (vls))
     clib_spinlock_lock (&vls->lock);
 }
 
 static inline int
 vls_trylock (vcl_locked_session_t *vls)
 {
-  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
+  if (vlsl->vls_mt_needs_locks || vls_is_shared (vls))
     return !clib_spinlock_trylock (&vls->lock);
   return 0;
 }
@@ -419,7 +421,7 @@ vls_trylock (vcl_locked_session_t *vls)
 static inline void
 vls_unlock (vcl_locked_session_t * vls)
 {
-  if ((vlsl->vls_mt_n_threads > 1) || vls_is_shared (vls))
+  if (vlsl->vls_mt_needs_locks || vls_is_shared (vls))
     clib_spinlock_unlock (&vls->lock);
 }
 
@@ -1245,7 +1247,7 @@ vls_mt_detect (void)
     }                                                                         \
   else                                                                        \
     {                                                                         \
-      if (PREDICT_FALSE (vlsl->vls_mt_n_threads > 1))                         \
+      if (PREDICT_FALSE (vlsl->vls_mt_needs_locks))                           \
 	vls_mt_acq_locks (_vls, _op, &_locks_acq);                            \
     }
 
