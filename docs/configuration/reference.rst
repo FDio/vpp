@@ -469,12 +469,16 @@ CPU cores while skipping "skip-cores" CPU core(s) and main thread's CPU core
 relative
 ^^^^^^^^^
 
-Apply thread pinning configuration with respect to the available logical cores
-in the current control group CPU set.
+Apply thread pinning configuration with respect to the logical cores available
+to the VPP process, rather than all logical cores present on the host machine.
+
 By default, VPP applies the thread pinning configuration with respect to the
-available logical cores on host (e.g. '/sys/devices/system/cpu/online'). With
-the 'relative' keyword, the thread pinning configuration is applied with respect
-to the available logical cores (obtained with sched_getaffinity).
+available logical cores on host (e.g. '/sys/devices/system/cpu/online'), and with
+the 'relative' keyword, we apply the thread pinning configuration with respect
+to logical cores available to the VPP process (obtained with sched_getaffinity).
+
+This parameter can be useful when running VPP in an environment with restricted access
+to host CPU resources (e.g. running in a container, or using taskset).
 
 .. code-block:: console
 
