@@ -219,6 +219,7 @@ http2_conn_alloc_req (http_conn_t *hc, u32 stream_id)
   req->base.hr_req_handle = hr_handle.as_u32;
   req->base.hr_hc_index = hc->hc_hc_index;
   req->base.c_thread_index = hc->c_thread_index;
+  req->base.c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   req->stream_id = stream_id;
   req->stream_state = HTTP2_STREAM_STATE_IDLE;
   req->sched_list.next = CLIB_LLIST_INVALID_INDEX;
