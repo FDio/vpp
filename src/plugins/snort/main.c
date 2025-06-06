@@ -40,7 +40,7 @@ static char *snort_deq_error_strings[] = {
 #undef _
 };
 
-int
+__clib_export int
 snort_instance_get_index_by_name (vlib_main_t *vm, const char *name,
 				  snort_instance_index_t *instance_index)
 {
@@ -54,7 +54,7 @@ snort_instance_get_index_by_name (vlib_main_t *vm, const char *name,
   return 0;
 }
 
-int
+__clib_export int
 snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 		       char *fmt, ...)
 
@@ -167,7 +167,7 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
     vm, si->dequeue_node_index, "snort-ip4-output-next");
   vlib_worker_thread_node_runtime_update ();
 
-  log_debug ("instnce '%s' createed with fd %d at %p, len %u", name, fd, base,
+  log_debug ("instnce '%s' created with fd %d at %p, len %u", name, fd, base,
 	     size);
 
   vec_validate_aligned (si->qpairs, total_qpairs - 1, CLIB_CACHE_LINE_BYTES);
@@ -234,7 +234,7 @@ done:
   return rv;
 }
 
-int
+__clib_export int
 snort_instance_delete (vlib_main_t *vm, snort_instance_index_t instance_index)
 {
   snort_main_t *sm = &snort_main;

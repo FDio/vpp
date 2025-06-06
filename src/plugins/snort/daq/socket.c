@@ -159,8 +159,8 @@ daq_vpp_connect (daq_vpp_ctx_t *ctx, uint16_t num_instances, DAQ_Mode mode)
 	  goto err;
 	}
 
-      bp->base =
-	mmap (0, reply.get_buffer_pool.size, PROT_READ, MAP_SHARED, fd, 0);
+      bp->base = mmap (0, reply.get_buffer_pool.size, PROT_READ | PROT_WRITE,
+		       MAP_SHARED, fd, 0);
 
       if (bp->base == MAP_FAILED)
 	{

@@ -340,6 +340,8 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
       vlib_cli_output (vm, "instance: %s (%u)", si->name, si->index);
       vlib_cli_output (vm, "  shared memory: size %u fd %d", si->shm_size,
 		       si->shm_fd);
+      vlib_cli_output (vm, "  drop on disconnect: %u", si->drop_on_disconnect);
+
       vec_foreach_pointer (qp, si->qpairs)
 	{
 	  u64 n = 0;
@@ -400,7 +402,7 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
       si = snort_get_instance_by_index (
 	sm->input_instance_by_interface[sw_if_index]);
       if (si)
-	s = format (s, "%U:\t%s", format_vnet_sw_if_index_name, vnm,
+	s = format (s, "%U:\t%s\n", format_vnet_sw_if_index_name, vnm,
 		    sw_if_index, si->name);
     }
   if (vec_len (s))
@@ -413,7 +415,7 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
       si = snort_get_instance_by_index (
 	sm->output_instance_by_interface[sw_if_index]);
       if (si)
-	s = format (s, "%U:\t%s", format_vnet_sw_if_index_name, vnm,
+	s = format (s, "%U:\t%s\n", format_vnet_sw_if_index_name, vnm,
 		    sw_if_index, si->name);
     }
   if (vec_len (s))
@@ -445,6 +447,7 @@ snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
       vlib_cli_output (vm, "  DAQ version: %U", format_snort_daq_version,
 		       c->daq_version);
       vlib_cli_output (vm, "  number of intstances: %u", c->n_instances);
+      vlib_cli_output (vm, "  mode: %U", format_snort_mode, c->mode);
       vlib_cli_output (vm, "  inputs:");
       vec_foreach (cqp, c->qpairs)
 	{

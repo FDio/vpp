@@ -30,7 +30,7 @@ static void
 snort_feature_enable_disable (u32 sw_if_index, int is_enable, int input,
 			      int output)
 {
-  u32 fa_data = input ? 1 : 0 | output ? 2 : 0;
+  u32 fa_data = input ? 1 : 0 | output ? 1 : 0;
 
   if (input)
     vnet_feature_enable_disable ("ip4-unicast", "snort-ip4-input", sw_if_index,
@@ -88,7 +88,7 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
   vec_validate_init_empty (sm->input_instance_by_interface, sw_if_index, ~0);
   vec_validate_init_empty (sm->output_instance_by_interface, sw_if_index, ~0);
   input_instance = sm->input_instance_by_interface + sw_if_index;
-  output_instance = sm->input_instance_by_interface + sw_if_index;
+  output_instance = sm->output_instance_by_interface + sw_if_index;
 
   instance_index = instance->index;
 
