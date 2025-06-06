@@ -2019,8 +2019,7 @@ http2_conn_cleanup_callback (http_conn_t *hc)
   vec_foreach (req_index_p, req_indices)
     {
       req = http2_req_get (*req_index_p, hc->c_thread_index);
-      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
-	session_transport_delete_notify (&req->base.connection);
+      session_transport_delete_notify (&req->base.connection);
       http2_conn_free_req (h2c, req, hc->c_thread_index);
     }
 
