@@ -137,6 +137,7 @@ clib_error_t *snort_listener_init ();
 /* format.c */
 format_function_t format_snort_enq_trace;
 format_function_t format_snort_arc_input_trace;
+format_function_t format_snort_arc_next_trace;
 format_function_t format_snort_deq_trace;
 format_function_t format_snort_daq_version;
 format_function_t format_snort_verdict;
@@ -175,7 +176,15 @@ typedef struct
 {
   u32 next_index;
   u32 sw_if_index;
+  u32 buffer_index;
+  u8 verdict;
 } snort_deq_trace_t;
+
+typedef struct
+{
+  u32 buffer_index;
+  u32 next_index;
+} snort_arc_next_trace_t;
 
 #define foreach_snort_deq_error                                               \
   _ (BAD_DESC, "bad descriptor")                                              \

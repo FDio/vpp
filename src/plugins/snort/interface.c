@@ -88,7 +88,7 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
   vec_validate_init_empty (sm->input_instance_by_interface, sw_if_index, ~0);
   vec_validate_init_empty (sm->output_instance_by_interface, sw_if_index, ~0);
   input_instance = sm->input_instance_by_interface + sw_if_index;
-  output_instance = sm->input_instance_by_interface + sw_if_index;
+  output_instance = sm->output_instance_by_interface + sw_if_index;
 
   instance_index = instance->index;
 
