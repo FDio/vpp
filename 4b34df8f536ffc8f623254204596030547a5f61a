@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff7cde3c_55617a97",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-07T23:01:37Z",
+      "side": 1,
+      "message": "Nit, i.e., old man comment, `HC_S_FLAG_##s`. For consistency.",
+      "revId": "4b34df8f536ffc8f623254204596030547a5f61a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
