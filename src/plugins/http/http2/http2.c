@@ -1198,6 +1198,8 @@ http2_handle_continuation_frame (http_conn_t *hc, http2_frame_header_t *fh)
       if (fh->flags & HTTP2_FRAME_FLAG_END_HEADERS)
 	{
 	  req = http2_conn_get_req (hc, fh->stream_id);
+	  if (!req)
+	    return HTTP2_ERROR_PROTOCOL_ERROR;
 	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_CONTINUATION;
 	  req->payload = h2c->unparsed_headers;
 	  req->payload_len = vec_len (h2c->unparsed_headers);
