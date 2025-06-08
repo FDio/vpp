@@ -649,6 +649,8 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
     }
 
   s->vpp_handle = mp->new_handle;
+  s->rx_fifo->vpp_sh = mp->new_handle;
+  s->tx_fifo->vpp_sh = mp->new_handle;
 
   vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_evt_q,
 			 mp->vpp_thread_index, &s->vpp_evt_q);
