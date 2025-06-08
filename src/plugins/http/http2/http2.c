@@ -888,7 +888,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = control_data.method;
   msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.len = req->base.connection_header_index;
+  msg.data.len = req->base.control_data_len;
   msg.data.scheme = control_data.scheme;
   msg.data.target_authority_offset = control_data.authority - wrk->header_list;
   msg.data.target_authority_len = control_data.authority_len;
