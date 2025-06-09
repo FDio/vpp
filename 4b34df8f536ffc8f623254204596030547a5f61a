@@ -16,6 +16,24 @@
       "message": "Nit, i.e., old man comment, `HC_S_FLAG_##s`. For consistency.",
       "revId": "4b34df8f536ffc8f623254204596030547a5f61a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "316e5dab_0103fca8",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-09T08:33:15Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ff7cde3c_55617a97",
+      "revId": "4b34df8f536ffc8f623254204596030547a5f61a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
