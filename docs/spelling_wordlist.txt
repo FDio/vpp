@@ -285,6 +285,8 @@ dpdk
 dpkg
 dpo
 dport
+dropmon
+DROPMON
 dryrun
 DS
 dsa
@@ -506,6 +508,7 @@ Init
 initiatehost
 inline
 inlines
+insmod
 instantiation
 Instantiation
 Integrations
@@ -692,6 +695,7 @@ mldv
 mmap
 modelled
 modernisation
+modprobe
 modularity
 Monroy
 mortem
@@ -898,6 +902,8 @@ Promisc
 proto
 proxying
 ps
+psample
+PSAMPLE
 pseudocode
 Pseudocode
 psp
@@ -1024,6 +1030,8 @@ setjmp
 settingupenvironment
 setUp
 setUpClass
+sflow
+sFlow
 sfr
 sha
 Shamir
@@ -1239,6 +1247,7 @@ usergroup
 Usergroup
 Usermode
 username
+USERSOCK
 userspace
 Userspace
 usr
@@ -1384,5 +1393,3 @@ zoomout
 zx
 µs
 oflags
-sflow
-sFlow
