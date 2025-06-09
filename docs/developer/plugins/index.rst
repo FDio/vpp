@@ -30,6 +30,7 @@ For more on plugins please refer to :ref:`add_plugin`.
     lb
     lacp
     flowprobe
+    sflow
     map_lw4o6
     mdata
     dhcp6_pd
