@@ -11,7 +11,7 @@ import (
 
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest)
-	RegisterH2SoloTests(Http2MultiplexingMTTest)
+	RegisterH2MWTests(Http2MultiplexingMWTest)
 }
 
 func Http2TcpGetTest(s *H2Suite) {
@@ -79,7 +79,9 @@ func Http2MultiplexingTest(s *H2Suite) {
 	s.AssertContains(o, " 0 timeout")
 }
 
-func Http2MultiplexingMTTest(s *H2Suite) {
+func Http2MultiplexingMWTest(s *H2Suite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	vpp.Vppctl("http tps uri tcp://" + serverAddress + " no-zc")

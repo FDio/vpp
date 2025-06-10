@@ -64,6 +64,9 @@ case "${i}" in
     --cpus=*)
         args="$args -cpus ${i#*=}"
         ;;
+    --vpp_cpus=*)
+        args="$args -vpp_cpus ${i#*=}"
+        ;;
     --vppsrc=*)
         args="$args -vppsrc ${i#*=}"
         ;;
