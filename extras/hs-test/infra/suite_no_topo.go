@@ -12,6 +12,7 @@ import (
 
 var noTopoTests = map[string][]func(s *NoTopoSuite){}
 var noTopoSoloTests = map[string][]func(s *NoTopoSuite){}
+var noTopoMWTests = map[string][]func(s *NoTopoSuite){}
 
 type NoTopoSuite struct {
 	HstSuite
@@ -39,6 +40,9 @@ func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
 }
 func RegisterNoTopoSoloTests(tests ...func(s *NoTopoSuite)) {
 	noTopoSoloTests[GetTestFilename()] = tests
+}
+func RegisterNoTopoMWTests(tests ...func(s *NoTopoSuite)) {
+	noTopoMWTests[GetTestFilename()] = tests
 }
 
 func (s *NoTopoSuite) SetupSuite() {
@@ -239,6 +243,35 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+	var s NoTopoSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SkipIfNotEnoguhCpus = true
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	for filename, tests := range noTopoMWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
