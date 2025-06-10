@@ -170,7 +170,7 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
   svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
   int rv;
 
-  if ((rv = segment_manager_alloc_session_fifos (sm, s->thread_index,
+  if ((rv = segment_manager_alloc_session_fifos (s, sm, s->thread_index,
 						 &rx_fifo, &tx_fifo)))
     return rv;
 
@@ -206,7 +206,7 @@ app_worker_alloc_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
   s->session_type = ls->session_type;
   s->connection_index = ls->connection_index;
 
-  segment_manager_alloc_session_fifos (sm, s->thread_index, &rx_fifo,
+  segment_manager_alloc_session_fifos (0, sm, s->thread_index, &rx_fifo,
 				       &tx_fifo);
 
   rx_fifo->shr->master_session_index = s->session_index;

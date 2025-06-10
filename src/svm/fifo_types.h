@@ -94,7 +94,15 @@ typedef struct _svm_fifo
   fifo_segment_header_t *fs_hdr; /**< fifo segment header for fifo */
   rb_tree_t ooo_enq_lookup;	 /**< rbtree for ooo enq chunk lookup */
   rb_tree_t ooo_deq_lookup;	 /**< rbtree for ooo deq chunk lookup */
-  svm_fifo_chunk_t *ooo_deq;	 /**< last chunk used for ooo dequeue */
+  union
+  {
+    svm_fifo_chunk_t *ooo_deq; /**< last chunk used for ooo dequeue */
+    struct
+    {
+      u32 seg_ctx_index;
+      u32 ct_seg_index;
+    };
+  };
   svm_fifo_chunk_t *ooo_enq;	 /**< last chunk used for ooo enqueue */
   ooo_segment_t *ooo_segments;	 /**< Pool of ooo segments */
   u32 ooos_list_head;		 /**< Head of out-of-order linked-list */
