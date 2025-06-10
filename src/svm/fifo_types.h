@@ -87,6 +87,8 @@ typedef struct svm_fifo_shr_
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 } svm_fifo_shared_t;
 
+struct _svm_fifo;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -118,6 +120,15 @@ typedef struct _svm_fifo
 
   struct _svm_fifo *next; /**< prev in active chain */
   struct _svm_fifo *prev; /**< prev in active chain */
+  union
+  {
+    struct _svm_fifo *ct_fifo; /**< ct client's ptr to server fifo */
+    struct
+    {
+      u32 seg_ctx_index; /**< info to locate custom_seg_ctx */
+      u32 ct_seg_index;	 /**< info to locate ct_seg within seg_ctx */
+    };
+  };
 
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;

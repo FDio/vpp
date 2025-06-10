@@ -415,6 +415,55 @@ app_worker_init_accepted (session_t * s)
   return 0;
 }
 
+static int
+app_worker_alloc_session_fifos_ct (segment_manager_t *sm, session_t *s)
+{
+  svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
+  int rv;
+
+  if ((rv = segment_manager_alloc_session_fifos_ct (s, sm, s->thread_index,
+						    &rx_fifo, &tx_fifo)))
+    return rv;
+
+  rx_fifo->shr->master_session_index = s->session_index;
+  rx_fifo->vpp_sh = s->handle;
+
+  tx_fifo->shr->master_session_index = s->session_index;
+  tx_fifo->vpp_sh = s->handle;
+
+  s->rx_fifo = rx_fifo;
+  s->tx_fifo = tx_fifo;
+  return 0;
+}
+
+int
+app_worker_init_accepted_ct (session_t *s)
+{
+  app_worker_t *app_wrk;
+  segment_manager_t *sm;
+  session_t *listener;
+  application_t *app;
+
+  listener = listen_session_get_from_handle (s->listener_handle);
+  app_wrk = application_listener_select_worker (listener);
+  if (PREDICT_FALSE (app_worker_mq_is_congested (app_wrk)))
+    return -1;
+
+  s->app_wrk_index = app_wrk->wrk_index;
+  app = application_get (app_wrk->app_index);
+  if (app->cb_fns.fifo_tuning_callback)
+    s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
+
+  sm = app_worker_get_listen_segment_manager (app_wrk, listener);
+  if (app_worker_alloc_session_fifos_ct (sm, s))
+    return -1;
+
+  if (application_is_builtin_proxy (app))
+    return app->cb_fns.proxy_write_early_data (s);
+
+  return 0;
+}
+
 int
 app_worker_listened_notify (app_worker_t *app_wrk, session_handle_t alsh,
 			    u32 opaque, session_error_t err)

@@ -57,16 +57,6 @@ typedef enum
     MEMORY_N_PRESSURE,
 } fifo_segment_mem_status_t;
 
-#if 0
-typedef enum fifo_segment_mem_status_
-{
-  MEMORY_PRESSURE_NO_PRESSURE,
-  MEMORY_PRESSURE_LOW_PRESSURE,
-  MEMORY_PRESSURE_HIGH_PRESSURE,
-  MEMORY_PRESSURE_NO_MEMORY,
-} fifo_segment_mem_status_t;
-#endif
-
 typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
