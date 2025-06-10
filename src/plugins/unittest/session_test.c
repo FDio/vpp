@@ -2198,7 +2198,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
     }
 
   sm = app_worker_get_connect_segment_manager (app_wrk);
-  segment_manager_alloc_session_fifos (sm, 0, &rx_fifo, &tx_fifo);
+  segment_manager_alloc_session_fifos (0, sm, 0, &rx_fifo, &tx_fifo);
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
   s.session_state = SESSION_STATE_READY;
