@@ -67,9 +67,8 @@ For adding a new suite, please see `Modifying the framework`_ below.
 Assumed are two docker containers, each with its own VPP instance running. One VPP then pings the other.
 This can be put in file ``extras/hs-test/my_test.go`` and run with command ``make test TEST=MyTest``.
 
-To add a multi-worker test, name it ``[name]MTTest``. Doing this, the framework will allocate 3 CPUs to a VPP container, no matter what ``CPUS`` is set to.
-Only a single multi-worker VPP container is supported for now. Please register multi-worker tests as Solo tests to avoid reusing the same cores
-when running in parallel.
+To add a multi-worker test, register it to a multi-worker suite. The suite *cannot* have ``s.SetupTest()`` in the ``BeforeEach`` block.
+Set your desired core counts using ``s.CpusPerContainer`` and/or ``s.CpusPerVppContainer`` and run ``s.SetupTest()`` at the beginning of your test.
 
 ::
 
@@ -81,7 +80,6 @@ when running in parallel.
 
         func init(){
                 RegisterMySuiteTests(MyTest)
-                RegisterSoloMySuiteTests(MyMTTest)
         }
 
         func MyMTTest(s *MySuite){

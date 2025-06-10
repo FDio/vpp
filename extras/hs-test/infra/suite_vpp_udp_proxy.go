@@ -31,6 +31,7 @@ type VppUdpProxySuite struct {
 
 var vppUdpProxyTests = map[string][]func(s *VppUdpProxySuite){}
 var vppUdpProxySoloTests = map[string][]func(s *VppUdpProxySuite){}
+var vppUdpProxyMWTests = map[string][]func(s *VppUdpProxySuite){}
 
 func RegisterVppUdpProxyTests(tests ...func(s *VppUdpProxySuite)) {
 	vppUdpProxyTests[GetTestFilename()] = tests
@@ -38,6 +39,9 @@ func RegisterVppUdpProxyTests(tests ...func(s *VppUdpProxySuite)) {
 
 func RegisterVppUdpProxySoloTests(tests ...func(s *VppUdpProxySuite)) {
 	vppUdpProxySoloTests[GetTestFilename()] = tests
+}
+func RegisterVppUdpProxyMWTests(tests ...func(s *VppUdpProxySuite)) {
+	vppUdpProxyMWTests[GetTestFilename()] = tests
 }
 
 func (s *VppUdpProxySuite) SetupSuite() {
@@ -204,6 +208,35 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, fun
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+	var s VppUdpProxySuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SkipIfNotEnoguhCpus = true
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	for filename, tests := range vppUdpProxyMWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

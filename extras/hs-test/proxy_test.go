@@ -24,28 +24,34 @@ func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest,
 		VppH2ConnectProxyPutTest)
-	RegisterVppProxySoloTests(VppProxyHttpGetTcpMTTest, VppProxyHttpPutTcpMTTest, VppProxyTcpIperfMTTest,
-		VppProxyUdpIperfMTTest, VppConnectProxyStressTest, VppConnectProxyStressMTTest, VppConnectProxyConnectionFailedMTTest)
+	RegisterVppProxyMWTests(VppProxyHttpGetTcpMWTest, VppProxyHttpPutTcpMWTest, VppProxyTcpIperfMWTest,
+		VppProxyUdpIperfMWTest, VppConnectProxyStressMWTest, VppConnectProxyConnectionFailedMWTest)
+	RegisterVppProxySoloTests(VppConnectProxyStressTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
 		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest)
-	RegisterVppUdpProxySoloTests(VppProxyUdpMigrationMTTest, VppConnectUdpStressMTTest, VppConnectUdpStressTest)
+	RegisterVppUdpProxySoloTests(VppConnectUdpStressTest)
+	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
 }
 
-func VppProxyHttpGetTcpMTTest(s *VppProxySuite) {
+func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	VppProxyHttpGetTcpTest(s)
 }
 
-func VppProxyTcpIperfMTTest(s *VppProxySuite) {
-	vppProxyIperfMTTest(s, "tcp")
+func VppProxyTcpIperfMWTest(s *VppProxySuite) {
+	vppProxyIperfMWTest(s, "tcp")
 }
 
-func VppProxyUdpIperfMTTest(s *VppProxySuite) {
-	vppProxyIperfMTTest(s, "udp")
+func VppProxyUdpIperfMWTest(s *VppProxySuite) {
+	vppProxyIperfMWTest(s, "udp")
 }
 
-func vppProxyIperfMTTest(s *VppProxySuite, proto string) {
+func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	s.Containers.IperfC.Run()
 	s.Containers.IperfS.Run()
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -110,7 +116,9 @@ func VppProxyHttpGetTlsTest(s *VppProxySuite) {
 	s.CurlDownloadResource(uri)
 }
 
-func VppProxyHttpPutTcpMTTest(s *VppProxySuite) {
+func VppProxyHttpPutTcpMWTest(s *VppProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	VppProxyHttpPutTcpTest(s)
 }
 
@@ -187,7 +195,9 @@ func VppH2ConnectProxyGetTest(s *VppProxySuite) {
 	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
 }
 
-func VppConnectProxyConnectionFailedMTTest(s *VppProxySuite) {
+func VppConnectProxyConnectionFailedMWTest(s *VppProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	s.SetupNginxServer()
 	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
@@ -337,7 +347,9 @@ func VppConnectProxyStressTest(s *VppProxySuite) {
 	vppConnectProxyStressLoad(s, strconv.Itoa(int(s.Ports.Proxy)))
 }
 
-func VppConnectProxyStressMTTest(s *VppProxySuite) {
+func VppConnectProxyStressMWTest(s *VppProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
@@ -372,7 +384,9 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 	s.AssertEqual([]byte("hello"), b[:n])
 }
 
-func VppProxyUdpMigrationMTTest(s *VppUdpProxySuite) {
+func VppProxyUdpMigrationMWTest(s *VppUdpProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
@@ -645,7 +659,9 @@ func VppConnectUdpStressTest(s *VppUdpProxySuite) {
 	vppConnectUdpStressLoad(s)
 }
 
-func VppConnectUdpStressMTTest(s *VppUdpProxySuite) {
+func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	remoteServerConn := s.StartEchoServer()
 	defer remoteServerConn.Close()
 
