@@ -150,8 +150,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 
 
   /* allocate a fifo : 128KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
@@ -305,8 +304,7 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 
 
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
@@ -428,8 +426,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[0], &tx_fifo[0]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
   SEG_MGR_TEST ((rx_fifo[0]->segment_index == 0),
@@ -452,8 +449,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
    * expected to be allocated on the newer segment,
    * because the usage of the first segment is high.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[1], &tx_fifo[1]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
   SEG_MGR_TEST ((rx_fifo[1]->segment_index == 1),
@@ -464,8 +460,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
   /* allocate fifos : 4KB x2
    * expected to be allocated on the newer segment.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[2], &tx_fifo[2]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
   SEG_MGR_TEST ((rx_fifo[2]->segment_index == 1),
@@ -485,8 +480,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
   /* allocate fifos : 4KB x2
    * expected to be allocated on the first segment.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[3], &tx_fifo[3]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
   SEG_MGR_TEST ((rx_fifo[3]->segment_index == 0),
@@ -549,8 +543,7 @@ segment_manager_test_fifo_ops (vlib_main_t *vm, unformat_input_t *input)
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
