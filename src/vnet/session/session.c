@@ -852,8 +852,8 @@ app_closed:
  * Move dgram session to the right thread
  */
 int
-session_dgram_connect_notify (transport_connection_t * tc,
-			      u32 old_thread_index, session_t ** new_session)
+session_dgram_connect_notify (transport_connection_t *tc,
+			      session_handle_tu_t osh, session_t **new_session)
 {
   session_t *new_s;
   session_switch_pool_args_t *rpc_args;
@@ -863,7 +863,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
   /*
    * Clone half-open session to the right thread.
    */
-  new_s = session_clone_safe (tc->s_index, old_thread_index);
+  new_s = session_clone_safe (tc->s_index, osh.thread_index);
   new_s->connection_index = tc->c_index;
   session_set_state (new_s, SESSION_STATE_READY);
   new_s->flags |= SESSION_F_IS_MIGRATING;
@@ -888,7 +888,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
   rpc_args->new_session_index = new_s->session_index;
   rpc_args->new_thread_index = new_s->thread_index;
   rpc_args->session_index = tc->s_index;
-  rpc_args->thread_index = old_thread_index;
+  rpc_args->thread_index = osh.thread_index;
   session_send_rpc_evt_to_thread (rpc_args->thread_index, session_switch_pool,
 				  rpc_args);
 

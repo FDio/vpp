@@ -591,9 +591,9 @@ transport_cleanup_cb (void *cb_fn, transport_connection_t *tc)
 
 int session_stream_connect_notify (transport_connection_t * tc,
 				   session_error_t err);
-int session_dgram_connect_notify (transport_connection_t * tc,
-				  u32 old_thread_index,
-				  session_t ** new_session);
+int session_dgram_connect_notify (transport_connection_t *tc,
+				  session_handle_tu_t osh,
+				  session_t **new_session);
 int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
