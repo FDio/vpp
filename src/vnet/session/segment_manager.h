@@ -127,8 +127,6 @@ int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
  * @param segment_size	Size of segment to be added
  * @param flags		Flags to be set on segment
  */
-int segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
-				  u8 flags);
 void segment_manager_del_segment (segment_manager_t * sm,
 				  fifo_segment_t * fs);
 void segment_manager_lock_and_del_segment (segment_manager_t * sm,
@@ -204,6 +202,16 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
 }
 
 extern u8 *format_segment_manager (u8 *s, va_list *args);
+
+struct app_worker_;
+struct ct_connection_;
+
+void sm_custom_segment_dealloc_fifos (struct ct_connection_ *ct,
+				      svm_fifo_t *rx_fifo,
+				      svm_fifo_t *tx_fifo);
+int sm_custom_segment_alloc_fifos (session_t *s, segment_manager_t *sm,
+				   clib_thread_index_t thread_index,
+				   svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
