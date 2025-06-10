@@ -134,6 +134,7 @@ func (s *HstSuite) SetupSuite() {
 
 	var err error
 	s.CpuAllocator, err = CpuAllocator()
+	s.CpuAllocator.suite = s
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
@@ -147,29 +148,16 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 	currentTestName := CurrentSpecReport().LeafNodeText
 
 	if strings.Contains(currentTestName, "MTTest") {
-		prevContainerCount := s.CpuAllocator.maxContainerCount
 		if strings.Contains(containerName, "vpp") {
-			// CPU range is assigned based on the Ginkgo process index (or build number if
-			// running in the CI), *NConfiguredCpus and a maxContainerCount.
-			// maxContainerCount is set to 4 when CpuAllocator is initialized.
-			// 4 is not a random number - all of our suites use a maximum of 4 containers simultaneously,
-			// and it's also the maximum number of containers we can run with *NConfiguredCpus=2 (with CPU0=true)
-			// on processors with 8 threads. Currently, the CpuAllocator puts all cores into a slice,
-			// makes the length of the slice divisible by 4x*NConfiguredCpus, and then the minCpu and
-			// maxCpu (range) for each container is calculated. Then we just offset based on minCpu,
-			// the number of started containers and *NConfiguredCpus. This way, every container
-			// uses the correct CPUs, even if multiple NUMA nodes are available.
-			// However, because of this, if we want to assign different number of cores to different containers,
-			// we have to change maxContainerCount to manipulate the CPU range. Hopefully a temporary workaround.
-			s.CpuAllocator.maxContainerCount = 1
-			cpuCtx, err = s.CpuAllocator.Allocate(1, 3, 0)
+			// CPU range is assigned based on the Ginkgo process index and *NConfiguredCpus.
+			// Numa aware cpu allocation works in a different way, it will use the second numa
+			// node if a container doesn't "fit" into the first node.
+			cpuCtx, err = s.CpuAllocator.Allocate(3, s.CpuAllocator.lastCpu)
 		} else {
-			s.CpuAllocator.maxContainerCount = 3
-			cpuCtx, err = s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount, 2)
+			cpuCtx, err = s.CpuAllocator.Allocate(s.CpuCount, s.CpuAllocator.lastCpu)
 		}
-		s.CpuAllocator.maxContainerCount = prevContainerCount
 	} else {
-		cpuCtx, err = s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuCount, 0)
+		cpuCtx, err = s.CpuAllocator.Allocate(s.CpuCount, s.CpuAllocator.lastCpu)
 	}
 
 	s.AssertNil(err)
@@ -297,12 +285,12 @@ func (s *HstSuite) SkipIfNotEnoughAvailableCpus() {
 		availableCpus++
 	}
 
-	maxRequestedCpu = (GinkgoParallelProcess() * s.CpuAllocator.maxContainerCount * s.CpuCount)
+	maxRequestedCpu = (GinkgoParallelProcess() * s.CpuCount)
 
 	if availableCpus < maxRequestedCpu {
 		s.Skip(fmt.Sprintf("Test case cannot allocate requested cpus "+
-			"(%d containers * %d cpus, %d available). Try using 'CPU0=true'",
-			s.CpuAllocator.maxContainerCount, s.CpuCount, availableCpus))
+			"(%d cpus, %d available). Try using 'CPU0=true'",
+			s.CpuCount, availableCpus))
 	}
 }
 
@@ -382,6 +370,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 }
 
 func (s *HstSuite) ResetContainers() {
+	s.CpuAllocator.lastCpu = 0
 	for _, container := range s.StartedContainers {
 		container.stop()
 		s.Log("Removing container " + container.Name)
