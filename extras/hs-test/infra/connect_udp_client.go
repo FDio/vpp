@@ -61,7 +61,7 @@ func (c *ConnectUdpClient) Dial(proxyAddress, targetUri string) error {
 		c.suite.Log("* Connected to proxy")
 	}
 
-	conn.SetDeadline(time.Now().Add(time.Second * c.timeout))
+	conn.SetDeadline(time.Now().Add(c.timeout))
 	_, err = conn.Write(req)
 	if err != nil {
 		return err
