@@ -617,6 +617,7 @@ vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
   if (mp->context != wrk->wrk_index)
     VDBG (0, "wrong context");
 
+  VDBG (0, "unlisten reply freeing %d[0x%llx]", s->session_index, mp->handle);
   vcl_session_table_del_vpp_handle (wrk, mp->handle);
   vcl_session_free (wrk, s);
 }
@@ -2121,7 +2122,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vcl_session_state_str (s->session_state));
       rx_fifo = vcl_session_is_ct (s) ? s->ct_rx_fifo : s->rx_fifo;
-      if (svm_fifo_is_empty_cons (rx_fifo))
+      /* If application closed, e.g., mt app, or no data return error */
+      if (s->session_state == VCL_STATE_CLOSED ||
+	  svm_fifo_is_empty_cons (rx_fifo))
 	return vcl_session_closed_error (s);
     }
 
