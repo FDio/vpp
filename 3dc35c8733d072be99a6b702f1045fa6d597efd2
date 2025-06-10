@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f0749a0_d1815441",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-10T09:33:39Z",
+      "side": 1,
+      "message": "maybe remove mentions to simd?",
+      "revId": "3dc35c8733d072be99a6b702f1045fa6d597efd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
