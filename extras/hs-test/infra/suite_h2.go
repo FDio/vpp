@@ -403,7 +403,7 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 				o := <-oChan
 				s.Log(o)
 				s.AssertEqual(0, tg.FailedCount)
-			})
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })
