@@ -59,6 +59,14 @@ session_t *ct_session_get_peer (session_t * s);
 void ct_session_endpoint (session_t * ll, session_endpoint_t * sep);
 int ct_session_connect_notify (session_t *ls, session_error_t err);
 int ct_session_tx (session_t * s);
+ct_connection_t *ct_connection_get (u32 ct_index,
+				    clib_thread_index_t thread_index);
+
+static inline u64
+ct_client_seg_handle (u64 server_sh, u32 client_wrk_index)
+{
+  return (((u64) client_wrk_index << 56) | server_sh);
+}
 
 #endif /* SRC_VNET_SESSION_APPLICATION_LOCAL_H_ */
 
