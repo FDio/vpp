@@ -306,7 +306,7 @@ session_is_valid (u32 si, u8 thread_index)
 void
 session_cleanup (session_t *s)
 {
-  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
   session_free (s);
 }
 
@@ -769,7 +769,7 @@ session_stream_connect_notify (transport_connection_t * tc,
       session_lookup_del_connection (tc);
       /* Avoid notifying app about rejected session cleanup */
       s = session_get (new_si, new_ti);
-      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
       session_free (s);
       return -1;
     }
@@ -951,7 +951,7 @@ session_transport_delete_notify (transport_connection_t * tc)
       /* Session was created but accept notification was not yet sent to the
        * app. Cleanup everything. */
       session_lookup_del_session (s);
-      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
       session_free (s);
       break;
     case SESSION_STATE_ACCEPTING:
@@ -1021,7 +1021,7 @@ session_transport_delete_request (transport_connection_t *tc,
       /* Session was created but accept notification was not yet sent to the
        * app. Cleanup everything. */
       session_lookup_del_session (s);
-      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
       transport_cleanup_cb (cb_fn, tc);
       session_free (s);
       break;
@@ -1182,7 +1182,7 @@ session_stream_accept (transport_connection_t *tc, u32 listener_index,
       if ((rv = app_worker_accept_notify (app_wrk, s)))
 	{
 	  session_lookup_del_session (s);
-	  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+	  segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
 	  session_free (s);
 	  return rv;
 	}
@@ -1215,7 +1215,7 @@ session_dgram_accept (transport_connection_t *tc, u32 listener_index,
   if ((rv = app_worker_accept_notify (app_wrk, s)))
     {
       session_lookup_del_session (s);
-      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
       session_free (s);
       return rv;
     }
@@ -1599,7 +1599,7 @@ session_transport_cleanup (session_t * s)
 		       s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
    * sure the session is properly freed. */
-  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
   session_free (s);
 }
 

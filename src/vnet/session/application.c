@@ -1535,7 +1535,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   hash_unset (old_wrk->listeners_table, listen_session_get_handle (s));
   if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL
       && s->rx_fifo)
-    segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+    segment_manager_dealloc_fifos (0, s->rx_fifo, s->tx_fifo);
 
   app = application_get (old_wrk->app_index);
   if (!app)

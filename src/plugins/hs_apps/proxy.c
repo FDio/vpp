@@ -219,7 +219,7 @@ proxy_session_postponed_free_rpc (void *arg)
   PROXY_DBG ("[%u] ps %u postponed free", vlib_get_thread_index (), ps_index);
 
   ps = proxy_session_get (ps_index);
-  segment_manager_dealloc_fifos (ps->po.rx_fifo, ps->po.tx_fifo);
+  segment_manager_dealloc_fifos (0, ps->po.rx_fifo, ps->po.tx_fifo);
   proxy_session_free (ps);
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
