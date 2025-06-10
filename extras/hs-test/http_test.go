@@ -41,7 +41,8 @@ func init() {
 		HttpStaticRedirectTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
-		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
+		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
+	RegisterNoTopoMWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
 
@@ -591,11 +592,15 @@ func httpClientGet6(s *NoTopo6Suite, response string, size int, proto string) {
 	s.AssertContains(file_contents, response)
 }
 
-func HttpClientGetRepeatMTTest(s *NoTopoSuite) {
+func HttpClientGetRepeatMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	httpClientRepeat(s, "", "sessions 2")
 }
 
-func HttpClientPtrGetRepeatMTTest(s *NoTopoSuite) {
+func HttpClientPtrGetRepeatMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	httpClientRepeat(s, "", "use-ptr sessions 2")
 }
 

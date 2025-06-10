@@ -49,13 +49,16 @@ type VppProxySuite struct {
 
 var vppProxyTests = map[string][]func(s *VppProxySuite){}
 var vppProxySoloTests = map[string][]func(s *VppProxySuite){}
+var vppProxyMWTests = map[string][]func(s *VppProxySuite){}
 
 func RegisterVppProxyTests(tests ...func(s *VppProxySuite)) {
 	vppProxyTests[GetTestFilename()] = tests
 }
-
 func RegisterVppProxySoloTests(tests ...func(s *VppProxySuite)) {
 	vppProxySoloTests[GetTestFilename()] = tests
+}
+func RegisterVppProxyMWTests(tests ...func(s *VppProxySuite)) {
+	vppProxyMWTests[GetTestFilename()] = tests
 }
 
 func (s *VppProxySuite) SetupSuite() {
@@ -313,6 +316,32 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func()
 	}
 })
 
+var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+	var s VppProxySuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	for filename, tests := range vppProxyMWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
 var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, func() {
 	var s VppProxySuite
 	BeforeAll(func() {
@@ -379,5 +408,4 @@ var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, func() {
 			s.AssertEqual(0, tg.FailedCount)
 		}, SpecTimeout(TestTimeout))
 	}
-
 })

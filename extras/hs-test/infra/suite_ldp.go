@@ -13,6 +13,7 @@ import (
 
 var ldpTests = map[string][]func(s *LdpSuite){}
 var ldpSoloTests = map[string][]func(s *LdpSuite){}
+var ldpMWTests = map[string][]func(s *LdpSuite){}
 
 type LdpSuite struct {
 	HstSuite
@@ -36,6 +37,9 @@ func RegisterLdpTests(tests ...func(s *LdpSuite)) {
 }
 func RegisterSoloLdpTests(tests ...func(s *LdpSuite)) {
 	ldpSoloTests[GetTestFilename()] = tests
+}
+func RegisterLdpMWTests(tests ...func(s *LdpSuite)) {
+	ldpMWTests[GetTestFilename()] = tests
 }
 
 func (s *LdpSuite) SetupSuite() {
@@ -204,6 +208,34 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+	var s LdpSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	// SetupTest() has to be in the test itself so we can configure CPUs
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
+	for filename, tests := range ldpMWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

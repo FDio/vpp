@@ -22,6 +22,7 @@ import (
 
 var h2Tests = map[string][]func(s *H2Suite){}
 var h2SoloTests = map[string][]func(s *H2Suite){}
+var h2MWTests = map[string][]func(s *H2Suite){}
 
 type H2Suite struct {
 	HstSuite
@@ -44,6 +45,9 @@ func RegisterH2Tests(tests ...func(s *H2Suite)) {
 }
 func RegisterH2SoloTests(tests ...func(s *H2Suite)) {
 	h2SoloTests[GetTestFilename()] = tests
+}
+func RegisterH2MWTests(tests ...func(s *H2Suite)) {
+	h2MWTests[GetTestFilename()] = tests
 }
 
 func (s *H2Suite) SetupSuite() {
@@ -139,6 +143,32 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, func() {
+	var s H2Suite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	for filename, tests := range h2MWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -403,7 +433,7 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 				o := <-oChan
 				s.Log(o)
 				s.AssertEqual(0, tg.FailedCount)
-			})
+			}, SpecTimeout(TestTimeout))
 		}
 	}
 })
