@@ -641,7 +641,6 @@ func VppConnectUdpStressMTTest(s *VppUdpProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	vppProxy.Disconnect()
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
 	s.Log(vppProxy.Vppctl(cmd))
 
