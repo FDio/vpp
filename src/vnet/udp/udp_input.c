@@ -294,19 +294,19 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      error0 = UDP_ERROR_CONNECTED;
 	      if (s0->thread_index != thread_index)
 		{
+		  /* uc0 clone may allow owner of s0 to grow its pool */
+		  session_handle_t osh = session_handle (s0);
 		  /*
 		   * Clone the transport. It will be cleaned up with the
 		   * session once we notify the session layer.
 		   */
 		  uc0 = udp_connection_clone_safe (s0->connection_index,
 						   s0->thread_index);
-		  ASSERT (s0->session_index == uc0->c_s_index);
-
+		  ASSERT (session_index_from_handle (osh) == uc0->c_s_index);
 		  /*
 		   * Ask session layer for a new session.
 		   */
-		  session_dgram_connect_notify (&uc0->connection,
-						s0->thread_index, &s0);
+		  session_dgram_connect_notify (&uc0->connection, osh, &s0);
 		  queue_event = 0;
 		}
 	      else
