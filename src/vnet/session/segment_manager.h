@@ -205,6 +205,17 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
 
 extern u8 *format_segment_manager (u8 *s, va_list *args);
 
+struct app_worker_;
+struct ct_connection_;
+
+void sm_custom_segment_register (void);
+void sm_custom_segment_dealloc_fifos (struct ct_connection_ *ct,
+				      svm_fifo_t *rx_fifo,
+				      svm_fifo_t *tx_fifo);
+int sm_custom_segment_alloc_fifos (struct app_worker_ *server_wrk,
+				   struct ct_connection_ *ct, session_t *ls,
+				   session_t *ll);
+
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
