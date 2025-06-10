@@ -321,7 +321,21 @@ func (vpp *VppInstance) WaitForApp(appName string, timeout int) {
 	vpp.getSuite().AssertNil(1, "Timeout while waiting for app '%s'", appName)
 }
 
-func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool) (interface_types.InterfaceIndex, error) {
+type AfPacketOption func(*af_packet.AfPacketCreateV3)
+
+func WithNumRxQueues(numRxQueues uint16) AfPacketOption {
+	return func(cfg *af_packet.AfPacketCreateV3) {
+		cfg.NumRxQueues = numRxQueues
+	}
+}
+
+func WithNumTxQueues(numTxQueues uint16) AfPacketOption {
+	return func(cfg *af_packet.AfPacketCreateV3) {
+		cfg.NumTxQueues = numTxQueues
+	}
+}
+
+func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...AfPacketOption) (interface_types.InterfaceIndex, error) {
 	var ipAddress string
 	var err error
 
@@ -362,6 +376,10 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool) (interface
 		createReq.HwAddr = veth.HwAddress
 	}
 
+	// Apply all optional configs
+	for _, opt := range opts {
+		opt(createReq)
+	}
 	vpp.getSuite().Log("create af-packet interface " + veth.Name())
 	if err := vpp.ApiStream.SendMsg(createReq); err != nil {
 		vpp.getSuite().HstFail()

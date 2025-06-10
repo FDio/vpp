@@ -177,6 +177,18 @@ func (n *NetInterface) configureUpState() error {
 	return nil
 }
 
+func (n *NetInterface) configureMultiQueue() error {
+	// TODO multiqueue for tap
+	if n.Type() != Veth {
+		return nil
+	}
+	err := linkSetMultiQueue(n.Name())
+	if err != nil {
+		return fmt.Errorf("set multiqueue failed: %v", err)
+	}
+	return nil
+}
+
 func (n *NetInterface) configureNetworkNamespace() error {
 	if n.NetworkNamespace != "" {
 		err := linkSetNetns(n.name, n.NetworkNamespace)
@@ -209,6 +221,10 @@ func (n *NetInterface) configure() error {
 	}
 
 	if err := n.configureUpState(); err != nil {
+		return err
+	}
+
+	if err := n.configureMultiQueue(); err != nil {
 		return err
 	}
 
@@ -388,6 +404,16 @@ func linkSetNetns(ifName, ns string) error {
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("error setting device '%s' to netns '%s: %v", ifName, ns, err)
+	}
+	return nil
+}
+
+func linkSetMultiQueue(ifName string) error {
+	cmd := exec.Command("ethtool", "-L", ifName, "rx", "4", "tx", "4")
+	fmt.Println("configuring multiqueue for interface:", cmd.String())
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error configuring multiqueue '%s: %v", ifName, err)
 	}
 	return nil
 }
