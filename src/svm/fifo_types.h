@@ -87,6 +87,8 @@ typedef struct svm_fifo_shr_
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 } svm_fifo_shared_t;
 
+struct _svm_fifo;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -95,7 +97,16 @@ typedef struct _svm_fifo
   rb_tree_t ooo_enq_lookup;	 /**< rbtree for ooo enq chunk lookup */
   rb_tree_t ooo_deq_lookup;	 /**< rbtree for ooo deq chunk lookup */
   svm_fifo_chunk_t *ooo_deq;	 /**< last chunk used for ooo dequeue */
-  svm_fifo_chunk_t *ooo_enq;	 /**< last chunk used for ooo enqueue */
+  union
+  {
+    svm_fifo_chunk_t *ooo_enq; /**< last chunk used for ooo enqueue */
+    struct _svm_fifo *ct_fifo; /**< ct client's ptr to server fifo */
+    struct
+    {
+      u32 seg_ctx_index; /**< info to locate custom_seg_ctx */
+      u32 ct_seg_index;	 /**< info to locate ct_seg within seg_ctx */
+    };
+  };
   ooo_segment_t *ooo_segments;	 /**< Pool of ooo segments */
   u32 ooos_list_head;		 /**< Head of out-of-order linked-list */
   u32 ooos_newest;		 /**< Last segment to have been updated */
