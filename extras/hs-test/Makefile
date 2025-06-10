@@ -33,6 +33,10 @@ ifeq ($(CPUS),)
 CPUS=1
 endif
 
+ifeq ($(VPP_CPUS),)
+VPP_CPUS=3
+endif
+
 ifeq ($(PARALLEL),)
 PARALLEL=1
 endif
@@ -96,9 +100,10 @@ help:
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
 	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
-	@echo " CPUS=[n-cpus]            - number of cpus to allocate to VPP and containers"
+	@echo " CPUS=[n]                 - number of cpus to allocate to each container"
+	@echo " VPP_CPUS=[n]             - number of cpus to allocate to each VPP container (MTTests only)"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
-	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
+	@echo " PARALLEL=[n]             - number of test processes to spawn to run in parallel"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo " CPU0=[true|false]        - use cpu0"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
@@ -137,7 +142,8 @@ test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
+		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--vpp_cpus=$(VPP_CPUS); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -146,7 +152,8 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--vpp_cpus=$(VPP_CPUS); \
 		./script/compress.sh $$?
 
 .PHONY: wipe-lcov
@@ -159,13 +166,14 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 	-@bash ./hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
-		--timeout=$(TIMEOUT); \
+		--timeout=$(TIMEOUT) --vpp_cpus=$(VPP_CPUS); \
 		./script/compress.sh $$?
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
-	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT)
+	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
+	--vpp_cpus=$(VPP_CPUS);
 
 .PHONY: test-perf
 test-perf: FORCE_BUILD=false

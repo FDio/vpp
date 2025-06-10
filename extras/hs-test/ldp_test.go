@@ -165,14 +165,8 @@ func RedisBenchmarkTest(s *LdpSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		var cmd string
-		if *NConfiguredCpus == 1 {
-			cmd = "redis-benchmark -q --threads 1 -h " + serverVethAddress
-		} else {
-			cmd = "redis-benchmark -q --threads " + fmt.Sprint(*NConfiguredCpus) + "-h " + serverVethAddress
-		}
+		cmd := "redis-benchmark -q --threads " + fmt.Sprint(s.CpusPerContainer) + "-h " + serverVethAddress
 		s.StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
-
 	}()
 
 	// 4.5 minutes

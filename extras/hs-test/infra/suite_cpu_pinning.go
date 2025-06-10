@@ -15,8 +15,7 @@ var cpuPinningSoloTests = map[string][]func(s *CpuPinningSuite){}
 
 type CpuPinningSuite struct {
 	HstSuite
-	previousMaxContainerCount int
-	Interfaces                struct {
+	Interfaces struct {
 		Tap *NetInterface
 	}
 	Containers struct {
@@ -42,9 +41,7 @@ func (s *CpuPinningSuite) SetupSuite() {
 
 func (s *CpuPinningSuite) SetupTest() {
 	// Skip if we cannot allocate 3 CPUs for test container
-	s.previousMaxContainerCount = s.CpuAllocator.maxContainerCount
-	s.CpuCount = 3
-	s.CpuAllocator.maxContainerCount = 1
+	s.CpusPerContainer = 3
 	s.SkipIfNotEnoughAvailableCpus()
 
 	s.HstSuite.SetupTest()
@@ -60,8 +57,7 @@ func (s *CpuPinningSuite) SetupTest() {
 func (s *CpuPinningSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	// reset vars
-	s.CpuCount = *NConfiguredCpus
-	s.CpuAllocator.maxContainerCount = s.previousMaxContainerCount
+	s.CpusPerContainer = *NConfiguredCpus
 }
 
 var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
