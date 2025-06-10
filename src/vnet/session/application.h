@@ -351,6 +351,7 @@ session_error_t app_worker_start_listen (app_worker_t *app_wrk,
 					 app_listener_t *lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
+int app_worker_init_accepted_ct (session_t *s);
 int app_worker_listened_notify (app_worker_t *app_wrk, session_handle_t alsh,
 				u32 opaque, session_error_t err);
 int app_worker_unlisten_reply (app_worker_t *app_wrk, session_handle_t sh,
