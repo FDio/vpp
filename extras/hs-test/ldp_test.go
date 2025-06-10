@@ -13,7 +13,7 @@ import (
 func init() {
 	RegisterSoloLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
 		LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
-		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
+		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest, LdpIperfUdpMTTest)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
@@ -82,6 +82,10 @@ func LdpIperfTcpTest(s *LdpSuite) {
 
 func LdpIperfUdpTest(s *LdpSuite) {
 	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
+}
+
+func LdpIperfUdpMTTest(s *LdpSuite) {
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u -P 5"), 100)
 }
 
 func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
