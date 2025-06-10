@@ -300,6 +300,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		   */
 		  uc0 = udp_connection_clone_safe (s0->connection_index,
 						   s0->thread_index);
+		  /* uc0 clone may allow owner of s0 to grow its pool */
+		  s0 = session_get (uc0->c_s_index, uc0->c_thread_index);
 		  ASSERT (s0->session_index == uc0->c_s_index);
 
 		  /*
