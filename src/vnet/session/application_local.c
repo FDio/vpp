@@ -16,31 +16,6 @@
 #include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
 
-typedef enum ct_segment_flags_
-{
-  CT_SEGMENT_F_CLIENT_DETACHED = 1 << 0,
-  CT_SEGMENT_F_SERVER_DETACHED = 1 << 1,
-} ct_segment_flags_t;
-
-typedef struct ct_segment_
-{
-  u32 client_n_sessions;
-  u32 server_n_sessions;
-  u32 seg_ctx_index;
-  u32 ct_seg_index;
-  u32 segment_index;
-  ct_segment_flags_t flags;
-} ct_segment_t;
-
-typedef struct ct_segments_
-{
-  u32 sm_index;
-  u32 server_wrk;
-  u32 client_wrk;
-  u32 fifo_pair_bytes;
-  ct_segment_t *segments;
-} ct_segments_ctx_t;
-
 typedef struct ct_cleanup_req_
 {
   u32 ct_index;
@@ -64,9 +39,6 @@ typedef struct ct_main_
   u32 n_sessions;			/**< Cumulative sessions counter */
   u32 *ho_reusable;			/**< Vector of reusable ho indices */
   clib_spinlock_t ho_reuseable_lock;	/**< Lock for reusable ho indices */
-  clib_rwlock_t app_segs_lock;		/**< RW lock for seg contexts */
-  uword *app_segs_ctxs_table;		/**< App handle to segment pool map */
-  ct_segments_ctx_t *app_seg_ctxs;	/**< Pool of ct segment contexts */
   u32 **fwrk_pending_connects;		/**< First wrk pending half-opens */
   u32 fwrk_thread;			/**< First worker thread */
   u8 fwrk_have_flush;			/**< Flag for connect flush rpc */
@@ -99,7 +71,7 @@ ct_connection_alloc (clib_thread_index_t thread_index)
   return ct;
 }
 
-static ct_connection_t *
+ct_connection_t *
 ct_connection_get (u32 ct_index, clib_thread_index_t thread_index)
 {
   ct_worker_t *wrk = ct_worker_get (thread_index);
@@ -178,170 +150,6 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
 }
 
 static void
-ct_set_invalid_app_wrk (ct_connection_t *ct, u8 is_client)
-{
-  ct_connection_t *peer_ct;
-
-  peer_ct = ct_connection_get (ct->peer_index, ct->c_thread_index);
-
-  if (is_client)
-    {
-      ct->client_wrk = APP_INVALID_INDEX;
-      if (peer_ct)
-	ct->client_wrk = APP_INVALID_INDEX;
-    }
-  else
-    {
-      ct->server_wrk = APP_INVALID_INDEX;
-      if (peer_ct)
-	ct->server_wrk = APP_INVALID_INDEX;
-    }
-}
-
-static inline u64
-ct_client_seg_handle (u64 server_sh, u32 client_wrk_index)
-{
-  return (((u64) client_wrk_index << 56) | server_sh);
-}
-
-static void
-ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
-			  svm_fifo_t *tx_fifo)
-{
-  ct_segments_ctx_t *seg_ctx;
-  ct_main_t *cm = &ct_main;
-  segment_manager_t *sm;
-  app_worker_t *app_wrk;
-  ct_segment_t *ct_seg;
-  fifo_segment_t *fs;
-  u32 seg_index;
-  session_t *s;
-  int cnt;
-
-  /*
-   * Cleanup fifos
-   */
-
-  sm = segment_manager_get (rx_fifo->segment_manager);
-  seg_index = rx_fifo->segment_index;
-
-  fs = segment_manager_get_segment_w_lock (sm, seg_index);
-  fifo_segment_free_fifo (fs, rx_fifo);
-  fifo_segment_free_fifo (fs, tx_fifo);
-  segment_manager_segment_reader_unlock (sm);
-
-  /*
-   * Atomically update segment context with readers lock
-   */
-
-  clib_rwlock_reader_lock (&cm->app_segs_lock);
-
-  seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, ct->seg_ctx_index);
-  ct_seg = pool_elt_at_index (seg_ctx->segments, ct->ct_seg_index);
-
-  if (ct->flags & CT_CONN_F_CLIENT)
-    {
-      cnt =
-	__atomic_sub_fetch (&ct_seg->client_n_sessions, 1, __ATOMIC_RELAXED);
-    }
-  else
-    {
-      cnt =
-	__atomic_sub_fetch (&ct_seg->server_n_sessions, 1, __ATOMIC_RELAXED);
-    }
-
-  clib_rwlock_reader_unlock (&cm->app_segs_lock);
-
-  /*
-   * No need to do any app updates, return
-   */
-  ASSERT (cnt >= 0);
-  if (cnt)
-    return;
-
-  /*
-   * Grab exclusive lock and update flags unless some other thread
-   * added more sessions
-   */
-  clib_rwlock_writer_lock (&cm->app_segs_lock);
-
-  seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, ct->seg_ctx_index);
-  ct_seg = pool_elt_at_index (seg_ctx->segments, ct->ct_seg_index);
-  if (ct->flags & CT_CONN_F_CLIENT)
-    {
-      cnt = ct_seg->client_n_sessions;
-      if (cnt)
-	goto done;
-      ct_seg->flags |= CT_SEGMENT_F_CLIENT_DETACHED;
-      s = session_get (ct->c_s_index, ct->c_thread_index);
-      if (s->app_wrk_index == APP_INVALID_INDEX)
-	ct_set_invalid_app_wrk (ct, 1 /* is_client */);
-    }
-  else
-    {
-      cnt = ct_seg->server_n_sessions;
-      if (cnt)
-	goto done;
-      ct_seg->flags |= CT_SEGMENT_F_SERVER_DETACHED;
-      s = session_get (ct->c_s_index, ct->c_thread_index);
-      if (s->app_wrk_index == APP_INVALID_INDEX)
-	ct_set_invalid_app_wrk (ct, 0 /* is_client */);
-    }
-
-  if (!(ct_seg->flags & CT_SEGMENT_F_CLIENT_DETACHED) ||
-      !(ct_seg->flags & CT_SEGMENT_F_SERVER_DETACHED))
-    goto done;
-
-  /*
-   * Remove segment context because both client and server detached
-   */
-
-  pool_put_index (seg_ctx->segments, ct->ct_seg_index);
-
-  /*
-   * No more segment indices left, remove the segments context
-   */
-  if (!pool_elts (seg_ctx->segments))
-    {
-      u64 table_handle = seg_ctx->client_wrk << 16 | seg_ctx->server_wrk;
-      table_handle = (u64) seg_ctx->sm_index << 32 | table_handle;
-      hash_unset (cm->app_segs_ctxs_table, table_handle);
-      pool_free (seg_ctx->segments);
-      pool_put_index (cm->app_seg_ctxs, ct->seg_ctx_index);
-    }
-
-  /*
-   * Segment to be removed so notify both apps
-   */
-
-  app_wrk = app_worker_get_if_valid (ct->client_wrk);
-  /* Determine if client app still needs notification, i.e., if it is
-   * still attached. If client detached and this is the last ct session
-   * on this segment, then its connects segment manager should also be
-   * detached, so do not send notification */
-  if (app_wrk)
-    {
-      segment_manager_t *csm;
-      csm = app_worker_get_connect_segment_manager (app_wrk);
-      if (!segment_manager_app_detached (csm))
-	app_worker_del_segment_notify (
-	  app_wrk, ct_client_seg_handle (ct->segment_handle, ct->client_wrk));
-    }
-
-  /* Notify server app and free segment */
-  segment_manager_lock_and_del_segment (sm, seg_index);
-
-  /* Cleanup segment manager if needed. If server detaches there's a chance
-   * the client's sessions will hold up segment removal */
-  if (segment_manager_app_detached (sm) && !segment_manager_has_fifos (sm))
-    segment_manager_free_safe (sm);
-
-done:
-
-  clib_rwlock_writer_unlock (&cm->app_segs_lock);
-}
-
-static void
 ct_session_force_disconnect_server (ct_connection_t *sct)
 {
   sct->peer_index = ~0;
@@ -404,6 +212,11 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
       goto connect_error;
     }
 
+  cs->rx_fifo->ct_fifo = cct->client_tx_fifo;
+  cs->tx_fifo->ct_fifo = cct->client_rx_fifo;
+  cs->tx_fifo->flags |= SVM_FIFO_F_CLIENT_CT;
+  cs->rx_fifo->flags |= SVM_FIFO_F_CLIENT_CT;
+
   session_set_state (cs, SESSION_STATE_CONNECTING);
 
   if (app_worker_connect_notify (client_wrk, cs, 0, opaque))
@@ -426,237 +239,10 @@ connect_error:
 cleanup_client:
 
   if (cct->client_rx_fifo)
-    ct_session_dealloc_fifos (cct, cct->client_rx_fifo, cct->client_tx_fifo);
+    segment_manager_dealloc_fifos (cct->client_rx_fifo, cct->client_tx_fifo);
   ct_connection_free (cct);
+
   return -1;
-}
-
-static inline ct_segment_t *
-ct_lookup_free_segment (ct_main_t *cm, segment_manager_t *sm,
-			u32 seg_ctx_index)
-{
-  uword free_bytes, max_free_bytes;
-  ct_segment_t *ct_seg, *res = 0;
-  ct_segments_ctx_t *seg_ctx;
-  fifo_segment_t *fs;
-  u32 max_fifos;
-
-  seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, seg_ctx_index);
-  max_free_bytes = seg_ctx->fifo_pair_bytes;
-
-  pool_foreach (ct_seg, seg_ctx->segments)
-    {
-      /* Client or server has detached so segment cannot be used */
-      fs = segment_manager_get_segment (sm, ct_seg->segment_index);
-      free_bytes = fifo_segment_available_bytes (fs);
-      max_fifos = fifo_segment_size (fs) / seg_ctx->fifo_pair_bytes;
-      if (free_bytes > max_free_bytes &&
-	  fifo_segment_num_fifos (fs) / 2 < max_fifos)
-	{
-	  max_free_bytes = free_bytes;
-	  res = ct_seg;
-	}
-    }
-
-  return res;
-}
-
-static ct_segment_t *
-ct_alloc_segment (ct_main_t *cm, app_worker_t *server_wrk, u64 table_handle,
-		  segment_manager_t *sm, u32 client_wrk_index)
-{
-  u32 seg_ctx_index = ~0, sm_index, pair_bytes;
-  u64 seg_size, seg_handle, client_seg_handle;
-  segment_manager_props_t *props;
-  const u32 margin = 16 << 10;
-  ct_segments_ctx_t *seg_ctx;
-  app_worker_t *client_wrk;
-  application_t *server;
-  ct_segment_t *ct_seg;
-  uword *spp;
-  int fs_index;
-
-  server = application_get (server_wrk->app_index);
-  props = application_segment_manager_properties (server);
-  sm_index = segment_manager_index (sm);
-  pair_bytes = props->rx_fifo_size + props->tx_fifo_size + margin;
-
-  /*
-   * Make sure another thread did not alloc a segment while acquiring the lock
-   */
-
-  spp = hash_get (cm->app_segs_ctxs_table, table_handle);
-  if (spp)
-    {
-      seg_ctx_index = *spp;
-      ct_seg = ct_lookup_free_segment (cm, sm, seg_ctx_index);
-      if (ct_seg)
-	return ct_seg;
-    }
-
-  /*
-   * No segment, try to alloc one and notify the server and the client.
-   * Make sure the segment is not used for other fifos
-   */
-  seg_size = clib_max (props->segment_size, 128 << 20);
-  fs_index =
-    segment_manager_add_segment2 (sm, seg_size, FIFO_SEGMENT_F_CUSTOM_USE);
-  if (fs_index < 0)
-    return 0;
-
-  if (seg_ctx_index == ~0)
-    {
-      pool_get_zero (cm->app_seg_ctxs, seg_ctx);
-      seg_ctx_index = seg_ctx - cm->app_seg_ctxs;
-      hash_set (cm->app_segs_ctxs_table, table_handle, seg_ctx_index);
-      seg_ctx->server_wrk = server_wrk->wrk_index;
-      seg_ctx->client_wrk = client_wrk_index;
-      seg_ctx->sm_index = sm_index;
-      seg_ctx->fifo_pair_bytes = pair_bytes;
-    }
-  else
-    {
-      seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, seg_ctx_index);
-    }
-
-  pool_get_zero (seg_ctx->segments, ct_seg);
-  ct_seg->segment_index = fs_index;
-  ct_seg->server_n_sessions = 0;
-  ct_seg->client_n_sessions = 0;
-  ct_seg->ct_seg_index = ct_seg - seg_ctx->segments;
-  ct_seg->seg_ctx_index = seg_ctx_index;
-
-  /* New segment, notify the server and client */
-  seg_handle = segment_manager_make_segment_handle (sm_index, fs_index);
-  if (app_worker_add_segment_notify (server_wrk, seg_handle))
-    goto error;
-
-  client_wrk = app_worker_get (client_wrk_index);
-  /* Make sure client workers do not have overlapping segment handles.
-   * Ideally, we should attach fs to client worker segment manager and
-   * create a new handle but that's not currently possible. */
-  client_seg_handle = ct_client_seg_handle (seg_handle, client_wrk_index);
-  if (app_worker_add_segment_notify (client_wrk, client_seg_handle))
-    {
-      app_worker_del_segment_notify (server_wrk, seg_handle);
-      goto error;
-    }
-
-  return ct_seg;
-
-error:
-
-  segment_manager_lock_and_del_segment (sm, fs_index);
-  pool_put_index (seg_ctx->segments, ct_seg->seg_ctx_index);
-  return 0;
-}
-
-static int
-ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
-			  session_t *ls, session_t *ll)
-{
-  segment_manager_props_t *props;
-  u64 seg_handle, table_handle;
-  u32 sm_index, fs_index = ~0;
-  ct_segments_ctx_t *seg_ctx;
-  ct_main_t *cm = &ct_main;
-  application_t *server;
-  segment_manager_t *sm;
-  ct_segment_t *ct_seg;
-  fifo_segment_t *fs;
-  uword *spp;
-  int rv;
-
-  sm = app_worker_get_listen_segment_manager (server_wrk, ll);
-  sm_index = segment_manager_index (sm);
-  server = application_get (server_wrk->app_index);
-  props = application_segment_manager_properties (server);
-
-  table_handle = ct->client_wrk << 16 | server_wrk->wrk_index;
-  table_handle = (u64) sm_index << 32 | table_handle;
-
-  /*
-   * Check if we already have a segment that can hold the fifos
-   */
-
-  clib_rwlock_reader_lock (&cm->app_segs_lock);
-
-  spp = hash_get (cm->app_segs_ctxs_table, table_handle);
-  if (spp)
-    {
-      ct_seg = ct_lookup_free_segment (cm, sm, *spp);
-      if (ct_seg)
-	{
-	  ct->seg_ctx_index = ct_seg->seg_ctx_index;
-	  ct->ct_seg_index = ct_seg->ct_seg_index;
-	  fs_index = ct_seg->segment_index;
-	  ct_seg->flags &=
-	    ~(CT_SEGMENT_F_SERVER_DETACHED | CT_SEGMENT_F_CLIENT_DETACHED);
-	  __atomic_add_fetch (&ct_seg->server_n_sessions, 1, __ATOMIC_RELAXED);
-	  __atomic_add_fetch (&ct_seg->client_n_sessions, 1, __ATOMIC_RELAXED);
-	}
-    }
-
-  clib_rwlock_reader_unlock (&cm->app_segs_lock);
-
-  /*
-   * If not, grab exclusive lock and allocate segment
-   */
-  if (fs_index == ~0)
-    {
-      clib_rwlock_writer_lock (&cm->app_segs_lock);
-
-      ct_seg =
-	ct_alloc_segment (cm, server_wrk, table_handle, sm, ct->client_wrk);
-      if (!ct_seg)
-	{
-	  clib_rwlock_writer_unlock (&cm->app_segs_lock);
-	  return -1;
-	}
-
-      ct->seg_ctx_index = ct_seg->seg_ctx_index;
-      ct->ct_seg_index = ct_seg->ct_seg_index;
-      ct_seg->server_n_sessions += 1;
-      ct_seg->client_n_sessions += 1;
-      fs_index = ct_seg->segment_index;
-
-      clib_rwlock_writer_unlock (&cm->app_segs_lock);
-    }
-
-  /*
-   * Allocate and initialize the fifos
-   */
-  fs = segment_manager_get_segment_w_lock (sm, fs_index);
-  rv = segment_manager_try_alloc_fifos (
-    fs, ls->thread_index, props->rx_fifo_size, props->tx_fifo_size,
-    &ls->rx_fifo, &ls->tx_fifo);
-  if (rv)
-    {
-      segment_manager_segment_reader_unlock (sm);
-
-      clib_rwlock_reader_lock (&cm->app_segs_lock);
-
-      seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, ct->seg_ctx_index);
-      ct_seg = pool_elt_at_index (seg_ctx->segments, ct->ct_seg_index);
-      __atomic_sub_fetch (&ct_seg->server_n_sessions, 1, __ATOMIC_RELAXED);
-      __atomic_sub_fetch (&ct_seg->client_n_sessions, 1, __ATOMIC_RELAXED);
-
-      clib_rwlock_reader_unlock (&cm->app_segs_lock);
-
-      return rv;
-    }
-
-  ls->rx_fifo->shr->master_session_index = ls->session_index;
-  ls->tx_fifo->shr->master_session_index = ls->session_index;
-  ls->rx_fifo->vpp_sh = ls->handle;
-  ls->tx_fifo->vpp_sh = ls->handle;
-
-  seg_handle = segment_manager_segment_handle (sm, fs);
-  segment_manager_segment_reader_unlock (sm);
-
-  ct->segment_handle = seg_handle;
-
-  return 0;
 }
 
 static void
@@ -731,14 +317,9 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
   ss->connection_index = sct->c_c_index;
   ss->listener_handle = listen_session_get_handle (ll);
   session_set_state (ss, SESSION_STATE_CREATED);
-
-  server_wrk = application_listener_select_worker (ll);
-  ss->app_wrk_index = server_wrk->wrk_index;
-
   sct->c_s_index = ss->session_index;
-  sct->server_wrk = ss->app_wrk_index;
 
-  if (ct_init_accepted_session (server_wrk, sct, ss, ll))
+  if (app_worker_init_accepted_ct (ss))
     {
       ct_session_connect_notify (ss, SESSION_E_ALLOC);
       ct_connection_free (sct);
@@ -746,21 +327,13 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
       return;
     }
 
-  cct->server_wrk = sct->server_wrk;
-  cct->seg_ctx_index = sct->seg_ctx_index;
-  cct->ct_seg_index = sct->ct_seg_index;
-  cct->client_rx_fifo = ss->tx_fifo;
-  cct->client_tx_fifo = ss->rx_fifo;
-  cct->client_rx_fifo->refcnt++;
-  cct->client_tx_fifo->refcnt++;
-  cct->segment_handle =
-    ct_client_seg_handle (sct->segment_handle, cct->client_wrk);
-
   session_set_state (ss, SESSION_STATE_ACCEPTING);
+  server_wrk = app_worker_get (ss->app_wrk_index);
+
   if (app_worker_accept_notify (server_wrk, ss))
     {
       ct_session_connect_notify (ss, SESSION_E_REFUSED);
-      ct_session_dealloc_fifos (sct, ss->rx_fifo, ss->tx_fifo);
+      segment_manager_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
       ct_connection_free (sct);
       session_free (ss);
     }
@@ -1051,25 +624,12 @@ ct_close_is_reset (ct_connection_t *ct, session_t *s)
 }
 
 static void
-ct_session_cleanup_server_session (session_t *s)
-{
-  ct_connection_t *ct;
-
-  ct = (ct_connection_t *) session_get_transport (s);
-  ct_session_dealloc_fifos (ct, s->rx_fifo, s->tx_fifo);
-  session_free (s);
-  ct_connection_free (ct);
-}
-
-static void
 ct_session_postponed_cleanup (ct_connection_t *ct)
 {
   ct_connection_t *peer_ct;
-  app_worker_t *app_wrk;
   session_t *s;
 
   s = session_get (ct->c_s_index, ct->c_thread_index);
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
 
   peer_ct = ct_connection_get (ct->peer_index, ct->c_thread_index);
   if (peer_ct)
@@ -1079,40 +639,13 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
       else
 	session_transport_closing_notify (&peer_ct->connection);
     }
-  session_transport_closed_notify (&ct->connection);
-
-  /* It would be cleaner to call session_transport_delete_notify
-   * but then we can't control session cleanup lower */
-  session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
-  if (app_wrk)
-    app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_TRANSPORT);
-
-  if (ct->flags & CT_CONN_F_CLIENT)
-    {
-      /* Normal free for client session as the fifos are allocated through
-       * the connects segment manager in a segment that's not shared with
-       * the server */
-      ct_session_dealloc_fifos (ct, ct->client_rx_fifo, ct->client_tx_fifo);
-      session_program_cleanup (s);
-      ct_connection_free (ct);
-    }
-  else
-    {
-      /* Manual session and fifo segment cleanup to avoid implicit
-       * segment manager cleanups and notifications */
-      if (app_wrk)
-	{
-	  /* Remove custom cleanup notify infra when/if switching to normal
-	   * session cleanup. Note that ct is freed in the cb function */
-	  app_worker_cleanup_notify_custom (app_wrk, s,
-					    SESSION_CLEANUP_SESSION,
-					    ct_session_cleanup_server_session);
-	}
-      else
-	{
-	  ct_session_cleanup_server_session (s);
-	}
-    }
+  /*
+   * Comment out session_transport_closed_notify. It caused an error spit out
+   * in session delete due to session_lookup_del_session returns an error.
+   * session_transport_closed_notify (&ct->connection);
+   */
+  session_transport_delete_notify (&ct->connection);
+  ct_connection_free (ct);
 }
 
 static void
@@ -1367,7 +900,6 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
   vec_foreach (wrk, cm->wrk)
     clib_spinlock_init (&wrk->pending_connects_lock);
   clib_spinlock_init (&cm->ho_reuseable_lock);
-  clib_rwlock_init (&cm->app_segs_lock);
   cm->is_init = 1;
 
   return 0;
