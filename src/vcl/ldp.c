@@ -661,7 +661,9 @@ ldp_select_init_maps (fd_set * __restrict original,
       {
 	  vlsh_to_session_and_worker_index (vlsh, &session_index, &wrk_index);
 	  if (wrk_index != vppcom_worker_index ())
-	    clib_warning ("migration currently not supported");
+	    clib_warning (
+	      "migration for %d vlsh %d from %d to %d not supported", fd, vlsh,
+	      wrk_index, vppcom_worker_index ());
 	  else
 	    *vclb = clib_bitmap_set (*vclb, session_index, 1);
       }
