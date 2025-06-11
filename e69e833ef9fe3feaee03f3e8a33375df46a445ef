@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2467f957_1e6a1368",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-11T08:24:44Z",
+      "side": 1,
+      "message": "is it big complication to have this also for non mt tests? at least write that it override default value 3",
+      "range": {
+        "startLine": 104,
+        "startChar": 1,
+        "endLine": 104,
+        "endChar": 100
+      },
+      "revId": "e69e833ef9fe3feaee03f3e8a33375df46a445ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
