@@ -47,6 +47,7 @@ typedef struct hss_session_
   u32 listener_index;
   u8 *target_path;
   u8 *target_query;
+  u8 *authority;
   http_req_method_t rt;
   /** Fully-resolved file path */
   u8 *path;
@@ -128,6 +129,24 @@ typedef hss_url_handler_rc_t (*hss_url_handler_fn) (hss_url_handler_args_t *);
 typedef void (*hss_register_url_fn) (hss_url_handler_fn, char *, int);
 typedef void (*hss_session_send_fn) (hss_url_handler_args_t *args);
 
+#define foreach_hss_listener_flags                                            \
+  _ (HTTP1_ONLY)                                                              \
+  _ (NEED_CRYPTO)
+
+typedef enum hss_listener_flags_bit_
+{
+#define _(sym) HSS_LISTENER_F_BIT_##sym,
+  foreach_hss_listener_flags
+#undef _
+} hss_listener_flags_bit_t;
+
+typedef enum hss_listener_flags_
+{
+#define _(sym) HSS_LISTENER_F_##sym = 1 << HSS_LISTENER_F_BIT_##sym,
+  foreach_hss_listener_flags
+#undef _
+} __clib_packed hss_listener_flags_t;
+
 typedef struct hss_listener_
 {
   /** Path to file hash table */
@@ -156,8 +175,7 @@ typedef struct hss_listener_
   u32 l_index;
   /** Listener session handle */
   session_handle_t session_handle;
-  /** Enable only HTTP/1.1 in TLS ALPN list */
-  u8 http1_only;
+  u8 flags;
 } hss_listener_t;
 
 /** \brief Main data structure

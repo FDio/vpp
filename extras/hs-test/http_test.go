@@ -37,7 +37,8 @@ func init() {
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest, HttpUnitTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest)
+		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
+		HttpStaticRedirectTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -1111,7 +1112,7 @@ func HttpStaticPathSanitizationTest(s *NoTopoSuite) {
 	defer resp.Body.Close()
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertHttpStatus(resp, 301)
-	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+s.VppAddr()+"/index.html")
+	s.AssertHttpHeaderWithValue(resp, "Location", "http://"+serverAddress+"/index.html")
 }
 
 func HttpStaticMovedTest(s *NoTopoSuite) {
@@ -1119,11 +1120,11 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath+"/tmp.aaa")
 	err := vpp.Container.CreateFile(wwwRootPath+"/tmp.aaa/index.html", "<html><body><p>Hello</p></body></html>")
 	s.AssertNil(err, fmt.Sprint(err))
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/" + s.Ports.Http + " debug"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " debug"))
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+":"+s.Ports.Http+"/tmp.aaa", nil)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/tmp.aaa", nil)
 	s.AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -1134,6 +1135,32 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	s.AssertHttpHeaderNotPresent(resp, "Content-Type")
 	s.AssertHttpHeaderNotPresent(resp, "Cache-Control")
 	s.AssertHttpContentLength(resp, int64(0))
+}
+
+func HttpStaticRedirectTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", "<html><body><p>Hello</p></body></html>")
+	s.AssertNil(err, fmt.Sprint(err))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " debug"))
+
+	req := "GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: test\r\n\r\n"
+
+	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer conn.Close()
+	err = conn.SetDeadline(time.Now().Add(time.Second * 5))
+	s.AssertNil(err, fmt.Sprint(err))
+	n, err := conn.Write([]byte(req))
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertEqual(n, len([]rune(req)))
+	reply := make([]byte, 1024)
+	_, err = conn.Read(reply)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(string(reply))
+	expectedLocation := fmt.Sprintf("Location: http://example.com/index.html")
+	s.AssertContains(string(reply), expectedLocation)
 }
 
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
@@ -1432,57 +1459,57 @@ func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug"))
 
-	resp, err := TcpSendReceive(serverAddress, "GET /interface|stats.json HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET /interface|stats.json HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'|' not allowed in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /interface#stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface#stats.json HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'#' not allowed in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /interface%1stats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%1stats.json HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /interface%Bstats.json HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%Bstats.json HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json%B HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /interface%stats.json%B HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose>true HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose>true HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'>' not allowed in target query")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose%true HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose%true HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target query")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose=%1 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose=%1 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target query")
 
-	resp, err = TcpSendReceive(serverAddress, "GET * HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET * HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "asterisk-form is only used for a server-wide OPTIONS request")
 
-	resp, err = TcpSendReceive(serverAddress, "GET www.example.com:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET www.example.com:80 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "authority-form is only used for CONNECT requests")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT https://www.example.com/tunnel HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT https://www.example.com/tunnel HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "CONNECT requests must use authority-form only")
 }
@@ -1508,22 +1535,22 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 
 func HttpContentLengthTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr()
-	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + ":80 url-handlers debug max-body-size 12"))
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug max-body-size 12"))
 	ifName := s.VppIfName()
 
-	resp, err := TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:4\r\n\r\n"+ifName)
+	resp, err := TcpSendReceive(serverAddress,
+		"POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length:4\r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 
-	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:  4 \r\n\r\n"+ifName)
+	resp, err = TcpSendReceive(serverAddress,
+		"POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length:  4 \r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 
-	resp, err = TcpSendReceive(serverAddress+":80",
-		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
+	resp, err = TcpSendReceive(serverAddress,
+		"POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length:\t\t4\r\n\r\n"+ifName)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, resp)
 }
@@ -1532,7 +1559,7 @@ func HttpHeaderErrorConnectionDropTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers debug max-body-size 12"))
-	request := "POST /interface_stats.json HTTP/1.1\r\nContent-Length: 18234234\r\n\r\n" + s.VppIfName()
+	request := "POST /interface_stats.json HTTP/1.1\r\nHost: example.com\r\nContent-Length: 18234234\r\n\r\n" + s.VppIfName()
 	conn, err := net.DialTimeout("tcp", serverAddress, time.Second*30)
 	s.AssertNil(err, fmt.Sprint(err))
 	err = conn.SetDeadline(time.Now().Add(time.Second * 10))
@@ -1600,10 +1627,6 @@ func HttpAbsoluteFormUriTest(s *NoTopoSuite) {
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	resp, err := TcpSendReceive(serverAddress, "GET http://"+serverAddress+"/show/version HTTP/1.1\r\n\r\n")
-	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertContains(resp, "HTTP/1.1 200 OK")
-
-	resp, err = TcpSendReceive(serverAddress, "GET http://"+serverAddress+":80/show/version HTTP/1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 200 OK")
 }
@@ -1708,31 +1731,31 @@ func HttpInvalidHeadersTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "Header section must end with CRLF CRLF")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser@Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser@Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'@' not allowed in field name")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "incomplete field line not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\n: test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\n: test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field name not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\rUser-Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\rUser-Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\nUser-Agent:test\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\nUser-Agent:test\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:    \r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:    \r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
 }
