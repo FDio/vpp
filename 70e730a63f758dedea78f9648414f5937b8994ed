@@ -33,6 +33,23 @@
       "message": "perftest-3nb-spr nic_intel-e810cqANDdrv_vfio_pciANDeth-ip4??pbase-ldpreload-iperf3",
       "revId": "70e730a63f758dedea78f9648414f5937b8994ed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d98c5d9f_68a0b489",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-06-11T08:28:34Z",
+      "side": 1,
+      "message": "perftest-3na-spr nic_*ANDdrv_mlx*ANDeth-ip4??pbase-ldpreload-iperf3",
+      "revId": "70e730a63f758dedea78f9648414f5937b8994ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
