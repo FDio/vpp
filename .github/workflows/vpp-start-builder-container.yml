@@ -1,0 +1,32 @@
+---
+name: vpp-start-builder-container
+
+on:
+  workflow_run:
+    workflows: ["vpp-checkstyle-x86_64"]
+    types:
+      - completed
+  workflow_dispatch: {}
+
+jobs:
+  start-builder:
+    name: Start VPP Builder Container - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    if: >
+      ${{
+        github.event.workflow_run.conclusion == 'success' ||
+        github.event_name == 'workflow_dispatch'
+      }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start Builder Container
+        run: |
+          chmod +x .ci/scripts/vpp/start-builder-container.sh
+          # Extract OS version from runner name (e.g., ubuntu-22.04 -> 22.04)
+          OS_VERSION=$(echo ${{ matrix.os }} | cut -d'-' -f2)
+          .ci/scripts/vpp/start-builder-container.sh $OS_VERSION
