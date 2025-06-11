@@ -435,12 +435,7 @@ static u32
 try_index_file (hss_listener_t *l, hss_session_t *hs, u8 *path)
 {
   hss_main_t *hsm = &hss_main;
-  u8 *port_str = 0, *redirect;
-  transport_endpoint_t endpt;
-  transport_proto_t proto;
-  int print_port = 0;
-  u16 local_port;
-  session_t *ts;
+  u8 *redirect;
   u32 plen;
 
   /* Remove the trailing space */
@@ -464,28 +459,12 @@ try_index_file (hss_listener_t *l, hss_session_t *hs, u8 *path)
    */
   vec_delete (path, vec_len (l->www_root) - 1, 0);
 
-  ts = session_get (hs->vpp_session_index, hs->thread_index);
-  session_get_endpoint (ts, &endpt, 1 /* is_local */);
-
-  local_port = clib_net_to_host_u16 (endpt.port);
-  proto = session_type_transport_proto (ts->session_type);
-
-  if ((proto == TRANSPORT_PROTO_TCP && local_port != 80) ||
-      (proto == TRANSPORT_PROTO_TLS && local_port != 443))
-    {
-      print_port = 1;
-      port_str = format (0, ":%u", (u32) local_port);
-    }
-
-  redirect =
-    format (0, "http%s://%U%s%s", proto == TRANSPORT_PROTO_TLS ? "s" : "",
-	    format_ip46_address, &endpt.ip, endpt.is_ip4,
-	    print_port ? port_str : (u8 *) "", path);
+  redirect = format (0, "http%s://%s%s",
+		     l->flags & HSS_LISTENER_F_NEED_CRYPTO ? "s" : "",
+		     hs->authority, path);
 
   if (hsm->debug_level > 0)
     clib_warning ("redirect: %s", redirect);
-
-  vec_free (port_str);
 
   if (hss_add_header (hs, HTTP_HEADER_LOCATION, (const char *) redirect,
 		      vec_len (redirect)))
@@ -691,6 +670,7 @@ hss_ts_rx_callback (session_t *ts)
   hs->data_len = 0;
   vec_free (hs->target_path);
   vec_free (hs->target_query);
+  vec_free (hs->authority);
   http_init_headers_ctx (&hs->resp_headers, hs->headers_buf,
 			 vec_len (hs->headers_buf));
 
@@ -710,6 +690,21 @@ hss_ts_rx_callback (session_t *ts)
 
   hs->rt = msg.method_type;
 
+  /* Read authority */
+  if (msg.data.target_authority_len)
+    {
+      vec_validate (hs->authority, msg.data.target_authority_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_authority_offset,
+			  msg.data.target_authority_len, hs->authority);
+      ASSERT (rv == msg.data.target_authority_len);
+    }
+  else
+    {
+      /* Mandatory Host header was missing in HTTP/1.1 request */
+      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+      vec_add1 (hs->authority, 0);
+      goto err_done;
+    }
   /* Read target path */
   if (msg.data.target_path_len)
     {
@@ -891,6 +886,7 @@ hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
   hs->free_data = 0;
   vec_free (hs->headers_buf);
   vec_free (hs->path);
+  vec_free (hs->authority);
   vec_free (hs->target_path);
   vec_free (hs->target_query);
 
@@ -988,11 +984,12 @@ hss_listen (hss_listener_t *l, session_handle_t *lh)
 
   if (need_crypto)
     {
+      l->flags |= HSS_LISTENER_F_NEED_CRYPTO;
       ext_cfg = session_endpoint_add_ext_cfg (
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
-      if (l->http1_only)
+      if (l->flags & HSS_LISTENER_F_HTTP1_ONLY)
 	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
     }
 
@@ -1135,7 +1132,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
-  l->http1_only = 0;
+  l->flags = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1182,7 +1179,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			 &l->use_ptr_thresh))
 	;
       else if (unformat (line_input, "http1-only"))
-	l->http1_only = 1;
+	l->flags |= HSS_LISTENER_F_HTTP1_ONLY;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1278,7 +1275,7 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
-  l->http1_only = 0;
+  l->flags = 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
