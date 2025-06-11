@@ -56,7 +56,8 @@ format_http2_error (u8 *s, va_list *va)
   _ (1, SCHEME, "scheme")                                                     \
   _ (2, AUTHORITY, "authority")                                               \
   _ (3, PATH, "path")                                                         \
-  _ (4, STATUS, "status")
+  _ (4, STATUS, "status")                                                     \
+  _ (5, PROTOCOL, "protocol")
 
 /* value, label, member, min, max, default_value, err_code */
 #define foreach_http2_settings                                                \
@@ -70,7 +71,9 @@ format_http2_error (u8 *s, va_list *va)
   _ (5, MAX_FRAME_SIZE, max_frame_size, 16384, 16777215, 16384,               \
      HTTP2_ERROR_PROTOCOL_ERROR)                                              \
   _ (6, MAX_HEADER_LIST_SIZE, max_header_list_size, 0, CLIB_U32_MAX,          \
-     CLIB_U32_MAX, HTTP2_ERROR_NO_ERROR)
+     CLIB_U32_MAX, HTTP2_ERROR_NO_ERROR)                                      \
+  _ (8, ENABLE_CONNECT_PROTOCOL, enable_connect_protocol, 0, 1, 0,            \
+     HTTP2_ERROR_NO_ERROR)
 
 typedef enum
 {
