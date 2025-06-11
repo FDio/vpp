@@ -117,8 +117,6 @@ typedef struct _vpp_context
   volatile bool interrupted;
 } VPP_Context_t;
 
-static VPP_Context_t *global_vpp_ctx = 0;
-
 static int
 vpp_daq_qpair_lock (VPPQueuePair *p)
 {
@@ -273,12 +271,6 @@ vpp_daq_instantiate (const DAQ_ModuleConfig_h modcfg,
   int i, fd = -1, shm_fd = -1;
   const char *input;
   uint8_t *base;
-
-  if (global_vpp_ctx)
-    {
-      *ctxt_ptr = global_vpp_ctx;
-      return DAQ_SUCCESS;
-    }
 
   vc = calloc (1, sizeof (VPP_Context_t));
 
@@ -465,7 +457,7 @@ vpp_daq_instantiate (const DAQ_ModuleConfig_h modcfg,
 	}
     }
 
-  *ctxt_ptr = global_vpp_ctx = vc;
+  *ctxt_ptr = vc;
   return DAQ_SUCCESS;
 err:
   if (vc)
