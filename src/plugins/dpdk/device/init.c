@@ -329,10 +329,6 @@ dpdk_lib_init (dpdk_main_t * dm)
     RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
   dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
 
-  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
-      check_l3cache () == 0)
-    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
-
   RTE_ETH_FOREACH_DEV (port_id)
     {
       u8 addr[6];

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#define DPDK_NB_RX_DESC_DEFAULT   1024
-#define DPDK_NB_TX_DESC_DEFAULT   1024
+#define DPDK_NB_RX_DESC_DEFAULT   512
+#define DPDK_NB_TX_DESC_DEFAULT   512
 #define DPDK_MAX_LRO_SIZE_DEFAULT 65536
 
 /* These args appear by themselves */
