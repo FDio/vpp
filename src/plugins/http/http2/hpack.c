@@ -813,6 +813,18 @@ hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
 	  return HTTP2_ERROR_PROTOCOL_ERROR;
 	}
       break;
+    case 9:
+      if (!memcmp (name + 1, "protocol", 8))
+	{
+	  if (control_data->parsed_bitmap &
+	      HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
+	    return HTTP2_ERROR_PROTOCOL_ERROR;
+	  control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
+	  control_data->protocol = value;
+	  control_data->protocol_len = value_len;
+	  break;
+	}
+      break;
     case 10:
       if (!memcmp (name + 1, "authority", 9))
 	{
@@ -874,7 +886,7 @@ hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
 	}
       break;
     case 14:
-      if (!memcmp (name, "content-length", 7) &&
+      if (!memcmp (name, "content-length", 14) &&
 	  control_data->content_len_header_index == ~0)
 	control_data->content_len_header_index = index;
       break;
