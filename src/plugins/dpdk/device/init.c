@@ -141,47 +141,6 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
   return old;
 }
 
-/* The function check_l3cache helps check if Level 3 cache exists or not on current CPUs
-  return value 1: exist.
-  return value 0: not exist.
-*/
-static int
-check_l3cache ()
-{
-
-  struct dirent *dp;
-  clib_error_t *err;
-  const char *sys_cache_dir = "/sys/devices/system/cpu/cpu0/cache";
-  DIR *dir_cache = opendir (sys_cache_dir);
-
-  if (dir_cache == NULL)
-    return -1;
-
-  while ((dp = readdir (dir_cache)) != NULL)
-    {
-      if (dp->d_type == DT_DIR)
-	{
-	  u8 *p = NULL;
-	  int level_cache = -1;
-
-	  p = format (p, "%s/%s/%s%c", sys_cache_dir, dp->d_name, "level", 0);
-	  if ((err = clib_sysfs_read ((char *) p, "%d", &level_cache)))
-	    clib_error_free (err);
-
-	  if (level_cache == 3)
-	    {
-	      closedir (dir_cache);
-	      return 1;
-	    }
-	}
-    }
-
-  if (dir_cache != NULL)
-    closedir (dir_cache);
-
-  return 0;
-}
-
 static dpdk_device_config_t *
 dpdk_find_startup_config (struct rte_eth_dev_info *di)
 {
@@ -328,10 +287,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   dm->default_port_conf.rss_hf =
     RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
   dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
-
-  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
-      check_l3cache () == 0)
-    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
 
   RTE_ETH_FOREACH_DEV (port_id)
     {
