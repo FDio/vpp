@@ -1,16 +1,22 @@
 package hst
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"fd.io/hs-test/h2spec_extras"
+
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/summerwind/h2spec/config"
 )
 
 type VppUdpProxySuite struct {
@@ -209,4 +215,74 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, fun
 			}, SpecTimeout(TestTimeout))
 		}
 	}
+})
+
+var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
+	var s VppUdpProxySuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	testCases := []struct {
+		desc string
+	}{
+		{desc: "extras/3/1"},
+		{desc: "extras/3/2"},
+	}
+
+	for _, test := range testCases {
+		test := test
+		testName := "proxy_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
+		It(testName, func(ctx SpecContext) {
+			s.Log(testName + ": BEGIN")
+			vppProxy := s.Containers.VppProxy.VppInstance
+			remoteServerConn := s.StartEchoServer()
+			defer remoteServerConn.Close()
+			cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+			s.Log(vppProxy.Vppctl(cmd))
+			path := fmt.Sprintf("/.well-known/masque/udp/%s/%d/", s.ServerAddr(), s.Ports.Server)
+			conf := &config.Config{
+				Host:         s.VppProxyAddr(),
+				Port:         s.Ports.Proxy,
+				Path:         path,
+				Timeout:      time.Second * s.MaxTimeout,
+				MaxHeaderLen: 4096,
+				TLS:          true,
+				Insecure:     true,
+				Sections:     []string{test.desc},
+				Verbose:      true,
+			}
+			// capture h2spec output so it will be in log
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			tg := h2spec_extras.Spec()
+			tg.Test(conf)
+
+			oChan := make(chan string)
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				oChan <- buf.String()
+			}()
+
+			// restore to normal state
+			w.Close()
+			os.Stdout = oldStdout
+			o := <-oChan
+			s.Log(o)
+			s.AssertEqual(0, tg.FailedCount)
+		}, SpecTimeout(TestTimeout))
+	}
+
 })

@@ -909,6 +909,10 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   HTTP_DBG (1, "decompressed headers size %u", control_data.headers_len);
   HTTP_DBG (1, "dynamic table size %u", h2c->decoder_dynamic_table.used);
 
+  req->base.control_data_len = control_data.control_data_len;
+  req->base.headers_offset = control_data.headers - wrk->header_list;
+  req->base.headers_len = control_data.headers_len;
+
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
     {
       HTTP_DBG (1, ":method pseudo-header missing in request");
@@ -949,42 +953,77 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
     }
   if (control_data.method == HTTP_REQ_CONNECT)
     {
-      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
-	  control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+      if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
 	{
-	  HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
-		       "CONNECT method");
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
-	  return HTTP_SM_STOP;
+	  /* extended CONNECT (RFC8441) */
+	  if (!(control_data.parsed_bitmap &
+		HPACK_PSEUDO_HEADER_SCHEME_PARSED) ||
+	      !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED))
+	    {
+	      HTTP_DBG (1,
+			":scheme and :path pseudo-header must be present for "
+			"extended CONNECT method");
+	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	      return HTTP_SM_STOP;
+	    }
+	  /* parse protocol header value */
+	  if (0)
+	    ;
+#define _(sym, str)                                                           \
+  else if (http_token_is_case ((const char *) control_data.protocol,          \
+			       control_data.protocol_len,                     \
+			       http_token_lit (str)))                         \
+    req->base.upgrade_proto = HTTP_UPGRADE_PROTO_##sym;
+	  foreach_http_upgrade_proto
+#undef _
+	    else
+	  {
+	    HTTP_DBG (1, "unsupported extended connect protocol %U",
+		      format_http_bytes, control_data.protocol,
+		      control_data.protocol_len);
+	    http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
+	    return HTTP_SM_STOP;
+	  }
 	}
-      /* quick check if port is present */
-      p = control_data.authority + control_data.authority_len;
-      p--;
-      if (!isdigit (*p))
+      else
 	{
-	  HTTP_DBG (1, "port not present in authority");
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
-	  return HTTP_SM_STOP;
-	}
-      p--;
-      for (; p > control_data.authority; p--)
-	{
+	  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
+	      control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+	    {
+	      HTTP_DBG (1,
+			":scheme and :path pseudo-header must be omitted for "
+			"CONNECT method");
+	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	      return HTTP_SM_STOP;
+	    }
+	  /* quick check if port is present */
+	  p = control_data.authority + control_data.authority_len;
+	  p--;
 	  if (!isdigit (*p))
-	    break;
+	    {
+	      HTTP_DBG (1, "port not present in authority");
+	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	      return HTTP_SM_STOP;
+	    }
+	  p--;
+	  for (; p > control_data.authority; p--)
+	    {
+	      if (!isdigit (*p))
+		break;
+	    }
+	  if (*p != ':')
+	    {
+	      HTTP_DBG (1, "port not present in authority");
+	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	      return HTTP_SM_STOP;
+	    }
+	  req->base.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
-      if (*p != ':')
-	{
-	  HTTP_DBG (1, "port not present in authority");
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
-	  return HTTP_SM_STOP;
-	}
+
       req->base.is_tunnel = 1;
       http_io_as_add_want_read_ntf (&req->base);
     }
 
-  req->base.control_data_len = control_data.control_data_len;
-  req->base.headers_offset = control_data.headers - wrk->header_list;
-  req->base.headers_len = control_data.headers_len;
   if (control_data.content_len_header_index != ~0)
     {
       req->base.content_len_header_index =
@@ -1043,6 +1082,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   msg.data.upgrade_proto = HTTP_UPGRADE_PROTO_NA;
   msg.data.body_offset = req->base.control_data_len;
   msg.data.body_len = req->base.body_len;
+  msg.data.upgrade_proto = req->base.upgrade_proto;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { wrk->header_list,
@@ -2363,6 +2403,7 @@ http2_init (vlib_main_t *vm)
   h2m->settings = http2_default_conn_settings;
   h2m->settings.max_concurrent_streams = 100; /* by default unlimited */
   h2m->settings.max_header_list_size = 1 << 14; /* by default unlimited */
+  h2m->settings.enable_connect_protocol = 1;	/* enable extended connect */
   http_register_engine (&http2_engine, HTTP_VERSION_2);
 
   return 0;

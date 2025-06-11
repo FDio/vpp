@@ -335,6 +335,7 @@ var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, func() {
 		{desc: "extras/2/2"},
 		{desc: "extras/2/3"},
 		{desc: "extras/2/4"},
+		{desc: "extras/2/5"},
 	}
 
 	for _, test := range testCases {
