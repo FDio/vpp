@@ -14,6 +14,7 @@
  */
 
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_inline.h>
 
 cnat_main_t cnat_main;
 cnat_timestamp_mpool_t cnat_timestamps;
@@ -23,6 +24,52 @@ char *cnat_error_strings[] = {
 #include <cnat/cnat_error.def>
 #undef cnat_error
 };
+
+u8 *
+format_cnat_5tuple (u8 *s, va_list *args)
+{
+  const cnat_5tuple_t *tuple = va_arg (*args, cnat_5tuple_t *);
+  s = format (s, "%U [%U;%u -> %U;%u]", format_ip_protocol, tuple->iproto,
+	      format_ip46_address, &tuple->ip[VLIB_RX], IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (tuple->port[VLIB_RX]), format_ip46_address,
+	      &tuple->ip[VLIB_TX], IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (tuple->port[VLIB_TX]));
+  return (s);
+}
+
+u8 *
+format_cnat_rewrite (u8 *s, va_list *args)
+{
+  cnat_timestamp_rewrite_t *rw = va_arg (*args, cnat_timestamp_rewrite_t *);
+
+  s = format (s, "%U node:%u lbi:%u fl:%u", format_cnat_5tuple, &rw->tuple,
+	      rw->cts_dpoi_next_node, rw->cts_lbi, rw->cts_flags);
+
+  return (s);
+}
+
+u8 *
+format_cnat_rewrite_type (u8 *s, va_list *args)
+{
+  int rw_type = va_arg (*args, int);
+  switch (rw_type)
+    {
+    case CNAT_LOCATION_INPUT:
+      return format (s, " in ");
+    case CNAT_LOCATION_OUTPUT:
+      return format (s, " out");
+    case CNAT_LOCATION_FIB:
+      return format (s, " fib");
+    case CNAT_LOCATION_INPUT + CNAT_IS_RETURN:
+      return format (s, "rin ");
+    case CNAT_LOCATION_OUTPUT + CNAT_IS_RETURN:
+      return format (s, "rout");
+    case CNAT_LOCATION_FIB + CNAT_IS_RETURN:
+      return format (s, "rfib");
+    default:
+      return format (s, "unknown");
+    }
+}
 
 u8
 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
@@ -159,22 +206,33 @@ cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type)
 }
 
 void
-cnat_lazy_init ()
+cnat_lazy_init (void)
 {
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   cnat_main_t *cm = &cnat_main;
+
   if (cm->lazy_init_done)
     return;
+
+  clib_rwlock_init (&ctm->ts_lock);
+  /* timestamp 0 is default */
+  cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
+  /* timestamp 0 should not count toward per vrf limit */
+  vec_elt (ctm->sessions_per_vrf_ip4, 0)++;
+
   cnat_enable_disable_scanner (cm->default_scanner_state);
+
   cm->lazy_init_done = 1;
 }
 
 static clib_error_t *
 cnat_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  u32 log2_pool_sz = CNAT_DEFAULT_TS_LOG2_POOL_SZ;
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 session_max = CNAT_MAX_SESSIONS;
   cnat_main_t *cm = &cnat_main;
 
-  cm->session_hash_memory = CNAT_DEFAULT_SESSION_MEMORY;
-  cm->session_hash_buckets = CNAT_DEFAULT_SESSION_BUCKETS;
   cm->translation_hash_memory = CNAT_DEFAULT_TRANSLATION_MEMORY;
   cm->translation_hash_buckets = CNAT_DEFAULT_TRANSLATION_BUCKETS;
   cm->client_hash_memory = CNAT_DEFAULT_CLIENT_MEMORY;
@@ -191,14 +249,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "session-db-buckets %u", &cm->session_hash_buckets))
-	;
-      else if (unformat (input, "session-db-memory %U",
-			 unformat_memory_size, &cm->session_hash_memory))
-	;
-      else if (unformat (input, "translation-db-buckets %u",
-			 &cm->translation_hash_buckets))
+      if (unformat (input, "translation-db-buckets %u",
+		    &cm->translation_hash_buckets))
 	;
       else if (unformat (input, "translation-db-memory %U",
 			 unformat_memory_size, &cm->translation_hash_memory))
@@ -229,11 +281,36 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "maglev-len %u", &cm->maglev_len))
 	;
+      else if (unformat (input, "session-log2-pool-size %u", &log2_pool_sz))
+	;
+      else if (unformat (input, "session-max %u", &session_max))
+	;
+      else if (unformat (input, "session-max-per-vrf %u",
+			 &ctm->max_sessions_per_vrf))
+	;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
 
+  if (session_max > CNAT_MAX_SESSIONS)
+    return clib_error_return (0, "cnat session-max %u > %u", session_max,
+			      CNAT_MAX_SESSIONS);
+
+  if (0 == ctm->max_sessions_per_vrf)
+    ctm->max_sessions_per_vrf = session_max;
+  else if (ctm->max_sessions_per_vrf > session_max)
+    return clib_error_return (0, "cnat session-max-per-vrf %u > %u",
+			      ctm->max_sessions_per_vrf, session_max);
+
+  /* session index is 32-bits and made of pool index + object index */
+  u64 smax = session_max + (1ULL << log2_pool_sz) - 1;
+  if (smax > CLIB_U32_MAX)
+    return clib_error_return (
+      0, "cnat session-max and session-log2-pool-size are incompatible");
+
+  ctm->pool_max = smax >> log2_pool_sz;
+  ctm->log2_pool_sz = log2_pool_sz;
   return 0;
 }
 
