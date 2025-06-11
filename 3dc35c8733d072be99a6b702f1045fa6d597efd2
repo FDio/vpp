@@ -16,6 +16,24 @@
       "message": "maybe remove mentions to simd?",
       "revId": "3dc35c8733d072be99a6b702f1045fa6d597efd2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b13d99fc_92a49453",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-06-11T17:04:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9f0749a0_d1815441",
+      "revId": "3dc35c8733d072be99a6b702f1045fa6d597efd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
