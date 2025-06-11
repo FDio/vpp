@@ -54,6 +54,8 @@ typedef struct
   u8 *path;
   u32 path_len;
   u8 *headers;
+  u8 *protocol;
+  u32 protocol_len;
   uword content_len_header_index;
   u32 headers_len;
   u32 control_data_len;

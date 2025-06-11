@@ -3,6 +3,7 @@ package h2spec_extras
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/spec"
@@ -28,6 +29,7 @@ func Spec() *spec.TestGroup {
 
 	tg.AddTestGroup(FlowControl())
 	tg.AddTestGroup(ConnectMethod())
+	tg.AddTestGroup(ExtendedConnectMethod())
 
 	return tg
 }
@@ -392,6 +394,90 @@ func ConnectMethod() *spec.TestGroup {
 			}
 
 			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "The \":scheme\" and \":path\" pseudo-header fields MUST be omitted.",
+		Requirement: "A CONNECT request that does not conform to these restrictions is malformed.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectHeaders(c)
+			headers = append(headers, spec.HeaderField(":scheme", "https"))
+			headers = append(headers, spec.HeaderField(":path", "/"))
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+
+			return spec.VerifyStreamError(conn, http2.ErrCodeProtocol)
+		},
+	})
+	return tg
+}
+
+func ExtendedConnectMethod() *spec.TestGroup {
+	tg := NewTestGroup("3", "Extended CONNECT method")
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "SETTINGS_ENABLE_CONNECT_PROTOCOL parameter with value 1 received.",
+		Requirement: "Using a SETTINGS parameter to opt into an otherwise incompatible protocol change is a use of \"Extending HTTP/2\" defined by Section 5.5 of RFC9113.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			enabled, ok := conn.Settings[http2.SettingEnableConnectProtocol]
+			if !ok {
+				return &spec.TestError{
+					Expected: []string{"SETTINGS_ENABLE_CONNECT_PROTOCOL received"},
+					Actual:   "SETTINGS_ENABLE_CONNECT_PROTOCOL not received",
+				}
+			}
+			if enabled != uint32(1) {
+				return &spec.TestError{
+					Expected: []string{"SETTINGS_ENABLE_CONNECT_PROTOCOL parameter with value 1 received"},
+					Actual:   "SETTINGS_ENABLE_CONNECT_PROTOCOL parameter with value " + strconv.Itoa(int(enabled)) + " received",
+				}
+			}
+
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "The \":scheme\" and \":path\" pseudo-header fields MUST be included.",
+		Requirement: "A CONNECT request bearing the \":protocol\" pseudo-header that does not conform is malformed.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectHeaders(c)
+			headers = append(headers, spec.HeaderField(":protocol", "connect-udp"))
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+
+			return spec.VerifyStreamError(conn, http2.ErrCodeProtocol)
 		},
 	})
 	return tg
