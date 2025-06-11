@@ -2133,7 +2133,6 @@ http2_init (vlib_main_t *vm)
 {
   http2_main_t *h2m = &http2_main;
 
-  clib_warning ("http/2 enabled");
   h2m->settings = http2_default_conn_settings;
   h2m->settings.max_concurrent_streams = 100; /* by default unlimited */
   h2m->settings.max_header_list_size = 1 << 14; /* by default unlimited */
