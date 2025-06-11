@@ -768,12 +768,12 @@ http1_target_fixup (http_conn_t *hc, http_req_t *req)
 		  HTTP_URL_SCHEME_HTTP;
 
   if (req->target_form == HTTP_TARGET_AUTHORITY_FORM ||
-      req->connection_header_index == ~0)
+      req->host_header_index == ~0)
     return;
 
   /* authority fixup */
-  host = vec_elt_at_index (req->headers, req->connection_header_index);
-  req->target_authority_offset = host->value_offset;
+  host = vec_elt_at_index (req->headers, req->host_header_index);
+  req->target_authority_offset = req->headers_offset + host->value_offset;
   req->target_authority_len = host->value_len;
 }
 
