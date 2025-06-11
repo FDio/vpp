@@ -1,41 +1,48 @@
-name: vpp-checkstyle-x86_64
+name: vpp-checkstyle
 
 on:
   pull_request:
     branches:
       - master
-      - stable/**
-      - '**'  # any branch for testing
+      - stable/2502
+      - stable/2506
   push:
     branches:
       - master
-      - stable/**
-      - '**'  # any branch for testing
-  workflow_dispatch:
+      - stable/2502
+      - stable/2506
+  workflow_dispatch: {}
 
 jobs:
+  # Determine which branch is being built
+  detect-branch:
+    runs-on: ubuntu-latest
+    outputs:
+      target_branch: ${{ steps.set-branch.outputs.branch }}
+    steps:
+      - name: Set branch based on event type
+        id: set-branch
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For pull requests, use the target branch
+            BRANCH="${{ github.base_ref }}"
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          else
+            # For pushes and workflow_dispatch, use the current branch
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          fi
+          echo "Event: ${{ github.event_name }}, Branch: $BRANCH"
+
   checkstyle:
-    name: Checkstyle - ${{ matrix.branch }} on ${{ matrix.os }}
+    name: Checkstyle on ${{ matrix.os }}
+    needs: detect-branch
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
-        stream: [master, stable/2410, stable/2502, stable/2506]
-        include:
-          - stream: master
-            branch: master
-            os: ubuntu-24.04
-          - stream: stable/2410
-            branch: stable/2410
-            os: ubuntu-22.04
-          - stream: stable/2502
-            branch: stable/2502
-            os: ubuntu-24.04
-          - stream: stable/2506
-            branch: stable/2506
-            os: ubuntu-24.04
+        os: [ubuntu-24.04]
     steps:
-      - name: Checkout VPP repository with PR changes
+      - name: Checkout VPP repository with the change
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -59,9 +66,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: checkstyle-logs-${{ matrix.branch }}-${{ matrix.os }}
+          name: checkstyle-logs-${{ needs.detect-branch.outputs.target_branch }}-${{ matrix.os }}
           path: logs/
 
       - name: Report Success
         if: success()
-        run: echo "Checkstyle passed for ${{ matrix.branch }} on ${{ matrix.os }}"
+        run: |
+          echo "Checkstyle passed for ${{ needs.detect-branch.outputs.target_branch }} on ${{ matrix.os }}"
+          echo "::notice::Checkstyle workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Repository: ${{ github.repository }}, Branch: ${{ needs.detect-branch.outputs.target_branch }}"

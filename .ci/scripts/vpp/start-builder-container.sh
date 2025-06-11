@@ -13,18 +13,18 @@ ensure_docker_installed() {
   echo "Docker is not installed. Installing Docker..."
 
   sudo apt-get update
-  sudo apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
+  sudo apt-get install -y
+    ca-certificates
+    curl
+    gnupg
     lsb-release
 
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" | \
+  echo
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu
+    $(lsb_release -cs) stable" |
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
   sudo apt-get update
@@ -49,20 +49,43 @@ get_ubuntu_version() {
   fi
 }
 
+# Function to get architecture (x86_64, aarch64)
+get_architecture() {
+  local arch=$(uname -m)
+  if [ "$arch" == "aarch64" ] || [ "$arch" == "arm64" ]; then
+    echo "aarch64"
+  else
+    echo "x86_64"  # Default to x86_64 for all other architectures
+  fi
+}
+
 # Function to start the Docker container
 start_container() {
-  local version=$1
-  local image="fdiotools/builder-ubuntu${version}:prod-x86_64"
+  local os=$1
+  local arch=$2
+  local image="fdiotools/builder-${os}:prod-${arch}"
+
+  # Set memory and shared memory size based on architecture
+  local shm_size="1024M"
+  if [ "$arch" == "aarch64" ]; then
+    shm_size="2048M"
+  fi
+
   echo "Starting Docker container from image: $image"
   docker pull $image
-  sudo docker run --privileged --shm-size=1024M -m24g $image
+
+  # Run the container with architecture-specific settings
+  echo "Using shared memory size: $shm_size"
+  sudo docker run --privileged --shm-size=${shm_size} -m24g $image /bin/bash -c "echo 'Container started successfully'; ls -la; uname -a"
 }
 
 # Display usage information
 usage() {
-  echo "Usage: $0 [ubuntu_version]"
-  echo "  ubuntu_version: Optional. The Ubuntu version to use (e.g., 22.04, 24.04)."
-  echo "                  If not provided, will auto-detect from the host."
+  echo "Usage: $0 [os_version] [architecture]"
+  echo "  os_version: Optional. The OS version to use (e.g., ubuntu2204, ubuntu2404, debian12)."
+  echo "              If not provided, will auto-detect Ubuntu version from the host."
+  echo "  architecture: Optional. The architecture to use (x86_64 or aarch64)."
+  echo "                If not provided, will auto-detect from the host."
 }
 
 # Main execution
@@ -75,25 +98,36 @@ main() {
 
   ensure_docker_installed
 
-  # Use provided Ubuntu version or auto-detect
-  ubuntu_version=""
+  # Use provided OS version or auto-detec
+  os_version=""
   if [ -n "$1" ]; then
-    # OS version provided as argument
-    ubuntu_version="$1"
-    echo "Using provided Ubuntu version: $ubuntu_version"
+    # OS version provided as argument - can be ubuntu2204, ubuntu2404, debian12, etc.
+    os_version="$1"
+    echo "Using provided OS version: $os_version"
   else
-    # Auto-detect the OS version
-    ubuntu_version=$(get_ubuntu_version)
-    echo "Detected Ubuntu version: $ubuntu_version"
+    # Auto-detect Ubuntu version and format i
+    detected_ubuntu_version=$(get_ubuntu_version)
+    ubuntu_version_no_dots=$(echo $detected_ubuntu_version | tr -d '.')
+    os_version="ubuntu$ubuntu_version_no_dots"
+    echo "Detected OS version: $os_version"
   fi
 
-  # Remove dots from version (e.g., 22.04 -> 2204) required
-  # for fdiotools docker image naming convention
-  ubuntu_version_no_dots=$(echo $ubuntu_version | tr -d '.')
-  echo "Using fdiotools/builder-ubuntu$ubuntu_version_no_dots:prod-x86_64"
+  # Use provided architecture or auto-detec
+  architecture=""
+  if [ -n "$2" ]; then
+    # Architecture provided as argumen
+    architecture="$2"
+    echo "Using provided architecture: $architecture"
+  else
+    # Auto-detect the architecture
+    architecture=$(get_architecture)
+    echo "Detected architecture: $architecture"
+  fi
+
+  echo "Using fdiotools/builder-${os_version}:prod-${architecture}"
 
   # Start the container
-  start_container $ubuntu_version_no_dots
+  start_container $os_version $architecture
 }
 
 main "$@"

@@ -15,133 +15,170 @@
 
 echo "---> .ci/scripts/setup_executor_env.sh"
 
-set -e -o pipefail
+# Strict mode
+set -euo pipefail
+IFS=$' \t\n'
 
-OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+trap 'ec=$?; echo "[ERROR] setup_executor_env.sh failed at line $LINENO with exit code $ec" >&2' ERR
+
+# Load OS metadata
+if [ -r /etc/os-release ]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  OS_ID="${ID:-unknown}"
+  OS_VERSION_ID="${VERSION_ID:-unknown}"
+else
+  OS_ID="unknown"
+  OS_VERSION_ID="unknown"
+fi
 OS_ARCH=$(uname -m)
-# dockerfile="/scratch/docker-build/Dockerfile"
+
 file_delimiter="----- %< -----"
 long_line="************************************************************************"
+# Original downloads cache (may be ephemeral inside container)
 downloads_cache="/root/Downloads"
 
-# Requires all nomad client machines to run the following command
-# and mount /scratch/nomad into the docker container:
-# sudo mkdir -p /scratch/nomad && echo "$(hostname)-$(uname -m)" | sudo tee /scratch/nomad/nomad-client
-# nomad_client_file="/scratch/nomad/nomad-client"
-# if [ -f "$nomad_client_file" ] ; then
-#     NOMAD_CLIENT="$(cat $nomad_client_file)"
-# else
-#     NOMAD_CLIENT="Unknown"
-# fi
-# Remove Nomad and Include GitHub Actions runner information
 GITHUB_RUNNER="${RUNNER_NAME:-Unknown}"
 GITHUB_WORKFLOW="${GITHUB_WORKFLOW:-Unknown}"
 GITHUB_RUN_ID="${GITHUB_RUN_ID:-Unknown}"
 
-# Node info
-# echo "$long_line"
-# echo "Executor Runtime Attributes:"
-# echo "OS: $OS_ID-$OS_VERSION_ID"
-# echo "Arch: $OS_ARCH"
-# echo "Nomad Client Hostname: $NOMAD_CLIENT"
-# echo "Container ID: $(hostname)"
+# Toggle envs (can be overridden from workflow)
+: "${PERF_PROBE:=1}"            # 1 to collect perf snapshots
+: "${VERBOSE_PACKAGES:=1}"      # 1 to list installed OS packages
+: "${VERBOSE_PY:=1}"            # 1 to list python packages
+: "${CCACHE_MAXSIZE:=20G}"      # Max ccache size
+: "${CCACHE_COMPILERCHECK:=content}" # Safer compiler change detection
 
-echo "$long_line"
-echo "GitHub Runner Attributes:"
-echo "OS: $OS_ID-$OS_VERSION_ID"
-echo "Arch: $OS_ARCH" 
-echo "GitHub Runner: $GITHUB_RUNNER"
-echo "GitHub Workflow: $GITHUB_WORKFLOW"
-echo "GitHub Run ID: $GITHUB_RUN_ID"
-echo "Runner Hostname: $(hostname)"
+log_line() { echo "$long_line"; }
 
-# Github Hosted Runner doesn't use Dockerfile, so skip this part
-# echo "$long_line"
-# if [ -f "$dockerfile" ] ; then
-#     echo -e "Executor Dockerfile: ${dockerfile}\n${file_delimiter}"
-#     cat $dockerfile
-#     echo "$file_delimiter"
-# else
-#     echo "Unknown Executor: '$dockerfile' not found!"
-# fi
+print_runner_attrs() {
+  log_line
+  echo "GitHub Runner Attributes:"
+  echo "OS: ${OS_ID}-${OS_VERSION_ID}"
+  echo "Arch: ${OS_ARCH}"
+  echo "GitHub Runner: ${GITHUB_RUNNER}"
+  echo "GitHub Workflow: ${GITHUB_WORKFLOW}"
+  echo "GitHub Run ID: ${GITHUB_RUN_ID}"
+  echo "Runner Hostname: $(hostname)"
+}
 
-# Performance analysis
-perf_trials=2
-perf_interval=1
-if [ "$OS_ID" == "ubuntu" ] || [ "$OS_ID" = "debian" ] ; then
+collect_perf_snapshots() {
+  [ "${PERF_PROBE}" = "1" ] || { echo "PERF_PROBE disabled"; return 0; }
+  log_line
+  echo "Collecting lightweight performance snapshots"
+  perf_trials=2
+  perf_interval=1
+  # Determine SYSSTAT path (retain legacy logic)
+  if [ "${OS_ID}" = "ubuntu" ] || [ "${OS_ID}" = "debian" ]; then
     SYSSTAT_PATH="/var/log/sysstat"
-elif [ "$OS_ID" == "centos" ] ; then
-    if [ "$OS_VERSION_ID" = "7" ] ; then
-        SYSSTAT_PATH="/var/log/sa/sa02"
+  elif [ "${OS_ID}" = "centos" ]; then
+    if [ "${OS_VERSION_ID}" = "7" ]; then
+      SYSSTAT_PATH="/var/log/sa/sa02"
     else
-        SYSSTAT_PATH="/var/log/sa"
+      SYSSTAT_PATH="/var/log/sa"
     fi
-fi
-echo "$long_line"
-echo "Virtual memory stat"
-vmstat ${perf_interval} ${perf_trials} 2>/dev/null || echo "vmstat not available"
-echo "CPU time breakdowns per CPU"
-mpstat -P ALL ${perf_interval}  ${perf_trials} 2>/dev/null || echo "mpstat not available"
-echo "Per-process summary"
-pidstat ${perf_interval} ${perf_trials} 2>/dev/null || echo "pidstat not available"
-echo "Block device stats"
-iostat -xz ${perf_interval} ${perf_trials} 2>/dev/null || echo "iostat not available"
-echo "Memory utilization"
-free -m 2>/dev/null || echo "free not available"
-echo "Network interface throughput"
-sar -n DEV -o ${SYSSTAT_PATH} ${perf_interval} ${perf_trials} 2>/dev/null || echo "sar not available"
-echo "TCP metrics"
-sar -n TCP,ETCP -o ${SYSSTAT_PATH} ${perf_interval} ${perf_trials} 2>/dev/null || echo "sar not available"
+  else
+    SYSSTAT_PATH="/var/log"
+  fi
+  echo "Virtual memory stat"; vmstat ${perf_interval} ${perf_trials} 2>/dev/null || echo "vmstat not available"
+  echo "CPU time breakdowns per CPU"; mpstat -P ALL ${perf_interval} ${perf_trials} 2>/dev/null || echo "mpstat not available"
+  echo "Per-process summary"; pidstat ${perf_interval} ${perf_trials} 2>/dev/null || echo "pidstat not available"
+  echo "Block device stats"; iostat -xz ${perf_interval} ${perf_trials} 2>/dev/null || echo "iostat not available"
+  echo "Memory utilization"; free -m 2>/dev/null || echo "free not available"
+  echo "Network interface throughput"; sar -n DEV -o "${SYSSTAT_PATH}" ${perf_interval} ${perf_trials} 2>/dev/null || echo "sar not available"
+  echo "TCP metrics"; sar -n TCP,ETCP -o "${SYSSTAT_PATH}" ${perf_interval} ${perf_trials} 2>/dev/null || echo "sar not available"
+}
 
-# SW stack
-echo "$long_line"
-echo "Executor package list:"
-if [ "$OS_ID" == "ubuntu" ] || [ "$OS_ID" = "debian" ] ; then
+show_os_packages() {
+  [ "${VERBOSE_PACKAGES}" = "1" ] || { echo "Skipping OS package list (VERBOSE_PACKAGES=0)"; return 0; }
+  log_line
+  echo "Executor package list:"
+  if [ "${OS_ID}" = "ubuntu" ] || [ "${OS_ID}" = "debian" ]; then
     dpkg-query -W -f='${binary:Package}\t${Version}\n' | column -t || true
-elif [ "$OS_ID" == "centos" ] ; then
+  elif [ "${OS_ID}" = "centos" ]; then
     yum list installed || true
-fi
+  else
+    echo "Unsupported OS for package listing"
+  fi
+}
 
-echo "$long_line"
-echo "Python3 package list:"
-pip3 list 2>/dev/null | column -t || true
+show_python_packages() {
+  [ "${VERBOSE_PY}" = "1" ] || { echo "Skipping Python package list (VERBOSE_PY=0)"; return 0; }
+  log_line
+  echo "Python3 package list:"
+  pip3 list 2>/dev/null | column -t || true
+}
 
-echo "$long_line"
-echo "Executor Downloads cache '$downloads_cache':"
-ls -lh "$downloads_cache" || true
+show_downloads_cache() {
+  log_line
+  echo "Executor Downloads cache '${downloads_cache}':"
+  ls -lh "${downloads_cache}" || true
+}
 
-echo "$long_line"
-echo "DNS nameserver config in '/etc/resolv.conf':"
-cat /etc/resolv.conf || true
+show_resolver() {
+  log_line
+  echo "DNS nameserver config in '/etc/resolv.conf':"
+  # Mask potential search domains if needed; currently print full
+  cat /etc/resolv.conf || true
+}
 
-echo "$long_line"
-# if [ -n "$(which ccache || true)" ] ; then
-#     if  [ -z "${CCACHE_DIR:-}" ] || [ ! -d "$CCACHE_DIR" ] ; then
-#         echo "CCACHE_DIR='$CCACHE_DIR' is missing, disabling CCACHE..."
-#         export CCACHE_DISABLE="1"
-#     fi
-#     if [ -n "${CCACHE_DISABLE:-}" ] ; then
-#         echo "CCACHE_DISABLE = '$CCACHE_DISABLE'"
-#     fi
-#     echo "ccache statistics:"
-#     ccache -s
-# else
-#     echo "WARNING: ccache is not installed!"
-#     export CCACHE_DISABLE="1"
-# fi
+setup_ccache() {
+  log_line
+  if command -v ccache >/dev/null 2>&1; then
+    # Ensure CCACHE_DIR is set and exists
+    if [ -z "${CCACHE_DIR:-}" ]; then
+      # Derive a default if not provided (caller may pass one via env)
+      CCACHE_DIR="/scratch/ccache/${OS_ID}-${OS_VERSION_ID}-${OS_ARCH}"
+      export CCACHE_DIR
+    fi
+    if [ ! -d "${CCACHE_DIR}" ]; then
+      echo "Creating CCACHE_DIR='${CCACHE_DIR}'"
+      if ! mkdir -p "${CCACHE_DIR}" 2>/dev/null; then
+        echo "Failed to create CCACHE_DIR; disabling ccache"
+        export CCACHE_DISABLE=1
+      fi
+    fi
+    if [ -z "${CCACHE_DISABLE:-}" ]; then
+      export CCACHE_MAXSIZE CCACHE_COMPILERCHECK
+      echo "ccache enabled: dir='${CCACHE_DIR}' max='${CCACHE_MAXSIZE}' compilercheck='${CCACHE_COMPILERCHECK}'"
+      echo "Initial ccache stats:"; ccache -s || true
+    else
+      echo "ccache explicitly disabled (CCACHE_DISABLE='${CCACHE_DISABLE}')"
+    fi
+  else
+    echo "WARNING: ccache is not installed (will proceed without caching)"
+    export CCACHE_DISABLE=1
+  fi
+}
 
-# Update cache directory for GitHub Actions
-downloads_cache="${GITHUB_WORKSPACE:-/github/workspace}/.cache"
-mkdir -p "$downloads_cache" 2>/dev/null || true
-echo "$long_line"
+prepare_workspace_cache() {
+  # Update cache directory for GitHub Actions (for other tooling reuse)
+  downloads_cache="${GITHUB_WORKSPACE:-/github/workspace}/.cache"
+  mkdir -p "${downloads_cache}" 2>/dev/null || true
+  log_line
+}
 
-# GitHub Actions Environment Variables
-echo "$long_line"
-echo "GitHub Actions Environment:"
-echo "GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-Not set}"
-echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:-Not set}"
-echo "GITHUB_REF: ${GITHUB_REF:-Not set}"
-echo "GITHUB_SHA: ${GITHUB_SHA:-Not set}"
-echo "GITHUB_EVENT_NAME: ${GITHUB_EVENT_NAME:-Not set}"
-echo "$long_line"
+show_github_env() {
+  log_line
+  echo "GitHub Actions Environment:"
+  echo "GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-Not set}"
+  echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:-Not set}"
+  echo "GITHUB_REF: ${GITHUB_REF:-Not set}"
+  echo "GITHUB_SHA: ${GITHUB_SHA:-Not set}"
+  echo "GITHUB_EVENT_NAME: ${GITHUB_EVENT_NAME:-Not set}"
+  log_line
+}
+
+# Execution sequence
+print_runner_attrs
+collect_perf_snapshots
+show_os_packages
+show_python_packages
+show_downloads_cache
+show_resolver
+setup_ccache
+prepare_workspace_cache
+show_github_env
+
+# Success footer
+echo "Executor environment setup complete."
