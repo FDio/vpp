@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55e1e697_8d7cf99f",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-12T04:24:49Z",
+      "side": 0,
+      "message": "The old uri is freed here, is it really leaking?",
+      "revId": "e4f009f5297766be9fe2a294ee76ba92d2e90435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
