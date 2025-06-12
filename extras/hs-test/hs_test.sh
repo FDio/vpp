@@ -86,6 +86,9 @@ case "${i}" in
     --parallel=*)
         ginkgo_args="$ginkgo_args -procs=${i#*=}"
         ;;
+    --ginkgo_timeout=*)
+        ginkgo_args="$ginkgo_args --timeout=${i#*=}"
+        ;;
     --repeat=*)
         ginkgo_args="$ginkgo_args --repeat=${i#*=}"
         ;;
@@ -183,7 +186,9 @@ fi
 
 mkdir -p summary
 # shellcheck disable=SC2086
-sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args
+CMD="sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
+echo "$CMD"
+$CMD
 exit_status=$?
 
 if [ -e "summary/failed-summary.log" ]; then
