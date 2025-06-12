@@ -16,6 +16,24 @@
       "message": "The old uri is freed here, is it really leaking?",
       "revId": "e4f009f5297766be9fe2a294ee76ba92d2e90435",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05e67c17_92a1a42d",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-12T07:31:27Z",
+      "side": 0,
+      "message": "It can leak if it is invalid because we\u0027ll return line 137",
+      "parentUuid": "55e1e697_8d7cf99f",
+      "revId": "e4f009f5297766be9fe2a294ee76ba92d2e90435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
