@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d28324b9_fd1fe260",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-12T00:02:10Z",
+      "side": 1,
+      "message": "We probably don\u0027t need this function, but also we should think about converting this call to app_worker_init_accepted",
+      "revId": "5c4b031c8ee97dcec76cfbd54c6bb041ce8fcfa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "369b57d0_1026e8bc",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-12T00:02:10Z",
+      "side": 1,
+      "message": "Ideally we should hide this under the segment manager apis as well",
+      "revId": "5c4b031c8ee97dcec76cfbd54c6bb041ce8fcfa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
