@@ -2126,6 +2126,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
       rx_fifo = vcl_session_is_ct (s) ? s->ct_rx_fifo : s->rx_fifo;
       /* If application closed, e.g., mt app, or no data return error */
       if (s->session_state == VCL_STATE_CLOSED ||
+	  (s->flags & VCL_SESSION_F_APP_CLOSING) ||
 	  svm_fifo_is_empty_cons (rx_fifo))
 	return vcl_session_closed_error (s);
     }
