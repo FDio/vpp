@@ -1,0 +1,118 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5e8a5c0_53bc6424",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1504,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "different state for streaming would be definitely better than doing both in http1_req_state_app_io_more_data",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f8d08bf_df300ff1",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1593,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "this can wrap",
+      "range": {
+        "startLine": 1593,
+        "startChar": 41,
+        "endLine": 1593,
+        "endChar": 55
+      },
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94d907d2_e4c4bb60",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1611,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "can we read it only once and move condition up?",
+      "range": {
+        "startLine": 1606,
+        "startChar": 0,
+        "endLine": 1611,
+        "endChar": 5
+      },
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "becb3d7e_be589449",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1663,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "this is always false, you never set it for streaming",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35c2b8a3_d08ff916",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1790,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "I\u0027m bit confused how this should work since both, client and server, can\u0027t stream data (using chunked encoding) at the same time.\nTunnels are different, they are not doing http anymore",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "214a8cf8_9a790c5b",
+        "filename": "src/plugins/http/http_buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T09:54:17Z",
+      "side": 1,
+      "message": "there is \"http_buffer_type_t type\" member in http_buffer_t, should be enough to use in http",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
