@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65022f38_c9b68f4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T08:22:39Z",
+      "side": 1,
+      "message": "nice, just some nits",
+      "revId": "260b7eab2f1d05b276f386385ddaca0e072498d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71c49bdb_39a352b8",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T08:22:39Z",
+      "side": 1,
+      "message": "NConfiguredVppCpus?",
+      "range": {
+        "startLine": 156,
+        "startChar": 66,
+        "endLine": 156,
+        "endChar": 81
+      },
+      "revId": "260b7eab2f1d05b276f386385ddaca0e072498d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9086377e_7ee88ca6",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T08:22:39Z",
+      "side": 1,
+      "message": "git rebase shenanigans?",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 0
+      },
+      "revId": "260b7eab2f1d05b276f386385ddaca0e072498d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
