@@ -50,6 +50,24 @@
       "message": "isn\u0027t it easier write to file here? and always no matter content length?\ndequeue to buffer, write to file and repeat? I am afraid this might go out of sync, you might doing another read before writing to file in main thread",
       "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5cb1cab9_8e8baba2",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-06-12T16:17:18Z",
+      "side": 1,
+      "message": "I don\u0027t really know if doing writes from the worker is a good idea, the original didn\u0027t do this either.\nI just found out about clib_rwlock_t, how about using it here? It seems perfect for this scenario.",
+      "parentUuid": "8a053138_e7bd23c3",
+      "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
