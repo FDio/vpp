@@ -434,6 +434,14 @@ error:
   return ret;
 }
 
+static u32
+af_packet_make_fanout_id (af_packet_if_t *apif)
+{
+  u16 if_hash =
+    hash_memory (apif->host_if_name, strlen ((char *) apif->host_if_name), 0);
+  return (apif->dev_instance & 0xffff) ^ (if_hash & 0xff00);
+}
+
 int
 af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 		      af_packet_create_if_arg_t *arg,
@@ -506,9 +514,9 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 
   if (rx_queue || tx_queue)
     {
-      ret =
-	create_packet_sock (apif->host_if_index, rx_req, tx_req, &fd, &ring,
-			    apif->dev_instance, &arg->flags, apif->version);
+      ret = create_packet_sock (apif->host_if_index, rx_req, tx_req, &fd,
+				&ring, af_packet_make_fanout_id (apif),
+				&arg->flags, apif->version);
 
       if (ret != 0)
 	goto error;
