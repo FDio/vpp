@@ -65,6 +65,10 @@ ifeq ($(TIMEOUT),)
 TIMEOUT=5
 endif
 
+ifeq ($(GINKGO_TIMEOUT),)
+GINKGO_TIMEOUT=1h
+endif
+
 FORCE_BUILD?=true
 
 .PHONY: help
@@ -104,6 +108,7 @@ help:
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
+	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (1h by default)"
 
 .PHONY: list-tests
 list-tests:
@@ -137,7 +142,8 @@ test: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
-		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
+		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -146,7 +152,8 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
-		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT); \
+		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: wipe-lcov
@@ -159,20 +166,22 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 	-@bash ./hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
-		--timeout=$(TIMEOUT); \
+		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: .deps.ok .build_debug.ok
-	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT)
+	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
+	--ginkgo_timeout=$(GINKGO_TIMEOUT);
 
 .PHONY: test-perf
 test-perf: FORCE_BUILD=false
 test-perf: .deps.ok .build.ok
 	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--test=$(TEST) --vppsrc=$(VPPSRC) --repeat=$(REPEAT) \
-		--skip=$(SKIP) --no_color=$(NO_COLOR) --perf=true --timeout=$(TIMEOUT); \
+		--skip=$(SKIP) --no_color=$(NO_COLOR) --perf=true --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
 .PHONY: setup-cluster
