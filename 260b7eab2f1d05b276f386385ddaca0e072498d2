@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "653d4fb5_29450bb2",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-06-12T09:26:13Z",
+      "side": 1,
+      "message": "Done. It will get updated again once i fix core allocation in parallel test runs.",
+      "parentUuid": "71c49bdb_39a352b8",
+      "range": {
+        "startLine": 156,
+        "startChar": 66,
+        "endLine": 156,
+        "endChar": 81
+      },
+      "revId": "260b7eab2f1d05b276f386385ddaca0e072498d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9086377e_7ee88ca6",
@@ -54,6 +78,30 @@
       "writtenOn": "2025-06-12T08:22:39Z",
       "side": 1,
       "message": "git rebase shenanigans?",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 0
+      },
+      "revId": "260b7eab2f1d05b276f386385ddaca0e072498d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "308410ca_85502ae2",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-06-12T09:26:13Z",
+      "side": 1,
+      "message": "yup... fixed",
+      "parentUuid": "9086377e_7ee88ca6",
       "range": {
         "startLine": 38,
         "startChar": 0,
