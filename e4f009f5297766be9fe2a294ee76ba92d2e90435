@@ -34,6 +34,24 @@
       "parentUuid": "55e1e697_8d7cf99f",
       "revId": "e4f009f5297766be9fe2a294ee76ba92d2e90435",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61c9b2fd_311d12ea",
+        "filename": "src/vnet/session/application_interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-12T09:05:49Z",
+      "side": 0,
+      "message": "oh, I misread and assumed this always leaked. So yeah, this definitely needs fixing.\n\nOn a separate note, this should in theory only be called from main thread (although we should re-validate that) by cli handlers. If we\u0027re going to assume c terminated strings as input, I guess the cache_uri no longer needs the extra space lower, or it will no longer strncmp. In fact, I wonder if it works now given that it uses cache_uri not uri for length.",
+      "parentUuid": "05e67c17_92a1a42d",
+      "revId": "e4f009f5297766be9fe2a294ee76ba92d2e90435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

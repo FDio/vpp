@@ -34,6 +34,24 @@
       "parentUuid": "079bf810_e2e08809",
       "revId": "5bc0e7d4012fd436df885195513c893f676dfb1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7fbc982_bf834ed2",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1379,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-12T09:05:49Z",
+      "side": 1,
+      "message": "Did we get with target in parse_uri? At this point we\u0027re on the egress path and the format function lower should use %v.",
+      "parentUuid": "1a788cd3_1a90d41e",
+      "revId": "5bc0e7d4012fd436df885195513c893f676dfb1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
