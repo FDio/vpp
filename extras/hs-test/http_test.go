@@ -38,7 +38,7 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpStaticRedirectTest)
+		HttpStaticRedirectTest, HttpClientChunkedDownloadTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest, HttpClientGetRepeatMTTest, HttpClientPtrGetRepeatMTTest)
@@ -338,6 +338,31 @@ func HttpClientTest(s *NoTopoSuite) {
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
 }
 
+func HttpClientChunkedDownloadTest(s *NoTopoSuite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	response := strings.Repeat("a", 128*1024)
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest("GET", "/"),
+			ghttp.RespondWith(http.StatusOK, response, http.Header{"Content-Length": {strconv.Itoa(len(response))}}),
+		))
+	server.Start()
+	defer server.Close()
+	uri := "http://" + serverAddress
+	vpp := s.Containers.Vpp.VppInstance
+	o := vpp.Vppctl("http client save-to response.txt fifo-size 64k max-body-size 64k uri " + uri)
+
+	s.Log(o)
+	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
+	s.AssertNil(err)
+	s.AssertContains(file_contents, response)
+}
+
 func HttpClientBodySizeTest(s *NoTopoSuite) {
 	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	server := ghttp.NewUnstartedServer()
@@ -519,7 +544,6 @@ func httpClientGet(s *NoTopoSuite, response string, size int, proto string) {
 		s.Log(o)
 	}
 	s.AssertContains(o, "200 OK")
-	s.AssertContains(o, response)
 	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
 
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
@@ -583,7 +607,6 @@ func httpClientGet6(s *NoTopo6Suite, response string, size int, proto string) {
 	o := vpp.Vppctl(cmd)
 	s.Log(o)
 	s.AssertContains(o, "200 OK")
-	s.AssertContains(o, response)
 	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
 
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")

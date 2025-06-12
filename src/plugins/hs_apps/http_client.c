@@ -32,6 +32,8 @@ typedef struct
   u8 *resp_headers;
   u8 *http_response;
   u8 *response_status;
+  clib_spinlock_t response_lock;
+  int body_chunk_recv;
 } hc_session_t;
 
 typedef struct
@@ -94,6 +96,7 @@ typedef enum
   HC_CONNECT_FAILED = 1,
   HC_TRANSPORT_CLOSED,
   HC_REPLY_RECEIVED,
+  HC_REPLY_CHUNK,
   HC_GENERIC_ERR,
   HC_REPEAT_DONE,
 } hc_cli_signal_t;
@@ -215,6 +218,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   clib_spinlock_lock_if_init (&hcm->lock);
   hcm->connected_counter++;
   clib_spinlock_unlock_if_init (&hcm->lock);
+  clib_spinlock_init (&hc_session->response_lock);
 
   hc_session->thread_index = s->thread_index;
   hc_session->body_recv = 0;
@@ -444,21 +448,30 @@ hc_rx_callback (session_t *s)
     }
   u32 n_deq = clib_min (hc_session->to_recv, max_deq);
   u32 curr = vec_len (hc_session->http_response);
-  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hc_session->http_response + curr);
-  if (rv < 0)
+  clib_spinlock_lock_if_init (&hc_session->response_lock);
+  hc_session->body_chunk_recv =
+    svm_fifo_dequeue (s->rx_fifo, n_deq, hc_session->http_response + curr);
+  clib_spinlock_unlock_if_init (&hc_session->response_lock);
+  if (hc_session->body_chunk_recv < 0)
     {
-      clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
+      clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq,
+		    hc_session->body_chunk_recv);
       vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				    HC_GENERIC_ERR, 0);
       return -1;
     }
-
-  ASSERT (rv == n_deq);
+  ASSERT (hc_session->body_chunk_recv == n_deq);
+  ASSERT (hc_session->to_recv >= hc_session->body_chunk_recv);
+  hc_session->to_recv -= hc_session->body_chunk_recv;
+  hc_session->body_recv += hc_session->body_chunk_recv;
   if (!hc_session->body_over_limit)
     vec_set_len (hc_session->http_response, curr + n_deq);
-  ASSERT (hc_session->to_recv >= rv);
-  hc_session->to_recv -= rv;
-  hc_session->body_recv += rv;
+  else
+    {
+      if (hcm->filename && hc_session->to_recv > 0)
+	vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+				      HC_REPLY_CHUNK, 0);
+    }
 
 done:
   if (hc_session->to_recv == 0)
@@ -682,16 +695,33 @@ hc_get_event (vlib_main_t *vm)
   hc_main_t *hcm = &hc_main;
   uword event_type, *event_data = 0;
   clib_error_t *err = NULL;
-  FILE *file_ptr;
+  static FILE *file_ptr = NULL;
   u64 event_timeout;
-  hc_worker_t *wrk;
-  hc_session_t *hc_session;
+  hc_worker_t *wrk = NULL;
+  hc_session_t *hc_session = NULL;
 
   event_timeout = hcm->timeout ? hcm->timeout : 10;
   if (event_timeout == hcm->duration)
     event_timeout += 5;
-  vlib_process_wait_for_event_or_clock (vm, event_timeout);
-  event_type = vlib_process_get_events (vm, &event_data);
+  while (vlib_process_wait_for_event_or_clock (vm, event_timeout),
+	 event_type = vlib_process_get_events (vm, &event_data),
+	 event_type == HC_REPLY_CHUNK)
+    {
+      if (wrk == NULL)
+	wrk = hc_worker_get (hcm->worker_index);
+      if (hc_session == NULL)
+	hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
+      if (file_ptr == NULL)
+	file_ptr = fopen ((char *) format (0, "/tmp/%v", hcm->filename), "w");
+
+      if (file_ptr != NULL)
+	{
+	  clib_spinlock_lock_if_init (&hc_session->response_lock);
+	  fwrite (hc_session->http_response, sizeof (u8),
+		  hc_session->body_chunk_recv, file_ptr);
+	  clib_spinlock_unlock_if_init (&hc_session->response_lock);
+	}
+    }
   hc_get_repeat_stats (vm);
 
   switch (event_type)
@@ -711,27 +741,38 @@ hc_get_event (vlib_main_t *vm)
     case HC_REPLY_RECEIVED:
       if (hcm->filename)
 	{
-	  wrk = hc_worker_get (hcm->worker_index);
-	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  file_ptr =
-	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "a");
+	  if (wrk == NULL)
+	    wrk = hc_worker_get (hcm->worker_index);
+	  if (hc_session == NULL)
+	    hc_session =
+	      hc_session_get (wrk->session_index, wrk->thread_index);
 	  if (file_ptr == NULL)
-	    {
-	      vlib_cli_output (vm, "* couldn't open file %v", hcm->filename);
-	    }
+	    file_ptr =
+	      fopen ((char *) format (0, "/tmp/%v", hcm->filename), "w");
+	  if (file_ptr == NULL)
+	    vlib_cli_output (vm, "* couldn't open file %v", hcm->filename);
 	  else
 	    {
-	      fprintf (file_ptr, "< %s\n< %s\n< %s",
-		       hc_session->response_status, hc_session->resp_headers,
-		       hc_session->http_response);
+	      vlib_cli_output (vm, "< %s\n< %s", hc_session->response_status,
+			       hc_session->resp_headers);
+	      fwrite (hc_session->http_response, sizeof (u8),
+		      hc_session->body_over_limit ?
+			hc_session->body_chunk_recv :
+			hc_session->body_recv,
+		      file_ptr);
 	      fclose (file_ptr);
-	      vlib_cli_output (vm, "* file saved (/tmp/%v)", hcm->filename);
+	      file_ptr = NULL;
+	      vlib_cli_output (vm, "* %u bytes saved to file (/tmp/%v)",
+			       hc_session->body_recv, hcm->filename);
 	    }
 	}
-      if (hcm->verbose)
+      else if (hcm->verbose)
 	{
-	  wrk = hc_worker_get (hcm->worker_index);
-	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
+	  if (wrk == NULL)
+	    wrk = hc_worker_get (hcm->worker_index);
+	  if (hc_session == NULL)
+	    hc_session =
+	      hc_session_get (wrk->session_index, wrk->thread_index);
 	  vlib_cli_output (vm, "< %v\n< %v\n", hc_session->response_status,
 			   hc_session->resp_headers);
 	  if (hc_session->body_over_limit)
