@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96fb5540_90abf788",
+        "filename": "extras/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T13:58:08Z",
+      "side": 1,
+      "message": "I would like to have it configurable, sometimes I want to repat test for few hours. Or extend just for coverage job? we don\u0027t need to block ci when some patch is borked",
+      "range": {
+        "startLine": 183,
+        "startChar": 87,
+        "endLine": 183,
+        "endChar": 99
+      },
+      "revId": "d201a8820af6e8b6a5f4037bf224be13fd21dd6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
