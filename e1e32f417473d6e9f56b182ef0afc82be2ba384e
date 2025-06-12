@@ -50,6 +50,24 @@
       "message": "Should we change description of this variable to be cpus per container. And maybe have vpp cpu count configurable instead of fixed to 3.",
       "revId": "e1e32f417473d6e9f56b182ef0afc82be2ba384e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f698ba2_b5dd2ba9",
+        "filename": "extras/hs-test/infra/hst_suite.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-06-12T07:44:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0fecb0d5_b52d8114",
+      "revId": "e1e32f417473d6e9f56b182ef0afc82be2ba384e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
