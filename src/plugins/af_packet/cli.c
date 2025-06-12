@@ -47,6 +47,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   af_packet_create_if_arg_t _arg, *arg = &_arg;
   clib_error_t *error = NULL;
   u8 hwaddr[6];
+  u32 nqs;
   int r;
 
   clib_memset (arg, 0, sizeof (*arg));
@@ -79,10 +80,10 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "tx-per-block %u",
 			 &arg->tx_frames_per_block))
 	;
-      else if (unformat (line_input, "num-rx-queues %u", &arg->num_rxqs))
-	;
-      else if (unformat (line_input, "num-tx-queues %u", &arg->num_txqs))
-	;
+      else if (unformat (line_input, "num-rx-queues %u", &nqs))
+	arg->num_rxqs = nqs;
+      else if (unformat (line_input, "num-tx-queues %u", &nqs))
+	arg->num_txqs = nqs;
       else if (unformat (line_input, "qdisc-bypass-disable"))
 	arg->flags &= ~AF_PACKET_IF_FLAGS_QDISC_BYPASS;
       else if (unformat (line_input, "cksum-gso-disable"))
