@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a053138_e7bd23c3",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T15:21:28Z",
+      "side": 1,
+      "message": "isn\u0027t it easier write to file here? and always no matter content length?\ndequeue to buffer, write to file and repeat? I am afraid this might go out of sync, you might doing another read before writing to file in main thread",
+      "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
