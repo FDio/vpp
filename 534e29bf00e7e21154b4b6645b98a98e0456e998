@@ -68,6 +68,24 @@
       "parentUuid": "8a053138_e7bd23c3",
       "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b20a5886_c63741ca",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 451,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-12T16:52:37Z",
+      "side": 1,
+      "message": "it was done that way because we read data to preallocated buffer and in the end decide if we print or write to file. generally it is best if you can avoid locking. you don\u0027t have multiple producers for the file anyway so why  complicate it?",
+      "parentUuid": "5cb1cab9_8e8baba2",
+      "revId": "534e29bf00e7e21154b4b6645b98a98e0456e998",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
