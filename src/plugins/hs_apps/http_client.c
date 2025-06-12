@@ -14,7 +14,7 @@
 #define foreach_hc_s_flag                                                     \
   _ (1, IS_CLOSED)                                                            \
   _ (2, PRINTABLE_BODY)                                                       \
-  _ (4, BODY_OVER_LIMIT)
+  _ (4, CHUNKED_BODY)
 
 typedef enum hc_s_flag_
 {
@@ -44,6 +44,7 @@ typedef struct
   u8 *resp_headers;
   u8 *http_response;
   u8 *response_status;
+  FILE *file_ptr;
 } hc_session_t;
 
 typedef struct
@@ -107,6 +108,7 @@ typedef enum
   HC_TRANSPORT_CLOSED,
   HC_REPLY_RECEIVED,
   HC_GENERIC_ERR,
+  HC_FOPEN_FAILED,
   HC_REPEAT_DONE,
 } hc_cli_signal_t;
 
@@ -262,6 +264,17 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     {
       hc_session->stats.req_per_wrk = hcm->repeat_count;
       hcm->worker_index = s->thread_index;
+    }
+  if (hcm->filename)
+    {
+      hc_session->file_ptr =
+	fopen ((char *) format (0, "/tmp/%v", hcm->filename), "w");
+      if (hc_session->file_ptr == NULL)
+	{
+	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+					HC_FOPEN_FAILED, 0);
+	  return -1;
+	}
     }
 
   if (!wrk->has_common_headers)
@@ -478,10 +491,11 @@ hc_rx_callback (session_t *s)
 	{
 	  goto done;
 	}
-      if (msg.data.body_len > hcm->max_body_size)
-	hc_session->session_flags |= HC_S_FLAG_BODY_OVER_LIMIT;
+
+      if (msg.data.body_len > hcm->max_body_size || hcm->filename)
+	hc_session->session_flags |= HC_S_FLAG_CHUNKED_BODY;
       vec_validate (hc_session->http_response,
-		    (hc_session->session_flags & HC_S_FLAG_BODY_OVER_LIMIT ?
+		    (hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY ?
 		       hcm->rx_fifo_size - 1 :
 		       msg.data.body_len - 1));
       vec_reset_length (hc_session->http_response);
@@ -506,11 +520,22 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
-  if (!(hc_session->session_flags & HC_S_FLAG_BODY_OVER_LIMIT))
+  if (!(hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY))
     vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
   hc_session->body_recv += rv;
+  if (hcm->filename)
+    {
+      if (hc_session->file_ptr == NULL)
+	{
+	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+					HC_FOPEN_FAILED, 0);
+	  goto done;
+	}
+      fwrite (hc_session->http_response, sizeof (u8), rv,
+	      hc_session->file_ptr);
+    }
 
 done:
   if (hc_session->to_recv == 0)
@@ -734,7 +759,6 @@ hc_get_event (vlib_main_t *vm)
   hc_main_t *hcm = &hc_main;
   uword event_type, *event_data = 0;
   clib_error_t *err = NULL;
-  FILE *file_ptr;
   u64 event_timeout;
   hc_worker_t *wrk;
   hc_session_t *hc_session;
@@ -760,35 +784,31 @@ hc_get_event (vlib_main_t *vm)
     case HC_GENERIC_ERR:
       err = clib_error_return (0, "error: unknown");
       break;
+    case HC_FOPEN_FAILED:
+      err = clib_error_return (0, "* couldn't open file %v", hcm->filename);
+      break;
     case HC_REPLY_RECEIVED:
       if (hcm->filename)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  file_ptr =
-	    fopen ((char *) format (0, "/tmp/%v", hcm->filename), "a");
-	  if (file_ptr == NULL)
-	    {
-	      vlib_cli_output (vm, "* couldn't open file %v", hcm->filename);
-	    }
-	  else
-	    {
-	      fprintf (file_ptr, "< %s\n< %s\n< %s",
-		       hc_session->response_status, hc_session->resp_headers,
-		       hc_session->http_response);
-	      fclose (file_ptr);
-	      vlib_cli_output (vm, "* file saved (/tmp/%v)", hcm->filename);
-	    }
+	  vlib_cli_output (
+	    vm, "< %s\n< %s\n* %u bytes saved to file (/tmp/%s)",
+	    hc_session->response_status, hc_session->resp_headers,
+	    hc_session->body_recv, hcm->filename);
+	  fclose (hc_session->file_ptr);
 	}
-      if (hcm->verbose)
+      else if (hcm->verbose)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
 	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
 			   hc_session->resp_headers);
-	  if (hc_session->session_flags & HC_S_FLAG_BODY_OVER_LIMIT)
+	  /* if the body was read in chunks and not saved to file - that
+	     means we've hit the response body size limit */
+	  if (hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY)
 	    vlib_cli_output (
-	      vm, "* message body over limit, read total %llu bytes",
+	      vm, "* response body over limit, read total %llu bytes",
 	      hc_session->body_recv);
 	  else
 	    {
@@ -931,10 +951,12 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
   hcm->was_transport_closed = false;
+  hcm->verbose = false;
   /* default max - 64MB */
   hcm->max_body_size = 64 << 20;
   hc_stats.request_count = 0;
   hc_stats.elapsed_time = 0;
+  vec_free (hcm->filename);
 
   if (hcm->attached)
     return clib_error_return (0, "failed: already running!");
