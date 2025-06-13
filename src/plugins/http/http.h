@@ -55,6 +55,7 @@ typedef enum http_req_method_
 {
   HTTP_REQ_GET = 0,
   HTTP_REQ_POST,
+  HTTP_REQ_PUT,
   HTTP_REQ_CONNECT,
   HTTP_REQ_UNKNOWN, /* for internal use */
 } http_req_method_t;
@@ -335,7 +336,8 @@ typedef enum http_upgrade_proto_
 typedef enum http_msg_data_type_
 {
   HTTP_MSG_DATA_INLINE,
-  HTTP_MSG_DATA_PTR
+  HTTP_MSG_DATA_PTR,
+  HTTP_MSG_DATA_STREAMING
 } http_msg_data_type_t;
 
 typedef struct http_field_line_

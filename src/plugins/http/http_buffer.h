@@ -24,6 +24,7 @@ typedef enum http_buffer_type_
 {
   HTTP_BUFFER_FIFO,
   HTTP_BUFFER_PTR,
+  HTTP_BUFFER_STREAMING,
 } http_buffer_type_t;
 
 typedef struct http_buffer_vft_ http_buffer_vft_t;
