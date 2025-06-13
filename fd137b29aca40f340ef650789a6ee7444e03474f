@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9580379_962f8a08",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-13T07:24:49Z",
+      "side": 1,
+      "message": "If I understand correctly, the goal is to be able to expose operations that combine both crypto and integrity at the same time?",
+      "revId": "fd137b29aca40f340ef650789a6ee7444e03474f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46e7e5e4_85e5b31a",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1314,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-13T07:24:49Z",
+      "side": 1,
+      "message": "I\u0027d expect the integ_ops vector to be empty in this case, is this test really necessary?",
+      "revId": "fd137b29aca40f340ef650789a6ee7444e03474f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4762b6c_337e17e3",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-13T07:24:49Z",
+      "side": 1,
+      "message": "doesn\u0027t it duplicate the ops below?",
+      "revId": "fd137b29aca40f340ef650789a6ee7444e03474f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
