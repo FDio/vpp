@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vcl/vppcom.h>
-#include <vcl/vcl_debug.h>
 #include <vcl/vcl_private.h>
 #include <svm/fifo_segment.h>
 
@@ -1493,6 +1492,7 @@ vppcom_app_create (const char *app_name)
   clib_rwlock_init (&vcm->segment_table_lock);
   atexit (vppcom_app_exit);
   vcl_elog_init (vcm);
+  vcl_evt (VCL_EVT_INIT, vcm);
 
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
@@ -1560,7 +1560,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   if (is_nonblocking)
     vcl_session_set_attr (session, VCL_SESS_ATTR_NONBLOCK);
 
-  vcl_evt (VCL_EVT_CREATE, session, session_type, session->session_state,
+  vcl_evt (VCL_EVT_CREATE, session, session_type, session_state,
 	   is_nonblocking, session_index);
 
   VDBG (0, "created session %u", session->session_index);
@@ -1941,7 +1941,7 @@ handle:
 	vcl_format_ip46_address, &client_session->transport.lcl_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.lcl_port));
-  vcl_evt (VCL_EVT_ACCEPT, client_session, ls, client_session_index);
+  vcl_evt (VCL_EVT_ACCEPT, client_session, ls, session_index);
 
   /*
    * Session might have been closed already
@@ -3029,7 +3029,7 @@ vppcom_epoll_create (void)
   vep_session->vep.prev_sh = ~0;
   vep_session->vpp_handle = SESSION_INVALID_HANDLE;
 
-  vcl_evt (VCL_EVT_EPOLL_CREATE, vep_session, vep_session->session_index);
+  vcl_evt (VCL_EVT_EPOLL_CREATE, vep_session, session_index);
   VDBG (0, "Created vep_idx %u", vep_session->session_index);
 
   return vcl_session_handle (vep_session);
@@ -3287,7 +3287,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 
       VDBG (1, "EPOLL_CTL_DEL: vep_idx %u, sh %u!", vep_handle,
 	    session_handle);
-      vcl_evt (VCL_EVT_EPOLL_CTLDEL, s, vep_sh);
+      vcl_evt (VCL_EVT_EPOLL_CTLDEL, s, vep_handle);
       break;
 
     default:
