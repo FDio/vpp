@@ -149,6 +149,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "deaaad0e_b89c20db",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1611,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-13T16:02:05Z",
+      "side": 1,
+      "message": "for performance it will be better to do it in separate function",
+      "parentUuid": "797e5f1c_d38a1663",
+      "range": {
+        "startLine": 1606,
+        "startChar": 0,
+        "endLine": 1611,
+        "endChar": 5
+      },
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "becb3d7e_be589449",
         "filename": "src/plugins/http/http1.c",
         "patchSetId": 4
@@ -213,6 +237,24 @@
       "side": 1,
       "message": "there was two parts of it:\n0) me being confused about the function naming\n1) server erroring out in the middle of the transfer (RFC allows that, and it did happen when i was fat-fingering the chunked framing - but it can happen anyhow).\nthough, so I *think* the function must be there, but it probably needs to also snoop at the data and change the state of the connection ?",
       "parentUuid": "35c2b8a3_d08ff916",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3ef6e81_1eb561a7",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1790,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-13T16:02:05Z",
+      "side": 1,
+      "message": "1) right that might happen, probably we need to do something similar like we did in http1_app_tx_callback",
+      "parentUuid": "e2e65104_d89c3c5b",
       "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
