@@ -50,6 +50,23 @@
       "message": "perftest-3na-spr nic_*ANDdrv_mlx*ANDeth-ip4??pbase-ldpreload-iperf3",
       "revId": "6d34043de08370e9001b013e8d17636eaadb5c93",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e406063c_bbddc047",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-06-13T08:14:30Z",
+      "side": 1,
+      "message": "perftest-2n-spr nic_*AND1cAND64bANDeth-l2patch nic_*AND1cAND64bANDeth-l2xcbase-eth-*-1vm-vppl2xc !drv_af_xdp !drv_avf !drv_rdma_core !*virtio*",
+      "revId": "6d34043de08370e9001b013e8d17636eaadb5c93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
