@@ -16,6 +16,193 @@
       "message": "Hi Neale,\n\nI have rebased this change onto the latest base to keep it up to date.\nJust wanted to check in -- please let me know if there is anything else you\u0027d like me to improve.\n\nThanks again for your time and review!\n\nBest Regards\nMasih",
       "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b08c82a0_75f91263",
+        "filename": "src/plugins/gre/gre.api",
+        "patchSetId": 22
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "you can use `autoreply` here so you don\u0027t need the trivial definition of the reply message.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3699519c_051ec377",
+        "filename": "src/plugins/gre/gre.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "`__clib_packed` is preferred.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e08099f_79e0f4a3",
+        "filename": "test/test_gre.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "`for tx, rx in zip(sent, capture):`",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bafec0e7_567e80af",
+        "filename": "test/test_gre.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "this is identical to the function above.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5baf0f3c_e1f6c447",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "... here",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "639dd6a8_7f672728",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "but it\u0027s set ...",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd853cbb_a8348189",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "i don\u0027t think you should do this. there\u0027s a separate `admin_down()` function if the test case wants to do down then delete. if this code remains, then one cannot delete a tunnel that is admin up.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0bef79c2_17c509d2",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "why the `try` block?",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f409535_7e026910",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "use the API not the CLI.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5412662_44594edf",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "use the API please",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e5a81d6b_dbc8cfb3",
+        "filename": "test/vpp_gre_interface.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-13T03:39:55Z",
+      "side": 1,
+      "message": "you should check the data in the dump matches this object, i.e. validate VPP\u0027s encoding of the data.",
+      "revId": "f6d199eece119064f23bcb7f5b55134af426c5f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
