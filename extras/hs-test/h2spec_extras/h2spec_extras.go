@@ -1,10 +1,14 @@
 package h2spec_extras
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
 
+	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/quicvarint"
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/spec"
 	"golang.org/x/net/http2"
@@ -480,5 +484,325 @@ func ExtendedConnectMethod() *spec.TestGroup {
 			return spec.VerifyStreamError(conn, http2.ErrCodeProtocol)
 		},
 	})
+
+	tg.AddTestGroup(ConnectUdp())
+
+	return tg
+}
+
+func ConnectUdpHeaders(c *config.Config) []hpack.HeaderField {
+
+	headers := spec.CommonHeaders(c)
+	headers[0].Value = "CONNECT"
+	headers = append(headers, spec.HeaderField(":protocol", "connect-udp"))
+	headers = append(headers, spec.HeaderField("capsule-protocol", "?1"))
+	return headers
+}
+
+func writeCapsule(conn *spec.Conn, streamID uint32, endStream bool, payload []byte) error {
+	b := make([]byte, 0)
+	b = quicvarint.Append(b, 0)
+	b = append(b, payload...)
+	var capsule bytes.Buffer
+	err := http3.WriteCapsule(&capsule, 0, b)
+	if err != nil {
+		return err
+	}
+
+	return conn.WriteData(streamID, endStream, capsule.Bytes())
+}
+
+func readCapsule(conn *spec.Conn, streamID uint32) ([]byte, error) {
+	actual, passed := conn.WaitEventByType(spec.EventDataFrame)
+	switch event := actual.(type) {
+	case spec.DataFrameEvent:
+		passed = event.Header().StreamID == streamID
+	default:
+		passed = false
+	}
+	if !passed {
+		return nil, &spec.TestError{
+			Expected: []string{spec.EventDataFrame.String()},
+			Actual:   actual.String(),
+		}
+	}
+	df, _ := actual.(spec.DataFrameEvent)
+	r := bytes.NewReader(df.Data())
+	capsuleType, payloadReader, err := http3.ParseCapsule(r)
+	if err != nil {
+		return nil, err
+	}
+	if capsuleType != 0 {
+		return nil, errors.New("capsule type should be 0")
+	}
+	b := make([]byte, 1024)
+	n, err := payloadReader.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	if n < 3 {
+		return nil, errors.New("response payload too short")
+	}
+	if b[0] != 0 {
+		return nil, errors.New("context id should be 0")
+	}
+	return b[1:n], nil
+}
+
+func ConnectUdp() *spec.TestGroup {
+	tg := NewTestGroup("3.1", "Proxying UDP in HTTP")
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Tunneling UDP over HTTP/2",
+		Requirement: "To initiate a UDP tunnel associated with a single HTTP stream, a client issues a request containing the \"connect-udp\" upgrade token. The target of the tunnel is indicated by the client to the UDP proxy via the \"target_host\" and \"target_port\" variables of the URI Template",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectUdpHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			// verify response headers
+			actual, passed := conn.WaitEventByType(spec.EventHeadersFrame)
+			switch event := actual.(type) {
+			case spec.HeadersFrameEvent:
+				passed = event.Header().StreamID == streamID
+			default:
+				passed = false
+			}
+			if !passed {
+				expected := []string{
+					fmt.Sprintf("DATA Frame (length:1, flags:0x00, stream_id:%d)", streamID),
+				}
+
+				return &spec.TestError{
+					Expected: expected,
+					Actual:   actual.String(),
+				}
+			}
+			hf, _ := actual.(spec.HeadersFrameEvent)
+			respHeaders := make([]hpack.HeaderField, 0, 256)
+			decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) { respHeaders = append(respHeaders, f) })
+			_, err = decoder.Write(hf.HeaderBlockFragment())
+			if err != nil {
+				return err
+			}
+			if !slices.Contains(respHeaders, spec.HeaderField("capsule-protocol", "?1")) {
+				hs := ""
+				for _, h := range respHeaders {
+					hs += h.String() + "\n"
+				}
+				return &spec.TestError{
+					Expected: []string{"\"capsule-protocol: ?1\" header received"},
+					Actual:   hs,
+				}
+			}
+			for _, h := range respHeaders {
+				if h.Name == "content-length" {
+					return &spec.TestError{
+						Expected: []string{"\"content-length\" header must not be used"},
+						Actual:   h.String(),
+					}
+				}
+			}
+
+			// send and receive data over tunnel
+			data := []byte("hello")
+			err = writeCapsule(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err := readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+			// try again
+			err = writeCapsule(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err = readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Multiple tunnels",
+		Requirement: "In HTTP/2, the data stream of a given HTTP request consists of all bytes sent in DATA frames with the corresponding stream ID.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			maxStreams, ok := conn.Settings[http2.SettingMaxConcurrentStreams]
+			if !ok {
+				return spec.ErrSkipped
+			}
+
+			for i := 0; i < int(maxStreams); i++ {
+				headers := ConnectUdpHeaders(c)
+				hp := http2.HeadersFrameParam{
+					StreamID:      streamID,
+					EndStream:     false,
+					EndHeaders:    true,
+					BlockFragment: conn.EncodeHeaders(headers),
+				}
+				conn.WriteHeaders(hp)
+				err = spec.VerifyHeadersFrame(conn, streamID)
+				if err != nil {
+					return err
+				}
+
+				streamID += 2
+			}
+
+			streamID = 1
+			data := []byte("hello")
+			for i := 0; i < int(maxStreams); i++ {
+				err = writeCapsule(conn, streamID, false, data)
+				if err != nil {
+					return err
+				}
+			}
+
+			for i := 0; i < int(maxStreams); i++ {
+				resp, err := readCapsule(conn, streamID)
+				if err != nil {
+					return err
+				}
+				if !bytes.Equal(data, resp) {
+					return &spec.TestError{
+						Expected: []string{"capsule payload: " + string(data)},
+						Actual:   "capsule payload:" + string(resp),
+					}
+				}
+			}
+
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Tunnel closed by client (with attached data)",
+		Requirement: "A proxy that receives a DATA frame with the END_STREAM flag set sends the attached data and close UDP connection.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectUdpHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			// close tunnel
+			data := []byte("hello")
+			err = writeCapsule(conn, streamID, true, data)
+			if err != nil {
+				return err
+			}
+
+			// wait for DATA frame with END_STREAM flag set
+			err = VerifyTunnelClosed(conn)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "Tunnel closed by client (empty DATA frame)",
+		Requirement: "The final DATA frame could be empty.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			var streamID uint32 = 1
+
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+
+			headers := ConnectUdpHeaders(c)
+			hp := http2.HeadersFrameParam{
+				StreamID:      streamID,
+				EndStream:     false,
+				EndHeaders:    true,
+				BlockFragment: conn.EncodeHeaders(headers),
+			}
+			conn.WriteHeaders(hp)
+			err = spec.VerifyHeadersFrame(conn, streamID)
+			if err != nil {
+				return err
+			}
+
+			// send and receive data over tunnel
+			data := []byte("hello")
+			err = writeCapsule(conn, streamID, false, data)
+			if err != nil {
+				return err
+			}
+			resp, err := readCapsule(conn, streamID)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(data, resp) {
+				return &spec.TestError{
+					Expected: []string{"capsule payload: " + string(data)},
+					Actual:   "capsule payload:" + string(resp),
+				}
+			}
+
+			// close tunnel
+			conn.WriteData(streamID, true, []byte(""))
+
+			// wait for DATA frame with END_STREAM flag set
+			err = VerifyTunnelClosed(conn)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
 	return tg
 }

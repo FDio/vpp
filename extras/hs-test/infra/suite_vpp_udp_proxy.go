@@ -270,6 +270,10 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 	}{
 		{desc: "extras/3/1"},
 		{desc: "extras/3/2"},
+		{desc: "extras/3.1/1"},
+		{desc: "extras/3.1/2"},
+		{desc: "extras/3.1/3"},
+		{desc: "extras/3.1/4"},
 	}
 
 	for _, test := range testCases {
@@ -287,7 +291,7 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 				Host:         s.VppProxyAddr(),
 				Port:         s.Ports.Proxy,
 				Path:         path,
-				Timeout:      time.Second * s.MaxTimeout,
+				Timeout:      s.MaxTimeout,
 				MaxHeaderLen: 4096,
 				TLS:          true,
 				Insecure:     true,
