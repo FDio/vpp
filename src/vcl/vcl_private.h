@@ -186,7 +186,7 @@ typedef struct vcl_session_
 
   i32 vpp_error;
 
-#if VCL_ELOG
+#if (VCL_ELOG > 0)
   elog_track_t elog_track;
 #endif
 
@@ -394,7 +394,7 @@ typedef struct vppcom_main_t_
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
 
-#ifdef VCL_ELOG
+#if (VCL_ELOG > 0)
   /* VPP Event-logger */
   elog_main_t elog_main;
   elog_track_t elog_track;

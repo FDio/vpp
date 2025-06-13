@@ -553,7 +553,6 @@ vcl_bapi_connect_to_vpp (void)
   wrk->api_client_handle = (u32) am->my_client_index;
 
   VDBG (0, "app (%s) is connected to VPP!", wrk_name);
-  vcl_evt (VCL_EVT_INIT, vcm);
 
 error:
   vec_free (wrk_name);
@@ -618,7 +617,7 @@ vcl_bapi_wait_for_wrk_state_change (vcl_bapi_app_state_t app_state)
     }
   VDBG (0, "timeout waiting for state %s, current state %d",
 	vcl_bapi_app_state_str (app_state), wrk->bapi_app_state);
-  vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, bapi_app_state);
+  //  vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, bapi_app_state);
 
   return VPPCOM_ETIMEDOUT;
 }
