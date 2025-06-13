@@ -569,6 +569,7 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(VCLThruHostStackCLUDPEcho, cls).setUpClass()
 
     @classmethod
@@ -578,6 +579,8 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
     def setUp(self):
         super(VCLThruHostStackCLUDPEcho, self).setUp()
 
+        self.sapi_server_sock = "1"
+        self.sapi_client_sock = "2"
         self.thru_host_stack_setup()
         self.pre_test_sleep = 2
         self.timeout = 5
@@ -597,11 +600,99 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
             client_args,
         )
 
+    def test_vcl_thru_host_stack_cl_udp_mt_echo(self):
+        """run VCL IPv4 thru host stack CL UDP MT echo test"""
+        server_args = ["-s", self.loop0.local_ip4, "-w", "2"]
+        client_args = ["-c", self.loop0.local_ip4, "-w", "2"]
+        self.thru_host_stack_test(
+            "vcl_test_cl_udp",
+            server_args,
+            "vcl_test_cl_udp",
+            client_args,
+        )
+
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show app server"))
         self.logger.debug(self.vapi.cli("show session verbose"))
         self.logger.debug(self.vapi.cli("show app mq"))
 
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
+class VCLThruHostStackCLUDPBinds(VCLTestCase):
+    """VCL Thru Host Stack CL UDP Binds"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-app-socket-api"]
+        super(VCLThruHostStackCLUDPBinds, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VCLThruHostStackCLUDPBinds, cls).tearDownClass()
+
+    def setUp(self):
+        super(VCLThruHostStackCLUDPBinds, self).setUp()
+
+        self.sapi_server_sock = "default"
+        self.timeout = 5
+
+        self.vapi.session_enable_disable(is_enable=1)
+        self.create_loopback_interfaces(2)
+        for i in self.lo_interfaces:
+            i.admin_up()
+            i.config_ip4()
+
+    def tearDown(self):
+        for i in self.lo_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+            i.remove_vpp_config()
+        super(VCLThruHostStackCLUDPBinds, self).tearDown()
+
+    def test_vcl_thru_host_stack_cl_udp_multiple_binds(self):
+        """run VCL IPv4 thru host stack CL UDP multiple binds test"""
+
+        # 2 CL UDP servers bound to the same port but different IPs
+        server1_args = ["-s", self.loop0.local_ip4, "-w", "2"]
+        server2_args = ["-s", self.loop1.local_ip4, "-w", "2"]
+
+        sapi_sock = "%s/app_ns_sockets/%s" % (self.tempdir, self.sapi_server_sock)
+        self.vcl_app_env = {"VCL_APP_SCOPE_GLOBAL": "true", "VCL_VPP_SAPI_SOCKET": sapi_sock}
+
+        worker_server1 = VCLAppWorker(
+            "vcl_test_cl_udp", server1_args, self.logger, self.vcl_app_env, "server1"
+        )
+        worker_server1.start()
+        self.sleep(0.5)
+
+        worker_server2 = VCLAppWorker(
+            "vcl_test_cl_udp", server2_args, self.logger, self.vcl_app_env, "server2"
+        )
+        worker_server2.start()
+        self.sleep(0.5)
+
+        session_output = self.vapi.cli("show session verbose")
+        self.logger.debug(session_output)
+        self.assertIn(self.loop0.local_ip4, session_output)
+        self.assertIn(self.loop1.local_ip4, session_output)
+        self.assertIn("[U]", session_output)
+        self.assertIn("LISTEN", session_output)
+
+        try:
+            worker_server1.process.send_signal(signal.SIGUSR1)
+            worker_server2.process.send_signal(signal.SIGUSR1)
+        except (AttributeError, OSError) as e:
+            self.logger.warning(f"Failed to send SIGUSR1: {e}")
+
+        self.sleep(0.5)
+
+        worker_server2.join(self.timeout)
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show app server"))
+        self.logger.debug(self.vapi.cli("show session verbose"))
+        self.logger.debug(self.vapi.cli("show app mq"))
 
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
