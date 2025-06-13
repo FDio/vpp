@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -326,4 +327,39 @@ func (s *HstSuite) GetCoreProcessName(file string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func (s *HstSuite) StartTcpEchoServer(addr string, port int) *net.TCPListener {
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(addr), Port: port})
+	s.AssertNil(err, fmt.Sprint(err))
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				continue
+			}
+			go handleConn(conn)
+		}
+	}()
+	s.Log("* started tcp echo server " + addr + ":" + strconv.Itoa(port))
+	return listener
+}
+
+func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(addr), Port: port})
+	s.AssertNil(err, fmt.Sprint(err))
+	go func() {
+		for {
+			b := make([]byte, 1500)
+			n, addr, err := conn.ReadFrom(b)
+			if err != nil {
+				return
+			}
+			if _, err := conn.WriteTo(b[:n], addr); err != nil {
+				return
+			}
+		}
+	}()
+	s.Log("* started udp echo server " + addr + ":" + strconv.Itoa(port))
+	return conn
 }

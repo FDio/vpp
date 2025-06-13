@@ -327,7 +327,7 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 }
 
 func VppConnectProxyStressTest(s *VppProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartTcpEchoServer(s.ServerAddr(), int(s.Ports.Server))
 	defer remoteServerConn.Close()
 
 	s.ConfigureVppProxy("http", s.Ports.Proxy)
@@ -341,7 +341,7 @@ func VppConnectProxyStressTest(s *VppProxySuite) {
 func VppConnectProxyStressMWTest(s *VppProxySuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartTcpEchoServer(s.ServerAddr(), int(s.Ports.Server))
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -355,7 +355,7 @@ func VppConnectProxyStressMWTest(s *VppProxySuite) {
 }
 
 func VppProxyUdpTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -372,7 +372,7 @@ func VppProxyUdpTest(s *VppUdpProxySuite) {
 func VppProxyUdpMigrationMWTest(s *VppUdpProxySuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -394,7 +394,7 @@ func VppProxyUdpMigrationMWTest(s *VppUdpProxySuite) {
 }
 
 func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -441,7 +441,7 @@ func VppConnectUdpInvalidTargetTest(s *VppUdpProxySuite) {
 }
 
 func VppConnectUdpInvalidCapsuleTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -471,7 +471,7 @@ func VppConnectUdpInvalidCapsuleTest(s *VppUdpProxySuite) {
 }
 
 func VppConnectUdpUnknownCapsuleTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -500,7 +500,7 @@ func VppConnectUdpUnknownCapsuleTest(s *VppUdpProxySuite) {
 }
 
 func VppConnectUdpClientCloseTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -631,7 +631,7 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 }
 
 func VppConnectUdpStressTest(s *VppUdpProxySuite) {
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
@@ -647,7 +647,7 @@ func VppConnectUdpStressTest(s *VppUdpProxySuite) {
 func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	remoteServerConn := s.StartEchoServer()
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance

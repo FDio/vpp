@@ -8,7 +8,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -116,25 +115,6 @@ func (s *VppUdpProxySuite) ServerAddr() string {
 
 func (s *VppUdpProxySuite) ClientAddr() string {
 	return s.Interfaces.Client.Ip4AddressString()
-}
-
-func (s *VppUdpProxySuite) StartEchoServer() *net.UDPConn {
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(s.ServerAddr()), Port: s.Ports.Server})
-	s.AssertNil(err, fmt.Sprint(err))
-	go func() {
-		for {
-			b := make([]byte, 1500)
-			n, addr, err := conn.ReadFrom(b)
-			if err != nil {
-				return
-			}
-			if _, err := conn.WriteTo(b[:n], addr); err != nil {
-				return
-			}
-		}
-	}()
-	s.Log("* started udp echo server " + s.ServerAddr() + ":" + strconv.Itoa(s.Ports.Server))
-	return conn
 }
 
 func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (int, error) {
@@ -270,6 +250,11 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 	}{
 		{desc: "extras/3/1"},
 		{desc: "extras/3/2"},
+		{desc: "extras/3.1/1"},
+		{desc: "extras/3.1/2"},
+		{desc: "extras/3.1/3"},
+		{desc: "extras/3.1/4"},
+		{desc: "extras/3.1/5"},
 	}
 
 	for _, test := range testCases {
@@ -278,8 +263,13 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 		It(testName, func(ctx SpecContext) {
 			s.Log(testName + ": BEGIN")
 			vppProxy := s.Containers.VppProxy.VppInstance
-			remoteServerConn := s.StartEchoServer()
+			remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
 			defer remoteServerConn.Close()
+			// this one will open TCP tunnel too
+			if strings.Contains(test.desc, "extras/3.1/5") {
+				remoteTcpServerConn := s.StartTcpEchoServer(s.ServerAddr(), s.Ports.Server)
+				defer remoteTcpServerConn.Close()
+			}
 			cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri https://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
 			s.Log(vppProxy.Vppctl(cmd))
 			path := fmt.Sprintf("/.well-known/masque/udp/%s/%d/", s.ServerAddr(), s.Ports.Server)
@@ -287,7 +277,7 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 				Host:         s.VppProxyAddr(),
 				Port:         s.Ports.Proxy,
 				Path:         path,
-				Timeout:      time.Second * s.MaxTimeout,
+				Timeout:      s.MaxTimeout,
 				MaxHeaderLen: 4096,
 				TLS:          true,
 				Insecure:     true,
