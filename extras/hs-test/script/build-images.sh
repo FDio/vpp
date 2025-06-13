@@ -10,9 +10,14 @@ ARCH=${OS_ARCH:-$(dpkg --print-architecture)}
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
 DOCKER_HST_BUILDER="hst_builder"
+DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
 
 if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   mkdir -p "${DOCKER_CACHE_DIR}"
+
+  if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
+    $DOCKER_LOGIN_SCRIPT
+  fi
 
   # Create buildx builder if it doesn't exist
   if ! docker buildx ls --format "{{.Name}}" | grep -q "${DOCKER_HST_BUILDER}"; then

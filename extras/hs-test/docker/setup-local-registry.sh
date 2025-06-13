@@ -3,6 +3,11 @@
 
 set -e
 
+DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
+if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
+  $DOCKER_LOGIN_SCRIPT
+fi
+
 # Check if Docker is running
 if ! docker info &>/dev/null; then
     echo "Error: Docker is not running. Please start Docker and try again."

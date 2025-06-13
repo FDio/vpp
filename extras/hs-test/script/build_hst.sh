@@ -38,6 +38,10 @@ fi
 OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
+DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
+if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
+  $DOCKER_LOGIN_SCRIPT
+fi
 
 # Set up the local registry before creating containers
 echo "=== Setting up local registry ==="
