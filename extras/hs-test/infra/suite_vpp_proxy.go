@@ -13,7 +13,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -240,22 +239,6 @@ func handleConn(conn net.Conn) {
 			break
 		}
 	}
-}
-
-func (s *VppProxySuite) StartEchoServer() *net.TCPListener {
-	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(s.ServerAddr()), Port: int(s.Ports.Server)})
-	s.AssertNil(err, fmt.Sprint(err))
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				continue
-			}
-			go handleConn(conn)
-		}
-	}()
-	s.Log("* started tcp echo server " + s.ServerAddr() + ":" + strconv.Itoa(int(s.Ports.Server)))
-	return listener
 }
 
 var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {

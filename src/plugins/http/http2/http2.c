@@ -57,6 +57,7 @@ typedef struct http2_req_
   u8 *payload;
   u32 payload_len;
   clib_llist_anchor_t sched_list;
+  http_req_state_t app_reply_next_state;
   void (*dispatch_headers_cb) (struct http2_req_ *req, http_conn_t *hc,
 			       u8 *n_emissions, clib_llist_index_t *next_ri);
   void (*dispatch_data_cb) (struct http2_req_ *req, http_conn_t *hc,
@@ -619,6 +620,95 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
 }
 
 static void
+http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
+				 u8 *n_emissions)
+{
+  http2_conn_ctx_t *h2c;
+  u32 max_write, max_read, dgram_size, capsule_size, n_written;
+  session_dgram_hdr_t hdr;
+  u8 fh[HTTP2_FRAME_HEADER_SIZE];
+  u8 *buf, *payload;
+
+  *n_emissions += HTTP2_SCHED_WEIGHT_DATA_INLINE;
+
+  max_read = http_io_as_max_read (&req->base);
+  if (max_read == 0)
+    {
+      HTTP_DBG (2, "max_read == 0");
+      transport_connection_reschedule (&req->base.connection);
+      return;
+    }
+  /* read datagram header */
+  http_io_as_read (&req->base, (u8 *) &hdr, sizeof (hdr), 1);
+  ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
+  dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
+  ASSERT (max_read >= dgram_size);
+
+  h2c = http2_conn_ctx_get_w_thread (hc);
+
+  if (PREDICT_FALSE (
+	(hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD) >
+	h2c->peer_settings.max_frame_size))
+    {
+      /* drop datagram if not fit into frame */
+      HTTP_DBG (1, "datagram too large, dropped");
+      http_io_as_drain (&req->base, dgram_size);
+      return;
+    }
+
+  if (req->peer_window <
+      (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
+    {
+      /* mark that we need window update on stream */
+      HTTP_DBG (1, "not enough space in stream window for capsule");
+      req->flags |= HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+    }
+
+  max_write = http_io_ts_max_write (hc, 0);
+  max_write -= HTTP2_FRAME_HEADER_SIZE;
+  max_write -= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD;
+  max_write = clib_min (max_write, h2c->peer_window);
+  if (PREDICT_FALSE (max_write < hdr.data_length))
+    {
+      /* we should have at least 16kB free space in underlying transport,
+       * maybe peer is doing small connection window updates */
+      HTTP_DBG (1, "datagram dropped");
+      http_io_as_drain (&req->base, dgram_size);
+      return;
+    }
+
+  buf = http_get_tx_buf (hc);
+  /* create capsule header */
+  payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
+  capsule_size = (payload - buf) + hdr.data_length;
+  /* read payload */
+  http_io_as_read (&req->base, payload, hdr.data_length, 1);
+  http_io_as_drain (&req->base, dgram_size);
+
+  req->peer_window -= capsule_size;
+  h2c->peer_window -= capsule_size;
+
+  http2_frame_write_data_header (capsule_size, req->stream_id, 0, fh);
+
+  svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
+			     { buf, capsule_size } };
+  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
+  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + capsule_size));
+
+  if (max_read - dgram_size)
+    {
+      /* schedule for next round if we have more data */
+      HTTP_DBG (1, "adding to data queue req_index %x",
+		((http_req_handle_t) req->base.hr_req_handle).req_index);
+      http2_req_schedule_data_tx (hc, req);
+    }
+  else
+    transport_connection_reschedule (&req->base.connection);
+
+  http_io_ts_after_write (hc, 0);
+}
+
+static void
 http2_sched_dispatch_continuation (http2_req_t *req, http_conn_t *hc,
 				   u8 *n_emissions,
 				   clib_llist_index_t *next_ri)
@@ -701,12 +791,32 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
   response = http_get_tx_buf (hc);
   date = format (0, "%U", format_http_time_now, hc);
 
-  control_data.sc = msg.code;
   control_data.content_len = msg.data.body_len;
   control_data.server_name = hc->app_name;
   control_data.server_name_len = vec_len (hc->app_name);
   control_data.date = date;
   control_data.date_len = vec_len (date);
+
+  if (req->base.is_tunnel)
+    {
+      switch (msg.code)
+	{
+	case HTTP_STATUS_SWITCHING_PROTOCOLS:
+	  /* remap status code for extended connect response */
+	  msg.code = HTTP_STATUS_OK;
+	case HTTP_STATUS_OK:
+	case HTTP_STATUS_CREATED:
+	case HTTP_STATUS_ACCEPTED:
+	  /* tunnel established if 2xx (Successful) response to CONNECT */
+	  control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
+	  break;
+	default:
+	  /* tunnel not established */
+	  req->base.is_tunnel = 0;
+	  break;
+	}
+    }
+  control_data.sc = msg.code;
 
   if (msg.data.headers_len)
     {
@@ -727,10 +837,6 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
   max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
 
   stream_id = req->stream_id;
-
-  /* tunnel established if 2xx (Successful) response to CONNECT */
-  req->base.is_tunnel =
-    (req->base.is_tunnel && http_status_code_str[msg.code][0] == '2');
 
   /* END_STREAM flag need to be set in HEADERS frame */
   if (msg.data.body_len)
@@ -757,7 +863,11 @@ http2_sched_dispatch_headers (http2_req_t *req, http_conn_t *hc,
 	}
       else if (req->base.is_tunnel)
 	{
-	  req->dispatch_data_cb = http2_sched_dispatch_tunnel;
+	  if (req->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	  else
+	    req->dispatch_data_cb = http2_sched_dispatch_tunnel;
 	  transport_connection_reschedule (&req->base.connection);
 	  /* cleanup some stuff we don't need anymore in tunnel mode */
 	  vec_free (req->base.headers);
@@ -914,6 +1024,8 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   req->base.headers_offset = control_data.headers - wrk->header_list;
   req->base.headers_len = control_data.headers_len;
 
+  req->app_reply_next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
+
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
     {
       HTTP_DBG (1, ":method pseudo-header missing in request");
@@ -954,6 +1066,7 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
     }
   if (control_data.method == HTTP_REQ_CONNECT)
     {
+      req->app_reply_next_state = HTTP_REQ_STATE_TUNNEL;
       if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
 	{
 	  /* extended CONNECT (RFC8441) */
@@ -985,6 +1098,9 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
 	    http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
 	    return HTTP_SM_STOP;
 	  }
+	  if (req->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+	      hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	    req->app_reply_next_state = HTTP_REQ_STATE_UDP_TUNNEL;
 	}
       else
 	{
@@ -1154,9 +1270,84 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   http_io_as_write (&req->base, req->payload, req->payload_len);
   http_app_worker_rx_notify (&req->base);
 
+  switch (req->stream_state)
+    {
+    case HTTP2_STREAM_STATE_HALF_CLOSED:
+      HTTP_DBG (1, "client want to close tunnel");
+      session_transport_closing_notify (&req->base.connection);
+      break;
+    case HTTP2_STREAM_STATE_CLOSED:
+      HTTP_DBG (1, "client closed tunnel");
+      http2_stream_close (req, hc);
+      break;
+    default:
+      break;
+    }
+
   return HTTP_SM_STOP;
 }
 
+static http_sm_result_t
+http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
+			       transport_send_params_t *sp,
+			       http2_error_t *error)
+{
+  int rv;
+  u8 payload_offset;
+  u64 payload_len;
+  session_dgram_hdr_t hdr;
+
+  HTTP_DBG (1, "udp tunnel received data from client");
+
+  rv = http_decap_udp_payload_datagram (req->payload, req->payload_len,
+					&payload_offset, &payload_len);
+  HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
+	    payload_offset, payload_len);
+  if (PREDICT_FALSE (rv != 0))
+    {
+      if (rv < 0)
+	{
+	  /* capsule datagram is invalid (stream need to be aborted) */
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+	  return HTTP_SM_STOP;
+	}
+      else
+	{
+	  /* unknown capsule should be skipped */
+	  return HTTP_SM_STOP;
+	}
+    }
+  /* check if we have the full capsule */
+  if (PREDICT_FALSE (req->payload_len != (payload_offset + payload_len)))
+    {
+      HTTP_DBG (1, "capsule not complete");
+      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
+      return HTTP_SM_STOP;
+    }
+  if (http_io_as_max_write (&req->base) < (sizeof (hdr) + payload_len))
+    {
+      clib_warning ("app's rx fifo full");
+      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
+      return HTTP_SM_STOP;
+    }
+
+  hdr.data_length = payload_len;
+  hdr.data_offset = 0;
+
+  /* send datagram header and payload */
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+			     { req->payload + payload_offset, payload_len } };
+  http_io_as_write_segs (&req->base, segs, 2);
+  http_app_worker_rx_notify (&req->base);
+
+  if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
+    {
+      HTTP_DBG (1, "client want to close tunnel");
+      session_transport_closing_notify (&req->base.connection);
+    }
+
+  return HTTP_SM_STOP;
+}
 /*************************************/
 /* request state machine handlers TX */
 /*************************************/
@@ -1180,9 +1371,7 @@ http2_req_state_wait_app_reply (http_conn_t *hc, http2_req_t *req,
   clib_llist_add_tail (wrk->req_pool, sched_list, req, he);
   http2_conn_schedule (h2c, hc->c_thread_index);
 
-  http_req_state_change (&req->base, req->base.is_tunnel ?
-				       HTTP_REQ_STATE_TUNNEL :
-				       HTTP_REQ_STATE_APP_IO_MORE_DATA);
+  http_req_state_change (&req->base, req->app_reply_next_state);
   http_req_deschedule (&req->base, sp);
 
   return HTTP_SM_STOP;
@@ -1250,8 +1439,9 @@ static http2_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait transport method */
   http2_req_state_wait_app_reply,
   http2_req_state_app_io_more_data,
+  /* both can be same, we use different scheduler data dispatch cb */
   http2_req_state_tunnel_tx,
-  0, /* udp tunnel */
+  http2_req_state_tunnel_tx,
 };
 
 static http2_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1263,7 +1453,7 @@ static http2_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   0, /* wait app reply */
   0, /* app io more data */
   http2_req_state_tunnel_rx,
-  0, /* udp tunnel */
+  http2_req_state_udp_tunnel_rx,
 };
 
 static_always_inline int
@@ -1476,7 +1666,7 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
 
   /* bogus state */
   if (hc->flags & HTTP_CONN_F_IS_SERVER &&
-      req->stream_state != HTTP2_STREAM_STATE_OPEN)
+      req->stream_state != HTTP2_STREAM_STATE_OPEN && !req->base.is_tunnel)
     {
       HTTP_DBG (1, "error: stream already half-closed");
       http2_stream_error (hc, req, HTTP2_ERROR_STREAM_CLOSED, 0);
@@ -1497,15 +1687,32 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
 
   if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
     {
-      req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+      HTTP_DBG (1, "END_STREAM flag set");
       if (req->base.is_tunnel)
 	{
-	  session_transport_closing_notify (&req->base.connection);
-	  HTTP_DBG (1, "client closed tunnel");
+	  /* client can initiate or confirm tunnel close */
+	  req->stream_state =
+	    req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED ?
+	      HTTP2_STREAM_STATE_CLOSED :
+	      HTTP2_STREAM_STATE_HALF_CLOSED;
 	  /* final DATA frame could be empty */
 	  if (fh->length == 0)
-	    return HTTP2_ERROR_NO_ERROR;
+	    {
+	      if (req->stream_state == HTTP2_STREAM_STATE_CLOSED)
+		{
+		  HTTP_DBG (1, "client closed tunnel");
+		  http2_stream_close (req, hc);
+		}
+	      else
+		{
+		  HTTP_DBG (1, "client want to close tunnel");
+		  session_transport_closing_notify (&req->base.connection);
+		}
+	      return HTTP2_ERROR_NO_ERROR;
+	    }
 	}
+      else
+	req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
     }
 
   rx_buf = http_get_rx_buf (hc);
@@ -1995,7 +2202,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	case HTTP2_STREAM_STATE_HALF_CLOSED:
 	  HTTP_DBG (1, "proxy confirmed close");
 	  http2_tunnel_send_close (hc, req);
-	  session_transport_closed_notify (&req->base.connection);
+	  http2_stream_close (req, hc);
 	  break;
 	default:
 	  session_transport_closed_notify (&req->base.connection);
