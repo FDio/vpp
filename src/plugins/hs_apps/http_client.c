@@ -225,16 +225,16 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_session_t *hc_session;
   hc_http_header_t *header;
 
-  wrk = hc_worker_get (s->thread_index);
-
   if (err)
     {
       clib_warning ("hc_session_index[%d] connected error: %U",
 		    hc_session_index, format_session_error, err);
-      vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+      vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
 				    HC_CONNECT_FAILED, 0);
       return -1;
     }
+
+  wrk = hc_worker_get (s->thread_index);
 
   hc_session = hc_session_alloc (wrk);
   clib_spinlock_lock_if_init (&hcm->lock);
