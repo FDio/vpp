@@ -20,5 +20,6 @@
 #cmakedefine VPP_IP_FIB_MTRIE_16
 #cmakedefine VPP_TCP_DEBUG_ALWAYS
 #cmakedefine VPP_SESSION_DEBUG
+#cmakedefine VPP_VCL_ELOG
 
 #endif
