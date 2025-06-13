@@ -24,6 +24,10 @@ typedef enum http_buffer_type_
 {
   HTTP_BUFFER_FIFO,
   HTTP_BUFFER_PTR,
+  HTTP_BUFFER_STREAMING,
+  /* the value below is used to size the structures indexed by
+     http_buffer_type_t */
+  HTTP_BUFFER_N_TYPES,
 } http_buffer_type_t;
 
 typedef struct http_buffer_vft_ http_buffer_vft_t;

@@ -65,7 +65,8 @@ typedef enum http_conn_state_
   _ (5, WAIT_APP_REPLY, "wait app reply")                                     \
   _ (6, APP_IO_MORE_DATA, "app io more data")                                 \
   _ (7, TUNNEL, "tunnel")                                                     \
-  _ (8, UDP_TUNNEL, "udp tunnel")
+  _ (8, UDP_TUNNEL, "udp tunnel")                                             \
+  _ (9, APP_IO_MORE_STREAMING_DATA, "app io more streaming data")
 
 typedef enum http_req_state_
 {
