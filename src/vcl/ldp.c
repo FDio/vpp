@@ -651,14 +651,15 @@ ldp_select_init_maps (fd_set * __restrict original,
   clib_memcpy_fast (*resultb, original, n_bytes);
   memset (original, 0, n_bytes);
 
-  clib_bitmap_foreach (fd, *resultb)  {
-    if (fd > nfds)
-      break;
-    vlsh = ldp_fd_to_vlsh (fd);
-    if (vlsh == VLS_INVALID_HANDLE)
-      clib_bitmap_set_no_check (*libcb, fd, 1);
-    else
-      {
+  clib_bitmap_foreach (fd, *resultb)
+    {
+      if (fd > nfds)
+	break;
+      vlsh = ldp_fd_to_vlsh (fd);
+      if (vlsh == VLS_INVALID_HANDLE)
+	clib_bitmap_set_no_check (*libcb, fd, 1);
+      else
+	{
 	  vlsh_to_session_and_worker_index (vlsh, &session_index, &wrk_index);
 	  if (wrk_index != vppcom_worker_index ())
 	    clib_warning (
@@ -666,12 +667,13 @@ ldp_select_init_maps (fd_set * __restrict original,
 	      wrk_index, vppcom_worker_index ());
 	  else
 	    *vclb = clib_bitmap_set (*vclb, session_index, 1);
-      }
-  }
+	}
+    }
 
   si_bits_set = clib_bitmap_last_set (*vclb) + 1;
   *si_bits = (si_bits_set > *si_bits) ? si_bits_set : *si_bits;
-  clib_bitmap_validate (*resultb, *si_bits);
+  if (*si_bits)
+    clib_bitmap_validate (*resultb, *si_bits);
 
   libc_bits_set = clib_bitmap_last_set (*libcb) + 1;
   *libc_bits = (libc_bits_set > *libc_bits) ? libc_bits_set : *libc_bits;
