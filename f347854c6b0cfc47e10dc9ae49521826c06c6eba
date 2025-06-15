@@ -16,6 +16,24 @@
       "message": "why are these not MP-safe?",
       "revId": "f347854c6b0cfc47e10dc9ae49521826c06c6eba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bbfb4e7e_b9a605e1",
+        "filename": "src/vnet/fib/ip4_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2025-06-15T17:47:40Z",
+      "side": 1,
+      "message": "by a reason of making trie/mem stats mp-safe, not sure if it\u0027s ready.\nsince detailed, mtrie and memory are less commonly used, only regular has been proven in production to have no issues.",
+      "parentUuid": "d7591a86_6c5d74fd",
+      "revId": "f347854c6b0cfc47e10dc9ae49521826c06c6eba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
