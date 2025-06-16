@@ -337,6 +337,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7792736_6b2f0aee",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1790,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-06-16T16:36:18Z",
+      "side": 1,
+      "message": "yes, I\u0027ll do patch",
+      "parentUuid": "8f327d00_d45c394e",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "214a8cf8_9a790c5b",
