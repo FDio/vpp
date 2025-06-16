@@ -16,6 +16,23 @@
       "message": "I\u0027ve made the changes + redid a couple of places where the \"magic numbers arithmetic\" was seemingly used - I think it might look a bit neater, but please let me know if you want me to revert those back to \"magic\" values.",
       "revId": "cd9c2d52cb8ed502b4decc4a48caa1f62342ea45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9ed89b0_951b6c44",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T16:06:54Z",
+      "side": 1,
+      "message": "I suppose it might be getting somewhat closer to something usable, so makes sense to remove -2.",
+      "revId": "cd9c2d52cb8ed502b4decc4a48caa1f62342ea45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
