@@ -118,6 +118,23 @@
       "message": "perftest-2n-zn2 nic_*AND1cAND64bANDeth-l2patch nic_*AND1cAND64bANDethip4-ip4scale20k nic_*AND1cAND64bANDeth-l2xcbase-eth-*-1vm-vppl2xc !*virtio* !drv_af_xdp !drv_avf !drv_drma_core",
       "revId": "6d34043de08370e9001b013e8d17636eaadb5c93",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0ce4db4_7cbc9451",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-06-16T15:46:05Z",
+      "side": 1,
+      "message": "perftest-3n-snr nic_*AND1cAND64bANDeth-l2patch nic_*AND1cAND64bANDethip4-ip4base nic_*AND1cAND78bANDethip6-ip6base !drv_af_xdp !drv_avf",
+      "revId": "6d34043de08370e9001b013e8d17636eaadb5c93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
