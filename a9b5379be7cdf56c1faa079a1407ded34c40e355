@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4eddce8b_4b02b57e",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1504,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T13:40:02Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6d365daa_d2576364",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3f8d08bf_df300ff1",
@@ -171,6 +189,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7294f1df_ab24b622",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1611,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T13:40:02Z",
+      "side": 1,
+      "message": "thanks! moved it into a separate function",
+      "parentUuid": "deaaad0e_b89c20db",
+      "range": {
+        "startLine": 1606,
+        "startChar": 0,
+        "endLine": 1611,
+        "endChar": 5
+      },
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "becb3d7e_be589449",
@@ -202,6 +244,24 @@
       "side": 1,
       "message": "good catch, thanks! - I actually did not look at how exactly one would go around about closing the session \"properly\" ? I put a non-working \u0027FIXME\u0027 strawman - the zero-tx does not trigger it, so your guidance on what is the proper way to deal with it is very welcome! :)",
       "parentUuid": "becb3d7e_be589449",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d267de16_ea9ba715",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1663,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T13:40:02Z",
+      "side": 1,
+      "message": "I\u0027ve added the proper calculation for the cases where the length is known beforehand. Still not sure what the \"clean\" way to do it for the streaming case...",
+      "parentUuid": "304efb46_8dcd9c6d",
       "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -255,6 +315,24 @@
       "side": 1,
       "message": "1) right that might happen, probably we need to do something similar like we did in http1_app_tx_callback",
       "parentUuid": "e2e65104_d89c3c5b",
+      "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f327d00_d45c394e",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1790,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T13:40:02Z",
+      "side": 1,
+      "message": "ok, so i wonder if then the existing code *might* be enough ? I have deleted the code for now, we can add it separately if needed ?",
+      "parentUuid": "e3ef6e81_1eb561a7",
       "revId": "a9b5379be7cdf56c1faa079a1407ded34c40e355",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
