@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/edwarnicke/exechelper"
 )
 
 const networkTopologyDir string = "topo-network/"
@@ -307,4 +309,21 @@ func (s *HstSuite) StartClientApp(c *Container, cmd string,
 	} else {
 		clnRes <- o
 	}
+}
+
+func (s *HstSuite) GetCoreProcessName(file string) (string, bool) {
+	cmd := fmt.Sprintf("sudo file -b %s", file)
+	output, _ := exechelper.Output(cmd)
+	outputStr := string(output)
+	// ELF 64-bit LSB core file, x86-64, version 1 (SYSV), SVR4-style, from 'vpp -c /tmp/server/etc/vpp/startup.conf', real uid: 0, effective uid: 0, real gid: 0, effective gid: 0, execfn: '/usr/bin/vpp', platform: 'x86_64'
+	if !strings.Contains(outputStr, "core file") {
+		return "", false
+	}
+	soutputSplit := strings.Split(outputStr, ",")
+	for _, tmp := range soutputSplit {
+		if strings.Contains(tmp, "execfn:") {
+			return strings.Trim(strings.Split(tmp, ": ")[1], "'"), true
+		}
+	}
+	return "", false
 }

@@ -299,8 +299,13 @@ func (s *HstSuite) SkipIfArm() {
 	}
 }
 
+type coreInfo struct {
+	file    string
+	binPath string
+}
+
 func (s *HstSuite) WaitForCoreDump() bool {
-	var filename string
+	var coreFiles []coreInfo
 	dir, err := os.Open(s.getLogDirPath())
 	if err != nil {
 		s.Log(err)
@@ -314,15 +319,21 @@ func (s *HstSuite) WaitForCoreDump() bool {
 		return false
 	}
 	for _, file := range files {
-		if strings.Contains(file, "core") {
-			filename = file
+		coreBin, isCore := s.GetCoreProcessName(s.getLogDirPath() + file)
+		if isCore {
+			coreFiles = append(coreFiles, coreInfo{file, coreBin})
 		}
 	}
 	timeout := 60
 	waitTime := 5
 
-	if filename != "" {
-		corePath := s.getLogDirPath() + filename
+	if len(coreFiles) == 0 {
+		return false
+	}
+	arch, _ := exechelper.Output("uname -m")
+	archStr := strings.TrimSpace(string(arch))
+	for _, core := range coreFiles {
+		corePath := s.getLogDirPath() + core.file
 		s.Log(fmt.Sprintf("WAITING FOR CORE DUMP (%s)", corePath))
 		for i := waitTime; i <= timeout; i += waitTime {
 			fileInfo, err := os.Stat(corePath)
@@ -340,13 +351,33 @@ func (s *HstSuite) WaitForCoreDump() bool {
 				if *IsDebugBuild {
 					debug = "_debug"
 				}
-				vppBinPath := fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
-				pluginsLibPath := fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/x86_64-linux-gnu/vpp_plugins", debug)
-				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", vppBinPath, corePath, *VppSourceFileDir, pluginsLibPath)
+				var binPath, libPath string
+				if strings.Contains(core.binPath, "vpp") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins", debug, archStr)
+
+				} else {
+					binPath = core.binPath
+					// this was most likely LDP and we want symbol table
+					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu", debug, archStr)
+				}
+				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
 				s.Log(cmd)
 				output, _ := exechelper.Output(cmd)
-				AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
-				os.WriteFile(s.getLogDirPath()+"backtrace.log", output, os.FileMode(0644))
+				if strings.Contains(core.binPath, "vpp") {
+					AddReportEntry("VPP Backtrace", StringerStruct{Label: string(output)})
+				} else {
+					AddReportEntry("APP Backtrace", StringerStruct{Label: string(output)})
+				}
+				f, err := os.OpenFile(s.getLogDirPath()+"backtrace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.FileMode(0644))
+				if err != nil {
+					s.Log("Error opening backtrace.log: " + fmt.Sprint(err))
+				} else {
+					if _, err := f.Write(output); err != nil {
+						s.Log("Error writing backtrace.log: " + fmt.Sprint(err))
+					}
+					f.Close()
+				}
 				if RunningInCi {
 					err = os.Remove(corePath)
 					if err == nil {
@@ -355,11 +386,11 @@ func (s *HstSuite) WaitForCoreDump() bool {
 						s.Log(err)
 					}
 				}
-				return true
+				break
 			}
 		}
 	}
-	return false
+	return true
 }
 
 func (s *HstSuite) ResetContainers() {

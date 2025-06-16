@@ -204,9 +204,8 @@ Suite:
 Message:\n"
 + (
     if .ReportEntries? then
-        (.ReportEntries[] | select(.Name == "VPP Backtrace") |
-        "\tVPP crashed
-Full Back Trace:
+        (.ReportEntries[] | select(.Name | contains("Backtrace")) |
+        "\tFull Back Trace:
 \(.Value.Representation | ltrimstr("{{red}}") | rtrimstr("{{/}}"))"
         ) // "\(.Failure.Message)"
     else
