@@ -58,6 +58,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d0226616_07438f82",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1625,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T20:14:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a7b3997a_9938bc02",
+      "range": {
+        "startLine": 1624,
+        "startChar": 0,
+        "endLine": 1625,
+        "endChar": 29
+      },
+      "revId": "cd9c2d52cb8ed502b4decc4a48caa1f62342ea45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "071a36a1_2ca2d8ff",
@@ -71,6 +95,30 @@
       "writtenOn": "2025-06-16T16:36:18Z",
       "side": 1,
       "message": "you should not get more than \"max_write - chunk_sz_value_headroom\" from http_buffer_get_segs",
+      "range": {
+        "startLine": 1627,
+        "startChar": 2,
+        "endLine": 1629,
+        "endChar": 76
+      },
+      "revId": "cd9c2d52cb8ed502b4decc4a48caa1f62342ea45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6996cba6_2c508fcf",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1629,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-16T20:14:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "071a36a1_2ca2d8ff",
       "range": {
         "startLine": 1627,
         "startChar": 2,
