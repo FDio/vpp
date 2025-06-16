@@ -24,6 +24,11 @@ func TcpUnitTest(s *NoTopoSuite) {
 	runUnitTest(s, "test tcp all")
 }
 
+func UdpUnitTest(s *NoTopoSuite) {
+	s.SkipIfNotCoverage()
+	runUnitTest(s, "test udp all")
+}
+
 func SvmUnitTest(s *NoTopoSuite) {
 	s.SkipIfNotCoverage()
 	runUnitTest(s, "test svm fifo all")
