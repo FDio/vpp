@@ -33,6 +33,23 @@
       "message": "perftest-2n-grc nic_*ANDdrv_mlx*AND1cANDethip4ipsec1000tnlsw-ip4base-int-aes256gcm-udir nic_*ANDdrv_mlx*AND1cANDethip4ipsec1000tnlsw-ip4base-policy-aes256gcm-udir !soak",
       "revId": "d08a59048b09bac40bdba3ee6f2faf50f84add29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "193651b0_e471cde4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-06-16T08:16:09Z",
+      "side": 1,
+      "message": "\u003e vpp-csit-verify-perf-master-ubuntu2404-aarch64-2n-grc/8/ : SUCCESS (skipped)\n\nFair amount of progressions. Some tests show negative difference (presumably due to overall noisiness of the tests) but not significant enough to be classified as a regression. Overall looks like an improvement to me.",
+      "revId": "d08a59048b09bac40bdba3ee6f2faf50f84add29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
