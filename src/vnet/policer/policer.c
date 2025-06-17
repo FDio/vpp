@@ -69,7 +69,7 @@ policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg,
     return VNET_API_ERROR_VALUE_EXIST;
 
   /* Vet the configuration before adding it to the table */
-  rv = pol_logical_2_physical (cfg, &test_policer);
+  rv = pol_logical_2_physical (pm, cfg, &test_policer);
 
   if (rv != 0)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -145,7 +145,7 @@ policer_update (vlib_main_t *vm, u32 policer_index,
   policer = &pm->policers[policer_index];
 
   /* Vet the configuration before adding it to the table */
-  rv = pol_logical_2_physical (cfg, &test_policer);
+  rv = pol_logical_2_physical (pm, cfg, &test_policer);
   if (rv != 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
@@ -1052,6 +1052,7 @@ policer_init (vlib_main_t * vm)
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
+  pm->tsc_hz = get_tsc_hz ();
 
   vnet_classify_register_unformat_policer_next_index_fn
     (unformat_policer_classify_next_index);
