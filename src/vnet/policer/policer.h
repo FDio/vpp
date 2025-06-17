@@ -50,6 +50,9 @@ typedef struct
   /* frame queue for thread handoff */
   u32 fq_index[VLIB_N_RX_TX];
 
+  /* cached TSC value. No need to re-compute for each new policer */
+  u64 tsc_hz;
+
   u16 msg_id_base;
 } vnet_policer_main_t;
 
