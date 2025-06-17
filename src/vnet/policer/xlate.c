@@ -844,19 +844,6 @@ pol_compute_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
 }
 
 /*
- * Return the number of hardware TSC timer ticks per second for the dataplane.
- * This is approximately, but not exactly, the clock speed.
- */
-static u64
-get_tsc_hz (void)
-{
-  f64 cpu_freq;
-
-  cpu_freq = os_cpu_clock_frequency ();
-  return (u64) cpu_freq;
-}
-
-/*
  * Convert rates into bytes_per_period and scale.
  * Return 0 if ok or 1 if error.
  */
@@ -948,8 +935,8 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
 int
 x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 {
+  vnet_policer_main_t *pm = &vnet_policer_main;
   const int BYTES_PER_KBIT = (1000 / 8);
-  u64 hz;
   u32 cap;
 
   if (!cfg || !hw)
@@ -958,7 +945,6 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
       return (-1);
     }
 
-  hz = get_tsc_hz ();
   hw->last_update_time = 0;
 
   /*
@@ -1001,10 +987,9 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if (compute_policer_params (hz,
-				  (u64) cfg->rb.kbps.cir_kbps *
-				  BYTES_PER_KBIT, 0, &hw->current_limit,
-				  &hw->extended_limit,
+      if (compute_policer_params (pm->tsc_hz,
+				  (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
+				  0, &hw->current_limit, &hw->extended_limit,
 				  &hw->cir_tokens_per_period,
 				  &hw->pir_tokens_per_period, &hw->scale))
 	{
@@ -1025,14 +1010,11 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if (compute_policer_params (hz,
-				  (u64) cfg->rb.kbps.cir_kbps *
-				  BYTES_PER_KBIT,
-				  (u64) cfg->rb.kbps.eir_kbps *
-				  BYTES_PER_KBIT, &hw->current_limit,
-				  &hw->extended_limit,
-				  &hw->cir_tokens_per_period,
-				  &hw->pir_tokens_per_period, &hw->scale))
+      if (compute_policer_params (
+	    pm->tsc_hz, (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
+	    (u64) cfg->rb.kbps.eir_kbps * BYTES_PER_KBIT, &hw->current_limit,
+	    &hw->extended_limit, &hw->cir_tokens_per_period,
+	    &hw->pir_tokens_per_period, &hw->scale))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter computation failed.");
 	  return (-1);
