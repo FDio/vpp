@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f11f6f68_f522b404",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-06-17T10:23:29Z",
+      "side": 1,
+      "message": "Hello Matthew,\nCould you please review this patch? It covers 2 things:\n1) fixes locking/unlocking table\n2) when there\u0027s a replace w/o paths (e.g. blackhole) - we need to remove entry from fib (and unlock table)",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
