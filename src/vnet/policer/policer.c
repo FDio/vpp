@@ -69,7 +69,7 @@ policer_add (vlib_main_t *vm, const u8 *name, const qos_pol_cfg_params_st *cfg,
     return VNET_API_ERROR_VALUE_EXIST;
 
   /* Vet the configuration before adding it to the table */
-  rv = pol_logical_2_physical (cfg, &test_policer);
+  rv = pol_logical_2_physical (vm, cfg, &test_policer);
 
   if (rv != 0)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -145,7 +145,7 @@ policer_update (vlib_main_t *vm, u32 policer_index,
   policer = &pm->policers[policer_index];
 
   /* Vet the configuration before adding it to the table */
-  rv = pol_logical_2_physical (cfg, &test_policer);
+  rv = pol_logical_2_physical (vm, cfg, &test_policer);
   if (rv != 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
