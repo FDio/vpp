@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa666ac6_a56fc840",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-06-17T10:31:18Z",
+      "side": 1,
+      "message": "Hello Benoît,\nDo you mind to evaluate if this won\u0027t interfere with you cnat work and possibly review this patch?",
+      "revId": "2f24a4e0029726b0a045625bdc53c136494245fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
