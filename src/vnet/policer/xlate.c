@@ -844,19 +844,6 @@ pol_compute_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
 }
 
 /*
- * Return the number of hardware TSC timer ticks per second for the dataplane.
- * This is approximately, but not exactly, the clock speed.
- */
-static u64
-get_tsc_hz (void)
-{
-  f64 cpu_freq;
-
-  cpu_freq = os_cpu_clock_frequency ();
-  return (u64) cpu_freq;
-}
-
-/*
  * Convert rates into bytes_per_period and scale.
  * Return 0 if ok or 1 if error.
  */
@@ -946,10 +933,9 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
  * Return: Status, success or failure code.
  */
 int
-x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
+x86_pol_compute_hw_params (const u64 cpu_cps, qos_pol_cfg_params_st *cfg, policer_t *hw)
 {
   const int BYTES_PER_KBIT = (1000 / 8);
-  u64 hz;
   u32 cap;
 
   if (!cfg || !hw)
@@ -958,7 +944,6 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
       return (-1);
     }
 
-  hz = get_tsc_hz ();
   hw->last_update_time = 0;
 
   /*
@@ -1001,7 +986,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if (compute_policer_params (hz,
+      if (compute_policer_params (cpu_cps,
 				  (u64) cfg->rb.kbps.cir_kbps *
 				  BYTES_PER_KBIT, 0, &hw->current_limit,
 				  &hw->extended_limit,
@@ -1025,7 +1010,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if (compute_policer_params (hz,
+      if (compute_policer_params (cpu_cps,
 				  (u64) cfg->rb.kbps.cir_kbps *
 				  BYTES_PER_KBIT,
 				  (u64) cfg->rb.kbps.eir_kbps *
@@ -1058,7 +1043,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
  * Return: Status, success or failure code.
  */
 int
-pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys)
+pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, const u64 cpu_cps, policer_t *phys)
 {
   int rc;
   qos_pol_cfg_params_st kbps_cfg;
@@ -1111,7 +1096,7 @@ pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys)
   phys->color_aware = cfg->color_aware;
 
   /* convert logical into hw params which involves qos calculations */
-  rc = x86_pol_compute_hw_params (&kbps_cfg, phys);
+  rc = x86_pol_compute_hw_params (cpu_cps, &kbps_cfg, phys);
   if (rc == -1)
     {
       QOS_DEBUG_ERROR ("Unable to compute hw param. Error: %d", rc);
