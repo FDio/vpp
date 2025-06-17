@@ -1037,6 +1037,19 @@ VLIB_CLI_COMMAND (show_policer_pools_command, static) = {
     .function = show_policer_pools_command_fn,
 };
 
+/*
+ * Return the number of hardware TSC timer ticks per second for the dataplane.
+ * This is approximately, but not exactly, the clock speed.
+ */
+static u64
+get_tsc_hz (void)
+{
+  f64 cpu_freq;
+
+  cpu_freq = os_cpu_clock_frequency ();
+  return (u64) cpu_freq;
+}
+
 clib_error_t *
 policer_init (vlib_main_t * vm)
 {
@@ -1052,6 +1065,7 @@ policer_init (vlib_main_t * vm)
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
+  pm->tsc_hz = get_tsc_hz ();
 
   vnet_classify_register_unformat_policer_next_index_fn
     (unformat_policer_classify_next_index);
