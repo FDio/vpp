@@ -16,6 +16,23 @@
       "message": "Thanks a lot for the good catches, fixed!",
       "revId": "c4c10134e01faa2c2129f36ea454487ca67ae809",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60bd5728_dc4431d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-17T15:55:14Z",
+      "side": 1,
+      "message": "(marking this one as ACK as I *think* the new handling of the length should take care of it; for the streaming upload case, probably setting the length during the last send could be a way to close the session ?)",
+      "revId": "c4c10134e01faa2c2129f36ea454487ca67ae809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
