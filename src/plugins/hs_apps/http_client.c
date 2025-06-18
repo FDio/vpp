@@ -712,7 +712,7 @@ hc_connect ()
 }
 
 static void
-hc_get_repeat_stats (vlib_main_t *vm)
+hc_get_req_stats (vlib_main_t *vm)
 {
   hc_main_t *hcm = &hc_main;
 
@@ -768,7 +768,7 @@ hc_get_event (vlib_main_t *vm)
     event_timeout += 5;
   vlib_process_wait_for_event_or_clock (vm, event_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
-  hc_get_repeat_stats (vm);
+  hc_get_req_stats (vm);
 
   switch (event_type)
     {
@@ -793,7 +793,7 @@ hc_get_event (vlib_main_t *vm)
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
 	  vlib_cli_output (
-	    vm, "< %s\n< %s\n* %u bytes saved to file (/tmp/%s)",
+	    vm, "< %v\n< %v\n* %u bytes saved to file (/tmp/%s)",
 	    hc_session->response_status, hc_session->resp_headers,
 	    hc_session->body_recv, hcm->filename);
 	  fclose (hc_session->file_ptr);
