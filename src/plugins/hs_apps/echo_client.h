@@ -105,6 +105,7 @@ typedef struct
   f64 syn_timeout;			/**< Test syn timeout (s) */
   f64 test_timeout;			/**< Test timeout (s) */
   f64 run_time;				/**< Length of a test (s) */
+  u64 max_chunk_bytes;
 
   /*
    * Flags

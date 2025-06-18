@@ -79,7 +79,6 @@ ec_session_get (ec_worker_t *wrk, u32 ec_index)
 static void
 send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 {
-  const u64 max_burst = 128000;
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, test_buf_offset, rv;
   u64 bytes_to_send;
@@ -89,9 +88,10 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
   if (ecm->run_time)
-    bytes_to_send = clib_min (svm_fifo_max_enqueue_prod (f), max_burst);
+    bytes_to_send =
+      clib_min (svm_fifo_max_enqueue_prod (f), ecm->max_chunk_bytes);
   else
-    bytes_to_send = clib_min (es->bytes_to_send, max_burst);
+    bytes_to_send = clib_min (es->bytes_to_send, ecm->max_chunk_bytes);
   if (ecm->throughput)
     bytes_to_send = clib_min (es->bytes_paced_current, bytes_to_send);
   test_buf_offset = es->bytes_sent % test_buf_len;
@@ -419,6 +419,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->run_time = 0;
   ecm->throughput = 0;
   ecm->pacing_window_len = 1;
+  ecm->max_chunk_bytes = 128 << 10;
   vec_free (ecm->connect_uri);
 }
 
@@ -1174,7 +1175,7 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
   ec_main_t *ecm = &ec_main;
   uword *event_data = 0, event_type;
   clib_error_t *error = 0;
-  int rv, timed_run_conflict = 0, had_config = 1;
+  int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1;
   u64 total_bytes;
   f64 delta;
 
@@ -1224,6 +1225,9 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "throughput %U", unformat_memory_size,
 			 &ecm->throughput))
 	;
+      else if (unformat (line_input, "max-tx-chunk %U", unformat_memory_size,
+			 &ecm->max_chunk_bytes))
+	tput_conflict = 1;
       else if (unformat (line_input, "preallocate-fifos"))
 	ecm->prealloc_fifos = 1;
       else if (unformat (line_input, "preallocate-sessions"))
@@ -1258,6 +1262,9 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (timed_run_conflict && ecm->run_time)
     return clib_error_return (0, "failed: invalid arguments for a timed run!");
+  if (ecm->throughput && tput_conflict)
+    return clib_error_return (
+      0, "failed: can't set fixed tx chunk for a throughput run!");
 
 parse_config:
 
