@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a19d79b1_c34f2c99",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-18T02:50:55Z",
+      "side": 1,
+      "message": "works for now but maybe in the future we can make main do the writing, instead of the worker.",
+      "revId": "013d2a0614ae88e0de39b848ce15cf14ff6c8cca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
