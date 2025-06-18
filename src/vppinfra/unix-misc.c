@@ -291,12 +291,12 @@ os_get_cpu_affinity_bitmap ()
   int cpu;
   uword *affinity_cpus;
 
-  clib_bitmap_alloc (affinity_cpus, __CPU_SETSIZE);
+  clib_bitmap_alloc (affinity_cpus, CPU_SETSIZE);
   clib_bitmap_zero (affinity_cpus);
 
   /* set__os_affinity_cpu_set once on first call to
    * os_get_cpu_affinity_bitmap() */
-  if (__CPU_COUNT_S (sizeof (cpu_set_t), &__os_affinity_cpu_set) == 0)
+  if (CPU_COUNT_S (sizeof (cpu_set_t), &__os_affinity_cpu_set) == 0)
     {
       int ret;
       ret = sched_getaffinity (0, sizeof (cpu_set_t), &__os_affinity_cpu_set);
@@ -307,8 +307,8 @@ os_get_cpu_affinity_bitmap ()
 	}
     }
 
-  for (cpu = 0; cpu < __CPU_SETSIZE; cpu++)
-    if (__CPU_ISSET_S (cpu, sizeof (cpu_set_t), &__os_affinity_cpu_set))
+  for (cpu = 0; cpu < CPU_SETSIZE; cpu++)
+    if (CPU_ISSET_S (cpu, sizeof (cpu_set_t), &__os_affinity_cpu_set))
       clib_bitmap_set (affinity_cpus, cpu, 1);
   return affinity_cpus;
 #elif defined(__FreeBSD__)
@@ -409,7 +409,7 @@ os_translate_cpu_bmp_to_affinity_bitmap (clib_bitmap_t *cpu_bmp)
     return NULL;
 
   uword *translated_cpulist;
-  clib_bitmap_alloc (translated_cpulist, __CPU_SETSIZE);
+  clib_bitmap_alloc (translated_cpulist, CPU_SETSIZE);
   clib_bitmap_zero (translated_cpulist);
 
   uword cpu_it;
