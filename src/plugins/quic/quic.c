@@ -805,7 +805,11 @@ static session_cb_vft_t quic_app_cb_vft = {
   .app_cert_key_pair_delete_callback = quic_app_cert_key_pair_delete_callback,
 };
 
+static clib_error_t *
+quic_enable (vlib_main_t *vm, u8 is_en);
+
 static const transport_proto_vft_t quic_proto = {
+  .enable = quic_enable,
   .connect = quic_connect,
   .close = quic_proto_on_close,
   .start_listen = quic_start_listen,
@@ -828,6 +832,63 @@ static const transport_proto_vft_t quic_proto = {
   },
 };
 
+static clib_error_t *
+quic_enable (vlib_main_t *vm, u8 is_en)
+{
+  quic_main_t *qm = &quic_main;
+  quic_worker_ctx_t *wrk_ctx;
+  quic_ctx_t *ctx;
+  crypto_context_t *crctx;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  int i;
+  
+  qm->engine_type =
+    quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
+  if (qm->engine_type == QUIC_ENGINE_NONE)
+    {
+      clib_warning (
+	"ERROR: NO QUIC ENGINE PLUGIN ENABLED!"
+	"\nEnable a quic engine plugin in the startup configuration.");
+      return clib_error_return (0, "No QUIC Engine enabled");
+    }
+
+  QUIC_DBG (1, "QUIC engine %s init", quic_engine_type_str(qm->engine_type));
+  if (!is_en || qm->engine_is_initialized[qm->engine_type])
+    return 0;
+
+  qm->quic_input_node = &quic_input_node;
+  qm->num_threads = 1 /* main thread */ + vtm->n_threads;
+  vec_validate (quic_main.wrk_ctx, qm->num_threads - 1);
+
+  QUIC_DBG (1, "Initializing quic engine to %s",
+	    quic_engine_type_str (qm->engine_type));
+
+  for (i = 0; i < qm->num_threads; i++)
+    {
+      wrk_ctx = quic_wrk_ctx_get (qm, i);
+      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
+			     CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
+				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
+      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
+				 QUIC_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
+    }
+
+  quic_eng_engine_init (qm);
+
+  /* Only register quic_update_time function once. */
+  if (qm->session_update_time_cb_registered == 0)
+    {
+      session_register_update_time_fn (quic_update_time, 1);
+      qm->session_update_time_cb_registered = 1;
+    }
+  qm->engine_is_initialized[qm->engine_type] = 1;
+  return 0;
+}
+
 static void
 quic_update_fifo_size ()
 {
@@ -849,21 +910,18 @@ quic_update_fifo_size ()
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
-  u32 segment_size = 256 << 20;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  quic_main_t *qm = &quic_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  quic_main_t *qm = &quic_main;
+  // TODO: Don't use hard-coded values for segment_size and seed[]
+  u32 segment_size = 256 << 20;
   u8 seed[32];
 
   QUIC_DBG (1, "QUIC plugin init");
-  qm->quic_input_node = &quic_input_node;
 
   if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
     return clib_error_return_unix (0, "getrandom() failed");
   RAND_seed (seed, sizeof (seed));
-
-  qm->num_threads = 1 /* main thread */ + vtm->n_threads;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -886,7 +944,6 @@ quic_init (vlib_main_t * vm)
       clib_warning ("failed to attach quic app");
       return clib_error_return (0, "failed to attach quic app");
     }
-
   qm->app_index = a->app_index;
 
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
@@ -898,53 +955,7 @@ quic_init (vlib_main_t * vm)
   return 0;
 }
 
-static void
-quic_engine_init ()
-{
-  quic_main_t *qm = &quic_main;
-  quic_worker_ctx_t *wrk_ctx;
-  quic_ctx_t *ctx;
-  crypto_context_t *crctx;
-  int i;
-
-  vec_validate (quic_main.wrk_ctx, qm->num_threads - 1);
-
-  QUIC_DBG (1, "Initializing quic engine to %s",
-	    quic_engine_type_str (qm->engine_type));
-
-  for (i = 0; i < qm->num_threads; i++)
-    {
-      wrk_ctx = quic_wrk_ctx_get (qm, i);
-      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
-			     CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
-				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
-				 CLIB_CACHE_LINE_BYTES);
-      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
-				 QUIC_CTX_POOL_PER_THREAD_SIZE,
-				 CLIB_CACHE_LINE_BYTES);
-    }
-
-  quic_eng_engine_init (qm);
-  qm->engine_is_initialized[qm->engine_type] = 1;
-}
-
-static clib_error_t *
-quic_main_loop_init (vlib_main_t *vm)
-{
-  quic_main_t *qm = &quic_main;
-
-  qm->engine_type =
-    quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
-  QUIC_ASSERT (qm->engine_type != QUIC_ENGINE_NONE);
-
-  quic_engine_init ();
-  return 0;
-}
-
 VLIB_INIT_FUNCTION (quic_init);
-VLIB_MAIN_LOOP_ENTER_FUNCTION (quic_main_loop_init);
 
 static clib_error_t *
 quic_plugin_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
