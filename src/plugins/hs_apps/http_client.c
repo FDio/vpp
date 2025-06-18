@@ -226,6 +226,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
   hc_worker_t *wrk;
   hc_session_t *hc_session;
   hc_http_header_t *header;
+  u8 *f = 0;
 
   if (err)
     {
@@ -267,8 +268,9 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     }
   if (hcm->filename)
     {
-      hc_session->file_ptr =
-	fopen ((char *) format (0, "/tmp/%v", hcm->filename), "w");
+      f = format (0, "/tmp/%s%c", hcm->filename, 0);
+      hc_session->file_ptr = fopen ((char *) f, "w");
+      vec_free (f);
       if (hc_session->file_ptr == NULL)
 	{
 	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
