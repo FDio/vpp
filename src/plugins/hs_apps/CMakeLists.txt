@@ -11,6 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT VPP_BUILD_VCL)
+  return()
+endif()
+
 ##############################################################################
 # vpp builtin hs apps
 ##############################################################################
