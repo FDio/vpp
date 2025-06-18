@@ -327,8 +327,9 @@ static void
 quic_quicly_expired_timers_dispatch (u32 *expired_timers)
 {
   int i;
-#if QUIC_DEBUG >= 4
-  int64_t time_now = quic_wrk_ctx_get(quic_quicly_main.qm, vlib_get_thread_index ())->time_now);
+#if QUIC_DEBUG >= 1
+  int64_t time_now =
+    quic_wrk_ctx_get (quic_quicly_main.qm, vlib_get_thread_index ())->time_now;
 #endif
   for (i = 0; i < vec_len (expired_timers); i++)
     {
@@ -1213,6 +1214,7 @@ quic_quicly_engine_init (quic_main_t *qm)
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   u32 i;
 
+  QUIC_DBG (2, "quic_quicly_engine_init -- start");
   qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   qm->default_quic_cc = QUIC_CC_RENO;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
