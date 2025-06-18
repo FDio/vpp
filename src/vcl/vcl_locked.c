@@ -2180,7 +2180,11 @@ vls_mt_mq_wait_lock (vcl_session_handle_t vcl_sh)
 	}
     }
 
+  vls_mt_pool_runlock ();
+
   vls_mt_mq_unlock ();
+
+  vls_mt_spool_lock ();
 }
 
 static inline void
@@ -2189,10 +2193,18 @@ vls_mt_mq_wait_unlock (vcl_session_handle_t vcl_sh)
   if (vls_mt_wrk_supported () || !vlsl->vls_mt_needs_locks)
     return;
 
+  vls_mt_spool_unlock ();
+
   vls_mt_mq_lock ();
 
   /* writers can grab lock now */
-  vls_mt_pool_runlock ();
+  //   vls_mt_pool_runlock ();
+
+  /* writers might be descheduled give them a chance to reacquire lock.
+   * Helps avoid situations when a close races with a blocking read/write
+   * operation and never manages to grab writer lock */
+  //   CLIB_PAUSE ();
+  //   usleep (10);
 }
 
 int
