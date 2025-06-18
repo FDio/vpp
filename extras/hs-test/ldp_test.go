@@ -14,6 +14,13 @@ func init() {
 	RegisterSoloLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
 		LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
 		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
+	RegisterLdpMWTests(LdpIperfUdpMWTest)
+}
+
+func LdpIperfUdpMWTest(s *LdpSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u -P 5"), 100)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
