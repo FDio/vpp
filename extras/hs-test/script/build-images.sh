@@ -34,7 +34,7 @@ if [ -d "${DOCKER_BUILD_DIR}" ] ; then
 fi
 
 # Set the tag for the base image
-BASE_TAG=${BASE_TAG:-"localhost:5000/vpp-test-base:latest"}
+BASE_TAG=${BASE_TAG:-"localhost:5001/vpp-test-base:latest"}
 
 echo "=== Building base image ==="
 # shellcheck disable=2086

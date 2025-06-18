@@ -1,6 +1,6 @@
 ARG UBUNTU_VERSION=22.04
 
-FROM localhost:5000/vpp-test-base:latest
+FROM localhost:5001/vpp-test-base:latest
 
 COPY resources/nginx/vcl.conf /vcl.conf
 COPY resources/nginx/nginx_http3.conf /nginx.conf

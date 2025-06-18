@@ -39,6 +39,7 @@ OS_ARCH="$(uname -m)"
 DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
 DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
+REGISTRY_PORT=5001
 if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
   $DOCKER_LOGIN_SCRIPT
 fi
@@ -46,12 +47,12 @@ fi
 # Set up the local registry before creating containers
 echo "=== Setting up local registry ==="
 if [ -x "$(dirname "$0")/../docker/setup-local-registry.sh" ]; then
-  "$(dirname "$0")/../docker/setup-local-registry.sh"
+  "$(dirname "$0")/../docker/setup-local-registry.sh" "$REGISTRY_PORT"
 else
   echo "Warning: setup-local-registry.sh not found or not executable"
   echo "Attempting to create and use local registry at localhost:5000"
   if ! docker ps | grep -q "local-registry"; then
-    docker run -d --restart=always -p 5000:5000 --name local-registry registry:2
+    docker run -d --restart=always -p $REGISTRY_PORT:5000 --name local-registry registry:2
   fi
 fi
 
@@ -83,7 +84,7 @@ fi
 echo "=== Building all containers using build-images.sh ==="
 (
     # Export necessary environment variables for build-images.sh
-    export BASE_TAG="localhost:5000/vpp-test-base:latest"
+    export BASE_TAG="localhost:$REGISTRY_PORT/vpp-test-base:latest"
     export OS_ARCH
     export UBUNTU_VERSION
     export HTTP_PROXY
