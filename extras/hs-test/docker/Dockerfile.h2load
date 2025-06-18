@@ -1,6 +1,6 @@
 # h2load container that uses the base image
 ARG UBUNTU_VERSION=22.04
-FROM localhost:5000/vpp-test-base:latest
+FROM localhost:5001/vpp-test-base:latest
 
 # nghttp2 is now installed in the base image
 

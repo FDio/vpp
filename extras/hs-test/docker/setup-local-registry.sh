@@ -16,7 +16,7 @@ fi
 
 # Registry container name
 REGISTRY_NAME="local-registry"
-REGISTRY_PORT=5000
+REGISTRY_PORT=${1:-5001}
 
 # Check if registry container is already running
 if docker container inspect "$REGISTRY_NAME" &>/dev/null; then
@@ -48,17 +48,17 @@ else
             echo "Adding 'localhost:$REGISTRY_PORT' to insecure-registries in /etc/docker/daemon.json"
             echo "You may need to restart Docker for changes to take effect"
             echo "Please add the following to /etc/docker/daemon.json:"
-            echo '{
-  "insecure-registries": ["localhost:5000"]
-}'
+            echo "{
+  \"insecure-registries\": [\"localhost:$REGISTRY_PORT\"]
+}"
         fi
     else
         echo "Creating /etc/docker/daemon.json with insecure-registries configuration"
         echo "You may need to restart Docker for changes to take effect"
         echo "Please create /etc/docker/daemon.json with the following content:"
-        echo '{
-  "insecure-registries": ["localhost:5000"]
-}'
+        echo "{
+  \"insecure-registries\": [\"localhost:$REGISTRY_PORT\"]
+}"
     fi
 fi
 

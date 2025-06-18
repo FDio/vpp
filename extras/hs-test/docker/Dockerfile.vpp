@@ -1,6 +1,6 @@
 # VPP container that uses the base image
 ARG UBUNTU_VERSION=22.04
-FROM localhost:5000/vpp-test-base:latest
+FROM localhost:5001/vpp-test-base:latest
 
 # We don't need to install these packages as they're in the base image
 # Just install anything specific to VPP that isn't in the base
