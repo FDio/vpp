@@ -16,6 +16,24 @@
       "message": "why not accessing vm-\u003eclib_time.clocks_per_second directly here instead of passing the parameters through the different function calls?",
       "revId": "d2bf69ddeb80dc62ad97596aa2e79ddac533fb2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1672a40_5c67b2c6",
+        "filename": "src/vnet/policer/xlate.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1004,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2025-06-18T09:36:10Z",
+      "side": 0,
+      "message": "We don\u0027t have access to `vlib_main_t` inside that function, so it would require a call to `vlib_get_main` here.\nI see that most of the time in the code we pass `vlib_main_t *vm` as a func arg instead of calling `vlib_get_main`. This is why I chose the arg approach (using directly the `cpu_cps` instead of `vlib_main_t`). But, it creates cascading args.\n\nHappy to switch to `vlib_get_main` if you find it cleaner",
+      "parentUuid": "472dfe60_de6fcbbf",
+      "revId": "d2bf69ddeb80dc62ad97596aa2e79ddac533fb2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
