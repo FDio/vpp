@@ -1015,7 +1015,8 @@ transport_enable_disable (vlib_main_t * vm, u8 is_en)
   vec_foreach (vft, tp_vfts)
   {
     if (vft->enable)
-      (vft->enable) (vm, is_en);
+      if ((vft->enable) (vm, is_en) != 0)
+	  return;
 
     if (vft->update_time)
       session_register_update_time_fn (vft->update_time, is_en);
