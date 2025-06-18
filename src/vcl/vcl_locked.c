@@ -139,7 +139,7 @@ typedef struct vls_local_
   volatile int vls_mt_needs_locks;    /**< mt single vcl wrk needs locks */
   clib_rwlock_t vls_pool_lock;	      /**< per process/wrk vls pool locks */
   pthread_mutex_t vls_mt_mq_mlock;    /**< vcl mq lock */
-  pthread_mutex_t vls_mt_spool_mlock; /**< vcl select or pool lock */
+  pthread_rwlock_t vls_mt_spool_rwlock; /**< vcl select or pool rwlock */
   volatile u8 select_mp_check;	      /**< flag set if select checks done */
   struct sigaction old_sa;	      /**< old sigaction to restore */
 } vls_process_local_t;
@@ -159,12 +159,25 @@ vls_main_t *vlsm;
 
 static pthread_key_t vls_mt_pthread_stop_key;
 
-typedef enum
+#define foreach_mt_lock_type                                                  \
+  _ (LOCK_MQ, "mq")                                                           \
+  _ (RLOCK_SPOOL, "rlock_spool")                                              \
+  _ (WLOCK_SPOOL, "wlock_spool")                                              \
+  _ (RLOCK_POOL, "rlock_pool")                                                \
+  _ (WLOCK_POOL, "wlock_pool")
+
+enum vls_mt_lock_type_bit_
 {
-  VLS_MT_LOCK_MQ = 1 << 0,
-  VLS_MT_LOCK_SPOOL = 1 << 1,
-  VLS_MT_RLOCK_POOL = 1 << 2,
-  VLS_MT_WLOCK_POOL = 1 << 3
+#define _(sym, str) VLS_MT_BIT_##sym,
+  foreach_mt_lock_type
+#undef _
+};
+
+typedef enum vls_mt_lock_type_
+{
+#define _(sym, str) VLS_MT_##sym = 1 << VLS_MT_BIT_##sym,
+  foreach_mt_lock_type
+#undef _
 } vls_mt_lock_type_t;
 
 typedef struct vls_mt_pthread_local_
@@ -378,17 +391,40 @@ vls_mt_mq_unlock (void)
 }
 
 static inline void
-vls_mt_spool_lock (void)
+vls_mt_spool_rlock (void)
 {
-  pthread_mutex_lock (&vlsl->vls_mt_spool_mlock);
-  vlspt->locks_acq |= VLS_MT_LOCK_SPOOL;
+  pthread_rwlock_rdlock (&vlsl->vls_mt_spool_rwlock);
+  vlspt->locks_acq |= VLS_MT_RLOCK_SPOOL;
+}
+
+static inline void
+vls_mt_spool_wlock (void)
+{
+  pthread_rwlock_wrlock (&vlsl->vls_mt_spool_rwlock);
+  vlspt->locks_acq |= VLS_MT_WLOCK_SPOOL;
+}
+
+static inline void
+vls_mt_spool_runlock (void)
+{
+  pthread_rwlock_unlock (&vlsl->vls_mt_spool_rwlock);
+  vlspt->locks_acq &= ~VLS_MT_RLOCK_SPOOL;
+}
+
+static inline void
+vls_mt_spool_wunlock (void)
+{
+  pthread_rwlock_unlock (&vlsl->vls_mt_spool_rwlock);
+  vlspt->locks_acq &= ~VLS_MT_WLOCK_SPOOL;
 }
 
 static inline void
 vls_mt_spool_unlock (void)
 {
-  pthread_mutex_unlock (&vlsl->vls_mt_spool_mlock);
-  vlspt->locks_acq &= ~VLS_MT_LOCK_SPOOL;
+  if (vlspt->locks_acq & VLS_MT_RLOCK_SPOOL)
+    vls_mt_spool_runlock ();
+  else if (vlspt->locks_acq & VLS_MT_WLOCK_SPOOL)
+    vls_mt_spool_wunlock ();
 }
 
 static void
@@ -396,7 +432,7 @@ vls_mt_rel_locks ()
 {
   if (vlspt->locks_acq & VLS_MT_LOCK_MQ)
     vls_mt_mq_unlock ();
-  if (vlspt->locks_acq & VLS_MT_LOCK_SPOOL)
+  if (vlspt->locks_acq & (VLS_MT_RLOCK_SPOOL | VLS_MT_WLOCK_SPOOL))
     vls_mt_spool_unlock ();
 }
 
@@ -404,7 +440,7 @@ static void
 vls_mt_locks_init (void)
 {
   pthread_mutex_init (&vlsl->vls_mt_mq_mlock, NULL);
-  pthread_mutex_init (&vlsl->vls_mt_spool_mlock, NULL);
+  pthread_rwlock_init (&vlsl->vls_mt_spool_rwlock, NULL);
 }
 
 static void
@@ -1126,6 +1162,7 @@ vls_mt_acq_locks (vcl_locked_session_t *vls, vls_mt_ops_t op)
 	  /* might get data while waiting for lock */
 	  is_nonblk = vcl_session_read_ready (s) != 0;
 	}
+      vls_mt_spool_rlock ();
       break;
     case VLS_MT_OP_WRITE:
       ASSERT (s);
@@ -1135,12 +1172,14 @@ vls_mt_acq_locks (vcl_locked_session_t *vls, vls_mt_ops_t op)
 	  /* might get space while waiting for lock */
 	  is_nonblk = vcl_session_is_write_nonblk (s);
 	}
+      vls_mt_spool_rlock ();
       break;
     case VLS_MT_OP_XPOLL:
       vls_mt_mq_lock ();
+      vls_mt_spool_rlock ();
       break;
     case VLS_MT_OP_SPOOL:
-      vls_mt_spool_lock ();
+      vls_mt_spool_wlock ();
       break;
     default:
       break;
@@ -2180,7 +2219,12 @@ vls_mt_mq_wait_lock (vcl_session_handle_t vcl_sh)
 	}
     }
 
+  vls_mt_pool_runlock ();
+
   vls_mt_mq_unlock ();
+
+  /* Only lock taken should be spool reader. Needed because VCL is probably
+   * touching a session while waiting for events */
 }
 
 static inline void
@@ -2189,10 +2233,13 @@ vls_mt_mq_wait_unlock (vcl_session_handle_t vcl_sh)
   if (vls_mt_wrk_supported () || !vlsl->vls_mt_needs_locks)
     return;
 
-  vls_mt_mq_lock ();
+  vls_mt_spool_runlock ();
 
-  /* writers can grab lock now */
-  vls_mt_pool_runlock ();
+  /* No locks should be taken by pthread at this point. So writers to spool,
+   * which were blocked until now, should be able to proceed */
+
+  vls_mt_mq_lock ();
+  vls_mt_spool_rlock ();
 }
 
 int
