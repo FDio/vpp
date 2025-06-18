@@ -203,13 +203,25 @@ quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
 {
   quic_ctx_t *ctx = quic_quicly_get_conn_ctx (conn);
 #if QUIC_DEBUG >= 2
-  session_t *quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-  clib_warning ("Session 0x%lx closed by peer (%U) %.*s ",
-		session_handle (quic_session), quic_quicly_format_err, code,
-		reason_len, reason);
+  if (ctx->c_s_index == QUIC_SESSION_INVALID)
+    {
+      clib_warning ("Unopened Session closed by peer (%U) %.*S ",
+		    quic_quicly_format_err, code, reason_len, reason);
+    }
+  else
+    {
+      session_t *quic_session =
+	session_get (ctx->c_s_index, ctx->c_thread_index);
+      clib_warning ("Session 0x%lx closed by peer (%U) %.*s ",
+		    session_handle (quic_session), quic_quicly_format_err,
+		    code, reason_len, reason);
+    }
 #endif
   ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
-  session_transport_closing_notify (&ctx->connection);
+  if (ctx->c_s_index != QUIC_SESSION_INVALID)
+    {
+      session_transport_closing_notify (&ctx->connection);
+    }
 }
 
 static int64_t
