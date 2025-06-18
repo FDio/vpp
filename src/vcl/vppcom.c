@@ -1260,7 +1260,7 @@ vcl_flush_mq_events (void)
   vcl_worker_flush_mq_events (vcl_worker_get_current ());
 }
 
-static inline void
+static inline vcl_session_t *
 vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle,
 		    vcl_worker_wait_type_t wait)
 {
@@ -1276,7 +1276,7 @@ vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle,
       /* Session might've been closed by another thread if multi-threaded
        * as opposed to multi-worker app */
       if (s->flags & VCL_SESSION_F_APP_CLOSING)
-	return;
+	goto done;
     }
 
   /* Short sleeps waiting on mq notifications. Note that we drop mq lock for
@@ -1303,6 +1303,11 @@ vcl_worker_wait_mq (vcl_worker_t *wrk, u32 session_handle,
 
   if (wrk->post_wait_fn)
     wrk->post_wait_fn (session_handle);
+
+done:
+  return session_handle != VCL_INVALID_SESSION_INDEX ?
+	   vcl_session_get_w_handle (wrk, session_handle) :
+	   0;
 }
 
 static int
@@ -2170,7 +2175,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
+	  s = vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2290,7 +2295,7 @@ vppcom_session_read_segments (uint32_t session_handle,
 	    svm_fifo_unset_event (s->rx_fifo);
 	  svm_fifo_unset_event (rx_fifo);
 
-	  vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
+	  s = vcl_worker_wait_mq (wrk, session_handle, VCL_WRK_WAIT_IO_RX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
@@ -2405,7 +2410,8 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
 	  if (s->flags & VCL_SESSION_F_APP_CLOSING)
 	    return vcl_session_closed_error (s);
 
-	  vcl_worker_wait_mq (wrk, vcl_session_handle (s), VCL_WRK_WAIT_IO_TX);
+	  s = vcl_worker_wait_mq (wrk, vcl_session_handle (s),
+				  VCL_WRK_WAIT_IO_TX);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
