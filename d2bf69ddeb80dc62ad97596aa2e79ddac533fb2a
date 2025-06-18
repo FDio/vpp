@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "472dfe60_de6fcbbf",
+        "filename": "src/vnet/policer/xlate.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1004,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-18T09:21:30Z",
+      "side": 0,
+      "message": "why not accessing vm-\u003eclib_time.clocks_per_second directly here instead of passing the parameters through the different function calls?",
+      "revId": "d2bf69ddeb80dc62ad97596aa2e79ddac533fb2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
