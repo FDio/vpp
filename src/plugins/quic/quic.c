@@ -849,21 +849,61 @@ quic_update_fifo_size ()
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
+  QUIC_DBG (1, "QUIC plugin init");
+  return 0;
+}
+
+static clib_error_t *
+quic_engine_init ()
+{
+  quic_main_t *qm = &quic_main;
+  quic_worker_ctx_t *wrk_ctx;
+  quic_ctx_t *ctx;
+  crypto_context_t *crctx;
+  int i;
+
+  // TODO: Don't use hard-coded values for segment_size and seed[]
   u32 segment_size = 256 << 20;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  quic_main_t *qm = &quic_main;
   u8 seed[32];
 
-  QUIC_DBG (1, "QUIC plugin init");
+  QUIC_DBG (1, "QUIC engine init");
+
+  if (qm->engine_type == QUIC_ENGINE_NONE)
+    {
+      clib_warning ("no quic engine registered");
+      return clib_error_return (0, "no quic engine registered");
+    }
+
   qm->quic_input_node = &quic_input_node;
+  qm->num_threads = 1 /* main thread */ + vtm->n_threads;
+  vec_validate (quic_main.wrk_ctx, qm->num_threads - 1);
+
+  QUIC_DBG (1, "Initializing quic engine to %s",
+	    quic_engine_type_str (qm->engine_type));
+
+  for (i = 0; i < qm->num_threads; i++)
+    {
+      wrk_ctx = quic_wrk_ctx_get (qm, i);
+      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
+			     CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
+				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
+      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
+				 QUIC_CTX_POOL_PER_THREAD_SIZE,
+				 CLIB_CACHE_LINE_BYTES);
+    }
 
   if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
     return clib_error_return_unix (0, "getrandom() failed");
   RAND_seed (seed, sizeof (seed));
 
-  qm->num_threads = 1 /* main thread */ + vtm->n_threads;
+  quic_eng_engine_init (qm);
+  qm->engine_is_initialized[qm->engine_type] = 1;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -887,6 +927,11 @@ quic_init (vlib_main_t * vm)
       return clib_error_return (0, "failed to attach quic app");
     }
 
+  /* Only register quic_update_time function once. */
+  if (qm->app_index == 0)
+    {
+      session_register_update_time_fn (quic_update_time, 1);
+    }
   qm->app_index = a->app_index;
 
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
@@ -898,38 +943,6 @@ quic_init (vlib_main_t * vm)
   return 0;
 }
 
-static void
-quic_engine_init ()
-{
-  quic_main_t *qm = &quic_main;
-  quic_worker_ctx_t *wrk_ctx;
-  quic_ctx_t *ctx;
-  crypto_context_t *crctx;
-  int i;
-
-  vec_validate (quic_main.wrk_ctx, qm->num_threads - 1);
-
-  QUIC_DBG (1, "Initializing quic engine to %s",
-	    quic_engine_type_str (qm->engine_type));
-
-  for (i = 0; i < qm->num_threads; i++)
-    {
-      wrk_ctx = quic_wrk_ctx_get (qm, i);
-      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
-			     CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
-				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
-				 CLIB_CACHE_LINE_BYTES);
-      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
-				 QUIC_CTX_POOL_PER_THREAD_SIZE,
-				 CLIB_CACHE_LINE_BYTES);
-    }
-
-  quic_eng_engine_init (qm);
-  qm->engine_is_initialized[qm->engine_type] = 1;
-}
-
 static clib_error_t *
 quic_main_loop_init (vlib_main_t *vm)
 {
@@ -937,10 +950,15 @@ quic_main_loop_init (vlib_main_t *vm)
 
   qm->engine_type =
     quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
-  QUIC_ASSERT (qm->engine_type != QUIC_ENGINE_NONE);
+  if (qm->engine_type == QUIC_ENGINE_NONE)
+    {
+      clib_warning (
+	"ERROR: NO QUIC ENGINE PLUGIN ENABLED!"
+	"\nEnable a quic engine plugin in the startup configuration.");
+      return clib_error_return (0, "No QUIC Engine enabled");
+    }
 
-  quic_engine_init ();
-  return 0;
+  return quic_engine_init ();
 }
 
 VLIB_INIT_FUNCTION (quic_init);
