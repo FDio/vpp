@@ -14,6 +14,12 @@
 ##############################################################################
 # vppcom shared library
 ##############################################################################
+
+option(VPP_BUILD_VCL "Build VCL" ON)
+if(NOT VPP_BUILD_VCL)
+  return()
+endif(NOT VPP_BUILD_VCL)
+
 add_vpp_library(vppcom
   SOURCES
   vppcom.c
