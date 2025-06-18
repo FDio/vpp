@@ -84,8 +84,8 @@ func (s *LdpSuite) SetupTest() {
 	for _, container := range s.StartedContainers {
 		container.AddEnvVar("VCL_CONFIG", container.GetContainerWorkDir()+"/vcl.conf")
 		container.AddEnvVar("LD_PRELOAD", "/usr/lib/libvcl_ldpreload.so")
-		container.AddEnvVar("LDP_DEBUG", "0")
-		container.AddEnvVar("VCL_DEBUG", "0")
+		container.AddEnvVar("LDP_DEBUG", "2")
+		container.AddEnvVar("VCL_DEBUG", "2")
 	}
 
 	s.CreateVclConfig(s.Containers.ServerApp)
@@ -109,7 +109,7 @@ func (s *LdpSuite) TeardownTest() {
 		s.CollectIperfLogs(s.Containers.ServerApp)
 		s.CollectRedisServerLogs(s.Containers.ServerApp)
 		s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error"))
-		s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("show error"))
+		s.Log(s.Containers.ClientVpp.VppInstance.Vppctl("show error"))
 	}
 
 	for _, container := range s.StartedContainers {
