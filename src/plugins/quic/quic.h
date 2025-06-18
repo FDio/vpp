@@ -250,6 +250,7 @@ typedef struct quic_main_
   int num_threads;
   quic_engine_type_t engine_type;
   u8 engine_is_initialized[QUIC_ENGINE_LAST + 1];
+  u8 session_update_time_cb_registered;
 } quic_main_t;
 
 extern quic_main_t quic_main;
