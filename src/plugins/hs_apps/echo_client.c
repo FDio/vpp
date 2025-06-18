@@ -94,6 +94,8 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
     bytes_to_send = clib_min (es->bytes_to_send, max_burst);
   if (ecm->throughput)
     bytes_to_send = clib_min (es->bytes_paced_current, bytes_to_send);
+  else if (ecm->max_chunk_bytes)
+    bytes_to_send = clib_min (ecm->max_chunk_bytes, bytes_to_send);
   test_buf_offset = es->bytes_sent % test_buf_len;
 
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset, bytes_to_send);
@@ -396,6 +398,7 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->run_time = 0;
   ecm->throughput = 0;
   ecm->pacing_window_len = 1;
+  ecm->max_chunk_bytes = 0;
   vec_free (ecm->connect_uri);
 }
 
@@ -1201,6 +1204,9 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "throughput %U", unformat_memory_size,
 			 &ecm->throughput))
 	;
+      else if (unformat (line_input, "max-tx-chunk %U", unformat_memory_size,
+			 &ecm->max_chunk_bytes))
+	;
       else if (unformat (line_input, "preallocate-fifos"))
 	ecm->prealloc_fifos = 1;
       else if (unformat (line_input, "preallocate-sessions"))
@@ -1235,6 +1241,8 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (timed_run_conflict && ecm->run_time)
     return clib_error_return (0, "failed: invalid arguments for a timed run!");
+  if (ecm->throughput && ecm->max_chunk_bytes)
+    return clib_error_return (0, "failed: can't set fixed tx chunk for a throughput run!");
 
 parse_config:
 
