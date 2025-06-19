@@ -483,6 +483,8 @@ hc_rx_callback (session_t *s)
       if (msg.data.body_len == 0)
 	{
 	  svm_fifo_dequeue_drop_all (s->rx_fifo);
+	  /* we don't need to print warning about binary content */
+	  hc_session->session_flags |= HC_S_FLAG_PRINTABLE_BODY;
 	  goto done;
 	}
 

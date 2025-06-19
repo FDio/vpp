@@ -1975,15 +1975,30 @@ http1_transport_rx_callback (http_conn_t *hc)
   if (!http1_req_state_is_rx_valid (req))
     {
       if (http_io_ts_max_read (hc))
-	clib_warning ("hc [%u]%x invalid rx state: http req state "
-		      "'%U', session state '%U'",
-		      hc->c_thread_index, hc->hc_hc_index,
-		      format_http_req_state, req->state,
-		      format_http_conn_state, hc);
-      http_io_ts_drain_all (hc);
+	{
+	  if (req->state == HTTP_REQ_STATE_APP_IO_MORE_DATA &&
+	      !(hc->flags & HTTP_CONN_F_IS_SERVER))
+	    {
+	      /* client can receive error response from server when still
+	       * sending content */
+	      /* TODO: 100 continue support */
+	      HTTP_DBG (1, "server send response while client sending data");
+	      http_io_as_drain_all (req);
+	      hc->state = HTTP_CONN_STATE_CLOSED;
+	      http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
+	      goto run_sm;
+	    }
+	  clib_warning ("hc [%u]%x invalid rx state: http req state "
+			"'%U', session state '%U'",
+			hc->c_thread_index, hc->hc_hc_index,
+			format_http_req_state, req->state,
+			format_http_conn_state, hc);
+	  http_io_ts_drain_all (hc);
+	}
       return;
     }
 
+run_sm:
   HTTP_DBG (1, "run state machine");
   http1_req_run_state_machine (hc, req, 0, 0);
 }

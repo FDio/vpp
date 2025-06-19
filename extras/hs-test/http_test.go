@@ -38,7 +38,7 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest)
+		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
@@ -791,6 +791,36 @@ func HttpClientPostFileTest(s *NoTopoSuite) {
 
 func HttpClientPostFilePtrTest(s *NoTopoSuite) {
 	httpClientPostFile(s, true, 131072)
+}
+
+func HttpClientPostRejectedTest(s *NoTopoSuite) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	vpp := s.Containers.Vpp.VppInstance
+	fileName := "/tmp/test_file.txt"
+	// send something big so we are sure that server respond when we are still sending body
+	s.Log(vpp.Container.Exec(false, "fallocate -l "+strconv.Itoa(10<<20)+" "+fileName))
+	s.Log(vpp.Container.Exec(false, "ls -la "+fileName))
+
+	server := ghttp.NewUnstartedServer()
+	l, err := net.Listen("tcp", serverAddress)
+	s.AssertNil(err, fmt.Sprint(err))
+	server.HTTPTestServer.Listener = l
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(false),
+			ghttp.VerifyRequest("POST", "/test"),
+			ghttp.RespondWith(http.StatusForbidden, nil),
+		))
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddress + "/test"
+	cmd := "http client post verbose uri " + uri + " file " + fileName
+	o := vpp.Vppctl(cmd)
+
+	s.Log(o)
+	s.AssertContains(o, "403")
+	s.Log(vpp.Vppctl("show session verbose 2"))
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {
