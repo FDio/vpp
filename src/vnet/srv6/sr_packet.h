@@ -110,8 +110,8 @@
  *
  */
 
-#ifndef IPPROTO_IPV6_ROUTE
-#define IPPROTO_IPV6_ROUTE        43
+#ifndef IP_PROTOCOL_IPV6_ROUTE
+#define IP_PROTOCOL_IPV6_ROUTE 43
 #endif
 
 #define ROUTING_HEADER_TYPE_SR    4

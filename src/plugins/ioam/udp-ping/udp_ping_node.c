@@ -34,6 +34,7 @@ typedef enum
   UDP_PING_NEXT_UDP_LOOKUP,
   UDP_PING_NEXT_ICMP,
   UDP_PING_NEXT_IP6_LOOKUP,
+  UDP_PING_NEXT_SRV6_LOCAL,
   UDP_PING_NEXT_IP6_DROP,
   UDP_PING_N_NEXT,
 } udp_ping_next_t;
@@ -517,9 +518,6 @@ udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
 			ip6_header_t * ip0, ip6_hop_by_hop_header_t * hbh0,
 			u16 * next0)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-
   *next0 = UDP_PING_NEXT_IP6_DROP;
 
   /*
@@ -578,32 +576,47 @@ udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
    * remote address. So pass it to SR processing as it may be local packet
    * afterall
    */
-  if (PREDICT_FALSE (hbh0->protocol == IPPROTO_IPV6_ROUTE))
-    goto end;
+  if (PREDICT_FALSE (hbh0->protocol == IP_PROTOCOL_IPV6_ROUTE))
+    *next0 = UDP_PING_NEXT_SRV6_LOCAL;
+  else
+    {
+      /* Other case remove hbh-ioam headers */
+      u64 *copy_dst0, *copy_src0;
+      u16 new_l0;
 
-  /* Other case remove hbh-ioam headers */
-  u64 *copy_dst0, *copy_src0;
-  u16 new_l0;
+      vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
 
-  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
+      new_l0 =
+	clib_net_to_host_u16 (ip0->payload_length) - ((hbh0->length + 1) << 3);
 
-  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-    ((hbh0->length + 1) << 3);
+      ip0->payload_length = clib_host_to_net_u16 (new_l0);
 
-  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+      ip0->protocol = hbh0->protocol;
 
-  ip0->protocol = hbh0->protocol;
+      copy_src0 = (u64 *) ip0;
+      copy_dst0 = copy_src0 + (hbh0->length + 1);
+      copy_dst0[4] = copy_src0[4];
+      copy_dst0[3] = copy_src0[3];
+      copy_dst0[2] = copy_src0[2];
+      copy_dst0[1] = copy_src0[1];
+      copy_dst0[0] = copy_src0[0];
 
-  copy_src0 = (u64 *) ip0;
-  copy_dst0 = copy_src0 + (hbh0->length + 1);
-  copy_dst0[4] = copy_src0[4];
-  copy_dst0[3] = copy_src0[3];
-  copy_dst0[2] = copy_src0[2];
-  copy_dst0[1] = copy_src0[1];
-  copy_dst0[0] = copy_src0[0];
-
-end:
-  *next0 = lm->local_next_by_ip_protocol[hbh0->protocol];
+      if (PREDICT_FALSE (hbh0->protocol == IP_PROTOCOL_ICMP6))
+	{
+	  /* If next header is ICMP, then pass it to ICMP processing */
+	  *next0 = UDP_PING_NEXT_ICMP;
+	}
+      else if (PREDICT_FALSE (hbh0->protocol == IP_PROTOCOL_UDP))
+	{
+	  /* If next header is UDP, then pass it to UDP processing */
+	  *next0 = UDP_PING_NEXT_UDP_LOOKUP;
+	}
+      else
+	{
+	  /* If next header is not UDP or ICMP, then punt it */
+	  *next0 = UDP_PING_NEXT_PUNT;
+	}
+    }
   return;
 }
 
@@ -804,6 +817,7 @@ VLIB_REGISTER_NODE (udp_ping_local, static) =
       [UDP_PING_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
       [UDP_PING_NEXT_ICMP] = "ip6-icmp-input",
       [UDP_PING_NEXT_IP6_LOOKUP] = "ip6-lookup",
+      [UDP_PING_NEXT_SRV6_LOCAL] = "sr-localsid-d",
       [UDP_PING_NEXT_IP6_DROP] = "ip6-drop",
     },
 };

@@ -354,7 +354,7 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */
 	  srh0->protocol = ip0->protocol;
-	  hbh0->protocol = IPPROTO_IPV6_ROUTE;
+	  hbh0->protocol = IP_PROTOCOL_IPV6_ROUTE;
 	  ip0->protocol = 0;
 	  new_l0 =
 	    clib_net_to_host_u16 (ip0->payload_length) + rewrite_len +

@@ -374,7 +374,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e)
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
-	  if ((ip6srv0->ip.protocol == IPPROTO_IPV6_ROUTE &&
+	  if ((ip6srv0->ip.protocol == IP_PROTOCOL_IPV6_ROUTE &&
 	       len0 <
 		 sizeof (ip6srv_combo_header_t) + ip6srv0->sr.length * 8) ||
 	      (len0 < sizeof (ip6_header_t)))
@@ -402,7 +402,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e)
 	      void *p;
 	      uword plen;
 
-	      if (ip6srv0->ip.protocol == IPPROTO_IPV6_ROUTE)
+	      if (ip6srv0->ip.protocol == IP_PROTOCOL_IPV6_ROUTE)
 		{
 		  tag = ip6srv0->sr.tag;
 		}
@@ -513,7 +513,7 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e)
 		    }
 		}
 
-	      if (ip6srv0->ip.protocol == IPPROTO_IPV6_ROUTE)
+	      if (ip6srv0->ip.protocol == IP_PROTOCOL_IPV6_ROUTE)
 		{
 		  vlib_buffer_advance (b0,
 				       (word) sizeof (ip6srv_combo_header_t) +
@@ -1384,7 +1384,7 @@ VLIB_NODE_FN (srv6_end_m_gtp6_e)
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
-	  if ((ip6srv0->ip.protocol != IPPROTO_IPV6_ROUTE) ||
+	  if ((ip6srv0->ip.protocol != IP_PROTOCOL_IPV6_ROUTE) ||
 	      (len0 < sizeof (ip6srv_combo_header_t) + 8 * ip6srv0->sr.length))
 	    {
 	      next0 = SRV6_END_M_GTP6_E_NEXT_DROP;
