@@ -56,10 +56,13 @@ typedef struct
   u8 *headers;
   u8 *protocol;
   u32 protocol_len;
+  u8 *user_agent;
+  u32 user_agent_len;
   uword content_len_header_index;
   u32 headers_len;
   u32 control_data_len;
   u16 parsed_bitmap;
+  u64 content_len;
 } hpack_request_control_data_t;
 
 typedef struct
@@ -181,5 +184,9 @@ http2_error_t hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 void hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
 			       hpack_response_control_data_t *control_data,
 			       u8 **dst);
+
+void hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
+			      hpack_request_control_data_t *control_data,
+			      u8 **dst);
 
 #endif /* SRC_PLUGINS_HTTP_HPACK_H_ */
