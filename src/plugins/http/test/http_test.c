@@ -1013,10 +1013,76 @@ http_test_hpack (vlib_main_t *vm)
   HTTP_TEST ((vec_len (buf) == (sizeof (expected2) - 1) &&
 	      !memcmp (buf, expected2, sizeof (expected2) - 1)),
 	     "response encoded as %U", format_hex_bytes, buf, vec_len (buf));
-  vec_free (buf);
+  vec_reset_length (buf);
   vec_free (headers_buf);
-  vec_free (server_name);
   vec_free (date);
+
+  vlib_cli_output (vm, "hpack_serialize_request");
+
+  hpack_request_control_data_t req_cd;
+  u8 *authority, *path;
+
+  static void (*_hpack_serialize_request) (
+    u8 * app_headers, u32 app_headers_len,
+    hpack_request_control_data_t * control_data, u8 * *dst);
+
+  _hpack_serialize_request =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_serialize_request");
+
+  authority = format (0, "www.example.com");
+  path = format (0, "/");
+
+  vec_validate (buf, 127);
+  vec_reset_length (buf);
+
+  req_cd.method = HTTP_REQ_GET;
+  req_cd.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+  req_cd.scheme = HTTP_URL_SCHEME_HTTP;
+  req_cd.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+  req_cd.path = path;
+  req_cd.path_len = vec_len (path);
+  req_cd.parsed_bitmap |= HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+  req_cd.authority = authority;
+  req_cd.authority_len = vec_len (authority);
+  req_cd.user_agent_len = 0;
+  req_cd.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
+  u8 expected3[] =
+    "\x82\x86\x84\x01\x8C\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF";
+  _hpack_serialize_request (0, 0, &req_cd, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected3) - 1) &&
+	      !memcmp (buf, expected3, sizeof (expected3) - 1)),
+	     "request encoded as %U", format_hex_bytes, buf, vec_len (buf));
+  vec_reset_length (buf);
+  vec_free (authority);
+  vec_free (path);
+  memset (&req_cd, 0, sizeof (req_cd));
+
+  authority = format (0, "example.org:123");
+
+  req_cd.method = HTTP_REQ_CONNECT;
+  req_cd.parsed_bitmap |= HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+  req_cd.authority = authority;
+  req_cd.authority_len = vec_len (authority);
+  req_cd.user_agent = server_name;
+  req_cd.user_agent_len = vec_len (server_name);
+  req_cd.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
+
+  vec_validate (headers_buf, 127);
+  http_init_headers_ctx (&headers, headers_buf, vec_len (headers_buf));
+  http_add_custom_header (&headers, http_token_lit ("sandwich"),
+			  http_token_lit ("spam"));
+
+  u8 expected4[] =
+    "\x02\x07\x43\x4F\x4E\x4E\x45\x43\x54\x01\x8B\x2F\x91\xD3\x5D\x05\x5C\xF6"
+    "\x4D\x70\x22\x67\x0F\x2B\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7f"
+    "\x00\x86\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  _hpack_serialize_request (headers_buf, headers.tail_offset, &req_cd, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected4) - 1) &&
+	      !memcmp (buf, expected4, sizeof (expected4) - 1)),
+	     "request encoded as %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+  vec_free (server_name);
+  vec_free (authority);
 
   return 0;
 }

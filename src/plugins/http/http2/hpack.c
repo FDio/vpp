@@ -100,6 +100,14 @@ static hpack_token_t hpack_headers[] = {
 #undef _
 };
 
+static http_token_t http_methods[] = {
+#define _(s, str) { http_token_lit (str) },
+  foreach_http_method
+#undef _
+};
+
+#define http_method_token(e) http_methods[e].base, http_methods[e].len
+
 __clib_export uword
 hpack_decode_int (u8 **src, u8 *end, u8 prefix_len)
 {
@@ -1050,38 +1058,38 @@ hpack_encode_custom_header (u8 *dst, const u8 *name, u32 name_len,
   return dst;
 }
 
+#define encode_indexed_static_entry(_index)                                   \
+  vec_add2 (dst, a, 1);                                                       \
+  *a++ = 0x80 | _index;
+
 static inline u8 *
 hpack_encode_status_code (u8 *dst, http_status_code_t sc)
 {
   u32 orig_len, actual_size;
   u8 *a, *b;
 
-#define encode_common_sc(_index)                                              \
-  vec_add2 (dst, a, 1);                                                       \
-  *a++ = 0x80 | _index;
-
   switch (sc)
     {
     case HTTP_STATUS_OK:
-      encode_common_sc (8);
+      encode_indexed_static_entry (8);
       break;
     case HTTP_STATUS_NO_CONTENT:
-      encode_common_sc (9);
+      encode_indexed_static_entry (9);
       break;
     case HTTP_STATUS_PARTIAL_CONTENT:
-      encode_common_sc (10);
+      encode_indexed_static_entry (10);
       break;
     case HTTP_STATUS_NOT_MODIFIED:
-      encode_common_sc (11);
+      encode_indexed_static_entry (11);
       break;
     case HTTP_STATUS_BAD_REQUEST:
-      encode_common_sc (12);
+      encode_indexed_static_entry (12);
       break;
     case HTTP_STATUS_NOT_FOUND:
-      encode_common_sc (13);
+      encode_indexed_static_entry (13);
       break;
     case HTTP_STATUS_INTERNAL_ERROR:
-      encode_common_sc (14);
+      encode_indexed_static_entry (14);
       break;
     default:
       orig_len = vec_len (dst);
@@ -1094,6 +1102,110 @@ hpack_encode_status_code (u8 *dst, http_status_code_t sc)
       vec_set_len (dst, orig_len + actual_size);
       break;
     }
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_method (u8 *dst, http_req_method_t method)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  switch (method)
+    {
+    case HTTP_REQ_GET:
+      encode_indexed_static_entry (2);
+      break;
+    case HTTP_REQ_POST:
+      encode_indexed_static_entry (3);
+      break;
+    default:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 9);
+      b = a;
+      /* Literal Header Field without Indexing — Indexed Name */
+      *b++ = 2;
+      b = hpack_encode_string (b, (const u8 *) http_method_token (method));
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
+      break;
+    }
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
+{
+  u8 *a;
+
+  switch (scheme)
+    {
+    case HTTP_URL_SCHEME_HTTP:
+      encode_indexed_static_entry (6);
+      break;
+    case HTTP_URL_SCHEME_HTTPS:
+      encode_indexed_static_entry (7);
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_path (u8 *dst, u8 *path, u32 path_len)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  switch (path_len)
+    {
+    case 1:
+      if (path[0] == '/')
+	{
+	  encode_indexed_static_entry (4);
+	  return dst;
+	}
+      break;
+    case 11:
+      if (!memcmp (path, "/index.html", 11))
+	{
+	  encode_indexed_static_entry (5);
+	  return dst;
+	}
+      break;
+    default:
+      break;
+    }
+
+  orig_len = vec_len (dst);
+  vec_add2 (dst, a, path_len + 2);
+  b = a;
+  /* Literal Header Field without Indexing — Indexed Name */
+  *b++ = 4;
+  b = hpack_encode_string (b, path, path_len);
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+
+  return dst;
+}
+
+static inline u8 *
+hpack_encode_authority (u8 *dst, u8 *authority, u32 authority_len)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  orig_len = vec_len (dst);
+  vec_add2 (dst, a, authority_len + 2);
+  b = a;
+  /* Literal Header Field without Indexing — Indexed Name */
+  *b++ = 1;
+  b = hpack_encode_string (b, authority, authority_len);
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+
   return dst;
 }
 
@@ -1154,6 +1266,65 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
       *dst = p;
       return;
     }
+
+  end = app_headers + app_headers_len;
+  while (app_headers < end)
+    {
+      /* custom header name? */
+      u32 *tmp = (u32 *) app_headers;
+      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+	{
+	  http_custom_token_t *name, *value;
+	  name = (http_custom_token_t *) app_headers;
+	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
+	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  value = (http_custom_token_t *) app_headers;
+	  app_headers += sizeof (http_custom_token_t) + value->len;
+	  p = hpack_encode_custom_header (p, name->token, name_len,
+					  value->token, value->len);
+	}
+      else
+	{
+	  http_app_header_t *header;
+	  header = (http_app_header_t *) app_headers;
+	  app_headers += sizeof (http_app_header_t) + header->value.len;
+	  p = hpack_encode_header (p, header->name, header->value.token,
+				   header->value.len);
+	}
+    }
+
+  *dst = p;
+}
+
+__clib_export void
+hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
+			 hpack_request_control_data_t *control_data, u8 **dst)
+{
+  u8 *p, *end;
+
+  p = *dst;
+
+  /* pseudo-headers must go first */
+  p = hpack_encode_method (p, control_data->method);
+
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED)
+    p = hpack_encode_scheme (p, control_data->scheme);
+
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+    p = hpack_encode_path (p, control_data->path, control_data->path_len);
+
+  p = hpack_encode_authority (p, control_data->authority,
+			      control_data->authority_len);
+
+  /* user agent */
+  if (control_data->user_agent_len)
+    p =
+      hpack_encode_header (p, HTTP_HEADER_USER_AGENT, control_data->user_agent,
+			   control_data->user_agent_len);
+
+  /* content length if any */
+  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+    p = hpack_encode_content_len (p, control_data->content_len);
 
   end = app_headers + app_headers_len;
   while (app_headers < end)

@@ -51,13 +51,18 @@ typedef struct
 
 #define http_token_lit(s) (s), sizeof (s) - 1
 
+#define foreach_http_method                                                   \
+  _ (GET, "GET")                                                              \
+  _ (POST, "POST")                                                            \
+  _ (PUT, "PUT")                                                              \
+  _ (CONNECT, "CONNECT")                                                      \
+  _ (UNKNOWN, "UNKNOWN") /* for internal use */
+
 typedef enum http_req_method_
 {
-  HTTP_REQ_GET = 0,
-  HTTP_REQ_POST,
-  HTTP_REQ_PUT,
-  HTTP_REQ_CONNECT,
-  HTTP_REQ_UNKNOWN, /* for internal use */
+#define _(s, str) HTTP_REQ_##s,
+  foreach_http_method
+#undef _
 } http_req_method_t;
 
 typedef enum http_msg_type_
