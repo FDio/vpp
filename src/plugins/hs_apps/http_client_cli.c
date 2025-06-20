@@ -167,7 +167,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   msg.method_type = HTTP_REQ_GET;
   /* request target */
   msg.data.target_path_offset = 0;
-  msg.data.target_path_len = vec_len (hcm->http_query);
+  /* request target len must be without null termination */
+  msg.data.target_path_len = strlen ((char *) hcm->http_query);
   /* custom headers */
   msg.data.headers_offset = msg.data.target_path_len;
   msg.data.headers_len = headers.tail_offset;
@@ -179,7 +180,7 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
     msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
 
   svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) },
-			     { hcm->http_query, vec_len (hcm->http_query) },
+			     { hcm->http_query, msg.data.target_path_len },
 			     { headers_buf, msg.data.headers_len } };
 
   rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);

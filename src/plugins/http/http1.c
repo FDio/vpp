@@ -46,22 +46,22 @@ static const char *connection_upgrade_template = "Connection: upgrade\r\n"
 /**
  * http request boilerplate
  */
-static const char *get_request_template = "GET %s HTTP/1.1\r\n"
+static const char *get_request_template = "GET %U HTTP/1.1\r\n"
 					  "Host: %v\r\n"
 					  "User-Agent: %v\r\n";
 
-static const char *post_request_template = "POST %s HTTP/1.1\r\n"
+static const char *post_request_template = "POST %U HTTP/1.1\r\n"
 					   "Host: %v\r\n"
 					   "User-Agent: %v\r\n"
 					   "Content-Length: %llu\r\n";
 
-static const char *put_request_template = "PUT %s HTTP/1.1\r\n"
+static const char *put_request_template = "PUT %U HTTP/1.1\r\n"
 					  "Host: %v\r\n"
 					  "User-Agent: %v\r\n"
 					  "Content-Length: %llu\r\n";
 
 static const char *put_chunked_request_template =
-  "PUT %s HTTP/1.1\r\n"
+  "PUT %U HTTP/1.1\r\n"
   "Host: %v\r\n"
   "User-Agent: %v\r\n"
   "Transfer-Encoding: chunked\r\n";
@@ -1411,7 +1411,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
        */
       request = format (request, get_request_template,
 			/* target */
-			target,
+			format_http_bytes, target, msg.data.target_path_len,
 			/* Host */
 			hc->host,
 			/* User-Agent */
@@ -1435,7 +1435,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
        */
       request = format (request, post_request_template,
 			/* target */
-			target,
+			format_http_bytes, target, msg.data.target_path_len,
 			/* Host */
 			hc->host,
 			/* User-Agent */
@@ -1456,13 +1456,14 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 	  /*
 	   * Streaming PUT with chunked transfer encoding
 	   */
-	  request = format (request, put_chunked_request_template,
-			    /* target */
-			    target,
-			    /* Host */
-			    hc->host,
-			    /* User-Agent */
-			    hc->app_name);
+	  request =
+	    format (request, put_chunked_request_template,
+		    /* target */
+		    format_http_bytes, target, msg.data.target_path_len,
+		    /* Host */
+		    hc->host,
+		    /* User-Agent */
+		    hc->app_name);
 
 	  http_req_tx_buffer_init (req, &msg);
 
@@ -1480,15 +1481,16 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 	  /*
 	   * Regular PUT with Content-Length
 	   */
-	  request = format (request, put_request_template,
-			    /* target */
-			    target,
-			    /* Host */
-			    hc->host,
-			    /* User-Agent */
-			    hc->app_name,
-			    /* Content-Length */
-			    msg.data.body_len);
+	  request =
+	    format (request, put_request_template,
+		    /* target */
+		    format_http_bytes, target, msg.data.target_path_len,
+		    /* Host */
+		    hc->host,
+		    /* User-Agent */
+		    hc->app_name,
+		    /* Content-Length */
+		    msg.data.body_len);
 
 	  http_req_tx_buffer_init (req, &msg);
 
