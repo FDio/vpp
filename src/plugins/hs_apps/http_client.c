@@ -190,8 +190,9 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
   rv = svm_fifo_enqueue (s->tx_fifo, sizeof (wrk->msg), (u8 *) &wrk->msg);
   ASSERT (rv == sizeof (wrk->msg));
 
-  rv = svm_fifo_enqueue (s->tx_fifo, vec_len (hcm->target), hcm->target);
-  ASSERT (rv == vec_len (hcm->target));
+  rv =
+    svm_fifo_enqueue (s->tx_fifo, wrk->msg.data.target_path_len, hcm->target);
+  ASSERT (rv == wrk->msg.data.target_path_len);
 
   rv = svm_fifo_enqueue (s->tx_fifo, wrk->req_headers.tail_offset,
 			 wrk->headers_buf);
@@ -308,8 +309,8 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
 	wrk->msg.data.body_len = 0;
 
       wrk->msg.type = HTTP_MSG_REQUEST;
-      /* request target */
-      wrk->msg.data.target_path_len = vec_len (hcm->target);
+      /* request target len must be without null termination */
+      wrk->msg.data.target_path_len = strlen ((char *) hcm->target);
       /* custom headers */
       wrk->msg.data.headers_len = wrk->req_headers.tail_offset;
       /* total length */
