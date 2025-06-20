@@ -1420,9 +1420,10 @@ vlib_buffer_clone_at_offset (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
     {
       vlib_buffer_t *copy;
       copy = vlib_buffer_copy (vm, s);
-      n_cloned += vlib_buffer_clone_255 (
-	vm, vlib_get_buffer_index (vm, copy), (buffers + n_cloned),
-	VLIB_BUFFER_MAX_CLONE, head_end_offset, offset);
+      if (copy)
+        n_cloned += vlib_buffer_clone_255 (
+	  vm, vlib_get_buffer_index (vm, copy), (buffers + n_cloned),
+	  VLIB_BUFFER_MAX_CLONE, head_end_offset, offset);
       n_buffers -= VLIB_BUFFER_MAX_CLONE;
     }
   n_cloned += vlib_buffer_clone_255 (vm, src_buffer, buffers + n_cloned,
