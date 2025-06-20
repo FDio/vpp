@@ -187,7 +187,7 @@ srv6_end_m_gtp6_d_di_init (vlib_main_t * vm)
   // IPv6 header (default)
   ip6->ip.ip_version_traffic_class_and_flow_label = 0x60;
   ip6->ip.hop_limit = 64;
-  ip6->ip.protocol = IPPROTO_IPV6_ROUTE;
+  ip6->ip.protocol = IP_PROTOCOL_IPV6_ROUTE;
 
   // SR header (default)
   ip6->sr.type = 4;
