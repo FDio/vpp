@@ -775,21 +775,45 @@ tls_async_handshake_event_handler (void *async_evt, void *unused)
       return 0;
     }
 
-  /* client not supported */
-  if (!SSL_is_server (oc->ssl))
-    return 0;
-
-  /* Need to check transport status */
-  if (ctx->flags & TLS_CONN_F_PASSIVE_CLOSE)
+  if (SSL_is_server (oc->ssl))
     {
-      openssl_handle_handshake_failure (ctx);
-      return 0;
+      /* Need to check transport status */
+      if (ctx->flags & TLS_CONN_F_PASSIVE_CLOSE)
+	{
+	  openssl_handle_handshake_failure (ctx);
+	  return 0;
+	}
+
+      if (tls_notify_app_accept (ctx))
+	{
+	  ctx->c_s_index = SESSION_INVALID_INDEX;
+	  tls_disconnect_transport (ctx);
+	}
     }
-
-  if (tls_notify_app_accept (ctx))
+  else
     {
-      ctx->c_s_index = SESSION_INVALID_INDEX;
-      tls_disconnect_transport (ctx);
+      /*
+       * Verify server certificate
+       */
+      if ((rv = SSL_get_verify_result (oc->ssl)) != X509_V_OK)
+	{
+	  TLS_DBG (1, " failed verify: %s\n",
+		   X509_verify_cert_error_string (rv));
+	  /*
+	   * Presence of hostname enforces strict certificate verification
+	   */
+	  if (ctx->srv_hostname)
+	    {
+	      TLS_DBG (1, " Client HS_COMPLETE >>>>>>>>>>>>>>");
+	      openssl_handle_handshake_failure (ctx);
+	      return -1;
+	    }
+	}
+      if (tls_notify_app_connected (ctx, SESSION_E_NONE))
+	{
+	  tls_disconnect_transport (ctx);
+	  return -1;
+	}
     }
 
   TLS_DBG (1,
