@@ -597,7 +597,7 @@ handle_request (hss_session_t *hs)
 
   l = hss_listener_get (hs->listener_index);
 
-  if (hs->left_recv > l->max_body_size)
+  if (hs->left_recv > l->max_req_body_size)
     {
       start_send_data (hs, HTTP_STATUS_CONTENT_TOO_LARGE);
       hss_session_disconnect_transport (hs);
@@ -1129,7 +1129,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   l->cache_size = 10 << 20;
   l->max_age = HSS_DEFAULT_MAX_AGE;
-  l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
+  l->max_req_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
   l->flags = 0;
@@ -1166,8 +1166,8 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "max-age %d", &l->max_age))
 	;
-      else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
-			 &l->max_body_size))
+      else if (unformat (line_input, "max-req-body-size %U",
+			 unformat_memory_size, &l->max_req_body_size))
 	;
       else if (unformat (line_input, "rx-buff-thresh %U", unformat_memory_size,
 			 &l->rx_buff_thresh))
@@ -1180,6 +1180,10 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "http1-only"))
 	l->flags |= HSS_LISTENER_F_HTTP1_ONLY;
+      /* Deprecated */
+      else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
+			 &l->max_req_body_size))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1238,18 +1242,20 @@ done:
  * @clistart
  * http static server www-root /tmp/www uri tcp://0.0.0.0/80 cache-size 2m
  * @cliend
- * @cliexcmd{http static server www-root <path> [url-handlers]
- *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]
- *   [uri <uri>] [ptr-thresh <nn>] [prealloc-fifos <nn>] [debug [nn]]
- *   [keepalive-timeout <nn>] [max-body-size <nn>] [http1-only]}
+ * @cliexcmd{http static server [private-segment-size <nnMG>]
+ * [fifo-size <nbytes>] [prealloc-fifos <nn>] [debug <nn>] [uri <uri>]
+ * [www-root <path>] [url-handlers] [cache-size <nn>] [max-age <nseconds>]
+ * [max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]
+ * [ptr-thresh <nn>] [http1-only]}
 ?*/
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
   .short_help =
-    "http static server [www-root <path>] [url-handlers]\n"
-    "[private-segment-size <nnMG>] [fifo-size <nbytes>] [max-age <nseconds>]\n"
-    "[uri <uri>] [ptr-thresh <nn>] [prealloc-fifos <nn>] [debug [nn]]\n"
-    "[keepalive-timeout <nn>] [max-body-size <nn>] [http1-only]\n",
+    "http static server [private-segment-size <nnMG>] [fifo-size <nbytes>]\n"
+    "[prealloc-fifos <nn>] [debug <nn>] [uri <uri>] [www-root <path>]\n"
+    "[url-handlers] [cache-size <nn>] [max-age <nseconds>]\n"
+    "[max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]\n"
+    "[ptr-thresh <nn>] [http1-only]\n",
   .function = hss_create_command_fn,
 };
 
@@ -1272,7 +1278,7 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   l->cache_size = 10 << 20;
   l->max_age = HSS_DEFAULT_MAX_AGE;
-  l->max_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
+  l->max_req_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
   l->flags = 0;
@@ -1292,19 +1298,25 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "cache-size %U", unformat_memory_size,
 			 &l->cache_size))
 	;
+      else if (unformat (line_input, "max-age %d", &l->max_age))
+	;
+      else if (unformat (line_input, "max-req-body-size %U",
+			 unformat_memory_size, &l->max_req_body_size))
+	;
+      else if (unformat (line_input, "rx-buff-thresh %U", unformat_memory_size,
+			 &l->rx_buff_thresh))
+	;
       else if (unformat (line_input, "keepalive-timeout %d",
 			 &l->keepalive_timeout))
 	;
       else if (unformat (line_input, "ptr-thresh %U", unformat_memory_size,
 			 &l->use_ptr_thresh))
 	;
-      else if (unformat (line_input, "max-age %d", &l->max_age))
-	;
+      else if (unformat (line_input, "http1-only"))
+	l->flags |= HSS_LISTENER_F_HTTP1_ONLY;
+      /* Deprecated */
       else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
-			 &l->max_body_size))
-	;
-      else if (unformat (line_input, "rx-buff-thresh %U", unformat_memory_size,
-			 &l->rx_buff_thresh))
+			 &l->max_req_body_size))
 	;
       else
 	{
@@ -1359,8 +1371,11 @@ done:
 
 VLIB_CLI_COMMAND (hss_add_del_listener_command, static) = {
   .path = "http static listener",
-  .short_help = "http static listener [add|del] uri <uri>\n"
-		"[www-root <path>] [url-handlers] [http1-only]\n",
+  .short_help =
+    "http static listener [add|del] [uri <uri>] [www-root <path>]\n"
+    "[url-handlers] [cache-size <nn>] [max-age <nseconds>]\n"
+    "[max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]\n"
+    "[ptr-thresh <nn>] [http1-only]\n",
   .function = hss_add_del_listener_command_fn,
 };
 

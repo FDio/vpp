@@ -80,7 +80,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   hsm->default_listener.www_root = format (0, "%s%c", www_root, 0);
   hsm->default_listener.cache_size = cache_limit;
   hsm->default_listener.max_age = max_age;
-  hsm->default_listener.max_body_size = max_body_size;
+  hsm->default_listener.max_req_body_size = max_body_size;
   hsm->default_listener.rx_buff_thresh = rx_buff_thresh;
   hsm->default_listener.keepalive_timeout = keepalive_timeout;
   hsm->have_default_listener = 1;
