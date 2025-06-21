@@ -160,7 +160,7 @@ typedef struct hss_listener_
   /** Max cache size before LRU occurs */
   u64 cache_size;
   /** Maximum size of a request body (in bytes) **/
-  u64 max_body_size;
+  u64 max_req_body_size;
   /** Maximum size of a large memory allocation */
   u32 rx_buff_thresh;
   /** Timeout during which client connection will stay open */
