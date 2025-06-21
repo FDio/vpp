@@ -1413,23 +1413,23 @@ vcl_api_retry_attach (vcl_worker_t *wrk)
 
   vcl_worker_detached_signal_mq (wrk);
 
-  clib_spinlock_lock (&vcm->workers_lock);
+  clib_spinlock_lock (&vcm->reattach_lock);
   if (vcl_is_first_reattach_to_execute ())
     {
       if (vcl_api_attach ())
 	{
-	  clib_spinlock_unlock (&vcm->workers_lock);
+	  clib_spinlock_unlock (&vcm->reattach_lock);
 	  return;
 	}
       vcl_worker_detached_stop_signal_mq (wrk);
       vcl_set_reattach_counter ();
-      clib_spinlock_unlock (&vcm->workers_lock);
+      clib_spinlock_unlock (&vcm->reattach_lock);
     }
   else
     {
       vcl_set_reattach_counter ();
       vcl_worker_detached_stop_signal_mq (wrk);
-      clib_spinlock_unlock (&vcm->workers_lock);
+      clib_spinlock_unlock (&vcm->reattach_lock);
       vcl_worker_register_with_vpp ();
     }
 
@@ -1494,6 +1494,7 @@ vppcom_app_create (const char *app_name)
 			  20 /* timeout in secs */);
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
+  clib_spinlock_init (&vcm->reattach_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
   atexit (vppcom_app_exit);
   vcl_elog_init (vcm);

@@ -362,10 +362,6 @@ typedef struct vppcom_main_t_
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
 
-  /** Counter to determine order of execution of `vcl_api_retry_attach`
-   * function by multiple workers */
-  int reattach_count;
-
   /** Lock to protect segment hash table */
   clib_rwlock_t segment_table_lock;
 
@@ -386,6 +382,11 @@ typedef struct vppcom_main_t_
   int (*vcl_epoll_ctl) (int epfd, int op, int fd, struct epoll_event *event);
   int (*vcl_epoll_wait) (int epfd, struct epoll_event *events, int maxevents,
 			 int timeout);
+
+  clib_spinlock_t reattach_lock;
+  /** Counter to determine order of execution of `vcl_api_retry_attach`
+   * function by multiple workers */
+  int reattach_count;
 
   /*
    * Binary api context
