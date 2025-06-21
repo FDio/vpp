@@ -518,6 +518,7 @@ app_evt_collector_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 *collector_uri = 0, is_enable = 0, is_add = 1;
   app_evt_main_t *alm = &app_evt_main;
   clib_error_t *error = 0;
+  u32 app_index = ~0;
   u64 tmp64 = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -542,6 +543,8 @@ app_evt_collector_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	alm->segment_size = tmp64;
       else if (unformat (line_input, "uri %s", &collector_uri))
 	vec_add1 (collector_uri, 0);
+      else if (unformat (line_input, "app %d", &app_index))
+	;
       else if (unformat (line_input, "add"))
 	;
       else if (unformat (line_input, "del"))
@@ -592,6 +595,23 @@ app_evt_collector_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
+  if (app_index != ~0)
+    {
+      application_t *app = application_get (app_index);
+      if (!app)
+	{
+	  error = clib_error_return (0, "Invalid app index %u", app_index);
+	  goto done;
+	}
+      if (!is_add)
+	{
+	  app->evt_collector_index = APP_INVALID_INDEX;
+	  app->cb_fns.app_evt_callback = 0;
+	  goto done;
+	}
+      app->cb_fns.app_evt_callback = app_evt_collector_get_cb_fn ();
+    }
+
 done:
   unformat_free (line_input);
   vec_free (collector_uri);
@@ -601,7 +621,7 @@ done:
 VLIB_CLI_COMMAND (app_evt_collector_command, static) = {
   .path = "app evt-collector",
   .short_help = "app evt-collector [enable] [segment-size <nn>[k|m]] "
-		"[fifo-size <nn>[k|m]] [add|del] uri <uri>",
+		"[fifo-size <nn>[k|m]] [add|del] [uri <uri>] [app <index>] ",
   .function = app_evt_collector_enable_command_fn,
 };
 

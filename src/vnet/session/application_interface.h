@@ -246,7 +246,7 @@ typedef enum
   _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")                     \
   _ (USE_HUGE_PAGE, "Use huge page for FIFO")                                 \
   _ (GET_ORIGINAL_DST, "Get original dst enabled")                            \
-  _ (LOG_COLLECTOR, "App requests log collector")
+  _ (EVT_COLLECTOR, "App requests event collector")
 
 typedef enum _app_options
 {
