@@ -856,7 +856,7 @@ application_alloc_and_init (app_init_args_t *a)
     props->pct_first_alloc = opts[APP_OPTIONS_PCT_FIRST_ALLOC];
   props->segment_type = seg_type;
 
-  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_LOG_COLLECTOR)
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_COLLECTOR)
     app->cb_fns.app_evt_callback = app_evt_collector_get_cb_fn ();
 
   /* Add app to lookup by api_client_index table */
