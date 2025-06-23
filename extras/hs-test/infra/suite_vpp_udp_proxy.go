@@ -17,6 +17,7 @@ import (
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/summerwind/h2spec/config"
+	"go.fd.io/govpp/binapi/tapv2"
 )
 
 type VppUdpProxySuite struct {
@@ -77,8 +78,10 @@ func (s *VppUdpProxySuite) SetupTest() {
 	s.AssertNotNil(vpp, fmt.Sprint(err))
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1, 2))
+	numWorkers := uint16(max(1, len(s.Containers.VppProxy.AllocatedCpus)-1))
+	s.Log("VPP proxy will use %d workers", numWorkers)
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, numWorkers, 1, uint32(tapv2.TAP_API_FLAG_CONSISTENT_QP)))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, numWorkers, 2, uint32(tapv2.TAP_API_FLAG_CONSISTENT_QP)))
 
 	arp := fmt.Sprintf("set ip neighbor %s %s %s",
 		s.Interfaces.Server.Peer.Name(),

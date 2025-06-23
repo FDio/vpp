@@ -553,7 +553,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, numRxQueues uint
 		TapFlags:         tapv2.TapFlags(tapFlags),
 	}
 
-	vpp.getSuite().Log("create tap interface " + tap.Name())
+	vpp.getSuite().Log("create tap interface " + tap.Name() + " num-rx-queues " + strconv.Itoa(int(numRxQueues)))
 	// Create tap interface
 	if err := vpp.ApiStream.SendMsg(createTapReq); err != nil {
 		return err
