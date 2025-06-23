@@ -54,15 +54,6 @@ func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
 	s.SetupTest()
 	s.Containers.IperfC.Run()
 	s.Containers.IperfS.Run()
-	vppProxy := s.Containers.VppProxy.VppInstance
-
-	// tap interfaces are created on test setup with 1 rx-queue,
-	// need to recreate them with 2 + consistent-qp
-	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Server))
-	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Server, false, 2, uint32(s.Interfaces.Server.Peer.Index), Consistent_qp))
-
-	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
-	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
 	s.ConfigureVppProxy("tcp", s.Ports.Proxy)
 	if proto == "udp" {
@@ -354,12 +345,6 @@ func VppConnectProxyStressMWTest(s *VppProxySuite) {
 	defer remoteServerConn.Close()
 
 	vppProxy := s.Containers.VppProxy.VppInstance
-	// tap interfaces are created on test setup with 1 rx-queue,
-	// need to recreate them with 2 + consistent-qp
-	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Server))
-	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Server, false, 2, uint32(s.Interfaces.Server.Peer.Index), Consistent_qp))
-	s.AssertNil(vppProxy.DeleteTap(s.Interfaces.Client))
-	s.AssertNil(vppProxy.CreateTap(s.Interfaces.Client, false, 2, uint32(s.Interfaces.Client.Peer.Index), Consistent_qp))
 
 	s.ConfigureVppProxy("http", s.Ports.Proxy)
 
