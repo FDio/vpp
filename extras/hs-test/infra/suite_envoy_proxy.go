@@ -129,8 +129,9 @@ func (s *EnvoyProxySuite) SetupTest() {
 	s.AssertNil(vpp.Start())
 	// wait for VPP to start
 	time.Sleep(time.Second * 1)
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1, 1))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 1, 2))
+	numWorkers := uint16(max(1, len(s.Containers.Vpp.AllocatedCpus)-1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Client, false, numWorkers, 1, Consistent_qp))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Server, false, numWorkers, 2, Consistent_qp))
 	s.Containers.Vpp.Exec(false, "chmod 777 -R %s", s.Containers.Vpp.GetContainerWorkDir())
 
 	// Add Ipv4 ARP entry for nginx HTTP server, otherwise first request fail (HTTP error 503)
