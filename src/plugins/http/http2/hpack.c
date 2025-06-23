@@ -7,6 +7,7 @@
 #include <http/http2/hpack.h>
 #include <http/http2/huffman_table.h>
 #include <http/http_status_codes.h>
+#include <http/http_private.h>
 
 #define HPACK_STATIC_TABLE_SIZE 61
 
@@ -771,6 +772,30 @@ hpack_parse_scheme (u8 *value, u32 value_len)
   return HTTP_URL_SCHEME_UNKNOWN;
 }
 
+static inline http2_error_t
+hpack_parse_status_code (u8 *value, u32 value_len, http_status_code_t *sc)
+{
+  u16 status_code = 0;
+  u8 *p;
+
+  if (value_len != 3)
+    return HTTP2_ERROR_PROTOCOL_ERROR;
+
+  p = value;
+  parse_int (status_code, 100);
+  parse_int (status_code, 10);
+  parse_int (status_code, 1);
+  if (status_code < 100 || status_code > 599)
+    {
+      HTTP_DBG (1, "invalid status code %d", status_code);
+      return HTTP2_ERROR_PROTOCOL_ERROR;
+    }
+  HTTP_DBG (1, "status code: %d", status_code);
+  *sc = http_sc_by_u16 (status_code);
+
+  return HTTP2_ERROR_NO_ERROR;
+}
+
 static http2_error_t
 hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
 			       u32 value_len,
@@ -852,6 +877,31 @@ hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
   return HTTP2_ERROR_NO_ERROR;
 }
 
+static http2_error_t
+hpack_parse_resp_pseudo_header (u8 *name, u32 name_len, u8 *value,
+				u32 value_len,
+				hpack_response_control_data_t *control_data)
+{
+  HTTP_DBG (2, "%U: %U", format_http_bytes, name, name_len, format_http_bytes,
+	    value, value_len);
+  switch (name_len)
+    {
+    case 7:
+      if (!memcmp (name + 1, "status", 6))
+	{
+	  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED)
+	    return HTTP2_ERROR_PROTOCOL_ERROR;
+	  control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_STATUS_PARSED;
+	  return hpack_parse_status_code (name, name_len, &control_data->sc);
+	}
+      break;
+    default:
+      return HTTP2_ERROR_PROTOCOL_ERROR;
+    }
+
+  return HTTP2_ERROR_NO_ERROR;
+}
+
 /* Special treatment for headers like:
  *
  * RFC9113 8.2.2: any message containing connection-specific header
@@ -863,8 +913,7 @@ hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
  */
 always_inline http2_error_t
 hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
-			 uword index,
-			 hpack_request_control_data_t *control_data)
+			 uword index, uword *content_len_header_index)
 {
   switch (name_len)
     {
@@ -895,8 +944,8 @@ hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
       break;
     case 14:
       if (!memcmp (name, "content-length", 14) &&
-	  control_data->content_len_header_index == ~0)
-	control_data->content_len_header_index = index;
+	  *content_len_header_index == ~0)
+	*content_len_header_index = index;
       break;
     case 16:
       if (!memcmp (name, "proxy-connection", 16))
@@ -987,8 +1036,99 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
       control_data->headers_len += value_len;
       if (regular_header_parsed)
 	{
-	  rv = hpack_preprocess_header (name, name_len, value, value_len,
-					header - *headers, control_data);
+	  rv = hpack_preprocess_header (
+	    name, name_len, value, value_len, header - *headers,
+	    &control_data->content_len_header_index);
+	  if (rv != HTTP2_ERROR_NO_ERROR)
+	    {
+	      HTTP_DBG (1, "connection-specific header present");
+	      return rv;
+	    }
+	}
+    }
+  control_data->control_data_len = dst_len - b_left;
+  HTTP_DBG (2, "%U", format_hpack_dynamic_table, dynamic_table);
+  return HTTP2_ERROR_NO_ERROR;
+}
+
+http2_error_t
+hpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+		      hpack_response_control_data_t *control_data,
+		      http_field_line_t **headers,
+		      hpack_dynamic_table_t *dynamic_table)
+{
+  u8 *p, *end, *b, *name, *value;
+  u8 regular_header_parsed = 0;
+  u32 name_len, value_len;
+  uword b_left;
+  http_field_line_t *header;
+  http2_error_t rv;
+
+  p = src;
+  end = src + src_len;
+  b = dst;
+  b_left = dst_len;
+  control_data->parsed_bitmap = 0;
+  control_data->headers_len = 0;
+  control_data->content_len_header_index = ~0;
+
+  while (p != end)
+    {
+      name = b;
+      rv = hpack_decode_header (&p, end, &b, &b_left, &name_len, &value_len,
+				dynamic_table);
+      if (rv != HTTP2_ERROR_NO_ERROR)
+	{
+	  HTTP_DBG (1, "hpack_decode_header: %U", format_http2_error, rv);
+	  return rv;
+	}
+      value = name + name_len;
+
+      /* pseudo header */
+      if (name[0] == ':')
+	{
+	  /* all pseudo-headers must be before regular headers */
+	  if (regular_header_parsed)
+	    {
+	      HTTP_DBG (1, "pseudo-headers after regular header");
+	      return HTTP2_ERROR_PROTOCOL_ERROR;
+	    }
+	  rv = hpack_parse_resp_pseudo_header (name, name_len, value,
+					       value_len, control_data);
+	  if (rv != HTTP2_ERROR_NO_ERROR)
+	    {
+	      HTTP_DBG (1, "hpack_parse_req_pseudo_header: %U",
+			format_http2_error, rv);
+	      return rv;
+	    }
+	  continue;
+	}
+      else
+	{
+	  if (!hpack_header_name_is_valid (name, name_len))
+	    return HTTP2_ERROR_PROTOCOL_ERROR;
+	  if (!regular_header_parsed)
+	    {
+	      regular_header_parsed = 1;
+	      control_data->headers = name;
+	    }
+	}
+      if (!hpack_header_value_is_valid (value, value_len))
+	return HTTP2_ERROR_PROTOCOL_ERROR;
+      vec_add2 (*headers, header, 1);
+      HTTP_DBG (2, "%U: %U", format_http_bytes, name, name_len,
+		format_http_bytes, value, value_len);
+      header->name_offset = name - control_data->headers;
+      header->name_len = name_len;
+      header->value_offset = value - control_data->headers;
+      header->value_len = value_len;
+      control_data->headers_len += name_len;
+      control_data->headers_len += value_len;
+      if (regular_header_parsed)
+	{
+	  rv = hpack_preprocess_header (
+	    name, name_len, value, value_len, header - *headers,
+	    &control_data->content_len_header_index);
 	  if (rv != HTTP2_ERROR_NO_ERROR)
 	    {
 	      HTTP_DBG (1, "connection-specific header present");
