@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "943748bc_21a1ff6c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3191
+      },
+      "writtenOn": "2025-06-23T19:27:39Z",
+      "side": 1,
+      "message": "Hi Neal,\n\nThe changes you mentioned have been applied.\n\nPlease let me know if anything still needs to be changed/improved.\n\nThanks",
+      "revId": "9fb467c280fe46008a63704b2ad2302de25e0327",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
