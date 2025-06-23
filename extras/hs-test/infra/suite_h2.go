@@ -76,7 +76,8 @@ func (s *H2Suite) SetupTest() {
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1, 1), "failed to create tap interface")
+	numWorkers := uint16(max(1, len(s.Containers.Vpp.AllocatedCpus)-1))
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, numWorkers, 1, Consistent_qp), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()
