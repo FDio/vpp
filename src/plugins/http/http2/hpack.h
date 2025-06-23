@@ -73,6 +73,11 @@ typedef struct
   u32 server_name_len;
   u8 *date;
   u32 date_len;
+  u16 parsed_bitmap;
+  uword content_len_header_index;
+  u8 *headers;
+  u32 headers_len;
+  u32 control_data_len;
 } hpack_response_control_data_t;
 
 /**
@@ -172,6 +177,25 @@ http2_error_t hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 				   hpack_request_control_data_t *control_data,
 				   http_field_line_t **headers,
 				   hpack_dynamic_table_t *dynamic_table);
+
+/**
+ * Response parser
+ *
+ * @param src           Header block to parse
+ * @param src_len       Length of header block
+ * @param dst           Buffer where headers will be decoded
+ * @param dst_len       Length of buffer for decoded headers
+ * @param control_data  Preparsed pseudo-headers
+ * @param headers       List of regular headers
+ * @param dynamic_table Decoder dynamic table
+ *
+ * @return @c HTTP2_ERROR_NO_ERROR on success, connection error otherwise
+ */
+http2_error_t
+hpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+		      hpack_response_control_data_t *control_data,
+		      http_field_line_t **headers,
+		      hpack_dynamic_table_t *dynamic_table);
 
 /**
  * Serialize response
