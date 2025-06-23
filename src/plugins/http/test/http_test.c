@@ -636,6 +636,147 @@ http_test_parse_request (const char *first_req, uword first_req_len,
 }
 
 static int
+http_test_parse_response (const char *first_resp, uword first_resp_len,
+			  const char *second_resp, uword second_resp_len,
+			  const char *third_resp, uword third_resp_len,
+			  hpack_dynamic_table_t *dynamic_table)
+{
+  http2_error_t rv;
+  u8 *buf = 0;
+  hpack_response_control_data_t control_data;
+  http_field_line_t *headers = 0;
+  u16 parsed_bitmap;
+
+  static http2_error_t (*_hpack_parse_response) (
+    u8 * src, u32 src_len, u8 * dst, u32 dst_len,
+    hpack_response_control_data_t * control_data, http_field_line_t * *headers,
+    hpack_dynamic_table_t * dynamic_table);
+
+  _hpack_parse_response =
+    vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_response");
+
+  parsed_bitmap = HPACK_PSEUDO_HEADER_STATUS_PARSED;
+
+  /* first request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_response ((u8 *) first_resp, (u32) first_resp_len, buf,
+			      254, &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.sc != HTTP_STATUS_FOUND || vec_len (headers) != 3 ||
+      dynamic_table->used != 222)
+    return 1;
+  if (headers[0].name_len != 13 || headers[0].value_len != 7)
+    return 1;
+  if (memcmp (control_data.headers + headers[0].name_offset, "cache-control",
+	      13))
+    return 1;
+  if (memcmp (control_data.headers + headers[0].value_offset, "private", 7))
+    return 1;
+  if (headers[1].name_len != 4 || headers[1].value_len != 29)
+    return 1;
+  if (memcmp (control_data.headers + headers[1].name_offset, "date", 4))
+    return 1;
+  if (memcmp (control_data.headers + headers[1].value_offset,
+	      "Mon, 21 Oct 2013 20:13:21 GMT", 29))
+    return 1;
+  if (headers[2].name_len != 8 || headers[2].value_len != 23)
+    return 1;
+  if (memcmp (control_data.headers + headers[2].name_offset, "location", 8))
+    return 1;
+  if (memcmp (control_data.headers + headers[2].value_offset,
+	      "https://www.example.com", 23))
+    return 1;
+  vec_free (headers);
+  vec_free (buf);
+
+  /* second request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_response ((u8 *) second_resp, (u32) second_resp_len, buf,
+			      254, &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.sc != HTTP_STATUS_TEMPORARY_REDIRECT ||
+      vec_len (headers) != 3 || dynamic_table->used != 222)
+    return 2;
+  if (headers[0].name_len != 13 || headers[0].value_len != 7)
+    return 1;
+  if (memcmp (control_data.headers + headers[0].name_offset, "cache-control",
+	      13))
+    return 1;
+  if (memcmp (control_data.headers + headers[0].value_offset, "private", 7))
+    return 1;
+  if (headers[1].name_len != 4 || headers[1].value_len != 29)
+    return 1;
+  if (memcmp (control_data.headers + headers[1].name_offset, "date", 4))
+    return 1;
+  if (memcmp (control_data.headers + headers[1].value_offset,
+	      "Mon, 21 Oct 2013 20:13:21 GMT", 29))
+    return 1;
+  if (headers[2].name_len != 8 || headers[2].value_len != 23)
+    return 1;
+  if (memcmp (control_data.headers + headers[2].name_offset, "location", 8))
+    return 1;
+  if (memcmp (control_data.headers + headers[2].value_offset,
+	      "https://www.example.com", 23))
+    return 1;
+  vec_free (headers);
+  vec_free (buf);
+
+  /* third request */
+  vec_validate_init_empty (buf, 254, 0);
+  memset (&control_data, 0, sizeof (control_data));
+  rv = _hpack_parse_response ((u8 *) third_resp, (u32) third_resp_len, buf,
+			      254, &control_data, &headers, dynamic_table);
+  if (rv != HTTP2_ERROR_NO_ERROR ||
+      control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.sc != HTTP_STATUS_OK || vec_len (headers) != 5 ||
+      dynamic_table->used != 215)
+    return 3;
+  if (headers[0].name_len != 13 || headers[0].value_len != 7)
+    return 1;
+  if (memcmp (control_data.headers + headers[0].name_offset, "cache-control",
+	      13))
+    return 1;
+  if (memcmp (control_data.headers + headers[0].value_offset, "private", 7))
+    return 1;
+  if (headers[1].name_len != 4 || headers[1].value_len != 29)
+    return 1;
+  if (memcmp (control_data.headers + headers[1].name_offset, "date", 4))
+    return 1;
+  if (memcmp (control_data.headers + headers[1].value_offset,
+	      "Mon, 21 Oct 2013 20:13:22 GMT", 29))
+    return 1;
+  if (headers[2].name_len != 8 || headers[2].value_len != 23)
+    return 1;
+  if (memcmp (control_data.headers + headers[2].name_offset, "location", 8))
+    return 1;
+  if (memcmp (control_data.headers + headers[2].value_offset,
+	      "https://www.example.com", 23))
+    return 1;
+  if (headers[3].name_len != 16 || headers[3].value_len != 4)
+    return 1;
+  if (memcmp (control_data.headers + headers[3].name_offset,
+	      "content-encoding", 16))
+    return 1;
+  if (memcmp (control_data.headers + headers[3].value_offset, "gzip", 4))
+    return 1;
+  if (headers[4].name_len != 10 || headers[4].value_len != 56)
+    return 1;
+  if (memcmp (control_data.headers + headers[4].name_offset, "set-cookie", 10))
+    return 1;
+  if (memcmp (control_data.headers + headers[4].value_offset,
+	      "foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1", 56))
+    return 1;
+  vec_free (headers);
+  vec_free (buf);
+
+  return 0;
+}
+
+static int
 http_test_hpack (vlib_main_t *vm)
 {
   vlib_cli_output (vm, "hpack_decode_int");
@@ -955,6 +1096,49 @@ http_test_hpack (vlib_main_t *vm)
     &table);
   _hpack_dynamic_table_free (&table);
   HTTP_TEST ((result == 0), "request with Huffman Coding (result=%d)", result);
+
+  vlib_cli_output (vm, "hpack_parse_response");
+
+  /* C.5. Response Examples without Huffman Coding */
+  _hpack_dynamic_table_init (&table, 256);
+  result = http_test_parse_response (
+    http_token_lit (
+      "\x48\x03\x33\x30\x32\x58\x07\x70\x72\x69\x76\x61\x74\x65"
+      "\x61\x1D\x4D\x6F\x6E\x2C\x20\x32\x31\x20\x4F\x63\x74\x20\x32\x30\x31"
+      "\x33\x20\x32\x30\x3A\x31\x33\x3A\x32\x31\x20\x47\x4D\x54\x6E\x17\x68"
+      "\x74\x74\x70\x73\x3A\x2F\x2F\x77\x77\x77\x2E\x65\x78\x61\x6D\x70\x6C"
+      "\x65\x2E\x63\x6F\x6D"),
+    http_token_lit ("\x48\x03\x33\x30\x37\xC1\xC0\xBF"),
+    http_token_lit (
+      "\x88\xC1\x61\x1D\x4D\x6F\x6E\x2C\x20\x32\x31\x20\x4F\x63\x74\x20\x32"
+      "\x30\x31\x33\x20\x32\x30\x3A\x31\x33\x3A\x32\x32\x20\x47\x4D\x54\xC0"
+      "\x5A\x04\x67\x7A\x69\x70\x77\x38\x66\x6F\x6F\x3D\x41\x53\x44\x4A\x4B"
+      "\x48\x51\x4B\x42\x5A\x58\x4F\x51\x57\x45\x4F\x50\x49\x55\x41\x58\x51"
+      "\x57\x45\x4F\x49\x55\x3B\x20\x6D\x61\x78\x2D\x61\x67\x65\x3D\x33\x36"
+      "\x30\x30\x3B\x20\x76\x65\x72\x73\x69\x6F\x6E\x3D\x31"),
+    &table);
+  _hpack_dynamic_table_free (&table);
+  HTTP_TEST ((result == 0), "response without Huffman Coding (result=%d)",
+	     result);
+
+  /* C.6. Response Examples with Huffman Coding */
+  _hpack_dynamic_table_init (&table, 256);
+  result = http_test_parse_response (
+    http_token_lit ("\x48\x82\x64\x02\x58\x85\xAE\xC3\x77\x1A\x4B\x61\x96\xD0"
+		    "\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81"
+		    "\x66\xE0\x82\xA6\x2D\x1B\xFF\x6E\x91\x9D\x29\xAD\x17\x18"
+		    "\x63\xC7\x8F\x0B\x97\xC8\xE9\xAE\x82\xAE\x43\xD3"),
+    http_token_lit ("\x48\x83\x64\x0E\xFF\xC1\xC0\xBF"),
+    http_token_lit (
+      "\x88\xC1\x61\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04"
+      "\x0B\x81\x66\xE0\x84\xA6\x2D\x1B\xFF\xC0\x5A\x83\x9B\xD9\xAB\x77\xAD"
+      "\x94\xE7\x82\x1D\xD7\xF2\xE6\xC7\xB3\x35\xDF\xDF\xCD\x5B\x39\x60\xD5"
+      "\xAF\x27\x08\x7F\x36\x72\xC1\xAB\x27\x0F\xB5\x29\x1F\x95\x87\x31\x60"
+      "\x65\xC0\x03\xED\x4E\xE5\xB1\x06\x3D\x50\x07"),
+    &table);
+  _hpack_dynamic_table_free (&table);
+  HTTP_TEST ((result == 0), "response with Huffman Coding (result=%d)",
+	     result);
 
   vlib_cli_output (vm, "hpack_serialize_response");
 
