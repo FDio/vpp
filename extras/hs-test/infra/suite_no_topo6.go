@@ -76,7 +76,7 @@ func (s *NoTopo6Suite) SetupTest() {
 	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
 
 	s.AssertNil(vpp.Start())
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, true, 1, 1), "failed to create tap interface")
+	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, true, 1), "failed to create tap interface")
 
 	if *DryRun {
 		s.LogStartedContainers()

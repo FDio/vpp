@@ -915,7 +915,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       ps->ao_disconnected = 1;
       if (ps->po.is_http)
 	{
-	  session_send_rpc_evt_to_thread (
+	  session_send_rpc_evt_to_thread_force (
 	    session_thread_from_handle (ps->po.session_handle),
 	    active_open_send_http_resp_rpc,
 	    uword_to_pointer (ps->ps_index, void *));

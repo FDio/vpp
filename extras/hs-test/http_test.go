@@ -667,10 +667,6 @@ func httpClientRepeat(s *NoTopoSuite, requestMethod string, clientArgs string) {
 	durationInSec := 10
 	var err error
 
-	// recreate interfaces with RX-queues
-	s.AssertNil(vpp.DeleteTap(s.Interfaces.Tap))
-	s.AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 2, 2))
-
 	s.CreateNginxServer()
 	s.AssertNil(s.Containers.NginxServer.Start())
 	logPath := s.Containers.NginxServer.GetContainerWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"

@@ -102,6 +102,7 @@ type VppCpuConfig struct {
 	PinWorkersCorelist bool
 	RelativeCores      bool
 	SkipCores          int
+	NumWorkers         int
 }
 
 type VppMemTrace struct {
@@ -500,21 +501,14 @@ func (vpp *VppInstance) addAppNamespace(
 	return nil
 }
 
-func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, numRxQueues uint16, tapId uint32, flags ...uint32) error {
-	var tapFlags uint32 = 0
-
-	if len(flags) > 0 {
-		tapFlags = flags[0]
-	}
+func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) error {
+	numRxQueues := uint16(max(1, vpp.CpuConfig.NumWorkers))
+	tapFlags := Consistent_qp
 
 	if *DryRun {
-		flagsCli := ""
+		flagsCli := "consistent-qp"
 		ipAddress := ""
 		ipAddressPeer := ""
-
-		if tapFlags == Consistent_qp {
-			flagsCli = "consistent-qp"
-		}
 
 		if IPv6 {
 			ipAddress = "host-ip6-addr " + tap.Ip6Address
@@ -553,7 +547,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, numRxQueues uint
 		TapFlags:         tapv2.TapFlags(tapFlags),
 	}
 
-	vpp.getSuite().Log("create tap interface " + tap.Name())
+	vpp.getSuite().Log("create tap interface " + tap.Name() + " num-rx-queues " + strconv.Itoa(int(numRxQueues)))
 	// Create tap interface
 	if err := vpp.ApiStream.SendMsg(createTapReq); err != nil {
 		return err
@@ -689,6 +683,7 @@ func (vpp *VppInstance) setDefaultCpuConfig() {
 	vpp.CpuConfig.PinWorkersCorelist = true
 	vpp.CpuConfig.RelativeCores = false
 	vpp.CpuConfig.SkipCores = 0
+	vpp.CpuConfig.NumWorkers = 0
 }
 
 func (vpp *VppInstance) generateVPPCpuConfig() string {
@@ -728,6 +723,7 @@ func (vpp *VppInstance) generateVPPCpuConfig() string {
 
 	workers := vpp.Cpus[startCpu+1:]
 	workersRelativeCpu := startCpu + 1
+	vpp.CpuConfig.NumWorkers = len(workers)
 
 	if len(workers) > 0 && vpp.CpuConfig.UseWorkers {
 		if vpp.CpuConfig.PinWorkersCorelist {
