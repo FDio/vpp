@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest)
 	RegisterSoloVethTests(TcpWithLossTest)
 	RegisterVeth6Tests(TcpWithLoss6Test)
 }
@@ -55,6 +55,20 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 	} else {
 		s.AssertEmpty("invalid echo test client output")
 	}
+}
+
+func EchoBuiltinEchobytesTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client echo-bytes verbose uri" +
+		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	s.Log(o)
+	s.AssertNotContains(o, "test echo clients: failed: timeout with 1 sessions")
 }
 
 func TcpWithLossTest(s *VethsSuite) {
