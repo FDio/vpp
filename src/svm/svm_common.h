@@ -25,6 +25,7 @@
 #include <pthread.h>
 #ifdef __linux__
 #include <sys/user.h>
+#include <sys/reg.h>
 #endif /* __linux__ */
 #include <vppinfra/clib.h>
 #include <vppinfra/types.h>
