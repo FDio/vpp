@@ -25,6 +25,9 @@
 #include <pthread.h>
 #ifdef __linux__
 #include <sys/user.h>
+#ifndef __WORDSIZE
+#include <sys/reg.h> /* for musl */
+#endif /* !__WORDSIZE */
 #endif /* __linux__ */
 #include <vppinfra/clib.h>
 #include <vppinfra/types.h>
