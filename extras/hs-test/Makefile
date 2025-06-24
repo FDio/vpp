@@ -114,6 +114,9 @@ help:
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
+	@echo
+	@echo "'make setup-cluster' arguments:"
+	@echo " BASE=[master|latest]     - build master CalicoVPP with master VPP or use latest release of CalicoVPP (default = latest)"
 
 .PHONY: list-tests
 list-tests:
@@ -191,7 +194,7 @@ test-perf: .deps.ok .build.ok
 
 .PHONY: setup-cluster
 setup-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh
+	@bash ./kubernetes/setupCluster.sh $(BASE)
 
 .PHONY: build-go
 build-go:
