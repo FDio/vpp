@@ -219,10 +219,14 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 	       * processing. So take the current l2 length plus 2 * IPv6
 	       * headers (for tunnel encap)
 	       */
-	      n_cloned = vlib_buffer_clone (vm, bi0,
-					    msm->clones[thread_index],
-					    n_clones,
-					    VLIB_BUFFER_CLONE_HEAD_SIZE);
+	      i16 len0 = ((u8 *) vlib_buffer_get_current (b0) -
+			  (u8 *) ethernet_buffer_get_header (b0));
+	      vlib_buffer_advance (b0, -len0);
+
+	      n_cloned =
+		vlib_buffer_clone (vm, bi0, msm->clones[thread_index],
+				   n_clones, VLIB_BUFFER_CLONE_HEAD_SIZE);
+	      vlib_buffer_advance (b0, len0);
 
 	      vec_set_len (msm->clones[thread_index], n_cloned);
 
@@ -246,6 +250,7 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 		  member = msm->members[thread_index][clone0];
 		  ci0 = msm->clones[thread_index][clone0];
 		  c0 = vlib_get_buffer (vm, ci0);
+		  vlib_buffer_advance (c0, len0);
 
 		  to_next[0] = ci0;
 		  to_next += 1;
