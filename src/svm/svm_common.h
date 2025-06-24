@@ -25,6 +25,10 @@
 #include <pthread.h>
 #ifdef __linux__
 #include <sys/user.h>
+/* older musl's define __WORDSIZE in user.h, newer ones in reg.h */
+#ifndef __WORDSIZE
+#include <sys/reg.h>
+#endif /* !__WORDSIZE */
 #endif /* __linux__ */
 #include <vppinfra/clib.h>
 #include <vppinfra/types.h>
