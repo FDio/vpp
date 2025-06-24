@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a27c0e99_499d7f11",
+        "filename": "src/vnet/policer/xlate.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-06-24T12:54:40Z",
+      "side": 1,
+      "message": "thinking about it, I\u0027m not sure using vm-\u003eclib_time.clocks_per_second is equivalent to get_tsc_hz():\n - vm-\u003eclib_time.clocks_per_second is the current frequency of the CPU as it is computed by clib_time_verify_frequency()\n - get_tsc_hz() is the value of the CPU TSC (timestamp counter) which is an isochronous counter running at a constant rate (typically 2GHz for Xeon)\n\nThe TSC frequency and CPU frequency are different. As the node function is using TSC we cannot mix both.\n\nMaybe a better way to sidestep this would be to switch to vlib_time_now() to use wall-clock time, independent of the CPU or TSC frequency.",
+      "revId": "8c5e9826431d1da0112679caf0967afc5595ad18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
