@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "45980fcc_3a46f104",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-24T23:36:31Z",
+      "side": 1,
+      "message": "This is the L2 path, so doesn\u0027t `current_data` point to the ethernet header already?",
+      "revId": "4d7fa6fd6ebe36621016bf003c8c24e2e508d5cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e31d192c_0a00cf0e",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-24T23:36:31Z",
+      "side": 1,
+      "message": "if this undoes the action above ...",
+      "revId": "4d7fa6fd6ebe36621016bf003c8c24e2e508d5cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c40eac4d_ca0cd6ed",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-24T23:36:31Z",
+      "side": 1,
+      "message": "... what does this do?",
+      "revId": "4d7fa6fd6ebe36621016bf003c8c24e2e508d5cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
