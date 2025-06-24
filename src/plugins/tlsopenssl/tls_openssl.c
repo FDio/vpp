@@ -74,7 +74,11 @@ openssl_ctx_free (tls_ctx_t * ctx)
     {
       if (SSL_is_init_finished (oc->ssl) &&
 	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
-	SSL_shutdown (oc->ssl);
+	{
+	  int rv = SSL_shutdown (oc->ssl);
+	  if (rv < 0)
+	    SSL_get_error (oc->ssl, rv);
+	}
 
       if (openssl_main.async)
 	tls_async_evts_free_list (ctx);
@@ -187,6 +191,8 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
   read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
     {
+      ossl_check_err_is_fatal (ssl, read);
+
       if (openssl_main.async && SSL_want_async (oc->ssl))
 	{
 	  session_t *tls_session =
@@ -195,7 +201,6 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
 				    tls_session, SSL_ASYNC_EVT_RD, NULL, 0);
 	  return 0;
 	}
-      ossl_check_err_is_fatal (ssl, read);
       return 0;
     }
 
@@ -421,7 +426,9 @@ void
 openssl_confirm_app_close (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  SSL_shutdown (oc->ssl);
+  int rv = SSL_shutdown (oc->ssl);
+  if (rv < 0)
+    SSL_get_error (oc->ssl, rv);
   if (ctx->flags & TLS_CONN_F_SHUTDOWN_TRANSPORT)
     tls_shutdown_transport (ctx);
   else
