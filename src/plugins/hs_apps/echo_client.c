@@ -190,6 +190,7 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 {
   ec_main_t *ecm = &ec_main;
   svm_fifo_t *rx_fifo = es->rx_fifo;
+  session_dgram_pre_hdr_t ph;
   int n_read, i;
 
   if (ecm->cfg.test_bytes)
@@ -199,8 +200,23 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
     }
   else
     {
-      n_read = svm_fifo_max_dequeue_cons (rx_fifo);
-      svm_fifo_dequeue_drop (rx_fifo, n_read);
+      if (!es->is_dgram)
+	{
+	  n_read = svm_fifo_max_dequeue_cons (rx_fifo);
+	  svm_fifo_dequeue_drop (rx_fifo, n_read);
+	}
+      else
+	{
+	  n_read = svm_fifo_max_dequeue_cons (rx_fifo);
+	  if (n_read <= sizeof (session_dgram_hdr_t))
+	    return;
+	  svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) &ph);
+	  if (n_read < (ph.data_length + SESSION_CONN_HDR_LEN))
+	    return;
+	  svm_fifo_dequeue_drop (rx_fifo,
+				 ph.data_length + SESSION_CONN_HDR_LEN);
+	  n_read = ph.data_length;
+	}
     }
 
   if (n_read > 0)
@@ -233,7 +249,14 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 		}
 	    }
 	}
-      ASSERT (n_read <= es->bytes_to_receive);
+      if (n_read > es->bytes_to_receive)
+	{
+	  ec_err ("expected %llu, received %llu bytes!",
+		  es->bytes_received + es->bytes_to_receive,
+		  es->bytes_received + n_read);
+	  ecm->test_failed = 1;
+	  es->bytes_to_receive = n_read;
+	}
       es->bytes_to_receive -= n_read;
       es->bytes_received += n_read;
     }
