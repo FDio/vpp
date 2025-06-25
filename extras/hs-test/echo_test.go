@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest)
 	RegisterSoloVethTests(TcpWithLossTest)
 	RegisterVeth6Tests(TcpWithLoss6Test)
 }
@@ -49,6 +49,34 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 			// Make sure that we are within 0.1 of the targeted
 			// 2 seconds of runtime
 			s.AssertEqualWithinThreshold(seconds, 2, 0.1)
+		} else {
+			s.AssertEmpty("invalid echo test client output")
+		}
+	} else {
+		s.AssertEmpty("invalid echo test client output")
+	}
+}
+
+func EchoBuiltinRoundtripTest(s *VethsSuite) {
+	regex := regexp.MustCompile(`(\.\d+)ms roundtrip`)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client bytes 8m" +
+		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	s.Log(o)
+	s.AssertContains(o, "Test started")
+	s.AssertContains(o, "Test finished")
+	if regex.MatchString(o) {
+		matches := regex.FindStringSubmatch(o)
+		if len(matches) != 0 {
+			seconds, _ := strconv.ParseFloat(matches[1], 32)
+			// Make sure that we are within ms range
+			s.AssertEqualWithinThreshold(seconds, 0.5, 0.5)
 		} else {
 			s.AssertEmpty("invalid echo test client output")
 		}
