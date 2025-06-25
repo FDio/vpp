@@ -1499,9 +1499,17 @@ func HttpInvalidRequestLineTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP/x' invalid http version not allowed")
 
+	resp, err = TcpSendReceive(serverAddress, "get / HTTP/1.1\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "method must be uppercase")
+
 	resp, err = TcpSendReceive(serverAddress, "GET / HTTP1.1\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP1.1' invalid http version not allowed")
+
+	resp, err = TcpSendReceive(serverAddress, "/\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 }
 
 func HttpTimerSessionDisable(s *NoTopoSuite) {
@@ -1565,7 +1573,7 @@ func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"after '%' there must be two hex-digit characters in target path")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose>true HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /version.json?verbose?>true HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "'>' not allowed in target query")
 
@@ -1590,6 +1598,10 @@ func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
 	resp, err = TcpSendReceive(serverAddress, "CONNECT https://www.example.com/tunnel HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "CONNECT requests must use authority-form only")
+
+	resp, err = TcpSendReceive(serverAddress, "GET index HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request")
 }
 
 func HttpInvalidContentLengthTest(s *NoTopoSuite) {
@@ -1609,6 +1621,10 @@ func HttpInvalidContentLengthTest(s *NoTopoSuite) {
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(resp, "HTTP/1.1 400 Bad Request",
 		"Content-Length value other than digit not allowed")
+
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: 111111111111111111111111111111111111111111111111\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value exceeded U64_MAX")
 }
 
 func HttpContentLengthTest(s *NoTopoSuite) {

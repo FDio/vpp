@@ -81,6 +81,17 @@ http_test_parse_authority (vlib_main_t *vm)
   vec_free (authority);
   vec_free (formated);
 
+  authority = format (0, "[DEAD:BEEF::1234]:443");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_IP6),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_IP6);
+  HTTP_TEST ((parsed.ip.as_u8[0] == 0xDE && parsed.ip.as_u8[1] == 0xAD &&
+	      parsed.ip.as_u8[2] == 0xBE && parsed.ip.as_u8[3] == 0xEF),
+	     "not parsed correctly");
+  vec_free (authority);
+
   /* registered name */
   authority = format (0, "example.com:80");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
@@ -152,55 +163,84 @@ http_test_parse_authority (vlib_main_t *vm)
   vec_free (authority);
   vec_free (formated);
 
+  authority = format (0, "1e.com");
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", authority);
+  HTTP_TEST ((parsed.host_type == HTTP_URI_HOST_TYPE_REG_NAME),
+	     "host_type=%d should be %d", parsed.host_type,
+	     HTTP_URI_HOST_TYPE_REG_NAME);
+  HTTP_TEST ((parsed.port == 0), "port=%u should be 0", parsed.port);
+  formated = http_serialize_authority (&parsed);
+  rv = vec_cmp (authority, formated);
+  HTTP_TEST ((rv == 0), "'%v' should match '%v'", authority, formated);
+  vec_free (authority);
+  vec_free (formated);
+
   /* invalid port */
   authority = format (0, "example.com:80000000");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* no port after colon */
   authority = format (0, "example.com:");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid character in registered name */
   authority = format (0, "bad#example.com");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid IPv6 address not terminated with ']' */
   authority = format (0, "[dead:beef::1234");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* empty IPv6 address */
   authority = format (0, "[]");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid IPv6 address too few hex quads */
   authority = format (0, "[dead:beef]:80");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid IPv6 address more than one :: */
   authority = format (0, "[dead::beef::1]:80");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid IPv6 address too much hex quads */
   authority = format (0, "[d:e:a:d:b:e:e:f:1:2]:80");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid character in IPv6 address */
   authority = format (0, "[xyz0::1234]:443");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   /* invalid IPv6 address */
   authority = format (0, "[deadbeef::1234");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
+
+  /* registered name too long */
+  vec_validate_init_empty (authority, 257, 'a');
+  rv = http_parse_authority (authority, vec_len (authority), &parsed);
+  HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
+  vec_free (authority);
 
   return 0;
 }
@@ -333,6 +373,17 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   HTTP_TEST ((rv == 1), "'%U' should be skipped (unknown capsule type)",
 	     format_hex_bytes, unknown_type_input,
 	     sizeof (unknown_type_input));
+  HTTP_TEST ((payload_len == 39), "payload_len=%llu should be 39",
+	     payload_len);
+
+  /* Type = 0x00, Len = 37,  Context ID = 0x01 */
+  u8 nonzero_context_id[] = { 0x00, 0x25, 0x01, 0x12, 0x34, 0x56, 0x78 };
+  rv = http_decap_udp_payload_datagram (nonzero_context_id,
+					sizeof (nonzero_context_id),
+					&payload_offset, &payload_len);
+  HTTP_TEST ((rv == 1), "'%U' should be skipped (context id is not zero)",
+	     format_hex_bytes, nonzero_context_id,
+	     sizeof (nonzero_context_id));
   HTTP_TEST ((payload_len == 39), "payload_len=%llu should be 39",
 	     payload_len);
 
@@ -489,8 +540,12 @@ http_test_http_header_table (vlib_main_t *vm)
   HTTP_TEST ((value != 0), "'%s' is in headers",
 	     http_header_name_str (HTTP_HEADER_CONTENT_ENCODING));
   rv = http_token_is (value->base, value->len, http_token_lit ("GZIP"));
-  HTTP_TEST ((rv = 1), "header value '%U' should be 'GZIP'", format_http_bytes,
-	     value->base, value->len);
+  HTTP_TEST ((rv == 1), "header value '%U' should be 'GZIP'",
+	     format_http_bytes, value->base, value->len);
+  rv =
+    http_token_contains (value->base, value->len, http_token_lit ("deflate"));
+  HTTP_TEST ((rv == 0), "header value '%U' doesn't contain 'deflate'",
+	     format_http_bytes, value->base, value->len);
 
   value =
     http_get_header (&ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
@@ -515,8 +570,17 @@ http_test_http_header_table (vlib_main_t *vm)
   /* repeated header */
   value = http_get_header (&ht, http_token_lit ("sandwich"));
   HTTP_TEST ((value != 0), "'sandwich' is in headers");
+  rv = http_token_is (value->base, value->len, http_token_lit ("Spam"));
+  HTTP_TEST ((rv == 0), "header value '%U' should be 'Eggs, Spam'",
+	     format_http_bytes, value->base, value->len);
   rv = http_token_is (value->base, value->len, http_token_lit ("Eggs, Spam"));
-  HTTP_TEST ((rv = 1), "header value '%U' should be 'Eggs, Spam'",
+  HTTP_TEST ((rv == 1), "header value '%U' should be 'Eggs, Spam'",
+	     format_http_bytes, value->base, value->len);
+  rv = http_token_contains (value->base, value->len, http_token_lit ("Spam"));
+  HTTP_TEST ((rv == 1), "header value '%U' contains 'Spam'", format_http_bytes,
+	     value->base, value->len);
+  rv = http_token_contains (value->base, value->len, http_token_lit ("spam"));
+  HTTP_TEST ((rv == 0), "header value '%U' doesn't contain 'spam'",
 	     format_http_bytes, value->base, value->len);
 
   value = http_get_header (&ht, http_token_lit ("Jade"));
