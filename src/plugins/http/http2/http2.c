@@ -467,6 +467,7 @@ http2_send_server_preface (http_conn_t *hc)
 				   &response);
   http_io_ts_write (hc, response, vec_len (response), 0);
   http_io_ts_after_write (hc, 1);
+  vec_free (settings_list);
 }
 
 /***********************/
