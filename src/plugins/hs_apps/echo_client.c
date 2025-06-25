@@ -16,8 +16,12 @@
  */
 
 #include <hs_apps/echo_client.h>
+#include <vnet/tcp/tcp_types.h>
 
 static ec_main_t ec_main;
+
+#define EC_UDP_RTT_TX_FLAG 1
+#define EC_UDP_RTT_RX_FLAG 2
 
 #define ec_err(_fmt, _args...) clib_warning (_fmt, ##_args);
 
@@ -74,6 +78,18 @@ static inline ec_session_t *
 ec_session_get (ec_worker_t *wrk, u32 ec_index)
 {
   return pool_elt_at_index (wrk->sessions, ec_index);
+}
+
+static void
+update_rtt_stats (f64 session_rtt)
+{
+  ec_main_t *ecm = &ec_main;
+  ecm->rtt_stats.sum_rtt += session_rtt;
+  ecm->rtt_stats.n_sum++;
+  if (session_rtt < ecm->rtt_stats.min_rtt)
+    ecm->rtt_stats.min_rtt = session_rtt;
+  if (session_rtt > ecm->rtt_stats.max_rtt)
+    ecm->rtt_stats.max_rtt = session_rtt;
 }
 
 static void
@@ -205,6 +221,14 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 
   if (n_read > 0)
     {
+      if (ecm->transport_proto == TRANSPORT_PROTO_UDP && ecm->echo_bytes &&
+	  (es->rtt_stat & EC_UDP_RTT_RX_FLAG) == 0)
+	{
+	  // possibly unneeded, just delta send_rtt with vlib_time_now
+	  es->recv_rtt = vlib_time_now (ecm->vlib_main);
+	  es->rtt_stat |= EC_UDP_RTT_RX_FLAG;
+	  update_rtt_stats (es->recv_rtt - es->send_rtt);
+	}
       if (ecm->cfg.verbose)
 	{
           ELOG_TYPE_DECLARE (e) =
@@ -308,6 +332,12 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       if (es->bytes_to_send > 0)
 	{
+	  if (ecm->transport_proto == TRANSPORT_PROTO_UDP && ecm->echo_bytes &&
+	      (es->rtt_stat & EC_UDP_RTT_TX_FLAG) == 0)
+	    {
+	      es->send_rtt = time_now;
+	      es->rtt_stat |= EC_UDP_RTT_TX_FLAG;
+	    }
 	  send_data_chunk (ecm, es);
 	  if (ecm->throughput)
 	    es->time_to_send += ecm->pacing_window_len;
@@ -327,6 +357,17 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
 	  if (s)
 	    {
+	      if (ecm->transport_proto == TRANSPORT_PROTO_TCP)
+		{
+		  transport_connection_t *tc;
+		  tcp_connection_t *tcpc;
+		  tc = transport_get_connection (
+		    TRANSPORT_PROTO_TCP, s->connection_index, s->thread_index);
+		  // TODO: if tc == NULL?
+		  tcpc = tcp_get_connection_from_transport (tc);
+		  update_rtt_stats (tcpc->srtt * TCP_TICK);
+		}
+
 	      vnet_disconnect_args_t _a, *a = &_a;
 	      a->handle = session_handle (s);
 	      a->app_index = ecm->app_index;
@@ -396,6 +437,8 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->run_time = 0;
   ecm->throughput = 0;
   ecm->pacing_window_len = 1;
+  clib_memset (&ecm->rtt_stats, 0, sizeof (ec_rttstat_t));
+  ecm->rtt_stats.min_rtt = CLIB_F64_MAX;
   vec_free (ecm->connect_uri);
 }
 
@@ -775,6 +818,14 @@ ec_session_disconnect_callback (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  transport_connection_t *tc;
+  tcp_connection_t *tcpc;
+
+  tc = transport_get_connection (TRANSPORT_PROTO_TCP, s->connection_index,
+				 s->thread_index);
+  tcpc = tcp_get_connection_from_transport (tc);
+  clib_warning ("tcp srtt %.08u", tcpc->srtt);
 
   if (session_handle (s) == ecm->ctrl_session_handle)
     {
@@ -1362,6 +1413,19 @@ parse_config:
   /*
    * Done. Compute stats
    */
+  if (ecm->transport_proto == TRANSPORT_PROTO_TCP ||
+      (ecm->transport_proto == TRANSPORT_PROTO_UDP && ecm->echo_bytes))
+    {
+      /* display rtt stats in milliseconds */
+      if (ecm->rtt_stats.n_sum == 1)
+	ec_cli ("%.05fms roundtrip", ecm->rtt_stats.min_rtt * 1000);
+      else
+	ec_cli ("%.05fms/%.05fms/%.05fms min/avg/max roundtrip",
+		ecm->rtt_stats.min_rtt * 1000,
+		ecm->rtt_stats.sum_rtt / ecm->rtt_stats.n_sum * 1000,
+		ecm->rtt_stats.max_rtt * 1000);
+    }
+
   delta = ecm->test_end_time - ecm->test_start_time;
   if (delta == 0.0)
     {
