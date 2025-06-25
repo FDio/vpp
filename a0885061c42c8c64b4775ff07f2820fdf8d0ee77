@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3882604a_cf4c2c3b",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-25T19:54:50Z",
+      "side": 1,
+      "message": "Should we replace max_burst above with this? Check if it\u0027s provided and if not, default to 128k?",
+      "revId": "a0885061c42c8c64b4775ff07f2820fdf8d0ee77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
