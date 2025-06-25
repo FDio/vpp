@@ -41,7 +41,7 @@ typedef struct
   hc_stats_t stats;
   u64 data_offset;
   u64 body_recv;
-  u8 *resp_headers;
+  http_header_table_t resp_headers;
   u8 *http_response;
   u8 *response_status;
   FILE *file_ptr;
@@ -424,6 +424,7 @@ hc_rx_callback (session_t *s)
 
   if (hc_session->to_recv == 0)
     {
+      http_reset_header_table (&hc_session->resp_headers);
       rv = svm_fifo_dequeue (s->rx_fifo, sizeof (msg), (u8 *) &msg);
       ASSERT (rv == sizeof (msg));
 
@@ -437,29 +438,27 @@ hc_rx_callback (session_t *s)
 
       if (msg.data.headers_len)
 	{
+	  http_init_header_table_buf (&hc_session->resp_headers, msg);
 
 	  if (!hcm->repeat)
 	    hc_session->response_status =
 	      format (0, "%U", format_http_status_code, msg.code);
 
-	  http_header_table_t ht = HTTP_HEADER_TABLE_NULL;
-
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
-	  vec_validate (hc_session->resp_headers, msg.data.headers_len - 1);
-	  vec_set_len (hc_session->resp_headers, msg.data.headers_len);
 	  rv = svm_fifo_dequeue (s->rx_fifo, msg.data.headers_len,
-				 hc_session->resp_headers);
-	  ht.buf = hc_session->resp_headers;
-
+				 hc_session->resp_headers.buf);
 	  ASSERT (rv == msg.data.headers_len);
-	  HTTP_DBG (1, (char *) format (0, "%v", hc_session->resp_headers));
+	  HTTP_DBG (1,
+		    (char *) format (0, "%U", format_hash,
+				     hc_session->resp_headers.value_by_name));
 	  msg.data.body_offset -=
 	    msg.data.headers_len + msg.data.headers_offset;
 
-	  http_build_header_table (&ht, msg);
+	  http_build_header_table (&hc_session->resp_headers, msg);
 	  const http_token_t *content_type = http_get_header (
-	    &ht, http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
+	    &hc_session->resp_headers,
+	    http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
 	  if (content_type)
 	    {
 	      for (u8 i = 0; i < sizeof (mime_printable) /
@@ -477,8 +476,6 @@ hc_rx_callback (session_t *s)
 		    }
 		}
 	    }
-	  ht.buf = NULL;
-	  http_free_header_table (&ht);
 	}
 
       if (msg.data.body_len == 0)
@@ -797,18 +794,19 @@ hc_get_event (vlib_main_t *vm)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  vlib_cli_output (
-	    vm, "< %v\n< %v\n* %u bytes saved to file (/tmp/%s)",
-	    hc_session->response_status, hc_session->resp_headers,
-	    hc_session->body_recv, hcm->filename);
+	  vlib_cli_output (vm, "< %v\n%U\n* %u bytes saved to file (/tmp/%s)",
+			   hc_session->response_status,
+			   format_http_header_table, &hc_session->resp_headers,
+			   "< ", hc_session->body_recv, hcm->filename);
 	  fclose (hc_session->file_ptr);
 	}
       else if (hcm->verbose)
 	{
 	  wrk = hc_worker_get (hcm->worker_index);
 	  hc_session = hc_session_get (wrk->session_index, wrk->thread_index);
-	  vlib_cli_output (vm, "< %v\n< %v\n%v", hc_session->response_status,
-			   hc_session->resp_headers);
+	  vlib_cli_output (vm, "< %v\n%U\n", hc_session->response_status,
+			   format_http_header_table, &hc_session->resp_headers,
+			   "< ");
 	  /* if the body was read in chunks and not saved to file - that
 	     means we've hit the response body size limit */
 	  if (hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY)
@@ -897,7 +895,7 @@ hc_worker_cleanup (hc_worker_t *wrk)
   vec_free (wrk->headers_buf);
   vec_foreach (hc_session, wrk->sessions)
     {
-      vec_free (hc_session->resp_headers);
+      http_free_header_table (&hc_session->resp_headers);
       vec_free (hc_session->http_response);
       vec_free (hc_session->response_status);
     }
