@@ -22,6 +22,14 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
+typedef struct ec_rttstat_
+{
+  f64 min_rtt;
+  f64 max_rtt;
+  f64 sum_rtt;
+  u32 n_sum;
+} ec_rttstat_t;
+
 typedef struct ec_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -38,6 +46,8 @@ typedef struct ec_session_
   f64 time_to_send;
   u64 bytes_paced_target;
   u64 bytes_paced_current;
+  f64 send_rtt;
+  u8 rtt_stat;
 } ec_session_t;
 
 typedef struct ec_worker_
@@ -67,6 +77,7 @@ typedef struct
   f64 test_end_time;
   u32 prev_conns;
   u32 repeats;
+  ec_rttstat_t rtt_stats;
 
   f64
     pacing_window_len; /**< Time between data chunk sends when limiting tput */
@@ -140,6 +151,12 @@ typedef enum ec_cli_signal_
   EC_CLI_STOP,
   EC_CLI_TEST_DONE
 } ec_cli_signal_t;
+
+typedef enum ec_rtt_stat_
+{
+  EC_UDP_RTT_TX_FLAG = 1,
+  EC_UDP_RTT_RX_FLAG = 2
+} ec_rtt_stat;
 
 void ec_program_connects (void);
 
