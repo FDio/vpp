@@ -16,6 +16,23 @@
       "message": "waiting for the release",
       "revId": "1573e751c5478d3914d26cdde153390967932d6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "22a1e6f5_d3d1a131",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2025-06-25T10:27:23Z",
+      "side": 1,
+      "message": "release time.",
+      "revId": "1573e751c5478d3914d26cdde153390967932d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
