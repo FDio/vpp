@@ -899,6 +899,27 @@ http_get_header (http_header_table_t *header_table, const char *name,
   return 0;
 }
 
+/**
+ * Print all headers in http header table.
+ *
+ * @note arg0 - http_header_table_t *ht, arg1 - char *line_prefix
+ */
+always_inline u8 *
+format_http_header_table (u8 *s, va_list *va)
+{
+  http_header_table_t *ht = va_arg (*va, http_header_table_t *);
+  char *prefix = va_arg (*va, char *);
+  void *v = (void *) ht->value_by_name;
+  hash_t *h = hash_header (v);
+  hash_pair_t *p;
+
+  hash_foreach_pair (p, v, {
+    s = format (s, "%s%U\n", prefix, h->format_pair, h->format_pair_arg, v, p);
+  });
+
+  return s;
+}
+
 typedef struct
 {
   u32 len;	   /**< length of the header data buffer */
