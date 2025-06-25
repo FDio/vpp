@@ -654,7 +654,8 @@ delete_random_entry (dns_main_t * dm)
     return VNET_API_ERROR_UNSPECIFIED;
 #endif
 
-  dns_cache_lock (dm, 3);
+  CLIB_SPINLOCK_ASSERT_LOCKED (&dm->cache_lock);
+
   limit = pool_elts (dm->entries);
   start_index = random_u32 (&dm->random_seed) % limit;
 
@@ -670,12 +671,10 @@ delete_random_entry (dns_main_t * dm)
 	      && ((ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC) == 0))
 	    {
 	      rv = vnet_dns_delete_entry_by_index_nolock (dm, victim_index);
-	      dns_cache_unlock (dm);
 	      return rv;
 	    }
 	}
     }
-  dns_cache_unlock (dm);
 
   clib_warning ("Couldn't find an entry to delete?");
   return VNET_API_ERROR_UNSPECIFIED;
