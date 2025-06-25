@@ -87,16 +87,14 @@ typedef struct svm_map_region_args_
 /*
  * Memory mapped to high addresses for session/vppcom/vcl/etc...
  */
-#if __WORDSIZE == 64
+#if uword_bits == 64
 #ifdef CLIB_SANITIZE_ADDR
 #define HIGH_SEGMENT_BASEVA 0x300000000000	/* DO NOT CHANGE THIS: YOU'LL BREAK ASAN */
 #else /* CLIB_SANITIZE_ADDR */
 #define HIGH_SEGMENT_BASEVA (128ULL << 30)	/* 128GB */
-#endif /* CLIB_SANITIZE_ADDR */
-#elif __WORDSIZE == 32
-#define HIGH_SEGMENT_BASEVA (3584UL << 20)	/* 3.5GB */
+#endif						/* CLIB_SANITIZE_ADDR */
 #else
-#error "unknown __WORDSIZE"
+#define HIGH_SEGMENT_BASEVA (3584UL << 20) /* 3.5GB */
 #endif
 
 /*
