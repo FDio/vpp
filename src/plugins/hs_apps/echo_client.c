@@ -294,7 +294,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
       ecm->repeats = 0;
     }
 
-  time_now = vlib_time_now (ecm->vlib_main);
+  time_now = vlib_time_now (vm);
   /*
    * Handle connections in this batch
    */
