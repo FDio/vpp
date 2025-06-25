@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "99cf1bfc_0fcd6dcf",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-06-25T23:00:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d28324b9_fd1fe260",
+      "revId": "5c4b031c8ee97dcec76cfbd54c6bb041ce8fcfa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "369b57d0_1026e8bc",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-06-12T00:02:10Z",
       "side": 1,
       "message": "Ideally we should hide this under the segment manager apis as well",
+      "revId": "5c4b031c8ee97dcec76cfbd54c6bb041ce8fcfa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad995f06_f7f45d02",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-06-25T23:00:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "369b57d0_1026e8bc",
       "revId": "5c4b031c8ee97dcec76cfbd54c6bb041ce8fcfa5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
