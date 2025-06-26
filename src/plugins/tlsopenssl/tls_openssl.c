@@ -77,7 +77,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 	{
 	  int rv = SSL_shutdown (oc->ssl);
 	  if (rv < 0)
-	    SSL_get_error (oc->ssl, rv);
+	    (void) SSL_get_error (oc->ssl, rv);
 	}
 
       if (openssl_main.async)
@@ -428,7 +428,7 @@ openssl_confirm_app_close (tls_ctx_t *ctx)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = SSL_shutdown (oc->ssl);
   if (rv < 0)
-    SSL_get_error (oc->ssl, rv);
+    (void) SSL_get_error (oc->ssl, rv);
   if (ctx->flags & TLS_CONN_F_SHUTDOWN_TRANSPORT)
     tls_shutdown_transport (ctx);
   else
