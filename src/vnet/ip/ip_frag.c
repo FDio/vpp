@@ -103,9 +103,10 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   if (from_b->flags & VNET_BUFFER_F_OFFLOAD)
     {
-      ASSERT ((from_b->flags & VNET_BUFFER_F_GSO) == 0);
       vnet_calc_checksums_inline (vm, from_b, 1 /* is_v4 */, 0 /* is_v6 */);
       vnet_calc_outer_checksums_inline (vm, from_b);
+      /* Packet is going to be fragmented, so remove GSO flag */
+      from_b->flags &= ~VNET_BUFFER_F_GSO;
     }
 
   org_from_packet = vlib_buffer_get_current (from_b);
@@ -385,9 +386,10 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   if (from_b->flags & VNET_BUFFER_F_OFFLOAD)
     {
-      ASSERT ((from_b->flags & VNET_BUFFER_F_GSO) == 0);
       vnet_calc_checksums_inline (vm, from_b, 0 /* is_v4 */, 1 /* is_v6 */);
       vnet_calc_outer_checksums_inline (vm, from_b);
+      /* Packet is going to be fragmented, so remove GSO flag */
+      from_b->flags &= ~VNET_BUFFER_F_GSO;
     }
 
   org_from_packet = vlib_buffer_get_current (from_b);

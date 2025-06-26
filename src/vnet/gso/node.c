@@ -135,10 +135,10 @@ tso_segment_vxlan_tunnel_headers_fixup (vlib_main_t *vm, vlib_buffer_t *b)
       ip4->length = clib_host_to_net_u16 (
 	b->current_length - (outer_l3_hdr_offset - b->current_data));
       ip4->checksum = ip4_header_checksum (ip4);
+      udp->length = clib_host_to_net_u16 (
+	b->current_length - (outer_l4_hdr_offset - b->current_data));
       if (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM)
 	{
-	  udp->length = clib_host_to_net_u16 (
-	    b->current_length - (outer_l4_hdr_offset - b->current_data));
 	  // udp checksum is 0, in udp tunnel
 	  udp->checksum = 0;
 	}
@@ -151,11 +151,11 @@ tso_segment_vxlan_tunnel_headers_fixup (vlib_main_t *vm, vlib_buffer_t *b)
     {
       ip6->payload_length = clib_host_to_net_u16 (
 	b->current_length - (outer_l4_hdr_offset - b->current_data));
+      udp->length = ip6->payload_length;
 
       if (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM)
 	{
 	  int bogus;
-	  udp->length = ip6->payload_length;
 	  // udp checksum is 0, in udp tunnel
 	  udp->checksum = 0;
 	  udp->checksum =
