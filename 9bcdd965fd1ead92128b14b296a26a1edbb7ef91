@@ -16,6 +16,57 @@
       "message": "Hello Matthew,\nCould you please review this patch? It covers 2 things:\n1) fixes locking/unlocking table\n2) when there\u0027s a replace w/o paths (e.g. blackhole) - we need to remove entry from fib (and unlock table)",
       "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f2283cc_5e12e9af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-06-26T20:28:10Z",
+      "side": 1,
+      "message": "Hi Stanislav,\nI added a comment and some questions.",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02387c3f_cf3bebf6",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-06-26T20:28:10Z",
+      "side": 1,
+      "message": "It seems like you move this inside the `if (0 !\u003d vec_len (np.paths))` block and then avoid the unlock in the \u0027else\u0027 block. The unlock seems like it only undoes the lock that is done here.",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "237bd368_e24823f2",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1429,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-06-26T20:28:10Z",
+      "side": 1,
+      "message": "Is deleting the FIB entry the right thing to do if a route with no paths is added in the kernel table? I\u0027m not sure under what conditions that would actually happen. You mentioned blackhole routes in your note, but blackhole routes get a path added by lcp_router_route_path_add_special() and end up being handled by the \u0027if\u0027 block and added to VPP\u0027s FIB as drop routes.\n\nHave you observed a case where the else block is reached? It\u0027s possible that deleting the entry is the right choice here, but I am not sure without knowing what conditions this actually happens under.",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
