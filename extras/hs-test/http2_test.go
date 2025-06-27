@@ -14,7 +14,7 @@ func init() {
 	RegisterH2MWTests(Http2MultiplexingMWTest)
 }
 
-func Http2TcpGetTest(s *H2Suite) {
+func Http2TcpGetTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	vpp.Vppctl("http cli server listener add uri tcp://" + serverAddress)
@@ -51,7 +51,7 @@ func Http2TcpGetTest(s *H2Suite) {
 	s.AssertNotContains(o, "LISTEN")
 }
 
-func Http2TcpPostTest(s *H2Suite) {
+func Http2TcpPostTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + " url-handlers max-body-size 20m rx-buff-thresh 20m fifo-size 65k debug 2"))
@@ -61,7 +61,7 @@ func Http2TcpPostTest(s *H2Suite) {
 	s.AssertContains(log, "HTTP/2 200")
 }
 
-func Http2MultiplexingTest(s *H2Suite) {
+func Http2MultiplexingTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	vpp.Vppctl("http tps uri tcp://" + serverAddress + " no-zc")
@@ -79,7 +79,7 @@ func Http2MultiplexingTest(s *H2Suite) {
 	s.AssertContains(o, " 0 timeout")
 }
 
-func Http2MultiplexingMWTest(s *H2Suite) {
+func Http2MultiplexingMWTest(s *Http2Suite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	vpp := s.Containers.Vpp.VppInstance
@@ -97,7 +97,7 @@ func Http2MultiplexingMWTest(s *H2Suite) {
 	s.AssertContains(o, " 0 timeout")
 }
 
-func Http2TlsTest(s *H2Suite) {
+func Http2TlsTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	s.Log(vpp.Vppctl("http static server uri tls://" + serverAddress + " url-handlers debug"))
@@ -110,7 +110,7 @@ func Http2TlsTest(s *H2Suite) {
 	s.AssertContains(writeOut, "version")
 }
 
-func Http2ContinuationTxTest(s *H2Suite) {
+func Http2ContinuationTxTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	vpp.Vppctl("http tps uri tcp://" + serverAddress + " no-zc")

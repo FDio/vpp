@@ -20,11 +20,11 @@ import (
 	"github.com/summerwind/h2spec/spec"
 )
 
-var h2Tests = map[string][]func(s *H2Suite){}
-var h2SoloTests = map[string][]func(s *H2Suite){}
-var h2MWTests = map[string][]func(s *H2Suite){}
+var h2Tests = map[string][]func(s *Http2Suite){}
+var h2SoloTests = map[string][]func(s *Http2Suite){}
+var h2MWTests = map[string][]func(s *Http2Suite){}
 
-type H2Suite struct {
+type Http2Suite struct {
 	HstSuite
 	Interfaces struct {
 		Tap *NetInterface
@@ -40,17 +40,17 @@ type H2Suite struct {
 	}
 }
 
-func RegisterH2Tests(tests ...func(s *H2Suite)) {
+func RegisterH2Tests(tests ...func(s *Http2Suite)) {
 	h2Tests[GetTestFilename()] = tests
 }
-func RegisterH2SoloTests(tests ...func(s *H2Suite)) {
+func RegisterH2SoloTests(tests ...func(s *Http2Suite)) {
 	h2SoloTests[GetTestFilename()] = tests
 }
-func RegisterH2MWTests(tests ...func(s *H2Suite)) {
+func RegisterH2MWTests(tests ...func(s *Http2Suite)) {
 	h2MWTests[GetTestFilename()] = tests
 }
 
-func (s *H2Suite) SetupSuite() {
+func (s *Http2Suite) SetupSuite() {
 	s.HstSuite.SetupSuite()
 	s.LoadNetworkTopology("tap")
 	s.LoadContainerTopology("single")
@@ -64,7 +64,7 @@ func (s *H2Suite) SetupSuite() {
 	s.AssertNil(err)
 }
 
-func (s *H2Suite) SetupTest() {
+func (s *Http2Suite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -84,16 +84,16 @@ func (s *H2Suite) SetupTest() {
 	}
 }
 
-func (s *H2Suite) TeardownTest() {
+func (s *Http2Suite) TeardownTest() {
 	s.HstSuite.TeardownTest()
 }
 
-func (s *H2Suite) VppAddr() string {
+func (s *Http2Suite) VppAddr() string {
 	return s.Interfaces.Tap.Peer.Ip4AddressString()
 }
 
 var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
-	var s H2Suite
+	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -122,7 +122,7 @@ var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
 })
 
 var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
-	var s H2Suite
+	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -151,7 +151,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 })
 
 var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, func() {
-	var s H2Suite
+	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -366,7 +366,7 @@ var specs = []struct {
 
 // Marked as pending since http plugin is not build with http/2 enabled by default
 var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
-	var s H2Suite
+	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
