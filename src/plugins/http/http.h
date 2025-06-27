@@ -723,11 +723,16 @@ always_inline void
 http_reset_header_table (http_header_table_t *ht)
 {
   int i;
+  hash_pair_t *p;
   for (i = 0; i < vec_len (ht->concatenated_values); i++)
     vec_free (ht->concatenated_values[i]);
   vec_reset_length (ht->concatenated_values);
   vec_reset_length (ht->values);
   vec_reset_length (ht->buf);
+  hash_foreach_pair (p, ht->value_by_name, ({
+		       void *k = uword_to_pointer (p->key, void *);
+		       clib_mem_free (k);
+		     }));
   hash_free (ht->value_by_name);
 }
 
@@ -751,11 +756,16 @@ always_inline void
 http_free_header_table (http_header_table_t *ht)
 {
   int i;
+  hash_pair_t *p;
   for (i = 0; i < vec_len (ht->concatenated_values); i++)
     vec_free (ht->concatenated_values[i]);
   vec_free (ht->concatenated_values);
   vec_free (ht->values);
   vec_free (ht->buf);
+  hash_foreach_pair (p, ht->value_by_name, ({
+		       void *k = uword_to_pointer (p->key, void *);
+		       clib_mem_free (k);
+		     }));
   hash_free (ht->value_by_name);
 }
 
