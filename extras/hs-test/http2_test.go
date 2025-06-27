@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest)
+	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest)
 }
 
@@ -121,4 +121,37 @@ func Http2ContinuationTxTest(s *Http2Suite) {
 	sizeHeader, err := strconv.Atoi(strings.ReplaceAll(writeOut, "\x00", ""))
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertGreaterThan(sizeHeader, 32768)
+}
+
+func Http2ServerMemLeakTest(s *H2Suite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
+	target := fmt.Sprintf("http://%s/show/version", serverAddress)
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	/* warmup request (FIB) */
+	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge -z %s %s %s %s", target, target, target, target)
+	_, log := s.RunCurlContainer(s.Containers.Curl, args)
+	s.AssertContains(log, "HTTP/2 200")
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Second * 1)
+		s.AssertNil(s.Containers.Curl.Start())
+	}
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 15)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
 }
