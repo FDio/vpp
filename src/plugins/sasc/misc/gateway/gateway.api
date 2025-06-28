@@ -1,0 +1,117 @@
+// Copyright(c) 2022 Cisco Systems, Inc.
+
+option version = "0.0.1";
+
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vnet/interface_types.api";
+
+enum vcdp_tunnel_method
+{
+  VL_API_VCDP_TUNNEL_VXLAN_DUMMY_L2 = 0,
+  VL_API_VCDP_TUNNEL_GENEVE_L3 = 1,
+};
+
+autoreply autoendian define vcdp_tunnel_add
+{
+  // header
+  u32 client_index;
+  u32 context;
+
+  string tunnel_id[37];
+  u32 tenant_id;
+  vl_api_vcdp_tunnel_method_t method;
+  vl_api_address_t src;
+  vl_api_address_t dst;
+  u16 sport; // 0 == any
+  u16 dport;
+  vl_api_mac_address_t src_mac;
+  vl_api_mac_address_t dst_mac;
+  u16 mtu;
+};
+
+autoreply autoendian define vcdp_tunnel_remove
+{
+  // header
+  u32 client_index;
+  u32 context;
+
+  string tunnel_id[37]; // UUID
+};
+
+/*
+ * Attach/Detach VCDP to the IPv4/IPv6 input/output feature arc.
+ */
+autoreply autoendian define vcdp_gateway_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  u32 tenant_id;
+  bool is_enable;
+  bool output_arc [default=false];
+};
+
+/*
+ * Attach/Detach VCDP to a DPO in the IPv4/IPv6 FIB via a prefix.
+ */
+autoreply autoendian define vcdp_gateway_prefix_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  u32 table_id;
+  vl_api_prefix_t prefix;
+  u32 tenant_id;
+  bool is_interpose; // hijack traffic to VCDP or also forward to the original destination
+  bool is_enable;
+};
+
+/*
+ * Enable/Disable VCDP tunnel decapsulation from the IPv4 input feature arc.
+ */
+autoreply autoendian define vcdp_gateway_tunnel_enable_disable
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  bool is_enable;
+};
+
+counters vcdp_tunnel_input {
+  no_tenant {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no tenant";
+  };
+  truncated {
+    severity error;
+    type counter64;
+    units "packets";
+    description "truncated";
+  };
+  not_supported {
+    severity error;
+    type counter64;
+    units "packets";
+    description "not supported inner protocol";
+  };
+};
+
+counters vcdp_tunnel_output {
+  no_tenant {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no tenant";
+  };
+  time_expired {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ttl expired";
+  };
+};

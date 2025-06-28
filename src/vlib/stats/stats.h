@@ -94,6 +94,8 @@ typedef struct
   vlib_stats_segment_t segment;
 } vlib_stats_main_t;
 
+
+
 extern vlib_stats_main_t vlib_stats_main;
 
 static_always_inline vlib_stats_segment_t *

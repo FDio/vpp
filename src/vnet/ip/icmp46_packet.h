@@ -355,10 +355,9 @@ typedef CLIB_PACKED (struct
     link_layer_option;
 }) icmp6_neighbor_solicitation_header_t;
 
-typedef struct
-{
-    u16 identifier;
-    u16 sequence;
+typedef struct {
+  u16 identifier;
+  u16 sequence;
 } icmp_echo_header_t;
 
 #endif /* included_vnet_icmp46_packet_h */
