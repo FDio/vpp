@@ -1,0 +1,10 @@
+// Copyright(c) 2023 Cisco Systems, Inc.
+
+counters vcdp_l4_lifecycle {
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drop";
+  };
+};
