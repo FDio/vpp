@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright(c) 2022 Cisco Systems, Inc.
+
+option version = "0.0.1";
+
+counters sasc_tcp_check {
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drop";
+  };
+  invalid_tcp_header {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid TCP header length";
+  };
+  malformed_flags {
+    severity error;
+    type counter64;
+    units "packets";
+    description "malformed TCP flags";
+  };
+  unexpected_syn {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unexpected SYN packet";
+  };
+  handshake_timeout {
+    severity error;
+    type counter64;
+    units "sessions";
+    description "3-way handshake timeout";
+  };
+  invalid_fin_ack {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid ACK to FIN";
+  };
+  protocol_violation {
+    severity error;
+    type counter64;
+    units "packets";
+    description "TCP protocol violation";
+  };
+  retransmit_detected {
+    severity info;
+    type counter64;
+    units "packets";
+    description "retransmission detected";
+  };
+  reorder_detected {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packet reordering detected";
+  };
+  fast_retransmit {
+    severity info;
+    type counter64;
+    units "packets";
+    description "fast retransmit (3 dup ACKs)";
+  };
+  window_probe {
+    severity info;
+    type counter64;
+    units "packets";
+    description "window probe detected";
+  };
+};
