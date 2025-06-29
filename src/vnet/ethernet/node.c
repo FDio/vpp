@@ -1343,7 +1343,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3))
+		  if (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL))
 		    goto skip_dmac_check01;
 
 		  dmacs[0] = *(u64 *) e0;
@@ -1587,7 +1587,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL))
 		    goto skip_dmac_check0;
 
 		  dmacs[0] = *(u64 *) e0;
