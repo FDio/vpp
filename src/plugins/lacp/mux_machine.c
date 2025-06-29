@@ -99,11 +99,14 @@ lacp_mux_action_detached (void *p1, void *p2)
   vlib_main_t *vm = p1;
   member_if_t *mif = p2;
 
+  vlib_worker_thread_barrier_sync (vm);
   lacp_detach_mux_from_aggregator (vm, mif);
   mif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, mif);
   mif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   mif->ntt = 1;
+  vlib_worker_thread_barrier_release (vm);
+
   lacp_start_periodic_timer (vm, mif, 0);
 
   if (mif->selected == LACP_PORT_SELECTED)
@@ -123,11 +126,13 @@ lacp_mux_action_attached (void *p1, void *p2)
   vlib_main_t *vm = p1;
   member_if_t *mif = p2;
 
+  vlib_worker_thread_barrier_sync (vm);
   lacp_attach_mux_to_aggregator (vm, mif);
   mif->actor.state &= ~LACP_STATE_COLLECTING;
   bond_disable_collecting_distributing (vm, mif);
   mif->actor.state &= ~LACP_STATE_DISTRIBUTING;
   mif->ntt = 1;
+  vlib_worker_thread_barrier_release (vm);
   lacp_start_periodic_timer (vm, mif, 0);
 
   if ((mif->selected == LACP_PORT_UNSELECTED) ||
@@ -168,10 +173,13 @@ lacp_mux_action_collecting_distributing (void *p1, void *p2)
   vlib_main_t *vm = p1;
   member_if_t *mif = p2;
 
+  vlib_worker_thread_barrier_sync (vm);
   mif->actor.state |= LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
     LACP_STATE_DISTRIBUTING;
   bond_enable_collecting_distributing (vm, mif);
   mif->ntt = 1;
+  vlib_worker_thread_barrier_release (vm);
+
   lacp_start_periodic_timer (vm, mif, 0);
   if ((mif->selected == LACP_PORT_UNSELECTED) ||
       (mif->selected == LACP_PORT_STANDBY) ||

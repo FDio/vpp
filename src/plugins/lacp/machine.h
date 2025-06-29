@@ -43,6 +43,13 @@ typedef struct
   debug_func debug;
 } lacp_machine_t;
 
+static inline u8
+lacp_machine_dispatch_have_action (lacp_machine_t *machine, int event,
+				   int state)
+{
+  return machine->tables[state].state_table[event].action != NULL;
+}
+
 extern int lacp_machine_dispatch (lacp_machine_t * machine, vlib_main_t * vm,
 				  member_if_t * mif, int event, int *state);
 

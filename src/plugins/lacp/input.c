@@ -19,10 +19,8 @@
 #include <vlib/stats/stats.h>
 
 static int
-lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
+lacp_packet_scan_check (vlib_main_t *vm, member_if_t *mif, lacp_pdu_t *lacpdu)
 {
-  lacp_pdu_t *lacpdu = (lacp_pdu_t *) mif->last_rx_pkt;
-
   if (lacpdu->subtype != LACP_SUBTYPE)
     return LACP_ERROR_UNSUPPORTED;
 
@@ -36,8 +34,7 @@ lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
       (lacpdu->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  return lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
-				LACP_RX_EVENT_PDU_RECEIVED, &mif->rx_state);
+  return LACP_ERROR_NONE;
 }
 
 static void
@@ -128,6 +125,55 @@ handle_marker_protocol (vlib_main_t * vm, member_if_t * mif)
   return LACP_ERROR_NONE;
 }
 
+static void
+lacp_input_packet_scan (
+  u32 sw_id, u8 *data) // routine , which should be called from vpp_main thread
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  member_if_t *mif = bond_get_member_by_sw_if_index (sw_id);
+
+  if (mif->last_rx_pkt)
+    vec_set_len (mif->last_rx_pkt, 0);
+  vec_validate (mif->last_rx_pkt, vec_len (data) - 1);
+  clib_memcpy_fast (mif->last_rx_pkt, data, vec_len (data));
+  vec_free (data);
+  lacp_machine_dispatch (&lacp_rx_machine, vm, mif, LACP_RX_EVENT_PDU_RECEIVED,
+			 &mif->rx_state);
+  if (mif->last_rx_pkt)
+    vec_set_len (mif->last_rx_pkt, 0);
+}
+
+typedef struct lacp_input_packet_args_t
+{
+  u32 sw_id;
+  u8 *last_rx_pkt;
+} lacp_input_packet_args_t;
+
+static void
+lacp_input_packet_scan_main_thread (u8 *data)
+{
+  lacp_input_packet_args_t *args = (lacp_input_packet_args_t *) data;
+  lacp_input_packet_scan (args->sw_id, args->last_rx_pkt);
+}
+
+static void
+lacp_input_process_main (u32 sw_id, u8 *last_rx_pkt)
+{
+
+  if (vlib_get_thread_index () != 0)
+    {
+      lacp_input_packet_args_t args = { .sw_id = sw_id,
+					.last_rx_pkt = last_rx_pkt };
+      vlib_rpc_call_main_thread (lacp_input_packet_scan_main_thread,
+				 (u8 *) &args, sizeof (args));
+    }
+  else
+    {
+      lacp_input_packet_scan (sw_id, last_rx_pkt);
+    }
+}
+
 /*
  * lacp input routine
  */
@@ -170,26 +216,20 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       return e;
     }
 
-  /*
-   * typical clib idiom. Don't repeatedly allocate and free
-   * the per-neighbor rx buffer. Reset its apparent length to zero
-   * and reuse it.
-   */
-  if (mif->last_rx_pkt)
-    vec_set_len (mif->last_rx_pkt, 0);
+  u8 *last_rx_pkt = NULL;
 
   /*
    * Make sure the per-neighbor rx buffer is big enough to hold
    * the data we're about to copy
    */
-  vec_validate (mif->last_rx_pkt, vlib_buffer_length_in_chain (vm, b0) - 1);
+  vec_validate (last_rx_pkt, vlib_buffer_length_in_chain (vm, b0) - 1);
 
   /*
    * Coalesce / copy the buffer chain into the per-neighbor
    * rx buffer
    */
-  nbytes = vlib_buffer_contents (vm, bi0, mif->last_rx_pkt);
-  ASSERT (nbytes <= vec_len (mif->last_rx_pkt));
+  nbytes = vlib_buffer_contents (vm, bi0, last_rx_pkt);
+  ASSERT (nbytes <= vec_len (last_rx_pkt));
 
   mif->last_lacpdu_recd_time = vlib_time_now (vm);
   if (nbytes < sizeof (lacp_pdu_t))
@@ -199,7 +239,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     }
 
   last_packet_signature =
-    hash_memory (mif->last_rx_pkt, vec_len (mif->last_rx_pkt), 0xd00b);
+    hash_memory (last_rx_pkt, vec_len (last_rx_pkt), 0xd00b);
 
   if (mif->last_packet_signature_valid &&
       (mif->last_packet_signature == last_packet_signature) &&
@@ -207,11 +247,24 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     {
       lacp_start_current_while_timer (vm, mif, mif->ttl_in_seconds);
       e = LACP_ERROR_CACHE_HIT;
+      if (last_rx_pkt)
+	vec_set_len (last_rx_pkt, 0);
     }
   else
     {
       /* Actually scan the packet */
-      e = lacp_packet_scan (vm, mif);
+      e = lacp_packet_scan_check (vm, mif, (lacp_pdu_t *) last_rx_pkt);
+      if (e == LACP_ERROR_NONE &&
+	  lacp_machine_dispatch_have_action (
+	    &lacp_rx_machine, LACP_RX_EVENT_PDU_RECEIVED, mif->rx_state))
+	lacp_input_process_main (
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX],
+	  last_rx_pkt); // this function calls lacp_machine_dispatch in
+			// vpp_main; it looks like all functions, called from
+			// lacp_machine_dispatch fsm return 0 only
+      else if (last_rx_pkt)
+	vec_free (last_rx_pkt);
+
       bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
       vlib_stats_set_gauge (
 	bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state,
@@ -223,9 +276,6 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       mif->last_packet_signature = last_packet_signature;
     }
   mif->pdu_received++;
-
-  if (mif->last_rx_pkt)
-    vec_set_len (mif->last_rx_pkt, 0);
 
   return e;
 }
