@@ -16,6 +16,24 @@
       "message": "Breaks compilation with openssl 1.1\n```\nsrc/plugins/tlsopenssl/tls_openssl.c:801:7: error: call to undeclared function \u0027SSL_CTX_set_async_callback\u0027;\n```",
       "revId": "5e9b38df7d124074e3100afca952c8ef0365b940",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "778ec83b_335a0686",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-30T17:25:46Z",
+      "side": 1,
+      "message": "We\u0027ve dropped support for ubuntu 20.04 and implicitly for ossl 1.1. Still, here\u0027s a patch to fix this https://gerrit.fd.io/r/c/vpp/+/43363",
+      "parentUuid": "0f8fb287_cd17542d",
+      "revId": "5e9b38df7d124074e3100afca952c8ef0365b940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
