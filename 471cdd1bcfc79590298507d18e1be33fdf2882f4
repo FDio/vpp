@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4a8dc867_0bc4c164",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2025-06-30T04:14:49Z",
+      "side": 1,
+      "message": "cloning a buffer n times results in n+1 buffers; n are \u0027short\u0027 (sized by the last parameter in the clone function - I\u0027ll call this the \u0027common\u0027 length) and 1, that is shared by the n, is \u0027long\u0027.\nif we use `b-\u003ecurrent_length` as the common length we are copying a lot more data than we need to. and the length of the shared buffer is 0 (for non-chained buffers).\n\ncan you show a packet, and ideally write a unit test, that demonstrates the issue you see.",
+      "revId": "471cdd1bcfc79590298507d18e1be33fdf2882f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
