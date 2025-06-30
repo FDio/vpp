@@ -284,7 +284,8 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 static_always_inline int
 nat44_ed_external_sm_lookup (snat_main_t *sm, ip4_address_t match_addr,
 			     u16 match_port, ip_protocol_t match_protocol,
-			     ip4_address_t *daddr, u16 *dport)
+			     ip4_address_t *daddr, u16 *dport,
+			     u32 *tx_fib_index)
 {
   snat_static_mapping_t *m =
     nat44_ed_sm_o2i_lookup (sm, match_addr, match_port, 0, match_protocol);
@@ -296,6 +297,10 @@ nat44_ed_external_sm_lookup (snat_main_t *sm, ip4_address_t match_addr,
 	return 0;
     }
   *daddr = m->local_addr;
+  if (tx_fib_index)
+    {
+      *tx_fib_index = m->fib_index;
+    }
   if (dport)
     {
       /* Address only mapping doesn't change port */
@@ -498,17 +503,16 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       s->in2out.port = l_port;
       s->proto = proto;
       s->in2out.fib_index = rx_fib_index;
-      s->out2in.fib_index = tx_fib_index;
 
       // suggest using local port to allocation function
       outside_port = l_port;
 
-      if (PREDICT_FALSE (nat44_ed_external_sm_lookup (sm, r_addr, r_port,
-						      proto, &daddr, &dport)))
+      if (PREDICT_FALSE (nat44_ed_external_sm_lookup (
+	    sm, r_addr, r_port, proto, &daddr, &dport, &tx_fib_index)))
 	{
 	  s->flags |= SNAT_SESSION_FLAG_HAIRPINNING;
 	}
-
+      s->out2in.fib_index = tx_fib_index;
       // destination addr/port updated with real values in
       // nat_ed_alloc_addr_and_port
       nat_6t_o2i_flow_init (sm, thread_index, s, daddr, dport, daddr, 0,
@@ -521,6 +525,10 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       else
 	{
 	  nat_6t_flow_dport_rewrite_set (&s->o2i, l_port);
+	  if (s->flags & SNAT_SESSION_FLAG_HAIRPINNING)
+	    {
+	      nat_6t_flow_sport_rewrite_set (&s->o2i, r_port);
+	    }
 	}
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
       nat_6t_flow_saddr_rewrite_set (&s->o2i, r_addr.as_u32);
@@ -546,14 +554,13 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       s->in2out.port = l_port;
       s->proto = proto;
       s->in2out.fib_index = rx_fib_index;
-      s->out2in.fib_index = tx_fib_index;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
 
       // hairpinning?
-      int is_hairpinning = nat44_ed_external_sm_lookup (sm, r_addr, r_port,
-							proto, &daddr, &dport);
+      int is_hairpinning = nat44_ed_external_sm_lookup (
+	sm, r_addr, r_port, proto, &daddr, &dport, &tx_fib_index);
       s->flags |= is_hairpinning * SNAT_SESSION_FLAG_HAIRPINNING;
-
+      s->out2in.fib_index = tx_fib_index;
       if (IP_PROTOCOL_ICMP == proto)
 	{
 	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, sm_port, sm_addr,
@@ -565,6 +572,10 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, dport, sm_addr,
 				sm_port, s->out2in.fib_index, proto);
 	  nat_6t_flow_dport_rewrite_set (&s->o2i, l_port);
+	  if (is_hairpinning)
+	    {
+	      nat_6t_flow_sport_rewrite_set (&s->o2i, r_port);
+	    }
 	}
       nat_6t_flow_daddr_rewrite_set (&s->o2i, l_addr.as_u32);
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
@@ -989,7 +1000,7 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 
   // hairpinning?
   int is_hairpinning = nat44_ed_external_sm_lookup (
-    sm, ip->dst_address, 0, ip->protocol, &new_dst_addr, NULL);
+    sm, ip->dst_address, 0, ip->protocol, &new_dst_addr, NULL, &tx_fib_index);
   s->flags |= is_hairpinning * SNAT_SESSION_FLAG_HAIRPINNING;
 
   nat_6t_flow_daddr_rewrite_set (&s->i2o, new_dst_addr.as_u32);
