@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f8fb287_cd17542d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2025-06-30T15:15:24Z",
+      "side": 1,
+      "message": "Breaks compilation with openssl 1.1\n```\nsrc/plugins/tlsopenssl/tls_openssl.c:801:7: error: call to undeclared function \u0027SSL_CTX_set_async_callback\u0027;\n```",
+      "revId": "5e9b38df7d124074e3100afca952c8ef0365b940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
