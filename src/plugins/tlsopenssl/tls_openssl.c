@@ -798,8 +798,10 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   if (om->async)
     {
       SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ASYNC);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
       SSL_CTX_set_async_callback (oc->client_ssl_ctx,
 				  tls_async_openssl_callback);
+#endif
     }
 
   rv =
