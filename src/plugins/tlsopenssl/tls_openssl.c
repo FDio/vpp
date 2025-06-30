@@ -795,12 +795,14 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 
   SSL_CTX_set_ecdh_auto (oc->client_ssl_ctx, 1);
   SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+#ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
     {
       SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ASYNC);
       SSL_CTX_set_async_callback (oc->client_ssl_ctx,
 				  tls_async_openssl_callback);
     }
+#endif
 
   rv =
     SSL_CTX_set_cipher_list (oc->client_ssl_ctx, (const char *) om->ciphers);
