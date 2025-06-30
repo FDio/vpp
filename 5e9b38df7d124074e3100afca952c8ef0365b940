@@ -34,6 +34,23 @@
       "parentUuid": "0f8fb287_cd17542d",
       "revId": "5e9b38df7d124074e3100afca952c8ef0365b940",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "efdf99c8_5aa76b20",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-06-30T17:27:08Z",
+      "side": 1,
+      "message": "Actually Varun had another patch ready https://gerrit.fd.io/r/c/vpp/+/43362",
+      "revId": "5e9b38df7d124074e3100afca952c8ef0365b940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
