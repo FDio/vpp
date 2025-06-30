@@ -118,7 +118,9 @@ clib_dt_read_from_sysfs (clib_dt_main_t *dm)
 
 		  if (read (fd, p->data, st.st_size) == st.st_size)
 		    {
-		      strncpy (p->name, e->d_name, sizeof (p->name));
+		      snprintf (p->name, sizeof (p->name), "%.*s",
+				(int) sizeof (p->name) - 1, e->d_name);
+
 		      p->size = st.st_size;
 		      vec_add1 (n->properties, p);
 		      if (strncmp ("name", p->name, 5) == 0)
