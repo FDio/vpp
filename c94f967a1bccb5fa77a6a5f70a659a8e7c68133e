@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c9e961b_1c8e4f74",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2025-06-30T11:16:01Z",
+      "side": 1,
+      "message": "LGTM. Thanks Mohsin.",
+      "revId": "c94f967a1bccb5fa77a6a5f70a659a8e7c68133e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
