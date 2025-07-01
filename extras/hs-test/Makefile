@@ -125,15 +125,15 @@ list-tests:
 
 .PHONY: build-vpp-release
 build-vpp-release:
-	@$(MAKE) -C ../.. build-release
+	@USER=$${SUDO_USER:-$${USER}}; sudo -u $$USER -- $(MAKE) -C ../.. build-release
 
 .PHONY: build-vpp-debug
 build-vpp-debug:
-	@$(MAKE) -C ../.. build
+	@USER=$${SUDO_USER:-$${USER}}; sudo -u $$USER -- $(MAKE) -C ../.. build
 
 .PHONY: build-vpp-gcov
 build-vpp-gcov:
-	@$(MAKE) -C ../.. build-gcov
+	@USER=$${SUDO_USER:-$${USER}}; sudo -u $$USER -- $(MAKE) -C ../.. build-gcov
 
 .build.ok: build
 	@touch .build.ok
