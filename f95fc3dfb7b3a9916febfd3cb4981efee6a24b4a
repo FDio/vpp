@@ -16,6 +16,24 @@
       "message": "I thought I fixed the problem in https://gerrit.fd.io/r/c/vpp/+/42653\nAre you using the code without the aforementioned fix? Please try with the fix.",
       "revId": "f95fc3dfb7b3a9916febfd3cb4981efee6a24b4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "509a45e4_d2858c03",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3219
+      },
+      "writtenOn": "2025-07-01T08:43:43Z",
+      "side": 1,
+      "message": "Thank you, I did not have your  fix, I work with vpp 24.10 yet 😊\n\nYour solution is very interesting , I have several questions to it : 1. Is spinlock during the packet processing widely used ? 2. at the end of VNET_DEVICE_CLASS_TX_FN (bond_dev_class) we call  vnet_put_frame_to_sw_interface (vnm, sw_if_index, f) for the sw_if_index of the bond member. It can be the situation that the appropriate interface is the part of the bond snapshot and not the active part of bond. Can it happen that this interface will be part of another bond or will not be relevant at all ( ex., deleted ) ?\n\nOnce more thank you for your suggestion",
+      "parentUuid": "46c0e293_2ef1c1ee",
+      "revId": "f95fc3dfb7b3a9916febfd3cb4981efee6a24b4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
