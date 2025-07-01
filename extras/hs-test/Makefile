@@ -74,6 +74,7 @@ GINKGO_TIMEOUT=3h
 endif
 
 FORCE_BUILD?=true
+BUILD_AS:=$(strip $(shell echo $${SUDO_USER:-$${USER:-root}}))
 
 .PHONY: help
 help:
@@ -123,17 +124,24 @@ list-tests:
 	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'test.go' | \
 		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
+.PHONY: build-msg
+build-msg:
+	@echo "Building VPP as '$(BUILD_AS)'"
+	@echo "****************************************************************"
+	@echo "If you wish to build VPP as root, use 'SUDO_USER=root make ...'"
+	@echo "****************************************************************"
+
 .PHONY: build-vpp-release
-build-vpp-release:
-	@$(MAKE) -C ../.. build-release
+build-vpp-release: build-msg
+	@sudo -u $(BUILD_AS) $(MAKE) -C ../.. build-release
 
 .PHONY: build-vpp-debug
-build-vpp-debug:
-	@$(MAKE) -C ../.. build
+build-vpp-debug: build-msg
+	@sudo -u $(BUILD_AS) $(MAKE) -C ../.. build
 
 .PHONY: build-vpp-gcov
-build-vpp-gcov:
-	@$(MAKE) -C ../.. build-gcov
+build-vpp-gcov: build-msg
+	@sudo -u $(BUILD_AS) $(MAKE) -C ../.. build-gcov
 
 .build.ok: build
 	@touch .build.ok
@@ -203,19 +211,19 @@ build-go:
 .PHONY: build
 build: .deps.ok build-vpp-release build-go
 	@rm -f .build.ok
-	bash ./script/build_hst.sh release $(FORCE_BUILD)
+	bash ./script/build_hst.sh release $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.ok
 
 .PHONY: build-cov
 build-cov: .deps.ok build-vpp-gcov build-go
 	@rm -f .build.cov.ok
-	bash ./script/build_hst.sh gcov $(FORCE_BUILD)
+	bash ./script/build_hst.sh gcov $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.cov.ok
 
 .PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug build-go
 	@rm -f .build.ok
-	bash ./script/build_hst.sh debug $(FORCE_BUILD)
+	bash ./script/build_hst.sh debug $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.ok
 
 .deps.ok:
