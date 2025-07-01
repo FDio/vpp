@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+BUILD_AS=$3
+
 if [ "$(lsb_release -is)" != Ubuntu ]; then
 	echo "Host stack test framework is supported only on Ubuntu"
 	exit 1
@@ -71,9 +73,9 @@ rm -rf vpp-data/bin/* || true
 rm -rf vpp-data/lib/* || true
 
 declare -i res=0
-cp ${VPP_BUILD_ROOT}/bin/* ${bin}
+sudo -u $BUILD_AS cp ${VPP_BUILD_ROOT}/bin/* ${bin}
 res+=$?
-cp -r ${VPP_BUILD_ROOT}/lib/"${OS_ARCH}"-linux-gnu/* ${lib}
+sudo -u $BUILD_AS cp -r ${VPP_BUILD_ROOT}/lib/"${OS_ARCH}"-linux-gnu/* ${lib}
 res+=$?
 if [ "$res" -ne 0 ]; then
 	echo "Failed to copy VPP files. Is VPP built? Try running 'make build' in VPP directory."
