@@ -134,7 +134,7 @@ oct_plt_memzone_lookup (const char *name)
 
   pool_foreach (mem_pool, memzone_list.mem_pool)
     {
-      if (!clib_strcmp (mem_pool->name, name))
+      if (!strcmp (mem_pool->name, name))
 	return mem_pool;
     }
 
