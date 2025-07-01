@@ -192,13 +192,13 @@ clib_cpu_time_now (void)
   return result;
 }
 
-#elif defined(__riscv)
+#elif defined(__riscv) && defined(__riscv_xlen) && (__riscv_xlen == 64)
 
 always_inline u64
 clib_cpu_time_now (void)
 {
   u64 result;
-  asm volatile("rdcycle %0\n" : "=r"(result));
+  asm volatile ("rdtime %0\n" : "=r"(result));
   return result;
 }
 #else
