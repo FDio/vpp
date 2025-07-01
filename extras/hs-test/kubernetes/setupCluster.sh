@@ -3,6 +3,9 @@ set -e
 
 MASTER_OR_LATEST=${1-"latest"}
 CALICOVPP_DIR="$HOME/vpp-dataplane"
+VPP_DIR=$(pwd)
+VPP_DIR=${VPP_DIR%extras*}
+STASH_SAVED=0
 
 if [ $MASTER_OR_LATEST = "master" ]; then
     if [ ! -d "$CALICOVPP_DIR" ]; then
@@ -10,6 +13,7 @@ if [ $MASTER_OR_LATEST = "master" ]; then
     fi
         cd $CALICOVPP_DIR
         git pull
+        cd $VPP_DIR
 
         # ---------------- images ----------------
         export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
@@ -48,10 +52,16 @@ if [ $MASTER_OR_LATEST = "master" ]; then
 
         make -C $CALICOVPP_DIR kind-new-cluster N_KIND_WORKERS=2
         kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
-        make -C $CALICOVPP_DIR/vpp-manager vpp BASE=origin/master
+        make -C $CALICOVPP_DIR/vpp-manager vpp BASE=origin/master VPP_DIR=$VPP_DIR
         make -C $CALICOVPP_DIR dev-kind
         make -C $CALICOVPP_DIR load-kind
         $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
+        if ! git diff-index --quiet HEAD --; then
+		      echo "Saving stash"
+  		    git stash save "HST: temp stash"
+          git reset --hard origin/master
+          git stash pop
+	      fi
     else
         echo "********"
         echo "Performance tests only work on Ubuntu 22.04 for now."
@@ -63,7 +73,7 @@ if [ $MASTER_OR_LATEST = "master" ]; then
         echo "Sleeping for 10s, waiting for tigera operator to start up."
         sleep 10
 
-        kubectl create -f  https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
+        kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
         kubectl create -f kubernetes/calico-config.yaml
 
         echo "Done. Please wait for the cluster to come fully online before running tests."
