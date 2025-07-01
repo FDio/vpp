@@ -123,17 +123,23 @@ list-tests:
 	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'test.go' | \
 		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
+.PHONY: build-msg
+build-msg:
+	@echo "**********************************************************"
+	@echo "If you wish to build VPP as root, use 'USER=root make ...'"
+	@echo "**********************************************************"
+
 .PHONY: build-vpp-release
-build-vpp-release:
-	@$(MAKE) -C ../.. build-release
+build-vpp-release: build-msg
+	sudo -u $(USER) $(MAKE) -C ../.. build-release
 
 .PHONY: build-vpp-debug
-build-vpp-debug:
-	@$(MAKE) -C ../.. build
+build-vpp-debug: build-msg
+	sudo -u $(USER) $(MAKE) -C ../.. build
 
 .PHONY: build-vpp-gcov
-build-vpp-gcov:
-	@$(MAKE) -C ../.. build-gcov
+build-vpp-gcov: build-msg
+	sudo -u $(USER) $(MAKE) -C ../.. build-gcov
 
 .build.ok: build
 	@touch .build.ok
