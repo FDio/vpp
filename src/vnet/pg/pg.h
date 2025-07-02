@@ -128,6 +128,9 @@ typedef struct pg_stream_t
   /* Buffer flags to set in each packet e.g. l2 valid  flags */
   u32 buffer_flags;
 
+  /* GSO size to set in each packet, when buffer is gso-ed */
+  u32 gso_size;
+
   /* Buffer offload flags to set in each packet e.g. checksum offload flags */
   u32 buffer_oflags;
 
@@ -332,6 +335,19 @@ pg_free_edit_group (pg_stream_t * s)
   vec_set_len (s->edit_groups, i);
 }
 
+#define foreach_pg_tx_func_error                                              \
+  _ (GSO_PACKET_DROP, "gso disabled on itf  -- gso packet drop")              \
+  _ (CSUM_OFFLOAD_PACKET_DROP,                                                \
+     "checksum offload disabled on itf -- csum offload packet drop")
+
+typedef enum
+{
+#define _(f, s) PG_TX_ERROR_##f,
+  foreach_pg_tx_func_error
+#undef _
+    PG_TX_N_ERROR,
+} pg_tx_func_error_t;
+
 typedef enum pg_interface_mode_t_
 {
   PG_MODE_ETHERNET,
@@ -387,6 +403,7 @@ typedef struct
   u8 coalesce_enabled;
   gro_flow_table_t *flow_table;
   u8 gso_enabled;
+  u8 csum_offload_enabled;
   u32 gso_size;
   pcap_main_t pcap_main;
   char *pcap_file_name;
@@ -394,6 +411,18 @@ typedef struct
 
   mac_address_t *allowed_mcast_macs;
 } pg_interface_t;
+
+typedef struct
+{
+  u32 hw_if_index;
+  u32 id;
+  mac_address_t hw_addr;
+  u8 coalesce_enabled;
+  u8 gso_enabled;
+  u8 csum_offload_enabled;
+  u32 gso_size;
+  pg_interface_mode_t mode;
+} pg_interface_details_t;
 
 /* Per VLIB node data. */
 typedef struct
@@ -453,6 +482,7 @@ void pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
 u32 pg_interface_add_or_get (pg_main_t *pg, pg_interface_args_t *args);
 
 int pg_interface_delete (u32 sw_if_index);
+int pg_interface_details (u32 sw_if_index, pg_interface_details_t *pid);
 
 always_inline pg_node_t *
 pg_get_node (uword node_index)
