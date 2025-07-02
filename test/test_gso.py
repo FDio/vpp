@@ -49,9 +49,9 @@ class TestGSO(VppTestCase):
     def setUpClass(self):
         super(TestGSO, self).setUpClass()
         res = self.create_pg_interfaces(range(2))
-        res_gso1 = self.create_pg_interfaces(range(2, 3), 1, 1460)
-        res_gso2 = self.create_pg_interfaces(range(3, 4), 1, 1440)
-        self.pg_interfaces = self.create_pg_interfaces(range(4, 5), 1, 8940)
+        res_gso1 = self.create_pg_interfaces(range(2, 3), 0, 1, 1460)
+        res_gso2 = self.create_pg_interfaces(range(3, 4), 0, 1, 1440)
+        self.pg_interfaces = self.create_pg_interfaces(range(4, 5), 0, 1, 8940)
         self.pg_interfaces.append(res[0])
         self.pg_interfaces.append(res[1])
         self.pg_interfaces.append(res_gso1[0])
