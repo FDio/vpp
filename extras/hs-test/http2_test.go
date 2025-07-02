@@ -123,7 +123,7 @@ func Http2ContinuationTxTest(s *Http2Suite) {
 	s.AssertGreaterThan(sizeHeader, 32768)
 }
 
-func Http2ServerMemLeakTest(s *H2Suite) {
+func Http2ServerMemLeakTest(s *Http2Suite) {
 	s.SkipUnlessLeakCheck()
 
 	vpp := s.Containers.Vpp.VppInstance
