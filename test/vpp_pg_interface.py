@@ -58,6 +58,13 @@ class VppPGInterface(VppInterface):
         return self._pg_index
 
     @property
+    def csum_offload_enabled(self):
+        """csum offload enabled on packet-generator interface"""
+        if self._csum_offload_enabled == 0:
+            return "csum-offload-disabled"
+        return "csum-offload-enabled"
+
+    @property
     def gso_enabled(self):
         """gso enabled on packet-generator interface"""
         if self._gso_enabled == 0:
@@ -125,17 +132,24 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def __init__(self, test, pg_index, gso, gso_size, mode):
+    def __init__(self, test, pg_index, csum_offload, gso, gso_size, mode):
         """Create VPP packet-generator interface"""
         super().__init__(test)
 
-        r = test.vapi.pg_create_interface_v2(pg_index, gso, gso_size, mode)
+        pg_flags = VppEnum.vl_api_pg_interface_flags_t.PG_API_FLAG_NONE
+        pgflags = VppEnum.vl_api_pg_interface_flags_t
+        if csum_offload:
+            pg_flags = pgflags.PG_API_FLAG_CSUM_OFFLOAD
+        if gso:
+            pg_flags = pgflags.PG_API_FLAG_GSO
+        r = test.vapi.pg_create_interface_v3(pg_index, pg_flags, gso_size, mode)
         self.set_sw_if_index(r.sw_if_index)
 
         self._in_history_counter = 0
         self._out_history_counter = 0
         self._out_assert_counter = 0
         self._pg_index = pg_index
+        self._csum_offload_enabled = csum_offload
         self._gso_enabled = gso
         self._gso_size = gso_size
         self._coalesce_enabled = 0
