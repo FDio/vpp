@@ -3,6 +3,7 @@
  */
 
 #include <cnat/cnat_maglev.h>
+#include <cnat/cnat_translation.h>
 
 static int
 cnat_maglev_perm_compare (void *_a, void *_b)
@@ -64,13 +65,15 @@ cnat_translation_init_maglev (cnat_translation_t *ct)
   cnat_maglev_perm_t *permutations = NULL;
   cnat_main_t *cm = &cnat_main;
   cnat_ep_trk_t *trk;
+  index_t *trk_index;
   u32 backend_index = 0;
 
-  if (vec_len (ct->ct_active_paths) == 0)
+  if (vec_len (ct->ct_active_paths_indexes) == 0)
     return;
 
-  vec_foreach (trk, ct->ct_active_paths)
+  vec_foreach (trk_index, ct->ct_active_paths_indexes)
     {
+      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
       cnat_maglev_perm_t permutation;
       u32 h1, h2;
 
@@ -194,6 +197,7 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
   u64 num_backends = 0, n_tests = 0;
   cnat_main_t *cm = &cnat_main;
   cnat_ep_trk_t *trk;
+  index_t *trk_index;
   u32 rnd;
   u32 n_changes = 0, n_remove = 0, verbose = 0;
 
@@ -226,9 +230,10 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
   vec_validate (trs, n_tests - 1);
   vec_foreach (ct, trs)
     {
-      vec_validate (ct->ct_active_paths, num_backends - 1);
-      vec_foreach (trk, ct->ct_active_paths)
+      vec_validate (ct->ct_active_paths_indexes, num_backends - 1);
+      vec_foreach (trk_index, ct->ct_active_paths_indexes)
 	{
+	  trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
 	  trk->ct_flags = 0;
 	  ip_addr_version (&trk->ct_ep[VLIB_TX].ce_ip) = AF_IP4;
 	  ip_addr_v4 (&trk->ct_ep[VLIB_TX].ce_ip).data_u32 = random_u32 (&rnd);
@@ -283,8 +288,9 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
 	vlib_cli_output (vm, "Translation %d", i++);
 	for (u32 i = 0; i < verbose; i++)
 	  {
-	    u32 j = random_u32 (&rnd) % vec_len (ct->ct_active_paths);
-	    trk = &ct->ct_active_paths[j];
+	    u32 j = random_u32 (&rnd) % vec_len (ct->ct_active_paths_indexes);
+	    trk_index = &ct->ct_active_paths_indexes[j];
+	    trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
 	    vlib_cli_output (
 	      vm, "[%03d] %U:%d buckets:%U", j, format_ip_address,
 	      &trk->ct_ep[VLIB_TX].ce_ip, trk->ct_ep[VLIB_TX].ce_port,
@@ -310,8 +316,9 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
 	    {
 	      /* remove n_remove backends from the LB set */
 	      changed_bk_indices[i] =
-		random_u32 (&rnd) % vec_len (ct->ct_active_paths);
-	      trk = &ct->ct_active_paths[changed_bk_indices[i]];
+		random_u32 (&rnd) % vec_len (ct->ct_active_paths_indexes);
+	      trk_index = &ct->ct_active_paths_indexes[changed_bk_indices[i]];
+	      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
 	      trk->ct_flags |= CNAT_TRK_FLAG_TEST_DISABLED;
 	    }
 
@@ -347,8 +354,9 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
 	    {
 	      /* Change n_changes backends in the LB set */
 	      changed_bk_indices[i] =
-		random_u32 (&rnd) % vec_len (ct->ct_active_paths);
-	      trk = &ct->ct_active_paths[changed_bk_indices[i]];
+		random_u32 (&rnd) % vec_len (ct->ct_active_paths_indexes);
+	      trk_index = &ct->ct_active_paths_indexes[changed_bk_indices[i]];
+	      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
 	      ip_addr_v4 (&trk->ct_ep[VLIB_TX].ce_ip).data_u32 =
 		random_u32 (&rnd);
 	      trk->ct_ep[VLIB_TX].ce_port = random_u32 (&rnd) & 0xffff;
@@ -365,7 +373,7 @@ cnat_translation_test_init_maglev (vlib_main_t *vm, unformat_input_t *input,
     }
 
   vec_foreach (ct, trs)
-    vec_free (ct->ct_active_paths);
+    vec_free (ct->ct_active_paths_indexes);
   vec_free (trs);
 
   return (NULL);
