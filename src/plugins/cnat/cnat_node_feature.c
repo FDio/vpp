@@ -48,6 +48,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_client_t *cc;
   ip_protocol_t iproto;
+  index_t trk0_i;
   cnat_ep_trk_t *trk0;
   u32 dpoi_index = -1;
   ip4_header_t *ip4 = NULL;
@@ -91,11 +92,12 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
 
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */,
-			   0 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */,
+			   0);
 
   /* session table miss */
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0_i = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0 = pool_elt_at_index (cnat_ep_trk_pool, trk0_i);
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
@@ -111,6 +113,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
       rw->tuple.port[VLIB_TX];
 
+  ts->trk = trk0_i;
   if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
     {
       const dpo_id_t *dpo0;
@@ -142,7 +145,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       rrw->cts_dpoi_next_node = (u16) ~0;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */,
-			       1 /* swap */);
+			       1 /* swap */, 0);
     }
 
   return rw;
@@ -391,7 +394,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   rw->cts_dpoi_next_node = (u16) ~0;
   rw->fib_index = ~0;
 
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */, 0);
 
   if (AF_IP4 == af)
     {
@@ -446,7 +449,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   rrw->cts_dpoi_next_node = (u16) ~0;
   rrw->fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
 
-  cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */, 0);
 
   return rw;
 }

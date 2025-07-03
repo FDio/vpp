@@ -27,6 +27,10 @@
 
 cnat_translation_t *cnat_translation_pool;
 clib_bihash_8_8_t cnat_translation_db;
+cnat_ep_trk_t *cnat_ep_trk_pool;
+index_t *cnat_ep_trk_deleted;
+index_t *cnat_ep_trk_pending_delete;
+clib_bihash_8_8_t cnat_ep_trk_db;
 addr_resolution_t *tr_resolutions;
 cnat_if_addr_add_cb_t *cnat_if_addr_add_cbs;
 
@@ -210,6 +214,7 @@ cnat_translation_stack (cnat_translation_t * ct)
 {
   fib_protocol_t fproto;
   cnat_ep_trk_t *trk;
+  index_t *trk_index;
   dpo_proto_t dproto;
   u32 ep_idx = 0;
   index_t lbi;
@@ -217,21 +222,25 @@ cnat_translation_stack (cnat_translation_t * ct)
   fproto = ip_address_family_to_fib_proto (ct->ct_vip.ce_ip.version);
   dproto = fib_proto_to_dpo (fproto);
 
-  vec_reset_length (ct->ct_active_paths);
-
-  vec_foreach (trk, ct->ct_paths)
-    if (trk->ct_flags & CNAT_TRK_ACTIVE)
-      vec_add1 (ct->ct_active_paths, *trk);
-
+  vec_reset_length (ct->ct_active_paths_indexes);
+  vec_foreach (trk_index, ct->ct_paths_indexes)
+    {
+      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
+      if (trk->ct_flags & CNAT_TRK_ACTIVE)
+	vec_add1 (ct->ct_active_paths_indexes, *trk_index);
+    }
   flow_hash_config_t fhc = IP_FLOW_HASH_DEFAULT;
   if (ct->fhc != 0)
     fhc = ct->fhc;
-  lbi = load_balance_create (vec_len (ct->ct_active_paths),
+  lbi = load_balance_create (vec_len (ct->ct_active_paths_indexes),
 			     fib_proto_to_dpo (fproto), fhc);
 
   ep_idx = 0;
-  vec_foreach (trk, ct->ct_active_paths)
-    load_balance_set_bucket (lbi, ep_idx++, &trk->ct_dpo);
+  vec_foreach (trk_index, ct->ct_active_paths_indexes)
+    {
+      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
+      load_balance_set_bucket (lbi, ep_idx++, &trk->ct_dpo);
+    }
 
   if (ep_idx > 0 && CNAT_LB_MAGLEV == ct->lb_type)
     cnat_translation_init_maglev (ct);
@@ -246,6 +255,7 @@ cnat_translation_delete (u32 id, u32 fib_index)
 {
   cnat_translation_t *ct;
   cnat_ep_trk_t *trk;
+  index_t *trk_index;
 
   if (pool_is_free_index (cnat_translation_pool, id))
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
@@ -254,8 +264,15 @@ cnat_translation_delete (u32 id, u32 fib_index)
 
   dpo_reset (&ct->ct_lb);
 
-  vec_foreach (trk, ct->ct_active_paths)
-    cnat_tracker_release (trk);
+  vec_foreach (trk_index, ct->ct_active_paths_indexes)
+    {
+      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
+      cnat_tracker_release (trk);
+      trk->marked_for_delete = 1;
+      index_t *index;
+      pool_get (cnat_ep_trk_pending_delete, index);
+      *index = trk->index;
+    }
 
   cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
   cnat_client_translation_deleted (ct->ct_cci, fib_index);
@@ -263,6 +280,14 @@ cnat_translation_delete (u32 id, u32 fib_index)
   pool_put (cnat_translation_pool, ct);
 
   return (0);
+}
+
+int
+cnat_endpoint_cmp (cnat_endpoint_t *ep1, cnat_endpoint_t *ep2)
+{
+  return ip_address_cmp (&ep1->ce_ip, &ep2->ce_ip) ||
+	 (ep1->ce_port != ep2->ce_port) ||
+	 (ep1->ce_sw_if_index != ep2->ce_sw_if_index);
 }
 
 u32
@@ -274,7 +299,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
   cnat_translation_t *ct;
-  cnat_ep_trk_t *trk;
+  index_t *trk_index;
   index_t cci;
 
   cnat_lazy_init ();
@@ -316,12 +341,41 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   cnat_translation_watch_addr (ct->index, 0, vip,
 			       CNAT_RESOLV_ADDR_TRANSLATION);
 
-  vec_foreach (trk, ct->ct_paths)
-  {
-    cnat_tracker_release (trk);
-  }
+  /* Paths (backends) marked for deletion are added to a "pending delete" pool.
+   The session scanner will remove them once all sessions referencing these
+   paths have been cleaned up.
+   */
+  vec_foreach (trk_index, ct->ct_active_paths_indexes)
+    {
+      cnat_ep_trk_t *trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
+      int deleted = 1;
+      vec_foreach (path, paths)
+	{
+	  if (!cnat_endpoint_cmp (&trk->ct_ep[VLIB_TX], &path->dst_ep) &&
+	      !cnat_endpoint_cmp (&trk->ct_ep[VLIB_RX], &path->src_ep))
+	    {
+	      // found old path in new list
+	      deleted = 0;
+	      break;
+	    }
+	}
+      if (deleted)
+	{
+	  trk->marked_for_delete = 1;
+	  index_t *index;
+	  pool_get (cnat_ep_trk_pending_delete, index);
+	  *index = trk->index;
+	}
+    }
 
-  vec_reset_length (ct->ct_paths);
+  vec_foreach (trk_index, ct->ct_paths_indexes)
+    {
+      cnat_ep_trk_t *trk;
+      trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
+      cnat_tracker_release (trk);
+    }
+
+  vec_reset_length (ct->ct_paths_indexes);
   ct->flags &= ~CNAT_TR_FLAG_STACKED;
 
   u64 path_idx = 0;
@@ -335,8 +389,8 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 				 path_idx << 32 | VLIB_TX, &path->dst_ep,
 				 CNAT_RESOLV_ADDR_BACKEND);
     path_idx++;
-
-    vec_add2 (ct->ct_paths, trk, 1);
+    cnat_ep_trk_t *trk;
+    pool_get_zero (cnat_ep_trk_pool, trk);
 
     clib_memcpy (&trk->ct_ep[VLIB_TX], &path->dst_ep,
 		 sizeof (trk->ct_ep[VLIB_TX]));
@@ -344,10 +398,11 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 		 sizeof (trk->ct_ep[VLIB_RX]));
     trk->ct_flags = path->ep_flags;
     trk->ct_dpo = tmp;
+    trk->index = trk - cnat_ep_trk_pool;
 
+    vec_add1 (ct->ct_paths_indexes, trk->index);
     cnat_tracker_track (ct->index, trk);
   }
-
   cnat_translation_stack (ct);
 
   return (ct->index);
@@ -386,6 +441,7 @@ format_cnat_translation (u8 * s, va_list * args)
   cnat_translation_t *ct = va_arg (*args, cnat_translation_t *);
   cnat_main_t *cm = &cnat_main;
   cnat_ep_trk_t *ck;
+  index_t *ck_index;
 
   s = format (s, "[%d] ", ct->index);
   s = format (s, "%U %U ", format_cnat_endpoint, &ct->ct_vip,
@@ -397,8 +453,11 @@ format_cnat_translation (u8 * s, va_list * args)
   else
     s = format (s, "fhc:0x%x", ct->fhc);
 
-  vec_foreach (ck, ct->ct_paths)
+  vec_foreach (ck_index, ct->ct_paths_indexes)
+    {
+    ck = pool_elt_at_index (cnat_ep_trk_pool, *ck_index);
     s = format (s, "\n%U", format_cnat_ep_trk, ck, 2);
+    }
 
   /* If printing a trace, the LB object might be deleted */
   if (!pool_is_free_index (load_balance_pool, ct->ct_lb.dpoi_index))
@@ -414,16 +473,16 @@ format_cnat_translation (u8 * s, va_list * args)
       s = format (s, "\nmaglev backends map");
       uword *bitmap = NULL;
       clib_bitmap_alloc (bitmap, cm->maglev_len);
-      vec_foreach (ck, ct->ct_paths)
-	{
-	  clib_bitmap_zero (bitmap);
-	  for (u32 i = 0; i < vec_len (ct->lb_maglev); i++)
-	    if (ct->lb_maglev[i] == bid)
-	      clib_bitmap_set (bitmap, i, 1);
-	  s = format (s, "\n  backend#%d: %U", bid, format_bitmap_hex, bitmap);
+      vec_foreach (ck_index, ct->ct_paths_indexes)
+      {
+	clib_bitmap_zero (bitmap);
+	for (u32 i = 0; i < vec_len (ct->lb_maglev); i++)
+	  if (ct->lb_maglev[i] == bid)
+	    clib_bitmap_set (bitmap, i, 1);
+	s = format (s, "\n  backend#%d: %U", bid, format_bitmap_hex, bitmap);
 
-	  bid++;
-	}
+	bid++;
+      }
       clib_bitmap_free (bitmap);
     }
 
@@ -650,6 +709,7 @@ cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
 {
   cnat_translation_t *ct;
   cnat_ep_trk_t *trk;
+  index_t *trk_index;
   cnat_endpoint_t *ep;
 
   u8 direction = ar->opaque & 0xf;
@@ -657,7 +717,8 @@ cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
 
   ct = cnat_translation_get (ar->cti);
 
-  trk = &ct->ct_paths[path_idx];
+  trk_index = &ct->ct_paths_indexes[path_idx];
+  trk = pool_elt_at_index (cnat_ep_trk_pool, *trk_index);
   ep = &trk->ct_ep[direction];
 
   if (!is_del && ep->ce_flags & CNAT_EP_FLAG_RESOLVED)
