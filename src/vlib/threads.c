@@ -1616,7 +1616,13 @@ vlib_worker_wait_one_loop (void)
   for (ii = 1; ii < vec_len (counts); ii++)
     {
       while (counts[ii] == vgm->vlib_mains[ii]->main_loop_count)
-	CLIB_PAUSE ();
+	{
+	  /* worker sync requested, vlib_worker_sync_rpc probably pending
+	   * so at least one worker cannot make any progress */
+	  if (vlib_worker_threads->wait_before_barrier)
+	    break;
+	  CLIB_PAUSE ();
+	}
     }
 
   vec_free (counts);
