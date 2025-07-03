@@ -204,10 +204,18 @@ cnat_lazy_init (void)
     return;
 
   clib_rwlock_init (&ctm->ts_lock);
+  cnat_ep_trk_t *eptrk;
+  /* Reserve index 0 as CNAT_EP_TRK_INVALID_INDEX, mirroring the timestamp
+   * pool convention. cnat_load_balance returns 0 on miss, callers check
+   * trk_i == CNAT_EP_TRK_INVALID_INDEX before dereferencing. */
+  pool_get (cnat_ep_trk_pool, eptrk);
+  ASSERT (eptrk - cnat_ep_trk_pool == CNAT_EP_TRK_INVALID_INDEX);
   /* timestamp 0 is default */
   cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
+  // cnat_timestamp_alloc (CNAT_FIB_TABLE, true /* is_v6 */);
   /* timestamp 0 should not count toward per vrf limit */
   vec_elt (ctm->sessions_per_vrf_ip4, 0)++;
+  // vec_elt (ctm->sessions_per_vrf_ip6, 0)++;
 
   cnat_enable_disable_scanner (cm->default_scanner_state);
 
