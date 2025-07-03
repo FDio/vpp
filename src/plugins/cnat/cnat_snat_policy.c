@@ -496,7 +496,8 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address,
 __clib_export int
 cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 	       u8 ip4_pfx_len, const ip6_address_t *ip6, u8 ip6_pfx_len,
-	       u32 sw_if_index, cnat_snat_policy_flags_t flags)
+	       u32 sw_if_index, cnat_snat_policy_flags_t flags,
+	       u8 cnat_addresses_flags)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
@@ -583,7 +584,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index) = index;
       cnat_client_add_pfx (&cpe->snat_ip4.ce_ip, ip4_pfx_len, ret_fib_index,
-			   CNAT_TR_FLAG_EXCLUSIVE | CNAT_TR_FLAG_RETURN_ONLY);
+			   CNAT_TR_FLAG_EXCLUSIVE | CNAT_TR_FLAG_RETURN_ONLY |
+			     cnat_addresses_flags);
       vec_validate_init_empty_aligned (
 	ctm->sessions_per_vrf_ip4, fwd_fib_index, ctm->max_sessions_per_vrf,
 	CLIB_CACHE_LINE_BYTES);
@@ -615,7 +617,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) = index;
       cnat_client_add_pfx (&cpe->snat_ip6.ce_ip, ip6_pfx_len, ret_fib_index,
-			   CNAT_TR_FLAG_EXCLUSIVE | CNAT_TR_FLAG_RETURN_ONLY);
+			   CNAT_TR_FLAG_EXCLUSIVE | CNAT_TR_FLAG_RETURN_ONLY |
+			     cnat_addresses_flags);
       vec_validate_init_empty_aligned (
 	ctm->sessions_per_vrf_ip6, fwd_fib_index, ctm->max_sessions_per_vrf,
 	CLIB_CACHE_LINE_BYTES);
@@ -666,7 +669,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
     }
 
   rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128,
-		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE);
+		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE, 0);
   if (rv)
     {
       e = clib_error_return (0, "unknown error %d", rv);

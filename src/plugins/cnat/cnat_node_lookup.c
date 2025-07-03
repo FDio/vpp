@@ -94,6 +94,19 @@ VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
 };
 
 always_inline void
+set_buffer_fib_index_from_interface (u32 *fib_index_by_sw_if_index,
+				     vlib_buffer_t *b)
+{
+  vnet_buffer (b)->ip.fib_index =
+    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
+  vnet_buffer (b)->ip.fib_index =
+    ((vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+       vnet_buffer (b)->ip.fib_index :
+       vec_elt (fib_index_by_sw_if_index,
+		vnet_buffer (b)->sw_if_index[VLIB_TX]));
+}
+
+always_inline void
 cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 {
   cnat_bihash_kv_t bkey;
@@ -114,14 +127,28 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
   iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  cnat_5tuple_t *rewrite_from;
+  if (ts->cts_rewrites[0].tuple.iproto != 0)
+    rewrite_from = &ts->cts_rewrites[0].tuple;
+  else
+    rewrite_from = &ts->fw_session_5tuple;
   cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset,
-			   1 /* swap */);
-
+			   1 /* swap */, rewrite_from);
+  u32 *fib_index_by_sw_if_index = AF_IP6 == af ?
+				    ip6_main.fib_index_by_sw_if_index :
+				    ip4_main.fib_index_by_sw_if_index;
+  set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
+  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
   session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
-  ASSERT (ts->ts_session_refcnt <= 2);
+
+  ip4_header_t *ip4;
+  ip4 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
+  if (ip4->protocol != IP_PROTOCOL_IP_IN_IP) // it is legit to go through this
+					     // node twice in the case of IPIP
+    ASSERT (ts->ts_session_refcnt <= 2);
 
 retry_add_ression:
   // FIXME

@@ -710,7 +710,8 @@ cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6,
  */
 static_always_inline void
 cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
-			 cnat_5tuple_t *tup, u32 iph_offset, u8 swap)
+			 cnat_5tuple_t *tup, u32 iph_offset, u8 swap,
+			 cnat_5tuple_t *rewrite_from)
 {
   udp_header_t *udp;
   clib_memset (tup, 0, sizeof (*tup));
@@ -778,6 +779,32 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 	  tup->port[VLIB_RX ^ swap] = udp->src_port;
 	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
 	}
+      // in this case the buffer does not contain the session content itself
+      // because the packet has been encapsulated, we use the rewrite.
+      else if (ip4->protocol == IP_PROTOCOL_IP_IN_IP)
+	{
+	  if (rewrite_from)
+	    {
+	      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap],
+				    &rewrite_from->ip[VLIB_RX ^ swap].ip4);
+	      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap],
+				    &rewrite_from->ip[VLIB_TX ^ swap].ip4);
+	      tup->iproto = rewrite_from->iproto;
+	      tup->port[VLIB_RX ^ swap] = rewrite_from->port[VLIB_TX ^ swap];
+	      tup->port[VLIB_TX ^ swap] = rewrite_from->port[VLIB_RX ^ swap];
+	    }
+	  else
+	    {
+	      udp = (udp_header_t *) (ip4 + 1);
+	      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap],
+				    &ip4->dst_address);
+	      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap],
+				    &ip4->src_address);
+	      tup->iproto = ip4->protocol;
+	      tup->port[VLIB_RX ^ swap] = udp->src_port;
+	      tup->port[VLIB_TX ^ swap] = udp->dst_port;
+	    }
+	}
     }
   else
     {
@@ -840,6 +867,32 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 	  tup->port[VLIB_RX ^ swap] = udp->src_port;
 	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
 	  tup->iproto = ip6->protocol;
+	}
+      // in this case the buffer does not contain the session content itself
+      // because the packet has been encapsulated, we use the rewrite.
+      else if (ip6->protocol == IP_PROTOCOL_IP_IN_IP)
+	{
+	  if (rewrite_from)
+	    {
+	      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap],
+				    &rewrite_from->ip[VLIB_RX ^ swap].ip6);
+	      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap],
+				    &rewrite_from->ip[VLIB_TX ^ swap].ip6);
+	      tup->iproto = rewrite_from->iproto;
+	      tup->port[VLIB_RX ^ swap] = rewrite_from->port[VLIB_TX ^ swap];
+	      tup->port[VLIB_TX ^ swap] = rewrite_from->port[VLIB_RX ^ swap];
+	    }
+	  else
+	    {
+	      udp = (udp_header_t *) (ip6 + 1);
+	      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap],
+				    &ip6->dst_address);
+	      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap],
+				    &ip6->src_address);
+	      tup->port[VLIB_RX ^ swap] = udp->src_port;
+	      tup->port[VLIB_TX ^ swap] = udp->dst_port;
+	      tup->iproto = ip6->protocol;
+	    }
 	}
     }
 }
@@ -1089,10 +1142,10 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   /* Kickstart our state */
   if (n_left >= 4)
     {
-      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
-      cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
-      cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
-      cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
+      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0, 0);
+      cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1], 0, 0, 0);
+      cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2], 0, 0, 0);
+      cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3], 0, 0, 0);
 
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
@@ -1156,10 +1209,14 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (n_left >= 8)
 	{
-	  cnat_make_buffer_5tuple (b[4], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
-	  cnat_make_buffer_5tuple (b[5], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
-	  cnat_make_buffer_5tuple (b[6], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
-	  cnat_make_buffer_5tuple (b[7], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
+	  cnat_make_buffer_5tuple (b[4], af, (cnat_5tuple_t *) &bkey[0], 0, 0,
+				   0);
+	  cnat_make_buffer_5tuple (b[5], af, (cnat_5tuple_t *) &bkey[1], 0, 0,
+				   0);
+	  cnat_make_buffer_5tuple (b[6], af, (cnat_5tuple_t *) &bkey[2], 0, 0,
+				   0);
+	  cnat_make_buffer_5tuple (b[7], af, (cnat_5tuple_t *) &bkey[3], 0, 0,
+				   0);
 
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[4]);
 	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[5]);
@@ -1216,7 +1273,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_feature)
 	vnet_feature_next_u16 (&next[0], b[0]);
 
-      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
+      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0, 0);
       ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
       session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
       hash[0] = cnat_bihash_hash (&bkey[0]);
