@@ -22,13 +22,16 @@ format_cnat_trace (u8 *s, va_list *args)
     s = format (s, "new session");
   else if (t->flow_state == CNAT_LOOKUP_IS_OK)
     s = format (s, "session found");
+  else if (t->flow_state == CNAT_LOOKUP_IS_DONE)
+    s = format (s, "writeback done");
   else
     s = format (s, "weird flow_state %d", t->flow_state);
 
   s = format (s, "\n%Uin:%U out:%U ", format_white_space, indent, format_vnet_sw_if_index_name, vnm,
 	      t->sw_if_index[VLIB_RX], format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_TX]);
 
-  s = format (s, "\n%U%U", format_white_space, indent, format_cnat_timestamp, &t->ts, indent);
+  s = format (s, "\n%U%U", format_white_space, indent, format_cnat_timestamp, &t->ts, indent,
+	      0 /* verbose */);
 
   if (t->flags & CNAT_TRACE_REWRITE_FOUND)
     s = format (s, "\n%U%U", format_white_space, indent, format_cnat_rewrite, &t->rw);
