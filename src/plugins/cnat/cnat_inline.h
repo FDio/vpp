@@ -53,7 +53,6 @@ always_inline index_t
 cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
   u32 log2_pool_sz = ctm->log2_pool_sz;
   u32 pool_sz = 1 << log2_pool_sz;
   cnat_timestamp_t *pool;
@@ -62,9 +61,9 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   u32 pidx;
 
   clib_rwlock_writer_lock (&ctm->ts_lock);
-
+  int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
   if (PREDICT_FALSE (vec_elt (sessions_per_vrf, fib_index) <= 0))
-    goto err; /* too many sessions... */
+    goto err;
 
   pidx = clib_bitmap_first_set (ctm->ts_free);
   if (PREDICT_FALSE (pidx >= vec_len (ctm->ts_pools)))
@@ -91,7 +90,6 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 
   clib_memset_u8 (ts, 0, sizeof (*ts));
 
-  ts->fib_index = fib_index;
   ASSERT ((u64) index + (pidx << log2_pool_sz) <= CLIB_U32_MAX);
   return index + (pidx << log2_pool_sz);
 
@@ -104,7 +102,6 @@ always_inline void
 cnat_timestamp_destroy (u32 index, bool is_v6)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
   u32 log2_pool_sz = ctm->log2_pool_sz;
   u32 pidx = index >> log2_pool_sz;
   cnat_timestamp_t *pool;
@@ -115,7 +112,6 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
   clib_rwlock_writer_lock (&ctm->ts_lock);
   pool = vec_elt (ctm->ts_pools, pidx);
   ts = pool_elt_at_index (pool, index);
-  vec_elt (sessions_per_vrf, ts->fib_index)++;
   pool_put (pool, ts);
   ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
   clib_rwlock_writer_unlock (&ctm->ts_lock);
@@ -156,7 +152,7 @@ always_inline void
 cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
 {
   if (rw->cts_flags & CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT)
-    cnat_free_port_cb (rw->fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
+    cnat_free_port_cb (rw->rw_fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
 }
 
 always_inline void
@@ -180,12 +176,21 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
 			      bool alloc_if_not_found)
 {
   vnet_buffer2 (b)->session.flags = 0;
-  cnat_session_t *session = (cnat_session_t *) bvalue;
-  if (rv)
+  cnat_session_t *ksession = (cnat_session_t *) bkey;
+  if (PREDICT_TRUE (!rv))
+    {
+      cnat_session_t *session = (cnat_session_t *) bvalue;
+      b->flow_id = session->value.cs_session_index;
+      vnet_buffer2 (b)->session.state = session->value.cs_flags & CNAT_SESSION_IS_RETURN ?
+					  CNAT_LOOKUP_IS_RETURN :
+					  CNAT_LOOKUP_IS_OK;
+      cnat_timestamp_update (session->value.cs_session_index, now);
+    }
+  /* avoid garbage traffic */
+  else if (ksession->key.cs_5tuple.iproto != 0)
     {
       if (!alloc_if_not_found)
 	goto err;
-      cnat_session_t *ksession = (cnat_session_t *) bkey;
       index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
       if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
@@ -193,17 +198,18 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
       ksession->value.cs_session_index = session_index;
       ksession->value.cs_flags = 0;
       cnat_bihash_add_del_hash (&cnat_session_db, bkey, hash, 1 /* add */);
-      vnet_buffer2 (b)->session.generic_flow_id = ksession->value.cs_session_index;
+      b->flow_id = ksession->value.cs_session_index;
       vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_NEW;
       cnat_log_session_create (ksession);
-    }
-  else if (session->key.cs_5tuple.iproto != 0)
-    {
-      vnet_buffer2 (b)->session.generic_flow_id = session->value.cs_session_index;
-      vnet_buffer2 (b)->session.state = session->value.cs_flags & CNAT_SESSION_IS_RETURN ?
-					  CNAT_LOOKUP_IS_RETURN :
-					  CNAT_LOOKUP_IS_OK;
-      cnat_timestamp_update (session->value.cs_session_index, now);
+      cnat_timestamp_t *ts = cnat_timestamp_get (session_index);
+      /* we put the original 5tuple in the rewrite of the session to use it
+       * later in the writeback if there is no nat (i.e no actual rewrites) in
+       * the case where we have actual rewrites this is going to be overridden.
+       * Also this is used to find a reverse session of a non-natted session*/
+      ts->cts_rewrites[CNAT_LOCATION_INPUT].tuple = ksession->key.cs_5tuple;
+      /* store the forward fib_index in the canonical FIB slot so
+       * cnat_get_rsession_from_ts can reconstruct the reverse session key */
+      ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.fib_index;
     }
   else
     goto err;
@@ -211,7 +217,53 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
   return;
 
 err:
-  vnet_buffer2 (b)->session.generic_flow_id = 0;
+  b->flow_id = 0;
   vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_ERR;
 }
+
+/* INPUT node stores FWD@INPUT + RETURN@OUTPUT, OUTPUT node stores the reverse.
+ * FIB node stores both at FIB. This table maps a location to where its paired
+ * return rewrite lives. */
+static const cnat_session_location_t cnat_paired_location[] = {
+  [CNAT_LOCATION_INPUT] = CNAT_LOCATION_OUTPUT,
+  [CNAT_LOCATION_OUTPUT] = CNAT_LOCATION_INPUT,
+  [CNAT_LOCATION_FIB] = CNAT_LOCATION_FIB,
+};
+
+/* Reconstruct the reverse session key (5-tuple + fib_index) from the
+ * timestamp's rewrite array.
+ *
+ * fib_index: always read from cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index,
+ *            decoupled from the 5-tuple search below.
+ * 5-tuple:   chosen from the highest-priority rewrite pair that has both
+ *            a forward and a matching return entry populated in ts_rw_bm.
+ *            Priority: OUTPUT > FIB > INPUT. */
+static_always_inline int
+cnat_get_rsession_from_ts (cnat_timestamp_t *ts, const cnat_timestamp_direction_t dir,
+			   cnat_session_t *session)
+{
+  cnat_timestamp_direction_t rdir = (dir == CNAT_IS_FWD) ? CNAT_IS_RETURN : CNAT_IS_FWD;
+  /* fib_index always comes from the dedicated FIB slot, independent of
+   * which rewrite location provides the 5-tuple below */
+  session->key.fib_index = ts->cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index;
+  u8 locations[] = { CNAT_LOCATION_OUTPUT, CNAT_LOCATION_FIB, CNAT_LOCATION_INPUT };
+  int i;
+  for (i = 0; i < ARRAY_LEN (locations); i++)
+    {
+      u8 rw_index = locations[i] + dir;
+      u8 rrw_index = cnat_paired_location[locations[i]] + rdir;
+      u8 rw_bm = (1 << rw_index) | (1 << rrw_index);
+      if ((ts->ts_rw_bm & rw_bm) != rw_bm)
+	continue;
+      cnat_timestamp_rewrite_t *rw = &ts->cts_rewrites[rw_index];
+      if (rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT)
+	continue;
+      if (rw->tuple.iproto == 0)
+	continue;
+      cnat_5tuple_copy (&session->key.cs_5tuple, &rw->tuple, 1 /* swap */);
+      return 0;
+    }
+  return 1;
+}
+
 #endif

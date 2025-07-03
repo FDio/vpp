@@ -71,7 +71,7 @@ cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   t->sw_if_index[VLIB_RX] = vnet_buffer (b)->sw_if_index[VLIB_RX];
   t->sw_if_index[VLIB_TX] = vnet_buffer (b)->sw_if_index[VLIB_TX];
 
-  t->generic_flow_id = vnet_buffer2 (b)->session.generic_flow_id;
+  t->generic_flow_id = b->flow_id;
   t->flow_state = vnet_buffer2 (b)->session.state;
 
   if (ts)
@@ -710,7 +710,6 @@ cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6, udp_header_
  * @param iph_offset
  * @param swap         swap (src,dst) addr & port in tup / hash
  * @return tup         the computed 5tuple
- * @return hash        optional pointer to a u64 hash of the 5tuple
  */
 static_always_inline void
 cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t *tup,
@@ -841,10 +840,11 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
   const load_balance_t *lb0;
   const dpo_id_t *dpo0;
   u32 hash_c0, bucket0;
+  index_t trk_index;
 
   lb0 = load_balance_get (ct->ct_lb.dpoi_index);
   if (PREDICT_FALSE (!lb0->lb_n_buckets))
-    return (NULL);
+    return (0);
 
   /* session table miss */
   hash_c0 = (AF_IP4 == af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
@@ -858,8 +858,10 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
   dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
 
   *dpoi_index = dpo0->dpoi_index;
-
-  return &ct->ct_active_paths[bucket0];
+  trk_index = ct->ct_active_paths_indexes[bucket0];
+  if (PREDICT_FALSE (trk_index == CNAT_EP_TRK_INVALID_INDEX))
+    return NULL;
+  return &cnat_ep_trk_pool[trk_index];
 }
 
 /**
