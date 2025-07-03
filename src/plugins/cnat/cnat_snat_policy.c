@@ -591,9 +591,11 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
       pool_get_zero (cpm->snat_policies_pool, cpe);
       cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_SNAT, cnat_if_addr_add_del_snat_cb);
       cpe->snat_policy = cnat_snat_policy_none;
-      cnat_init_port_allocator (fwd_fib_index);
+      cnat_init_port_allocator (fwd_fib_index, flags);
       cpe->flags = flags;
       index = cpe - cpm->snat_policies_pool;
+      if (flags & CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT)
+	cpm->snat_default_policy = cpe;
     }
 
   if (sw_if_set || ip4_set)
@@ -709,7 +711,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
     }
 
   rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index,
-		      CNAT_SNAT_POLICY_FLAG_NONE);
+		      CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT);
   if (rv)
     {
       e = clib_error_return (0, "unknown error %d", rv);

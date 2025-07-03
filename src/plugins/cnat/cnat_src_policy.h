@@ -9,6 +9,7 @@
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_snat_policy.h>
 
 typedef enum
 {
@@ -44,6 +45,8 @@ typedef struct cnat_src_policy_main_
 
   /* Per proto source ports allocator for snat */
   cnat_src_port_allocator_t (*src_ports)[CNAT_N_SPORT_PROTO];
+  /* Default allocator (points into src_ports[fib_index]) */
+  cnat_src_port_allocator_t *default_src_ports;
 } cnat_src_policy_main_t;
 
 extern cnat_src_policy_main_t cnat_src_policy_main;
@@ -52,7 +55,7 @@ void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
 int cnat_allocate_port (u32 fib_index, u16 *port, ip_protocol_t iproto);
 void cnat_free_port (u32 fib_index, u16 port, ip_protocol_t iproto);
 
-void cnat_init_port_allocator (u32 fib_index);
+void cnat_init_port_allocator (u32 fib_index, cnat_snat_policy_flags_t flags);
 void cnat_free_port_allocator (u32 fib_index);
 
 #endif
