@@ -101,6 +101,37 @@ typedef struct cnat_endpoint_tuple_t_
   u8 ep_flags; /* cnat_trk_flag_t */
 } cnat_endpoint_tuple_t;
 
+/**
+ * Data used to track an EP in the FIB
+ */
+typedef struct cnat_ep_trk_t_
+{
+  /**
+   * The EP being tracked
+   */
+  cnat_endpoint_t ct_ep[VLIB_N_DIR];
+
+  /**
+   * The FIB entry for the EP
+   */
+  fib_node_index_t ct_fei;
+
+  /**
+   * The sibling on the entry's child list
+   */
+  u32 ct_sibling;
+
+  /**
+   * The forwarding contributed by the entry
+   */
+  dpo_id_t ct_dpo;
+
+  /**
+   * Allows to disable if not resolved yet
+   */
+  u8 ct_flags; /* cnat_trk_flag_t */
+} cnat_ep_trk_t;
+
 typedef struct
 {
   u16 identifier;
@@ -242,8 +273,15 @@ typedef struct cnat_timestamp_t_
   /* Session refcount, can be 2 (session, rsession) */
   u8 ts_session_refcnt;
 
+  /* identifies which cnat translation this belongs to */
+  index_t cti;
+
+  /* identifies which translation endpoint is used for these sessions */
+  cnat_ep_trk_t *trk;
+
   u8 ts_rw_bm;
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
+  cnat_5tuple_t fw_session_5tuple;
 
 } cnat_timestamp_t;
 STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");
