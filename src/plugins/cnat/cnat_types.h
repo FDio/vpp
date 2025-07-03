@@ -101,6 +101,43 @@ typedef struct cnat_endpoint_tuple_t_
   u8 ep_flags; /* cnat_trk_flag_t */
 } cnat_endpoint_tuple_t;
 
+/**
+ * Data used to track an EP in the FIB
+ */
+typedef struct cnat_ep_trk_t_
+{
+  /**
+   * The EP being tracked
+   */
+  cnat_endpoint_t ct_ep[VLIB_N_DIR];
+
+  /**
+   * The FIB entry for the EP
+   */
+  fib_node_index_t ct_fei;
+
+  /**
+   * The sibling on the entry's child list
+   */
+  u32 ct_sibling;
+
+  index_t index;
+  /**
+   * The forwarding contributed by the entry
+   */
+  dpo_id_t ct_dpo;
+
+  /**
+   * Allows to disable if not resolved yet
+   */
+  u8 ct_flags; /* cnat_trk_flag_t */
+
+  /**
+   * deleted is true if the translation is deleted
+   */
+  u8 marked_for_delete;
+} cnat_ep_trk_t;
+
 typedef struct
 {
   u16 identifier;
@@ -242,6 +279,9 @@ typedef struct cnat_timestamp_t_
   /* Session refcount, can be 2 (session, rsession) */
   u8 ts_session_refcnt;
 
+  /* identifies which translation endpoint is used for these sessions */
+  index_t trk;
+
   u8 ts_rw_bm;
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
 
@@ -284,6 +324,7 @@ extern cnat_timestamp_mpool_t cnat_timestamps;
 extern cnat_main_t cnat_main;
 
 extern char *cnat_error_strings[];
+extern cnat_ep_trk_t *cnat_ep_trk_pool;
 
 typedef enum
 {
