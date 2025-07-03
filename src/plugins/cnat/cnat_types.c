@@ -204,6 +204,12 @@ cnat_lazy_init (void)
     return;
 
   clib_rwlock_init (&ctm->ts_lock);
+  cnat_ep_trk_t *eptrk;
+  /* Reserve index 0 as CNAT_EP_TRK_INVALID_INDEX, mirroring the timestamp
+   * pool convention. cnat_load_balance returns 0 on miss, callers check
+   * trk_i == CNAT_EP_TRK_INVALID_INDEX before dereferencing. */
+  pool_get (cnat_ep_trk_pool, eptrk);
+  ASSERT (eptrk - cnat_ep_trk_pool == CNAT_EP_TRK_INVALID_INDEX);
   /* timestamp 0 is default */
   cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
   /* timestamp 0 should not count toward per vrf limit */
@@ -232,6 +238,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
+  cm->session_max_port_retries = CNAT_DEFAULT_SESSION_MAX_PORT_RETRIES;
   cm->default_scanner_state = CNAT_SCANNER_ON;
   cm->maglev_len = CNAT_DEFAULT_MAGLEV_LEN;
   cm->lazy_init_done = 0;
@@ -266,6 +273,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "session-max-age %u", &cm->session_max_age))
 	;
       else if (unformat (input, "tcp-max-age %u", &cm->tcp_max_age))
+	;
+      else if (unformat (input, "session-max-port-retries %u", &cm->session_max_port_retries))
 	;
       else if (unformat (input, "maglev-len %u", &cm->maglev_len))
 	;

@@ -26,6 +26,8 @@
 /* lifetime of TCP conn NAT sessions after RST/FIN (seconds) */
 #define CNAT_DEFAULT_TCP_RST_TIMEOUT 5
 #define CNAT_DEFAULT_SCANNER_TIMEOUT (1.0)
+/* max number of port retries when in use during reverse session creation */
+#define CNAT_DEFAULT_SESSION_MAX_PORT_RETRIES 100
 
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
 #define CNAT_DEFAULT_CLIENT_BUCKETS	 1024
@@ -45,6 +47,8 @@
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
+#define CNAT_EP_TRK_INVALID_INDEX 0
+#define CNAT_VXLAN_UDP_PORT	  4789
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
@@ -91,6 +95,43 @@ typedef struct cnat_endpoint_tuple_t_
   u8 ep_flags; /* cnat_trk_flag_t */
 } cnat_endpoint_tuple_t;
 
+/**
+ * Data used to track an EP in the FIB
+ */
+typedef struct cnat_ep_trk_t_
+{
+  /**
+   * The EP being tracked
+   */
+  cnat_endpoint_t ct_ep[VLIB_N_DIR];
+
+  /**
+   * The FIB entry for the EP
+   */
+  fib_node_index_t ct_fei;
+
+  /**
+   * The sibling on the entry's child list
+   */
+  u32 ct_sibling;
+
+  index_t index;
+  /**
+   * The forwarding contributed by the entry
+   */
+  dpo_id_t ct_dpo;
+
+  /**
+   * Allows to disable if not resolved yet
+   */
+  u8 ct_flags; /* cnat_trk_flag_t */
+
+  /**
+   * deleted is true if the translation is deleted
+   */
+  u8 marked_for_delete;
+} cnat_ep_trk_t;
+
 typedef struct
 {
   u16 identifier;
@@ -133,6 +174,10 @@ typedef struct cnat_main_
   /* Timeout after which to clear an established TCP
    * session (in seconds) */
   u32 tcp_max_age;
+
+  /* Maximum number of retries when port is in use
+   * during reverse session creation */
+  u32 session_max_port_retries;
 
   /* delay in seconds between two scans of session/clients tables */
   f64 scanner_timeout;
@@ -217,6 +262,7 @@ typedef enum cnat_lookup_state_t_
   CNAT_LOOKUP_IS_NEW = 1,
   CNAT_LOOKUP_IS_ERR = 2,
   CNAT_LOOKUP_IS_RETURN = 3,
+  CNAT_LOOKUP_IS_NONE = 4,
 } cnat_lookup_state_t;
 
 typedef struct cnat_timestamp_t_
@@ -225,6 +271,9 @@ typedef struct cnat_timestamp_t_
   u32 last_seen;
 
   u32 fib_index;
+
+  /* identifies which translation endpoint is used for these sessions */
+  index_t trk;
 
   /* expire after N seconds */
   u16 lifetime;
@@ -274,6 +323,7 @@ extern cnat_timestamp_mpool_t cnat_timestamps;
 extern cnat_main_t cnat_main;
 
 extern char *cnat_error_strings[];
+extern cnat_ep_trk_t *cnat_ep_trk_pool;
 
 typedef enum
 {
