@@ -16,7 +16,7 @@
  * A session represents the memory of a translation.
  * In the tx direction (from behind to in front of the NAT), the
  * session is preserved so subsequent packets follow the same path
- * even if the translation has been updated. In the tx direction
+ * In the tx direction
  * the session represents the swap from the VIP to the server address
  * In the RX direction the swap is from the server address/port to VIP.
  *
@@ -102,6 +102,7 @@ typedef enum cnat_buffer_session_flag_t_
 STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN < (1 << 4), "Value too big");
 
 extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
+extern u8 *format_cnat_timestamp_all (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);
 extern u8 *format_cnat_session_flags (u8 *s, va_list *args);
 
@@ -123,7 +124,7 @@ STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (cnat_bihash_kv_t),
 extern cnat_bihash_t cnat_session_db;
 
 /**
- * Callback function invoked during a walk of all translations
+ * Callback function invoked during a walk of all sessions
  */
 typedef walk_rc_t (*cnat_session_walk_cb_t) (const cnat_session_t *
 					     session, void *ctx);
@@ -136,7 +137,7 @@ extern void cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx);
 /**
  * Scan the session DB for expired sessions
  */
-extern u64 cnat_session_scan (vlib_main_t * vm, f64 start_time, int i);
+extern u64 cnat_session_scan (vlib_main_t *vm, f64 start_time, int i);
 
 /**
  * Purge all the sessions
