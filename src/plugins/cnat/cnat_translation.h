@@ -25,38 +25,6 @@
  */
 extern vlib_combined_counter_main_t cnat_translation_counters;
 
-
-/**
- * Data used to track an EP in the FIB
- */
-typedef struct cnat_ep_trk_t_
-{
-  /**
-   * The EP being tracked
-   */
-  cnat_endpoint_t ct_ep[VLIB_N_DIR];
-
-  /**
-   * The FIB entry for the EP
-   */
-  fib_node_index_t ct_fei;
-
-  /**
-   * The sibling on the entry's child list
-   */
-  u32 ct_sibling;
-
-  /**
-   * The forwarding contributed by the entry
-   */
-  dpo_id_t ct_dpo;
-
-  /**
-   * Allows to disable if not resolved yet
-   */
-  u8 ct_flags; /* cnat_trk_flag_t */
-} cnat_ep_trk_t;
-
 typedef enum cnat_translation_flag_t_
 {
   /* Do allocate a source port */

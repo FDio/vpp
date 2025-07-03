@@ -66,6 +66,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   /* add the rewrite object */
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
+  ts->cti = ct->index;
 
   trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
   if (PREDICT_FALSE (!trk0))
@@ -75,8 +76,9 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       return (rw);
     }
 
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */,
-			   0 /* swap */);
+  ts->trk = trk0;
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */,
+			   0);
 
   ip46_address_copy (&rw->tuple.ip[VLIB_TX],
 		     &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
@@ -136,7 +138,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       rrw->cts_lbi = (u32) ~0;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */,
-			       1 /* swap */);
+			       1 /* swap */, 0);
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
