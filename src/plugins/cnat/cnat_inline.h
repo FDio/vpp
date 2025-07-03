@@ -64,8 +64,7 @@ always_inline index_t
 cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  int *sessions_per_vrf =
-    is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
+
   u32 log2_pool_sz = ctm->log2_pool_sz;
   u32 pool_sz = 1 << log2_pool_sz;
   cnat_timestamp_t *pool;
@@ -74,9 +73,16 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   u32 pidx;
 
   clib_rwlock_writer_lock (&ctm->ts_lock);
-
+  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip4, fib_index,
+				   ctm->max_sessions_per_vrf,
+				   CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, fib_index,
+				   ctm->max_sessions_per_vrf,
+				   CLIB_CACHE_LINE_BYTES);
+  int *sessions_per_vrf =
+    is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
   if (PREDICT_FALSE (vec_elt (sessions_per_vrf, fib_index) <= 0))
-    goto err; /* too many sessions... */
+    goto err;
 
   pidx = clib_bitmap_first_set (ctm->ts_free);
   if (PREDICT_FALSE (pidx >= vec_len (ctm->ts_pools)))
@@ -213,6 +219,11 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
 	ksession->value.cs_session_index;
       vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_NEW;
       cnat_log_session_create (ksession);
+      cnat_timestamp_t *ts = cnat_timestamp_get (session_index);
+      // we put the original 5tuple in the rewrite of the session to use it
+      // later in the writeback if there is no nat (i.e no actual rewrites) in
+      // the case where we have actual rewrites this is going to be overridden
+      ts->cts_rewrites[CNAT_LOCATION_INPUT].tuple = ksession->key.cs_5tuple;
     }
   else if (session->key.cs_5tuple.iproto != 0)
     {

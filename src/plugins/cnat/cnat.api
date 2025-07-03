@@ -29,6 +29,7 @@ enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
   CNAT_TRANSLATION_NO_RETURN_SESSION = 4,
+  CNAT_TRANSLATION_NO_CLIENT = 8,
 };
 
 enum cnat_endpoint_tuple_flags:u8
@@ -148,6 +149,7 @@ autoreply define cnat_set_snat_addresses
   vl_api_ip4_address_t snat_ip4;
   vl_api_ip6_address_t snat_ip6;
   vl_api_interface_index_t sw_if_index;
+  vl_api_cnat_translation_flags_t flags;
 };
 
 define cnat_get_snat_addresses
@@ -229,6 +231,30 @@ autoreply define cnat_set_snat_policy
   vl_api_cnat_snat_policies_t policy;
 };
 
+/** \brief Enable or disable interface feature cnat arc
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface to enable/disable cnat feature arc.
+    @param enable_disable - set to 1 to enable, 0 to disable cnat feature arc
+*/
+autoreply define feature_cnat_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool  enable_disable;
+  option vat_help = "<intfc> | sw_if_index <nn> [enable | disable]";
+};
+
+/** \brief Duplicate the cnat snat policy of the default vrf into another vrf
+    @param table_id_ip4 -
+*/
+autoreply define apply_default_cnat_snat
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *

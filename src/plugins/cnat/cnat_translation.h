@@ -25,38 +25,6 @@
  */
 extern vlib_combined_counter_main_t cnat_translation_counters;
 
-
-/**
- * Data used to track an EP in the FIB
- */
-typedef struct cnat_ep_trk_t_
-{
-  /**
-   * The EP being tracked
-   */
-  cnat_endpoint_t ct_ep[VLIB_N_DIR];
-
-  /**
-   * The FIB entry for the EP
-   */
-  fib_node_index_t ct_fei;
-
-  /**
-   * The sibling on the entry's child list
-   */
-  u32 ct_sibling;
-
-  /**
-   * The forwarding contributed by the entry
-   */
-  dpo_id_t ct_dpo;
-
-  /**
-   * Allows to disable if not resolved yet
-   */
-  u8 ct_flags; /* cnat_trk_flag_t */
-} cnat_ep_trk_t;
-
 typedef enum cnat_translation_flag_t_
 {
   /* Do allocate a source port */
@@ -142,12 +110,12 @@ typedef struct cnat_translation_t_
   /**
    * The vector of tracked back-ends
    */
-  cnat_ep_trk_t *ct_paths;
+  index_t *ct_paths_indexes;
 
   /**
    * The vector of active tracked back-ends
    */
-  cnat_ep_trk_t *ct_active_paths;
+  index_t *ct_active_paths_indexes;
 
   /**
    * The ip protocol for the translation
@@ -187,6 +155,9 @@ typedef struct cnat_translation_t_
 } cnat_translation_t;
 
 extern cnat_translation_t *cnat_translation_pool;
+extern cnat_ep_trk_t *cnat_ep_trk_pool;
+extern index_t *cnat_ep_trk_deleted;
+extern index_t *cnat_ep_trk_pending_delete;
 
 extern u8 *format_cnat_translation (u8 * s, va_list * args);
 
@@ -261,14 +232,14 @@ cnat_translation_get (index_t cti)
 }
 
 static_always_inline cnat_translation_t *
-cnat_find_translation (index_t cti, u16 port, ip_protocol_t proto)
+cnat_find_translation (index_t cci, u16 port, ip_protocol_t proto)
 {
   clib_bihash_kv_8_8_t bkey, bvalue;
   u64 key;
   int rv;
 
   key = ((u64) proto << 24) | port;
-  key = key << 32 | (u32) cti;
+  key = key << 32 | (u32) cci;
 
   bkey.key = key;
   rv = clib_bihash_search_inline_2_8_8 (&cnat_translation_db, &bkey, &bvalue);

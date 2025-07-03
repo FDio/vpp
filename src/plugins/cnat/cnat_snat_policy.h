@@ -17,6 +17,7 @@
 #define __CNAT_SNAT_H__
 
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_translation.h>
 
 /* function to use to decide whether to snat connections in the output
  * feature. Returns 1 if we should source NAT */
@@ -110,7 +111,8 @@ extern cnat_snat_policy_main_t cnat_snat_policy_main;
 extern int cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index,
 			  const ip4_address_t *ip4, u8 ip4_pfx_len,
 			  const ip6_address_t *ip6, u8 ip6_pfx_len,
-			  u32 sw_if_index, cnat_snat_policy_flags_t flags);
+			  u32 sw_if_index, cnat_snat_policy_flags_t flags,
+			  u8 cnat_addresses_flags);
 extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
 extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);
 extern int cnat_set_snat_policy (cnat_snat_policy_type_t policy);

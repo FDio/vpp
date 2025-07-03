@@ -215,10 +215,14 @@ cnat_lazy_init (void)
     return;
 
   clib_rwlock_init (&ctm->ts_lock);
+  cnat_ep_trk_t *eptrk;
+  pool_get (cnat_ep_trk_pool, eptrk);
   /* timestamp 0 is default */
   cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
+  // cnat_timestamp_alloc (CNAT_FIB_TABLE, true /* is_v6 */);
   /* timestamp 0 should not count toward per vrf limit */
   vec_elt (ctm->sessions_per_vrf_ip4, 0)++;
+  // vec_elt (ctm->sessions_per_vrf_ip6, 0)++;
 
   cnat_enable_disable_scanner (cm->default_scanner_state);
 

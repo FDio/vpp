@@ -94,9 +94,25 @@ VLIB_CLI_COMMAND (cnat_scanner_cmd_node, static) = {
   .short_help = "test cnat scanner",
 };
 
+static u32
+buffer_clean_alloc_callback (vlib_main_t *vm, u8 buffer_pool_index,
+			     u32 *buffers, u32 n_buffers)
+{
+  u32 i;
+  vlib_buffer_t *b;
+  for (i = 0; i < n_buffers; i++)
+    {
+      b = vlib_get_buffer (vm, buffers[i]);
+      vnet_buffer2 (b)->session.generic_flow_id = 0;
+      vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_ERR;
+    }
+  return n_buffers;
+}
+
 static clib_error_t *
 cnat_scanner_init (vlib_main_t * vm)
 {
+  vlib_buffer_set_alloc_free_callback (vm, buffer_clean_alloc_callback, 0);
   cnat_main_t *cm = &cnat_main;
   cm->scanner_node_index = cnat_scanner_process_node.index;
 
