@@ -78,12 +78,48 @@ VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
 };
 
 always_inline void
+set_buffer_fib_index_from_interface (u32 *fib_index_by_sw_if_index, vlib_buffer_t *b)
+{
+  vnet_buffer (b)->ip.fib_index =
+    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
+  vnet_buffer (b)->ip.fib_index =
+    ((vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+       vnet_buffer (b)->ip.fib_index :
+       vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_TX]));
+}
+
+static_always_inline cnat_5tuple_t *
+cnat_get_rewrite_from (cnat_timestamp_t *ts)
+{
+  /* Mirror the priority order of cnat_reverse_session_key:
+   * OUTPUT > FIB > INPUT, pick the most processed rewrite
+   * that has actual NAT (not NO_NAT) */
+  u8 locations[] = { CNAT_LOCATION_OUTPUT, CNAT_LOCATION_FIB, CNAT_LOCATION_INPUT };
+  int i;
+  for (i = 0; i < ARRAY_LEN (locations); i++)
+    {
+      u8 rw_index = locations[i] + CNAT_IS_FWD;
+      if (!(ts->ts_rw_bm & (1 << rw_index)))
+	continue;
+      cnat_timestamp_rewrite_t *rw = &ts->cts_rewrites[rw_index];
+      if (rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT)
+	continue;
+      if (rw->tuple.iproto == 0)
+	continue;
+      return &rw->tuple;
+    }
+  /* fallback to INPUT unconditionally */
+  return &ts->cts_rewrites[CNAT_LOCATION_INPUT + CNAT_IS_FWD].tuple;
+}
+
+always_inline void
 cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 {
   cnat_bihash_kv_t bkey;
   cnat_timestamp_t *ts;
   cnat_session_t *session = (cnat_session_t *) &bkey;
-  u32 iph_offset, n_retries = 200, rv, port_seed = 0;
+  u32 n_retries = 0, rv, port_seed = 0;
+  cnat_main_t *cm = &cnat_main;
 
   if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
     return;
@@ -91,29 +127,39 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   ts = cnat_timestamp_get_if_exists (vnet_buffer2 (b)->session.generic_flow_id);
   if (ts == NULL)
     {
-      *next = 0; // DROP, probably needs improvement
+      *next = 0; // TODO: DROP, probably needs improvement
       return;
     }
 
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
-  iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
-  cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset, 1 /* swap */);
+  cnat_5tuple_t *rewrite_from;
+  rewrite_from = cnat_get_rewrite_from (ts);
+  cnat_make_timestamp_5tuple_swapped (af, &session->key.cs_5tuple, rewrite_from);
 
+  u32 *fib_index_by_sw_if_index =
+    AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
+  set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
+  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
   session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
+
   ASSERT (ts->ts_session_refcnt <= 2);
 
-retry_add_ression:
-  // FIXME
+  /* Reset session state so encap processing does not traverse output nodes
+   * twice */
+  vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_DONE;
+
+retry_add_session:
   rv = cnat_bihash_add_with_overwrite_cb (
-    &cnat_session_db, &bkey, n_retries < 100 ? NULL : cnat_session_free_stale_cb, NULL);
-  if (rv && n_retries++ < 100)
+    &cnat_session_db, &bkey,
+    n_retries < cm->session_max_port_retries ? NULL : cnat_session_free_stale_cb, NULL);
+  if (rv && n_retries++ < cm->session_max_port_retries)
     {
       random_u32 (&port_seed);
       session->key.cs_5tuple.port[VLIB_TX] = port_seed;
-      goto retry_add_ression;
+      goto retry_add_session;
     }
 }
 

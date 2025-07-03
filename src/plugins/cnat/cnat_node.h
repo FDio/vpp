@@ -710,7 +710,6 @@ cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6, udp_header_
  * @param iph_offset
  * @param swap         swap (src,dst) addr & port in tup / hash
  * @return tup         the computed 5tuple
- * @return hash        optional pointer to a u64 hash of the 5tuple
  */
 static_always_inline void
 cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t *tup,
@@ -834,17 +833,46 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
     }
 }
 
-static_always_inline cnat_ep_trk_t *
+/* Compute a reverse session by swapping a rewrite
+ * @param af           the address family
+ * @param src the rewrite 5tuple used to compute the new 5tuple
+ * @return dst         the computed 5tuple
+ */
+static_always_inline void
+cnat_make_timestamp_5tuple_swapped (ip_address_family_t af, cnat_5tuple_t *dst, cnat_5tuple_t *src)
+{
+  clib_memset (dst, 0, sizeof (*dst));
+  /* We don't hash address family for now */
+  if (AF_IP4 == af)
+    {
+      ip46_address_set_ip4 (&dst->ip[VLIB_TX ^ 1], &src->ip[VLIB_RX ^ 1].ip4);
+      ip46_address_set_ip4 (&dst->ip[VLIB_RX ^ 1], &src->ip[VLIB_TX ^ 1].ip4);
+      dst->iproto = src->iproto;
+      dst->port[VLIB_RX ^ 1] = src->port[VLIB_TX ^ 1];
+      dst->port[VLIB_TX ^ 1] = src->port[VLIB_RX ^ 1];
+    }
+  else
+    {
+      ip46_address_set_ip6 (&dst->ip[VLIB_TX ^ 1], &src->ip[VLIB_RX ^ 1].ip6);
+      ip46_address_set_ip6 (&dst->ip[VLIB_RX ^ 1], &src->ip[VLIB_TX ^ 1].ip6);
+      dst->iproto = src->iproto;
+      dst->port[VLIB_RX ^ 1] = src->port[VLIB_TX ^ 1];
+      dst->port[VLIB_TX ^ 1] = src->port[VLIB_RX ^ 1];
+    }
+}
+
+static_always_inline index_t
 cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_header_t *ip4,
 		   ip6_header_t *ip6, u32 *dpoi_index, u32 maglev_len)
 {
   const load_balance_t *lb0;
   const dpo_id_t *dpo0;
   u32 hash_c0, bucket0;
+  index_t *trk_index;
 
   lb0 = load_balance_get (ct->ct_lb.dpoi_index);
   if (PREDICT_FALSE (!lb0->lb_n_buckets))
-    return (NULL);
+    return (0);
 
   /* session table miss */
   hash_c0 = (AF_IP4 == af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
@@ -858,8 +886,8 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
   dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
 
   *dpoi_index = dpo0->dpoi_index;
-
-  return &ct->ct_active_paths[bucket0];
+  trk_index = &ct->ct_active_paths_indexes[bucket0];
+  return *trk_index;
 }
 
 /**

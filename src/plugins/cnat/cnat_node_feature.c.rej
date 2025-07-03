@@ -1,0 +1,31 @@
+diff a/src/plugins/cnat/cnat_node_feature.c b/src/plugins/cnat/cnat_node_feature.c	(rejected hunks)
+@@ -82,25 +82,25 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
+   rw->cts_lbi = (u32) ~0;
+   rw->cts_dpoi_next_node = (u16) ~0;
+ 
+-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */, 0);
++  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
+ 
+   /* session table miss */
+   trk0_i = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+-  trk0 = pool_elt_at_index (cnat_ep_trk_pool, trk0_i);
++
+   if (PREDICT_FALSE (trk0_i == CNAT_EP_TRK_INVALID_INDEX))
+     {
+       /* Load balance is empty or not resolved, drop  */
+       rw->cts_dpoi_next_node = IP_LOOKUP_NEXT_DROP;
+       return (rw);
+     }
+-
++  trk0 = &cnat_ep_trk_pool[trk0_i];
+   /* never source nat in this node */
+   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
+   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
+ 			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
+ 			      rw->tuple.port[VLIB_TX];
+ 
+-  ts->trk = trk0_i;
++  ts->ts_trk_index = trk0_i;
+   if (cpe)
+     ispod = clib_bitmap_get (cpe->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD],
+ 			     in_if);

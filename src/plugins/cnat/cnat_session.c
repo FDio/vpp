@@ -7,6 +7,7 @@
 #include <vlib/stats/stats.h>
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
+#include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include "cnat_log.h"
 
@@ -14,6 +15,21 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
+/* Index into the double vector for deferred backend deletion.
+ * Flipped by the scanner at the start of each full scan cycle (i == 0).
+ * cnat_ep_trk_delete_notify writes into slot [state ^ 1] (the inactive
+ * slot) while the scanner frees from slot [state] (the active slot).
+ * Both the scanner and translation update/delete run on the main thread
+ * so no locking is needed — the flip is always observed atomically from
+ * the same thread. */
+bool ep_trk_del_state;
+index_t *cnat_ep_trk_idx_deleted[2];
+
+void
+cnat_ep_trk_delete_notify (index_t *trk_index)
+{
+  vec_add1 (cnat_ep_trk_idx_deleted[ep_trk_del_state ^ 1], *trk_index);
+}
 
 void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
@@ -118,9 +134,10 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+  s = format (s, "%U => [%U]\n%Uindex:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
-	      format_cnat_timestamp, ts, indent + 2);
+	      sess->value.cs_session_index, format_white_space, indent + 2, format_cnat_timestamp,
+	      ts, indent + 2);
 
   return (s);
 }
@@ -397,16 +414,64 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* other session is in bihash */
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
-      /* if a session was overwritten (eg. because lack of ports), it's
+      /* if a session was overwritten (eg. because lack of ports), its
        * 5-tuple could have been reused. */
       if (session->value.cs_session_index == rsession->value.cs_session_index)
 	cnat_session_free (rsession);
     }
 }
 
-u64
-cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
+static_always_inline bool
+cnat_session_is_stale (cnat_session_t *session, f64 start_time)
 {
+  /* a session is stale if it is non used until expiration or
+  if the backend corresponding to the nat session disappeared */
+  if (start_time > cnat_timestamp_exp (session->value.cs_session_index) &&
+      session->key.cs_5tuple.iproto != 0) // TODO: this is a work around a bug where
+					  // sessions with 0 values are found
+    {
+      return 1;
+    }
+  cnat_timestamp_t *ts = cnat_timestamp_get (session->value.cs_session_index);
+  /* We only do this for sessions that actually use a tracker
+   * this part of the scanner only expires sessions that have a tracker marked for
+   * delete */
+  if (ts->ts_trk_index != CNAT_EP_TRK_INVALID_INDEX)
+    {
+      cnat_ep_trk_t *trk_;
+      trk_ = &cnat_ep_trk_pool[ts->ts_trk_index];
+      if (trk_->ct_flags & CNAT_TRK_MARKED_FOR_DELETE)
+	/* the backend corresponding to this session is
+	 * deleted, delete the session */
+	{
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+u64
+cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
+{
+  if (!i)
+    {
+      /* delete confirmed deleted backends from previous scan
+       */
+      index_t *slot;
+      vec_foreach (slot, cnat_ep_trk_idx_deleted[ep_trk_del_state])
+	{
+	  cnat_ep_trk_t *ep_trk = &cnat_ep_trk_pool[*slot];
+	  pool_put (cnat_ep_trk_pool, ep_trk);
+	}
+      vec_free (cnat_ep_trk_idx_deleted[ep_trk_del_state]);
+
+      /* Promote "pending deletions" to "confirmed".
+       * Using two vecs (pending + confirmed) ensures we scan all sessions
+       * once more before actually freeing a backend. Prevents deleting while
+       * iterating.
+       */
+      ep_trk_del_state ^= 1;
+    }
   BVT (clib_bihash) * h = &cnat_session_db;
   int j, k;
 
@@ -447,8 +512,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		continue;
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
-
-	      if (start_time > cnat_timestamp_exp (session->value.cs_session_index))
+	      if (cnat_session_is_stale (session, start_time))
 		{
 		  /* age it */
 		  cnat_log_session_expire (session);
