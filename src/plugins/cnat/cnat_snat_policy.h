@@ -7,6 +7,7 @@
 #define __CNAT_SNAT_H__
 
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_translation.h>
 
 /* function to use to decide whether to snat connections in the output
  * feature. Returns 1 if we should source NAT */
@@ -64,8 +65,9 @@ typedef enum cnat_snat_policy_flags_t_
   CNAT_SNAT_POLICY_FLAG_NONE = 0,
   CNAT_SNAT_POLICY_FLAG_BUFFER_NEXT = 1,
   CNAT_SNAT_POLICY_FLAG_NO_CLIENT = 2,
+  CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT = 4,
 } __clib_packed cnat_snat_policy_flags_t;
-STATIC_ASSERT (CNAT_SNAT_POLICY_FLAG_NO_CLIENT < (1 << 4), "Value too big");
+STATIC_ASSERT (CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT < (1 << 8), "Value too big");
 
 typedef struct cnat_snat_policy_entry_t_
 {
@@ -104,6 +106,7 @@ typedef struct cnat_snat_policy_main_t_
   cnat_snat_policy_entry_t *snat_policies_pool;
   u32 *snat_policy_per_fwd_fib_index4;
   u32 *snat_policy_per_fwd_fib_index6;
+  cnat_snat_policy_entry_t *snat_default_policy;
 } cnat_snat_policy_main_t;
 
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
@@ -126,10 +129,10 @@ cnat_snat_policy_entry_get__ (ip_address_family_t af, u32 fwd_fib_index)
   u32 *cp_fwd_fib_index =
     AF_IP4 == af ? cpm->snat_policy_per_fwd_fib_index4 : cpm->snat_policy_per_fwd_fib_index6;
   if (fwd_fib_index >= vec_len (cp_fwd_fib_index))
-    return 0;
+    return cpm->snat_default_policy;
   u32 cpe_index = vec_elt (cp_fwd_fib_index, fwd_fib_index);
   if (~0 == cpe_index)
-    return 0;
+    return cpm->snat_default_policy;
   return pool_elt_at_index (cpm->snat_policies_pool, cpe_index);
 }
 

@@ -7,6 +7,7 @@
 #include <vlib/stats/stats.h>
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
+#include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include "cnat_log.h"
 
@@ -14,6 +15,21 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
+/* Index into the double vector for deferred backend deletion.
+ * Flipped by the scanner at the start of each full scan cycle (i == 0).
+ * cnat_ep_trk_delete_notify writes into slot [state ^ 1] (the inactive
+ * slot) while the scanner frees from slot [state] (the active slot).
+ * Both the scanner and translation update/delete run on the main thread
+ * so no locking is needed — the flip is always observed atomically from
+ * the same thread. */
+bool ep_trk_del_state;
+index_t *cnat_ep_trk_idx_deleted[2];
+
+void
+cnat_ep_trk_delete_notify (index_t *trk_index)
+{
+  vec_add1 (cnat_ep_trk_idx_deleted[ep_trk_del_state ^ 1], *trk_index);
+}
 
 void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
@@ -98,14 +114,13 @@ format_cnat_timestamp (u8 *s, va_list *args)
 {
   cnat_timestamp_t *ts = va_arg (*args, cnat_timestamp_t *);
   u32 indent = va_arg (*args, u32);
-
-  s = format (s, "%Ulast_seen:%u lifetime:%u ref:%u fib:%u", format_white_space, indent,
-	      ts->last_seen, ts->lifetime, ts->ts_session_refcnt, ts->fib_index);
+  int verbose = va_arg (*args, int);
+  s = format (s, "%Ulast_seen:%u lifetime:%u ref:%u", format_white_space, indent, ts->last_seen,
+	      ts->lifetime, ts->ts_session_refcnt);
   for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
-    if (ts->ts_rw_bm & (1 << i))
+    if ((verbose > 1) || (ts->ts_rw_bm & (1 << i)))
       s = format (s, "\n%U[%U] %U", format_white_space, indent + 2, format_cnat_rewrite_type, i,
 		  format_cnat_rewrite, &ts->cts_rewrites[i]);
-
   return (s);
 }
 
@@ -113,14 +128,15 @@ u8 *
 format_cnat_session (u8 * s, va_list * args)
 {
   cnat_session_t *sess = va_arg (*args, cnat_session_t *);
-  CLIB_UNUSED (int verbose) = va_arg (*args, int);
+  int verbose = va_arg (*args, int);
   u32 indent = format_get_indent (s);
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+  s = format (s, "%U => [%U]\n%Uindex:%d fib:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
-	      format_cnat_timestamp, ts, indent + 2);
+	      sess->value.cs_session_index, sess->key.fib_index, format_white_space, indent + 2,
+	      format_cnat_timestamp, ts, indent + 2, verbose);
 
   return (s);
 }
@@ -214,41 +230,27 @@ cnat_session_show (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "verbose"))
+      arg.verbose = clib_max (arg.verbose, 1);
+      if (unformat (input, "verbose %d", &v))
 	{
-	  arg.verbose = 1;
+	  arg.verbose = v;
 	}
       else if (unformat (input, "return"))
 	{
-	  arg.verbose = 1;
 	  arg.flags |= CNAT_SESSION_IS_RETURN;
 	}
       else if (unformat (input, "ip %U", unformat_ip46_address, &arg.ip, IP46_TYPE_ANY))
-	{
-	  arg.verbose = 1;
-	}
+	;
       else if (unformat (input, "port %d", &v))
-	{
-	  arg.verbose = 1;
-	  arg.port = clib_host_to_net_u16 (v);
-	}
+	arg.port = clib_host_to_net_u16 (v);
       else if (unformat (input, "proto %U", unformat_ip_protocol, &arg.proto))
-	{
-	  arg.verbose = 1;
-	}
+	;
       else if (unformat (input, "ref %d", &v))
-	{
-	  arg.verbose = 1;
-	  arg.refcount = v;
-	}
+	arg.refcount = v;
       else if (unformat (input, "max %d", &arg.max))
-	{
-	  arg.verbose = 1;
-	}
+	;
       else if (unformat (input, "fib %u", &arg.fib_index))
-	{
-	  arg.verbose = 1;
-	}
+	;
       else
 	{
 	  return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
@@ -267,7 +269,7 @@ cnat_session_show (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
-  .short_help = "show cnat session [verbose] [return] [ip <ip>] [port <port>] "
+  .short_help = "show cnat session [verbose <N>] [return] [ip <ip>] [port <port>] "
 		"[proto <proto>] [ref <ref>] [max <max>]",
   .is_mp_safe = 1,
 };
@@ -275,14 +277,27 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
 static_always_inline void
 cnat_session_free__ (cnat_session_t *session)
 {
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  bool is_v6 = !ip46_address_is_ip4 (&session->key.cs_5tuple.ip[VLIB_TX]);
+
   cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
 			      1 /* is_session */);
     }
-  cnat_timestamp_free (session->value.cs_session_index,
-		       !ip46_address_is_ip4 (&session->key.cs_5tuple.ip[VLIB_TX]) /*is_v6 */);
+  /* Credit the per-VRF session budget back when the non-return (forward) session is freed.
+   * The budget was debited once at timestamp alloc, keyed on the forward session's fib_index.
+   * Gating on !IS_RETURN ensures we credit exactly once regardless of the order in which
+   * the forward and return sessions are reaped by the scanner. */
+  if (!(session->value.cs_flags & CNAT_SESSION_IS_RETURN))
+    {
+      int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
+      clib_rwlock_writer_lock (&ctm->ts_lock);
+      vec_elt (sessions_per_vrf, session->key.fib_index)++;
+      clib_rwlock_writer_unlock (&ctm->ts_lock);
+    }
+  cnat_timestamp_free (session->value.cs_session_index, is_v6);
 }
 
 /* This is call when adding a session that already exists
@@ -320,30 +335,6 @@ cnat_session_purge (void)
   return (0);
 }
 
-static int
-cnat_reverse_session_key (cnat_session_t *rsession, const cnat_timestamp_t *ts,
-			  const cnat_session_location_t loc, const cnat_timestamp_direction_t dir,
-			  const cnat_timestamp_direction_t rdir)
-{
-  const cnat_timestamp_rewrite_t *rw, *rrw;
-  u8 rw_index = loc + dir;
-  u8 rrw_index = loc + rdir;
-  u8 rw_bm = (1 << rw_index) | (1 << rrw_index);
-
-  if ((ts->ts_rw_bm & rw_bm) != rw_bm)
-    return 0;
-
-  rw = &ts->cts_rewrites[rw_index];
-  if (rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT)
-    return 0;
-
-  rrw = &ts->cts_rewrites[rrw_index];
-
-  cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1);
-  rsession->key.fib_index = rrw->fib_index;
-  return 1;
-}
-
 void
 cnat_reverse_session_free (cnat_session_t *session)
 {
@@ -356,35 +347,12 @@ cnat_reverse_session_free (cnat_session_t *session)
   ts = cnat_timestamp_get (session->value.cs_session_index);
   ASSERT (ts != NULL);
 
-  /* Go through all the available rewrites for the session we have
-   * find the closest to the output or return the input 5tuple */
+  cnat_timestamp_direction_t dir =
+    (session->value.cs_flags & CNAT_SESSION_IS_RETURN) ? CNAT_IS_RETURN : CNAT_IS_FWD;
 
-  /* 1st determine directions to use */
-  cnat_timestamp_direction_t dir, rdir;
-  if (session->value.cs_flags & CNAT_SESSION_IS_RETURN)
-    {
-      dir = CNAT_IS_RETURN;
-      rdir = CNAT_IS_FWD;
-    }
-  else
-    {
-      dir = CNAT_IS_FWD;
-      rdir = CNAT_IS_RETURN;
-    }
-
-  /* try to find the right rewrite: INPUT > FIB > OUTPUT */
-  if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_INPUT, dir, rdir))
-    ;
-  else if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_FIB, dir, rdir))
-    ;
-  else if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_OUTPUT, dir, rdir))
-    ;
-  else
-    {
-      /* nothing found, try to just swap the 5tuple... */
-      cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
-      rsession->key.fib_index = session->key.fib_index;
-    }
+  if (cnat_get_rsession_from_ts (ts, dir, rsession))
+    /* no rewrite found, fallback: swap the session's own 5-tuple */
+    cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
     {
@@ -397,16 +365,62 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* other session is in bihash */
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
-      /* if a session was overwritten (eg. because lack of ports), it's
+      /* if a session was overwritten (eg. because lack of ports), its
        * 5-tuple could have been reused. */
       if (session->value.cs_session_index == rsession->value.cs_session_index)
 	cnat_session_free (rsession);
     }
 }
 
-u64
-cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
+static_always_inline bool
+cnat_session_is_stale (cnat_session_t *session, f64 start_time)
 {
+  /* a session is stale if it is non used until expiration or
+  if the backend corresponding to the nat session disappeared */
+  if (start_time > cnat_timestamp_exp (session->value.cs_session_index))
+    {
+      return 1;
+    }
+  cnat_timestamp_t *ts = cnat_timestamp_get (session->value.cs_session_index);
+  /* We only do this for sessions that actually use a tracker
+   * this part of the scanner only expires sessions that have a tracker marked for
+   * delete */
+  if (ts->ts_trk_index != CNAT_EP_TRK_INVALID_INDEX)
+    {
+      cnat_ep_trk_t *trk_;
+      trk_ = &cnat_ep_trk_pool[ts->ts_trk_index];
+      if (trk_->ct_flags & CNAT_TRK_MARKED_FOR_DELETE)
+	/* the backend corresponding to this session is
+	 * deleted, delete the session */
+	{
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+u64
+cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
+{
+  if (!i)
+    {
+      /* delete confirmed deleted backends from previous scan
+       */
+      index_t *slot;
+      vec_foreach (slot, cnat_ep_trk_idx_deleted[ep_trk_del_state])
+	{
+	  cnat_ep_trk_t *ep_trk = &cnat_ep_trk_pool[*slot];
+	  pool_put (cnat_ep_trk_pool, ep_trk);
+	}
+      vec_free (cnat_ep_trk_idx_deleted[ep_trk_del_state]);
+
+      /* Promote "pending deletions" to "confirmed".
+       * Using two vecs (pending + confirmed) ensures we scan all sessions
+       * once more before actually freeing a backend. Prevents deleting while
+       * iterating.
+       */
+      ep_trk_del_state ^= 1;
+    }
   BVT (clib_bihash) * h = &cnat_session_db;
   int j, k;
 
@@ -447,8 +461,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		continue;
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
-
-	      if (start_time > cnat_timestamp_exp (session->value.cs_session_index))
+	      if (cnat_session_is_stale (session, start_time))
 		{
 		  /* age it */
 		  cnat_log_session_expire (session);
@@ -523,13 +536,13 @@ cnat_timestamp_show (vlib_main_t * vm,
   f64 start = vlib_time_now (vm);
   cnat_timestamp_t *ts;
   int ts_cnt = 0, cnt;
-  u8 verbose = 0;
-  int i;
+  int verbose = 0;
+  int i, v;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "verbose"))
-	verbose = 1;
+      if (unformat (input, "verbose %d", &v))
+	verbose = v;
       else
 	return (clib_error_return (0, "unknown input '%U'",
 				   format_unformat_error, input));
@@ -545,7 +558,7 @@ cnat_timestamp_show (vlib_main_t * vm,
 	continue;
       pool_foreach (ts, ts_pool)
 	{
-	  vlib_cli_output (vm, "[%d] %U", ts - ts_pool, format_cnat_timestamp, ts, 0);
+	  vlib_cli_output (vm, "[%d] %U", ts - ts_pool, format_cnat_timestamp, ts, 0, verbose);
 	  if (cnat_show_yield (vm, &start))
 	    {
 	      /* we must reload the pool as it might have moved */
@@ -562,6 +575,6 @@ cnat_timestamp_show (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cnat_timestamp_show_cmd, static) = {
   .path = "show cnat timestamp",
   .function = cnat_timestamp_show,
-  .short_help = "show cnat timestamp [verbose]",
+  .short_help = "show cnat timestamp [verbose <N>]",
   .is_mp_safe = 1,
 };

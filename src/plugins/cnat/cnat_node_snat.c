@@ -75,7 +75,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   rw->cts_lbi = INDEX_INVALID;
-  rw->fib_index = fwd_fib_index;
+  rw->rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in FIB
@@ -97,16 +97,15 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
-  rrw->fib_index = ret_fib_index;
+  rrw->rw_fib_index = ret_fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   int sport_retries, sport_failures;
-  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index,
-			0 /* add client */, &rw->tuple.port[VLIB_RX], &sport_retries,
-			&sport_failures);
+  cnat_rsession_create (rw, b->flow_id, ret_fib_index, 0 /* add client */, &rw->tuple.port[VLIB_RX],
+			&sport_retries, &sport_failures);
   if (sport_retries)
     {
       vlib_node_increment_counter (vm, node->node_index, CNAT_ERROR_RETRIES_PORTS, 1);
@@ -141,7 +140,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       fwd_fib_index = vnet_buffer (b)->ip.fib_index;
     }
 
-  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  ts = cnat_timestamp_update (b->flow_id, now);
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     {
       /* Translate & follow the translation given LB */
