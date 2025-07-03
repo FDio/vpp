@@ -37,6 +37,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_client_t *cc;
   ip_protocol_t iproto;
+  index_t trk0_i;
   cnat_ep_trk_t *trk0;
   u32 dpoi_index = -1;
   ip4_header_t *ip4 = NULL;
@@ -81,20 +82,22 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
   /* session table miss */
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
-  if (PREDICT_FALSE (!trk0))
+  trk0_i = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+
+  if (PREDICT_FALSE (trk0_i == CNAT_EP_TRK_INVALID_INDEX))
     {
       /* Load balance is empty or not resolved, drop  */
       rw->cts_dpoi_next_node = IP_LOOKUP_NEXT_DROP;
       return (rw);
     }
-
+  trk0 = pool_elt_at_index (cnat_ep_trk_pool, trk0_i);
   /* never source nat in this node */
   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
 			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
 			      rw->tuple.port[VLIB_TX];
 
+  ts->ts_trk_index = trk0_i;
   if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
     {
       const dpo_id_t *dpo0;
@@ -371,6 +374,12 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
       return (rw);
     }
   rw->tuple.port[VLIB_RX] = sport;
+
+  /* For ICMP, both src and dst port fields store the identifier.
+   * Set port[VLIB_TX] to the allocated sport so the return session
+   * key matches the forward session's identifier. */
+  if (rw->tuple.iproto == IP_PROTOCOL_ICMP)
+    rw->tuple.port[VLIB_TX] = sport;
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
