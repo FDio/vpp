@@ -37,6 +37,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_client_t *cc;
   ip_protocol_t iproto;
+  index_t trk0_i;
   cnat_ep_trk_t *trk0;
   u32 dpoi_index = -1;
   ip4_header_t *ip4 = NULL;
@@ -77,24 +78,28 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
+  /* record the forward-direction fib_index in the canonical FIB slot */
+  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = vnet_buffer (b)->ip.fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
   /* session table miss */
   trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
       rw->cts_dpoi_next_node = IP_LOOKUP_NEXT_DROP;
       return (rw);
     }
-
+  trk0_i = trk0 - cnat_ep_trk_pool;
   /* never source nat in this node */
   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
 			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
 			      rw->tuple.port[VLIB_TX];
 
+  ts->ts_trk_index = trk0_i;
   if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
     {
       const dpo_id_t *dpo0;
@@ -174,10 +179,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
       vnet_feature_next_u16 (&next[2], b[2]);
       vnet_feature_next_u16 (&next[3], b[3]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
-      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.generic_flow_id);
-      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.generic_flow_id);
-      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (b[0]->flow_id);
+      ts[1] = cnat_timestamp_get (b[1]->flow_id);
+      ts[2] = cnat_timestamp_get (b[2]->flow_id);
+      ts[3] = cnat_timestamp_get (b[3]->flow_id);
     }
 
   while (n_left >= 4)
@@ -214,10 +219,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
 	  vnet_feature_next_u16 (&next[6], b[6]);
 	  vnet_feature_next_u16 (&next[7], b[7]);
 
-	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.generic_flow_id);
-	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.generic_flow_id);
-	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.generic_flow_id);
-	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.generic_flow_id);
+	  ts[0] = cnat_timestamp_get (b[4]->flow_id);
+	  ts[1] = cnat_timestamp_get (b[5]->flow_id);
+	  ts[2] = cnat_timestamp_get (b[6]->flow_id);
+	  ts[3] = cnat_timestamp_get (b[7]->flow_id);
 
 	  vlib_prefetch_buffer_data (b[4], LOAD);
 	  vlib_prefetch_buffer_data (b[5], LOAD);
@@ -241,7 +246,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t 
   while (n_left > 0)
     {
       vnet_feature_next_u16 (&next[0], b[0]);
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (b[0]->flow_id);
 
       rw[0] = cnat_input_feature_get_rw (vm, b[0], af, ts[0]);
       cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
@@ -337,7 +342,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
-  rw->fib_index = ~0;
+  rw->rw_fib_index = ~0;
 
   if (AF_IP4 == af)
     {
@@ -372,9 +377,19 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
     }
   rw->tuple.port[VLIB_RX] = sport;
 
+  /* For ICMP, both src and dst port fields store the identifier.
+   * Set port[VLIB_TX] to the allocated sport so the return session
+   * key matches the forward session's identifier. */
+  if (rw->tuple.iproto == IP_PROTOCOL_ICMP)
+    rw->tuple.port[VLIB_TX] = sport;
+
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
-  rw->fib_index = fwd_fib_index;
+  /* needed by cnat_timestamp_rewrite_free to return the allocated port */
+  rw->rw_fib_index = fwd_fib_index;
+  /* record the forward-direction fib_index in the canonical FIB slot
+   * for reverse session reconstruction via cnat_get_rsession_from_ts */
+  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in input
@@ -386,7 +401,9 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rrw->cts_lbi = (u32) ~0;
   rrw->cts_dpoi_next_node = (u16) ~0;
-  rrw->fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
+  /* record the return-direction fib_index in the canonical FIB slot */
+  ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB].rw_fib_index =
+    AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */);
 
@@ -437,10 +454,10 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
       vnet_feature_next_u16 (&next[2], b[2]);
       vnet_feature_next_u16 (&next[3], b[3]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
-      ts[1] = cnat_timestamp_get (vnet_buffer2 (b[1])->session.generic_flow_id);
-      ts[2] = cnat_timestamp_get (vnet_buffer2 (b[2])->session.generic_flow_id);
-      ts[3] = cnat_timestamp_get (vnet_buffer2 (b[3])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (b[0]->flow_id);
+      ts[1] = cnat_timestamp_get (b[1]->flow_id);
+      ts[2] = cnat_timestamp_get (b[2]->flow_id);
+      ts[3] = cnat_timestamp_get (b[3]->flow_id);
     }
 
   while (n_left >= 4)
@@ -468,10 +485,10 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
 	  vnet_feature_next_u16 (&next[6], b[6]);
 	  vnet_feature_next_u16 (&next[7], b[7]);
 
-	  ts[0] = cnat_timestamp_get (vnet_buffer2 (b[4])->session.generic_flow_id);
-	  ts[1] = cnat_timestamp_get (vnet_buffer2 (b[5])->session.generic_flow_id);
-	  ts[2] = cnat_timestamp_get (vnet_buffer2 (b[6])->session.generic_flow_id);
-	  ts[3] = cnat_timestamp_get (vnet_buffer2 (b[7])->session.generic_flow_id);
+	  ts[0] = cnat_timestamp_get (b[4]->flow_id);
+	  ts[1] = cnat_timestamp_get (b[5]->flow_id);
+	  ts[2] = cnat_timestamp_get (b[6]->flow_id);
+	  ts[3] = cnat_timestamp_get (b[7]->flow_id);
 
 	  vlib_prefetch_buffer_data (b[4], LOAD);
 	  vlib_prefetch_buffer_data (b[5], LOAD);
@@ -505,7 +522,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t
       /* By default follow arc default next */
       vnet_feature_next_u16 (&next[0], b[0]);
 
-      ts[0] = cnat_timestamp_get (vnet_buffer2 (b[0])->session.generic_flow_id);
+      ts[0] = cnat_timestamp_get (b[0]->flow_id);
       rw[0] = cnat_output_feature_get_rw (vm, b[0], af, ts[0]);
       cnat_translation (b[0], af, rw[0], &ts[0]->lifetime, cm->tcp_max_age,
 			vnet_buffer (b[0])->ip.save_rewrite_length);
