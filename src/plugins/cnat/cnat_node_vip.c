@@ -56,13 +56,15 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
   trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
-  if (PREDICT_FALSE (!trk0))
+
+  if (!trk0)
     {
       /* Load balance is empty or not resolved, drop  */
       rw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_DROP;
       return (rw);
     }
 
+  ts->ts_trk_index = trk0 - cnat_ep_trk_pool;
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
