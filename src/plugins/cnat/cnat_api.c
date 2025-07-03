@@ -21,6 +21,7 @@
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 #include <cnat/cnat_snat_policy.h>
+#include <cnat/cnat_src_policy.h>
 
 #include <vnet/ip/ip_types_api.h>
 
@@ -42,7 +43,9 @@ STATIC_ASSERT ((int) CNAT_TRANSLATION_ALLOC_PORT ==
 STATIC_ASSERT ((int) CNAT_TRANSLATION_NO_RETURN_SESSION ==
 		 (int) CNAT_TR_FLAG_NO_RETURN_SESSION,
 	       "cnat api enum mismatch");
-
+STATIC_ASSERT ((int) CNAT_TRANSLATION_NO_CLIENT ==
+		 (int) CNAT_TR_FLAG_NO_CLIENT,
+	       "cnat api enum mismatch");
 STATIC_ASSERT ((int) CNAT_EPT_NO_NAT == (int) CNAT_TRK_FLAG_NO_NAT,
 	       "cnat api enum mismatch");
 
@@ -75,6 +78,100 @@ static u32 cnat_base_msg_id;
 #define REPLY_MSG_ID_BASE cnat_base_msg_id
 
 #include <vlibapi/api_helper_macros.h>
+
+int
+vnet_sw_interface_cnat_enable_disable (u32 sw_if_index, u8 enable,
+				       u32 table_id_ip4, u32 table_id_ip6)
+{
+  cnat_lazy_init ();
+  vnet_feature_enable_disable ("ip4-unicast", "cnat-input-ip4", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-unicast", "cnat-lookup-ip4", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "cnat-input-ip6", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "cnat-lookup-ip6", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-output", "cnat-output-ip4", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-output", "cnat-writeback-ip4", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-output", "cnat-output-ip6", sw_if_index,
+			       enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-output", "cnat-writeback-ip6", sw_if_index,
+			       enable, 0, 0);
+  /*if (enable)
+  {
+    u32 fib_index_ip4 = fib_table_find(FIB_PROTOCOL_IP4, table_id_ip4);
+    u32 fib_index_ip6 = fib_table_find(FIB_PROTOCOL_IP6, table_id_ip6);
+
+    cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+      vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip4,
+  fib_index_ip4, ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+      vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6,
+  fib_index_ip6, ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+  }*/
+
+  return (0);
+}
+
+static void
+vl_api_feature_cnat_enable_disable_t_handler (
+  vl_api_feature_cnat_enable_disable_t *mp)
+{
+  vl_api_feature_cnat_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = vnet_sw_interface_cnat_enable_disable (
+    ntohl (mp->sw_if_index), mp->enable_disable, mp->table_id_ip4,
+    mp->table_id_ip6);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_FEATURE_CNAT_ENABLE_DISABLE_REPLY);
+}
+
+int
+apply_main_vrf_cnat_snat_policy_on_vrf (u32 sw_if_index)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+
+  u32 cpe_index_v4 =
+    vec_elt (cpm->snat_policy_per_fwd_fib_index4, CNAT_FIB_TABLE);
+  u32 cpe_index_v6 =
+    vec_elt (cpm->snat_policy_per_fwd_fib_index6, CNAT_FIB_TABLE);
+  u32 fib_index_ip4 = vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index);
+  cnat_init_port_allocator (fib_index_ip4);
+  u32 fib_index_ip6 = vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index);
+  cnat_init_port_allocator (fib_index_ip6);
+
+  vec_validate_init_empty_aligned (cpm->snat_policy_per_fwd_fib_index4,
+				   fib_index_ip4, 0, CLIB_CACHE_LINE_BYTES);
+  cpm->snat_policy_per_fwd_fib_index4[fib_index_ip4] = cpe_index_v4;
+  vec_validate_init_empty_aligned (cpm->snat_policy_per_fwd_fib_index6,
+				   fib_index_ip6, 0, CLIB_CACHE_LINE_BYTES);
+  cpm->snat_policy_per_fwd_fib_index6[fib_index_ip6] = cpe_index_v6;
+
+  return (0);
+}
+
+static void
+vl_api_duplicate_cnat_snat_default_policy_to_vrf_t_handler (
+  vl_api_duplicate_cnat_snat_default_policy_to_vrf_t *mp)
+{
+  vl_api_duplicate_cnat_snat_default_policy_to_vrf_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = apply_main_vrf_cnat_snat_policy_on_vrf (ntohl (mp->sw_if_index));
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (
+    VL_API_DUPLICATE_CNAT_SNAT_DEFAULT_POLICY_TO_VRF_REPLY);
+}
 
 static int
 cnat_endpoint_decode (const vl_api_cnat_endpoint_t * in,
@@ -384,7 +481,7 @@ vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t *mp)
   ip6_address_decode (mp->snat_ip6, &ip6);
 
   rv = cnat_set_snat (CNAT_FIB_TABLE, CNAT_FIB_TABLE, &ip4, 32, &ip6, 128,
-		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE);
+		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE, mp->flags);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_REPLY);
 }

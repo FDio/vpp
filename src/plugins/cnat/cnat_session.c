@@ -42,6 +42,23 @@ cnat_session_walk_cb (BVT (clib_bihash_kv) * kv, void *arg)
   return (BIHASH_WALK_CONTINUE);
 }
 
+static int
+cnat_session_delete_cb (BVT (clib_bihash_kv) * kv, void *arg)
+{
+  cnat_session_t *session = (cnat_session_t *) kv;
+  u32 *idx = arg;
+  if (session->value.cs_session_index == *idx)
+    cnat_session_free (session);
+  return (BIHASH_WALK_CONTINUE);
+}
+
+void
+cnat_session_delete (u32 session_idx)
+{
+  BV (clib_bihash_foreach_key_value_pair)
+  (&cnat_session_db, cnat_session_delete_cb, &session_idx);
+}
+
 void
 cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx)
 {
@@ -415,7 +432,7 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* other session is in bihash */
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
-      /* if a session was overwritten (eg. because lack of ports), it's
+      /* if a session was overwritten (eg. because lack of ports), its
        * 5-tuple could have been reused. */
       if (session->value.cs_session_index == rsession->value.cs_session_index)
 	cnat_session_free (rsession);
@@ -467,7 +484,10 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
 
 	      if (start_time >
-		  cnat_timestamp_exp (session->value.cs_session_index))
+		    cnat_timestamp_exp (session->value.cs_session_index) &&
+		  session->key.cs_5tuple.iproto !=
+		    0) // this is a work around a bug where sessions with 0
+		       // values are found
 		{
 		  /* age it */
 		  cnat_log_session_expire (session);
