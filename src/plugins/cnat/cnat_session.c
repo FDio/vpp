@@ -17,6 +17,7 @@
 #include <vlib/stats/stats.h>
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
+#include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include "cnat_log.h"
 
@@ -42,6 +43,23 @@ cnat_session_walk_cb (BVT (clib_bihash_kv) * kv, void *arg)
   ctx->cb (session, ctx->ctx);
 
   return (BIHASH_WALK_CONTINUE);
+}
+
+static int
+cnat_session_delete_cb (BVT (clib_bihash_kv) * kv, void *arg)
+{
+  cnat_session_t *session = (cnat_session_t *) kv;
+  u32 *idx = arg;
+  if (session->value.cs_session_index == *idx)
+    cnat_session_free (session);
+  return (BIHASH_WALK_CONTINUE);
+}
+
+void
+cnat_session_delete (u32 session_idx)
+{
+  BV (clib_bihash_foreach_key_value_pair)
+  (&cnat_session_db, cnat_session_delete_cb, &session_idx);
 }
 
 void
@@ -417,7 +435,7 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* other session is in bihash */
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
-      /* if a session was overwritten (eg. because lack of ports), it's
+      /* if a session was overwritten (eg. because lack of ports), its
        * 5-tuple could have been reused. */
       if (session->value.cs_session_index == rsession->value.cs_session_index)
 	cnat_session_free (rsession);
@@ -425,8 +443,36 @@ cnat_reverse_session_free (cnat_session_t *session)
 }
 
 u64
-cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
+cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
 {
+  if (!i) // starting the loop over the sessions
+    {
+      // delete confirmed deleted backends from previous scan
+      index_t *slot;
+      pool_foreach (slot, cnat_ep_trk_deleted)
+	{
+	  if (!pool_is_free_index (cnat_ep_trk_pool, *slot))
+	    {
+	      cnat_ep_trk_t *ep_trk =
+		pool_elt_at_index (cnat_ep_trk_pool, *slot);
+	      pool_put (cnat_ep_trk_pool, ep_trk);
+	    }
+	}
+      pool_free (cnat_ep_trk_deleted);
+
+      /* Promote "pending deletions" to "confirmed".
+       * Using two pools (pending + confirmed) ensures we scan all sessions
+       * once more before actually freeing a backend. Prevents deleting while
+       * iterating.
+       */
+      pool_foreach (slot, cnat_ep_trk_pending_delete)
+	{
+	  index_t *new_slot;
+	  pool_get (cnat_ep_trk_deleted, new_slot);
+	  *new_slot = *slot;
+	}
+      pool_free (cnat_ep_trk_pending_delete);
+    }
   BVT (clib_bihash) * h = &cnat_session_db;
   int j, k;
 
@@ -469,7 +515,10 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
 
 	      if (start_time >
-		  cnat_timestamp_exp (session->value.cs_session_index))
+		    cnat_timestamp_exp (session->value.cs_session_index) &&
+		  session->key.cs_5tuple.iproto !=
+		    0) // this is a work around a bug where sessions with 0
+		       // values are found
 		{
 		  /* age it */
 		  cnat_log_session_expire (session);
@@ -484,6 +533,35 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		   */
 		  if (BV (clib_bihash_bucket_is_empty) (b))
 		    goto doublebreak;
+		}
+	      else
+		{
+		  cnat_timestamp_t *ts =
+		    cnat_timestamp_get (session->value.cs_session_index);
+		  if (ts->trk != 0)
+		    {
+		      cnat_ep_trk_t *trk_;
+		      trk_ = pool_elt_at_index (cnat_ep_trk_pool, ts->trk);
+		      if (trk_->marked_for_delete)
+			{
+			  /* the backend corresponding to this session is
+			   * deleted, delete the session */
+			  /* age it */
+			  cnat_log_session_expire (session);
+			  cnat_reverse_session_free (session);
+			  /* this should be last as deleting the session memset
+			   * it to 0xff */
+			  cnat_session_free (session);
+
+			  /*
+			   * Note: we may have just freed the bucket's backing
+			   * storage, so check right here...
+			   */
+			  if (BV (clib_bihash_bucket_is_empty) (b))
+			    goto doublebreak;
+			}
+		    }
+		  // delete session
 		}
 	    }
 	  v++;
