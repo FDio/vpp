@@ -29,6 +29,7 @@ enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
   CNAT_TRANSLATION_NO_RETURN_SESSION = 4,
+  CNAT_TRANSLATION_NO_CLIENT = 8,
 };
 
 enum cnat_endpoint_tuple_flags:u8
@@ -43,6 +44,14 @@ enum cnat_lb_type:u8
 {
   CNAT_LB_TYPE_DEFAULT = 0,
   CNAT_LB_TYPE_MAGLEV = 1,
+};
+
+enum cnat_snat_policy_flags:u8
+{
+  CNAT_SNAT_POLICY_F_NONE = 0,
+  CNAT_SNAT_POLICY_F_BUFFER_NEXT = 1,
+  CNAT_SNAT_POLICY_F_NO_CLIENT = 2,
+  CNAT_SNAT_POLICY_F_USE_AS_DEFAULT = 4,
 };
 
 /* An enpoint is either
@@ -150,6 +159,18 @@ autoreply define cnat_set_snat_addresses
   vl_api_interface_index_t sw_if_index;
 };
 
+autoreply define cnat_set_snat_addresses_v2
+{
+  u32 client_index;
+  u32 context;
+  u32 fwd_fib_index;
+  u32 ret_fib_index;
+  vl_api_ip4_address_t snat_ip4;
+  vl_api_ip6_address_t snat_ip6;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_cnat_snat_policy_flags_t flags;
+};
+
 define cnat_get_snat_addresses
 {
   u32 client_index;
@@ -230,3 +251,24 @@ autoreply define cnat_set_snat_policy
   u32 context;
   vl_api_cnat_snat_policies_t policy;
 };
+
+/** \brief Enable or disable interface feature cnat arc
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface to enable/disable cnat feature arc.
+    @param enable_disable - set to 1 to enable, 0 to disable cnat feature arc
+*/
+autoreply define feature_cnat_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool  enable_disable;
+  option vat_help = "<intfc> | sw_if_index <nn> [enable | disable]";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -75,7 +75,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   rw->cts_lbi = INDEX_INVALID;
-  rw->fib_index = fwd_fib_index;
+  rw->rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in FIB
@@ -97,7 +97,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     }
 
   u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
-  rrw->fib_index = ret_fib_index;
+  rrw->rw_fib_index = ret_fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
 
