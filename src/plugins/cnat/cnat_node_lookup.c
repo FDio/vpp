@@ -94,12 +94,25 @@ VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
 };
 
 always_inline void
+set_buffer_fib_index_from_interface (u32 *fib_index_by_sw_if_index,
+				     vlib_buffer_t *b)
+{
+  vnet_buffer (b)->ip.fib_index =
+    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
+  vnet_buffer (b)->ip.fib_index =
+    ((vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+       vnet_buffer (b)->ip.fib_index :
+       vec_elt (fib_index_by_sw_if_index,
+		vnet_buffer (b)->sw_if_index[VLIB_TX]));
+}
+
+always_inline void
 cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 {
   cnat_bihash_kv_t bkey;
   cnat_timestamp_t *ts;
   cnat_session_t *session = (cnat_session_t *) &bkey;
-  u32 iph_offset, n_retries = 200, rv, port_seed = 0;
+  u32 iph_offset, n_retries = 0, rv, port_seed = 0;
 
   if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
     return;
@@ -114,14 +127,46 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
   iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  cnat_5tuple_t *rewrite_from;
+  if (ts->cts_rewrites[0].tuple.iproto != 0)
+    {
+      rewrite_from = &ts->cts_rewrites[0].tuple;
+      // fprintf (stderr, "111111111\n");
+      // fformat (stderr, "%U \n",
+      // format_cnat_5tuple,&ts->cts_rewrites[0].tuple); fformat (stderr, "%U
+      // \n", format_cnat_5tuple,&ts->fw_session_5tuple);
+    }
+  else
+    {
+      rewrite_from = &ts->fw_session_5tuple;
+      // fprintf (stderr, "22222222\n");
+      // fformat (stderr, "%U \n",
+      // format_cnat_5tuple,&ts->cts_rewrites[0].tuple); fformat (stderr, "%U
+      // \n", format_cnat_5tuple,&ts->fw_session_5tuple);
+    }
   cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset,
-			   1 /* swap */);
-
+			   1 /* swap */, rewrite_from);
+  u32 *fib_index_by_sw_if_index = AF_IP6 == af ?
+				    ip6_main.fib_index_by_sw_if_index :
+				    ip4_main.fib_index_by_sw_if_index;
+  set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
+  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
   session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
-  ASSERT (ts->ts_session_refcnt <= 2);
+
+  u8 protocol =
+    (af == AF_IP4) ?
+      ((ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset))
+	->protocol :
+      ((ip6_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset))
+	->protocol;
+  if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP)
+    ASSERT (ts->ts_session_refcnt <= 2);
+  else
+    fprintf (stderr, "WARN: refcount > 2 for protocol: %d session: %d\n",
+	     protocol, ts->ts_session_refcnt);
 
 retry_add_ression:
   // FIXME
@@ -130,6 +175,8 @@ retry_add_ression:
     n_retries < 100 ? NULL : cnat_session_free_stale_cb, NULL);
   if (rv && n_retries++ < 100)
     {
+      fprintf (stderr, "retry.......... %d\n",
+	       session->value.cs_session_index);
       random_u32 (&port_seed);
       session->key.cs_5tuple.port[VLIB_TX] = port_seed;
       goto retry_add_ression;
