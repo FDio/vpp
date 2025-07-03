@@ -35,7 +35,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
     return (NULL);
 
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */, 0);
   action = cpe->snat_policy (&rw->tuple, cpe, b, af);
   if (CNAT_SNAT_POLICY_ACTION_NOOP == action)
     return (NULL);
@@ -99,7 +99,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
   u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
   rrw->fib_index = ret_fib_index;
 
-  cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
+  cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */, 0);
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 

@@ -24,6 +24,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   ip6_header_t *ip6 = NULL;
   ip_protocol_t iproto;
   udp_header_t *udp0;
+  index_t trk0_i;
   cnat_ep_trk_t *trk0;
   u32 dpoi_index = -1;
   u8 do_snat = 0;
@@ -55,7 +56,9 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0_i = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0 = pool_elt_at_index (cnat_ep_trk_pool, trk0_i);
+
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
@@ -63,7 +66,8 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
       return (rw);
     }
 
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
+  ts->trk = trk0_i;
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */, 0);
 
   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
@@ -117,7 +121,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
       rrw->cts_dpoi_next_node = do_snat ? CNAT_NODE_VIP_NEXT_LOOKUP : ~0;
       rrw->cts_lbi = (u32) ~0;
 
-      cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
+      cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */, 0);
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
