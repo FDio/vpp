@@ -88,7 +88,12 @@ af_xdp_device_input_refill_db (vlib_main_t * vm,
 
   if (clib_spinlock_trylock_if_init (&rxq->syscall_lock))
     {
-      int ret = recvmsg (rxq->xsk_fd, 0, MSG_DONTWAIT);
+      struct msghdr msg = { 0 };
+      struct iovec iov = { 0 };
+      msg.msg_iov = &iov;
+      msg.msg_iovlen = 1;
+
+      int ret = recvmsg (rxq->xsk_fd, &msg, MSG_DONTWAIT);
       clib_spinlock_unlock_if_init (&rxq->syscall_lock);
       if (PREDICT_FALSE (ret < 0))
 	{
