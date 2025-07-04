@@ -894,6 +894,7 @@ load_balance_destroy (load_balance_t *lb)
 {
     dpo_id_t *buckets;
     int i;
+    u8 need_barrier_sync;
 
     buckets = load_balance_get_buckets(lb);
 
@@ -911,7 +912,14 @@ load_balance_destroy (load_balance_t *lb)
     fib_urpf_list_unlock(lb->lb_urpf);
     load_balance_map_unlock(lb->lb_map);
 
+    need_barrier_sync = pool_put_will_expand (load_balance_pool, lb);
+    if (PREDICT_FALSE (need_barrier_sync))
+	vlib_worker_thread_barrier_sync (vlib_get_main());
+
     pool_put(load_balance_pool, lb);
+
+    if (PREDICT_FALSE (need_barrier_sync))
+	vlib_worker_thread_barrier_release (vlib_get_main());
 }
 
 static void
