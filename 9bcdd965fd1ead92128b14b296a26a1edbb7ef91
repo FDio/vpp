@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4af89602_bc16e090",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-07-04T12:01:07Z",
+      "side": 1,
+      "message": "nice catch, thank you!",
+      "parentUuid": "02387c3f_cf3bebf6",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "237bd368_e24823f2",
@@ -65,6 +83,24 @@
       "writtenOn": "2025-06-26T20:28:10Z",
       "side": 1,
       "message": "Is deleting the FIB entry the right thing to do if a route with no paths is added in the kernel table? I\u0027m not sure under what conditions that would actually happen. You mentioned blackhole routes in your note, but blackhole routes get a path added by lcp_router_route_path_add_special() and end up being handled by the \u0027if\u0027 block and added to VPP\u0027s FIB as drop routes.\n\nHave you observed a case where the else block is reached? It\u0027s possible that deleting the entry is the right choice here, but I am not sure without knowing what conditions this actually happens under.",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e38d6ba_fa509a1b",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1429,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-07-04T12:01:07Z",
+      "side": 1,
+      "message": "OK, it seems I\u0027ve finally recalled what exactly happened in my case.\n\nSomebody added a TAP interface to lcp dataplane netns and some routes were replaced from LCP interface to this TAP interface (therefore no valid nexthops in lcp plugin). Then the TAP was destroyed but stale entries were still in vpp fib.\n\nEasy way to reproduce:\n- create dummy interface in LCP netns\n- add a route via LCP interface\n- replace the route via dummy interface\n- the fib entry is still there\n\nI understand that it shouldn\u0027t have happened in the first place, but people (including myself) do stupid things :)\n\nAnyway, I rely on your opinion, if you think we should remove this \"fix\", I\u0027ll do that.",
+      "parentUuid": "237bd368_e24823f2",
       "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
