@@ -33,6 +33,24 @@
       "message": "I just noticed the compile errors that started after your update. With the lcp_router_table_add_or_lock() moved to the if block, nlt will be uninitialized in the else block. You need to set it in the else block with `nlt \u003d lcp_router_table_find (lcp_router_table_k2f (table_id),  pfx.fp_proto);`",
       "revId": "163183f544a381c0f53aa85ddd440983d76d6de6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8818232e_2aa6fd20",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2025-07-08T14:33:05Z",
+      "side": 1,
+      "message": "Sorry, forgot to build before send. Fixed.\n\nI will build before sending patches.\nI will build before sending patches.\nI will build before sending patches.\nI will...",
+      "parentUuid": "33d05b0b_97a787f4",
+      "revId": "163183f544a381c0f53aa85ddd440983d76d6de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
