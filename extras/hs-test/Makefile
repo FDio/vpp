@@ -234,9 +234,13 @@ build-debug: .deps.ok build-vpp-debug build-go
 
 .PHONY: install-kind-deps
 install-kind-deps: .deps.ok
-	@go install sigs.k8s.io/kind@v0.29.0
-	-@if which kind > /dev/null 2>&1; then \
-        sudo ln -s $$(which kind) /usr/bin/kind; \
+	@if ! command -v kind >/dev/null 2>&1; then \
+		echo "Installing KinD"; \
+		go install sigs.k8s.io/kind@v0.29.0; \
+		echo "Creating symlink from '$(HOME)/go/bin/kind' to '/usr/bin/kind'"; \
+		sudo ln -s $(HOME)/go/bin/kind /usr/bin/kind; \
+	else \
+		echo "KinD is already installed. Skipping."; \
 	fi
 	@if ! command -v kubectl >/dev/null 2>&1; then \
         echo "kubectl not found. Installing kubectl..."; \
@@ -247,7 +251,7 @@ install-kind-deps: .deps.ok
         sudo -E chmod 644 /etc/apt/sources.list.d/kubernetes.list; \
         sudo apt-get update && sudo apt-get install -y kubectl; \
     else \
-        echo "kubectl is already installed. Skipping installation."; \
+        echo "kubectl is already installed. Skipping."; \
 	fi
 	@touch .kind_deps.ok
 

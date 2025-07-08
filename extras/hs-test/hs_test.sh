@@ -167,7 +167,7 @@ if [ $focused_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     exit 2
 fi
 
-sudo_user="${SUDO_USER:-root}"
+sudo_user="${SUDO_USER:-${USER:-root}}"
 args="$args -sudo_user $sudo_user"
 
 if [ $leak_check_set -eq 1 ]; then
