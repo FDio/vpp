@@ -103,6 +103,24 @@
       "parentUuid": "237bd368_e24823f2",
       "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0070ce6b_ab741acb",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1429,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-07-08T12:50:14Z",
+      "side": 1,
+      "message": "Ok, that seems fine. Thanks for explaining. I have never seen the \"no paths for route\" message logged on a running system so I just wanted to make sure I understand what is happening when this condition arises.",
+      "parentUuid": "6e38d6ba_fa509a1b",
+      "revId": "9bcdd965fd1ead92128b14b296a26a1edbb7ef91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
