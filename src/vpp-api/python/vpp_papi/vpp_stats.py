@@ -49,6 +49,7 @@ from struct import Struct
 import time
 import unittest
 import re
+import asyncio
 
 
 def recv_fd(sock):
@@ -289,6 +290,37 @@ class VPPStats:
             result[cnt] = self.__getitem__(cnt, blocking)
         return result
 
+    def get_ring_buffer(self, name, blocking=True):
+        """Get a ring buffer by name"""
+        if not self.connected:
+            self.connect()
+
+        while True:
+            try:
+                if self.last_epoch != self.epoch:
+                    self.refresh(blocking)
+                with self.lock:
+                    entry = self.directory[name]
+                    if entry.type == 7:  # STAT_DIR_TYPE_RING_BUFFER
+                        return entry.get_counter(self)
+                    else:
+                        raise ValueError(f"'{name}' is not a ring buffer")
+            except IOError:
+                if not blocking:
+                    raise
+
+    def poll_ring_buffer(self, name, thread_index=0, timeout=None, callback=None):
+        """Convenience method to poll a ring buffer by name"""
+        ring_buffer = self.get_ring_buffer(name)
+        return ring_buffer.poll_for_data(thread_index, timeout, callback)
+
+    async def poll_ring_buffer_async(
+        self, name, thread_index=0, timeout=None, callback=None
+    ):
+        """Async convenience method to poll a ring buffer by name"""
+        ring_buffer = self.get_ring_buffer(name)
+        return await ring_buffer.poll_for_data_async(thread_index, timeout, callback)
+
 
 class StatsLock:
     """Stat segment optimistic locking"""
@@ -412,6 +444,8 @@ class StatsEntry:
             self.function = self.name
         elif stattype == 6:
             self.function = self.symlink
+        elif stattype == 7:  # STAT_DIR_TYPE_RING_BUFFER
+            self.function = self.ring_buffer
         else:
             self.function = self.illegal
 
@@ -457,10 +491,213 @@ class StatsEntry:
         name = stats.directory_by_idx[index1]
         return stats[name][:, index2]
 
+    def ring_buffer(self, stats):
+        """Ring buffer counter"""
+        return StatsRingBuffer(stats, self.value)
+
     def get_counter(self, stats):
         """Return a list of counters"""
         if stats:
             return self.function(stats)
+
+
+class StatsRingBuffer:
+    """Ring buffer for high-performance data streaming"""
+
+    def __init__(self, stats, ring_buffer_ptr):
+        self.stats = stats
+        self.ring_buffer_ptr = ring_buffer_ptr
+        self.config = self._get_config()
+        self.metadata_ptr = self._get_metadata_ptr()
+        self.data_ptr = self._get_data_ptr()
+        # Track local tail position for each thread
+        self.local_tails = [0] * self.config["n_threads"]
+
+    def _get_config(self):
+        """Get ring buffer configuration from shared memory"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        config_data = self.stats.statseg[config_offset : config_offset + 12]
+        entry_size, ring_size, n_threads = Struct("III").unpack(config_data)
+        return {
+            "entry_size": entry_size,
+            "ring_size": ring_size,
+            "n_threads": n_threads,
+        }
+
+    def _get_metadata_ptr(self):
+        """Get pointer to metadata array using offset"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        # Read metadata_offset from the structure (at offset 12)
+        metadata_offset_data = self.stats.statseg[
+            config_offset + 12 : config_offset + 16
+        ]
+        metadata_offset = Struct("I").unpack(metadata_offset_data)[0]
+        return config_offset + metadata_offset
+
+    def _get_data_ptr(self):
+        """Get pointer to ring buffer data using offset"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        # Read data_offset from the structure (at offset 16)
+        data_offset_data = self.stats.statseg[config_offset + 16 : config_offset + 20]
+        data_offset = Struct("I").unpack(data_offset_data)[0]
+        return config_offset + data_offset
+
+    def _get_thread_metadata(self, thread_index):
+        """Get metadata for a specific thread"""
+        if thread_index >= self.config["n_threads"]:
+            raise IndexError(f"Thread index {thread_index} out of range")
+
+        metadata_offset = self.metadata_ptr + (
+            thread_index * 16
+        )  # 16 bytes per metadata entry
+        metadata_data = self.stats.statseg[metadata_offset : metadata_offset + 16]
+        head, tail, count, _ = Struct("IIII").unpack(metadata_data)
+        return {"head": head, "tail": tail, "count": count}
+
+    def get_count(self, thread_index=0):
+        """Get current count of entries in ring buffer for a thread"""
+        metadata = self._get_thread_metadata(thread_index)
+        # Calculate count properly
+        if metadata["head"] >= metadata["tail"]:
+            return metadata["head"] - metadata["tail"]
+        else:
+            return self.config["ring_size"] - metadata["tail"] + metadata["head"]
+
+    def get_free_space(self, thread_index=0):
+        """Get free space in ring buffer for a thread"""
+        return self.config["ring_size"] - self.get_count(thread_index)
+
+    def is_empty(self, thread_index=0):
+        """Check if ring buffer is empty for a thread"""
+        metadata = self._get_thread_metadata(thread_index)
+        return metadata["head"] == metadata["tail"]  # Proper empty check
+
+    def is_full(self, thread_index=0):
+        """Check if ring buffer is full for a thread"""
+        return self.get_count(thread_index) >= self.config["ring_size"]
+
+    def consume_data(self, thread_index=0, max_entries=None):
+        """Consume data from ring buffer for a thread (read-only)"""
+        metadata = self._get_thread_metadata(thread_index)
+        local_tail = self.local_tails[thread_index]
+
+        # Check if ring is empty or no new data
+        if metadata["head"] == local_tail:
+            return []
+
+        # Calculate actual count (handle circular buffer wrapping)
+        if metadata["head"] >= local_tail:
+            available = metadata["head"] - local_tail
+        else:
+            # Ring has wrapped around
+            available = self.config["ring_size"] - local_tail + metadata["head"]
+
+        if max_entries is None:
+            max_entries = available
+        else:
+            max_entries = min(max_entries, available)
+
+        consumed_data = []
+        entry_size = self.config["entry_size"]
+
+        # Calculate data offset for this thread
+        thread_data_offset = self.data_ptr + (
+            thread_index * self.config["ring_size"] * entry_size
+        )
+
+        for i in range(max_entries):
+            # Calculate entry offset
+            entry_offset = thread_data_offset + (local_tail * entry_size)
+
+            # Read entry data
+            entry_data = self.stats.statseg[entry_offset : entry_offset + entry_size]
+            consumed_data.append(entry_data)
+
+            # Update local tail (circular)
+            local_tail = (local_tail + 1) % self.config["ring_size"]
+
+        # Update local tail position
+        self.local_tails[thread_index] = local_tail
+
+        return consumed_data
+
+    def poll_for_data(self, thread_index=0, timeout=None, callback=None):
+        """Poll for new data in ring buffer"""
+        start_time = time.time()
+
+        while True:
+            metadata = self._get_thread_metadata(thread_index)
+            local_tail = self.local_tails[thread_index]
+
+            # Check if new data is available using local tail
+            if metadata["head"] != local_tail:
+                # Calculate how many new entries
+                if metadata["head"] > local_tail:
+                    new_entries = metadata["head"] - local_tail
+                else:
+                    new_entries = (
+                        self.config["ring_size"] - local_tail + metadata["head"]
+                    )
+
+                data = self.consume_data(thread_index, new_entries)
+
+                if callback:
+                    for entry_data in data:
+                        try:
+                            callback(entry_data)
+                        except Exception as e:
+                            print(f"Callback error: {e}")
+                else:
+                    return data
+
+            if timeout and (time.time() - start_time) > timeout:
+                return []
+
+            # Yield control briefly
+            time.sleep(0.000001)  # 1μs polling interval
+
+    async def poll_for_data_async(self, thread_index=0, timeout=None, callback=None):
+        """Async version of poll_for_data"""
+
+        start_time = asyncio.get_event_loop().time()
+
+        while True:
+            metadata = self._get_thread_metadata(thread_index)
+            local_tail = self.local_tails[thread_index]
+
+            # Check if new data is available using local tail
+            if metadata["head"] != local_tail:
+                # Calculate how many new entries
+                if metadata["head"] > local_tail:
+                    new_entries = metadata["head"] - local_tail
+                else:
+                    new_entries = (
+                        self.config["ring_size"] - local_tail + metadata["head"]
+                    )
+
+                data = self.consume_data(thread_index, new_entries)
+
+                if callback:
+                    for entry_data in data:
+                        await callback(entry_data)
+                else:
+                    return data
+
+            if timeout and (asyncio.get_event_loop().time() - start_time) > timeout:
+                return []
+
+            # Yield control to asyncio
+            await asyncio.sleep(0.000001)  # 1μs polling interval
+
+    def get_config(self):
+        """Get ring buffer configuration"""
+        return self.config.copy()
+
+    def __repr__(self):
+        return (
+            f"StatsRingBuffer(entry_size={self.config['entry_size']}, "
+            f"ring_size={self.config['ring_size']}, n_threads={self.config['n_threads']})"
+        )
 
 
 class TestStats(unittest.TestCase):

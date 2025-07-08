@@ -294,6 +294,7 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
       }
 
     case STAT_DIR_TYPE_EMPTY:
+    case STAT_DIR_TYPE_RING_BUFFER:
       break;
 
     default:
@@ -327,6 +328,7 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  break;
 	case STAT_DIR_TYPE_SCALAR_INDEX:
 	case STAT_DIR_TYPE_EMPTY:
+	case STAT_DIR_TYPE_RING_BUFFER:
 	  break;
 	default:
 	  assert (0);

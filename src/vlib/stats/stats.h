@@ -161,4 +161,44 @@ void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
 
 format_function_t format_vlib_stats_symlink;
 
+/* Ring buffer configuration */
+typedef struct
+{
+  u32 entry_size; /* Size of each entry in bytes */
+  u32 ring_size;  /* Number of entries in the ring */
+  u32 n_threads;  /* Number of threads (one ring per thread) */
+} vlib_stats_ring_config_t;
+
+/* Ring buffer metadata (per thread) */
+typedef struct
+{
+  volatile u32 head;  /* Producer position */
+  volatile u32 tail;  /* Consumer position */
+  volatile u32 count; /* Number of entries in ring */
+  u32 pad;	      /* 4 bytes padding for 16-byte alignment */
+} vlib_stats_ring_metadata_t;
+
+/* Ring buffer entry in stats directory */
+typedef struct
+{
+  vlib_stats_ring_config_t config;
+  u32 metadata_offset; /* Offset to metadata array */
+  u32 data_offset;     /* Offset to ring buffer data */
+} vlib_stats_ring_buffer_t;
+
+/* Ring buffer */
+u32 vlib_stats_add_ring_buffer (vlib_stats_ring_config_t *config, char *fmt,
+				...);
+void *vlib_stats_ring_get_entry (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_produce (u32 entry_index, u32 thread_index, void *data);
+int vlib_stats_ring_consume (u32 entry_index, u32 thread_index, void *data);
+u32 vlib_stats_ring_get_count (u32 entry_index, u32 thread_index);
+u32 vlib_stats_ring_get_free_space (u32 entry_index, u32 thread_index);
+
+/* Direct serialization APIs - avoid extra copy */
+void *vlib_stats_ring_reserve_slot (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_commit_slot (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_abort_slot (u32 entry_index, u32 thread_index);
+u32 vlib_stats_ring_get_slot_size (u32 entry_index);
+
 #endif
