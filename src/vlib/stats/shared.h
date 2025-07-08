@@ -14,6 +14,7 @@ typedef enum
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
   STAT_DIR_TYPE_SYMLINK,
+  STAT_DIR_TYPE_RING_BUFFER,
 } stat_directory_type_t;
 
 typedef struct
