@@ -37,7 +37,7 @@ func KindIperfVclTest(s *KindSuite) {
 		vcl + " " + ldp + " iperf3 -s -D -4"})
 	s.AssertNil(err, o)
 	output, err := s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -c " + s.Pods.ServerGeneric.IpAddress})
+		vcl + " " + ldp + " iperf3 -l 1460 -b 10g -c " + s.Pods.ServerGeneric.IpAddress})
 	s.Log(output)
 	s.AssertNil(err)
 }

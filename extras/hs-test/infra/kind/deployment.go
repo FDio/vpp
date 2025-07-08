@@ -20,7 +20,7 @@ func (s *KindSuite) loadDockerImages() {
 	var err error
 	for _, image := range s.images {
 		s.Log("loading docker image %s...", image)
-		cmd = exec.Command("kind", "load", "docker-image", image)
+		cmd = exec.Command("go", "run", "sigs.k8s.io/kind@v0.29.0", "load", "docker-image", image)
 		out, err = cmd.CombinedOutput()
 		s.Log(string(out))
 		s.AssertNil(err, string(out))

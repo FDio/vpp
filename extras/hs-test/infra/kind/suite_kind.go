@@ -59,6 +59,8 @@ func (s *KindSuite) SetupSuite() {
 	} else {
 		s.KubeconfigPath = "/home/" + *SudoUser + "/.kube/config"
 	}
+	s.Log("User: '%s'", *SudoUser)
+	s.Log("Config path: '%s'", s.KubeconfigPath)
 
 	s.Config, err = clientcmd.BuildConfigFromFlags("", s.KubeconfigPath)
 	s.AssertNil(err)
