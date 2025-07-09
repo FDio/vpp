@@ -86,7 +86,8 @@ send_proxy_arp_details (const ip4_address_t * lo_addr,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
-  mp->proxy.table_id = htonl (fib_index);
+  mp->proxy.table_id = clib_host_to_net_u32 (
+    fib_table_get_table_id (fib_index, FIB_PROTOCOL_IP4));
 
   ip4_address_encode (lo_addr, mp->proxy.low);
   ip4_address_encode (hi_addr, mp->proxy.hi);
