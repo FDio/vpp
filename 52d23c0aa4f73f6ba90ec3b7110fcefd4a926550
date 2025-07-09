@@ -16,6 +16,24 @@
       "message": "doesn\u0027t look much thread safe since you might call this from multiple workers",
       "revId": "52d23c0aa4f73f6ba90ec3b7110fcefd4a926550",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "08ae8737_c6fbdba4",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-09T11:10:06Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5073033d_ac11de79",
+      "revId": "52d23c0aa4f73f6ba90ec3b7110fcefd4a926550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
