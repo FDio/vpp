@@ -93,6 +93,8 @@ help:
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " cleanup-perf             - removes all kubernetes pods and namespaces from last test run"
 	@echo " list-tests               - list all tests"
+	@echo " install-deps             - install software dependencies"
+	@echo " install-kind-deps        - install software dependencies for cluster"
 	@echo
 	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
@@ -259,11 +261,11 @@ install-kind-deps: .deps.ok
 install-deps:
 	@rm -f .deps.ok
 	@if [ -d "/usr/local/go" ]; then \
-        echo "Go is already installed. You may have to update it manually if version < 1.22"; \
+        echo "Go is already installed. You may have to update it manually if version < 1.23.10"; \
 		go version; \
     else \
-        echo "Installing Go 1.22"; \
-		wget https://go.dev/dl/go1.22.12.linux-amd64.tar.gz -O /tmp/go1.22.12.linux-amd64.tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.22.12.linux-amd64.tar.gz; \
+        echo "Installing Go 1.23"; \
+		wget https://go.dev/dl/go1.23.10.linux-$(ARCH).tar.gz -O /tmp/go1.23.10.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.23.10.linux-$(ARCH).tar.gz; \
 		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
 	fi
 	@sudo -E apt-get update
