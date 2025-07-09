@@ -209,6 +209,8 @@ wrap_around:
 	      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
 			  "vlib_buffer_chain_linearize failed");
 	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b[0]));
+	      b += 1;
+	      n -= 1;
 	      continue;
 	    }
 	}
