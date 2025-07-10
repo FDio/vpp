@@ -1308,6 +1308,9 @@ vxlan_init (vlib_main_t * vm)
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_TUNNEL, &vxlan_vft);
 
+  /* Initialize VXLAN dynamic L2FIB table */
+  vxlan_l2fib_init ();
+
   return 0;
 }
 

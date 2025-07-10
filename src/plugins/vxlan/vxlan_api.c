@@ -17,6 +17,7 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/format_fns.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 #include <vxlan/vxlan.api_enum.h>
 #include <vxlan/vxlan.api_types.h>
 
@@ -335,6 +336,193 @@ vl_api_vxlan_tunnel_v2_dump_t_handler (vl_api_vxlan_tunnel_v2_dump_t *mp)
       t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_vxlan_tunnel_v2_details (t, reg, mp->context);
     }
+}
+
+/* VXLAN L2FIB API functions */
+
+typedef enum
+{
+  VXLAN_L2FIB_API_SUCCESS = 0,
+  VXLAN_L2FIB_API_ERROR_INVALID_INTERFACE = -1,
+  VXLAN_L2FIB_API_ERROR_NOT_VXLAN_TUNNEL = -2,
+  VXLAN_L2FIB_API_ERROR_ADDRESS_FAMILY_MISMATCH = -3,
+  VXLAN_L2FIB_API_ERROR_ADD_FAILED = -4,
+  VXLAN_L2FIB_API_ERROR_NOT_FOUND = -5,
+} vxlan_l2fib_api_error_t;
+
+int
+vxlan_l2fib_api_add_del (u32 sw_if_index, const u8 *mac,
+			 const ip46_address_t *dst, u8 is_ip6, u8 is_add)
+{
+  vxlan_main_t *vxm = &vxlan_main;
+  int retval = VXLAN_L2FIB_API_SUCCESS;
+
+  if (!vnet_sw_interface_is_valid (vnet_get_main (), sw_if_index))
+    {
+      retval = VXLAN_L2FIB_API_ERROR_INVALID_INTERFACE;
+      goto exit;
+    }
+
+  if (is_add)
+    {
+      /* Validate that destination address family matches tunnel */
+      u32 tunnel_index = vnet_vxlan_get_tunnel_index (sw_if_index);
+      if (tunnel_index == ~0)
+	{
+	  retval = VXLAN_L2FIB_API_ERROR_NOT_VXLAN_TUNNEL;
+	  goto exit;
+	}
+
+      vxlan_tunnel_t *tunnel = &vxm->tunnels[tunnel_index];
+      u8 tunnel_is_ip6 = ip46_address_is_ip4 (&tunnel->dst) ? 0 : 1;
+
+      if (is_ip6 != tunnel_is_ip6)
+	{
+	  retval = VXLAN_L2FIB_API_ERROR_ADDRESS_FAMILY_MISMATCH;
+	  goto exit;
+	}
+    }
+
+  /* Barrier sync for data plane modifications */
+  vlib_worker_thread_barrier_sync (vlib_get_main ());
+
+  if (is_add)
+    {
+      /* Check if entry exists and delete it first (for replace) */
+      vxlan_l2fib_entry_t *existing = vxlan_l2fib_lookup (mac, sw_if_index);
+      if (existing)
+	vxlan_l2fib_del_entry (mac, sw_if_index);
+
+      /* Add new entry */
+      int rv = vxlan_l2fib_add_entry (mac, sw_if_index, dst, is_ip6);
+      if (rv != 0)
+	{
+	  retval = VXLAN_L2FIB_API_ERROR_ADD_FAILED;
+	  goto exit_with_barrier;
+	}
+    }
+  else
+    {
+      /* Delete entry */
+      int rv = vxlan_l2fib_del_entry (mac, sw_if_index);
+      if (rv != 0)
+	{
+	  retval = VXLAN_L2FIB_API_ERROR_NOT_FOUND;
+	  goto exit_with_barrier;
+	}
+    }
+
+exit_with_barrier:
+  vlib_worker_thread_barrier_release (vlib_get_main ());
+
+exit:
+  return retval;
+}
+
+const char *
+vxlan_l2fib_api_error_string (int error_code)
+{
+  switch (error_code)
+    {
+    case VXLAN_L2FIB_API_SUCCESS:
+      return "Success";
+    case VXLAN_L2FIB_API_ERROR_INVALID_INTERFACE:
+      return "Invalid interface";
+    case VXLAN_L2FIB_API_ERROR_NOT_VXLAN_TUNNEL:
+      return "Interface is not a VXLAN tunnel";
+    case VXLAN_L2FIB_API_ERROR_ADDRESS_FAMILY_MISMATCH:
+      return "Destination address family mismatch with tunnel";
+    case VXLAN_L2FIB_API_ERROR_ADD_FAILED:
+      return "Failed to add entry";
+    case VXLAN_L2FIB_API_ERROR_NOT_FOUND:
+      return "Entry not found";
+    default:
+      return "Unknown error";
+    }
+}
+
+static void
+vl_api_vxlan_add_del_l2fib_t_handler (vl_api_vxlan_add_del_l2fib_t *mp)
+{
+  vl_api_vxlan_add_del_l2fib_reply_t *rmp;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  mac_address_t mac;
+  ip46_address_t dst;
+
+  /* Decode MAC address */
+  mac_address_decode (mp->mac, &mac);
+
+  /* Decode destination address */
+  ip_address_decode (&mp->dst_address, &dst);
+  u8 is_ip6 = ip46_address_is_ip4 (&dst) ? 0 : 1;
+
+  /* Call the API function */
+  rv =
+    vxlan_l2fib_api_add_del (sw_if_index, mac.bytes, &dst, is_ip6, mp->is_add);
+
+  REPLY_MACRO (VL_API_VXLAN_ADD_DEL_L2FIB_REPLY);
+}
+
+typedef struct
+{
+  vl_api_registration_t *reg;
+  u32 context;
+  u32 sw_if_index_filter; /* ~0 for all interfaces */
+} vxlan_l2fib_dump_walk_ctx_t;
+
+static void
+send_vxlan_l2fib_details (vxlan_l2fib_entry_t *entry,
+			  vl_api_registration_t *reg, u32 context)
+{
+  vl_api_vxlan_l2fib_details_t *rmp;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_L2FIB_DETAILS);
+  rmp->context = context;
+
+  mac_address_encode ((mac_address_t *) entry->mac, rmp->mac);
+  rmp->sw_if_index = htonl (entry->sw_if_index);
+  ip_address_encode (&entry->dst,
+		     entry->is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->dst_address);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static int
+vxlan_l2fib_dump_walk_cb (vxlan_l2fib_entry_t *entry, void *arg)
+{
+  vxlan_l2fib_dump_walk_ctx_t *ctx = arg;
+
+  /* Filter by sw_if_index if specified */
+  if (ctx->sw_if_index_filter != ~0 &&
+      entry->sw_if_index != ctx->sw_if_index_filter)
+    return 0; /* continue walking, but skip this entry */
+
+  send_vxlan_l2fib_details (entry, ctx->reg, ctx->context);
+  return 0; /* continue walking */
+}
+
+static void
+vl_api_vxlan_l2fib_dump_t_handler (vl_api_vxlan_l2fib_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  vxlan_l2fib_dump_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+    .sw_if_index_filter = sw_if_index,
+  };
+
+  vxlan_l2fib_walk (vxlan_l2fib_dump_walk_cb, &ctx);
 }
 
 #include <vxlan/vxlan.api.c>

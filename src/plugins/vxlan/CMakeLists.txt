@@ -14,6 +14,7 @@
 add_vpp_plugin(vxlan
   SOURCES
   vxlan.c
+  vxlan_l2fib.c
   encap.c
   decap.c
   vxlan_api.c

@@ -162,6 +162,15 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	    }
 
+	  /* Extract source MAC for dynamic lookup */
+	  ethernet_header_t *eth0 = vlib_buffer_get_current (b0);
+	  ethernet_header_t *eth1 = vlib_buffer_get_current (b1);
+
+	  vxlan_l2fib_entry_t *dyn0 =
+	    vxlan_l2fib_lookup (eth0->dst_address, sw_if_index0);
+	  vxlan_l2fib_entry_t *dyn1 =
+	    vxlan_l2fib_lookup (eth1->dst_address, sw_if_index1);
+
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpoi_idx1;
 
@@ -198,6 +207,13 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip4_0->length = clib_host_to_net_u16 (len0);
 	      ip4_1->length = clib_host_to_net_u16 (len1);
 
+	      /* Use dynamic destination if available, otherwise use tunnel
+	       * default */
+	      if (dyn0)
+		ip4_0->dst_address = dyn0->dst.ip4;
+	      if (dyn1)
+		ip4_1->dst_address = dyn1->dst.ip4;
+
 	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 		{
 		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
@@ -225,13 +241,20 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip6_0->payload_length = payload_l0;
 	      ip6_1->payload_length = payload_l1;
 
+	      /* Use dynamic destination if available, otherwise use tunnel
+	       * default */
+	      if (dyn0)
+		ip6_0->dst_address = dyn0->dst.ip6;
+	      if (dyn1)
+		ip6_1->dst_address = dyn1->dst.ip6;
+
 	      l3_0 = (u8 *) ip6_0;
 	      l3_1 = (u8 *) ip6_1;
 	      udp0 = &hdr0->udp;
 	      udp1 = &hdr1->udp;
 	    }
 
-	  /* Fix UDP length  and set source port */
+	  /* Fix UDP length and set source port */
 	  udp0->length = payload_l0;
 	  udp0->src_port = flow_hash0;
 	  udp1->length = payload_l1;
@@ -366,6 +389,12 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpoi_idx0;
 
+	  /* Extract source MAC for dynamic lookup */
+	  ethernet_header_t *eth0 = vlib_buffer_get_current (b0);
+
+	  vxlan_l2fib_entry_t *dyn0 =
+	    vxlan_l2fib_lookup (eth0->dst_address, sw_if_index0);
+
 	  ASSERT (t0->rewrite_header.data_bytes == underlay_hdr_len);
 	  vnet_rewrite_one_header (*t0, vlib_buffer_get_current (b0),
 				   underlay_hdr_len);
@@ -389,6 +418,10 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip4_0 = &hdr->ip4;
 	      ip4_0->length = clib_host_to_net_u16 (len0);
 
+	      /* Use dynamic destination if available */
+	      if (dyn0)
+		ip4_0->dst_address = dyn0->dst.ip4;
+
 	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 		{
 		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
@@ -406,11 +439,15 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip6_0 = &hdr->ip6;
 	      ip6_0->payload_length = payload_l0;
 
+	      /* Use dynamic destination if available */
+	      if (dyn0)
+		ip6_0->dst_address = dyn0->dst.ip6;
+
 	      l3_0 = (u8 *) ip6_0;
 	      udp0 = &hdr->udp;
 	    }
 
-	  /* Fix UDP length  and set source port */
+	  /* Fix UDP length and set source port */
 	  udp0->length = payload_l0;
 	  udp0->src_port = flow_hash0;
 

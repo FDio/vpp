@@ -16,6 +16,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
+#include <vnet/l2/l2_fib.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vxlan/vxlan_packet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -146,6 +147,27 @@ typedef enum
   VXLAN_N_ERROR,
 } vxlan_input_error_t;
 
+/*
+ * VXLAN L2FIB entry for dynamic destination addresses
+ */
+typedef struct
+{
+  /* destination IP address (IPv4 or IPv6) */
+  ip46_address_t dst;
+
+  /* MAC address */
+  u8 mac[6];
+
+  /* sw_if_index of the VXLAN tunnel */
+  u32 sw_if_index;
+
+  /* is IPv6 address */
+  u8 is_ip6;
+
+  /* padding */
+  u8 pad[3];
+} vxlan_l2fib_entry_t;
+
 typedef struct
 {
   /* vector of encap tunnel instances */
@@ -182,6 +204,12 @@ typedef struct
   /* cache for last 8 vxlan tunnel */
   vtep4_cache_t vtep4_u512;
 
+  /* VXLAN dynamic L2FIB table */
+  /* keyed on mac+sw_if_index, value is vxlan_l2fib_entry_t */
+  clib_bihash_8_8_t vxlan_l2fib_table;
+
+  /* pool of VXLAN L2FIB entries */
+  vxlan_l2fib_entry_t *vxlan_l2fib_pool;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -220,4 +248,37 @@ void vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 int vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_imdex, int is_add);
 
 u32 vnet_vxlan_get_tunnel_index (u32 sw_if_index);
+
+/* VXLAN dynamic L2FIB functions */
+void vxlan_l2fib_init (void);
+int vxlan_l2fib_add_entry (const u8 *mac, u32 sw_if_index,
+			   const ip46_address_t *dst, u8 is_ip6);
+int vxlan_l2fib_del_entry (const u8 *mac, u32 sw_if_index);
+vxlan_l2fib_entry_t *vxlan_l2fib_lookup (const u8 *mac, u32 sw_if_index);
+
+/* VXLAN L2FIB API functions */
+int vxlan_l2fib_api_add_del (u32 sw_if_index, const u8 *mac,
+			     const ip46_address_t *dst, u8 is_ip6, u8 is_add);
+const char *vxlan_l2fib_api_error_string (int error_code);
+
+/* VXLAN L2FIB dump function */
+typedef int (*vxlan_l2fib_walk_cb_t) (vxlan_l2fib_entry_t *entry, void *ctx);
+void vxlan_l2fib_walk (vxlan_l2fib_walk_cb_t cb, void *ctx);
+
+/* Key generation for VXLAN L2FIB table */
+always_inline u64
+vxlan_l2fib_make_key (const u8 *mac_address, u32 sw_if_index)
+{
+  /* Use upper 48 bits for MAC, lower 16 bits for sw_if_index */
+  u64 key = 0;
+  key |= ((u64) sw_if_index) & 0xFFFF;
+  key |= (((u64) mac_address[0]) << 16);
+  key |= (((u64) mac_address[1]) << 24);
+  key |= (((u64) mac_address[2]) << 32);
+  key |= (((u64) mac_address[3]) << 40);
+  key |= (((u64) mac_address[4]) << 48);
+  key |= (((u64) mac_address[5]) << 56);
+  return key;
+}
+
 #endif /* included_vnet_vxlan_h */
