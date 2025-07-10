@@ -50,6 +50,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  if (unformat (line_input, "id %u", &args.id))
 	    ;
+	  else if (unformat (line_input, "if-name %s", &args.if_name))
+	    ;
 	  else
 	    if (unformat (line_input, "host-if-name %s", &args.host_if_name))
 	    ;
@@ -130,6 +132,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
 		     vnet_get_main (), args.sw_if_index);
 
+  vec_free (args.if_name);
   vec_free (args.host_if_name);
   vec_free (args.host_namespace);
   vec_free (args.host_bridge);
@@ -141,7 +144,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
   .short_help =
-    "create tap {id <if-id>} [hw-addr <mac-address>] "
+    "create tap {id <if-id>} [hw-addr <mac-address>] [if-name <if-name>] "
     "[num-rx-queues <n>] [num-tx-queues <n>] [rx-ring-size <size>] "
     "[tx-ring-size <size>] [host-ns <netns>] [host-bridge <bridge-name>] "
     "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "

@@ -52,6 +52,7 @@ typedef struct
   u16 tx_ring_sz;
   u32 tap_flags;
   u8 *host_namespace;
+  u8 *if_name;
   u8 *host_if_name;
   mac_address_t host_mac_addr;
   u8 *host_bridge;
@@ -65,6 +66,7 @@ typedef struct
   u8 host_ip6_gw_set;
   u8 host_mtu_set;
   u32 host_mtu_size;
+
   /* return */
   u32 sw_if_index;
   int rv;
