@@ -29,9 +29,10 @@ type NoTopoSuite struct {
 		Ab          *Container
 	}
 	Ports struct {
-		NginxServer string
-		NginxHttp3  string
-		Http        string
+		NginxServer    string
+		NginxServerSsl string
+		NginxHttp3     string
+		Http           string
 	}
 }
 
@@ -59,6 +60,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.Containers.Ab = s.GetContainerByName("ab")
 	s.Ports.Http = s.GeneratePort()
 	s.Ports.NginxServer = s.GeneratePort()
+	s.Ports.NginxServerSsl = s.GeneratePort()
 	s.Ports.NginxHttp3 = s.GeneratePort()
 }
 
@@ -125,11 +127,15 @@ func (s *NoTopoSuite) CreateNginxServer() {
 		LogPrefix string
 		Address   string
 		Port      string
+		PortSsl   string
+		Http2     string
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   s.Interfaces.Tap.Ip4AddressString(),
 		Port:      s.Ports.NginxServer,
+		PortSsl:   s.Ports.NginxServerSsl,
+		Http2:     "off",
 		Timeout:   600,
 	}
 	s.Containers.NginxServer.CreateConfigFromTemplate(
