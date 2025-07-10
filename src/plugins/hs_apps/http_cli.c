@@ -16,6 +16,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
+#include <vnet/tls/tls_types.h>
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_content_types.h>
@@ -56,6 +57,22 @@ typedef struct
   u8 *resp_headers_buf;
 } hcs_session_t;
 
+#define foreach_hcs_listener_flags _ (HTTP1_ONLY)
+
+typedef enum hcs_listener_flags_bit_
+{
+#define _(sym) HCS_LISTENER_F_BIT_##sym,
+  foreach_hcs_listener_flags
+#undef _
+} hcs_listener_flags_bit_t;
+
+typedef enum hcs_listener_flags_
+{
+#define _(sym) HCS_LISTENER_F_##sym = 1 << HCS_LISTENER_F_BIT_##sym,
+  foreach_hcs_listener_flags
+#undef _
+} __clib_packed hcs_listener_flags_t;
+
 typedef struct
 {
   hcs_session_t **sessions;
@@ -70,6 +87,7 @@ typedef struct
   u32 fifo_size;
   u8 *uri;
   vlib_main_t *vlib_main;
+  u8 flags;
 
   /* hash table to store uri -> uri map pool index */
   uword *index_by_uri;
@@ -649,6 +667,8 @@ hcs_listen ()
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
+      if (hcm->flags & HCS_LISTENER_F_HTTP1_ONLY)
+	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
     }
 
   rv = vnet_listen (a);
@@ -774,6 +794,8 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "secret %lu", &hcm->appns_secret))
 	;
+      else if (unformat (line_input, "http1-only"))
+	hcm->flags |= HCS_LISTENER_F_HTTP1_ONLY;
       else if (unformat (line_input, "listener"))
 	{
 	  if (unformat (line_input, "add"))

@@ -288,7 +288,7 @@ func HttpCliTest(s *VethsSuite) {
 func HttpCliTlsTest(s *VethsSuite) {
 	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
 
-	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server uri " + uri)
+	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server http1-only uri " + uri)
 
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
 		" uri " + uri + " query /show/version")
