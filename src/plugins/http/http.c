@@ -883,7 +883,6 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->hc_pa_wrk_index = sep->app_wrk_index;
   hc->hc_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
-  /* TODO: set to HTTP_VERSION_NA in case of TLS */
   hc->version = HTTP_VERSION_1;
   cargs->api_context = hc_index;
 
@@ -900,7 +899,15 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   if (ext_cfg)
     {
       HTTP_DBG (1, "app set tls");
+      hc->version = HTTP_VERSION_NA;
       cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
+      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+	{
+	  HTTP_DBG (1,
+		    "app do not set alpn list, using default (h2,http/1.1)");
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	}
     }
 
   if (vec_len (app->name))

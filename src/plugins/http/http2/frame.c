@@ -73,7 +73,8 @@ http2_frame_read_settings (http2_conn_settings_t *settings, u8 *payload,
       entry = (http2_settings_entry_t *) payload;
       switch (clib_net_to_host_u16 (entry->identifier))
 	{
-#define _(v, label, member, min, max, default_value, err_code)                \
+#define _(v, label, member, min, max, default_value, err_code, server,        \
+	  client)                                                             \
   case HTTP2_SETTINGS_##label:                                                \
     value = clib_net_to_host_u32 (entry->value);                              \
     if (!(value >= min && value <= max))                                      \
