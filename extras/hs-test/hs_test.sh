@@ -172,12 +172,14 @@ args="$args -sudo_user $sudo_user"
 
 if [ $leak_check_set -eq 1 ]; then
   if [ $focused_test -eq 0 ]; then
-    echo -e "\e[1;31ma single test has to be specified when leak_check is set\e[1;0m"
+    echo -e "\e[1;31ma single test has to be specified via TEST var when leak_check is set\e[1;0m"
     exit 2
+  else
+    if [[ $tc_list != *"MemLeak"* ]]; then
+        echo -e "\e[1;31ma none of the selected tests are memleak tests\e[1;0m"
+        exit 2
+    fi
   fi
-  ginkgo_args="--focus ${tc_names[0]}"
-  sudo -E go run github.com/onsi/ginkgo/v2/ginkgo $ginkgo_args -- $args
-  exit 0
 fi
 
 if [ -n "${BUILD_NUMBER}" ]; then
