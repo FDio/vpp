@@ -70,13 +70,16 @@ func (s *VethsSuite) SetupTest() {
 	} else {
 		sessionConfig.Close()
 	}
+	// For http/2 continuation frame test between http tps and http client
+	var httpConfig Stanza
+	httpConfig.NewStanza("http").NewStanza("http2").Append("max-header-list-size 65536")
 
 	// ... For server
 	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
 	// ... For client
-	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
+	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig, httpConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()

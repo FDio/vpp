@@ -26,6 +26,8 @@ containers:
       - <<: *shared-vol
         container-dir: "/tmp/nginx"
         is-default-work-dir: true
+      - host-dir: $HST_DIR/resources/cert
+        container-dir: "/etc/nginx/ssl"
     image: "hs-test/nginx-server"
     is-optional: true
   - name: "curl"
