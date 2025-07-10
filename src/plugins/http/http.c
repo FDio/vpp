@@ -869,6 +869,7 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   u32 hc_index;
   session_t *ho;
   transport_endpt_ext_cfg_t *ext_cfg;
+  segment_manager_props_t *props;
   app_worker_t *app_wrk = app_worker_get (sep->app_wrk_index);
 
   clib_memset (cargs, 0, sizeof (*cargs));
@@ -883,7 +884,6 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->hc_pa_wrk_index = sep->app_wrk_index;
   hc->hc_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
-  /* TODO: set to HTTP_VERSION_NA in case of TLS */
   hc->version = HTTP_VERSION_1;
   cargs->api_context = hc_index;
 
@@ -900,7 +900,15 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   if (ext_cfg)
     {
       HTTP_DBG (1, "app set tls");
+      hc->version = HTTP_VERSION_NA;
       cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
+      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+	{
+	  HTTP_DBG (1,
+		    "app do not set alpn list, using default (h2,http/1.1)");
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	}
     }
 
   if (vec_len (app->name))
@@ -928,6 +936,8 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
     session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, sep->is_ip4);
   hc->hc_tc_session_handle = cargs->sh;
   hc->c_s_index = ho->session_index;
+  props = application_segment_manager_properties (app);
+  hc->app_rx_fifo_size = props->rx_fifo_size;
 
   return 0;
 }

@@ -12,6 +12,7 @@ import (
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest)
+	RegisterVethTests(Http2CliTlsTest)
 }
 
 func Http2TcpGetTest(s *Http2Suite) {
@@ -154,4 +155,23 @@ func Http2ServerMemLeakTest(s *Http2Suite) {
 	traces2, err := vpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func Http2CliTlsTest(s *VethsSuite) {
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server uri " + uri)
+
+	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
+		" uri " + uri + "/show/version")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
+
+	/* second request to test postponed ho-cleanup */
+	o = s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
+		" uri " + uri + "/show/vlib/graph")
+	s.Log(o)
+	s.AssertContains(o, "<html>", "<html> not found in the result!")
+	s.AssertContains(o, "</html>", "</html> not found in the result!")
 }
