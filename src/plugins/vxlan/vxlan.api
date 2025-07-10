@@ -17,6 +17,7 @@ option version = "2.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
 
 /** \brief Create or delete a VXLAN tunnel
     @param client_index - opaque cookie to identify the sender
@@ -207,4 +208,48 @@ autoreply define vxlan_offload_rx
   vl_api_interface_index_t hw_if_index;
   vl_api_interface_index_t sw_if_index;
   bool enable [default=true];
+};
+
+/** \brief Add or delete VXLAN L2FIB entry for dynamic destination addressing
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - Use 1 to add the entry, 0 to remove it
+    @param sw_if_index - VXLAN tunnel interface index
+    @param mac - MAC address (6 bytes)
+    @param dst_address - Destination IP address (IPv4 or IPv6)
+*/
+autoreply define vxlan_add_del_l2fib
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_interface_index_t sw_if_index;
+  vl_api_mac_address_t mac;
+  vl_api_address_t dst_address;
+};
+
+/** \brief Dump VXLAN L2FIB entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - optional interface index filter, ~0 for all interfaces
+*/
+define vxlan_l2fib_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+};
+
+/** \brief VXLAN L2FIB entry details
+    @param context - sender context, to match reply w/ request
+    @param mac - MAC address
+    @param sw_if_index - VXLAN tunnel interface index
+    @param dst_address - Destination IP address
+*/
+define vxlan_l2fib_details
+{
+  u32 context;
+  vl_api_mac_address_t mac;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t dst_address;
 };
