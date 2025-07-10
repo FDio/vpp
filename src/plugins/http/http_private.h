@@ -29,18 +29,6 @@ typedef union
 
 STATIC_ASSERT (sizeof (http_conn_handle_t) == sizeof (u32), "must fit in u32");
 
-typedef union
-{
-  struct
-  {
-    u32 version : 3;
-    u32 req_index : 29;
-  };
-  u32 as_u32;
-} http_req_handle_t;
-
-STATIC_ASSERT (sizeof (http_req_handle_t) == sizeof (u32), "must fit in u32");
-
 #define foreach_http_conn_state                                               \
   _ (LISTEN, "LISTEN")                                                        \
   _ (CONNECTING, "CONNECTING")                                                \
@@ -83,14 +71,6 @@ typedef enum http_target_form_
   HTTP_TARGET_AUTHORITY_FORM,
   HTTP_TARGET_ASTERISK_FORM
 } http_target_form_t;
-
-typedef enum http_version_
-{
-  HTTP_VERSION_1,
-  HTTP_VERSION_2,
-  HTTP_VERSION_3,
-  HTTP_VERSION_NA = 7,
-} http_version_t;
 
 typedef struct http_req_id_
 {

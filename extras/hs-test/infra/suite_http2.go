@@ -30,13 +30,15 @@ type Http2Suite struct {
 		Tap *NetInterface
 	}
 	Containers struct {
-		Vpp    *Container
-		Curl   *Container
-		H2load *Container
+		Vpp         *Container
+		Curl        *Container
+		H2load      *Container
+		NginxServer *Container
 	}
 	Ports struct {
 		Port1      string
 		Port1AsInt int
+		Port2      string
 	}
 }
 
@@ -58,7 +60,9 @@ func (s *Http2Suite) SetupSuite() {
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Containers.H2load = s.GetContainerByName("h2load")
+	s.Containers.NginxServer = s.GetTransientContainerByName("nginx-server")
 	s.Ports.Port1 = s.GeneratePort()
+	s.Ports.Port2 = s.GeneratePort()
 	var err error
 	s.Ports.Port1AsInt, err = strconv.Atoi(s.Ports.Port1)
 	s.AssertNil(err)
@@ -90,6 +94,34 @@ func (s *Http2Suite) TeardownTest() {
 
 func (s *Http2Suite) VppAddr() string {
 	return s.Interfaces.Tap.Peer.Ip4AddressString()
+}
+
+func (s *Http2Suite) HostAddr() string {
+	return s.Interfaces.Tap.Ip4AddressString()
+}
+
+func (s *Http2Suite) CreateNginxServer() {
+	s.AssertNil(s.Containers.NginxServer.Create())
+	nginxSettings := struct {
+		LogPrefix string
+		Address   string
+		Port      string
+		PortSsl   string
+		Http2     string
+		Timeout   int
+	}{
+		LogPrefix: s.Containers.NginxServer.Name,
+		Address:   s.Interfaces.Tap.Ip4AddressString(),
+		Port:      s.Ports.Port1,
+		PortSsl:   s.Ports.Port2,
+		Http2:     "on",
+		Timeout:   600,
+	}
+	s.Containers.NginxServer.CreateConfigFromTemplate(
+		"/nginx.conf",
+		"./resources/nginx/nginx_server.conf",
+		nginxSettings,
+	)
 }
 
 var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {

@@ -31,6 +31,7 @@ type EnvoyProxySuite struct {
 	}
 	Ports struct {
 		Nginx      uint16
+		NginxSsl   uint16
 		Proxy      uint16
 		EnvoyAdmin uint16
 	}
@@ -64,6 +65,7 @@ func (s *EnvoyProxySuite) SetupSuite() {
 	s.Containers.EnvoyProxy = s.GetContainerByName("envoy-vcl")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Ports.Nginx = s.GeneratePortAsInt()
+	s.Ports.NginxSsl = s.GeneratePortAsInt()
 	s.Ports.Proxy = s.GeneratePortAsInt()
 	s.Ports.EnvoyAdmin = s.GeneratePortAsInt()
 }
@@ -89,11 +91,15 @@ func (s *EnvoyProxySuite) SetupTest() {
 		LogPrefix string
 		Address   string
 		Port      uint16
+		PortSsl   uint16
+		Http2     string
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Ip4AddressString(),
 		Port:      s.Ports.Nginx,
+		PortSsl:   s.Ports.NginxSsl,
+		Http2:     "off",
 		Timeout:   s.maxTimeout,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(

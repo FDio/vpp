@@ -9,6 +9,7 @@ COPY script/nginx_server_entrypoint.sh /usr/bin/nginx_server_entrypoint.sh
 
 COPY resources/nginx/html/index.html /usr/share/nginx/index.html
 RUN fallocate -l 10MB /usr/share/nginx/httpTestFile
+RUN touch /usr/share/nginx/test_upload
 RUN mkdir /usr/share/nginx/upload && chmod 777 /usr/share/nginx/upload
 
 ENTRYPOINT ["nginx_server_entrypoint.sh"]

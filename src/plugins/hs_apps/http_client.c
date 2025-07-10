@@ -10,6 +10,7 @@
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
+#include <vnet/tls/tls_types.h>
 
 #define foreach_hc_s_flag                                                     \
   _ (1, IS_CLOSED)                                                            \
@@ -100,6 +101,7 @@ typedef struct
   bool was_transport_closed;
   u32 ckpair_index;
   u64 max_body_size;
+  http_version_t http_version;
 } hc_main_t;
 
 typedef enum
@@ -411,6 +413,7 @@ hc_rx_callback (session_t *s)
   u32 max_deq;
   session_error_t session_err = 0;
   int send_err = 0;
+  http_version_t http_version;
 
   if (hc_session->session_flags & HC_S_FLAG_IS_CLOSED)
     {
@@ -441,8 +444,12 @@ hc_rx_callback (session_t *s)
 	  http_init_header_table_buf (&hc_session->resp_headers, msg);
 
 	  if (!hcm->repeat)
-	    hc_session->response_status =
-	      format (0, "%U", format_http_status_code, msg.code);
+	    {
+	      http_version = http_session_get_version (s);
+	      hc_session->response_status =
+		format (0, "%U %U", format_http_version, http_version,
+			format_http_status_code, msg.code);
+	    }
 
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
@@ -522,6 +529,11 @@ hc_rx_callback (session_t *s)
     }
 
   ASSERT (rv == n_deq);
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_deq))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
   if (!(hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY))
     vec_set_len (hc_session->http_response, curr + n_deq);
   ASSERT (hc_session->to_recv >= rv);
@@ -633,7 +645,7 @@ hc_attach ()
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] =
-    hcm->fifo_size ? hcm->fifo_size : 8 << 10;
+    hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] =
     hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -707,6 +719,17 @@ hc_connect ()
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
+      switch (hcm->http_version)
+	{
+	case HTTP_VERSION_1:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
+	  break;
+	case HTTP_VERSION_2:
+	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
+	  break;
+	default:
+	  break;
+	}
     }
 
   session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
@@ -955,6 +978,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->fifo_size = 0;
   hcm->was_transport_closed = false;
   hcm->verbose = false;
+  hcm->http_version = HTTP_VERSION_NA;
   /* default max - 64MB */
   hcm->max_body_size = 64 << 20;
   hc_stats.request_count = 0;
@@ -1035,7 +1059,10 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "secret %lu", &hcm->appns_secret))
 	;
-
+      else if (unformat (line_input, "http1"))
+	hcm->http_version = HTTP_VERSION_1;
+      else if (unformat (line_input, "http2"))
+	hcm->http_version = HTTP_VERSION_2;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -1140,7 +1167,7 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
     "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
-    "[max-body-size <nM|G>]",
+    "[max-body-size <nM|G>] [http1|http2]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };
