@@ -28,8 +28,9 @@ type NoTopo6Suite struct {
 		Ab          *Container
 	}
 	Ports struct {
-		NginxServer string
-		Http        string
+		NginxServer    string
+		NginxServerSsl string
+		Http           string
 	}
 }
 
@@ -54,6 +55,7 @@ func (s *NoTopo6Suite) SetupSuite() {
 	s.Containers.Ab = s.GetContainerByName("ab")
 	s.Ports.Http = s.GeneratePort()
 	s.Ports.NginxServer = s.GeneratePort()
+	s.Ports.NginxServerSsl = s.GeneratePort()
 }
 
 func (s *NoTopo6Suite) SetupTest() {
@@ -119,11 +121,15 @@ func (s *NoTopo6Suite) CreateNginxServer() {
 		LogPrefix string
 		Address   string
 		Port      string
+		PortSsl   string
+		Http2     string
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   "[" + s.Interfaces.Tap.Ip6AddressString() + "]",
 		Port:      s.Ports.NginxServer,
+		PortSsl:   s.Ports.NginxServerSsl,
+		Http2:     "off",
 		Timeout:   600,
 	}
 	s.Containers.NginxServer.CreateConfigFromTemplate(
