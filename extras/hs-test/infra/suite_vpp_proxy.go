@@ -41,8 +41,9 @@ type VppProxySuite struct {
 		IperfC               *Container
 	}
 	Ports struct {
-		Server uint16
-		Proxy  uint16
+		Server    uint16
+		ServerSsl uint16
+		Proxy     uint16
 	}
 }
 
@@ -65,6 +66,7 @@ func (s *VppProxySuite) SetupSuite() {
 	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("vppProxy")
 	s.Ports.Server = s.GeneratePortAsInt()
+	s.Ports.ServerSsl = s.GeneratePortAsInt()
 	s.Ports.Proxy = s.GeneratePortAsInt()
 
 	if *IsVppDebug {
@@ -117,11 +119,15 @@ func (s *VppProxySuite) SetupNginxServer() {
 		LogPrefix string
 		Address   string
 		Port      uint16
+		PortSsl   uint16
+		Http2     string
 		Timeout   int
 	}{
 		LogPrefix: s.Containers.NginxServerTransient.Name,
 		Address:   s.Interfaces.Server.Ip4AddressString(),
 		Port:      s.Ports.Server,
+		PortSsl:   s.Ports.ServerSsl,
+		Http2:     "off",
 		Timeout:   s.maxTimeout,
 	}
 	s.Containers.NginxServerTransient.CreateConfigFromTemplate(
