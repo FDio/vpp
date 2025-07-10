@@ -1413,7 +1413,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	}
     }
 
-  pool_get (vim->interfaces, vif);
+  pool_get_zero (vim->interfaces, vif);
   vif->dev_instance = vif - vim->interfaces;
   vif->per_interface_next_index = ~0;
   vif->pci_addr.as_u32 = args->addr;
@@ -1440,6 +1440,9 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vlib_pci_set_private_data (vm, h, vif->dev_instance);
   vif->numa_node = vlib_pci_get_numa_node (vm, h);
   vif->type = VIRTIO_IF_TYPE_PCI;
+
+  if (args->if_name)
+    CLIB_SWAP (args->if_name, vif->initial_if_name);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
     {
@@ -1681,7 +1684,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   vec_free (vif->cxq_vring);
 
   clib_error_free (vif->error);
-  memset (vif, 0, sizeof (*vif));
+  vec_free (vif->initial_if_name);
   pool_put (vim->interfaces, vif);
 
   return 0;
