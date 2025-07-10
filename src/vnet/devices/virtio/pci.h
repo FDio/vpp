@@ -317,6 +317,7 @@ typedef struct
   u32 buffering_size;
   u32 virtio_flags;
   clib_error_t *error;
+  u8 *if_name;
 } virtio_pci_create_if_args_t;
 
 extern const virtio_pci_func_t virtio_pci_legacy_func;
