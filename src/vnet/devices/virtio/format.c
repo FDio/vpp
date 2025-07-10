@@ -30,6 +30,9 @@ format_virtio_device_name (u8 * s, va_list * args)
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, dev_instance);
 
+  if (vif->initial_if_name)
+    return format (s, "%s", vif->initial_if_name);
+
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     s = format (s, "tap%u", vif->id);
   else if (vif->type == VIRTIO_IF_TYPE_PCI)

@@ -117,6 +117,7 @@ error:
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
   vec_free (vif->host_if_name);
+  vec_free (vif->initial_if_name);
   vec_free (vif->net_ns);
   vec_free (vif->host_bridge);
   clib_error_free (vif->error);
@@ -201,6 +202,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->id = args->id;
   vif->num_txqs = clib_max (args->num_tx_queues, thm->n_vlib_mains);
   vif->num_rxqs = clib_max (args->num_rx_queues, 1);
+
+  if (args->if_name)
+    CLIB_SWAP (args->if_name, vif->initial_if_name);
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
     {

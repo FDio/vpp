@@ -155,8 +155,9 @@ typedef struct
 
   u32 hw_if_index;
   u32 sw_if_index;
+  u8 *initial_if_name;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int packet_coalesce;
   int packet_buffering;
   u32 dev_instance;
