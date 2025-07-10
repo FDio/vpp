@@ -189,6 +189,7 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
+test-leak: FORCE_BUILD=false
 test-leak: .deps.ok .build_debug.ok
 	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
 	--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS);

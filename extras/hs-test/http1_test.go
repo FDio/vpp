@@ -1016,7 +1016,7 @@ func HttpInvalidClientRequestMemLeakTest(s *Http1Suite) {
 	/* no goVPP less noise */
 	vpp.Disconnect()
 
-	vpp.Vppctl("http cli server")
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	/* warmup request (FIB) */
 	_, err := TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
