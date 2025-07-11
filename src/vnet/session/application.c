@@ -855,6 +855,8 @@ application_alloc_and_init (app_init_args_t *a)
     props->low_watermark = opts[APP_OPTIONS_LOW_WATERMARK];
   if (opts[APP_OPTIONS_PCT_FIRST_ALLOC])
     props->pct_first_alloc = opts[APP_OPTIONS_PCT_FIRST_ALLOC];
+  if (opts[APP_OPTIONS_MAX_SEGMENTS])
+    props->max_segments = opts[APP_OPTIONS_MAX_SEGMENTS];
   props->segment_type = seg_type;
 
   if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_COLLECTOR)
