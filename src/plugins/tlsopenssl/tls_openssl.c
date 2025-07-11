@@ -687,13 +687,58 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
     return openssl_ctx_read_dtls (ctx, ts);
 }
 
+static void
+openssl_cleanup_certkey_int_ctx (app_certkey_int_ctx_t *cki)
+{
+  X509_free (cki->cert);
+  EVP_PKEY_free (cki->key);
+}
+
+static app_certkey_int_ctx_t *
+openssl_init_certkey_init_ctx (app_cert_key_pair_t *ckpair,
+			       clib_thread_index_t thread_index)
+{
+  app_certkey_int_ctx_t *cki = 0;
+  EVP_PKEY *pkey;
+  X509 *cert;
+  BIO *bio;
+
+  cki = app_certkey_alloc_int_ctx (ckpair, thread_index);
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ckpair->cert, vec_len (ckpair->cert));
+  cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL);
+  if (!cert)
+    {
+      clib_warning ("unable to parse certificate");
+      BIO_free (bio);
+      return 0;
+    }
+  cki->cert = cert;
+  BIO_free (bio);
+
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ckpair->key, vec_len (ckpair->key));
+  pkey = PEM_read_bio_PrivateKey (bio, NULL, NULL, NULL);
+  if (!pkey)
+    {
+      clib_warning ("unable to parse pkey");
+      BIO_free (bio);
+      return 0;
+    }
+  cki->key = pkey;
+  BIO_free (bio);
+
+  cki->cleanup_cb = openssl_cleanup_certkey_int_ctx;
+
+  return cki;
+}
+
 static int
-openssl_set_ckpair (SSL *ssl, u32 ckpair_index)
+openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
+		    clib_thread_index_t thread_index)
 {
   app_cert_key_pair_t *ckpair;
-  BIO *cert_bio;
-  EVP_PKEY *pkey;
-  X509 *srvcert;
+  app_certkey_int_ctx_t *cki;
 
   /* Configure a ckpair index only if non-default/test provided */
   if (ckpair_index == 0)
@@ -708,32 +753,14 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index)
       TLS_DBG (1, "tls cert and/or key not configured");
       return -1;
     }
-  /*
-   * Set the key and cert
-   */
-  cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, ckpair->cert, vec_len (ckpair->cert));
-  srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
-  if (!srvcert)
-    {
-      clib_warning ("unable to parse certificate");
-      return -1;
-    }
-  SSL_use_certificate (ssl, srvcert);
-  BIO_free (cert_bio);
-  X509_free (srvcert);
 
-  cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, ckpair->key, vec_len (ckpair->key));
-  pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
-  if (!pkey)
-    {
-      clib_warning ("unable to parse pkey");
-      return -1;
-    }
-  SSL_use_PrivateKey (ssl, pkey);
-  BIO_free (cert_bio);
-  EVP_PKEY_free (pkey);
+  cki = app_certkey_get_int_ctx (ckpair, thread_index);
+  if (!cki || !cki->cert)
+    cki = openssl_init_certkey_init_ctx (ckpair, thread_index);
+
+  SSL_use_certificate (ssl, cki->cert);
+  SSL_use_PrivateKey (ssl, cki->key);
+
   TLS_DBG (1, "TLS client using ckpair index: %d", ckpair_index);
   return 0;
 }
@@ -858,7 +885,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
       return -1;
     }
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index))
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
     {
       TLS_DBG (1, "Couldn't set client certificate-key pair");
     }
@@ -922,12 +949,10 @@ openssl_start_listen (tls_ctx_t * lctx)
   const SSL_METHOD *method;
   SSL_CTX *ssl_ctx;
   int rv;
-  BIO *cert_bio;
-  X509 *srvcert;
-  EVP_PKEY *pkey;
   u32 olc_index;
   openssl_listen_ctx_t *olc;
   app_cert_key_pair_t *ckpair;
+  app_certkey_int_ctx_t *cki;
 
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_main_t *om = &openssl_main;
@@ -1014,51 +1039,23 @@ openssl_start_listen (tls_ctx_t * lctx)
   /*
    * Set the key and cert
    */
-  cert_bio = BIO_new (BIO_s_mem ());
-  if (!cert_bio)
-    {
-      clib_warning ("unable to allocate memory");
-      return -1;
-    }
-  BIO_write (cert_bio, ckpair->cert, vec_len (ckpair->cert));
-  srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
-  if (!srvcert)
-    {
-      clib_warning ("unable to parse certificate");
-      goto err;
-    }
-  rv = SSL_CTX_use_certificate (ssl_ctx, srvcert);
+  cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index);
+  if (!cki || !cki->cert)
+    cki = openssl_init_certkey_init_ctx (ckpair, lctx->c_thread_index);
+
+  rv = SSL_CTX_use_certificate (ssl_ctx, cki->cert);
   if (rv != 1)
     {
       clib_warning ("unable to use SSL certificate");
       goto err;
     }
 
-  BIO_free (cert_bio);
-  X509_free (srvcert);
-
-  cert_bio = BIO_new (BIO_s_mem ());
-  if (!cert_bio)
-    {
-      clib_warning ("unable to allocate memory");
-      return -1;
-    }
-  BIO_write (cert_bio, ckpair->key, vec_len (ckpair->key));
-  pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
-  if (!pkey)
-    {
-      clib_warning ("unable to parse pkey");
-      goto err;
-    }
-  rv = SSL_CTX_use_PrivateKey (ssl_ctx, pkey);
+  rv = SSL_CTX_use_PrivateKey (ssl_ctx, cki->key);
   if (rv != 1)
     {
       clib_warning ("unable to use SSL PrivateKey");
       goto err;
     }
-
-  BIO_free (cert_bio);
-  EVP_PKEY_free (pkey);
 
   if (lctx->alpn_list)
     SSL_CTX_set_alpn_select_cb (ssl_ctx, openssl_alpn_select_cb,
@@ -1067,8 +1064,6 @@ openssl_start_listen (tls_ctx_t * lctx)
   olc_index = openssl_listen_ctx_alloc ();
   olc = openssl_lctx_get (olc_index);
   olc->ssl_ctx = ssl_ctx;
-  olc->srvcert = srvcert;
-  olc->pkey = pkey;
 
   /* store SSL_CTX into TLS level structure */
   lctx->tls_ssl_ctx = olc_index;
@@ -1076,8 +1071,6 @@ openssl_start_listen (tls_ctx_t * lctx)
   return 0;
 
 err:
-  if (cert_bio)
-    BIO_free (cert_bio);
   return -1;
 }
 
