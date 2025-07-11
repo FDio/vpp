@@ -687,13 +687,49 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
     return openssl_ctx_read_dtls (ctx, ts);
 }
 
+static app_certkey_int_ctx_t *
+openssl_init_certkey_init_ctx (app_cert_key_pair_t *ckpair,
+			       clib_thread_index_t thread_index)
+{
+  app_certkey_int_ctx_t *cki = 0;
+  BIO *bio;
+  EVP_PKEY *pkey;
+  X509 *cert;
+
+  cki = app_certkey_alloc_int_ctx (ckpair, thread_index);
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ckpair->cert, vec_len (ckpair->cert));
+  cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL);
+  if (!cert)
+    {
+      clib_warning ("unable to parse certificate");
+      BIO_free (bio);
+      return 0;
+    }
+  cki->cert = cert;
+  BIO_free (bio);
+
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ckpair->key, vec_len (ckpair->key));
+  pkey = PEM_read_bio_PrivateKey (bio, NULL, NULL, NULL);
+  if (!pkey)
+    {
+      clib_warning ("unable to parse pkey");
+      BIO_free (bio);
+      return 0;
+    }
+  cki->key = pkey;
+  BIO_free (bio);
+
+  return cki;
+}
+
 static int
-openssl_set_ckpair (SSL *ssl, u32 ckpair_index)
+openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
+		    clib_thread_index_t thread_index)
 {
   app_cert_key_pair_t *ckpair;
-  BIO *cert_bio;
-  EVP_PKEY *pkey;
-  X509 *srvcert;
+  app_certkey_int_ctx_t *cki;
 
   /* Configure a ckpair index only if non-default/test provided */
   if (ckpair_index == 0)
@@ -708,32 +744,14 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index)
       TLS_DBG (1, "tls cert and/or key not configured");
       return -1;
     }
-  /*
-   * Set the key and cert
-   */
-  cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, ckpair->cert, vec_len (ckpair->cert));
-  srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
-  if (!srvcert)
-    {
-      clib_warning ("unable to parse certificate");
-      return -1;
-    }
-  SSL_use_certificate (ssl, srvcert);
-  BIO_free (cert_bio);
-  X509_free (srvcert);
 
-  cert_bio = BIO_new (BIO_s_mem ());
-  BIO_write (cert_bio, ckpair->key, vec_len (ckpair->key));
-  pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
-  if (!pkey)
-    {
-      clib_warning ("unable to parse pkey");
-      return -1;
-    }
-  SSL_use_PrivateKey (ssl, pkey);
-  BIO_free (cert_bio);
-  EVP_PKEY_free (pkey);
+  cki = app_certkey_get_int_ctx (ckpair, thread_index);
+  if (!cki || !cki->cert)
+    cki = openssl_init_certkey_init_ctx (ckpair, thread_index);
+
+  SSL_use_certificate (ssl, cki->cert);
+  SSL_use_PrivateKey (ssl, cki->key);
+
   TLS_DBG (1, "TLS client using ckpair index: %d", ckpair_index);
   return 0;
 }
@@ -858,7 +876,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
       return -1;
     }
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index))
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
     {
       TLS_DBG (1, "Couldn't set client certificate-key pair");
     }
