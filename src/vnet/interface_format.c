@@ -515,6 +515,15 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      (u32) (o->l4_hdr_offset), (u32) (o->feature_arc_index));
   vec_add1 (s, '\n');
 
+  s = format (s, "offload flags: ");
+#define _(bit, name, str, v)                                                  \
+  if (v && o->oflags & VNET_BUFFER_OFFLOAD_F_##name ||                        \
+      !v && o->oflags == VNET_BUFFER_OFFLOAD_F_##name)                        \
+    s = format (s, "%s ", str);
+  foreach_vnet_buffer_offload_flag
+#undef _
+    vec_add1 (s, '\n');
+
   s = format (s,
 	      "ip.adj_index[VLIB_RX]: %d, ip.adj_index[VLIB_TX]: %d",
 	      (u32) (o->ip.adj_index[0]), (u32) (o->ip.adj_index[1]));
@@ -763,7 +772,7 @@ unformat_vnet_buffer_offload_flags (unformat_input_t *input, va_list *args)
       if (0)
 	;
 #define _(bit, enum, str, verbose)                                            \
-  else if (unformat (input, str))                                             \
+  else if (verbose && unformat (input, str))                                  \
   {                                                                           \
     oflags |= (1 << bit);                                                     \
     rv = 1;                                                                   \

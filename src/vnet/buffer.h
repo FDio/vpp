@@ -108,6 +108,7 @@ STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
 	       "VLIB / VNET buffer flags overlap");
 
 #define foreach_vnet_buffer_offload_flag                                      \
+  _ (0, NONE, "none", 0)                                                      \
   _ (0, IP_CKSUM, "offload-ip-cksum", 1)                                      \
   _ (1, TCP_CKSUM, "offload-tcp-cksum", 1)                                    \
   _ (2, UDP_CKSUM, "offload-udp-cksum", 1)                                    \
@@ -118,7 +119,7 @@ STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
 
 typedef enum
 {
-#define _(bit, name, s, v) VNET_BUFFER_OFFLOAD_F_##name = (1 << bit),
+#define _(bit, name, s, v) VNET_BUFFER_OFFLOAD_F_##name = v ? (1 << bit) : 0,
   foreach_vnet_buffer_offload_flag
 #undef _
 } vnet_buffer_oflags_t;
