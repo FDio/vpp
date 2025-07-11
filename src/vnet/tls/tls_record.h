@@ -100,7 +100,7 @@ tls_handshake_message_len (tls_handshake_msg_t *msg)
 /**
  * https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
  */
-#define foreach_tls_hanshake_extensions                                       \
+#define foreach_tls_handshake_extensions                                      \
   _ (SERVER_NAME, 0)                                                          \
   _ (MAX_FRAGMENT_LENGTH, 1)                                                  \
   _ (STATUS_REQUEST, 5)                                                       \
@@ -133,7 +133,7 @@ tls_handshake_message_len (tls_handshake_msg_t *msg)
 typedef enum tls_handshake_extension_type_
 {
 #define _(sym, val) TLS_EXT_##sym = val,
-  foreach_tls_hanshake_extensions
+  foreach_tls_handshake_extensions
 #undef _
 } tls_handshake_ext_type_t;
 

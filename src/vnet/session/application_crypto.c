@@ -68,6 +68,21 @@ vnet_app_add_cert_key_interest (u32 index, u32 app_index)
   return 0;
 }
 
+static void
+app_certkey_free_int_ctx (app_cert_key_pair_t *ck)
+{
+  app_certkey_int_ctx_t *cki;
+
+  vec_foreach (cki, ck->cki)
+    {
+      if (cki->cleanup_cb)
+	(cki->cleanup_cb) (cki);
+      cki->cert = 0;
+      cki->key = 0;
+    }
+  vec_free (ck->cki);
+}
+
 int
 vnet_app_del_cert_key_pair (u32 index)
 {
@@ -77,6 +92,8 @@ vnet_app_del_cert_key_pair (u32 index)
 
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
     return SESSION_E_INVALID;
+
+  app_certkey_free_int_ctx (ckpair);
 
   vec_foreach (app_index, ckpair->app_interests)
     {

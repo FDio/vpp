@@ -66,8 +66,6 @@ typedef struct tls_listen_ctx_opensl_
   u32 openssl_lctx_index;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
-  X509 *srvcert;
-  EVP_PKEY *pkey;
 } openssl_listen_ctx_t;
 
 typedef struct openssl_main_
