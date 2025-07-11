@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7382b4d9_5e5c919f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2025-07-11T11:30:55Z",
+      "side": 1,
+      "message": "See detailed comment",
+      "revId": "a66a17b67a86e9e86ec7855165163663c08c1d7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b125a76b_81758810",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 518,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2025-07-11T11:30:55Z",
+      "side": 1,
+      "message": "For brevity, I\u0027d prefer \"offload flags: none\" instead of \"no offload flags set\". A quick tweak to the _ macro to set a boolean when one of the other offload flags is announced would do it...",
+      "range": {
+        "startLine": 518,
+        "startChar": 20,
+        "endLine": 518,
+        "endChar": 21
+      },
+      "revId": "a66a17b67a86e9e86ec7855165163663c08c1d7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
