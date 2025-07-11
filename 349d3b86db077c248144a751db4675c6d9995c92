@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33d242cc_a207bfc6",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 1019,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-11T21:37:36Z",
+      "side": 1,
+      "message": "continue",
+      "revId": "349d3b86db077c248144a751db4675c6d9995c92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
