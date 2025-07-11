@@ -7,12 +7,25 @@
 
 #include <vnet/tls/tls_test.h>
 
+struct app_certkey_int_;
+
+typedef void (*app_certkey_cleanup_it_ctx_fn) (struct app_certkey_int_ *cki);
+
+typedef struct app_certkey_int_
+{
+  void *cert;	    /**< cert of cert chain, possible format X509 */
+  void *key;	    /**< key, possible format EVP_PKEY */
+  u32 ckpair_index; /**< parent certkey */
+  app_certkey_cleanup_it_ctx_fn cleanup_cb; /**< cleanup callback */
+} app_certkey_int_ctx_t;
+
 typedef struct certificate_
 {
   u32 *app_interests; /* vec of application index asking for deletion cb */
   u32 cert_key_index; /* index in cert & key pool */
   u8 *key;
   u8 *cert;
+  app_certkey_int_ctx_t *cki; /**< per-thread internal cert/key */
 } app_cert_key_pair_t;
 
 typedef enum crypto_engine_type_
@@ -54,6 +67,24 @@ app_cert_key_pair_t *app_cert_key_pair_get_default ();
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
 int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 int vnet_app_del_cert_key_pair (u32 index);
+
+static inline app_certkey_int_ctx_t *
+app_certkey_get_int_ctx (app_cert_key_pair_t *ck,
+			 clib_thread_index_t thread_index)
+{
+  if (vec_len (ck->cki) <= thread_index)
+    return 0;
+  return vec_elt_at_index (ck->cki, thread_index);
+}
+
+static inline app_certkey_int_ctx_t *
+app_certkey_alloc_int_ctx (app_cert_key_pair_t *ck,
+			   clib_thread_index_t thread_index)
+{
+  if (!ck->cki)
+    vec_validate (ck->cki, vlib_num_workers () + 1);
+  return vec_elt_at_index (ck->cki, thread_index);
+}
 
 /*
  * Crypto engine management
