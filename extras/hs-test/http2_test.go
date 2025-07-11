@@ -17,7 +17,7 @@ func init() {
 func Http2TcpGetTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	vpp.Vppctl("http cli server listener add uri tcp://" + serverAddress)
+	vpp.Vppctl("http cli server listener add uri http://" + serverAddress)
 	s.Log(vpp.Vppctl("show session verbose 2"))
 	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge http://%s/show/version", serverAddress)
 	writeOut, log := s.RunCurlContainer(s.Containers.Curl, args)
@@ -46,7 +46,7 @@ func Http2TcpGetTest(s *Http2Suite) {
 	s.AssertEqual(true, httpStreamCleanupDone, "HTTP/2 stream not cleaned up")
 
 	/* test server app stop listen */
-	vpp.Vppctl("http cli server listener del uri tcp://" + serverAddress)
+	vpp.Vppctl("http cli server listener del uri http://" + serverAddress)
 	o := vpp.Vppctl("show session verbose proto http")
 	s.AssertNotContains(o, "LISTEN")
 }

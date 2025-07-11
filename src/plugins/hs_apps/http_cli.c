@@ -631,19 +631,11 @@ hcs_attach ()
 }
 
 static int
-hcs_transport_needs_crypto (transport_proto_t proto)
-{
-  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
-	 proto == TRANSPORT_PROTO_QUIC;
-}
-
-static int
 hcs_listen ()
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   hcs_main_t *hcm = &hcs_main;
   vnet_listen_args_t _a, *a = &_a;
-  u8 need_crypto;
   int rv;
   char *uri;
 
@@ -656,12 +648,10 @@ hcs_listen ()
   if (parse_uri (uri, &sep))
     return -1;
 
-  need_crypto = hcs_transport_needs_crypto (sep.transport_proto);
-
   sep.transport_proto = TRANSPORT_PROTO_HTTP;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
 
-  if (need_crypto)
+  if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     {
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
@@ -681,7 +671,7 @@ hcs_listen ()
       hash_set_mem (hcm->index_by_uri, map->uri, map - hcm->uri_map_pool);
     }
 
-  if (need_crypto)
+  if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
@@ -824,7 +814,7 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 start_server:
 
   if (hcm->uri == 0)
-    hcm->uri = format (0, "tcp://0.0.0.0/80");
+    hcm->uri = format (0, "http://0.0.0.0");
 
   if (hcm->app_index != (u32) ~0)
     {
