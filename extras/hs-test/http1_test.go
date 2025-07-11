@@ -261,7 +261,7 @@ func HttpCliTest(s *VethsSuite) {
 	s.Containers.ServerVpp.VppInstance.Vppctl(cliServerCmd)
 
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri http://" + serverAddress + " query /show/vlib/graph")
+		" uri http://" + serverAddress + "/show/vlib/graph")
 
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
@@ -286,19 +286,19 @@ func HttpCliTest(s *VethsSuite) {
 }
 
 func HttpCliTlsTest(s *VethsSuite) {
-	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+	uri := "https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 
 	s.Containers.ServerVpp.VppInstance.Vppctl("http cli server http1-only uri " + uri)
 
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri " + uri + " query /show/version")
+		" uri " + uri + "/show/version")
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
 
 	/* second request to test postponed ho-cleanup */
 	o = s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri " + uri + " query /show/version")
+		" uri " + uri + "/show/version")
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
@@ -308,7 +308,7 @@ func HttpCliConnectErrorTest(s *VethsSuite) {
 	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + "/80"
 
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
-		" uri " + uri + " query /show/vlib/graph")
+		" uri " + uri + "/show/vlib/graph")
 
 	s.Log(o)
 	s.AssertContains(o, "failed to connect")
@@ -332,7 +332,7 @@ func HttpClientTest(s *Http1Suite) {
 	defer server.Close()
 	uri := "http://" + serverAddress
 	vpp := s.Containers.Vpp.VppInstance
-	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
+	o := vpp.Vppctl("http cli client uri " + uri + "/test")
 
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
@@ -450,7 +450,7 @@ func HttpClientErrRespTest(s *Http1Suite) {
 	defer server.Close()
 	uri := "http://" + serverAddress
 	vpp := s.Containers.Vpp.VppInstance
-	o := vpp.Vppctl("http cli client uri " + uri + " query /test")
+	o := vpp.Vppctl("http cli client uri " + uri + "/test")
 
 	s.Log(o)
 	s.AssertContains(o, "404: Not Found", "error not found in the result!")
@@ -934,12 +934,12 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	/* no goVPP less noise */
 	clientVpp.Disconnect()
 
-	serverVpp.Vppctl("http cli server uri " + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 
-	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+	serverVpp.Vppctl("http cli server uri " + uri)
 
 	/* warmup request (FIB) */
-	clientVpp.Vppctl("http cli client uri " + uri + " query /show/version")
+	clientVpp.Vppctl("http cli client uri " + uri + "/show/version")
 
 	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
 	time.Sleep(time.Second * 12)
@@ -948,7 +948,7 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	traces1, err := clientVpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
 
-	clientVpp.Vppctl("http cli client uri " + uri + " query /show/vlib/graph")
+	clientVpp.Vppctl("http cli client uri " + uri + "/show/vlib/graph")
 
 	/* let's give it some time to clean up sessions */
 	time.Sleep(time.Second * 12)
