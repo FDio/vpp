@@ -16,6 +16,24 @@
       "message": "LGTM, needs a `make fixstyle`",
       "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce789175_4fc074b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2025-07-12T04:05:06Z",
+      "side": 1,
+      "message": "It seems I have to change API to handle new option, but API changes aren\u0027t allowed. Could you please hint me in the right direction here, what would be the preferred way to approach this? Add new v2 API?",
+      "parentUuid": "b475d2f5_327d1669",
+      "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
