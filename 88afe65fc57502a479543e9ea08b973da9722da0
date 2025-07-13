@@ -34,6 +34,24 @@
       "parentUuid": "b475d2f5_327d1669",
       "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f36601b4_b755ce7e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-13T06:42:49Z",
+      "side": 1,
+      "message": "Mark the api as deprecated and add another api, e.g., app_attach2. After next release we can remove the old api. \n\nIf you\u0027re testing using socket (as opposed to binary) api, this shouldn\u0027t have an effect.",
+      "parentUuid": "ce789175_4fc074b4",
+      "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
