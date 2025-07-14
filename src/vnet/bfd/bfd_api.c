@@ -464,6 +464,26 @@ vl_api_bfd_udp_enable_multihop_t_handler (vl_api_bfd_udp_enable_multihop_t *mp)
   REPLY_MACRO (VL_API_BFD_UDP_ENABLE_MULTIHOP_REPLY);
 }
 
+static void
+vl_api_bfd_udp_set_tos_t_handler (vl_api_bfd_udp_set_tos_t *mp)
+{
+  vl_api_bfd_udp_set_tos_reply_t *rmp;
+  int rv = 0;
+
+  bfd_main.tos = mp->tos;
+
+  REPLY_MACRO (VL_API_BFD_UDP_SET_TOS_REPLY);
+}
+
+static void
+vl_api_bfd_udp_get_tos_t_handler (vl_api_bfd_udp_get_tos_t *mp)
+{
+  vl_api_bfd_udp_get_tos_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_BFD_UDP_GET_TOS_REPLY, ({ rmp->tos = bfd_main.tos; }));
+}
+
 #include <vnet/bfd/bfd.api.c>
 static clib_error_t *
 bfd_api_hookup (vlib_main_t * vm)
