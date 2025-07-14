@@ -19,6 +19,7 @@ from vpp_papi import VppEnum
 
 BFD_UDP_SH_PORT = 3784
 BFD_UDP_MH_PORT = 4784
+BFD_UDP_DEFAULT_TOS = 192
 
 
 class BFDDiagCode(NumericConstant):
@@ -280,6 +281,8 @@ class VppBFDUDPSession(VppObject):
                 self._local_addr = self.interface.local_ip4
             else:
                 self._local_addr = self.interface.local_ip6
+
+        self.test.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
 
         self._peer_addr = peer_addr
         self._desired_min_tx = desired_min_tx
