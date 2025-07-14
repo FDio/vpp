@@ -19,6 +19,7 @@ from vpp_papi import VppEnum
 
 BFD_UDP_SH_PORT = 3784
 BFD_UDP_MH_PORT = 4784
+BFD_UDP_DEFAULT_TOS = 192
 
 
 class BFDDiagCode(NumericConstant):

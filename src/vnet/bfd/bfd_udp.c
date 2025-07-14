@@ -283,6 +283,7 @@ bfd_add_udp4_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   headers->ip4.ip_version_and_header_length = 0x45;
   headers->ip4.ttl = 255;
   headers->ip4.protocol = IP_PROTOCOL_UDP;
+  headers->ip4.tos = bfd_main.tos;
   headers->udp.src_port =
     clib_host_to_net_u16 (bfd_udp_bs_idx_to_sport (bs->bs_idx));
   if (is_echo)
@@ -346,7 +347,8 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   headers = vlib_buffer_get_current (b);
   clib_memset (headers, 0, sizeof (*headers));
   headers->ip6.ip_version_traffic_class_and_flow_label =
-    clib_host_to_net_u32 (0x6 << 28);
+    clib_host_to_net_u32 ((0x6 << 28) + (bfd_main.tos << 20));
+
   headers->ip6.hop_limit = 255;
   headers->ip6.protocol = IP_PROTOCOL_UDP;
   headers->udp.src_port =
