@@ -19,6 +19,7 @@ from vpp_papi import VppEnum
 
 BFD_UDP_SH_PORT = 3784
 BFD_UDP_MH_PORT = 4784
+BFD_UDP_DEFAULT_TOS = 192
 
 
 class BFDDiagCode(NumericConstant):
@@ -499,3 +500,7 @@ class VppBFDUDPSession(VppObject):
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
         )
+
+    def set_tos(self, tos_value=BFD_UDP_DEFAULT_TOS):
+        """Set Type of Service (TOS) value for BFD UDP packets"""
+        self.test.vapi.bfd_udp_set_tos(tos_value)
