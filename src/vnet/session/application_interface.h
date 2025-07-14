@@ -195,6 +195,7 @@ typedef enum
   APP_OPTIONS_HIGH_WATERMARK,
   APP_OPTIONS_LOW_WATERMARK,
   APP_OPTIONS_PCT_FIRST_ALLOC,
+  APP_OPTIONS_MAX_SEGMENTS,
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
@@ -808,7 +809,7 @@ typedef enum app_sapi_msg_type
 typedef struct app_sapi_attach_msg_
 {
   u8 name[64];
-  u64 options[18];
+  u64 options[19];
 } __clib_packed app_sapi_attach_msg_t;
 
 STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=

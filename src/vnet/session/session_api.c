@@ -758,6 +758,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
   vl_api_registration_t *reg;
   svm_msg_q_t *rx_mq;
   application_t *app;
+  u64 options[APP_OPTIONS_N_OPTIONS];
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -776,13 +777,20 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
       goto done;
     }
 
-  STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
-		 sizeof (mp->options),
+  /* app_attach API handles 18 options; everything extra is set to 0 */
+  STATIC_ASSERT (sizeof (u64) * 18 == sizeof (mp->options) &&
+		   ARRAY_LEN (mp->options) < APP_OPTIONS_N_OPTIONS,
 		 "Out of options, fix api message definition");
+
+  for (i = 0; i < ARRAY_LEN (mp->options); ++i)
+    options[i] = mp->options[i];
+  /* Clear extra options */
+  for (i = ARRAY_LEN (mp->options); i < ARRAY_LEN (options); ++i)
+    options[i] = 0;
 
   clib_memset (a, 0, sizeof (*a));
   a->api_client_index = mp->client_index;
-  a->options = mp->options;
+  a->options = options;
   a->session_cb_vft = &session_mq_cb_vft;
   a->namespace_id = vl_api_from_api_to_new_vec (mp, &mp->namespace_id);
 

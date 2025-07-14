@@ -41,6 +41,7 @@ typedef struct _segment_manager_props
   u8 low_watermark;			/**< memory usage low watermark % */
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
   u8 huge_page;				/**< use hugepage */
+  u32 max_segments; /**< max number of segments, 0 for unlimited */
 } segment_manager_props_t;
 
 #define foreach_seg_manager_flag                                              \

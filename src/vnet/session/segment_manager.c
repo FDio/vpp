@@ -115,6 +115,13 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   if (need_lock)
     clib_rwlock_writer_lock (&sm->segments_rwlock);
 
+  if (props->max_segments && pool_elts (sm->segments) >= props->max_segments)
+    {
+      SESSION_DBG (
+	"max number of segments allocated, can't allocate new segment");
+      goto done;
+    }
+
   pool_get_zero (sm->segments, fs);
 
   /*
@@ -1061,6 +1068,7 @@ format_segment_manager (u8 *s, va_list *args)
   fifo_segment_t *seg;
   application_t *app;
   u8 custom_logic;
+  segment_manager_props_t *props = segment_manager_properties_get (sm);
 
   app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
   app = app_wrk ? application_get (app_wrk->app_index) : 0;
@@ -1068,12 +1076,13 @@ format_segment_manager (u8 *s, va_list *args)
   max_fifo_size = sm->max_fifo_size;
 
   s = format (s,
-	      "%U[%u] %v app-wrk: %u segs: %u max-fifo-sz: %U "
+	      "%U[%u] %v app-wrk: %u segs: %u max-segs: %u max-fifo-sz: %U "
 	      "wmarks: %u %u %s flags: %U",
 	      format_white_space, indent, segment_manager_index (sm),
 	      app ? app->name : 0, sm->app_wrk_index, pool_elts (sm->segments),
-	      format_memory_size, max_fifo_size, sm->high_watermark,
-	      sm->low_watermark, custom_logic ? "custom-tuning" : "no-tuning",
+	      props->max_segments, format_memory_size, max_fifo_size,
+	      sm->high_watermark, sm->low_watermark,
+	      custom_logic ? "custom-tuning" : "no-tuning",
 	      format_segment_manager_flags, (int) sm->flags);
 
   if (!verbose || !pool_elts (sm->segments))
