@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3f19b10_50f188dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-07-14T19:46:44Z",
+      "side": 1,
+      "message": "Hey, it looks good, but it\u0027s missing:\n\n- a get API - so that clients can query the current value.\n- unit tests. Could you please add one testing the api and another verifying that actual ip4 and ip6 packets use supplied tos to test_bfd.py?",
+      "revId": "c0db4d00f904cc2c67adb6db44a719a2a406ebdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
