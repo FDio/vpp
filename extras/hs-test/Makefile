@@ -87,7 +87,9 @@ help:
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " build-go                 - just build golang files"
-	@echo " setup-cluster            - setup KinD cluster for performance testing"
+	@echo " master-cluster           - setup KinD cluster for performance testing (master CalicoVPP + VPP)"
+	@echo " rebuild-master-cluster   - rebuild VPP and update related pods without shutting down the cluster"
+	@echo " release-cluster          - setup KinD cluster for performance testing (latest CalicoVPP release)"
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " fixstyle-go              - format .go source files"
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
@@ -202,9 +204,17 @@ test-perf: .deps.ok .build.ok
 		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
-.PHONY: setup-cluster
-setup-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh $(BASE)
+.PHONY: release-cluster
+release-cluster: .kind_deps.ok
+	@bash ./kubernetes/setupCluster.sh setup_release
+
+.PHONY: master-cluster
+master-cluster: .kind_deps.ok
+	@bash ./kubernetes/setupCluster.sh setup_master
+
+.PHONY: rebuild-master-cluster
+rebuild-cluster: .kind_deps.ok
+	@bash ./kubernetes/setupCluster.sh rebuild_master
 
 .PHONY: build-go
 build-go:
