@@ -324,6 +324,9 @@ typedef struct
    */
   bool multihop_enabled;
 
+  /** TOS field value of the IP part of the BFD packet */
+  u8 tos;
+
   /** log class */
   vlib_log_class_t log_class;
 
