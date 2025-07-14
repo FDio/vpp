@@ -323,6 +323,8 @@ typedef struct
    * represents a multihop session
    */
   bool multihop_enabled;
+  /** TOS field value of the IP part of the BFD packet */
+  u8 tos;
 
   /** log class */
   vlib_log_class_t log_class;

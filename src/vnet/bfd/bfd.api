@@ -369,6 +369,18 @@ autoreply define bfd_udp_enable_multihop
   u32 context;
 };
 
+/** \brief BFD UDP - set TOS for the IP part of the BFD packet
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param tos - TOS for the IP portion of the BFD packet
+*/
+autoreply define bfd_udp_set_tos
+{
+  u32 client_index;
+  u32 context;
+  u8 tos;
+};
+
 /* must be compatible with bfd_error_t */
 counters bfd_udp {
   none {
