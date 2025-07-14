@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "825aba88_9397f6af",
+        "filename": "extras/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-07-14T07:51:31Z",
+      "side": 1,
+      "message": "Remove \"ginkgo_args\u003d\"--focus ${tc_names[0]}\"\" and update the message to say that TEST\u003dMemLeak will run all memleak tests. Then sometime later we\u0027ll have to fix \u0027make test-leak\u0027 so that it will only run memleak tests.\n\nAnd while you\u0027re at it:\nHttpInvalidClientRequestMemLeakTest is broken, please set the server start cmd to \u0027vpp.Vppctl(\"http cli server uri http://\" + serverAddress)\u0027.\nThe makefile target test-leak is missing FORCE_BUILD\u003dfalse so please add that too.",
+      "range": {
+        "startLine": 178,
+        "startChar": 1,
+        "endLine": 178,
+        "endChar": 38
+      },
+      "revId": "5ee60f491be18e88ccddaf5e8b73a58a3342172b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
