@@ -285,6 +285,7 @@ func (vpp *VppInstance) Vppctl(command string, arguments ...any) string {
 			if fn != nil && strings.Contains(fn.Name(), "TeardownTest") {
 				vpp.getSuite().Log("vppctl failed in test teardown (skipping assert): %v", err)
 			} else {
+				defer GinkgoRecover()
 				vpp.getSuite().AssertNil(err)
 			}
 		}

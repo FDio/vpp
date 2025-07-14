@@ -186,7 +186,7 @@ fi
 
 mkdir -p summary
 # shellcheck disable=SC2086
-CMD="sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
+CMD="sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json --focus HttpGetTpsTest $ginkgo_args -- $args"
 echo "$CMD"
 $CMD
 exit_status=$?

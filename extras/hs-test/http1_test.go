@@ -75,6 +75,7 @@ func HttpGetTpsTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	url := "http://" + serverAddress + "/test_file_10M"
 
+	vpp.Vppctl("test crash")
 	vpp.Vppctl("http tps uri tcp://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
