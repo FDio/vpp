@@ -16,6 +16,24 @@
       "message": "what if cki is 0?",
       "revId": "a6eacf8232c8e825515088758c6f1ef8b992cc8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0576899_fd765b24",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-15T22:53:04Z",
+      "side": 1,
+      "message": "after allocation on 759? That in theory should not happen, i.e., if we run out of memory, openssl_init_certkey_init_ctx would crash.",
+      "parentUuid": "396ed717_41b6ce63",
+      "revId": "a6eacf8232c8e825515088758c6f1ef8b992cc8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
