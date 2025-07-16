@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest)
 	RegisterSoloVethTests(TcpWithLossTest)
 	RegisterVeth6Tests(TcpWithLoss6Test)
 }
@@ -97,6 +97,25 @@ func EchoBuiltinEchobytesTest(s *VethsSuite) {
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	s.Log(o)
 	s.AssertNotContains(o, "test echo clients: failed: timeout with 1 sessions")
+}
+
+func EchoBuiltinTestbytesTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	// Add loss of packets with Network Delay Simulator
+	clientVpp.Vppctl("set nsim poll-main-thread delay 0.005 ms packet-size 1460 packets-per-drop 100")
+	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name())
+
+	o := clientVpp.Vppctl("test echo client echo-bytes test-bytes verbose bytes 16k test-timeout 1 uri" +
+		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	s.Log(o)
+	s.AssertNotContains(o, "failed")
+	s.AssertContains(o, " bytes out of 16384 sent (16384 target)")
 }
 
 func TcpWithLossTest(s *VethsSuite) {
