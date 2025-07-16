@@ -686,7 +686,8 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
-      ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+      ext_cfg->crypto.crypto_engine = CRYPTO_ENGINE_NONE;
+      /* mTLS not supported, so no cert configured for now */
     }
 
   proxy_program_connect (a);
