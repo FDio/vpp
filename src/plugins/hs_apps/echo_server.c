@@ -352,18 +352,17 @@ echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 }
 
 static void
-es_test_bytes (es_worker_t *wrk, es_session_t *es, int actual_transfer)
+es_test_bytes (u8 *rx_buf, int actual_transfer, u32 offset)
 {
   int i;
   for (i = 0; i < actual_transfer; i++)
     {
-      if (wrk->rx_buf[i] != ((es->byte_index + i) & 0xff))
+      if (rx_buf[i] != ((offset + i) & 0xff))
 	{
-	  es_err ("at %lld expected %d got %d", es->byte_index + i,
-		  (es->byte_index + i) & 0xff, wrk->rx_buf[i]);
+	  es_err ("at %lld expected %d got %d", offset + i,
+		  (offset + i) & 0xff, rx_buf[i]);
 	}
     }
-  es->byte_index += actual_transfer;
 }
 
 int
@@ -439,11 +438,20 @@ echo_server_rx_callback (session_t * s)
 
   vec_validate (wrk->rx_buf, max_transfer);
   actual_transfer = app_recv ((app_session_t *) es, wrk->rx_buf, max_transfer);
+  if (!actual_transfer)
+    return 0;
   ASSERT (actual_transfer == max_transfer);
 
   if (esm->cfg.test_bytes)
     {
-      es_test_bytes (wrk, es, actual_transfer);
+      if (esm->transport_proto == TRANSPORT_PROTO_TCP)
+	{
+	  es_test_bytes (wrk->rx_buf, actual_transfer, es->byte_index);
+	  es->byte_index += actual_transfer;
+	}
+      else
+	es_test_bytes ((wrk->rx_buf + sizeof (u32)),
+		       actual_transfer - sizeof (u32), *(u32 *) wrk->rx_buf);
     }
 
   /*
