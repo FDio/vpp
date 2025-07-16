@@ -95,9 +95,9 @@ static void
 send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 {
   u8 *test_data = ecm->connect_test_data;
-  int test_buf_len, test_buf_offset, rv;
+  int test_buf_len, rv;
   u64 bytes_to_send;
-  u32 bytes_this_chunk;
+  u32 bytes_this_chunk, test_buf_offset;
   svm_fifo_t *f = es->tx_fifo;
 
   test_buf_len = vec_len (test_data);
@@ -160,9 +160,25 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
 	  if (!ecm->throughput)
 	    bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
-	  rv =
-	    app_send_dgram ((app_session_t *) es, test_data + test_buf_offset,
-			    bytes_this_chunk, 0);
+	  if (ecm->cfg.test_bytes)
+	    {
+	      /* Include buffer offset info to also be able to verify
+	       * out-of-order packets */
+	      session_dgram_hdr_t hdr;
+	      svm_fifo_seg_t data_segs[3] = {
+		{ (u8 *) &hdr, sizeof (session_dgram_hdr_t) },
+		{ (u8 *) &test_buf_offset, sizeof (u32) },
+		{ test_data + test_buf_offset, bytes_this_chunk }
+	      };
+	      rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2,
+					bytes_this_chunk + sizeof (u32), 0);
+	      if (rv)
+		rv -= sizeof (u32);
+	    }
+	  else
+	    rv = app_send_dgram ((app_session_t *) es,
+				 test_data + test_buf_offset, bytes_this_chunk,
+				 0);
 	}
     }
 
@@ -207,11 +223,19 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
   svm_fifo_t *rx_fifo = es->rx_fifo;
   session_dgram_pre_hdr_t ph;
   int n_read, i;
+  u8 *rx_buf_start = wrk->rx_buf;
+  u32 test_buf_offset = es->bytes_received;
 
   if (ecm->cfg.test_bytes)
     {
       n_read =
 	app_recv ((app_session_t *) es, wrk->rx_buf, vec_len (wrk->rx_buf));
+      if (ecm->transport_proto != TRANSPORT_PROTO_TCP)
+	{
+	  test_buf_offset = *(u32 *) wrk->rx_buf;
+	  rx_buf_start = wrk->rx_buf + sizeof (u32);
+	  n_read -= sizeof (u32);
+	}
     }
   else
     {
@@ -261,11 +285,11 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (wrk->rx_buf[i] != ((es->bytes_received + i) & 0xff))
+	      if (rx_buf_start[i] != ((test_buf_offset + i) & 0xff))
 		{
 		  ec_err ("read %d error at byte %lld, 0x%x not 0x%x", n_read,
-			  es->bytes_received + i, wrk->rx_buf[i],
-			  ((es->bytes_received + i) & 0xff));
+			  test_buf_offset + i, rx_buf_start[i],
+			  ((test_buf_offset + i) & 0xff));
 		  ecm->test_failed = 1;
 		}
 	    }
@@ -802,6 +826,9 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s,
   es->vpp_session_index = s->session_index;
   es->bytes_paced_target = ~0;
   es->bytes_paced_current = ~0;
+  if (ecm->transport_proto != TRANSPORT_PROTO_TCP && ecm->cfg.test_bytes)
+    vec_validate (es->test_send_buffer,
+		  ecm->max_chunk_bytes + sizeof (int) + 1);
   s->opaque = es->session_index;
 
   vec_add1 (wrk->conn_indices, es->session_index);
@@ -843,7 +870,13 @@ static void
 ec_session_disconnect_callback (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
+  ec_worker_t *wrk;
+  ec_session_t *es;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  wrk = ec_worker_get (s->thread_index);
+  es = ec_session_get (wrk, s->opaque);
+  vec_free (es->test_send_buffer);
 
   if (session_handle (s) == ecm->ctrl_session_handle)
     {
@@ -861,7 +894,14 @@ void
 ec_session_disconnect (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
+  ec_worker_t *wrk;
+  ec_session_t *es;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  wrk = ec_worker_get (s->thread_index);
+  es = ec_session_get (wrk, s->opaque);
+  vec_free (es->test_send_buffer);
+
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
@@ -1221,6 +1261,8 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1;
   u64 total_bytes;
   f64 delta;
+  ec_worker_t *wrk;
+  ec_session_t *sess;
 
   if (ecm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
@@ -1416,8 +1458,23 @@ parse_config:
     case ~0:
       ec_cli ("Timeout at %.6f with %d sessions still active...",
 	      vlib_time_now (ecm->vlib_main), ecm->ready_connections);
-      error = clib_error_return (0, "failed: timeout with %d sessions",
-				 ecm->ready_connections);
+      if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
+	{
+	  u64 received_bytes = 0;
+	  u64 sent_bytes = 0;
+	  vec_foreach (wrk, ecm->wrk)
+	    pool_foreach (sess, wrk->sessions)
+	      {
+		received_bytes += sess->bytes_received;
+		sent_bytes += sess->bytes_sent;
+	      }
+	  ec_cli ("Received %llu bytes out of %llu sent (%llu target)",
+		  received_bytes, sent_bytes,
+		  ecm->bytes_to_send * ecm->n_clients);
+	}
+      else
+	error = clib_error_return (0, "failed: timeout with %d sessions",
+				   ecm->ready_connections);
       goto stop_test;
 
     case EC_CLI_TEST_DONE:
