@@ -104,6 +104,7 @@ typedef struct http2_conn_ctx_
   u8 *unparsed_headers; /* temporary storing rx fragmented headers */
   u8 *unsent_headers;	/* temporary storing tx fragmented headers */
   u32 unsent_headers_offset;
+  u32 client_req_index;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -2248,6 +2249,8 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_SERVER_SETTINGS;
 	  /* client connection is now established */
 	  req = http2_conn_alloc_req (hc);
+	  h2c->client_req_index =
+	    ((http_req_handle_t) req->base.hr_req_handle).req_index;
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  if (http_conn_established (hc, &req->base))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
@@ -2351,9 +2354,17 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
   HTTP_DBG (1, "received GOAWAY %U, last stream id %u", format_http2_error,
 	    error_code, last_stream_id);
 
+  h2c = http2_conn_ctx_get_w_thread (hc);
   if (error_code == HTTP2_ERROR_NO_ERROR)
     {
-      /* TODO: graceful shutdown (no new streams) */
+      /* graceful shutdown (no new streams for client) */
+      if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
+	{
+	  req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
+	  if (!req)
+	    return HTTP2_ERROR_NO_ERROR;
+	  session_transport_closed_notify (&req->base.connection);
+	}
     }
   else
     {
@@ -2362,7 +2373,6 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
 		      rx_buf + HTTP2_GOAWAY_MIN_SIZE,
 		      fh->length - HTTP2_GOAWAY_MIN_SIZE);
       /* connection error */
-      h2c = http2_conn_ctx_get_w_thread (hc);
       hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
 		      req = http2_req_get (req_index, hc->c_thread_index);
 		      session_transport_reset_notify (&req->base.connection);
@@ -2921,8 +2931,11 @@ http2_conn_cleanup_callback (http_conn_t *hc)
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   h2c = http2_conn_ctx_get_w_thread (hc);
-  hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
-		({ vec_add1 (req_indices, req_index); }));
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
+		  ({ vec_add1 (req_indices, req_index); }));
+  else
+    vec_add1 (req_indices, h2c->client_req_index);
 
   vec_foreach (req_index_p, req_indices)
     {
