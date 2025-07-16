@@ -361,6 +361,7 @@ hc_session_transport_closed_callback (session_t *s)
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk = hc_worker_get (s->thread_index);
 
+  HTTP_DBG (1, "transport closed");
   clib_spinlock_lock_if_init (&hcm->lock);
   if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
     {
@@ -390,8 +391,12 @@ hc_session_reset_callback (session_t *s)
   hc_main_t *hcm = &hc_main;
   hc_session_t *hc_session;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  hc_worker_t *wrk = hc_worker_get (s->thread_index);
   int rv;
 
+  HTTP_DBG (1, "transport reset");
+  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+				HC_TRANSPORT_CLOSED, 0);
   hc_session = hc_session_get (s->opaque, s->thread_index);
   hc_session->session_flags |= HC_S_FLAG_IS_CLOSED;
 
