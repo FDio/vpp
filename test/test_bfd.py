@@ -31,6 +31,7 @@ from bfd import (
     BFD_vpp_echo,
     BFD_UDP_SH_PORT,
     BFD_UDP_MH_PORT,
+    BFD_UDP_DEFAULT_TOS
 )
 from framework import VppTestCase
 from asfframework import (
@@ -56,7 +57,6 @@ BFD_IPV4_REMOTE_ADDR = "2.2.2.2"
 BFD_IPV6_REMOTE_ADDR = "2::2"
 BFD_IPV4_REMOTE_ADDR2 = "3.3.3.3"
 BFD_IPV6_REMOTE_ADDR2 = "3::3"
-
 
 def set_ipv4_pfx_route_info(cls, pg_if, dst_ip, set_src):
     try:
@@ -574,6 +574,19 @@ class BFDAPITestCase(VppTestCase):
         self.assertFalse(echo_source.have_usable_ip4)
         self.assertFalse(echo_source.have_usable_ip6)
 
+    def test_set_udp_tos(self):
+        """set/udp configured tos"""
+        if self.multihop:
+            return
+        self.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
+        my_tos = self.vapi.bfd_udp_get_tos()
+        self.logger.debug("MY_TOS is %s", my_tos)
+        self.assertTrue(my_tos.tos == BFD_UDP_DEFAULT_TOS)
+        new_tos_value = 112
+        self.vapi.bfd_udp_set_tos(new_tos_value)
+        my_tos = self.vapi.bfd_udp_get_tos()
+        self.assertTrue(my_tos.tos == new_tos_value)
+        self.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
 
 class BFDTestSession(object):
     """BFD session as seen from test framework side"""
@@ -943,11 +956,13 @@ def verify_ip(test, packet):
         local_ip = test.vpp_session.local_addr
         remote_ip = test.vpp_session.peer_addr
         test.assert_equal(ip.hlim, 255, "IPv6 hop limit")
+        test.assert_equal(ip.tc, BFD_UDP_DEFAULT_TOS, "IPv6 TOS")
     else:
         ip = packet[IP]
         local_ip = test.vpp_session.local_addr
         remote_ip = test.vpp_session.peer_addr
         test.assert_equal(ip.ttl, 255, "IPv4 TTL")
+        test.assert_equal(ip.tos, BFD_UDP_DEFAULT_TOS, "IPv4 TOS")
     test.assert_equal(ip.src, local_ip, "IP source address")
     test.assert_equal(ip.dst, remote_ip, "IP destination address")
 

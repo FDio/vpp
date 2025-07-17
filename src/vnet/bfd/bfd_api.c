@@ -475,6 +475,26 @@ vl_api_bfd_udp_set_tos_t_handler (vl_api_bfd_udp_set_tos_t *mp)
   REPLY_MACRO (VL_API_BFD_UDP_SET_TOS_REPLY);
 }
 
+static void
+vl_api_bfd_udp_get_tos_t_handler (vl_api_bfd_udp_get_tos_t * mp)
+{
+  vl_api_bfd_udp_get_tos_reply_t *rmp;
+  int msg_size = sizeof (*rmp);
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc (msg_size);
+  clib_memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_GET_TOS_REPLY);
+  rmp->context = mp->context;
+  rmp->tos = clib_host_to_net_u32(bfd_main.tos);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
 #include <vnet/bfd/bfd.api.c>
 static clib_error_t *
 bfd_api_hookup (vlib_main_t * vm)
