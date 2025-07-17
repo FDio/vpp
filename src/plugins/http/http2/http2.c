@@ -1580,10 +1580,7 @@ http2_req_state_transport_io_more_data (http_conn_t *hc, http2_req_t *req,
       else
 	{
 	  /* we are done wait for the next app request */
-	  http_req_state_change (&req->base,
-				 hc->flags & HTTP_CONN_F_IS_SERVER ?
-				   HTTP_REQ_STATE_WAIT_APP_REPLY :
-				   HTTP_REQ_STATE_WAIT_APP_METHOD);
+	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  transport_connection_reschedule (&req->base.connection);
 	  h2c = http2_conn_ctx_get_w_thread (hc);
 	  http2_conn_reset_req (h2c, req, hc->c_thread_index);
