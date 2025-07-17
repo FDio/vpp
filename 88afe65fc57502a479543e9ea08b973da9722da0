@@ -70,6 +70,24 @@
       "parentUuid": "f36601b4_b755ce7e",
       "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b15ad99_96a3ecda",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2025-07-17T03:00:48Z",
+      "side": 1,
+      "message": "Hmm all tests pass except envoy. My assumption (probably incorrect; based on https://github.com/envoyproxy/envoy/blob/main/contrib/vcl/source/BUILD) is that it links static libvppcom.a and hence uses different socket protocol structures. I\u0027m not sure how to solve this other than doing some trickery to keep even socket protocol unchanged, allowing extra options only for builtin apps.",
+      "parentUuid": "a3e70c99_a6674205",
+      "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
