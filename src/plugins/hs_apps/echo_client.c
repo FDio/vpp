@@ -1000,12 +1000,10 @@ ec_attach ()
 
   prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
 
-  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = ecm->private_segment_size;
   options[APP_OPTIONS_ADD_SEGMENT_SIZE] = ecm->private_segment_size;
   options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
-  options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
