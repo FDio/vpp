@@ -396,9 +396,13 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
   u32 req_index, stream_id;
   http2_conn_ctx_t *h2c;
   http2_req_t *req;
+  app_worker_t *app_wrk;
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
+  HTTP_DBG (1, "hc [%u]%x connection error %U (last streamId %u)",
+	    hc->c_thread_index, hc->hc_hc_index, format_http2_error, error,
+	    h2c->last_processed_stream_id);
   response = http_get_tx_buf (hc);
   http2_frame_write_goaway (error, h2c->last_processed_stream_id, &response);
   http_io_ts_write (hc, response, vec_len (response), sp);
@@ -412,8 +416,22 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
 		  }));
   else
     {
-      req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
-      session_transport_reset_notify (&req->base.connection);
+      if (h2c->flags & HTTP2_CONN_F_EXPECT_SERVER_SETTINGS)
+	{
+	  HTTP_DBG (1, "error before server preface received");
+	  app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
+	  if (app_wrk)
+	    app_worker_connect_notify (app_wrk, 0, SESSION_E_UNKNOWN,
+				       hc->hc_pa_app_api_ctx);
+	}
+      else
+	{
+	  if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
+	    {
+	      req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
+	      session_transport_reset_notify (&req->base.connection);
+	    }
+	}
     }
   if (clib_llist_elt_is_linked (h2c, sched_list))
     clib_llist_remove (wrk->conn_pool, sched_list, h2c);
@@ -426,6 +444,8 @@ http2_send_stream_error (http_conn_t *hc, u32 stream_id, http2_error_t error,
 {
   u8 *response;
 
+  HTTP_DBG (1, "hc [%u]%x streamId %u error %U", hc->c_thread_index,
+	    hc->hc_hc_index, stream_id, format_http2_error, error);
   response = http_get_tx_buf (hc);
   http2_frame_write_rst_stream (error, stream_id, &response);
   http_io_ts_write (hc, response, vec_len (response), sp);
@@ -1736,13 +1756,6 @@ http2_req_state_wait_app_method (http_conn_t *hc, http2_req_t *req,
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
-  if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
-    {
-      hc->flags |= HTTP_CONN_F_HAS_REQUEST;
-      hpack_dynamic_table_init (&h2c->decoder_dynamic_table,
-				http2_default_conn_settings.header_table_size);
-    }
-
   /* add response to stream scheduler */
   HTTP_DBG (1, "adding to headers queue req_index %x",
 	    ((http_req_handle_t) req->base.hr_req_handle).req_index);
@@ -2047,16 +2060,17 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_error_t rv;
   http2_conn_ctx_t *h2c;
 
+  if (fh->stream_id == 0)
+    {
+      HTTP_DBG (1, "DATA frame with stream id 0");
+      return HTTP2_ERROR_PROTOCOL_ERROR;
+    }
+
   req = http2_conn_get_req (hc, fh->stream_id);
   h2c = http2_conn_ctx_get_w_thread (hc);
 
   if (!req)
     {
-      if (fh->stream_id == 0)
-	{
-	  HTTP_DBG (1, "DATA frame with stream id 0");
-	  return HTTP2_ERROR_PROTOCOL_ERROR;
-	}
       if (fh->stream_id <= h2c->last_opened_stream_id)
 	{
 	  HTTP_DBG (1, "stream closed, ignoring frame");
@@ -2253,10 +2267,14 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
       if (h2c->flags & HTTP2_CONN_F_EXPECT_SERVER_SETTINGS)
 	{
 	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_SERVER_SETTINGS;
-	  /* client connection is now established */
+	  HTTP_DBG (1, "client connection established");
 	  req = http2_conn_alloc_req (hc);
 	  h2c->client_req_index =
 	    ((http_req_handle_t) req->base.hr_req_handle).req_index;
+	  hc->flags |= HTTP_CONN_F_HAS_REQUEST;
+	  hpack_dynamic_table_init (
+	    &h2c->decoder_dynamic_table,
+	    http2_default_conn_settings.header_table_size);
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  if (http_conn_established (hc, &req->base))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
@@ -2366,6 +2384,7 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
       /* graceful shutdown (no new streams for client) */
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
+	  ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
 	  req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
 	  if (!req)
 	    return HTTP2_ERROR_NO_ERROR;
@@ -2941,7 +2960,10 @@ http2_conn_cleanup_callback (http_conn_t *hc)
     hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
 		  ({ vec_add1 (req_indices, req_index); }));
   else
-    vec_add1 (req_indices, h2c->client_req_index);
+    {
+      if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
+	vec_add1 (req_indices, h2c->client_req_index);
+    }
 
   vec_foreach (req_index_p, req_indices)
     {
