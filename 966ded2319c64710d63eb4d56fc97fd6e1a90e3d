@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b51f7705_35355442",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-17T06:35:10Z",
+      "side": 1,
+      "message": "Let\u0027s generalize this a bit to avoid having more messages that do approximately the same thing. That is, let\u0027s call it \"MAX_FIFO_MEMORY\" and if the value is less than 1MB it\u0027s number of segments otherwise it\u0027s really total memory. We can implement the latter at a later time, unless you want to take a stab at it.",
+      "revId": "966ded2319c64710d63eb4d56fc97fd6e1a90e3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "082dc6c4_30a18d3e",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1071,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-17T06:35:10Z",
+      "side": 1,
+      "message": "we\u0027re formatting these props in format_application so let\u0027s move there",
+      "revId": "966ded2319c64710d63eb4d56fc97fd6e1a90e3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

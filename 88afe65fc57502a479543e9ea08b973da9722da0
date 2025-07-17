@@ -88,6 +88,24 @@
       "parentUuid": "a3e70c99_a6674205",
       "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1be7466a_64a3d21e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-17T06:35:10Z",
+      "side": 1,
+      "message": "Sigh, there\u0027s no difference but the attach message is the largest in the union that defines the msg structure, and because the message from envoy is too short now, it\u0027s rejected. \n\nGiven that we don\u0027t version vcl, we can only use a larger fixed size but even that would mean breaking envoy until we pull it forward upstream (which we should at one point). \n\nIn the meantime, feel free to use one of the options that I freed up here https://gerrit.fd.io/r/c/vpp/+/43443",
+      "parentUuid": "5b15ad99_96a3ecda",
+      "revId": "88afe65fc57502a479543e9ea08b973da9722da0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
