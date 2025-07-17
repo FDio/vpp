@@ -100,6 +100,7 @@ svm - vm library
 vlib - vector processing library
 vlib-api - binary API library
 vnet -  network stack library
+vpp_crypto_engines - cryptography libraries
 
 %package devel
 Summary: VPP header files, static libraries
@@ -202,6 +203,7 @@ install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}/etc/
 mkdir -p -m755 %{buildroot}%{_libdir}
 mkdir -p -m755 %{buildroot}/etc/bash_completion.d
 mkdir -p -m755 %{buildroot}/usr/share/vpp
+mkdir -p -m755 %{buildroot}/usr/%{_lib}/vpp_crypto_engines
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*' -print )
 do
 	install -p -m 755 $file %{buildroot}%{_libdir}
@@ -217,6 +219,11 @@ done
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api  -type f -name '*.api.json' -print )
 do
 	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
+done
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_crypto_engines && find -type f -print)
+do
+        install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_crypto_engines/$file \
+           %{buildroot}/usr/%{_lib}/vpp_crypto_engines/$file
 done
 
 # Lua bindings
@@ -385,8 +392,14 @@ fi
 %exclude %{_libdir}/vpp_plugins
 %exclude %{_libdir}/vpp_api_test_plugins
 %exclude %{_libdir}/vat2_plugins
+%exclude %{_libdir}/libefa.so*
+%exclude %{_libdir}/libibverbs.so*
+%exclude %{_libdir}/libmana.so*
+%exclude %{_libdir}/libmlx4.so*
+%exclude %{_libdir}/libmlx5.so*
 %{_libdir}/*
 /usr/share/vpp/api/*
+/usr/%{_lib}/vpp_crypto_engines/*
 
 %files api-lua
 %defattr(644,root,root,644)
