@@ -19,13 +19,17 @@ install(
   CODE "
   execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} ./setup.py
-      install
+    COMMAND ${PYTHON_EXECUTABLE} -m pip
+      install .
+	--disable-pip-version-check
 	--root=\$ENV{DESTDIR}/
 	--prefix=${CMAKE_INSTALL_PREFIX}
-	--single-version-externally-managed
-	bdist_egg
-    OUTPUT_QUIET
-  )"
+	--no-deps
+    RESULT_VARIABLE _pip_result
+  )
+  if(NOT _pip_result EQUAL 0)
+    message(FATAL_ERROR \"pip install failed with code: \${_pip_result}\")
+  endif()
+  "
   COMPONENT vpp-api-python
 )
