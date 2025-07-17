@@ -686,8 +686,7 @@ proxy_session_start_connect (proxy_session_side_ctx_t *sc, session_t *s)
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
 	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
 	sizeof (transport_endpt_crypto_cfg_t));
-      ext_cfg->crypto.crypto_engine = CRYPTO_ENGINE_NONE;
-      /* mTLS not supported, so no cert configured for now */
+      ext_cfg->crypto.ckpair_index = pm->ckpair_index;
     }
 
   proxy_program_connect (a);
@@ -1198,7 +1197,6 @@ proxy_server_attach ()
   a->options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
   a->options[APP_OPTIONS_HIGH_WATERMARK] = (u64) pm->high_watermark;
   a->options[APP_OPTIONS_LOW_WATERMARK] = (u64) pm->low_watermark;
-  a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
@@ -1229,14 +1227,12 @@ active_open_attach (void)
   a->session_cb_vft = &active_open_clients;
   a->name = format (0, "proxy-active-open");
 
-  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[APP_OPTIONS_SEGMENT_SIZE] = 512 << 20;
   options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
   options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
   options[APP_OPTIONS_HIGH_WATERMARK] = (u64) pm->high_watermark;
   options[APP_OPTIONS_LOW_WATERMARK] = (u64) pm->low_watermark;
-  options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = pm->private_segment_count;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
