@@ -2,7 +2,9 @@ package hst
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -13,6 +15,7 @@ import (
 	"fd.io/hs-test/h2spec_extras"
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/summerwind/h2spec"
 	"github.com/summerwind/h2spec/config"
 	"github.com/summerwind/h2spec/generic"
 	"github.com/summerwind/h2spec/hpack"
@@ -36,9 +39,11 @@ type Http2Suite struct {
 		NginxServer *Container
 	}
 	Ports struct {
-		Port1      string
-		Port1AsInt int
-		Port2      string
+		Port1        string
+		Port1AsInt   int
+		Port2        string
+		H2specd      string
+		H2specdAsInt int
 	}
 }
 
@@ -63,8 +68,11 @@ func (s *Http2Suite) SetupSuite() {
 	s.Containers.NginxServer = s.GetTransientContainerByName("nginx-server")
 	s.Ports.Port1 = s.GeneratePort()
 	s.Ports.Port2 = s.GeneratePort()
+	s.Ports.H2specd = s.GeneratePort()
 	var err error
 	s.Ports.Port1AsInt, err = strconv.Atoi(s.Ports.Port1)
+	s.AssertNil(err)
+	s.Ports.H2specdAsInt, err = strconv.Atoi(s.Ports.H2specd)
 	s.AssertNil(err)
 }
 
@@ -396,7 +404,6 @@ var specs = []struct {
 	{ExtrasTestGroup, extrasTests},
 }
 
-// Marked as pending since http plugin is not build with http/2 enabled by default
 var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 	var s Http2Suite
 	BeforeAll(func() {
@@ -470,5 +477,166 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
 				s.AssertEqual(0, tg.FailedCount)
 			}, SpecTimeout(TestTimeout))
 		}
+	}
+})
+
+func h2specdVerifyResult(s Http2Suite, nExecuted int) bool {
+	client := NewHttpClient(time.Second*5, false)
+	req, err := http.NewRequest("GET", "http://"+s.HostAddr()+":"+s.Ports.H2specd+"/report", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	report, err := io.ReadAll(resp.Body)
+	s.AssertContains(string(report), "0 failed")
+	expected := fmt.Sprintf("<div>%d tests, %d passed", nExecuted, nExecuted)
+	if !strings.Contains(string(report), expected) {
+		return false
+	}
+	return true
+}
+
+var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
+	var s Http2Suite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	testCases := []struct {
+		desc       string
+		portOffset int
+	}{
+		{desc: "client/1/1", portOffset: 0},
+		{desc: "client/4.1/1", portOffset: 1},
+		{desc: "client/4.1/2", portOffset: 2},
+		{desc: "client/4.1/3", portOffset: 3},
+		// TODO: message framing without content length using END_STREAM flag
+		//{desc: "client/4.2/1", portOffset: 4},
+		//{desc: "client/4.2/2", portOffset: 5},
+		{desc: "client/4.2/3", portOffset: 6},
+		{desc: "client/4.3/1", portOffset: 7},
+		{desc: "client/5.1/1", portOffset: 8},
+		{desc: "client/5.1/2", portOffset: 9},
+		{desc: "client/5.1/3", portOffset: 10},
+		{desc: "client/5.1/4", portOffset: 11},
+		// TODO: message framing without content length using END_STREAM flag
+		//{desc: "client/5.1/5", portOffset: 12},
+		//{desc: "client/5.1/6", portOffset: 13},
+		//{desc: "client/5.1/7", portOffset: 14},
+		{desc: "client/5.1/8", portOffset: 15},
+		{desc: "client/5.1/9", portOffset: 16},
+		{desc: "client/5.1/10", portOffset: 17},
+		{desc: "client/5.1.1/1", portOffset: 18},
+		{desc: "client/5.4.1/1", portOffset: 19},
+		{desc: "client/5.4.1/2", portOffset: 20},
+		{desc: "client/5.5/1", portOffset: 21},
+		{desc: "client/6.1/1", portOffset: 22},
+		{desc: "client/6.1/2", portOffset: 23},
+		{desc: "client/6.1/3", portOffset: 24},
+		{desc: "client/6.2/1", portOffset: 25},
+		{desc: "client/6.2/2", portOffset: 26},
+		{desc: "client/6.2/3", portOffset: 27},
+		// PRIORITY is deprecated
+		//{desc: "client/6.3/1", portOffset: 28},
+		//{desc: "client/6.3/2", portOffset: 29},
+		{desc: "client/6.4/1", portOffset: 30},
+		{desc: "client/6.4/2", portOffset: 31},
+		{desc: "client/6.4/3", portOffset: 32},
+		{desc: "client/6.5/1", portOffset: 33},
+		{desc: "client/6.5/2", portOffset: 34},
+		{desc: "client/6.5/3", portOffset: 35},
+		{desc: "client/6.5.2/1", portOffset: 36},
+		{desc: "client/6.5.2/2", portOffset: 37},
+		{desc: "client/6.5.2/3", portOffset: 38},
+		{desc: "client/6.5.2/4", portOffset: 39},
+		{desc: "client/6.5.3/1", portOffset: 40},
+		{desc: "client/6.7/1", portOffset: 41},
+		{desc: "client/6.7/2", portOffset: 42},
+		{desc: "client/6.7/3", portOffset: 43},
+		{desc: "client/6.7/4", portOffset: 44},
+		{desc: "client/6.8/1", portOffset: 45},
+		{desc: "client/6.9/1", portOffset: 46},
+		// TODO: message framing without content length using END_STREAM flag
+		//{desc: "client/6.9/2", portOffset: 47},
+		{desc: "client/6.9/3", portOffset: 48},
+		{desc: "client/6.9.1/1", portOffset: 49},
+		// TODO: message framing without content length using END_STREAM flag
+		//{desc: "client/6.9.1/2", portOffset: 50},
+		{desc: "client/6.10/1", portOffset: 51},
+		{desc: "client/6.10/2", portOffset: 52},
+		{desc: "client/6.10/3", portOffset: 53},
+		{desc: "client/6.10/4", portOffset: 54},
+		{desc: "client/6.10/5", portOffset: 55},
+		{desc: "client/6.10/6", portOffset: 56},
+	}
+
+	basePort := 30000
+
+	nExecuted := 0
+	for _, test := range testCases {
+		test := test
+		testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
+		It(testName, func(ctx SpecContext) {
+			s.Log(testName + ": BEGIN")
+			nExecuted++
+			serverAddress := s.HostAddr()
+			wd, _ := os.Getwd()
+			conf := &config.Config{
+				Host:         serverAddress,
+				Port:         s.Ports.H2specdAsInt,
+				Timeout:      20 * time.Second,
+				MaxHeaderLen: 4096,
+				TLS:          true,
+				CertFile:     wd + "/resources/cert/localhost.crt",
+				CertKeyFile:  wd + "/resources/cert/localhost.key",
+				Verbose:      true,
+				DryRun:       false,
+				Exec:         "",
+				FromPort:     basePort,
+				Sections:     []string{},
+			}
+			//capture h2spec output so it will be in log
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			go h2spec.RunClientSpec(conf)
+
+			cmd := fmt.Sprintf("http client timeout 5 verbose uri https://%s:%d/", serverAddress, basePort+test.portOffset)
+			res := s.Containers.Vpp.VppInstance.Vppctl(cmd)
+			s.Log(res)
+			s.AssertNotContains(res, "error: timeout")
+
+			oChan := make(chan string)
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				oChan <- buf.String()
+			}()
+
+			//restore to normal state
+			w.Close()
+			os.Stdout = oldStdout
+			o := <-oChan
+			s.Log(o)
+
+			//read report
+			for nTries := 0; nTries < 30; nTries++ {
+				if h2specdVerifyResult(s, nExecuted) {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+		}, SpecTimeout(TestTimeout))
 	}
 })
