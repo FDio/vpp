@@ -22,7 +22,7 @@
 #include <vnet/ip/ip46_address.h>
 #include <vnet/session/session.h>
 
-#define HTTP_DEBUG 0
+#define HTTP_DEBUG 1
 
 #if HTTP_DEBUG
 #define HTTP_DBG(_lvl, _fmt, _args...)                                        \
