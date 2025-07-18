@@ -521,7 +521,8 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
   _ (LOCAL_CONNECT, "could not connect with local scope")                     \
   _ (WRONG_NS_SECRET, "wrong ns secret")                                      \
   _ (SYSCALL, "system call error")                                            \
-  _ (TRANSPORT_NO_REG, "transport was not registered")
+  _ (TRANSPORT_NO_REG, "transport was not registered")                        \
+  _ (MAX_STREAMS_HIT, "max streams hit")
 
 typedef enum session_error_p_
 {
