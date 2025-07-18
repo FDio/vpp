@@ -56,7 +56,7 @@ To delete a specific interface ip address:
 
 .. code:: console
 
-   vpp# set interface ip address GigabitEthernet2/0/0 172.16.2.12/24 del
+   vpp# set interface ip address del GigabitEthernet2/0/0 172.16.2.12/24
 
 To delete all interfaces addresses (IPv4 and IPv6):
 
