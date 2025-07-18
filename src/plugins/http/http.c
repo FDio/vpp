@@ -858,11 +858,10 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 }
 
 static int
-http_transport_connect (transport_endpoint_cfg_t *tep)
+http_connect_connection (session_endpoint_cfg_t *sep)
 {
   vnet_connect_args_t _cargs, *cargs = &_cargs;
   http_main_t *hm = &http_main;
-  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
   application_t *app;
   http_conn_t *hc;
   int error;
@@ -940,6 +939,55 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->app_rx_fifo_size = props->rx_fifo_size;
 
   return 0;
+}
+
+static int
+http_connect_stream (session_t *hs, session_endpoint_cfg_t *sep)
+{
+  http_req_handle_t rh;
+  u32 hc_index;
+  http_conn_t *hc;
+
+  if (session_type_transport_proto (hs->session_type) != TRANSPORT_PROTO_HTTP)
+    {
+      HTTP_DBG (1, "received incompatible session");
+      return -1;
+    }
+
+  rh.as_u32 = hs->connection_index;
+  if (rh.version != HTTP_VERSION_2)
+    {
+      HTTP_DBG (1, "%U multiplexing not supported", format_http_version,
+		rh.version);
+      return -1;
+    }
+
+  hc_index = http_vfts[rh.version].hc_index_get_by_req_index (
+    rh.req_index, hs->thread_index);
+  HTTP_DBG (1, "hc [%u]%x", hs->thread_index, hc_index);
+
+  hc = http_conn_get_w_thread (hc_index, hs->thread_index);
+
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
+    {
+      HTTP_DBG (1, "conn closed");
+      return -1;
+    }
+
+  return http_vfts[rh.version].conn_connect_stream_callback (hc, sep->opaque);
+}
+
+static int
+http_transport_connect (transport_endpoint_cfg_t *tep)
+{
+  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
+  session_t *hs;
+
+  hs = session_get_from_handle_if_valid (sep->parent_handle);
+  if (hs)
+    return http_connect_stream (hs, sep);
+  else
+    return http_connect_connection (sep);
 }
 
 static u32
