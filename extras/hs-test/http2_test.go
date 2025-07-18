@@ -6,13 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/edwarnicke/exechelper"
+
 	. "fd.io/hs-test/infra"
 )
 
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest,
-		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest)
-	RegisterH2MWTests(Http2MultiplexingMWTest)
+		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest)
+	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest)
 }
 
@@ -231,6 +233,66 @@ func Http2ClientGetRepeatTest(s *Http2Suite) {
 	cmd := fmt.Sprintf("http client http2 repeat %d uri %s", 10, uri)
 	o := vpp.Vppctl(cmd)
 	s.Log(o)
+}
+
+func Http2ClientMultiplexingTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port2
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "https://" + serverAddress + "/httpTestFile"
+	cmd := fmt.Sprintf("http client http2 streams %d repeat %d uri %s", 10, 20, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "20 request(s)")
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.Log(string(logContents))
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "conn_reqs=20")
+
+	/* test session cleanup */
+	httpStreamCleanupDone := false
+	tcpSessionCleanupDone := false
+	for nTries := 0; nTries < 30; nTries++ {
+		o := vpp.Vppctl("show session verbose")
+		if !strings.Contains(o, "[T]") {
+			tcpSessionCleanupDone = true
+		}
+		if !strings.Contains(o, "[H2]") {
+			httpStreamCleanupDone = true
+		}
+		if httpStreamCleanupDone && tcpSessionCleanupDone {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleaned up")
+	s.AssertEqual(true, httpStreamCleanupDone, "HTTP/2 stream not cleaned up")
+}
+
+func Http2ClientMultiplexingMWTest(s *Http2Suite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port2
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "https://" + serverAddress + "/httpTestFile"
+	cmd := fmt.Sprintf("http client http2 sessions 2 streams %d repeat %d uri %s", 5, 20, uri)
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "20 request(s)")
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.Log(string(logContents))
+	s.AssertNil(err)
+	s.AssertEqual(2, strings.Count(string(logContents), "conn_reqs=10"))
 }
 
 func Http2ClientContinuationTest(s *VethsSuite) {
