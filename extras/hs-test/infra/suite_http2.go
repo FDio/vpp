@@ -98,7 +98,12 @@ func (s *Http2Suite) SetupTest() {
 }
 
 func (s *Http2Suite) TeardownTest() {
-	s.HstSuite.TeardownTest()
+	defer s.HstSuite.TeardownTest()
+	vpp := s.Containers.Vpp.VppInstance
+	if CurrentSpecReport().Failed() {
+		s.Log(vpp.Vppctl("show session verbose 2"))
+		s.Log(vpp.Vppctl("show error"))
+	}
 }
 
 func (s *Http2Suite) VppAddr() string {
