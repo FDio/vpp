@@ -104,7 +104,7 @@ typedef struct http2_conn_ctx_
   u8 *unparsed_headers; /* temporary storing rx fragmented headers */
   u8 *unsent_headers;	/* temporary storing tx fragmented headers */
   u32 unsent_headers_offset;
-  u32 client_req_index;
+  u32 req_num;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -197,6 +197,7 @@ http2_conn_ctx_free (http_conn_t *hc)
 
   h2c = http2_conn_ctx_get_w_thread (hc);
   HTTP_DBG (1, "h2c [%u]%x", hc->c_thread_index, h2c - wrk->conn_pool);
+  ASSERT (h2c->req_num == 0);
   hash_free (h2c->req_by_stream_id);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
     hpack_dynamic_table_free (&h2c->decoder_dynamic_table);
@@ -238,16 +239,19 @@ http2_conn_alloc_req (http_conn_t *hc)
 	    h2c - wrk->conn_pool, req_index);
   req->peer_window = h2c->peer_settings.initial_window_size;
   req->our_window = h2c->settings.initial_window_size;
+  h2c->req_num++;
   return req;
 }
 
 static_always_inline void
 http2_req_set_stream_id (http2_req_t *req, http2_conn_ctx_t *h2c,
-			 u32 stream_id)
+			 u32 stream_id, u8 unset_old)
 {
   HTTP_DBG (1, "req_index [%u]%x stream_id %u", req->base.c_thread_index,
 	    ((http_req_handle_t) req->base.hr_req_handle).req_index,
 	    stream_id);
+  if (unset_old && req->stream_id)
+    hash_unset (h2c->req_by_stream_id, req->stream_id);
   req->stream_id = stream_id;
   hash_set (h2c->req_by_stream_id, stream_id,
 	    ((http_req_handle_t) req->base.hr_req_handle).req_index);
@@ -273,6 +277,7 @@ http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req,
   if (CLIB_DEBUG)
     memset (req, 0xba, sizeof (*req));
   pool_put (wrk->req_pool, req);
+  h2c->req_num--;
 }
 
 static inline void
@@ -284,9 +289,7 @@ http2_conn_reset_req (http2_conn_ctx_t *h2c, http2_req_t *req,
   if (clib_llist_elt_is_linked (req, sched_list))
     clib_llist_remove (wrk->req_pool, sched_list, req);
   http_buffer_free (&req->base.tx_buf);
-  if (req->stream_id)
-    hash_unset (h2c->req_by_stream_id, req->stream_id);
-  req->flags = 0;
+  req->flags &= ~HTTP2_REQ_F_NEED_WINDOW_UPDATE;
   req->stream_state = HTTP2_STREAM_STATE_IDLE;
   req->peer_window = h2c->peer_settings.initial_window_size;
   req->our_window = h2c->settings.initial_window_size;
@@ -429,11 +432,11 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
 	}
       else
 	{
-	  if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
-	    {
-	      req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
-	      session_transport_reset_notify (&req->base.connection);
-	    }
+	  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
+			  req = http2_req_get (req_index, hc->c_thread_index);
+			  session_transport_reset_notify (
+			    &req->base.connection);
+			}));
 	}
     }
   if (clib_llist_elt_is_linked (h2c, sched_list))
@@ -1088,7 +1091,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
 
   stream_id = http2_conn_get_next_stream_id (h2c);
-  http2_req_set_stream_id (req, h2c, stream_id);
+  http2_req_set_stream_id (req, h2c, stream_id, 1);
 
   http_io_as_dequeue_notify (&req->base, n_deq);
 
@@ -1590,6 +1593,7 @@ http2_req_state_transport_io_more_data (http_conn_t *hc, http2_req_t *req,
 	  transport_connection_reschedule (&req->base.connection);
 	  h2c = http2_conn_ctx_get_w_thread (hc);
 	  http2_conn_reset_req (h2c, req, hc->c_thread_index);
+	  http_io_as_del_want_read_ntf (&req->base);
 	}
     }
   http_io_as_write (&req->base, req->payload, req->payload_len);
@@ -1639,8 +1643,8 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 			       http2_error_t *error)
 {
   int rv;
-  u8 payload_offset;
-  u64 payload_len;
+  u8 payload_offset = 0;
+  u64 payload_len = 0;
   session_dgram_hdr_t hdr;
 
   HTTP_DBG (1, "udp tunnel received data from client");
@@ -1898,8 +1902,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  return HTTP2_ERROR_STREAM_CLOSED;
 	}
       h2c->last_opened_stream_id = fh->stream_id;
-      if (hash_elts (h2c->req_by_stream_id) ==
-	  h2c->settings.max_concurrent_streams)
+      if (h2c->req_num == h2c->settings.max_concurrent_streams)
 	{
 	  HTTP_DBG (1, "SETTINGS_MAX_CONCURRENT_STREAMS exceeded");
 	  http_io_ts_drain (hc, fh->length);
@@ -1908,7 +1911,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  return HTTP2_ERROR_NO_ERROR;
 	}
       req = http2_conn_alloc_req (hc);
-      http2_req_set_stream_id (req, h2c, fh->stream_id);
+      http2_req_set_stream_id (req, h2c, fh->stream_id, 0);
       req->dispatch_headers_cb = http2_sched_dispatch_resp_headers;
       http_conn_accept_request (hc, &req->base);
       http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
@@ -2150,7 +2153,9 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
   req->our_window -= fh->length;
   h2c->our_window -= fh->length;
 
-  HTTP_DBG (1, "run state machine");
+  HTTP_DBG (1, "run state machine '%U' req_index %x", format_http_req_state,
+	    req->base.state,
+	    ((http_req_handle_t) req->base.hr_req_handle).req_index);
   return http2_req_run_state_machine (hc, req, 0, 0);
 }
 
@@ -2272,14 +2277,13 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_SERVER_SETTINGS;
 	  HTTP_DBG (1, "client connection established");
 	  req = http2_conn_alloc_req (hc);
-	  h2c->client_req_index =
-	    ((http_req_handle_t) req->base.hr_req_handle).req_index;
+	  req->flags |= HTTP2_REQ_F_IS_PARENT;
 	  hc->flags |= HTTP_CONN_F_HAS_REQUEST;
 	  hpack_dynamic_table_init (
 	    &h2c->decoder_dynamic_table,
 	    http2_default_conn_settings.header_table_size);
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  if (http_conn_established (hc, &req->base))
+	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
 	}
 
@@ -2388,10 +2392,11 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
-	  req = http2_req_get (h2c->client_req_index, hc->c_thread_index);
-	  if (!req)
-	    return HTTP2_ERROR_NO_ERROR;
-	  session_transport_closed_notify (&req->base.connection);
+	  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
+			  req = http2_req_get (req_index, hc->c_thread_index);
+			  session_transport_closed_notify (
+			    &req->base.connection);
+			}));
 	}
     }
   else
@@ -2635,6 +2640,12 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
     {
       HTTP_DBG (1, "nothing more to send, confirm close");
       session_transport_closed_notify (&req->base.connection);
+      if (req->flags & HTTP2_REQ_F_IS_PARENT)
+	{
+	  HTTP_DBG (1, "client app closed parent, closing connection");
+	  ASSERT (!(hc->flags & HTTP_CONN_F_IS_SERVER));
+	  http_shutdown_transport (hc);
+	}
     }
   else if (req->base.is_tunnel)
     {
@@ -2950,6 +2961,28 @@ http2_conn_accept_callback (http_conn_t *hc)
     h2c->flags |= HTTP2_CONN_F_PREFACE_VERIFIED;
 }
 
+static int
+http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
+{
+  http2_conn_ctx_t *h2c;
+  http2_req_t *req;
+  app_worker_t *app_wrk;
+
+  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  ASSERT (!(hc->flags & HTTP_CONN_F_IS_SERVER));
+  ASSERT (!(h2c->flags & HTTP2_CONN_F_EXPECT_SERVER_SETTINGS));
+  app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
+  if (!app_wrk)
+    return -1;
+  if (h2c->req_num == h2c->settings.max_concurrent_streams)
+    return app_worker_connect_notify (app_wrk, 0, SESSION_E_MAX_STREAMS_HIT,
+				      hc->hc_pa_app_api_ctx);
+  req = http2_conn_alloc_req (hc);
+  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
+  return http_conn_established (hc, &req->base, parent_app_api_ctx);
+}
+
 static void
 http2_conn_cleanup_callback (http_conn_t *hc)
 {
@@ -2959,14 +2992,8 @@ http2_conn_cleanup_callback (http_conn_t *hc)
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   h2c = http2_conn_ctx_get_w_thread (hc);
-  if (hc->flags & HTTP_CONN_F_IS_SERVER)
-    hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
-		  ({ vec_add1 (req_indices, req_index); }));
-  else
-    {
-      if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
-	vec_add1 (req_indices, h2c->client_req_index);
-    }
+  hash_foreach (stream_id, req_index, h2c->req_by_stream_id,
+		({ vec_add1 (req_indices, req_index); }));
 
   vec_foreach (req_index_p, req_indices)
     {
@@ -3074,6 +3101,7 @@ const static http_engine_vft_t http2_engine = {
   .transport_conn_reschedule_callback =
     http2_transport_conn_reschedule_callback,
   .conn_accept_callback = http2_conn_accept_callback,
+  .conn_connect_stream_callback = http2_conn_connect_stream_callback,
   .conn_cleanup_callback = http2_conn_cleanup_callback,
   .enable_callback = http2_enable_callback,
   .unformat_cfg_callback = http2_unformat_config_callback,

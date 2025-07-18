@@ -209,9 +209,18 @@ typedef struct http_tc_
   void *opaque; /* version specific data */
 } http_conn_t;
 
+typedef struct http_pending_connect_stream_
+{
+  u64 parent_handle;
+  u32 opaque;
+} http_pending_connect_stream_t;
+
 typedef struct http_worker_
 {
   http_conn_t *conn_pool;
+  clib_spinlock_t pending_stream_connects_lock;
+  http_pending_connect_stream_t *pending_connect_streams;
+  http_pending_connect_stream_t *burst_connect_streams;
 } http_worker_t;
 
 typedef struct http_main_
@@ -265,6 +274,8 @@ typedef struct http_engine_vft_
   void (*transport_reset_callback) (http_conn_t *hc);
   void (*transport_conn_reschedule_callback) (http_conn_t *hc);
   void (*conn_accept_callback) (http_conn_t *hc); /* optional */
+  int (*conn_connect_stream_callback) (http_conn_t *hc,
+				       u32 parent_app_api_ctx); /* optional */
   void (*conn_cleanup_callback) (http_conn_t *hc);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
@@ -553,6 +564,14 @@ http_io_as_add_want_read_ntf (http_req_t *req)
 {
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+}
+
+always_inline void
+http_io_as_del_want_read_ntf (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_del_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 }
 
@@ -859,7 +878,8 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
 }
 
 always_inline int
-http_conn_established (http_conn_t *hc, http_req_t *req)
+http_conn_established (http_conn_t *hc, http_req_t *req,
+		       u32 parent_app_api_ctx)
 {
   session_t *as;
   app_worker_t *app_wrk;
@@ -873,7 +893,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req)
   as->app_wrk_index = hc->hc_pa_wrk_index;
   as->connection_index = req->hr_req_handle;
   as->session_state = SESSION_STATE_READY;
-  as->opaque = hc->hc_pa_app_api_ctx;
+  as->opaque = parent_app_api_ctx;
   ts = session_get_from_handle (hc->hc_tc_session_handle);
   as->session_type = session_type_from_proto_and_ip (
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
@@ -895,7 +915,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req)
       return rv;
     }
 
-  app_worker_connect_notify (app_wrk, as, 0, hc->hc_pa_app_api_ctx);
+  app_worker_connect_notify (app_wrk, as, 0, parent_app_api_ctx);
 
   req->hr_pa_session_handle = session_handle (as);
   req->hr_pa_wrk_index = as->app_wrk_index;
