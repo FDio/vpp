@@ -1182,7 +1182,10 @@ static clib_error_t *
 hc_main_init ()
 {
   hc_main_t *hcm = &hc_main;
+  session_endpoint_cfg_t sep_null = SESSION_ENDPOINT_CFG_NULL;
+
   hcm->app_index = APP_INVALID_INDEX;
+  hcm->connect_sep = sep_null;
   return 0;
 }
 
