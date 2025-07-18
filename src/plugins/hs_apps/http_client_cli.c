@@ -654,9 +654,11 @@ static clib_error_t *
 hcc_main_init (vlib_main_t *vm)
 {
   hcc_main_t *hcm = &hcc_main;
+  session_endpoint_cfg_t sep_null = SESSION_ENDPOINT_CFG_NULL;
 
   hcm->app_index = ~0;
   hcm->vlib_main = vm;
+  hcm->connect_sep = sep_null;
   return 0;
 }
 
