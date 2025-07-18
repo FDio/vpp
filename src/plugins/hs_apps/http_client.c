@@ -15,7 +15,8 @@
 #define foreach_hc_s_flag                                                     \
   _ (1, IS_CLOSED)                                                            \
   _ (2, PRINTABLE_BODY)                                                       \
-  _ (4, CHUNKED_BODY)
+  _ (4, CHUNKED_BODY)                                                         \
+  _ (8, IS_PARENT)
 
 typedef enum hc_s_flag_
 {
@@ -46,6 +47,12 @@ typedef struct
   u8 *http_response;
   u8 *response_status;
   FILE *file_ptr;
+  union
+  {
+    u32 child_count;
+    u32 parent_index;
+  };
+  u32 http_session_index;
 } hc_session_t;
 
 typedef struct
@@ -91,6 +98,7 @@ typedef struct
   u32 connected_counter;
   u32 worker_index;
   u32 max_sessions;
+  u32 max_streams;
   u32 private_segment_size;
   u32 prealloc_fifos;
   u32 fifo_size;
@@ -112,6 +120,7 @@ typedef enum
   HC_GENERIC_ERR,
   HC_FOPEN_FAILED,
   HC_REPEAT_DONE,
+  HC_MAX_STREAMS_HIT,
 } hc_cli_signal_t;
 
 #define mime_printable_max_len 35
@@ -151,6 +160,7 @@ hc_session_alloc (hc_worker_t *wrk)
   pool_get_zero (wrk->sessions, s);
   s->session_index = s - wrk->sessions;
   s->thread_index = wrk->thread_index;
+  HTTP_DBG (1, "[%u]%u", s->thread_index, s->session_index);
 
   return s;
 }
@@ -221,31 +231,109 @@ done:
   return 0;
 }
 
+typedef struct
+{
+  u64 parent_handle;
+  u32 parent_index;
+} hc_connect_streams_args_t;
+
+static void
+hc_connect_streams_rpc (void *rpc_args)
+{
+  hc_connect_streams_args_t *args = rpc_args;
+  hc_main_t *hcm = &hc_main;
+  vnet_connect_args_t _a, *a = &_a;
+  hc_worker_t *wrk;
+  hc_session_t *ho_hs;
+  u32 i;
+  int rv;
+
+  clib_memset (a, 0, sizeof (*a));
+  clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
+  a->sep_ext.parent_handle = args->parent_handle;
+  a->app_index = hcm->app_index;
+
+  for (i = 0; i < (hcm->max_streams - 1); i++)
+    {
+      /* allocate half-open session */
+      wrk = hc_worker_get (transport_cl_thread ());
+      ho_hs = hc_session_alloc (wrk);
+      ho_hs->parent_index = args->parent_index;
+      a->api_context = ho_hs->session_index;
+
+      rv = vnet_connect (a);
+      if (rv)
+	clib_warning (0, "connect returned: %U", format_session_error, rv);
+    }
+  vec_free (args);
+}
+
+static void
+hc_connect_streams (u64 parent_handle, u32 parent_index)
+{
+  hc_connect_streams_args_t *args = 0;
+
+  vec_validate (args, 0);
+  args->parent_handle = parent_handle;
+  args->parent_index = parent_index;
+
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+					hc_connect_streams_rpc, args);
+}
+
 static int
-hc_session_connected_callback (u32 app_index, u32 hc_session_index,
-			       session_t *s, session_error_t err)
+hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
+			       session_error_t err)
 {
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk;
-  hc_session_t *hc_session;
+  hc_session_t *hc_session, *ho_session, *parent_session;
   hc_http_header_t *header;
+  http_version_t http_version;
   u8 *f = 0;
+  u32 s_index;
 
   if (err)
     {
-      clib_warning ("hc_session_index[%d] connected error: %U",
-		    hc_session_index, format_session_error, err);
-      vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
-				    HC_CONNECT_FAILED, 0);
+      clib_warning ("connected error: %U", format_session_error, err);
+      if (err == SESSION_E_MAX_STREAMS_HIT)
+	vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
+				      HC_MAX_STREAMS_HIT, 0);
+      else
+	vlib_process_signal_event_mt (vlib_get_main (), hcm->cli_node_index,
+				      HC_CONNECT_FAILED, 0);
       return -1;
     }
 
+  ho_session = hc_session_get (ho_index, transport_cl_thread ());
   wrk = hc_worker_get (s->thread_index);
-
   hc_session = hc_session_alloc (wrk);
+  s_index = hc_session->session_index;
+  clib_memcpy_fast (hc_session, ho_session, sizeof (*hc_session));
+  hc_session->session_index = s_index;
+  hc_session->thread_index = s->thread_index;
+  hc_session->http_session_index = s->session_index;
+
   clib_spinlock_lock_if_init (&hcm->lock);
   hcm->connected_counter++;
   clib_spinlock_unlock_if_init (&hcm->lock);
+
+  if (hc_session->session_flags & HC_S_FLAG_IS_PARENT)
+    {
+      http_version = http_session_get_version (s);
+      if (http_version == HTTP_VERSION_2 && hcm->max_streams > 1)
+	{
+	  HTTP_DBG (1, "parent connected, going to open %u streams",
+		    hcm->max_streams - 1);
+	  hc_connect_streams (session_handle (s), hc_session->session_index);
+	}
+    }
+  else
+    {
+      parent_session =
+	hc_session_get (hc_session->parent_index, hc_session->thread_index);
+      parent_session->child_count++;
+    }
 
   hc_session->thread_index = s->thread_index;
   hc_session->body_recv = 0;
@@ -266,7 +354,7 @@ hc_session_connected_callback (u32 app_index, u32 hc_session_index,
     }
   else
     {
-      hc_session->stats.req_per_wrk = hcm->repeat_count;
+      hc_session->stats.req_per_wrk = hcm->repeat_count / hcm->max_streams;
       hcm->worker_index = s->thread_index;
     }
   if (hcm->filename)
@@ -369,7 +457,7 @@ hc_session_transport_closed_callback (session_t *s)
     }
 
   /* send an event when all sessions are closed */
-  if (hcm->done_count >= hcm->max_sessions)
+  if (hcm->done_count >= (hcm->max_sessions * hcm->max_streams))
     {
       if (hcm->was_transport_closed)
 	{
@@ -569,7 +657,25 @@ done:
 	      hc_session->stats.request_count >= hc_session->stats.req_per_wrk)
 	    {
 	      HTTP_DBG (1, "repeat done");
-	      hc_session_disconnect_callback (s);
+	      if (hc_session->session_flags & HC_S_FLAG_IS_PARENT)
+		{
+		  /* parent must be closed last */
+		  if (hc_session->child_count != 0)
+		    hc_session->session_flags |= HC_S_FLAG_IS_CLOSED;
+		  else
+		    hc_session_disconnect_callback (s);
+		}
+	      else
+		{
+		  hc_session_disconnect_callback (s);
+		  hc_session_t *parent = hc_session_get (
+		    hc_session->parent_index, hc_session->thread_index);
+		  parent->child_count--;
+		  if (parent->child_count == 0 &&
+		      parent->session_flags & HC_S_FLAG_IS_CLOSED)
+		    hc_session_disconnect_callback (session_get (
+		      parent->http_session_index, parent->thread_index));
+		}
 	    }
 	  else
 	    {
@@ -619,6 +725,14 @@ hc_tx_callback (session_t *s)
   return 0;
 }
 
+static void
+hc_ho_cleanup_callback (session_t *s)
+{
+  HTTP_DBG (1, "ho index %u", s->opaque);
+  hc_worker_t *wrk = hc_worker_get (transport_cl_thread ());
+  pool_put_index (wrk->sessions, s->opaque);
+}
+
 static session_cb_vft_t hc_session_cb_vft = {
   .session_connected_callback = hc_session_connected_callback,
   .session_disconnect_callback = hc_session_disconnect_callback,
@@ -626,6 +740,7 @@ static session_cb_vft_t hc_session_cb_vft = {
   .session_reset_callback = hc_session_reset_callback,
   .builtin_app_rx_callback = hc_rx_callback,
   .builtin_app_tx_callback = hc_tx_callback,
+  .half_open_cleanup_callback = hc_ho_cleanup_callback,
 };
 
 static clib_error_t *
@@ -683,24 +798,30 @@ hc_attach ()
   return 0;
 }
 
-static int
+static void
 hc_connect_rpc (void *rpc_args)
 {
   vnet_connect_args_t *a = rpc_args;
   int rv = ~0;
   hc_main_t *hcm = &hc_main;
+  hc_worker_t *wrk;
+  hc_session_t *ho_hs;
 
   for (u32 i = 0; i < hcm->max_sessions; i++)
     {
+      /* allocate half-open session */
+      wrk = hc_worker_get (transport_cl_thread ());
+      ho_hs = hc_session_alloc (wrk);
+      ho_hs->session_flags |= HC_S_FLAG_IS_PARENT;
+      a->api_context = ho_hs->session_index;
+
       rv = vnet_connect (a);
-      if (rv > 0)
+      if (rv)
 	clib_warning (0, "connect returned: %U", format_session_error, rv);
     }
 
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);
-
-  return rv;
 }
 
 static void
@@ -710,6 +831,7 @@ hc_connect ()
   vnet_connect_args_t *a = 0;
   transport_endpt_ext_cfg_t *ext_cfg;
   transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0 };
+
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
   clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
@@ -731,7 +853,7 @@ hc_connect ()
 	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
 	  break;
 	case HTTP_VERSION_2:
-	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
 	  break;
 	default:
 	  break;
@@ -753,7 +875,7 @@ hc_get_req_stats (vlib_main_t *vm)
       hc_session_t *hc_session;
       vec_foreach (wrk, hcm->wrk)
 	{
-	  vec_foreach (hc_session, wrk->sessions)
+	  pool_foreach (hc_session, wrk->sessions)
 	    {
 	      hc_stats.request_count += hc_session->stats.request_count;
 	      hc_session->stats.request_count = 0;
@@ -808,6 +930,9 @@ hc_get_event (vlib_main_t *vm)
       break;
     case HC_CONNECT_FAILED:
       err = clib_error_return (0, "error: failed to connect");
+      break;
+    case HC_MAX_STREAMS_HIT:
+      err = clib_error_return (0, "error: max streams hit");
       break;
     case HC_TRANSPORT_CLOSED:
       err = clib_error_return (0, "error: transport closed");
@@ -922,7 +1047,7 @@ hc_worker_cleanup (hc_worker_t *wrk)
   HTTP_DBG (1, "worker and worker sessions cleanup");
 
   vec_free (wrk->headers_buf);
-  vec_foreach (hc_session, wrk->sessions)
+  pool_foreach (hc_session, wrk->sessions)
     {
       http_free_header_table (&hc_session->resp_headers);
       vec_free (hc_session->http_response);
@@ -979,6 +1104,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->done_count = 0;
   hcm->connected_counter = 0;
   hcm->max_sessions = 1;
+  hcm->max_streams = 1;
   hcm->prealloc_fifos = 0;
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
@@ -1049,6 +1175,14 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	      goto done;
 	    }
 	}
+      else if (unformat (line_input, "streams %d", &hcm->max_streams))
+	{
+	  if (hcm->max_streams <= 1)
+	    {
+	      err = clib_error_return (0, "streams must be > 1");
+	      goto done;
+	    }
+	}
       else if (unformat (line_input, "prealloc-fifos %d",
 			 &hcm->prealloc_fifos))
 	;
@@ -1110,6 +1244,13 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       err = clib_error_return (
 	0, "multiple sessions are only supported with request repeating");
+      goto done;
+    }
+
+  if (hcm->max_streams > 1 && !hcm->repeat)
+    {
+      err = clib_error_return (
+	0, "multiple streams are only supported with request repeating");
       goto done;
     }
 
