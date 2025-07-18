@@ -788,6 +788,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   http_main_t *hm = &http_main;
   u32 num_threads, i;
   http_engine_vft_t *http_version;
+  http_worker_t *wrk;
 
   if (!is_en)
     {
@@ -828,6 +829,10 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
     }
 
   vec_validate (hm->wrk, num_threads - 1);
+  vec_foreach (wrk, hm->wrk)
+    {
+      clib_spinlock_init (&wrk->pending_stream_connects_lock);
+    }
   vec_validate (hm->rx_bufs, num_threads - 1);
   vec_validate (hm->tx_bufs, num_threads - 1);
   vec_validate (hm->app_header_lists, num_threads - 1);
@@ -858,11 +863,10 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 }
 
 static int
-http_transport_connect (transport_endpoint_cfg_t *tep)
+http_connect_connection (session_endpoint_cfg_t *sep)
 {
   vnet_connect_args_t _cargs, *cargs = &_cargs;
   http_main_t *hm = &http_main;
-  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
   application_t *app;
   http_conn_t *hc;
   int error;
@@ -940,6 +944,127 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->app_rx_fifo_size = props->rx_fifo_size;
 
   return 0;
+}
+
+static int
+http_connect_stream (u64 parent_handle, u32 opaque)
+{
+  session_t *hs;
+  http_req_handle_t rh;
+  u32 hc_index;
+  http_conn_t *hc;
+
+  hs = session_get_from_handle (parent_handle);
+  if (session_type_transport_proto (hs->session_type) != TRANSPORT_PROTO_HTTP)
+    {
+      HTTP_DBG (1, "received incompatible session");
+      return -1;
+    }
+
+  rh.as_u32 = hs->connection_index;
+  if (rh.version != HTTP_VERSION_2)
+    {
+      HTTP_DBG (1, "%U multiplexing not supported", format_http_version,
+		rh.version);
+      return -1;
+    }
+
+  hc_index = http_vfts[rh.version].hc_index_get_by_req_index (
+    rh.req_index, hs->thread_index);
+  HTTP_DBG (1, "hc [%u]%x", hs->thread_index, hc_index);
+
+  hc = http_conn_get_w_thread (hc_index, hs->thread_index);
+
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
+    {
+      HTTP_DBG (1, "conn closed");
+      return -1;
+    }
+
+  return http_vfts[rh.version].conn_connect_stream_callback (hc, opaque);
+}
+
+static void
+http_handle_stream_connects_rpc (void *args)
+{
+  clib_thread_index_t thread_index = pointer_to_uword (args);
+  http_worker_t *wrk;
+  u32 n_pending, max_connects, n_connects = 0;
+  http_pending_connect_stream_t *pc;
+
+  wrk = http_worker_get (thread_index);
+
+  clib_spinlock_lock (&wrk->pending_stream_connects_lock);
+
+  n_pending = clib_fifo_elts (wrk->pending_connect_streams);
+  max_connects = clib_min (32, n_pending);
+  vec_validate (wrk->burst_connect_streams, max_connects);
+
+  while (n_connects < max_connects)
+    clib_fifo_sub1 (wrk->pending_connect_streams,
+		    wrk->burst_connect_streams[n_connects++]);
+
+  clib_spinlock_unlock (&wrk->pending_stream_connects_lock);
+
+  n_connects = 0;
+  while (n_connects < max_connects)
+    {
+      pc = &wrk->burst_connect_streams[n_connects++];
+      http_connect_stream (pc->parent_handle, pc->opaque);
+    }
+
+  /* more work to do? */
+  if (max_connects < n_pending)
+    session_send_rpc_evt_to_thread_force (
+      thread_index, http_handle_stream_connects_rpc,
+      uword_to_pointer ((uword) thread_index, void *));
+}
+
+static int
+http_program_connect_stream (session_endpoint_cfg_t *sep)
+{
+  clib_thread_index_t parent_thread_index =
+    session_thread_from_handle (sep->parent_handle);
+  http_worker_t *wrk;
+  u32 n_pending;
+
+  ASSERT (session_vlib_thread_is_cl_thread ());
+
+  /* if we are already on same worker as parent, handle connect */
+  if (parent_thread_index == transport_cl_thread ())
+    return http_connect_stream (sep->parent_handle, sep->opaque);
+
+  /* if not on same worker as parent, queue request */
+  wrk = http_worker_get (parent_thread_index);
+
+  clib_spinlock_lock (&wrk->pending_stream_connects_lock);
+
+  http_pending_connect_stream_t p = { .parent_handle = sep->parent_handle,
+				      .opaque = sep->opaque };
+  clib_fifo_add1 (wrk->pending_connect_streams, p);
+  n_pending = clib_fifo_elts (wrk->pending_connect_streams);
+
+  clib_spinlock_unlock (&wrk->pending_stream_connects_lock);
+
+  if (n_pending == 1)
+    session_send_rpc_evt_to_thread_force (
+      parent_thread_index, http_handle_stream_connects_rpc,
+      uword_to_pointer ((uword) parent_thread_index, void *));
+
+  return 0;
+}
+
+static int
+http_transport_connect (transport_endpoint_cfg_t *tep)
+{
+  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
+  session_t *hs;
+
+  hs = session_get_from_handle_if_valid (sep->parent_handle);
+  if (hs)
+    return http_program_connect_stream (sep);
+  else
+    return http_connect_connection (sep);
 }
 
 static u32

@@ -1954,7 +1954,7 @@ http1_transport_connected_callback (http_conn_t *hc)
 
   req = http1_conn_alloc_req (hc);
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
-  return http_conn_established (hc, req);
+  return http_conn_established (hc, req, hc->hc_pa_app_api_ctx);
 }
 
 static void

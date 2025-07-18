@@ -98,7 +98,12 @@ func (s *Http2Suite) SetupTest() {
 }
 
 func (s *Http2Suite) TeardownTest() {
-	s.HstSuite.TeardownTest()
+	defer s.HstSuite.TeardownTest()
+	vpp := s.Containers.Vpp.VppInstance
+	if CurrentSpecReport().Failed() {
+		s.Log(vpp.Vppctl("show session verbose 2"))
+		s.Log(vpp.Vppctl("show error"))
+	}
 }
 
 func (s *Http2Suite) VppAddr() string {
@@ -514,9 +519,11 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
 	})
 
 	testCases := []struct {
-		desc       string
-		portOffset int
+		desc            string
+		portOffset      int
+		clientExtraArgs string
 	}{
+		// some tests are testing error conditions after request is completed so in this run http client with repeat
 		{desc: "client/1/1", portOffset: 0},
 		{desc: "client/4.1/1", portOffset: 1},
 		{desc: "client/4.1/2", portOffset: 2},
@@ -535,8 +542,8 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
 		//{desc: "client/5.1/6", portOffset: 13},
 		//{desc: "client/5.1/7", portOffset: 14},
 		{desc: "client/5.1/8", portOffset: 15},
-		{desc: "client/5.1/9", portOffset: 16},
-		{desc: "client/5.1/10", portOffset: 17},
+		{desc: "client/5.1/9", portOffset: 16, clientExtraArgs: "repeat 2 "},
+		{desc: "client/5.1/10", portOffset: 17, clientExtraArgs: "repeat 2 "},
 		{desc: "client/5.1.1/1", portOffset: 18},
 		{desc: "client/5.4.1/1", portOffset: 19},
 		{desc: "client/5.4.1/2", portOffset: 20},
@@ -552,7 +559,7 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
 		//{desc: "client/6.3/2", portOffset: 29},
 		{desc: "client/6.4/1", portOffset: 30},
 		{desc: "client/6.4/2", portOffset: 31},
-		{desc: "client/6.4/3", portOffset: 32},
+		{desc: "client/6.4/3", portOffset: 32, clientExtraArgs: "repeat 2 "},
 		{desc: "client/6.5/1", portOffset: 33},
 		{desc: "client/6.5/2", portOffset: 34},
 		{desc: "client/6.5/3", portOffset: 35},
@@ -573,11 +580,11 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
 		{desc: "client/6.9.1/1", portOffset: 49},
 		// TODO: message framing without content length using END_STREAM flag
 		//{desc: "client/6.9.1/2", portOffset: 50},
-		{desc: "client/6.10/1", portOffset: 51},
+		{desc: "client/6.10/1", portOffset: 51, clientExtraArgs: "repeat 2 "},
 		{desc: "client/6.10/2", portOffset: 52},
 		{desc: "client/6.10/3", portOffset: 53},
-		{desc: "client/6.10/4", portOffset: 54},
-		{desc: "client/6.10/5", portOffset: 55},
+		{desc: "client/6.10/4", portOffset: 54, clientExtraArgs: "repeat 2 "},
+		{desc: "client/6.10/5", portOffset: 55, clientExtraArgs: "repeat 2 "},
 		{desc: "client/6.10/6", portOffset: 56},
 	}
 
@@ -611,10 +618,8 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
 
 			go h2spec.RunClientSpec(conf)
 
-			cmd := fmt.Sprintf("http client timeout 5 verbose uri https://%s:%d/", serverAddress, h2specdFromPort+test.portOffset)
-			res := s.Containers.Vpp.VppInstance.Vppctl(cmd)
-			s.Log(res)
-			s.AssertNotContains(res, "error: timeout")
+			cmd := fmt.Sprintf("http client timeout 5 %s uri https://%s:%d/", test.clientExtraArgs, serverAddress, h2specdFromPort+test.portOffset)
+			s.Log(s.Containers.Vpp.VppInstance.Vppctl(cmd))
 
 			oChan := make(chan string)
 			go func() {
