@@ -855,6 +855,13 @@ application_alloc_and_init (app_init_args_t *a)
     props->low_watermark = opts[APP_OPTIONS_LOW_WATERMARK];
   if (opts[APP_OPTIONS_PCT_FIRST_ALLOC])
     props->pct_first_alloc = opts[APP_OPTIONS_PCT_FIRST_ALLOC];
+  if (opts[APP_OPTIONS_MAX_FIFO_MEMORY])
+    {
+      /* Round upwards to nearest segment_size */
+      props->max_segments =
+	(opts[APP_OPTIONS_MAX_FIFO_MEMORY] + props->segment_size - 1) /
+	props->segment_size;
+    }
   props->segment_type = seg_type;
 
   if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_COLLECTOR)
@@ -1825,9 +1832,11 @@ format_application (u8 * s, va_list * args)
   s = format (s, "app-name %v app-index %u ns-index %u seg-size %U\n",
 	      app_name, app->app_index, app->ns_index,
 	      format_memory_size, props->add_segment_size);
-  s = format (s, "rx-fifo-size %U tx-fifo-size %U workers:\n",
-	      format_memory_size, props->rx_fifo_size,
-	      format_memory_size, props->tx_fifo_size);
+  s =
+    format (s, "rx-fifo-size %U tx-fifo-size %U max-fifo-memory %U workers:\n",
+	    format_memory_size, props->rx_fifo_size, format_memory_size,
+	    props->tx_fifo_size, format_memory_size,
+	    props->max_segments * props->segment_size);
 
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);

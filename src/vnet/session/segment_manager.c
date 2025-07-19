@@ -115,6 +115,13 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   if (need_lock)
     clib_rwlock_writer_lock (&sm->segments_rwlock);
 
+  if (props->max_segments && pool_elts (sm->segments) >= props->max_segments)
+    {
+      SESSION_DBG (
+	"max number of segments allocated, can't allocate new segment");
+      goto done;
+    }
+
   pool_get_zero (sm->segments, fs);
 
   /*
