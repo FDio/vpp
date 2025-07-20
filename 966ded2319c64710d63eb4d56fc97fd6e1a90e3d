@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5c37d17_2ff27951",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2025-07-20T03:11:24Z",
+      "side": 1,
+      "message": "Thanks. I\u0027ve changed it to MAX_FIFO_MEMORY but internally calculate segment count. Calling side specifies size in bytes now.",
+      "parentUuid": "b51f7705_35355442",
+      "revId": "966ded2319c64710d63eb4d56fc97fd6e1a90e3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "082dc6c4_30a18d3e",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-07-17T06:35:10Z",
       "side": 1,
       "message": "we\u0027re formatting these props in format_application so let\u0027s move there",
+      "revId": "966ded2319c64710d63eb4d56fc97fd6e1a90e3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e583810_3baa3fa1",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1071,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2025-07-20T03:11:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "082dc6c4_30a18d3e",
       "revId": "966ded2319c64710d63eb4d56fc97fd6e1a90e3d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
