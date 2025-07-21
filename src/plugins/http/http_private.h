@@ -651,6 +651,13 @@ http_io_as_drain_all (http_req_t *req)
   req->as_fifo_offset = 0;
 }
 
+always_inline void
+http_io_as_drain_unread (http_req_t *req)
+{
+  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  svm_fifo_dequeue_drop_all (as->rx_fifo);
+}
+
 /* Abstraction of transport session fifo operations */
 
 always_inline u32

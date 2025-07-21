@@ -186,8 +186,9 @@ func FlowControl() *spec.TestGroup {
 			}
 			conn.WriteHeaders(hp)
 			// we send window update on stream when app read data from rx fifo, so send DATA frame and wait for WINDOW_UPDATE frame
+			// first increment is bigger because half of the fifo size was reserved for headers
 			conn.WriteData(streamID, false, []byte("AAAA"))
-			err = VerifyWindowUpdate(conn, streamID, 4)
+			err = VerifyWindowUpdate(conn, streamID, 4+conn.Settings[http2.SettingMaxHeaderListSize])
 			if err != nil {
 				return err
 			}
