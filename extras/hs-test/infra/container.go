@@ -129,7 +129,7 @@ func (c *Container) GetContainerWorkDir() (res string) {
 }
 
 func (c *Container) getContainerArguments() string {
-	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
+	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	if *VppSourceFileDir != "" {
@@ -170,10 +170,9 @@ func (c *Container) Create() error {
 	resp, err := c.Suite.Docker.ContainerCreate(
 		c.ctx,
 		&containerTypes.Config{
-			Hostname: c.Name,
-			Image:    c.Image,
-			Env:      c.getEnvVars(),
-			Cmd:      strings.Split(c.ExtraRunningArgs, " "),
+			Image: c.Image,
+			Env:   c.getEnvVars(),
+			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{
@@ -188,7 +187,7 @@ func (c *Container) Create() error {
 			},
 			CapAdd:      []string{"ALL"},
 			Privileged:  true,
-			NetworkMode: "host",
+			NetworkMode: "container:ginkgo",
 			Binds:       c.getVolumesAsSlice(),
 		},
 		nil,
