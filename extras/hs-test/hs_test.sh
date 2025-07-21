@@ -17,6 +17,7 @@ skip_names=()
 dryrun=
 no_color=
 perf=
+hs_root=
 
 for i in "$@"
 do
@@ -125,6 +126,9 @@ case "${i}" in
     --timeout=*)
         args="$args -timeout ${i#*=}"
         ;;
+    --hs_root=*)
+        hs_root="${i#*=}"
+        cd $hs_root
 esac
 done
 
@@ -183,8 +187,11 @@ if [ $leak_check_set -eq 1 ]; then
 fi
 
 if [ -n "${BUILD_NUMBER}" ]; then
-       ginkgo_args="$ginkgo_args --no-color"
+        ginkgo_args="$ginkgo_args --no-color"
 fi
+
+mkdir -p .go_cache
+make build-go
 
 mkdir -p summary
 # shellcheck disable=SC2086

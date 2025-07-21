@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
@@ -36,7 +35,6 @@ func RegisterIperfSoloTests(tests ...func(s *IperfSuite)) {
 }
 
 func (s *IperfSuite) SetupSuite() {
-	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2taps")
 	s.LoadContainerTopology("2containers")

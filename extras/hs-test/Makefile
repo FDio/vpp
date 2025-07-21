@@ -73,8 +73,26 @@ ifeq ($(GINKGO_TIMEOUT),)
 GINKGO_TIMEOUT=3h
 endif
 
+CORE_PATTERN := $(shell cat /proc/sys/kernel/core_pattern)
+CORE_VOLUME:=
+DOCKER_TTY:=
+
+ifeq ($(shell expr "$(CORE_PATTERN)" : '^/'), 1)
+CORE_VOLUME := -v $(CORE_PATTERN):$(CORE_PATTERN)
+endif
+
+ifeq ($(shell tty -s && echo $$?), 0)
+DOCKER_TTY := -it
+endif
+
 FORCE_BUILD?=true
 BUILD_AS:=$(strip $(shell echo $${SUDO_USER:-$${USER:-root}}))
+
+DOCKER_CAPABILITIES:=--cap-add=NET_ADMIN --cap-add=SYS_RESOURCE --cap-add=IPC_LOCK
+DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
+DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v /tmp/hs-test:/tmp/hs-test \
+	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
+	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 
 .PHONY: help
 help:
@@ -159,21 +177,25 @@ build-vpp-gcov: build-msg
 .PHONY: test
 test: FORCE_BUILD=false
 test: .deps.ok .build.ok
-	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) \
+		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
 		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS); \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
 test-debug: FORCE_BUILD=false
 test-debug: .deps.ok .build_debug.ok
-	@bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) \
+		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
 		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS); \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
 		./script/compress.sh $$?
 
 .PHONY: wipe-lcov
@@ -183,18 +205,22 @@ wipe-lcov:
 .PHONY: test-cov
 test-cov: FORCE_BUILD=false
 test-cov: .deps.ok .build.cov.ok wipe-lcov
-	-@bash ./hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	-docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) \
+		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		.$(HS_ROOT)/hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
-		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS); \
+		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
 		./script/compress.sh $$?
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
 .PHONY: test-leak
 test-leak: FORCE_BUILD=false
 test-leak: .deps.ok .build_debug.ok
-	@bash ./hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
-	--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS);
+	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) \
+		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT);
 
 .PHONY: test-perf
 test-perf: FORCE_BUILD=false
@@ -207,34 +233,35 @@ test-perf: .deps.ok .build.ok
 
 .PHONY: release-cluster
 release-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh setup_release
+	@bash ./kubernetes/setupCluster.sh release-cluster
 
 .PHONY: master-cluster
 master-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh setup_master
+	@bash ./kubernetes/setupCluster.sh master-cluster
 
 .PHONY: rebuild-master-cluster
 rebuild-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh rebuild_master
+	@bash ./kubernetes/setupCluster.sh rebuild-master-cluster
 
+# this is executed in a container by hs-test.sh
 .PHONY: build-go
 build-go:
-	go build ./tools/http_server
+	go build --buildvcs=false ./tools/http_server
 
 .PHONY: build
-build: .deps.ok build-vpp-release build-go
+build: .deps.ok build-vpp-release
 	@rm -f .build.ok
 	bash ./script/build_hst.sh release $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.ok
 
 .PHONY: build-cov
-build-cov: .deps.ok build-vpp-gcov build-go
+build-cov: .deps.ok build-vpp-gcov
 	@rm -f .build.cov.ok
 	bash ./script/build_hst.sh gcov $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.cov.ok
 
 .PHONY: build-debug
-build-debug: .deps.ok build-vpp-debug build-go
+build-debug: .deps.ok build-vpp-debug
 	@rm -f .build.ok
 	bash ./script/build_hst.sh debug $(FORCE_BUILD) $(BUILD_AS)
 	@touch .build.ok
@@ -291,15 +318,9 @@ install-deps:
 	@sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 	@touch .deps.ok
 
-.goimports.ok:
-	@rm -f .goimports.ok
-	go install golang.org/x/tools/cmd/goimports@v0.25.0
-	@touch .goimports.ok
-
 .PHONY: checkstyle-go
-checkstyle-go: .goimports.ok
-	$(eval GOPATH := $(shell go env GOPATH))
-	@output=$$($(GOPATH)/bin/goimports -d $${WS_ROOT}); \
+checkstyle-go:
+	@output=$$(find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.35.0 -d {} +); \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
 		exit $$status; \
@@ -316,10 +337,9 @@ checkstyle-go: .goimports.ok
     fi
 
 .PHONY: fixstyle-go
-fixstyle-go: .goimports.ok
-	$(eval GOPATH := $(shell go env GOPATH))
+fixstyle-go:
 	@echo "Modified files:"
-	@$(GOPATH)/bin/goimports -w -l $(WS_ROOT)
+	@find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.35.0 -w -l {} +
 	@go mod tidy
 	@echo "*******************************************************************"
 	@echo "Fixstyle done."
