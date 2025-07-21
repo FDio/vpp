@@ -56,6 +56,84 @@ typedef struct crypto_ctx_
   void *data; /**< protocol specific data */
 } crypto_context_t;
 
+typedef struct
+{
+  u32 app_index;
+  u32 req_index;
+} app_crypto_async_req_ticket_t;
+
+#define APP_CRYPTO_ASYNC_INVALID_TICKET                                       \
+  ((app_crypto_async_req_ticket_t){ ~0, ~0 })
+
+typedef union
+{
+  struct
+  {
+    u32 opaque;			      /**< opaque metadata */
+    clib_thread_index_t thread_index; /**< thread on which req was made */
+  };
+  u64 handle;
+} app_crypto_async_req_handle_t;
+
+struct app_crypto_async_reply_;
+
+typedef void (*app_crypto_async_req_cb) (
+  struct app_crypto_async_reply_ *reply);
+
+#define foreach_app_crypto_async_req_type _ (CERT, "async-cert")
+
+typedef enum app_crypto_req_type_
+{
+#define _(a, b) APP_CRYPTO_ASYNC_REQ_TYPE_##a,
+  foreach_app_crypto_async_req_type
+#undef _
+} app_crypto_async_req_type_t;
+
+typedef struct app_crypto_async_req_
+{
+  app_crypto_async_req_type_t req_type; /**< request type */
+  app_crypto_async_req_handle_t handle; /**< async request handle */
+  app_crypto_async_req_cb cb; /**< callback to invoke on completion */
+  u32 app_wrk_index;	      /**< application worker index */
+  u32 req_index;	      /**< index in crypto worker's request pool */
+  u8 cancelled;		      /**< flag to indicate if cancelled */
+  union
+  {
+    struct
+    {
+      const u8 *servername; /**< server name for SNI */
+    } async_cert;	    /**< async cert request data */
+  };
+} app_crypto_async_req_t;
+
+typedef struct app_crypto_async_reply_
+{
+  u32 app_index; /**< app that resolved the request */
+  u32 req_index; /**< request index in app crypto pool */
+  app_crypto_async_req_handle_t handle; /**< request handle */
+  app_crypto_async_req_type_t req_type; /**< request type */
+  union
+  {
+    struct
+    {
+      u32 ckpair_index; /**< certificate key-pair index */
+    } async_cert;	/**< async cert reply data */
+  };
+} app_crypto_async_reply_t;
+
+typedef struct app_crypto_wrk_
+{
+  app_crypto_async_req_t *reqs;
+} app_crypto_wrk_t;
+
+typedef struct app_crypto_ctx_
+{
+  app_crypto_wrk_t *wrk;
+} app_crypto_ctx_t;
+
+void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
+void app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx);
+
 /*
  * Certificate key-pair management
  */
@@ -85,6 +163,10 @@ app_certkey_alloc_int_ctx (app_cert_key_pair_t *ck,
     vec_validate (ck->cki, vlib_num_workers () + 1);
   return vec_elt_at_index (ck->cki, thread_index);
 }
+
+app_crypto_async_req_ticket_t
+app_crypto_async_req (app_crypto_async_req_t *req);
+void app_crypto_async_cancel_req (app_crypto_async_req_ticket_t ticket);
 
 /*
  * Crypto engine management

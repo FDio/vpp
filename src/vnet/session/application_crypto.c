@@ -108,6 +108,93 @@ vnet_app_del_cert_key_pair (u32 index)
   return 0;
 }
 
+app_crypto_async_req_ticket_t
+app_crypto_async_req (app_crypto_async_req_t *areq)
+{
+  app_crypto_async_req_t *req;
+  app_crypto_wrk_t *crypto_wrk;
+  app_worker_t *app_wrk;
+  application_t *app;
+  app_crypto_async_req_ticket_t ticket;
+
+  app_wrk = app_worker_get (areq->app_wrk_index);
+  app = application_get (app_wrk->app_index);
+  if (!app->cb_fns.app_crypto_async)
+    return APP_CRYPTO_ASYNC_INVALID_TICKET;
+
+  crypto_wrk = app_crypto_wrk_get (app, areq->handle.thread_index);
+
+  /* TODO(fcoras) caching layer */
+
+  pool_get (crypto_wrk->reqs, req);
+  *req = *areq;
+  req->req_index = req - crypto_wrk->reqs;
+  req->cancelled = 0;
+  ticket.app_index = app->app_index;
+  ticket.req_index = req->req_index;
+
+  /* Hand over request to app */
+  if (app->cb_fns.app_crypto_async (req))
+    return APP_CRYPTO_ASYNC_INVALID_TICKET;
+
+  return ticket;
+}
+
+void
+app_crypto_async_cancel_req (app_crypto_async_req_ticket_t ticket)
+{
+  application_t *app = application_get (ticket.app_index);
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  app_crypto_async_req_t *req;
+  app_crypto_wrk_t *crypto_wrk;
+
+  crypto_wrk = app_crypto_wrk_get (app, thread_index);
+
+  if (pool_is_free_index (crypto_wrk->reqs, ticket.req_index))
+    return;
+  req = pool_elt_at_index (crypto_wrk->reqs, ticket.req_index);
+  req->cancelled = 1;
+}
+
+void
+app_crypto_async_reply (app_crypto_async_reply_t *reply)
+{
+  application_t *app = application_get (reply->app_index);
+  clib_thread_index_t thread_index = reply->handle.thread_index;
+  app_crypto_wrk_t *crypto_wrk;
+  app_crypto_async_req_t *req;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  crypto_wrk = app_crypto_wrk_get (app, thread_index);
+  req = pool_elt_at_index (crypto_wrk->reqs, reply->req_index);
+
+  if (req->cancelled)
+    goto done;
+
+  reply->handle = req->handle;
+  req->cb (reply);
+
+done:
+  pool_put (crypto_wrk->reqs, req);
+}
+
+void
+app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx)
+{
+  vec_validate (crypto_ctx->wrk, vlib_num_workers ());
+}
+
+void
+app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
+{
+  app_crypto_wrk_t *crypto_wrk;
+
+  vec_foreach (crypto_wrk, crypto_ctx->wrk)
+    pool_free (crypto_wrk->reqs);
+  vec_free (crypto_ctx->wrk);
+}
+
 u8 *
 format_cert_key_pair (u8 *s, va_list *args)
 {
@@ -199,7 +286,7 @@ application_crypto_init ()
 {
   app_crypto_main_t *acm = &app_crypto_main;
 
-  /* Index 0 was originally used by legacy apis, maintain as invalid */
+  /* Index 0 is invalid, used to indicate that no cert was provided */
   app_cert_key_pair_alloc ();
 
   acm->last_crypto_engine = CRYPTO_ENGINE_LAST;
