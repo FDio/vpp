@@ -141,6 +141,7 @@ lacp_periodic (vlib_main_t * vm)
   member_if_t *mif;
   bond_if_t *bif;
   u8 actor_state, partner_state;
+  lacp_main_t *lm = &lacp_main;
 
   pool_foreach (mif, bm->neighbors)
    {
@@ -155,13 +156,14 @@ lacp_periodic (vlib_main_t * vm)
         lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
 			       LACP_RX_EVENT_TIMER_EXPIRED, &mif->rx_state);
       }
-
-    if (lacp_timer_is_running (mif->periodic_timer) &&
-	lacp_timer_is_expired (vm, mif->periodic_timer))
-      {
-        lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
-			       LACP_PTX_EVENT_TIMER_EXPIRED, &mif->ptx_state);
-      }
+    if (lm->lacp_multicore.thread_for_run_lacp_tx == 0)
+      if (lacp_timer_is_running (mif->periodic_timer) &&
+	  lacp_timer_is_expired (vm, mif->periodic_timer))
+	{
+	  lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+				 LACP_PTX_EVENT_TIMER_EXPIRED,
+				 &mif->ptx_state);
+	}
     if (lacp_timer_is_running (mif->wait_while_timer) &&
 	lacp_timer_is_expired (vm, mif->wait_while_timer))
       {
@@ -228,6 +230,14 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
 				       LACP_PROCESS_EVENT_STOP, 0);
 	}
     }
+}
+
+static void
+lacp_init_multicore ()
+{
+  lacp_main_t *lm = &lacp_main;
+  memset (&(lm->lacp_multicore), 0, sizeof (lacp_multicore_t));
+  clib_spinlock_init (&(lm->lacp_multicore.lockp));
 }
 
 static clib_error_t *
@@ -306,6 +316,7 @@ lacp_periodic_init (vlib_main_t * vm)
 
   bond_register_callback (lacp_interface_enable_disable);
 
+  lacp_init_multicore ();
   return 0;
 }
 
@@ -370,12 +381,35 @@ void
 lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif)
 {
   bond_main_t *bm = &bond_main;
+  lacp_main_t *lm = &lacp_main;
   bond_if_t *bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
 
-  lacp_init_tx_machine (vm, mif);
+  if (lm->lacp_multicore.thread_for_run_lacp_tx == 0)
+    lacp_init_tx_machine (vm, mif);
   lacp_init_mux_machine (vm, mif);
-  lacp_init_ptx_machine (vm, mif);
+  if (lm->lacp_multicore.thread_for_run_lacp_tx == 0)
+    lacp_init_ptx_machine (vm, mif);
   lacp_init_rx_machine (vm, mif);
+  if (lm->lacp_multicore.thread_for_run_lacp_tx != 0)
+    {
+      u32 *v;
+      u8 found = 0;
+      vec_foreach (v, lm->lacp_multicore.to_start_lacp_in_worker)
+	{
+	  if (*v == mif->sw_if_index)
+	    {
+	      found = 1;
+	      break;
+	    }
+	}
+      if (!found)
+	{
+	  clib_spinlock_lock (&(lm->lacp_multicore.lockp));
+	  vec_add1 (lm->lacp_multicore.to_start_lacp_in_worker,
+		    mif->sw_if_index);
+	  clib_spinlock_unlock (&(lm->lacp_multicore.lockp));
+	}
+    }
   vlib_stats_set_gauge (
     bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state,
     mif->actor.state);
@@ -385,6 +419,116 @@ lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif)
 }
 
 VLIB_INIT_FUNCTION (lacp_periodic_init);
+
+void
+lacp_init_state_machines_in_worker (vlib_main_t *vm)
+{
+  u32 *p_sw_if_index;
+  lacp_main_t *lm = &lacp_main;
+  u32 *changed_intfcs = 0;
+  clib_spinlock_lock (&(lm->lacp_multicore.lockp));
+  changed_intfcs = vec_dup (lm->lacp_multicore.to_start_lacp_in_worker);
+  vec_free (lm->lacp_multicore.to_start_lacp_in_worker);
+  clib_spinlock_unlock (&(lm->lacp_multicore.lockp));
+  vec_foreach (p_sw_if_index, changed_intfcs)
+    {
+      member_if_t *mif = bond_get_member_by_sw_if_index (*p_sw_if_index);
+      lacp_init_tx_machine (vm, mif);
+      lacp_init_ptx_machine (vm, mif);
+    }
+
+  bond_main_t *bm = &bond_main;
+  member_if_t *mif;
+
+  pool_foreach (mif, bm->neighbors)
+    {
+      if (lacp_timer_is_running (mif->periodic_timer) &&
+	  lacp_timer_is_expired (vm, mif->periodic_timer))
+	{
+	  lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
+				 LACP_PTX_EVENT_TIMER_EXPIRED,
+				 &mif->ptx_state);
+	}
+    }
+}
+
+static void
+enable_disable_ipkt_lacp_periodic_call (int old_thread_for_run_lacp_tx)
+{
+  lacp_main_t *lm = &lacp_main;
+  if (old_thread_for_run_lacp_tx != 0)
+    {
+      vlib_main_t *vm = vlib_get_main_by_index (old_thread_for_run_lacp_tx);
+      clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
+				    vm->worker_thread_main_loop_callback_tmp,
+				    vm->worker_thread_main_loop_callback_lock,
+				    lacp_init_state_machines_in_worker, 0);
+    }
+  if (lm->lacp_multicore.thread_for_run_lacp_tx != 0)
+    {
+      vlib_main_t *vm =
+	vlib_get_main_by_index (lm->lacp_multicore.thread_for_run_lacp_tx);
+      clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
+				    vm->worker_thread_main_loop_callback_tmp,
+				    vm->worker_thread_main_loop_callback_lock,
+				    lacp_init_state_machines_in_worker, 1);
+    }
+}
+
+static clib_error_t *
+lacp_tx_thread_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
+{
+  int thread_id = 0;
+  u8 print = 0;
+  lacp_main_t *lm = &lacp_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "tid %d", &thread_id))
+	{
+	  if (thread_id < 0 || thread_id >= vec_len (vlib_worker_threads))
+	    {
+	      return (clib_error_return (0, "invalid thread id"));
+	    }
+	  else if (thread_id == lm->lacp_multicore.thread_for_run_lacp_tx)
+	    {
+	      return (clib_error_return (0, "same thread id"));
+	    }
+	}
+      else if (unformat (line_input, "print"))
+	{
+	  print = 1;
+	}
+      else
+	{
+	  return (clib_error_return (0, "invalid args"));
+	}
+    }
+  if (print)
+    vlib_cli_output (vm, "thread_for_run_lacp_tx = %d",
+		     lm->lacp_multicore.thread_for_run_lacp_tx);
+  else
+    {
+      int old_thread_id = lm->lacp_multicore.thread_for_run_lacp_tx;
+      vlib_cli_output (vm, "thread_for_run_lacp_tx = %d",
+		       lm->lacp_multicore.thread_for_run_lacp_tx);
+      clib_spinlock_lock (&(lm->lacp_multicore.lockp));
+      lm->lacp_multicore.thread_for_run_lacp_tx = thread_id;
+      clib_spinlock_unlock (&(lm->lacp_multicore.lockp));
+      enable_disable_ipkt_lacp_periodic_call (old_thread_id);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lacp_tx_thread, static) = {
+  .path = "lacp tx thread",
+  .short_help =
+    "lacp tx thread [ tid  <thread id -  set for  vpp_main - 0  >] [print]",
+  .function = lacp_tx_thread_fn
+};
 
 static clib_error_t *
 lacp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
