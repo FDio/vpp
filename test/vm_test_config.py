@@ -13,6 +13,12 @@ test_config = {
         "iprf_client_interface_on_vpp": "vppclientout",
         "iprf_server_interface_on_vpp": "vppserverout",
     },
+    "af_xdp": {
+        "iprf_client_interface_on_linux": "afxdp",
+        "iprf_server_interface_on_linux": "afxdps",
+        "iprf_client_interface_on_vpp": "vafxdp",
+        "iprf_server_interface_on_vpp": "vafxdps",
+    },
     "L2": {
         "client_ip4_prefix": "10.0.0.101/24",
         "server_ip4_prefix": "10.0.0.102/24",
@@ -327,6 +333,22 @@ test_config = {
             "server_if_version": 2,
             "server_if_checksum_offload": 0,
             "x_connect_mode": "L2",
+        },
+        {
+            "id": 28,
+            "client_if_type": "af_xdp",
+            "client_if_version": 3,
+            "server_if_type": "af_xdp",
+            "server_if_version": 3,
+            "x_connect_mode": "L2",
+        },
+        {
+            "id": 29,
+            "client_if_type": "af_xdp",
+            "client_if_version": 3,
+            "server_if_type": "af_xdp",
+            "server_if_version": 3,
+            "x_connect_mode": "L3",
         },
     ],
 }
