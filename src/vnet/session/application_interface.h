@@ -78,6 +78,9 @@ typedef struct session_cb_vft_
 
   /** Collect and export session logs */
   int (*app_evt_callback) (session_t *s);
+
+  /** Callback to handle async crypto requests */
+  int (*app_crypto_async) (app_crypto_async_req_t *req);
 } session_cb_vft_t;
 
 #define foreach_app_init_args			\

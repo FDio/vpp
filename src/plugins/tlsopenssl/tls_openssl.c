@@ -953,29 +953,42 @@ openssl_alpn_select_cb (SSL *ssl, const unsigned char **out,
 static int
 openssl_start_listen (tls_ctx_t * lctx)
 {
+  u64 flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
+  openssl_main_t *om = &openssl_main;
   const SSL_METHOD *method;
   SSL_CTX *ssl_ctx;
   int rv;
   u32 olc_index;
   openssl_listen_ctx_t *olc;
   app_cert_key_pair_t *ckpair;
-  app_certkey_int_ctx_t *cki;
+  app_certkey_int_ctx_t *cki = 0;
 
-  long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
-  openssl_main_t *om = &openssl_main;
-
-  ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
-  if (!ckpair)
-    return -1;
-
-  if (!ckpair->cert || !ckpair->key)
+  if (lctx->ckpair_index)
     {
-      TLS_DBG (1, "tls cert and/or key not configured %d",
-	       lctx->parent_app_wrk_index);
-      return -1;
+      ckpair = app_cert_key_pair_get_if_valid (lctx->ckpair_index);
+      if (!ckpair)
+	return -1;
+
+      if (!ckpair->cert || !ckpair->key)
+	{
+	  TLS_DBG (1, "tls cert and/or key not configured %d",
+		   lctx->parent_app_wrk_index);
+	  return -1;
+	}
+
+      cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index);
+      if (!cki || !cki->cert)
+	{
+	  cki = openssl_init_certkey_init_ctx (ckpair, lctx->c_thread_index);
+	  if (!cki)
+	    {
+	      clib_warning ("unable to initialize certificate/key pair");
+	      return -1;
+	    }
+	}
     }
 
-  method = lctx->tls_type == TRANSPORT_PROTO_TLS ? SSLv23_server_method () :
+  method = lctx->tls_type == TRANSPORT_PROTO_TLS ? TLS_server_method () :
 						   DTLS_server_method ();
   ssl_ctx = SSL_CTX_new (method);
   if (!ssl_ctx)
@@ -1046,22 +1059,18 @@ openssl_start_listen (tls_ctx_t * lctx)
   /*
    * Set the key and cert
    */
-  cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index);
-  if (!cki || !cki->cert)
+  if (cki)
     {
-      cki = openssl_init_certkey_init_ctx (ckpair, lctx->c_thread_index);
-      if (!cki)
+      rv = SSL_CTX_use_certificate (ssl_ctx, cki->cert);
+      if (rv != 1)
 	{
-	  clib_warning ("unable to initialize certificate/key pair");
-	  return -1;
+	  clib_warning ("unable to use SSL certificate");
+	  goto err;
 	}
     }
-
-  rv = SSL_CTX_use_certificate (ssl_ctx, cki->cert);
-  if (rv != 1)
+  else
     {
-      clib_warning ("unable to use SSL certificate");
-      goto err;
+      lctx->flags |= TLS_CONN_F_ASYNC_CERT;
     }
 
   rv = SSL_CTX_use_PrivateKey (ssl_ctx, cki->key);
@@ -1101,6 +1110,124 @@ openssl_stop_listen (tls_ctx_t * lctx)
   openssl_listen_ctx_free (olc);
 
   return 0;
+}
+
+static void
+openssl_server_async_cert_cb (app_crypto_async_reply_t *reply)
+{
+  app_crypto_async_req_handle_t handle = reply->handle;
+  clib_thread_index_t thread_index;
+  app_cert_key_pair_t *ckpair;
+  app_certkey_int_ctx_t *cki;
+  openssl_ctx_t *oc;
+  tls_ctx_t *ctx;
+
+  thread_index = handle.thread_index;
+  ASSERT (thread_index == vlib_get_thread_index ());
+  ctx = openssl_ctx_get_w_thread (handle.opaque & TLS_IDX_MASK,
+				  handle.thread_index);
+  oc = (openssl_ctx_t *) ctx;
+
+  ckpair = app_cert_key_pair_get_if_valid (reply->async_cert.ckpair_index);
+  if (!ckpair || !ckpair->cert || !ckpair->key)
+    {
+      TLS_DBG (1, "Invalid certificate/key pair %u", ckpair_index);
+      goto error;
+    }
+
+  /* Get or initialize certificate context */
+  cki = app_certkey_get_int_ctx (ckpair, thread_index);
+  if (!cki || !cki->cert)
+    {
+      cki = openssl_init_certkey_init_ctx (ckpair, thread_index);
+      if (!cki)
+	{
+	  TLS_DBG (1, "Failed to initialize certificate context");
+	  goto error;
+	}
+    }
+
+  /* Set the certificate and private key */
+  if (SSL_use_certificate (oc->ssl, cki->cert) != 1)
+    {
+      TLS_DBG (1, "Failed to set certificate");
+      goto error;
+    }
+
+  if (SSL_use_PrivateKey (oc->ssl, cki->key) != 1)
+    {
+      TLS_DBG (1, "Failed to set private key");
+      goto error;
+    }
+
+  /* Verify that the private key matches the certificate */
+  if (SSL_check_private_key (oc->ssl) != 1)
+    {
+      TLS_DBG (1, "Private key does not match certificate");
+      goto error;
+    }
+
+  TLS_DBG (2, "Successfully set certificate for server %s",
+	   servername ? servername : "default");
+
+  /* Continue handshake */
+  while (1)
+    {
+      int rv, err;
+      rv = SSL_do_handshake (oc->ssl);
+      err = SSL_get_error (oc->ssl, rv);
+      if (openssl_main.async && err == SSL_ERROR_WANT_ASYNC)
+	break;
+
+      if (err != SSL_ERROR_WANT_WRITE)
+	break;
+    }
+
+  return;
+
+error:
+  /* Do not free ctx yet, in case we have pending rx events */
+  ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
+  tls_disconnect_transport (ctx);
+}
+
+static int
+openssl_server_cert_callback (SSL *ssl, void *arg)
+{
+  u32 ctx_index = (u32) pointer_to_uword (arg);
+  tls_ctx_t *ctx = openssl_ctx_get (ctx_index);
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  const char *servername;
+
+  TLS_DBG (2, "Server certificate callback invoked for ctx %u",
+	   oc->openssl_ctx_index);
+
+  /* Get the requested server name from SNI extension */
+  servername = SSL_get_servername (ssl, TLSEXT_NAMETYPE_host_name);
+  if (!servername)
+    {
+      /* TODO maybe handle using default cert, if provided */
+      TLS_DBG (1, "No SNI provided");
+      return 0;
+    }
+
+  TLS_DBG (2, "SNI requested server name: %s", servername);
+
+  app_crypto_async_req_t req = { .req_type = APP_CRYPTO_ASYNC_REQ_TYPE_CERT,
+				 .handle = {
+                                        .thread_index = ctx->c_thread_index,
+                                        .opaque = ctx->tls_ctx_handle,
+                                        },
+				 .cb = openssl_server_async_cert_cb,
+				 .app_wrk_index = ctx->parent_app_wrk_index,
+				 .async_cert = {
+				   .servername = (const u8 *) servername,
+				 } };
+
+  oc->req_ticket = app_crypto_async_req (&req);
+
+  /* Certificate selection in progress */
+  return -1;
 }
 
 static int
@@ -1143,6 +1270,16 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
       session_t *tls_session =
 	session_get_from_handle (ctx->tls_session_handle);
       openssl_ctx_handshake_rx (ctx, tls_session);
+    }
+
+  /* Set up certificate callback for async certificate retrieval */
+  if (ctx->flags & TLS_CONN_F_ASYNC_CERT)
+    {
+      uword oc_index = oc->openssl_ctx_index;
+      TLS_DBG (2, "Set async cert callback for ctx %u", oc_index);
+      SSL_set_cert_cb (oc->ssl, openssl_server_cert_callback,
+		       uword_to_pointer (oc_index, void *));
+      return 0;
     }
 
   while (1)
