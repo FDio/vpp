@@ -37,7 +37,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Tools moved from derived images
     apache2-utils \
     nghttp2 \
-    wrk
+    wrk \
+    # Utilities needed for running tests
+    sudo \
+    make \
+    ethtool \
+    bridge-utils \
+    jq
 
 # Because of http/3 we can't use stock curl in ubuntu 24.04
 ARG TARGETARCH

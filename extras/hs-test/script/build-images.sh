@@ -5,6 +5,7 @@ set -e
 
 # Get default architecture for multi-arch builds
 ARCH=${OS_ARCH:-$(dpkg --print-architecture)}
+CODENAME=$(lsb_release -cs)
 
 # Set up buildx configuration
 DOCKER_BUILD_DIR="/scratch/docker-build"
@@ -84,6 +85,7 @@ build_image() {
     docker build \
         --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
         --build-arg OS_ARCH="$ARCH" \
+        --build-arg CODENAME="$CODENAME" \
         --build-arg http_proxy="$HTTP_PROXY" \
         --build-arg https_proxy="$HTTP_PROXY" \
         --build-arg HTTP_PROXY="$HTTP_PROXY" \
@@ -107,6 +109,7 @@ build_image "Dockerfile.h2load" "hs-test/h2load"
 build_image "Dockerfile.curl" "hs-test/curl"
 build_image "Dockerfile.ab" "hs-test/ab"
 build_image "Dockerfile.wrk" "hs-test/wrk"
+build_image "Dockerfile.ginkgo" "hs-test/ginkgo"
 
 # Build HTTP/3 nginx if available
 echo "=== Building HTTP/3 nginx image ==="
