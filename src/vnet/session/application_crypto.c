@@ -199,7 +199,7 @@ application_crypto_init ()
 {
   app_crypto_main_t *acm = &app_crypto_main;
 
-  /* Index 0 was originally used by legacy apis, maintain as invalid */
+  /* Index 0 is invalid, used to indicate that no cert was provided */
   app_cert_key_pair_alloc ();
 
   acm->last_crypto_engine = CRYPTO_ENGINE_LAST;

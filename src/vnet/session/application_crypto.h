@@ -56,6 +56,9 @@ typedef struct crypto_ctx_
   void *data; /**< protocol specific data */
 } crypto_context_t;
 
+typedef u32 app_crypto_async_cert_ticket_t;
+typedef u64 app_crypto_async_cert_handle_t;
+
 /*
  * Certificate key-pair management
  */
