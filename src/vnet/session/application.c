@@ -866,6 +866,8 @@ application_alloc_and_init (app_init_args_t *a)
   else
     application_name_table_add (app);
 
+  app_crypto_ctx_init (&app->crypto_ctx);
+
   a->app_index = app->app_index;
 
   APP_DBG ("New app name: %v api index: %u index %u", app->name,
@@ -918,6 +920,9 @@ application_free (application_t * app)
    */
   if (application_is_builtin (app))
     application_name_table_del (app);
+
+  app_crypto_ctx_free (&app->crypto_ctx);
+
   vec_free (app->name);
   pool_put (app_main.app_pool, app);
 }
