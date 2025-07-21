@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ca40e8_47c42c52",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-21T08:06:28Z",
+      "side": 1,
+      "message": "you should consider to use nsim for testing, to force packet drop and maybe reorder too",
+      "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de029d79_f82bcf45",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-21T08:06:28Z",
+      "side": 1,
+      "message": "not much good to do memcpy for performance and scale... maybe we should have something like app_send_dgram_segs, so you can avoid extra memcpy",
+      "range": {
+        "startLine": 168,
+        "startChar": 7,
+        "endLine": 171,
+        "endChar": 43
+      },
+      "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
