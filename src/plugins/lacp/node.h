@@ -114,6 +114,13 @@ typedef struct
   u8 partner_state;
 } lacp_interface_details_t;
 
+typedef struct lacp_multicore_t
+{
+  int thread_for_run_lacp_tx;	// by default - vpp_main
+  u32 *to_start_lacp_in_worker; // vector of sw_interface  to start
+  clib_spinlock_t lockp;
+} lacp_multicore_t;
+
 typedef struct
 {
   /** API message ID base */
@@ -137,6 +144,9 @@ typedef struct
 
   /* debug is on or off */
   u8 debug;
+
+  /* Used for move TX to one of the workers */
+  lacp_multicore_t lacp_multicore;
 } lacp_main_t;
 
 extern lacp_state_struct lacp_state_array[];
