@@ -39,6 +39,30 @@
       },
       "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0a94d1b_a772b53d",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-21T09:42:53Z",
+      "side": 1,
+      "message": "I agree, but for now such API does not exist. @Florin, what do you think?",
+      "parentUuid": "de029d79_f82bcf45",
+      "range": {
+        "startLine": 168,
+        "startChar": 7,
+        "endLine": 171,
+        "endChar": 43
+      },
+      "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
