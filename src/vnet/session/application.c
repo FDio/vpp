@@ -866,6 +866,8 @@ application_alloc_and_init (app_init_args_t *a)
   else
     application_name_table_add (app);
 
+  vec_validate (app->crypto_wrk, vlib_num_workers ());
+
   a->app_index = app->app_index;
 
   APP_DBG ("New app name: %v api index: %u index %u", app->name,
@@ -877,6 +879,7 @@ application_alloc_and_init (app_init_args_t *a)
 static void
 application_free (application_t * app)
 {
+  app_crypto_wrk_t *crypto_wrk;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
 
@@ -918,6 +921,11 @@ application_free (application_t * app)
    */
   if (application_is_builtin (app))
     application_name_table_del (app);
+
+  vec_foreach (crypto_wrk, app->crypto_wrk)
+    pool_free (crypto_wrk->reqs);
+  vec_free (app->crypto_wrk);
+
   vec_free (app->name);
   pool_put (app_main.app_pool, app);
 }
