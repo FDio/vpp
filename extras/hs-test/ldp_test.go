@@ -28,16 +28,14 @@ func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
-	cmd := exec.Command("ip", "netns", "exec", netInterface.Peer.NetworkNamespace,
-		"tc", "qdisc", "del", "dev", netInterface.Peer.Name(),
+	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Peer.Name(),
 		"root")
 	s.Log("defer '%s'", cmd.String())
 	defer cmd.Run()
 
 	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
 	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
-	cmd = exec.Command("ip", "netns", "exec", netInterface.Peer.NetworkNamespace,
-		"tc", "qdisc", "add", "dev", netInterface.Peer.Name(),
+	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Peer.Name(),
 		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
 	s.Log(cmd.String())
 	o, err := cmd.CombinedOutput()

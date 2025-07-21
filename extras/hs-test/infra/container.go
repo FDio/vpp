@@ -129,7 +129,8 @@ func (c *Container) GetContainerWorkDir() (res string) {
 }
 
 func (c *Container) getContainerArguments() string {
-	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
+	args := "--ulimit nofile=90000:90000 --cap-add=NET_ADMIN --cap-add=SYS_RESOURCE " +
+		"--cap-add=IPC_LOCK --device /dev/net/tun:/dev/net/tun --device /dev/vhost-net:/dev/vhost-net"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	if *VppSourceFileDir != "" {
@@ -170,10 +171,9 @@ func (c *Container) Create() error {
 	resp, err := c.Suite.Docker.ContainerCreate(
 		c.ctx,
 		&containerTypes.Config{
-			Hostname: c.Name,
-			Image:    c.Image,
-			Env:      c.getEnvVars(),
-			Cmd:      strings.Split(c.ExtraRunningArgs, " "),
+			Image: c.Image,
+			Env:   c.getEnvVars(),
+			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{
@@ -185,10 +185,21 @@ func (c *Container) Create() error {
 					},
 				},
 				CpusetCpus: cpuSet,
+				Devices: []containerTypes.DeviceMapping{
+					{
+						PathOnHost:        "/dev/net/tun",
+						PathInContainer:   "/dev/net/tun",
+						CgroupPermissions: "rwm",
+					},
+					{
+						PathOnHost:        "/dev/vhost-net",
+						PathInContainer:   "dev/vhost-net",
+						CgroupPermissions: "rwm",
+					},
+				},
 			},
-			CapAdd:      []string{"ALL"},
-			Privileged:  true,
-			NetworkMode: "host",
+			CapAdd:      []string{"NET_ADMIN", "SYS_RESOURCE", "IPC_LOCK"},
+			NetworkMode: "container:ginkgo",
 			Binds:       c.getVolumesAsSlice(),
 		},
 		nil,

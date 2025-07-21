@@ -22,8 +22,9 @@ fi
 LAST_STATE_FILE=".last_state_hash"
 
 # get current state hash and ubuntu version
-current_state_hash=$(ls -l "$VPP_BUILD_ROOT"/.mu_build_install_timestamp; ls -l docker | sha1sum | awk '{print $1}')
-current_state_hash=$current_state_hash$UBUNTU_VERSION$1
+ctime_hash1=$(stat -c %Z "$VPP_BUILD_ROOT"/.mu_build_install_timestamp | sha1sum | awk '{print $1}')
+ctime_hash2=$(stat -c %Z docker/* | sha1sum | awk '{print $1}')
+current_state_hash=$ctime_hash1-$ctime_hash2-$UBUNTU_VERSION$1
 
 if [ -f "$LAST_STATE_FILE" ]; then
     last_state_hash=$(cat "$LAST_STATE_FILE")

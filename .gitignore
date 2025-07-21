@@ -143,10 +143,10 @@ compile_commands.json
 /extras/hs-test/.build.ok
 /extras/hs-test/.build.cov.ok
 /extras/hs-test/.last_hst_ppid
-/extras/hs-test/.goimports.ok
 /extras/hs-test/summary/
 /extras/hs-test/.last_state_hash
 /extras/hs-test/.kind_deps.ok
+/extras/hs-test/.go_cache/
 
 # ./configure
 /CMakeFiles
