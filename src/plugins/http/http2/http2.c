@@ -159,8 +159,11 @@ http2_conn_ctx_alloc_w_thread (http_conn_t *hc)
   h2c->our_window = HTTP2_CONNECTION_WINDOW_SIZE;
   h2c->settings = h2m->settings;
   /* adjust settings according to app rx_fifo size */
+  h2c->settings.max_header_list_size =
+    clib_min (h2c->settings.max_header_list_size, (hc->app_rx_fifo_size >> 1));
   h2c->settings.initial_window_size =
-    clib_min (h2c->settings.initial_window_size, hc->app_rx_fifo_size);
+    clib_min (h2c->settings.initial_window_size,
+	      (hc->app_rx_fifo_size - h2c->settings.max_header_list_size));
   h2c->req_by_stream_id = hash_create (0, sizeof (uword));
   h2c->new_tx_streams = clib_llist_make_head (wrk->req_pool, sched_list);
   h2c->old_tx_streams = clib_llist_make_head (wrk->req_pool, sched_list);
@@ -478,7 +481,10 @@ http2_stream_error (http_conn_t *hc, http2_req_t *req, http2_error_t error,
   if (req->flags & HTTP2_REQ_F_APP_CLOSED)
     session_transport_closed_notify (&req->base.connection);
   else
-    session_transport_closing_notify (&req->base.connection);
+    {
+      http_io_as_drain_unread (&req->base);
+      session_transport_closing_notify (&req->base.connection);
+    }
 
   h2c = http2_conn_ctx_get_w_thread (hc);
   session_transport_delete_notify (&req->base.connection);
