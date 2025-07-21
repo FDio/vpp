@@ -169,7 +169,16 @@ typedef struct application_
 
   /** collector index, if any */
   u32 evt_collector_index;
+
+  /** app crypto state */
+  app_crypto_ctx_t crypto_ctx;
 } application_t;
+
+static inline app_crypto_wrk_t *
+app_crypto_wrk_get (application_t *app, clib_thread_index_t thread_index)
+{
+  return vec_elt_at_index (app->crypto_ctx.wrk, thread_index);
+}
 
 typedef struct app_rx_mq_handle_
 {

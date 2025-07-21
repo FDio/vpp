@@ -59,6 +59,7 @@ typedef struct tls_ctx_openssl_
   tls_async_ctx_t async_ctx;
   BIO *rbio;
   BIO *wbio;
+  app_crypto_async_req_ticket_t req_ticket;
 } openssl_ctx_t;
 
 typedef struct tls_listen_ctx_opensl_

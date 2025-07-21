@@ -82,7 +82,8 @@ STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
   _ (RESUME, "resume")                                                        \
   _ (HS_DONE, "handshake-done")                                               \
   _ (ASYNC_RD, "async-read")                                                  \
-  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")
+  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")                                \
+  _ (ASYNC_CERT, "async-cert")
 
 typedef enum tls_conn_flags_bit_
 {
