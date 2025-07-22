@@ -627,32 +627,44 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
     }
 }
 
-#define app_send_dgram_raw(f, at, vpp_evt_q, data, len, evt_type, do_evt,     \
-			   noblock)                                           \
-  app_send_dgram_raw_gso (f, at, vpp_evt_q, data, len, 0, evt_type, do_evt,   \
-			  noblock)
+/* NOTE: Make sure the segs parameter has the first element of the array empty
+to write-in the header */
+always_inline u32
+app_gen_dgram_header (svm_fifo_seg_t *segs, u32 data_len,
+		      app_session_transport_t *at, u16 gso_size)
+{
+  session_dgram_hdr_t *hdr = (session_dgram_hdr_t *) segs[0].data;
+  u32 dgram_len = data_len;
+
+  ASSERT (segs != NULL);
+  ASSERT (segs[0].data != NULL);
+  ASSERT (segs[0].len == sizeof (session_dgram_hdr_t));
+
+  hdr->data_length = data_len;
+  hdr->data_offset = 0;
+  clib_memcpy_fast (&hdr->rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
+  hdr->is_ip4 = at->is_ip4;
+  hdr->rmt_port = at->rmt_port;
+  clib_memcpy_fast (&hdr->lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
+  hdr->lcl_port = at->lcl_port;
+  hdr->gso_size = gso_size;
+  dgram_len += segs[0].len;
+
+  return dgram_len;
+}
 
 always_inline int
-app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
-			svm_msg_q_t *vpp_evt_q, u8 *data, u32 len,
-			u16 gso_size, u8 evt_type, u8 do_evt, u8 noblock)
+app_send_dgram_segs_raw (svm_fifo_t *f, app_session_transport_t *at,
+			 svm_msg_q_t *vpp_evt_q, svm_fifo_seg_t *segs,
+			 u32 nsegs, u32 seg_len, u8 evt_type, u8 do_evt,
+			 u8 noblock)
 {
-  session_dgram_hdr_t hdr;
   int rv;
-  if (svm_fifo_max_enqueue_prod (f) < (sizeof (session_dgram_hdr_t) + len))
+
+  if (svm_fifo_max_enqueue_prod (f) < seg_len)
     return 0;
 
-  hdr.data_length = len;
-  hdr.data_offset = 0;
-  clib_memcpy_fast (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
-  hdr.is_ip4 = at->is_ip4;
-  hdr.rmt_port = at->rmt_port;
-  clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
-  hdr.lcl_port = at->lcl_port;
-  hdr.gso_size = gso_size;
-  svm_fifo_seg_t segs[2] = {{ (u8 *) &hdr, sizeof (hdr) }, { data, len }};
-
-  rv = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */ );
+  rv = svm_fifo_enqueue_segments (f, segs, nsegs, 0 /* allow partial */);
   if (PREDICT_FALSE (rv < 0))
     return 0;
 
@@ -662,8 +674,25 @@ app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
 	app_send_io_evt_to_vpp (vpp_evt_q, f->vpp_session_index, evt_type,
 				noblock);
     }
-  return len;
+  return seg_len - sizeof (session_dgram_hdr_t);
 }
+
+always_inline int
+app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
+			svm_msg_q_t *vpp_evt_q, u8 *data, u32 len,
+			u16 gso_size, u8 evt_type, u8 do_evt, u8 noblock)
+{
+  session_dgram_hdr_t hdr;
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) }, { data, len } };
+  u32 seg_len = app_gen_dgram_header (segs, len, at, gso_size);
+  return app_send_dgram_segs_raw (f, at, vpp_evt_q, segs, 2, seg_len, evt_type,
+				  do_evt, noblock);
+}
+
+#define app_send_dgram_raw(f, at, vpp_evt_q, data, len, evt_type, do_evt,     \
+			   noblock)                                           \
+  app_send_dgram_raw_gso (f, at, vpp_evt_q, data, len, 0, evt_type, do_evt,   \
+			  noblock)
 
 always_inline int
 app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
@@ -671,6 +700,22 @@ app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
   return app_send_dgram_raw (s->tx_fifo, &s->transport, s->vpp_evt_q, data,
 			     len, SESSION_IO_EVT_TX, 1 /* do_evt */ ,
 			     noblock);
+}
+
+always_inline int
+app_send_dgram_segs (app_session_t *s, svm_fifo_seg_t *segs, u32 data_nsegs,
+		     u32 data_len, u8 noblock)
+{
+  session_dgram_hdr_t hdr;
+  ASSERT (segs != NULL);
+  ASSERT (segs[0].len == 0);
+  segs[0].data = (u8 *) &hdr;
+  segs[0].len = sizeof (hdr);
+
+  u32 seg_len = app_gen_dgram_header (segs, data_len, &s->transport, 0);
+  return app_send_dgram_segs_raw (s->tx_fifo, &s->transport, s->vpp_evt_q,
+				  segs, data_nsegs, seg_len, SESSION_IO_EVT_TX,
+				  1 /* do_evt */, noblock);
 }
 
 always_inline int
