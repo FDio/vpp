@@ -24,6 +24,7 @@ typedef struct
   u32 *tx_policies;
   u32 *profiles;
   u8 invert_rx_tx;
+  u8 user_defined_policies;
 } capo_interface_config_t;
 
 int capo_configure_policies (u32 sw_if_index, u32 num_rx_policies,
