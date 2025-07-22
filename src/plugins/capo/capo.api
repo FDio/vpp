@@ -257,5 +257,6 @@ autoreply define capo_configure_policies {
   u32 num_tx_policies;
   u32 total_ids;
   u8 invert_rx_tx;
+  u8 user_defined_policies;
   u32 policy_ids[total_ids]; // rx_policies, then tx_policies, then profiles
 };
