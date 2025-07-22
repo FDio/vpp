@@ -33,6 +33,8 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
   u32 *policies;
   int r;
   u32 i;
+  u8 policy_default;
+  u8 profile_default;
 
   conf_kv.key = sw_if_index;
   if (clib_bihash_search_8_32 (&capo_main.if_config, &conf_kv, &conf_kv) != 0)
@@ -43,12 +45,11 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
     }
   if_config = (capo_interface_config_t *) conf_kv.value;
   policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies :
-							  if_config->tx_policies;
-
-  if (vec_len (policies) == 0)
-    goto profiles; /* no policies, jump to profiles */
-
-  *r_action = 0; /* drop by default */
+						    if_config->tx_policies;
+  policy_default =
+    is_inbound ? if_config->policy_default_rx : if_config->policy_default_tx;
+  profile_default =
+    is_inbound ? if_config->profile_default_rx : if_config->profile_default_tx;
 
   vec_foreach_index (i, policies)
     {
@@ -61,6 +62,7 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
 	  *r_action = 2; /* allow */
 	  return 1;
 	case CAPO_DENY:
+	  *r_action = 0;
 	  return 1;
 	case CAPO_PASS:
 	  goto profiles;
@@ -71,15 +73,22 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
 	  break;
 	}
     };
-  /* nothing matched, deny */
-  return 1;
+  /* nothing matched, or no policies */
+  switch (policy_default)
+    {
+    case CAPO_ALLOW:
+      *r_action = 2;
+      return 1;
+    case CAPO_DEFAULT_DENY:
+      *r_action = 0;
+      return 1;
+    case CAPO_DEFAULT_PASS:
+      goto profiles;
+    default:
+      break;
+    }
 
 profiles:
-  if (vec_len (if_config->profiles) == 0)
-    {
-      *r_action = 2; /* no profiles, allow */
-      return 1;
-    }
 
   vec_foreach_index (i, if_config->profiles)
     {
@@ -92,6 +101,7 @@ profiles:
 	  *r_action = 2; /* allow */
 	  return 1;
 	case CAPO_DENY:
+	  *r_action = 0;
 	  return 1;
 	case CAPO_PASS:
 	  clib_warning ("error: pass in profile %u", if_config->profiles[i]);
@@ -103,7 +113,23 @@ profiles:
 	  break;
 	}
     };
-  /* nothing matched, deny */
+
+  /* nothing matched, or no profiles */
+  switch (profile_default)
+    {
+    case CAPO_ALLOW:
+      *r_action = 2;
+      return 1;
+    case CAPO_DEFAULT_DENY:
+      *r_action = 0;
+      return 1;
+    case CAPO_DEFAULT_PASS:
+      clib_warning ("error: default pass in profile %u",
+		    if_config->profiles[i]);
+      return 1;
+    default:
+      break;
+    }
   return 1;
 }
 

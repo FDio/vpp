@@ -374,9 +374,10 @@ vl_api_capo_configure_policies_t_handler (vl_api_capo_configure_policies_t *mp)
       mp->policy_ids[i] = clib_net_to_host_u32 (mp->policy_ids[i]);
     }
 
-  rv = capo_configure_policies (mp->sw_if_index, mp->num_rx_policies,
-				mp->num_tx_policies, num_profiles,
-				mp->policy_ids, mp->invert_rx_tx);
+  rv = capo_configure_policies (
+    mp->sw_if_index, mp->num_rx_policies, mp->num_tx_policies, num_profiles,
+    mp->policy_ids, mp->invert_rx_tx, mp->policy_default_rx,
+    mp->policy_default_tx, mp->profile_default_rx, mp->profile_default_tx);
 
   REPLY_MACRO (VL_API_CAPO_CONFIGURE_POLICIES_REPLY);
 }

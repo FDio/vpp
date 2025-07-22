@@ -140,6 +140,12 @@ enum capo_entry_type : u8 {
   CAPO_IP_SET,       // Points to an ip only set
 };
 
+enum capo_policy_default : u8 {
+  CAPO_DEFAULT_ALLOW = 0,     // allow per default
+  CAPO_DEFAULT_DENY, // deny per default
+  CAPO_DEFAULT_PASS,  // pass to profiles per default
+};
+
 typedef capo_port_range {
   u16 start;
   u16 end;    // Inclusive, for a single port start==end
@@ -257,5 +263,9 @@ autoreply define capo_configure_policies {
   u32 num_tx_policies;
   u32 total_ids;
   u8 invert_rx_tx;
+  vl_api_capo_policy_default_t policy_default_rx;
+  vl_api_capo_policy_default_t policy_default_tx;
+  vl_api_capo_policy_default_t profile_default_rx;
+  vl_api_capo_policy_default_t profile_default_tx;
   u32 policy_ids[total_ids]; // rx_policies, then tx_policies, then profiles
 };

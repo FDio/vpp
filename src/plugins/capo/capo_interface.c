@@ -44,7 +44,9 @@ capo_interface_print_current_state ()
 int
 capo_configure_policies (u32 sw_if_index, u32 num_rx_policies,
 			 u32 num_tx_policies, u32 num_profiles,
-			 u32 *policy_ids, u8 invert_rx_tx)
+			 u32 *policy_ids, u8 invert_rx_tx,
+			 u8 policy_default_rx, u8 policy_default_tx,
+			 u8 profile_default_rx, u8 profile_default_tx)
 {
   clib_bihash_kv_8_32_t kv = { sw_if_index, { 0 } };
   capo_interface_config_t *conf = (capo_interface_config_t *) &kv.value;
@@ -76,6 +78,10 @@ capo_configure_policies (u32 sw_if_index, u32 num_rx_policies,
       goto error;
 
   conf->invert_rx_tx = invert_rx_tx;
+  conf->policy_default_rx = policy_default_rx;
+  conf->policy_default_tx = policy_default_tx;
+  conf->profile_default_rx = profile_default_rx;
+  conf->profile_default_tx = profile_default_tx;
   vec_resize (conf->rx_policies, num_rx_policies);
   for (i = 0; i < num_rx_policies; i++)
     conf->rx_policies[i] = policy_ids[i];
@@ -181,7 +187,11 @@ format_capo_interface (u8 *s, va_list *args)
     s = format (s, " addr6=%U", format_ip6_address, ip6);
   s = format (s, "]\n");
   if (vec_len (rx_policies))
-    s = format (s, "  rx:\n");
+    {
+      s = format (s, "  rx:\n");
+    }
+  s = format (s, "   rx-policy-default:%d rx-profile-default:%d \n",
+	      conf->policy_default_rx, conf->profile_default_rx);
   vec_foreach_index (i, rx_policies)
     {
       policy = capo_policy_get_if_exists (rx_policies[i]);
@@ -189,7 +199,11 @@ format_capo_interface (u8 *s, va_list *args)
 		  CAPO_POLICY_ONLY_RX, conf->invert_rx_tx);
     }
   if (vec_len (tx_policies))
-    s = format (s, "  tx:\n");
+    {
+      s = format (s, "  tx:\n");
+    }
+  s = format (s, "   tx-policy-default:%d tx-profile-default:%d \n",
+	      conf->policy_default_tx, conf->profile_default_tx);
   vec_foreach_index (i, tx_policies)
     {
       policy = capo_policy_get_if_exists (tx_policies[i]);
@@ -266,7 +280,7 @@ capo_interface_clear_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  rv = capo_configure_policies (sw_if_index, 0, 0, 0, NULL, 0);
+  rv = capo_configure_policies (sw_if_index, 0, 0, 0, NULL, 0, 0, 0, 0, 0);
   if (rv)
     error =
       clib_error_return (0, "capo_configure_policies errored with %d", rv);
@@ -338,7 +352,7 @@ capo_interface_configure_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
   rv = capo_configure_policies (sw_if_index, num_rx_policies, num_tx_policies,
 				vec_len (policy_list) - num_rx_policies -
 				  num_tx_policies,
-				policy_list, invert_rx_tx);
+				policy_list, invert_rx_tx, 1, 1, 1, 1);
 
   if (rv)
     error =
