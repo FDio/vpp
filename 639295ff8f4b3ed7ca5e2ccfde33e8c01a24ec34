@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6ed7e6f_1a57f74a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-07-22T18:37:04Z",
+      "side": 1,
+      "message": "Anna, while I admire your motivation and enthusiasm to solve problems, I think in this case the problem should be solved differently. Worker threads are for data traffic while LACP TX is control plane traffic and it makes sense for the latter stays in the main thread.\n\nIn order for LACP protocol to maintain neighbor, the speakers send hello every second. The remote partner has to miss the hello three in a row to declare the neighbor is unreachable. If you have a long-running process in main thread such that the main thread does not even dispatch LACP timer in 3 seconds, I think you have a real problem that you should figure out why. Perhaps that long-running process forgot to yield the CPU which may also cause worker threads not being dispatch since barrier sync is typically held by the main thread to avoid worker threads to access the same data structure for contention. Consequently, moving the LACP TX to a worker thread may not solve your problem all the time. Root cause the long-running process and perhaps add yields to it to allow other processes to run may be the right way to approach your problem.",
+      "revId": "639295ff8f4b3ed7ca5e2ccfde33e8c01a24ec34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
