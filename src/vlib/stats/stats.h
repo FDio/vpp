@@ -161,4 +161,16 @@ void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
 
 format_function_t format_vlib_stats_symlink;
 
+/* log2 histogram */
+u32 vlib_stats_add_histogram_log2 (u32 min_exp, char *fmt, ...);
+void vlib_stats_set_histogram_log2 (u32 entry_index, u32 thread_index,
+				    const u64 *bin_counts);
+static inline u32
+vlib_stats_get_histogram_log2_min_exp (u32 entry_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  return e->log2_histogram.min_exp;
+}
+
 #endif

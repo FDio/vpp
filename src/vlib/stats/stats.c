@@ -149,6 +149,7 @@ vlib_stats_remove_entry (u32 entry_index)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
       c = e->data;
       e->data = 0;
       oldheap = clib_mem_set_heap (sm->heap);
@@ -366,6 +367,28 @@ vlib_stats_add_counter_vector (char *fmt, ...)
   va_end (va);
   return vlib_stats_new_entry_internal (STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
 					name);
+}
+
+u32
+vlib_stats_add_histogram_log2 (u32 min_exp, char *fmt, ...)
+{
+  va_list va;
+  u8 *name;
+  u32 entry_index;
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+
+  va_start (va, fmt);
+  name = va_format (0, fmt, &va);
+  va_end (va);
+
+  entry_index =
+    vlib_stats_new_entry_internal (STAT_DIR_TYPE_HISTOGRAM_LOG2, name);
+  if (entry_index != ~0 && entry_index != CLIB_U32_MAX)
+    {
+      vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+      e->log2_histogram.min_exp = min_exp;
+    }
+  return entry_index;
 }
 
 u32

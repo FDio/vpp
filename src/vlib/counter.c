@@ -199,6 +199,32 @@ vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm)
   return (vec_len (cm->counters[0]));
 }
 
+void
+vlib_validate_log2_histogram (vlib_log2_histogram_main_t *hm, u32 num_bins)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  char *name = hm->stat_segment_name ? hm->stat_segment_name : hm->name;
+
+  if (name == 0)
+    {
+      if (hm->bins == 0)
+	hm->stats_entry_index = ~0;
+      vec_validate (hm->bins, tm->n_vlib_mains - 1);
+      for (int i = 0; i < tm->n_vlib_mains; i++)
+	vec_validate_aligned (hm->bins[i], num_bins - 1,
+			      CLIB_CACHE_LINE_BYTES);
+      return;
+    }
+
+  if (hm->bins == 0)
+    hm->stats_entry_index =
+      vlib_stats_add_histogram_log2 (hm->min_exp, "%s", name);
+
+  vlib_stats_validate (hm->stats_entry_index, tm->n_vlib_mains - 1,
+		       num_bins - 1);
+  hm->bins = vlib_stats_get_entry_data_pointer (hm->stats_entry_index);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
