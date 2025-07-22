@@ -43,10 +43,10 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
     }
   if_config = (capo_interface_config_t *) conf_kv.value;
   policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies :
-							  if_config->tx_policies;
+						    if_config->tx_policies;
 
-  if (vec_len (policies) == 0)
-    goto profiles; /* no policies, jump to profiles */
+  if (vec_len (policies) == 0) /* No policies at all, i.e Failsafe disabled */
+    goto profiles;	       /* no policies, jump to profiles */
 
   *r_action = 0; /* drop by default */
 
@@ -71,16 +71,29 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
 	  break;
 	}
     };
-  /* nothing matched, deny */
-  return 1;
+  /* nothing matched */
+  if ((is_inbound && if_config->user_defined_rx) ||
+      (!is_inbound && if_config->user_defined_tx))
+    {
+      /* if user defined policies, deny */
+      return 1;
+    }
+  else
+    {
+      /* if no user defined policies */
+      goto profiles;
+    }
 
 profiles:
   if (vec_len (if_config->profiles) == 0)
     {
-      *r_action = 2; /* no profiles, allow */
+      *r_action = 0;
+      /* no profiles, deny */ /* https://docs.tigera.io/calico/latest/reference/resources/networkpolicy
+			       */
       return 1;
     }
 
+  *r_action = 0; /* deny by default */
   vec_foreach_index (i, if_config->profiles)
     {
       policy = &capo_policies[if_config->profiles[i]];

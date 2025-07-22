@@ -24,11 +24,14 @@ typedef struct
   u32 *tx_policies;
   u32 *profiles;
   u8 invert_rx_tx;
+  u8 user_defined_rx;
+  u8 user_defined_tx;
 } capo_interface_config_t;
 
 int capo_configure_policies (u32 sw_if_index, u32 num_rx_policies,
 			     u32 num_tx_policies, u32 num_profiles,
-			     u32 *policy_ids, u8 invert_rx_tx);
+			     u32 *policy_ids, u8 invert_rx_tx,
+			     u8 user_defined_rx, u8 user_defined_tx);
 u8 *format_capo_interface (u8 *s, va_list *args);
 
 STATIC_ASSERT (sizeof (capo_interface_config_t) <=

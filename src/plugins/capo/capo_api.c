@@ -376,7 +376,8 @@ vl_api_capo_configure_policies_t_handler (vl_api_capo_configure_policies_t *mp)
 
   rv = capo_configure_policies (mp->sw_if_index, mp->num_rx_policies,
 				mp->num_tx_policies, num_profiles,
-				mp->policy_ids, mp->invert_rx_tx);
+				mp->policy_ids, mp->invert_rx_tx,
+				mp->user_defined_rx, mp->user_defined_tx);
 
   REPLY_MACRO (VL_API_CAPO_CONFIGURE_POLICIES_REPLY);
 }
