@@ -241,6 +241,7 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
   switch (ep->type)
     {
     case STAT_DIR_TYPE_SCALAR_INDEX:
+    case STAT_DIR_TYPE_GAUGE:
       result.scalar_value = ep->value;
       break;
 
@@ -294,6 +295,19 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
       }
 
     case STAT_DIR_TYPE_EMPTY:
+    case STAT_DIR_TYPE_RING_BUFFER:
+      break;
+
+    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+      {
+	uint64_t **bins = stat_segment_adjust (sm, ep->data);
+	result.log2_histogram_bins = stat_vec_dup (sm, bins);
+	for (i = 0; i < vec_len (bins); i++)
+	  {
+	    uint64_t *thread_bins = stat_segment_adjust (sm, bins[i]);
+	    result.log2_histogram_bins[i] = stat_vec_dup (sm, thread_bins);
+	  }
+      }
       break;
 
     default:
@@ -326,7 +340,14 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  vec_free (res[i].name_vector);
 	  break;
 	case STAT_DIR_TYPE_SCALAR_INDEX:
+	case STAT_DIR_TYPE_GAUGE:
 	case STAT_DIR_TYPE_EMPTY:
+	case STAT_DIR_TYPE_RING_BUFFER:
+	  break;
+	case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+	  for (j = 0; j < vec_len (res[i].log2_histogram_bins); j++)
+	    vec_free (res[i].log2_histogram_bins[j]);
+	  vec_free (res[i].log2_histogram_bins);
 	  break;
 	default:
 	  assert (0);
