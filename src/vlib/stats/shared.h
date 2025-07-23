@@ -22,17 +22,18 @@ typedef enum
 typedef struct
 {
   stat_directory_type_t type;
+  uint32_t pad;
   union
   {
+    uint64_t index;
+    uint64_t value;
+    void *data; // For log2 histogram: (uint64_t **) [thread][bin]
+    uint8_t **string_vector;
     struct
     {
       uint32_t index1;
       uint32_t index2;
     };
-    uint64_t index;
-    uint64_t value;
-    void *data;
-    uint8_t **string_vector;
   };
 #define VLIB_STATS_MAX_NAME_SZ 128
   char name[VLIB_STATS_MAX_NAME_SZ];
