@@ -44,7 +44,9 @@ typedef struct
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
+    uint64_t **log2_histogram_bins; // [thread][bin] for histogram
   };
+  uint32_t min_exp; // Only valid for STAT_DIR_TYPE_HISTOGRAM_LOG2
 } stat_segment_data_t;
 
 typedef struct

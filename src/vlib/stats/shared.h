@@ -14,6 +14,8 @@ typedef enum
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
   STAT_DIR_TYPE_SYMLINK,
+  STAT_DIR_TYPE_HISTOGRAM_LOG2,
+  STAT_DIR_TYPE_RING_BUFFER,
 } stat_directory_type_t;
 
 typedef struct
@@ -28,9 +30,13 @@ typedef struct
     };
     uint64_t index;
     uint64_t value;
-    void *data;
+    void *data; // For log2 histogram: (uint64_t **) [thread][bin]
     uint8_t **string_vector;
   };
+  struct
+  {
+    uint32_t min_exp; // Only valid for STAT_DIR_TYPE_HISTOGRAM_LOG2
+  } log2_histogram;
 #define VLIB_STATS_MAX_NAME_SZ 128
   char name[VLIB_STATS_MAX_NAME_SZ];
 } vlib_stats_entry_t;
