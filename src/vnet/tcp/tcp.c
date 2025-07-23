@@ -350,6 +350,20 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   req->free_time = now + tcp_cfg.cleanup_time;
 }
 
+void
+tcp_cancel_cleanup (tcp_connection_t *tc)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_cleanup_req_t *req;
+  clib_fifo_foreach (req, wrk->pending_cleanups, {
+    if (req->connection_index == tc->c_c_index)
+      {
+	req->connection_index = ~0;
+	break;
+      }
+  });
+}
+
 /**
  * Begin connection closing procedure.
  *

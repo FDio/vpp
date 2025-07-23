@@ -2586,15 +2586,26 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 				   thread_index);
-	  if (!tc || tc->state != TCP_STATE_TIME_WAIT)
+	  if (!tc)
 	    {
-	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
+	      tcp_inc_counter (listen, TCP_ERROR_INVALID_CONNECTION, 1);
 	      goto done;
 	    }
 
-	  if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
+	  switch (tc->state)
 	    {
-	      /* This SYN can't be accepted */
+	    case TCP_STATE_TIME_WAIT:
+	      if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
+		{
+		  /* This SYN can't be accepted */
+		  tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
+		  goto done;
+		}
+	      break;
+	    case TCP_STATE_CLOSED:
+	      tcp_cancel_cleanup (tc); // tcp_connection_del will do the job
+	      break;
+	    default:
 	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
 	    }
