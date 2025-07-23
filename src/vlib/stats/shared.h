@@ -14,6 +14,9 @@ typedef enum
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
   STAT_DIR_TYPE_SYMLINK,
+  STAT_DIR_TYPE_HISTOGRAM_LOG2,
+  STAT_DIR_TYPE_RING_BUFFER,
+  STAT_DIR_TYPE_GAUGE,
 } stat_directory_type_t;
 
 typedef struct
@@ -34,6 +37,8 @@ typedef struct
 #define VLIB_STATS_MAX_NAME_SZ 128
   char name[VLIB_STATS_MAX_NAME_SZ];
 } vlib_stats_entry_t;
+_Static_assert (sizeof (vlib_stats_entry_t) == 144,
+		"vlib_stats_entry_t size must be 144 bytes");
 
 /*
  * Shared header first in the shared memory segment.
