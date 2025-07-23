@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd99ce4f_07cf0911",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-23T07:38:10Z",
+      "side": 1,
+      "message": "Because the connection is not cleaned up here, I\u0027d expect the lookup on line 2626 will hit exactly the same connection. During test do you happen to see error create exists incrementing?",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
