@@ -1,0 +1,62 @@
+counters sasc_lookup {
+  miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "flow miss";
+  };
+  remote {
+    severity info;
+    type counter64;
+    units "packets";
+    description "remote flow";
+  };
+  con_drop {
+    severity info;
+    type counter64;
+    units "packets";
+    description "handoff drop";
+  };
+  no_key {
+    severity info;
+    type counter64;
+    units "packets";
+    description "not able to create 6-tuple key";
+  };
+};
+
+counters sasc_create {
+  full_table {
+    severity error;
+    type counter64;
+    units "packets";
+    description "session table is full";
+  };
+  no_key {
+    severity info;
+    type counter64;
+    units "packets";
+    description "not able to create 6-tuple key";
+  };
+  icmp_error {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ICMP error";
+  };
+};
+
+counters sasc_handoff {
+  noerror {
+    severity info;
+    type counter64;
+    units "packets";
+    description "no error";
+  };
+  no_session {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no session";
+  };
+};
