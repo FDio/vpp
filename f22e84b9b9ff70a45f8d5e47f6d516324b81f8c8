@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fe8f052c_7878c27d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2025-07-23T21:18:12Z",
+      "side": 1,
+      "message": "pip option --no-build-isolation can be added for using setuptools installed in system",
+      "revId": "f22e84b9b9ff70a45f8d5e47f6d516324b81f8c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
