@@ -1597,6 +1597,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		{
 		  vlib_node_runtime_t *n;
 		  n = vec_elt_at_index (nm->nodes_by_type[nt], int_num);
+                  if (n->stop_timer_handle_plus_1)
+                    vlib_node_unschedule(vm, n->node_index);
 		  cpu_time_now = dispatch_node (
 		    vm, n, nt,
 		    /* frame */ 0, VLIB_NODE_DISPATCH_REASON_INTERRUPT,
