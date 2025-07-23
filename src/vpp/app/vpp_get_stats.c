@@ -81,6 +81,7 @@ stat_poll_loop (u8 ** patterns)
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
+	    case STAT_DIR_TYPE_GAUGE:
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
 	      break;
 
@@ -224,6 +225,7 @@ reconnect:
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
+	    case STAT_DIR_TYPE_GAUGE:
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
 	      break;
 
