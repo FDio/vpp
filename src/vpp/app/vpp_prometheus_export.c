@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * vpp_get_stats.c
+ * vpp_prometheus_export.c
  *
  * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include <sys/socket.h>
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
+#include <vlib/stats/shared.h>
 #include <ctype.h>
 
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
@@ -55,6 +56,45 @@ prom_string (char *s)
   return s;
 }
 
+// For STAT_DIR_TYPE_HISTOGRAM_LOG2, the data is in res->log2_histogram_bins
+static void
+print_log2_histogram_metric (FILE *stream, stat_segment_data_t *res)
+{
+  int n_threads = vec_len (res->log2_histogram_bins);
+  char sanitized_name[VLIB_STATS_MAX_NAME_SZ];
+  strncpy (sanitized_name, res->name, VLIB_STATS_MAX_NAME_SZ - 1);
+  sanitized_name[VLIB_STATS_MAX_NAME_SZ - 1] = '\0';
+  prom_string (sanitized_name);
+
+  for (int thread = 0; thread < n_threads; ++thread)
+    {
+      u64 *bins = res->log2_histogram_bins[thread];
+      int n_bins = vec_len (bins);
+      if (n_bins < 2) // Need at least min_exp + one bin
+	continue;
+      u32 min_exp = bins[0];
+      u64 cumulative = 0;
+      u64 sum = 0;
+      fformat (stream, "# TYPE %s histogram\n", sanitized_name);
+      for (int i = 1; i < n_bins; ++i)
+	{
+	  cumulative += bins[i];
+	  sum += bins[i] * (1ULL << (min_exp + i - 1)); // midpoint approx
+	  fformat (stream, "%s{le=\"%llu\",thread=\"%d\"} %llu\n",
+		   sanitized_name, (1ULL << (min_exp + i - 1)), thread,
+		   cumulative);
+	}
+      // +Inf bucket
+      fformat (stream, "%s{le=\"+Inf\",thread=\"%d\"} %llu\n", sanitized_name,
+	       thread, cumulative);
+      // _count and _sum
+      fformat (stream, "%s_count{thread=\"%d\"} %llu\n", sanitized_name,
+	       thread, cumulative);
+      fformat (stream, "%s_sum{thread=\"%d\"} %llu\n", sanitized_name, thread,
+	       sum);
+    }
+}
+
 static void
 print_metric_v1 (FILE *stream, stat_segment_data_t *res)
 {
@@ -62,6 +102,9 @@ print_metric_v1 (FILE *stream, stat_segment_data_t *res)
 
   switch (res->type)
     {
+    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+      print_log2_histogram_metric (stream, res);
+      break;
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
       fformat (stream, "# TYPE %s counter\n", prom_string (res->name));
       for (k = 0; k < vec_len (res->simple_counter_vec); k++)
@@ -91,7 +134,11 @@ print_metric_v1 (FILE *stream, stat_segment_data_t *res)
       fformat (stream, "%s %.2f\n", prom_string (res->name),
 	       res->scalar_value);
       break;
-
+    case STAT_DIR_TYPE_GAUGE:
+      fformat (stream, "# TYPE %s gauge\n", prom_string (res->name));
+      fformat (stream, "%s %.2f\n", prom_string (res->name),
+	       res->scalar_value);
+      break;
     case STAT_DIR_TYPE_NAME_VECTOR:
       fformat (stream, "# TYPE %s_info gauge\n", prom_string (res->name));
       for (k = 0; k < vec_len (res->name_vector); k++)
@@ -159,9 +206,13 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
   num_tokens = tokenize (res->name, tokens, lengths, MAX_TOKENS);
   switch (res->type)
     {
+    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+      print_log2_histogram_metric (stream, res);
+      break;
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
       if (res->simple_counter_vec == 0)
 	return;
+
       for (k = 0; k < vec_len (res->simple_counter_vec); k++)
 	for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
 	  {
@@ -260,6 +311,7 @@ print_metric_v2 (FILE *stream, stat_segment_data_t *res)
       break;
 
     case STAT_DIR_TYPE_SCALAR_INDEX:
+    case STAT_DIR_TYPE_GAUGE:
       if ((num_tokens == 4) &&
 	  !strncmp (tokens[1], "buffer-pools", lengths[1]))
 	{
