@@ -81,7 +81,35 @@ stat_poll_loop (u8 ** patterns)
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
+	    case STAT_DIR_TYPE_GAUGE:
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
+	      break;
+
+	    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+	      for (k = 0; k < vec_len (res[i].log2_histogram_bins); k++)
+		{
+		  u64 *bins = res[i].log2_histogram_bins[k];
+		  int n_bins = vec_len (bins);
+		  if (n_bins < 2) // Need at least min_exp + one bin
+		    continue;
+		  u32 min_exp = bins[0];
+		  u64 cumulative = 0;
+		  u64 sum = 0;
+		  fformat (stdout, "Histogram %s (thread %d):\n", res[i].name,
+			   k);
+		  for (int j = 1; j < n_bins; ++j)
+		    {
+		      cumulative += bins[j];
+		      sum += bins[j] *
+			     (1ULL << (min_exp + j - 1)); // midpoint approx
+		      fformat (stdout, "  <= %llu: %llu (cumulative: %llu)\n",
+			       (1ULL << (min_exp + j - 1)), bins[j],
+			       cumulative);
+		    }
+		  fformat (stdout,
+			   "  +Inf: %llu (total count: %llu, sum: %llu)\n",
+			   cumulative, cumulative, sum);
+		}
 	      break;
 
 	    case STAT_DIR_TYPE_EMPTY:
@@ -224,7 +252,35 @@ reconnect:
 	      break;
 
 	    case STAT_DIR_TYPE_SCALAR_INDEX:
+	    case STAT_DIR_TYPE_GAUGE:
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
+	      break;
+
+	    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+	      for (k = 0; k < vec_len (res[i].log2_histogram_bins); k++)
+		{
+		  u64 *bins = res[i].log2_histogram_bins[k];
+		  int n_bins = vec_len (bins);
+		  if (n_bins < 2) // Need at least min_exp + one bin
+		    continue;
+		  u32 min_exp = bins[0];
+		  u64 cumulative = 0;
+		  u64 sum = 0;
+		  fformat (stdout, "Histogram %s (thread %d):\n", res[i].name,
+			   k);
+		  for (int j = 1; j < n_bins; ++j)
+		    {
+		      cumulative += bins[j];
+		      sum += bins[j] *
+			     (1ULL << (min_exp + j - 1)); // midpoint approx
+		      fformat (stdout, "  <= %llu: %llu (cumulative: %llu)\n",
+			       (1ULL << (min_exp + j - 1)), bins[j],
+			       cumulative);
+		    }
+		  fformat (stdout,
+			   "  +Inf: %llu (total count: %llu, sum: %llu)\n",
+			   cumulative, cumulative, sum);
+		}
 	      break;
 
 	    case STAT_DIR_TYPE_NAME_VECTOR:

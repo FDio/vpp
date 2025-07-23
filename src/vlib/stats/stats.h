@@ -161,4 +161,82 @@ void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
 
 format_function_t format_vlib_stats_symlink;
 
+/* log2 histogram */
+u32 vlib_stats_add_histogram_log2 (char *fmt, ...);
+void vlib_stats_set_histogram_log2 (u32 entry_index, u32 thread_index,
+				    const u64 *bin_counts);
+
+/* Ring buffer configuration */
+typedef struct
+{
+  u32 entry_size; /* Size of each entry in bytes */
+  u32 ring_size;  /* Number of entries in the ring */
+  u32 n_threads;  /* Number of threads (one ring per thread) */
+} __attribute__ ((packed)) vlib_stats_ring_config_t;
+
+/* Ring buffer metadata (per thread) */
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head; /* Producer position */
+  u32 _pad0;
+  u64 sequence; /* Sequence number for overwrite detection */
+  u8 _pad1[CLIB_CACHE_LINE_BYTES - 16]; /* Pad to cache line size */
+} vlib_stats_ring_metadata_t;
+
+/* Ring buffer entry in stats directory */
+typedef struct
+{
+  vlib_stats_ring_config_t config;
+  u32 metadata_offset; /* Offset to metadata array (64-byte aligned) */
+  u32 data_offset;     /* Offset to ring buffer data */
+} __attribute__ ((packed)) vlib_stats_ring_buffer_t;
+
+/* Ring buffer */
+u32 vlib_stats_add_ring_buffer (vlib_stats_ring_config_t *config, char *fmt,
+				...);
+void *vlib_stats_ring_get_entry (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_produce (u32 entry_index, u32 thread_index, void *data);
+int vlib_stats_ring_consume (u32 entry_index, u32 thread_index, void *data,
+			     u64 *sequence_out);
+u32 vlib_stats_ring_get_count (u32 entry_index, u32 thread_index);
+u32 vlib_stats_ring_get_free_space (u32 entry_index, u32 thread_index);
+
+/* Direct serialization APIs - avoid extra copy */
+void *vlib_stats_ring_reserve_slot (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_commit_slot (u32 entry_index, u32 thread_index);
+int vlib_stats_ring_abort_slot (u32 entry_index, u32 thread_index);
+u32 vlib_stats_ring_get_slot_size (u32 entry_index);
+
+/* Performance monitoring */
+typedef struct
+{
+  u64 total_writes;
+  u64 total_reads;
+  u64 overwrites_detected;
+  u64 retries_occurred;
+  f64 avg_write_latency_ns;
+  f64 avg_read_latency_ns;
+} vlib_stats_ring_perf_t;
+
+vlib_stats_ring_perf_t *vlib_stats_ring_get_perf_stats (u32 entry_index,
+							u32 thread_index);
+void vlib_stats_ring_reset_perf_stats (u32 entry_index, u32 thread_index);
+
+/* Error handling and recovery */
+typedef enum
+{
+  VLIB_STATS_RING_OK = 0,
+  VLIB_STATS_RING_ERROR_INVALID_INDEX,
+  VLIB_STATS_RING_ERROR_INVALID_THREAD,
+  VLIB_STATS_RING_ERROR_MEMORY_ALLOC,
+  VLIB_STATS_RING_ERROR_OVERWRITE_DETECTED,
+  VLIB_STATS_RING_ERROR_CORRUPTED_DATA
+} vlib_stats_ring_error_t;
+
+vlib_stats_ring_error_t vlib_stats_ring_get_last_error (u32 entry_index,
+							u32 thread_index);
+const char *vlib_stats_ring_error_string (vlib_stats_ring_error_t error);
+int vlib_stats_ring_validate_integrity (u32 entry_index, u32 thread_index);
+
 #endif
