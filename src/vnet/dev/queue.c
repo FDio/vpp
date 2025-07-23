@@ -29,13 +29,12 @@ vnet_dev_rx_queue_free (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 
 vnet_dev_rv_t
 vnet_dev_rx_queue_alloc (vlib_main_t *vm, vnet_dev_port_t *port,
-			 u16 queue_size)
+			 u16 queue_size, vnet_dev_queue_id_t qid,
+			 clib_thread_index_t ti)
 {
-  vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_rx_queue_t *rxq, **qp;
   vnet_dev_t *dev = port->dev;
   vnet_dev_rv_t rv = VNET_DEV_OK;
-  u16 n_threads = vlib_get_n_threads ();
 
   vnet_dev_port_validate (vm, port);
 
@@ -54,15 +53,10 @@ vnet_dev_rx_queue_alloc (vlib_main_t *vm, vnet_dev_port_t *port,
   rxq->index = qp - port->rx_queues;
 
   /* default queue id - can be changed by driver */
-  rxq->queue_id = qp - port->rx_queues;
+  rxq->queue_id = qid;
   ASSERT (rxq->queue_id < port->attr.max_rx_queues);
 
-  if (n_threads > 1)
-    {
-      rxq->rx_thread_index = dm->next_rx_queue_thread++;
-      if (dm->next_rx_queue_thread >= n_threads)
-	dm->next_rx_queue_thread = 1;
-    }
+  rxq->rx_thread_index = ti;
 
   if (port->rx_queue_ops.alloc)
     rv = port->rx_queue_ops.alloc (vm, rxq);
@@ -122,7 +116,7 @@ vnet_dev_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 
 vnet_dev_rv_t
 vnet_dev_tx_queue_alloc (vlib_main_t *vm, vnet_dev_port_t *port,
-			 u16 queue_size)
+			 u16 queue_size, vnet_dev_queue_id_t qid)
 {
   vnet_dev_tx_queue_t *txq, **qp;
   vnet_dev_t *dev = port->dev;
@@ -142,8 +136,7 @@ vnet_dev_tx_queue_alloc (vlib_main_t *vm, vnet_dev_port_t *port,
   txq->size = queue_size;
   txq->index = qp - port->tx_queues;
 
-  /* default queue id - can be changed by driver */
-  txq->queue_id = qp - port->tx_queues;
+  txq->queue_id = qid;
   ASSERT (txq->queue_id < port->attr.max_tx_queues);
 
   if (port->tx_queue_ops.alloc)
