@@ -344,6 +344,7 @@ void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				    u32 start_bucket);
 void tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
+void tcp_cancel_cleanup (tcp_connection_t *tc);
 void tcp_check_gso (tcp_connection_t *tc);
 
 int tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4);
