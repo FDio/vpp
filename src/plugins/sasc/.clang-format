@@ -1,0 +1,52 @@
+# LLVM style configuration for sesschain plugin
+BasedOnStyle: LLVM
+UseTab: Never
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 120
+SortIncludes: false
+AlignConsecutiveMacros: true
+BreakBeforeTernaryOperators: false
+BreakBeforeBinaryOperators: None
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+
+ForEachMacros:
+  - 'clib_bitmap_foreach'
+  - 'pool_foreach'
+  - 'pool_foreach_index'
+  - 'pool_foreach_pointer'
+  - 'vec_foreach'
+  - 'vec_foreach_backwards'
+  - 'vec_foreach_index'
+  - 'vec_foreach_index_backwards'
+  - 'vec_foreach_pointer'
+  - 'vlib_foreach_rx_tx'
+  - 'foreach_int'
+  - 'foreach_pointer'
+  - 'foreach_vlib_main'
+  - 'foreach_set_bit_index'
+  - 'foreach_vlib_frame_bitmap_set_bit_index'
+  - 'FOREACH_ARRAY_ELT'
+  - 'RTE_ETH_FOREACH_DEV'
+  - 'foreach_clib_stack_frame'
+  - 'foreach_vnet_dev_rx_queue_runtime'
+  - 'foreach_vnet_dev_counter'
+  - 'foreach_vnet_dev_port_rx_queue'
+  - 'foreach_vnet_dev_port_tx_queue'
+  - 'foreach_vnet_dev_port'
+  - 'foreach_vnet_dev_args'
+  - 'foreach_vnet_dev_port_args'
+  - 'foreach_clib_dt_tree_node'
+  - 'foreach_clib_dt_child_node'
+
+StatementMacros:
+  - 'CLIB_MULTIARCH_FN'
+  - 'VLIB_NODE_FN'
+  - 'VNET_DEV_NODE_FN'
+  - 'VNET_DEVICE_CLASS_TX_FN'
+  - '__clib_section'
+  - '__clib_aligned'
+
+WhitespaceSensitiveMacros:
+  - 'WARN_ON'
+  - 'WARN_OFF'
