@@ -17,6 +17,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/session/transport.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <sys/epoll.h>
 #include <vnet/session/session_rules_table.h>
 
@@ -2687,6 +2688,213 @@ session_test_ext_cfg (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static int
+session_test_reconn_while_closed (vlib_main_t *vm, unformat_input_t *input)
+{
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234;
+  u32 server_index, client_index, sw_if_index[2], tries = 0;
+  u16 placeholder_server_port = 1234, placeholder_client_port = 5678;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
+  u32 client_vrf = 0, server_vrf = 1;
+  ip4_address_t intf_addr[2];
+  u8 *appns_id;
+  int error;
+
+  ST_DBG ("session_test_reconn_while_closed");
+
+  /* Reset global state */
+  connected_session_index = connected_session_thread = ~0;
+  accepted_session_index = accepted_session_thread = ~0;
+  placeholder_accept = 0;
+  app_session_error = 0;
+
+  /* Create the loopbacks */
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x03030303);
+  session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]);
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x04040404);
+  session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]);
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 1 /* is_add */);
+
+  /* Insert namespace */
+  appns_id = format (0, "appns_server");
+  vnet_app_namespace_add_del_args_t ns_args = { .ns_id = appns_id,
+						.secret = placeholder_secret,
+						.sw_if_index = sw_if_index[1],
+						.ip4_fib_id = 0,
+						.is_add = 1 };
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
+
+  /* Attach client/server */
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "session_test_client"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "client app attached: %U", format_session_error,
+		error);
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  attach_args.name = format (0, "session_test_server");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server app attached: %U", format_session_error,
+		error);
+  vec_free (attach_args.name);
+  server_index = attach_args.app_index;
+
+  /* Listen on server */
+  server_sep.is_ip4 = 1;
+  server_sep.port = placeholder_server_port;
+  vnet_listen_args_t bind_args = {
+    .sep_ext = server_sep,
+    .app_index = server_index,
+  };
+  error = vnet_listen (&bind_args);
+  SESSION_TEST ((error == 0), "server is listening");
+
+  /* First connection: Connect with fixed 5-tuple */
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
+  client_sep.port = placeholder_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
+  client_sep.peer.port = placeholder_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = client_sep,
+    .app_index = client_index,
+  };
+
+  connected_session_index = connected_session_thread = ~0;
+  accepted_session_index = accepted_session_thread = ~0;
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "connecting first session");
+
+  /* Wait for connection establishment */
+  tries = 0;
+  while (placeholder_accept == 0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST ((accepted_session_index != ~0),
+		"first session is accepted: %u", accepted_session_index);
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST ((connected_session_index != ~0),
+		"first session is connected: %u", connected_session_index);
+
+  /* Acquire server side connections prior to disconnect for later use */
+  transport_connection_t *tc = session_get_transport (
+    session_get (accepted_session_index, accepted_session_thread));
+
+  /* Close the first connection from server side */
+  vnet_disconnect_args_t disconnect_args = {
+    .handle =
+      session_make_handle (accepted_session_index, accepted_session_thread),
+    .app_index = server_index,
+  };
+  error = vnet_disconnect_session (&disconnect_args);
+  SESSION_TEST ((error == 0), "first session is being disconnected by server");
+
+  /* Wait for disconnection of client */
+  tries = 0;
+  while (connected_session_index != ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST ((connected_session_index == ~0),
+		"the client connection is disconnected");
+
+  /* force server side to get CLOSED state */
+  transport_reset (tc->proto, tc->c_index, tc->thread_index);
+  tcp_connection_t *tcp = tcp_connection_get (tc->c_index, tc->thread_index);
+  SESSION_TEST ((tcp && tcp->state == TCP_STATE_CLOSED),
+		"the server connection is in CLOSED");
+
+  /* Second connection: attempt to reconnect with same 5-tuple */
+  ST_DBG ("Trying to reconnect to CLOSED Server session");
+  placeholder_accept = 0;
+
+  /* Use identical 5-tuple */
+  error = vnet_connect (&connect_args);
+  SESSION_TEST (error == 0, "immediate second connect should not fail: %U",
+		format_session_error, error);
+  /* If connect succeeds, wait a bit to see if connection actually establishes
+   */
+  tries = 0;
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST (connected_session_index != ~0,
+		"immediate second connection should establish");
+
+  /* Clean up the second connection */
+  if (connected_session_index != ~0)
+    {
+      disconnect_args.handle = session_make_handle (connected_session_index,
+						    connected_session_thread);
+      disconnect_args.app_index = client_index;
+      error = vnet_disconnect_session (&disconnect_args);
+      SESSION_TEST ((error == 0), "second disconnect should work");
+    }
+
+  /* Cleanup */
+  vnet_app_detach_args_t detach_args = {
+    .app_index = server_index,
+    .api_client_index = ~0,
+  };
+  vnet_application_detach (&detach_args);
+  detach_args.app_index = client_index;
+  vnet_application_detach (&detach_args);
+
+  ns_args.is_add = 0;
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns delete should succeed: %d", error);
+
+  /* Allow cleanup to finish */
+  vlib_process_suspend (vm, 100e-3);
+
+  session_add_del_route_via_lookup_in_table (
+    client_vrf, server_vrf, &intf_addr[1], 32, 0 /* is_add */);
+  session_add_del_route_via_lookup_in_table (
+    server_vrf, client_vrf, &intf_addr[0], 32, 0 /* is_add */);
+
+  session_delete_loopback (sw_if_index[0]);
+  session_delete_loopback (sw_if_index[1]);
+
+  vec_free (appns_id);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -2719,6 +2927,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_sdl (vm, input);
       else if (unformat (input, "ext-cfg"))
 	res = session_test_ext_cfg (vm, input);
+      else if (unformat (input, "reconn-while-closed"))
+	res = session_test_reconn_while_closed (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
