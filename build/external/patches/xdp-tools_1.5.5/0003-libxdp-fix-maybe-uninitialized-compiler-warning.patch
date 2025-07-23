@@ -1,0 +1,26 @@
+From 3033b9bdbcdb270f15373b27933d554f847e01d4 Mon Sep 17 00:00:00 2001
+From: Yulong <yulong.pei@intel.com>
+Date: Fri, 6 Jan 2023 14:31:24 +0000
+Subject: [PATCH 3/3] libxdp: fix maybe-uninitialized compiler warning
+
+Signed-off-by: Yulong <yulong.pei@intel.com>
+---
+ lib/common.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/common.mk b/lib/common.mk
+index ce24c48..e964bd8 100644
+--- a/lib/common.mk
++++ b/lib/common.mk
+@@ -104,7 +104,7 @@ $(LIB_OBJS): %.o: %.c %.h $(LIB_H)
+ 
+ ALL_EXEC_TARGETS=$(USER_TARGETS) $(TEST_TARGETS)
+ $(ALL_EXEC_TARGETS): %: %.c  $(OBJECT_LIBBPF) $(OBJECT_LIBXDP) $(LIBMK) $(LIB_OBJS) $(KERN_USER_H) $(EXTRA_DEPS) $(EXTRA_USER_DEPS) $(BPF_SKEL_H) $(USER_EXTRA_C)
+-	$(QUIET_CC)$(CC) -Wall $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
++	$(QUIET_CC)$(CC) -Wall -Wno-maybe-uninitialized $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIB_OBJS) \
+ 	 $< $(USER_EXTRA_C) $(LDLIBS)
+ 
+ $(XDP_OBJ): %.o: %.c $(KERN_USER_H) $(EXTRA_DEPS) $(BPF_HEADERS) $(LIBMK)
+-- 
+2.25.1
+
