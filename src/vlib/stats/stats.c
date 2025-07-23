@@ -149,6 +149,7 @@ vlib_stats_remove_entry (u32 entry_index)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+    case STAT_DIR_TYPE_HISTOGRAM_LOG2:
       c = e->data;
       e->data = 0;
       oldheap = clib_mem_set_heap (sm->heap);
@@ -166,6 +167,20 @@ vlib_stats_remove_entry (u32 entry_index)
 	vec_free (vc[i]);
       vec_free (vc);
       clib_mem_set_heap (oldheap);
+      break;
+
+    case STAT_DIR_TYPE_RING_BUFFER:
+      {
+	vlib_stats_ring_buffer_t *ring_buffer = e->data;
+	if (ring_buffer)
+	  {
+	    /* Free ring buffer memory */
+	    oldheap = clib_mem_set_heap (sm->heap);
+	    clib_mem_free (ring_buffer);
+	    clib_mem_set_heap (oldheap);
+	  }
+	e->data = 0;
+      }
       break;
 
     case STAT_DIR_TYPE_SCALAR_INDEX:
@@ -241,7 +256,7 @@ vlib_stats_add_gauge (char *fmt, ...)
   va_start (va, fmt);
   name = va_format (0, fmt, &va);
   va_end (va);
-  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_SCALAR_INDEX, name);
+  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_GAUGE, name);
 }
 
 void
@@ -369,6 +384,18 @@ vlib_stats_add_counter_vector (char *fmt, ...)
 }
 
 u32
+vlib_stats_add_histogram_log2 (char *fmt, ...)
+{
+  va_list va;
+  u8 *name;
+
+  va_start (va, fmt);
+  name = va_format (0, fmt, &va);
+  va_end (va);
+  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_HISTOGRAM_LOG2, name);
+}
+
+u32
 vlib_stats_add_counter_pair_vector (char *fmt, ...)
 {
   va_list va;
@@ -390,7 +417,8 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
   int rv = 1;
 
   oldheap = clib_mem_set_heap (sm->heap);
-  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
+  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE ||
+      e->type == STAT_DIR_TYPE_HISTOGRAM_LOG2)
     {
       u32 idx0 = va_arg (*va, u32);
       u32 idx1 = va_arg (*va, u32);
@@ -459,7 +487,8 @@ vlib_stats_validate (u32 entry_index, ...)
 
   va_start (va, entry_index);
 
-  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
+  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE ||
+      e->type == STAT_DIR_TYPE_HISTOGRAM_LOG2)
     {
       u32 idx0 = va_arg (va, u32);
       u32 idx1 = va_arg (va, u32);
@@ -571,4 +600,235 @@ vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *reg)
   c->private_data = reg->private_data;
 
   return;
+}
+
+u32
+vlib_stats_add_ring_buffer (vlib_stats_ring_config_t *config, char *fmt, ...)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  va_list va;
+  u8 *name;
+  vlib_stats_ring_buffer_t *ring_buffer;
+  u32 entry_index, total_size, metadata_size, data_size;
+
+  va_start (va, fmt);
+  name = va_format (0, fmt, &va);
+  va_end (va);
+
+  entry_index =
+    vlib_stats_new_entry_internal (STAT_DIR_TYPE_RING_BUFFER, name);
+  if (entry_index == CLIB_U32_MAX)
+    return CLIB_U32_MAX;
+  vlib_stats_segment_lock ();
+
+  /* Calculate sizes */
+  metadata_size = config->n_threads * sizeof (vlib_stats_ring_metadata_t);
+  data_size = config->n_threads * config->ring_size * config->entry_size;
+
+  /* Calculate total size with metadata aligned to 64 bytes for atomic
+   * operations */
+  u32 data_offset = sizeof (vlib_stats_ring_buffer_t);
+  u32 metadata_offset = CLIB_CACHE_LINE_ROUND (data_offset + data_size);
+  total_size = metadata_offset + metadata_size;
+
+  /* Allocate ring buffer structure */
+  void *oldheap = clib_mem_set_heap (sm->heap);
+  ring_buffer = clib_mem_alloc_aligned (total_size, CLIB_CACHE_LINE_BYTES);
+  clib_memset (ring_buffer, 0, total_size);
+  clib_mem_set_heap (oldheap);
+
+  /* Set up offsets */
+  ring_buffer->config = *config;
+  ring_buffer->data_offset = data_offset;
+  ring_buffer->metadata_offset = metadata_offset;
+
+  sm->directory_vector[entry_index].data = ring_buffer;
+
+  vlib_stats_segment_unlock ();
+
+  return entry_index;
+}
+
+void *
+vlib_stats_ring_get_entry (u32 entry_index, u32 thread_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+  vlib_stats_ring_metadata_t *metadata =
+    (vlib_stats_ring_metadata_t *) ((u8 *) ring_buffer +
+				    ring_buffer->metadata_offset +
+				    thread_index *
+				      sizeof (vlib_stats_ring_metadata_t));
+
+  if (thread_index >= ring_buffer->config.n_threads)
+    return 0;
+
+  ASSERT (((uintptr_t) metadata % CLIB_CACHE_LINE_BYTES) == 0);
+
+  // /* Check if ring is full */
+  // if (metadata->count >= ring_buffer->config.ring_size)
+  //   return 0;
+
+  /* Calculate entry pointer */
+  u32 offset = thread_index * ring_buffer->config.ring_size *
+	       ring_buffer->config.entry_size;
+  offset += metadata->head * ring_buffer->config.entry_size;
+
+  return (u8 *) ring_buffer + ring_buffer->data_offset + offset;
+}
+
+int
+vlib_stats_ring_produce (u32 entry_index, u32 thread_index, void *data)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+  vlib_stats_ring_metadata_t *metadata =
+    (vlib_stats_ring_metadata_t *) ((u8 *) ring_buffer +
+				    ring_buffer->metadata_offset +
+				    thread_index *
+				      sizeof (vlib_stats_ring_metadata_t));
+
+  if (thread_index >= ring_buffer->config.n_threads)
+    return -1;
+
+  ASSERT (((uintptr_t) metadata % CLIB_CACHE_LINE_BYTES) == 0);
+
+  /* Prefetch next slot for better cache performance */
+  u32 next_head = (metadata->head + 1) % ring_buffer->config.ring_size;
+  /* Note: CLIB_PREFETCH would be used here for optimal cache performance */
+
+  /* Copy data to current head position */
+  void *entry = vlib_stats_ring_get_entry (entry_index, thread_index);
+  if (!entry)
+    return -1;
+
+  clib_memcpy_fast (entry, data, ring_buffer->config.entry_size);
+
+  /* Update metadata - always advance head and increment sequence */
+  metadata->head = next_head;
+  __atomic_store_n (&metadata->sequence, metadata->sequence + 1,
+		    __ATOMIC_RELEASE);
+
+  return 0;
+}
+
+int
+vlib_stats_ring_consume (u32 entry_index, u32 thread_index, void *data,
+			 u64 *sequence_out)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+  vlib_stats_ring_metadata_t *metadata =
+    (vlib_stats_ring_metadata_t *) ((u8 *) ring_buffer +
+				    ring_buffer->metadata_offset +
+				    thread_index *
+				      sizeof (vlib_stats_ring_metadata_t));
+
+  if (thread_index >= ring_buffer->config.n_threads)
+    return -1;
+
+  ASSERT (((uintptr_t) metadata % CLIB_CACHE_LINE_BYTES) == 0);
+
+  /* Note: This function is for testing/debugging only since the reader
+     is read-only and manages its own state. The writer doesn't track
+     reader position. */
+
+  /* Return sequence number if requested */
+  if (sequence_out)
+    *sequence_out = __atomic_load_n (&metadata->sequence, __ATOMIC_ACQUIRE);
+
+  return 0;
+}
+
+/* Direct serialization APIs - avoid extra copy */
+
+void *
+vlib_stats_ring_reserve_slot (u32 entry_index, u32 thread_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+  vlib_stats_ring_metadata_t *metadata =
+    (vlib_stats_ring_metadata_t *) ((u8 *) ring_buffer +
+				    ring_buffer->metadata_offset +
+				    thread_index *
+				      sizeof (vlib_stats_ring_metadata_t));
+
+  if (thread_index >= ring_buffer->config.n_threads)
+    return 0;
+
+  ASSERT (((uintptr_t) metadata % CLIB_CACHE_LINE_BYTES) == 0);
+
+  /* Calculate entry pointer */
+  u32 offset = thread_index * ring_buffer->config.ring_size *
+	       ring_buffer->config.entry_size;
+  offset += metadata->head * ring_buffer->config.entry_size;
+
+  return (u8 *) ring_buffer + ring_buffer->data_offset + offset;
+}
+
+int
+vlib_stats_ring_commit_slot (u32 entry_index, u32 thread_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+  vlib_stats_ring_metadata_t *metadata =
+    (vlib_stats_ring_metadata_t *) ((u8 *) ring_buffer +
+				    ring_buffer->metadata_offset +
+				    thread_index *
+				      sizeof (vlib_stats_ring_metadata_t));
+  ASSERT (((uintptr_t) metadata % CLIB_CACHE_LINE_BYTES) == 0);
+  if (thread_index >= ring_buffer->config.n_threads)
+    return -1;
+
+  /* Update metadata - always advance head and increment sequence */
+  metadata->head = (metadata->head + 1) % ring_buffer->config.ring_size;
+  __atomic_store_n (&metadata->sequence, metadata->sequence + 1,
+		    __ATOMIC_RELEASE);
+
+  return 0;
+}
+
+int
+vlib_stats_ring_abort_slot (u32 entry_index, u32 thread_index)
+{
+  /* For abort, we don't need to do anything since we haven't updated the
+     metadata yet. The slot will be reused on the next reserve call. */
+  return 0;
+}
+
+u32
+vlib_stats_ring_get_slot_size (u32 entry_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+
+  return ring_buffer->config.entry_size;
+}
+
+u32
+vlib_stats_ring_get_count (u32 entry_index, u32 thread_index)
+{
+  /* Note: Since the writer doesn't track reader state, we can't determine
+     the actual count of unread entries. This function is kept for API
+     compatibility but always returns 0. */
+  return 0;
+}
+
+u32
+vlib_stats_ring_get_free_space (u32 entry_index, u32 thread_index)
+{
+  /* Note: Since the writer doesn't track reader state, we can't determine
+     the actual free space. This function is kept for API compatibility
+     but always returns the full ring size. */
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  vlib_stats_ring_buffer_t *ring_buffer = e->data;
+
+  return ring_buffer->config.ring_size;
 }

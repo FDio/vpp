@@ -41,7 +41,7 @@
 #include <vlib/stats/stats.h>
 
 void
-vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
+vlib_clear_simple_counters (vlib_simple_counter_main_t *cm)
 {
   counter_t *my_counters;
   uword i, j;
@@ -58,7 +58,7 @@ vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
 }
 
 void
-vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
+vlib_clear_combined_counters (vlib_combined_counter_main_t *cm)
 {
   vlib_counter_t *my_counters;
   uword i, j;
@@ -76,7 +76,7 @@ vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 }
 
 void
-vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
+vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   char *name = cm->stat_segment_name ? cm->stat_segment_name : cm->name;
@@ -99,7 +99,7 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 }
 
 void
-vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
+vlib_free_simple_counter (vlib_simple_counter_main_t *cm)
 {
   if (cm->stats_entry_index == ~0)
     {
@@ -115,7 +115,7 @@ vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
 }
 
 void
-vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
+vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   char *name = cm->stat_segment_name ? cm->stat_segment_name : cm->name;
@@ -138,8 +138,8 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 }
 
 int
-  vlib_validate_combined_counter_will_expand
-  (vlib_combined_counter_main_t * cm, u32 index)
+vlib_validate_combined_counter_will_expand (vlib_combined_counter_main_t *cm,
+					    u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
@@ -170,7 +170,7 @@ int
 }
 
 void
-vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
+vlib_free_combined_counter (vlib_combined_counter_main_t *cm)
 {
   if (cm->stats_entry_index == ~0)
     {
@@ -186,17 +186,50 @@ vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 }
 
 u32
-vlib_combined_counter_n_counters (const vlib_combined_counter_main_t * cm)
+vlib_combined_counter_n_counters (const vlib_combined_counter_main_t *cm)
 {
   ASSERT (cm->counters);
   return (vec_len (cm->counters[0]));
 }
 
 u32
-vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm)
+vlib_simple_counter_n_counters (const vlib_simple_counter_main_t *cm)
 {
   ASSERT (cm->counters);
   return (vec_len (cm->counters[0]));
+}
+
+void
+vlib_validate_log2_histogram (vlib_log2_histogram_main_t *hm, u32 num_bins)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  char *name = hm->stat_segment_name ? hm->stat_segment_name : hm->name;
+
+  if (name == 0)
+    {
+      if (hm->bins == 0)
+	{
+	  hm->stats_entry_index = ~0;
+	  vec_validate (hm->bins, tm->n_vlib_mains - 1);
+	  for (int i = 0; i < tm->n_vlib_mains; i++)
+	    {
+	      vec_validate_aligned (hm->bins[i], num_bins - 1,
+				    CLIB_CACHE_LINE_BYTES);
+	    }
+	  return;
+	}
+    }
+
+  if (hm->bins == 0)
+    hm->stats_entry_index = vlib_stats_add_histogram_log2 ("%s", name);
+
+  vlib_stats_validate (hm->stats_entry_index, tm->n_vlib_mains - 1, num_bins);
+  hm->bins = vlib_stats_get_entry_data_pointer (hm->stats_entry_index);
+  for (int i = 0; i < tm->n_vlib_mains; i++)
+    {
+      counter_t *c = hm->bins[i];
+      c[0] = hm->min_exp;
+    }
 }
 
 /*
