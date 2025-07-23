@@ -199,6 +199,15 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
       return VNET_DEV_ERR_NOT_SUPPORTED;
     }
 
+  if (args->flags.e & VNET_DEV_PORT_F_QUEUE_PER_THREAD)
+    {
+      if (args->num_rx_queues)
+	return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
+      if (args->num_tx_queues)
+	return VNET_DEV_ERR_INVALID_NUM_TX_QUEUES;
+      args->num_rx_queues = args->num_tx_queues = n_threads;
+    }
+
   if (args->num_rx_queues)
     {
       if (args->num_rx_queues > port->attr.max_rx_queues)
@@ -240,6 +249,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   clib_memcpy (a.name, args->intf_name, sizeof (a.name));
   a.default_is_intr_mode = default_is_intr_mode;
   a.consistent_qp = (args->flags.n & VNET_DEV_PORT_F_CONSISTENT_QP) != 0;
+  a.queue_per_thread = (args->flags.n & VNET_DEV_PORT_F_QUEUE_PER_THREAD) != 0;
 
   rv = vnet_dev_process_call_port_op_with_ptr (vm, port,
 					       vnet_dev_port_if_create, &a);

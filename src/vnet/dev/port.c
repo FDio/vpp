@@ -608,11 +608,27 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
     a->num_rx_queues, a->rxq_sz, a->num_tx_queues, a->txq_sz);
 
   for (int i = 0; i < ifs->num_rx_queues; i++)
-    if ((rv = vnet_dev_rx_queue_alloc (vm, port, ifs->rxq_sz)) != VNET_DEV_OK)
-      goto error;
+    {
+      clib_thread_index_t ti = 0;
+      if (n_threads > 1)
+	{
+	  if (!a->queue_per_thread)
+	    {
+	      ti = dm->next_rx_queue_thread++;
+	      if (dm->next_rx_queue_thread >= n_threads)
+		dm->next_rx_queue_thread = 0;
+	    }
+	  else
+	    ti = i;
+	}
+      if ((rv = vnet_dev_rx_queue_alloc (vm, port, ifs->rxq_sz, i, ti)) !=
+	  VNET_DEV_OK)
+	goto error;
+    }
 
   for (u32 i = 0; i < ifs->num_tx_queues; i++)
-    if ((rv = vnet_dev_tx_queue_alloc (vm, port, ifs->txq_sz)) != VNET_DEV_OK)
+    if ((rv = vnet_dev_tx_queue_alloc (vm, port, ifs->txq_sz, i)) !=
+	VNET_DEV_OK)
       goto error;
 
   for (ti = 0; ti < n_threads; ti++)
