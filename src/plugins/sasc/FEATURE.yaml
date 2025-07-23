@@ -1,0 +1,18 @@
+---
+name: Session Aware Service Chaining (SASC)
+maintainer:
+  - Ole Trøan <otroan@employees.org>
+features:
+  - Session-aware service chaining with forward/reverse/miss chains
+  - Multi-tenant configuration with per-tenant service chains
+  - High-performance 5-tuple session lookup with bihash
+  - TCP analysis sensor (state, RTT, retransmit, reorder, anomalies)
+  - PCAP capture sensor with CLI control and test integration
+  - L4 lifecycle tracking and bidirectional flow management
+  - CLI for services, tenants, sessions; comprehensive API support
+  - Statistics and monitoring for sessions and sensors
+description: "Session-aware, multi-tenant service chaining framework with sensors (TCP, PCAP, L4)."
+state: experimental
+properties: [CLI, STATS]
+
+

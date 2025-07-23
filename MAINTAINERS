@@ -938,3 +938,9 @@ Plugin - Shared Elog
 I:	selog
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/selog
+
+SASC
+I:	sasc
+M:	Ole Troan <otroan@employees.org>
+M:	Mohammed Hawari <mohammed@hawari.fr>
+F:	src/plugins/sasc/
