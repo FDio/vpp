@@ -49,6 +49,7 @@ from struct import Struct
 import time
 import unittest
 import re
+import asyncio
 
 
 def recv_fd(sock):
@@ -191,7 +192,7 @@ class VPPStats:
         """Get pointer of directory vector"""
         return self.shared_headerfmt.unpack_from(self.statseg)[4]
 
-    elementfmt = "IQ128s"
+    elementfmt = "IQI128s"
 
     def refresh(self, blocking=True):
         """Refresh directory vector cache (epoch changed)"""
@@ -204,8 +205,11 @@ class VPPStats:
                     for i, direntry in enumerate(
                         StatsVector(self, self.directory_vector, self.elementfmt)
                     ):
-                        path_raw = direntry[2].find(b"\x00")
-                        path = direntry[2][:path_raw].decode("ascii")
+                        print(f"DIRENT: {direntry}")
+                        path_raw = direntry[3].find(b"\x00")
+                        print(f"PATH RAW: {path_raw}")
+                        path = direntry[3][:path_raw].decode("ascii")
+                        print(f"PATH: {path}")
                         directory[path] = StatsEntry(direntry[0], direntry[1])
                         directory_by_idx[i] = path
                     self.directory = directory
@@ -288,6 +292,37 @@ class VPPStats:
         for cnt in counters:
             result[cnt] = self.__getitem__(cnt, blocking)
         return result
+
+    def get_ring_buffer(self, name, blocking=True):
+        """Get a ring buffer by name"""
+        if not self.connected:
+            self.connect()
+
+        while True:
+            try:
+                if self.last_epoch != self.epoch:
+                    self.refresh(blocking)
+                with self.lock:
+                    entry = self.directory[name]
+                    if entry.type == 8:  # STAT_DIR_TYPE_RING_BUFFER
+                        return entry.get_counter(self)
+                    else:
+                        raise ValueError(f"'{name}' is not a ring buffer")
+            except IOError:
+                if not blocking:
+                    raise
+
+    def poll_ring_buffer(self, name, thread_index=0, timeout=None, callback=None):
+        """Convenience method to poll a ring buffer by name"""
+        ring_buffer = self.get_ring_buffer(name)
+        return ring_buffer.poll_for_data(thread_index, timeout, callback)
+
+    async def poll_ring_buffer_async(
+        self, name, thread_index=0, timeout=None, callback=None
+    ):
+        """Async convenience method to poll a ring buffer by name"""
+        ring_buffer = self.get_ring_buffer(name)
+        return await ring_buffer.poll_for_data_async(thread_index, timeout, callback)
 
 
 class StatsLock:
@@ -393,6 +428,28 @@ class SimpleList(list):
         return sum(self)
 
 
+# Add a helper class for histogram log2
+class StatsHistogramLog2:
+    def __init__(self, bins, min_exp):
+        self.bins = bins  # list of lists: [thread][bin]
+        self.min_exp = min_exp
+
+    def sum(self):
+        return sum(sum(thread_bins) for thread_bins in self.bins)
+
+    def thread_count(self):
+        return len(self.bins)
+
+    def bin_count(self):
+        return max((len(b) for b in self.bins), default=0)
+
+    def __getitem__(self, idx):
+        return self.bins[idx]
+
+    def __repr__(self):
+        return f"StatsHistogramLog2(min_exp={self.min_exp}, bins={self.bins})"
+
+
 class StatsEntry:
     """An individual stats entry"""
 
@@ -412,6 +469,10 @@ class StatsEntry:
             self.function = self.name
         elif stattype == 6:
             self.function = self.symlink
+        elif stattype == 7:
+            self.function = self.histogram_log2
+        elif stattype == 8:  # STAT_DIR_TYPE_RING_BUFFER
+            self.function = self.ring_buffer
         else:
             self.function = self.illegal
 
@@ -457,10 +518,226 @@ class StatsEntry:
         name = stats.directory_by_idx[index1]
         return stats[name][:, index2]
 
+    def ring_buffer(self, stats):
+        """Ring buffer counter"""
+        return StatsRingBuffer(stats, self.value)
+
+    def histogram_log2(self, stats):
+        """Histogram log2 counter (STAT_DIR_TYPE_HISTOGRAM_LOG2)"""
+        # The value is a pointer to a vector of pointers (per-thread), each pointing to a vector of uint64_t bins
+        threads_ptr = self.value
+        thread_vec = StatsVector(stats, threads_ptr, "P")
+        all_bins = []
+        min_exp = 0
+        for thread_ptr_tuple in thread_vec:
+            bins_ptr = thread_ptr_tuple[0]
+            if bins_ptr:
+                bins_vec = StatsVector(stats, bins_ptr, "Q")
+                bins = [v[0] for v in bins_vec]
+                if bins:
+                    min_exp = bins[0]
+                    all_bins.append(bins[1:])
+                else:
+                    all_bins.append([])
+            else:
+                all_bins.append([])
+        return StatsHistogramLog2(all_bins, min_exp)
+
     def get_counter(self, stats):
         """Return a list of counters"""
         if stats:
             return self.function(stats)
+
+
+class StatsRingBuffer:
+    """Ring buffer for high-performance data streaming"""
+
+    def __init__(self, stats, ring_buffer_ptr):
+        self.stats = stats
+        self.ring_buffer_ptr = ring_buffer_ptr
+        self.config = self._get_config()
+        self.metadata_ptr = self._get_metadata_ptr()
+        self.data_ptr = self._get_data_ptr()
+        # Track local tail and last sequence for each thread
+        self.local_tails = [
+            self._get_thread_metadata(i)["tail"]
+            for i in range(self.config["n_threads"])
+        ]
+        self.last_sequences = [None] * self.config["n_threads"]
+
+    def _get_config(self):
+        """Get ring buffer configuration from shared memory"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        config_data = self.stats.statseg[config_offset : config_offset + 12]
+        entry_size, ring_size, n_threads = Struct("III").unpack(config_data)
+        return {
+            "entry_size": entry_size,
+            "ring_size": ring_size,
+            "n_threads": n_threads,
+        }
+
+    def _get_metadata_ptr(self):
+        """Get pointer to metadata array using offset"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        # Read metadata_offset from the structure (at offset 12)
+        metadata_offset_data = self.stats.statseg[
+            config_offset + 12 : config_offset + 16
+        ]
+        metadata_offset = Struct("I").unpack(metadata_offset_data)[0]
+        return config_offset + metadata_offset
+
+    def _get_data_ptr(self):
+        """Get pointer to ring buffer data using offset"""
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        # Read data_offset from the structure (at offset 16)
+        data_offset_data = self.stats.statseg[config_offset + 16 : config_offset + 20]
+        data_offset = Struct("I").unpack(data_offset_data)[0]
+        return config_offset + data_offset
+
+    def _get_thread_metadata(self, thread_index):
+        """Get metadata for a specific thread, including sequence number"""
+        if thread_index >= self.config["n_threads"]:
+            raise IndexError(f"Thread index {thread_index} out of range")
+
+        # Metadata struct is now cache-line aligned, with sequence at offset 16
+        metadata_offset = self.metadata_ptr + (
+            thread_index * 64  # CLIB_CACHE_LINE_BYTES, typically 64
+        )
+        metadata_data = self.stats.statseg[metadata_offset : metadata_offset + 24]
+        head, tail, count, _, sequence = Struct("IIIIQ").unpack(metadata_data)
+        return {"head": head, "tail": tail, "count": count, "sequence": sequence}
+
+    def get_count(self, thread_index=0):
+        """Get current count of entries in ring buffer for a thread"""
+        metadata = self._get_thread_metadata(thread_index)
+        return metadata["count"]
+
+    def is_empty(self, thread_index=0):
+        """Check if ring buffer is empty for a thread"""
+        metadata = self._get_thread_metadata(thread_index)
+        return metadata["count"] == 0
+
+    def is_full(self, thread_index=0):
+        """Check if ring buffer is full for a thread"""
+        metadata = self._get_thread_metadata(thread_index)
+        return metadata["count"] >= self.config["ring_size"]
+
+    def consume_data(self, thread_index=0, max_entries=None):
+        """Consume data from ring buffer for a thread (read-only), with sequence check"""
+        metadata = self._get_thread_metadata(thread_index)
+        local_tail = self.local_tails[thread_index]
+        last_sequence = self.last_sequences[thread_index]
+        sequence = metadata["sequence"]
+
+        # Check for overwrite: if last_sequence is set, and difference is too large
+        if last_sequence is not None:
+            # If sequence advanced by more than available entries, entries were lost
+            expected = (last_sequence + self.get_count(thread_index)) % (1 << 64)
+            if sequence != expected:
+                print(
+                    f"[WARN] Ring buffer overwrite detected on thread {thread_index}: "
+                    f"sequence jumped from {last_sequence} to {sequence}"
+                )
+                # Optionally, resync local_tail to current tail
+                local_tail = metadata["tail"]
+
+        available = metadata["count"]
+        if available == 0:
+            self.last_sequences[thread_index] = sequence
+            return []
+
+        if max_entries is None:
+            max_entries = available
+        else:
+            max_entries = min(max_entries, available)
+
+        consumed_data = []
+        entry_size = self.config["entry_size"]
+
+        # Calculate data offset for this thread
+        thread_data_offset = self.data_ptr + (
+            thread_index * self.config["ring_size"] * entry_size
+        )
+
+        for i in range(max_entries):
+            entry_offset = thread_data_offset + (local_tail * entry_size)
+            entry_data = self.stats.statseg[entry_offset : entry_offset + entry_size]
+            consumed_data.append(entry_data)
+            local_tail = (local_tail + 1) % self.config["ring_size"]
+
+        # Update local tail and sequence position
+        self.local_tails[thread_index] = local_tail
+        self.last_sequences[thread_index] = sequence
+
+        return consumed_data
+
+    def poll_for_data(self, thread_index=0, timeout=None, callback=None):
+        """Poll for new data in ring buffer"""
+        start_time = time.time()
+
+        while True:
+            metadata = self._get_thread_metadata(thread_index)
+            local_tail = self.local_tails[thread_index]
+            available = metadata["count"]
+
+            if available > 0:
+                data = self.consume_data(thread_index, available)
+                if callback:
+                    for entry_data in data:
+                        try:
+                            callback(entry_data)
+                        except Exception as e:
+                            print(f"Callback error: {e}")
+                else:
+                    return data
+
+            if timeout and (time.time() - start_time) > timeout:
+                return []
+
+            time.sleep(0.000001)  # 1μs polling interval
+
+    async def poll_for_data_async(self, thread_index=0, timeout=None, callback=None):
+        """Async version of poll_for_data"""
+
+        start_time = asyncio.get_event_loop().time()
+
+        while True:
+            metadata = self._get_thread_metadata(thread_index)
+            local_tail = self.local_tails[thread_index]
+
+            # Check if new data is available using local tail
+            if metadata["head"] != local_tail:
+                # Calculate how many new entries
+                if metadata["head"] > local_tail:
+                    new_entries = metadata["head"] - local_tail
+                else:
+                    new_entries = (
+                        self.config["ring_size"] - local_tail + metadata["head"]
+                    )
+
+                data = self.consume_data(thread_index, new_entries)
+
+                if callback:
+                    for entry_data in data:
+                        await callback(entry_data)
+                else:
+                    return data
+
+            if timeout and (asyncio.get_event_loop().time() - start_time) > timeout:
+                return []
+
+            # Yield control to asyncio
+            await asyncio.sleep(0.000001)  # 1μs polling interval
+
+    def get_config(self):
+        """Get ring buffer configuration"""
+        return self.config.copy()
+
+    def __repr__(self):
+        return (
+            f"StatsRingBuffer(entry_size={self.config['entry_size']}, "
+            f"ring_size={self.config['ring_size']}, n_threads={self.config['n_threads']})"
+        )
 
 
 class TestStats(unittest.TestCase):
