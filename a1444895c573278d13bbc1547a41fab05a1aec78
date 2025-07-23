@@ -16,6 +16,24 @@
       "message": "Should we make the caps and devices variables to make sure they stay in sync across targets?",
       "revId": "a1444895c573278d13bbc1547a41fab05a1aec78",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da694542_d2628162",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-07-23T05:41:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1d240ab0_1227b9e3",
+      "revId": "a1444895c573278d13bbc1547a41fab05a1aec78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
