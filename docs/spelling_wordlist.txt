@@ -1010,6 +1010,8 @@ rwlocks
 rx
 rxandtx
 sa
+sasc
+SASC
 sbin
 scalable
 scanf
