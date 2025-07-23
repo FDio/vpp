@@ -2583,25 +2583,40 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* Probably we are in time-wait or closed state */
       else
 	{
+	  u32 fib_index;
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 				   thread_index);
-	  if (!tc || tc->state != TCP_STATE_TIME_WAIT)
+	  if (!tc)
 	    {
+	      tcp_inc_counter (listen, TCP_ERROR_INVALID_CONNECTION, 1);
+	      goto done;
+	    }
+
+	  fib_index = tc->c_fib_index;
+	  switch (tc->state)
+	    {
+	    case TCP_STATE_TIME_WAIT:
+	      if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
+		{
+		  /* This SYN can't be accepted */
+		  tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
+		  goto done;
+		}
+	      /* clean up the old session */
+	      tcp_connection_cleanup_and_notify (tc);
+	      break;
+	    case TCP_STATE_CLOSED:
+	      /* delete lookup for next connection */
+	      session_lookup_del_session (
+		session_get (tc->c_s_index, tc->c_thread_index));
+	      break;
+	    default:
 	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
 	    }
 
-	  if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
-	    {
-	      /* This SYN can't be accepted */
-	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
-	      goto done;
-	    }
-
-	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
-	  /* clean up the old session */
-	  tcp_connection_cleanup_and_notify (tc);
+	  lc = tcp_lookup_listener (b[0], fib_index, is_ip4);
 	  /* listener was cleaned up */
 	  if (!lc)
 	    {
