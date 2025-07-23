@@ -909,3 +909,8 @@ I:	sflow
 M:	Pim van Pelt <pim@ipng.nl>
 M:	Neil McKee <neil.mckee@inmon.com>
 F:	src/plugins/sflow/
+
+SASC
+I:	sasc
+M:	Ole Troan <otroan@employees.org>
+F:	src/plugins/sasc/
