@@ -116,6 +116,7 @@ DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 DEB_DEPENDS += libiberty-dev
 DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
+DEB_DEPENDS += libcbor-dev # for sasc export
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),24.04)
@@ -259,7 +260,7 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel lsb-release
 RPM_SUSE_DEVEL_DEPS += libpcap-devel llvm-devel
-RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel
+RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel libcurl-devel
 
 RPM_SUSE_PYTHON_DEPS = python3-devel python3-pip python3-rpm-macros
 
