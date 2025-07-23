@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-xdp-tools_version             := 1.2.9
+xdp-tools_version             := 1.5.5
 xdp-tools_tarball             := xdp-tools-$(xdp-tools_version).tar.gz
-xdp-tools_tarball_sha256sum_1.2.9 := 3f8d30bd2e00c522103d224014f59a95400144aba1f3b322c6ad473541a0f99e
+xdp-tools_tarball_sha256sum_1.5.5 := 9a4339ffc40df178c4ddf919cb2b23585a75b3023517c75e82c4dfb0899249c7
 
 xdp-tools_tarball_sha256sum      := $(xdp-tools_tarball_sha256sum_$(xdp-tools_version))
 xdp-tools_tarball_strip_dirs  := 1

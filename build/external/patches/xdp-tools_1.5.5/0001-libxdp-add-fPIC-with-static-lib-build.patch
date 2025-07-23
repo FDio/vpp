@@ -1,0 +1,26 @@
+From e83f80443a2f23a68037bf4c7ba16b3723d193a4 Mon Sep 17 00:00:00 2001
+From: Yulong <yulong.pei@intel.com>
+Date: Tue, 3 Jan 2023 14:16:17 +0000
+Subject: [PATCH] libxdp: add fPIC with static lib build
+
+Signed-off-by: Yulong <yulong.pei@intel.com>
+---
+ lib/libxdp/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/libxdp/Makefile b/lib/libxdp/Makefile
+index 4716fb0..403c2d9 100644
+--- a/lib/libxdp/Makefile
++++ b/lib/libxdp/Makefile
+@@ -87,7 +87,7 @@ $(SHARED_OBJDIR):
+ 	$(Q)mkdir -p $(SHARED_OBJDIR)
+ 
+ $(STATIC_OBJDIR)/%.o: %.c $(EXTRA_LIB_DEPS) | $(STATIC_OBJDIR)
+-	$(QUIET_CC)$(CC) $(CFLAGS) $(CPPFLAGS) $(STATIC_CFLAGS) -Wall -I../../headers -c $< -o $@
++	$(QUIET_CC)$(CC) $(CFLAGS) $(CPPFLAGS) $(STATIC_CFLAGS) -fPIC -Wall -I../../headers -c $< -o $@
+ 
+ $(SHARED_OBJDIR)/%.o: %.c $(EXTRA_LIB_DEPS) | $(SHARED_OBJDIR)
+ 	$(QUIET_CC)$(CC) $(CFLAGS) $(CPPFLAGS) $(SHARED_CFLAGS) -Wall -I../../headers -c $< -o $@
+-- 
+2.25.1
+
