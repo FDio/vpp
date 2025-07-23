@@ -23,6 +23,10 @@ static u16 vnet_dev_api_msg_id_base;
 foreach_vnet_dev_flag;
 #undef _
 
+#ifndef VL_API_DEV_PORT_FLAG_QUEUE_PER_THREAD
+#define VL_API_DEV_PORT_FLAG_QUEUE_PER_THREAD VNET_DEV_PORT_F_QUEUE_PER_THREAD
+#endif
+
 #define _(b, n, d)                                                            \
   STATIC_ASSERT ((int) VL_API_DEV_PORT_FLAG_##n == (int) VNET_DEV_PORT_F_##n, \
 		 "");

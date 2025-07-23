@@ -621,6 +621,7 @@ typedef struct
   u16 txq_sz;
   u8 default_is_intr_mode : 1;
   u8 consistent_qp : 1;
+  u8 queue_per_thread : 1;
 
   /* return */
   u32 sw_if_index;
@@ -665,8 +666,11 @@ vnet_dev_port_op_with_ptr_t vnet_dev_port_if_create;
 vnet_dev_port_op_t vnet_dev_port_if_remove;
 
 /* queue.c */
-vnet_dev_rv_t vnet_dev_rx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16);
-vnet_dev_rv_t vnet_dev_tx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16);
+vnet_dev_rv_t vnet_dev_rx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16,
+				       vnet_dev_queue_id_t,
+				       clib_thread_index_t);
+vnet_dev_rv_t vnet_dev_tx_queue_alloc (vlib_main_t *, vnet_dev_port_t *, u16,
+				       vnet_dev_queue_id_t);
 vnet_dev_rx_queue_op_no_rv_t vnet_dev_rx_queue_free;
 vnet_dev_tx_queue_op_no_rv_t vnet_dev_tx_queue_free;
 void vnet_dev_rx_queue_add_counters (vlib_main_t *, vnet_dev_rx_queue_t *,
