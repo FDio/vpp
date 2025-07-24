@@ -260,6 +260,30 @@
       },
       "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1699ce98_3c24a41c",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T16:18:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "79326a50_b207240e",
+      "range": {
+        "startLine": 652,
+        "startChar": 1,
+        "endLine": 656,
+        "endChar": 29
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
