@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "131ad05e_8e7f808d",
+        "filename": "src/vnet/bfd/bfd.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-07-24T16:38:03Z",
+      "side": 1,
+      "message": "u8?",
+      "range": {
+        "startLine": 400,
+        "startChar": 2,
+        "endLine": 400,
+        "endChar": 5
+      },
+      "revId": "45d8d58f10e7a4f509c77f388d2c8b5064a9a26c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e48aafba_964c7f82",
+        "filename": "src/vnet/bfd/bfd_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-07-24T16:38:03Z",
+      "side": 1,
+      "message": "it\u0027s very uncommon to write api code this way, unless it\u0027s a super complicated case\n\nI would suggest you replace the body with a much simpler\n\nREPLY_MACRO2 (..., {rmp-\u003etos \u003d bfd_main.tos;})",
+      "revId": "45d8d58f10e7a4f509c77f388d2c8b5064a9a26c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9692a3e4_5defbec5",
+        "filename": "src/vnet/bfd/bfd_main.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-07-24T16:38:03Z",
+      "side": 1,
+      "message": "there is missing newline above",
+      "revId": "45d8d58f10e7a4f509c77f388d2c8b5064a9a26c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cdf8dd1d_de06ad91",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 961,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-07-24T16:38:03Z",
+      "side": 1,
+      "message": "it looks like you are relying on the newly added test running before other tests here, which is not how BFD tests are done.\n\nyou should call the tos-setting API from setUp() or even better pick a test and pass it as argument\n\nI\u0027m not a fan of all the tests using TOS as I don\u0027t think that\u0027s the common use case",
+      "revId": "45d8d58f10e7a4f509c77f388d2c8b5064a9a26c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
