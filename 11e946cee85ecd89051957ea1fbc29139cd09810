@@ -16,6 +16,24 @@
       "message": "Because the connection is not cleaned up here, I\u0027d expect the lookup on line 2626 will hit exactly the same connection. During test do you happen to see error create exists incrementing?",
       "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a618e220_eed61eaa",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 3242
+      },
+      "writtenOn": "2025-07-24T00:48:07Z",
+      "side": 1,
+      "message": "Thanks for the comment.\n\nI tested this patch under stress conditions for CPS testing, but I didn’t observe any incrementing behavior. From what I can tell, the lookup is performed using a lookup table, and the connection in the case has already been removed from the table and is currently in pending_cleanups.\n\nPlease feel free to share any additional thoughts if I’ve missed something.",
+      "parentUuid": "fd99ce4f_07cf0911",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
