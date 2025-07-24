@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "77297f80_140ab0d6",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-24T12:50:33Z",
+      "side": 1,
+      "message": "Oh, fair enough then",
+      "parentUuid": "e3ced8d5_5371be24",
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7dd15df8_91631ece",
@@ -125,6 +143,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "76f46475_deb55d36",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-24T12:50:33Z",
+      "side": 1,
+      "message": "True that",
+      "parentUuid": "9888ae2f_5c25343b",
+      "range": {
+        "startLine": 633,
+        "startChar": 12,
+        "endLine": 633,
+        "endChar": 20
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "16330695_0c10b700",
@@ -186,6 +228,30 @@
       "side": 1,
       "message": "you will do extra memcopy, you can have ASSERT here which will check if first segment len is 0 to catch bugs",
       "parentUuid": "ae29b9c8_c3ef76bf",
+      "range": {
+        "startLine": 652,
+        "startChar": 1,
+        "endLine": 656,
+        "endChar": 29
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79326a50_b207240e",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-24T12:50:33Z",
+      "side": 1,
+      "message": "It doesn\u0027t have to be strictly memcpy, if we\u0027d end up iterating over the array to sum up the lengths, we might as well manually write the pointers to the static array and solve that problem. And the asserts catch it only in the release builds",
+      "parentUuid": "295b7a30_54d38b6e",
       "range": {
         "startLine": 652,
         "startChar": 1,
