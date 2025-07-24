@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "812fadb8_cbd2b48a",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:18:51Z",
+      "side": 1,
+      "message": "is this really needed?",
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dd15df8_91631ece",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:18:51Z",
+      "side": 1,
+      "message": "this is not needed you can sum len of each segment",
+      "range": {
+        "startLine": 633,
+        "startChar": 12,
+        "endLine": 633,
+        "endChar": 20
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16330695_0c10b700",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:18:51Z",
+      "side": 1,
+      "message": "you should call this only once. so maybe force caller to pass segs with first one reserved for header (otherwise you need to create n+1 on heap here)",
+      "range": {
+        "startLine": 652,
+        "startChar": 1,
+        "endLine": 656,
+        "endChar": 29
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
