@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e3ced8d5_5371be24",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:44:07Z",
+      "side": 1,
+      "message": "it will make just confusion, we use another svm_ types in functions below",
+      "parentUuid": "91a80fcb_0f9724c8",
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7dd15df8_91631ece",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 2
@@ -85,6 +103,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9888ae2f_5c25343b",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:44:07Z",
+      "side": 1,
+      "message": "and can pass wrong value",
+      "parentUuid": "e2fe3b23_a528eca3",
+      "range": {
+        "startLine": 633,
+        "startChar": 12,
+        "endLine": 633,
+        "endChar": 20
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "16330695_0c10b700",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 2
@@ -120,6 +162,30 @@
       "side": 1,
       "message": "Just as I feared :/\nBut I don\u0027t really like idea of having the caller leave the first element empty, this feels like something that could introduce some unintentional bugs. Maybe do a fixed-size static array bound by some APP_DATA_SEGS_MAX define?\n\nExample:\n#define APP_DATA_SEGS_MAX 32\n...\nif(data_nsegs \u003e APP_DATA_SEGS_MAX)\n     return some error\n...\nsvm_fifo_seg_t segs[APP_DATA_SEGS_MAX+1] \u003d {{ (u8 *) \u0026hdr, sizeof (hdr) }};\nclib_memcpy_fast (\u0026(segs[1]), data_segs, sizeof(app_data_seg_t)*data_nsegs);\n\nrv \u003d svm_fifo_enqueue_segments (f, hdr_seg, data_nsegs+1, 0 );",
       "parentUuid": "16330695_0c10b700",
+      "range": {
+        "startLine": 652,
+        "startChar": 1,
+        "endLine": 656,
+        "endChar": 29
+      },
+      "revId": "8b4fa9c66580d26e656c8762be370c3f3456aea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "295b7a30_54d38b6e",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-24T12:44:07Z",
+      "side": 1,
+      "message": "you will do extra memcopy, you can have ASSERT here which will check if first segment len is 0 to catch bugs",
+      "parentUuid": "ae29b9c8_c3ef76bf",
       "range": {
         "startLine": 652,
         "startChar": 1,
