@@ -121,7 +121,8 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  string_count++;
 
 	  /* Is this packet traced? */
-	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED) &&
+	      vlib_buffer_get_trace_thread (b) == vm->thread_index)
 	    {
 	      vlib_trace_header_t **h = pool_elt_at_index (
 		tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
