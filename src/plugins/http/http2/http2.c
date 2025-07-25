@@ -1885,6 +1885,12 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_error_t rv;
   http2_conn_ctx_t *h2c;
 
+  if (fh->length < 1)
+    {
+      HTTP_DBG (1, "zero length payload");
+      return HTTP2_ERROR_FRAME_SIZE_ERROR;
+    }
+
   h2c = http2_conn_ctx_get_w_thread (hc);
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
@@ -2025,6 +2031,12 @@ http2_handle_continuation_frame (http_conn_t *hc, http2_frame_header_t *fh)
   u8 *p;
   http2_error_t rv = HTTP2_ERROR_NO_ERROR;
 
+  if (fh->length < 1)
+    {
+      HTTP_DBG (1, "zero length payload");
+      return HTTP2_ERROR_FRAME_SIZE_ERROR;
+    }
+
   h2c = http2_conn_ctx_get_w_thread (hc);
 
   if (!(h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION))
@@ -2141,6 +2153,12 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
 			      HTTP2_STREAM_STATE_CLOSED;
     }
 
+  if (fh->length == 0)
+    {
+      HTTP_DBG (1, "zero length payload");
+      return HTTP2_ERROR_NO_ERROR;
+    }
+
   rx_buf = http_get_rx_buf (hc);
   vec_validate (rx_buf, fh->length - 1);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
@@ -2168,6 +2186,12 @@ http2_handle_window_update_frame (http_conn_t *hc, http2_frame_header_t *fh)
   http2_error_t rv;
   http2_req_t *req;
   http2_conn_ctx_t *h2c;
+
+  if (fh->length != HTTP2_WINDOW_UPDATE_LENGTH)
+    {
+      HTTP_DBG (1, "invalid payload length");
+      return HTTP2_ERROR_FRAME_SIZE_ERROR;
+    }
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
@@ -2327,6 +2351,12 @@ http2_handle_rst_stream_frame (http_conn_t *hc, http2_frame_header_t *fh)
   u32 error_code;
   http2_conn_ctx_t *h2c;
 
+  if (fh->length != HTTP2_RST_STREAM_LENGTH)
+    {
+      HTTP_DBG (1, "invalid payload length");
+      return HTTP2_ERROR_FRAME_SIZE_ERROR;
+    }
+
   if (fh->stream_id == 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
@@ -2369,6 +2399,12 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
   u32 error_code, last_stream_id, req_index, stream_id;
   http2_conn_ctx_t *h2c;
   http2_req_t *req;
+
+  if (fh->length < HTTP2_GOAWAY_MIN_SIZE)
+    {
+      HTTP_DBG (1, "invalid payload length");
+      return HTTP2_ERROR_FRAME_SIZE_ERROR;
+    }
 
   if (fh->stream_id != 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
