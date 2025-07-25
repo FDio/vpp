@@ -52,6 +52,24 @@
       "parentUuid": "a618e220_eed61eaa",
       "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "484238f6_86863c86",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-25T05:37:02Z",
+      "side": 1,
+      "message": "The lookup done by tcp_lookup_connection uses the same lookup table that is used in tcp-input before sending to tcp-listen node. Without tcp_connection_cleanup_and_notify, which is called by the cleanup handler, there\u0027s typically no call to session_lookup_del_session, so the connection is not going to be removed from the session table. \n\nWondering now if your test is only exercising resets in syn-sent state. Those will cleanup everything, including lookup table, on first reset. But I don\u0027t think it\u0027s common that we\u0027ll be getting a syn that fast after a reset. \n\nIs there any way to reproduce your test and to test this maybe in our ci?",
+      "parentUuid": "9f5ea887_3b7715ca",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
