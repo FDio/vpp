@@ -839,16 +839,12 @@ hc_connect ()
   hc_main_t *hcm = &hc_main;
   vnet_connect_args_t *a = 0;
   transport_endpt_ext_cfg_t *ext_cfg;
-  transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0 };
+  transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0, 0 };
 
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
   clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
   a->app_index = hcm->app_index;
-
-  ext_cfg = session_endpoint_add_ext_cfg (
-    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
-  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   if (hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     {
@@ -868,6 +864,15 @@ hc_connect ()
 	  break;
 	}
     }
+  else
+    {
+      if (hcm->http_version == HTTP_VERSION_2)
+	http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
+    }
+
+  ext_cfg = session_endpoint_add_ext_cfg (
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
 					a);
