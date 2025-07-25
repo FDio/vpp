@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest,
 		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest,
-		Http2ClientH2cTest)
+		Http2ClientH2cTest, Http2ClientMemLeakTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest)
 }
@@ -139,10 +139,17 @@ func Http2ServerMemLeakTest(s *Http2Suite) {
 	/* no goVPP less noise */
 	vpp.Disconnect()
 
-	/* warmup request (FIB) */
+	/* warmup requests (FIB, pools) */
 	args := fmt.Sprintf("--max-time 10 --noproxy '*' --http2-prior-knowledge -z %s %s %s %s", target, target, target, target)
 	_, log := s.RunCurlContainer(s.Containers.Curl, args)
 	s.AssertContains(log, "HTTP/2 200")
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Second * 1)
+		s.AssertNil(s.Containers.Curl.Start())
+	}
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 15)
 
 	vpp.EnableMemoryTrace()
 	traces1, err := vpp.GetMemoryTrace()
@@ -260,6 +267,7 @@ func Http2ClientGetRepeatTest(s *Http2Suite) {
 	cmd := fmt.Sprintf("http client http2 repeat %d uri %s", 10, uri)
 	o := vpp.Vppctl(cmd)
 	s.Log(o)
+	s.AssertContains(o, "10 request(s)")
 }
 
 func Http2ClientMultiplexingTest(s *Http2Suite) {
@@ -332,4 +340,44 @@ func Http2ClientContinuationTest(s *VethsSuite) {
 	s.Log(o)
 	s.AssertContains(o, "HTTP/2 200 OK")
 	s.AssertGreaterThan(strings.Count(o, "x"), 32768)
+}
+
+func Http2ClientMemLeakTest(s *Http2Suite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "http://" + serverAddress + "/64B"
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	/* warmup requests (FIB, pools) */
+	cmd := fmt.Sprintf("http client verbose http2 uri %s", uri)
+	o := vpp.Vppctl(cmd)
+	s.AssertContains(o, "HTTP/2 200 OK")
+	/* do second request because pool is at threshold and will grow again */
+	o = vpp.Vppctl(cmd)
+	s.AssertContains(o, "HTTP/2 200 OK")
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 15)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	o = vpp.Vppctl(cmd)
+	s.AssertContains(o, "HTTP/2 200 OK")
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 15)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
 }
