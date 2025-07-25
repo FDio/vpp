@@ -163,7 +163,7 @@ http_add_postponed_ho_cleanups (u32 ho_hc_index)
   vec_add1 (hm->postponed_ho_free, ho_hc_index);
 }
 
-static inline http_conn_t *
+http_conn_t *
 http_ho_conn_get (u32 ho_hc_index)
 {
   http_main_t *hm = &http_main;
@@ -535,9 +535,6 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
 
-  /* in chain with TLS there is race on half-open cleanup */
-  __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
-
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
   hc->hc_tc_session_handle = session_handle (ts);
@@ -546,6 +543,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
   ts->session_state = SESSION_STATE_READY;
   hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
+  hc->ho_index = ho_hc_index;
   tp = session_get_transport_proto (ts);
   /* TLS set by ALPN result, TCP: prior knowledge (set in ho) */
   if (tp == TRANSPORT_PROTO_TLS)
@@ -556,7 +554,6 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 	{
 	case TLS_ALPN_PROTO_HTTP_2:
 	  hc->version = HTTP_VERSION_2;
-	  http_vfts[hc->version].conn_accept_callback (hc);
 	  break;
 	case TLS_ALPN_PROTO_HTTP_1_1:
 	case TLS_ALPN_PROTO_NONE:
@@ -579,6 +576,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   if ((rv = http_vfts[hc->version].transport_connected_callback (hc)))
     {
       clib_warning ("transport_connected_callback failed, rv=%d", rv);
+      __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
       return rv;
     }
 
@@ -898,6 +896,11 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 	(transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
       hc->timeout = http_cfg->timeout;
+      if (http_cfg->flags & HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE)
+	{
+	  HTTP_DBG (1, "app want http2 with prior knowledge");
+	  hc->version = HTTP_VERSION_2;
+	}
     }
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);

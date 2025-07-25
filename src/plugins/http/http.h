@@ -46,10 +46,28 @@ typedef enum http_udp_tunnel_mode_
   HTTP_UDP_TUNNEL_DGRAM,   /**< convert capsule to datagram (zc proxy) */
 } http_udp_tunnel_mode_t;
 
+#define foreach_http_endpt_cfg_flags                                          \
+  _ (HTTP2_PRIOR_KNOWLEDGE) /**< HTTP/2 connections over cleartext TCP */
+
+typedef enum http_endpt_cfg_flags_bit_
+{
+#define _(sym) HTTP_ENDPT_CFG_F_BIT_##sym,
+  foreach_http_endpt_cfg_flags
+#undef _
+} http_endpt_cfg_flags_bit_t;
+
+typedef enum http_endpt_cfg_flags_
+{
+#define _(sym) HTTP_ENDPT_CFG_F_##sym = 1 << HTTP_ENDPT_CFG_F_BIT_##sym,
+  foreach_http_endpt_cfg_flags
+#undef _
+} __clib_packed http_endpt_cfg_flags_t;
+
 typedef struct transport_endpt_cfg_http
 {
   u32 timeout; /**< HTTP session timeout in seconds */
   http_udp_tunnel_mode_t udp_tunnel_mode; /**< connect-udp mode */
+  u8 flags;
 } transport_endpt_cfg_http_t;
 
 typedef struct

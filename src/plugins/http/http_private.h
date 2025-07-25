@@ -201,6 +201,7 @@ typedef struct http_tc_
   u32 timer_handle;
   u32 timeout;
   u32 app_rx_fifo_size;
+  u32 ho_index;
   u8 *app_name;
   u8 *host;
   http_conn_flags_t flags;
@@ -324,6 +325,8 @@ u8 *format_http_time_now (u8 *s, va_list *args);
 
 http_conn_t *http_conn_get_w_thread (u32 hc_index,
 				     clib_thread_index_t thread_index);
+
+http_conn_t *http_ho_conn_get (u32 ho_hc_index);
 
 /**
  * @brief Find the first occurrence of the string in the vector.
@@ -884,7 +887,12 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   session_t *as;
   app_worker_t *app_wrk;
   session_t *ts;
+  http_conn_t *ho_hc;
   int rv;
+
+  ho_hc = http_ho_conn_get (hc->ho_index);
+  /* in chain with TLS there is race on half-open cleanup */
+  __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
   /* allocate app session and initialize */
   as = session_alloc (hc->c_thread_index);

@@ -13,7 +13,8 @@ import (
 
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest, Http2ServerMemLeakTest,
-		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest)
+		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest,
+		Http2ClientH2cTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest)
 }
@@ -191,6 +192,32 @@ func Http2ClientGetTest(s *Http2Suite) {
 	s.Log(o)
 	s.AssertContains(o, "HTTP/2 200 OK")
 	s.AssertContains(o, "10000000 bytes saved to file")
+
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "HTTP/2")
+	s.AssertContains(string(logContents), "scheme=https conn=")
+}
+
+func Http2ClientH2cTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.CreateNginxServer()
+	s.AssertNil(s.Containers.NginxServer.Start())
+
+	uri := "http://" + serverAddress + "/httpTestFile"
+	o := vpp.Vppctl("http client http2 save-to response.txt verbose uri " + uri)
+	s.Log(o)
+	s.AssertContains(o, "HTTP/2 200 OK")
+	s.AssertContains(o, "10000000 bytes saved to file")
+
+	logPath := s.Containers.NginxServer.GetHostWorkDir() + "/" + s.Containers.NginxServer.Name + "-access.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertContains(string(logContents), "HTTP/2")
+	s.AssertContains(string(logContents), "scheme=http conn=")
 }
 
 func http2ClientPostFile(s *Http2Suite, usePtr bool, fileSize int) {
