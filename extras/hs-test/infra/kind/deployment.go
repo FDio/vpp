@@ -49,6 +49,7 @@ func (s *KindSuite) deleteNamespace(namespace string) error {
 }
 
 func (s *KindSuite) DeployPod(pod *Pod) {
+	pod.suite = s
 	s.CurrentlyRunning = append(s.CurrentlyRunning, pod.Name)
 	pod.CreatedPod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,5 +101,5 @@ func (s *KindSuite) DeployPod(pod *Pod) {
 		}
 	}
 
-	s.Log("IP: %s", pod.IpAddress)
+	s.Log("IP: %s\n", pod.IpAddress)
 }

@@ -2,12 +2,10 @@ package hst_kind
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
-	"text/template"
 
 	. "fd.io/hs-test/infra/common"
 	. "github.com/onsi/ginkgo/v2"
@@ -30,11 +28,31 @@ type KindSuite struct {
 		ServerGeneric *Pod
 		ClientGeneric *Pod
 		Nginx         *Pod
+		NginxProxy    *Pod
 		Ab            *Pod
 	}
 }
 
 var kindTests = map[string][]func(s *KindSuite){}
+
+const VclConfIperf = "echo \"vcl {\n" +
+	"rx-fifo-size 4000000\n" +
+	"tx-fifo-size 4000000\n" +
+	"app-scope-local\n" +
+	"app-scope-global\n" +
+	"app-socket-api abstract:vpp/session\n" +
+	"}\" > /vcl.conf"
+
+const VclConfNginx = "echo \"vcl {\n" +
+	"heapsize 64M\n" +
+	"rx-fifo-size 4000000\n" +
+	"tx-fifo-size 4000000\n" +
+	"segment-size 4000000000\n" +
+	"add-segment-size 4000000000\n" +
+	"event-queue-size 100000\n" +
+	"use-mq-eventfd\n" +
+	"app-socket-api abstract:vpp/session\n" +
+	"}\" > /vcl.conf"
 
 func RegisterKindTests(tests ...func(s *KindSuite)) {
 	kindTests[GetTestFilename()] = tests
@@ -74,6 +92,7 @@ func (s *KindSuite) SetupSuite() {
 func (s *KindSuite) TeardownTest() {
 	s.HstCommon.TeardownTest()
 	if len(s.CurrentlyRunning) != 0 {
+		s.Log("Removing:")
 		for _, pod := range s.CurrentlyRunning {
 			s.Log("   %s", pod)
 			s.deletePod(s.Namespace, pod)
@@ -83,7 +102,7 @@ func (s *KindSuite) TeardownTest() {
 
 func (s *KindSuite) TeardownSuite() {
 	s.HstCommon.TeardownSuite()
-	s.Log("   %s", s.Namespace)
+	s.Log("Removing:\n   %s", s.Namespace)
 	s.AssertNil(s.deleteNamespace(s.Namespace))
 }
 
@@ -91,7 +110,7 @@ func (s *KindSuite) TeardownSuite() {
 // and searches for the first version string, then creates symlinks.
 func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 	regex := regexp.MustCompile(`lib.*\.so\.([0-9]+\.[0-9]+)`)
-	o, _ := s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c",
+	o, _ := s.Pods.ServerGeneric.Exec([]string{"/bin/bash", "-c",
 		"ldd /usr/lib/libvcl_ldpreload.so"})
 	match := regex.FindStringSubmatch(o)
 
@@ -106,7 +125,7 @@ func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 			"fi\n"+
 			"done", version)
 		for _, pod := range pods {
-			s.Exec(pod, []string{"/bin/bash", "-c", cmd})
+			pod.Exec([]string{"/bin/bash", "-c", cmd})
 		}
 
 	} else {
@@ -114,23 +133,7 @@ func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 	}
 }
 
-func (s *KindSuite) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
-	template := template.Must(template.ParseFiles(templateName))
-
-	f, err := os.CreateTemp(LogDir, "hst-config")
-	s.AssertNil(err, err)
-	defer os.Remove(f.Name())
-
-	err = template.Execute(f, values)
-	s.AssertNil(err, err)
-
-	err = f.Close()
-	s.AssertNil(err, err)
-
-	s.CopyToPod(s.Pods.Nginx.Name, s.Namespace, f.Name(), targetConfigName)
-}
-
-func (s *KindSuite) CreateNginxConfig() {
+func (s *KindSuite) CreateNginxConfig(pod *Pod) {
 	values := struct {
 		Workers uint8
 		Port    uint16
@@ -138,9 +141,37 @@ func (s *KindSuite) CreateNginxConfig() {
 		Workers: 1,
 		Port:    8081,
 	}
-	s.CreateConfigFromTemplate(
+	pod.CreateConfigFromTemplate(
 		"/nginx.conf",
 		"./resources/nginx/nginx.conf",
+		values,
+	)
+}
+
+func (s *KindSuite) CreateNginxProxyConfig(pod *Pod) {
+	pod.Exec([]string{"/bin/bash", "-c", "mkdir -p /tmp/nginx"})
+	values := struct {
+		Workers   uint8
+		LogPrefix string
+		Proxy     string
+		Server    string
+		Port      uint16
+		Upstream1 string
+		Upstream2 string
+		Upstream3 string
+	}{
+		Workers:   1,
+		LogPrefix: s.Pods.NginxProxy.Name,
+		Proxy:     s.Pods.NginxProxy.IpAddress,
+		Server:    s.Pods.Nginx.IpAddress,
+		Port:      8080,
+		Upstream1: "8081",
+		Upstream2: "8081",
+		Upstream3: "8081",
+	}
+	pod.CreateConfigFromTemplate(
+		"/nginx.conf",
+		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,
 	)
 }
