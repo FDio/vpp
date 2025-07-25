@@ -1,8 +1,20 @@
 package hst_kind
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"bytes"
+	"context"
+	"os"
+	"os/exec"
+	"text/template"
+	"time"
+
+	. "fd.io/hs-test/infra/common"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/remotecommand"
+)
 
 type Pod struct {
+	suite         *KindSuite
 	Name          string
 	Image         string
 	ContainerName string
@@ -21,6 +33,7 @@ func (s *KindSuite) initPods() {
 	clientCont := "client"
 	serverCont := "server"
 
+	// TODO: load from file
 	s.images = append(s.images, vppImg, nginxLdpImg, abImg)
 	s.Namespace = "namespace" + s.Ppid
 
@@ -47,4 +60,74 @@ func (s *KindSuite) initPods() {
 	s.Pods.Nginx.Image = nginxLdpImg
 	s.Pods.Nginx.ContainerName = serverCont
 	s.Pods.Nginx.Worker = wrk2
+
+	s.Pods.Nginx2 = new(Pod)
+	s.Pods.Nginx2.Name = "nginx2" + s.Ppid
+	s.Pods.Nginx2.Image = nginxLdpImg
+	s.Pods.Nginx2.ContainerName = serverCont
+	s.Pods.Nginx2.Worker = wrk2
+}
+
+func (pod *Pod) CopyToPod(namespace string, src string, dst string) {
+	cmd := exec.Command("kubectl", "--kubeconfig="+pod.suite.KubeconfigPath, "cp", src, namespace+"/"+pod.Name+":"+dst)
+	out, err := cmd.CombinedOutput()
+	pod.suite.AssertNil(err, string(out))
+}
+
+func (pod *Pod) Exec(command []string) (string, error) {
+	var stdout, stderr bytes.Buffer
+
+	// Prepare the request
+	req := pod.suite.ClientSet.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.suite.Namespace).
+		SubResource("exec").
+		Param("container", pod.ContainerName).
+		Param("stdout", "true").
+		Param("stderr", "true").
+		Param("tty", "true")
+
+	for _, cmd := range command {
+		req = req.Param("command", cmd)
+	}
+	pod.suite.Log("%s: %s\n", pod.Name, command)
+
+	executor, err := remotecommand.NewSPDYExecutor(pod.suite.Config, "POST", req.URL())
+	if err != nil {
+		pod.suite.Log("Error creating executor: %s", err.Error())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
+	defer cancel()
+
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Tty:    true,
+	})
+
+	output := stdout.String() + stderr.String()
+
+	if err != nil {
+		return output, err
+	}
+
+	return output, nil
+}
+
+func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
+	template := template.Must(template.ParseFiles(templateName))
+
+	f, err := os.CreateTemp(LogDir, "hst-config")
+	pod.suite.AssertNil(err, err)
+	defer os.Remove(f.Name())
+
+	err = template.Execute(f, values)
+	pod.suite.AssertNil(err, err)
+
+	err = f.Close()
+	pod.suite.AssertNil(err, err)
+
+	pod.CopyToPod(pod.suite.Namespace, f.Name(), targetConfigName)
 }

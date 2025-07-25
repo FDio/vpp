@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterKindTests(KindIperfVclTest, NginxRpsTest)
+	RegisterKindTests(KindIperfVclTest, NginxRpsTest, NginxProxyMirroringTest)
 }
 
 const vcl string = "VCL_CONFIG=/vcl.conf"
@@ -18,58 +18,70 @@ func KindIperfVclTest(s *KindSuite) {
 	s.DeployPod(s.Pods.ClientGeneric)
 	s.DeployPod(s.Pods.ServerGeneric)
 
-	vclConf := "echo \"vcl {\n" +
-		"rx-fifo-size 4000000\n" +
-		"tx-fifo-size 4000000\n" +
-		"app-scope-local\n" +
-		"app-scope-global\n" +
-		"app-socket-api abstract:vpp/session\n" +
-		"}\" > /vcl.conf"
-
-	_, err := s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c", vclConf})
+	_, err := s.Pods.ClientGeneric.Exec([]string{"/bin/bash", "-c", VclConfIperf})
 	s.AssertNil(err)
-	_, err = s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c", vclConf})
+	_, err = s.Pods.ServerGeneric.Exec([]string{"/bin/bash", "-c", VclConfIperf})
 	s.AssertNil(err)
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
-	o, err := s.Exec(s.Pods.ServerGeneric, []string{"/bin/bash", "-c",
+	o, err := s.Pods.ServerGeneric.Exec([]string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D -4"})
 	s.AssertNil(err, o)
-	output, err := s.Exec(s.Pods.ClientGeneric, []string{"/bin/bash", "-c",
+	o, err = s.Pods.ClientGeneric.Exec([]string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -l 1460 -b 10g -c " + s.Pods.ServerGeneric.IpAddress})
-	s.Log(output)
+	s.Log(o)
 	s.AssertNil(err)
 }
 
 func NginxRpsTest(s *KindSuite) {
 	s.DeployPod(s.Pods.Nginx)
 	s.DeployPod(s.Pods.Ab)
-	s.CreateNginxConfig()
+	s.CreateNginxConfig(s.Pods.Nginx)
 
-	vclConf := "echo \"vcl {\n" +
-		"heapsize 64M\n" +
-		"rx-fifo-size 4000000\n" +
-		"tx-fifo-size 4000000\n" +
-		"segment-size 4000000000\n" +
-		"add-segment-size 4000000000\n" +
-		"event-queue-size 100000\n" +
-		"use-mq-eventfd\n" +
-		"app-socket-api abstract:vpp/session\n" +
-		"}\" > /vcl.conf"
-
-	out, err := s.Exec(s.Pods.Nginx, []string{"/bin/bash", "-c", vclConf})
+	out, err := s.Pods.Nginx.Exec([]string{"/bin/bash", "-c", VclConfNginx})
 	s.AssertNil(err, out)
 
 	go func() {
 		defer GinkgoRecover()
-		out, err := s.Exec(s.Pods.Nginx, []string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
+		out, err := s.Pods.Nginx.Exec([]string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
 		s.AssertNil(err, out)
 	}()
 
 	// wait for nginx to start up
 	time.Sleep(time.Second * 2)
-	out, err = s.Exec(s.Pods.Ab, []string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":8081/64B.json"})
+	out, err = s.Pods.Ab.Exec([]string{"ab", "-k", "-r", "-n", "1000000", "-c", "1000", "http://" + s.Pods.Nginx.IpAddress + ":8081/64B.json"})
+	s.Log(out)
+	s.AssertNil(err)
+}
+
+func NginxProxyMirroringTest(s *KindSuite) {
+	s.DeployPod(s.Pods.Nginx)
+	s.DeployPod(s.Pods.Nginx2)
+	s.DeployPod(s.Pods.ClientGeneric)
+	s.CreateNginxConfig(s.Pods.Nginx)
+	s.CreateNginxProxyConfig(s.Pods.Nginx2)
+
+	out, err := s.Pods.Nginx.Exec([]string{"/bin/bash", "-c", VclConfNginx})
+	s.AssertNil(err, out)
+	out, err = s.Pods.Nginx2.Exec([]string{"/bin/bash", "-c", VclConfNginx})
+	s.AssertNil(err, out)
+
+	go func() {
+		defer GinkgoRecover()
+		out, err := s.Pods.Nginx.Exec([]string{"/bin/bash", "-c", ldp + " " + vcl + " nginx -c /nginx.conf"})
+		s.AssertNil(err, out)
+	}()
+
+	go func() {
+		defer GinkgoRecover()
+		out, err := s.Pods.Nginx2.Exec([]string{"/bin/bash", "-c", "nginx -c /nginx.conf"})
+		s.AssertNil(err, out)
+	}()
+
+	// wait for nginx to start up
+	time.Sleep(time.Second * 2)
+	out, err = s.Pods.ClientGeneric.Exec([]string{"curl", "-v", "--noproxy", "'*'", "--insecure", "http://" + s.Pods.Nginx2.IpAddress + ":8080/64B.json"})
 	s.Log(out)
 	s.AssertNil(err)
 }
