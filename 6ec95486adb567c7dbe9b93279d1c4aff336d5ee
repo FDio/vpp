@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ccf251ab_234bd349",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-25T13:30:53Z",
+      "side": 1,
+      "message": "you somehow reverted updated commit message (most likely when rebasing your another patch to make chain?)",
+      "revId": "6ec95486adb567c7dbe9b93279d1c4aff336d5ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
