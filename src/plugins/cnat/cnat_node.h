@@ -983,7 +983,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
 	      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey, 2 /* no overwrite */);
 	      if (!rv)
 		goto out;  /* success ! */
-	      hash_ >>= 2; /* try next port... */
+	      hash_ >>= 16; /* try next port... */
 	    }
 	}
 
