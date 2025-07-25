@@ -67,7 +67,7 @@ setup_master() {
   make -C $CALICOVPP_DIR kind-new-cluster N_KIND_WORKERS=2
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
   make -C $CALICOVPP_DIR cherry-vpp FORCE=y BASE=origin/master VPP_DIR=$VPP_DIR
-  make build-vpp-release
+  make -C $VPP_DIR/extras/hs-test build-vpp-release
   make -C $CALICOVPP_DIR dev-kind
   make -C $CALICOVPP_DIR load-kind
   $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
