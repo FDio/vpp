@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6bd3645e_27684090",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-25T11:35:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b7ca40e8_47c42c52",
+      "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de029d79_f82bcf45",
@@ -79,6 +97,30 @@
       "side": 1,
       "message": "We should either add app_send_dgram_segs or use raw fifo apis (the ones used by app_send_dgram_segs) to do the seg writes. I\u0027d go for the first maybe and then rebase this gerrit on it.",
       "parentUuid": "c0a94d1b_a772b53d",
+      "range": {
+        "startLine": 168,
+        "startChar": 7,
+        "endLine": 171,
+        "endChar": 43
+      },
+      "revId": "142777817f23fd8cdc48edde6c4122d70c570c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8bbc2931_101f1750",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-25T11:35:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "449da5e0_bd2dad40",
       "range": {
         "startLine": 168,
         "startChar": 7,
