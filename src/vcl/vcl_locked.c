@@ -140,6 +140,7 @@ typedef struct vls_local_
   clib_rwlock_t vls_pool_lock;	      /**< per process/wrk vls pool locks */
   pthread_mutex_t vls_mt_mq_mlock;    /**< vcl mq lock */
   pthread_rwlock_t vls_mt_spool_rwlock; /**< vcl select or pool rwlock */
+  volatile u32 vls_mt_spool_pending_wr; /**< pending writers */
   volatile u8 select_mp_check;	      /**< flag set if select checks done */
   struct sigaction old_sa;	      /**< old sigaction to restore */
 } vls_process_local_t;
@@ -408,6 +409,10 @@ vls_mt_mq_unlock (void)
 static inline void
 vls_mt_spool_rlock (void)
 {
+  /* Favor writers as they can be close operations that hold off all other
+   * operations */
+  while (vlsl->vls_mt_spool_pending_wr)
+    CLIB_PAUSE ();
   pthread_rwlock_rdlock (&vlsl->vls_mt_spool_rwlock);
   vlspt->locks_acq |= VLS_MT_RLOCK_SPOOL;
 }
@@ -415,8 +420,10 @@ vls_mt_spool_rlock (void)
 static inline void
 vls_mt_spool_wlock (void)
 {
+  vlsl->vls_mt_spool_pending_wr += 1;
   pthread_rwlock_wrlock (&vlsl->vls_mt_spool_rwlock);
   vlspt->locks_acq |= VLS_MT_WLOCK_SPOOL;
+  vlsl->vls_mt_spool_pending_wr -= 1;
 }
 
 static inline void
