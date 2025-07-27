@@ -361,8 +361,11 @@ typedef enum
 static void
 vls_mt_add (void)
 {
+  u32 n_threads;
+
   vlsl->vls_mt_needs_locks = 1;
-  vlsl->vls_mt_n_threads += 1;
+  n_threads =
+    __atomic_add_fetch (&vlsl->vls_mt_n_threads, 1, __ATOMIC_RELAXED);
   vlspt->locks_acq = 0;
 
   /* If multi-thread workers are supported, for each new thread register a new
@@ -377,7 +380,7 @@ vls_mt_add (void)
     vcl_set_worker_index (vlsl->vls_wrk_index);
 
   /* Only allow new pthread to be cancled in vls_mt_mq_lock */
-  if (vlsl->vls_mt_n_threads >= 2)
+  if (n_threads >= 2)
     pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
 
   if (pthread_setspecific (vls_mt_pthread_stop_key, vcl_worker_get_current ()))
@@ -469,6 +472,7 @@ static void
 vls_mt_del (void *arg)
 {
   vcl_worker_t *wrk = (vcl_worker_t *) arg;
+  u32 n_threads;
 
   VDBG (0, "vls worker %u vcl worker %u nthreads %u cleaning up pthread",
 	vlsl->vls_wrk_index, vcl_get_worker_index (), vlsl->vls_mt_n_threads);
@@ -480,7 +484,8 @@ vls_mt_del (void *arg)
       return;
     }
 
-  vlsl->vls_mt_n_threads -= 1;
+  n_threads =
+    __atomic_sub_fetch (&vlsl->vls_mt_n_threads, 1, __ATOMIC_RELAXED);
 
   /* drop locks if any held */
   vls_mt_rel_locks ();
@@ -492,7 +497,7 @@ vls_mt_del (void *arg)
     }
   else
     {
-      if (!vlsl->vls_mt_n_threads)
+      if (!n_threads)
 	vppcom_worker_unregister ();
     }
 }
