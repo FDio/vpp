@@ -33,6 +33,7 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterMasqueSoloTests(VppConnectProxyClientTcpTest, VppConnectProxyClientUdpTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -658,4 +659,38 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppProxy.Disconnect()
 
 	vppConnectUdpStressLoad(s)
+}
+
+func VppConnectProxyClientTcpTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client server-uri https://%s:%s listener tcp://0.0.0.0:%s", s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	time.Sleep(5 * time.Second)
+
+	uri := fmt.Sprintf("https://%s:%s/index.html", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, []string{"--http1.1"})
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyClientUdpTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client server-uri https://%s:%s listener udp://0.0.0.0:%s", s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	time.Sleep(5 * time.Second)
+
+	uri := fmt.Sprintf("https://%s:%s/index.html", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, []string{"--http3-only"})
+	}()
+	s.AssertNil(<-finished)
 }
