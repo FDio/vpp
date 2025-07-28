@@ -3,6 +3,7 @@ package hst
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os/exec"
 	"strings"
 
@@ -237,6 +238,11 @@ func (n *NetInterface) configure() error {
 	}
 
 	if n.Peer != nil && n.Peer.name != "" {
+		netIntf, err := net.InterfaceByName(n.Peer.name)
+		if err == nil {
+			n.Peer.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
+		}
+
 		if err := n.Peer.configureUpState(); err != nil {
 			return err
 		}

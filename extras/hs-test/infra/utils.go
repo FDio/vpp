@@ -270,6 +270,47 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 	finished <- nil
 }
 
+func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode string, timeout int, args []string) {
+	defer func() {
+		finished <- errors.New("curl error")
+	}()
+
+	c := []string{"curl", "-v", "-s", "-k", "--max-time", strconv.Itoa(timeout), "-o", "/dev/null", "--noproxy", "*"}
+	c = append(c, args...)
+	c = append(c, uri)
+	cmd := newCommand(c, netNs)
+	s.Log(cmd)
+	o, err := cmd.CombinedOutput()
+	s.Log(string(o))
+	if err != nil {
+		finished <- fmt.Errorf("curl error: '%v\n\n%s'", err, o)
+		return
+	} else if !strings.Contains(string(o), expectedRespCode) {
+		finished <- fmt.Errorf("curl error: response not " + expectedRespCode)
+		return
+	}
+	finished <- nil
+}
+
+func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAddress, serverPort, netNs string, args []string) {
+	defer func() {
+		finished <- errors.New("iperf client error")
+	}()
+
+	c := []string{"iperf3", "-c", serverAddress, "-B", clientAddress, "-J", "-l", "1460", "-b", "10g", "-p", serverPort}
+	c = append(c, args...)
+	cmd := newCommand(c, netNs)
+	s.Log(cmd)
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		finished <- fmt.Errorf("iperf client error: '%v\n\n%s'", err, o)
+		return
+	}
+	result := s.ParseJsonIperfOutput(o)
+	s.LogJsonIperfOutput(result)
+	finished <- nil
+}
+
 // Start a server app. 'processName' is used to check whether the app started correctly.
 func (s *HstSuite) StartServerApp(c *Container, processName string, cmd string,
 	running chan error, done chan struct{}) {
