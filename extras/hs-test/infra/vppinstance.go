@@ -400,6 +400,19 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 
 	veth.Index = reply.SwIfIndex
 
+	// Get mac
+	if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
+		SwIfIndex: reply.SwIfIndex,
+	}); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
+	veth.HwAddress = ifDetails.L2Address
+
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
 		SwIfIndex: veth.Index,
@@ -452,6 +465,12 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 	err = api.RetvalToVPPApiError(reply3.Retval)
 	if err != nil {
 		return 0, err
+	}
+
+	// Get host mac
+	netIntf, err := net.InterfaceByName(veth.Peer.Name())
+	if err == nil {
+		veth.Peer.HwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 	}
 
 	return veth.Index, nil
