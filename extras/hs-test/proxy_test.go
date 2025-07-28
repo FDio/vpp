@@ -33,6 +33,7 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterVethTests(VppProxyClientConnectTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -658,4 +659,17 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppProxy.Disconnect()
 
 	vppConnectUdpStressLoad(s)
+}
+
+func VppProxyClientConnectTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	s.Log(serverVpp.Vppctl("test proxy server fifo-size 512k server-uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1))
+	s.Log(clientVpp.Vppctl("http cli server uri http://" + s.Interfaces.Client.Ip4AddressString() + ":" + s.Ports.Port2))
+
+	s.Log(clientVpp.Vppctl("test proxy client server-uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1 + " target tcp://" + s.Interfaces.Client.Ip4AddressString() + ":" + s.Ports.Port2))
+	time.Sleep(5 * time.Second)
+	s.Log(serverVpp.Vppctl("show session verbose 2"))
+	s.Log(clientVpp.Vppctl("show session verbose 2"))
 }
