@@ -70,6 +70,24 @@
       "parentUuid": "9f5ea887_3b7715ca",
       "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed9715d3_3e2ba0ef",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 3242
+      },
+      "writtenOn": "2025-07-28T07:03:51Z",
+      "side": 1,
+      "message": "Unfortunately, I\u0027m not yet familiar with your CI and test framework, but I hope to get up to speed soon.\n\nLet me explain the situation I\u0027m facing. I\u0027m trying to measure the CPS capability of the proxy HS app in VPP. For this, I chose Nginx as the HTTP server and K6 from Grafana as the client. VPP delivers traffic between them via the \"proxy app,\" which I slightly modified to make the proxy transparent not only for IP but also for the port. So, for example, if K6 initiates a request from source port 1024, the (AO) VPP proxy makes the request to the server using the same port.\n\nWith this setup, when I run K6 in CPS test mode using HTTP/1.1 with a 1-byte response body and 10,000 or more virtual users (VUs), I observe a significant number of RST packets. That’s where I encountered the issue.\n\nI agree with your point that this behavior is uncommon, but I believe it’s not trivial either. FWIW, I saw the CPS result hits twice than before after fixing along with some other trivial patches. It seems to stem from how K6 handles CPS testing — possibly ignoring the TIME_WAIT state and sending the next SYN immediately after the TCP FIN sequence.\n\nInside VPP, AFAIK, sessions in `TCP_STATE_CLOSED` are placed in `pending_cleanups`, as handled by `tcp_timer_waitclose_handler()`, and later cleared by `tcp_handle_cleanups()`, which is invoked by `tcp_update_time()`. In my initial patch, I used `tcp_connection_cleanup_and_notify()` for those connections, but then `tcp_handle_cleanups()` cleaned up newly connected TCP connections with the same `connection_index` occasionally. So, I let it be kept in `pending_cleanups` as it\u0027ll be handled by `tcp_update_time()` anyway and there\u0027s no way to picking it out from `pending_cleanups` efficiently.",
+      "parentUuid": "484238f6_86863c86",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
