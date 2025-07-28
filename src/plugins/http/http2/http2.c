@@ -1051,19 +1051,33 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   request = http_get_tx_buf (hc);
 
   control_data.method = msg.method_type;
-  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
-  control_data.scheme = HTTP_URL_SCHEME_HTTPS;
-  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
-  control_data.path = http_get_app_target (&req->base, &msg);
-  control_data.path_len = msg.data.target_path_len;
-  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
-  control_data.authority = hc->host;
-  control_data.authority_len = vec_len (hc->host);
+  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+  if (msg.method_type == HTTP_REQ_CONNECT)
+    {
+      req->base.is_tunnel = 1;
+      control_data.authority = http_get_app_target (&req->base, &msg);
+      control_data.authority_len = msg.data.target_path_len;
+      HTTP_DBG (1, "opening tunnel to %U", format_http_bytes,
+		control_data.authority, control_data.authority_len);
+    }
+  else
+    {
+      control_data.authority = hc->host;
+      control_data.authority_len = vec_len (hc->host);
+      control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+      control_data.scheme =
+	http_get_transport_proto (hc) == TRANSPORT_PROTO_TLS ?
+	  HTTP_URL_SCHEME_HTTPS :
+	  HTTP_URL_SCHEME_HTTP;
+      control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+      control_data.path = http_get_app_target (&req->base, &msg);
+      control_data.path_len = msg.data.target_path_len;
+      HTTP_DBG (1, "%U %U", format_http_method, control_data.method,
+		format_http_bytes, control_data.path, control_data.path_len);
+    }
   control_data.user_agent = hc->app_name;
   control_data.user_agent_len = vec_len (hc->app_name);
 
-  HTTP_DBG (1, "%U %U", format_http_method, control_data.method,
-	    format_http_bytes, control_data.path, control_data.path_len);
   if (msg.data.body_len)
     {
       control_data.content_len = msg.data.body_len;
@@ -1072,7 +1086,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   else
     {
       control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
-      flags |= HTTP2_FRAME_FLAG_END_STREAM;
+      flags |= req->base.is_tunnel ? 0 : HTTP2_FRAME_FLAG_END_STREAM;
     }
 
   if (msg.data.headers_len)
@@ -1241,6 +1255,7 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
   http_msg_t msg;
   int rv;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
+  http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
@@ -1270,7 +1285,15 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
       return HTTP_SM_STOP;
     }
 
-  if (control_data.content_len_header_index != ~0)
+  if (req->base.is_tunnel &&
+      http_status_code_str[req->base.status_code][0] == '2')
+    {
+      new_state = HTTP_REQ_STATE_TUNNEL;
+      http_io_as_add_want_read_ntf (&req->base);
+      /* cleanup some stuff we don't need anymore in tunnel mode */
+      vec_free (req->base.headers);
+    }
+  else if (control_data.content_len_header_index != ~0)
     {
       req->base.content_len_header_index =
 	control_data.content_len_header_index;
@@ -1280,10 +1303,20 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
 	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR, sp);
 	  return HTTP_SM_STOP;
 	}
+      new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+      http_io_as_add_want_read_ntf (&req->base);
     }
+  else
+    {
+      /* we are done wait for the next app request */
+      transport_connection_reschedule (&req->base.connection);
+      http2_conn_reset_req (h2c, req, hc->c_thread_index);
+    }
+
   /* TODO: message framing without content length using END_STREAM flag */
   if (req->base.body_len == 0 &&
-      req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
+      req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED &&
+      !req->base.is_tunnel)
     {
       HTTP_DBG (1, "no content-length and DATA frame expected");
       *error = HTTP2_ERROR_INTERNAL_ERROR;
@@ -1306,22 +1339,8 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
   HTTP_DBG (3, "%U", format_http_bytes, wrk->header_list,
 	    req->base.control_data_len);
   http_io_as_write_segs (&req->base, segs, 2);
-
-  if (req->base.body_len)
-    {
-      http_req_state_change (&req->base,
-			     HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
-      http_io_as_add_want_read_ntf (&req->base);
-    }
-  else
-    {
-      /* we are done wait for the next app request */
-      http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-      transport_connection_reschedule (&req->base.connection);
-      http2_conn_reset_req (h2c, req, hc->c_thread_index);
-    }
-
   http_app_worker_rx_notify (&req->base);
+  http_req_state_change (&req->base, new_state);
 
   return HTTP_SM_STOP;
 }
