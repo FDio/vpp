@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +34,9 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterMasqueTests(VppConnectProxyClientDownloadTcpTest, VppConnectProxyClientDownloadUdpTest,
+		VppConnectProxyClientUploadTcpTest, VppConnectProxyClientUploadUdpTest)
+	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -658,4 +662,189 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppProxy.Disconnect()
 
 	vppConnectUdpStressLoad(s)
+}
+
+func connectProxyClientWaitConnected(vpp *VppInstance) {
+	connected := false
+	for nTries := 0; nTries < 10; nTries++ {
+		o := vpp.Vppctl("show http connect proxy client")
+		if strings.Contains(o, "connection state: connected") {
+			connected = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	vpp.Container.Suite.AssertEqual(connected, true)
+}
+
+func VppConnectProxyClientDownloadTcpTest(s *MasqueSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener tcp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+	cmd = fmt.Sprintf("http connect proxy client listener add listener tcp://0.0.0.0:%s", s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+	o := clientVpp.Vppctl("show http connect proxy client listeners")
+	s.Log(o)
+	s.AssertContains(o, "tcp://0.0.0.0:"+s.Ports.Nginx)
+	s.AssertContains(o, "tcp://0.0.0.0:"+s.Ports.NginxSsl)
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http1.1"})
+	}()
+	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener udp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+	s.Log(clientVpp.Vppctl("show http connect proxy client listeners"))
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http3-only"})
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyClientUploadTcpTest(s *MasqueSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener tcp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+
+	fileName := "/tmp/test_file"
+	defer os.Remove(fileName)
+	fallocate := exec.Command("fallocate", "-l", "10MB", fileName)
+	_, err := fallocate.CombinedOutput()
+	s.AssertNil(err)
+
+	uri := fmt.Sprintf("https://%s:%s/upload/testFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, "201", 30, []string{"--http1.1", "-T", fileName})
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyClientUploadUdpTest(s *MasqueSuite) {
+	s.StartNginxServer()
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener udp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+
+	fileName := "/tmp/test_file"
+	defer os.Remove(fileName)
+	fallocate := exec.Command("fallocate", "-l", "10MB", fileName)
+	_, err := fallocate.CombinedOutput()
+	s.AssertNil(err)
+
+	uri := fmt.Sprintf("https://%s:%s/upload/testFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, "201", 30, []string{"--http3-only", "-T", fileName})
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyIperfTcpTest(s *MasqueSuite) {
+	s.Containers.IperfServer.Run()
+
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener tcp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+
+	stopServerCh := make(chan struct{})
+	srvCh := make(chan error, 1)
+
+	defer func() {
+		stopServerCh <- struct{}{}
+	}()
+
+	go func() {
+		defer GinkgoRecover()
+		c := "iperf3 -s -B " + s.NginxAddr() + " -p " + s.Ports.Nginx
+		s.StartServerApp(s.Containers.IperfServer, "iperf3", c, srvCh, stopServerCh)
+	}()
+	err := <-srvCh
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log("server running")
+
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartIperfClient(finished, s.Interfaces.Client.Peer.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+			s.NetNamespaces.Client, []string{"-P", "4"})
+	}()
+	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
+	s.Containers.IperfServer.Run()
+
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener tcp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+	cmd = fmt.Sprintf("http connect proxy client listener add listener udp://0.0.0.0:%s", s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connectProxyClientWaitConnected(clientVpp)
+
+	stopServerCh := make(chan struct{})
+	srvCh := make(chan error, 1)
+
+	defer func() {
+		stopServerCh <- struct{}{}
+	}()
+
+	go func() {
+		defer GinkgoRecover()
+		c := "iperf3 -s -B " + s.NginxAddr() + " -p " + s.Ports.Nginx
+		s.StartServerApp(s.Containers.IperfServer, "iperf3", c, srvCh, stopServerCh)
+	}()
+	err := <-srvCh
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log("server running")
+
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartIperfClient(finished, s.Interfaces.Client.Peer.Ip4AddressString(), s.NginxAddr(), s.Ports.Nginx,
+			s.NetNamespaces.Client, []string{"-u", "-P", "4"})
+	}()
+	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
+	s.AssertNil(<-finished)
 }
