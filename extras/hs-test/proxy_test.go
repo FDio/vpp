@@ -33,6 +33,7 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterMasqueSoloTests(VppConnectProxyClientTcpTest, VppConnectProxyClientUdpTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -658,4 +659,65 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppProxy.Disconnect()
 
 	vppConnectUdpStressLoad(s)
+}
+
+func VppConnectProxyClientTcpTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener tcp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connected := false
+	for nTries := 0; nTries < 10; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client")
+		if strings.Contains(o, "connection state: connected") {
+			connected = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(connected, true)
+	cmd = fmt.Sprintf("http connect proxy client listener add listener tcp://0.0.0.0:%s", s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+	o := clientVpp.Vppctl("show http connect proxy client listeners")
+	s.Log(o)
+	s.AssertContains(o, "tcp://0.0.0.0:"+s.Ports.Nginx)
+	s.AssertContains(o, "tcp://0.0.0.0:"+s.Ports.NginxSsl)
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, 30, []string{"--http1.1"})
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyClientUdpTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener udp://0.0.0.0:%s",
+		s.ProxyAddr(), s.Ports.Proxy, s.Ports.NginxSsl)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	connected := false
+	for nTries := 0; nTries < 10; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client")
+		if strings.Contains(o, "connection state: connected") {
+			connected = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(connected, true)
+	s.Log(clientVpp.Vppctl("show http connect proxy client listeners"))
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.NginxSsl)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, 30, []string{"--http3-only"})
+	}()
+	s.AssertNil(<-finished)
 }
