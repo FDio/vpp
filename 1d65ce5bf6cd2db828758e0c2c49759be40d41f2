@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "1d65ce5bf6cd2db828758e0c2c49759be40d41f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1f33c85_9f113582",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1171,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-07-28T19:50:22Z",
+      "side": 1,
+      "message": "this compiles?",
+      "revId": "1d65ce5bf6cd2db828758e0c2c49759be40d41f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ca1e18a_71d90e36",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1227,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2025-07-28T19:50:22Z",
+      "side": 1,
+      "message": "if it\u0027s invalid return we still want to return -1?",
+      "revId": "1d65ce5bf6cd2db828758e0c2c49759be40d41f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
