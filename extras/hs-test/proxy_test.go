@@ -33,6 +33,7 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
+	RegisterMasqueSoloTests(VppProxyClientConnectTest, VppProxyClientConnectUdpTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -658,4 +659,29 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppProxy.Disconnect()
 
 	vppConnectUdpStressLoad(s)
+}
+
+func VppProxyClientConnectTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("test proxy client server-uri https://%s:%s listener tcp://0.0.0.0:%s", s.ProxyAddr(), s.Ports.Proxy, s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+
+	time.Sleep(5 * time.Second)
+
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartWget(finished, s.NginxAddr(), s.Ports.Nginx, "index.html", s.NetNamespaces.Client)
+	}()
+	s.AssertNil(<-finished)
+}
+
+func VppProxyClientConnectUdpTest(s *MasqueSuite) {
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	cmd := fmt.Sprintf("test proxy client server-uri https://%s:%s target udp://%s:%s", s.ProxyAddr(), s.Ports.Proxy, s.NginxAddr(), s.Ports.Nginx)
+	s.Log(clientVpp.Vppctl(cmd))
+	time.Sleep(5 * time.Second)
+	s.Log(clientVpp.Vppctl("show session verbose 2"))
 }
