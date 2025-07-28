@@ -763,6 +763,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
   dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
   ASSERT (max_read >= dgram_size);
+  clib_warning ("max_read %u, data_len %u", max_read, hdr.data_length);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
