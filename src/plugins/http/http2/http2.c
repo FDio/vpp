@@ -763,6 +763,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
   dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
   ASSERT (max_read >= dgram_size);
+  clib_warning ("max_read %u, data_len %u", max_read, hdr.data_length);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
@@ -1713,6 +1714,8 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 
   rv = http_decap_udp_payload_datagram (req->payload, req->payload_len,
 					&payload_offset, &payload_len);
+  clib_warning ("frame payload len %u, data_len %u", req->payload_len,
+		payload_len);
   HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
 	    payload_offset, payload_len);
   if (PREDICT_FALSE (rv != 0))
