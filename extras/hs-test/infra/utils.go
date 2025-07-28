@@ -255,7 +255,7 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := newCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+	cmd := newCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=1", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
