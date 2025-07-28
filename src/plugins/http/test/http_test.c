@@ -994,6 +994,9 @@ http_test_hpack (vlib_main_t *vm)
   N_TEST ("\x7Fprivate", HTTP2_ERROR_COMPRESSION_ERROR);
   /* invalid EOF */
   N_TEST ("\x81\x8C", HTTP2_ERROR_COMPRESSION_ERROR);
+  N_TEST ("\x98\xDC\x53\xFF\xFF\xFF\xDF\xFF\xFF\xFF\x14\xFF\xFF\xFF\xF7\xFF"
+	  "\xFF\xFF\xC5\x3F\xFF\xFF\xFD\xFF\xFF",
+	  HTTP2_ERROR_COMPRESSION_ERROR);
   /* not enough space for decoding */
   N_TEST (
     "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"

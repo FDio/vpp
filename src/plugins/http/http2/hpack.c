@@ -198,6 +198,9 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	   * encoding”
 	   */
 	  hpack_huffman_group_t *hg = hpack_huffman_get_group (tmp);
+	  /* this might happen with invalid EOS (longer than 7 bits) */
+	  if (hg->code_len > accumulator_len)
+	    return HTTP2_ERROR_COMPRESSION_ERROR;
 	  /* trim code to correct length */
 	  u32 code = (accumulator >> (accumulator_len - hg->code_len)) &
 		     ((1 << hg->code_len) - 1);
@@ -215,7 +218,7 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	  /* there might be one more symbol encoded with short code */
 	  if (accumulator_len >= 5)
 	    {
-	      /* first check EOF case */
+	      /* first check EOS case */
 	      if (((1 << accumulator_len) - 1) ==
 		  (accumulator & ((1 << accumulator_len) - 1)))
 		break;
@@ -235,7 +238,7 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	      if (accumulator_len == 0)
 		break;
 	    }
-	  /* we must end with EOF here */
+	  /* we must end with EOS here */
 	  if (((1 << accumulator_len) - 1) !=
 	      (accumulator & ((1 << accumulator_len) - 1)))
 	    return HTTP2_ERROR_COMPRESSION_ERROR;
