@@ -696,7 +696,8 @@ static clib_error_t *
 set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay, bandwidth;
+  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0,
+      bandwidth = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
   nsim_main_t *nsm = &nsim_main;
   int rv;
