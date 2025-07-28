@@ -1,0 +1,33 @@
+---
+devices:
+  - name: "client-ns"
+    type: "netns"
+
+  - name: "masque-cln"
+    type: "veth"
+    peer:
+      name: "mcln"
+      netns: "client-ns"
+      ip4:
+        network: 1
+
+  - name: "masque-cln-tunnel"
+    type: "veth"
+    peer:
+      name: "mtuncln"
+      ip4:
+        network: 2
+
+  - name: "masque-srv-tunnel"
+    type: "veth"
+    peer:
+      name: "mtunsrv"
+      ip4:
+        network: 2
+
+  - name: "masque-srv"
+    type: "veth"
+    peer:
+      name: "msrv"
+      ip4:
+        network: 3

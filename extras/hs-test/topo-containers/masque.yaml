@@ -1,0 +1,27 @@
+---
+volumes:
+  - volume: &shared-vol
+      host-dir: "$HST_VOLUME_DIR/shared"
+
+containers:
+  - name: "vpp-masque-client"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+
+  - name: "vpp-masque-server"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+
+  - name: "nginx-http3"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+      - host-dir: $HST_DIR/resources/cert
+        container-dir: "/etc/nginx/ssl"
+    image: "hs-test/nginx-http3"
+    is-optional: true
