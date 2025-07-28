@@ -1,0 +1,40 @@
+---
+devices:
+  - name: "client-ns"
+    type: "netns"
+
+  - name: "cln"
+    type: "veth"
+    preset-hw-address: "00:00:5e:00:53:03"
+    peer:
+      name: "mcln"
+      netns: "client-ns"
+      ip4:
+        network: 1
+
+  - name: "cln-tun"
+    type: "veth"
+    peer:
+      name: "mtuncln"
+      ip4:
+        network: 2
+
+  - name: "srv-tun"
+    type: "veth"
+    peer:
+      name: "mtunsrv"
+      ip4:
+        network: 2
+
+  - name: "srv"
+    type: "veth"
+    peer:
+      name: "msrv"
+      ip4:
+        network: 3
+
+  - name: "br"
+    type: "bridge"
+    interfaces:
+      - mtuncln
+      - mtunsrv
