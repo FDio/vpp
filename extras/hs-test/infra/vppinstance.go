@@ -400,6 +400,19 @@ func (vpp *VppInstance) createAfPacket(veth *NetInterface, IPv6 bool, opts ...Af
 
 	veth.Index = reply.SwIfIndex
 
+	// Get mac
+	if err := vpp.ApiStream.SendMsg(&interfaces.SwInterfaceDump{
+		SwIfIndex: reply.SwIfIndex,
+	}); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.ApiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
+	veth.HwAddress = ifDetails.L2Address
+
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
 		SwIfIndex: veth.Index,
