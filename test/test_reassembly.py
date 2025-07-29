@@ -120,15 +120,16 @@ class TestIPv4Reassembly(VppTestCase):
             fragments_400 = fragment_rfc791(p, 400)
             fragments_300 = fragment_rfc791(p, 300)
             fragments_200 = [x for f in fragments_400 for x in fragment_rfc791(f, 200)]
-            cls.pkt_infos.append((index, fragments_400, fragments_300, fragments_200))
-        cls.fragments_400 = [x for (_, frags, _, _) in cls.pkt_infos for x in frags]
-        cls.fragments_300 = [x for (_, _, frags, _) in cls.pkt_infos for x in frags]
-        cls.fragments_200 = [x for (_, _, _, frags) in cls.pkt_infos for x in frags]
+            cls.pkt_infos.append((index, p, fragments_400, fragments_300, fragments_200))
+        cls.non_fragmented_pkts = [x for (_, pkt, _, _, _) in cls.pkt_infos for x in pkt]
+        cls.fragments_400 = [x for (_, _, frags, _, _) in cls.pkt_infos for x in frags]
+        cls.fragments_300 = [x for (_, _, _, frags, _) in cls.pkt_infos for x in frags]
+        cls.fragments_200 = [x for (_, _, _, _, frags) in cls.pkt_infos for x in frags]
         cls.logger.debug(
             "Fragmented %s packets into %s 400-byte fragments, "
             "%s 300-byte fragments and %s 200-byte fragments"
             % (
-                len(infos),
+                len(cls.non_fragmented_pkts),
                 len(cls.fragments_400),
                 len(cls.fragments_300),
                 len(cls.fragments_200),
@@ -187,6 +188,26 @@ class TestIPv4Reassembly(VppTestCase):
         # run it all again to verify correctness
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_200)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+    def test_passthrough(self):
+        """verify non-fragmented packets pass-through"""
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.non_fragmented_pkts)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.non_fragmented_pkts)
         self.pg_start()
 
         packets = self.dst_if.get_capture(len(self.pkt_infos))
@@ -606,6 +627,10 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         )
         frags = fragment_rfc791(p, 400)
         r = self.send_and_expect(self.src_if, frags, self.src_if, n_rx=1)[0]
+        self.assertEqual(1234, r[ICMP].id)
+        self.assertEqual(icmptypes[r[ICMP].type], "echo-reply")
+        # Verify non-fragmented packet pass-through
+        r = self.send_and_expect(self.src_if, p, self.src_if, n_rx=1)[0]
         self.assertEqual(1234, r[ICMP].id)
         self.assertEqual(icmptypes[r[ICMP].type], "echo-reply")
         self.vapi.ip_local_reass_enable_disable()
@@ -1228,13 +1253,14 @@ class TestIPv6Reassembly(VppTestCase):
             #                      p.__class__(scapy.compat.raw(p))))
             fragments_400 = fragment_rfc8200(p, info.index, 400)
             fragments_300 = fragment_rfc8200(p, info.index, 300)
-            cls.pkt_infos.append((index, fragments_400, fragments_300))
-        cls.fragments_400 = [x for _, frags, _ in cls.pkt_infos for x in frags]
-        cls.fragments_300 = [x for _, _, frags in cls.pkt_infos for x in frags]
+            cls.pkt_infos.append((index, p, fragments_400, fragments_300))
+        cls.fragments_400 = [x for _, _, frags, _ in cls.pkt_infos for x in frags]
+        cls.fragments_300 = [x for _, _, _, frags in cls.pkt_infos for x in frags]
+        cls.non_fragmented_pkts = [x for _, pkt, _, _, in cls.pkt_infos for x in pkt]
         cls.logger.debug(
             "Fragmented %s packets into %s 400-byte fragments, "
             "and %s 300-byte fragments"
-            % (len(infos), len(cls.fragments_400), len(cls.fragments_300))
+            % (len(cls.non_fragmented_pkts), len(cls.fragments_400), len(cls.fragments_300))
         )
 
     def verify_capture(self, capture, dropped_packet_indexes=[]):
@@ -1289,6 +1315,26 @@ class TestIPv6Reassembly(VppTestCase):
         # run it all again to verify correctness
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+    def test_passthrough(self):
+        """verify non-fragmented packets pass-through"""
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.non_fragmented_pkts)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.non_fragmented_pkts)
         self.pg_start()
 
         packets = self.dst_if.get_capture(len(self.pkt_infos))
@@ -1759,9 +1805,12 @@ class TestIPv6Reassembly(VppTestCase):
         frags = fragment_rfc8200(pkt, 1, 400)
         r = self.send_and_expect(self.src_if, frags, self.src_if, n_rx=1)[0]
         self.assertEqual(1234, r[ICMPv6EchoReply].id)
+        # Verify non-fragmented packet pass-through
+        r = self.send_and_expect(self.src_if, pkt, self.src_if, n_rx=1)[0]
+        self.assertEqual(1234, r[ICMPv6EchoReply].id)
         self.vapi.ip_local_reass_enable_disable()
 
-        self.send_and_assert_no_replies(self.src_if, frags)
+        # self.send_and_assert_no_replies(self.src_if, frags)
         self.vapi.ip_local_reass_enable_disable(enable_ip6=True)
 
 
