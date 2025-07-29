@@ -641,6 +641,51 @@ lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
   return (fproto);
 }
 
+static u32
+lcp_router_count_interface_addresses (u32 sw_if_index, u8 address_family)
+{
+  ip_lookup_main_t *lm = NULL;
+  ip_interface_address_t *ia = NULL;
+  u32 count = 0;
+
+  if (address_family == AF_IP4)
+    lm = &ip4_main.lookup_main;
+  else if (address_family == AF_IP6)
+    lm = &ip6_main.lookup_main;
+  else
+    return 0;
+
+  foreach_ip_interface_address (lm, ia, sw_if_index, 1 /* honor unnumbered */,
+				({
+				  (void) ia;
+				  count++;
+				}));
+
+  return count;
+}
+
+static void
+lcp_router_update_mroutes_ip4_on_addr_change (u32 sw_if_index, int is_del)
+{
+  u32 count_after;
+
+  count_after = lcp_router_count_interface_addresses (sw_if_index, AF_IP4);
+
+  if ((!is_del && count_after == 1) || (is_del && count_after == 0))
+    lcp_router_ip4_mroutes_add_del (sw_if_index, !is_del);
+}
+
+static void
+lcp_router_update_mroutes_ip6_on_addr_change (u32 sw_if_index, int is_del)
+{
+  u32 count_after;
+
+  count_after = lcp_router_count_interface_addresses (sw_if_index, AF_IP6);
+
+  if ((!is_del && count_after == 1) || (is_del && count_after == 0))
+    lcp_router_ip6_mroutes_add_del (sw_if_index, !is_del);
+}
+
 static void
 lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 {
@@ -659,7 +704,7 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	  ip4_add_del_interface_address (
 	    vlib_get_main (), sw_if_index, &ip_addr_v4 (&nh),
 	    rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_ip4_mroutes_add_del (sw_if_index, !is_del);
+	  lcp_router_update_mroutes_ip4_on_addr_change (sw_if_index, is_del);
 	}
       else if (AF_IP6 == ip_addr_version (&nh))
 	{
@@ -675,7 +720,7 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	    ip6_add_del_interface_address (
 	      vlib_get_main (), sw_if_index, &ip_addr_v6 (&nh),
 	      rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_ip6_mroutes_add_del (sw_if_index, !is_del);
+	  lcp_router_update_mroutes_ip6_on_addr_change (sw_if_index, is_del);
 	}
 
       LCP_ROUTER_DBG ("link-addr: %U %U/%d", format_vnet_sw_if_index_name,
