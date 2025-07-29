@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af24e55c_cbd539cf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-29T12:46:16Z",
+      "side": 1,
+      "message": "could you please also create TeardownTest in VethSuite and put show error cmd here in case of failure, something like https://github.com/FDio/vpp/blob/6adc4d8c6014f35ff8d74aa16bb20b11bd7f55ef/extras/hs-test/infra/suite_ldp.go#L106\n\nnsim have some counters on drop, reorder,... hope this make better picture why one hst job is failing",
+      "revId": "01743670dfdb793a8cfa6eacd871b061c1a5fadf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9c2ab05_eed13215",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 11
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-07-29T12:46:16Z",
+      "side": 1,
+      "message": "could you please log output of this command? we\u0027ll see if there is some error or it should display config",
+      "range": {
+        "startLine": 111,
+        "startChar": 1,
+        "endLine": 111,
+        "endChar": 115
+      },
+      "revId": "01743670dfdb793a8cfa6eacd871b061c1a5fadf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
