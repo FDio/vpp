@@ -342,6 +342,9 @@ main (int argc, char **argv)
   while (!vt_clu_test_done (vclum))
     ;
 
+  /* Wait for pthreads to cleanup before signaling */
+  usleep (100e3);
+
   for (int i = 1; i < vclum->num_workers; i++)
     {
       pthread_kill (vclum->worker_threads[i], SIGUSR1);
