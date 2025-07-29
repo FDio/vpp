@@ -216,6 +216,7 @@ typedef enum transport_endpt_cfg_flags_
 {
   TRANSPORT_CFG_F_CONNECTED = 1 << 0,
   TRANSPORT_CFG_F_UNIDIRECTIONAL = 1 << 1,
+  TRANSPORT_CFG_F_LOCAL_SCOPE = 1 << 2,
 } transport_endpt_cfg_flags_t;
 
 /* clang-format off */

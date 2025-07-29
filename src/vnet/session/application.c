@@ -1439,7 +1439,9 @@ vnet_connect (vnet_connect_args_t *a)
    * If we have local scope, we pass *all* connects through it since we may
    * have special policy rules even for non-local destinations, think proxy.
    */
-  if (application_has_local_scope (client))
+  if (application_has_local_scope (client) ||
+      ((client->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP &&
+	(a->sep_ext.transport_flags & TRANSPORT_CFG_F_LOCAL_SCOPE))))
     {
       session_error_t rv;
 
@@ -1447,6 +1449,7 @@ vnet_connect (vnet_connect_args_t *a)
       a->sep_ext.transport_proto = TRANSPORT_PROTO_CT;
       rv = app_worker_connect_session (client_wrk, &a->sep_ext, &a->sh);
       a->sep_ext.transport_proto = a->sep_ext.original_tp;
+      a->sep_ext.transport_flags |= TRANSPORT_CFG_F_LOCAL_SCOPE;
       if (!rv || rv != SESSION_E_LOCAL_CONNECT)
 	return rv;
     }
