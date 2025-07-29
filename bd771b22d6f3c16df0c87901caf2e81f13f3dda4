@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92d20597_857d553a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2025-07-29T14:42:53Z",
+      "side": 1,
+      "message": "Dear Pim,\n\nPlease review.\n\nThanks,\nDenys.",
+      "revId": "bd771b22d6f3c16df0c87901caf2e81f13f3dda4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
