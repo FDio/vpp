@@ -108,10 +108,10 @@ func TcpWithLossTest(s *VethsSuite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	// Add loss of packets with Network Delay Simulator
-	clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
-		" packet-size 1400 packets-per-drop 1000")
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
+		" packet-size 1400 packets-per-drop 1000"))
 
-	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Server.Name())
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
 
 	// Do echo test from client-vpp container
 	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
@@ -130,10 +130,10 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
 	// Add loss of packets with Network Delay Simulator
-	clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
-		" packet-size 1400 packets-per-drop 1000")
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
+		" packet-size 1400 packets-per-drop 1000"))
 
-	clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Server.Name())
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
 
 	// Do echo test from client-vpp container
 	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
