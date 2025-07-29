@@ -193,11 +193,16 @@ http2_conn_ctx_free (http_conn_t *hc)
   http2_main_t *h2m = &http2_main;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   http2_conn_ctx_t *h2c;
+  http2_req_t *head;
   u32 cnt;
 
   h2c = http2_conn_ctx_get_w_thread (hc);
   HTTP_DBG (1, "h2c [%u]%x", hc->c_thread_index, h2c - wrk->conn_pool);
   ASSERT (h2c->req_num == 0);
+  head = pool_elt_at_index (wrk->req_pool, h2c->new_tx_streams);
+  pool_put (wrk->req_pool, head);
+  head = pool_elt_at_index (wrk->req_pool, h2c->old_tx_streams);
+  pool_put (wrk->req_pool, head);
   hash_free (h2c->req_by_stream_id);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
     hpack_dynamic_table_free (&h2c->decoder_dynamic_table);
