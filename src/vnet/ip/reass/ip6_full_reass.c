@@ -1227,6 +1227,8 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      // this is a mangled packet - no fragmentation
 	      next0 = is_custom_app ? fvnb->ip.reass.error_next_index :
 					    IP6_FULL_REASSEMBLY_NEXT_DROP;
+	      // 	      next0 = is_custom_app ? fvnb->ip.reass.next_index
+	      // : IP6_FULL_REASSEMBLY_NEXT_INPUT;
 	      ip6_full_reass_add_trace (vm, node, NULL, bi0, NULL, PASSTHROUGH,
 					~0);
 	      goto skip_reass;
@@ -1553,6 +1555,13 @@ VLIB_REGISTER_NODE (ip6_full_reass_node_custom) = {
 };
 
 #ifndef CLIB_MARCH_VARIANT
+uword
+ip6_full_reass_custom_register_next_node (uword node_index)
+{
+  return vlib_node_add_next (vlib_get_main (),
+			     ip6_full_reass_node_custom.index, node_index);
+}
+
 static u32
 ip6_full_reass_get_nbuckets ()
 {
