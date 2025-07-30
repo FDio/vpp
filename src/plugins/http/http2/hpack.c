@@ -1457,6 +1457,11 @@ hpack_serialize_request (u8 *app_headers, u32 app_headers_len,
   if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
     p = hpack_encode_path (p, control_data->path, control_data->path_len);
 
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
+    p = hpack_encode_custom_header (p, (u8 *) ":protocol", 9,
+				    control_data->protocol,
+				    control_data->protocol_len);
+
   p = hpack_encode_authority (p, control_data->authority,
 			      control_data->authority_len);
 
