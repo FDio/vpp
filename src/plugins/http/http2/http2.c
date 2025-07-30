@@ -133,6 +133,12 @@ typedef enum
 
 #define HTTP2_SCHED_MAX_EMISSIONS 32
 
+static http_token_t http2_ext_connect_proto[] = { { http_token_lit ("bug") },
+#define _(sym, str) { http_token_lit (str) },
+						  foreach_http_upgrade_proto
+#undef _
+};
+
 static http2_main_t http2_main;
 
 static_always_inline http2_worker_ctx_t *
@@ -1055,10 +1061,38 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   if (msg.method_type == HTTP_REQ_CONNECT)
     {
       req->base.is_tunnel = 1;
-      control_data.authority = http_get_app_target (&req->base, &msg);
-      control_data.authority_len = msg.data.target_path_len;
-      HTTP_DBG (1, "opening tunnel to %U", format_http_bytes,
-		control_data.authority, control_data.authority_len);
+      req->dispatch_data_cb = http2_sched_dispatch_tunnel;
+      if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
+	{
+	  if (hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	    req->dispatch_data_cb = http2_sched_dispatch_udp_tunnel;
+	  control_data.authority = hc->host;
+	  control_data.authority_len = vec_len (hc->host);
+	  control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_SCHEME_PARSED;
+	  control_data.scheme =
+	    http_get_transport_proto (hc) == TRANSPORT_PROTO_TLS ?
+	      HTTP_URL_SCHEME_HTTPS :
+	      HTTP_URL_SCHEME_HTTP;
+	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PATH_PARSED;
+	  control_data.path = http_get_app_target (&req->base, &msg);
+	  control_data.path_len = msg.data.target_path_len;
+	  control_data.parsed_bitmap |= HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
+	  control_data.protocol =
+	    (u8 *) http2_ext_connect_proto[msg.data.upgrade_proto].base;
+	  control_data.protocol_len =
+	    http2_ext_connect_proto[msg.data.upgrade_proto].len;
+	  HTTP_DBG (1, "extended connect %s %U",
+		    http2_ext_connect_proto[msg.data.upgrade_proto].base,
+		    format_http_bytes, control_data.path,
+		    control_data.path_len);
+	}
+      else
+	{
+	  control_data.authority = http_get_app_target (&req->base, &msg);
+	  control_data.authority_len = msg.data.target_path_len;
+	  HTTP_DBG (1, "opening tunnel to %U", format_http_bytes,
+		    control_data.authority, control_data.authority_len);
+	}
     }
   else
     {
@@ -1288,7 +1322,11 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
   if (req->base.is_tunnel &&
       http_status_code_str[req->base.status_code][0] == '2')
     {
-      new_state = HTTP_REQ_STATE_TUNNEL;
+      if (req->base.upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
+	  hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	new_state = HTTP_REQ_STATE_UDP_TUNNEL;
+      else
+	new_state = HTTP_REQ_STATE_TUNNEL;
       http_io_as_add_want_read_ntf (&req->base);
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->base.headers);
