@@ -26,13 +26,15 @@ typedef enum
   PING_RESPONSE_IP4,
 } ping_response_type_t;
 
-#define foreach_ip46_ping_result                                      \
-  _ (OK, "OK")                                                        \
-  _ (ALLOC_FAIL, "packet allocation failed")                          \
-  _ (NO_INTERFACE, "no egress interface")                             \
-  _ (NO_TABLE, "no FIB table for lookup")                            \
-  _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
-  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
+#define foreach_ip46_ping_result                                              \
+  _ (OK, "OK")                                                                \
+  _ (ALLOC_FAIL, "packet allocation failed")                                  \
+  _ (NO_INTERFACE, "no egress interface")                                     \
+  _ (NO_TABLE, "no FIB table for lookup")                                     \
+  _ (NO_SRC_ADDRESS, "no source address for egress interface")                \
+  _ (NO_SRC_ADDRESS_REQUESTED,                                                \
+     "requested source address not found on egress interface")                \
+  _ (NO_BUFFERS, "could not allocate a new buffer")
 
 typedef enum
 {
@@ -151,12 +153,14 @@ clear_cli_process_id_by_icmp_id_mt (vlib_main_t *vm, u16 icmp_id)
 }
 clib_error_t *ping_plugin_api_hookup (vlib_main_t *vm);
 send_ip46_ping_result_t send_ip4_ping (vlib_main_t *vm, u32 table_id,
-				       ip4_address_t *pa4, u32 sw_if_index,
-				       u16 seq_host, u16 id_host, u16 data_len,
-				       u32 burst, u8 verbose);
+				       ip4_address_t *pa4, ip4_address_t *sa4,
+				       u32 sw_if_index, u16 seq_host,
+				       u16 id_host, u16 data_len, u32 burst,
+				       u8 verbose);
 send_ip46_ping_result_t send_ip6_ping (vlib_main_t *vm, u32 table_id,
-				       ip6_address_t *pa6, u32 sw_if_index,
-				       u16 seq_host, u16 id_host, u16 data_len,
-				       u32 burst, u8 verbose);
+				       ip6_address_t *pa6, ip6_address_t *sa6,
+				       u32 sw_if_index, u16 seq_host,
+				       u16 id_host, u16 data_len, u32 burst,
+				       u8 verbose);
 
 #endif /* included_ping_ping_h */
