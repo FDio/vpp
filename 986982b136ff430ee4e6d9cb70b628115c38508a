@@ -16,6 +16,24 @@
       "message": "I\u0027m having second thoughts because of this and line 656, let\u0027s sync up",
       "revId": "986982b136ff430ee4e6d9cb70b628115c38508a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9641037_90c9b04a",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-07-30T10:32:04Z",
+      "side": 1,
+      "message": "Sure",
+      "parentUuid": "afad0d55_30935e56",
+      "revId": "986982b136ff430ee4e6d9cb70b628115c38508a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
