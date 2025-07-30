@@ -1375,11 +1375,18 @@ format_http_transport_half_open (u8 *s, va_list *args)
   session_t *tcp_ho;
 
   ho_hc = http_ho_conn_get (ho_index);
-  tcp_ho = session_get_from_handle (ho_hc->hc_tc_session_handle);
+  tcp_ho = session_get_from_handle_if_valid (ho_hc->hc_tc_session_handle);
 
-  s = format (s, "[%d:%d][H] half-open app_wrk %u ts %d:%d",
+  if (tcp_ho)
+    s =
+      format (s, "[%d:%d][H] half-open app_wrk %u ts %d:%d",
 	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->hc_pa_wrk_index,
 	      tcp_ho->thread_index, tcp_ho->session_index);
+  else
+    s =
+      format (s, "[%d:%d][H] half-open app_wrk %u (postponed cleanup)",
+	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->hc_pa_wrk_index);
+
   return s;
 }
 
