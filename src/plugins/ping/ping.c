@@ -24,6 +24,8 @@
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip46_address.h>
 
 #include <vnet/ip/icmp4.h>
 #include <ping/ping.h>
@@ -857,7 +859,7 @@ ip46_fill_l3_header (ip46_address_t * pa46, vlib_buffer_t * b0, int is_ip6)
 }
 
 static bool
-ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
+ip46_set_src_address_sas (u32 sw_if_index, vlib_buffer_t *b0, int is_ip6)
 {
   bool res = false;
 
@@ -875,6 +877,28 @@ ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
       res = ip4_sas_by_sw_if_index (sw_if_index, &ip4->dst_address,
 				    &ip4->src_address);
     }
+  return res;
+}
+
+static bool
+ip46_set_src_address (u32 sw_if_index, vlib_buffer_t *b0, ip46_address_t *sa46,
+		      int is_ip6)
+{
+  bool res = false;
+
+  if (is_ip6)
+    {
+      ip6_header_t *ip6 = vlib_buffer_get_current (b0);
+      if ((res = ip_interface_has_address (sw_if_index, sa46, 0 /* is_ip4 */)))
+	ip6->src_address = sa46->ip6;
+    }
+  else
+    {
+      ip4_header_t *ip4 = vlib_buffer_get_current (b0);
+      if ((res = ip_interface_has_address (sw_if_index, sa46, 1 /* is_ip4 */)))
+	ip4->src_address = sa46->ip4;
+    }
+
   return res;
 }
 
@@ -1077,12 +1101,9 @@ ship_and_ret:
 #define ERROR_OUT(e) do { err = e; goto done; } while (0)
 
 static send_ip46_ping_result_t
-send_ip46_ping (vlib_main_t * vm,
-		u32 table_id,
-		ip46_address_t * pa46,
-		u32 sw_if_index,
-		u16 seq_host, u16 id_host, u16 data_len, u32 burst,
-		u8 verbose, int is_ip6)
+send_ip46_ping (vlib_main_t *vm, u32 table_id, ip46_address_t *pa46,
+		ip46_address_t *sa46, u32 sw_if_index, u16 seq_host,
+		u16 id_host, u16 data_len, u32 burst, u8 verbose, int is_ip6)
 {
   int err = SEND_PING_OK;
   u32 bi0 = 0;
@@ -1121,8 +1142,18 @@ send_ip46_ping (vlib_main_t * vm,
   int l4_header_offset = ip46_fill_l3_header (pa46, b0, is_ip6);
 
   /* set the src address in the buffer */
-  if (!ip46_set_src_address (sw_if_index, b0, is_ip6))
-    ERROR_OUT (SEND_PING_NO_SRC_ADDRESS);
+  /* if src address is specified, check if it exists on interface */
+  /* otherwise, perform src address selection on interface */
+  if (ip46_address_is_zero (sa46))
+    {
+      if (!ip46_set_src_address_sas (sw_if_index, b0, is_ip6))
+	ERROR_OUT (SEND_PING_NO_SRC_ADDRESS);
+    }
+  else
+    {
+      if (!ip46_set_src_address (sw_if_index, b0, sa46, is_ip6))
+	ERROR_OUT (SEND_PING_NO_SRC_ADDRESS_REQUESTED);
+    }
   if (verbose)
     ip46_print_buffer_src_address (vm, b0, is_ip6);
 
@@ -1163,24 +1194,28 @@ done:
 
 send_ip46_ping_result_t
 send_ip6_ping (vlib_main_t *vm, u32 table_id, ip6_address_t *pa6,
-	       u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
-	       u32 burst, u8 verbose)
+	       ip6_address_t *sa6, u32 sw_if_index, u16 seq_host, u16 id_host,
+	       u16 data_len, u32 burst, u8 verbose)
 {
   ip46_address_t target;
   target.ip6 = *pa6;
-  return send_ip46_ping (vm, table_id, &target, sw_if_index, seq_host,
-			 id_host, data_len, burst, verbose, 1 /* is_ip6 */ );
+  ip46_address_t source;
+  source.ip6 = *sa6;
+  return send_ip46_ping (vm, table_id, &target, &source, sw_if_index, seq_host,
+			 id_host, data_len, burst, verbose, 1 /* is_ip6 */);
 }
 
 send_ip46_ping_result_t
 send_ip4_ping (vlib_main_t *vm, u32 table_id, ip4_address_t *pa4,
-	       u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
-	       u32 burst, u8 verbose)
+	       ip4_address_t *sa4, u32 sw_if_index, u16 seq_host, u16 id_host,
+	       u16 data_len, u32 burst, u8 verbose)
 {
   ip46_address_t target;
+  ip46_address_t source;
+  ip46_address_set_ip4 (&source, sa4);
   ip46_address_set_ip4 (&target, pa4);
-  return send_ip46_ping (vm, table_id, &target, sw_if_index, seq_host,
-			 id_host, data_len, burst, verbose, 0 /* is_ip6 */ );
+  return send_ip46_ping (vm, table_id, &target, &source, sw_if_index, seq_host,
+			 id_host, data_len, burst, verbose, 0 /* is_ip6 */);
 }
 
 static void
@@ -1235,10 +1270,11 @@ print_ip46_icmp_reply (vlib_main_t * vm, u32 bi0, int is_ip6)
  */
 
 static void
-run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
-		       ip6_address_t * pa6, u32 sw_if_index,
-		       f64 ping_interval, u32 ping_repeat, u32 data_len,
-		       u32 ping_burst, u32 verbose)
+run_ping_ip46_address (vlib_main_t *vm, u32 table_id, ip4_address_t *pa4,
+		       ip6_address_t *pa6, ip4_address_t *sa4,
+		       ip6_address_t *sa6, u32 sw_if_index, f64 ping_interval,
+		       u32 ping_repeat, u32 data_len, u32 ping_burst,
+		       u32 verbose)
 {
   int i;
   uword curr_proc = vlib_current_process (vm);
@@ -1268,8 +1304,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
       f64 time_ping_sent = vlib_time_now (vm);
       if (pa6)
 	{
-	  res = send_ip6_ping (vm, table_id,
-			       pa6, sw_if_index, i, icmp_id,
+	  res = send_ip6_ping (vm, table_id, pa6, sa6, sw_if_index, i, icmp_id,
 			       data_len, ping_burst, verbose);
 	  if (SEND_PING_OK == res)
 	    n_requests += ping_burst;
@@ -1278,9 +1313,8 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 	}
       if (pa4)
 	{
-	  res = send_ip4_ping (vm, table_id, pa4,
-			       sw_if_index, i, icmp_id, data_len,
-			       ping_burst, verbose);
+	  res = send_ip4_ping (vm, table_id, pa4, sa4, sw_if_index, i, icmp_id,
+			       data_len, ping_burst, verbose);
 	  if (SEND_PING_OK == res)
 	    n_requests += ping_burst;
 	  else
@@ -1347,7 +1381,10 @@ ping_ip_address (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   ip4_address_t a4;
+  ip4_address_t sa4 = { .as_u32 = 0 };
   ip6_address_t a6;
+  ip6_address_t sa6;
+  ip6_address_set_zero (&sa6);
   clib_error_t *error = 0;
   u32 ping_repeat = 5;
   u32 ping_burst = 1;
@@ -1400,10 +1437,11 @@ ping_ip_address (vlib_main_t * vm,
     }
   else
     {
-      error =
-	clib_error_return (0,
-			   "expecting IP4/IP6 address `%U'. Usage: ping <addr> [source <intf>] [size <datasz>] [repeat <count>] [verbose]",
-			   format_unformat_error, input);
+      error = clib_error_return (
+	0,
+	"expecting IP4/IP6 address `%U'. Usage: ping <addr> [source <intf>] "
+	"[src-address <addr>] [size <datasz>] [repeat <count>] [verbose]",
+	format_unformat_error, input);
       goto done;
     }
 
@@ -1438,6 +1476,10 @@ ping_ip_address (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
+      else if (unformat (input, "src-address %U", unformat_ip4_address, &sa4))
+	;
+      else if (unformat (input, "src-address %U", unformat_ip6_address, &sa6))
+	;
       else if (unformat (input, "size"))
 	{
 	  if (!unformat (input, "%u", &data_len))
@@ -1528,9 +1570,9 @@ ping_ip_address (vlib_main_t * vm,
     return clib_error_return (0, "burst size must be between 1 and %u",
 			      MAX_PING_BURST);
 
-  run_ping_ip46_address (vm, table_id, ping_ip4 ? &a4 : NULL,
-			 ping_ip6 ? &a6 : NULL, sw_if_index, ping_interval,
-			 ping_repeat, data_len, ping_burst, verbose);
+  run_ping_ip46_address (
+    vm, table_id, ping_ip4 ? &a4 : NULL, ping_ip6 ? &a6 : NULL, &sa4, &sa6,
+    sw_if_index, ping_interval, ping_repeat, data_len, ping_burst, verbose);
 done:
   return error;
 }
@@ -1576,14 +1618,15 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-VLIB_CLI_COMMAND (ping_command, static) =
-{
+VLIB_CLI_COMMAND (ping_command, static) = {
   .path = "ping",
   .function = ping_ip_address,
   .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>}"
-  " [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>]"
-  " [size <pktsize:60>] [interval <sec:1>] [repeat <cnt:5>] [table-id <id:0>]"
-  " [burst <count:1>] [verbose]",
+		" [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>] "
+		"[src-address <ip-addr>]"
+		" [size <pktsize:60>] [interval <sec:1>] [repeat <cnt:5>] "
+		"[table-id <id:0>]"
+		" [burst <count:1>] [verbose]",
   .is_mp_safe = 1,
 };
 
