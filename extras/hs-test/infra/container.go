@@ -130,7 +130,7 @@ func (c *Container) GetContainerWorkDir() (res string) {
 
 func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=NET_ADMIN --cap-add=SYS_RESOURCE " +
-		"--cap-add=IPC_LOCK --device /dev/net/tun:/dev/net/tun --device /dev/vhost-net:/dev/vhost-net"
+		"--cap-add=IPC_LOCK --cap-add=SYS_PTRACE --device /dev/net/tun:/dev/net/tun --device /dev/vhost-net:/dev/vhost-net"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	if *VppSourceFileDir != "" {
@@ -198,7 +198,7 @@ func (c *Container) Create() error {
 					},
 				},
 			},
-			CapAdd:      []string{"NET_ADMIN", "SYS_RESOURCE", "IPC_LOCK"},
+			CapAdd:      []string{"NET_ADMIN", "SYS_RESOURCE", "IPC_LOCK", "SYS_PTRACE"},
 			NetworkMode: "container:ginkgo",
 			Binds:       c.getVolumesAsSlice(),
 		},
