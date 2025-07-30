@@ -152,6 +152,31 @@ class TestPing(VppTestCase):
             icmp = self.verify_ping_request(p, "10.0.0.1", nbr_addr, icmp_seq)
             icmp_seq = icmp_seq + 1
 
+        # Add additional addresses to interface, and perform pings
+        # requesting specific interface source addresses
+        VppIpInterfaceAddress(self, self.pg1, "10.0.0.11", 24).add_vpp_config()
+        VppIpInterfaceAddress(self, self.pg1, "10.0.0.12", 24).add_vpp_config()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        ping_cmd = "ping %s interval 0.01 repeat 3 source pg1 src-address 10.0.0.11" % nbr_addr
+        ret = self.vapi.cli(ping_cmd)
+        out = self.pg1.get_capture(3)
+        icmp_seq = 1
+        for p in out:
+            icmp = self.verify_ping_request(p, "10.0.0.11", nbr_addr, icmp_seq)
+            icmp_seq = icmp_seq + 1
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        ping_cmd = "ping %s interval 0.01 repeat 3 source pg1 src-address 10.0.0.12" % nbr_addr
+        ret = self.vapi.cli(ping_cmd)
+        out = self.pg1.get_capture(3)
+        icmp_seq = 1
+        for p in out:
+            icmp = self.verify_ping_request(p, "10.0.0.12", nbr_addr, icmp_seq)
+            icmp_seq = icmp_seq + 1
+
     def test_ping_fib_routed_dst(self):
         """ping destination routed according to FIB table"""
 
@@ -203,6 +228,35 @@ class TestPing(VppTestCase):
             for p in out:
                 icmp = self.verify_ping_request(
                     p, self.pg1.local_ip4, self.pg1.remote_ip4, icmp_seq
+                )
+                icmp_seq = icmp_seq + 1
+                if icmp_id is None:
+                    icmp_id = icmp.id
+                else:
+                    self.assertEqual(icmp.id, icmp_id)
+
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            VppIpInterfaceAddress(self, self.pg1, "10.0.0.15", 24).add_vpp_config()
+            ret = self.vapi.want_ping_finished_events(
+                address=self.pg1.remote_ip4,
+                src_address="10.0.0.15",
+                repeat=4,
+                interval=0.2,
+            )
+            self.logger.info(ret)
+            timeout = 1
+
+            ev = self.vapi.wait_for_event(timeout, "ping_finished_event")
+            self.logger.info(ev)
+            self.assertEqual(ev.request_count, 4)
+
+            out = self.pg1.get_capture(4)
+            icmp_id = None
+            icmp_seq = 1
+            for p in out:
+                icmp = self.verify_ping_request(
+                    p, "10.0.0.15", self.pg1.remote_ip4, icmp_seq
                 )
                 icmp_seq = icmp_seq + 1
                 if icmp_id is None:
