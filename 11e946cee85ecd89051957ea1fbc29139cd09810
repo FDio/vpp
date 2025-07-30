@@ -88,6 +88,24 @@
       "parentUuid": "484238f6_86863c86",
       "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a4a8553_fcb1b4fc",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-07-30T08:12:15Z",
+      "side": 1,
+      "message": "Quick reply, we have some wrk tests with both builtin proxy and nginx under extras/hs-test. It would be really good if we could expand those to include k6. The changes to the proxy, if not too intrusive we could maybe add as options. \n\nRegarding the cleanup, yes, those were the things I was worried about as well. We can\u0027t force the cleanup because of `pending_cleanups`. At the same time, reusing the connection will most probably lead to surprises, i.e., in a first instance the request will be accepted, if it comes within the 0.1ms of cleanup timeout, but then the connection will then be cleaned up forcefully. There\u0027s also a chance of an attempt at a double free if the connection is closed again by the apps/proxy.",
+      "parentUuid": "ed9715d3_3e2ba0ef",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
