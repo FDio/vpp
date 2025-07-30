@@ -81,7 +81,7 @@ vl_api_want_ping_finished_events_t_handler (
   u32 reply_count = 0;
 
   u32 table_id = 0;
-  ip_address_t dst_addr = { 0 };
+  ip_address_t dst_addr = { 0 }, src_addr = { 0 };
   u32 sw_if_index = ~0;
   f64 ping_interval = clib_net_to_host_f64 (mp->interval);
   u32 ping_repeat = ntohl (mp->repeat);
@@ -89,6 +89,7 @@ vl_api_want_ping_finished_events_t_handler (
   u32 ping_burst = 1;
   u32 verbose = 0;
   ip_address_decode2 (&mp->address, &dst_addr);
+  ip_address_decode2 (&mp->src_address, &src_addr);
 
   vl_api_registration_t *rp;
   rp = vl_api_client_index_to_registration (mp->client_index);
@@ -108,11 +109,13 @@ vl_api_want_ping_finished_events_t_handler (
       f64 time_ping_sent = vlib_time_now (vm);
 
       if (dst_addr.version == AF_IP4)
-	res = send_ip4_ping (vm, table_id, &dst_addr.ip.ip4, sw_if_index, i,
-			     icmp_id, data_len, ping_burst, verbose);
+	res = send_ip4_ping (vm, table_id, &dst_addr.ip.ip4, &src_addr.ip.ip4,
+			     sw_if_index, i, icmp_id, data_len, ping_burst,
+			     verbose);
       else
-	res = send_ip6_ping (vm, table_id, &dst_addr.ip.ip6, sw_if_index, i,
-			     icmp_id, data_len, ping_burst, verbose);
+	res = send_ip6_ping (vm, table_id, &dst_addr.ip.ip6, &src_addr.ip.ip6,
+			     sw_if_index, i, icmp_id, data_len, ping_burst,
+			     verbose);
 
       if (SEND_PING_OK == res)
 	request_count += 1;
