@@ -331,7 +331,7 @@ retry:
 	  ((d->flags.buf) == 0))
 	{
 	  log_err (dev, "event message error");
-	  return VNET_DEV_ERR_BUG;
+	  return VNET_DEV_ERR_BUG3;
 	}
 
       vec_add1 (ad->events, *(virtchnl_pf_event_t *) b);
@@ -345,7 +345,7 @@ retry:
 	       "unexpected response received [v_opcode = %u, expected %u, "
 	       "v_retval %d]",
 	       d->v_opcode, r->op, d->v_retval);
-      rv = VNET_DEV_ERR_BUG;
+      rv = VNET_DEV_ERR_BUG4;
       goto done;
     }
 
@@ -355,7 +355,7 @@ retry:
     {
       log_err (dev, "error [v_opcode = %u, v_retval %d]", d->v_opcode,
 	       d->v_retval);
-      rv = VNET_DEV_ERR_BUG;
+      rv = VNET_DEV_ERR_BUG5;
       goto done;
     }
 

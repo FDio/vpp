@@ -391,7 +391,7 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	{
 	  rxq = vnet_dev_get_port_rx_queue_by_id (port, req->queue_id);
 	  if (rxq == 0)
-	    return VNET_DEV_ERR_BUG;
+	    return VNET_DEV_ERR_BUG7;
 	}
     }
 
@@ -593,7 +593,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       if (n >= sizeof (a->name))
 	{
 	  vec_free (s);
-	  return VNET_DEV_ERR_BUG;
+	  return VNET_DEV_ERR_BUG8;
 	}
       clib_memcpy (ifs->primary_interface.name, s, n);
       ifs->primary_interface.name[n] = 0;

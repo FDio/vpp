@@ -85,7 +85,7 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
   if (!dev)
     {
       log_err (dev, "dev alloc failed for %s", args->device_id);
-      rv = VNET_DEV_ERR_BUG;
+      rv = VNET_DEV_ERR_BUG9;
       goto done;
     }
   dev->description = dev_desc;

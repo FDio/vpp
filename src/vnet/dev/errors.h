@@ -10,6 +10,16 @@
   _ (ALREADY_IN_USE, "already in use")                                        \
   _ (BUFFER_ALLOC_FAIL, "packet buffer allocation failure")                   \
   _ (BUG, "bug")                                                              \
+  _ (BUG1, "bug")                                                              \
+  _ (BUG2, "bug")                                                              \
+  _ (BUG3, "bug")                                                              \
+  _ (BUG4, "bug")                                                              \
+  _ (BUG5, "bug")                                                              \
+  _ (BUG6, "bug")                                                              \
+  _ (BUG7, "bug")                                                              \
+  _ (BUG8, "bug")                                                              \
+  _ (BUG9, "bug")                                                              \
+  _ (BUGAPI, "bug")                                                              \
   _ (BUS, "bus error")                                                        \
   _ (DEVICE_NO_REPLY, "no reply from device")                                 \
   _ (DMA_MEM_ALLOC_FAIL, "DMA memory allocation error")                       \

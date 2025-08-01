@@ -97,7 +97,7 @@ dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 	case -EINVAL:
 	  return vnet_error (VNET_ERR_INVALID_VALUE, "invalid MTU");
 	default:
-	  return vnet_error (VNET_ERR_BUG,
+	  return vnet_error (VNET_ERR_BUG1,
 			     "unexpected return value %d returned from "
 			     "rte_eth_dev_set_mtu(...)",
 			     rv);
