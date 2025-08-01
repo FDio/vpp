@@ -132,6 +132,7 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   a->sep.fib_index = mp->vrf;
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep.transport_proto = mp->proto;
+  a->sep.dscp = mp->dscp;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
   a->sep_ext.transport_flags = mp->flags;
