@@ -159,7 +159,17 @@
   _ (BUG, -168, "Bug")                                                        \
   _ (FEATURE_ALREADY_DISABLED, -169, "Feature already disabled")              \
   _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")                \
-  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")
+  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")                    \
+  _ (BUG1, -172, "Bug1")                                                        \
+  _ (BUG2, -173, "Bug2")                                                        \
+  _ (BUG3, -174, "Bug3")                                                        \
+  _ (BUG4, -175, "Bug4")                                                        \
+  _ (BUG5, -176, "Bug5")                                                        \
+  _ (BUG6, -177, "Bug6")                                                        \
+  _ (BUG7, -178, "Bug7")                                                        \
+  _ (BUG8, -179, "Bug8")                                                        \
+  _ (BUG9, -180, "Bug9")                                                        \
+  _ (BUGAPI, -181, "BugApi")
 
 typedef enum
 {

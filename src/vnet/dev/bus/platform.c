@@ -77,7 +77,7 @@ vnet_dev_bus_platform_dt_node_from_device_id (clib_dt_node_t **nodep,
 
   if (strncmp (CLIB_DT_LINUX_PREFIX, path,
 	       sizeof (CLIB_DT_LINUX_PREFIX) - 1) != 0)
-    return VNET_DEV_ERR_BUG;
+    return VNET_DEV_ERR_BUG6;
 
   n = clib_dt_get_node_with_path (dm, "%s",
 				  path + sizeof (CLIB_DT_LINUX_PREFIX) - 1);

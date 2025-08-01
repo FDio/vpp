@@ -38,7 +38,7 @@ vnet_api_error (clib_error_t *err)
   if (err == 0)
     return 0;
   if (err->code >= 0)
-    return VNET_API_ERROR_BUG;
+    return -err->code;
   return err->code;
 }
 
