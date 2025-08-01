@@ -44,6 +44,7 @@ typedef struct vtclu_main_
     struct sockaddr_storage clnt_addr;
   };
   uint16_t port;
+  uint8_t dscp;
   int num_workers;
   pthread_t *worker_threads;
   int thread_id_counter;
@@ -51,6 +52,7 @@ typedef struct vtclu_main_
 } vt_clu_main_t;
 
 static vt_clu_main_t vt_clu_main;
+static const uint32_t dscplen = 1;
 
 typedef struct vtclu_worker_args_
 {
@@ -62,13 +64,15 @@ static void
 vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
 {
   int c;
+  int temp;
 
   memset (vclum, 0, sizeof (*vclum));
   vclum->port = VCL_TEST_SERVER_PORT;
   vclum->num_workers = 1;
+  vclum->dscp = 0;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "s:c:w:")) != -1)
+  while ((c = getopt (argc, argv, "s:c:w:d:")) != -1)
     switch (c)
       {
       case 's':
@@ -92,6 +96,15 @@ vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
 	    vtwrn ("invalid number of workers %s", optarg);
 	    vclum->num_workers = 1;
 	  }
+	break;
+      case 'd':
+	temp = atoi (optarg);
+	if (temp <= 0 && temp > 63)
+	  {
+	    vtwrn ("invalid dscp value %s", optarg);
+	    vclum->dscp = 0;
+	  }
+	vclum->dscp = temp;
 	break;
       }
 
@@ -169,6 +182,10 @@ vt_clu_server_worker (void *arg)
       return NULL;
     }
 
+  if (vclum->dscp)
+    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vclum->dscp,
+			 (uint32_t *) &dscplen);
+
   /* Bind to the same endpoint as main thread */
   rv = vppcom_session_bind (vcl_sh, &vclum->endpt);
   if (rv < 0)
@@ -241,6 +258,9 @@ vt_clu_client_worker (void *arg)
       vterr ("vppcom_session_create()", vcl_sh);
       return NULL;
     }
+  if (vclum->dscp)
+    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vclum->dscp,
+			 (uint32_t *) &dscplen);
 
   char message[buflen];
   int msg_len =
