@@ -904,8 +904,14 @@ func PromMemLeakTest(s *Http1Suite) {
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 3)
 
-	/* warmup request (FIB) */
-	promReq(s, url, defaultHttpTimeout)
+	/* warmup requests (FIB, pool allocations) */
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Second * 1)
+		promReq(s, url, defaultHttpTimeout)
+	}
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 12)
 
 	vpp.EnableMemoryTrace()
 	traces1, err := vpp.GetMemoryTrace()
@@ -918,7 +924,7 @@ func PromMemLeakTest(s *Http1Suite) {
 	}
 
 	/* let's give it some time to clean up sessions */
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 12)
 
 	traces2, err := vpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
