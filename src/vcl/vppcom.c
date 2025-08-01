@@ -69,6 +69,7 @@ vcl_send_session_listen (vcl_worker_t *wrk, vcl_session_t *s)
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
   mp->vrf = s->vrf;
+  mp->dscp = s->dscp;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags = TRANSPORT_CFG_F_CONNECTED;
   if (s->ext_config)
