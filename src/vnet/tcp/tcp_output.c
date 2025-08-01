@@ -1536,9 +1536,11 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
 
   tcp_worker_stats_inc (wrk, to_persist, 1);
 
+  if (tc->state == TCP_STATE_CLOSED)
+    return;
+
   /* Problem already solved or worse */
-  if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
-      || (tc->flags & TCP_CONN_FINSNT))
+  if (tc->snd_wnd > tc->snd_mss || (tc->flags & TCP_CONN_FINSNT))
     goto update_scheduler;
 
   available_bytes = transport_max_tx_dequeue (&tc->connection);
