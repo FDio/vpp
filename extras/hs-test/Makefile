@@ -88,7 +88,7 @@ endif
 FORCE_BUILD?=true
 BUILD_AS:=$(strip $(shell echo $${SUDO_USER:-$${USER:-root}}))
 
-DOCKER_CAPABILITIES:=--cap-add=NET_ADMIN --cap-add=SYS_RESOURCE --cap-add=IPC_LOCK
+DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
 DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v /tmp/hs-test:/tmp/hs-test \
 	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
