@@ -3,9 +3,6 @@ devices:
   - name: "cln"
     type: "netns"
 
-  - name: "srv"
-    type: "netns"
-
   - name: "hclnvpp"
     type: "veth"
     peer:
@@ -18,6 +15,5 @@ devices:
     type: "veth"
     peer:
       name: "srv"
-      netns: "srv"
       ip4:
         network: 2
