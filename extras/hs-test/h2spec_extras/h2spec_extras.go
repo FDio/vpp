@@ -35,6 +35,7 @@ func Spec() *spec.TestGroup {
 	tg.AddTestGroup(FlowControl())
 	tg.AddTestGroup(ConnectMethod())
 	tg.AddTestGroup(ExtendedConnectMethod())
+	tg.AddTestGroup(PingAnomaly())
 
 	return tg
 }
@@ -935,5 +936,22 @@ func ConnectUdp() *spec.TestGroup {
 		},
 	})
 
+	return tg
+}
+
+func PingAnomaly() *spec.TestGroup {
+	tg := NewTestGroup("4", "Data Leakage")
+	tg.AddTestCase(&spec.TestCase{
+		Desc:        "1-byte extra",
+		Requirement: "The endpoint MUST terminate the connection with a connection error of type PROTOCOL_ERROR.",
+		Run: func(c *config.Config, conn *spec.Conn) error {
+			err := conn.Handshake()
+			if err != nil {
+				return err
+			}
+			conn.Send([]byte("\x00\x00\x08\x06\x00\x00\x00\x00\x00\x00\xDE\xAD\xBE\xEF\xDE\xAD\xBE\xEF"))
+			return spec.VerifyConnectionError(conn, http2.ErrCodeProtocol)
+		},
+	})
 	return tg
 }
