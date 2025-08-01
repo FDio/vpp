@@ -9,7 +9,7 @@ import (
 
 func init() {
 	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest)
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
 }
 
@@ -155,4 +155,35 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	s.Log(o)
 	s.AssertNil(err, o)
 	s.Log("Done.")
+}
+
+func VclClUdpDscpTest(s *VethsSuite) {
+	srvVppCont := s.Containers.ServerVpp
+	srvAppCont := s.Containers.ServerApp
+	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
+	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+
+	// DSCP 40 - Class selector 5 - Signalling
+	vclSrvCmd := fmt.Sprintf("vcl_test_cl_udp -s %s -d 40", serverVethAddress)
+	srvAppCont.ExecServer(true, vclSrvCmd)
+
+	cliVppCont := s.Containers.ClientVpp
+	cliAppCont := s.Containers.ClientApp
+	cliAppCont.CreateFile("/vcl.conf", getVclConfig(cliVppCont))
+	cliAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	cliVppCont.VppInstance.Vppctl("arping %s host-%s", serverVethAddress, s.Interfaces.Client.Name())
+
+	cliVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
+	srvVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
+
+	// DSCP 16 - Class selector 2 - Network operations
+	cliSrvCmd := fmt.Sprintf("vcl_test_cl_udp -c %s -d 16", serverVethAddress)
+	o, err := cliAppCont.Exec(true, cliSrvCmd)
+	s.AssertNil(err, o)
+
+	o = srvVppCont.VppInstance.Vppctl("show trace")
+	s.AssertContains(o, "dscp CS2")
+	o = cliVppCont.VppInstance.Vppctl("show trace")
+	s.AssertContains(o, "dscp CS5")
 }
