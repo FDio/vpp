@@ -404,7 +404,7 @@ iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc,
 	    {
 	      log_err (dev, "adminq enqueue error [opcode 0x%x, retval %d]",
 		       d->opcode, d->retval);
-	      return VNET_DEV_ERR_BUG;
+	      return VNET_DEV_ERR_BUG2;
 	    }
 
 	  if (flags.dd && flags.cmp)
