@@ -193,6 +193,7 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
+  listener->c_dscp = lcl->dscp;
   listener->mss =
     lcl->mss ? lcl->mss : udp_default_mtu (um, listener->c_is_ip4);
   listener->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_LISTEN;
