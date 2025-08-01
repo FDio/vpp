@@ -459,6 +459,8 @@ list(APPEND VNET_HEADERS
   ip/punt.h
   ip/reass/ip4_sv_reass.h
   ip/reass/ip6_sv_reass.h
+  ip/reass/ip4_full_reass.h
+  ip/reass/ip6_full_reass.h
 )
 
 list(APPEND VNET_API_FILES
