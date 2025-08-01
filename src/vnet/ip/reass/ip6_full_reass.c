@@ -1553,6 +1553,13 @@ VLIB_REGISTER_NODE (ip6_full_reass_node_custom) = {
 };
 
 #ifndef CLIB_MARCH_VARIANT
+uword
+ip6_full_reass_custom_register_next_node (uword node_index)
+{
+  return vlib_node_add_next (vlib_get_main (),
+			     ip6_full_reass_node_custom.index, node_index);
+}
+
 static u32
 ip6_full_reass_get_nbuckets ()
 {
