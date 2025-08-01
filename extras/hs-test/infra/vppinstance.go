@@ -72,6 +72,7 @@ plugins {
   plugin ping_plugin.so { enable }
   plugin nsim_plugin.so { enable }
   plugin mactime_plugin.so { enable }
+  plugin arping_plugin.so { enable }
 }
 
 logging {

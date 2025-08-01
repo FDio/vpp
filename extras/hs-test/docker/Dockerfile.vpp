@@ -24,6 +24,7 @@ COPY \
    $DIR/prom_plugin.so \
    $DIR/tlsopenssl_plugin.so \
    $DIR/mactime_plugin.so \
+   $DIR/arping_plugin.so \
    /usr/lib/$OS_ARCH-linux-gnu/vpp_plugins/
 
 COPY vpp-data/bin/vpp /usr/bin/

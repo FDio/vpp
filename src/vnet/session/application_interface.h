@@ -312,6 +312,7 @@ typedef struct session_listen_msg_
   ip46_address_t ip;
   u8 flags;
   uword ext_config;
+  u8 dscp;
 } __clib_packed session_listen_msg_t;
 
 STATIC_ASSERT (sizeof (session_listen_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
