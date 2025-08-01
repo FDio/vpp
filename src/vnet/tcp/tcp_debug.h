@@ -289,17 +289,17 @@ ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, 			\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 
-#define TCP_EVT_UNBIND_HANDLER(_tc, ...)				\
-{									\
-  TCP_EVT_DEALLOC_HANDLER(_tc);						\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "unbind: listener %d",					\
-  };									\
-  TCP_DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->c_c_index;						\
-  TCP_EVT_DEALLOC_HANDLER(_tc);						\
-}
+#define TCP_EVT_UNBIND_HANDLER(_tc, ...)                                      \
+  {                                                                           \
+    if (_tc->c_elog_track.name == 0)                                          \
+      TCP_EVT_INIT_HANDLER (_tc, 1);                                          \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "unbind: listener %d",                                        \
+    };                                                                        \
+    TCP_DECLARE_ETD (_tc, _e, 1);                                             \
+    ed->data[0] = _tc->c_c_index;                                             \
+    TCP_EVT_DEALLOC_HANDLER (_tc);                                            \
+  }
 
 #define TCP_EVT_DELETE_HANDLER(_tc, ...)				\
 {									\
