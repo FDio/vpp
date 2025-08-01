@@ -391,6 +391,7 @@ var http2Tests = []h2specTest{
 var extrasTests = []h2specTest{
 	{desc: "extras/1/1"},
 	{desc: "extras/1/2"},
+	{desc: "extras/4/1"},
 }
 
 const (

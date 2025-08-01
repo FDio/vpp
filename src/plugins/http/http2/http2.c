@@ -2882,6 +2882,14 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
+      /* to prevent data leakage */
+      if (to_deq && to_deq < HTTP2_FRAME_HEADER_SIZE)
+	{
+	  HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
+	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	  return;
+	}
+
       HTTP_DBG (1, "frame type 0x%02x len %u", fh.type, fh.length);
 
       if ((h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION) &&
