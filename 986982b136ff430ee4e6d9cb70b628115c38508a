@@ -34,6 +34,24 @@
       "parentUuid": "afad0d55_30935e56",
       "revId": "986982b136ff430ee4e6d9cb70b628115c38508a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "12cedaa6_106d8d8e",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-01T13:37:39Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b9641037_90c9b04a",
+      "revId": "986982b136ff430ee4e6d9cb70b628115c38508a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
