@@ -12,6 +12,7 @@ import (
 func init() {
 	RegisterVethTests(NsimLossTest)
 }
+
 func NsimLossTest(s *VethsSuite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -19,7 +20,7 @@ func NsimLossTest(s *VethsSuite) {
 	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
 	o := clientVpp.Vppctl("show nsim")
 	s.AssertNotContains(o, "nsim not enabled")
-	o = clientVpp.Vppctl("ping " + s.Interfaces.Server.Ip4AddressString() + " repeat 10000 interval 0.0001")
+	o = clientVpp.Vppctl("ping " + s.Interfaces.Server.Ip4AddressString() + " repeat 10000 interval 0.01")
 	lines := strings.Split(o, "\n")
 	stats := lines[len(lines)-2]
 	s.Log(stats)
@@ -33,6 +34,6 @@ func NsimLossTest(s *VethsSuite) {
 	packetLoss, err := strconv.ParseFloat(packetLossStr, 64)
 	s.AssertNil(err)
 	if !s.CoverageRun {
-		s.AssertEqual(packetLoss, float64(10), "Packet loss != 10%%")
+		s.AssertEqual(float64(10), packetLoss, "Packet loss != 10%%")
 	}
 }
