@@ -13,9 +13,12 @@
 
 add_vpp_plugin(ping
   SOURCES
+  common.h
   ping.c
   ping.h
   ping_api.c
+  traceroute.c
+  traceroute.h
 
   API_FILES
   ping.api

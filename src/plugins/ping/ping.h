@@ -15,29 +15,31 @@
 #ifndef included_ping_ping_h
 #define included_ping_ping_h
 
-
 #include <vnet/ip/ip.h>
-
 #include <vnet/ip/lookup.h>
 
-typedef enum
-{
-  PING_RESPONSE_IP6 = 42,
-  PING_RESPONSE_IP4,
-} ping_response_type_t;
+#include <ping/common.h>
 
-#define foreach_ip46_ping_result                                      \
-  _ (OK, "OK")                                                        \
-  _ (ALLOC_FAIL, "packet allocation failed")                          \
-  _ (NO_INTERFACE, "no egress interface")                             \
-  _ (NO_TABLE, "no FIB table for lookup")                            \
-  _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
-  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
+#define ERROR_OUT(e)                                                          \
+  do                                                                          \
+    {                                                                         \
+      err = e;                                                                \
+      goto done;                                                              \
+    }                                                                         \
+  while (0)
+
+#define foreach_ip46_ping_result                                              \
+  _ (OK, "OK")                                                                \
+  _ (ALLOC_FAIL, "packet allocation failed")                                  \
+  _ (NO_INTERFACE, "no egress interface")                                     \
+  _ (NO_TABLE, "no FIB table for lookup")                                     \
+  _ (NO_SRC_ADDRESS, "no source address for egress interface")                \
+  _ (NO_BUFFERS, "could not allocate a new buffer")
 
 typedef enum
 {
 #define _(v, s) SEND_PING_##v,
-    foreach_ip46_ping_result
+  foreach_ip46_ping_result
 #undef _
 } send_ip46_ping_result_t;
 
@@ -72,22 +74,24 @@ extern ping_main_t ping_main;
 
 #define PING_CLI_UNKNOWN_NODE (~0)
 
-
-typedef CLIB_PACKED (struct {
-  u16 id;
-  u16 seq;
-  u64 time_sent;
-  u8 data[0];
-}) icmp46_echo_request_t;
-
-
-
 typedef enum
 {
   ICMP46_ECHO_REPLY_NEXT_DROP,
   ICMP46_ECHO_REPLY_NEXT_PUNT,
   ICMP46_ECHO_REPLY_N_NEXT,
 } icmp46_echo_reply_next_t;
+
+/*
+ * Poor man's get-set-clear functions
+ * for manipulation of icmp_id -> cli_process_id
+ * mappings.
+ *
+ * There should normally be very few (0..1..2) of these
+ * mappings, so the linear search is a good strategy.
+ *
+ * Make them thread-safe via a simple spinlock.
+ *
+ */
 
 static_always_inline uword
 get_cli_process_id_by_icmp_id_mt (vlib_main_t *vm, u16 icmp_id)

@@ -127,10 +127,10 @@ vl_api_want_ping_finished_events_t_handler (
 
 	  if (dst_addr.version == AF_IP4)
 	    event_count =
-	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP4);
+	      vlib_process_get_events_with_type (vm, 0, RESPONSE_IP4);
 	  else if (dst_addr.version == AF_IP6)
 	    event_count =
-	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP6);
+	      vlib_process_get_events_with_type (vm, 0, RESPONSE_IP6);
 	  else
 	    break;
 
