@@ -31,22 +31,22 @@
 #include <ping/ping.api_enum.h>
 #include <ping/ping.api_types.h>
 
-#define REPLY_MSG_ID_BASE pm->msg_id_base
+#define REPLY_MSG_ID_BASE ping_traceroute_msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+static u16 ping_traceroute_msg_id_base;
 
 static void
 ping_api_send_ping_event (vl_api_want_ping_finished_events_t *mp,
 			  u32 request_count, u32 reply_count)
 {
-  ping_main_t *pm = &ping_main;
-
   vl_api_registration_t *rp;
   rp = vl_api_client_index_to_registration (mp->client_index);
 
   vl_api_ping_finished_event_t *e = vl_msg_api_alloc (sizeof (*e));
   clib_memset (e, 0, sizeof (*e));
 
-  e->_vl_msg_id = htons (VL_API_PING_FINISHED_EVENT + pm->msg_id_base);
+  e->_vl_msg_id = htons (VL_API_PING_FINISHED_EVENT + REPLY_MSG_ID_BASE);
   e->request_count = htonl (request_count);
   e->reply_count = htonl (reply_count);
 
@@ -58,7 +58,6 @@ vl_api_want_ping_finished_events_t_handler (
   vl_api_want_ping_finished_events_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  ping_main_t *pm = &ping_main;
   vl_api_want_ping_finished_events_reply_t *rmp;
 
   uword curr_proc = vlib_current_process (vm);
@@ -71,10 +70,10 @@ vl_api_want_ping_finished_events_t_handler (
 
   icmp_id = random_u32 (&rand_seed) & 0xffff;
 
-  while (~0 != get_cli_process_id_by_icmp_id_mt (vm, icmp_id))
+  while (~0 != get_cli_process_id_by_run_id (vm, icmp_id))
     icmp_id++;
 
-  set_cli_process_id_by_icmp_id_mt (vm, icmp_id, curr_proc);
+  set_cli_process_id_by_run_id (vm, icmp_id, curr_proc);
 
   int rv = 0;
   u32 request_count = 0;
@@ -106,13 +105,16 @@ vl_api_want_ping_finished_events_t_handler (
     {
       f64 sleep_interval;
       f64 time_ping_sent = vlib_time_now (vm);
+      u64 clib_time_send;
 
       if (dst_addr.version == AF_IP4)
 	res = send_ip4_ping (vm, table_id, &dst_addr.ip.ip4, sw_if_index, i,
-			     icmp_id, data_len, ping_burst, verbose);
+			     icmp_id, data_len, ping_burst, verbose,
+			     &clib_time_send);
       else
 	res = send_ip6_ping (vm, table_id, &dst_addr.ip.ip6, sw_if_index, i,
-			     icmp_id, data_len, ping_burst, verbose);
+			     icmp_id, data_len, ping_burst, verbose,
+			     &clib_time_send);
 
       if (SEND_PING_OK == res)
 	request_count += 1;
@@ -127,10 +129,10 @@ vl_api_want_ping_finished_events_t_handler (
 
 	  if (dst_addr.version == AF_IP4)
 	    event_count =
-	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP4);
+	      vlib_process_get_events_with_type (vm, 0, RESPONSE_IP4);
 	  else if (dst_addr.version == AF_IP6)
 	    event_count =
-	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP6);
+	      vlib_process_get_events_with_type (vm, 0, RESPONSE_IP6);
 	  else
 	    break;
 
@@ -143,19 +145,16 @@ vl_api_want_ping_finished_events_t_handler (
 
   ping_api_send_ping_event (mp, request_count, reply_count);
 
-  clear_cli_process_id_by_icmp_id_mt (vm, icmp_id);
+  clear_cli_process_id_by_run_id (vm, icmp_id);
 }
 
-/* set tup the API message handling tables */
+/* setup the API message handling tables */
 #include <ping/ping.api.c>
 
 clib_error_t *
 ping_plugin_api_hookup (vlib_main_t *vm)
 {
-  ping_main_t *pm = &ping_main;
-
   /* ask for a correctly-sized block of API message decode slots */
-  pm->msg_id_base = setup_message_id_table ();
-
+  ping_traceroute_msg_id_base = setup_message_id_table ();
   return 0;
 }
