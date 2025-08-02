@@ -1179,6 +1179,8 @@ tracedump
 Tracedump
 tracenode
 Tracenode
+traceroute
+Traceroute
 TRex
 Tsou
 ttl
