@@ -69,6 +69,30 @@
       },
       "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4368cd7c_86fad969",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-03T10:45:50Z",
+      "side": 1,
+      "message": "Why though? I think it\u0027s better when the user prepares the segment block and we use the gen function to \"fill in\" the header. To avoid going out of scope user has to prepare the struct anyway, so it might as well be already assigned in the segment array.",
+      "parentUuid": "89ec1c23_abf554e8",
+      "range": {
+        "startLine": 630,
+        "startChar": 22,
+        "endLine": 630,
+        "endChar": 42
+      },
+      "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
