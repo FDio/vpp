@@ -50,6 +50,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "352f11e4_063ebeda",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-03T18:29:42Z",
+      "side": 1,
+      "message": "so you mean app_send_dgram_raw_gso not app_send_dgram_segs_raw_gso?\nwhich you more or less doesn\u0027t rename but gut out and make 2 extra out of it (app_gen_dgram_header and app_send_dgram_segs_raw), and added app_send_dgram_segs as main target of this patch",
+      "parentUuid": "b76a52ed_e1911470",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 34
+      },
+      "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "89ec1c23_abf554e8",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 7
@@ -85,6 +109,30 @@
       "side": 1,
       "message": "Why though? I think it\u0027s better when the user prepares the segment block and we use the gen function to \"fill in\" the header. To avoid going out of scope user has to prepare the struct anyway, so it might as well be already assigned in the segment array.",
       "parentUuid": "89ec1c23_abf554e8",
+      "range": {
+        "startLine": 630,
+        "startChar": 22,
+        "endLine": 630,
+        "endChar": 42
+      },
+      "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c82bd8a7_cb5068bc",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-03T18:29:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4368cd7c_86fad969",
       "range": {
         "startLine": 630,
         "startChar": 22,
