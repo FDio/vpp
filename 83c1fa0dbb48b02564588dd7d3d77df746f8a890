@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89ec1c23_abf554e8",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-03T09:27:53Z",
+      "side": 1,
+      "message": "can we pass session_dgram_hdr_t *hdr directly?",
+      "range": {
+        "startLine": 630,
+        "startChar": 22,
+        "endLine": 630,
+        "endChar": 42
+      },
+      "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
