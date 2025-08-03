@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b76a52ed_e1911470",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-03T10:43:14Z",
+      "side": 1,
+      "message": "app_send_dgram_segs_raw_gso doesn\u0027t handle gso anymore (it\u0027s being included in the header by the gen function - so it\u0027s a rename.",
+      "parentUuid": "4acf60bf_bdd93467",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 34
+      },
+      "revId": "83c1fa0dbb48b02564588dd7d3d77df746f8a890",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89ec1c23_abf554e8",
