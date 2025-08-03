@@ -1067,17 +1067,16 @@ openssl_start_listen (tls_ctx_t * lctx)
 	  clib_warning ("unable to use SSL certificate");
 	  goto err;
 	}
+      rv = SSL_CTX_use_PrivateKey (ssl_ctx, cki->key);
+      if (rv != 1)
+	{
+	  clib_warning ("unable to use SSL PrivateKey");
+	  goto err;
+	}
     }
   else
     {
       lctx->flags |= TLS_CONN_F_ASYNC_CERT;
-    }
-
-  rv = SSL_CTX_use_PrivateKey (ssl_ctx, cki->key);
-  if (rv != 1)
-    {
-      clib_warning ("unable to use SSL PrivateKey");
-      goto err;
     }
 
   if (lctx->alpn_list)
