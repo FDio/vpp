@@ -149,14 +149,16 @@ extern session_dbg_main_t session_dbg_main;
 
 #define SESSION_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
 
-#define DEC_SESSION_ETD(_s, _e, _size)					\
-  struct								\
-  {									\
-    u32 data[_size];							\
-  } * ed;								\
-  transport_connection_t *_tc = session_get_transport (_s);		\
-  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
-			_e, _tc->elog_track)
+#define DEC_SESSION_ETD(_s, _e, _size)                                        \
+  struct                                                                      \
+  {                                                                           \
+    u32 data[_size];                                                          \
+  } *ed;                                                                      \
+  transport_connection_t *_tc = session_get_transport (_s);                   \
+  if (_tc->elog_track.name == 0)                                              \
+    ed = ELOG_DATA (&vlib_global_main.elog_main, _e);                         \
+  else                                                                        \
+    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, _tc->elog_track)
 
 #define DEC_SESSION_ED(_e, _size)					\
   struct								\
