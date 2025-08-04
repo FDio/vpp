@@ -106,6 +106,24 @@
       "parentUuid": "ed9715d3_3e2ba0ef",
       "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36067cab_360d2f8e",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 3242
+      },
+      "writtenOn": "2025-08-04T05:34:20Z",
+      "side": 1,
+      "message": "I tested again to verify whether the closed connection is properly reused, but it wasn\u0027t. So, I updated the code to use `tcp_connection_cleanup_and_notify()`, as you originally suggested.\nStill, pending_cleanups needs to be handled to prevent double-free issues. To address this, I added `tcp_cancel_cleanup()`, which ignores existing cleanup requests by setting the connection_index field to ~0.\nThere might be some efficiency concerns when looking up connections in `pending_cleanups`. However, since this case doesn\u0027t occur frequently, I\u0027m not sure whether using hashing or sorting would be a better approach.\"",
+      "parentUuid": "5a4a8553_fcb1b4fc",
+      "revId": "11e946cee85ecd89051957ea1fbc29139cd09810",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
