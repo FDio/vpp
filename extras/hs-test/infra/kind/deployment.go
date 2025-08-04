@@ -41,6 +41,7 @@ func (s *KindSuite) createNamespace(name string) {
 }
 
 func (s *KindSuite) deletePod(namespace string, podName string) error {
+	delete(s.CurrentlyRunning, podName)
 	return s.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
 }
 
@@ -49,8 +50,6 @@ func (s *KindSuite) deleteNamespace(namespace string) error {
 }
 
 func (s *KindSuite) DeployPod(pod *Pod) {
-	pod.suite = s
-	s.CurrentlyRunning = append(s.CurrentlyRunning, pod.Name)
 	pod.CreatedPod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
@@ -86,10 +85,12 @@ func (s *KindSuite) DeployPod(pod *Pod) {
 	// Create the Pod
 	_, err := s.ClientSet.CoreV1().Pods(s.Namespace).Create(context.TODO(), pod.CreatedPod, metav1.CreateOptions{})
 	s.AssertNil(err)
+	s.CurrentlyRunning[pod.Name] = pod
 	s.Log("Pod '%s' created", pod.Name)
 
 	// Get IP
 	s.Log("Obtaining IP from '%s'", pod.Name)
+	pod.IpAddress = ""
 	counter := 1
 	for pod.IpAddress == "" {
 		pod.CreatedPod, err = s.ClientSet.CoreV1().Pods(s.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})

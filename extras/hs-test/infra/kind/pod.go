@@ -5,10 +5,11 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"slices"
 	"text/template"
-	"time"
 
 	. "fd.io/hs-test/infra/common"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -19,53 +20,79 @@ type Pod struct {
 	Image         string
 	ContainerName string
 	Worker        string
+	Namespace     string
 	IpAddress     string
 	CreatedPod    *corev1.Pod
 }
 
-// Sets pod names, image names, namespace name
+type Image struct {
+	Name string `yaml:"name"`
+}
+type Container struct {
+	Name string `yaml:"name"`
+}
+type Worker struct {
+	Name string `yaml:"name"`
+}
+type Namespace struct {
+	Name string `yaml:"name"`
+}
+type PodYaml struct {
+	Name      string      `yaml:"name"`
+	Image     []Image     `yaml:"image"`
+	Container []Container `yaml:"container"`
+	Worker    []Worker    `yaml:"worker"`
+	Namespace []Namespace `yaml:"namespace"`
+}
+type Config struct {
+	Pods []PodYaml `yaml:"pods"`
+}
+
+func (s *KindSuite) LoadPodConfigs() {
+	data, err := os.ReadFile("kubernetes/pod-definitions.yaml")
+	s.AssertNil(err)
+
+	var config Config
+	err = yaml.Unmarshal(data, &config)
+	s.AssertNil(err)
+
+	for _, podData := range config.Pods {
+		newPod(s, podData)
+	}
+}
+
+func newPod(suite *KindSuite, input PodYaml) (*Pod, error) {
+	var pod = new(Pod)
+	pod.suite = suite
+	pod.Name = input.Name + suite.Ppid
+	pod.Image = input.Image[0].Name
+	pod.ContainerName = input.Container[0].Name
+	pod.Worker = input.Worker[0].Name
+	pod.Namespace = input.Namespace[0].Name + suite.Ppid
+
+	if suite.AllPods == nil {
+		suite.AllPods = make(map[string]*Pod)
+		suite.Namespace = pod.Namespace
+	}
+
+	suite.AllPods[pod.Name] = pod
+	if !slices.Contains(suite.images, pod.Image) {
+		suite.images = append(suite.images, pod.Image)
+	}
+
+	return pod, nil
+}
+
 func (s *KindSuite) initPods() {
-	wrk1 := "kind-worker"
-	wrk2 := "kind-worker2"
-	vppImg := "hs-test/vpp:latest"
-	nginxLdpImg := "hs-test/nginx-ldp:latest"
-	abImg := "hs-test/ab:latest"
-	clientCont := "client"
-	serverCont := "server"
+	s.Pods.Ab = s.getPodsByName("ab")
+	s.Pods.ClientGeneric = s.getPodsByName("client-generic")
+	s.Pods.ServerGeneric = s.getPodsByName("server-generic")
+	s.Pods.Nginx = s.getPodsByName("nginx-ldp")
+	s.Pods.NginxProxy = s.getPodsByName("nginx-proxy")
+}
 
-	// TODO: load from file
-	s.images = append(s.images, vppImg, nginxLdpImg, abImg)
-	s.Namespace = "namespace" + s.Ppid
-
-	s.Pods.ClientGeneric = new(Pod)
-	s.Pods.ClientGeneric.Name = "client" + s.Ppid
-	s.Pods.ClientGeneric.Image = vppImg
-	s.Pods.ClientGeneric.ContainerName = clientCont
-	s.Pods.ClientGeneric.Worker = wrk1
-
-	s.Pods.ServerGeneric = new(Pod)
-	s.Pods.ServerGeneric.Name = "server" + s.Ppid
-	s.Pods.ServerGeneric.Image = vppImg
-	s.Pods.ServerGeneric.ContainerName = serverCont
-	s.Pods.ServerGeneric.Worker = wrk2
-
-	s.Pods.Ab = new(Pod)
-	s.Pods.Ab.Name = "ab" + s.Ppid
-	s.Pods.Ab.Image = abImg
-	s.Pods.Ab.ContainerName = clientCont
-	s.Pods.Ab.Worker = wrk1
-
-	s.Pods.Nginx = new(Pod)
-	s.Pods.Nginx.Name = "nginx-ldp" + s.Ppid
-	s.Pods.Nginx.Image = nginxLdpImg
-	s.Pods.Nginx.ContainerName = serverCont
-	s.Pods.Nginx.Worker = wrk2
-
-	s.Pods.NginxProxy = new(Pod)
-	s.Pods.NginxProxy.Name = "nginx-proxy" + s.Ppid
-	s.Pods.NginxProxy.Image = nginxLdpImg
-	s.Pods.NginxProxy.ContainerName = serverCont
-	s.Pods.NginxProxy.Worker = wrk2
+func (s *KindSuite) getPodsByName(podName string) *Pod {
+	return s.AllPods[podName+s.Ppid]
 }
 
 func (pod *Pod) CopyToPod(namespace string, src string, dst string) {
@@ -74,7 +101,7 @@ func (pod *Pod) CopyToPod(namespace string, src string, dst string) {
 	pod.suite.AssertNil(err, string(out))
 }
 
-func (pod *Pod) Exec(command []string) (string, error) {
+func (pod *Pod) Exec(ctx context.Context, command []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 
 	// Prepare the request
@@ -97,9 +124,6 @@ func (pod *Pod) Exec(command []string) (string, error) {
 	if err != nil {
 		pod.suite.Log("Error creating executor: %s", err.Error())
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
-	defer cancel()
 
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: &stdout,
@@ -125,7 +149,6 @@ func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName s
 
 	err = template.Execute(f, values)
 	pod.suite.AssertNil(err, err)
-
 	err = f.Close()
 	pod.suite.AssertNil(err, err)
 

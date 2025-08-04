@@ -1,6 +1,7 @@
 package hst_kind
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -22,8 +23,9 @@ type KindSuite struct {
 	Config           *rest.Config
 	Namespace        string
 	KubeconfigPath   string
-	CurrentlyRunning []string
+	CurrentlyRunning map[string]*Pod
 	images           []string
+	AllPods          map[string]*Pod
 	Pods             struct {
 		ServerGeneric *Pod
 		ClientGeneric *Pod
@@ -31,6 +33,7 @@ type KindSuite struct {
 		NginxProxy    *Pod
 		Ab            *Pod
 	}
+	MainContext context.Context
 }
 
 var kindTests = map[string][]func(s *KindSuite){}
@@ -59,6 +62,7 @@ func RegisterKindTests(tests ...func(s *KindSuite)) {
 }
 
 func (s *KindSuite) SetupTest() {
+	s.MainContext = context.Background()
 	s.HstCommon.SetupTest()
 }
 
@@ -68,9 +72,10 @@ func (s *KindSuite) SetupSuite() {
 		Fail(message, callerSkip...)
 	})
 
+	s.CurrentlyRunning = make(map[string]*Pod)
+	s.LoadPodConfigs()
 	s.initPods()
 	s.loadDockerImages()
-
 	var err error
 	if *SudoUser == "root" {
 		s.KubeconfigPath = "/.kube/config"
@@ -94,14 +99,17 @@ func (s *KindSuite) TeardownTest() {
 	if len(s.CurrentlyRunning) != 0 {
 		s.Log("Removing:")
 		for _, pod := range s.CurrentlyRunning {
-			s.Log("   %s", pod)
-			s.deletePod(s.Namespace, pod)
+			s.Log("   %s", pod.Name)
+			s.deletePod(s.Namespace, pod.Name)
 		}
 	}
 }
 
 func (s *KindSuite) TeardownSuite() {
 	s.HstCommon.TeardownSuite()
+	if len(s.CurrentlyRunning) == 0 {
+		return
+	}
 	s.Log("Removing:\n   %s", s.Namespace)
 	s.AssertNil(s.deleteNamespace(s.Namespace))
 }
@@ -110,7 +118,7 @@ func (s *KindSuite) TeardownSuite() {
 // and searches for the first version string, then creates symlinks.
 func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 	regex := regexp.MustCompile(`lib.*\.so\.([0-9]+\.[0-9]+)`)
-	o, _ := s.Pods.ServerGeneric.Exec([]string{"/bin/bash", "-c",
+	o, _ := s.Pods.ServerGeneric.Exec(context.TODO(), []string{"/bin/bash", "-c",
 		"ldd /usr/lib/libvcl_ldpreload.so"})
 	match := regex.FindStringSubmatch(o)
 
@@ -125,7 +133,7 @@ func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 			"fi\n"+
 			"done", version)
 		for _, pod := range pods {
-			pod.Exec([]string{"/bin/bash", "-c", cmd})
+			pod.Exec(context.TODO(), []string{"/bin/bash", "-c", cmd})
 		}
 
 	} else {
@@ -149,7 +157,7 @@ func (s *KindSuite) CreateNginxConfig(pod *Pod) {
 }
 
 func (s *KindSuite) CreateNginxProxyConfig(pod *Pod) {
-	pod.Exec([]string{"/bin/bash", "-c", "mkdir -p /tmp/nginx"})
+	pod.Exec(context.TODO(), []string{"/bin/bash", "-c", "mkdir -p /tmp/nginx"})
 	values := struct {
 		Workers   uint8
 		LogPrefix string
