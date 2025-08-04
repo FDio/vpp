@@ -26,6 +26,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e5d95e32_18c7c6ec",
+        "filename": "extras/hs-test/hsi_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-04T06:07:12Z",
+      "side": 1,
+      "message": "bind to a specific IP if possible",
+      "range": {
+        "startLine": 20,
+        "startChar": 54,
+        "endLine": 20,
+        "endChar": 61
+      },
+      "revId": "be3f22bca2a3ee568ea01f94c4e0849fc5bed3d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fd50675c_427f79e9",
         "filename": "extras/hs-test/hsi_test.go",
         "patchSetId": 1
