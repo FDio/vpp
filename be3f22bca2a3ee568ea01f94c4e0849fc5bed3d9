@@ -71,6 +71,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4032b30d_7cb342d6",
+        "filename": "extras/hs-test/hsi_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-04T07:31:25Z",
+      "side": 1,
+      "message": "I want to test ip wildcard, registered as solo test",
+      "parentUuid": "e5d95e32_18c7c6ec",
+      "range": {
+        "startLine": 20,
+        "startChar": 54,
+        "endLine": 20,
+        "endChar": 61
+      },
+      "revId": "be3f22bca2a3ee568ea01f94c4e0849fc5bed3d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fd50675c_427f79e9",
@@ -84,6 +108,30 @@
       "writtenOn": "2025-08-04T06:02:02Z",
       "side": 1,
       "message": "\u0027defer os.Remove(query)\u0027 should work just fine here",
+      "range": {
+        "startLine": 25,
+        "startChar": 1,
+        "endLine": 25,
+        "endChar": 36
+      },
+      "revId": "be3f22bca2a3ee568ea01f94c4e0849fc5bed3d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e027646a_0f28d0e2",
+        "filename": "extras/hs-test/hsi_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-04T07:31:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fd50675c_427f79e9",
       "range": {
         "startLine": 25,
         "startChar": 1,
