@@ -1062,6 +1062,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
     {
       req->base.is_tunnel = 1;
       req->dispatch_data_cb = http2_sched_dispatch_tunnel;
+      req->base.upgrade_proto = msg.data.upgrade_proto;
       if (msg.data.upgrade_proto != HTTP_UPGRADE_PROTO_NA)
 	{
 	  if (hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)

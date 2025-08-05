@@ -896,6 +896,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 	(transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
       hc->timeout = http_cfg->timeout;
+      hc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE)
 	{
 	  HTTP_DBG (1, "app want http2 with prior knowledge");
