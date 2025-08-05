@@ -1160,7 +1160,8 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
 	}
       else
 	{
-	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+	  if (!req->base.is_tunnel)
+	    req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 	  http_req_state_change (&req->base,
 				 HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 	}
@@ -1328,6 +1329,7 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
       else
 	new_state = HTTP_REQ_STATE_TUNNEL;
       http_io_as_add_want_read_ntf (&req->base);
+      transport_connection_reschedule (&req->base.connection);
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->base.headers);
     }
@@ -2185,7 +2187,7 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
       HTTP_DBG (1, "END_STREAM flag set");
       if (req->base.is_tunnel)
 	{
-	  /* client can initiate or confirm tunnel close */
+	  /* peer can initiate or confirm tunnel close */
 	  req->stream_state =
 	    req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED ?
 	      HTTP2_STREAM_STATE_CLOSED :
