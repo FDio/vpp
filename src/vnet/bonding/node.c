@@ -20,6 +20,7 @@
 #include <vnet/llc/llc.h>
 #include <vnet/snap/snap.h>
 #include <vnet/bonding/node.h>
+#include <vnet/classify/pcap_classify.h>
 
 #ifndef CLIB_MARCH_VARIANT
 bond_main_t bond_main;
@@ -207,6 +208,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   vlib_error_t error = 0;
   u32 next_index = 0;
   u32 n_rx_bytes = 0, n_rx_packets = 0;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
@@ -219,6 +221,28 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
   b = bufs;
   next = nexts;
   sw_if_index = sw_if_indices;
+
+  /*
+   * capture rx packets before ethernet-input node since
+   * bond-input node will change the sw_if_index.
+   */
+  if (PREDICT_FALSE (vnm->pcap.pcap_rx_enable))
+    {
+      vnet_pcap_t *pp = &vnm->pcap;
+      while (n_left)
+	{
+	  u32 bi0 = vlib_get_buffer_index (vm, b[0]);
+	  if (vnet_is_packet_pcaped (pp, b[0], ~0) &&
+	      pp->pcap_sw_if_index == sw_if_index[VLIB_RX])
+	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	}
+      /* next */
+      n_left--;
+      b++;
+    }
+
+  n_left = frame->n_vectors;
+  b = bufs;
 
   while (n_left >= 4)
     {
