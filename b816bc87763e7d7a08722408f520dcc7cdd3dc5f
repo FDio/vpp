@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce4f7e27_598c4f4c",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-06T17:02:43Z",
+      "side": 1,
+      "message": "I think the compiler generates slightly more optimized code if you cache rb_tree_root (rt) to a local variable and uses the local variable throughout this routine instead of using rb_tree_root (rt) repeatedly here. I compile 2 versions and compare. Using the local variable version saves 10 assembly line instructions for debug image. However, I didn\u0027t count the number of CPU cycles actually saved.",
+      "revId": "b816bc87763e7d7a08722408f520dcc7cdd3dc5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
