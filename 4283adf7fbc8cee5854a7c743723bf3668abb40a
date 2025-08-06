@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "53f97794_9b1f0128",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-08-06T02:08:03Z",
+      "side": 1,
+      "message": "This gerrit change cannot be merged or rebased due to the fact that the Author is \"scripath96@gmail.com\" is different from the Signed-off-by field in the Message body.",
+      "revId": "4283adf7fbc8cee5854a7c743723bf3668abb40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
