@@ -180,6 +180,11 @@ ah_encrypt_inline (vlib_main_t * vm,
 	{
 	  vnet_buffer (b[0])->ipsec.thread_index = ort->thread_index;
 	  next[0] = AH_ENCRYPT_NEXT_HANDOFF;
+	  /*This is to fix the handoff problem which will come if the packets
+	   * received on different thread and processed on the different
+	   * threads most likely happen controll packets generated on the same
+	   * machine where ipsec is configured and has to go through IPsec AH*/
+	  pd->skip = 1;
 	  goto next;
 	}
 
@@ -360,7 +365,12 @@ ah_encrypt_inline (vlib_main_t * vm,
       if (!ort->is_tunnel)
 	{
 	  next[0] = AH_ENCRYPT_NEXT_INTERFACE_OUTPUT;
-	  vlib_buffer_advance (b[0], -sizeof (ethernet_header_t));
+	  /*This is to fix the Vlan case in the case of vlan we have to do
+	   * subtract both vlan and ether header save_rewritelenght will hold
+	   * exact bytes before the ipheader from the ether header
+	   */
+	  vlib_buffer_advance (b[0],
+			       -(vnet_buffer (b[0])->ip.save_rewrite_length));
 	}
 
     next:
