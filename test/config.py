@@ -349,6 +349,13 @@ parser.add_argument(
     help="max cpus used by vpp",
 )
 
+parser.add_argument(
+    "--vpp-opt-deps-library-path",
+    action="store",
+    default=None,
+    help="path to vpp-opt-deps library directory",
+)
+
 variant_help_string = """\
 specify which march node variant to unit test
   e.g. --variant=skx - test the skx march variants
