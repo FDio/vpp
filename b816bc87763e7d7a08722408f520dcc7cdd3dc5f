@@ -16,6 +16,24 @@
       "message": "I think the compiler generates slightly more optimized code if you cache rb_tree_root (rt) to a local variable and uses the local variable throughout this routine instead of using rb_tree_root (rt) repeatedly here. I compile 2 versions and compare. Using the local variable version saves 10 assembly line instructions for debug image. However, I didn\u0027t count the number of CPU cycles actually saved.",
       "revId": "b816bc87763e7d7a08722408f520dcc7cdd3dc5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "817a8c65_9afd96bf",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-06T17:37:18Z",
+      "side": 1,
+      "message": "FWIW, rb_tree_root generates these many number of intructions each time\n\n401\t\t      x \u003d rb_node (rt, rb_tree_root (rt));\n   0x00007ffff6e659b6 \u003c+790\u003e:\tmov    -0x8(%rbp),%rax\n   0x00007ffff6e659ba \u003c+794\u003e:\tmov    %rax,-0x80(%rbp)\n   0x00007ffff6e659be \u003c+798\u003e:\tmov    -0x8(%rbp),%rdi\n   0x00007ffff6e659c2 \u003c+802\u003e:\txor    %esi,%esi\n   0x00007ffff6e659c4 \u003c+804\u003e:\tcall   0x7ffff6e64e60 \u003crb_node\u003e\n   0x00007ffff6e659c9 \u003c+809\u003e:\tmov    -0x80(%rbp),%rdi\n   0x00007ffff6e659cd \u003c+813\u003e:\tmov    0x10(%rax),%esi\n   0x00007ffff6e659d0 \u003c+816\u003e:\tcall   0x7ffff6e64e60 \u003crb_node\u003e\n   0x00007ffff6e659d5 \u003c+821\u003e:\tmov    %rax,-0x20(%rbp)\n\nUsing the local cache for rb_tree_root, the compiler generates these instructions instead\n402\t\t      x \u003d rb_node (rt, root);\n   0x00007ffff6e659b3 \u003c+787\u003e:\tmov    -0x8(%rbp),%rdi\n   0x00007ffff6e659b7 \u003c+791\u003e:\tmov    -0x64(%rbp),%esi\n   0x00007ffff6e659ba \u003c+794\u003e:\tcall   0x7ffff6e64e60 \u003crb_node\u003e\n   0x00007ffff6e659bf \u003c+799\u003e:\tmov    %rax,-0x20(%rbp)",
+      "parentUuid": "ce4f7e27_598c4f4c",
+      "revId": "b816bc87763e7d7a08722408f520dcc7cdd3dc5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
