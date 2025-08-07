@@ -147,6 +147,7 @@ compile_commands.json
 /extras/hs-test/.last_state_hash
 /extras/hs-test/.kind_deps.ok
 /extras/hs-test/.go_cache/
+/extras/hs-test/kubernetes/calico-config.yaml
 
 # ./configure
 /CMakeFiles

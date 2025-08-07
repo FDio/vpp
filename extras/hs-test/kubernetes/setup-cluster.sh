@@ -5,8 +5,9 @@ COMMAND=$1
 CALICOVPP_DIR="$HOME/vpp-dataplane"
 VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%extras*}
-STASH_SAVED=0
+COMMIT_HASH=$(git rev-parse HEAD)
 
+export DOCKER_BUILD_PROXY=$HTTP_PROXY
 # ---------------- images ----------------
 export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
 export CALICO_VPP_IMAGE=localhost:5000/calicovpp/vpp:latest
@@ -44,15 +45,52 @@ export CALICOVPP_ENABLE_VCL=true
 
 help() {
   echo "Usage:"
-  echo "  make master-cluster | rebuild-master-cluster | release-cluster"
-  echo "or"
-  echo "  ./kubernetes/setupCluster.sh [master-cluster | rebuild-master-cluster | release-cluster]"
-  echo ""
+  echo -e "  make master-cluster | rebuild-master-cluster | release-cluster\n"
+
   echo "'master-cluster' pulls CalicoVPP and builds VPP from this directory, then brings up a KinD cluster."
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
-  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29)"
-  echo ""
-  echo "To shut down the cluster, use 'kind delete cluster'"
+  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
+    or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
+    CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
+    TIGERA_VERSION:    master | v[x].[y].[z] (default=v3.28.3)"
+
+  echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
+}
+
+cherry_pick() {
+  STASHED_CHANGES=0
+  echo "checkpoint: $COMMIT_HASH"
+  # chery-vpp hard resets the repo to a commit - we want to keep our changes
+  if ! git diff-index --quiet HEAD --; then
+	    echo "Saving stash"
+      git stash save "HST: temp stash"
+      STASHED_CHANGES=1
+	fi
+  make -C $CALICOVPP_DIR cherry-vpp FORCE=y BASE=origin/master VPP_DIR=$VPP_DIR
+
+  # pop the stash to build VPP with CalicoVPP's patches + our changes
+  if [ $STASHED_CHANGES -eq 1 ]; then
+	    git stash pop
+	fi
+}
+
+build_load_start_cni() {
+  make -C $VPP_DIR/extras/hs-test build-vpp-release
+  make -C $CALICOVPP_DIR dev-kind
+  make -C $CALICOVPP_DIR load-kind
+  $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
+}
+
+restore_repo() {
+  # stash changes, reset local repo to the original state and unstash changes (removes CalicoVPP's patches)
+  if ! git diff-index --quiet HEAD --; then
+	    echo "Saving stash"
+      git stash save "HST: temp stash"
+      git reset --hard $COMMIT_HASH
+      git stash pop
+	else
+    git reset --hard $COMMIT_HASH
+  fi
 }
 
 setup_master() {
@@ -66,34 +104,32 @@ setup_master() {
 
   make -C $CALICOVPP_DIR kind-new-cluster N_KIND_WORKERS=2
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
-  make -C $CALICOVPP_DIR cherry-vpp FORCE=y BASE=origin/master VPP_DIR=$VPP_DIR
-  make -C $VPP_DIR/extras/hs-test build-vpp-release
-  make -C $CALICOVPP_DIR dev-kind
-  make -C $CALICOVPP_DIR load-kind
-  $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
-  if ! git diff-index --quiet HEAD --; then
-	    echo "Saving stash"
-      git stash save "HST: temp stash"
-      git reset --hard origin/master
-      git stash pop
-	fi
+
+  cherry_pick
+  build_load_start_cni
+  restore_repo
 }
 
 rebuild_master() {
   echo "Shutting down pods may take some time, timeout is set to 1m."
   timeout 1m $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh dn || true
-  make build-vpp-release
-  make -C $CALICOVPP_DIR dev-kind
-  make -C $CALICOVPP_DIR load-kind
-  $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
+  cherry_pick
+  build_load_start_cni
+  restore_repo
 }
 
 setup_release() {
-  kind create cluster --config kubernetes/kind-config.yaml
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
+  CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
+  TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
+  echo "TIGERA_VERSION=$TIGERA_VERSION"
+  envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
 
-  echo "Sleeping for 10s, waiting for tigera operator to start up."
-  sleep 10
+  kind create cluster --config kubernetes/kind-config.yaml
+  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
+
+  echo "Waiting for tigera-operator pod to start up."
+  kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
 
   kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
   kubectl create -f kubernetes/calico-config.yaml
