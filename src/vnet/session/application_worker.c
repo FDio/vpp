@@ -409,6 +409,9 @@ app_worker_init_accepted (session_t * s)
   if (app_worker_alloc_session_fifos (sm, s))
     return -1;
 
+  if (application_is_builtin_proxy (app))
+    return app->cb_fns.proxy_write_early_data (s);
+
   return 0;
 }
 

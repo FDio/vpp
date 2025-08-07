@@ -76,6 +76,9 @@ typedef struct session_cb_vft_
   /** Custom fifo allocation for proxy */
   int (*proxy_alloc_session_fifos) (session_t *s);
 
+  /** Allow proxy to write early data */
+  int (*proxy_write_early_data) (session_t *s);
+
   /** Collect and export session logs */
   int (*app_evt_callback) (session_t *s);
 
