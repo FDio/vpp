@@ -125,7 +125,7 @@ l2input_bd_config (u32 bd_index)
   _ (FLOOD, "l2-flood")                                                                            \
   _ (ARP_UFWD, "l2-uu-fwd")                                                                        \
   _ (ARP_TERM, "arp-term-l2bd")                                                                    \
-  _ (UU_FLOOD, "l2-flood")                                                                         \
+  _ (UU_FLOOD, "l2-uu-flood")                                                                      \
   _ (UU_FWD, "l2-uu-fwd")                                                                          \
   _ (FWD, "l2-fwd")                                                                                \
   _ (RW, "l2-rw")                                                                                  \
