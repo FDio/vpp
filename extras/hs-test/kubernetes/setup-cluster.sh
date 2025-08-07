@@ -7,6 +7,7 @@ VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%extras*}
 STASH_SAVED=0
 
+export DOCKER_BUILD_PROXY=$HTTP_PROXY
 # ---------------- images ----------------
 export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
 export CALICO_VPP_IMAGE=localhost:5000/calicovpp/vpp:latest
@@ -44,15 +45,16 @@ export CALICOVPP_ENABLE_VCL=true
 
 help() {
   echo "Usage:"
-  echo "  make master-cluster | rebuild-master-cluster | release-cluster"
-  echo "or"
-  echo "  ./kubernetes/setupCluster.sh [master-cluster | rebuild-master-cluster | release-cluster]"
-  echo ""
+  echo -e "  make master-cluster | rebuild-master-cluster | release-cluster\n"
+
   echo "'master-cluster' pulls CalicoVPP and builds VPP from this directory, then brings up a KinD cluster."
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
-  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29)"
-  echo ""
-  echo "To shut down the cluster, use 'kind delete cluster'"
+  echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
+    or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
+    CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
+    TIGERA_VERSION:    master | v[x].[y].[z] (default=v3.28.3)"
+
+  echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
 
 setup_master() {
@@ -89,11 +91,17 @@ rebuild_master() {
 }
 
 setup_release() {
-  kind create cluster --config kubernetes/kind-config.yaml
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
+  CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
+  TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+  echo CALICOVPP_VERSION=$CALICOVPP_VERSION
+  echo TIGERA_VERSION=$TIGERA_VERSION
+  envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
 
-  echo "Sleeping for 10s, waiting for tigera operator to start up."
-  sleep 10
+  kind create cluster --config kubernetes/kind-config.yaml
+  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
+
+  echo "Waiting for tigera-operator pod to start up."
+  kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
 
   kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
   kubectl create -f kubernetes/calico-config.yaml

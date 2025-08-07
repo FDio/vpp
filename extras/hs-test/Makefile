@@ -107,6 +107,7 @@ help:
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " build-go                 - just build golang files"
+	@echo " cluster-help             - print info about KinD cluster setup (perf testing)"
 	@echo " master-cluster           - setup KinD cluster for performance testing (master CalicoVPP + VPP)"
 	@echo " rebuild-master-cluster   - rebuild VPP and update related pods without shutting down the cluster"
 	@echo " release-cluster          - setup KinD cluster for performance testing (latest CalicoVPP release)"
@@ -233,17 +234,21 @@ test-perf: .deps.ok .build.ok
 		--ginkgo_timeout=$(GINKGO_TIMEOUT); \
 		./script/compress.sh $$?
 
+.PHONY: cluster-help
+cluster-help:
+	@bash ./kubernetes/setup-cluster.sh help
+
 .PHONY: release-cluster
 release-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh release-cluster
+	@bash ./kubernetes/setup-cluster.sh release-cluster
 
 .PHONY: master-cluster
 master-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh master-cluster
+	@bash ./kubernetes/setup-cluster.sh master-cluster
 
 .PHONY: rebuild-master-cluster
-rebuild-cluster: .kind_deps.ok
-	@bash ./kubernetes/setupCluster.sh rebuild-master-cluster
+rebuild-master-cluster: .kind_deps.ok
+	@bash ./kubernetes/setup-cluster.sh rebuild-master-cluster
 
 # this is executed in a container by hs-test.sh
 .PHONY: build-go
