@@ -450,8 +450,13 @@ echo_server_rx_callback (session_t * s)
 	  es->byte_index += actual_transfer;
 	}
       else
-	es_test_bytes ((wrk->rx_buf + sizeof (u32)),
-		       actual_transfer - sizeof (u32), *(u32 *) wrk->rx_buf);
+	{
+	  /* Sanity check, in case of a broken dgram */
+	  if (actual_transfer < sizeof (u32) + 1)
+	    return 0;
+	  es_test_bytes ((wrk->rx_buf + sizeof (u32)),
+			 actual_transfer - sizeof (u32), *(u32 *) wrk->rx_buf);
+	}
     }
 
   /*
