@@ -34,6 +34,24 @@
       "parentUuid": "b2d8ef16_574b73d8",
       "revId": "3c59f8a2cbf6ec9e6a1b3a5d55f07f1ccf8d0d0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f46ceb4_619d1bfa",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_cl_udp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-07T15:39:37Z",
+      "side": 1,
+      "message": "Atoi returns either the integer or 0 on error, I think we can avoid the extra store.",
+      "parentUuid": "29c8a7e9_618c16f1",
+      "revId": "3c59f8a2cbf6ec9e6a1b3a5d55f07f1ccf8d0d0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
