@@ -88,6 +88,24 @@
       "parentUuid": "2c0f04e0_010c5f1b",
       "revId": "b816bc87763e7d7a08722408f520dcc7cdd3dc5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e31a03b_89c983d8",
+        "filename": "src/vppinfra/rbtree.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-07T23:29:11Z",
+      "side": 1,
+      "message": "When rotating we can potentially change the root index, see rb_tree_rotate_left",
+      "parentUuid": "83e7b208_d9221153",
+      "revId": "b816bc87763e7d7a08722408f520dcc7cdd3dc5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
