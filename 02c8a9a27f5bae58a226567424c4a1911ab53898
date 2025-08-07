@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3aa39d15_ab3e08f0",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2606,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-07T06:12:08Z",
+      "side": 1,
+      "message": "First observation is that this comment should be c-style, above the function call. \n\nSecond, I think this works, although as you\u0027ve noted it will not be the most efficient. After thinking a bit about it, one option we could explore to improve this would be to add a session api that only removes the session from the lookup table (basically a wrapper for `session_lookup_del_session` that takes as input a transport connection) and allow the programmed cleanup to proceed without canceling it.",
+      "range": {
+        "startLine": 2606,
+        "startChar": 0,
+        "endLine": 2606,
+        "endChar": 69
+      },
+      "revId": "02c8a9a27f5bae58a226567424c4a1911ab53898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
