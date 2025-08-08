@@ -16,6 +16,24 @@
       "message": "Let\u0027s call this http_connect_proxy? Or something that indicates it\u0027s a proxy that converts tcp/udp to http streams :)",
       "revId": "b9202b22bfe838118fbcb0a6fc44107c6a4cff7d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71e42912_a1411bc7",
+        "filename": "src/plugins/hs_apps/proxy_client.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-08T09:10:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b6cf8da3_da593467",
+      "revId": "b9202b22bfe838118fbcb0a6fc44107c6a4cff7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
