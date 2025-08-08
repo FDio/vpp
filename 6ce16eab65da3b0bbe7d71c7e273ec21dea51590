@@ -54,6 +54,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d4047e58_81ed97b2",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "dc081e45_b7d866b6",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b4864803_c3c76305",
         "filename": "src/vnet/session/application_local.c",
         "patchSetId": 4
@@ -65,6 +83,24 @@
       "writtenOn": "2025-07-28T23:09:16Z",
       "side": 1,
       "message": "Would be nice if we can figure out how to call session_cleanup. That is, we need to track in the fifos, that they\u0027ve been allocated in a cross-app fifo segment",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e022434c_dfb5a496",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "TBD",
+      "parentUuid": "b4864803_c3c76305",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +124,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "739e034a_5acb3dbe",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "5e169190_ceb87e8d",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d033bcfc_15a5ceeb",
         "filename": "src/vnet/session/application_local.c",
         "patchSetId": 4
@@ -99,6 +153,24 @@
       "writtenOn": "2025-07-28T23:09:16Z",
       "side": 1,
       "message": "This also becomes segment_manager_dealloc_fifos",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e28e54c0_18de4a42",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "d033bcfc_15a5ceeb",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -122,6 +194,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "96b21db8_b5051c69",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1286,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "Change the API to pass session for both segment_manager_alloc_fifos and segment_manager_dealloc_fifos. From session, we can find cut-through connection.",
+      "parentUuid": "070087c9_a1f9eaa8",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b96da45a_a4c45a80",
         "filename": "src/vnet/session/segment_manager.c",
         "patchSetId": 4
@@ -133,6 +223,24 @@
       "writtenOn": "2025-07-28T23:09:16Z",
       "side": 1,
       "message": "Probably worth marking the segment as being custom/cross-app",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "728a7140_e9a31ed2",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1581,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "There is already an existing flag for custom segment called FIFO_SEGMENT_F_CUSTOM_USE. Use that instead.",
+      "parentUuid": "b96da45a_a4c45a80",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -154,6 +262,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3709882e_a67c7047",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1619,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "Already an existing flag for it.",
+      "parentUuid": "aa18e3fd_41143afe",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a1cd6427_94e49c9a",
@@ -167,6 +293,24 @@
       "writtenOn": "2025-07-28T23:09:16Z",
       "side": 1,
       "message": "Needed?",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "99e2bc13_38bf6292",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:05:57Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "a1cd6427_94e49c9a",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
