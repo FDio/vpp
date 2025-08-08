@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4a9af20_8ad33758",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "d4047e58_81ed97b2",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4864803_c3c76305",
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "TBD",
       "parentUuid": "b4864803_c3c76305",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee34973a_0f16d97a",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "e022434c_dfb5a496",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -140,6 +176,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "caddb360_1f257c87",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "739e034a_5acb3dbe",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d033bcfc_15a5ceeb",
@@ -175,6 +229,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2005fd9d_d43c5ee7",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "e28e54c0_18de4a42",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "070087c9_a1f9eaa8",
@@ -206,6 +278,24 @@
       "side": 1,
       "message": "Change the API to pass session for both segment_manager_alloc_fifos and segment_manager_dealloc_fifos. From session, we can find cut-through connection.",
       "parentUuid": "070087c9_a1f9eaa8",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a6272fa_f51d3d53",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1286,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "96b21db8_b5051c69",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -280,6 +370,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "27301b46_610bfe80",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1619,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "3709882e_a67c7047",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a1cd6427_94e49c9a",
@@ -311,6 +419,24 @@
       "side": 1,
       "message": "Removed",
       "parentUuid": "a1cd6427_94e49c9a",
+      "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b38636b8_9ef5ea81",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-08-08T16:10:20Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "99e2bc13_38bf6292",
       "revId": "6ce16eab65da3b0bbe7d71c7e273ec21dea51590",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
