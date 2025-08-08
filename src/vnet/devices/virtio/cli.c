@@ -33,6 +33,10 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 buffering_size = 0;
   u32 txq_size = 0;
 
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U", unformat_vlib_pci_addr, &args.addr))
