@@ -1391,12 +1391,15 @@ vlib_buffer_clone_255 (vlib_main_t *vm, u32 src_buffer, u32 *buffers,
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
-  s->ref_count += n_buffers;
+  // reset ref_count because it is now the tail of N new buffers
+  s->ref_count = n_buffers;
 
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       s = vlib_get_buffer (vm, s->next_buffer);
-      s->ref_count += n_buffers;
+      // add to the ref_count of all tail buffers
+      // minus 1 because src_buffer became a tail
+      s->ref_count += (n_buffers - 1);
     }
 
   return n_buffers;
