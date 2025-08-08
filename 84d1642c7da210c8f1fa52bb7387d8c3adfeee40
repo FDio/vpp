@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "84d1642c7da210c8f1fa52bb7387d8c3adfeee40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96176f9b_55e9a4aa",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-08T20:31:07Z",
+      "side": 1,
+      "message": "What happens now if we try to session_transport_delete_notify here and instead of all the code lower, we just free the ct? Can we do the cleanup without it in the segment manager? Not saying it should be in this patch, just curious :)",
+      "revId": "84d1642c7da210c8f1fa52bb7387d8c3adfeee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
