@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a29cb448_2f30ab59",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-09T03:38:05Z",
+      "side": 1,
+      "message": "Nice!",
+      "revId": "751e92331282f1377bc1af74ca7ff4c1e32f0eeb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
