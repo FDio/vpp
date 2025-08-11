@@ -1228,6 +1228,7 @@ http1_req_state_udp_tunnel_rx (http_conn_t *hc, http_req_t *req,
 
       hdr.data_length = payload_len;
       hdr.data_offset = 0;
+      hdr.gso_size = 0;
 
       /* send datagram header and payload */
       svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
