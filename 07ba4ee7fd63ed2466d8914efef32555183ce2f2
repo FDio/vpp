@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35aa3030_b4a0e661",
+        "filename": "src/vlib/counter.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-11T07:34:32Z",
+      "side": 1,
+      "message": "why not min_log2()?",
+      "revId": "07ba4ee7fd63ed2466d8914efef32555183ce2f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62ff0cf3_e3c8c132",
+        "filename": "src/vlib/stats/shared.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-11T07:34:32Z",
+      "side": 1,
+      "message": "STATIC_ASSERT()",
+      "revId": "07ba4ee7fd63ed2466d8914efef32555183ce2f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0be16d0e_4db9b115",
+        "filename": "src/vlib/stats/stats.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-11T07:34:32Z",
+      "side": 1,
+      "message": "__clib_packed",
+      "revId": "07ba4ee7fd63ed2466d8914efef32555183ce2f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
