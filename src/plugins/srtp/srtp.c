@@ -360,6 +360,7 @@ srtp_ctx_read (srtp_tc_t *ctx, session_t *us)
 
       hdr.data_length = len;
       hdr.data_offset = 0;
+      hdr.gso_size = 0;
 
       svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) }, { buf, len } };
 
