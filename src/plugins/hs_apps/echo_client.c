@@ -144,6 +144,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 
 	  hdr.data_length = rv;
 	  hdr.data_offset = 0;
+	  hdr.gso_size = 0;
 	  clib_memcpy_fast (&hdr.rmt_ip, &at->rmt_ip,
 			    sizeof (ip46_address_t));
 	  hdr.is_ip4 = at->is_ip4;
