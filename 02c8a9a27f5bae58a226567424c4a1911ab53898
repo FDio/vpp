@@ -22,6 +22,30 @@
       },
       "revId": "02c8a9a27f5bae58a226567424c4a1911ab53898",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2180ab67_e4cf4893",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2606,
+      "author": {
+        "id": 3242
+      },
+      "writtenOn": "2025-08-11T08:50:02Z",
+      "side": 1,
+      "message": "I made a new patch for that you mentioned. Also, please find test code for it. The test shows the patch is working.",
+      "parentUuid": "3aa39d15_ab3e08f0",
+      "range": {
+        "startLine": 2606,
+        "startChar": 0,
+        "endLine": 2606,
+        "endChar": 69
+      },
+      "revId": "02c8a9a27f5bae58a226567424c4a1911ab53898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
