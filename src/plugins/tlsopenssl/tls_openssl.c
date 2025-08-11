@@ -660,6 +660,7 @@ openssl_ctx_read_dtls (tls_ctx_t *ctx, session_t *us)
 
       hdr.data_length = read;
       hdr.data_offset = 0;
+      hdr.gso_size = 0;
 
       svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
 				 { buf, read } };
