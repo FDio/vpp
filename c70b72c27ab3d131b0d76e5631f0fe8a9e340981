@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1e30d70_37238ff7",
+        "filename": "src/plugins/ping/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-12T14:32:19Z",
+      "side": 1,
+      "message": "2025",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0fe9bba3_3965e5a3",
+        "filename": "src/plugins/ping/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-12T14:32:19Z",
+      "side": 1,
+      "message": "I wonder why all those functions are inlines, they do not seem like performance sensitive functions, it would probably be better to have them as actual functions",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3085a4d4_03fb9c47",
+        "filename": "src/plugins/ping/traceroute.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-12T14:32:19Z",
+      "side": 1,
+      "message": "is it shared by multiple callers, or could it be in the relevant C file?",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46385778_5de9f1b9",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-12T14:32:19Z",
+      "side": 1,
+      "message": "why this change?",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
