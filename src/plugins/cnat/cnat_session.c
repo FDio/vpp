@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <vlib/vlib.h>
+#include <vlib/stats/stats.h>
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_inline.h>
@@ -496,6 +498,17 @@ out:
   return i < h->nbuckets ? i : 0;
 }
 
+static void
+cnat_sessions_collect_total_fn (vlib_stats_collector_data_t *d)
+{
+  const cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 total = 0;
+  int i;
+  vec_foreach_index (i, ctm->ts_pools)
+    total += pool_elts (vec_elt (ctm->ts_pools, i));
+  d->entry->value = total;
+}
+
 static clib_error_t *
 cnat_session_init (vlib_main_t * vm)
 {
@@ -515,6 +528,11 @@ cnat_session_init (vlib_main_t * vm)
   vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, CNAT_FIB_TABLE,
 				   ctm->max_sessions_per_vrf,
 				   CLIB_CACHE_LINE_BYTES);
+
+  vlib_stats_collector_reg_t reg;
+  reg.entry_index = vlib_stats_add_gauge ("/cnat/sessions/total");
+  reg.collect_fn = cnat_sessions_collect_total_fn;
+  vlib_stats_register_collector_fn (&reg);
 
   return (NULL);
 }
