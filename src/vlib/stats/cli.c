@@ -58,7 +58,7 @@ format_stat_dir_entry (u8 *s, va_list *args)
       break;
     }
 
-  return format (s, format_string, ep->name, type_name, 0);
+  return format (s, format_string, ep->name, type_name, ep->value);
 }
 
 static u8 *
