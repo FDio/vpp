@@ -128,9 +128,8 @@ typedef enum
     SFP_N_COMPATIBILITY,
 } sfp_compatibility_t;
 
-u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c);
-
 format_function_t format_sfp_eeprom;
+format_function_t format_sfp_id;
 
 #endif /* included_vnet_optics_sfp_h */
 
