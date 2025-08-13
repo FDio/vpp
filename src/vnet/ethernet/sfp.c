@@ -28,8 +28,8 @@ format_space_terminated (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_sfp_id (u8 * s, va_list * args)
+u8 *
+format_sfp_id (u8 *s, va_list *args)
 {
   u32 id = va_arg (*args, u32);
   char *t = 0;
@@ -40,6 +40,42 @@ format_sfp_id (u8 * s, va_list * args)
 #undef _
     default:
       return format (s, "unknown 0x%x", id);
+    }
+  return format (s, "%s", t);
+}
+
+u8 *
+format_sfp_connector (u8 *s, va_list *args)
+{
+  u32 connector = va_arg (*args, u32);
+  char *t = 0;
+  switch (connector)
+    {
+#define _(v, str)                                                             \
+  case v:                                                                     \
+    t = str;                                                                  \
+    break;
+      foreach_sfp_connector
+#undef _
+	default : return format (s, "unknown 0x%x", connector);
+    }
+  return format (s, "%s", t);
+}
+
+u8 *
+format_sfp_encoding (u8 *s, va_list *args)
+{
+  u32 encoding = va_arg (*args, u32);
+  char *t = 0;
+  switch (encoding)
+    {
+#define _(v, str)                                                             \
+  case v:                                                                     \
+    t = str;                                                                  \
+    break;
+      foreach_sfp_encoding
+#undef _
+	default : return format (s, "unknown 0x%x", encoding);
     }
   return format (s, "%s", t);
 }
@@ -60,8 +96,8 @@ format_sfp_compatibility (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
-u32
-sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
+static u32
+sfp_is_compatible (sfp_eeprom_t *e, sfp_compatibility_t c)
 {
   static struct
   {
@@ -88,7 +124,7 @@ format_sfp_eeprom (u8 * s, va_list * args)
 
   s = format (s, "compatibility:");
   for (i = 0; i < SFP_N_COMPATIBILITY; i++)
-    if (sfp_is_comatible (e, i))
+    if (sfp_is_compatible (e, i))
       s = format (s, " %U", format_sfp_compatibility, i);
 
   s = format (s, "\n%Uvendor: %U, part %U",
