@@ -77,12 +77,12 @@ func (s *KindSuite) SetupSuite() {
 	s.initPods()
 	s.loadDockerImages()
 	var err error
-	if *SudoUser == "root" {
+	if *WhoAmI == "root" {
 		s.KubeconfigPath = "/.kube/config"
 	} else {
-		s.KubeconfigPath = "/home/" + *SudoUser + "/.kube/config"
+		s.KubeconfigPath = "/home/" + *WhoAmI + "/.kube/config"
 	}
-	s.Log("User: '%s'", *SudoUser)
+	s.Log("User: '%s'", *WhoAmI)
 	s.Log("Config path: '%s'", s.KubeconfigPath)
 
 	s.Config, err = clientcmd.BuildConfigFromFlags("", s.KubeconfigPath)

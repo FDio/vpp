@@ -18,7 +18,7 @@ import (
 var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
-var SudoUser = flag.String("sudo_user", "root", "what user ran hs-test with sudo")
+var WhoAmI = flag.String("whoami", "root", "what user ran hs-test")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
