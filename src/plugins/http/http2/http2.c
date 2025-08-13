@@ -105,6 +105,7 @@ typedef struct http2_conn_ctx_
   u8 *unsent_headers;	/* temporary storing tx fragmented headers */
   u32 unsent_headers_offset;
   u32 req_num;
+  u32 parent_req_index;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -175,6 +176,7 @@ http2_conn_ctx_alloc_w_thread (http_conn_t *hc)
   h2c->old_tx_streams = clib_llist_make_head (wrk->req_pool, sched_list);
   h2c->sched_list.next = CLIB_LLIST_INVALID_INDEX;
   h2c->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+  h2c->parent_req_index = SESSION_INVALID_INDEX;
   hc->opaque = uword_to_pointer (h2c - wrk->conn_pool, void *);
   cnt = clib_atomic_fetch_add_relax (&h2m->n_sessions, 1);
   /* (re)start stream tx scheduler if this is first connection */
@@ -221,7 +223,7 @@ http2_conn_ctx_free (http_conn_t *hc)
 }
 
 static inline http2_req_t *
-http2_conn_alloc_req (http_conn_t *hc)
+http2_conn_alloc_req (http_conn_t *hc, u8 is_parent)
 {
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   http2_conn_ctx_t *h2c;
@@ -248,6 +250,11 @@ http2_conn_alloc_req (http_conn_t *hc)
   req->peer_window = h2c->peer_settings.initial_window_size;
   req->our_window = h2c->settings.initial_window_size;
   h2c->req_num++;
+  if (is_parent)
+    {
+      req->flags |= HTTP2_REQ_F_IS_PARENT;
+      h2c->parent_req_index = req_index;
+    }
   return req;
 }
 
@@ -282,6 +289,8 @@ http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req,
   http_buffer_free (&req->base.tx_buf);
   if (req->stream_id)
     hash_unset (h2c->req_by_stream_id, req->stream_id);
+  if (req->flags & HTTP2_REQ_F_IS_PARENT)
+    h2c->parent_req_index = SESSION_INVALID_INDEX;
   if (CLIB_DEBUG)
     memset (req, 0xba, sizeof (*req));
   pool_put (wrk->req_pool, req);
@@ -440,11 +449,8 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
 	}
       else
 	{
-	  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
-			  req = http2_req_get (req_index, hc->c_thread_index);
-			  session_transport_reset_notify (
-			    &req->base.connection);
-			}));
+	  req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+	  session_transport_reset_notify (&req->base.connection);
 	}
     }
   if (clib_llist_elt_is_linked (h2c, sched_list))
@@ -1984,7 +1990,7 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
 				   HTTP2_ERROR_REFUSED_STREAM, 0);
 	  return HTTP2_ERROR_NO_ERROR;
 	}
-      req = http2_conn_alloc_req (hc);
+      req = http2_conn_alloc_req (hc, 0);
       http2_req_set_stream_id (req, h2c, fh->stream_id, 0);
       req->dispatch_headers_cb = http2_sched_dispatch_resp_headers;
       http_conn_accept_request (hc, &req->base);
@@ -2368,8 +2374,7 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	{
 	  h2c->flags &= ~HTTP2_CONN_F_EXPECT_SERVER_SETTINGS;
 	  HTTP_DBG (1, "client connection established");
-	  req = http2_conn_alloc_req (hc);
-	  req->flags |= HTTP2_REQ_F_IS_PARENT;
+	  req = http2_conn_alloc_req (hc, 1);
 	  hc->flags |= HTTP_CONN_F_HAS_REQUEST;
 	  hpack_dynamic_table_init (
 	    &h2c->decoder_dynamic_table,
@@ -2510,10 +2515,19 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
 		      rx_buf + HTTP2_GOAWAY_MIN_SIZE,
 		      fh->length - HTTP2_GOAWAY_MIN_SIZE);
       /* connection error */
-      hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
-		      req = http2_req_get (req_index, hc->c_thread_index);
-		      session_transport_reset_notify (&req->base.connection);
-		    }));
+      if (hc->flags & HTTP_CONN_F_IS_SERVER)
+	{
+	  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
+			  req = http2_req_get (req_index, hc->c_thread_index);
+			  session_transport_reset_notify (
+			    &req->base.connection);
+			}));
+	}
+      else
+	{
+	  req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+	  session_transport_reset_notify (&req->base.connection);
+	}
       if (clib_llist_elt_is_linked (h2c, sched_list))
 	clib_llist_remove (wrk->conn_pool, sched_list, h2c);
       http_shutdown_transport (hc);
@@ -3033,14 +3047,23 @@ http2_transport_reset_callback (http_conn_t *hc)
     return;
 
   h2c = http2_conn_ctx_get_w_thread (hc);
-  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
-		  req = http2_req_get (req_index, hc->c_thread_index);
-		  if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
-		    {
-		      HTTP_DBG (1, "req_index %x", req_index);
-		      session_transport_reset_notify (&req->base.connection);
-		    }
-		}));
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    {
+      hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
+		      req = http2_req_get (req_index, hc->c_thread_index);
+		      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
+			{
+			  HTTP_DBG (1, "req_index %x", req_index);
+			  session_transport_reset_notify (
+			    &req->base.connection);
+			}
+		    }));
+    }
+  else
+    {
+      req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+      session_transport_reset_notify (&req->base.connection);
+    }
   if (clib_llist_elt_is_linked (h2c, sched_list))
     clib_llist_remove (wrk->conn_pool, sched_list, h2c);
 }
@@ -3096,7 +3119,7 @@ http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
   if (h2c->req_num == h2c->settings.max_concurrent_streams)
     return app_worker_connect_notify (app_wrk, 0, SESSION_E_MAX_STREAMS_HIT,
 				      hc->hc_pa_app_api_ctx);
-  req = http2_conn_alloc_req (hc);
+  req = http2_conn_alloc_req (hc, 0);
   http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
   return http_conn_established (hc, &req->base, parent_app_api_ctx);
 }
@@ -3116,6 +3139,14 @@ http2_conn_cleanup_callback (http_conn_t *hc)
   vec_foreach (req_index_p, req_indices)
     {
       req = http2_req_get (*req_index_p, hc->c_thread_index);
+      session_transport_delete_notify (&req->base.connection);
+      http2_conn_free_req (h2c, req, hc->c_thread_index);
+    }
+  /* in case client app didn't use parent */
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) &&
+      (h2c->parent_req_index != SESSION_INVALID_INDEX))
+    {
+      req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
       session_transport_delete_notify (&req->base.connection);
       http2_conn_free_req (h2c, req, hc->c_thread_index);
     }
