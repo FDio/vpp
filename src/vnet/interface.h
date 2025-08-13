@@ -98,10 +98,25 @@ typedef clib_error_t *(vnet_interface_rss_queues_set_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    clib_bitmap_t * bitmap);
 
+/* Interface EEPROM types */
+#define foreach_vnet_interface_eeprom_type                                    \
+  _ (UNKNOWN, 0x00, "unknown")                                                \
+  _ (SFF8079, 0x01, "SFF-8079")                                               \
+  _ (SFF8472, 0x02, "SFF-8472")                                               \
+  _ (SFF8636, 0x03, "SFF-8636")                                               \
+  _ (SFF8436, 0x04, "SFF-8436")
+
+typedef enum
+{
+#define _(n, v, s) VNET_INTERFACE_EEPROM_TYPE_##n = v,
+  foreach_vnet_interface_eeprom_type
+#undef _
+} vnet_interface_eeprom_type_t;
+
 /* EEPROM structure for physical network devices */
 typedef struct
 {
-  u32 eeprom_type; /* from linux/ethtool.h */
+  vnet_interface_eeprom_type_t eeprom_type; /* from linux/ethtool.h */
   u32 eeprom_len;
   u8 eeprom_raw[1024];
 } vnet_interface_eeprom_t;
@@ -1136,6 +1151,8 @@ typedef struct
 } vnet_pcap_dispatch_trace_args_t;
 
 int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);
+
+u8 *format_vnet_interface_eeprom_type (u8 *s, va_list *args);
 
 extern vlib_node_registration_t vnet_interface_output_node;
 extern vlib_node_registration_t vnet_interface_output_arc_end_node;

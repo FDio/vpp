@@ -1794,6 +1794,24 @@ default_build_rewrite (vnet_main_t * vnm,
   return (NULL);
 }
 
+u8 *
+format_vnet_interface_eeprom_type (u8 *s, va_list *args)
+{
+  u32 eeprom_type = va_arg (*args, u32);
+  char *t = 0;
+  switch (eeprom_type)
+    {
+#define _(n, v, str)                                                          \
+  case v:                                                                     \
+    t = str;                                                                  \
+    break;
+      foreach_vnet_interface_eeprom_type
+#undef _
+	default : return format (s, "unknown 0x%x", eeprom_type);
+    }
+  return format (s, "%s", t);
+}
+
 void
 default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
