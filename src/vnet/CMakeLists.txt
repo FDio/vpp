@@ -160,6 +160,7 @@ list(APPEND VNET_SOURCES
   ethernet/node.c
   ethernet/pg.c
   ethernet/sfp.c
+  ethernet/sfp_sff8472.c
   ethernet/p2p_ethernet.c
   ethernet/p2p_ethernet_input.c
   ethernet/p2p_ethernet_api.c
@@ -177,6 +178,7 @@ list(APPEND VNET_HEADERS
   ethernet/packet.h
   ethernet/types.def
   ethernet/sfp.h
+  ethernet/sfp_sff8472.h
   ethernet/p2p_ethernet.h
   ethernet/arp_packet.h
 )

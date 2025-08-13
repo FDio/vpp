@@ -56,6 +56,7 @@
 #include <vnet/hash/hash.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/dev_funcs.h>
+#include <vnet/ethernet/sfp.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -2689,6 +2690,8 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
     }
 
   vlib_cli_output (vm, "Interface: %v", hi->name);
+  vlib_cli_output (vm, "  EEPROM Type: 0x%02x (%U)", eeprom->eeprom_type,
+		   format_sfp_eeprom_type, eeprom->eeprom_type);
 
   /* Default to module if none are set */
   if (!show_module && !show_diag && !show_eeprom)
@@ -2696,7 +2699,6 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
 
   if (show_eeprom)
     {
-      vlib_cli_output (vm, "  EEPROM Type: 0x%x", eeprom->eeprom_type);
       vlib_cli_output (vm, "  EEPROM Length: %u bytes", eeprom->eeprom_len);
       vlib_cli_output (vm, "  EEPROM Data:");
 
@@ -2739,12 +2741,12 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
 
   if (show_module)
     {
-      vlib_cli_output (vm, "  module: not implemented yet");
+      sfp_eeprom_module (vm, eeprom, is_terse);
     }
 
   if (show_diag)
     {
-      vlib_cli_output (vm, "  diag: not implemented yet");
+      sfp_eeprom_diagnostics (vm, eeprom, is_terse);
     }
 
 done:
