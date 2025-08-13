@@ -94,8 +94,6 @@ typedef struct http_req_
 #define hr_hc_index	     c_http_req_id.hc_index
 #define hr_req_handle	     connection.c_index
 
-  u32 as_fifo_offset; /* for peek */
-
   http_req_state_t state; /* state-machine state */
 
   http_buffer_t tx_buf; /* message body from app to be sent */
@@ -629,21 +627,13 @@ http_io_as_write_segs (http_req_t *req, const svm_fifo_seg_t segs[],
 }
 
 always_inline u32
-http_io_as_read (http_req_t *req, u8 *buf, u32 len, u8 peek)
+http_io_as_peek (http_req_t *req, u8 *buf, u32 len, u32 offset)
 {
   int n_read;
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
 
-  if (peek)
-    {
-      n_read = svm_fifo_peek (as->tx_fifo, req->as_fifo_offset, len, buf);
-      ASSERT (n_read > 0);
-      req->as_fifo_offset += len;
-      return (u32) n_read;
-    }
-
-  n_read = svm_fifo_dequeue (as->tx_fifo, len, buf);
-  ASSERT (n_read == len);
+  n_read = svm_fifo_peek (as->tx_fifo, offset, len, buf);
+  ASSERT (n_read > 0);
   return (u32) n_read;
 }
 
@@ -662,7 +652,6 @@ http_io_as_drain (http_req_t *req, u32 len)
 {
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   svm_fifo_dequeue_drop (as->tx_fifo, len);
-  req->as_fifo_offset = 0;
 }
 
 always_inline void
@@ -670,7 +659,6 @@ http_io_as_drain_all (http_req_t *req)
 {
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   svm_fifo_dequeue_drop_all (as->tx_fifo);
-  req->as_fifo_offset = 0;
 }
 
 always_inline void

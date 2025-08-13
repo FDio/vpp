@@ -719,6 +719,7 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   http_io_as_drain (&req->base, n_written);
   req->peer_window -= n_written;
   h2c->peer_window -= n_written;
+  HTTP_DBG (1, "written %lu", n_written);
 
   if (req->peer_window == 0)
     {
@@ -759,7 +760,8 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
       return;
     }
   /* read datagram header */
-  http_io_as_read (&req->base, (u8 *) &hdr, sizeof (hdr), 1);
+  http_io_as_peek (&req->base, (u8 *) &hdr, sizeof (hdr), 0);
+  HTTP_DBG (1, "datagram len %lu", hdr.data_length);
   ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
   dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
   ASSERT (max_read >= dgram_size);
@@ -771,7 +773,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
 	h2c->peer_settings.max_frame_size))
     {
       /* drop datagram if not fit into frame */
-      HTTP_DBG (1, "datagram too large, dropped");
+      HTTP_DBG (1, "datagram larger than maximum frame size, dropped");
       http_io_as_drain (&req->base, dgram_size);
       return;
     }
@@ -779,9 +781,11 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   if (req->peer_window <
       (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
     {
+      HTTP_DBG (1, "not enough space in stream window (%lu) for capsule",
+		req->peer_window);
       /* mark that we need window update on stream */
-      HTTP_DBG (1, "not enough space in stream window for capsule");
       req->flags |= HTTP2_REQ_F_NEED_WINDOW_UPDATE;
+      return;
     }
 
   max_write = http_io_ts_max_write (hc, 0);
@@ -802,7 +806,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
   capsule_size = (payload - buf) + hdr.data_length;
   /* read payload */
-  http_io_as_read (&req->base, payload, hdr.data_length, 1);
+  http_io_as_peek (&req->base, payload, hdr.data_length, sizeof (hdr));
   http_io_as_drain (&req->base, dgram_size);
 
   req->peer_window -= capsule_size;
@@ -814,6 +818,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
 			     { buf, capsule_size } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + capsule_size));
+  HTTP_DBG (1, "capsule payload len %lu", hdr.data_length);
 
   if (max_read - dgram_size)
     {
@@ -1670,7 +1675,7 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 {
   u32 max_enq;
 
-  HTTP_DBG (1, "tunnel received data from client");
+  HTTP_DBG (1, "tunnel received data from peer");
 
   max_enq = http_io_as_max_write (&req->base);
   if (max_enq < req->payload_len)
@@ -1848,7 +1853,7 @@ http2_req_state_tunnel_tx (http_conn_t *hc, http2_req_t *req,
 
   ASSERT (!clib_llist_elt_is_linked (req, sched_list));
 
-  HTTP_DBG (1, "tunnel received data from target");
+  HTTP_DBG (1, "tunnel received data from app");
 
   /* add data back to stream scheduler */
   HTTP_DBG (1, "adding to data queue req_index %x",
@@ -2700,7 +2705,7 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
   HTTP_DBG (1, "received app read notification stream id %u", req->stream_id);
   /* send stream window update if app read data in rx fifo and we expect more
    * data (stream is still open) */
-  expected_state = hc->flags & HTTP_CONN_F_IS_SERVER ?
+  expected_state = (hc->flags & HTTP_CONN_F_IS_SERVER || req->base.is_tunnel) ?
 		     HTTP2_STREAM_STATE_OPEN :
 		     HTTP2_STREAM_STATE_HALF_CLOSED;
   if (req->stream_state == expected_state)
@@ -2852,6 +2857,12 @@ http2_transport_rx_callback (http_conn_t *hc)
   if (PREDICT_FALSE (to_deq < HTTP2_FRAME_HEADER_SIZE))
     {
       HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
+#if HTTP_DEBUG
+      u8 *tmp = 0;
+      vec_validate (tmp, to_deq - 1);
+      http_io_ts_read (hc, tmp, to_deq, 0);
+      clib_warning ("%U", format_hex_bytes, tmp, to_deq);
+#endif
       http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
       return;
     }
