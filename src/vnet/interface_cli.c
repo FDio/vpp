@@ -56,6 +56,8 @@
 #include <vnet/hash/hash.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/dev_funcs.h>
+#include <vnet/ethernet/sfp.h>
+#include <vnet/ethernet/sfp_sff8472.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -2739,12 +2741,12 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
 
   if (show_module)
     {
-      vlib_cli_output (vm, "  module: not implemented yet");
+      sff8472_decode_sfp_eeprom (vm, (sfp_eeprom_t *)eeprom->eeprom_raw, is_terse);
     }
 
   if (show_diag)
     {
-      vlib_cli_output (vm, "  diag: not implemented yet");
+      sff8472_decode_diagnostics (vm, eeprom->eeprom_raw, eeprom->eeprom_len, is_terse);
     }
 
 done:
