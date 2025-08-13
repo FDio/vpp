@@ -119,8 +119,8 @@ rebuild_master() {
 }
 
 setup_release() {
-  CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
-  TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
+  export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
   envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
