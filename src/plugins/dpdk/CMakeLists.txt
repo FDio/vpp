@@ -139,6 +139,7 @@ add_vpp_plugin(dpdk
   device/format.c
   device/init.c
   device/node.c
+  device/sff8472.c
   ${DPDK_CRYPTODEV_OP_SOURCE}
   ${DPDK_CRYPTODEV_SOURCE}
   ${DPDK_CRYPTODEV_RAW_SOURCE}
@@ -150,6 +151,7 @@ add_vpp_plugin(dpdk
 
   INSTALL_HEADERS
   device/dpdk.h
+  device/sff8472.h
 
   LINK_FLAGS
   "${DPDK_LINK_FLAGS}"

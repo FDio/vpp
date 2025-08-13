@@ -30,6 +30,8 @@
 #include <vnet/mpls/packet.h>
 
 #include <dpdk/device/dpdk_priv.h>
+#include <dpdk/device/sff8472.h>
+#include <vnet/ethernet/sfp.h>
 
 /**
  * @file
@@ -378,6 +380,206 @@ void
 dpdk_cli_reference (void)
 {
 }
+
+static clib_error_t *
+read_dpdk_transceiver_eeprom (vlib_main_t *vm, u32 hw_if_index,
+			      u8 **eeprom_data, u32 *eeprom_len,
+			      sfp_eeprom_t **se)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  dpdk_device_t *xd;
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dc;
+  struct rte_eth_dev_module_info mi = { 0 };
+  struct rte_dev_eeprom_info ei = { 0 };
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  dc = vec_elt_at_index (im->device_classes, hi->dev_class_index);
+  *se = NULL;
+
+  if (dc->index != dpdk_device_class.index)
+    {
+      return clib_error_return (0, "Interface %v is not a DPDK interface",
+				hi->name);
+    }
+
+  if (hi->dev_instance >= vec_len (dm->devices))
+    {
+      return clib_error_return (0, "Invalid device instance %u",
+				hi->dev_instance);
+    }
+
+  xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  /* Get module info */
+  if (rte_eth_dev_get_module_info (xd->port_id, &mi) != 0)
+    {
+      return clib_error_return (
+	0, "Module info not available for interface %v", hi->name);
+    }
+
+  if (mi.eeprom_len < 128 || mi.eeprom_len > 8192)
+    {
+      return clib_error_return (0, "EEPROM invalid length: %u bytes",
+				mi.eeprom_len);
+    }
+
+  /* Get EEPROM data */
+  *eeprom_data = clib_mem_alloc (mi.eeprom_len);
+  ei.length = mi.eeprom_len;
+  ei.data = *eeprom_data;
+
+  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) != 0)
+    {
+      clib_mem_free (*eeprom_data);
+      *eeprom_data = 0;
+      return clib_error_return (0, "EEPROM read error for interface %v",
+				hi->name);
+    }
+
+  *se = ei.data + (mi.type == RTE_ETH_MODULE_SFF_8436 ? 0x80 : 0);
+  *eeprom_len = mi.eeprom_len;
+  return 0;
+}
+
+static void
+show_dpdk_transceiver (vlib_main_t *vm, vnet_hw_interface_t *hi,
+		       u8 show_module, u8 show_diag, u8 show_eeprom,
+		       u8 is_terse)
+{
+  clib_error_t *error = 0;
+  u8 *eeprom_data = 0;
+  u32 eeprom_len = 0;
+  sfp_eeprom_t *se = NULL;
+
+  error = read_dpdk_transceiver_eeprom (vm, hi->hw_if_index, &eeprom_data,
+					&eeprom_len, &se);
+  if (error)
+    goto done;
+
+  vlib_cli_output (vm, "Interface: %v", hi->name);
+
+  /* Default to module if none are set */
+  if (!show_module && !show_diag && !show_eeprom)
+    show_module = 1;
+
+  if (show_eeprom)
+    {
+
+      vlib_cli_output (vm, "  EEPROM length: %u bytes", eeprom_len);
+      vlib_cli_output (vm, "  EEPROM hexdump:");
+
+      /* Print hexdump */
+      for (u32 offset = 0; offset < eeprom_len; offset += 16)
+	{
+	  u8 *line = format (0, "    %04x: ", offset);
+
+	  /* Print hex bytes */
+	  for (u32 j = 0; j < 16 && (offset + j) < eeprom_len; j++)
+	    {
+	      line = format (line, "%02x ", eeprom_data[offset + j]);
+	    }
+
+	  /* Pad to align ASCII section */
+	  for (u32 j = (offset + 16 > eeprom_len) ? eeprom_len - offset : 16;
+	       j < 16; j++)
+	    {
+	      line = format (line, "   ");
+	    }
+
+	  line = format (line, " |");
+
+	  /* Print ASCII representation */
+	  for (u32 j = 0; j < 16 && (offset + j) < eeprom_len; j++)
+	    {
+	      u8 c = eeprom_data[offset + j];
+	      line = format (line, "%c", (c >= 32 && c <= 126) ? c : '.');
+	    }
+
+	  line = format (line, "|");
+	  vlib_cli_output (vm, "%v", line);
+	  vec_free (line);
+	}
+
+      vlib_cli_output (vm, "");
+    }
+
+  if (show_module)
+    {
+      sff8472_decode_sfp_eeprom (vm, se, is_terse);
+    }
+
+  if (show_diag)
+    {
+      /* Decode SFF 8472 EEPROM A2 data */
+      sff8472_decode_diagnostics (vm, eeprom_data, eeprom_len, is_terse);
+    }
+
+done:
+  if (eeprom_data)
+    clib_mem_free (eeprom_data);
+}
+
+static clib_error_t *
+show_dpdk_transceiver_cmd (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_interface_t *hi;
+  vnet_device_class_t *dc;
+  u32 hw_if_index = ~0;
+  u8 is_terse = 1;
+  u8 show_diag = 0;
+  u8 show_module = 0;
+  u8 show_eeprom = 0;
+  u32 shown = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "diag"))
+	show_diag = 1;
+      else if (unformat (input, "module"))
+	show_module = 1;
+      else if (unformat (input, "eeprom"))
+	show_eeprom = 1;
+      else if (unformat (input, "verbose"))
+	is_terse = 0;
+      else if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+			 &hw_if_index))
+	;
+      else
+	{
+	  return clib_error_return (0, "parse error: '%U'",
+				    format_unformat_error, input);
+	}
+    }
+
+  pool_foreach (hi, im->hw_interfaces)
+    {
+      dc = vec_elt_at_index (im->device_classes, hi->dev_class_index);
+      if (dc->index == dpdk_device_class.index)
+	{
+	  if (hw_if_index == ~0 || hw_if_index == hi->hw_if_index)
+	    {
+	      show_dpdk_transceiver (vm, hi, show_module, show_diag,
+				     show_eeprom, is_terse);
+	      shown++;
+	    }
+	}
+    }
+  if (shown == 0)
+    return clib_error_return (0, "No DPDK interfaces found");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_dpdk_transceiver_command, static) = {
+  .path = "show dpdk transceiver",
+  .short_help = "show dpdk transceiver [<interface>] [eeprom] [module] [diag]",
+  .function = show_dpdk_transceiver_cmd,
+};
 
 clib_error_t *
 dpdk_cli_init (vlib_main_t * vm)

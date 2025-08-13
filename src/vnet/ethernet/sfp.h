@@ -128,9 +128,58 @@ typedef enum
     SFP_N_COMPATIBILITY,
 } sfp_compatibility_t;
 
-u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c);
+#define foreach_sfp_encoding                                                  \
+  _ (0x01, "8B/10B")                                                          \
+  _ (0x02, "4B/5B")                                                           \
+  _ (0x03, "NRZ")                                                             \
+  _ (0x04, "4B/5B (FC-100)")                                                  \
+  _ (0x05, "Manchester")                                                      \
+  _ (0x06, "64B/66B")                                                         \
+  _ (0x07, "256B/257B")                                                       \
+  _ (0x08, "PAM4")
+
+typedef enum
+{
+#define _(v, s) SFP_ENCODING_##v = v,
+  foreach_sfp_encoding
+#undef _
+} sfp_encoding_t;
+
+#define foreach_sfp_connector                                                 \
+  _ (0x01, "SC")                                                              \
+  _ (0x02, "Fibre Channel Style 1 copper")                                    \
+  _ (0x03, "Fibre Channel Style 2 copper")                                    \
+  _ (0x04, "BNC/TNC")                                                         \
+  _ (0x05, "Fibre Channel coaxial")                                           \
+  _ (0x06, "Fiber Jack")                                                      \
+  _ (0x07, "LC")                                                              \
+  _ (0x08, "MT-RJ")                                                           \
+  _ (0x09, "MU")                                                              \
+  _ (0x0A, "SG")                                                              \
+  _ (0x0B, "Optical pigtail")                                                 \
+  _ (0x0C, "MPO 1x12 Parallel Optic")                                         \
+  _ (0x0D, "MPO 2x16 Parallel Optic")                                         \
+  _ (0x20, "HSSDC II")                                                        \
+  _ (0x21, "Copper pigtail")                                                  \
+  _ (0x22, "RJ45")                                                            \
+  _ (0x23, "No separable connector")                                          \
+  _ (0x24, "MXC 2x16")                                                        \
+  _ (0x25, "CS optical connector")                                            \
+  _ (0x26, "SN optical connector")                                            \
+  _ (0x27, "MPO 2x12 Parallel Optic")                                         \
+  _ (0x28, "MPO 1x16 Parallel Optic")
+
+typedef enum
+{
+#define _(v, s) SFP_CONNECTOR_##v = v,
+  foreach_sfp_connector
+#undef _
+} sfp_connector_t;
 
 format_function_t format_sfp_eeprom;
+format_function_t format_sfp_id;
+format_function_t format_sfp_encoding;
+format_function_t format_sfp_connector;
 
 #endif /* included_vnet_optics_sfp_h */
 
