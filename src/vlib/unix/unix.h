@@ -140,6 +140,8 @@ int vlib_unix_main (int argc, char *argv[]);
 /* Set prompt for CLI. */
 void vlib_unix_cli_set_prompt (char *prompt);
 
+u8 vlib_unix_cli_enable_disable_pager (u8 enable);
+
 static inline unix_main_t *
 vlib_unix_get_main (void)
 {
