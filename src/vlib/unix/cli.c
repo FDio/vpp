@@ -3287,6 +3287,21 @@ unix_cli_file_if_interactive (unix_cli_main_t * cm)
   return cf;
 }
 
+u8
+vlib_unix_cli_enable_disable_pager (u8 enable)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf = unix_cli_file_if_interactive (cm);
+  u8 old;
+
+  if (!cf)
+    return ~0;
+
+  old = !cf->no_pager;
+  cf->no_pager = !enable;
+  return old;
+}
+
 /** CLI command to quit the terminal session.
  * @note If this is a stdin session then this will
  *       shutdown VPP also.
