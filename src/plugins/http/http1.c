@@ -1706,7 +1706,7 @@ http1_req_state_udp_tunnel_tx (http_conn_t *hc, http_req_t *req,
   while (to_deq > 0)
     {
       /* read datagram header */
-      http_io_as_read (req, (u8 *) &hdr, sizeof (hdr), 1);
+      http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
       ASSERT (hdr.data_length <= HTTP_UDP_PAYLOAD_MAX_LEN);
       dgram_size = hdr.data_length + SESSION_CONN_HDR_LEN;
       ASSERT (to_deq >= dgram_size);
@@ -1722,7 +1722,7 @@ http1_req_state_udp_tunnel_tx (http_conn_t *hc, http_req_t *req,
       payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
       capsule_size = (payload - buf) + hdr.data_length;
       /* read payload */
-      http_io_as_read (req, payload, hdr.data_length, 1);
+      http_io_as_peek (req, payload, hdr.data_length, sizeof (hdr));
       http_io_as_drain (req, dgram_size);
       /* send capsule */
       http_io_ts_write (hc, buf, capsule_size, sp);
