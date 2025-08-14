@@ -2658,6 +2658,162 @@ VLIB_CLI_COMMAND (cmd_show_tx_hash, static) = {
   .function = show_tx_hash,
 };
 
+static void
+show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
+				   u8 show_module, u8 show_diag,
+				   u8 show_eeprom, u8 is_terse)
+{
+  clib_error_t *error = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_eeprom_t *eeprom = 0;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_device_class_t *dc =
+    vec_elt_at_index (im->device_classes, hi->dev_class_index);
+
+  if (!dc->eeprom_read_function)
+    {
+      error = clib_error_return (
+	0, "interface %v does not support EEPROM reading", hi->name);
+      goto done;
+    }
+
+  error = dc->eeprom_read_function (vnm, hi, &eeprom);
+  if (error)
+    goto done;
+
+  if (!eeprom)
+    {
+      error = clib_error_return (
+	0, "no EEPROM data available for interface %v", hi->name);
+      goto done;
+    }
+
+  vlib_cli_output (vm, "Interface: %v", hi->name);
+
+  /* Default to module if none are set */
+  if (!show_module && !show_diag && !show_eeprom)
+    show_module = 1;
+
+  if (show_eeprom)
+    {
+      vlib_cli_output (vm, "  EEPROM Type: 0x%x", eeprom->eeprom_type);
+      vlib_cli_output (vm, "  EEPROM Length: %u bytes", eeprom->eeprom_len);
+      vlib_cli_output (vm, "  EEPROM Data:");
+
+      /* Print hexdump */
+      for (u32 offset = 0; offset < eeprom->eeprom_len; offset += 16)
+	{
+	  u8 *line = format (0, "    %04x: ", offset);
+
+	  /* Print hex bytes */
+	  for (u32 j = 0; j < 16 && (offset + j) < eeprom->eeprom_len; j++)
+	    {
+	      line = format (line, "%02x ", eeprom->eeprom_raw[offset + j]);
+	    }
+
+	  /* Pad to align ASCII section */
+	  for (u32 j = (offset + 16 > eeprom->eeprom_len) ?
+			 eeprom->eeprom_len - offset :
+			 16;
+	       j < 16; j++)
+	    {
+	      line = format (line, "   ");
+	    }
+
+	  line = format (line, " |");
+
+	  /* Print ASCII representation */
+	  for (u32 j = 0; j < 16 && (offset + j) < eeprom->eeprom_len; j++)
+	    {
+	      u8 c = eeprom->eeprom_raw[offset + j];
+	      line = format (line, "%c", (c >= 32 && c <= 126) ? c : '.');
+	    }
+
+	  line = format (line, "|");
+	  vlib_cli_output (vm, "%v", line);
+	  vec_free (line);
+	}
+
+      vlib_cli_output (vm, "");
+    }
+
+  if (show_module)
+    {
+      vlib_cli_output (vm, "  module: not implemented yet");
+    }
+
+  if (show_diag)
+    {
+      vlib_cli_output (vm, "  diag: not implemented yet");
+    }
+
+done:
+  if (eeprom)
+    clib_mem_free (eeprom);
+}
+
+static clib_error_t *
+show_interface_transceiver (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u32 hw_if_index = (u32) ~0;
+  vnet_hw_interface_t *hi;
+  u8 is_terse = 1;
+  u8 show_diag = 0;
+  u8 show_module = 0;
+  u8 show_eeprom = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "diag"))
+	show_diag = 1;
+      else if (unformat (input, "module"))
+	show_module = 1;
+      else if (unformat (input, "eeprom"))
+	show_eeprom = 1;
+      else if (unformat (input, "verbose"))
+	is_terse = 0;
+      else if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+			 &hw_if_index))
+	;
+      else
+	{
+	  return clib_error_return (0, "parse error: '%U'",
+				    format_unformat_error, input);
+	}
+    }
+
+  pool_foreach (hi, im->hw_interfaces)
+    {
+      if (hw_if_index == ~0 || hw_if_index == hi->hw_if_index)
+	{
+	  show_interface_transceiver_output (vm, hi, show_module, show_diag,
+					     show_eeprom, is_terse);
+	}
+    }
+  return 0;
+}
+
+/*?
+ * This command displays the transceiver EEPROM data for a given interface.
+ * The EEPROM data is read from the physical transceiver module (SFP, QSFP,
+ etc.)
+ * and displayed as a hexadecimal dump.
+ *
+ * @cliexpar
+ * Example of how to display transceiver EEPROM data:
+ * @cliexcmd{show interface transceiver GigabitEthernet0/8/0 module diag
+ verbose}
+ ?*/
+VLIB_CLI_COMMAND (cmd_show_interface_transceiver, static) = {
+  .path = "show interface transceiver",
+  .short_help = "show interface transceiver [<interface>] [module] [diag] "
+		"[eeprom] [verbose]",
+  .function = show_interface_transceiver,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
