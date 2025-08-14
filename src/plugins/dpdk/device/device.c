@@ -778,6 +778,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .flow_ops_function = dpdk_flow_ops_fn,
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
   .rx_mode_change_function = dpdk_interface_rx_mode_change,
+  .eeprom_read_function = dpdk_read_eeprom,
 };
 
 #define UP_DOWN_FLAG_EVENT 1
