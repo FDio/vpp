@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d470693f_507948f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-08-14T08:45:29Z",
+      "side": 1,
+      "message": "recheck\n\n00:15:11 Summarizing 1 Failure:\n00:15:11   [TIMEDOUT] VethsSuite [It] vcl_test.go/VclClUdpDscpTest\n00:15:11   /w/workspace/vpp-verify-hst-master-ubuntu2204-x86_64/extras/hs-test/infra/suite_veth.go:134",
+      "revId": "27f5cb3c733d5e91cca458a49f1d8c378e5f0d96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
