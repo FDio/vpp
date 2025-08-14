@@ -33,6 +33,23 @@
       "message": "recheck\n\n22:35:56 Caused by: hudson.plugins.git.GitException: Command \"git fetch --tags --force --progress -- git://10.30.48.3/mirror/vpp refs/changes/50/43550/5\" returned status code 128:\n22:35:56 stdout: \n22:35:56 stderr: fatal: couldn\u0027t find remote ref refs/changes/50/43550/5",
       "revId": "98ce4b69c698193bfa4be82f66d1d06c4da047c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "67f0cf1b_15f73b54",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-08-14T20:53:01Z",
+      "side": 1,
+      "message": "recheck\n\ntransient errors with git fetch - trying again",
+      "revId": "98ce4b69c698193bfa4be82f66d1d06c4da047c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
