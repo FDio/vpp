@@ -98,6 +98,20 @@ typedef clib_error_t *(vnet_interface_rss_queues_set_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    clib_bitmap_t * bitmap);
 
+/* EEPROM structure for physical network devices */
+typedef struct
+{
+  u32 eeprom_type; /* from linux/ethtool.h */
+  u32 eeprom_len;
+  u8 eeprom_raw[1024];
+} vnet_interface_eeprom_t;
+
+/* Interface EEPROM read function */
+typedef clib_error_t *(
+  vnet_interface_eeprom_read_t) (struct vnet_main_t *vnm,
+				 struct vnet_hw_interface_t *hi,
+				 vnet_interface_eeprom_t **eeprom);
+
 typedef enum
 {
   VNET_FLOW_DEV_OP_ADD_FLOW,
@@ -305,6 +319,9 @@ typedef struct _vnet_device_class
 
   /* Interface to set rss queues of the interface */
   vnet_interface_rss_queues_set_t *set_rss_queues_function;
+
+  /* Function to read EEPROM data from physical network device */
+  vnet_interface_eeprom_read_t *eeprom_read_function;
 
 } vnet_device_class_t;
 

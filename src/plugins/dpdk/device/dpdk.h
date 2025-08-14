@@ -461,6 +461,9 @@ vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 
+clib_error_t *dpdk_read_eeprom (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+				vnet_interface_eeprom_t **eeprom);
+
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
 struct rte_vmbus_device *
