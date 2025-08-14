@@ -2880,13 +2880,6 @@ http2_transport_rx_callback (http_conn_t *hc)
   if (PREDICT_FALSE (to_deq < HTTP2_FRAME_HEADER_SIZE))
     {
       HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
-#if HTTP_DEBUG
-      u8 *tmp = 0;
-      vec_validate (tmp, to_deq - 1);
-      http_io_ts_read (hc, tmp, to_deq, 0);
-      clib_warning ("%U", format_hex_bytes, tmp, to_deq);
-#endif
-      http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
       return;
     }
 
@@ -2919,20 +2912,6 @@ http2_transport_rx_callback (http_conn_t *hc)
 	}
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
-
-      /* to prevent data leakage */
-      if (to_deq && to_deq < HTTP2_FRAME_HEADER_SIZE)
-	{
-	  HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
-#if HTTP_DEBUG
-	  u8 *tmp = 0;
-	  vec_validate (tmp, to_deq - 1);
-	  http_io_ts_read (hc, tmp, to_deq, 0);
-	  clib_warning ("%U", format_hex_bytes, tmp, to_deq);
-#endif
-	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
-	  return;
-	}
 
       HTTP_DBG (1, "frame type 0x%02x len %u", fh.type, fh.length);
 
@@ -2973,6 +2952,14 @@ http2_transport_rx_callback (http_conn_t *hc)
 	  rv = http2_handle_goaway_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_PING:
+	  /* to prevent information leakage, PING frames can be sent from any
+	   * endpoint and is expected to be sent with higher priority */
+	  if (to_deq && to_deq < HTTP2_FRAME_HEADER_SIZE)
+	    {
+	      HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
+	      http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
+	      return;
+	    }
 	  rv = http2_handle_ping_frame (hc, &fh);
 	  break;
 	case HTTP2_FRAME_TYPE_CONTINUATION:
