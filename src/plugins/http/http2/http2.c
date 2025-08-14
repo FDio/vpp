@@ -14,6 +14,7 @@
 /* connection-level flow control window kind of mirrors TCP flow control */
 /* TODO: configurable? */
 #define HTTP2_CONNECTION_WINDOW_SIZE (10 << 20)
+#define HTTP2_CONNECT_UDP_FIFO_THRESH (2 << 10)
 
 #define foreach_http2_stream_state                                            \
   _ (IDLE, "IDLE")                                                            \
@@ -810,6 +811,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   buf = http_get_tx_buf (hc);
   /* create capsule header */
   payload = http_encap_udp_payload_datagram (buf, hdr.data_length);
+  ASSERT ((payload - buf) <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
   capsule_size = (payload - buf) + hdr.data_length;
   /* read payload */
   http_io_as_peek (&req->base, payload, hdr.data_length, sizeof (hdr));
@@ -1696,11 +1698,11 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   switch (req->stream_state)
     {
     case HTTP2_STREAM_STATE_HALF_CLOSED:
-      HTTP_DBG (1, "client want to close tunnel");
+      HTTP_DBG (1, "peer want to close tunnel");
       session_transport_closing_notify (&req->base.connection);
       break;
     case HTTP2_STREAM_STATE_CLOSED:
-      HTTP_DBG (1, "client closed tunnel");
+      HTTP_DBG (1, "peer closed tunnel");
       http2_stream_close (req, hc);
       break;
     default:
@@ -1720,12 +1722,13 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   u64 payload_len = 0;
   session_dgram_hdr_t hdr;
 
-  HTTP_DBG (1, "udp tunnel received data from client");
+  HTTP_DBG (1, "udp tunnel received data from peer");
 
   rv = http_decap_udp_payload_datagram (req->payload, req->payload_len,
 					&payload_offset, &payload_len);
   HTTP_DBG (1, "rv=%d, payload_offset=%u, payload_len=%llu", rv,
 	    payload_offset, payload_len);
+  ASSERT (payload_offset <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
   if (PREDICT_FALSE (rv != 0))
     {
       if (rv < 0)
@@ -1749,7 +1752,10 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
     }
   if (http_io_as_max_write (&req->base) < (sizeof (hdr) + payload_len))
     {
-      clib_warning ("app's rx fifo full");
+      /* should only happen when we don't keep enough space for dgram hdr */
+      clib_warning ("not enough space in app fifo (%lu) for dgram (%lu)",
+		    http_io_as_max_write (&req->base),
+		    sizeof (hdr) + payload_len);
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
       return HTTP_SM_STOP;
     }
@@ -1766,7 +1772,7 @@ http2_req_state_udp_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 
   if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
     {
-      HTTP_DBG (1, "client want to close tunnel");
+      HTTP_DBG (1, "peer want to close tunnel");
       session_transport_closing_notify (&req->base.connection);
     }
 
@@ -2210,12 +2216,12 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	    {
 	      if (req->stream_state == HTTP2_STREAM_STATE_CLOSED)
 		{
-		  HTTP_DBG (1, "client closed tunnel");
+		  HTTP_DBG (1, "peer closed tunnel");
 		  http2_stream_close (req, hc);
 		}
 	      else
 		{
-		  HTTP_DBG (1, "client want to close tunnel");
+		  HTTP_DBG (1, "peer want to close tunnel");
 		  session_transport_closing_notify (&req->base.connection);
 		}
 	      return HTTP2_ERROR_NO_ERROR;
@@ -2727,6 +2733,9 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
       http_io_as_reset_has_read_ntf (&req->base);
       response = http_get_tx_buf (hc);
       increment = http_io_as_max_write (&req->base) - req->our_window;
+      /* keep some space for dgram headers */
+      if (req->base.is_tunnel && hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+	increment -= clib_min (increment, HTTP2_CONNECT_UDP_FIFO_THRESH);
       HTTP_DBG (1, "stream window increment %u", increment);
       if (increment == 0)
 	return;
@@ -2784,7 +2793,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	    }
 	  break;
 	case HTTP2_STREAM_STATE_HALF_CLOSED:
-	  HTTP_DBG (1, "proxy confirmed close");
+	  HTTP_DBG (1, "app confirmed close");
 	  http2_tunnel_send_close (hc, req);
 	  http2_stream_close (req, hc);
 	  break;
@@ -2915,6 +2924,12 @@ http2_transport_rx_callback (http_conn_t *hc)
       if (to_deq && to_deq < HTTP2_FRAME_HEADER_SIZE)
 	{
 	  HTTP_DBG (1, "to_deq %u is less than frame header size", to_deq);
+#if HTTP_DEBUG
+	  u8 *tmp = 0;
+	  vec_validate (tmp, to_deq - 1);
+	  http_io_ts_read (hc, tmp, to_deq, 0);
+	  clib_warning ("%U", format_hex_bytes, tmp, to_deq);
+#endif
 	  http2_connection_error (hc, HTTP2_ERROR_PROTOCOL_ERROR, 0);
 	  return;
 	}
@@ -2969,6 +2984,7 @@ http2_transport_rx_callback (http_conn_t *hc)
 	case HTTP2_FRAME_TYPE_PRIORITY: /* deprecated */
 	default:
 	  /* ignore unknown frame type */
+	  HTTP_DBG (1, "unknown frame type, dropped");
 	  http_io_ts_drain (hc, fh.length);
 	  rv = HTTP2_ERROR_NO_ERROR;
 	  break;
