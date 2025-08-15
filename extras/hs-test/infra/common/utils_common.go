@@ -66,6 +66,27 @@ type IPerfResult struct {
 
 func (s *HstCommon) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
 	var result IPerfResult
+
+	// VCL/LDP debugging can pollute output so find the first occurrence of a curly brace to locate the start of JSON data
+	jsonStart := -1
+	jsonEnd := len(jsonResult)
+	braceCount := 0
+	for i := 0; i < len(jsonResult); i++ {
+		if jsonResult[i] == '{' {
+			if jsonStart == -1 {
+				jsonStart = i
+			}
+			braceCount++
+		} else if jsonResult[i] == '}' {
+			braceCount--
+			if braceCount == 0 {
+				jsonEnd = i + 1
+				break
+			}
+		}
+	}
+	jsonResult = jsonResult[jsonStart:jsonEnd]
+
 	// remove iperf warning line if present
 	if strings.Contains(string(jsonResult), "warning") {
 		index := strings.Index(string(jsonResult), "\n")
