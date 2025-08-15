@@ -17,10 +17,10 @@ const vcl string = "VCL_CONFIG=/vcl.conf"
 const ldp string = "LD_PRELOAD=/usr/lib/libvcl_ldpreload.so"
 
 func KindIperfVclTest(s *KindSuite) {
-	ctx, cancel := context.WithTimeout(s.MainContext, time.Second*30)
-	defer cancel()
 	s.DeployPod(s.Pods.ClientGeneric)
 	s.DeployPod(s.Pods.ServerGeneric)
+	ctx, cancel := context.WithTimeout(s.MainContext, time.Second*40)
+	defer cancel()
 
 	_, err := s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
 	s.AssertNil(err)
