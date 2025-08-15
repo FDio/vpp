@@ -117,25 +117,7 @@ func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 
 	s.AssertChannelClosed(time.Minute*4, clnCh)
 	output := <-clnRes
-	// VCL/LDP debugging can pollute output so find the first occurrence of a curly brace to locate the start of JSON data
-	jsonStart := -1
-	jsonEnd := len(output)
-	braceCount := 0
-	for i := 0; i < len(output); i++ {
-		if output[i] == '{' {
-			if jsonStart == -1 {
-				jsonStart = i
-			}
-			braceCount++
-		} else if output[i] == '}' {
-			braceCount--
-			if braceCount == 0 {
-				jsonEnd = i + 1
-				break
-			}
-		}
-	}
-	result := s.ParseJsonIperfOutput(output[jsonStart:jsonEnd])
+	result := s.ParseJsonIperfOutput(output)
 	s.LogJsonIperfOutput(result)
 
 	return result
