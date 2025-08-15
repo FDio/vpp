@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bad6fe82_e9fbc7a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-08-15T13:33:29Z",
+      "side": 1,
+      "message": "perftest-2n-grc mrrANDnic_*cx7*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2patch",
+      "revId": "08eed9f3863f5ac1a1555137214b40ee363e5d34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
