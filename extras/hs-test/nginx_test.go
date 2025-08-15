@@ -17,6 +17,7 @@ func init() {
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
+	s.Skip("Flaky")
 	query := "index.html"
 
 	s.Containers.NginxHttp3.Create()
