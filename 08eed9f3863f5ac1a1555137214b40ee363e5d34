@@ -16,6 +16,23 @@
       "message": "perftest-2n-grc mrrANDnic_*cx7*ANDdrv_mlx5_coreAND1cAND64bANDeth-l2patch",
       "revId": "08eed9f3863f5ac1a1555137214b40ee363e5d34",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cb2d04f_e31ab457",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-08-15T14:00:43Z",
+      "side": 1,
+      "message": "perftest-2n-icx mrrANDnic_*cq*ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
+      "revId": "08eed9f3863f5ac1a1555137214b40ee363e5d34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
