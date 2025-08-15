@@ -637,7 +637,7 @@ http_io_as_peek (http_req_t *req, u8 *buf, u32 len, u32 offset)
   return (u32) n_read;
 }
 
-always_inline void
+always_inline u32
 http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
 		      u32 max_bytes)
 {
@@ -645,6 +645,7 @@ http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
   session_t *as = session_get_from_handle (req->hr_pa_session_handle);
   n_read = svm_fifo_segments (as->tx_fifo, 0, segs, n_segs, max_bytes);
   ASSERT (n_read > 0);
+  return (u32) n_read;
 }
 
 always_inline void

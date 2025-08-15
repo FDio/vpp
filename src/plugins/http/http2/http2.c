@@ -706,7 +706,6 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   max_write = clib_min (max_write, (u32) req->peer_window);
   max_write = clib_min (max_write, h2c->peer_window);
   max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
-  n_read = clib_min (max_write, max_read);
 
   if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED &&
       max_write >= max_read)
@@ -715,13 +714,16 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
       session_transport_closed_notify (&req->base.connection);
       flags = HTTP2_FRAME_FLAG_END_STREAM;
     }
+
+  max_read = clib_min (max_write, max_read);
+  n_read = http_io_as_read_segs (&req->base, segs + 1, &n_segs, max_read);
+
   http2_frame_write_data_header (n_read, req->stream_id, flags, fh);
   segs[0].len = HTTP2_FRAME_HEADER_SIZE;
   segs[0].data = fh;
 
-  http_io_as_read_segs (&req->base, segs + 1, &n_segs, n_read);
-
   n_written = http_io_ts_write_segs (hc, segs, n_segs + 1, 0);
+  ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + n_read));
   n_written -= HTTP2_FRAME_HEADER_SIZE;
   http_io_as_drain (&req->base, n_written);
   req->peer_window -= n_written;
@@ -1683,12 +1685,12 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
 {
   u32 max_enq;
 
-  HTTP_DBG (1, "tunnel received data from peer");
+  HTTP_DBG (1, "tunnel received data from peer %lu", req->payload_len);
 
   max_enq = http_io_as_max_write (&req->base);
   if (max_enq < req->payload_len)
     {
-      clib_warning ("app's rx fifo full");
+      clib_warning ("not enough space in app fifo (%lu)", max_enq);
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, sp);
       return HTTP_SM_STOP;
     }
