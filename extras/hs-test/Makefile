@@ -376,10 +376,10 @@ cleanup-perf:
 	fi
 	@echo "****************************"
 	@echo "Removing kubernetes pods:"
-	@kubectl delete pods --all --grace-period=0 -n namespace$$(cat .last_hst_ppid)
+	@kubectl delete pods --all --grace-period=0 -n hs-test$$(cat .last_hst_ppid)
 	@echo "****************************"
 	@echo "Removing kubernetes namespace:"
-	@kubectl delete namespace namespace$$(cat .last_hst_ppid)
+	@kubectl delete namespace hs-test$$(cat .last_hst_ppid)
 	@echo "****************************"
 	@echo "Done."
 	@echo "****************************"

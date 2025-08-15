@@ -30,12 +30,15 @@ func KindIperfVclTest(s *KindSuite) {
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -s -D -4"})
+		vcl + " " + ldp + " iperf3 -s -D -4 -B " + s.Pods.ServerGeneric.IpAddress})
 	s.AssertNil(err, o)
 	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -l 1460 -b 10g -c " + s.Pods.ServerGeneric.IpAddress})
-	s.Log(o)
+		vcl + " " + ldp + " iperf3 -J -l 1460 -b 10g -c " + s.Pods.ServerGeneric.IpAddress})
+
 	s.AssertNil(err)
+	result := s.ParseJsonIperfOutput([]byte(o))
+	s.LogJsonIperfOutput(result)
+	s.AssertIperfMinTransfer(result, 2000)
 }
 
 func NginxRpsTest(s *KindSuite) {
