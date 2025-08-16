@@ -81,7 +81,6 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	net/liquidio,						\
 	net/pcap,							\
 	net/pfe,							\
-	net/sfc,							\
 	net/softnic,						\
 	net/thunderx,						\
 	raw/ifpga,							\
