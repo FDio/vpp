@@ -403,6 +403,10 @@ vcl_session_read_ready (vcl_session_t * s)
 	  session_dgram_pre_hdr_t ph;
 	  u32 max_deq;
 
+	  /* CL listener that's not yet ready */
+	  if (vcl_session_is_cl (s) && !s->rx_fifo)
+	    return 0;
+
 	  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
 	  if (max_deq <= SESSION_CONN_HDR_LEN)
 	    return 0;
@@ -442,6 +446,10 @@ vcl_session_read_ready2 (vcl_session_t *s)
 
       if (s->is_dgram)
 	{
+	  /* CL listener that's not yet ready */
+	  if (vcl_session_is_cl (s) && !s->rx_fifo)
+	    return 0;
+
 	  if (svm_fifo_max_dequeue_cons (s->rx_fifo) <= SESSION_CONN_HDR_LEN)
 	    return 0;
 
