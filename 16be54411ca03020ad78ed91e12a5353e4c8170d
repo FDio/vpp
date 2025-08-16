@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "35fb08d3_33815c61",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-08-16T17:53:50Z",
+      "side": 1,
+      "message": "I\u0027ve tested this with all four EEPROM types. I\u0027ve also added external calibration support.",
+      "revId": "16be54411ca03020ad78ed91e12a5353e4c8170d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
