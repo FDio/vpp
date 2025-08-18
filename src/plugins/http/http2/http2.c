@@ -746,6 +746,7 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   else
     transport_connection_reschedule (&req->base.connection);
 
+  http_io_as_dequeue_notify (&req->base, n_written);
   http_io_ts_after_write (hc, 0);
 }
 
@@ -840,6 +841,7 @@ http2_sched_dispatch_udp_tunnel (http2_req_t *req, http_conn_t *hc,
   else
     transport_connection_reschedule (&req->base.connection);
 
+  http_io_as_dequeue_notify (&req->base, dgram_size);
   http_io_ts_after_write (hc, 0);
 }
 
