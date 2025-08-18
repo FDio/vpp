@@ -182,6 +182,9 @@ typedef struct
   /* cache for last 8 vxlan tunnel */
   vtep4_cache_t vtep4_u512;
 
+  /* encap params */
+  ip_dscp_t default_dscp;
+
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;

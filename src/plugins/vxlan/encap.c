@@ -184,6 +184,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  ip4_header_t *ip4_0, *ip4_1;
 	  qos_bits_t ip4_0_tos = 0, ip4_1_tos = 0;
+	  qos_bits_t tos0 = 0, tos1 = 0;
 	  ip6_header_t *ip6_0, *ip6_1;
 	  udp_header_t *udp0, *udp1;
 	  u8 *l3_0, *l3_1;
@@ -200,11 +201,13 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 		{
+		  tos0 = ip4_0->tos;
 		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
 		  ip4_0->tos = ip4_0_tos;
 		}
 	      if (PREDICT_FALSE (b1->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 		{
+		  tos1 = ip4_1->tos;
 		  ip4_1_tos = vnet_buffer2 (b1)->qos.bits;
 		  ip4_1->tos = ip4_1_tos;
 		}
@@ -250,9 +253,9 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip_csum_t sum0 = ip4_0->checksum;
 	      sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
 				     length /* changed member */);
-	      if (PREDICT_FALSE (ip4_0_tos))
+	      if (PREDICT_FALSE (ip4_0_tos != tos0))
 		{
-		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
+		  sum0 = ip_csum_update (sum0, tos0, ip4_0_tos, ip4_header_t,
 					 tos /* changed member */);
 		}
 	      ip4_0->checksum = ip_csum_fold (sum0);
@@ -282,9 +285,9 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip_csum_t sum1 = ip4_1->checksum;
 	      sum1 = ip_csum_update (sum1, 0, ip4_1->length, ip4_header_t,
 				     length /* changed member */);
-	      if (PREDICT_FALSE (ip4_1_tos))
+	      if (PREDICT_FALSE (ip4_1_tos != tos1))
 		{
-		  sum1 = ip_csum_update (sum1, 0, ip4_1_tos, ip4_header_t,
+		  sum1 = ip_csum_update (sum1, tos1, ip4_1_tos, ip4_header_t,
 					 tos /* changed member */);
 		}
 	      ip4_1->checksum = ip_csum_fold (sum1);
@@ -379,6 +382,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  udp_header_t *udp0;
 	  ip4_header_t *ip4_0;
 	  qos_bits_t ip4_0_tos = 0;
+	  qos_bits_t tos0 = 0;
 	  ip6_header_t *ip6_0;
 	  u8 *l3_0;
 	  if (is_ip4)
@@ -391,6 +395,7 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID))
 		{
+		  tos0 = ip4_0->tos;
 		  ip4_0_tos = vnet_buffer2 (b0)->qos.bits;
 		  ip4_0->tos = ip4_0_tos;
 		}
@@ -427,9 +432,9 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip_csum_t sum0 = ip4_0->checksum;
 	      sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
 				     length /* changed member */);
-	      if (PREDICT_FALSE (ip4_0_tos))
+	      if (PREDICT_FALSE (ip4_0_tos != tos0))
 		{
-		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
+		  sum0 = ip_csum_update (sum0, tos0, ip4_0_tos, ip4_header_t,
 					 tos /* changed member */);
 		}
 	      ip4_0->checksum = ip_csum_fold (sum0);

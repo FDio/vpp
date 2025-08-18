@@ -245,6 +245,7 @@ const static fib_node_vft_t vxlan_vft = {
 static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 {
+  vxlan_main_t *vxm = &vxlan_main;
   union
   {
     ip4_vxlan_header_t h4;
@@ -262,6 +263,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
       ip4_header_t *ip = &h.h4.ip4;
       udp = &h.h4.udp, vxlan = &h.h4.vxlan;
       ip->ip_version_and_header_length = 0x45;
+      ip4_header_set_dscp (ip, vxm->default_dscp);
       ip->ttl = 254;
       ip->protocol = IP_PROTOCOL_UDP;
 
@@ -277,6 +279,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
       udp = &h.h6.udp, vxlan = &h.h6.vxlan;
       ip->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
+      ip6_set_dscp_network_order (ip, vxm->default_dscp);
       ip->hop_limit = 255;
       ip->protocol = IP_PROTOCOL_UDP;
 
@@ -1279,6 +1282,28 @@ VLIB_CLI_COMMAND (vxlan_offload_command, static) = {
     .function = vxlan_offload_command_fn,
 };
 
+static clib_error_t *
+vxlan_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  vxlan_main_t *vxm = &vxlan_main;
+  ip_dscp_t dscp;
+  u32 tmp;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "dscp %U", unformat_ip_dscp, &dscp))
+	vxm->default_dscp = dscp;
+      else if (unformat (input, "dscp %u", &tmp))
+	vxm->default_dscp = tmp & (0xff >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (vxlan_config_fn, "vxlan");
+
 #define VXLAN_HASH_NUM_BUCKETS (2 * 1024)
 #define VXLAN_HASH_MEMORY_SIZE (1 << 20)
 
@@ -1305,6 +1330,8 @@ vxlan_init (vlib_main_t * vm)
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
+
+  vxm->default_dscp = IP_DSCP_CS0;
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_TUNNEL, &vxlan_vft);
 

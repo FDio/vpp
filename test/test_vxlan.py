@@ -27,6 +27,8 @@ from config import config
 class TestVxlan(BridgeDomain, VppTestCase):
     """VXLAN Test Case"""
 
+    dscp = 0  # IP_API_DSCP_CS0
+
     def __init__(self, *args):
         BridgeDomain.__init__(self)
         VppTestCase.__init__(self, *args)
@@ -88,6 +90,8 @@ class TestVxlan(BridgeDomain, VppTestCase):
                 self.assertEqual(pkt[IP].dst, self.pg0.remote_ip4)
             else:
                 self.assertEqual(pkt[IP].dst, type(self).mcast_ip4)
+        # Verify IP DSCP is set to known value.
+        self.assertEqual(pkt[IP].tos >> 2, self.dscp)
         # Verify UDP destination port is VXLAN 4789, source UDP port could be
         #  arbitrary.
         self.assertEqual(pkt[UDP].dport, self.dport)
@@ -480,6 +484,29 @@ class TestVxlan(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show bridge-domain 2 detail"))
         self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
         self.logger.info(self.vapi.cli("show vxlan tunnel"))
+
+
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
+class TestVxlanDSCP(TestVxlan):
+    """VXLAN DSCP Test Case"""
+
+    dscp = 8  # IP_API_DSCP_CS1
+    extra_vpp_config = [
+        "vxlan",
+        "{",
+        "dscp",
+        str(dscp),
+        "}",
+    ]
+    # Allowed test prefixes from super class.
+    test_filter = [
+        "test_encap",
+    ]
+
+    def setUp(self):
+        if not any(self._testMethodName.startswith(x) for x in self.test_filter):
+            self.skipTest(f"{self._testMethodName} is irrelevant")
+        super(TestVxlanDSCP, self).setUp()
 
 
 @unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
