@@ -452,9 +452,6 @@ ip4_add_interface_routes (u32 sw_if_index,
     .fp_addr.ip4 = *address,
   };
 
-  /* set special routes for the prefix if needed */
-  ip4_add_interface_prefix_routes (im, sw_if_index, fib_index, a);
-
   if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
     {
       u32 classify_table_index =
@@ -487,6 +484,10 @@ ip4_add_interface_routes (u32 sw_if_index,
                                    ~0,
 				   1, NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
+
+  /* set special routes for the prefix if needed */
+  if (a->address_length < 32)
+    ip4_add_interface_prefix_routes (im, sw_if_index, fib_index, a);
 }
 
 static void
