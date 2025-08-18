@@ -2117,6 +2117,9 @@ getsockopt (int fd, int level, int optname,
 	    case SO_BINDTODEVICE:
 	      rv = 0;
 	      break;
+	    case SO_COOKIE:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_COOKIE, optval, optlen);
+	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: getsockopt SOL_SOCKET: vlsh %u "
 		    "optname %d unsupported!", fd, vlsh, optname);
@@ -2221,6 +2224,10 @@ setsockopt (int fd, int level, int optname,
 	      break;
 	    case SO_LINGER:
 	      rv = 0;
+	      break;
+	    case SO_COOKIE:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_COOKIE, (void *) optval,
+			     &optlen);
 	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: setsockopt SOL_SOCKET: vlsh %u "
