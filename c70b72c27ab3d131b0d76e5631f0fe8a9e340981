@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "760b2c25_34e180c3",
+        "filename": "src/plugins/ping/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-08-18T13:31:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a1e30d70_37238ff7",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0fe9bba3_3965e5a3",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-08-12T14:32:19Z",
       "side": 1,
       "message": "I wonder why all those functions are inlines, they do not seem like performance sensitive functions, it would probably be better to have them as actual functions",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd86ccf6_9cbecdee",
+        "filename": "src/plugins/ping/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-08-18T13:31:07Z",
+      "side": 1,
+      "message": "ip46_icmp_populate_vnet_cli_msg is used in the reply node, should this one stay inlined?\nWould it be overkill to use a hash table instead of this linear search?",
+      "parentUuid": "0fe9bba3_3965e5a3",
       "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d230135_07aa5502",
+        "filename": "src/plugins/ping/traceroute.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-08-18T13:31:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3085a4d4_03fb9c47",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "46385778_5de9f1b9",
@@ -65,6 +119,24 @@
       "writtenOn": "2025-08-12T14:32:19Z",
       "side": 1,
       "message": "why this change?",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1066a00a_4de48be4",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-08-18T13:31:07Z",
+      "side": 1,
+      "message": "This was a leftover. When you don\u0027t have internet access, this step fails.",
+      "parentUuid": "46385778_5de9f1b9",
       "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
