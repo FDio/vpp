@@ -34,6 +34,8 @@ ENTROPY_PORT_MAX = 0xFFFF
 class TestUdpEncap(VppTestCase):
     """UDP Encap Test Case"""
 
+    dscp = 0  # IP_API_DSCP_CS0
+
     @classmethod
     def setUpClass(cls):
         super(TestUdpEncap, cls).setUpClass()
@@ -84,6 +86,7 @@ class TestUdpEncap(VppTestCase):
     def validate_outer4(self, rx, encap_obj, sport_entropy=False):
         self.assertEqual(rx[IP].src, encap_obj.src_ip_s)
         self.assertEqual(rx[IP].dst, encap_obj.dst_ip_s)
+        self.assertEqual(rx[IP].tos >> 2, self.dscp)
         if sport_entropy:
             self.assert_in_range(rx[UDP].sport, ENTROPY_PORT_MIN, ENTROPY_PORT_MAX)
         else:
@@ -93,6 +96,7 @@ class TestUdpEncap(VppTestCase):
     def validate_outer6(self, rx, encap_obj, sport_entropy=False):
         self.assertEqual(rx[IPv6].src, encap_obj.src_ip_s)
         self.assertEqual(rx[IPv6].dst, encap_obj.dst_ip_s)
+        self.assertEqual(rx[IPv6].tc >> 2, self.dscp)
         if sport_entropy:
             self.assert_in_range(rx[UDP].sport, ENTROPY_PORT_MIN, ENTROPY_PORT_MAX)
         else:
@@ -677,6 +681,28 @@ class TestUdpEncap(VppTestCase):
         for p in rx:
             p = IP(bytes(p["Ether"].payload))
             self.validate_inner4(p, p_mo4, ttl=63)
+
+
+class TestUdpEncapDSCP(TestUdpEncap):
+    """UDP Encap DSCP Test Case"""
+
+    dscp = 8  # IP_API_DSCP_CS1
+    extra_vpp_config = [
+        "udp-encap",
+        "{",
+        "dscp",
+        str(dscp),
+        "}",
+    ]
+    # Allowed test prefixes from super class.
+    test_filter = [
+        "test_udp_encap",
+    ]
+
+    def setUp(self):
+        if not any(self._testMethodName.startswith(x) for x in self.test_filter):
+            self.skipTest(f"{self._testMethodName} is irrelevant")
+        super(TestUdpEncapDSCP, self).setUp()
 
 
 @tag_fixme_vpp_workers

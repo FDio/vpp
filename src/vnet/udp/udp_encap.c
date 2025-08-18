@@ -20,6 +20,11 @@ dpo_type_t udp_encap_dpo_types[FIB_PROTOCOL_MAX];
 udp_encap_t *udp_encap_pool;
 
 /**
+ * Encap parameterss
+ */
+ip_dscp_t udp_encap_default_dscp;
+
+/**
  * Stats for each UDP encap object
  */
 vlib_combined_counter_main_t udp_encap_counters = {
@@ -70,6 +75,7 @@ udp_encap_add_and_lock (fib_protocol_t proto,
     case FIB_PROTOCOL_IP4:
       pfx_len = 32;
       ue->ue_hdrs.ip4.ue_ip4.ip_version_and_header_length = 0x45;
+      ip4_header_set_dscp (&ue->ue_hdrs.ip4.ue_ip4, udp_encap_default_dscp);
       ue->ue_hdrs.ip4.ue_ip4.ttl = 254;
       ue->ue_hdrs.ip4.ue_ip4.protocol = IP_PROTOCOL_UDP;
       ue->ue_hdrs.ip4.ue_ip4.src_address.as_u32 = src_ip->ip4.as_u32;
@@ -84,6 +90,8 @@ udp_encap_add_and_lock (fib_protocol_t proto,
       pfx_len = 128;
       ue->ue_hdrs.ip6.ue_ip6.ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
+      ip6_set_dscp_network_order (&ue->ue_hdrs.ip6.ue_ip6,
+				  udp_encap_default_dscp);
       ue->ue_hdrs.ip6.ue_ip6.hop_limit = 255;
       ue->ue_hdrs.ip6.ue_ip6.protocol = IP_PROTOCOL_UDP;
       ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[0] = src_ip->ip6.as_u64[0];
@@ -405,10 +413,34 @@ udp_encap_init (vlib_main_t * vm)
   udp_encap_dpo_types[FIB_PROTOCOL_IP6] =
     dpo_register_new_type (&udp_encap_dpo_vft, udp6_encap_nodes);
 
+  udp_encap_default_dscp = IP_DSCP_CS0;
+
   return (NULL);
 }
 
 VLIB_INIT_FUNCTION (udp_encap_init);
+
+static clib_error_t *
+udp_encap_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  ip_dscp_t dscp;
+  u32 tmp;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "dscp %U", unformat_ip_dscp, &dscp))
+	udp_encap_default_dscp = dscp;
+      else if (unformat (input, "dscp %u", &tmp))
+	udp_encap_default_dscp =
+	  tmp & (0xff >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (udp_encap_config_fn, "udp-encap");
 
 clib_error_t *
 udp_encap_cli (vlib_main_t * vm,
