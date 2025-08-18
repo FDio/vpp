@@ -69,7 +69,7 @@ enum ip_dscp : u8 {
   IP_API_DSCP_CS5 =  40,
   IP_API_DSCP_EF =   46,
   IP_API_DSCP_CS6 =  48,
-  IP_API_DSCP_CS7 =  50,
+  IP_API_DSCP_CS7 =  56,
 };
 
 enum ip_proto : u8 {
