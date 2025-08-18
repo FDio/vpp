@@ -4189,6 +4189,30 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	rv = VPPCOM_EINVAL;
       break;
 
+    case VPPCOM_ATTR_GET_COOKIE:
+      if (buffer && buflen && (*buflen >= sizeof (u64)))
+	{
+	  /* VPP-TBD */
+	  *(u64 *) buffer = 0;
+	  *buflen = sizeof (int);
+
+	  VDBG (2, "VPPCOM_ATTR_GET_COOKIE: %d, buflen %d, #VPP-TBD#",
+		*(int *) buffer, *buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_COOKIE:
+      if (buffer && buflen && (*buflen == sizeof (u64)))
+	{
+	  VDBG (2, "VPPCOM_ATTR_SET_COOKIE: %d, buflen %d, #VPP-TBD#",
+		*(u64 *) buffer, *buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
     case VPPCOM_ATTR_GET_V6ONLY:
       if (buffer && buflen && (*buflen >= sizeof (int)))
 	{
