@@ -132,10 +132,6 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
     .fp_addr.ip6 = *address,
   };
 
-  /* set special routes for the prefix if needed */
-  ip6_add_interface_prefix_routes (im, sw_if_index, fib_index,
-				   address, a->address_length);
-
   pfx.fp_len = 128;
   if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
     {
@@ -166,6 +162,11 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				   &pfx.fp_addr,
 				   sw_if_index, ~0,
 				   1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  /* set special routes for the prefix if needed */
+  if (a->address_length < 128)
+    ip6_add_interface_prefix_routes (im, sw_if_index, fib_index, address,
+				     a->address_length);
 }
 
 static void

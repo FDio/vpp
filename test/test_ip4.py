@@ -1194,11 +1194,33 @@ class TestIPSubNets(VppTestCase):
         # A /31 is a special case where the 'other-side' is an attached host
         # packets to that peer generate ARP requests
         #
-        ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
+        # Let's consider two cases:
+        # Case 1: interface has the second address of /31
+        #
+        self.pg_enable_capture(self.pg_interfaces)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, prefix="10.10.10.11/31"
+        )
 
+        rx = self.pg0.get_capture(1)
+        self.assertEqual(rx[0][ARP].psrc, "10.10.10.11")
+        self.assertEqual(rx[0][ARP].pdst, "10.10.10.10")
+
+        # remove the sub-net
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, prefix="10.10.10.11/31", is_add=0
+        )
+
+        #
+        # Case 2: interface has the first address of /31
+        #
+        self.pg_enable_capture(self.pg_interfaces)
         self.vapi.sw_interface_add_del_address(
             sw_if_index=self.pg0.sw_if_index, prefix="10.10.10.10/31"
         )
+        rx = self.pg0.get_capture(1)
+        self.assertEqual(rx[0][ARP].psrc, "10.10.10.10")
+        self.assertEqual(rx[0][ARP].pdst, "10.10.10.11")
 
         pn = (
             Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -1211,7 +1233,8 @@ class TestIPSubNets(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = self.pg0.get_capture(1)
-        rx[ARP]
+        self.assertEqual(rx[0][ARP].psrc, "10.10.10.10")
+        self.assertEqual(rx[0][ARP].pdst, "10.10.10.11")
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
