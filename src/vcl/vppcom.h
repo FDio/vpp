@@ -187,6 +187,8 @@ typedef enum
   VPPCOM_ATTR_GET_ORIGINAL_DST,
   VPPCOM_ATTR_GET_NWRITEQ,
   VPPCOM_ATTR_GET_EXT_ENDPT,
+  VPPCOM_ATTR_GET_COOKIE,
+  VPPCOM_ATTR_SET_COOKIE,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
