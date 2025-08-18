@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	. "fd.io/hs-test/infra"
+	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -38,6 +39,12 @@ func NginxHttp3Test(s *NoTopoSuite) {
 	s.AssertNotContains(stats, "refused")
 	s.AssertContains(stats, "100")
 	s.AssertContains(body, "<http>", "<http> not found in the result!")
+
+	// check worker crash
+	logPath := s.Containers.NginxHttp3.GetHostWorkDir() + "/" + s.Containers.NginxHttp3.Name + "-error.log"
+	logContents, err := exechelper.Output("cat " + logPath)
+	s.AssertNil(err)
+	s.AssertNotContains(string(logContents), "signal 17 (SIGCHLD) received from")
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
