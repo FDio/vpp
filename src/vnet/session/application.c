@@ -1068,7 +1068,7 @@ app_listener_select_wrk_cl_session (session_t *ls, session_dgram_hdr_t *hdr)
   if (al->workers[0] != 1)
     {
       u32 hash = app_listener_cl_flow_hash (hdr);
-      hash %= vec_len (al->workers) * sizeof (uword);
+      hash %= vec_len (al->workers);
       wrk_map_index = clib_bitmap_next_set (al->workers, hash);
       if (wrk_map_index == ~0)
 	wrk_map_index = clib_bitmap_first_set (al->workers);
