@@ -3,6 +3,7 @@
  * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  */
 
+#include <vnet/udp/udp.h>
 #include <vnet/udp/udp_encap.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_entry_track.h>
@@ -49,6 +50,7 @@ udp_encap_add_and_lock (fib_protocol_t proto,
 			u16 src_port,
 			u16 dst_port, udp_encap_fixup_flags_t flags)
 {
+  udp_main_t *um = &udp_main;
   udp_encap_t *ue;
   u8 pfx_len = 0;
   index_t uei;
@@ -70,6 +72,7 @@ udp_encap_add_and_lock (fib_protocol_t proto,
     case FIB_PROTOCOL_IP4:
       pfx_len = 32;
       ue->ue_hdrs.ip4.ue_ip4.ip_version_and_header_length = 0x45;
+      ip4_header_set_dscp (&ue->ue_hdrs.ip4.ue_ip4, um->default_dscp);
       ue->ue_hdrs.ip4.ue_ip4.ttl = 254;
       ue->ue_hdrs.ip4.ue_ip4.protocol = IP_PROTOCOL_UDP;
       ue->ue_hdrs.ip4.ue_ip4.src_address.as_u32 = src_ip->ip4.as_u32;
@@ -84,6 +87,7 @@ udp_encap_add_and_lock (fib_protocol_t proto,
       pfx_len = 128;
       ue->ue_hdrs.ip6.ue_ip6.ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
+      ip6_set_dscp_network_order (&ue->ue_hdrs.ip6.ue_ip6, um->default_dscp);
       ue->ue_hdrs.ip6.ue_ip6.hop_limit = 255;
       ue->ue_hdrs.ip6.ue_ip6.protocol = IP_PROTOCOL_UDP;
       ue->ue_hdrs.ip6.ue_ip6.src_address.as_u64[0] = src_ip->ip6.as_u64[0];

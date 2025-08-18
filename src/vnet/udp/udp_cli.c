@@ -138,12 +138,17 @@ static clib_error_t *
 udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   udp_main_t *um = &udp_main;
+  ip_dscp_t dscp;
   u32 tmp;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "mtu %u", &tmp))
 	um->default_mtu = tmp;
+      else if (unformat (input, "dscp %U", unformat_ip_dscp, &dscp))
+	um->default_dscp = dscp;
+      else if (unformat (input, "dscp %u", &tmp))
+	um->default_dscp = tmp & (0xff >> IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT);
       else if (unformat (input, "icmp-unreachable-disabled"))
 	um->icmp_send_unreachable_disabled = 1;
       else if (unformat (input, "no-csum-offload"))

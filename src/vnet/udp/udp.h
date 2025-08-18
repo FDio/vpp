@@ -149,6 +149,8 @@ typedef struct
   u16 *transport_ports_refcnt[N_UDP_AF];
 
   u16 default_mtu;
+  ip_dscp_t default_dscp;
+
   u16 msg_id_base;
   u8 csum_offload;
   u8 is_init;

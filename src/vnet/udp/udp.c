@@ -724,6 +724,7 @@ udp_init (vlib_main_t * vm)
     vlib_node_add_next (vm, udp6_local_node.index, udp6_input_node.index);
 
   um->default_mtu = 1500;
+  um->default_dscp = IP_DSCP_CS0;
   um->csum_offload = 1;
   return 0;
 }
