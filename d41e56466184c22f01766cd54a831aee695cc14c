@@ -33,6 +33,24 @@
       "message": "maybe we should move these to the proxy to make it more user friendly",
       "revId": "d41e56466184c22f01766cd54a831aee695cc14c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "246b7a6b_b38f7543",
+        "filename": "extras/hs-test/infra/suite_masque.go",
+        "patchSetId": 39
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-19T16:55:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5c2346f7_82efb3e9",
+      "revId": "d41e56466184c22f01766cd54a831aee695cc14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
