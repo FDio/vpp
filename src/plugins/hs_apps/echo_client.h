@@ -50,6 +50,8 @@ typedef struct ec_session_
   f64 send_rtt;
   u8 rtt_stat;
   u8 *test_send_buffer;
+  u64 dgrams_sent;
+  u64 dgrams_received;
 } ec_session_t;
 
 typedef struct ec_worker_
@@ -77,6 +79,8 @@ typedef struct
   f64 syn_start_time;
   f64 test_start_time;
   f64 test_end_time;
+  f64 last_print_time;
+  u64 last_total_bytes;
   u32 prev_conns;
   u32 repeats;
   ec_rttstat_t rtt_stats;
@@ -119,6 +123,7 @@ typedef struct
   f64 test_timeout;			/**< Test timeout (s) */
   f64 run_time;				/**< Length of a test (s) */
   u64 max_chunk_bytes;
+  f64 report_interval;
 
   /*
    * Flags
@@ -159,6 +164,14 @@ typedef enum ec_rtt_stat_
   EC_UDP_RTT_TX_FLAG = 1,
   EC_UDP_RTT_RX_FLAG = 2
 } ec_rtt_stat;
+
+typedef enum ec_print_stat_flag_
+{
+  EC_PRNT_STAT_NONE = 0,
+  EC_PRNT_STAT_PERIODIC = 1,
+  EC_PRNT_STAT_TIMEOUT = 2,
+  EC_PRNT_STAT_HEADER = 4
+} ec_print_stat_flag;
 
 void ec_program_connects (void);
 
