@@ -16,6 +16,24 @@
       "message": "isn\u0027t better to do baseline without nsim first and do comparison with some threshold?",
       "revId": "237658065bfaa515e878fbc4a2ef066bbadf75dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80601dbb_1ccc9e66",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-20T14:50:02Z",
+      "side": 1,
+      "message": "we should, and, to make things more complicated, we should probably use different thresholds for intel and arm",
+      "parentUuid": "ac2a6a54_18ee8bd6",
+      "revId": "237658065bfaa515e878fbc4a2ef066bbadf75dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
