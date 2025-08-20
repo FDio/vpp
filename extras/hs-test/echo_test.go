@@ -138,6 +138,12 @@ func TcpWithLossTest(s *VethsSuite) {
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	number, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+	if !s.CoverageRun {
+		s.AssertGreaterEqual(number, 0.05)
+	}
 }
 
 func TcpWithLoss6Test(s *Veths6Suite) {
@@ -160,4 +166,10 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	number, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+	if !s.CoverageRun {
+		s.AssertGreaterEqual(number, 0.05)
+	}
 }
