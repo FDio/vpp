@@ -18,6 +18,30 @@
 
 #include <hsi/hsi.h>
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_inlines.h>
+
+typedef struct hsi_main_
+{
+  u8 intercept_type;
+
+  /* ipv4 and ipv6 for tcp and udp */
+  session_handle_t intercept_listeners[2][2];
+} hsi_main_t;
+
+static hsi_main_t hsi_main;
+
+static inline u8
+hsi_intercept_proto_flag (transport_proto_t proto, u8 is_ip4)
+{
+  /* This leverages the fact that TCP is 0 and UDP is 1 */
+  return (1 << (proto << 1 | is_ip4));
+}
+
+static inline u8
+hsi_have_intercept_proto (transport_proto_t proto, u8 is_ip4)
+{
+  return (hsi_main.intercept_type & hsi_intercept_proto_flag (proto, is_ip4));
+}
 
 char *hsi_error_strings[] = {
 #define hsi_error(n, s) s,
@@ -28,20 +52,26 @@ char *hsi_error_strings[] = {
 typedef enum hsi_input_next_
 {
   HSI_INPUT_NEXT_UDP_INPUT,
+  HSI_INPUT_NEXT_UDP_INPUT_NOLOOKUP,
   HSI_INPUT_NEXT_TCP_INPUT,
   HSI_INPUT_NEXT_TCP_INPUT_NOLOOKUP,
+  HSI_INPUT_NEXT_TCP_LISTEN,
   HSI_INPUT_N_NEXT
 } hsi_input_next_t;
 
 #define foreach_hsi4_input_next                                               \
   _ (UDP_INPUT, "udp4-input")                                                 \
+  _ (UDP_INPUT_NOLOOKUP, "udp4-input-nolookup")                               \
   _ (TCP_INPUT, "tcp4-input")                                                 \
-  _ (TCP_INPUT_NOLOOKUP, "tcp4-input-nolookup")
+  _ (TCP_INPUT_NOLOOKUP, "tcp4-input-nolookup")                               \
+  _ (TCP_LISTEN, "tcp4-listen")
 
 #define foreach_hsi6_input_next                                               \
   _ (UDP_INPUT, "udp6-input")                                                 \
+  _ (UDP_INPUT_NOLOOKUP, "udp6-input-nolookup")                               \
   _ (TCP_INPUT, "tcp6-input")                                                 \
-  _ (TCP_INPUT_NOLOOKUP, "tcp6-input-nolookup")
+  _ (TCP_INPUT_NOLOOKUP, "tcp6-input-nolookup")                               \
+  _ (TCP_LISTEN, "tcp6-listen")
 
 typedef struct
 {
@@ -62,7 +92,7 @@ format_hsi_trace (u8 *s, va_list *args)
   return s;
 }
 
-always_inline u8
+always_inline session_t *
 hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 {
   udp_header_t *hdr;
@@ -85,7 +115,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
     }
 
-  return s ? 1 : 0;
+  return s;
 }
 
 always_inline transport_connection_t *
@@ -120,10 +150,11 @@ hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, tcp_header_t **rhdr, u8 is_ip4)
 always_inline void
 hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
 {
-  u8 proto, state, have_udp;
+  u8 proto, state;
   tcp_header_t *tcp_hdr = 0;
   tcp_connection_t *tc;
   u32 rw_len = 0;
+  session_t *s;
   void *ip_hdr;
 
   if (is_input)
@@ -176,23 +207,49 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
 	}
       else
 	{
-	  vnet_feature_next (next, b);
+	  u32 error = 0;
+
+	  if (!hsi_have_intercept_proto (TRANSPORT_PROTO_TCP, is_ip4) ||
+	      !tcp_syn (tcp_hdr))
+	    {
+	      vnet_feature_next (next, b);
+	      break;
+	    }
+
+	  /* force parsing of buffer in preparation for tcp-listen */
+	  tcp_input_lookup_buffer (b, vlib_get_thread_index (), &error, is_ip4,
+				   1 /* is_nolookup*/);
+	  if (error)
+	    {
+	      vnet_feature_next (next, b);
+	      break;
+	    }
+
+	  vnet_buffer (b)->tcp.connection_index =
+	    hsi_main.intercept_listeners[!is_ip4][TRANSPORT_PROTO_TCP];
+	  vnet_buffer (b)->tcp.flags = TCP_STATE_LISTEN;
+
+	  *next = HSI_INPUT_NEXT_TCP_LISTEN;
 	}
       break;
     case IP_PROTOCOL_UDP:
-      have_udp = hsi_udp_lookup (b, ip_hdr, is_ip4);
-      if (have_udp)
+      s = hsi_udp_lookup (b, ip_hdr, is_ip4);
+      if (!s)
 	{
-	  *next = HSI_INPUT_NEXT_UDP_INPUT;
-	  /* Emulate udp-local and consume headers up to udp payload */
-	  rw_len += is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
-	  rw_len += sizeof (udp_header_t);
-	  vlib_buffer_advance (b, rw_len);
+	  if (!hsi_have_intercept_proto (TRANSPORT_PROTO_UDP, is_ip4))
+	    {
+	      vnet_feature_next (next, b);
+	      break;
+	    }
+	  s = session_get_from_handle (
+	    hsi_main.intercept_listeners[!is_ip4][TRANSPORT_PROTO_UDP]);
 	}
-      else
-	{
-	  vnet_feature_next (next, b);
-	}
+      *next = HSI_INPUT_NEXT_UDP_INPUT_NOLOOKUP;
+      /* Emulate udp-local and consume headers up to udp payload */
+      rw_len += is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+      rw_len += sizeof (udp_header_t);
+      vlib_buffer_advance (b, rw_len);
+      vnet_buffer (b)->udp.session_handle = s->handle;
       break;
     default:
       vnet_feature_next (next, b);
@@ -387,6 +444,73 @@ VNET_FEATURE_INIT (hsi6_out_feature, static) = {
   .arc_name = "ip6-output",
   .node_name = "hsi6-out",
   .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+static void
+hsi_intercept_proto (transport_proto_t proto, u8 is_ip4)
+{
+  hsi_main_t *hm = &hsi_main;
+  session_endpoint_t sep = { .transport_proto = proto, .is_ip4 = is_ip4 };
+  session_t *ls;
+
+  ls = session_lookup_listener_wildcard (0, &sep);
+  if (ls)
+    {
+      if (proto == TRANSPORT_PROTO_TCP)
+	hm->intercept_listeners[!is_ip4][proto] = ls->connection_index;
+      else
+	hm->intercept_listeners[!is_ip4][proto] = ls->handle;
+      /* This leverages the fact that TCP is 0 and UDP is 1 */
+      hm->intercept_type |= hsi_intercept_proto_flag (proto, is_ip4);
+    }
+}
+
+static clib_error_t *
+hsi_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "intercept tcp"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
+	}
+      if (unformat (line_input, "intercept udp"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	}
+      if (unformat (line_input, "intercept all"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (hsi_command, static) = {
+  .path = "hsi",
+  .short_help = "hsi [intercept-all [tcp | udp]]",
+  .function = hsi_command_fn,
 };
 
 VLIB_PLUGIN_REGISTER () = {
