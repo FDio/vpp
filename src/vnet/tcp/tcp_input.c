@@ -2627,7 +2627,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* Make sure connection wasn't just created */
       child =
 	tcp_lookup_connection (lc->c_fib_index, b[0], thread_index, is_ip4);
-      if (PREDICT_FALSE (child->state != TCP_STATE_LISTEN))
+      if (PREDICT_FALSE (child && child->state != TCP_STATE_LISTEN))
 	{
 	  tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	  goto done;
