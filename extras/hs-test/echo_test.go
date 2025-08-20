@@ -9,8 +9,8 @@ import (
 
 func init() {
 	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest)
-	RegisterSoloVethTests(TcpWithLossTest)
-	RegisterVeth6Tests(TcpWithLoss6Test)
+	RegisterVethMWTests(TcpWithLossTest)
+	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
 
 func EchoBuiltinTest(s *VethsSuite) {
@@ -118,7 +118,7 @@ func EchoBuiltinTestbytesTest(s *VethsSuite) {
 	s.AssertContains(o, " bytes out of 32768 sent (32768 target)")
 }
 
-func TcpWithLossTest(s *VethsSuite) {
+func tcpWithoutLoss(s *VethsSuite) string {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server uri tcp://%s/"+s.Ports.Port1,
@@ -126,38 +126,107 @@ func TcpWithLossTest(s *VethsSuite) {
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	// Add loss of packets with Network Delay Simulator
-	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
-		" packet-size 1400 packets-per-drop 1000"))
-
-	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
-
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
+	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes run-time 10 test-timeout 20",
 		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	return output
 }
 
-func TcpWithLoss6Test(s *Veths6Suite) {
+func TcpWithLossTest(s *VethsSuite) {
+	s.CpusPerVppContainer = 2
+	s.CpusPerContainer = 1
+	s.SetupTest()
+	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri tcp://%s/%s",
-		s.Interfaces.Server.Ip6AddressString(), s.Ports.Port1)
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"))
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+
+	s.Log("  * running TcpWithoutLoss")
+	output := tcpWithoutLoss(s)
+	baseline, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+
+	clientVpp.Disconnect()
+	clientVpp.Stop()
+	s.SetupClientVpp()
+	serverVpp.Disconnect()
+	serverVpp.Stop()
+	s.SetupServerVpp()
+
+	// Add loss of packets with Network Delay Simulator
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit" +
+		" packet-size 1400 drop-fraction 0.033"))
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+
+	s.Log("  * running TcpWithLoss")
+	output = tcpWithoutLoss(s)
+
+	withLoss, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+
+	if !s.CoverageRun {
+		s.Log("\nBaseline:  %v gbit/s\nWith loss: %v gbit/s", baseline, withLoss)
+		s.AssertGreaterEqual(baseline, withLoss)
+		s.AssertGreaterEqual(withLoss, baseline*0.2)
+	}
+}
+
+func tcpWithoutLoss6(s *Veths6Suite) string {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server uri tcp://%s/"+s.Ports.Port1,
+		s.Interfaces.Server.Ip6AddressString())
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	// Add loss of packets with Network Delay Simulator
-	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
-		" packet-size 1400 packets-per-drop 1000"))
-
-	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
-
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes bytes 50m",
+	output := clientVpp.Vppctl("test echo client uri tcp://%s/%s verbose echo-bytes run-time 10 test-timeout 20",
 		s.Interfaces.Server.Ip6AddressString(), s.Ports.Port1)
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	return output
+}
+
+func TcpWithLoss6Test(s *Veths6Suite) {
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"))
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+
+	s.Log("  * running TcpWithoutLoss")
+	output := tcpWithoutLoss6(s)
+	baseline, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+
+	clientVpp.Disconnect()
+	clientVpp.Stop()
+	s.SetupClientVpp()
+	serverVpp.Disconnect()
+	serverVpp.Stop()
+	s.SetupServerVpp()
+
+	// Add loss of packets with Network Delay Simulator
+	s.Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit" +
+		" packet-size 1400 drop-fraction 0.033"))
+
+	s.Log(clientVpp.Vppctl("nsim output-feature enable-disable host-" + s.Interfaces.Client.Name()))
+
+	s.Log("  * running TcpWithLoss")
+	output = tcpWithoutLoss6(s)
+
+	withLoss, err := s.ParseEchoClientTransfer(output)
+	s.AssertNil(err)
+
+	if !s.CoverageRun {
+		s.Log("Baseline:  %v gbit/s\nWith loss: %v gbit/s", baseline, withLoss)
+		s.AssertGreaterEqual(baseline, withLoss)
+		s.AssertGreaterEqual(withLoss, baseline*0.2)
+	}
 }
