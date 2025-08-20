@@ -10,7 +10,7 @@
 #include <vnet/tls/tls_types.h>
 #include <vnet/tcp/tcp.h>
 
-#define HCPC_DEBUG 0
+#define HCPC_DEBUG 1
 
 #if HCPC_DEBUG
 #define HCPC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
@@ -19,6 +19,8 @@
 #endif
 
 #define TCP_MSS 1460
+
+#define HCPC_EVENT_PROXY_CONNECTED 1
 
 #define foreach_hcpc_session_state                                            \
   _ (CONNECTING, "CONNECTING")                                                \
@@ -86,6 +88,8 @@ typedef struct
   u32 fifo_size;
   u32 prealloc_fifos;
   u64 private_segment_size;
+  u32 process_node_index;
+  clib_spinlock_t sessions_lock;
 } hcpc_main_t;
 
 hcpc_main_t hcpc_main;
@@ -176,8 +180,11 @@ hcpc_session_get (u32 s_index)
 static void
 hcpc_delete_session (session_t *s, u8 is_http)
 {
+  hcpc_main_t *hcpcm = &hcpc_main;
   hcpc_session_t *ps;
   session_t *ls;
+
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
 
   HCPC_DBG ("session %u (is http %u)", s->opaque, is_http);
   ps = hcpc_session_get (s->opaque);
@@ -191,6 +198,7 @@ hcpc_delete_session (session_t *s, u8 is_http)
 	{
 	  ASSERT (ps->listener_session_handle == SESSION_INVALID_HANDLE);
 	  hcpc_session_free (ps);
+	  clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
 	  return;
 	}
       /* listener already cleaned up */
@@ -198,6 +206,7 @@ hcpc_delete_session (session_t *s, u8 is_http)
 	{
 	  ASSERT (s->rx_fifo->refcnt == 1);
 	  hcpc_session_free (ps);
+	  clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
 	  return;
 	}
       ls = session_get_from_handle (ps->listener_session_handle);
@@ -210,6 +219,8 @@ hcpc_delete_session (session_t *s, u8 is_http)
       if (ps->http_session_handle == SESSION_INVALID_HANDLE)
 	hcpc_session_free (ps);
     }
+
+  clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
 }
 
 static void
@@ -219,6 +230,15 @@ hcpc_http_connection_closed ()
   hcpc_listener_t *l;
   hcpc_session_t *ps;
 
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+
+  pool_foreach (ps, hcpcm->sessions)
+    {
+      ps->state = HCPC_SESSION_CLOSED;
+    }
+
+  clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
+
   pool_foreach (l, hcpcm->listeners)
     {
       if (l->session_handle != SESSION_INVALID_HANDLE)
@@ -227,11 +247,6 @@ hcpc_http_connection_closed ()
 				     .app_index = hcpcm->listener_app_index };
 	  vnet_unlisten (&a);
 	}
-    }
-
-  pool_foreach (ps, hcpcm->sessions)
-    {
-      ps->state = HCPC_SESSION_CLOSED;
     }
 }
 
@@ -560,7 +575,9 @@ http_session_connected_callback (u32 app_index, u32 session_index,
       ps->flags |= HCPC_SESSION_F_IS_PARENT;
       s->opaque = ps->session_index;
       hcpcm->http_connection_handle = session_handle (s);
-      hcpc_start_listen ();
+      vlib_process_signal_event_mt (vlib_get_main (),
+				    hcpcm->process_node_index,
+				    HCPC_EVENT_PROXY_CONNECTED, 0);
       return 0;
     }
 
@@ -617,6 +634,13 @@ http_rx_callback (session_t *s)
   return 0;
 }
 
+static void
+hcpc_force_ack (void *arg)
+{
+  tcp_send_ack ((tcp_connection_t *) session_get_transport (
+    session_get_from_handle (pointer_to_uword (arg))));
+}
+
 static int
 http_tx_callback (session_t *s)
 {
@@ -643,8 +667,9 @@ http_tx_callback (session_t *s)
   /* force ack on listener side to update rcv wnd */
   if (ps->flags & HCPC_SESSION_F_IS_UDP)
     return 0;
-  tcp_send_ack ((tcp_connection_t *) session_get_transport (
-    session_get_from_handle (ps->listener_session_handle)));
+  session_send_rpc_evt_to_thread (
+    session_thread_from_handle (ps->listener_session_handle), hcpc_force_ack,
+    uword_to_pointer (ps->listener_session_handle, void *));
 
   return 0;
 }
@@ -723,11 +748,16 @@ listener_accept_callback (session_t *s)
   if (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE)
     return -1;
 
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+
   ps = hcpc_session_alloc ();
   ps->state = HCPC_SESSION_CONNECTING;
   ps->listener_session_handle = session_handle (s);
   if (session_get_transport_proto (s) == TRANSPORT_PROTO_UDP)
     ps->flags |= HCPC_SESSION_F_IS_UDP;
+
+  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+
   s->opaque = ps->session_index;
   s->session_state = SESSION_STATE_READY;
 
@@ -979,6 +1009,38 @@ hcpc_enable_hsi (u8 is_ip4)
   return 0;
 }
 
+static uword
+hcpc_event_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  f64 timeout = 1000.0;
+  uword *event_data = 0;
+  uword event_type;
+
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, timeout);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
+      switch (event_type)
+	{
+	case HCPC_EVENT_PROXY_CONNECTED:
+	  vlib_worker_thread_barrier_sync (vm);
+	  hcpc_start_listen ();
+	  vlib_worker_thread_barrier_release (vm);
+	  break;
+	case ~0:
+	  /* timeout, nothing to now (maybe proxy connection keep-alive?) */
+	  break;
+	/* TODO: auto proxy reconnect */
+	default:
+	  HCPC_DBG ("unknown event %u", event_type);
+	  break;
+	}
+      vec_reset_length (event_data);
+    }
+
+  return 0;
+}
+
 /*******/
 /* cli */
 /*******/
@@ -995,6 +1057,9 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcpc_listener_t _l = {}, *l = &_l;
   u64 mem_size;
   vnet_main_t *vnm = vnet_get_main ();
+
+  if (hcpcm->http_app_index != APP_INVALID_INDEX)
+    return clib_error_return (0, "http connect proxy client already enabled");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected arguments");
@@ -1066,6 +1131,9 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_session_enable_disable (vm, &args);
   vlib_worker_thread_barrier_release (vm);
 
+  if (vlib_num_workers ())
+    clib_spinlock_init (&hcpcm->sessions_lock);
+
   err = hcpc_attach_http_client ();
   if (err)
     goto done;
@@ -1073,6 +1141,10 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   err = hcpc_attach_listener ();
   if (err)
     goto done;
+
+  if (hcpcm->process_node_index == 0)
+    hcpcm->process_node_index =
+      vlib_process_create (vm, "hcpc-event-process", hcpc_event_process, 16);
 
   hcpc_listener_add (l);
   hcpc_connect_http_connection ();
@@ -1224,7 +1296,8 @@ hcpc_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
       transport_connection_t *tc;
       pool_foreach (ps, hcpcm->sessions)
 	{
-	  if (ps->flags & HCPC_SESSION_F_IS_PARENT)
+	  if (ps->flags & HCPC_SESSION_F_IS_PARENT ||
+	      ps->state == HCPC_SESSION_CLOSED)
 	    continue;
 	  tc = session_get_transport (
 	    session_get_from_handle (ps->listener_session_handle));
