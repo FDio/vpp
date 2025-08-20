@@ -332,6 +332,41 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+/* Unformat base 10 e.g 100M, 20G. */
+__clib_export uword
+unformat_base10 (unformat_input_t *input, va_list *va)
+{
+  uword amount, multiplier, c;
+  uword *result = va_arg (*va, uword *);
+
+  if (!unformat (input, "%wd%_", &amount))
+    return 0;
+
+  c = unformat_get_input (input);
+  switch (c)
+    {
+    case 'k':
+    case 'K':
+      multiplier = 1000;
+      break;
+    case 'm':
+    case 'M':
+      multiplier = 1000000;
+      break;
+    case 'g':
+    case 'G':
+      multiplier = 1000000000;
+      break;
+    default:
+      multiplier = 1;
+      unformat_put_input (input);
+      break;
+    }
+
+  *result = amount * multiplier;
+  return 1;
+}
+
 /* Unparse memory page size e.g. 4K, 2M */
 __clib_export u8 *
 format_log2_page_size (u8 * s, va_list * va)

@@ -50,6 +50,8 @@ typedef struct ec_session_
   f64 send_rtt;
   u8 rtt_stat;
   u8 *test_send_buffer;
+  u64 dgrams_sent;
+  u64 dgrams_received;
 } ec_session_t;
 
 typedef struct ec_worker_
@@ -77,6 +79,11 @@ typedef struct
   f64 syn_start_time;
   f64 test_start_time;
   f64 test_end_time;
+  f64 last_print_time;
+  u64 last_total_tx_bytes;
+  u64 last_total_rx_bytes;
+  u64 last_total_tx_dgrams;
+  u64 last_total_rx_dgrams;
   u32 prev_conns;
   u32 repeats;
   ec_rttstat_t rtt_stats;
@@ -119,6 +126,9 @@ typedef struct
   f64 test_timeout;			/**< Test timeout (s) */
   f64 run_time;				/**< Length of a test (s) */
   u64 max_chunk_bytes;
+  u64 report_interval;	    /**< Time between periodic raports (s) */
+  u8 report_interval_total; /**< Shown data are totals since the start of the
+			       test */
 
   /*
    * Flags
