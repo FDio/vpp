@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c40f9e97_d8c5fc8d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-08-20T14:54:32Z",
+      "side": 1,
+      "message": "Please add an entry in ./MAINTAINERS file for this new plugin.",
+      "revId": "4fd132c4c5de09507d77f5bfea8880e9e37f91e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
