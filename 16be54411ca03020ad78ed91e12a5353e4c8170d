@@ -16,6 +16,23 @@
       "message": "I\u0027ve tested this with all four EEPROM types. I\u0027ve also added external calibration support.",
       "revId": "16be54411ca03020ad78ed91e12a5353e4c8170d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8091ea0e_5977bbd8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-08-20T17:46:04Z",
+      "side": 1,
+      "message": "Damjan, this gerrit is ready for you. I\u0027ve also updated the thread on vpp-dev@ if you\u0027d like to see a longer output of the debug CLI commands.",
+      "revId": "16be54411ca03020ad78ed91e12a5353e4c8170d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
