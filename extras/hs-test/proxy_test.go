@@ -34,9 +34,12 @@ func init() {
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
 	RegisterNginxProxySoloTests(NginxMirroringTest, MirrorMultiThreadTest)
-	RegisterMasqueTests(VppConnectProxyClientDownloadTcpTest, VppConnectProxyClientDownloadUdpTest,
-		VppConnectProxyClientUploadTcpTest, VppConnectProxyClientUploadUdpTest)
+	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyClientUploadTcpTest,
+		VppConnectProxyClientUploadUdpTest)
 	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
+	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest,
+		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest,
+		VppConnectProxyClientStressMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -664,7 +667,9 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 	vppConnectUdpStressLoad(s)
 }
 
-func VppConnectProxyClientDownloadTcpTest(s *MasqueSuite) {
+func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	s.StartNginxServer()
 	clientVpp := s.Containers.VppClient.VppInstance
 	s.ProxyClientConnect("tcp", s.Ports.NginxSsl)
@@ -683,6 +688,13 @@ func VppConnectProxyClientDownloadTcpTest(s *MasqueSuite) {
 	}()
 	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
 	s.AssertNil(<-finished)
+	// test client initiated stream close
+	o = clientVpp.Vppctl("show http connect proxy client sessions")
+	s.Log(o)
+	s.AssertNotContains(o, "session")
+	o = clientVpp.Vppctl("show session verbose")
+	s.Log(o)
+	s.AssertEqual(1, strings.Count(o, "[H2]"))
 }
 
 func VppConnectProxyClientDownloadUdpTest(s *MasqueSuite) {
@@ -800,4 +812,87 @@ func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
 	}()
 	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
 	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	VppConnectProxyIperfTcpTest(s)
+	clientVpp := s.Containers.VppClient.VppInstance
+	// test server initiated stream close
+	closed := false
+	for nTries := 0; nTries < 60; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client sessions")
+		if !strings.Contains(o, "session [") {
+			closed = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(closed, true)
+	o := clientVpp.Vppctl("show session verbose")
+	s.Log(o)
+	s.AssertEqual(1, strings.Count(o, "[H2]"))
+}
+
+func VppConnectProxyIperfUdpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	VppConnectProxyIperfUdpTest(s)
+	clientVpp := s.Containers.VppClient.VppInstance
+	closed := false
+	for nTries := 0; nTries < 60; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client sessions")
+		if !strings.Contains(o, "] tcp ") {
+			closed = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	s.AssertEqual(closed, true)
+}
+
+func VppConnectProxyClientTargetUnreachableMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.StartNginxServer()
+	s.ProxyClientConnect("tcp", s.Ports.Unused)
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	uri := fmt.Sprintf("https://%s:%s/httpTestFile", s.NginxAddr(), s.Ports.Unused)
+	finished := make(chan error, 1)
+	go func() {
+		defer GinkgoRecover()
+		s.StartCurl(finished, uri, s.NetNamespaces.Client, "200", 30, []string{"--http1.1"})
+	}()
+	s.AssertNotNil(<-finished)
+
+	o := clientVpp.Vppctl("show http connect proxy client sessions")
+	s.Log(o)
+	s.AssertNotContains(o, "session")
+	o = clientVpp.Vppctl("show session verbose")
+	s.Log(o)
+	s.AssertEqual(1, strings.Count(o, "[H2]"))
+}
+
+func VppConnectProxyClientStressMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.StartNginxServer()
+	s.ProxyClientConnect("tcp", s.Ports.Nginx)
+	clientVpp := s.Containers.VppClient.VppInstance
+
+	// try to open more tunnels than SETTINGS_MAX_CONCURRENT_STREAMS, (100 - 1 for parent), to test failed http connects
+	uri := fmt.Sprintf("http://%s:%s/64B", s.NginxAddr(), s.Ports.Nginx)
+	cmd := CommandInNetns([]string{"ab", "-q", "-n", "10000", "-c", "120", "-s", "5", "-r", uri}, s.NetNamespaces.Client)
+	s.Log(cmd)
+	res, _ := cmd.CombinedOutput()
+	s.Log(string(res))
+	s.AssertContains(string(res), "requests completed")
+
+	o := clientVpp.Vppctl("show http connect proxy client sessions")
+	s.Log(o)
+	s.AssertNotContains(o, "session")
+	// here we have a lot of TCP session in TIME_WAIT state
+	s.Log(clientVpp.Vppctl("show session"))
 }
