@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ba7e8c7e_44c9a910",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2025-08-20T14:40:00Z",
+      "side": 1,
+      "message": "Contains useless updates. All actual updates are prepared for the new one patch. I\u0027ll add current reviewers in the patch.",
+      "parentUuid": "d9580379_962f8a08",
+      "revId": "fd137b29aca40f340ef650789a6ee7444e03474f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "46e7e5e4_85e5b31a",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 4
