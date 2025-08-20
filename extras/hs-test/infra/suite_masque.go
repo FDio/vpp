@@ -141,6 +141,7 @@ func (s *MasqueSuite) TeardownTest() {
 	serverVpp := s.Containers.VppServer.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServer)
+		s.CollectIperfLogs(s.Containers.IperfServer)
 		s.Log(clientVpp.Vppctl("show session verbose 2"))
 		s.Log(clientVpp.Vppctl("show error"))
 		s.Log(clientVpp.Vppctl("show http connect proxy client listeners sessions"))
