@@ -54,7 +54,6 @@ typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
   u32 openssl_ctx_index;
-  SSL_CTX *client_ssl_ctx;
   SSL *ssl;
   tls_async_ctx_t async_ctx;
   BIO *rbio;
@@ -73,6 +72,8 @@ typedef struct openssl_main_
 {
   openssl_ctx_t ***ctx_pool;
   openssl_listen_ctx_t *lctx_pool;
+  SSL_CTX *default_client_ssl_ctx;
+  SSL_CTX *default_dtls_client_ssl_ctx;
 
   u8 **rx_bufs;
   u8 **tx_bufs;
