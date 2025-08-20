@@ -31,6 +31,7 @@ type MasqueSuite struct {
 		Nginx    string
 		NginxSsl string
 		Proxy    string
+		Unused   string
 	}
 	NetNamespaces struct {
 		Client string
@@ -60,6 +61,7 @@ func (s *MasqueSuite) SetupSuite() {
 	s.Ports.Nginx = s.GeneratePort()
 	s.Ports.NginxSsl = s.GeneratePort()
 	s.Ports.Proxy = s.GeneratePort()
+	s.Ports.Unused = s.GeneratePort()
 	s.NetNamespaces.Client = s.GetNetNamespaceByName("client-ns")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.TunnelClient = s.GetInterfaceByName("cln-tun")
@@ -141,6 +143,7 @@ func (s *MasqueSuite) TeardownTest() {
 	serverVpp := s.Containers.VppServer.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServer)
+		s.CollectIperfLogs(s.Containers.IperfServer)
 		s.Log(clientVpp.Vppctl("show session verbose 2"))
 		s.Log(clientVpp.Vppctl("show error"))
 		s.Log(clientVpp.Vppctl("show http connect proxy client listeners sessions"))
