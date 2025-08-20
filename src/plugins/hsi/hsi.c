@@ -389,6 +389,80 @@ VNET_FEATURE_INIT (hsi6_out_feature, static) = {
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
+typedef struct hsi_main_
+{
+  u8 intercept_type;
+
+  /* ipv4 and ipv6 for tcp and udp */
+  session_handle_t intercept_listeners[2][2];
+} hsi_main_t;
+
+static hsi_main_t hsi_main;
+
+static void
+hsi_intercept_proto (transport_proto_t proto, u8 is_ip4)
+{
+  hsi_main_t *hm = &hsi_main;
+  session_endpoint_t sep = { .transport_proto = proto, .is_ip4 = is_ip4 };
+  session_t *ls;
+
+  ls = session_lookup_listener_wildcard (0, &sep);
+  if (ls)
+    {
+      hm->intercept_listeners[!is_ip4][proto] = ls->handle;
+      /* This leverages the fact that TCP is 0 and UDP is 1 */
+      hm->intercept_type |= 1 << (proto << 1 | is_ip4);
+    }
+}
+
+static clib_error_t *
+hsi_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "intercept tcp"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
+	}
+      if (unformat (line_input, "intercept udp"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	}
+      if (unformat (line_input, "intercept all"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (hsi_command, static) = {
+  .path = "hsi",
+  .short_help = "hsi [intercept-all [tcp | udp]]",
+  .function = hsi_command_fn,
+};
+
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Host Stack Intercept (HSI)",
