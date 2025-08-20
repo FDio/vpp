@@ -16,6 +16,24 @@
       "message": "Let\u0027s make this a utility function with a name that suggests what it does. Do we actually expect sometimes not to have any value?",
       "revId": "a213a9480c584ffab2ddf44e49582f3f63bb7404",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0792dff_bf54d267",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-20T14:17:09Z",
+      "side": 1,
+      "message": "1. Done\n2. No",
+      "parentUuid": "46458a4c_c07be8d1",
+      "revId": "a213a9480c584ffab2ddf44e49582f3f63bb7404",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
