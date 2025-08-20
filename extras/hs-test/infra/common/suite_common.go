@@ -105,71 +105,83 @@ func (s *HstCommon) Log(log any, arg ...any) {
 	}
 }
 
-func (s *HstCommon) AssertNil(object interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertNil(object any, msgAndArgs ...any) {
 	ExpectWithOffset(2, object).To(BeNil(), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertNotNil(object interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertNotNil(object any, msgAndArgs ...any) {
 	ExpectWithOffset(2, object).ToNot(BeNil(), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertEqual(expected, actual any, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).To(Equal(expected), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertNotEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertNotEqual(expected, actual any, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).ToNot(Equal(expected), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertContains(testString, contains any, msgAndArgs ...any) {
 	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).To(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertNotContains(testString, contains any, msgAndArgs ...any) {
 	ExpectWithOffset(2, strings.ToLower(fmt.Sprint(testString))).ToNot(ContainSubstring(strings.ToLower(fmt.Sprint(contains))), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertEmpty(object any, msgAndArgs ...any) {
 	ExpectWithOffset(2, object).To(BeEmpty(), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertNotEmpty(object any, msgAndArgs ...any) {
 	ExpectWithOffset(2, object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertMatchError(actual, expected error, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertMatchError(actual, expected error, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).To(MatchError(expected), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertGreaterThan(actual, expected interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertGreaterEqual(actual, expected any, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).Should(BeNumerically(">=", expected), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertEqualWithinThreshold(actual, expected, threshold interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertGreaterThan(actual, expected any, msgAndArgs ...any) {
+	ExpectWithOffset(2, actual).Should(BeNumerically(">", expected), msgAndArgs...)
+}
+
+func (s *HstCommon) AssertLessEqual(actual, expected any, msgAndArgs ...any) {
+	ExpectWithOffset(2, actual).Should(BeNumerically("<=", expected), msgAndArgs...)
+}
+
+func (s *HstCommon) AssertLessThan(actual, expected any, msgAndArgs ...any) {
+	ExpectWithOffset(2, actual).Should(BeNumerically("<", expected), msgAndArgs...)
+}
+
+func (s *HstCommon) AssertEqualWithinThreshold(actual, expected, threshold any, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).Should(BeNumerically("~", expected, threshold), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertTimeEqualWithinThreshold(actual, expected time.Time, threshold time.Duration, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertTimeEqualWithinThreshold(actual, expected time.Time, threshold time.Duration, msgAndArgs ...any) {
 	ExpectWithOffset(2, actual).Should(BeTemporally("~", expected, threshold), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertHttpStatus(resp *http.Response, expectedStatus int, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertHttpStatus(resp *http.Response, expectedStatus int, msgAndArgs ...any) {
 	ExpectWithOffset(2, resp).To(HaveHTTPStatus(expectedStatus), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertHttpHeaderWithValue(resp *http.Response, key string, value interface{}, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertHttpHeaderWithValue(resp *http.Response, key string, value any, msgAndArgs ...any) {
 	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue(key, value), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertHttpHeaderNotPresent(resp *http.Response, key string, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertHttpHeaderNotPresent(resp *http.Response, key string, msgAndArgs ...any) {
 	ExpectWithOffset(2, resp.Header.Get(key)).To(BeEmpty(), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertHttpContentLength(resp *http.Response, expectedContentLen int64, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertHttpContentLength(resp *http.Response, expectedContentLen int64, msgAndArgs ...any) {
 	ExpectWithOffset(2, resp).To(HaveHTTPHeaderWithValue("Content-Length", strconv.FormatInt(expectedContentLen, 10)), msgAndArgs...)
 }
 
-func (s *HstCommon) AssertHttpBody(resp *http.Response, expectedBody string, msgAndArgs ...interface{}) {
+func (s *HstCommon) AssertHttpBody(resp *http.Response, expectedBody string, msgAndArgs ...any) {
 	ExpectWithOffset(2, resp).To(HaveHTTPBody(expectedBody), msgAndArgs...)
 }
 
@@ -190,8 +202,8 @@ func (s *HstCommon) AssertIperfMinTransfer(result IPerfResult, minTransferred in
 		return
 	}
 	if result.Start.Details.Protocol == "TCP" {
-		s.AssertGreaterThan(result.End.TcpReceived.MBytes, minTransferred)
+		s.AssertGreaterEqual(result.End.TcpReceived.MBytes, minTransferred)
 	} else {
-		s.AssertGreaterThan(result.End.Udp.MBytes, minTransferred)
+		s.AssertGreaterEqual(result.End.Udp.MBytes, minTransferred)
 	}
 }

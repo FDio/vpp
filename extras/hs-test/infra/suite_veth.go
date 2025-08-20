@@ -13,6 +13,7 @@ import (
 
 var vethTests = map[string][]func(s *VethsSuite){}
 var vethSoloTests = map[string][]func(s *VethsSuite){}
+var vethMWTests = map[string][]func(s *VethsSuite){}
 
 type VethsSuite struct {
 	HstSuite
@@ -37,6 +38,9 @@ func RegisterVethTests(tests ...func(s *VethsSuite)) {
 }
 func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
 	vethSoloTests[GetTestFilename()] = tests
+}
+func RegisterVethMWTests(tests ...func(s *VethsSuite)) {
+	vethMWTests[GetTestFilename()] = tests
 }
 
 func (s *VethsSuite) SetupSuite() {
@@ -83,7 +87,7 @@ func (s *VethsSuite) SetupTest() {
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
-	s.setupClientVpp()
+	s.SetupClientVpp()
 	if *DryRun {
 		s.LogStartedContainers()
 		s.Skip("Dry run mode = true")
@@ -99,7 +103,7 @@ func (s *VethsSuite) SetupServerVpp() {
 	s.AssertNotEqual(0, idx)
 }
 
-func (s *VethsSuite) setupClientVpp() {
+func (s *VethsSuite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 
@@ -162,6 +166,36 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, func() {
+	var s VethsSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SkipIfNotEnoguhCpus = true
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
+	for filename, tests := range vethMWTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

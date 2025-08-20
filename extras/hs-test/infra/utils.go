@@ -363,3 +363,14 @@ func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
 	s.Log("* started udp echo server " + addr + ":" + strconv.Itoa(port))
 	return conn
 }
+
+// Parses transfer speed from the last line ("N gbit/second full-duplex")
+func (s *HstSuite) ParseEchoClientTransfer(stats string) (float64, error) {
+	lines := strings.Split(strings.TrimSpace(stats), "\n")
+	parts := strings.Fields(lines[len(lines)-1])
+	if len(parts) == 0 {
+		return 0, errors.New("check format of stats")
+	}
+	number, err := strconv.ParseFloat(parts[0], 64)
+	return number, err
+}
