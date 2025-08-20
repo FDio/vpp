@@ -424,7 +424,7 @@ func linkSetMultiQueue(ifName string) error {
 	return nil
 }
 
-func newCommand(s []string, ns string) *exec.Cmd {
+func CommandInNetns(s []string, ns string) *exec.Cmd {
 	return appendNetns(s, ns)
 }
 
