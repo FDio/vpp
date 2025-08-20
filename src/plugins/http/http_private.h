@@ -871,7 +871,7 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
 
 always_inline int
 http_conn_established (http_conn_t *hc, http_req_t *req,
-		       u32 parent_app_api_ctx)
+		       u32 parent_app_api_ctx, u8 is_stream)
 {
   session_t *as;
   app_worker_t *app_wrk;
@@ -879,9 +879,12 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   http_conn_t *ho_hc;
   int rv;
 
-  ho_hc = http_ho_conn_get (hc->ho_index);
-  /* in chain with TLS there is race on half-open cleanup */
-  __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
+  if (!is_stream)
+    {
+      ho_hc = http_ho_conn_get (hc->ho_index);
+      /* in chain with TLS there is race on half-open cleanup */
+      __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
+    }
 
   /* allocate app session and initialize */
   as = session_alloc (hc->c_thread_index);

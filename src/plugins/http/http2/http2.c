@@ -2390,7 +2390,7 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	    &h2c->decoder_dynamic_table,
 	    http2_default_conn_settings.header_table_size);
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx))
+	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx, 0))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
 	}
 
@@ -3128,7 +3128,7 @@ http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
 				      hc->hc_pa_app_api_ctx);
   req = http2_conn_alloc_req (hc, 0);
   http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-  return http_conn_established (hc, &req->base, parent_app_api_ctx);
+  return http_conn_established (hc, &req->base, parent_app_api_ctx, 1);
 }
 
 static void
