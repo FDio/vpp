@@ -37,6 +37,7 @@ func init() {
 	RegisterMasqueTests(VppConnectProxyClientDownloadTcpTest, VppConnectProxyClientDownloadUdpTest,
 		VppConnectProxyClientUploadTcpTest, VppConnectProxyClientUploadUdpTest)
 	RegisterMasqueSoloTests(VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
+	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -800,4 +801,38 @@ func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
 	}()
 	s.Log(clientVpp.Vppctl("show http connect proxy client sessions"))
 	s.AssertNil(<-finished)
+}
+
+func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	VppConnectProxyIperfTcpTest(s)
+	clientVpp := s.Containers.VppClient.VppInstance
+	closed := false
+	for nTries := 0; nTries < 60; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client sessions")
+		if !strings.Contains(o, "session [") {
+			closed = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	clientVpp.Container.Suite.AssertEqual(closed, true)
+}
+
+func VppConnectProxyIperfUdpMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	VppConnectProxyIperfUdpTest(s)
+	clientVpp := s.Containers.VppClient.VppInstance
+	closed := false
+	for nTries := 0; nTries < 60; nTries++ {
+		o := clientVpp.Vppctl("show http connect proxy client sessions")
+		if !strings.Contains(o, "] tcp ") {
+			closed = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	clientVpp.Container.Suite.AssertEqual(closed, true)
 }
