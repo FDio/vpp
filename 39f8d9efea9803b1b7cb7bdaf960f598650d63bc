@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13bf67b5_d946a952",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-08-20T15:26:52Z",
+      "side": 1,
+      "message": "I\u0027ll have a deeper look but I think this should probably be renamed to something else than Calico Policies, as if I understand it is a generic policies engine.\nAlso, it is missing FEATURE.yaml and some doc to explain what is does and some examples.",
+      "revId": "39f8d9efea9803b1b7cb7bdaf960f598650d63bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
