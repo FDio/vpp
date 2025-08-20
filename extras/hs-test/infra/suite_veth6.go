@@ -78,7 +78,7 @@ func (s *Veths6Suite) SetupTest() {
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
-	s.setupClientVpp()
+	s.SetupClientVpp()
 	if *DryRun {
 		s.LogStartedContainers()
 		s.Skip("Dry run mode = true")
@@ -94,7 +94,7 @@ func (s *Veths6Suite) SetupServerVpp() {
 	s.AssertNotEqual(0, idx)
 }
 
-func (s *Veths6Suite) setupClientVpp() {
+func (s *Veths6Suite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	s.AssertNil(clientVpp.Start())
 

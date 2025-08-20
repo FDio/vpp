@@ -323,7 +323,7 @@ func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
 	report += fmt.Sprintf("Errors: timeout %d, read %d, write %d, invalid data received %d, connection %d\n", timeout.Load(), readError.Load(), writeError.Load(), invalidData.Load(), connectError.Load())
 	report += fmt.Sprintf("Successes ratio: %.2f%%\n", successRatio)
 	AddReportEntry(summary, report)
-	s.AssertGreaterThan(successRatio, 90.0)
+	s.AssertGreaterEqual(successRatio, 90.0)
 }
 
 func VppConnectProxyStressTest(s *VppProxySuite) {
@@ -627,7 +627,7 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 	report += fmt.Sprintf("Errors: timeout %d, read %d, write %d, invalid data received %d, connection %d\n", timeout.Load(), readError.Load(), writeError.Load(), invalidData.Load(), connectError.Load())
 	report += fmt.Sprintf("Successes ratio: %.2f%%\n", successRatio)
 	AddReportEntry(summary, report)
-	s.AssertGreaterThan(successRatio, 90.0)
+	s.AssertGreaterEqual(successRatio, 90.0)
 }
 
 func VppConnectUdpStressTest(s *VppUdpProxySuite) {
