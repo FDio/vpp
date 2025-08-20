@@ -85,7 +85,6 @@ openssl_ctx_free (tls_ctx_t * ctx)
 
       SSL_free (oc->ssl);
       vec_free (ctx->srv_hostname);
-      SSL_CTX_free (oc->client_ssl_ctx);
     }
 
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
@@ -807,68 +806,108 @@ openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
 }
 
 static int
-openssl_ctx_init_client (tls_ctx_t * ctx)
+openssl_init_client_ctx (transport_proto_t proto)
 {
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   openssl_main_t *om = &openssl_main;
   const SSL_METHOD *method;
-  int rv, err;
+  SSL_CTX *client_ssl_ctx;
+  int rv;
 
-  method = ctx->tls_type == TRANSPORT_PROTO_TLS ? SSLv23_client_method () :
-						  DTLS_client_method ();
-  if (method == NULL)
-    {
-      TLS_DBG (1, "(D)TLS_method returned null");
-      return -1;
-    }
+  method = proto == TRANSPORT_PROTO_TLS ? TLS_client_method () :
+					  DTLS_client_method ();
 
-  oc->client_ssl_ctx = SSL_CTX_new (method);
-  if (oc->client_ssl_ctx == NULL)
+  client_ssl_ctx = SSL_CTX_new (method);
+  if (client_ssl_ctx == NULL)
     {
       TLS_DBG (1, "SSL_CTX_new returned null");
       return -1;
     }
 
-  SSL_CTX_set_ecdh_auto (oc->client_ssl_ctx, 1);
-  SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+  SSL_CTX_set_ecdh_auto (client_ssl_ctx, 1);
+  SSL_CTX_set_mode (client_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 #ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
     {
-      SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ASYNC);
-      SSL_CTX_set_async_callback (oc->client_ssl_ctx,
-				  tls_async_openssl_callback);
+      SSL_CTX_set_mode (client_ssl_ctx, SSL_MODE_ASYNC);
+      SSL_CTX_set_async_callback (client_ssl_ctx, tls_async_openssl_callback);
     }
 #endif
 
-  rv =
-    SSL_CTX_set_cipher_list (oc->client_ssl_ctx, (const char *) om->ciphers);
+  rv = SSL_CTX_set_cipher_list (client_ssl_ctx, (const char *) om->ciphers);
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set cipher");
       return -1;
     }
 
-  SSL_CTX_set_options (oc->client_ssl_ctx, flags);
-  SSL_CTX_set1_cert_store (oc->client_ssl_ctx, om->cert_store);
+  SSL_CTX_set_options (client_ssl_ctx, flags);
+  SSL_CTX_set1_cert_store (client_ssl_ctx, om->cert_store);
+
+  /* Set TLS Record size */
+  if (om->record_size)
+    {
+      rv = SSL_CTX_set_max_send_fragment (client_ssl_ctx, om->record_size);
+      if (rv != 1)
+	{
+	  TLS_DBG (1, "Couldn't set TLS record-size");
+	  return -1;
+	}
+      TLS_DBG (1, "Using TLS record-size of %d", om->record_size);
+    }
+
+  if (proto == TRANSPORT_PROTO_TLS)
+    om->default_client_ssl_ctx = client_ssl_ctx;
+  else
+    om->default_dtls_client_ssl_ctx = client_ssl_ctx;
+
+  return 0;
+}
+
+static inline SSL_CTX *
+openssl_get_client_ssl_ctx (transport_proto_t proto)
+{
+  openssl_main_t *om = &openssl_main;
+
+  /* One time init of the default client ssl ctxs */
+  if (PREDICT_FALSE (!om->default_client_ssl_ctx))
+    {
+      openssl_init_client_ctx (TRANSPORT_PROTO_TLS);
+      openssl_init_client_ctx (TRANSPORT_PROTO_DTLS);
+    }
+
+  return proto == TRANSPORT_PROTO_TLS ? om->default_client_ssl_ctx :
+					om->default_dtls_client_ssl_ctx;
+}
+
+static int
+openssl_ctx_init_client (tls_ctx_t *ctx)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  SSL_CTX *client_ssl_ctx;
+  int rv, err;
+
+  client_ssl_ctx = openssl_get_client_ssl_ctx (ctx->tls_type);
+  if (PREDICT_FALSE (!client_ssl_ctx))
+    return -1;
+
+  oc->ssl = SSL_new (client_ssl_ctx);
+  if (oc->ssl == NULL)
+    {
+      TLS_DBG (1, "Couldn't initialize ssl struct");
+      return -1;
+    }
 
   if (ctx->alpn_list)
     {
-      rv = SSL_CTX_set_alpn_protos (oc->client_ssl_ctx,
-				    (const unsigned char *) ctx->alpn_list,
-				    (unsigned int) vec_len (ctx->alpn_list));
+      rv =
+	SSL_set_alpn_protos (oc->ssl, (const unsigned char *) ctx->alpn_list,
+			     (unsigned int) vec_len (ctx->alpn_list));
       if (rv != 0)
 	{
 	  TLS_DBG (1, "Couldn't set alpn protos");
 	  return -1;
 	}
-    }
-
-  oc->ssl = SSL_new (oc->client_ssl_ctx);
-  if (oc->ssl == NULL)
-    {
-      TLS_DBG (1, "Couldn't initialize ssl struct");
-      return -1;
     }
 
   if (ctx->tls_type == TRANSPORT_PROTO_TLS)
@@ -897,17 +936,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
     {
       TLS_DBG (1, "Couldn't set client certificate-key pair");
     }
-  /* Set TLS Record size */
-  if (om->record_size)
-    {
-      rv = SSL_CTX_set_max_send_fragment (oc->client_ssl_ctx, om->record_size);
-      if (rv != 1)
-	{
-	  TLS_DBG (1, "Couldn't set TLS record-size");
-	  return -1;
-	}
-      TLS_DBG (1, "Using TLS record-size of %d", om->record_size);
-    }
+
   /*
    * 2. Do the first steps in the handshake.
    */
