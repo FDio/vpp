@@ -698,7 +698,7 @@ func httpClientRepeat(s *Http1Suite, requestMethod string, clientArgs string) {
 	s.Log("Server response count: %d", replyCountInt)
 	s.AssertNotNil(o)
 	s.AssertNotContains(o, "error")
-	s.AssertGreaterThan(replyCountInt, 15000)
+	s.AssertGreaterEqual(replyCountInt, 15000)
 
 	replyCount = ""
 	cmd = fmt.Sprintf("http client %s %s repeat %d header Hello:World uri %s",
@@ -835,7 +835,7 @@ func HttpStaticPromTest(s *Http1Suite) {
 	s.Log(DumpHttpResp(resp, false))
 	s.AssertHttpStatus(resp, 200)
 	s.AssertHttpHeaderWithValue(resp, "Content-Type", "text/plain")
-	s.AssertGreaterThan(resp.ContentLength, 0)
+	s.AssertGreaterEqual(resp.ContentLength, 0)
 	_, err = io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 }

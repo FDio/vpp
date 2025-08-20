@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"strconv"
+	"strings"
 
 	. "fd.io/hs-test/infra"
 )
@@ -138,6 +139,17 @@ func TcpWithLossTest(s *VethsSuite) {
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	parts := strings.Fields(lines[len(lines)-1])
+	if len(parts) == 0 {
+		return
+	}
+	number, err := strconv.ParseFloat(parts[0], 64)
+	s.AssertNil(err)
+	if !s.CoverageRun {
+		s.AssertGreaterEqual(number, 0.1)
+	}
 }
 
 func TcpWithLoss6Test(s *Veths6Suite) {
@@ -160,4 +172,15 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	s.Log(output)
 	s.AssertNotEqual(len(output), 0)
 	s.AssertNotContains(output, "failed", output)
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	parts := strings.Fields(lines[len(lines)-1])
+	if len(parts) == 0 {
+		return
+	}
+	number, err := strconv.ParseFloat(parts[0], 64)
+	s.AssertNil(err)
+	if !s.CoverageRun {
+		s.AssertGreaterEqual(number, 0.1)
+	}
 }
