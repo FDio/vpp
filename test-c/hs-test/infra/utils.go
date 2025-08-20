@@ -243,7 +243,7 @@ func (s *HstSuite) CollectH2loadLogs(h2loadContainer *Container) {
 }
 
 func (s *HstSuite) StartHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort, s.Ppid, s.ProcessIndex}, netNs)
+	cmd := CommandInNetns([]string{"./http_server", addressPort, s.Ppid, s.ProcessIndex}, netNs)
 	err := cmd.Start()
 	s.Log(cmd)
 	if err != nil {
@@ -260,7 +260,7 @@ func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs 
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := newCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+	cmd := CommandInNetns([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
@@ -283,7 +283,7 @@ func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode s
 	c := []string{"curl", "-v", "-s", "-k", "--max-time", strconv.Itoa(timeout), "-o", "/dev/null", "--noproxy", "*"}
 	c = append(c, args...)
 	c = append(c, uri)
-	cmd := newCommand(c, netNs)
+	cmd := CommandInNetns(c, netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
 	s.Log(string(o))
@@ -304,7 +304,7 @@ func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAd
 
 	c := []string{"iperf3", "-c", serverAddress, "-B", clientAddress, "-J", "-l", "1460", "-b", "10g", "-p", serverPort}
 	c = append(c, args...)
-	cmd := newCommand(c, netNs)
+	cmd := CommandInNetns(c, netNs)
 	s.Log(cmd)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
