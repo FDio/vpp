@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"regexp"
+	"strconv"
 	"strings"
 
 	. "fd.io/hs-test/infra"
@@ -20,5 +23,16 @@ func NsimLossTest(s *VethsSuite) {
 	lines := strings.Split(o, "\n")
 	stats := lines[len(lines)-2]
 	s.Log(stats)
-	s.AssertContains(stats, "10% packet loss")
+
+	re := regexp.MustCompile(`(\d+\.?\d*)\s*%\s*packet loss`)
+	matches := re.FindStringSubmatch(stats)
+	if len(matches) < 2 {
+		s.AssertNil(errors.New("Error when parsing stats."))
+	}
+	packetLossStr := matches[1]
+	packetLoss, err := strconv.ParseFloat(packetLossStr, 64)
+	s.AssertNil(err)
+	if !s.CoverageRun {
+		s.AssertEqual(packetLoss, 10, "Packet loss != 10%")
+	}
 }
