@@ -1731,7 +1731,7 @@ set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;
-  clib_thread_index_t thread_index = CLIB_INVALID_THREAD_INDEX;
+  u32 thread_index = (u32) ~0;
   u8 is_main = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1744,7 +1744,7 @@ set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "queue %d", &queue_id))
 	;
-      else if (unformat (line_input, "main", &thread_index))
+      else if (unformat (line_input, "main"))
 	is_main = 1;
       else if (unformat (line_input, "worker %d", &thread_index))
 	;
@@ -1761,6 +1761,9 @@ set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
 
   if (hw_if_index == (u32) ~ 0)
     return clib_error_return (0, "please specify valid interface name");
+
+  if (thread_index == (u32) ~0 && !is_main)
+    return clib_error_return (0, "please specify valid worker thread or main");
 
   error = set_hw_interface_rx_placement (hw_if_index, queue_id, thread_index,
 					 is_main);
