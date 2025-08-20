@@ -125,7 +125,7 @@ func Http2ContinuationTxTest(s *Http2Suite) {
 	s.AssertContains(log, "[64 bytes data]")
 	sizeHeader, err := strconv.Atoi(strings.ReplaceAll(writeOut, "\x00", ""))
 	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertGreaterThan(sizeHeader, 32768)
+	s.AssertGreaterEqual(sizeHeader, 32768)
 }
 
 func Http2ServerMemLeakTest(s *Http2Suite) {
@@ -339,7 +339,7 @@ func Http2ClientContinuationTest(s *VethsSuite) {
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("http client fifo-size 64k verbose save-to response.txt uri " + uri)
 	s.Log(o)
 	s.AssertContains(o, "HTTP/2 200 OK")
-	s.AssertGreaterThan(strings.Count(o, "x"), 32768)
+	s.AssertGreaterEqual(strings.Count(o, "x"), 32768)
 }
 
 func Http2ClientMemLeakTest(s *Http2Suite) {

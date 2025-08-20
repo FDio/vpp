@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,13 @@ func TestHst(t *testing.T) {
 	}
 
 	RunningInCi = os.Getenv("BUILD_NUMBER") != ""
+	cmd := exec.Command("uname", "-m")
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Unable to get arch")
+		os.Exit(1)
+	}
+	Arch = string(o[:len(o)-1])
 
 	output, err := os.ReadFile("/sys/devices/system/node/online")
 	if err == nil && strings.Contains(string(output), "-") {
