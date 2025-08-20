@@ -31,6 +31,7 @@ type MasqueSuite struct {
 		Nginx    string
 		NginxSsl string
 		Proxy    string
+		Unused   string
 	}
 	NetNamespaces struct {
 		Client string
@@ -60,6 +61,7 @@ func (s *MasqueSuite) SetupSuite() {
 	s.Ports.Nginx = s.GeneratePort()
 	s.Ports.NginxSsl = s.GeneratePort()
 	s.Ports.Proxy = s.GeneratePort()
+	s.Ports.Unused = s.GeneratePort()
 	s.NetNamespaces.Client = s.GetNetNamespaceByName("client-ns")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.TunnelClient = s.GetInterfaceByName("cln-tun")
@@ -74,8 +76,11 @@ func (s *MasqueSuite) SetupSuite() {
 func (s *MasqueSuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G")
+
 	// vpp masque proxy client
-	clientVpp, err := s.Containers.VppClient.newVppInstance(s.Containers.VppClient.AllocatedCpus)
+	clientVpp, err := s.Containers.VppClient.newVppInstance(s.Containers.VppClient.AllocatedCpus, memoryConfig)
 	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 	s.AssertNil(clientVpp.Start())
 	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false)
@@ -86,7 +91,7 @@ func (s *MasqueSuite) SetupTest() {
 	s.AssertNotEqual(0, idx)
 
 	// vpp masque proxy server
-	serverVpp, err := s.Containers.VppServer.newVppInstance(s.Containers.VppServer.AllocatedCpus)
+	serverVpp, err := s.Containers.VppServer.newVppInstance(s.Containers.VppServer.AllocatedCpus, memoryConfig)
 	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 	s.AssertNil(serverVpp.Start())
 	idx, err = serverVpp.createAfPacket(s.Interfaces.TunnelServer, false)
@@ -141,18 +146,27 @@ func (s *MasqueSuite) TeardownTest() {
 	serverVpp := s.Containers.VppServer.VppInstance
 	if CurrentSpecReport().Failed() {
 		s.CollectNginxLogs(s.Containers.NginxServer)
+		s.CollectIperfLogs(s.Containers.IperfServer)
 		s.Log(clientVpp.Vppctl("show session verbose 2"))
 		s.Log(clientVpp.Vppctl("show error"))
-		s.Log(clientVpp.Vppctl("show http connect proxy client listeners sessions"))
+		s.Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
+		s.Log(clientVpp.Vppctl("show http stats"))
+		s.Log(clientVpp.Vppctl("show tcp stats"))
 		s.Log(serverVpp.Vppctl("show session verbose 2"))
 		s.Log(serverVpp.Vppctl("show error"))
+		s.Log(serverVpp.Vppctl("show http stats"))
+		s.Log(serverVpp.Vppctl("show tcp stats"))
 	}
 }
 
-func (s *MasqueSuite) ProxyClientConnect(proto, port string) {
+func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+	}
 	vpp := s.Containers.VppClient.VppInstance
-	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface host-%s",
-		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.Name())
+	cmd := fmt.Sprintf("http connect proxy client enable server-uri https://%s:%s listener %s://0.0.0.0:%s interface host-%s %s",
+		s.ProxyAddr(), s.Ports.Proxy, proto, port, s.Interfaces.Client.Name(), extras)
 	s.Log(vpp.Vppctl(cmd))
 
 	connected := false
