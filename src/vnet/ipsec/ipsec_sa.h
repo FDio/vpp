@@ -152,8 +152,7 @@ typedef struct
   u16 is_tunnel : 1;
   u16 is_transport : 1;
   u16 is_async : 1;
-  u16 cipher_op_id;
-  u16 integ_op_id;
+  u16 op_id;
   u8 cipher_iv_size;
   u8 integ_icv_size;
   u8 udp_sz;
@@ -161,13 +160,31 @@ typedef struct
   u32 salt;
   u64 seq64;
   u16 async_op_id;
-  vnet_crypto_key_index_t cipher_key_index;
-  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_key_index_t key_index;
   u32 anti_replay_window_size;
   uword replay_window[];
 } ipsec_sa_inb_rt_t;
 
-typedef struct
+/* Forward declarations and builder callback typedef */
+typedef struct ipsec_sa_outb_rt_t_ ipsec_sa_outb_rt_t;
+
+/* Function signature and pointer type for IPsec builder callbacks */
+#define IPSEC_BUILD_OP_TMPL_ARGS                                              \
+  ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd, vlib_buffer_t **b,     \
+    vlib_buffer_t *lb, u8 *payload, u16 payload_len, u32 hdr_len, void *esp
+
+#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS, u32 user_data
+
+typedef void ipsec_build_op_tmpl_sig (IPSEC_BUILD_OP_TMPL_ARGS);
+typedef ipsec_build_op_tmpl_sig *ipsec_build_op_tmpl_fn_t;
+
+typedef void ipsec_build_op_sig (IPSEC_BUILD_OP_ARGS);
+typedef ipsec_build_op_sig *ipsec_build_op_fn_t;
+
+/* default no-op builder (defined once in main.c) */
+extern void ipsec_default_build_op (IPSEC_BUILD_OP_ARGS);
+
+typedef struct ipsec_sa_outb_rt_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 is_aead : 1;
@@ -180,8 +197,10 @@ typedef struct
   u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
-  u16 cipher_op_id;
-  u16 integ_op_id;
+  u16 op_id;
+  vnet_crypto_op_t op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
+  ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
+  ipsec_build_op_fn_t bld_op[VNET_CRYPTO_HANDLER_N_TYPES];
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
@@ -194,8 +213,7 @@ typedef struct
   u64 seq64;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
-  vnet_crypto_key_index_t cipher_key_index;
-  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_key_index_t key_index;
   union
   {
     ip4_header_t ip4_hdr;
