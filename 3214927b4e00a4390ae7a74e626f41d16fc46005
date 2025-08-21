@@ -16,6 +16,24 @@
       "message": "It looks like this can be called twice per packet by esp_prepare_sync_op(). It could probably be more efficient if it retrieved the correct value from an array using the alg and op type as indexes instead of doing a potentially long series of `if (alg \u003d\u003d x) { if (type \u003d\u003d y) return foo; ... }`.\n\nE.g. declare an array like `vnet_crypto_op_id_t alg_type_op_map[VNET_CRYPTO_OP_N_TYPES][VNET_CRYPTO_N_ALGS]` and populate it with the correct values. Then vnet_crypto_op_id_from_alg() can do something like:\n```\n  if (alg \u003c VNET_CRYPTO_N_ALGS \u0026\u0026 type \u003c VNET_CRYPTO_OP_N_TYPES)\n    return alg_type_op_map[type][alg];\n\n  return VNET_CRYPTO_OP_NONE;\n```",
       "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8c1f80c_60615284",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2025-08-21T15:19:42Z",
+      "side": 1,
+      "message": "Yeah, good idea. But what about extending ipsec_main array (ipsec/main.c) by linked algs instead of adding the new one mapping structure.  Here is example how I can add:\n\"    [IPSEC_CRYPTO_ALG_AES_CBC_256_SHA1_96] \u003d {\n      .enc_op_id \u003d VNET_CRYPTO_OP_AES_256_CBC_SHA1_TAG12_ENC,\n      .dec_op_id \u003d VNET_CRYPTO_OP_AES_256_CBC_SHA1_TAG12_DEC,\n      .alg \u003d VNET_CRYPTO_ALG_AES_256_CBC_SHA1_TAG12,\n      .iv_size \u003d 16,\n      .block_align \u003d 16,\n      .icv_size \u003d 12,\n    },\"\n    The single disadvantage that the keys contains ipsec\u0027s notation alg name and start with prefix \"IPSEC\". It would be better to use key with prefix VNET_...  And then move this function in ipsec.c .",
+      "parentUuid": "6799b8da_4ff07864",
+      "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
