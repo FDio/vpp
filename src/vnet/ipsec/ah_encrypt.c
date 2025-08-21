@@ -143,7 +143,6 @@ ah_encrypt_inline (vlib_main_t * vm,
   clib_memset (pkt_data, 0, VLIB_FRAME_SIZE * sizeof (pkt_data[0]));
   vlib_get_buffers (vm, from, b, n_left);
   vec_reset_length (ptd->crypto_ops);
-  vec_reset_length (ptd->integ_ops);
 
   while (n_left > 0)
     {
@@ -336,24 +335,28 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = ort->dpo.dpoi_index;
 	}
 
-      if (PREDICT_TRUE (ort->integ_op_id))
+      if (PREDICT_TRUE (ort->integ_icv_size && !ort->is_aead))
 	{
 	  vnet_crypto_op_t *op;
-	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, ort->integ_op_id);
-	  op->src = vlib_buffer_get_current (b[0]);
-	  op->len = b[0]->current_length;
+	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
+	  vnet_crypto_key_t *key = vnet_crypto_get_key (ort->key_index);
+	  if (key->is_link)
+	    key = vnet_crypto_get_key (key->index_integ);
+	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
+	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
+	  op->integ_src = vlib_buffer_get_current (b[0]);
+	  op->integ_len = b[0]->current_length;
 	  op->digest = vlib_buffer_get_current (b[0]) + ip_hdr_size +
 	    sizeof (ah_header_t);
 	  clib_memset (op->digest, 0, icv_size);
 	  op->digest_len = icv_size;
-	  op->key_index = ort->integ_key_index;
+	  op->key_index = key->index;
 	  op->user_data = b - bufs;
 	  if (ort->use_esn)
 	    {
-	      *(u32u *) (op->src + b[0]->current_length) =
+	      *(u32u *) (op->integ_src + b[0]->current_length) =
 		clib_host_to_net_u32 (ort->seq64 >> 32);
-	      op->len += sizeof (u32);
+	      op->integ_len += sizeof (u32);
 	    }
 	}
 
@@ -394,7 +397,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
 
-  ah_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
+  ah_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
 
   while (n_left)
     {

@@ -196,8 +196,8 @@ generate_digest (vlib_main_t * vm,
   vnet_crypto_op_t op[1];
   vnet_crypto_op_init (op, id);
   vec_validate (r->digest.data, r->digest.length - 1);
-  op->src = cm->inc_data;
-  op->len = r->plaintext_incremental;
+  op->integ_src = cm->inc_data;
+  op->integ_len = r->plaintext_incremental;
   op->digest = r->digest.data;
   op->digest_len = r->digest.length;
   op->key_index = vnet_crypto_key_add (vm, r->alg,
@@ -385,8 +385,8 @@ test_crypto_incremental (vlib_main_t * vm, crypto_test_main_t * tm,
 	    op->key_index = vnet_crypto_key_add (vm, r->alg,
 						 tm->inc_data, r->key.length);
 	    vec_add1 (key_indices, op->key_index);
-	    op->src = tm->inc_data;
-	    op->len = r->plaintext_incremental;
+	    op->integ_src = tm->inc_data;
+	    op->integ_len = r->plaintext_incremental;
 	    op->digest_len = r->digest.length;
 	    op->digest = encrypted_data + computed_data_total_len;
 	    computed_data_total_len += r->digest.length;
@@ -593,19 +593,20 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               computed_data_total_len += r->digest.length;
               pt = r->pt_chunks;
               op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-              op->chunk_index = vec_len (chunks);
-              while (pt->data)
-                {
-                  clib_memset (&ch, 0, sizeof (ch));
-                  ch.src = pt->data;
-                  ch.len = pt->length;
-                  vec_add1 (chunks, ch);
-                  op->n_chunks++;
-                  pt++;
-                }
-              }
-              else
-              {
+	      op->integ_chunk_index = vec_len (chunks);
+	      op->integ_n_chunks = 0;
+	      while (pt->data)
+		  {
+		    clib_memset (&ch, 0, sizeof (ch));
+		    ch.src = pt->data;
+		    ch.len = pt->length;
+		    vec_add1 (chunks, ch);
+		    op->integ_n_chunks++;
+		    pt++;
+		  }
+	      }
+	      else
+	      {
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);
@@ -613,9 +614,9 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               op->digest_len = r->digest.length;
               op->digest = computed_data + computed_data_total_len;
               computed_data_total_len += r->digest.length;
-              op->src = r->plaintext.data;
-              op->len = r->plaintext.length;
-              }
+	      op->integ_src = r->plaintext.data;
+	      op->integ_len = r->plaintext.length;
+	      }
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_HASH:
 	      op->digest = computed_data + computed_data_total_len;
