@@ -201,51 +201,44 @@ crypto_sw_scheduler_convert_aead (vlib_main_t * vm,
 }
 
 static_always_inline void
-crypto_sw_scheduler_convert_link_crypto (vlib_main_t * vm,
-					 crypto_sw_scheduler_per_thread_data_t
-					 * ptd, vnet_crypto_key_t * key,
-					 vnet_crypto_async_frame_elt_t * fe,
-					 u32 index, u32 bi,
-					 vnet_crypto_op_id_t crypto_op_id,
-					 vnet_crypto_op_id_t integ_op_id,
-					 u32 digest_len, u8 is_enc)
+crypto_sw_scheduler_convert_link_crypto (
+  vlib_main_t *vm, crypto_sw_scheduler_per_thread_data_t *ptd,
+  vnet_crypto_key_t *key, vnet_crypto_async_frame_elt_t *fe, u32 index, u32 bi,
+  vnet_crypto_op_id_t op_id, u32 digest_len, u8 is_enc)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vnet_crypto_op_t *crypto_op = 0, *integ_op = 0;
+  vnet_crypto_op_t *crypto_op = 0;
 
   if (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
     {
       vec_add2 (ptd->chained_crypto_ops, crypto_op, 1);
-      vec_add2 (ptd->chained_integ_ops, integ_op, 1);
+      vnet_crypto_op_t integ_op;
+      cryptodev_sw_scheduler_sgl (
+	vm, ptd, b, &integ_op, fe->integ_start_offset,
+	fe->crypto_total_length + fe->integ_length_adj);
+      crypto_op->integ_chunk_index = integ_op.chunk_index;
+      crypto_op->integ_n_chunks = integ_op.n_chunks;
+
       cryptodev_sw_scheduler_sgl (vm, ptd, b, crypto_op,
 				  fe->crypto_start_offset,
 				  fe->crypto_total_length);
-      cryptodev_sw_scheduler_sgl (vm, ptd, b, integ_op,
-				  fe->integ_start_offset,
-				  fe->crypto_total_length +
-				  fe->integ_length_adj);
     }
   else
     {
       vec_add2 (ptd->crypto_ops, crypto_op, 1);
-      vec_add2 (ptd->integ_ops, integ_op, 1);
       crypto_op->src = crypto_op->dst = b->data + fe->crypto_start_offset;
       crypto_op->len = fe->crypto_total_length;
-      integ_op->src = integ_op->dst = b->data + fe->integ_start_offset;
-      integ_op->len = fe->crypto_total_length + fe->integ_length_adj;
+      crypto_op->integ_src = b->data + fe->integ_start_offset;
+      crypto_op->integ_len = fe->crypto_total_length + fe->integ_length_adj;
     }
 
-  crypto_op->op = crypto_op_id;
+  crypto_op->op = op_id;
   crypto_op->iv = fe->iv;
-  crypto_op->key_index = key->index_crypto;
-  crypto_op->user_data = 0;
-  crypto_op->flags = fe->flags & ~VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-  integ_op->op = integ_op_id;
-  integ_op->digest = fe->digest;
-  integ_op->digest_len = digest_len;
-  integ_op->key_index = key->index_integ;
-  integ_op->flags = fe->flags;
-  crypto_op->user_data = integ_op->user_data = index;
+  crypto_op->key_index = key->index;
+  crypto_op->digest = fe->digest;
+  crypto_op->digest_len = digest_len;
+  crypto_op->flags = fe->flags;
+  crypto_op->user_data = index;
 }
 
 static_always_inline void
@@ -323,9 +316,7 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
   u8 state = VNET_CRYPTO_FRAME_STATE_SUCCESS;
 
   vec_reset_length (ptd->crypto_ops);
-  vec_reset_length (ptd->integ_ops);
   vec_reset_length (ptd->chained_crypto_ops);
-  vec_reset_length (ptd->chained_integ_ops);
   vec_reset_length (ptd->chunks);
 
   fe = f->elts;
@@ -352,8 +343,8 @@ static_always_inline void
 crypto_sw_scheduler_process_link (vlib_main_t *vm,
 				  crypto_sw_scheduler_main_t *cm,
 				  crypto_sw_scheduler_per_thread_data_t *ptd,
-				  vnet_crypto_async_frame_t *f, u32 crypto_op,
-				  u32 auth_op, u16 digest_len, u8 is_enc)
+				  vnet_crypto_async_frame_t *f, u32 op_id,
+				  u16 digest_len, u8 is_enc)
 {
   vnet_crypto_async_frame_elt_t *fe;
   u32 *bi;
@@ -361,9 +352,7 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
   u8 state = VNET_CRYPTO_FRAME_STATE_SUCCESS;
 
   vec_reset_length (ptd->crypto_ops);
-  vec_reset_length (ptd->integ_ops);
   vec_reset_length (ptd->chained_crypto_ops);
-  vec_reset_length (ptd->chained_integ_ops);
   vec_reset_length (ptd->chunks);
   fe = f->elts;
   bi = f->buffer_indices;
@@ -374,29 +363,14 @@ crypto_sw_scheduler_process_link (vlib_main_t *vm,
 	clib_prefetch_load (fe + 1);
 
       crypto_sw_scheduler_convert_link_crypto (
-	vm, ptd, cm->keys + fe->key_index, fe, fe - f->elts, bi[0], crypto_op,
-	auth_op, digest_len, is_enc);
+	vm, ptd, cm->keys + fe->key_index, fe, fe - f->elts, bi[0], op_id,
+	digest_len, is_enc);
       bi++;
       fe++;
     }
 
-  if (is_enc)
-    {
-      process_ops (vm, f, ptd->crypto_ops, &state);
-      process_chained_ops (vm, f, ptd->chained_crypto_ops, ptd->chunks,
-			   &state);
-      process_ops (vm, f, ptd->integ_ops, &state);
-      process_chained_ops (vm, f, ptd->chained_integ_ops, ptd->chunks, &state);
-    }
-  else
-    {
-      process_ops (vm, f, ptd->integ_ops, &state);
-      process_chained_ops (vm, f, ptd->chained_integ_ops, ptd->chunks, &state);
-      process_ops (vm, f, ptd->crypto_ops, &state);
-      process_chained_ops (vm, f, ptd->chained_crypto_ops, ptd->chunks,
-			   &state);
-    }
-
+  process_ops (vm, f, ptd->crypto_ops, &state);
+  process_chained_ops (vm, f, ptd->chained_crypto_ops, ptd->chunks, &state);
   f->state = state;
 }
 
@@ -535,8 +509,8 @@ run_next_queues:
 	crypto_sw_scheduler_process_aead (vm, ptd, f, crypto_op,
 					  auth_op_or_aad_len, digest_len);
       else if (ret == 0)
-	crypto_sw_scheduler_process_link (
-	  vm, cm, ptd, f, crypto_op, auth_op_or_aad_len, digest_len, is_enc);
+	crypto_sw_scheduler_process_link (vm, cm, ptd, f, f->op, digest_len,
+					  is_enc);
 
       *enqueue_thread_idx = f->enqueue_thread_index;
       *nb_elts_processed = f->n_elts;
