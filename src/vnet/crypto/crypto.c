@@ -71,6 +71,64 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 }
 
 static_always_inline u32
+vnet_crypto_process_ops_call_handlers (vlib_main_t *vm, vnet_crypto_main_t *cm,
+				       vnet_crypto_op_id_t opts[], u32 n_opts,
+				       vnet_crypto_op_t *ops[],
+				       vnet_crypto_op_chunk_t *chunks,
+				       u32 n_ops)
+{
+  if (n_ops == 0)
+    {
+      return 0;
+    }
+
+  u32 i, rv;
+  for (i = 0; i < n_opts; i++)
+    {
+      rv = 0;
+      vnet_crypto_op_data_t *od = cm->opt_data + opts[i];
+
+      if (chunks)
+	{
+	  vnet_crypto_chained_op_fn_t *fn =
+	    od->handlers[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+
+	  if (fn == 0)
+	    {
+	      crypto_set_op_status (ops, n_ops,
+				    VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
+	      break;
+	    }
+	  else
+	    {
+	      rv = fn (vm, ops, chunks, n_ops);
+	      if (rv != n_ops)
+		break;
+	    }
+	}
+      else
+	{
+	  vnet_crypto_simple_op_fn_t *fn =
+	    od->handlers[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+	  if (fn == 0)
+	    {
+	      crypto_set_op_status (ops, n_ops,
+				    VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
+	      break;
+	    }
+	  else
+	    {
+	      rv = fn (vm, ops, n_ops);
+	      if (rv != n_ops)
+		break;
+	    }
+	}
+    }
+
+  return rv;
+}
+
+static_always_inline u32
 vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
 				vnet_crypto_op_chunk_t * chunks, u32 n_ops)
 {
@@ -99,8 +157,32 @@ vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
       op_queue[n_op_queue++] = &ops[i];
     }
 
-  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-					      op_queue, chunks, n_op_queue);
+  vnet_crypto_op_data_t *od = cm->opt_data + current_op_type;
+  vnet_crypto_alg_data_t *cad = cm->algs + od->alg;
+  if (PREDICT_FALSE (cad->is_link))
+    {
+      /* Pre-compute both op IDs to avoid conditional branching inside array
+	 assignment. Compiler can optimize away unused computation on
+	 predictable branch. */
+      vnet_crypto_op_type_t op_type = od->type;
+      vnet_crypto_op_id_t crypto_op =
+	cm->algs[cad->link_crypto_alg].op_by_type[op_type];
+      vnet_crypto_op_id_t integ_op =
+	cm->algs[cad->link_integ_alg].op_by_type[VNET_CRYPTO_OP_TYPE_HMAC];
+
+      /* Use conditional move pattern: encrypt = crypto first, decrypt = integ
+       * first */
+      vnet_crypto_op_id_t linked_crypto_op[2] = {
+	(op_type == VNET_CRYPTO_OP_TYPE_ENCRYPT) ? crypto_op : integ_op,
+	(op_type == VNET_CRYPTO_OP_TYPE_ENCRYPT) ? integ_op : crypto_op
+      };
+
+      rv += vnet_crypto_process_ops_call_handlers (
+	vm, cm, linked_crypto_op, 2, op_queue, chunks, n_op_queue);
+    }
+  else
+    rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
+						op_queue, chunks, n_op_queue);
   return rv;
 }
 
@@ -485,6 +567,13 @@ vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
   foreach_crypto_link_async_alg
 #undef _
     return ~0;
+}
+
+vnet_crypto_op_id_t *
+vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  return cm->algs[alg].op_by_type;
 }
 
 u32
