@@ -114,7 +114,12 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
     }
   else
     {
-      cipher_key_index = sa->crypto_sync_key_index;
+      if (sa->linked_key_index != ~0)
+	cipher_key_index = sa->linked_key_index;
+      else
+	cipher_key_index = sa->crypto_sync_key_index;
+      if (cipher_key_index == ~0)
+	cipher_key_index = sa->integ_sync_key_index;
       outb_cipher_op_id = sa->crypto_sync_enc_op_id;
       inb_cipher_op_id = sa->crypto_sync_dec_op_id;
       integ_key_index = sa->integ_sync_key_index;
@@ -420,7 +425,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
-  ipsec_main_crypto_alg_t *alg = im->crypto_algs + crypto_alg;
   ipsec_sa_inb_rt_t *irt;
   ipsec_sa_outb_rt_t *ort;
   clib_error_t *err;
@@ -522,7 +526,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	}
     }
 
-  if (sa->crypto_async_enc_op_id && alg->is_aead == 0)
+  if (~0 != sa->crypto_sync_key_index && ~0 != sa->integ_sync_key_index)
     sa->linked_key_index =
       vnet_crypto_key_add_linked (vm, sa->crypto_sync_key_index,
 				  sa->integ_sync_key_index); // AES-CBC & HMAC
