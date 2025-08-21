@@ -49,31 +49,6 @@ sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
   return kd;
 }
 
-static int
-probe ()
-{
-#if defined(__x86_64__)
-
-#if defined(__SHA__) && defined(__AVX512F__)
-  if (clib_cpu_supports_sha () && clib_cpu_supports_avx512f ())
-    return 30;
-#elif defined(__SHA__) && defined(__AVX2__)
-  if (clib_cpu_supports_sha () && clib_cpu_supports_avx2 ())
-    return 20;
-#elif defined(__SHA__)
-  if (clib_cpu_supports_sha ())
-    return 10;
-#endif
-
-#elif defined(__aarch64__)
-#if defined(__ARM_FEATURE_SHA2)
-  if (clib_cpu_supports_sha2 ())
-    return 10;
-#endif
-#endif
-  return -1;
-}
-
 #define _(b)                                                                  \
   static u32 crypto_native_ops_hash_sha##b (                                  \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
@@ -112,18 +87,18 @@ probe ()
     .op_id = VNET_CRYPTO_OP_SHA##b##_HASH,                                    \
     .fn = crypto_native_ops_hash_sha##b,                                      \
     .cfn = crypto_native_ops_chained_hash_sha##b,                             \
-    .probe = probe,                                                           \
+    .probe = sha2_probe,                                                      \
   };                                                                          \
   CRYPTO_NATIVE_OP_HANDLER (crypto_native_hmac_sha##b) = {                    \
     .op_id = VNET_CRYPTO_OP_SHA##b##_HMAC,                                    \
     .fn = crypto_native_ops_hmac_sha##b,                                      \
     .cfn = crypto_native_ops_chained_hmac_sha##b,                             \
-    .probe = probe,                                                           \
+    .probe = sha2_probe,                                                      \
   };                                                                          \
   CRYPTO_NATIVE_KEY_HANDLER (crypto_native_hmac_sha##b) = {                   \
     .alg_id = VNET_CRYPTO_ALG_HMAC_SHA##b,                                    \
     .key_fn = sha2_##b##_key_add,                                             \
-    .probe = probe,                                                           \
+    .probe = sha2_probe,                                                      \
   };
 
 _ (224)
