@@ -196,8 +196,8 @@ generate_digest (vlib_main_t * vm,
   vnet_crypto_op_t op[1];
   vnet_crypto_op_init (op, id);
   vec_validate (r->digest.data, r->digest.length - 1);
-  op->src = cm->inc_data;
-  op->len = r->plaintext_incremental;
+  op->integ_src = cm->inc_data;
+  op->integ_len = r->plaintext_incremental;
   op->digest = r->digest.data;
   op->digest_len = r->digest.length;
   op->key_index = vnet_crypto_key_add (vm, r->alg,
@@ -385,8 +385,8 @@ test_crypto_incremental (vlib_main_t * vm, crypto_test_main_t * tm,
 	    op->key_index = vnet_crypto_key_add (vm, r->alg,
 						 tm->inc_data, r->key.length);
 	    vec_add1 (key_indices, op->key_index);
-	    op->src = tm->inc_data;
-	    op->len = r->plaintext_incremental;
+	    op->integ_src = tm->inc_data;
+	    op->integ_len = r->plaintext_incremental;
 	    op->digest_len = r->digest.length;
 	    op->digest = encrypted_data + computed_data_total_len;
 	    computed_data_total_len += r->digest.length;
@@ -593,19 +593,20 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               computed_data_total_len += r->digest.length;
               pt = r->pt_chunks;
               op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-              op->chunk_index = vec_len (chunks);
-              while (pt->data)
-                {
-                  clib_memset (&ch, 0, sizeof (ch));
-                  ch.src = pt->data;
-                  ch.len = pt->length;
-                  vec_add1 (chunks, ch);
-                  op->n_chunks++;
-                  pt++;
-                }
-              }
-              else
-              {
+	      op->integ_chunk_index = vec_len (chunks);
+	      op->integ_n_chunks = 0;
+	      while (pt->data)
+		  {
+		    clib_memset (&ch, 0, sizeof (ch));
+		    ch.src = pt->data;
+		    ch.len = pt->length;
+		    vec_add1 (chunks, ch);
+		    op->integ_n_chunks++;
+		    pt++;
+		  }
+	      }
+	      else
+	      {
 	      op->key_index = vnet_crypto_key_add (vm, r->alg,
 						   r->key.data,
 						   r->key.length);
@@ -613,9 +614,9 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               op->digest_len = r->digest.length;
               op->digest = computed_data + computed_data_total_len;
               computed_data_total_len += r->digest.length;
-              op->src = r->plaintext.data;
-              op->len = r->plaintext.length;
-              }
+	      op->integ_src = r->plaintext.data;
+	      op->integ_len = r->plaintext.length;
+	      }
 	      break;
 	    case VNET_CRYPTO_OP_TYPE_HASH:
 	      op->digest = computed_data + computed_data_total_len;
@@ -819,10 +820,13 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
   vnet_crypto_alg_data_t *ad = cm->algs + tm->alg;
   vnet_crypto_key_index_t key_index = ~0;
+  vnet_crypto_key_index_t crypto_key_index = ~0, integ_key_index = ~0;
   u8 key[64];
   int buffer_size = vlib_buffer_get_default_data_size (vm);
   u64 seed = clib_cpu_time_now ();
-  u64 t0[5], t1[5], t2[5], n_bytes = 0;
+  u64 t0[5], t1[5], t2[5];
+  u64 payload_bytes =
+    0; /* total payload bytes per round (not doubled for multi-pass) */
   int i, j;
 
   if (tm->buffer_size > buffer_size)
@@ -861,8 +865,24 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   for (i = 0; i < sizeof (key); i++)
     key[i] = i;
 
-  key_index = vnet_crypto_key_add (vm, tm->alg, key,
-				   test_crypto_get_key_sz (tm->alg));
+  /* Handle linked algorithms (crypto+integrity) */
+  if (ad->is_link)
+    {
+      crypto_key_index =
+	vnet_crypto_key_add (vm, ad->link_crypto_alg, key,
+			     test_crypto_get_key_sz (ad->link_crypto_alg));
+      integ_key_index = vnet_crypto_key_add (vm, ad->link_integ_alg, key, 32);
+      key_index =
+	vnet_crypto_key_add_linked (vm, crypto_key_index, integ_key_index);
+    }
+  else
+    {
+      u32 key_sz = test_crypto_get_key_sz (tm->alg);
+      if (key_sz == 0)
+	key_sz = 32; /* Use 32 bytes for HMAC algorithms (0 key_length) */
+
+      key_index = vnet_crypto_key_add (vm, tm->alg, key, key_sz);
+    }
 
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
@@ -891,7 +911,17 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 	  op1->key_index = op2->key_index = key_index;
 	  op1->iv = op2->iv = b->data - 64;
 
-	  if (ad->is_aead)
+	  if (ad->is_link)
+	    {
+	      /* For linked algorithms, both encrypt and decrypt operations
+	       * include integrity (HMAC) processing */
+	      op1->integ_src = op2->integ_src = b->data;
+	      op1->integ_len = op2->integ_len = buffer_size;
+	      op1->digest = op2->digest = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
+	      op1->digest_len = op2->digest_len = 12;
+	      op2->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+	    }
+	  else if (ad->is_aead)
 	    {
 	      op1->tag = op2->tag = b->data - 32;
 	      op1->aad = op2->aad = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
@@ -899,16 +929,15 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 	      op1->tag_len = op2->tag_len = 16;
 	    }
 
-	  n_bytes += op1->len = op2->len = buffer_size;
+	  op1->len = op2->len = buffer_size;
 	  break;
 	case VNET_CRYPTO_OP_TYPE_HMAC:
 	  vnet_crypto_op_init (op1, ad->op_by_type[VNET_CRYPTO_OP_TYPE_HMAC]);
-	  op1->src = b->data;
+	  op1->integ_src = b->data;
 	  op1->key_index = key_index;
-	  op1->iv = 0;
 	  op1->digest = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
-	  op1->digest_len = 0;
-	  n_bytes += op1->len = buffer_size;
+	  op1->digest_len = 12;
+	  op1->integ_len = buffer_size;
 	  break;
 	default:
 	  return 0;
@@ -940,19 +969,36 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 	}
     }
 
+  /* establish payload bytes once (cipher len or integ_len per buffer) */
+  payload_bytes = (u64) n_buffers * buffer_size;
+
   for (i = 0; i < 5; i++)
     {
-      f64 tpb1 = (f64) (t1[i] - t0[i]) / (n_bytes * rounds);
+      f64 tpb1 = (f64) (t1[i] - t0[i]) / (payload_bytes * rounds);
       f64 gbps1 = vm->clib_time.clocks_per_second * 1e-9 * 8 / tpb1;
       f64 tpb2, gbps2;
 
       if (ot != VNET_CRYPTO_OP_TYPE_HMAC)
 	{
-	  tpb2 = (f64) (t2[i] - t1[i]) / (n_bytes * rounds);
+	  tpb2 = (f64) (t2[i] - t1[i]) / (payload_bytes * rounds);
 	  gbps2 = vm->clib_time.clocks_per_second * 1e-9 * 8 / tpb2;
-	  vlib_cli_output (vm, "%-2u: encrypt %.03f ticks/byte, %.02f Gbps; "
-			   "decrypt %.03f ticks/byte, %.02f Gbps",
-			   i + 1, tpb1, gbps1, tpb2, gbps2);
+	  if (ad->is_link)
+	    {
+	      /* For linked alg we measured encrypt(+hmac) and
+	       * decrypt(+hmac-check) separately */
+	      vlib_cli_output (
+		vm,
+		"%-2u: encrypt+hmac %.03f ticks/byte, %.02f Gbps; "
+		"decrypt+hmac %.03f ticks/byte, %.02f Gbps",
+		i + 1, tpb1, gbps1, tpb2, gbps2);
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm,
+			       "%-2u: encrypt %.03f ticks/byte, %.02f Gbps; "
+			       "decrypt %.03f ticks/byte, %.02f Gbps",
+			       i + 1, tpb1, gbps1, tpb2, gbps2);
+	    }
 	}
       else
 	{
@@ -965,6 +1011,16 @@ done:
   if (n_alloc)
     vlib_buffer_free (vm, buffer_indices, n_alloc);
 
+  /* Clean up component keys first for linked algorithms */
+  if (ad->is_link)
+    {
+      if (crypto_key_index != ~0)
+	vnet_crypto_key_del (vm, crypto_key_index);
+      if (integ_key_index != ~0)
+	vnet_crypto_key_del (vm, integ_key_index);
+    }
+
+  /* Then delete the main/linked key */
   if (key_index != ~0)
     vnet_crypto_key_del (vm, key_index);
 
