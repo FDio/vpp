@@ -85,16 +85,34 @@ static ipsecmb_main_t ipsecmb_main = { };
   _ (AES_256_GCM_TAG16_AAD8, 256, 1, 8)                                       \
   _ (AES_256_GCM_TAG16_AAD12, 256, 1, 12)
 
-#define foreach_ipsecmb_linked_cipher_auth_op                                 \
-  _ (AES_128_CBC_SHA1_TAG12, 128, SHA_1, CBC, 12)                             \
-  _ (AES_192_CBC_SHA1_TAG12, 192, SHA_1, CBC, 12)                             \
-  _ (AES_256_CBC_SHA1_TAG12, 256, SHA_1, CBC, 12)                             \
-  _ (AES_128_CTR_SHA1_TAG12, 128, SHA_1, CNTR, 12)                            \
-  _ (AES_192_CTR_SHA1_TAG12, 192, SHA_1, CNTR, 12)                            \
-  _ (AES_256_CTR_SHA1_TAG12, 256, SHA_1, CNTR, 12)                            \
-  _ (AES_128_CTR_SHA256_TAG16, 128, SHA_256, CNTR, 16)                        \
-  _ (AES_192_CTR_SHA256_TAG16, 192, SHA_256, CNTR, 16)                        \
-  _ (AES_256_CTR_SHA256_TAG16, 256, SHA_256, CNTR, 16)
+#define foreach_ipsecmb_linked_cipher_op                                      \
+  _ (AES_128_CBC_SHA1, 128, CBC, SHA_1, 64, 20, 20, 12)                       \
+  _ (AES_192_CBC_SHA1, 192, CBC, SHA_1, 64, 20, 20, 12)                       \
+  _ (AES_256_CBC_SHA1, 256, CBC, SHA_1, 64, 20, 20, 12)                       \
+  _ (AES_128_CBC_SHA224, 128, CBC, SHA_224, 64, 32, 28, 14)                   \
+  _ (AES_192_CBC_SHA224, 192, CBC, SHA_224, 64, 32, 28, 14)                   \
+  _ (AES_256_CBC_SHA224, 256, CBC, SHA_224, 64, 32, 28, 14)                   \
+  _ (AES_128_CBC_SHA256, 128, CBC, SHA_256, 64, 32, 32, 16)                   \
+  _ (AES_192_CBC_SHA256, 192, CBC, SHA_256, 64, 32, 32, 16)                   \
+  _ (AES_256_CBC_SHA256, 256, CBC, SHA_256, 64, 32, 32, 16)                   \
+  _ (AES_128_CBC_SHA384, 128, CBC, SHA_384, 128, 64, 48, 24)                  \
+  _ (AES_192_CBC_SHA384, 192, CBC, SHA_384, 128, 64, 48, 24)                  \
+  _ (AES_256_CBC_SHA384, 256, CBC, SHA_384, 128, 64, 48, 24)                  \
+  _ (AES_128_CBC_SHA512, 128, CBC, SHA_512, 128, 64, 64, 32)                  \
+  _ (AES_192_CBC_SHA512, 192, CBC, SHA_512, 128, 64, 64, 32)                  \
+  _ (AES_256_CBC_SHA512, 256, CBC, SHA_512, 128, 64, 64, 32)                  \
+  _ (AES_128_CTR_SHA1, 128, CNTR, SHA_1, 64, 20, 20, 12)                      \
+  _ (AES_192_CTR_SHA1, 192, CNTR, SHA_1, 64, 20, 20, 12)                      \
+  _ (AES_256_CTR_SHA1, 256, CNTR, SHA_1, 64, 20, 20, 12)                      \
+  _ (AES_128_CTR_SHA256, 128, CNTR, SHA_256, 64, 32, 32, 16)                  \
+  _ (AES_192_CTR_SHA256, 192, CNTR, SHA_256, 64, 32, 32, 16)                  \
+  _ (AES_256_CTR_SHA256, 256, CNTR, SHA_256, 64, 32, 32, 16)                  \
+  _ (AES_128_CTR_SHA384, 128, CNTR, SHA_384, 128, 64, 48, 24)                 \
+  _ (AES_192_CTR_SHA384, 192, CNTR, SHA_384, 128, 64, 48, 24)                 \
+  _ (AES_256_CTR_SHA384, 256, CNTR, SHA_384, 128, 64, 48, 24)                 \
+  _ (AES_128_CTR_SHA512, 128, CNTR, SHA_512, 128, 64, 64, 32)                 \
+  _ (AES_192_CTR_SHA512, 192, CNTR, SHA_512, 128, 64, 64, 32)                 \
+  _ (AES_256_CTR_SHA512, 256, CNTR, SHA_512, 128, 64, 64, 32)
 
 #define foreach_chacha_poly_fixed_aad_lengths _ (0) _ (8) _ (12)
 
@@ -171,13 +189,15 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
       for (i = 0; i < n; i++, ops_index++)
 	{
 	  vnet_crypto_op_t *op = ops[ops_index];
-	  const u8 *kd = (u8 *) imbm->key_data[op->key_index];
+	  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+	  u32 key_index = key->is_link ? key->index_integ : key->index;
+	  const u8 *kd = (u8 *) imbm->key_data[key_index];
 
 	  job = &ptd->burst_jobs[i];
 
-	  job->src = op->src;
+	  job->src = op->integ_src;
 	  job->hash_start_src_offset_in_bytes = 0;
-	  job->msg_len_to_hash_in_bytes = op->len;
+	  job->msg_len_to_hash_in_bytes = op->integ_len;
 	  job->auth_tag_output_len_in_bytes = digest_size;
 	  job->auth_tag_output = scratch[ops_index];
 
@@ -220,13 +240,15 @@ ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      u8 *kd = (u8 *) imbm->key_data[op->key_index];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      u32 key_index = key->is_link ? key->index_integ : key->index;
+      u8 *kd = (u8 *) imbm->key_data[key_index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
-      job->src = op->src;
+      job->src = op->integ_src;
       job->hash_start_src_offset_in_bytes = 0;
-      job->msg_len_to_hash_in_bytes = op->len;
+      job->msg_len_to_hash_in_bytes = op->integ_len;
       job->hash_alg = alg;
       job->auth_tag_output_len_in_bytes = digest_size;
       job->auth_tag_output = scratch[i];
@@ -299,7 +321,9 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	{
 	  ipsecmb_aes_key_data_t *kd;
 	  vnet_crypto_op_t *op = ops[ops_index++];
-	  kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+	  vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+	  u32 key_index = key->is_link ? key->index_crypto : key->index;
+	  kd = (ipsecmb_aes_key_data_t *) imbm->key_data[key_index];
 
 	  job = &ptd->burst_jobs[i];
 
@@ -347,7 +371,9 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     {
       ipsecmb_aes_key_data_t *kd;
       vnet_crypto_op_t *op = ops[i];
-      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      u32 key_index = key->is_link ? key->index_crypto : key->index;
+      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[key_index];
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -402,7 +428,30 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 foreach_ipsecmb_cipher_op;
 #undef _
 
-typedef struct
+#define _(a, b, c, d, e, f, g, h)                                             \
+  static_always_inline u32 ipsecmb_ops_enc_##a (                              \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    ipsecmb_ops_aes_cipher_inline (vm, ops, n_ops, b, IMB_DIR_ENCRYPT,        \
+				   IMB_CIPHER_##c);                           \
+    return ipsecmb_ops_hmac_inline (vm, ops, n_ops, e, f, g,                  \
+				    IMB_AUTH_HMAC_##d);                       \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_dec_##a (                              \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    u32 r =                                                                   \
+      ipsecmb_ops_hmac_inline (vm, ops, n_ops, e, f, g, IMB_AUTH_HMAC_##d);   \
+    if (r != n_ops)                                                           \
+      return r;                                                               \
+    return ipsecmb_ops_aes_cipher_inline (vm, ops, n_ops, b, IMB_DIR_DECRYPT, \
+					  IMB_CIPHER_##c);                    \
+  }
+foreach_ipsecmb_linked_cipher_op
+#undef _
+
+  typedef struct
 {
   aes_gcm_enc_dec_t enc_dec_fn;
   aes_gcm_init_t init_fn;
@@ -528,80 +577,6 @@ get_mgr (vlib_main_t *vm)
 				.is_dec = 1 });                               \
   }
 foreach_ipsecmb_gcm_cipher_op;
-#undef _
-
-static_always_inline u32
-ipsecmb_ops_cipher_auth_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
-				u32 n_ops, u32 key_len, u32 tag_len,
-				IMB_CIPHER_MODE cipher_mode,
-				IMB_HASH_ALG hash_alg,
-				IMB_CIPHER_DIRECTION direction)
-{
-  ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd = imbm->per_thread_data + vm->thread_index;
-  IMB_JOB *job;
-  u32 i, n_fail = 0;
-
-  for (i = 0; i < n_ops; i++)
-    {
-      ipsecmb_aes_key_data_t *kd;
-      vnet_crypto_op_t *op = ops[i];
-      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
-
-      job = IMB_GET_NEXT_JOB (ptd->mgr);
-
-      job->src = op->src;
-      job->dst = op->dst;
-      job->msg_len_to_cipher_in_bytes = op->len;
-      job->cipher_start_src_offset_in_bytes = 0;
-
-      job->cipher_mode = cipher_mode;
-      job->cipher_direction = direction;
-      job->hash_alg = hash_alg;
-
-      job->key_len_in_bytes = key_len / 8;
-      job->enc_keys = kd->enc_key_exp;
-      job->dec_keys = kd->dec_key_exp;
-      job->iv = op->iv;
-      job->iv_len_in_bytes = IMB_AES_BLOCK_SIZE;
-
-      job->auth_tag_output = op->digest;
-      job->auth_tag_output_len_in_bytes = tag_len;
-
-      job->chain_order = (direction == IMB_DIR_ENCRYPT) ?
-			   IMB_ORDER_CIPHER_HASH :
-			   IMB_ORDER_HASH_CIPHER;
-
-      job->user_data = op;
-
-      job = IMB_SUBMIT_JOB (ptd->mgr);
-      if (job)
-	ipsecmb_retire_cipher_job (job, &n_fail);
-    }
-
-  while ((job = IMB_FLUSH_JOB (ptd->mgr)))
-    ipsecmb_retire_cipher_job (job, &n_fail);
-
-  return n_ops - n_fail;
-}
-
-#define _(n, k, h, c, t)                                                      \
-  static_always_inline u32 ipsecmb_ops_enc_##n (                              \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return ipsecmb_ops_cipher_auth_inline (vm, ops, n_ops, k, t,              \
-					   IMB_CIPHER_##c, IMB_AUTH_HMAC_##h, \
-					   IMB_DIR_ENCRYPT);                  \
-  }                                                                           \
-                                                                              \
-  static_always_inline u32 ipsecmb_ops_dec_##n (                              \
-    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
-  {                                                                           \
-    return ipsecmb_ops_cipher_auth_inline (vm, ops, n_ops, k, t,              \
-					   IMB_CIPHER_##c, IMB_AUTH_HMAC_##h, \
-					   IMB_DIR_DECRYPT);                  \
-  }
-foreach_ipsecmb_linked_cipher_auth_op
 #undef _
 
 #ifdef HAVE_IPSECMB_CHACHA_POLY
@@ -1025,6 +1000,12 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
 
       foreach_ipsecmb_cipher_op
 #undef _
+#define _(a, b, c, d, e, f, g, h)                                             \
+  { .opt = VNET_CRYPTO_OP_##a##_TAG##h##_ENC, .fn = ipsecmb_ops_enc_##a },    \
+    { .opt = VNET_CRYPTO_OP_##a##_TAG##h##_DEC, .fn = ipsecmb_ops_dec_##a },
+
+	foreach_ipsecmb_linked_cipher_op
+#undef _
 #ifdef HAVE_IPSECMB_CHACHA_POLY
   { .opt = VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
     .fn = ipsecmb_ops_chacha_poly_enc,
@@ -1046,12 +1027,6 @@ vnet_crypto_engine_op_handlers_t op_handlers[] = {
   foreach_chacha_poly_fixed_aad_lengths
 #undef _
 #endif
-#define _(n, k, h, c, t)                                                      \
-  { .opt = VNET_CRYPTO_OP_##n##_ENC, .fn = ipsecmb_ops_enc_##n },             \
-    { .opt = VNET_CRYPTO_OP_##n##_DEC, .fn = ipsecmb_ops_dec_##n },
-
-    foreach_ipsecmb_linked_cipher_auth_op
-#undef _
 
   {}
 };
