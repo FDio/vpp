@@ -48,9 +48,7 @@ typedef struct
   u8 last_serve_encrypt;
   u8 last_return_queue;
   vnet_crypto_op_t *crypto_ops;
-  vnet_crypto_op_t *integ_ops;
   vnet_crypto_op_t *chained_crypto_ops;
-  vnet_crypto_op_t *chained_integ_ops;
   vnet_crypto_op_chunk_t *chunks;
   u8 self_crypto_enabled;
 } crypto_sw_scheduler_per_thread_data_t;
