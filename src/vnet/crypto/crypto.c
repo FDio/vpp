@@ -487,6 +487,55 @@ vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
     return ~0;
 }
 
+vnet_crypto_op_id_t
+vnet_crypto_op_id_from_alg (vnet_crypto_alg_t alg, vnet_crypto_op_type_t type)
+{
+
+#define _(c, h, s, k, d)                                                      \
+  if (alg == VNET_CRYPTO_ALG_##c##_##h##_TAG##d)                              \
+    {                                                                         \
+      if (type == VNET_CRYPTO_OP_TYPE_ENCRYPT)                                \
+	return VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC;                       \
+      if (type == VNET_CRYPTO_OP_TYPE_DECRYPT)                                \
+	return VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;                       \
+    }
+  foreach_crypto_link_async_alg
+#undef _
+
+#define _(n, s, ...)                                                          \
+  if (alg == VNET_CRYPTO_ALG_##n)                                             \
+    {                                                                         \
+      if (type == VNET_CRYPTO_OP_TYPE_ENCRYPT)                                \
+	return VNET_CRYPTO_OP_##n##_ENC;                                      \
+      if (type == VNET_CRYPTO_OP_TYPE_DECRYPT)                                \
+	return VNET_CRYPTO_OP_##n##_DEC;                                      \
+    }
+    foreach_crypto_cipher_alg foreach_crypto_aead_alg
+#undef _
+
+#define _(n, s, k, t, a)                                                      \
+  if (alg == VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a)                           \
+    {                                                                         \
+      if (type == VNET_CRYPTO_OP_TYPE_ENCRYPT)                                \
+	return VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC;                    \
+      if (type == VNET_CRYPTO_OP_TYPE_DECRYPT)                                \
+	return VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC;                    \
+    }
+      foreach_crypto_aead_async_alg
+#undef _
+
+#define _(n, s)                                                               \
+  if (alg == VNET_CRYPTO_ALG_HMAC_##n)                                        \
+    {                                                                         \
+      if (type == VNET_CRYPTO_OP_TYPE_HMAC)                                   \
+	return VNET_CRYPTO_OP_##n##_HMAC;                                     \
+    }
+	foreach_crypto_hash_alg
+#undef _
+
+    return VNET_CRYPTO_OP_NONE;
+}
+
 u32
 vnet_crypto_key_add_linked (vlib_main_t * vm,
 			    vnet_crypto_key_index_t index_crypto,

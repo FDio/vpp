@@ -379,11 +379,17 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 		     u8 icv_sz, u32 bi, vlib_buffer_t **b, vlib_buffer_t *lb,
 		     u32 hdr_len, esp_header_t *esp)
 {
-  if (ort->cipher_op_id)
+  vnet_crypto_key_t *key = vnet_crypto_get_key (ort->cipher_key_index);
+  vnet_crypto_op_id_t op_id =
+    vnet_crypto_op_id_from_alg (key->alg, VNET_CRYPTO_OP_TYPE_ENCRYPT);
+  vnet_crypto_op_id_t hmac_op_id =
+    vnet_crypto_op_id_from_alg (key->alg, VNET_CRYPTO_OP_TYPE_HMAC);
+
+  if (op_id != VNET_CRYPTO_OP_NONE)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->cipher_op_id);
+      vnet_crypto_op_init (op, op_id);
       u8 *crypto_start = payload;
       /* esp_add_footer_and_icv() in esp_encrypt_inline() makes sure we always
        * have enough space for ESP header and footer which includes ICV */
@@ -449,13 +455,42 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  op->src = op->dst = crypto_start;
 	  op->len = crypto_len;
 	}
+
+      if (key->is_link)
+	{
+	  ASSERT (!ort->is_aead);
+
+	  op->digest_len = icv_sz;
+	  if (lb != b[0])
+	    {
+	      esp_encrypt_chain_integ (vm, ptd, ort, b[0], lb, icv_sz,
+				       payload - iv_sz - sizeof (esp_header_t),
+				       payload_len + iv_sz +
+					 sizeof (esp_header_t),
+				       op->digest, &op->integ_n_chunks);
+	    }
+	  else
+	    {
+	      op->digest = payload + payload_len - icv_sz;
+	      op->integ_src = payload - iv_sz - sizeof (esp_header_t);
+	      op->integ_len =
+		payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
+
+	      if (ort->use_esn)
+		{
+		  u32 tmp = clib_net_to_host_u32 (seq_hi);
+		  clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
+		  op->integ_len += sizeof (seq_hi);
+		}
+	    }
+	}
     }
 
-  if (ort->integ_op_id)
+  else if (hmac_op_id)
     {
       vnet_crypto_op_t *op;
       vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->integ_op_id);
+      vnet_crypto_op_init (op, hmac_op_id);
       op->src = payload - iv_sz - sizeof (esp_header_t);
       op->digest = payload + payload_len - icv_sz;
       op->key_index = ort->integ_key_index;
@@ -481,7 +516,6 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
 	  op->len += sizeof (seq_hi);
 	}
-    }
 }
 
 static_always_inline void
