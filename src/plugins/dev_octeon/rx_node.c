@@ -107,8 +107,12 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
   u32 b0_err_flags = 0, b1_err_flags = 0;
   u32 b2_err_flags = 0, b3_err_flags = 0;
   u32 n_left, err_flags = 0;
+  u32 err_flag_x4, err_flag;
   oct_nix_rx_cqe_desc_t *d = ctx->next_desc;
   vlib_buffer_t *b[4];
+
+  bt.flags |=
+    (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   for (n_left = n; n_left >= 8; d += 4, n_left -= 4, ctx->to_next += 4)
     {
@@ -153,7 +157,24 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
       b2_err_flags = (d[2].parse.w[0] >> 20) & 0xFFF;
       b3_err_flags = (d[3].parse.w[0] >> 20) & 0xFFF;
 
-      err_flags |= b0_err_flags | b1_err_flags | b2_err_flags | b3_err_flags;
+      err_flag_x4 = b0_err_flags | b1_err_flags | b2_err_flags | b3_err_flags;
+
+      if (PREDICT_FALSE (err_flag_x4))
+	{
+	  if (b0_err_flags)
+	    b[0]->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			     VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  if (b1_err_flags)
+	    b[1]->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			     VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  if (b2_err_flags)
+	    b[2]->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			     VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  if (b3_err_flags)
+	    b[3]->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			     VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  err_flags |= err_flag_x4;
+	}
     }
 
   for (; n_left; d += 1, n_left -= 1, ctx->to_next += 1)
@@ -167,7 +188,13 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
       if (d[0].sg0.segs > 1)
 	oct_rx_attach_tail (vm, ctx, b[0], d + 0);
 
-      err_flags |= ((d[0].parse.w[0] >> 20) & 0xFFF);
+      err_flag = ((d[0].parse.w[0] >> 20) & 0xFFF);
+      if (PREDICT_FALSE (err_flag))
+	{
+	  b[0]->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			   VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  err_flags |= err_flag;
+	}
     }
 
   plt_write64 ((crq->cq.wdata | n), crq->cq.door);
