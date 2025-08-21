@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6799b8da_4ff07864",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-08-21T14:04:44Z",
+      "side": 1,
+      "message": "It looks like this can be called twice per packet by esp_prepare_sync_op(). It could probably be more efficient if it retrieved the correct value from an array using the alg and op type as indexes instead of doing a potentially long series of `if (alg \u003d\u003d x) { if (type \u003d\u003d y) return foo; ... }`.\n\nE.g. declare an array like `vnet_crypto_op_id_t alg_type_op_map[VNET_CRYPTO_OP_N_TYPES][VNET_CRYPTO_N_ALGS]` and populate it with the correct values. Then vnet_crypto_op_id_from_alg() can do something like:\n```\n  if (alg \u003c VNET_CRYPTO_N_ALGS \u0026\u0026 type \u003c VNET_CRYPTO_OP_N_TYPES)\n    return alg_type_op_map[type][alg];\n\n  return VNET_CRYPTO_OP_NONE;\n```",
+      "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
