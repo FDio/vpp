@@ -152,8 +152,7 @@ typedef struct
   u16 is_tunnel : 1;
   u16 is_transport : 1;
   u16 is_async : 1;
-  u16 cipher_op_id;
-  u16 integ_op_id;
+  u16 op_id;
   u8 cipher_iv_size;
   u8 integ_icv_size;
   u8 udp_sz;
@@ -161,8 +160,7 @@ typedef struct
   u32 salt;
   u64 seq64;
   u16 async_op_id;
-  vnet_crypto_key_index_t cipher_key_index;
-  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_key_index_t key_index;
   u32 anti_replay_window_size;
   uword replay_window[];
 } ipsec_sa_inb_rt_t;
@@ -180,8 +178,7 @@ typedef struct
   u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
-  u16 cipher_op_id;
-  u16 integ_op_id;
+  u16 op_id;
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
@@ -194,8 +191,7 @@ typedef struct
   u64 seq64;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
-  vnet_crypto_key_index_t cipher_key_index;
-  vnet_crypto_key_index_t integ_key_index;
+  vnet_crypto_key_index_t key_index;
   union
   {
     ip4_header_t ip4_hdr;
