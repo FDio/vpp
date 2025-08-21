@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39add435_9198be9d",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-21T16:06:36Z",
+      "side": 1,
+      "message": "can we make this just comparison between two? something like with loss it should not be n-times slower than baseline (fraction/percentage threshold)",
+      "range": {
+        "startLine": 175,
+        "startChar": 0,
+        "endLine": 176,
+        "endChar": 39
+      },
+      "revId": "220ae5f5a9635a046690e93851feec2c242924ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36cdc84a_20674e61",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-21T16:06:36Z",
+      "side": 1,
+      "message": "runtime.GOARCH",
+      "range": {
+        "startLine": 40,
+        "startChar": 1,
+        "endLine": 46,
+        "endChar": 28
+      },
+      "revId": "220ae5f5a9635a046690e93851feec2c242924ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
