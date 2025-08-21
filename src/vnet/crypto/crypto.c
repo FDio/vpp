@@ -487,6 +487,13 @@ vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
     return ~0;
 }
 
+vnet_crypto_op_id_t *
+vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  return cm->algs[alg].op_by_type;
+}
+
 u32
 vnet_crypto_key_add_linked (vlib_main_t * vm,
 			    vnet_crypto_key_index_t index_crypto,
