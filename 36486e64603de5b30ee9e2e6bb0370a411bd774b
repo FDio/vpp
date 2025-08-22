@@ -16,6 +16,24 @@
       "message": "i guess i wouldn\u0027t have the logic this way, just seems overly complicated, but maybe i\u0027m missing an important point. why not just initialize dtls if that\u0027s what\u0027s asked for?",
       "revId": "36486e64603de5b30ee9e2e6bb0370a411bd774b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4764ea07_f0e97c8f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 874,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-22T13:20:45Z",
+      "side": 1,
+      "message": "Actually wanted to initialize both tls and dtls ssl ctxs on init, but we have no good place (apart from init function, which I wanted to avoid).\n\nSo instead, used this single branch, to do that work. It looks weird because I wanted to exit early with an error but, thinking about it again, we don\u0027t care because 882 will return nil pointers if ssl ctx can\u0027t be initialized. Will push change.\n\nStill, want to initialize both in one shot, if possible.",
+      "parentUuid": "93603c63_fe124305",
+      "revId": "36486e64603de5b30ee9e2e6bb0370a411bd774b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
