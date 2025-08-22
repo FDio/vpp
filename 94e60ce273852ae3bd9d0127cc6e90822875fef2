@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "dd71983e_b9db3a33",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-22T12:00:45Z",
+      "side": 1,
+      "message": "Let\u0027s aim for 10s, just to keep the tests shorter ..",
+      "parentUuid": "a4693063_056069ba",
+      "range": {
+        "startLine": 130,
+        "startChar": 81,
+        "endLine": 130,
+        "endChar": 91
+      },
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "844cb2c1_5fe6afd8",
         "filename": "extras/hs-test/echo_test.go",
         "patchSetId": 6
@@ -37,6 +61,24 @@
       "writtenOn": "2025-08-22T09:24:39Z",
       "side": 1,
       "message": "we should run both baseline and loss with real world network rtt (e.g. 10ms) because between containers it is very low (sub 1ms)",
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d54a8758_8988b22e",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-22T12:00:45Z",
+      "side": 1,
+      "message": "agreed, it also avoids surprises if host that runs docker is oversubscribed and latency varies greatly between tests (can easily double if it\u0027s in the microseconds(",
+      "parentUuid": "844cb2c1_5fe6afd8",
       "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
