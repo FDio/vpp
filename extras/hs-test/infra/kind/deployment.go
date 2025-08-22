@@ -97,7 +97,7 @@ func (s *KindSuite) DeployPod(pod *Pod) {
 		pod.IpAddress = pod.CreatedPod.Status.PodIP
 		time.Sleep(time.Second * 1)
 		counter++
-		if counter >= 10 {
+		if counter >= 40 {
 			Fail("Unable to get IP. Check if all pods are running. " + fmt.Sprint(err))
 		}
 	}
