@@ -404,6 +404,19 @@ typedef struct
       u8 flags;
     } tcp;
 
+    struct
+    {
+      union
+      {
+	struct
+	{
+	  u32 session_index;
+	  clib_thread_index_t thread_index;
+	};
+	u64 session_handle;
+      };
+    } udp;
+
     /* SNAT */
     struct
     {
