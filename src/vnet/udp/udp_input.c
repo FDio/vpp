@@ -197,8 +197,8 @@ udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
 }
 
 always_inline session_t *
-udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
-			     u8 is_ip4)
+udp_parse_and_lookup_buffer (vlib_buffer_t *b, session_dgram_hdr_t *hdr,
+			     u8 is_ip4, u8 is_nolookup)
 {
   udp_header_t *udp;
   u32 fib_index;
@@ -224,9 +224,10 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
       ip_set (&hdr->rmt_ip, &ip4->src_address, 1);
       hdr->data_length = clib_net_to_host_u16 (ip4->length);
       hdr->data_length -= sizeof (ip4_header_t) + sizeof (udp_header_t);
-      s = session_lookup_safe4 (fib_index, &ip4->dst_address,
-				&ip4->src_address, udp->dst_port,
-				udp->src_port, TRANSPORT_PROTO_UDP);
+      if (!is_nolookup)
+	s = session_lookup_safe4 (fib_index, &ip4->dst_address,
+				  &ip4->src_address, udp->dst_port,
+				  udp->src_port, TRANSPORT_PROTO_UDP);
     }
   else
     {
@@ -237,10 +238,15 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
       ip_set (&hdr->rmt_ip, &ip60->src_address, 0);
       hdr->data_length = clib_net_to_host_u16 (ip60->payload_length);
       hdr->data_length -= sizeof (udp_header_t);
-      s = session_lookup_safe6 (fib_index, &ip60->dst_address,
-				&ip60->src_address, udp->dst_port,
-				udp->src_port, TRANSPORT_PROTO_UDP);
+      if (!is_nolookup)
+	s = session_lookup_safe6 (fib_index, &ip60->dst_address,
+				  &ip60->src_address, udp->dst_port,
+				  udp->src_port, TRANSPORT_PROTO_UDP);
     }
+
+  if (is_nolookup)
+    s = session_get (vnet_buffer (b)->tcp.connection_index,
+		     vlib_get_thread_index ());
 
   /* Set the sw_if_index[VLIB_RX] to the interface we received
    * the connection on (the local interface) */
@@ -256,8 +262,8 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
 }
 
 always_inline uword
-udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, u8 is_ip4)
+udp46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, u8 is_ip4, u8 is_nolookup)
 {
   clib_thread_index_t thread_index = vm->thread_index;
   u32 n_left_from, *from, *first_buffer;
@@ -277,7 +283,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       udp_connection_t *uc0;
       session_t *s0;
 
-      s0 = udp_parse_and_lookup_buffer (b[0], &hdr0, is_ip4);
+      s0 = udp_parse_and_lookup_buffer (b[0], &hdr0, is_ip4, is_nolookup);
       if (PREDICT_FALSE (!s0))
 	{
 	  error0 = UDP_ERROR_NO_LISTENER;
@@ -361,16 +367,15 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-udp4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+VLIB_NODE_FN (udp4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return udp46_input_inline (vm, node, frame, 1);
+  return udp46_input_inline (vm, node, frame, 1 /* is_ip4 */,
+			     0 /* is_nolookup */);
 }
 
 VLIB_REGISTER_NODE (udp4_input_node) =
 {
-  .function = udp4_input,
   .name = "udp4-input",
   .vector_size = sizeof (u32),
   .format_trace = format_udp_input_trace,
@@ -385,17 +390,62 @@ VLIB_REGISTER_NODE (udp4_input_node) =
   },
 };
 
-static uword
-udp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+VLIB_NODE_FN (udp4_input_nolookup_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return udp46_input_inline (vm, node, frame, 0);
+  return udp46_input_inline (vm, node, frame, 1 /* is_ip4 */,
+			     1 /* is_nolookup */);
+}
+
+VLIB_REGISTER_NODE (udp4_input_nolookup_node) =
+{
+  .name = "udp4-input-nolookup",
+  .vector_size = sizeof (u32),
+  .format_trace = format_udp_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = UDP_N_ERROR,
+  .error_counters = udp_error_counters,
+  .n_next_nodes = UDP_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s, n) [UDP_INPUT_NEXT_##s] = n,
+      foreach_udp_input_next
+#undef _
+  },
+};
+
+VLIB_NODE_FN (udp6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return udp46_input_inline (vm, node, frame, 0 /* is_ip4 */,
+			     0 /* is_nolookup */);
 }
 
 VLIB_REGISTER_NODE (udp6_input_node) =
 {
-  .function = udp6_input,
   .name = "udp6-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_udp_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = UDP_N_ERROR,
+  .error_counters = udp_error_counters,
+  .n_next_nodes = UDP_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s, n) [UDP_INPUT_NEXT_##s] = n,
+      foreach_udp_input_next
+#undef _
+  },
+};
+
+VLIB_NODE_FN (udp6_input_nolookup_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return udp46_input_inline (vm, node, frame, 0 /* is_ip4 */,
+			     1 /* is_nolookup */);
+}
+
+VLIB_REGISTER_NODE (udp6_input_nolookup_node) =
+{
+  .name = "udp6-input-nolookup",
   .vector_size = sizeof (u32),
   .format_trace = format_udp_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
