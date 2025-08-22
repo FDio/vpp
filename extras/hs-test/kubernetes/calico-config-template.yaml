@@ -136,62 +136,71 @@ subjects:
 ---
 apiVersion: v1
 data:
+  CALICOVPP_BGP_LOG_LEVEL: ""
+  CALICOVPP_CONFIG_EXEC_TEMPLATE: ""
   CALICOVPP_CONFIG_TEMPLATE: |-
-    unix {
-      nodaemon
-      full-coredump
-      cli-listen /var/run/vpp/cli.sock
-      pidfile /run/vpp/vpp.pid
-      exec /etc/vpp/startup.exec
-    }
-    api-trace { on }
-    cpu {
-        workers 0
-    }
-    socksvr {
-        socket-name /var/run/vpp/vpp-api.sock
-    }
-    plugins {
-        plugin default { enable }
-        plugin dpdk_plugin.so { disable }
-        plugin calico_plugin.so { enable }
-        plugin ping_plugin.so { disable }
-        plugin dispatch_trace_plugin.so { enable }
-    }
-    buffers {
-      buffers-per-numa 131072
-    }
-  CALICOVPP_INITIAL_CONFIG: |-
-    {
-      "vppStartupSleepSeconds": 1,
-      "corePattern": "/var/lib/vpp/vppcore.%e.%p",
-      "redirectToHostRules": [
-        {
-          "proto": "udp",
-          "port": 53,
-          "ip": "172.18.0.1"
-        },
-        {
-          "proto": "tcp",
-          "port": 53,
-          "ip": "172.18.0.1"
+        unix {
+            nodaemon
+            full-coredump
+            log /var/run/vpp/vpp.log
+            cli-listen /var/run/vpp/cli.sock
+            pidfile /run/vpp/vpp.pid
         }
-      ]
-    }
+        buffers {
+            buffers-per-numa 131072
+        }
+        socksvr { socket-name /var/run/vpp/vpp-api.sock }
+        plugins {
+            plugin default { enable }
+            plugin calico_plugin.so { enable }
+            plugin dpdk_plugin.so { disable }
+        }
+        ${ADDITIONAL_VPP_CONFIG}
+  CALICOVPP_DEBUG: |-
+    {
+          "servicesEnabled": true,
+          "gsoEnabled": true
+        }
   CALICOVPP_FEATURE_GATES: |-
     {
-      "vclEnabled": true
-    }
+          "memifEnabled": false,
+          "vclEnabled": true,
+          "multinetEnabled": false,
+          "ipsecEnabled": false
+        }
+  CALICOVPP_INIT_SCRIPT_TEMPLATE: ""
+  CALICOVPP_INITIAL_CONFIG: |-
+    {
+          "vppStartupSleepSeconds": 0,
+          "corePattern": "/var/lib/vpp/vppcore.%e.%p",
+          "defaultGWs": "",
+          "redirectToHostRules": [
+          {
+            "proto": "udp",
+            "port": 53,
+            "ip": "172.18.0.1"
+          }
+        ]
+        }
   CALICOVPP_INTERFACES: |-
     {
-      "uplinkInterfaces": [
-        {
-          "interfaceName": "eth0",
-          "vppDriver": "af_packet"
-        }
-      ]
-    }
-  SERVICE_PREFIX: 10.96.0.0/16
+        "uplinkInterfaces": [
+          {
+            "interfaceName": "eth0",
+            "vppDriver": "af_packet"
+          }
+        ]
+      }
+  CALICOVPP_IPSEC: |-
+    {}
+  CALICOVPP_IPSEC_IKEV2_PSK: "keykeykey"
+  CALICOVPP_LOG_FORMAT: pretty
+  CALICOVPP_LOG_LEVEL: ""
+  CALICOVPP_SRV6: |-
+    {}
+  CALICOVPP_SWAP_DRIVER: ""
+  DEBUG: ""
+  SERVICE_PREFIX: 11.96.0.0/12,fd10::0/120
 kind: ConfigMap
 metadata:
   name: calico-vpp-config
@@ -223,6 +232,55 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LD_LIBRARY_PATH
+          value: /repo/vpp-manager/vpp_build/build-root/install-vpp-native/vpp/
+        envFrom:
+        - configMapRef:
+            name: calico-vpp-config
+        image: localhost:5000/calicovpp/vpp:${CALICOVPP_VERSION}
+        imagePullPolicy: Always
+        name: vpp
+        resources:
+          limits:
+            memory: 80Gi
+          requests:
+            cpu: 1
+            memory: 4Gi
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /repo
+          name: repo-directory
+        - mountPath: /etc/ssl/certs/
+          name: ssl-certs
+        - mountPath: /usr/share/ca-certificates
+          name: share-certs
+        - mountPath: /lib/firmware
+          name: lib-firmware
+        - mountPath: /var/run/vpp
+          name: vpp-rundir
+        - mountPath: /var/lib/vpp
+          name: vpp-data
+        - mountPath: /etc/vpp
+          name: vpp-config
+        - mountPath: /dev
+          name: devices
+        - mountPath: /sys
+          name: hostsys
+        - mountPath: /run/netns/
+          mountPropagation: Bidirectional
+          name: netns
+        - mountPath: /host
+          name: host-root
+      - env:
+        - name: DATASTORE_TYPE
+          value: kubernetes
+        - name: WAIT_FOR_DATASTORE
+          value: "true"
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: NAMESPACE
           valueFrom:
             fieldRef:
@@ -230,8 +288,8 @@ spec:
         envFrom:
         - configMapRef:
             name: calico-vpp-config
-        image: docker.io/calicovpp/agent:${CALICOVPP_VERSION}
-        imagePullPolicy: IfNotPresent
+        image: localhost:5000/calicovpp/agent:${CALICOVPP_VERSION}
+        imagePullPolicy: Always
         name: agent
         resources:
           requests:
@@ -250,45 +308,6 @@ spec:
         - mountPath: /run/netns/
           mountPropagation: Bidirectional
           name: netns
-      - env:
-        - name: DATASTORE_TYPE
-          value: kubernetes
-        - name: WAIT_FOR_DATASTORE
-          value: "true"
-        - name: NODENAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        envFrom:
-        - configMapRef:
-            name: calico-vpp-config
-        image: docker.io/calicovpp/vpp:${CALICOVPP_VERSION}
-        imagePullPolicy: IfNotPresent
-        name: vpp
-        resources:
-          requests:
-            cpu: 500m
-            memory: 512Mi
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - mountPath: /lib/firmware
-          name: lib-firmware
-        - mountPath: /var/run/vpp
-          name: vpp-rundir
-        - mountPath: /var/lib/vpp
-          name: vpp-data
-        - mountPath: /etc/vpp
-          name: vpp-config
-        - mountPath: /dev
-          name: devices
-        - mountPath: /sys
-          name: hostsys
-        - mountPath: /run/netns/
-          mountPropagation: Bidirectional
-          name: netns
-        - mountPath: /host
-          name: host-root
       hostNetwork: true
       hostPID: true
       nodeSelector:
@@ -304,6 +323,15 @@ spec:
       - effect: NoExecute
         operator: Exists
       volumes:
+      - hostPath:
+          path: ${HOME}/vpp-dataplane
+        name: repo-directory
+      - hostPath:
+          path: /etc/ssl/certs/
+        name: ssl-certs
+      - hostPath:
+          path: /usr/share/ca-certificates
+        name: share-certs
       - hostPath:
           path: /lib/firmware
         name: lib-firmware
@@ -339,3 +367,26 @@ spec:
     rollingUpdate:
       maxUnavailable: 1
     type: RollingUpdate
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+---
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - cidr: 11.0.0.0/24
+      encapsulation: IPIP
+      natOutgoing: Enabled
+    linuxDataplane: VPP
+    nodeAddressAutodetectionV4:
+      interface: eth0
+    nodeAddressAutodetectionV6:
+      interface: eth0
+    ${CALICO_NETWORK_CONFIG}
