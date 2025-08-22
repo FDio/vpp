@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4693063_056069ba",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-22T09:24:39Z",
+      "side": 1,
+      "message": "we should run for specific time (maybe 20s) instead of bytes",
+      "range": {
+        "startLine": 130,
+        "startChar": 81,
+        "endLine": 130,
+        "endChar": 91
+      },
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "844cb2c1_5fe6afd8",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-22T09:24:39Z",
+      "side": 1,
+      "message": "we should run both baseline and loss with real world network rtt (e.g. 10ms) because between containers it is very low (sub 1ms)",
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
