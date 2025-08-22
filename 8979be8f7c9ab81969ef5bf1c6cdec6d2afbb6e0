@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2856dc05_fbb6e444",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-22T08:00:27Z",
+      "side": 1,
+      "message": "can we test this with more than one interval displayed? run for specific time and also check if correct count of intervals was displayed?",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a4fb028_09c65988",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1260,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-22T08:00:27Z",
+      "side": 1,
+      "message": "can we have one function for periodic stats, second for timeout and last for final stats? there is nothing common anyway and this flag magic in loop  is just confusing",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a017890_7cc36922",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1270,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-22T08:00:27Z",
+      "side": 1,
+      "message": "isn\u0027t better to store stats per worker?",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
