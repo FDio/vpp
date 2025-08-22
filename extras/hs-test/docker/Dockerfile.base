@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Basic utilities
     ca-certificates \
     wget \
+    file \
     gnupg \
     gnupg2 \
     git \

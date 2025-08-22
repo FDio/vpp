@@ -313,8 +313,12 @@ func (s *HstSuite) StartClientApp(c *Container, cmd string,
 }
 
 func (s *HstSuite) GetCoreProcessName(file string) (string, bool) {
-	cmd := fmt.Sprintf("sudo file -b %s", file)
-	output, _ := exechelper.Output(cmd)
+	cmd := fmt.Sprintf("file -b %s", file)
+	output, err := exechelper.Output(cmd)
+	if err != nil {
+		s.Log(fmt.Sprint(err))
+		return "", false
+	}
 	outputStr := string(output)
 	// ELF 64-bit LSB core file, x86-64, version 1 (SYSV), SVR4-style, from 'vpp -c /tmp/server/etc/vpp/startup.conf', real uid: 0, effective uid: 0, real gid: 0, effective gid: 0, execfn: '/usr/bin/vpp', platform: 'x86_64'
 	if !strings.Contains(outputStr, "core file") {
