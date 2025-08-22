@@ -6,42 +6,53 @@ CALICOVPP_DIR="$HOME/vpp-dataplane"
 VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%extras*}
 COMMIT_HASH=$(git rev-parse HEAD)
+reg_name='kind-registry'
+reg_port='5000'
 
+export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-9000}
+export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
+export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
-# ---------------- images ----------------
-export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
-export CALICO_VPP_IMAGE=localhost:5000/calicovpp/vpp:latest
-export MULTINET_MONITOR_IMAGE=localhost:5000/calicovpp/multinet-monitor:latest
-export IMAGE_PULL_POLICY=Always
 
-# ---------------- interfaces ----------------
-export CALICOVPP_INTERFACES='{
-    "uplinkInterfaces": [
-      {
-        "interfaceName": "eth0",
-        "vppDriver": "af_packet"
-      }
-    ]
-  }'
-export CALICOVPP_DISABLE_HUGEPAGES=true
-export CALICOVPP_CONFIG_TEMPLATE="
-    unix {
-        nodaemon
-        full-coredump
-        log /var/run/vpp/vpp.log
-        cli-listen /var/run/vpp/cli.sock
-        pidfile /run/vpp/vpp.pid
-    }
-    buffers {
-        buffers-per-numa 131072
-    }
-    socksvr { socket-name /var/run/vpp/vpp-api.sock }
-    plugins {
-        plugin default { enable }
-        plugin calico_plugin.so { enable }
-        plugin dpdk_plugin.so { disable }
-    }"
-export CALICOVPP_ENABLE_VCL=true
+envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
+kind_config=$(cat kubernetes/kind-config.yaml)
+kind_config=$(cat <<EOF
+$kind_config
+- role: control-plane
+  extraMounts:
+    - hostPath: $HOME
+      containerPath: $HOME
+- role: worker
+  extraMounts:
+    - hostPath: $HOME
+      containerPath: $HOME
+- role: worker
+  extraMounts:
+    - hostPath: $HOME
+      containerPath: $HOME
+EOF
+)
+
+if [ "$(docker network inspect kind -f '{{ index .Options "com.docker.network.driver.mtu" }}')" -ne "9000" ]; then
+  echo "Deleting kind network"
+  docker network rm kind || true
+  echo "Creating custom kind network"
+  docker network create kind --driver bridge --opt com.docker.network.driver.mtu=9000 --opt com.docker.network.bridge.enable_ip_masquerade=true --ipv6
+fi
+
+# create registry
+if [ "$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)" != 'true' ]; then
+  docker run \
+    -d --restart=always -p "127.0.0.1:${reg_port}" --name "${reg_name}" \
+    registry:2
+fi
+
+connect_registry() {
+  if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
+    docker network connect "kind" "${reg_name}"
+  fi
+}
 
 help() {
   echo "Usage:"
@@ -55,6 +66,27 @@ help() {
     TIGERA_VERSION:    master | v[x].[y].[z] (default=v3.28.3)"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
+}
+
+push_release_to_registry() {
+  docker pull docker.io/calicovpp/vpp:$CALICOVPP_VERSION
+  docker image tag docker.io/calicovpp/vpp:$CALICOVPP_VERSION localhost:5000/calicovpp/vpp:$CALICOVPP_VERSION
+	docker push localhost:5000/calicovpp/vpp:$CALICOVPP_VERSION
+  docker pull docker.io/calicovpp/agent:$CALICOVPP_VERSION
+	docker image tag docker.io/calicovpp/agent:$CALICOVPP_VERSION localhost:5000/calicovpp/agent:$CALICOVPP_VERSION
+	docker push localhost:5000/calicovpp/agent:$CALICOVPP_VERSION
+  docker pull docker.io/calicovpp/multinet-monitor:$CALICOVPP_VERSION
+	docker image tag docker.io/calicovpp/multinet-monitor:$CALICOVPP_VERSION localhost:5000/calicovpp/multinet-monitor:$CALICOVPP_VERSION
+	docker push localhost:5000/calicovpp/multinet-monitor:$CALICOVPP_VERSION
+}
+
+push_master_to_registry() {
+  docker image tag calicovpp/vpp:latest localhost:5000/calicovpp/vpp:latest
+	docker push localhost:5000/calicovpp/vpp:latest
+	docker image tag calicovpp/agent:latest localhost:5000/calicovpp/agent:latest
+	docker push localhost:5000/calicovpp/agent:latest
+	docker image tag calicovpp/multinet-monitor:latest localhost:5000/calicovpp/multinet-monitor:latest
+	docker push localhost:5000/calicovpp/multinet-monitor:latest
 }
 
 cherry_pick() {
@@ -78,7 +110,7 @@ build_load_start_cni() {
   make -C $VPP_DIR/extras/hs-test build-vpp-release
   make -C $CALICOVPP_DIR dev-kind
   make -C $CALICOVPP_DIR load-kind
-  $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh up
+  kubectl create --save-config -f kubernetes/calico-config.yaml
 }
 
 restore_repo() {
@@ -99,11 +131,14 @@ setup_master() {
   else
       cd $CALICOVPP_DIR
       git pull
-      cd $VPP_DIR
+      cd $VPP_DIR/extras/hs-test
   fi
 
-  make -C $CALICOVPP_DIR kind-new-cluster N_KIND_WORKERS=2
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.3/manifests/tigera-operator.yaml
+  echo -e "$kind_config" | kind create cluster --config=-
+  kubectl apply -f kubernetes/registry.yaml
+  connect_registry
+  push_master_to_registry
+  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   cherry_pick
   build_load_start_cni
@@ -112,27 +147,25 @@ setup_master() {
 
 rebuild_master() {
   echo "Shutting down pods may take some time, timeout is set to 1m."
-  timeout 1m $CALICOVPP_DIR/yaml/overlays/dev/kustomize.sh dn || true
+  timeout 1m kubectl delete -f kubernetes/calico-config.yaml || true
   cherry_pick
   build_load_start_cni
   restore_repo
 }
 
 setup_release() {
-  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
-  export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
-  envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
-
-  kind create cluster --config kubernetes/kind-config.yaml
+  echo -e "$kind_config" | kind create cluster --config=-
+  kubectl apply -f kubernetes/registry.yaml
+  connect_registry
+  push_release_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   echo "Waiting for tigera-operator pod to start up."
   kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
 
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
-  kubectl create -f kubernetes/calico-config.yaml
+  kubectl create --save-config -f kubernetes/calico-config.yaml
 
   echo "Done. Please wait for the cluster to come fully online before running tests."
   echo "Use 'watch kubectl get pods -A' to monitor cluster status."

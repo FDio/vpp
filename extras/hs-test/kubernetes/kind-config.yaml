@@ -1,10 +1,14 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+    endpoint = ["http://kind-registry:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["http://kind-registry:5000"]
 networking:
   disableDefaultCNI: true
-  podSubnet: "11.0.0.0/16"
-  serviceSubnet: "11.96.0.0/12"
+  podSubnet: "11.0.0.0/16,fd20::0/64"
+  serviceSubnet: "11.96.0.0/12,fd10::0/120"
+  ipFamily: dual
 nodes:
-- role: control-plane
-- role: worker
-- role: worker
