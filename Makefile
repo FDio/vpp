@@ -698,7 +698,9 @@ test-wipe-all:
 .PHONY: test-checkstyle
 test-checkstyle:
 	@$(MAKE) -C test checkstyle-python-all
+ifeq ($(WORKSPACE),)
 	@$(MAKE) -C extras/hs-test checkstyle-go
+endif
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle-diff
