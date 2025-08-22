@@ -161,6 +161,7 @@ data:
     buffers {
       buffers-per-numa 131072
     }
+    ${ADDITIONAL_VPP_CONFIG}
   CALICOVPP_INITIAL_CONFIG: |-
     {
       "vppStartupSleepSeconds": 1,

@@ -7,6 +7,10 @@ VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%extras*}
 COMMIT_HASH=$(git rev-parse HEAD)
 
+export CALICO_MTU=${CALICO_MTU:-9000}
+export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
+export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 # ---------------- images ----------------
 export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
@@ -42,6 +46,13 @@ export CALICOVPP_CONFIG_TEMPLATE="
         plugin dpdk_plugin.so { disable }
     }"
 export CALICOVPP_ENABLE_VCL=true
+
+if [ "$(docker network inspect kind -f '{{ index .Options "com.docker.network.driver.mtu" }}')" -ne "9000" ]; then
+  echo "Deleting kind network"
+  docker network rm kind || true
+  echo "Creating custom kind network"
+  docker network create kind --driver bridge --opt com.docker.network.driver.mtu=9000 --opt com.docker.network.bridge.enable_ip_masquerade=true --ipv6
+fi
 
 help() {
   echo "Usage:"
@@ -119,8 +130,6 @@ rebuild_master() {
 }
 
 setup_release() {
-  export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
-  export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
   envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
@@ -131,8 +140,8 @@ setup_release() {
   echo "Waiting for tigera-operator pod to start up."
   kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
 
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
-  kubectl create -f kubernetes/calico-config.yaml
+  kubectl create --save-config -f kubernetes/installation-default.yaml
+  kubectl create --save-config -f kubernetes/calico-config.yaml
 
   echo "Done. Please wait for the cluster to come fully online before running tests."
   echo "Use 'watch kubectl get pods -A' to monitor cluster status."

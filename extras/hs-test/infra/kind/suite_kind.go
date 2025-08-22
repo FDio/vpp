@@ -3,15 +3,19 @@ package hst_kind
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	. "fd.io/hs-test/infra/common"
+	"github.com/a8m/envsubst"
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 
+	"github.com/joho/godotenv"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,6 +30,7 @@ type KindSuite struct {
 	CurrentlyRunning map[string]*Pod
 	images           []string
 	AllPods          map[string]*Pod
+	MainContext      context.Context
 	Pods             struct {
 		ServerGeneric *Pod
 		ClientGeneric *Pod
@@ -33,9 +38,9 @@ type KindSuite struct {
 		NginxProxy    *Pod
 		Ab            *Pod
 	}
-	MainContext context.Context
 }
 
+var imagesLoaded bool
 var kindTests = map[string][]func(s *KindSuite){}
 
 const VclConfIperf = "echo \"vcl {\n" +
@@ -68,15 +73,14 @@ func (s *KindSuite) SetupTest() {
 
 func (s *KindSuite) SetupSuite() {
 	s.HstCommon.SetupSuite()
-	RegisterFailHandler(func(message string, callerSkip ...int) {
-		Fail(message, callerSkip...)
-	})
 
 	s.CurrentlyRunning = make(map[string]*Pod)
 	s.LoadPodConfigs()
 	s.initPods()
-	s.loadDockerImages()
-	var err error
+	if !imagesLoaded {
+		s.loadDockerImages()
+	}
+
 	if *WhoAmI == "root" {
 		s.KubeconfigPath = "/.kube/config"
 	} else {
@@ -85,13 +89,43 @@ func (s *KindSuite) SetupSuite() {
 	s.Log("User: '%s'", *WhoAmI)
 	s.Log("Config path: '%s'", s.KubeconfigPath)
 
+	var err error
 	s.Config, err = clientcmd.BuildConfigFromFlags("", s.KubeconfigPath)
 	s.AssertNil(err)
 
 	s.ClientSet, err = kubernetes.NewForConfig(s.Config)
 	s.AssertNil(err)
 
-	s.createNamespace(s.Namespace)
+	if !imagesLoaded {
+		s.createNamespace(s.Namespace)
+		imagesLoaded = true
+	}
+}
+
+// sets CALICO_MTU, ADDITIONAL_VPP_CONFIG, CALICO_VPP_VERSION env vars, applies configs and rollout restarts cluster
+func (s *KindSuite) SetMtuAndRestart(CALICO_MTU string, ADDITIONAL_VPP_CONFIG string, CALICOVPP_VERSION string) {
+	os.Setenv("CALICO_MTU", CALICO_MTU)
+	os.Setenv("ADDITIONAL_VPP_CONFIG", ADDITIONAL_VPP_CONFIG)
+	s.AssertNil(godotenv.Load("kubernetes/.vars"))
+
+	s.Envsubst("kubernetes/installation-default-template.yaml", "kubernetes/installation-default.yaml")
+	s.Envsubst("kubernetes/calico-config-template.yaml", "kubernetes/calico-config.yaml")
+	cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/installation-default.yaml")
+	o, err := cmd.CombinedOutput()
+	s.Log(string(o))
+	s.AssertNil(err)
+
+	cmd = exec.Command("kubectl", "apply", "-f", "kubernetes/calico-config.yaml")
+	o, err = cmd.CombinedOutput()
+	s.Log(string(o))
+	s.AssertNil(err)
+
+	cmd = exec.Command("kubectl", "-n", "calico-vpp-dataplane", "rollout", "restart", "ds/calico-vpp-node")
+	o, err = cmd.CombinedOutput()
+	s.Log(string(o))
+	s.AssertNil(err)
+
+	time.Sleep(time.Second * 10)
 }
 
 func (s *KindSuite) TeardownTest() {
@@ -100,7 +134,7 @@ func (s *KindSuite) TeardownTest() {
 		s.Log("Removing:")
 		for _, pod := range s.CurrentlyRunning {
 			s.Log("   %s", pod.Name)
-			s.deletePod(s.Namespace, pod.Name)
+			s.AssertNil(s.deletePod(s.Namespace, pod.Name))
 		}
 	}
 }
@@ -118,9 +152,15 @@ func (s *KindSuite) TeardownSuite() {
 // and searches for the first version string, then creates symlinks.
 func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 	regex := regexp.MustCompile(`lib.*\.so\.([0-9]+\.[0-9]+)`)
-	o, _ := s.Pods.ServerGeneric.Exec(context.TODO(), []string{"/bin/bash", "-c",
-		"ldd /usr/lib/libvcl_ldpreload.so"})
-	match := regex.FindStringSubmatch(o)
+	var match []string
+	for _, pod := range pods {
+		if strings.Contains(pod.Name, "generic") {
+			o, _ := pod.Exec(context.TODO(), []string{"/bin/bash", "-c",
+				"ldd /usr/lib/libvcl_ldpreload.so"})
+			match = regex.FindStringSubmatch(o)
+			break
+		}
+	}
 
 	if len(match) > 1 {
 		version := match[1]
@@ -156,6 +196,12 @@ func (s *KindSuite) CreateNginxConfig(pod *Pod) {
 	)
 }
 
+func (s *KindSuite) Envsubst(inputPath string, outputPath string) {
+	o, err := envsubst.ReadFile(inputPath)
+	s.AssertNil(err)
+	os.WriteFile(outputPath, o, 0644)
+}
+
 func (s *KindSuite) CreateNginxProxyConfig(pod *Pod) {
 	pod.Exec(context.TODO(), []string{"/bin/bash", "-c", "mkdir -p /tmp/nginx"})
 	values := struct {
@@ -188,6 +234,7 @@ var _ = Describe("KindSuite", Ordered, ContinueOnFailure, Label("Perf"), func() 
 	var s KindSuite
 	BeforeAll(func() {
 		s.SetupSuite()
+		s.SetMtuAndRestart("", "", "latest")
 	})
 	BeforeEach(func() {
 		s.SetupTest()
