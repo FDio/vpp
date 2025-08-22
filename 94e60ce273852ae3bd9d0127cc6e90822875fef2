@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9ed92ab_99f83e12",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-22T13:04:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dd71983e_b9db3a33",
+      "range": {
+        "startLine": 130,
+        "startChar": 81,
+        "endLine": 130,
+        "endChar": 91
+      },
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "844cb2c1_5fe6afd8",
@@ -79,6 +103,24 @@
       "side": 1,
       "message": "agreed, it also avoids surprises if host that runs docker is oversubscribed and latency varies greatly between tests (can easily double if it\u0027s in the microseconds(",
       "parentUuid": "844cb2c1_5fe6afd8",
+      "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e12698e2_eaf495be",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-22T13:04:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d54a8758_8988b22e",
       "revId": "94e60ce273852ae3bd9d0127cc6e90822875fef2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
