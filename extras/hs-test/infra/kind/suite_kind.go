@@ -100,7 +100,7 @@ func (s *KindSuite) TeardownTest() {
 		s.Log("Removing:")
 		for _, pod := range s.CurrentlyRunning {
 			s.Log("   %s", pod.Name)
-			s.deletePod(s.Namespace, pod.Name)
+			s.AssertNil(s.deletePod(s.Namespace, pod.Name))
 		}
 	}
 }
@@ -118,9 +118,15 @@ func (s *KindSuite) TeardownSuite() {
 // and searches for the first version string, then creates symlinks.
 func (s *KindSuite) FixVersionNumber(pods ...*Pod) {
 	regex := regexp.MustCompile(`lib.*\.so\.([0-9]+\.[0-9]+)`)
-	o, _ := s.Pods.ServerGeneric.Exec(context.TODO(), []string{"/bin/bash", "-c",
-		"ldd /usr/lib/libvcl_ldpreload.so"})
-	match := regex.FindStringSubmatch(o)
+	var match []string
+	for _, pod := range pods {
+		if strings.Contains(pod.Name, "generic") {
+			o, _ := pod.Exec(context.TODO(), []string{"/bin/bash", "-c",
+				"ldd /usr/lib/libvcl_ldpreload.so"})
+			match = regex.FindStringSubmatch(o)
+			break
+		}
+	}
 
 	if len(match) > 1 {
 		version := match[1]

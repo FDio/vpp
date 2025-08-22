@@ -95,8 +95,8 @@ func (s *KindSuite) getPodsByName(podName string) *Pod {
 	return s.AllPods[podName+s.Ppid]
 }
 
-func (pod *Pod) CopyToPod(namespace string, src string, dst string) {
-	cmd := exec.Command("kubectl", "--kubeconfig="+pod.suite.KubeconfigPath, "cp", src, namespace+"/"+pod.Name+":"+dst)
+func (pod *Pod) CopyToPod(src string, dst string) {
+	cmd := exec.Command("kubectl", "--kubeconfig="+pod.suite.KubeconfigPath, "cp", src, pod.Namespace+"/"+pod.Name+":"+dst)
 	out, err := cmd.CombinedOutput()
 	pod.suite.AssertNil(err, string(out))
 }
@@ -152,5 +152,5 @@ func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName s
 	err = f.Close()
 	pod.suite.AssertNil(err, err)
 
-	pod.CopyToPod(pod.suite.Namespace, f.Name(), targetConfigName)
+	pod.CopyToPod(f.Name(), targetConfigName)
 }

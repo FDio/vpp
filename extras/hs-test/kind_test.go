@@ -3,20 +3,22 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	. "fd.io/hs-test/infra/common"
 	. "fd.io/hs-test/infra/kind"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	RegisterKindTests(KindIperfVclTest, NginxRpsTest, NginxProxyMirroringTest)
+	RegisterKindTests(KindTcpIperfVclTest, KindTcpIperfVclLargeMTUTest, KindUdpIperfVclTest, NginxRpsTest, NginxProxyMirroringTest)
 }
 
 const vcl string = "VCL_CONFIG=/vcl.conf"
 const ldp string = "LD_PRELOAD=/usr/lib/libvcl_ldpreload.so"
 
-func KindIperfVclTest(s *KindSuite) {
+func kindIperfVclTest(s *KindSuite, clientArgs string) IPerfResult {
 	s.DeployPod(s.Pods.ClientGeneric)
 	s.DeployPod(s.Pods.ServerGeneric)
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Second*40)
@@ -29,16 +31,30 @@ func KindIperfVclTest(s *KindSuite) {
 
 	s.FixVersionNumber(s.Pods.ClientGeneric, s.Pods.ServerGeneric)
 
+	iperfClientCmd := fmt.Sprintf("%s %s iperf3 %s -J -b 40g -c %s",
+		vcl, ldp, clientArgs, s.Pods.ServerGeneric.IpAddress)
+
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D -4 -B " + s.Pods.ServerGeneric.IpAddress})
 	s.AssertNil(err, o)
-	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c",
-		vcl + " " + ldp + " iperf3 -J -l 1460 -b 10g -c " + s.Pods.ServerGeneric.IpAddress})
+	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
 
 	s.AssertNil(err)
 	result := s.ParseJsonIperfOutput([]byte(o))
 	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 2000)
+	return result
+}
+
+func KindTcpIperfVclTest(s *KindSuite) {
+	s.AssertIperfMinTransfer(kindIperfVclTest(s, "-M 1460"), 2000)
+}
+
+func KindTcpIperfVclLargeMTUTest(s *KindSuite) {
+	s.AssertIperfMinTransfer(kindIperfVclTest(s, "-M 8960"), 2000)
+}
+
+func KindUdpIperfVclTest(s *KindSuite) {
+	s.AssertIperfMinTransfer(kindIperfVclTest(s, "-l 1460 -u"), 2000)
 }
 
 func NginxRpsTest(s *KindSuite) {

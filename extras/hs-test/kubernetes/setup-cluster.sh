@@ -7,6 +7,7 @@ VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%extras*}
 COMMIT_HASH=$(git rev-parse HEAD)
 
+export CALICO_MTU=${CALICO_MTU:-9000}
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 # ---------------- images ----------------
 export CALICO_AGENT_IMAGE=localhost:5000/calicovpp/agent:latest
@@ -131,7 +132,7 @@ setup_release() {
   echo "Waiting for tigera-operator pod to start up."
   kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
 
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/vpp-dataplane/master/yaml/calico/installation-default.yaml
+  kubectl create -f kubernetes/installation-default.yaml
   kubectl create -f kubernetes/calico-config.yaml
 
   echo "Done. Please wait for the cluster to come fully online before running tests."
