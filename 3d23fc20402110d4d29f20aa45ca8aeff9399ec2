@@ -16,6 +16,24 @@
       "message": "Since this works locally, but only fails in the CI, it would be better to only skip this if it is being run in the CI so local checks still run:\n\nifeq ($(WORKSPACE),)\n\t@$(MAKE) -C extras/hs-test checkstyle-go\nendif",
       "revId": "3d23fc20402110d4d29f20aa45ca8aeff9399ec2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02cb8136_76e7c06b",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-08-22T15:06:32Z",
+      "side": 0,
+      "message": "Also, please update the commit message to say this is only disabled in CI",
+      "parentUuid": "b869325e_fa15c1b6",
+      "revId": "3d23fc20402110d4d29f20aa45ca8aeff9399ec2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
