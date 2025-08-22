@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "62839a2d_6053cbfe",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 7
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-22T11:11:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2856dc05_fbb6e444",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7a4fb028_09c65988",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d43ec8c1_273e45ba",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1260,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-22T11:11:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7a4fb028_09c65988",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2a017890_7cc36922",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-08-22T08:00:27Z",
       "side": 1,
       "message": "isn\u0027t better to store stats per worker?",
+      "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ace0036e_c9e461f3",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1270,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-22T11:11:24Z",
+      "side": 1,
+      "message": "All other stats are stored per session, I think it\u0027s worth to keep the granularity this time as dgram stats might be useful for other purposes.",
+      "parentUuid": "2a017890_7cc36922",
       "revId": "8979be8f7c9ab81969ef5bf1c6cdec6d2afbb6e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
