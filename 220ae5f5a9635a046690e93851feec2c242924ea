@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "48cb4351_742b6538",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-22T06:31:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "39add435_9198be9d",
+      "range": {
+        "startLine": 175,
+        "startChar": 0,
+        "endLine": 176,
+        "endChar": 39
+      },
+      "revId": "220ae5f5a9635a046690e93851feec2c242924ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "36cdc84a_20674e61",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-08-21T16:06:36Z",
       "side": 1,
       "message": "runtime.GOARCH",
+      "range": {
+        "startLine": 40,
+        "startChar": 1,
+        "endLine": 46,
+        "endChar": 28
+      },
+      "revId": "220ae5f5a9635a046690e93851feec2c242924ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5080da82_8af20e8b",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-08-22T06:31:37Z",
+      "side": 1,
+      "message": "Removed it as the updated comparisons should suffice",
+      "parentUuid": "36cdc84a_20674e61",
       "range": {
         "startLine": 40,
         "startChar": 1,
