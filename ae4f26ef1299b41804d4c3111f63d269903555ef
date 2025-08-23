@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "ae4f26ef1299b41804d4c3111f63d269903555ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "634a3f9c_8804b5b7",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-23T17:57:34Z",
+      "side": 1,
+      "message": "Without tcp startup config that would allow higher mtu, this shouldn\u0027t have any effect. Is the throughput any different?",
+      "revId": "ae4f26ef1299b41804d4c3111f63d269903555ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
