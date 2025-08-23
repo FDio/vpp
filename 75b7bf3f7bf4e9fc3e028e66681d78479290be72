@@ -33,6 +33,126 @@
       "message": "recheck",
       "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a19ed342_5fe39646",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "you should print bytes sent/received within interval not total, like throughput",
+      "range": {
+        "startLine": 1312,
+        "startChar": 52,
+        "endLine": 1313,
+        "endChar": 45
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "955cb8a9_acc38190",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1316,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 1316,
+        "startChar": 7,
+        "endLine": 1316,
+        "endChar": 35
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "430732e0_18a076df",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1325,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "again just interval bytes here",
+      "range": {
+        "startLine": 1324,
+        "startChar": 42,
+        "endLine": 1325,
+        "endChar": 36
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72b93fd0_a749059c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1560,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "periodic reports are not printed when you use run-time instead of bytes",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de191852_be9b1979",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1607,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "you are not printing last interval, your test is running 2 second but only 3 intervals are printed (0.0 - 0.5, 0.5 - 1.0 , 1.0 - 1.5)",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a19c9b52_500f4db7",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1635,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-23T10:54:11Z",
+      "side": 1,
+      "message": "can we somehow visually split periodic stats and final report? couple of \"-\" or what works for you.\nand maybe print interval time too, something like:\nInterval     TX Kbytes   RX Kbytes   Throughput (Bps)\n0.0 - 0.5    4112        0           1915152           \n0.5 - 1.0    8208        0           8388136           \n1.0 - 1.5    12304       0           8388400",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
