@@ -828,7 +828,7 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   app_worker_t *app_wrk;
   int rv;
 
-  HTTP_DBG (1, "hc [%u]%x req %x", hc->hc_hc_index, hc->c_thread_index,
+  HTTP_DBG (1, "hc [%u]%x req %x", hc->c_thread_index, hc->hc_hc_index,
 	    req->hr_req_handle);
 
   /* allocate app session and initialize */

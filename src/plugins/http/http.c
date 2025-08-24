@@ -570,8 +570,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc_handle.conn_index = new_hc_index;
   ts->opaque = hc_handle.as_u32;
 
-  HTTP_DBG (1, "half-open hc index %x,  hc [%u]%x", ho_hc_index,
-	    ts->thread_index, new_hc_index);
+  HTTP_DBG (1, "half-open hc index %x,  hc [%u]%x", ts->thread_index,
+	    ho_hc_index, new_hc_index);
 
   if ((rv = http_vfts[hc->version].transport_connected_callback (hc)))
     {
@@ -1257,7 +1257,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
     hr_handle.req_index, as->thread_index);
-  HTTP_DBG (1, "hc [%u]%x", hc_index, as->connection_index);
+  HTTP_DBG (1, "hc [%u]%x", as->thread_index, hc_index);
 
   hc = http_conn_get_w_thread (hc_index, as->thread_index);
 
@@ -1289,7 +1289,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
   http_conn_t *hc;
   http_req_handle_t hr_handle;
 
-  HTTP_DBG (1, "hc [%u]%x", vlib_get_thread_index (), req->hr_hc_index);
+  HTTP_DBG (1, "hc [%u]%x", req->c_thread_index, req->hr_hc_index);
 
   hr_handle.as_u32 = req->hr_req_handle;
   hc = http_conn_get_w_thread (req->hr_hc_index, req->c_thread_index);

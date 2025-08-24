@@ -1867,9 +1867,14 @@ http2_req_state_tunnel_tx (http_conn_t *hc, http2_req_t *req,
 {
   http2_conn_ctx_t *h2c;
 
-  ASSERT (!clib_llist_elt_is_linked (req, sched_list));
-
   HTTP_DBG (1, "tunnel received data from app");
+
+  /* proxy app can send new payload before we were able to send previous */
+  if (clib_llist_elt_is_linked (req, sched_list))
+    {
+      http_req_deschedule (&req->base, sp);
+      return HTTP_SM_STOP;
+    }
 
   /* add data back to stream scheduler */
   HTTP_DBG (1, "adding to data queue req_index %x",
