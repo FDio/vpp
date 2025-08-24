@@ -302,7 +302,7 @@ install-deps:
 		go version; \
     else \
         echo "Installing Go 1.23"; \
-		wget https://go.dev/dl/go1.23.10.linux-$(ARCH).tar.gz -O /tmp/go1.23.10.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.23.10.linux-$(ARCH).tar.gz; \
+		wget -t 2 https://go.dev/dl/go1.23.10.linux-$(ARCH).tar.gz -O /tmp/go1.23.10.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.23.10.linux-$(ARCH).tar.gz; \
 		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
 	fi
 	@sudo -E apt-get update
