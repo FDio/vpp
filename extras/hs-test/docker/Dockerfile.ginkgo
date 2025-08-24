@@ -8,11 +8,11 @@ ARG TARGETARCH
 ARG CODENAME
 ARG GO_VERSION=1.23.10
 RUN echo "I'm building for ${TARGETARCH}" \
-&& wget "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/go.tar.gz \
+&& wget -t 2 "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/go.tar.gz \
 && tar -xzf /tmp/go.tar.gz -C /usr/local \
 && rm /tmp/go.tar.gz
 
-RUN wget "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_28.3.2-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
+RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_28.3.2-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
 -O /tmp/docker-ce-cli.deb
 RUN dpkg -i /tmp/docker-ce-cli.deb
 
