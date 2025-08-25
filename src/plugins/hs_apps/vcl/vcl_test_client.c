@@ -1227,7 +1227,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	print_usage_and_exit ();
       }
 
-  if (argc < (optind + 2))
+  if (argc < (optind + 1))
     {
       vtwrn ("Invalid number of arguments!");
       print_usage_and_exit ();
