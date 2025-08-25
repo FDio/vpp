@@ -2183,6 +2183,7 @@ http2_handle_data_frame (http_conn_t *hc, http2_frame_header_t *fh)
       if (fh->stream_id <= h2c->last_opened_stream_id)
 	{
 	  HTTP_DBG (1, "stream closed, ignoring frame");
+	  http_io_ts_drain (hc, fh->length);
 	  http2_send_stream_error (hc, fh->stream_id,
 				   HTTP2_ERROR_STREAM_CLOSED, 0);
 	  return HTTP2_ERROR_NO_ERROR;
@@ -2777,7 +2778,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
       hc->state == HTTP_CONN_STATE_CLOSED)
     {
       HTTP_DBG (1, "nothing more to send, confirm close");
-      session_transport_closed_notify (&req->base.connection);
+      http2_stream_close (req, hc);
       if (req->flags & HTTP2_REQ_F_IS_PARENT)
 	{
 	  HTTP_DBG (1, "client app closed parent, closing connection");
@@ -2924,7 +2925,8 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
-      HTTP_DBG (1, "frame type 0x%02x len %u", fh.type, fh.length);
+      HTTP_DBG (1, "frame type 0x%02x len %u flags 0x%01x", fh.type, fh.length,
+		fh.flags);
 
       if ((h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION) &&
 	  fh.type != HTTP2_FRAME_TYPE_CONTINUATION)
