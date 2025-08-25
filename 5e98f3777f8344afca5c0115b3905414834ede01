@@ -33,6 +33,23 @@
       "message": "Looks like a fix of memory management logic, should be merged even if it makes performance of some tests worse. We will se such impacts (if any) in trending, so no need for me to test this before merge.",
       "revId": "5e98f3777f8344afca5c0115b3905414834ede01",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb62fa37_94de1b4f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-25T16:23:34Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "5e98f3777f8344afca5c0115b3905414834ede01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
