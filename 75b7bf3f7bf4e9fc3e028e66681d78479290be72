@@ -106,6 +106,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5a14d94_28d27a70",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T15:12:25Z",
+      "side": 1,
+      "message": "Decided on team meeting to keep it in, but optional.",
+      "parentUuid": "86b5fe30_39cdb117",
+      "range": {
+        "startLine": 1312,
+        "startChar": 52,
+        "endLine": 1313,
+        "endChar": 45
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "955cb8a9_acc38190",
