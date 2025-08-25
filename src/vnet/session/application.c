@@ -221,6 +221,7 @@ app_listener_alloc_and_init (application_t * app,
       if ((rv = session_listen (ls, sep)))
 	{
 	  ls = listen_session_get_from_handle (lh);
+	  app_listener = app_listener_get (al_index);
 	  session_free (ls);
 	  app_listener_free (app, app_listener);
 	  return rv;
