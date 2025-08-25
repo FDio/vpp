@@ -2646,6 +2646,25 @@ format_http2_req (u8 *s, va_list *args)
 }
 
 static u8 *
+format_http2_stream_state (u8 *s, va_list *args)
+{
+  http2_stream_state_t state = va_arg (*args, http2_stream_state_t);
+  u8 *t = 0;
+
+  switch (state)
+    {
+#define _(s, str)                                                             \
+  case HTTP2_STREAM_STATE_##s:                                                \
+    t = (u8 *) str;                                                           \
+    break;
+      foreach_http2_stream_state
+#undef _
+	default : return format (s, "unknown");
+    }
+  return format (s, "%s", t);
+}
+
+static u8 *
 http2_format_req (u8 *s, va_list *args)
 {
   u32 req_index = va_arg (*args, u32);
@@ -2659,8 +2678,8 @@ http2_format_req (u8 *s, va_list *args)
   s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http2_req, req, hc);
   if (verbose)
     {
-      s =
-	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, hc);
+      s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http2_stream_state,
+		  req->stream_state);
       if (verbose > 1)
 	s = format (s, "\n");
     }
