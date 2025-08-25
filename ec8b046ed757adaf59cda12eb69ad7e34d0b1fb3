@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb49cfed_9fdfb537",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-08-25T22:04:55Z",
+      "side": 1,
+      "message": "@Konstantin, removing the user \"fd.io JJB\" caused the Verified +1 score to be removed as well.  Thus rendering this patch unmergable.\n\nThe following will kick of the verify jobs again:\nrecheck",
+      "revId": "ec8b046ed757adaf59cda12eb69ad7e34d0b1fb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
