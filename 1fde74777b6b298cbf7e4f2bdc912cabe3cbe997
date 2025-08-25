@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05786041_e930a03c",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-25T06:54:53Z",
+      "side": 1,
+      "message": "Isn\u0027t this req marked with a flag for sending and proxy should not enq another send request? Either way, it\u0027s good for us to handle it here, in case apps are not careful.",
+      "revId": "1fde74777b6b298cbf7e4f2bdc912cabe3cbe997",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
