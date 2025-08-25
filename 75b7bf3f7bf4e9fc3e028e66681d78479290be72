@@ -84,6 +84,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "71a77f3b_7ac38bb7",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-08-25T15:02:45Z",
+      "side": 1,
+      "message": "to be honest I am more interested in numbers for interval to see if there is big fluctuation, not much interested in progress when measuring performance (e.g. iperf do not print totals in intervals). if you want total you should print also throughput total too.",
+      "parentUuid": "86b5fe30_39cdb117",
+      "range": {
+        "startLine": 1312,
+        "startChar": 52,
+        "endLine": 1313,
+        "endChar": 45
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "955cb8a9_acc38190",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 8
