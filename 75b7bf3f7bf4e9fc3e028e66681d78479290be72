@@ -60,6 +60,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "86b5fe30_39cdb117",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "Fair, but why not both? Total stats are also quite informative",
+      "parentUuid": "a19ed342_5fe39646",
+      "range": {
+        "startLine": 1312,
+        "startChar": 52,
+        "endLine": 1313,
+        "endChar": 45
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "955cb8a9_acc38190",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 8
@@ -71,6 +95,30 @@
       "writtenOn": "2025-08-23T10:54:11Z",
       "side": 1,
       "message": "same as above",
+      "range": {
+        "startLine": 1316,
+        "startChar": 7,
+        "endLine": 1316,
+        "endChar": 35
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8ed4d60_b651edb8",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1316,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "955cb8a9_acc38190",
       "range": {
         "startLine": 1316,
         "startChar": 7,
@@ -104,6 +152,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4daf3f25_b92f84e4",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1325,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "430732e0_18a076df",
+      "range": {
+        "startLine": 1324,
+        "startChar": 42,
+        "endLine": 1325,
+        "endChar": 36
+      },
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "72b93fd0_a749059c",
@@ -117,6 +189,24 @@
       "writtenOn": "2025-08-23T10:54:11Z",
       "side": 1,
       "message": "periodic reports are not printed when you use run-time instead of bytes",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c1a2760d_fe974f99",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1560,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "72b93fd0_a749059c",
       "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -138,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1ddedb4_5444489c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1607,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "That was deliberate as by that time the test is finished and we\u0027d be duplicating data in the report. But fair enough, it\u0027s better for consistency and required if we ere to print out delta bytes stats",
+      "parentUuid": "de191852_be9b1979",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a19c9b52_500f4db7",
@@ -151,6 +259,24 @@
       "writtenOn": "2025-08-23T10:54:11Z",
       "side": 1,
       "message": "can we somehow visually split periodic stats and final report? couple of \"-\" or what works for you.\nand maybe print interval time too, something like:\nInterval     TX Kbytes   RX Kbytes   Throughput (Bps)\n0.0 - 0.5    4112        0           1915152           \n0.5 - 1.0    8208        0           8388136           \n1.0 - 1.5    12304       0           8388400",
+      "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfe8b4e7_8255d7eb",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1635,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-25T12:56:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a19c9b52_500f4db7",
       "revId": "75b7bf3f7bf4e9fc3e028e66681d78479290be72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
