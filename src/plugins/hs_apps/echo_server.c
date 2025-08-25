@@ -372,11 +372,15 @@ echo_server_rx_callback (session_t * s)
   int actual_transfer;
   svm_fifo_t *tx_fifo, *rx_fifo;
   echo_server_main_t *esm = &echo_server_main;
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  clib_thread_index_t thread_index = s->thread_index;
   es_worker_t *wrk;
   es_session_t *es;
 
-  ASSERT (s->thread_index == thread_index);
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  /* Closes are treated as half-closes by session layer */
+  if (PREDICT_FALSE (s->flags & SESSION_F_APP_CLOSED))
+    return 0;
 
   rx_fifo = s->rx_fifo;
   tx_fifo = s->tx_fifo;
