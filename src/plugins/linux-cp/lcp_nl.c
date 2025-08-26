@@ -756,7 +756,8 @@ lcp_nl_drain_messages (void)
 void
 lcp_nl_pair_add_cb (lcp_itf_pair_t *pair)
 {
-  lcp_nl_drain_messages ();
+  if (!lcp_get_netlink_processing_active ())
+    lcp_nl_drain_messages ();
 }
 
 static clib_error_t *
