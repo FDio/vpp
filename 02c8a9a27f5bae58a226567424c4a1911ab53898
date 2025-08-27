@@ -94,6 +94,30 @@
       },
       "revId": "02c8a9a27f5bae58a226567424c4a1911ab53898",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0837708f_b9adf6ff",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2606,
+      "author": {
+        "id": 3242
+      },
+      "writtenOn": "2025-08-27T02:31:14Z",
+      "side": 1,
+      "message": "You\u0027re absolutely right about the reusability of the transport relate to `session_lookup_del_session`. So, I dug a little deeper into the test failure.\n\nWith `session_lookup_del_session` patch, test failure occurs on low-powered CPU like aarch64 and x86_64 with limited CPU usage. Here\u0027s what I observed from my own test.\n - less CPU power leads to more reuse of \"CLOSED connection\"\n - bunch of warnings that is like `session_delete:370: session 12818 hash delete rv -3` when test is failed.\n   - `tcp_handle_cleanups()` takes around 10 times longer if the warning is shown.\n - some RST packets even when the test wasn\u0027t failed\n   - RST packets come from `tcp_dispatch_pending_timers()`\n\nIt is not a logical problem at all that just calling `session_lookup_del_session` first then letting `tcp_handle_cleanups` do the job. But, in previous patch, it made more time consuming which, I guess, might lead to RST packets in `tcp_handle_cleanups` from duplicated `session_lookup_del_connection` from `session_lookup_del_session`.\nSo, I think, `TRANSPORT_CONNECTION_F_NO_LOOKUP` flags can be used here to suppress second `session_lookup_del_connection`. I\u0027ll test with the flag.",
+      "parentUuid": "472c1b2c_e42b36a7",
+      "range": {
+        "startLine": 2606,
+        "startChar": 0,
+        "endLine": 2606,
+        "endChar": 69
+      },
+      "revId": "02c8a9a27f5bae58a226567424c4a1911ab53898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
