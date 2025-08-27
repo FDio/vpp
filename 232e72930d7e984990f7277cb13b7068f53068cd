@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "86959547_92394a05",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-08-27T14:31:47Z",
+      "side": 1,
+      "message": "not for my use case, we can add another flag if needed....\nAlso look at consistent_qp",
+      "parentUuid": "6e6a2f5b_9177281a",
+      "revId": "232e72930d7e984990f7277cb13b7068f53068cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "9ff09365_ae902fa9",
