@@ -170,7 +170,7 @@ func TcpWithLossTest(s *VethsSuite) {
 	s.AssertNil(err)
 
 	if !s.CoverageRun {
-		s.Log("\nBaseline:  %v gbit/s\nWith loss: %v gbit/s", baseline, withLoss)
+		s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
 		s.AssertGreaterEqual(baseline, withLoss)
 		s.AssertGreaterEqual(withLoss, baseline*0.2)
 	}
@@ -225,7 +225,7 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	s.AssertNil(err)
 
 	if !s.CoverageRun {
-		s.Log("Baseline:  %v gbit/s\nWith loss: %v gbit/s", baseline, withLoss)
+		s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
 		s.AssertGreaterEqual(baseline, withLoss)
 		s.AssertGreaterEqual(withLoss, baseline*0.2)
 	}
