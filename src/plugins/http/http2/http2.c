@@ -3153,7 +3153,7 @@ http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
     return -1;
   if (h2c->req_num == h2c->settings.max_concurrent_streams)
     return app_worker_connect_notify (app_wrk, 0, SESSION_E_MAX_STREAMS_HIT,
-				      hc->hc_pa_app_api_ctx);
+				      parent_app_api_ctx);
   req = http2_conn_alloc_req (hc, 0);
   http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
   return http_conn_established (hc, &req->base, parent_app_api_ctx, 1);
