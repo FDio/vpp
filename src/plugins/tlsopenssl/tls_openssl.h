@@ -72,8 +72,8 @@ typedef struct openssl_main_
 {
   openssl_ctx_t ***ctx_pool;
   openssl_listen_ctx_t *lctx_pool;
-  SSL_CTX *default_client_ssl_ctx;
-  SSL_CTX *default_dtls_client_ssl_ctx;
+  SSL_CTX **default_client_ssl_ctx;
+  SSL_CTX **default_dtls_client_ssl_ctx;
 
   u8 **rx_bufs;
   u8 **tx_bufs;
