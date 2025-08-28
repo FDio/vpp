@@ -126,6 +126,7 @@ typedef struct tls_ctx_
   transport_proto_t tls_type;
   u8 *alpn_list;
   tls_alpn_proto_t alpn_selected;
+  u8 verify_cfg;
 } tls_ctx_t;
 
 typedef struct tls_main_

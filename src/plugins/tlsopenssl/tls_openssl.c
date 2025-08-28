@@ -910,6 +910,47 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
+  /* Hostname validation and strict check by name are disabled by default */
+  //   rv = openssl_client_init_verify (oc->ssl, (const char *)
+  //   ctx->srv_hostname,
+  // 				   0, 0);
+  //   if (rv)
+  //     {
+  //       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
+  //       return -1;
+  //     }
+
+  if (ctx->verify_cfg)
+    {
+      X509_VERIFY_PARAM *param = SSL_get0_param (oc->ssl);
+      if (!param)
+	{
+	  TLS_DBG (1, "Couldn't fetch SSL param");
+	  return -1;
+	}
+
+      if (set_hostname_strict_check)
+	X509_VERIFY_PARAM_set_hostflags (param,
+					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+      if (!X509_VERIFY_PARAM_set1_host (param, ctx->srv_hostname, 0))
+	{
+	  TLS_DBG (1, "Couldn't set hostname for verification");
+	  return -1;
+	}
+      SSL_set_verify (oc->ssl, SSL_VERIFY_PEER, 0);
+    }
+  if (!SSL_set_tlsext_host_name (oc->ssl, ctx->srv_hostname))
+    {
+      TLS_DBG (1, "Couldn't set hostname");
+      return -1;
+    }
+
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
+    {
+      TLS_DBG (1, "Couldn't set client certificate-key pair");
+    }
+
   if (ctx->tls_type == TRANSPORT_PROTO_TLS)
     {
       oc->rbio = BIO_new_tls (ctx->tls_session_handle);
@@ -923,19 +964,6 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
   SSL_set_connect_state (oc->ssl);
-
-  /* Hostname validation and strict check by name are disabled by default */
-  rv = openssl_client_init_verify (oc->ssl, (const char *) ctx->srv_hostname,
-				   0, 0);
-  if (rv)
-    {
-      TLS_DBG (1, "ERROR:verify init failed:%d", rv);
-      return -1;
-    }
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
-    {
-      TLS_DBG (1, "Couldn't set client certificate-key pair");
-    }
 
   /*
    * 2. Do the first steps in the handshake.
