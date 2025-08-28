@@ -22,6 +22,30 @@
       },
       "revId": "b662b0961d1968dd17515090f8a26b35ed518bbd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa891be4_ea203435",
+        "filename": "src/plugins/hsi/hsi.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-28T16:48:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ca5a472_0793396c",
+      "range": {
+        "startLine": 205,
+        "startChar": 34,
+        "endLine": 205,
+        "endChar": 39
+      },
+      "revId": "b662b0961d1968dd17515090f8a26b35ed518bbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

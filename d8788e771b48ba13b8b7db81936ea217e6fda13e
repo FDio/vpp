@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "28ba4147_0adf2c95",
+        "filename": "src/plugins/hsi/hsi.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 485,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-28T16:48:34Z",
+      "side": 1,
+      "message": "oops",
+      "parentUuid": "ac0bb624_83c562f2",
+      "range": {
+        "startLine": 485,
+        "startChar": 6,
+        "endLine": 485,
+        "endChar": 8
+      },
+      "revId": "d8788e771b48ba13b8b7db81936ea217e6fda13e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8f636dce_8d2c39ed",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-08-28T15:19:20Z",
       "side": 1,
       "message": "else if",
+      "range": {
+        "startLine": 490,
+        "startChar": 6,
+        "endLine": 490,
+        "endChar": 8
+      },
+      "revId": "d8788e771b48ba13b8b7db81936ea217e6fda13e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01bf9a39_63f03330",
+        "filename": "src/plugins/hsi/hsi.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-08-28T16:48:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f636dce_8d2c39ed",
       "range": {
         "startLine": 490,
         "startChar": 6,
