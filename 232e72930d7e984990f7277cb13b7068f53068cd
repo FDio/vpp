@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "c38e9d33_797a96b6",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2025-08-28T10:50:57Z",
+      "side": 1,
+      "message": "Maybe we can automatically enable consistent_qp once queue_per_thread is enabled?",
+      "parentUuid": "882d6bdc_5ca765ad",
+      "revId": "232e72930d7e984990f7277cb13b7068f53068cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "9ff09365_ae902fa9",
