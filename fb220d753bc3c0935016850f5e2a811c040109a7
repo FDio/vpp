@@ -33,6 +33,24 @@
       "message": "Let\u0027s use format_base10 here. That is, we\u0027re using powers of 10, not of 2 (typically used for memory)",
       "revId": "fb220d753bc3c0935016850f5e2a811c040109a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae2b02b6_efc11055",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1328,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-08-28T12:48:09Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a810586d_0579cc22",
+      "revId": "fb220d753bc3c0935016850f5e2a811c040109a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
