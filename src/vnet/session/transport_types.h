@@ -288,12 +288,34 @@ typedef enum transport_endpt_ext_cfg_type_
   TRANSPORT_ENDPT_EXT_CFG_HTTP,
 } transport_endpt_ext_cfg_type_t;
 
+#define foreach_tls_verify_cfg                                                \
+  _ (NONE, "none")                                                            \
+  _ (PEER, "peer")                                                            \
+  _ (PEER_CERT, "peer-cert")                                                  \
+  _ (HOSTNAME, "hostname")                                                    \
+  _ (HOSTNAME_STRICT, "hostname-strict")
+
+enum tls_verify_cfg_bit_
+{
+#define _(sym, name) TLS_VERIFY_CFG_BIT_##sym,
+  foreach_tls_verify_cfg
+#undef _
+};
+
+typedef enum tls_verify_cfg_
+{
+#define _(sym, name) TLS_VERIFY_F_##sym = 1 << TLS_VERIFY_CFG_BIT_##sym,
+  foreach_tls_verify_cfg
+#undef _
+} tls_verify_cfg_t;
+
 typedef struct transport_endpt_crypto_cfg_
 {
   u32 ckpair_index;  /**< index of ck pair in application crypto layer */
   u8 alpn_protos[4]; /**< ordered by preference for server */
   u8 crypto_engine;  /**< crypto engine requested */
-  u8 hostname[256];  /**< full domain len is 255 as per rfc 3986 */
+  tls_verify_cfg_t verify_cfg; /**< cert verification mode */
+  u8 hostname[256];	       /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;
 
 typedef struct transport_endpt_ext_cfg_
