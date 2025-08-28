@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86dbb930_6e879332",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-08-28T19:16:31Z",
+      "side": 1,
+      "message": "it might be better to get a rid of this limit instead of making it configurable...",
+      "revId": "1e2c7ddb9c47db187da728251aa4b271c4763cce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
