@@ -1018,7 +1018,12 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      itp =
 		ipsec_tun_protect_get (vnet_buffer (b)->ipsec.protect_index);
 
-	      if (PREDICT_TRUE (next_header == IP_PROTOCOL_IP_IN_IP))
+	      if (irt->is_tunnel) // IPSec tunnel mode
+		{
+		  next[0] = is_ip6 ? ESP_DECRYPT_NEXT_IP6_INPUT :
+				     ESP_DECRYPT_NEXT_IP4_INPUT;
+		}
+	      else if (next_header == IP_PROTOCOL_IP_IN_IP) // IPIP tunnel
 		{
 		  const ip4_header_t *ip4;
 
