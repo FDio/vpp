@@ -772,41 +772,42 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
   return 0;
 }
 
+// static int
+// openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
+// 			    int set_hostname_verification,
+// 			    int set_hostname_strict_check)
+// {
+//   if (set_hostname_verification)
+//     {
+//       X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
+//       if (!param)
+// 	{
+// 	  TLS_DBG (1, "Couldn't fetch SSL param");
+// 	  return -1;
+// 	}
+
+//       if (set_hostname_strict_check)
+// 	X509_VERIFY_PARAM_set_hostflags (param,
+// 					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+//       if (!X509_VERIFY_PARAM_set1_host (param, srv_hostname, 0))
+// 	{
+// 	  TLS_DBG (1, "Couldn't set hostname for verification");
+// 	  return -1;
+// 	}
+//       SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
+//     }
+//   if (!SSL_set_tlsext_host_name (ssl, srv_hostname))
+//     {
+//       TLS_DBG (1, "Couldn't set hostname");
+//       return -1;
+//     }
+//   return 0;
+// }
+
 static int
-openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
-			    int set_hostname_verification,
-			    int set_hostname_strict_check)
-{
-  if (set_hostname_verification)
-    {
-      X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
-      if (!param)
-	{
-	  TLS_DBG (1, "Couldn't fetch SSL param");
-	  return -1;
-	}
-
-      if (set_hostname_strict_check)
-	X509_VERIFY_PARAM_set_hostflags (param,
-					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
-
-      if (!X509_VERIFY_PARAM_set1_host (param, srv_hostname, 0))
-	{
-	  TLS_DBG (1, "Couldn't set hostname for verification");
-	  return -1;
-	}
-      SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
-    }
-  if (!SSL_set_tlsext_host_name (ssl, srv_hostname))
-    {
-      TLS_DBG (1, "Couldn't set hostname");
-      return -1;
-    }
-  return 0;
-}
-
-static int
-openssl_init_client_ctx (transport_proto_t proto)
+openssl_init_client_ctx (clib_thread_index_t thread_index,
+			 transport_proto_t proto)
 {
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_main_t *om = &openssl_main;
@@ -857,27 +858,75 @@ openssl_init_client_ctx (transport_proto_t proto)
     }
 
   if (proto == TRANSPORT_PROTO_TLS)
-    om->default_client_ssl_ctx = client_ssl_ctx;
+    om->default_client_ssl_ctx[thread_index] = client_ssl_ctx;
   else
-    om->default_dtls_client_ssl_ctx = client_ssl_ctx;
+    om->default_dtls_client_ssl_ctx[thread_index] = client_ssl_ctx;
 
   return 0;
 }
 
 static inline SSL_CTX *
-openssl_get_client_ssl_ctx (transport_proto_t proto)
+openssl_get_client_ssl_ctx (clib_thread_index_t thread_index,
+			    transport_proto_t proto)
 {
   openssl_main_t *om = &openssl_main;
 
   /* One time init of the default client ssl ctxs */
-  if (PREDICT_FALSE (!om->default_client_ssl_ctx))
+  if (PREDICT_FALSE (!om->default_client_ssl_ctx[thread_index]))
     {
-      openssl_init_client_ctx (TRANSPORT_PROTO_TLS);
-      openssl_init_client_ctx (TRANSPORT_PROTO_DTLS);
+      openssl_init_client_ctx (thread_index, TRANSPORT_PROTO_TLS);
+      openssl_init_client_ctx (thread_index, TRANSPORT_PROTO_DTLS);
     }
 
-  return proto == TRANSPORT_PROTO_TLS ? om->default_client_ssl_ctx :
-					om->default_dtls_client_ssl_ctx;
+  return proto == TRANSPORT_PROTO_TLS ?
+	   om->default_client_ssl_ctx[thread_index] :
+	   om->default_dtls_client_ssl_ctx[thread_index];
+}
+
+static int
+openssl_make_verify_flags (tls_verify_cfg_t verify_cfg)
+{
+  int flags = SSL_VERIFY_PEER;
+
+  if (verify_cfg & TLS_VERIFY_F_PEER)
+    flags |= SSL_VERIFY_PEER;
+  if (verify_cfg & TLS_VERIFY_F_PEER_CERT)
+    flags |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+
+  return flags;
+}
+
+static int
+openssl_client_set_verify (tls_ctx_t *ctx)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+
+  if (ctx->verify_cfg & (TLS_VERIFY_F_HOSTNAME | TLS_VERIFY_F_HOSTNAME_STRICT))
+    {
+      X509_VERIFY_PARAM *param = SSL_get0_param (oc->ssl);
+      if (!param)
+	{
+	  TLS_DBG (1, "Couldn't fetch SSL param");
+	  return -1;
+	}
+
+      if (ctx->verify_cfg & TLS_VERIFY_F_HOSTNAME_STRICT)
+	X509_VERIFY_PARAM_set_hostflags (param,
+					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+      if (ctx->verify_cfg & TLS_VERIFY_F_HOSTNAME)
+	{
+	  if (!X509_VERIFY_PARAM_set1_host (
+		param, (const char *) ctx->srv_hostname, 0))
+	    {
+	      TLS_DBG (1, "Couldn't set hostname for verification");
+	      return -1;
+	    }
+	}
+    }
+  SSL_set_verify (oc->ssl, openssl_make_verify_flags (ctx->verify_cfg), 0);
+
+  return 0;
 }
 
 static int
@@ -887,7 +936,8 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
   SSL_CTX *client_ssl_ctx;
   int rv, err;
 
-  client_ssl_ctx = openssl_get_client_ssl_ctx (ctx->tls_type);
+  client_ssl_ctx =
+    openssl_get_client_ssl_ctx (ctx->c_thread_index, ctx->tls_type);
   if (PREDICT_FALSE (!client_ssl_ctx))
     return -1;
 
@@ -910,6 +960,36 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
+  /* Hostname validation and strict check by name are disabled by default */
+  //   rv = openssl_client_init_verify (oc->ssl, (const char *)
+  //   ctx->srv_hostname,
+  // 				   0, 0);
+  //   if (rv)
+  //     {
+  //       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
+  //       return -1;
+  //     }
+
+  if (!SSL_set_tlsext_host_name (oc->ssl, (const char *) ctx->srv_hostname))
+    {
+      TLS_DBG (1, "Couldn't set hostname");
+      return -1;
+    }
+
+  if (ctx->verify_cfg)
+    {
+      if (openssl_client_set_verify (ctx))
+	{
+	  TLS_DBG (1, "ERROR: setting verify flags failed");
+	  return -1;
+	}
+    }
+
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
+    {
+      TLS_DBG (1, "Couldn't set client certificate-key pair");
+    }
+
   if (ctx->tls_type == TRANSPORT_PROTO_TLS)
     {
       oc->rbio = BIO_new_tls (ctx->tls_session_handle);
@@ -923,19 +1003,6 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
   SSL_set_connect_state (oc->ssl);
-
-  /* Hostname validation and strict check by name are disabled by default */
-  rv = openssl_client_init_verify (oc->ssl, (const char *) ctx->srv_hostname,
-				   0, 0);
-  if (rv)
-    {
-      TLS_DBG (1, "ERROR:verify init failed:%d", rv);
-      return -1;
-    }
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
-    {
-      TLS_DBG (1, "Couldn't set client certificate-key pair");
-    }
 
   /*
    * 2. Do the first steps in the handshake.
@@ -1491,6 +1558,9 @@ tls_openssl_init (vlib_main_t * vm)
   vec_validate (om->ctx_pool, num_threads - 1);
   vec_validate (om->rx_bufs, num_threads - 1);
   vec_validate (om->tx_bufs, num_threads - 1);
+  vec_validate (om->default_client_ssl_ctx, num_threads - 1);
+  vec_validate (om->default_dtls_client_ssl_ctx, num_threads - 1);
+
   for (i = 0; i < num_threads; i++)
     {
       vec_validate (om->rx_bufs[i], DTLSO_MAX_DGRAM);
