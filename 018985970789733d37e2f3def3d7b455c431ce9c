@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "43f3c4cd_c152f958",
+        "filename": "src/plugins/snort/dequeue.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-08-28T11:00:58Z",
+      "side": 1,
+      "message": "It is because of the trace where buffer is accessed.",
+      "parentUuid": "a7e901c5_25325310",
+      "revId": "018985970789733d37e2f3def3d7b455c431ce9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4cd2771d_c5ae59f6",
         "filename": "src/plugins/snort/format.c",
         "patchSetId": 5
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8128d04c_eb4cd087",
+        "filename": "src/plugins/snort/format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-08-28T11:00:58Z",
+      "side": 1,
+      "message": "I just keep the code style as other format functions in the file also uses the same CLIB_UNUSED macro instead of __clib_unused.\nWould you like to keep them or change all of them?",
+      "parentUuid": "4cd2771d_c5ae59f6",
+      "revId": "018985970789733d37e2f3def3d7b455c431ce9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f3862d6d_d71f89d5",
         "filename": "src/plugins/snort/format.c",
         "patchSetId": 5
@@ -48,6 +84,24 @@
       "writtenOn": "2025-08-27T11:20:46Z",
       "side": 1,
       "message": "same",
+      "revId": "018985970789733d37e2f3def3d7b455c431ce9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5703a4e3_a8c28d1d",
+        "filename": "src/plugins/snort/format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2025-08-28T11:00:58Z",
+      "side": 1,
+      "message": "ask the question as above.",
+      "parentUuid": "f3862d6d_d71f89d5",
       "revId": "018985970789733d37e2f3def3d7b455c431ce9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
