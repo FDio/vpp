@@ -772,38 +772,38 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
   return 0;
 }
 
-static int
-openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
-			    int set_hostname_verification,
-			    int set_hostname_strict_check)
-{
-  if (set_hostname_verification)
-    {
-      X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
-      if (!param)
-	{
-	  TLS_DBG (1, "Couldn't fetch SSL param");
-	  return -1;
-	}
+// static int
+// openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
+// 			    int set_hostname_verification,
+// 			    int set_hostname_strict_check)
+// {
+//   if (set_hostname_verification)
+//     {
+//       X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
+//       if (!param)
+// 	{
+// 	  TLS_DBG (1, "Couldn't fetch SSL param");
+// 	  return -1;
+// 	}
 
-      if (set_hostname_strict_check)
-	X509_VERIFY_PARAM_set_hostflags (param,
-					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+//       if (set_hostname_strict_check)
+// 	X509_VERIFY_PARAM_set_hostflags (param,
+// 					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
 
-      if (!X509_VERIFY_PARAM_set1_host (param, srv_hostname, 0))
-	{
-	  TLS_DBG (1, "Couldn't set hostname for verification");
-	  return -1;
-	}
-      SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
-    }
-  if (!SSL_set_tlsext_host_name (ssl, srv_hostname))
-    {
-      TLS_DBG (1, "Couldn't set hostname");
-      return -1;
-    }
-  return 0;
-}
+//       if (!X509_VERIFY_PARAM_set1_host (param, srv_hostname, 0))
+// 	{
+// 	  TLS_DBG (1, "Couldn't set hostname for verification");
+// 	  return -1;
+// 	}
+//       SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
+//     }
+//   if (!SSL_set_tlsext_host_name (ssl, srv_hostname))
+//     {
+//       TLS_DBG (1, "Couldn't set hostname");
+//       return -1;
+//     }
+//   return 0;
+// }
 
 static int
 openssl_init_client_ctx (transport_proto_t proto)
@@ -881,6 +881,52 @@ openssl_get_client_ssl_ctx (transport_proto_t proto)
 }
 
 static int
+openssl_make_verify_flags (tls_verify_cfg_t verify_cfg)
+{
+  int flags = SSL_VERIFY_PEER;
+
+  if (verify_cfg & TLS_VERIFY_F_PEER)
+    flags |= SSL_VERIFY_PEER;
+  if (verify_cfg & TLS_VERIFY_F_PEER_CERT)
+    flags |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+
+  return flags;
+}
+
+static int
+openssl_client_set_verify (tls_ctx_t *ctx)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+
+  if (ctx->verify_cfg & (TLS_VERIFY_F_HOSTNAME | TLS_VERIFY_F_HOSTNAME_STRICT))
+    {
+      X509_VERIFY_PARAM *param = SSL_get0_param (oc->ssl);
+      if (!param)
+	{
+	  TLS_DBG (1, "Couldn't fetch SSL param");
+	  return -1;
+	}
+
+      if (ctx->verify_cfg & TLS_VERIFY_F_HOSTNAME_STRICT)
+	X509_VERIFY_PARAM_set_hostflags (param,
+					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+      if (ctx->verify_cfg & TLS_VERIFY_F_HOSTNAME)
+	{
+	  if (!X509_VERIFY_PARAM_set1_host (
+		param, (const char *) ctx->srv_hostname, 0))
+	    {
+	      TLS_DBG (1, "Couldn't set hostname for verification");
+	      return -1;
+	    }
+	}
+    }
+  SSL_set_verify (oc->ssl, openssl_make_verify_flags (ctx->verify_cfg), 0);
+
+  return 0;
+}
+
+static int
 openssl_ctx_init_client (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
@@ -910,6 +956,36 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
+  /* Hostname validation and strict check by name are disabled by default */
+  //   rv = openssl_client_init_verify (oc->ssl, (const char *)
+  //   ctx->srv_hostname,
+  // 				   0, 0);
+  //   if (rv)
+  //     {
+  //       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
+  //       return -1;
+  //     }
+
+  if (!SSL_set_tlsext_host_name (oc->ssl, (const char *) ctx->srv_hostname))
+    {
+      TLS_DBG (1, "Couldn't set hostname");
+      return -1;
+    }
+
+  if (ctx->verify_cfg)
+    {
+      if (openssl_client_set_verify (ctx))
+	{
+	  TLS_DBG (1, "ERROR: setting verify flags failed");
+	  return -1;
+	}
+    }
+
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
+    {
+      TLS_DBG (1, "Couldn't set client certificate-key pair");
+    }
+
   if (ctx->tls_type == TRANSPORT_PROTO_TLS)
     {
       oc->rbio = BIO_new_tls (ctx->tls_session_handle);
@@ -923,19 +999,6 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
   SSL_set_connect_state (oc->ssl);
-
-  /* Hostname validation and strict check by name are disabled by default */
-  rv = openssl_client_init_verify (oc->ssl, (const char *) ctx->srv_hostname,
-				   0, 0);
-  if (rv)
-    {
-      TLS_DBG (1, "ERROR:verify init failed:%d", rv);
-      return -1;
-    }
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
-    {
-      TLS_DBG (1, "Couldn't set client certificate-key pair");
-    }
 
   /*
    * 2. Do the first steps in the handshake.
