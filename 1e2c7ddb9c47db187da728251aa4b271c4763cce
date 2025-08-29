@@ -16,6 +16,24 @@
       "message": "it might be better to get a rid of this limit instead of making it configurable...",
       "revId": "1e2c7ddb9c47db187da728251aa4b271c4763cce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3be85e3_9f75096f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3171
+      },
+      "writtenOn": "2025-08-29T07:05:39Z",
+      "side": 1,
+      "message": "Ideally - yes, but that would be way bigger and more risky change as I still don\u0027t understand reason behind the power-of-2 requirement in the code (I think I\u0027ve mentioned, that I have strong suspicion that it should be cache-line aligned instead, and actually even that restriction might be not necessary).\nI\u0027d say that is your call, but I\u0027m not sure I will be able to work on a bigger patchset in foreseeable future as I\u0027m in the middle of changing jobs and settling all legal stuff related to open source contributions would take unpredictable amount of time.",
+      "parentUuid": "86dbb930_6e879332",
+      "revId": "1e2c7ddb9c47db187da728251aa4b271c4763cce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
