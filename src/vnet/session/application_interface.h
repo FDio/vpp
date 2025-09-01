@@ -718,8 +718,8 @@ app_send_dgram_segs (app_session_t *s, svm_fifo_seg_t *segs, u32 data_nsegs,
 
   u32 seg_len = app_gen_dgram_header (segs, data_len, &s->transport, 0);
   return app_send_dgram_segs_raw (s->tx_fifo, &s->transport, s->vpp_evt_q,
-				  segs, data_nsegs, seg_len, SESSION_IO_EVT_TX,
-				  1 /* do_evt */, noblock);
+				  segs, data_nsegs + 1, seg_len,
+				  SESSION_IO_EVT_TX, 1 /* do_evt */, noblock);
 }
 
 always_inline int
