@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "743dc107_44b707ba",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 13
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-01T08:42:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8e4f6a03_bfc8ad53",
+      "range": {
+        "startLine": 49,
+        "startChar": 35,
+        "endLine": 49,
+        "endChar": 38
+      },
+      "revId": "abc7569d500138ec6af524569e1751e275b667bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bc5ceaa6_4d6ea370",
@@ -37,6 +61,24 @@
       "writtenOn": "2025-08-31T13:38:08Z",
       "side": 1,
       "message": "can we have also just \"report-interval\" with default 1 sec?",
+      "revId": "abc7569d500138ec6af524569e1751e275b667bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb7b24cf_5c40a39c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 1492,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-01T08:42:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bc5ceaa6_4d6ea370",
       "revId": "abc7569d500138ec6af524569e1751e275b667bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
