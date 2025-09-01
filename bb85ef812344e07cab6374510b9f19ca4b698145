@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "625a16aa_c3ffcad5",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 1495,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-01T09:26:17Z",
+      "side": 1,
+      "message": "not parsing value here",
+      "range": {
+        "startLine": 1495,
+        "startChar": 53,
+        "endLine": 1495,
+        "endChar": 56
+      },
+      "revId": "bb85ef812344e07cab6374510b9f19ca4b698145",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
