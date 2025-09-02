@@ -16,6 +16,7 @@ add_vpp_plugin(http
   http2/hpack.c
   http2/http2.c
   http2/frame.c
+  http3/qpack.c
   http.c
   http_buffer.c
   http_timer.c
