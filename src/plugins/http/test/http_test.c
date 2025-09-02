@@ -8,6 +8,7 @@
 #include <http/http_header_names.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
+#include <http/http3/qpack.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -1617,6 +1618,55 @@ http_test_h2_frame (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_qpack (vlib_main_t *vm)
+{
+  vlib_cli_output (vm, "qpack_decode_header");
+
+  static http3_error_t (*_qpack_decode_header) (
+    u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
+    u32 * value_len);
+
+  _qpack_decode_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_decode_header");
+
+  u8 *pos, *bp, *buf = 0, *input = 0;
+  uword blen;
+  u32 name_len, value_len;
+  http3_error_t rv;
+
+#define TEST(i, e_name, e_value)                                              \
+  vec_validate (input, sizeof (i) - 2);                                       \
+  memcpy (input, i, sizeof (i) - 1);                                          \
+  pos = input;                                                                \
+  vec_validate_init_empty (buf, 63, 0);                                       \
+  bp = buf;                                                                   \
+  blen = vec_len (buf);                                                       \
+  rv = _qpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
+			     &value_len);                                     \
+  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR && name_len == strlen (e_name) &&    \
+	      value_len == strlen (e_value) &&                                \
+	      !memcmp (buf, e_name, name_len) &&                              \
+	      !memcmp (buf + name_len, e_value, value_len) &&                 \
+	      vec_len (buf) == (blen + name_len + value_len) &&               \
+	      pos == vec_end (input) && bp == buf + name_len + value_len),    \
+	     "%U is decoded as '%U: %U'", format_hex_bytes, input,            \
+	     vec_len (input), format_http_bytes, buf, name_len,               \
+	     format_http_bytes, buf + name_len, value_len);                   \
+  vec_free (input);                                                           \
+  vec_free (buf);
+
+  /* literal field line with name reference, static table */
+  TEST ("\x51\x0B\x2F\x69\x6E\x64\x65\x78\x2E\x68\x74\x6D\x6C", ":path",
+	"/index.html");
+  /* indexed field line, static table */
+  TEST ("\xC1", ":path", "/");
+  /* literal field line with literal name */
+  TEST ("\x23\x61\x62\x63\x01\x5A", "abc", "Z");
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -1638,6 +1688,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_hpack (vm);
       else if (unformat (input, "h2-frame"))
 	res = http_test_h2_frame (vm);
+      else if (unformat (input, "qpack"))
+	res = http_test_qpack (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -1653,6 +1705,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_hpack (vm)))
 	    goto done;
 	  if ((res = http_test_h2_frame (vm)))
+	    goto done;
+	  if ((res = http_test_qpack (vm)))
 	    goto done;
 	}
       else
