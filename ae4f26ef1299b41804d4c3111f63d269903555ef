@@ -68,6 +68,24 @@
       "parentUuid": "634a3f9c_8804b5b7",
       "revId": "ae4f26ef1299b41804d4c3111f63d269903555ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e3f1bc1_adbc6d4a",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-03T08:17:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ea62eb2e_40923eb1",
+      "revId": "ae4f26ef1299b41804d4c3111f63d269903555ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
