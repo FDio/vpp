@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b0c09cf_d7b80ca2",
+        "filename": "extras/hs-test/infra/kind/suite_kind.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-03T10:05:43Z",
+      "side": 1,
+      "message": "isn\u0027t there anything which you can use to verify that restart is completed?",
+      "range": {
+        "startLine": 123,
+        "startChar": 1,
+        "endLine": 123,
+        "endChar": 29
+      },
+      "revId": "c8c2005d6cd9d7f201ebb52623e45fd1cb69e6a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
