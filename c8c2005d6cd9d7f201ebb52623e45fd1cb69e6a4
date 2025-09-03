@@ -70,6 +70,30 @@
       },
       "revId": "c8c2005d6cd9d7f201ebb52623e45fd1cb69e6a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5f719bf_94abf01e",
+        "filename": "extras/hs-test/infra/kind/suite_kind.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-03T12:56:53Z",
+      "side": 1,
+      "message": "found a way, fixed",
+      "parentUuid": "ee2a0a34_c9d1d6a6",
+      "range": {
+        "startLine": 123,
+        "startChar": 1,
+        "endLine": 123,
+        "endChar": 29
+      },
+      "revId": "c8c2005d6cd9d7f201ebb52623e45fd1cb69e6a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
