@@ -100,6 +100,14 @@ typedef struct
   uword pad_char;
 } format_info_t;
 
+static inline u8
+is_format_flag (uword c)
+{
+  if ((c == '-') || (c == '+') || (c == '=') || (c == '&') || (c == '%'))
+    return 1;
+  return 0;
+}
+
 static u8 *
 justify (u8 * s, format_info_t * fi, uword s_len_orig)
 {
@@ -165,25 +173,29 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
     .pad_char = ' ',
     .how_long = 0,
   };
+  u8 postfix = 0, postfix_w = 0;
 
   uword i;
 
   ASSERT (f[0] == '%');
-
-  switch (c = *++f)
+  while (is_format_flag (c = *++f))
     {
-    case '%':
-      /* %% => % */
-      vec_add1 (s, c);
-      f++;
-      goto done;
-
-    case '-':
-    case '+':
-    case '=':
-      fi.justify = c;
-      c = *++f;
-      break;
+      switch (c)
+	{
+	case '%':
+	  /* %% => % */
+	  vec_add1 (s, c);
+	  f++;
+	  goto done;
+	case '&':
+	  postfix = 1;
+	  break;
+	case '-':
+	case '+':
+	case '=':
+	  fi.justify = c;
+	  break;
+	}
     }
 
   /* Parse width0 . width1. */
@@ -377,6 +389,16 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	    s = (*u) (s, va);
 	  }
 	  break;
+	}
+      if (postfix)
+	{
+	  while (!is_white_space (c = *f))
+	    {
+	      postfix_w++;
+	      f++;
+	    }
+	  if (postfix_w)
+	    vec_add (s, f - postfix_w, postfix_w);
 	}
 
       s = justify (s, &fi, s_initial_len);
