@@ -16,6 +16,23 @@
       "message": "This change *looks* fine. That having been said, I\u0027ve seen a number of corner-case misbehaviors when working on the clib time code. Things to check might include [simulating] a transition from 1/1/1970 [time 0] to the present, simulating a jump back in time [non-volatile clock running fast, NTP corrects the problem after VPP starts] and so on.\n\nThe TCP host stack often has millions of concurrent timers running; you can imagine the mess if there\u0027s an unobvious flaw in this patch.",
       "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca03dfef_ba8d6971",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-09-03T15:20:37Z",
+      "side": 1,
+      "message": "@Ben,\nAre there any automated tests that verify the corner cases DaveB mentioned or only manual tests?\n\nIf there is only manual testing done, then please document how this gerrit change has been verified in the repo based docs and/or add automated tests.",
+      "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
