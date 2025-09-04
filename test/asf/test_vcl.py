@@ -622,6 +622,72 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
 @unittest.skipIf(
     "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
 )
+class VCLProgrammaticConfig(VCLTestCase):
+    """VCL Programmatic Configuration Tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(VCLProgrammaticConfig, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VCLProgrammaticConfig, cls).tearDownClass()
+
+    def setUp(self):
+        self.sapi_server_sock = "default"
+        self.cfg_timeout = "3"
+        self.test_timeout = 5
+
+        self.vapi.session_enable_disable(is_enable=1)
+        self.create_loopback_interfaces(2)
+        for i in self.lo_interfaces:
+            i.admin_up()
+            i.config_ip4()
+
+    def tearDown(self):
+        for i in self.lo_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+            i.remove_vpp_config()
+        super(VCLProgrammaticConfig, self).tearDown()
+
+    def test_vcl_cfg_test_programmatic_config(self):
+        """run VCL configuration test with programmatic config and session creation"""
+        # Test the vcl_cfg_test application which uses programmatic VCL configuration
+        # and creates a session to test the configuration-based app creation
+
+        # Set up minimal VCL environment - let vcl_cfg_test handle all configs programmatically
+        sapi_sock = "%s/app_ns_sockets/%s" % (self.tempdir, self.sapi_server_sock)
+        server_args = [
+            "-s",
+            self.loop0.local_ip4,
+            "-t",
+            self.cfg_timeout,
+            "-a",
+            sapi_sock,
+            "-d",
+            "2",
+        ]
+
+        worker_cfg_test = VCLAppWorker(
+            "vcl_cfg_test", server_args, self.logger, None, "server"
+        )
+        worker_cfg_test.start()
+        self.sleep(0.5)
+
+        # Check with VPP CLI that the session is bound in VPP
+        session_output = self.vapi.cli("show session verbose")
+        self.logger.debug(session_output)
+        self.assertIn(self.loop0.local_ip4, session_output)
+        self.assertIn("[U]", session_output)
+        self.assertIn("LISTEN", session_output)
+
+        worker_cfg_test.join(self.test_timeout)
+
+
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
 class VCLThruHostStackCLUDPBinds(VCLTestCase):
     """VCL Thru Host Stack CL UDP Binds"""
 

@@ -908,6 +908,50 @@ vcl_format_ip46_address (u8 *s, va_list *args)
 		  format (s, "%U", vcl_format_ip6_address, &ip46->ip6);
 }
 
+void
+vcl_heap_alloc (void)
+{
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
+  void *vcl_mem;
+  void *heap;
+
+  vcl_mem = mmap (0, vcl_cfg->heapsize, PROT_READ | PROT_WRITE,
+		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  if (vcl_mem == MAP_FAILED)
+    {
+      VDBG (0,
+	    "ERROR: mmap(0, %lu == 0x%lx, "
+	    "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
+	    "-1, 0) failed!",
+	    (unsigned long) vcl_cfg->heapsize,
+	    (unsigned long) vcl_cfg->heapsize);
+      ASSERT (vcl_mem != MAP_FAILED);
+      return;
+    }
+  heap = clib_mem_init (vcl_mem, vcl_cfg->heapsize);
+  if (!heap)
+    {
+      fprintf (stderr, "VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());
+      ASSERT (heap);
+      return;
+    }
+  vcl_mem = clib_mem_alloc (sizeof (_vppcom_main));
+  if (!vcl_mem)
+    {
+      clib_warning ("VCL<%d>: ERROR: clib_mem_alloc() failed!", getpid ());
+      ASSERT (vcl_mem);
+      return;
+    }
+
+  clib_memcpy (vcl_mem, &_vppcom_main, sizeof (_vppcom_main));
+  vcm = vcl_mem;
+
+  if (vcm->debug > 0)
+    fprintf (stderr, "allocated VCL heap = %p, size %lu (0x%lx)\n", heap,
+	     (unsigned long) vcl_cfg->heapsize,
+	     (unsigned long) vcl_cfg->heapsize);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
