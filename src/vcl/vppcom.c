@@ -1462,13 +1462,11 @@ vcl_api_handle_disconnect (vcl_worker_t *wrk)
   vcl_worker_detach_sessions (wrk);
 }
 
-/*
- * VPPCOM Public API functions
- */
-int
-vppcom_app_create (const char *app_name)
+/* Internal helper function for common VCL app initialization */
+static int
+vppcom_app_init_common (const char *app_name)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   int rv;
 
   if (vcm->is_init)
@@ -1478,12 +1476,18 @@ vppcom_app_create (const char *app_name)
     }
 
   vcm->is_init = 1;
-  vppcom_cfg (&vcm->cfg);
   vcl_cfg = &vcm->cfg;
 
   vcm->main_cpu = pthread_self ();
   vcm->main_pid = getpid ();
-  vcm->app_name = format (0, "%s", app_name);
+
+  /* Set app name: use provided name if available, otherwise use PID-based name
+   */
+  if (app_name)
+    vcm->app_name = format (0, "%s", app_name);
+  else
+    vcm->app_name = format (0, "vcl_app_%d", vcm->main_pid);
+
   vcl_init_epoll_fns ();
   fifo_segment_main_init (&vcm->segment_main, (uword) ~0,
 			  20 /* timeout in secs */);
@@ -1504,10 +1508,98 @@ vppcom_app_create (const char *app_name)
       return rv;
     }
 
-  VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
+  /* Debug message shows the actual app name that was set */
+  VDBG (0, "app_name '%s', my_client_index %d (0x%x)", vcm->app_name,
 	vcm->workers[0].api_client_handle, vcm->workers[0].api_client_handle);
 
   return VPPCOM_OK;
+}
+
+/*
+ * VPPCOM Public API functions
+ */
+int
+vppcom_app_create (const char *app_name)
+{
+  /* Initialize VCL config with defaults from environment/config files */
+  vppcom_cfg (&vcm->cfg);
+
+  /* Use common initialization logic */
+  return vppcom_app_init_common (app_name);
+}
+
+/* Helper function to copy user configuration to VCL configuration */
+static void
+vppcom_cfg_apply_user_config (vcl_cfg_t *vcl_cfg, const vppcom_cfg_t *user_cfg)
+{
+  /* Copy basic configuration fields individually to avoid vector corruption */
+  vcl_cfg->heapsize = user_cfg->heapsize;
+  vcl_cfg->max_workers = user_cfg->max_workers;
+  vcl_cfg->segment_baseva = user_cfg->segment_baseva;
+  vcl_cfg->segment_size = user_cfg->segment_size;
+  vcl_cfg->add_segment_size = user_cfg->add_segment_size;
+  vcl_cfg->preallocated_fifo_pairs = user_cfg->preallocated_fifo_pairs;
+  vcl_cfg->rx_fifo_size = user_cfg->rx_fifo_size;
+  vcl_cfg->tx_fifo_size = user_cfg->tx_fifo_size;
+  vcl_cfg->event_queue_size = user_cfg->event_queue_size;
+  vcl_cfg->app_proxy_transport_tcp = user_cfg->app_proxy_transport_tcp;
+  vcl_cfg->app_proxy_transport_udp = user_cfg->app_proxy_transport_udp;
+  vcl_cfg->app_scope_local = user_cfg->app_scope_local;
+  vcl_cfg->app_scope_global = user_cfg->app_scope_global;
+  vcl_cfg->namespace_secret = user_cfg->namespace_secret;
+  vcl_cfg->use_mq_eventfd = user_cfg->use_mq_eventfd;
+  vcl_cfg->app_timeout = user_cfg->app_timeout;
+  vcl_cfg->session_timeout = user_cfg->session_timeout;
+  vcl_cfg->tls_engine = user_cfg->tls_engine;
+  vcl_cfg->mt_wrk_supported = user_cfg->mt_wrk_supported;
+  vcl_cfg->huge_page = user_cfg->huge_page;
+  vcl_cfg->app_original_dst = user_cfg->app_original_dst;
+
+  /* Handle event_log_path */
+  if (user_cfg->event_log_path)
+    vcl_cfg->event_log_path = user_cfg->event_log_path;
+
+  if (user_cfg->namespace_id)
+    vcl_cfg->namespace_id = format (0, "%s", user_cfg->namespace_id);
+
+  if (user_cfg->vpp_bapi_socket_name)
+    vcl_cfg->vpp_bapi_socket_name =
+      format (0, "%s", user_cfg->vpp_bapi_socket_name);
+
+  if (user_cfg->vpp_app_socket_api)
+    vcl_cfg->vpp_app_socket_api =
+      format (0, "%s", user_cfg->vpp_app_socket_api);
+
+  vcm->debug = user_cfg->debug_level;
+}
+
+int
+vppcom_app_create_with_config (vppcom_cfg_t *user_cfg)
+{
+  /* Initialize VCL config with defaults first */
+  vppcom_cfg_init (&vcm->cfg);
+
+  /* Set heapsize from user config before heap initialization */
+  if (user_cfg && user_cfg->heapsize > 0)
+    vcm->cfg.heapsize = user_cfg->heapsize;
+
+  /* Initialize heap before any memory allocation operations */
+  vcl_heap_alloc ();
+
+  /* Apply remaining user-provided configuration */
+  if (user_cfg)
+    {
+      VCFG_DBG (0, "VCL config was provided. Applying user config");
+      vppcom_cfg_apply_user_config (&vcm->cfg, user_cfg);
+    }
+  else
+    VCFG_DBG (0, "VCL config was not provided, using default config");
+
+  /* Determine app name: use provided name if available, otherwise NULL for
+   * PID-based name */
+  const char *app_name =
+    (user_cfg && user_cfg->app_name) ? user_cfg->app_name : NULL;
+  return vppcom_app_init_common (app_name);
 }
 
 void
