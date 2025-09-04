@@ -184,6 +184,7 @@ typedef struct
   u16 last_avail_idx;
   u16 last_used_idx;
   u16 n_since_last_int;
+  clib_spinlock_t int_lock;
   union
   {
     vnet_virtio_vring_desc_t *desc;

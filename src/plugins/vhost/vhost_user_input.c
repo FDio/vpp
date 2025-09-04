@@ -339,8 +339,12 @@ vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_intf_t * vui,
   if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
     vhost_user_send_call (vm, vui, txvq);
 
+  clib_spinlock_lock_if_init (&rxvq->int_lock);
+
   if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
     vhost_user_send_call (vm, vui, rxvq);
+
+  clib_spinlock_unlock_if_init (&rxvq->int_lock);
 }
 
 static_always_inline void
