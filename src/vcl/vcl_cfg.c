@@ -28,7 +28,7 @@ vppcom_main_t _vppcom_main = {
 vppcom_main_t *vcm = &_vppcom_main;
 
 void
-vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg_init (vcl_cfg_t *vcl_cfg)
 {
   ASSERT (vcl_cfg);
 
@@ -45,15 +45,10 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   vcl_cfg->event_log_path = "/dev/shm";
 }
 
-#define VCFG_DBG(_lvl, _fmt, _args...) 			\
-{							\
-  if (vcm->debug > _lvl) 				\
-    fprintf (stderr, _fmt "\n", ##_args);		\
-}
 void
-vppcom_cfg_heapsize (char *conf_fname)
+vcl_cfg_parse_heapsize (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   FILE *fp;
   char inbuf[4096];
   int argc = 1;
@@ -63,8 +58,6 @@ vppcom_cfg_heapsize (char *conf_fname)
   int i;
   u8 *sizep;
   u32 size;
-  void *vcl_mem;
-  void *heap;
 
   fp = fopen (conf_fname, "r");
   if (fp == NULL)
@@ -180,46 +173,12 @@ defaulted:
     fclose (fp);
   if (argv != NULL)
     free (argv);
-
-  vcl_mem = mmap (0, vcl_cfg->heapsize, PROT_READ | PROT_WRITE,
-		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  if (vcl_mem == MAP_FAILED)
-    {
-      VCFG_DBG (0, "VCL<%d>: ERROR: mmap(0, %lu == 0x%lx, "
-		"PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
-		"-1, 0) failed!", getpid (),
-		(unsigned long) vcl_cfg->heapsize,
-		(unsigned long) vcl_cfg->heapsize);
-      ASSERT (vcl_mem != MAP_FAILED);
-      return;
-    }
-  heap = clib_mem_init_thread_safe (vcl_mem, vcl_cfg->heapsize);
-  if (!heap)
-    {
-      fprintf (stderr, "VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());
-      ASSERT (heap);
-      return;
-    }
-  vcl_mem = clib_mem_alloc (sizeof (_vppcom_main));
-  if (!vcl_mem)
-    {
-      clib_warning ("VCL<%d>: ERROR: clib_mem_alloc() failed!", getpid ());
-      ASSERT (vcl_mem);
-      return;
-    }
-
-  clib_memcpy (vcl_mem, &_vppcom_main, sizeof (_vppcom_main));
-  vcm = vcl_mem;
-
-  VCFG_DBG (0, "VCL<%d>: allocated VCL heap = %p, size %lu (0x%lx)",
-	    getpid (), heap, (unsigned long) vcl_cfg->heapsize,
-	    (unsigned long) vcl_cfg->heapsize);
 }
 
 void
 vppcom_cfg_read_file (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   int fd;
   unformat_input_t _input, *input = &_input;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -506,10 +465,14 @@ file_done:
 }
 
 void
-vppcom_cfg (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg (vcl_cfg_t *vcl_cfg)
 {
   char *conf_fname, *env_var_str;
 
+  VCFG_DBG (0,
+	    "VCL<%d>: Attempting to read configuration from env variables and "
+	    "config file.",
+	    getpid ());
   vppcom_cfg_init (vcl_cfg);
   env_var_str = getenv (VPPCOM_ENV_DEBUG);
   if (env_var_str)
@@ -531,7 +494,8 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
   conf_fname = getenv (VPPCOM_ENV_CONF);
   if (!conf_fname)
     conf_fname = VPPCOM_CONF_DEFAULT;
-  vppcom_cfg_heapsize (conf_fname);
+  vcl_cfg_parse_heapsize (conf_fname);
+  vcl_heap_alloc ();
   vppcom_cfg_read_file (conf_fname);
 
   /* Regrab cfg after heap initialization */
