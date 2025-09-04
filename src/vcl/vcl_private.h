@@ -193,34 +193,7 @@ typedef struct vcl_session_
   transport_endpt_attr_t *tep_attrs; /**< vector of attributes */
 } vcl_session_t;
 
-typedef struct vppcom_cfg_t_
-{
-  uword heapsize;
-  u32 max_workers;
-  uword segment_baseva;
-  uword segment_size;
-  uword add_segment_size;
-  u32 preallocated_fifo_pairs;
-  u32 rx_fifo_size;
-  u32 tx_fifo_size;
-  u32 event_queue_size;
-  u8 app_proxy_transport_tcp;
-  u8 app_proxy_transport_udp;
-  u8 app_scope_local;
-  u8 app_scope_global;
-  u8 *namespace_id;
-  u64 namespace_secret;
-  u8 use_mq_eventfd;
-  f64 app_timeout;
-  f64 session_timeout;
-  char *event_log_path;
-  u8 *vpp_app_socket_api;	/**< app socket api socket file name */
-  u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
-  u32 tls_engine;
-  u8 mt_wrk_supported;
-  u8 huge_page;
-  u8 app_original_dst;
-} vppcom_cfg_t;
+/* vppcom_cfg_t is now defined in vppcom.h public header */
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
 

@@ -1515,6 +1515,126 @@ vppcom_app_create (const char *app_name)
   return VPPCOM_OK;
 }
 
+/* Forward declarations from vcl_cfg.c */
+void vppcom_cfg_init (vppcom_cfg_t *vcl_cfg);
+void vppcom_cfg_heapsize (char *conf_fname);
+
+/* Helper function to copy user configuration to VCL configuration */
+static void
+vppcom_cfg_apply_user_config (vppcom_cfg_t *vcl_cfg,
+			      const vppcom_cfg_t *user_cfg)
+{
+  /* Copy basic configuration fields individually to avoid vector corruption */
+  vcl_cfg->heapsize = user_cfg->heapsize;
+  vcl_cfg->max_workers = user_cfg->max_workers;
+  vcl_cfg->segment_baseva = user_cfg->segment_baseva;
+  vcl_cfg->segment_size = user_cfg->segment_size;
+  vcl_cfg->add_segment_size = user_cfg->add_segment_size;
+  vcl_cfg->preallocated_fifo_pairs = user_cfg->preallocated_fifo_pairs;
+  vcl_cfg->rx_fifo_size = user_cfg->rx_fifo_size;
+  vcl_cfg->tx_fifo_size = user_cfg->tx_fifo_size;
+  vcl_cfg->event_queue_size = user_cfg->event_queue_size;
+  vcl_cfg->app_proxy_transport_tcp = user_cfg->app_proxy_transport_tcp;
+  vcl_cfg->app_proxy_transport_udp = user_cfg->app_proxy_transport_udp;
+  vcl_cfg->app_scope_local = user_cfg->app_scope_local;
+  vcl_cfg->app_scope_global = user_cfg->app_scope_global;
+  vcl_cfg->namespace_secret = user_cfg->namespace_secret;
+  vcl_cfg->use_mq_eventfd = user_cfg->use_mq_eventfd;
+  vcl_cfg->app_timeout = user_cfg->app_timeout;
+  vcl_cfg->session_timeout = user_cfg->session_timeout;
+  vcl_cfg->tls_engine = user_cfg->tls_engine;
+  vcl_cfg->mt_wrk_supported = user_cfg->mt_wrk_supported;
+  vcl_cfg->huge_page = user_cfg->huge_page;
+  vcl_cfg->app_original_dst = user_cfg->app_original_dst;
+
+  /* Handle event_log_path */
+  if (user_cfg->event_log_path)
+    vcl_cfg->event_log_path = user_cfg->event_log_path;
+
+  /* Handle dynamic allocations for vector/string fields */
+  if (user_cfg->namespace_id)
+    {
+      u32 ns_id_vec_len = vec_len (user_cfg->namespace_id);
+      vec_reset_length (vcl_cfg->namespace_id);
+      vec_validate (vcl_cfg->namespace_id, ns_id_vec_len - 1);
+      clib_memcpy (vcl_cfg->namespace_id, user_cfg->namespace_id,
+		   ns_id_vec_len);
+    }
+
+  if (user_cfg->vpp_bapi_socket_name)
+    {
+      vcl_cfg->vpp_bapi_socket_name =
+	format (0, "%s", user_cfg->vpp_bapi_socket_name);
+    }
+
+  if (user_cfg->vpp_app_socket_api)
+    {
+      vcl_cfg->vpp_app_socket_api =
+	format (0, "%s", user_cfg->vpp_app_socket_api);
+    }
+}
+
+int
+vppcom_app_create_with_config (const char *app_name, vppcom_cfg_t *user_cfg)
+{
+  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  int rv;
+
+  if (vcm->is_init)
+    {
+      VDBG (1, "already initialized");
+      return VPPCOM_EEXIST;
+    }
+
+  vcm->is_init = 1;
+
+  /* Initialize VCL config with defaults first */
+  vppcom_cfg_init (&vcm->cfg);
+
+  /* Initialize heap before any memory allocation operations */
+  vppcom_cfg_heapsize (0); /* Pass NULL for default config */
+
+  /* Apply user-provided configuration instead of reading environment variables
+   */
+  if (user_cfg)
+    {
+      vppcom_cfg_apply_user_config (&vcm->cfg, user_cfg);
+    }
+
+  vcl_cfg = &vcm->cfg;
+
+  vcm->main_cpu = pthread_self ();
+  vcm->main_pid = getpid ();
+  vcm->app_name = format (0, "%s", app_name);
+  vcl_init_epoll_fns ();
+  fifo_segment_main_init (&vcm->segment_main, (uword) ~0,
+			  20 /* timeout in secs */);
+  pool_alloc (vcm->workers, vcl_cfg->max_workers);
+  clib_spinlock_init (&vcm->workers_lock);
+  clib_spinlock_init (&vcm->reattach_lock);
+  clib_rwlock_init (&vcm->segment_table_lock);
+  atexit (vppcom_app_exit);
+  vcl_elog_init (vcm);
+  vcl_evt (VCL_EVT_INIT, vcm);
+
+  /* Allocate default worker */
+  vcl_worker_alloc_and_init ();
+
+  if ((rv = vcl_api_attach ()))
+    {
+      vppcom_app_destroy ();
+      return rv;
+    }
+
+  VDBG (0,
+	"app_name '%s', my_client_index %d (0x%x) [config provided "
+	"programmatically]",
+	app_name, vcm->workers[0].api_client_handle,
+	vcm->workers[0].api_client_handle);
+
+  return VPPCOM_OK;
+}
+
 void
 vppcom_app_destroy (void)
 {
