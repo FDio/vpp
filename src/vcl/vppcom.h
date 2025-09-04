@@ -207,11 +207,15 @@ typedef vppcom_data_segment_t vppcom_data_segments_t[2];
 
 typedef unsigned long vcl_si_set;
 
+/* Forward declarations */
+typedef struct vppcom_cfg_t_ vppcom_cfg_t;
+
 /*
  * VPPCOM Public API Functions
  */
 
 extern int vppcom_app_create (const char *app_name);
+extern int vppcom_app_create_with_config (const char *app_name, vppcom_cfg_t *vcl_cfg);
 extern void vppcom_app_destroy (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
