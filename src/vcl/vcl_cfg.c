@@ -28,7 +28,7 @@ vppcom_main_t _vppcom_main = {
 vppcom_main_t *vcm = &_vppcom_main;
 
 void
-vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg_init (vcl_cfg_t * vcl_cfg)
 {
   ASSERT (vcl_cfg);
 
@@ -53,7 +53,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 void
 vppcom_cfg_heapsize (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   FILE *fp;
   char inbuf[4096];
   int argc = 1;
@@ -219,7 +219,7 @@ defaulted:
 void
 vppcom_cfg_read_file (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   int fd;
   unformat_input_t _input, *input = &_input;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -506,7 +506,7 @@ file_done:
 }
 
 void
-vppcom_cfg (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg (vcl_cfg_t * vcl_cfg)
 {
   char *conf_fname, *env_var_str;
 

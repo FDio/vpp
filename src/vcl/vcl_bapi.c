@@ -509,7 +509,7 @@ static int
 vcl_bapi_connect_to_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   int rv = VPPCOM_OK;
   api_main_t *am;
   u8 *wrk_name;
@@ -563,7 +563,7 @@ void
 vcl_bapi_disconnect_from_vpp (void)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
 
   if (vcl_cfg->vpp_bapi_socket_name)
     vl_socket_client_disconnect2 (&wrk->bapi_sock_ctx);
