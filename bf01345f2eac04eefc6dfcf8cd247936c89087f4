@@ -1,0 +1,274 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "64cf7bdd_64bc1a2e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "Looks good, just some nitpicks. I\u0027m not sure about the asserts I commented in kind_test.go, maybe you didn\u0027t put them there on purpose.",
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6981de5_8a03a972",
+        "filename": "extras/hs-test/infra/kind/finalizer.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "feel free to use exec.Command(kubectl wait...) to wait for pods (if possible)",
+      "range": {
+        "startLine": 126,
+        "startChar": 1,
+        "endLine": 128,
+        "endChar": 29
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1ffd933_5ab000d6",
+        "filename": "extras/hs-test/infra/kind/finalizer.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "kubectl wait cmd could be used here if i\u0027m not mistaken",
+      "range": {
+        "startLine": 157,
+        "startChar": 2,
+        "endLine": 159,
+        "endChar": 30
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e3bdfb8_3e4052d4",
+        "filename": "extras/hs-test/infra/kind/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "cmd :\u003d exec.Command(...)\ns.Log(cmd.String())",
+      "range": {
+        "startLine": 60,
+        "startChar": 1,
+        "endLine": 61,
+        "endChar": 47
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b61267d5_ffe41410",
+        "filename": "extras/hs-test/infra/kind/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "return cmd.CombinedOutput()\nlogging output and errors should be done in tests",
+      "range": {
+        "startLine": 62,
+        "startChar": 1,
+        "endLine": 69,
+        "endChar": 27
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5503b361_970385c4",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil(err, \"Failed to create diverse base policies\")",
+      "range": {
+        "startLine": 130,
+        "startChar": 1,
+        "endLine": 133,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb73204b_3c7b25a7",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "Test either fails on the asserts above or it doesn\u0027t, checking len(final...) is redundant.",
+      "range": {
+        "startLine": 207,
+        "startChar": 1,
+        "endLine": 212,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54661b51_732e3d5d",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil",
+      "range": {
+        "startLine": 286,
+        "startChar": 1,
+        "endLine": 287,
+        "endChar": 42
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "667d2f47_1a676558",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil",
+      "range": {
+        "startLine": 306,
+        "startChar": 2,
+        "endLine": 308,
+        "endChar": 3
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43951086_f4f176b8",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil?",
+      "range": {
+        "startLine": 318,
+        "startChar": 1,
+        "endLine": 321,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d587a0f8_c65a9d8b",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil",
+      "range": {
+        "startLine": 425,
+        "startChar": 1,
+        "endLine": 426,
+        "endChar": 66
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "169291f1_63a27f10",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-09-04T07:06:49Z",
+      "side": 1,
+      "message": "s.AssertNil",
+      "range": {
+        "startLine": 438,
+        "startChar": 2,
+        "endLine": 439,
+        "endChar": 67
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
