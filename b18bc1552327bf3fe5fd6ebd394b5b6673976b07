@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8276f891_3c052ace",
+        "filename": "src/svm/fifo_types.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "Although this is much clearer, I\u0027m not liking too much the fact that we\u0027re polluting fifo types with info about components that they should not be aware of/care about, like seg_ctx and ct_seg. \n\nBut I could be convinced otherwise. One could argue that lines 97 to 109 is pollution from tcp so my argument is not too great ...",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3cde0e63_ec171015",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "If this succeeds we can store in `cs-\u003erx_fifo` and `cs-\u003etx_fifo` pointers to `cct-\u003eclient_rx_fifo` and `cct-\u003eclient_tx_fifo`, such that we can avoid calls to `sm_custom_segment_dec_session_count` when freeing the fifos",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3eba6823_3c9276d7",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "Hm, which of the apis are expected to expand the pool?",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "06584390_e5245c1f",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "Not nice but, since we can\u0027t properly indicate that we want ct sessions, let\u0027s create `app_worker_init_accepted_ct` and in it call `segment_manager_alloc_session_fifos_ct`, to avoid polluting `segment_manager_alloc_session_fifos` with tests of session state and transport type",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd0ef748_2a32b2d7",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "Wonder if we can also offload this to the segment manager. We should call/implement this logic:\n- for server side, whenever we free fifos marked as being used for ct\n- for client, whenever we free non-ct fifos we should have a flag and pointers to the ct fifos.",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47b7877e_100c8c65",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-04T03:44:43Z",
+      "side": 1,
+      "message": "Let\u0027s avoid this by using `app_worker_init_accepted_ct`",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
