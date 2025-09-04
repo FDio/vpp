@@ -210,10 +210,45 @@ typedef vppcom_data_segment_t vppcom_data_segments_t[2];
 typedef unsigned long vcl_si_set;
 
 /*
+ * VCL Configuration Structure
+ */
+typedef struct vppcom_cfg_t_
+{
+  size_t heapsize;
+  uint32_t max_workers;
+  size_t segment_baseva;
+  size_t segment_size;
+  size_t add_segment_size;
+  uint32_t preallocated_fifo_pairs;
+  uint32_t rx_fifo_size;
+  uint32_t tx_fifo_size;
+  uint32_t event_queue_size;
+  uint8_t app_proxy_transport_tcp;
+  uint8_t app_proxy_transport_udp;
+  uint8_t app_scope_local;
+  uint8_t app_scope_global;
+  char *namespace_id;
+  uint64_t namespace_secret;
+  uint8_t use_mq_eventfd;
+  double app_timeout;
+  double session_timeout;
+  char *event_log_path;
+  char *vpp_app_socket_api;	/**< app socket api socket file name */
+  char *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
+  char *app_name;
+  uint32_t tls_engine;
+  uint8_t mt_wrk_supported;
+  uint8_t huge_page;
+  uint8_t app_original_dst;
+  uint8_t debug_level;
+} vppcom_cfg_t;
+
+/*
  * VPPCOM Public API Functions
  */
 
 extern int vppcom_app_create (const char *app_name);
+extern int vppcom_app_create_with_config (vppcom_cfg_t *vcl_cfg);
 extern void vppcom_app_destroy (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
