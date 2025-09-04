@@ -42,6 +42,12 @@
                 vcm->workers[__vcl_worker_index].current_pid, 		\
 		__vcl_worker_index, ##_args)
 
+#define VCFG_DBG(_lvl, _fmt, _args...)                                        \
+  {                                                                           \
+    if (vcm->debug > _lvl)                                                    \
+      fprintf (stderr, _fmt "\n", ##_args);                                   \
+  }
+
 #define foreach_vcl_dbg_evt						\
   _(INIT, "vcl init track")						\
   _(TIMEOUT, "vcl timeout")						\
