@@ -193,7 +193,10 @@ typedef struct vcl_session_
   transport_endpt_attr_t *tep_attrs; /**< vector of attributes */
 } vcl_session_t;
 
-typedef struct vppcom_cfg_t_
+/* vppcom_cfg_t is now defined in vppcom.h public header */
+
+/* Internal VCL configuration structure with VPP types and char* strings */
+typedef struct vcl_cfg_t_
 {
   uword heapsize;
   u32 max_workers;
@@ -208,21 +211,21 @@ typedef struct vppcom_cfg_t_
   u8 app_proxy_transport_udp;
   u8 app_scope_local;
   u8 app_scope_global;
-  u8 *namespace_id;
+  u8 *namespace_id;			/**< namespace id string */
   u64 namespace_secret;
   u8 use_mq_eventfd;
   f64 app_timeout;
   f64 session_timeout;
   char *event_log_path;
-  u8 *vpp_app_socket_api;	/**< app socket api socket file name */
-  u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
+  u8 *vpp_app_socket_api;		/**< app socket api socket file name */
+  u8 *vpp_bapi_socket_name;		/**< bapi socket transport socket name */
   u32 tls_engine;
   u8 mt_wrk_supported;
   u8 huge_page;
   u8 app_original_dst;
-} vppcom_cfg_t;
+} vcl_cfg_t;
 
-void vppcom_cfg (vppcom_cfg_t * vcl_cfg);
+void vppcom_cfg (vcl_cfg_t * vcl_cfg);
 
 typedef struct vcl_cut_through_registration_
 {
@@ -352,7 +355,7 @@ typedef struct vppcom_main_t_
   u8 *app_name;
 
   /** VCL configuration */
-  vppcom_cfg_t cfg;
+  vcl_cfg_t cfg;
 
   volatile u32 forking;
 

@@ -28,7 +28,7 @@ vppcom_main_t _vppcom_main = {
 vppcom_main_t *vcm = &_vppcom_main;
 
 void
-vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg_init (vcl_cfg_t * vcl_cfg)
 {
   ASSERT (vcl_cfg);
 
@@ -53,7 +53,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 void
 vppcom_cfg_heapsize (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   FILE *fp;
   char inbuf[4096];
   int argc = 1;
@@ -63,8 +63,6 @@ vppcom_cfg_heapsize (char *conf_fname)
   int i;
   u8 *sizep;
   u32 size;
-  void *vcl_mem;
-  void *heap;
 
   fp = fopen (conf_fname, "r");
   if (fp == NULL)
@@ -180,6 +178,14 @@ defaulted:
     fclose (fp);
   if (argv != NULL)
     free (argv);
+}
+
+void
+vppcom_allocate_heap (void)
+{
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
+  void *vcl_mem;
+  void *heap;
 
   vcl_mem = mmap (0, vcl_cfg->heapsize, PROT_READ | PROT_WRITE,
 		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -219,7 +225,7 @@ defaulted:
 void
 vppcom_cfg_read_file (char *conf_fname)
 {
-  vppcom_cfg_t *vcl_cfg = &vcm->cfg;
+  vcl_cfg_t *vcl_cfg = &vcm->cfg;
   int fd;
   unformat_input_t _input, *input = &_input;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -506,7 +512,7 @@ file_done:
 }
 
 void
-vppcom_cfg (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg (vcl_cfg_t * vcl_cfg)
 {
   char *conf_fname, *env_var_str;
 
@@ -532,6 +538,7 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
   if (!conf_fname)
     conf_fname = VPPCOM_CONF_DEFAULT;
   vppcom_cfg_heapsize (conf_fname);
+  vppcom_allocate_heap ();
   vppcom_cfg_read_file (conf_fname);
 
   /* Regrab cfg after heap initialization */
