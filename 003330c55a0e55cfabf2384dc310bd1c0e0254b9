@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2df0e11_b2aa72ef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2025-09-05T22:42:53Z",
+      "side": 1,
+      "message": "Clang 21.1.0 fails in poly1305.h\n\nIn file included from /builddir/build/BUILD/vpp-25.10-build/vpp-25.10/src/vppinfra/test/poly1305.c:7:\n/builddir/build/BUILD/vpp-25.10-build/vpp-25.10/src/vppinfra/crypto/poly1305.h:228:21: error: default initialization of an object of type \u0027clib_poly1305_ctx\u0027 with const member leaves the object uninitialized [-Werror,-Wdefault-const-init-field-unsafe]\n  228 |   clib_poly1305_ctx ctx;\n      |                     ^\n/builddir/build/BUILD/vpp-25.10-build/vpp-25.10/src/vppinfra/crypto/poly1305.h:17:13: note: member \u0027r\u0027 declared \u0027const\u0027 here\n   17 |   const u64 r[3], s[2];\n      |             ^\n1 error generated.",
+      "revId": "003330c55a0e55cfabf2384dc310bd1c0e0254b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
