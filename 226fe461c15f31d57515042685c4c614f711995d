@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfb5f01a_1a6bc4e6",
+        "filename": "extras/hs-test/kubernetes/setup-cluster.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-05T15:26:17Z",
+      "side": 1,
+      "message": "is the fixed port change on purpose?",
+      "revId": "226fe461c15f31d57515042685c4c614f711995d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
