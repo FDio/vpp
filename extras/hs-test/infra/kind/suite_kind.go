@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	. "fd.io/hs-test/infra/common"
 	"github.com/a8m/envsubst"
@@ -132,6 +133,10 @@ func (s *KindSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VP
 	o, err = cmd.CombinedOutput()
 	s.Log(string(o))
 	s.AssertNil(err)
+
+	// let vpp-dataplane recover (tests might timeout otherwise)
+	s.Log("Waiting for 10 seconds")
+	time.Sleep(time.Second * 10)
 }
 
 func (s *KindSuite) TeardownTest() {

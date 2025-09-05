@@ -9,7 +9,7 @@ COMMIT_HASH=$(git rev-parse HEAD)
 reg_name='kind-registry'
 reg_port='5000'
 
-export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-9000}
+export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
 export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
 echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
@@ -93,7 +93,7 @@ cherry_pick() {
   STASHED_CHANGES=0
   echo "checkpoint: $COMMIT_HASH"
   # chery-vpp hard resets the repo to a commit - we want to keep our changes
-  if ! git diff-index --quiet HEAD --; then
+  if [[ -n $(git status --porcelain) ]]; then
 	    echo "Saving stash"
       git stash save "HST: temp stash"
       STASHED_CHANGES=1
@@ -115,7 +115,7 @@ build_load_start_cni() {
 
 restore_repo() {
   # stash changes, reset local repo to the original state and unstash changes (removes CalicoVPP's patches)
-  if ! git diff-index --quiet HEAD --; then
+  if [[ -n $(git status --porcelain) ]]; then
 	    echo "Saving stash"
       git stash save "HST: temp stash"
       git reset --hard $COMMIT_HASH
