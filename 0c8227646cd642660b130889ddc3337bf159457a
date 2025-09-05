@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "689c6642_ea8aa82f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-05T18:25:17Z",
+      "side": 1,
+      "message": "To minimize the impact of the lock, I think we should use clib_spinlock_trylock. If the lock is held by the other thread, the other thread will do the kick. This thread does not have to wait and just continue.",
+      "revId": "0c8227646cd642660b130889ddc3337bf159457a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13186201_acfa4f04",
