@@ -16,6 +16,24 @@
       "message": "Should we only call clib_spinlock_init for the rxq? That way we can remove the test is_rxq in the loop in the function vhost_user_send_interrupt_process.",
       "revId": "0c8227646cd642660b130889ddc3337bf159457a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f99d79de_9a49e4ed",
+        "filename": "src/plugins/vhost/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2025-09-05T12:28:07Z",
+      "side": 1,
+      "message": "int_lock mainly follows vring_lock, which is also only used for rxvq but initialized for both directions. I think we should probably leave this the way it is as an acceptable way.",
+      "parentUuid": "13186201_acfa4f04",
+      "revId": "0c8227646cd642660b130889ddc3337bf159457a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
