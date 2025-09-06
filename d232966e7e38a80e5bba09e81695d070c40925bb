@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f85b911f_673d50a0",
+        "filename": "test/bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-09-06T08:54:49Z",
+      "side": 1,
+      "message": "This method is in wrong place. BFDUDPSession class represents instances of UDP sessions. Having a set_tos() method for session class makes it seem like you can set TOS per session, while in reality it\u0027s global setting.\n\nAlso, having a plain wrapper one-liner doesn\u0027t make much sense to me. How is it better than simply calling vapi.bfd_udp_set_tos()? What value does it bring having the wrapper?\n\nI think removing this method and simply calling vapi method is clearer and less code.",
+      "revId": "d232966e7e38a80e5bba09e81695d070c40925bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5915f3af_80dd9066",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 592,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2025-09-06T08:54:49Z",
+      "side": 1,
+      "message": "This test should be removed completely, as the functionality is already covered by test_set_udp_tos.\n\nSee my comment about VppBFDUDPSession.set_tos(). There is no per-session TOS setting, is there?",
+      "revId": "d232966e7e38a80e5bba09e81695d070c40925bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
