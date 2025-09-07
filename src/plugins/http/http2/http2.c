@@ -151,6 +151,24 @@ http2_get_worker (clib_thread_index_t thread_index)
 
 static void http2_update_time_callback (f64 now, u8 thread_index);
 
+static_always_inline void
+http2_sched_init_conn (http2_conn_ctx_t *h2c, http2_worker_ctx_t *wrk)
+{
+  http2_req_t *new_head, *old_head;
+
+  pool_get_aligned_safe (wrk->req_pool, new_head, CLIB_CACHE_LINE_BYTES);
+  clib_memset (new_head, 0, sizeof (*new_head));
+  clib_llist_anchor_init (wrk->req_pool, sched_list, new_head);
+  h2c->new_tx_streams = (clib_llist_index_t) (new_head - wrk->req_pool);
+  pool_get_aligned_safe (wrk->req_pool, old_head, CLIB_CACHE_LINE_BYTES);
+  clib_memset (old_head, 0, sizeof (*old_head));
+  clib_llist_anchor_init (wrk->req_pool, sched_list, old_head);
+  h2c->old_tx_streams = (clib_llist_index_t) (old_head - wrk->req_pool);
+
+  h2c->sched_list.next = CLIB_LLIST_INVALID_INDEX;
+  h2c->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+}
+
 static inline http2_conn_ctx_t *
 http2_conn_ctx_alloc_w_thread (http_conn_t *hc)
 {
@@ -173,10 +191,7 @@ http2_conn_ctx_alloc_w_thread (http_conn_t *hc)
     clib_min (h2c->settings.initial_window_size,
 	      (hc->app_rx_fifo_size - h2c->settings.max_header_list_size));
   h2c->req_by_stream_id = hash_create (0, sizeof (uword));
-  h2c->new_tx_streams = clib_llist_make_head (wrk->req_pool, sched_list);
-  h2c->old_tx_streams = clib_llist_make_head (wrk->req_pool, sched_list);
-  h2c->sched_list.next = CLIB_LLIST_INVALID_INDEX;
-  h2c->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+  http2_sched_init_conn (h2c, wrk);
   h2c->parent_req_index = SESSION_INVALID_INDEX;
   hc->opaque = uword_to_pointer (h2c - wrk->conn_pool, void *);
   cnt = clib_atomic_fetch_add_relax (&h2m->n_sessions, 1);
@@ -496,16 +511,11 @@ http2_stream_error (http_conn_t *hc, http2_req_t *req, http2_error_t error,
 
   http2_send_stream_error (hc, req->stream_id, error, sp);
   req->stream_state = HTTP2_STREAM_STATE_CLOSED;
-  if (req->flags & HTTP2_REQ_F_APP_CLOSED)
-    session_transport_closed_notify (&req->base.connection);
-  else
-    {
-      http_io_as_drain_unread (&req->base);
-      session_transport_closing_notify (&req->base.connection);
-    }
 
-  h2c = http2_conn_ctx_get_w_thread (hc);
+  if (!(req->flags & HTTP2_REQ_F_APP_CLOSED))
+    session_transport_reset_notify (&req->base.connection);
   session_transport_delete_notify (&req->base.connection);
+  h2c = http2_conn_ctx_get_w_thread (hc);
   http2_conn_free_req (h2c, req, hc->c_thread_index);
 }
 
@@ -698,6 +708,14 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   if (max_read == 0)
     {
       HTTP_DBG (2, "max_read == 0");
+      if (req->flags & HTTP2_REQ_F_APP_CLOSED &&
+	  req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED)
+	{
+	  HTTP_DBG (1, "closing tunnel");
+	  http2_tunnel_send_close (hc, req);
+	  http2_stream_close (req, hc);
+	  return;
+	}
       transport_connection_reschedule (&req->base.connection);
       return;
     }
@@ -711,7 +729,6 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
       max_write >= max_read)
     {
       HTTP_DBG (1, "closing tunnel");
-      session_transport_closed_notify (&req->base.connection);
       flags = HTTP2_FRAME_FLAG_END_STREAM;
     }
 
@@ -748,6 +765,9 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
 
   http_io_as_dequeue_notify (&req->base, n_written);
   http_io_ts_after_write (hc, 0);
+
+  if (flags & HTTP2_FRAME_FLAG_END_STREAM)
+    http2_stream_close (req, hc);
 }
 
 static void
@@ -1688,6 +1708,12 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   u32 max_enq;
 
   HTTP_DBG (1, "tunnel received data from peer %lu", req->payload_len);
+  if (req->flags & HTTP2_REQ_F_APP_CLOSED)
+    {
+      HTTP_DBG (1, "proxy app closed, going to reset stream");
+      http2_stream_error (hc, req, HTTP2_ERROR_CONNECT_ERROR, sp);
+      return HTTP_SM_STOP;
+    }
 
   max_enq = http_io_as_max_write (&req->base);
   if (max_enq < req->payload_len)
@@ -2435,7 +2461,6 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 static http2_error_t
 http2_handle_rst_stream_frame (http_conn_t *hc, http2_frame_header_t *fh)
 {
-  http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   u8 *rx_buf;
   http2_error_t rv;
   http2_req_t *req;
@@ -2459,10 +2484,10 @@ http2_handle_rst_stream_frame (http_conn_t *hc, http2_frame_header_t *fh)
   if (rv != HTTP2_ERROR_NO_ERROR)
     return rv;
 
+  h2c = http2_conn_ctx_get_w_thread (hc);
   req = http2_conn_get_req (hc, fh->stream_id);
   if (!req)
     {
-      h2c = http2_conn_ctx_get_w_thread (hc);
       if (fh->stream_id <= h2c->last_opened_stream_id)
 	{
 	  /* we reset stream, but peer might send something meanwhile */
@@ -2470,14 +2495,19 @@ http2_handle_rst_stream_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	  return HTTP2_ERROR_NO_ERROR;
 	}
       else
-	return HTTP2_ERROR_PROTOCOL_ERROR;
+	{
+	  HTTP_DBG (1, "invalid stream-id");
+	  return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
     }
 
   req->stream_state = HTTP2_STREAM_STATE_CLOSED;
-  session_transport_reset_notify (&req->base.connection);
-  if (clib_llist_elt_is_linked (req, sched_list))
-    clib_llist_remove (wrk->req_pool, sched_list, req);
 
+  if (!(req->flags & HTTP2_REQ_F_APP_CLOSED))
+    session_transport_reset_notify (&req->base.connection);
+  session_transport_delete_notify (&req->base.connection);
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  http2_conn_free_req (h2c, req, hc->c_thread_index);
   return HTTP2_ERROR_NO_ERROR;
 }
 
@@ -2792,6 +2822,8 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
       return;
     }
 
+  req->flags |= HTTP2_REQ_F_APP_CLOSED;
+
   if (req->stream_state == HTTP2_STREAM_STATE_CLOSED ||
       req->stream_state == HTTP2_STREAM_STATE_IDLE ||
       hc->state == HTTP_CONN_STATE_CLOSED)
@@ -2810,26 +2842,35 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
       switch (req->stream_state)
 	{
 	case HTTP2_STREAM_STATE_OPEN:
-	  HTTP_DBG (1, "proxy closing connection");
+	  HTTP_DBG (1, "app want to close tunnel");
 	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 	  if (http_io_as_max_read (&req->base))
 	    {
 	      HTTP_DBG (1, "wait for all data to be written to ts");
-	      req->flags |= HTTP2_REQ_F_APP_CLOSED;
+	      return;
 	    }
-	  else
+	  if (req->our_window == 0)
 	    {
-	      HTTP_DBG (1, "nothing more to send, closing tunnel");
-	      http2_tunnel_send_close (hc, req);
+	      HTTP_DBG (1, "app has unread data, going to reset stream");
+	      http2_stream_error (hc, req, HTTP2_ERROR_CONNECT_ERROR, 0);
+	      return;
 	    }
+	  HTTP_DBG (1, "nothing more to send, closing tunnel");
+	  http2_tunnel_send_close (hc, req);
 	  break;
 	case HTTP2_STREAM_STATE_HALF_CLOSED:
-	  HTTP_DBG (1, "app confirmed close");
-	  http2_tunnel_send_close (hc, req);
-	  http2_stream_close (req, hc);
+	  HTTP_DBG (1, "app confirmed tunnel close");
+	  if (http_io_as_max_read (&req->base) == 0)
+	    {
+	      HTTP_DBG (1, "nothing more to send, closing tunnel and stream");
+	      http2_tunnel_send_close (hc, req);
+	      http2_stream_close (req, hc);
+	      return;
+	    }
+	  HTTP_DBG (1, "wait for all data to be written to ts");
 	  break;
 	default:
-	  session_transport_closed_notify (&req->base.connection);
+	  ASSERT (0);
 	  break;
 	}
     }
@@ -2844,13 +2885,20 @@ static void
 http2_app_reset_callback (http_conn_t *hc, u32 req_index,
 			  clib_thread_index_t thread_index)
 {
+  http2_conn_ctx_t *h2c;
   http2_req_t *req;
 
   HTTP_DBG (1, "hc [%u]%x req_index %x", hc->c_thread_index, hc->hc_hc_index,
 	    req_index);
   req = http2_req_get (req_index, thread_index);
   req->flags |= HTTP2_REQ_F_APP_CLOSED;
-  http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR, 0);
+  http2_send_stream_error (hc, req->stream_id,
+			   req->base.is_tunnel ? HTTP2_ERROR_CONNECT_ERROR :
+						 HTTP2_ERROR_INTERNAL_ERROR,
+			   0);
+  session_transport_delete_notify (&req->base.connection);
+  h2c = http2_conn_ctx_get_w_thread (hc);
+  http2_conn_free_req (h2c, req, hc->c_thread_index);
 }
 
 static int
@@ -2944,8 +2992,8 @@ http2_transport_rx_callback (http_conn_t *hc)
       http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
       to_deq -= fh.length;
 
-      HTTP_DBG (1, "frame type 0x%02x len %u flags 0x%01x", fh.type, fh.length,
-		fh.flags);
+      HTTP_DBG (1, "frame type 0x%02x len %u stream-id %u flags 0x%01x",
+		fh.type, fh.length, fh.stream_id, fh.flags);
 
       if ((h2c->flags & HTTP2_CONN_F_EXPECT_CONTINUATION) &&
 	  fh.type != HTTP2_FRAME_TYPE_CONTINUATION)
