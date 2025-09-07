@@ -313,6 +313,50 @@ proxy_try_close_session (session_t * s, int is_active_open)
 }
 
 static void
+proxy_reset_session (session_t *s, int is_active_open)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_side_ctx_t *sc;
+  proxy_session_t *ps;
+  proxy_worker_t *wrk;
+
+  wrk = proxy_worker_get (s->thread_index);
+  sc = proxy_session_side_ctx_get (wrk, s->opaque);
+
+  PROXY_DBG ("[%u] ps %u reset (is ao %u)", vlib_get_thread_index (),
+	     sc->ps_index, is_active_open);
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (sc->ps_index);
+
+  if (is_active_open)
+    {
+      proxy_session_close_ao (ps);
+
+      if (!ps->po_disconnected)
+	{
+	  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+	  session_reset (session_get_from_handle (ps->po.session_handle));
+	  ps->po_disconnected = 1;
+	}
+    }
+  else
+    {
+      proxy_session_close_po (ps);
+
+      if (!ps->ao_disconnected)
+	{
+	  if (ps->ao.session_handle != SESSION_INVALID_HANDLE)
+	    session_reset (session_get_from_handle (ps->ao.session_handle));
+	  ps->ao_disconnected = 1;
+	}
+    }
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+}
+
+static void
 proxy_try_side_ctx_cleanup (session_t *s)
 {
   proxy_main_t *pm = &proxy_main;
@@ -488,7 +532,7 @@ proxy_disconnect_callback (session_t * s)
 static void
 proxy_reset_callback (session_t * s)
 {
-  proxy_try_close_session (s, 0 /* is_active_open */ );
+  proxy_reset_session (s, 0 /* is_active_open */);
 }
 
 static int
@@ -1083,7 +1127,7 @@ active_open_migrate_callback (session_t *s, session_handle_t new_sh)
 static void
 active_open_reset_callback (session_t * s)
 {
-  proxy_try_close_session (s, 1 /* is_active_open */ );
+  proxy_reset_session (s, 1 /* is_active_open */);
 }
 
 static int
