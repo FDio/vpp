@@ -871,6 +871,7 @@ http1_req_state_wait_transport_reply (http_conn_t *hc, http_req_t *req,
     }
 
   HTTP_DBG (3, "%v", rx_buf);
+  http_stats_responses_received_inc (hc->c_thread_index);
 
   if (vec_len (rx_buf) < 8)
     {
@@ -939,6 +940,7 @@ error:
   session_transport_closing_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
   http_disconnect_transport (hc);
+  http_stats_proto_errors_inc (hc->c_thread_index);
   return HTTP_SM_ERROR;
 }
 
@@ -961,6 +963,7 @@ http1_req_state_wait_transport_method (http_conn_t *hc, http_req_t *req,
     return HTTP_SM_STOP;
 
   HTTP_DBG (3, "%v", rx_buf);
+  http_stats_requests_received_inc (hc->c_thread_index);
 
   if (vec_len (rx_buf) < 8)
     {
@@ -1045,6 +1048,7 @@ error:
   http_io_ts_after_read (hc, 1);
   http1_send_error (hc, ec, 0);
   session_transport_closing_notify (&req->connection);
+  http_stats_proto_errors_inc (hc->c_thread_index);
   http_disconnect_transport (hc);
 
   return HTTP_SM_ERROR;
@@ -1083,6 +1087,7 @@ http1_req_state_transport_io_more_data (http_conn_t *hc, http_req_t *req,
       clib_warning ("http protocol error: received more data than expected");
       session_transport_closing_notify (&req->connection);
       http_disconnect_transport (hc);
+      http_stats_proto_errors_inc (hc->c_thread_index);
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
       return HTTP_SM_ERROR;
     }
@@ -1186,6 +1191,7 @@ http1_req_state_udp_tunnel_rx (http_conn_t *hc, http_req_t *req,
 	      session_transport_closing_notify (&req->connection);
 	      session_transport_closed_notify (&req->connection);
 	      http_disconnect_transport (hc);
+	      http_stats_proto_errors_inc (hc->c_thread_index);
 	      return HTTP_SM_STOP;
 	    }
 	  else
@@ -1360,12 +1366,14 @@ http1_req_state_wait_app_reply (http_conn_t *hc, http_req_t *req,
   http_req_state_change (req, next_state);
 
   http_io_ts_after_write (hc, 0);
+  http_stats_responses_sent_inc (hc->c_thread_index);
   return sm_result;
 
 error:
   http1_send_error (hc, sc, sp);
   session_transport_closing_notify (&req->connection);
   http_disconnect_transport (hc);
+  http_stats_proto_errors_inc (hc->c_thread_index);
   return HTTP_SM_STOP;
 }
 
@@ -1528,6 +1536,7 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
   http_req_state_change (req, next_state);
 
   http_io_ts_after_write (hc, 0);
+  http_stats_requests_sent_inc (hc->c_thread_index);
   goto done;
 
 error:
@@ -1535,6 +1544,7 @@ error:
   session_transport_closing_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
   http_disconnect_transport (hc);
+  http_stats_proto_errors_inc (hc->c_thread_index);
 
 done:
   return sm_result;
@@ -1944,6 +1954,7 @@ http1_app_reset_callback (http_conn_t *hc, u32 req_index,
   req = http1_req_get (req_index, thread_index);
   session_transport_closed_notify (&req->connection);
   http_disconnect_transport (hc);
+  http_stats_connections_reset_by_app_inc (hc->c_thread_index);
 }
 
 static int
@@ -1955,6 +1966,7 @@ http1_transport_connected_callback (http_conn_t *hc)
 
   req = http1_conn_alloc_req (hc);
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
+  http_stats_connections_established_inc (hc->c_thread_index);
   return http_conn_established (hc, req, hc->hc_pa_app_api_ctx, 0);
 }
 
@@ -1969,6 +1981,7 @@ http1_transport_rx_callback (http_conn_t *hc)
       /* first request - create request ctx and notify app about new conn */
       req = http1_conn_alloc_req (hc);
       http_conn_accept_request (hc, req);
+      http_stats_connections_accepted_inc (hc->c_thread_index);
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
       hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
     }
@@ -2026,6 +2039,7 @@ http1_transport_reset_callback (http_conn_t *hc)
     return;
   http_req_t *req = http1_conn_get_req (hc);
   session_transport_reset_notify (&req->connection);
+  http_stats_connections_reset_by_peer_inc (hc->c_thread_index);
 }
 
 static void
