@@ -283,6 +283,17 @@ func HttpCliTest(s *VethsSuite) {
 	s.Containers.ServerVpp.VppInstance.Vppctl(cliServerCmd + " listener del")
 	o = s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose proto http")
 	s.AssertNotContains(o, "LISTEN")
+
+	o = s.Containers.ClientVpp.VppInstance.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "1 requests sent")
+	s.AssertContains(o, "1 responses received")
+	o = s.Containers.ServerVpp.VppInstance.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections accepted")
+	s.AssertContains(o, "1 requests received")
+	s.AssertContains(o, "1 responses sent")
 }
 
 func HttpCliTlsTest(s *VethsSuite) {
@@ -432,6 +443,9 @@ func HttpClientInvalidHeaderNameTest(s *Http1Suite) {
 	}
 	s.AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleanup")
 	s.AssertEqual(true, httpCleanupDone, "HTTP not cleanup")
+	o = vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections protocol error")
 }
 
 func HttpClientErrRespTest(s *Http1Suite) {
@@ -1905,6 +1919,9 @@ func HttpConnTimeoutTest(s *Http1Suite) {
 	reply = make([]byte, 1024)
 	_, err = conn.Read(reply)
 	s.AssertMatchError(err, io.EOF, "connection not closed by server")
+	o := vpp.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections timeout")
 }
 
 func HttpIgnoreH2UpgradeTest(s *Http1Suite) {

@@ -103,6 +103,7 @@ func (s *Http2Suite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		s.Log(vpp.Vppctl("show session verbose 2"))
 		s.Log(vpp.Vppctl("show error"))
+		s.Log(vpp.Vppctl("show http stats"))
 	}
 }
 

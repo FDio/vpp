@@ -271,6 +271,7 @@ http2_conn_alloc_req (http_conn_t *hc, u8 is_parent)
       req->flags |= HTTP2_REQ_F_IS_PARENT;
       h2c->parent_req_index = req_index;
     }
+  http_stats_app_streams_opened_inc (hc->c_thread_index);
   return req;
 }
 
@@ -311,6 +312,7 @@ http2_conn_free_req (http2_conn_ctx_t *h2c, http2_req_t *req,
     memset (req, 0xba, sizeof (*req));
   pool_put (wrk->req_pool, req);
   h2c->req_num--;
+  http_stats_app_streams_closed_inc (thread_index);
 }
 
 static inline void
@@ -472,6 +474,7 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
   if (clib_llist_elt_is_linked (h2c, sched_list))
     clib_llist_remove (wrk->conn_pool, sched_list, h2c);
   http_shutdown_transport (hc);
+  http_stats_proto_errors_inc (hc->c_thread_index);
 }
 
 always_inline void
@@ -1067,6 +1070,7 @@ http2_sched_dispatch_resp_headers (http2_req_t *req, http_conn_t *hc,
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_io_ts_after_write (hc, 0);
+  http_stats_responses_sent_inc (hc->c_thread_index);
 }
 
 static void
@@ -1227,6 +1231,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_io_ts_after_write (hc, 0);
+  http_stats_requests_sent_inc (hc->c_thread_index);
 }
 
 static void
@@ -1329,6 +1334,8 @@ http2_req_state_wait_transport_reply (http_conn_t *hc, http2_req_t *req,
   int rv;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
+
+  http_stats_responses_received_inc (hc->c_thread_index);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
@@ -1435,6 +1442,8 @@ http2_req_state_wait_transport_method (http_conn_t *hc, http2_req_t *req,
   int rv;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
+
+  http_stats_requests_received_inc (hc->c_thread_index);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
 
@@ -2424,6 +2433,7 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	    &h2c->decoder_dynamic_table,
 	    http2_default_conn_settings.header_table_size);
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
+	  http_stats_connections_established_inc (hc->c_thread_index);
 	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx, 0))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
 	}
@@ -2558,6 +2568,7 @@ http2_handle_goaway_frame (http_conn_t *hc, http2_frame_header_t *fh)
     }
   else
     {
+      http_stats_connections_reset_by_peer_inc (hc->c_thread_index);
       if (fh->length > HTTP2_GOAWAY_MIN_SIZE)
 	clib_warning ("additional debug data: %U", format_http_bytes,
 		      rx_buf + HTTP2_GOAWAY_MIN_SIZE,
@@ -2897,6 +2908,13 @@ http2_app_reset_callback (http_conn_t *hc, u32 req_index,
 						 HTTP2_ERROR_INTERNAL_ERROR,
 			   0);
   session_transport_delete_notify (&req->base.connection);
+  if (req->flags & HTTP2_REQ_F_IS_PARENT)
+    {
+      HTTP_DBG (1, "client app closed parent, closing connection");
+      ASSERT (!(hc->flags & HTTP_CONN_F_IS_SERVER));
+      http_disconnect_transport (hc);
+      http_stats_connections_reset_by_app_inc (thread_index);
+    }
   h2c = http2_conn_ctx_get_w_thread (hc);
   http2_conn_free_req (h2c, req, hc->c_thread_index);
 }
@@ -2941,12 +2959,15 @@ http2_transport_rx_callback (http_conn_t *hc)
 	{
 	  HTTP_DBG (1, "to_deq %u is less than conn preface size", to_deq);
 	  http_disconnect_transport (hc);
+	  http_stats_proto_errors_inc (hc->c_thread_index);
 	  return;
 	}
+      http_stats_connections_accepted_inc (hc->c_thread_index);
       if (http2_expect_preface (hc, h2c))
 	{
 	  HTTP_DBG (1, "conn preface verification failed");
 	  http_disconnect_transport (hc);
+	  http_stats_proto_errors_inc (hc->c_thread_index);
 	  return;
 	}
       http2_send_server_preface (hc);

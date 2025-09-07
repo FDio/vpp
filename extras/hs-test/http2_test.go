@@ -178,6 +178,7 @@ func Http2CliTlsTest(s *VethsSuite) {
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
+	s.Containers.ClientVpp.VppInstance.Vppctl("clear http stats")
 
 	/* second request to test postponed ho-cleanup */
 	o = s.Containers.ClientVpp.VppInstance.Vppctl("http cli client" +
@@ -185,6 +186,21 @@ func Http2CliTlsTest(s *VethsSuite) {
 	s.Log(o)
 	s.AssertContains(o, "<html>", "<html> not found in the result!")
 	s.AssertContains(o, "</html>", "</html> not found in the result!")
+
+	o = s.Containers.ClientVpp.VppInstance.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "1 connections established")
+	s.AssertContains(o, "1 requests sent")
+	s.AssertContains(o, "1 responses received")
+	s.AssertContains(o, "1 application streams opened")
+	s.AssertContains(o, "1 application streams closed")
+	o = s.Containers.ServerVpp.VppInstance.Vppctl("show http stats")
+	s.Log(o)
+	s.AssertContains(o, "2 connections accepted")
+	s.AssertContains(o, "2 requests received")
+	s.AssertContains(o, "2 responses sent")
+	s.AssertContains(o, "2 application streams opened")
+	s.AssertContains(o, "2 application streams closed")
 }
 
 func Http2ClientGetTest(s *Http2Suite) {

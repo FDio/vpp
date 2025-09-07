@@ -17,6 +17,27 @@
 static const http_token_t http2_conn_preface = { http_token_lit (
   "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") };
 
+#define foreach_http_wrk_stat                                                 \
+  _ (proto_errors, "connections protocol error")                              \
+  _ (connections_timeout, "connections timeout")                              \
+  _ (connections_accepted, "connections accepted")                            \
+  _ (connections_established, "connections established")                      \
+  _ (connections_reset_by_peer, "connections reset by peer")                  \
+  _ (connections_reset_by_app, "connections reset by app")                    \
+  _ (app_streams_opened, "application streams opened")                        \
+  _ (app_streams_closed, "application streams closed")                        \
+  _ (requests_received, "requests received")                                  \
+  _ (requests_sent, "requests sent")                                          \
+  _ (responses_received, "responses received")                                \
+  _ (responses_sent, "responses sent")
+
+typedef struct
+{
+#define _(name, str) u64 name;
+  foreach_http_wrk_stat
+#undef _
+} http_wrk_stats_t;
+
 typedef union
 {
   struct
@@ -220,6 +241,7 @@ typedef struct http_worker_
   clib_spinlock_t pending_stream_connects_lock;
   http_pending_connect_stream_t *pending_connect_streams;
   http_pending_connect_stream_t *burst_connect_streams;
+  http_wrk_stats_t stats;
 } http_worker_t;
 
 typedef struct http_main_
@@ -922,5 +944,23 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
 
   return 0;
 }
+
+extern http_main_t http_main;
+
+static_always_inline http_worker_t *
+http_worker_get (clib_thread_index_t thread_index)
+{
+  return &http_main.wrk[thread_index];
+}
+
+#define _(name, str)                                                          \
+  static_always_inline void http_stats_##name##_inc (                         \
+    clib_thread_index_t thread_index)                                         \
+  {                                                                           \
+    http_worker_t *wrk = http_worker_get (thread_index);                      \
+    wrk->stats.name++;                                                        \
+  }
+foreach_http_wrk_stat
+#undef _
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_PRIVATE_H_ */

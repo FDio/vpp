@@ -22,7 +22,8 @@
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
-static http_main_t http_main;
+http_main_t http_main;
+
 static http_engine_vft_t *http_vfts;
 
 const http_buffer_type_t msg_to_buf_type[] = {
@@ -112,12 +113,6 @@ format_http_time_now (u8 *s, va_list *args)
   http_main_t *hm = &http_main;
   f64 now = clib_timebase_now (&hm->timebase);
   return format (s, "%U", format_clib_timebase_time, now);
-}
-
-static inline http_worker_t *
-http_worker_get (clib_thread_index_t thread_index)
-{
-  return &http_main.wrk[thread_index];
 }
 
 static inline u32
@@ -427,6 +422,7 @@ http_conn_timeout_cb (void *hc_handlep)
   if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
     http_vfts[hc->version].transport_close_callback (hc);
   http_disconnect_transport (hc);
+  http_stats_connections_timeout_inc (hs_handle >> 24);
 }
 
 /*************************/
@@ -1482,6 +1478,78 @@ http_transport_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (http_transport_init);
+
+static clib_error_t *
+show_http_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
+{
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  http_main_t *hm = &http_main;
+  http_worker_t *wrk;
+  u32 num_threads, i;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  if (!hm->is_init)
+    return clib_error_return (0, "http transport disabled");
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+
+  for (i = 0; i < num_threads; i++)
+    {
+      wrk = http_worker_get (i);
+      vlib_cli_output (vm, "Thread %u:\n", i);
+
+#define _(name, str)                                                          \
+  if (wrk->stats.name)                                                        \
+    vlib_cli_output (vm, " %lu %s", wrk->stats.name, str);
+      foreach_http_wrk_stat
+#undef _
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_http_stats_command, static) = {
+  .path = "show http stats",
+  .short_help = "show http stats",
+  .function = show_http_stats_fn,
+};
+
+static clib_error_t *
+clear_http_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  http_main_t *hm = &http_main;
+  http_worker_t *wrk;
+  u32 num_threads, i;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  if (!hm->is_init)
+    return clib_error_return (0, "http transport disabled");
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+
+  for (i = 0; i < num_threads; i++)
+    {
+      wrk = http_worker_get (i);
+      clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (clear_http_stats_command, static) = {
+  .path = "clear http stats",
+  .short_help = "clear http stats",
+  .function = clear_http_stats_fn,
+};
 
 static uword
 unformat_http_version_cfg (unformat_input_t *input, va_list *va)
