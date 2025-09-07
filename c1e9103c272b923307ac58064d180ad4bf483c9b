@@ -16,6 +16,24 @@
       "message": "Let\u0027s call this accepted/intercepted/downstream or something like that, otherwise it gives the impression we\u0027re closing the listener that accepted the session",
       "revId": "c1e9103c272b923307ac58064d180ad4bf483c9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f4f1ccb_3c9dcbad",
+        "filename": "src/plugins/hs_apps/http_connect_proxy_client.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-07T14:12:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aeb5081b_1d66d135",
+      "revId": "c1e9103c272b923307ac58064d180ad4bf483c9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
