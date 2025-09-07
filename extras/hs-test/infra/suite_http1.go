@@ -83,6 +83,12 @@ func (s *Http1Suite) SetupTest() {
 
 func (s *Http1Suite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
+	vpp := s.Containers.Vpp.VppInstance
+	if CurrentSpecReport().Failed() {
+		s.Log(vpp.Vppctl("show session verbose 2"))
+		s.Log(vpp.Vppctl("show error"))
+		s.Log(vpp.Vppctl("show http stats"))
+	}
 }
 
 // Creates container and config.
