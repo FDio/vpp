@@ -58,7 +58,7 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 }
 
 func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+\d?\.\d+ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -91,7 +91,7 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 }
 
 func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+\d?\.\d+ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
