@@ -136,19 +136,25 @@ compile_commands.json
 # No test log files
 **/test-run-*-*-*
 
-# host stack test framework
-/extras/hs-test/vpp-data
-/extras/hs-test/hs-test
-/extras/hs-test/http_server
-/extras/hs-test/.build.ok
-/extras/hs-test/.build.cov.ok
-/extras/hs-test/.last_hst_ppid
-/extras/hs-test/summary/
-/extras/hs-test/.last_state_hash
-/extras/hs-test/.kind_deps.ok
-/extras/hs-test/.go_cache/
-/extras/hs-test/kubernetes/calico-config.yaml
-/extras/hs-test/kubernetes/.vars
+/test-container/hs-test/vpp-data
+/test-container/hs-test/hs-test
+/test-container/hs-test/http_server
+/test-container/hs-test/.build.ok
+/test-container/hs-test/.build.cov.ok
+/test-container/hs-test/.last_hst_ppid
+/test-container/hs-test/summary/
+/test-container/hs-test/.last_state_hash
+/test-container/hs-test/.go_cache/
+
+/test-container/kube-test/vpp-data
+/test-container/kube-test/.build.ok
+/test-container/kube-test/.build.cov.ok
+/test-container/kube-test/.last_hst_ppid
+/test-container/kube-test/summary/
+/test-container/kube-test/.last_state_hash
+/test-container/kube-test/.kind_deps.ok
+/test-container/kube-test/kubernetes/calico-config.yaml
+/test-container/kube-test/kubernetes/.vars
 
 # ./configure
 /CMakeFiles
