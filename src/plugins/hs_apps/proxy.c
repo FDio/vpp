@@ -873,6 +873,11 @@ active_open_send_http_resp_rpc (void *arg)
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
   ps = proxy_session_get (ps_index);
+  if (ps->po.session_handle == SESSION_INVALID_HANDLE)
+    {
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      return;
+    }
   po_s = session_get_from_handle (ps->po.session_handle);
   connect_failed = ps->ao_disconnected;
 
@@ -916,6 +921,11 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       ps->ao_disconnected = 1;
       if (ps->po.is_http)
 	{
+	  if (ps->po.session_handle == SESSION_INVALID_HANDLE)
+	    {
+	      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	      return 0;
+	    }
 	  session_send_rpc_evt_to_thread_force (
 	    session_thread_from_handle (ps->po.session_handle),
 	    active_open_send_http_resp_rpc,
