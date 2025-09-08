@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "11bd5557_ecec1690",
+        "filename": "extras/hs-test/infra/kind/finalizer.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d6981de5_8a03a972",
+      "range": {
+        "startLine": 126,
+        "startChar": 1,
+        "endLine": 128,
+        "endChar": 29
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a1ffd933_5ab000d6",
@@ -54,6 +78,30 @@
       "writtenOn": "2025-09-04T07:06:49Z",
       "side": 1,
       "message": "kubectl wait cmd could be used here if i\u0027m not mistaken",
+      "range": {
+        "startLine": 157,
+        "startChar": 2,
+        "endLine": 159,
+        "endChar": 30
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "961ffe89_21d22e45",
+        "filename": "extras/hs-test/infra/kind/finalizer.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a1ffd933_5ab000d6",
       "range": {
         "startLine": 157,
         "startChar": 2,
@@ -87,6 +135,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8373f21_23a79212",
+        "filename": "extras/hs-test/infra/kind/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5e3bdfb8_3e4052d4",
+      "range": {
+        "startLine": 60,
+        "startChar": 1,
+        "endLine": 61,
+        "endChar": 47
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b61267d5_ffe41410",
@@ -100,6 +172,30 @@
       "writtenOn": "2025-09-04T07:06:49Z",
       "side": 1,
       "message": "return cmd.CombinedOutput()\nlogging output and errors should be done in tests",
+      "range": {
+        "startLine": 62,
+        "startChar": 1,
+        "endLine": 69,
+        "endChar": 27
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2cd31b87_2b338956",
+        "filename": "extras/hs-test/infra/kind/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b61267d5_ffe41410",
       "range": {
         "startLine": 62,
         "startChar": 1,
@@ -133,6 +229,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a7838cb_27b9e3f6",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5503b361_970385c4",
+      "range": {
+        "startLine": 130,
+        "startChar": 1,
+        "endLine": 133,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bb73204b_3c7b25a7",
@@ -146,6 +266,30 @@
       "writtenOn": "2025-09-04T07:06:49Z",
       "side": 1,
       "message": "Test either fails on the asserts above or it doesn\u0027t, checking len(final...) is redundant.",
+      "range": {
+        "startLine": 207,
+        "startChar": 1,
+        "endLine": 212,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "17563995_e9c776be",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bb73204b_3c7b25a7",
       "range": {
         "startLine": 207,
         "startChar": 1,
@@ -179,6 +323,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "585d092b_6dab6c43",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "54661b51_732e3d5d",
+      "range": {
+        "startLine": 286,
+        "startChar": 1,
+        "endLine": 287,
+        "endChar": 42
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "667d2f47_1a676558",
@@ -192,6 +360,30 @@
       "writtenOn": "2025-09-04T07:06:49Z",
       "side": 1,
       "message": "s.AssertNil",
+      "range": {
+        "startLine": 306,
+        "startChar": 2,
+        "endLine": 308,
+        "endChar": 3
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5bafab86_7a94b39e",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "667d2f47_1a676558",
       "range": {
         "startLine": 306,
         "startChar": 2,
@@ -225,6 +417,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68d43bb4_c09c7dd8",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43951086_f4f176b8",
+      "range": {
+        "startLine": 318,
+        "startChar": 1,
+        "endLine": 321,
+        "endChar": 2
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d587a0f8_c65a9d8b",
@@ -248,6 +464,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fac2b63c_88a235ac",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d587a0f8_c65a9d8b",
+      "range": {
+        "startLine": 425,
+        "startChar": 1,
+        "endLine": 426,
+        "endChar": 66
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "169291f1_63a27f10",
@@ -261,6 +501,30 @@
       "writtenOn": "2025-09-04T07:06:49Z",
       "side": 1,
       "message": "s.AssertNil",
+      "range": {
+        "startLine": 438,
+        "startChar": 2,
+        "endLine": 439,
+        "endChar": 67
+      },
+      "revId": "bf01345f2eac04eefc6dfcf8cd247936c89087f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fce3affb_10d27edd",
+        "filename": "extras/hs-test/kind_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-09-08T07:51:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "169291f1_63a27f10",
       "range": {
         "startLine": 438,
         "startChar": 2,
