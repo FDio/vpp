@@ -1922,7 +1922,7 @@ http1_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
 
 static void
 http1_app_close_callback (http_conn_t *hc, u32 req_index,
-			  clib_thread_index_t thread_index)
+			  clib_thread_index_t thread_index, u8 is_shutdown)
 {
   http_req_t *req;
 
