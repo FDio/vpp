@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b2846a5_e3796bb8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2025-09-08T08:28:56Z",
+      "side": 1,
+      "message": "I guess try_lock() would work well if the interrupt triggering logic in different threads was the same. However, the input logic in vhost_user_input_do_interrupt() is responsible for triggering an interrupt by time whereas the output logic in the device TX function triggers an interrupt when a certain number of frames piled up. Trying to lock, failing, and then skipping one of those blocks may cause undesired effects. For example, the current number of frames is low but it\u0027s time to trigger an interrupt by time. And vice versa, the required number of frames has piled up but it\u0027s early to trigger an interrupt by time. If the appropriate block is missed, probably many times in a row, there will be zero interrupts for some time. Moreover, the device TX function also increments the number of frames. If skip that block often, there will not be data to decide to trigger an interrupt.",
+      "parentUuid": "106e9b56_9027f860",
+      "revId": "0c8227646cd642660b130889ddc3337bf159457a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13186201_acfa4f04",
