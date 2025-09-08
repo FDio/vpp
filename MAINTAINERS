@@ -890,7 +890,13 @@ I:	hs-test
 M:	Florin Coras <fcoras@cisco.com>
 M:	Matus Fabian <matfabia@cisco.com>
 M:	Adrian Villin <avillin@cisco.com>
-F:	extras/hs-test
+F:	test-c/hs-test
+
+Kube test framework
+I:	kube-test
+M:	Florin Coras <fcoras@cisco.com>
+M:	Adrian Villin <avillin@cisco.com>
+F:	test-c/kube-test
 
 THE REST
 I:	misc
