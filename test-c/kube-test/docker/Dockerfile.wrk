@@ -1,0 +1,7 @@
+# wrk HTTP benchmarking container that uses the base image
+ARG UBUNTU_VERSION=22.04
+FROM localhost:5001/vpp-test-base:latest
+
+# wrk is installed in the base image
+
+ENTRYPOINT ["wrk"]
