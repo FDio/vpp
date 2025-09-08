@@ -1,0 +1,75 @@
+definitions:
+  image-names:
+    - image: &kube-test
+        name: "kube-test/vpp:latest"
+    - image: &nginx-ldp
+        name: "kube-test/nginx-ldp:latest"
+    - image: &ab
+        name: "kube-test/ab:latest"
+
+  container-names:
+    - container: &client
+        name: "client"
+    - container: &server
+        name: "server"
+
+  namespace-names:
+    - namespace: &defaultNs
+        name: "kube-test"
+
+  worker-names:
+    - worker: &worker1
+        name: "kind-worker"
+    - worker: &worker2
+        name: "kind-worker2"
+
+pods:
+  - name: "client-generic"
+    image:
+      - <<: *kube-test
+    container:
+      - <<: *client
+    worker:
+      - <<: *worker1
+    namespace:
+      - <<: *defaultNs
+
+  - name: "server-generic"
+    image:
+      - <<: *kube-test
+    container:
+      - <<: *server
+    worker:
+      - <<: *worker2
+    namespace:
+      - <<: *defaultNs
+
+  - name: "ab"
+    image:
+      - <<: *ab
+    container:
+      - <<: *client
+    worker:
+      - <<: *worker1
+    namespace:
+      - <<: *defaultNs
+
+  - name: "nginx-ldp"
+    image:
+      - <<: *nginx-ldp
+    container:
+      - <<: *server
+    worker:
+      - <<: *worker2
+    namespace:
+      - <<: *defaultNs
+
+  - name: "nginx-proxy"
+    image:
+      - <<: *nginx-ldp
+    container:
+      - <<: *server
+    worker:
+      - <<: *worker2
+    namespace:
+      - <<: *defaultNs
