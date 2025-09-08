@@ -27,6 +27,7 @@ typedef struct ec_rttstat_
   f64 min_rtt;
   f64 max_rtt;
   f64 sum_rtt;
+  f64 last_rtt;
   u32 n_sum;
   clib_spinlock_t w_lock;
 } ec_rttstat_t;
@@ -49,6 +50,8 @@ typedef struct ec_session_
   u64 bytes_paced_current;
   f64 send_rtt;
   u8 rtt_stat;
+  u32 rtt_udp_buffer_offset;
+  f64 jitter;
   u8 *test_send_buffer;
   u64 dgrams_sent;
   u64 dgrams_received;
@@ -129,6 +132,7 @@ typedef struct
   u64 report_interval;	    /**< Time between periodic raports (s) */
   u8 report_interval_total; /**< Shown data are totals since the start of the
 			       test */
+  u8 report_interval_jitter;
 
   /*
    * Flags
