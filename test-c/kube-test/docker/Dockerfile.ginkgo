@@ -1,0 +1,19 @@
+FROM localhost:5001/vpp-test-base:latest
+
+# We don't need to install these packages as they're in the base image
+# Just install anything specific to VPP that isn't in the base
+
+ARG UBUNTU_VERSION
+ARG TARGETARCH
+ARG CODENAME
+ARG GO_VERSION=1.23.10
+RUN echo "I'm building for ${TARGETARCH}" \
+&& wget -t 2 "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/go.tar.gz \
+&& tar -xzf /tmp/go.tar.gz -C /usr/local \
+&& rm /tmp/go.tar.gz
+
+RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_28.3.2-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
+-O /tmp/docker-ce-cli.deb
+RUN dpkg -i /tmp/docker-ce-cli.deb
+
+RUN ln -s /usr/local/go/bin/go /usr/bin/go
