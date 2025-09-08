@@ -580,7 +580,7 @@ test-cov:
 
 .PHONY: test-cov-hs
 test-cov-hs: build-gcov
-	@$(MAKE) CC=$(CC) -C extras/hs-test test-cov \
+	@$(MAKE) CC=$(CC) -C test-container/hs-test test-cov \
 	VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-post-standalone
@@ -698,7 +698,7 @@ test-wipe-all:
 .PHONY: test-checkstyle
 test-checkstyle:
 	@$(MAKE) -C test checkstyle-python-all
-	@$(MAKE) -C extras/hs-test checkstyle-go
+	@$(MAKE) -C test-container/hs-test checkstyle-go
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle-diff
@@ -839,7 +839,7 @@ go-api-files: json-api-files
 
 .PHONY: cleanup-hst
 cleanup-hst:
-	$(MAKE) -C extras/hs-test cleanup-hst
+	$(MAKE) -C test-container/hs-test cleanup-hst
 
 .PHONY: ctags
 ctags: ctags.files
@@ -885,11 +885,11 @@ checkstyle-python:
 
 .PHONY: checkstyle-go
 checkstyle-go:
-	@$(MAKE) -C extras/hs-test checkstyle-go
+	@$(MAKE) -C test-container/hs-test checkstyle-go
 
 .PHONY: fixstyle-go
 fixstyle-go:
-	@$(MAKE) -C extras/hs-test fixstyle-go
+	@$(MAKE) -C test-container/hs-test fixstyle-go
 
 .PHONY: checkstyle-all
 checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell checkstyle-go

@@ -1,0 +1,54 @@
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION} AS base
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install common dependencies needed across multiple containers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Basic utilities
+    ca-certificates \
+    wget \
+    file \
+    gnupg \
+    gnupg2 \
+    git \
+    iproute2 \
+    iputils-ping \
+    less \
+    lsb-release \
+    ubuntu-keyring \
+    vim \
+    # Development & debugging
+    gdb \
+    libunwind-dev \
+    # Libraries frequently needed
+    libapr1 \
+    libnl-3-dev \
+    libnl-route-3-dev \
+    libnuma1 \
+    libsubunit0 \
+    openssl \
+    python3 \
+    # Tools used in tests
+    iperf3 \
+    redis \
+    redis-tools \
+    xz-utils \
+    # Tools moved from derived images
+    apache2-utils \
+    nghttp2 \
+    wrk \
+    # Utilities needed for running tests
+    sudo \
+    make \
+    ethtool \
+    bridge-utils \
+    jq
+
+
+# Add a non-root user (useful for containers that need it)
+RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
+
+# Set default command
+CMD ["/bin/bash"]
