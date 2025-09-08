@@ -35,4 +35,8 @@ add_vpp_executable(test_vppapiclient NO_INSTALL
 )
 
 add_subdirectory(vapi)
-add_subdirectory(python)
+
+option(VPP_BUILD_PYTHON_API "Enable Python API" ON)
+if(VPP_BUILD_PYTHON_API)
+  add_subdirectory(python)
+endif(VPP_BUILD_PYTHON_API)
