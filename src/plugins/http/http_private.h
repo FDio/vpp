@@ -286,7 +286,8 @@ typedef struct http_engine_vft_
   void (*app_rx_evt_callback) (http_conn_t *hc, u32 req_index,
 			       clib_thread_index_t thread_index);
   void (*app_close_callback) (http_conn_t *hc, u32 req_index,
-			      clib_thread_index_t thread_index);
+			      clib_thread_index_t thread_index,
+			      u8 is_shutdown);
   void (*app_reset_callback) (http_conn_t *hc, u32 req_index,
 			      clib_thread_index_t thread_index);
   int (*transport_connected_callback) (http_conn_t *hc);
