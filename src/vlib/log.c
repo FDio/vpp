@@ -120,13 +120,13 @@ log_size_validate (vlib_log_main_t *lm)
 }
 
 void
-vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
+vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
+	     va_list *va)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_log_main_t *lm = &log_main;
   vlib_log_entry_t *e;
   vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (class);
-  va_list va;
   f64 t = vlib_time_now (vm);
   f64 delta = t - sc->last_event_timestamp;
   int log_enabled = log_level_is_enabled (level, sc->level);
@@ -160,9 +160,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 
   if (s == 0)
     {
-      va_start (va, fmt);
-      s = va_format (s, fmt, &va);
-      va_end (va);
+      s = va_format (s, fmt, va);
     }
 
   if (syslog_enabled)
@@ -251,6 +249,15 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
     }
 
   vec_free (s);
+}
+
+void
+vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
+{
+  va_list va;
+  va_start (va, fmt);
+  vlib_log_va (level, class, fmt, &va);
+  va_end (va);
 }
 
 static vlib_log_class_t

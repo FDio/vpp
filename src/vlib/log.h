@@ -126,6 +126,8 @@ vlib_log_register_class_rate_limit (char *class, char *subclass,
 				    u32 rate_limit);
 void vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	       ...);
+void vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
+		  va_list *va);
 int last_log_entry ();
 u8 *format_vlib_log_class (u8 * s, va_list * args);
 u8 *format_vlib_log_level (u8 * s, va_list * args);
