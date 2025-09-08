@@ -27,6 +27,7 @@ typedef struct ec_rttstat_
   f64 min_rtt;
   f64 max_rtt;
   f64 sum_rtt;
+  f64 last_rtt;
   u32 n_sum;
   clib_spinlock_t w_lock;
 } ec_rttstat_t;
@@ -49,6 +50,8 @@ typedef struct ec_session_
   u64 bytes_paced_current;
   f64 send_rtt;
   u8 rtt_stat;
+  u32 rtt_udp_buffer_offset;
+  f64 jitter;
   u8 *test_send_buffer;
   u64 dgrams_sent;
   u64 dgrams_received;
@@ -126,9 +129,10 @@ typedef struct
   f64 test_timeout;			/**< Test timeout (s) */
   f64 run_time;				/**< Length of a test (s) */
   u64 max_chunk_bytes;
-  u64 report_interval;	    /**< Time between periodic raports (s) */
+  u64 report_interval;	    /**< Time between periodic reports (s) */
   u8 report_interval_total; /**< Shown data are totals since the start of the
 			       test */
+  u8 report_interval_jitter; /**< Report jitter in periodic reports */
 
   /*
    * Flags
@@ -143,6 +147,7 @@ typedef struct
   u8 test_failed;
   u8 transport_proto;
   u8 barrier_acq_needed;
+  u8 include_buffer_offset;
 
   vlib_main_t *vlib_main;
 } ec_main_t;

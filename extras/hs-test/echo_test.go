@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, EchoBuiltinPeriodicReportUDPTest)
 	RegisterVethMWTests(TcpWithLossTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
@@ -58,7 +58,7 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 }
 
 func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+(\d?\.\d+)ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -79,6 +79,8 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 		for i := 0; i < 4; i++ {
 			mbytes, _ := strconv.ParseFloat(matches[i][2], 32)
 			s.AssertEqualWithinThreshold(mbytes, 2*(i+1), 0.1)
+			rtt, _ := strconv.ParseFloat(matches[i][3], 32)
+			s.AssertGreaterThan(rtt, 0.0)
 		}
 		// Verify reporting times
 		s.AssertEqual(matches[0][1], "1.0")
@@ -90,8 +92,51 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 	}
 }
 
+func EchoBuiltinPeriodicReportUDPTest(s *VethsSuite) {
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+\d?\.\d+M\s+\d+\.\d+Mb/s\s+(\d?\.\d+)ms\s+(\d+)/(\d+)`)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client bytes 6000k throughput 12m report-interval 1 echo-bytes" +
+		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+	s.Log(o)
+	s.AssertContains(o, "Test started")
+	s.AssertContains(o, "Test finished")
+	if regex.MatchString(o) {
+		matches := regex.FindAllStringSubmatch(o, -1)
+		// Check we got a correct number of reports
+		s.AssertEqual(4, len(matches))
+		// Verify TX numbers
+		for i := 0; i < 4; i++ {
+			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
+			s.AssertEqualWithinThreshold(mbytes, 1.5, 0.1)
+			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
+			s.AssertGreaterThan(rtt, 0.0)
+			dgramsSent, _ := strconv.ParseUint(matches[i][5], 10, 32)
+			s.AssertEqualWithinThreshold(dgramsSent, 2048, 20)
+			dgramsReceived, _ := strconv.ParseUint(matches[i][6], 10, 32)
+			s.AssertEqualWithinThreshold(dgramsReceived, 2048, 50)
+		}
+		// Verify time interval numbers
+		s.AssertEqual(matches[0][1], "0.0")
+		s.AssertEqual(matches[0][2], "1.0")
+		s.AssertEqual(matches[1][1], "1.0")
+		s.AssertEqual(matches[1][2], "2.0")
+		s.AssertEqual(matches[2][1], "2.0")
+		s.AssertEqual(matches[2][2], "3.0")
+		s.AssertEqual(matches[3][1], "3.0")
+		s.AssertEqual(matches[3][2], "4.0")
+	} else {
+		s.AssertEmpty("invalid echo test client output")
+	}
+}
+
 func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+(\d?\.\d+)ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -112,6 +157,8 @@ func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
 		for i := 0; i < 4; i++ {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
 			s.AssertEqualWithinThreshold(mbytes, 2, 0.1)
+			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
+			s.AssertGreaterThan(rtt, 0.0)
 		}
 		// Verify time interval numbers
 		s.AssertEqual(matches[0][1], "0.0")
