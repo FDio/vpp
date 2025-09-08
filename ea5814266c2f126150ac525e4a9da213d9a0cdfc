@@ -33,6 +33,24 @@
       "message": "@Ben,\nAre there any automated tests that verify the corner cases DaveB mentioned or only manual tests?\n\nIf there is only manual testing done, then please document how this gerrit change has been verified in the repo based docs and/or add automated tests.",
       "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10b6c7a0_44e14fe5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-09-08T11:59:34Z",
+      "side": 1,
+      "message": "No tests for those, we should probably investigate if we can add automated tests given it is a sensible area",
+      "parentUuid": "ca03dfef_ba8d6971",
+      "revId": "ea5814266c2f126150ac525e4a9da213d9a0cdfc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
