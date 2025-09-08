@@ -31,6 +31,7 @@ typedef enum http2_stream_state_
 
 #define foreach_http2_req_flags                                               \
   _ (APP_CLOSED, "app-closed")                                                \
+  _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                      \
   _ (NEED_WINDOW_UPDATE, "need-window-update")                                \
   _ (IS_PARENT, "is-parent")
 
@@ -268,6 +269,8 @@ http2_conn_alloc_req (http_conn_t *hc, u8 is_parent)
   h2c->req_num++;
   if (is_parent)
     {
+      HTTP_DBG (1, "is parent");
+      ASSERT (h2c->parent_req_index == SESSION_INVALID_INDEX);
       req->flags |= HTTP2_REQ_F_IS_PARENT;
       h2c->parent_req_index = req_index;
     }
@@ -1717,7 +1720,8 @@ http2_req_state_tunnel_rx (http_conn_t *hc, http2_req_t *req,
   u32 max_enq;
 
   HTTP_DBG (1, "tunnel received data from peer %lu", req->payload_len);
-  if (req->flags & HTTP2_REQ_F_APP_CLOSED)
+  if (req->flags & HTTP2_REQ_F_APP_CLOSED &&
+      !(req->flags & HTTP2_REQ_F_SHUTDOWN_TUNNEL))
     {
       HTTP_DBG (1, "proxy app closed, going to reset stream");
       http2_stream_error (hc, req, HTTP2_ERROR_CONNECT_ERROR, sp);
@@ -2820,7 +2824,7 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
 
 static void
 http2_app_close_callback (http_conn_t *hc, u32 req_index,
-			  clib_thread_index_t thread_index)
+			  clib_thread_index_t thread_index, u8 is_shutdown)
 {
   http2_req_t *req;
 
@@ -2839,9 +2843,10 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
       req->stream_state == HTTP2_STREAM_STATE_IDLE ||
       hc->state == HTTP_CONN_STATE_CLOSED)
     {
+      u8 is_parent = req->flags & HTTP2_REQ_F_IS_PARENT;
       HTTP_DBG (1, "nothing more to send, confirm close");
       http2_stream_close (req, hc);
-      if (req->flags & HTTP2_REQ_F_IS_PARENT)
+      if (is_parent)
 	{
 	  HTTP_DBG (1, "client app closed parent, closing connection");
 	  ASSERT (!(hc->flags & HTTP_CONN_F_IS_SERVER));
@@ -2850,6 +2855,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
     }
   else if (req->base.is_tunnel)
     {
+      req->flags |= is_shutdown ? HTTP2_REQ_F_SHUTDOWN_TUNNEL : 0;
       switch (req->stream_state)
 	{
 	case HTTP2_STREAM_STATE_OPEN:
@@ -2860,7 +2866,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	      HTTP_DBG (1, "wait for all data to be written to ts");
 	      return;
 	    }
-	  if (req->our_window == 0)
+	  if (req->our_window == 0 && !is_shutdown)
 	    {
 	      HTTP_DBG (1, "app has unread data, going to reset stream");
 	      http2_stream_error (hc, req, HTTP2_ERROR_CONNECT_ERROR, 0);
