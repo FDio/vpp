@@ -1170,9 +1170,8 @@ http_stop_listen (u32 listener_index)
 
   return 0;
 }
-
-static void
-http_transport_close (u32 rh, clib_thread_index_t thread_index)
+static_always_inline void
+http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
 {
   http_conn_t *hc;
   u32 hc_index;
@@ -1199,7 +1198,19 @@ http_transport_close (u32 rh, clib_thread_index_t thread_index)
     }
 
   http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index,
-					     thread_index);
+					     thread_index, is_shutdown);
+}
+
+static void
+http_transport_shutdown (u32 rh, clib_thread_index_t thread_index)
+{
+  http_app_close (rh, thread_index, 1);
+}
+
+static void
+http_transport_close (u32 rh, clib_thread_index_t thread_index)
+{
+  http_app_close (rh, thread_index, 0);
 }
 
 static void
@@ -1271,7 +1282,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index,
-					       as->thread_index);
+					       as->thread_index, 0);
 
   sent = max_burst_sz - sp->max_burst_size;
 
@@ -1419,6 +1430,7 @@ static const transport_proto_vft_t http_proto = {
   .connect = http_transport_connect,
   .start_listen = http_start_listen,
   .stop_listen = http_stop_listen,
+  .half_close = http_transport_shutdown,
   .close = http_transport_close,
   .reset = http_transport_reset,
   .cleanup_ho = http_transport_cleanup_ho,
