@@ -1,0 +1,19 @@
+# nginx container that uses the base image
+ARG UBUNTU_VERSION=22.04
+FROM localhost:5001/vpp-test-base:latest
+
+# nginx is now installed in the base image
+
+COPY resources/nginx/nginx.conf /nginx.conf
+COPY script/nginx_ldp.sh /usr/bin/nginx_ldp.sh
+
+ENV VCL_CONFIG=/tmp/nginx/vcl.conf
+ENV LDP=/usr/lib/libvcl_ldpreload.so
+ENV LDP_DEBUG=0
+ENV VCL_DEBUG=0
+ENV LDP_SID_BIT=8
+
+# copy vpp-data last to take advantage of caching (do not change)
+COPY vpp-data/lib/* /usr/lib/
+
+ENTRYPOINT ["nginx_ldp.sh", "nginx", "-c", "/nginx.conf"]
