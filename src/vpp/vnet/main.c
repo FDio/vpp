@@ -133,7 +133,7 @@ main (int argc, char *argv[])
     if (!clib_cpu_supports_ ## a ())            \
       {                                         \
 	fprintf(stderr, msg, b);                \
-	exit(1);                                \
+	abort ();                                \
       }
 
 #if __AVX2__
@@ -312,7 +312,7 @@ defaulted:
 		{
 		  fformat (stderr, "unknown 'memory' config input '%U'\n",
 			   format_unformat_error, &sub_input);
-		  exit (1);
+		  abort ();
 		}
 
 	    }
@@ -463,7 +463,7 @@ os_exit (int code)
       vhost_user_unmap_all ();
       abort ();
     }
-  exit (code);
+  abort ();
 }
 
 #ifdef BARRIER_TRACING

@@ -441,7 +441,7 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 	{
 	  /* heap is not set yet */
 	  fprintf (stderr, "thread stack is not set properly\n");
-	  exit (1);
+	  abort ();
 	}
     }
 
