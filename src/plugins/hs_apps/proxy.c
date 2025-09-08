@@ -781,8 +781,9 @@ proxy_rx_callback (session_t *s)
   /*
    * Send event for active open tx fifo
    */
-  if (svm_fifo_set_event (ao_tx_fifo))
-    session_program_tx_io_evt (sc->pair.session_handle, SESSION_IO_EVT_TX);
+  if (svm_fifo_max_dequeue (ao_tx_fifo))
+    if (svm_fifo_set_event (ao_tx_fifo))
+      session_program_tx_io_evt (sc->pair.session_handle, SESSION_IO_EVT_TX);
 
   if (svm_fifo_max_enqueue (ao_tx_fifo) <= TCP_MSS)
     svm_fifo_add_want_deq_ntf (ao_tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -1157,8 +1158,9 @@ active_open_rx_callback (session_t * s)
   /*
    * Send event for server tx fifo
    */
-  if (svm_fifo_set_event (proxy_tx_fifo))
-    session_program_tx_io_evt (proxy_tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
+  if (svm_fifo_max_dequeue (proxy_tx_fifo))
+    if (svm_fifo_set_event (proxy_tx_fifo))
+      session_program_tx_io_evt (proxy_tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 
   if (svm_fifo_max_enqueue (proxy_tx_fifo) <= TCP_MSS)
     svm_fifo_add_want_deq_ntf (proxy_tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
