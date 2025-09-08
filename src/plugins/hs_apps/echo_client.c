@@ -82,6 +82,7 @@ update_rtt_stats (f64 session_rtt)
 {
   ec_main_t *ecm = &ec_main;
   clib_spinlock_lock (&ecm->rtt_stats.w_lock);
+  ecm->rtt_stats.last_rtt = session_rtt;
   ecm->rtt_stats.sum_rtt += session_rtt;
   ecm->rtt_stats.n_sum++;
   if (session_rtt < ecm->rtt_stats.min_rtt)
@@ -161,7 +162,8 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
 	  if (!ecm->throughput)
 	    bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
-	  if (ecm->cfg.test_bytes)
+	  if (ecm->cfg.test_bytes ||
+	      (ecm->echo_bytes && ecm->transport_proto == TRANSPORT_PROTO_UDP))
 	    {
 	      /* Include buffer offset info to also be able to verify
 	       * out-of-order packets */
@@ -170,6 +172,13 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 		{ (u8 *) &test_buf_offset, sizeof (u32) },
 		{ test_data + test_buf_offset, bytes_this_chunk }
 	      };
+	      if (ecm->echo_bytes &&
+		  ((es->rtt_stat & EC_UDP_RTT_TX_FLAG) == 0))
+		{
+		  es->rtt_udp_buffer_offset = test_buf_offset;
+		  es->send_rtt = vlib_time_now (vlib_get_main ());
+		  es->rtt_stat |= EC_UDP_RTT_TX_FLAG;
+		}
 	      rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2,
 					bytes_this_chunk + sizeof (u32), 0);
 	      if (rv)
@@ -228,7 +237,8 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
   u8 *rx_buf_start = wrk->rx_buf;
   u32 test_buf_offset = es->bytes_received;
 
-  if (ecm->cfg.test_bytes)
+  if (ecm->cfg.test_bytes ||
+      (ecm->echo_bytes && ecm->transport_proto == TRANSPORT_PROTO_UDP))
     {
       n_read =
 	app_recv ((app_session_t *) es, wrk->rx_buf, vec_len (wrk->rx_buf));
@@ -267,8 +277,18 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
       if (ecm->transport_proto == TRANSPORT_PROTO_UDP && ecm->echo_bytes &&
 	  (es->rtt_stat & EC_UDP_RTT_RX_FLAG) == 0)
 	{
-	  es->rtt_stat |= EC_UDP_RTT_RX_FLAG;
-	  update_rtt_stats (vlib_time_now (vlib_get_main ()) - es->send_rtt);
+	  if (((test_buf_offset == es->rtt_udp_buffer_offset) &&
+	       ecm->report_interval) ||
+	      !ecm->report_interval)
+	    {
+	      f64 rtt;
+	      es->rtt_stat |= EC_UDP_RTT_RX_FLAG;
+	      rtt = vlib_time_now (vlib_get_main ()) - es->send_rtt;
+	      if (ecm->rtt_stats.last_rtt > 0)
+		es->jitter =
+		  clib_abs (rtt * 1000 - ecm->rtt_stats.last_rtt * 1000);
+	      update_rtt_stats (rtt);
+	    }
 	}
       if (ecm->cfg.verbose)
 	{
@@ -380,12 +400,6 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       if (es->bytes_to_send > 0)
 	{
-	  if (ecm->transport_proto == TRANSPORT_PROTO_UDP && ecm->echo_bytes &&
-	      (es->rtt_stat & EC_UDP_RTT_TX_FLAG) == 0)
-	    {
-	      es->send_rtt = time_now;
-	      es->rtt_stat |= EC_UDP_RTT_TX_FLAG;
-	    }
 	  send_data_chunk (ecm, es);
 	  if (ecm->throughput)
 	    es->time_to_send += ecm->pacing_window_len;
@@ -493,6 +507,9 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->last_print_time = 0;
   ecm->last_total_tx_bytes = 0;
   ecm->last_total_rx_bytes = 0;
+  ecm->last_total_rx_dgrams = 0;
+  ecm->last_total_tx_dgrams = 0;
+  ecm->report_interval_jitter = 0;
   clib_memset (&ecm->rtt_stats, 0, sizeof (ec_rttstat_t));
   ecm->rtt_stats.min_rtt = CLIB_F64_MAX;
   if (ecm->rtt_stats.w_lock == NULL)
@@ -772,7 +789,9 @@ ec_calc_tput (ec_main_t *ecm)
   /* find a suitable pacing window length & data chunk size */
   bytes_paced_target =
     ecm->throughput * ecm->pacing_window_len / ecm->n_clients;
-  while (bytes_paced_target > target_size_threshold)
+  while (
+    bytes_paced_target > target_size_threshold ||
+    (ecm->transport_proto == TRANSPORT_PROTO_UDP && bytes_paced_target > 1460))
     {
       ecm->pacing_window_len /= 2;
       bytes_paced_target /= 2;
@@ -1258,6 +1277,43 @@ ec_ctrl_test_stop ()
       goto cleanup;                                                           \
     }
 
+u8 *
+format_lalign_fmt (u8 *s, va_list *args)
+{
+  u8 *fmt = va_arg (*args, u8 *);
+  u8 i = 0, fmt_len = strnlen_s ((const char *) fmt, 12);
+  u32 initial_len = vec_len (s), width = va_arg (*args, u32), diff_len;
+
+  while ((fmt[i] < 'a' || fmt[i] > 'z') && (fmt[i] < 'A' || fmt[i] > 'Z') &&
+	 i < fmt_len)
+    i++;
+
+  switch (fmt[i])
+    {
+    case 'u':
+      s = format (s, (const char *) fmt, va_arg (*args, u32));
+      break;
+    case 'f':
+      s = format (s, (const char *) fmt, va_arg (*args, f64));
+      break;
+    case 'U':
+      {
+	typedef u8 *(user_func_t) (u8 * s, va_list * args);
+	user_func_t *user_func = va_arg (*args, user_func_t *);
+	s = (*user_func) (s, args);
+	vec_add (s, fmt + i + 1, fmt_len - i - 1);
+	break;
+      }
+    default:
+      ec_err ("unsupported format %c", fmt[i]);
+      return s;
+    }
+  diff_len = vec_len (s) - initial_len;
+  vec_insert (s, width - diff_len, vec_len (s));
+  clib_memset (s + initial_len + diff_len, ' ', width - diff_len);
+  return s;
+}
+
 static void
 ec_print_timeout_stats (vlib_main_t *vm)
 {
@@ -1286,7 +1342,8 @@ static void
 ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
 {
   ec_main_t *ecm = &ec_main;
-  f64 time_now, print_delta, interval_start, interval_end;
+  f64 time_now, print_delta, interval_start, interval_end, rtt = 0.0,
+							   jitter = 0.0;
   u64 total_bytes,
     received_bytes = 0, sent_bytes = 0, dgrams_sent = 0, dgrams_received = 0,
     last_total_bytes = ecm->last_total_tx_bytes + ecm->last_total_rx_bytes;
@@ -1302,6 +1359,26 @@ ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
 	    {
 	      dgrams_received += sess->dgrams_received;
 	      dgrams_sent += sess->dgrams_sent;
+	      sess->rtt_stat = 0;
+	      jitter += sess->jitter;
+	    }
+	  else if (ecm->transport_proto == TRANSPORT_PROTO_TCP)
+	    {
+	      session_t *s =
+		session_get_from_handle_if_valid (sess->vpp_session_handle);
+	      if (s)
+		{
+		  transport_connection_t *tc;
+		  tcp_connection_t *tcpc;
+		  tc = transport_get_connection (
+		    TRANSPORT_PROTO_TCP, s->connection_index, s->thread_index);
+		  if (PREDICT_TRUE (tc != NULL))
+		    {
+		      tcpc = tcp_get_connection_from_transport (tc);
+		      rtt += tcpc->srtt * TCP_TICK;
+		      update_rtt_stats (tcpc->srtt * TCP_TICK);
+		    }
+		}
 	    }
 	}
     }
@@ -1313,76 +1390,89 @@ ec_print_periodic_stats (vlib_main_t *vm, bool print_header, bool print_footer)
 
   if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
     {
-      u8 *tput = 0;
+      jitter /= ecm->n_clients;
+      rtt = ecm->rtt_stats.last_rtt * 1000;
       if (print_header)
 	{
 	  ec_cli ("-----------------------------------------------------------"
-		  "-------------");
+		  "-------------------------");
 	  if (ecm->report_interval_total)
-	    ec_cli ("Run time (s)  Transmitted   Received   Throughput   "
-		    "Sent/received dgrams");
+	    ec_cli (
+	      "Run time (s)  Transmitted   Received   Throughput   "
+	      "%sSent/received dgrams",
+	      (ecm->report_interval_jitter ? "Jitter      " : "Roundtrip   "));
 	  else
-	    ec_cli ("Interval (s)  Transmitted   Received   Throughput   "
-		    "Sent/received dgrams");
+	    ec_cli (
+	      "Interval (s)  Transmitted   Received   Throughput   "
+	      "%sSent/received dgrams",
+	      (ecm->report_interval_jitter ? "Jitter      " : "Roundtrip   "));
 	}
       if (ecm->report_interval_total)
 	{
-	  tput =
-	    format (tput, "%Ub/s", format_base10,
-		    flt_round_nearest ((f64) total_bytes /
-				       (time_now - ecm->test_start_time)) *
-		      8);
-	  ec_cli ("%-13.1f %-13U %-10U %-12s %llu/%llu", interval_end,
+	  ec_cli ("%-13.1f %-13U %-10U %U %U %llu/%llu", interval_end,
 		  format_base10, sent_bytes, format_base10, received_bytes,
-		  tput, dgrams_sent, dgrams_received);
+		  format_lalign_fmt, "%Ub/s", 12, format_base10,
+		  flt_round_nearest ((f64) (total_bytes - last_total_bytes) /
+				     print_delta) *
+		    8,
+		  format_lalign_fmt, "%.3fms", 11,
+		  (ecm->report_interval_jitter ? &jitter : &rtt), dgrams_sent,
+		  dgrams_received);
 	}
       else
 	{
-	  tput =
-	    format (tput, "%Ub/s", format_base10,
-		    flt_round_nearest ((f64) (total_bytes - last_total_bytes) /
-				       print_delta) *
-		      8);
-	  ec_cli ("%.1f-%-9.1f %-13U %-10U %-12s %llu/%llu", interval_start,
+	  rtt /= ecm->n_clients;
+	  ec_cli ("%.1f-%-9.1f %-13U %-10U %U %-U %llu/%llu", interval_start,
 		  interval_end, format_base10,
 		  sent_bytes - ecm->last_total_tx_bytes, format_base10,
-		  received_bytes - ecm->last_total_rx_bytes, tput,
+		  received_bytes - ecm->last_total_rx_bytes, format_lalign_fmt,
+		  "%Ub/s", 12, format_base10,
+		  flt_round_nearest ((f64) (total_bytes - last_total_bytes) /
+				     print_delta) *
+		    8,
+		  format_lalign_fmt, "%.3fms", 11,
+		  (ecm->report_interval_jitter ? jitter : rtt),
 		  (dgrams_sent - ecm->last_total_tx_dgrams),
 		  (dgrams_received - ecm->last_total_rx_dgrams));
 	}
       if (print_footer)
 	ec_cli ("-------------------------------------------------------------"
-		"-----------");
+		"-----------------------");
       ecm->last_total_tx_dgrams = dgrams_sent;
       ecm->last_total_rx_dgrams = dgrams_received;
-      vec_free (tput);
     }
   else
     {
       if (print_header)
 	{
-	  ec_cli ("-------------------------------------------------");
+	  ec_cli (
+	    "-------------------------------------------------------------");
 	  if (ecm->report_interval_total)
-	    ec_cli ("Run time (s)  Transmitted   Received   Throughput");
+	    ec_cli (
+	      "Run time (s)  Transmitted   Received   Roundtrip   Throughput");
 	  else
-	    ec_cli ("Interval (s)  Transmitted   Received   Throughput");
+	    ec_cli (
+	      "Interval (s)  Transmitted   Received   Roundtrip   Throughput");
 	}
       if (ecm->report_interval_total)
-	ec_cli ("%-13.1f %-13U %-10U %Ub/s", interval_end, format_base10,
-		sent_bytes, format_base10, received_bytes, format_base10,
+	ec_cli ("%-13.1f %-13U %-10U %U %Ub/s", interval_end, format_base10,
+		sent_bytes, format_base10, received_bytes, format_lalign_fmt,
+		"%.3fms", 11, rtt * 1000, format_base10,
 		flt_round_nearest ((f64) total_bytes /
 				   (time_now - ecm->test_start_time)) *
 		  8);
       else
-	ec_cli ("%.1f-%-9.1f %-13U %-10U %Ub/s", interval_start, interval_end,
-		format_base10, sent_bytes - ecm->last_total_tx_bytes,
-		format_base10, received_bytes - ecm->last_total_rx_bytes,
-		format_base10,
+	ec_cli ("%.1f-%-9.1f %-13U %-10U %U %Ub/s", interval_start,
+		interval_end, format_base10,
+		sent_bytes - ecm->last_total_tx_bytes, format_base10,
+		received_bytes - ecm->last_total_rx_bytes, format_lalign_fmt,
+		"%.3fms", 11, rtt * 1000, format_base10,
 		flt_round_nearest (((f64) (total_bytes - last_total_bytes)) /
 				   print_delta) *
 		  8);
       if (print_footer)
-	ec_cli ("-------------------------------------------------");
+	ec_cli (
+	  "-------------------------------------------------------------");
     }
   ecm->last_print_time = time_now;
   ecm->last_total_tx_bytes = sent_bytes;
@@ -1410,7 +1500,9 @@ ec_print_final_stats (vlib_main_t *vm, f64 total_delta)
       else
 	ec_cli ("error measuring roundtrip time");
     }
-
+  if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
+    ec_cli ("sent total %llu datagrams, received total %llu datagrams",
+	    ecm->last_total_tx_dgrams, ecm->last_total_rx_dgrams);
   total_bytes = (ecm->echo_bytes ? ecm->rx_total : ecm->tx_total);
   transfer_type = ecm->echo_bytes ? "full-duplex" : "half-duplex";
   ec_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
@@ -1489,12 +1581,14 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "client-batch %d",
 			 &ecm->connections_per_batch))
 	;
-      else if (unformat (line_input, "report-interval %u",
-			 &ecm->report_interval))
-	;
+      else if (unformat (line_input, "report-jitter"))
+	ecm->report_interval_jitter = 1;
       else if (unformat (line_input, "report-interval-total %u",
 			 &ecm->report_interval))
 	ecm->report_interval_total = 1;
+      else if (unformat (line_input, "report-interval %u",
+			 &ecm->report_interval))
+	;
       else if (unformat (line_input, "report-interval"))
 	ecm->report_interval = 1;
       else if (unformat (line_input, "appns %_%v%_", &ecm->appns_id))
@@ -1753,7 +1847,8 @@ VLIB_CLI_COMMAND (ec_command, static) = {
     "[run-time <time>][syn-timeout <time>][echo-bytes][fifo-size <size>]"
     "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
     "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
-    "[throughput <bytes>[m|g]][report-interval[-total] <time>][uri "
+    "[throughput <bytes>[m|g]][report-interval[-total] "
+    "<time>][report-jitter][[uri "
     "<tcp://ip/port>]"
     "[test-bytes][verbose]",
   .function = ec_command_fn,

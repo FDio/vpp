@@ -58,7 +58,7 @@ func EchoBuiltinBandwidthTest(s *VethsSuite) {
 }
 
 func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+(\d?\.\d+)ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -79,6 +79,8 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 		for i := 0; i < 4; i++ {
 			mbytes, _ := strconv.ParseFloat(matches[i][2], 32)
 			s.AssertEqualWithinThreshold(mbytes, 2*(i+1), 0.1)
+			rtt, _ := strconv.ParseFloat(matches[i][3], 32)
+			s.AssertEqualWithinThreshold(rtt, 20, 30)
 		}
 		// Verify reporting times
 		s.AssertEqual(matches[0][1], "1.0")
@@ -91,7 +93,7 @@ func EchoBuiltinPeriodicReportTotalTest(s *VethsSuite) {
 }
 
 func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
-	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s`)
+	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+(\d?\.\d+)ms\s+\d+\.\d+Mb/s`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("test echo server " +
@@ -112,6 +114,8 @@ func EchoBuiltinPeriodicReportTest(s *VethsSuite) {
 		for i := 0; i < 4; i++ {
 			mbytes, _ := strconv.ParseFloat(matches[i][3], 32)
 			s.AssertEqualWithinThreshold(mbytes, 2, 0.1)
+			rtt, _ := strconv.ParseFloat(matches[i][4], 32)
+			s.AssertEqualWithinThreshold(rtt, 20, 30)
 		}
 		// Verify time interval numbers
 		s.AssertEqual(matches[0][1], "0.0")
