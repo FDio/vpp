@@ -113,7 +113,12 @@ defaults:
 
 jobs:
   setup-env:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=amd64
+      - fdio:class=builder
+      - fdio:namespace=sandbox
     outputs:
       runner_ip: ${{ steps.set_vars.outputs.runner_ip }}
       runner_name: ${{ steps.set_vars.outputs.runner_name }}
@@ -142,7 +147,13 @@ jobs:
 
   vpp-verify:
     needs: setup-env
-    runs-on: ${{ fromJson(format('["self-hosted", "builder-{0}"]', matrix.executor-arch)) }}
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor-arch }}
+      - fdio:class=builder
+      - fdio:namespace=sandbox
+      - fdio:image=${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -154,20 +165,20 @@ jobs:
           # Exclude debian12 on aarch64 for all builds
           - os: 'debian12'
             executor-arch: 'aarch64'
-          
+
           # Debug build exclusions - only keep [master, ubuntu2204, x86_64]
           # Exclude non-master branches for debug builds
           - build_type: 'debug'
             branch: 'stable/2502'
           - build_type: 'debug'
             branch: 'stable/2506'
-          
+
           # Exclude non-ubuntu2204 OS for debug builds
           - build_type: 'debug'
             os: 'ubuntu2404'
           - build_type: 'debug'
             os: 'debian12'
-          
+
           # Exclude aarch64 architecture for debug builds
           - build_type: 'debug'
             executor-arch: 'aarch64'
@@ -176,17 +187,6 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call'
       )
-
-    container:
-      image: fdiotools/builder-${{ matrix.os }}:${{ inputs.builder_type || github.event.inputs.builder_type || 'prod' }}-${{ matrix.executor-arch }}
-      options: >-
-        --privileged 
-        -m16g 
-        --cpus=16 
-        -e HOST_IP=${{ needs.setup-env.outputs.runner_ip }}
-        -e HOST_HOSTNAME=${{ needs.setup-env.outputs.runner_name }}
-        -v /tmp/ccache.${{ matrix.os }}.${{ matrix.executor-arch }}:/scratch/ccache
-        -v /scratch/nomad:/scratch/nomad:ro
 
     env:
       # VPP source directory path inside the container
@@ -338,7 +338,7 @@ jobs:
           echo "=== All Docker executor environment variables ==="
           env | sort
 
-      - name: Integrate latest code changes with Docker Executor VPP_SRC_DIR 
+      - name: Integrate latest code changes with Docker Executor VPP_SRC_DIR
         if: ${{ env.SHOULD_RUN == 'true' }}
         timeout-minutes: 5
         shell: bash
@@ -359,7 +359,7 @@ jobs:
               --exclude='.git_commit_template.txt' \
               --exclude='.gitreview' \
               "$GITHUB_WORKSPACE/" "${VPP_SRC_DIR}/"
-            
+
             # Reset the git index to match the current state after rsync
             cd ${VPP_SRC_DIR}
             if ! git reset; then
@@ -547,7 +547,7 @@ jobs:
           cd ${VPP_SRC_DIR}
           echo "Running tests for debug build (non-voting) with TEST_JOBS=${TEST_JOBS}"
           make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=${TEST_JOBS} RETRIES=${TEST_RETRIES} UNATTENDED=yes FAILED_DIR=/tmp/vpp-failed-unittests test-debug
-          
+
       - name: Run make test (Release build)
         if: ${{ env.SHOULD_RUN == 'true' && env.RUN_TEST_PHASE == 'true' && contains(env.MAKE_TEST_OS, format('{0}-{1}', env.OS_ID, env.OS_VERSION_ID)) && matrix.build_type == 'release' }}
         timeout-minutes: 120
@@ -574,7 +574,7 @@ jobs:
           else
             echo "No worker config found, skipping multiworker test"
           fi
-          
+
       - name: Run multiworker tests (Release build)
         if: ${{ env.SHOULD_RUN == 'true' && env.RUN_TEST_PHASE == 'true' && contains(env.MAKE_TEST_MULTIWORKER_OS, format('{0}-{1}', env.OS_ID, env.OS_VERSION_ID)) && matrix.build_type == 'release' }}
         timeout-minutes: 120
