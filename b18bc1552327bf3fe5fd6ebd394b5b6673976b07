@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "09569ad4_0fae4a1b",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T18:41:33Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "3cde0e63_ec171015",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3eba6823_3c9276d7",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-09-04T03:44:43Z",
       "side": 1,
       "message": "Hm, which of the apis are expected to expand the pool?",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "63730ab1_1390e944",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T18:41:33Z",
+      "side": 1,
+      "message": "removed",
+      "parentUuid": "3eba6823_3c9276d7",
       "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ebacf82_d669632b",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T18:41:33Z",
+      "side": 1,
+      "message": "done.",
+      "parentUuid": "06584390_e5245c1f",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bd0ef748_2a32b2d7",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "67187b7f_9701f750",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T18:41:33Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "bd0ef748_2a32b2d7",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "47b7877e_100c8c65",
@@ -99,6 +171,24 @@
       "writtenOn": "2025-09-04T03:44:43Z",
       "side": 1,
       "message": "Let\u0027s avoid this by using `app_worker_init_accepted_ct`",
+      "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "796e1a38_8e5987ae",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T18:41:33Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "47b7877e_100c8c65",
       "revId": "b18bc1552327bf3fe5fd6ebd394b5b6673976b07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
