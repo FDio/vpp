@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d88c2c48_2dcf5183",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-09T19:12:14Z",
+      "side": 1,
+      "message": "Can we narrow down the try_lock() in the function to skip the write system call only?\nvhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)\n  rv \u003d write (fd, \u0026x, sizeof (x)); \u003c\u003c\u003c\u003c\nWe can use the atomic operations to avoid simultaneous access to the other controlling variables if need be.\n\nI am worried about the performance impact of the patch that disallows parallel processing for both input and output threads for a period of time, ie, when the input thread gets the lock, it issues the write system call which may take a bit of time. During that period, the output thread is waiting for the spinlock.\n\nDo you have any performance number to compare between the baseline and with the patch?",
+      "parentUuid": "7b2846a5_e3796bb8",
+      "revId": "0c8227646cd642660b130889ddc3337bf159457a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13186201_acfa4f04",
