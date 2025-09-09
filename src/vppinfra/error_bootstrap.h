@@ -102,7 +102,7 @@ do {							\
 do {                                            \
   if (PREDICT_FALSE(!(truth)))                  \
     {                                           \
-      abort();                                  \
+      abort ();                                  \
     }                                           \
 } while (0)
 #endif /* __COVERITY */

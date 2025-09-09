@@ -230,7 +230,7 @@ os_panic (void)
 __clib_export __clib_weak void
 os_exit (int code)
 {
-  exit (code);
+  abort ();
 }
 
 __clib_export __clib_weak void

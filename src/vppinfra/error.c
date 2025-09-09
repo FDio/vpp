@@ -79,12 +79,6 @@ clib_error_register_handler (clib_error_handler_func_t func, void *arg)
 }
 
 static void
-debugger (void)
-{
-  os_panic ();
-}
-
-static void
 error_exit (int code)
 {
   os_exit (code);
@@ -140,9 +134,9 @@ _clib_error (int how_to_die, const char *function_name, uword line_number,
   vec_free (msg);
 
   if (how_to_die & CLIB_ERROR_ABORT)
-    debugger ();
+    abort ();
   if (how_to_die & CLIB_ERROR_FATAL)
-    error_exit (1);
+    abort ();
 }
 
 __clib_export clib_error_t *
@@ -229,7 +223,7 @@ _clib_error_report (clib_error_t * errors)
       vec_free (msg);
 
       if (errors->flags & CLIB_ERROR_ABORT)
-	debugger ();
+	abort ();
       if (errors->flags & CLIB_ERROR_FATAL)
 	error_exit (1);
 
