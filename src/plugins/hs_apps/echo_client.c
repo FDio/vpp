@@ -493,6 +493,8 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->last_print_time = 0;
   ecm->last_total_tx_bytes = 0;
   ecm->last_total_rx_bytes = 0;
+  ecm->last_total_rx_dgrams = 0;
+  ecm->last_total_tx_dgrams = 0;
   clib_memset (&ecm->rtt_stats, 0, sizeof (ec_rttstat_t));
   ecm->rtt_stats.min_rtt = CLIB_F64_MAX;
   if (ecm->rtt_stats.w_lock == NULL)
@@ -772,7 +774,9 @@ ec_calc_tput (ec_main_t *ecm)
   /* find a suitable pacing window length & data chunk size */
   bytes_paced_target =
     ecm->throughput * ecm->pacing_window_len / ecm->n_clients;
-  while (bytes_paced_target > target_size_threshold)
+  while (
+    bytes_paced_target > target_size_threshold ||
+    (ecm->transport_proto == TRANSPORT_PROTO_UDP && bytes_paced_target > 1460))
     {
       ecm->pacing_window_len /= 2;
       bytes_paced_target /= 2;
@@ -1415,10 +1419,9 @@ ec_print_final_stats (vlib_main_t *vm, f64 total_delta)
   transfer_type = ecm->echo_bytes ? "full-duplex" : "half-duplex";
   ec_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
 	  total_bytes / (1ULL << 20), total_bytes / (1ULL << 30), total_delta);
-  ec_cli ("%.2f bytes/second %s", ((f64) total_bytes) / (total_delta),
+  ec_cli ("%UBps %s", format_base10,
+	  flt_round_nearest (((f64) total_bytes) / (total_delta)),
 	  transfer_type);
-  ec_cli ("%.4f gbit/second %s",
-	  (((f64) total_bytes * 8.0) / total_delta / 1e9), transfer_type);
 }
 
 static clib_error_t *

@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -368,19 +369,28 @@ func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
 	return conn
 }
 
-// Parses transfer speed ("N bytes/second full-duplex")
+// Parses transfer speed ("NBps full-duplex")
 func (s *HstSuite) ParseEchoClientTransfer(stats string) (float64, error) {
-	lines := strings.Split(strings.TrimSpace(stats), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if strings.Contains(line, "bytes/second") {
-			parts := strings.Fields(line)
-			if len(parts) == 0 {
-				return 0, errors.New("check format of stats")
-			}
-			num := strings.ReplaceAll(parts[0], ",", "")
-			return strconv.ParseFloat(num, 64)
-		}
+	pattern := regexp.MustCompile(`(?i)(\d+\.\d+?)([KMGT]?)bps\s+(?:half|full)-duplex`)
+	match := pattern.FindStringSubmatch(stats)
+	if len(match) == 0 {
+		return 0, errors.New("throughput pattern not found")
 	}
-	return 0, errors.New(`"bytes/second" not found`)
+	fVal, err := strconv.ParseFloat(match[1], 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse numeric value '%s': %w", match[1], err)
+	}
+
+	mult := float64(1)
+	switch match[2] {
+	case "K":
+		mult = 1e3
+	case "M":
+		mult = 1e6
+	case "G":
+		mult = 1e9
+	case "T":
+		mult = 1e12
+	}
+	return fVal * mult, nil
 }
