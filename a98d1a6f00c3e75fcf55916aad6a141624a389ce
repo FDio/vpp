@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f9aaee1_f8d5b5c1",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-09T21:31:28Z",
+      "side": 1,
+      "message": "C-style :-)",
+      "revId": "a98d1a6f00c3e75fcf55916aad6a141624a389ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
