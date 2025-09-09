@@ -33,6 +33,23 @@
       "message": "perftest-2n-spr nic_*AND64bANDeth-l2patch !drv_avf !soak",
       "revId": "33021a6a4944c7d63f14a0a12533099be8b1a541",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2944051_26f02402",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-09T16:11:10Z",
+      "side": 1,
+      "message": "perftest-2n-spr mrrANDnic_*AND64bANDeth-l2patch ndrpdrANDnic_*AND64bANDeth-l2patch !drv_avf",
+      "revId": "33021a6a4944c7d63f14a0a12533099be8b1a541",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
