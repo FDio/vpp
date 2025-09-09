@@ -369,7 +369,7 @@ func (s *HstSuite) StartUdpEchoServer(addr string, port int) *net.UDPConn {
 }
 
 // Parses transfer speed ("N bytes/second full-duplex")
-func (s *HstSuite) ParseEchoClientTransfer(stats string) (float64, error) {
+func (s *HstSuite) ParseEchoClientTransfer(stats string) (uint64, error) {
 	lines := strings.Split(strings.TrimSpace(stats), "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
@@ -379,7 +379,7 @@ func (s *HstSuite) ParseEchoClientTransfer(stats string) (float64, error) {
 				return 0, errors.New("check format of stats")
 			}
 			num := strings.ReplaceAll(parts[0], ",", "")
-			return strconv.ParseFloat(num, 64)
+			return strconv.ParseUint(num, 10, 64)
 		}
 	}
 	return 0, errors.New(`"bytes/second" not found`)
