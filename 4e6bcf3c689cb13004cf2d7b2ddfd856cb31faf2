@@ -81,6 +81,30 @@
       },
       "revId": "4e6bcf3c689cb13004cf2d7b2ddfd856cb31faf2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f75b86c_ba2a2f51",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1423,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-10T19:04:00Z",
+      "side": 1,
+      "message": "format_base10 requires uint64",
+      "parentUuid": "aa28751c_4628c387",
+      "range": {
+        "startLine": 1423,
+        "startChar": 3,
+        "endLine": 1423,
+        "endChar": 20
+      },
+      "revId": "4e6bcf3c689cb13004cf2d7b2ddfd856cb31faf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
