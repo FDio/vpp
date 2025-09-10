@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e386b3c5_73a6dc72",
+        "filename": "src/vnet/session/application_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-10T08:53:32Z",
+      "side": 1,
+      "message": "should be inside pool_foreach",
+      "range": {
+        "startLine": 237,
+        "startChar": 6,
+        "endLine": 238,
+        "endChar": 25
+      },
+      "revId": "2eb245a2d2d558507b11ddb2992f87b48ef6fd09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
