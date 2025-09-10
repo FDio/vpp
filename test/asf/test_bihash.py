@@ -38,7 +38,7 @@ class TestBihash(VppAsfTestCase):
         """Bihash Thread Test"""
 
         error = self.vapi.cli(
-            "test bihash threads 2 nbuckets" + " 64000 careful 0 verbose 0"
+            "test bihash threads 2 nitems 10000 ncycles 1000000 nbuckets" + " 64000 careful 0 verbose 0"
         )
 
         if error:
