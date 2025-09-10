@@ -564,7 +564,7 @@ clib_aes256_cbc_decrypt (const aes_cbc_key_data_t *kd, const u8 *ciphertext,
 #endif
 
 static_always_inline u32
-clib_aes_cbc_encrypt_multi (aes_cbc_key_data_t **key_data,
+clib_aes_cbc_encrypt_multi (const aes_cbc_key_data_t * const *key_data,
 			    const uword *key_indices, u8 **plaintext,
 			    const uword *oplen, u8 **iv, aes_key_size_t ks,
 			    u8 **ciphertext, uword n_ops)
@@ -606,7 +606,7 @@ more:
 	    placeholder_mask[i] = ~0;
 	    if (key_index[i] != key_indices[0])
 	      {
-		aes_cbc_key_data_t *kd;
+		const aes_cbc_key_data_t *kd;
 		key_index[i] = key_indices[0];
 		kd = key_data[key_index[i]];
 		for (j = 0; j < rounds + 1; j++)
