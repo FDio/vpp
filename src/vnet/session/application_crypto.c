@@ -45,6 +45,36 @@ app_cert_key_pair_get_default ()
   return app_cert_key_pair_get (0);
 }
 
+app_crypto_ca_trust_t *
+app_crypto_get_ca_trust (u32 app_wrk_index, u32 ca_trust_index)
+{
+  app_worker_t *app_wrk;
+  application_t *app;
+
+  app_wrk = app_worker_get (app_wrk_index);
+  app = application_get (app_wrk->app_index);
+
+  return app_get_crypto_ca_trust (app, ca_trust_index);
+}
+
+app_crypto_ca_trust_int_ctx_t *
+app_crypto_alloc_int_ca_trust (app_crypto_ca_trust_t *ct,
+			       clib_thread_index_t thread_index)
+{
+  if (!ct->cti)
+    vec_validate (ct->cti, vlib_num_workers ());
+  return vec_elt_at_index (ct->cti, thread_index);
+}
+
+app_crypto_ca_trust_int_ctx_t *
+app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
+			     clib_thread_index_t thread_index)
+{
+  if (vec_len (ct->cti) <= thread_index)
+    return 0;
+  return vec_elt_at_index (ct->cti, thread_index);
+}
+
 int
 vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a)
 {
@@ -185,10 +215,36 @@ app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx)
   vec_validate (crypto_ctx->wrk, vlib_num_workers ());
 }
 
+static void
+app_crypto_ca_stores_cleanup (app_crypto_ca_trust_t *ca_stores)
+{
+  app_crypto_ca_trust_int_ctx_t *cti;
+  app_crypto_ca_trust_t *ct;
+
+  pool_foreach (ct, ca_stores)
+    {
+      vec_foreach (cti, ct->cti)
+	{
+	  if (cti->cleanup_cb)
+	    (cti->cleanup_cb) (cti);
+	  cti->ca_store = 0;
+	}
+      vec_free (ct->cti);
+      vec_free (ct->ca_chain);
+      vec_free (ct->crl);
+    }
+}
+
 void
 app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
 {
   app_crypto_wrk_t *crypto_wrk;
+
+  if (crypto_ctx->ca_trust_stores)
+    {
+      app_crypto_ca_stores_cleanup (crypto_ctx->ca_trust_stores);
+      pool_free (crypto_ctx->ca_trust_stores);
+    }
 
   vec_foreach (crypto_wrk, crypto_ctx->wrk)
     pool_free (crypto_wrk->reqs);

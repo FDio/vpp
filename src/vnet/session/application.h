@@ -180,6 +180,14 @@ app_crypto_wrk_get (application_t *app, clib_thread_index_t thread_index)
   return vec_elt_at_index (app->crypto_ctx.wrk, thread_index);
 }
 
+static inline app_crypto_ca_trust_t *
+app_get_crypto_ca_trust (application_t *app, u32 ca_trust_index)
+{
+  if (pool_is_free_index (app->crypto_ctx.ca_trust_stores, ca_trust_index))
+    return 0;
+  return pool_elt_at_index (app->crypto_ctx.ca_trust_stores, ca_trust_index);
+}
+
 typedef struct app_rx_mq_handle_
 {
   union

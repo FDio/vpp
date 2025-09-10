@@ -311,9 +311,10 @@ typedef enum tls_verify_cfg_
 
 typedef struct transport_endpt_crypto_cfg_
 {
-  u32 ckpair_index;  /**< index of ck pair in application crypto layer */
-  u8 alpn_protos[4]; /**< ordered by preference for server */
-  u8 crypto_engine;  /**< crypto engine requested */
+  u32 ckpair_index;   /**< index of ck pair in application crypto layer */
+  u32 ca_trust_index; /**< index of ca trust in application crypto layer */
+  u8 alpn_protos[4];  /**< ordered by preference for server */
+  u8 crypto_engine;   /**< crypto engine requested */
   tls_verify_cfg_t verify_cfg; /**< cert verification mode */
   u8 hostname[256];	       /**< full domain len is 255 as per rfc 3986 */
 } transport_endpt_crypto_cfg_t;
