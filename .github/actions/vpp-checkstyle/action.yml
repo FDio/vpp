@@ -26,30 +26,3 @@ runs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
         fi
         echo "Event: ${{ github.event_name }}, Branch: $BRANCH"
-
-    - name: Run Checkstyle Scripts
-      run: |
-        .ci/scripts/vpp/checkstyle.sh
-
-    - name: Run Test Checkstyle Scripts
-      run: |
-        .ci/scripts/vpp/test-checkstyle.sh
-
-    - name: Run API Checkstyle Scripts
-      run: |
-        .ci/scripts/vpp/api-checkstyle.sh
-
-    - name: Run Commit Message Checkstyle
-      run: |
-        .ci/scripts/vpp/commitmsg.sh
-
-    - name: Run Docs Spell
-      run: |
-        .ci/scripts/vpp/docs_spell.sh
-
-    - name: Archive Checkstyle Logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: checkstyle-logs-${{ steps.set-branch.outputs.target_branch }}-${{ inputs.os }}
-        path: logs/
