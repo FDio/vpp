@@ -118,7 +118,7 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor-arch }}
       - fdio:class=builder
-      - fdio:namespace=sandbox
+      - fdio:namespace=${{ inputs.builder_type }}
       - fdio:image=${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -229,4 +229,4 @@ jobs:
       - name: Build VPP
         timeout-minutes: 60
         run: |
-          ../scripts/vpp/build.sh
+          .ci/scripts/vpp/build.sh
