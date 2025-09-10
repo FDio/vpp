@@ -18,12 +18,12 @@ aes_ops_aes_ctr (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
-  aes_ctr_key_data_t *kd;
+  const aes_ctr_key_data_t *kd;
   aes_ctr_ctx_t ctx;
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_ctr_key_data_t *) cm->key_data[op->key_index];
+  kd = (const aes_ctr_key_data_t *) cm->key_data[op->key_index];
 
   clib_aes_ctr_init (&ctx, kd, op->iv, ks);
   if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)

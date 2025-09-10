@@ -31,11 +31,11 @@ aes_ops_enc_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
-  aes_gcm_key_data_t *kd;
+  const aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (const aes_gcm_key_data_t *) cm->key_data[op->key_index];
   aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 	   fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 	   AES_KEY_ROUNDS (ks), AES_GCM_OP_ENCRYPT);
@@ -56,12 +56,12 @@ aes_ops_dec_aes_gcm (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vnet_crypto_op_t *op = ops[0];
-  aes_gcm_key_data_t *kd;
+  const aes_gcm_key_data_t *kd;
   u32 n_left = n_ops;
   int rv;
 
 next:
-  kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
+  kd = (const aes_gcm_key_data_t *) cm->key_data[op->key_index];
   rv = aes_gcm (op->src, op->dst, op->aad, (u8 *) op->iv, op->tag, op->len,
 		fixed ? aad_len : op->aad_len, fixed ? 16 : op->tag_len, kd,
 		AES_KEY_ROUNDS (ks), AES_GCM_OP_DECRYPT);

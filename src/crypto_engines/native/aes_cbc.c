@@ -54,9 +54,9 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 	  n_left--;
 	  i++;
 	}
-      clib_aes_cbc_encrypt_multi ((aes_cbc_key_data_t **) cm->key_data,
-				  key_indices, plaintext, oplen, iv, ks,
-				  ciphertext, i);
+      clib_aes_cbc_encrypt_multi (
+	(const aes_cbc_key_data_t *const *) cm->key_data, key_indices,
+	plaintext, oplen, iv, ks, ciphertext, i);
     }
   return n_ops;
 }
@@ -69,7 +69,8 @@ aes_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
   vnet_crypto_op_t *op = ops[0];
-  aes_cbc_key_data_t *kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+  const aes_cbc_key_data_t *kd =
+    (const aes_cbc_key_data_t *) cm->key_data[op->key_index];
   u32 n_left = n_ops;
 
   ASSERT (n_ops >= 1);
@@ -90,7 +91,7 @@ decrypt:
   if (--n_left)
     {
       op += 1;
-      kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+      kd = (const aes_cbc_key_data_t *) cm->key_data[op->key_index];
       goto decrypt;
     }
 
