@@ -159,12 +159,12 @@ jobs:
       matrix:
         os: ['ubuntu2404', 'ubuntu2204', 'debian12']
         branch: [master, stable/2502, stable/2506]
-        executor-arch: ['x86_64', 'aarch64']
+        executor-arch: ['amd64', 'arm64']
         build_type: ${{ (inputs.build_type == 'debug' || github.event.inputs.build_type == 'debug') && fromJson('["debug"]') || (inputs.build_type == 'release' || github.event.inputs.build_type == 'release') && fromJson('["release"]') || fromJson('["debug", "release"]') }}
         exclude:
           # Exclude debian12 on aarch64 for all builds
           - os: 'debian12'
-            executor-arch: 'aarch64'
+            executor-arch: 'arm64'
 
           # Debug build exclusions - only keep [master, ubuntu2204, x86_64]
           # Exclude non-master branches for debug builds
@@ -181,7 +181,7 @@ jobs:
 
           # Exclude aarch64 architecture for debug builds
           - build_type: 'debug'
-            executor-arch: 'aarch64'
+            executor-arch: 'arm64'
     if: >-
       (
         github.event_name == 'workflow_dispatch' ||
