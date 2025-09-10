@@ -126,6 +126,8 @@ main (int argc, char *argv[])
   cpu_set_t cpuset;
   void *main_heap;
 
+  abort ();
+
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
     = "ERROR: This binary requires CPU with %s extensions.\n";
@@ -133,7 +135,7 @@ main (int argc, char *argv[])
     if (!clib_cpu_supports_ ## a ())            \
       {                                         \
 	fprintf(stderr, msg, b);                \
-	exit(1);                                \
+	abort ();                                \
       }
 
 #if __AVX2__
@@ -312,7 +314,7 @@ defaulted:
 		{
 		  fformat (stderr, "unknown 'memory' config input '%U'\n",
 			   format_unformat_error, &sub_input);
-		  exit (1);
+		  abort ();
 		}
 
 	    }
