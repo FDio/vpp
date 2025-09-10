@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3fb5b620_2ca1a4fc",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1421,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-10T13:50:28Z",
+      "side": 0,
+      "message": "can we keep both? Bps without decimal part and second formatted using format_base10, in TcpWithLossTest we should use number with high precision and not small float",
+      "range": {
+        "startLine": 1418,
+        "startChar": 2,
+        "endLine": 1421,
+        "endChar": 67
+      },
+      "revId": "e070068b768cbd72173a945d9954d1200c69bb08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
