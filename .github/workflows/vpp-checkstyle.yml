@@ -58,11 +58,11 @@ jobs:
 
       - name: Run Test Checkstyle Scripts
         run: |
-          .ci/scripts/vpp/test-checkstyle.sh
+          .ci/scripts/vpp/test_checkstyle.sh
 
       - name: Run API Checkstyle Scripts
         run: |
-          .ci/scripts/vpp/api-checkstyle.sh
+          .ci/scripts/vpp/api_checkstyle.sh
 
       - name: Run Commit Message Checkstyle
         run: |
