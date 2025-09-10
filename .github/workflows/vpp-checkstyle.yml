@@ -62,8 +62,6 @@ jobs:
 
       - name: Setup Environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y spell
           .ci/scripts/vpp/setup_executor_env.sh
 
       - name: Run Checkstyle Scripts
