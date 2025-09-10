@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c17c905_b3c4cb19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-10T10:33:05Z",
+      "side": 1,
+      "message": "Got one [1] small good run with debug build, one more thorough run is still in progress.\n\n[1] https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-3n-emr/13/",
+      "revId": "860ef1307664b90f4ec9a4b01c0a0da02459dab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
