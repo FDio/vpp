@@ -208,6 +208,9 @@ indirect_pair_set (hash_pair_indirect_t * p, uword log2_alloc, uword len)
   p->alloc_len = (log2_alloc << PAIR_BITS) | len;
 }
 
+/* internal routine to detect reallocs */
+u8 _hash_will_expand (hash_t *h, void *v);
+
 /* internal routine to fetch value for given key */
 uword *_hash_get (void *v, uword key);
 
@@ -241,6 +244,19 @@ uword hash_bytes (void *v);
 
 /* Public macro to fetch value (key, value) pair for given key */
 #define hash_get_pair(h,key)	_hash_get_pair ((h), (uword) (key))
+
+/* Public inline function to detect reallocs */
+always_inline u8
+hash_will_expand (void *v)
+{
+  hash_t *h;
+
+  if (!v)
+    return 0;
+
+  h = hash_header (v);
+  return _hash_will_expand (h, v);
+}
 
 /* Public macro to set a (key, value) pair */
 #define hash_set(h,key,value)	hash_set3(h,key,value,0)

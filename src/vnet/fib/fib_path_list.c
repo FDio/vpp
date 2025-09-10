@@ -544,6 +544,16 @@ static inline fib_path_list_t *
 fib_path_list_alloc (fib_node_index_t *path_list_index)
 {
     fib_path_list_t *path_list;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (fib_path_list_pool);
+
+    if (need_barrier_sync)
+    {
+	ASSERT (vm->thread_index == 0);
+	vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_list_pool, path_list);
     clib_memset(path_list, 0, sizeof(*path_list));
@@ -556,6 +566,9 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
     *path_list_index = fib_path_list_get_index(path_list);
 
     FIB_PATH_LIST_DBG(path_list, "alloc");
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
 
     return (path_list);
 }
