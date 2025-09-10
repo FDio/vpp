@@ -7,44 +7,44 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to verify (master, stable/2502, stable/2506)'
+        description: "Branch to verify (master, stable/2502, stable/2506)"
         required: true
-        default: 'master'
+        default: "master"
         type: choice
         options:
           - master
           - stable/2502
           - stable/2506
       commit_sha:
-        description: 'Exact commit SHA to verify (optional)'
+        description: "Exact commit SHA to verify (optional)"
         required: false
         type: string
       reason:
-        description: 'Reason for manual verification'
+        description: "Reason for manual verification"
         required: false
-        default: 'Manual VPP Build/Test Verification Run'
+        default: "Manual VPP Build/Test Verification Run"
         type: string
       builder_type:
-        description: 'Builder image type (prod or sandbox)'
+        description: "Builder image type (prod or sandbox)"
         required: false
-        default: 'prod'
+        default: "prod"
         type: choice
         options:
           - prod
           - sandbox
       build_type:
-        description: 'Build type selection (debug, release, or both)'
+        description: "Build type selection (debug, release, or both)"
         required: false
-        default: 'both'
+        default: "both"
         type: choice
         options:
           - both
           - debug
           - release
       make_parallel_jobs:
-        description: 'MAKE_PARALLEL_JOBS value (number of parallel make jobs)'
+        description: "MAKE_PARALLEL_JOBS value (number of parallel make jobs)"
         required: false
-        default: '16'
+        default: "16"
         type: string
 
 permissions:

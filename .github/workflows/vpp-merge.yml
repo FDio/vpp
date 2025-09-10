@@ -38,7 +38,7 @@ jobs:
     with:
       branch: ${{ github.event.workflow_run.head_branch || github.event.inputs.branch }}
       commit_sha: ${{ github.event.workflow_run.head_sha || github.event.inputs.commit_sha }}
-      Merge: true
+      is_merge: true
       reason: ${{ github.event_name == 'workflow_run' && format('Auto merge after checkstyle run {0}', github.event.workflow_run.id) || github.event.inputs.reason }}
       builder_type: prod
       build_type: both

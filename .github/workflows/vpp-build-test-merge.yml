@@ -49,12 +49,12 @@ on:
         required: false
         default: false
         type: boolean
-      Test:
+      is_test:
         description: 'Run build + test phases (skip merge)'
         required: false
         default: false
         type: boolean
-      Merge:
+      is_merge:
         description: 'Run build + merge phases (skip tests)'
         required: false
         default: false
@@ -91,17 +91,17 @@ on:
         required: false
         default: '16'
         type: string
-      Build:
+      is_build:
         description: 'Run only build phase (no tests, no merge)'
         required: false
         default: false
         type: boolean
-      Test:
+      is_verify:
         description: 'Run build + test phases (skip merge)'
         required: false
         default: false
         type: boolean
-      Merge:
+      is_merge:
         description: 'Run build + merge phases (skip tests)'
         required: false
         default: false
@@ -188,9 +188,9 @@ jobs:
       - name: Determine phase selection (Build/Test/Merge)
         run: |
           set -euo pipefail
-          BUILD_INPUT='${{ inputs.Build || github.event.inputs.Build }}'
+          BUILD_INPUT='${{ inputs.is_build || github.event.inputs.is_build }}'
           TEST_INPUT='${{ inputs.is_verify || github.event.inputs.is_verify }}'
-          MERGE_INPUT='${{ inputs.Merge || github.event.inputs.Merge }}'
+          MERGE_INPUT='${{ inputs.is_merge || github.event.inputs.is_merge }}'
           RUN_TEST_PHASE=true
           RUN_MERGE_PHASE=true
           # Precedence: Build > Test > Merge (if multiple true)
