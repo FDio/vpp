@@ -119,6 +119,7 @@ typedef struct
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
   u32 quic_streams;			/**< QUIC streams per connection */
   u32 ckpair_index;			/**< Cert key pair for tls/quic */
+  u32 ca_trust_index;			/**< CA trust chain to be used */
   u64 attach_flags;			/**< App attach flags */
   u8 *appns_id;				/**< App namespaces id */
   u64 appns_secret;			/**< App namespace secret */

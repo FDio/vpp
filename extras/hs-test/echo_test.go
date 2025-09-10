@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest)
+	RegisterVethTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchobytesTest, EchoBuiltinRoundtripTest, EchoBuiltinTestbytesTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest)
 	RegisterVethMWTests(TcpWithLossTest)
 	RegisterSoloVeth6Tests(TcpWithLoss6Test)
 }
@@ -299,4 +299,18 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 		s.AssertGreaterEqual(baseline, withLoss)
 		s.AssertGreaterEqual(withLoss, baseline*0.15)
 	}
+}
+
+func TlsSingleConnectionTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+
+	serverVpp.Vppctl("test echo server " +
+		" uri tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
+
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	o := clientVpp.Vppctl("test echo client uri tls://%s:%s verbose run-time 5", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	s.Log(o)
+	s.AssertNotContains(o, "failed:")
 }

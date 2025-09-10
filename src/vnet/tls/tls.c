@@ -715,6 +715,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
+  ctx->ca_trust_index = ccfg->ca_trust_index;
   ctx->c_proto = TRANSPORT_PROTO_TLS;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   if (ccfg->hostname[0])
