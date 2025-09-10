@@ -482,6 +482,26 @@ _vec_zero_elts (void *v, uword first, uword count, uword elt_sz)
 }
 #define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, _vec_elt_sz (V))
 
+static_always_inline u8
+vec_will_move (void **vp, uword index)
+{
+  void *v = *vp;
+  uword vl, n_elts = index + 1;
+
+  if (PREDICT_FALSE (v == 0))
+    return 0;
+
+  vl = _vec_len (v);
+
+  if (PREDICT_FALSE (index < vl))
+    return 0;
+
+  if (PREDICT_FALSE (index >= _vec_find (v)->grow_elts + vl))
+    return 1;
+
+  return 0;
+}
+
 static_always_inline void
 _vec_validate (void **vp, uword index, uword header_size, uword align,
 	       void *heap, uword elt_sz)

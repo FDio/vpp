@@ -288,6 +288,9 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   cryptodev_key_t *ckey = 0;
   u32 i;
 
+  if (vec_will_move (cmt->keys, idx))
+    abort()
+
   vec_validate (cmt->keys, idx);
   ckey = vec_elt_at_index (cmt->keys, idx);
 
