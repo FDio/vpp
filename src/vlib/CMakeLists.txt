@@ -118,6 +118,7 @@ add_vpp_library(vlib
   time.c
   trace.c
   unix/cli.c
+  unix/fuse.c
   unix/main.c
   unix/plugin.c
   unix/util.c
@@ -165,6 +166,7 @@ add_vpp_library(vlib
   trace.h
   tw_funcs.h
   unix/mc_socket.h
+  unix/fuse.h
   unix/plugin.h
   unix/unix.h
   vlib.h
