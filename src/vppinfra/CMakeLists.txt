@@ -77,6 +77,7 @@ set(VPPINFRA_SRCS
   fifo.c
   format.c
   format_table.c
+  fuse.c
   hash.c
   heap.c
   interrupt.c
@@ -166,6 +167,7 @@ set(VPPINFRA_HEADERS
   format.h
   format_ansi.h
   format_table.h
+  fuse.h
   hash.h
   heap.h
   interrupt.h
