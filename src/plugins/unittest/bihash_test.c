@@ -159,6 +159,7 @@ test_bihash_thread_fn (void *arg)
   bihash_test_main_t *tm = &bihash_test_main;
   int i, j;
   u32 my_thread_index = (uword) arg;
+  u32 seed = (u32) my_thread_index;
 
   while (tm->thread_barrier)
     ;
@@ -182,6 +183,28 @@ test_bihash_thread_fn (void *arg)
 	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
 				     __ATOMIC_ACQUIRE);
 	  BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
+	}
+
+      for (j = 0; j < tm->nitems; j++)
+	{
+	  // Make sure that when other thread value is present it is valid
+	  u32 other_thread_id = random_u32 (&seed) % tm->nthreads;
+	  u64 expected_value = ((u64) other_thread_id << 32) | (u64) j;
+
+	  kv.key = ((u64) other_thread_id << 32) | (u64) j;
+	  if (BV (clib_bihash_search) (h, &kv, &kv) == 0)
+	    {
+	      // found key, make sure it makes sense
+	      if (kv.value != expected_value)
+		{
+		  clib_warning (
+		    "BUG: value=0x%llx != expected=0x%llx cycle=%d item=%d "
+		    "this thread=%d other thread=%d",
+		    kv.value, expected_value, i, j, my_thread_index,
+		    other_thread_id);
+		  abort ();
+		}
+	    }
 	}
     }
 
