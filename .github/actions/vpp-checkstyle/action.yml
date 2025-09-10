@@ -1,0 +1,55 @@
+---
+name: vpp-checkstyle
+description: This GitHub Action runs VPP code checkstyle.
+
+inputs:
+  os:
+    description: Operating System Name and Version.
+    default: ubuntu-24.04
+
+outputs:
+  target_branch: ${{ steps.set-branch.outputs.branch }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set branch based on event type
+      id: set-branch
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # For pull requests, use the target branch
+          BRANCH="${{ github.base_ref }}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+        else
+          # For pushes and workflow_dispatch, use the current branch
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+        fi
+        echo "Event: ${{ github.event_name }}, Branch: $BRANCH"
+
+    - name: Run Checkstyle Scripts
+      run: |
+        .ci/scripts/vpp/checkstyle.sh
+
+    - name: Run Test Checkstyle Scripts
+      run: |
+        .ci/scripts/vpp/test-checkstyle.sh
+
+    - name: Run API Checkstyle Scripts
+      run: |
+        .ci/scripts/vpp/api-checkstyle.sh
+
+    - name: Run Commit Message Checkstyle
+      run: |
+        .ci/scripts/vpp/commitmsg.sh
+
+    - name: Run Docs Spell
+      run: |
+        .ci/scripts/vpp/docs_spell.sh
+
+    - name: Archive Checkstyle Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: checkstyle-logs-${{ steps.set-branch.outputs.target_branch }}-${{ inputs.os }}
+        path: logs/

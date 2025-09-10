@@ -14,34 +14,8 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  # Determine which branch is being built
-  detect-branch:
-    runs-on:
-      - self-hosted
-      - nomad
-      - fdio:arch=amd64
-      - fdio:class=builder
-      - fdio:namespace=sandbox
-    outputs:
-      target_branch: ${{ steps.set-branch.outputs.branch }}
-    steps:
-      - name: Set branch based on event type
-        id: set-branch
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For pull requests, use the target branch
-            BRANCH="${{ github.base_ref }}"
-            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          else
-            # For pushes and workflow_dispatch, use the current branch
-            BRANCH="${GITHUB_REF#refs/heads/}"
-            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          fi
-          echo "Event: ${{ github.event_name }}, Branch: $BRANCH"
-
   checkstyle:
     name: Checkstyle on ${{ matrix.os }}
-    needs: detect-branch
     runs-on:
       - self-hosted
       - nomad
@@ -64,23 +38,14 @@ jobs:
         run: |
           .ci/scripts/vpp/setup_executor_env.sh
 
-      - name: Run Checkstyle Scripts
-        run: |
-          .ci/scripts/vpp/checkstyle.sh
-          .ci/scripts/vpp/test-checkstyle.sh
-          .ci/scripts/vpp/api-checkstyle.sh
-          .ci/scripts/vpp/commitmsg.sh
-          .ci/scripts/vpp/docs_spell.sh
-
-      - name: Archive Checkstyle Logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Run VPP Checkstyle Scripts
+        id: checkstyle
+        uses: pmikus/vpp/.github/actions/vpp-checkstyle
         with:
-          name: checkstyle-logs-${{ needs.detect-branch.outputs.target_branch }}-${{ matrix.os }}
-          path: logs/
+            os: ${{ matrix.os }}
 
       - name: Report Success
         if: success()
         run: |
-          echo "Checkstyle passed for ${{ needs.detect-branch.outputs.target_branch }} on ${{ matrix.os }}"
-          echo "::notice::Checkstyle workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Repository: ${{ github.repository }}, Branch: ${{ needs.detect-branch.outputs.target_branch }}"
+          echo "Checkstyle passed for ${{ steps.checkstyle.outputs.target_branch }} on ${{ matrix.os }}"
+          echo "::notice::Checkstyle workflow completed successfully! Workflow ID: ${{ github.run_id }}, Name: ${{ github.workflow }}, Repository: ${{ github.repository }}, Branch: ${{ steps.checkstyle.outputs.target_branch }}"

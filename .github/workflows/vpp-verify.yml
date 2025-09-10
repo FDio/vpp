@@ -64,5 +64,5 @@ jobs:
       builder_type: ${{ github.event.inputs.builder_type || 'prod' }}
       build_type: ${{ github.event.inputs.build_type || 'both' }}
       make_parallel_jobs: ${{ github.event.inputs.make_parallel_jobs || '16' }}
-      Test: true
+      is_verify: true
     secrets: inherit
