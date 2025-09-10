@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5bee7c43_f8c220cf",
+        "filename": "extras/hs-test/infra/utils.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 373,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-10T14:33:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f5a03f4a_91e799a8",
+      "revId": "4e6bcf3c689cb13004cf2d7b2ddfd856cb31faf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "034f45e4_34cd1a1c",
@@ -31,6 +49,30 @@
       "writtenOn": "2025-09-10T13:50:28Z",
       "side": 1,
       "message": "this doesn\u0027t make sense, you round it and later make float out of it again in format_base10",
+      "range": {
+        "startLine": 1423,
+        "startChar": 3,
+        "endLine": 1423,
+        "endChar": 20
+      },
+      "revId": "4e6bcf3c689cb13004cf2d7b2ddfd856cb31faf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa28751c_4628c387",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1423,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-10T14:33:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "034f45e4_34cd1a1c",
       "range": {
         "startLine": 1423,
         "startChar": 3,
