@@ -21,12 +21,31 @@ typedef struct app_certkey_int_
 
 typedef struct certificate_
 {
-  u32 *app_interests; /* vec of application index asking for deletion cb */
-  u32 cert_key_index; /* index in cert & key pool */
-  u8 *key;
-  u8 *cert;
+  u32 *app_interests; /**< vec of application index asking for deletion cb */
+  u32 cert_key_index; /**< index in cert & key pool */
+  u8 *key;	      /**< PEM encoded key */
+  u8 *cert;	      /**< PEM encoded cert */
   app_certkey_int_ctx_t *cki; /**< per-thread internal cert/key */
 } app_cert_key_pair_t;
+
+struct app_crypto_ca_trust_int_ctx_;
+
+typedef void (*app_crypto_ca_cleanup_it_ctx_fn) (
+  struct app_crypto_ca_trust_int_ctx_ *cti);
+
+typedef struct app_crypto_ca_trust_int_ctx_
+{
+  void *ca_store; /**< trusted ca, possible format X509_STORE */
+  app_crypto_ca_cleanup_it_ctx_fn cleanup_cb; /**< cleanup callback */
+} app_crypto_ca_trust_int_ctx_t;
+
+typedef struct app_crypto_ca_trust_
+{
+  u8 *ca_chain;			      /**< PEM encoded CA chain */
+  u8 *crl;			      /**< PEM encoded CRL */
+  u32 ca_trust_index;		      /**< index in the CA trust pool */
+  app_crypto_ca_trust_int_ctx_t *cti; /**< per-thread internal ca trust */
+} app_crypto_ca_trust_t;
 
 typedef enum crypto_engine_type_
 {
@@ -46,6 +65,13 @@ typedef struct _vnet_app_add_cert_key_pair_args_
   u32 key_len;
   u32 index;
 } vnet_app_add_cert_key_pair_args_t;
+
+typedef struct app_ca_trust_add_args_
+{
+  u8 *ca_chain;
+  u8 *crl;
+  u32 index;
+} app_ca_trust_add_args_t;
 
 typedef struct crypto_ctx_
 {
@@ -133,6 +159,7 @@ typedef struct app_crypto_wrk_
 typedef struct app_crypto_ctx_
 {
   app_crypto_wrk_t *wrk;
+  app_crypto_ca_trust_t *ca_trust_stores;
 } app_crypto_ctx_t;
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
@@ -145,6 +172,16 @@ void app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx);
 app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_default ();
+
+int app_crypto_add_ca_trust (u32 app_index, app_ca_trust_add_args_t *args);
+app_crypto_ca_trust_t *app_crypto_get_wrk_ca_trust (u32 app_wrk_index,
+						    u32 ca_trust_index);
+app_crypto_ca_trust_int_ctx_t *
+app_crypto_alloc_int_ca_trust (app_crypto_ca_trust_t *ct,
+			       clib_thread_index_t thread_index);
+app_crypto_ca_trust_int_ctx_t *
+app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
+			     clib_thread_index_t thread_index);
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
 int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
@@ -163,8 +200,7 @@ static inline app_certkey_int_ctx_t *
 app_certkey_alloc_int_ctx (app_cert_key_pair_t *ck,
 			   clib_thread_index_t thread_index)
 {
-  if (!ck->cki)
-    vec_validate (ck->cki, vlib_num_workers () + 1);
+  /* No lock because it should be called only by first or main */
   return vec_elt_at_index (ck->cki, thread_index);
 }
 
