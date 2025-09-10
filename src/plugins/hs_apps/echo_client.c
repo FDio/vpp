@@ -1032,6 +1032,7 @@ static clib_error_t *
 ec_attach ()
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  app_ca_trust_add_args_t _ca_args, *ca_args = &_ca_args;
   ec_main_t *ecm = &ec_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u32 prealloc_fifos;
@@ -1078,6 +1079,12 @@ ec_attach ()
   ck_pair->key_len = test_srv_key_rsa_len;
   vnet_app_add_cert_key_pair (ck_pair);
   ecm->ckpair_index = ck_pair->index;
+
+  vec_validate (ca_args->ca_chain, test_ca_chain_rsa_len - 1);
+  clib_memcpy (ca_args->ca_chain, test_ca_chain_rsa, test_ca_chain_rsa_len);
+  vec_validate (ca_args->crl, test_ca_crl_len - 1);
+  clib_memcpy (ca_args->crl, test_ca_crl, test_ca_crl_len);
+  app_crypto_add_ca_trust (ecm->app_index, ca_args);
 
   ecm->test_client_attached = 1;
 

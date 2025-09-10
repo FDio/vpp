@@ -740,10 +740,6 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
   app_cert_key_pair_t *ckpair;
   app_certkey_int_ctx_t *cki;
 
-  /* Configure a ckpair index only if non-default/test provided */
-  if (ckpair_index == 0)
-    return 0;
-
   ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
   if (!ckpair)
     return -1;
@@ -769,6 +765,115 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
   SSL_use_PrivateKey (ssl, cki->key);
 
   TLS_DBG (1, "TLS client using ckpair index: %d", ckpair_index);
+  return 0;
+}
+
+static void
+openssl_cleanup_ca_trust_int_ctx (app_crypto_ca_trust_int_ctx_t *cki)
+{
+  X509_STORE_free (cki->ca_store);
+}
+
+static app_crypto_ca_trust_int_ctx_t *
+openssl_init_int_ca_trust_ctx (app_crypto_ca_trust_t *ca_trust,
+			       clib_thread_index_t thread_index)
+{
+  app_crypto_ca_trust_int_ctx_t *cti = 0;
+  X509_STORE *store;
+  X509 *cert;
+  BIO *bio;
+
+  cti = app_crypto_alloc_int_ca_trust (ca_trust, thread_index);
+  store = X509_STORE_new ();
+  if (!store)
+    {
+      clib_warning ("unable to create x509 store");
+      return 0;
+    }
+
+  /* Create BIO from the single PEM string containing multiple certificates */
+  bio = BIO_new (BIO_s_mem ());
+  BIO_write (bio, ca_trust->ca_chain, vec_len (ca_trust->ca_chain));
+
+  /* Read all certificates from the PEM string */
+  while ((cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL)) != NULL)
+    {
+      if (X509_STORE_add_cert (store, cert) != 1)
+	{
+	  char buf[512];
+	  ERR_error_string (ERR_get_error (), buf);
+	  clib_warning ("unable to add certificate to store: %s", buf);
+	  X509_free (cert);
+	  BIO_free (bio);
+	  X509_STORE_free (store);
+	  return 0;
+	}
+      X509_free (cert);
+    }
+
+  BIO_free (bio);
+
+  /* Parse and add CRL if present */
+  if (ca_trust->crl && vec_len (ca_trust->crl) > 0)
+    {
+      X509_CRL *crl;
+      bio = BIO_new (BIO_s_mem ());
+      BIO_write (bio, ca_trust->crl, vec_len (ca_trust->crl));
+
+      /* Read all CRLs from the PEM string */
+      while ((crl = PEM_read_bio_X509_CRL (bio, NULL, NULL, NULL)) != NULL)
+	{
+	  if (X509_STORE_add_crl (store, crl) != 1)
+	    {
+	      char buf[512];
+	      ERR_error_string (ERR_get_error (), buf);
+	      clib_warning ("unable to add CRL to store: %s", buf);
+	      X509_CRL_free (crl);
+	      BIO_free (bio);
+	      X509_STORE_free (store);
+	      return 0;
+	    }
+	  X509_CRL_free (crl);
+	}
+
+      BIO_free (bio);
+
+      /* Enable CRL checking */
+      X509_STORE_set_flags (store,
+			    X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+    }
+
+  cti->ca_store = store;
+  cti->cleanup_cb = openssl_cleanup_ca_trust_int_ctx;
+
+  return cti;
+}
+
+static int
+openssl_set_ca_trust (tls_ctx_t *ctx)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  app_crypto_ca_trust_int_ctx_t *cti;
+  app_crypto_ca_trust_t *ca_trust;
+
+  ca_trust = app_crypto_get_wrk_ca_trust (ctx->parent_app_wrk_index,
+					  ctx->ca_trust_index);
+  if (!ca_trust)
+    return -1;
+
+  cti = app_crypto_get_int_ca_trust (ca_trust, ctx->c_thread_index);
+  if (!cti || !cti->ca_store)
+    {
+      cti = openssl_init_int_ca_trust_ctx (ca_trust, ctx->c_thread_index);
+      if (!cti)
+	{
+	  clib_warning ("unable to initialize certificate/key pair");
+	  return -1;
+	}
+    }
+
+  SSL_set1_verify_cert_store (oc->ssl, cti->ca_store);
+
   return 0;
 }
 
@@ -942,9 +1047,23 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
-  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
+  /* Configure a ckpair index only if non-default/test provided */
+  if (ctx->ckpair_index)
     {
-      TLS_DBG (1, "Couldn't set client certificate-key pair");
+      if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index, ctx->c_thread_index))
+	{
+	  TLS_DBG (1, "Couldn't set client certificate-key pair");
+	}
+    }
+
+  /* Configure trusted ca only if non-default*/
+  if (ctx->ca_trust_index)
+    {
+      if (openssl_set_ca_trust (ctx))
+	{
+	  TLS_DBG (1, "Couldn't set trusted CA");
+	  return -1;
+	}
     }
 
   if (ctx->tls_type == TRANSPORT_PROTO_TLS)
