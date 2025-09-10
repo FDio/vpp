@@ -27,7 +27,7 @@ clib_netns_open (u8 *netns_u8)
   int fd;
 
   if ((NULL) == netns)
-    s = format (0, "/proc/self/ns/net");
+    s = format (0, "/proc/self/ns/net%c", 0);
   else if (strncmp (netns, "pid:", 4) == 0)
     s = format (0, "/proc/%u/ns/net%c", atoi (netns + 4), 0);
   else if (netns[0] == '/')
