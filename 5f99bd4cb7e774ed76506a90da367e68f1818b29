@@ -1,0 +1,130 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "768a7609_14fbda01",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "maybe test for udp too?",
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c750af09_78ba36a5",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "this is always true, threshold is bigger than expected value and actual value is ~1ms since there are just veth interfaces between containers. so just validate if it is non-zero or use nsim to introduce real rtt",
+      "range": {
+        "startLine": 83,
+        "startChar": 3,
+        "endLine": 83,
+        "endChar": 44
+      },
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "547b1f55_6e664f71",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "can we make one flag out of this? you are doing same in multiple places",
+      "range": {
+        "startLine": 165,
+        "startChar": 7,
+        "endLine": 166,
+        "endChar": 71
+      },
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d91ddffa_714c993c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "this was changed in 43680, you will have merge conflicts",
+      "range": {
+        "startLine": 510,
+        "startChar": 2,
+        "endLine": 511,
+        "endChar": 32
+      },
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70c16058_58a736b9",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 794,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "maybe you should chain your changes, instead of doing same changes in two patches",
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78a30b23_b3fa6cb7",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1381,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T11:06:55Z",
+      "side": 1,
+      "message": "you are doing same in ec_node_fn for the first packet, can this be simplified? or make at least function",
+      "range": {
+        "startLine": 1367,
+        "startChar": 0,
+        "endLine": 1381,
+        "endChar": 3
+      },
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
