@@ -119,7 +119,7 @@ jobs:
       - fdio:arch=${{ matrix.executor-arch }}
       - fdio:class=builder
       - fdio:namespace=${{ inputs.builder_type }}
-      - fdio:image=${{ matrix.os }}
+      - fdio:os=${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -155,26 +155,27 @@ jobs:
       )
 
     env:
+      WORKSPACE: ${{ github.workspace }}
       # VPP source directory path inside the container
       VPP_SRC_DIR: /scratch/docker-build/vpp
       # Ensures uniqueness per run
       CACHE_DATE: ${{ github.run_id }}
       STREAM: ${{ matrix.branch == 'master' && 'master' || matrix.branch == 'stable/2502' && '2502' || '2506' }}
+      JOB_NAME: ${{ github.job }}-${{ github.env.STREAM }}-${{ matrix.os }}-${{ matrix.executor-arch }}
       MAKE_PARALLEL_JOBS: ${{ inputs.make_parallel_jobs || github.event.inputs.make_parallel_jobs || '16' }}
       MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'debian-12' }}
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'debian-12' }}
-      OS: ${{ matrix.os }}
+#      OS: ${{ matrix.os }}
       EXECUTOR_ARCH: ${{ matrix.executor-arch }}
       GERRIT_BRANCH: ${{ matrix.branch }}
       BUILD_TIMEOUT: 120
       DOCKER_TEST: 1
       TEST_RETRIES: 3
       SHM_SIZE: ${{ matrix.executor-arch == 'aarch64' && '4096M' || '2048M' }}
-      OS_ID: ${{ matrix.os == 'debian12' && 'debian' || 'ubuntu' }}
-      OS_VERSION_ID: ${{ matrix.os == 'ubuntu2204' && '22.04' || matrix.os == 'ubuntu2404' && '24.04' || matrix.os == 'debian12' && '12' }}
-      OS_ARCH: ${{ matrix.executor-arch }}
-      SHOULD_RUN: ${{ matrix.branch == needs.setup-env.outputs.target_branch }}
+#      OS_ID: ${{ matrix.os == 'debian12' && 'debian' || 'ubuntu' }}
+#      OS_VERSION_ID: ${{ matrix.os == 'ubuntu2204' && '22.04' || matrix.os == 'ubuntu2404' && '24.04' || matrix.os == 'debian12' && '12' }}
+#      OS_ARCH: ${{ matrix.executor-arch }}
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor-arch }}
 
     steps:

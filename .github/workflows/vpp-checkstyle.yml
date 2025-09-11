@@ -22,11 +22,11 @@ jobs:
       - fdio:arch=amd64
       - fdio:class=builder
       - fdio:namespace=sandbox
-      - fdio:image=${{ matrix.os }}
+      - fdio:os=${{ matrix.os }}
 
     strategy:
       matrix:
-        os: [ubuntu-24.04]
+        os: [ubuntu2404]
     steps:
       - name: Checkout VPP repository with the change
         uses: actions/checkout@v4
