@@ -16,6 +16,23 @@
       "message": "C-style :-)",
       "revId": "a98d1a6f00c3e75fcf55916aad6a141624a389ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f99cb86_63864a1e",
+        "filename": "src/vnet/session/application_local.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-11T22:38:43Z",
+      "side": 1,
+      "message": "I think this can go into segment_manager.c",
+      "revId": "a98d1a6f00c3e75fcf55916aad6a141624a389ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
