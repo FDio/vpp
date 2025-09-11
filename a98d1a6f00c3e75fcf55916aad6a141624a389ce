@@ -33,6 +33,24 @@
       "message": "I think this can go into segment_manager.c",
       "revId": "a98d1a6f00c3e75fcf55916aad6a141624a389ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d09f081_aecc1385",
+        "filename": "src/vnet/session/application_local.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-11T22:54:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f99cb86_63864a1e",
+      "revId": "a98d1a6f00c3e75fcf55916aad6a141624a389ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
