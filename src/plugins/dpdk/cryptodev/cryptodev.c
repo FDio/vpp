@@ -286,9 +286,22 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   cryptodev_key_t *ckey = 0;
-  u32 i;
+  u32 i, told_you;
+  void *old_vec;
+  clib_error_t *e;
+
+  old_vec = (void *) cmt->keys;
+  told_you = vec_will_move (cmt->keys, idx);
+  if (told_you)
+    os_exit (2);
 
   vec_validate (cmt->keys, idx);
+  if (old_vec != (void *) cmt->keys)
+    {
+      e = clib_error_return_fatal (0, "told you: %d", told_you);
+      clib_error_report (e);
+      os_exit (1);
+    }
   ckey = vec_elt_at_index (cmt->keys, idx);
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL || kop == VNET_CRYPTO_KEY_OP_MODIFY)
