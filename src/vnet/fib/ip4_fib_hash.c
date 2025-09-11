@@ -101,6 +101,8 @@ ip4_fib_hash_table_entry_insert (ip4_fib_hash_t *fib,
 {
     uword * hash, * result;
     u32 key;
+    vlib_main_t *vm = vlib_get_main();
+    u8 need_barrier_sync = 0;
 
     key = (addr->data_u32 & ip4_main.fib_masks[len]);
     hash = fib->fib_entry_by_dst_address[len];
@@ -114,10 +116,21 @@ ip4_fib_hash_table_entry_insert (ip4_fib_hash_t *fib,
 	if (NULL == hash) {
 	    hash = hash_create (32 /* elts */, sizeof (uword));
 	    hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
-
 	}
+	else
+	    need_barrier_sync = hash_will_expand(hash);
+
+	if (need_barrier_sync)
+	{
+	    ASSERT (vm->thread_index == 0);
+	    vlib_worker_thread_barrier_sync (vm);
+	}
+
 	hash = hash_set(hash, key, fib_entry_index);
 	fib->fib_entry_by_dst_address[len] = hash;
+
+	if (need_barrier_sync)
+	    vlib_worker_thread_barrier_release (vm);
     }
     else
     {
