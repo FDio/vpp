@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fddcbe2_275e2a6f",
+        "filename": ".gitignore",
+        "patchSetId": 10
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:50:47Z",
+      "side": 1,
+      "message": "can we keep that comment?",
+      "revId": "99932d8c63bbc9fe462516a0df0e0042b0c2bd7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46b37a86_b697a3ef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:50:47Z",
+      "side": 1,
+      "message": "nice! just some nits",
+      "revId": "99932d8c63bbc9fe462516a0df0e0042b0c2bd7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31e46770_a426b729",
+        "filename": "test-c/hs-test/hs_test.sh",
+        "patchSetId": 10
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:50:47Z",
+      "side": 1,
+      "message": "rm -f summary/* (to ignore errors if empty)",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 12
+      },
+      "revId": "99932d8c63bbc9fe462516a0df0e0042b0c2bd7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c7077db_d1cb601a",
+        "filename": "test-c/kube-test/Makefile",
+        "patchSetId": 10
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:50:47Z",
+      "side": 1,
+      "message": "can it be just test now?",
+      "range": {
+        "startLine": 42,
+        "startChar": 9,
+        "endLine": 42,
+        "endChar": 18
+      },
+      "revId": "99932d8c63bbc9fe462516a0df0e0042b0c2bd7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfd5eed3_f732e7e1",
+        "filename": "test-c/kube-test/Makefile",
+        "patchSetId": 10
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:50:47Z",
+      "side": 1,
+      "message": "do we need both?",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 78
+      },
+      "revId": "99932d8c63bbc9fe462516a0df0e0042b0c2bd7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
