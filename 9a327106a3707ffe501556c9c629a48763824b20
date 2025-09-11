@@ -16,6 +16,23 @@
       "message": "you should store ca_trust_index in ecm here and pass it to crypto transport endpt ext cfg on connect, otherwise ca trust is not used",
       "revId": "9a327106a3707ffe501556c9c629a48763824b20",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88324aa5_19f43556",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1060,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T09:37:27Z",
+      "side": 1,
+      "message": "zero index is valid, there is no default allocation",
+      "revId": "9a327106a3707ffe501556c9c629a48763824b20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
