@@ -164,16 +164,24 @@ vt_clu_server_worker (void *arg)
   vtclu_worker_args_t *args = (vtclu_worker_args_t *) arg;
   vt_clu_main_t *vclum = args->vclum;
   int worker_id = args->worker_id;
-  int rv, vcl_sh;
+  int rv, vcl_sh, epfd;
   const int buflen = 64;
   char buf[buflen];
   struct sockaddr_in _addr;
   vppcom_endpt_t rmt_ep = { .ip = (void *) &_addr };
+  struct epoll_event ev, events[1];
 
   if (worker_id)
     vppcom_worker_register ();
 
   vtinf ("Server worker %d starting", worker_id);
+
+  epfd = vppcom_epoll_create ();
+  if (epfd < 0)
+    {
+      vterr ("vppcom_epoll_create()", epfd);
+      return NULL;
+    }
 
   vcl_sh = vppcom_session_create (VPPCOM_PROTO_UDP, 0 /* is_nonblocking */);
   if (vcl_sh < 0)
@@ -194,6 +202,17 @@ vt_clu_server_worker (void *arg)
       return NULL;
     }
 
+  ev.events = EPOLLIN;
+  ev.data.fd = vcl_sh;
+
+  rv = vppcom_epoll_ctl (epfd, EPOLL_CTL_ADD, vcl_sh, &ev);
+  if (rv < 0)
+    {
+      vterr ("vppcom_epoll_ctl()", rv);
+      vppcom_session_close (epfd);
+      return NULL;
+    }
+
   vt_clu_catch_sig (vt_clu_sig_handler);
   if (setjmp (sig_jmp_buf))
     vt_clu_handle_sig (vclum, worker_id);
@@ -201,7 +220,20 @@ vt_clu_server_worker (void *arg)
   /* Server worker loop */
   while (!vt_clu_test_done (vclum))
     {
+      rv = vppcom_epoll_wait (epfd, events, 1, -1);
+      if (rv < 0)
+	{
+	  vtwrn ("worker %d: epoll_wait returned %d", worker_id, rv);
+	  vppcom_session_close (epfd);
+	  break;
+	}
+      else if (rv == 0)
+	{
+	  continue;
+	}
+
       rv = vppcom_session_recvfrom (vcl_sh, buf, buflen, 0, &rmt_ep);
+      vppcom_session_close (epfd);
       if (rv < 0)
 	{
 	  vtwrn ("worker %d: recvfrom returned %d", worker_id, rv);
