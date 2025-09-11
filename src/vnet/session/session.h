@@ -831,6 +831,10 @@ session_enqueue_dgram_connection_inline (session_t *s,
   ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo) >=
 	  b->current_length + sizeof (*hdr));
 
+  /* TODO(fcoras) This needs to be part of the reply message */
+  s->rx_fifo->app_session_index = s->rx_fifo->shr->client_session_index;
+  s->tx_fifo->app_session_index = s->tx_fifo->shr->client_session_index;
+
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     {
       svm_fifo_seg_t segs[2] = { { (u8 *) hdr, sizeof (*hdr) },
