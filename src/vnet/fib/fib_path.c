@@ -1278,6 +1278,15 @@ fib_path_create (fib_node_index_t pl_index,
 		 const fib_route_path_t *rpath)
 {
     fib_path_t *path;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (fib_path_pool);
+    if (need_barrier_sync)
+    {
+        ASSERT (vm->thread_index == 0);
+        vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
@@ -1420,6 +1429,9 @@ fib_path_create (fib_node_index_t pl_index,
 
     FIB_PATH_DBG(path, "create");
 
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+
     return (fib_path_get_index(path));
 }
 
@@ -1436,6 +1448,15 @@ fib_path_create_special (fib_node_index_t pl_index,
 			 const dpo_id_t *dpo)
 {
     fib_path_t *path;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (fib_path_pool);
+    if (need_barrier_sync)
+    {
+        ASSERT (vm->thread_index == 0);
+        vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
@@ -1467,6 +1488,9 @@ fib_path_create_special (fib_node_index_t pl_index,
 	dpo_copy(&path->exclusive.fp_ex_dpo, dpo);
     }
 
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+
     return (fib_path_get_index(path));
 }
 
@@ -1480,6 +1504,15 @@ fib_path_copy (fib_node_index_t path_index,
 	       fib_node_index_t path_list_index)
 {
     fib_path_t *path, *orig_path;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (fib_path_pool);
+    if (need_barrier_sync)
+    {
+        ASSERT (vm->thread_index == 0);
+        vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_pool, path);
 
@@ -1505,6 +1538,9 @@ fib_path_copy (fib_node_index_t path_index,
 	clib_memset(&path->exclusive.fp_ex_dpo, 0, sizeof(dpo_id_t));
 	dpo_copy(&path->exclusive.fp_ex_dpo, &orig_path->exclusive.fp_ex_dpo);
     }
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
 
     return (fib_path_get_index(path));
 }
