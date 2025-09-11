@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6536713_57c4c3eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-11T03:13:04Z",
+      "side": 1,
+      "message": "rebasing to make sure it still works while we\u0027re evaluating https://gerrit.fd.io/r/c/vpp/+/42476",
+      "revId": "b415a82744017f6207562a71ef28b5ccd5208a44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
