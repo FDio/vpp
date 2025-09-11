@@ -46,6 +46,30 @@
       },
       "revId": "2eb245a2d2d558507b11ddb2992f87b48ef6fd09",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90f19b6a_6908923e",
+        "filename": "src/vnet/session/application_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-11T03:05:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "40c94311_772b5206",
+      "range": {
+        "startLine": 237,
+        "startChar": 6,
+        "endLine": 238,
+        "endChar": 25
+      },
+      "revId": "2eb245a2d2d558507b11ddb2992f87b48ef6fd09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
