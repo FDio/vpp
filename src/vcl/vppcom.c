@@ -19,6 +19,8 @@
 #include <vcl/vcl_private.h>
 #include <svm/fifo_segment.h>
 
+/* DAW test change -- DO NOT COMMIT */
+
 __thread uword __vcl_worker_index = ~0;
 
 static inline int
