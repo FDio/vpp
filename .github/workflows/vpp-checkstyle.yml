@@ -1,25 +1,25 @@
 name: vpp-checkstyle
 
 on:
-#  pull_request:
-#    branches:
-#      - master
-#      - stable/2502
-#      - stable/2506
-#  push:
-#    branches:
-#      - master
-#      - stable/2502
-#      - stable/2506
+  pull_request:
+    branches:
+      - master
+      - stable/2502
+      - stable/2506
+  push:
+    branches:
+      - master
+      - stable/2502
+      - stable/2506
   workflow_dispatch: {}
 
 jobs:
   checkstyle:
-    name: Checkstyle on ${{ matrix.os }}
+    name: Checkstyle on ${{ matrix.os }} ${{ matrix.executor_arch }}
     runs-on:
       - self-hosted
       - nomad
-      - fdio:arch=amd64
+      - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=builder
       - fdio:namespace=sandbox
       - fdio:os=${{ matrix.os }}
@@ -27,6 +27,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu2404]
+        executor_arch: [x86_64]
+
     steps:
       - name: Checkout VPP repository with the change
         uses: actions/checkout@v4
