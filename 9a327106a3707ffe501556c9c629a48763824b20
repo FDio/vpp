@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc3a6932_328e7e99",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1088,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:17:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b382cb7_6dde5673",
+      "revId": "9a327106a3707ffe501556c9c629a48763824b20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "88324aa5_19f43556",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-09-11T09:37:27Z",
       "side": 1,
       "message": "zero index is valid, there is no default allocation",
+      "revId": "9a327106a3707ffe501556c9c629a48763824b20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91ba4704_59430ddc",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1060,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-11T18:17:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "88324aa5_19f43556",
       "revId": "9a327106a3707ffe501556c9c629a48763824b20",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
