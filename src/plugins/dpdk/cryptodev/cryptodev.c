@@ -286,7 +286,15 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   cryptodev_key_t *ckey = 0;
-  u32 i;
+  u32 i, need_barrier_sync = 0;
+  vlib_main_t *vm = vlib_get_main ();
+
+  need_barrier_sync = vec_will_move (cmt->keys, idx);
+  if (need_barrier_sync)
+    {
+      ASSERT (vm->thread_index == 0);
+      vlib_worker_thread_barrier_sync (vm);
+    }
 
   vec_validate (cmt->keys, idx);
   ckey = vec_elt_at_index (cmt->keys, idx);
@@ -294,7 +302,7 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   if (kop == VNET_CRYPTO_KEY_OP_DEL || kop == VNET_CRYPTO_KEY_OP_MODIFY)
     {
       if (idx >= vec_len (cmt->keys))
-	return;
+	goto done;
 
       vec_foreach_index (i, cmt->per_numa_data)
 	{
@@ -312,7 +320,7 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 	      ckey->keys[i][CRYPTODEV_OP_TYPE_DECRYPT] = 0;
 	    }
 	}
-      return;
+      goto done;
     }
 
   /* create key */
@@ -324,6 +332,10 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   vec_validate (ckey->keys, vec_len (cmt->per_numa_data) - 1);
   vec_foreach_index (i, ckey->keys)
     vec_validate (ckey->keys[i], CRYPTODEV_N_OP_TYPES - 1);
+
+done:
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
 }
 
 /*static*/ void
