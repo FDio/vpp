@@ -70,25 +70,28 @@ help() {
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
 
+push_calico_to_registry() {
+  for component in pod2daemon-flexvol cni node typha apiserver csi kube-controllers node-driver-registrar; do
+    docker pull docker.io/calico/$component:$TIGERA_VERSION
+    docker image tag docker.io/calico/$component:$TIGERA_VERSION localhost:5000/calico/$component:$TIGERA_VERSION
+	  docker push localhost:5000/calico/$component:$TIGERA_VERSION
+  done
+}
+
 push_release_to_registry() {
-  docker pull docker.io/calicovpp/vpp:$CALICOVPP_VERSION
-  docker image tag docker.io/calicovpp/vpp:$CALICOVPP_VERSION localhost:5000/calicovpp/vpp:$CALICOVPP_VERSION
-	docker push localhost:5000/calicovpp/vpp:$CALICOVPP_VERSION
-  docker pull docker.io/calicovpp/agent:$CALICOVPP_VERSION
-	docker image tag docker.io/calicovpp/agent:$CALICOVPP_VERSION localhost:5000/calicovpp/agent:$CALICOVPP_VERSION
-	docker push localhost:5000/calicovpp/agent:$CALICOVPP_VERSION
-  docker pull docker.io/calicovpp/multinet-monitor:$CALICOVPP_VERSION
-	docker image tag docker.io/calicovpp/multinet-monitor:$CALICOVPP_VERSION localhost:5000/calicovpp/multinet-monitor:$CALICOVPP_VERSION
-	docker push localhost:5000/calicovpp/multinet-monitor:$CALICOVPP_VERSION
+  for component in vpp agent multinet-monitor; do
+    docker pull docker.io/calicovpp/$component:$CALICOVPP_VERSION
+    docker image tag docker.io/calicovpp/$component:$CALICOVPP_VERSION localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
+	  docker push localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
+  done
 }
 
 push_master_to_registry() {
-  docker image tag calicovpp/vpp:latest localhost:5000/calicovpp/vpp:latest
-	docker push localhost:5000/calicovpp/vpp:latest
-	docker image tag calicovpp/agent:latest localhost:5000/calicovpp/agent:latest
-	docker push localhost:5000/calicovpp/agent:latest
-	docker image tag calicovpp/multinet-monitor:latest localhost:5000/calicovpp/multinet-monitor:latest
-	docker push localhost:5000/calicovpp/multinet-monitor:latest
+  for component in vpp agent multinet-monitor; do
+    docker pull docker.io/calicovpp/$component:latest
+    docker image tag docker.io/calicovpp/$component:latest localhost:5000/calicovpp/$component:latest
+	  docker push localhost:5000/calicovpp/$component:latest
+  done
 }
 
 cherry_pick() {
@@ -132,6 +135,7 @@ setup_master() {
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
       cd $CALICOVPP_DIR
+      git reset --hard origin/master
       git pull
       cd $VPP_DIR/test-c/kube-test
   fi
@@ -140,6 +144,7 @@ setup_master() {
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
   push_master_to_registry
+  push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   cherry_pick
@@ -162,6 +167,7 @@ setup_release() {
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
   push_release_to_registry
+  push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   echo "Waiting for tigera-operator pod to start up."
@@ -173,6 +179,8 @@ setup_release() {
   echo "Use 'watch kubectl get pods -A' to monitor cluster status."
   echo "To delete the cluster, use 'kind delete cluster'"
 }
+
+red () { printf "\e[0;31m$1\e[0m\n" >&2 ; }
 
 case "$COMMAND" in
   master-cluster)
@@ -188,3 +196,5 @@ case "$COMMAND" in
     help
     ;;
 esac
+
+red "If ImagePullBackOff: add \"NO_PROXY=kind-registry\" and \"no_proxy=kind-registry\" to /etc/environment"
