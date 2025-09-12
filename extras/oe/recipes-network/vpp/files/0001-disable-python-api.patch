@@ -1,0 +1,23 @@
+From a1d7e93aedf40a1b8b23d9e4663532c498500c1a Mon Sep 17 00:00:00 2001
+From: Maxim Uvarov <maxim@skbuff.ru>
+Date: Thu, 14 Aug 2025 23:17:25 +0300
+Subject: [PATCH] disable python api
+
+Signed-off-by: Maxim Uvarov <maxim@skbuff.ru>
+---
+ src/vpp-api/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/vpp-api/CMakeLists.txt b/src/vpp-api/CMakeLists.txt
+index 72cc1b29c..61bccd2cd 100644
+--- a/src/vpp-api/CMakeLists.txt
++++ b/src/vpp-api/CMakeLists.txt
+@@ -35,4 +35,4 @@ add_vpp_executable(test_vppapiclient NO_INSTALL
+ )
+ 
+ add_subdirectory(vapi)
+-add_subdirectory(python)
++# add_subdirectory(python)
+-- 
+2.43.0
+
