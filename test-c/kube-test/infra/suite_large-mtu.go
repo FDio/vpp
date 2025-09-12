@@ -23,7 +23,7 @@ func (s *LargeMtuSuite) SetupSuite() {
 	s.SetMtuAndRestart("mtu: 9000", "tcp { mtu 8960 }")
 }
 
-var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Perf"), func() {
+var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU"), func() {
 	var s LargeMtuSuite
 	BeforeAll(func() {
 		s.SetupSuite()
