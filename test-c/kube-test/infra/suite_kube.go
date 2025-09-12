@@ -38,6 +38,7 @@ type KubeSuite struct {
 
 var imagesLoaded bool
 var kubeTests = map[string][]func(s *KubeSuite){}
+var kubeMWTests = map[string][]func(s *KubeSuite){}
 
 const VclConfIperf = "echo \"vcl {\n" +
 	"rx-fifo-size 4000000\n" +
@@ -60,6 +61,9 @@ const VclConfNginx = "echo \"vcl {\n" +
 
 func RegisterKubeTests(tests ...func(s *KubeSuite)) {
 	kubeTests[GetTestFilename()] = tests
+}
+func RegisterKubeMWTests(tests ...func(s *KubeSuite)) {
+	kubeMWTests[GetTestFilename()] = tests
 }
 
 func (s *KubeSuite) SetupTest() {
@@ -200,11 +204,11 @@ func (s *KubeSuite) CreateNginxProxyConfig(pod *Pod) {
 	)
 }
 
-var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, Label("Perf"), func() {
+var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, func() {
 	var s KubeSuite
 	BeforeAll(func() {
 		s.SetupSuite()
-		s.SetMtuAndRestart("", "")
+		s.SetMtuAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 0 }")
 	})
 	BeforeEach(func() {
 		s.SetupTest()
@@ -217,6 +221,36 @@ var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, Label("Perf"), func() 
 	})
 
 	for filename, tests := range kubeTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.Log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("KubeMWSuite", Ordered, ContinueOnFailure, Label("Multi-worker"), func() {
+	var s KubeSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+		s.SetMtuAndRestart("mtu: 0", "tcp { mtu 1460 }\n    cpu { workers 2 }")
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+
+	for filename, tests := range kubeMWTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()

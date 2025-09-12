@@ -70,6 +70,40 @@ help() {
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
 
+push_calico_to_registry() {
+  docker pull docker.io/calico/pod2daemon-flexvol:$TIGERA_VERSION
+  docker image tag docker.io/calico/pod2daemon-flexvol:$TIGERA_VERSION localhost:5000/calico/pod2daemon-flexvol:$TIGERA_VERSION
+	docker push localhost:5000/calico/pod2daemon-flexvol:$TIGERA_VERSION
+
+  docker pull docker.io/calico/cni:$TIGERA_VERSION
+  docker image tag docker.io/calico/cni:$TIGERA_VERSION localhost:5000/calico/cni:$TIGERA_VERSION
+	docker push localhost:5000/calico/cni:$TIGERA_VERSION
+
+  docker pull docker.io/calico/node:$TIGERA_VERSION
+  docker image tag docker.io/calico/node:$TIGERA_VERSION localhost:5000/calico/node:$TIGERA_VERSION
+	docker push localhost:5000/calico/node:$TIGERA_VERSION
+
+  docker pull docker.io/calico/typha:$TIGERA_VERSION
+  docker image tag docker.io/calico/typha:$TIGERA_VERSION localhost:5000/calico/typha:$TIGERA_VERSION
+	docker push localhost:5000/calico/typha:$TIGERA_VERSION
+
+  docker pull docker.io/calico/apiserver:$TIGERA_VERSION
+  docker image tag docker.io/calico/apiserver:$TIGERA_VERSION localhost:5000/calico/apiserver:$TIGERA_VERSION
+	docker push localhost:5000/calico/apiserver:$TIGERA_VERSION
+
+  docker pull docker.io/calico/csi:$TIGERA_VERSION
+  docker image tag docker.io/calico/csi:$TIGERA_VERSION localhost:5000/calico/csi:$TIGERA_VERSION
+	docker push localhost:5000/calico/csi:$TIGERA_VERSION
+
+  docker pull docker.io/calico/kube-controllers:$TIGERA_VERSION
+  docker image tag docker.io/calico/kube-controllers:$TIGERA_VERSION localhost:5000/calico/kube-controllers:$TIGERA_VERSION
+	docker push localhost:5000/calico/kube-controllers:$TIGERA_VERSION
+
+  docker pull docker.io/calico/node-driver-registrar:$TIGERA_VERSION
+  docker image tag docker.io/calico/node-driver-registrar:$TIGERA_VERSION localhost:5000/calico/node-driver-registrar:$TIGERA_VERSION
+	docker push localhost:5000/calico/node-driver-registrar:$TIGERA_VERSION
+}
+
 push_release_to_registry() {
   docker pull docker.io/calicovpp/vpp:$CALICOVPP_VERSION
   docker image tag docker.io/calicovpp/vpp:$CALICOVPP_VERSION localhost:5000/calicovpp/vpp:$CALICOVPP_VERSION
@@ -132,6 +166,7 @@ setup_master() {
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
       cd $CALICOVPP_DIR
+      git reset --hard origin/master
       git pull
       cd $VPP_DIR/test-c/kube-test
   fi
@@ -140,6 +175,7 @@ setup_master() {
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
   push_master_to_registry
+  push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   cherry_pick
@@ -162,6 +198,7 @@ setup_release() {
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
   push_release_to_registry
+  push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   echo "Waiting for tigera-operator pod to start up."
@@ -173,6 +210,8 @@ setup_release() {
   echo "Use 'watch kubectl get pods -A' to monitor cluster status."
   echo "To delete the cluster, use 'kind delete cluster'"
 }
+
+red () { printf "\e[0;31m$1\e[0m\n" >&2 ; }
 
 case "$COMMAND" in
   master-cluster)
@@ -188,3 +227,5 @@ case "$COMMAND" in
     help
     ;;
 esac
+
+red "If ImagePullBackOff: add \"NO_PROXY=kind-registry\" and \"no_proxy=kind-registry\" to /etc/environment"
