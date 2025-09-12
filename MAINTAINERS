@@ -909,3 +909,8 @@ I:	sflow
 M:	Pim van Pelt <pim@ipng.nl>
 M:	Neil McKee <neil.mckee@inmon.com>
 F:	src/plugins/sflow/
+
+OpenEmbedded/Yocto
+I:	oe
+M:	Maxim Uvarov <maxim@skbuff.ru>
+F:	extras/oe
