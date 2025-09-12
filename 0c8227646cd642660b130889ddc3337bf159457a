@@ -72,6 +72,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b850954_470b5cfa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2025-09-12T12:47:08Z",
+      "side": 1,
+      "message": "\u003e Can we narrow down the try_lock() in the function to skip the write system call only?\n\nWe don\u0027t have to run the system call under a lock. It would be enough to protect the controlling variables only. However, once the system call is made in vhost_user_kick(), the controlling variables are modified too. That\u0027s the reason why in this patch the system call and the whole vhost_user_kick() runs under a lock.\n\n\u003e I am worried about the performance impact of the patch that disallows parallel processing for both input and output threads for a period of time, [...]\n\nI\u0027m sorry I didn\u0027t mention this in the commit description, but the goal of the patch is not just to fix the race condition. The end goal is to improve performance of a thread avoiding unnecessary interrupts that result in system calls. Because the less system calls a thread makes, the less time it\u0027s blocked and can do other work.\n\nHowever, your concern is valid. While potentially improving the performance of one thread we may reduce the performance of another.\n\n\u003e Do you have any performance number to compare between the baseline and with the patch?\n\nIt depends on what numbers you have in mind. Throughput between two VMs remains on the same level. The number of interrupts for rxvq halves.\n\nVM1 -\u003e VM2\nVirtualEthernet0/0/0 (Thread 1) -\u003e VirtualEthernet0/0/1 (Thread 2)\ncoalesce frames 63 time 1e-4\n60s iperf3 TCP benchmark\nMTU 1500\n\nThroughput is around 10Gbps with or without this patch. The number of rxvq interrupts vary from run to run, because the traffic pattern may change as well as the number of race conditions. But with this patch, the number of rxvq interrupts is consistently around two times lower. For example, here are the numbers of rxvq interrupts for two sequential tests: before 435832, after 206110.\n\n-----\n\nI will rework the patch to avoid making the system call under a lock. This should potentially improve the performance of a thread that makes the system call while not blocking the other thread.",
+      "parentUuid": "d88c2c48_2dcf5183",
+      "revId": "0c8227646cd642660b130889ddc3337bf159457a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13186201_acfa4f04",
