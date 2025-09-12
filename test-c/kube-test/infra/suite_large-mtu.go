@@ -20,10 +20,10 @@ func RegisterLargeMtuTests(tests ...func(s *LargeMtuSuite)) {
 
 func (s *LargeMtuSuite) SetupSuite() {
 	s.KubeSuite.SetupSuite()
-	s.SetMtuAndRestart("mtu: 9000", "tcp { mtu 8960 }")
+	s.SetMtuAndRestart("mtu: 0", "tcp { mtu 8960 }\n    cpu { workers 0 }")
 }
 
-var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Perf"), func() {
+var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU"), func() {
 	var s LargeMtuSuite
 	BeforeAll(func() {
 		s.SetupSuite()
