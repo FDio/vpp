@@ -307,8 +307,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
   clib_memcpy_fast (working_copy, v, sizeof (*v) * (1 << b->log2_pages));
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = BV (clib_bihash_get_offset) (h, working_copy);
-  CLIB_MEMORY_STORE_BARRIER ();
-  b->as_u64 = working_bucket.as_u64;
+  clib_atomic_store_rel_n (&b->as_u64, working_bucket.as_u64);
   h->working_copies[thread_index] = working_copy;
 }
 
@@ -450,6 +449,7 @@ BV (clib_bihash_add_del_inline_with_hash) (
   b = BV (clib_bihash_get_bucket) (h, hash);
 
   BV (clib_bihash_lock_bucket) (b);
+  /* other writers will not touch this bucket  */
 
   /* First elt in the bucket? */
   if (BIHASH_KVP_AT_BUCKET_LEVEL == 0 && BV (clib_bihash_bucket_is_empty) (b))
@@ -464,13 +464,13 @@ BV (clib_bihash_add_del_inline_with_hash) (
       v = BV (value_alloc) (h, 0);
       BV (clib_bihash_alloc_unlock) (h);
 
-      *v->kvp = *add_v;
+      v->kvp[0] = *add_v;
       tmp_b.as_u64 = 0; /* clears bucket lock */
       tmp_b.offset = BV (clib_bihash_get_offset) (h, v);
       tmp_b.refcnt = 1;
-      CLIB_MEMORY_STORE_BARRIER ();
 
-      b->as_u64 = tmp_b.as_u64; /* unlocks the bucket */
+      clib_atomic_store_rel_n (&b->as_u64,
+			       tmp_b.as_u64); /* unlocks the bucket */
       BV (clib_bihash_increment_stat) (h, BIHASH_STAT_alloc_add, 1);
 
       return (0);
@@ -554,7 +554,7 @@ BV (clib_bihash_add_del_inline_with_hash) (
 	      if (is_stale_cb (&(v->kvp[i]), is_stale_arg))
 		{
 		  clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
-		  CLIB_MEMORY_STORE_BARRIER ();
+		  b->generation++;
 		  BV (clib_bihash_unlock_bucket) (b);
 		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_replace, 1);
 		  return (0);
@@ -705,6 +705,7 @@ expand_ok:
   tmp_b.log2_pages = new_log2_pages;
   tmp_b.offset = BV (clib_bihash_get_offset) (h, save_new_v);
   tmp_b.linear_search = mark_bucket_linear;
+  tmp_b.generation = h->saved_bucket.generation + 1;
 #if BIHASH_KVP_AT_BUCKET_LEVEL
   /* Compensate for permanent refcount bump at the bucket level */
   if (new_log2_pages > 0)
@@ -712,8 +713,7 @@ expand_ok:
     tmp_b.refcnt = h->saved_bucket.refcnt + 1;
   ASSERT (tmp_b.refcnt > 0);
   tmp_b.lock = 0;
-  CLIB_MEMORY_STORE_BARRIER ();
-  b->as_u64 = tmp_b.as_u64;
+  clib_atomic_store_rel_n (&b->as_u64, tmp_b.as_u64);
 
 #if BIHASH_KVP_AT_BUCKET_LEVEL
   if (h->saved_bucket.log2_pages > 0)
