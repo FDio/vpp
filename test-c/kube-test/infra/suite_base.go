@@ -137,6 +137,6 @@ func (s *KubeSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VP
 	s.AssertNil(err)
 
 	// let vpp-dataplane recover, should help with stability issues
-	s.Log("Waiting for 10 seconds")
-	time.Sleep(time.Second * 10)
+	s.Log("Waiting for 20 seconds")
+	time.Sleep(time.Second * 20)
 }

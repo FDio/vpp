@@ -132,6 +132,7 @@ setup_master() {
       git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
   else
       cd $CALICOVPP_DIR
+      git reset --hard origin/master
       git pull
       cd $VPP_DIR/test-c/kube-test
   fi

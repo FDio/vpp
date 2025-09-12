@@ -12,6 +12,7 @@ import (
 
 func init() {
 	RegisterKubeTests(KubeTcpIperfVclTest, KubeUdpIperfVclTest, NginxRpsTest, NginxProxyMirroringTest)
+	RegisterKubeMWTests(KubeTcpIperfVclMWTest, KubeUdpIperfVclMWTest)
 	RegisterLargeMtuTests(KubeTcpIperfVclLargeMTUTest)
 }
 
@@ -41,8 +42,12 @@ func kubeIperfVclTest(s *KubeSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 2s")
-	time.Sleep(time.Second * 2)
+	s.Log("Sleeping for 5s")
+	time.Sleep(time.Second * 5)
+	s.AssertNil(err)
+	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
+	s.Log(out)
+	s.AssertNil(err)
 	s.AssertNil(err, o)
 
 	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
@@ -76,8 +81,12 @@ func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 2s")
-	time.Sleep(time.Second * 2)
+	s.Log("Sleeping for 5s")
+	time.Sleep(time.Second * 5)
+	s.AssertNil(err)
+	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
+	s.Log(out)
+	s.AssertNil(err)
 	s.AssertNil(err, o)
 
 	o, err = s.Pods.ClientGeneric.Exec(ctx, []string{"/bin/bash", "-c", iperfClientCmd})
@@ -97,6 +106,14 @@ func KubeTcpIperfVclLargeMTUTest(s *LargeMtuSuite) {
 
 func KubeUdpIperfVclTest(s *KubeSuite) {
 	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 2000)
+}
+
+func KubeTcpIperfVclMWTest(s *KubeSuite) {
+	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 200)
+}
+
+func KubeUdpIperfVclMWTest(s *KubeSuite) {
+	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 200)
 }
 
 func NginxRpsTest(s *KubeSuite) {

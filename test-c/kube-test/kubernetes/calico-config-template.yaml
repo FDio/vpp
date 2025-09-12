@@ -139,23 +139,26 @@ data:
   CALICOVPP_BGP_LOG_LEVEL: ""
   CALICOVPP_CONFIG_EXEC_TEMPLATE: ""
   CALICOVPP_CONFIG_TEMPLATE: |-
-        unix {
-            nodaemon
-            full-coredump
-            log /var/run/vpp/vpp.log
-            cli-listen /var/run/vpp/cli.sock
-            pidfile /run/vpp/vpp.pid
-        }
-        buffers {
-            buffers-per-numa 131072
-        }
-        socksvr { socket-name /var/run/vpp/vpp-api.sock }
-        plugins {
-            plugin default { enable }
-            plugin calico_plugin.so { enable }
-            plugin dpdk_plugin.so { disable }
-        }
-        ${ADDITIONAL_VPP_CONFIG}
+    unix {
+      nodaemon
+      full-coredump
+      log /var/run/vpp/vpp.log
+      cli-listen /var/run/vpp/cli.sock
+      pidfile /run/vpp/vpp.pid
+    }
+    socksvr {
+      socket-name /var/run/vpp/vpp-api.sock
+    }
+    buffers {
+      buffers-per-numa 16384
+      page-size 4K
+    }
+    plugins {
+        plugin default { enable }
+        plugin calico_plugin.so { enable }
+        plugin dpdk_plugin.so { disable }
+    }
+    ${ADDITIONAL_VPP_CONFIG}
   CALICOVPP_DEBUG: |-
     {
           "servicesEnabled": true,
@@ -163,11 +166,10 @@ data:
         }
   CALICOVPP_FEATURE_GATES: |-
     {
-          "memifEnabled": false,
-          "vclEnabled": true,
-          "multinetEnabled": false,
-          "ipsecEnabled": false
-        }
+      "prometheusEnabled": true,
+      "vclEnabled": true,
+      "memifEnabled": true
+    }
   CALICOVPP_INIT_SCRIPT_TEMPLATE: ""
   CALICOVPP_INITIAL_CONFIG: |-
     {
@@ -184,18 +186,35 @@ data:
         }
   CALICOVPP_INTERFACES: |-
     {
-        "uplinkInterfaces": [
-          {
-            "interfaceName": "eth0",
-            "vppDriver": "af_packet"
-          }
-        ]
-      }
+        "defaultPodIfSpec": {
+          "rx": 1,
+          "tx": 1,
+          "rxqsz": 128,
+          "txqsz": 128,
+          "isl3": true,
+          "rxMode": "interrupt"
+        },
+        "vppHostTapSpec": {
+          "rx": 1,
+          "tx": 1,
+          "rxqsz": 512,
+          "txqsz": 512,
+          "isl3": false,
+          "rxMode": "interrupt"
+        },
+      "uplinkInterfaces": [
+        {
+          "interfaceName": "eth0",
+          "vppDriver": "af_packet",
+          "rxMode": "interrupt"
+        }
+      ]
+    }
   CALICOVPP_IPSEC: |-
     {}
   CALICOVPP_IPSEC_IKEV2_PSK: "keykeykey"
   CALICOVPP_LOG_FORMAT: pretty
-  CALICOVPP_LOG_LEVEL: ""
+  CALICOVPP_LOG_LEVEL: "debug"
   CALICOVPP_SRV6: |-
     {}
   CALICOVPP_SWAP_DRIVER: ""
