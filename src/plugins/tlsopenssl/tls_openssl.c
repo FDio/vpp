@@ -1438,12 +1438,14 @@ tls_init_ca_chain (void)
       cert_bio = BIO_new (BIO_s_mem ());
       BIO_write (cert_bio, test_srv_crt_rsa, test_srv_crt_rsa_len);
       testcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
+      BIO_free (cert_bio);
       if (!testcert)
 	{
 	  clib_warning ("unable to parse certificate");
 	  return -1;
 	}
       X509_STORE_add_cert (om->cert_store, testcert);
+      X509_free (testcert);
       rv = 0;
     }
   return (rv < 0 ? -1 : 0);
