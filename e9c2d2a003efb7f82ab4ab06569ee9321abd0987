@@ -16,6 +16,23 @@
       "message": "perftest-3n-emr mrrANDnic_intel-e810cqANDethip4ipsec*1000*-ip4base-policy* !drv_avf !drv_af_xdp #generate-all",
       "revId": "e9c2d2a003efb7f82ab4ab06569ee9321abd0987",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f004a64a_b29c7572",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-12T08:19:35Z",
+      "side": 1,
+      "message": "Finally all ipsec-policy tests are passing. If some race conditions are still not fixed, they are at least not probable.",
+      "revId": "e9c2d2a003efb7f82ab4ab06569ee9321abd0987",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
