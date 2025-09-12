@@ -12,6 +12,7 @@ import (
 
 func init() {
 	RegisterKubeTests(KubeTcpIperfVclTest, KubeUdpIperfVclTest, NginxRpsTest, NginxProxyMirroringTest)
+	RegisterKubeMWTests(KubeTcpIperfVclMWTest, KubeUdpIperfVclMWTest)
 	RegisterLargeMtuTests(KubeTcpIperfVclLargeMTUTest)
 }
 
@@ -97,6 +98,14 @@ func KubeTcpIperfVclLargeMTUTest(s *LargeMtuSuite) {
 
 func KubeUdpIperfVclTest(s *KubeSuite) {
 	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 2000)
+}
+
+func KubeTcpIperfVclMWTest(s *KubeSuite) {
+	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-M 1460"), 200)
+}
+
+func KubeUdpIperfVclMWTest(s *KubeSuite) {
+	s.AssertIperfMinTransfer(kubeIperfVclTest(s, "-l 1460 -u"), 200)
 }
 
 func NginxRpsTest(s *KubeSuite) {
