@@ -88,7 +88,7 @@ scoreboard_last_hole (sack_scoreboard_t * sb)
 	_elt->start = _sack->start;					\
 	_elt->end = _sack->end;						\
 	_elt->ack = _elt->end == _ack ? _ack : 0;			\
-	_elt->snd_una_max = _elt->end == _ack ? _tc->snd_una_max : 0;	\
+	_elt->snd_nxt = _elt->end == _ack ? _tc->snd_nxt : 0;	\
 	_elt->group = _group;						\
       }									\
 }
