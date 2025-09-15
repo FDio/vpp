@@ -87,15 +87,15 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  rv = snort_instance_create (
-    vm,
-    &(snort_instance_create_args_t){
-      .log2_queue_sz = min_log2 (queue_size),
-      .drop_on_disconnect = drop_on_disconnect,
-      .drop_bitmap = 1 << DAQ_VERDICT_BLOCK | 1 << DAQ_VERDICT_BLACKLIST,
-      .qpairs_per_thread = qpairs_per_thread,
-    },
-    "%s", name);
+  rv = snort_instance_create (vm,
+			      &(snort_instance_create_args_t){
+				.log2_queue_sz = min_log2 (queue_size),
+				.drop_on_disconnect = drop_on_disconnect,
+				.drop_bitmap = 1 << DAQ_VPP_VERDICT_BLOCK |
+					       1 << DAQ_VPP_VERDICT_BLACKLIST,
+				.qpairs_per_thread = qpairs_per_thread,
+			      },
+			      "%s", name);
 
   switch (rv)
     {
@@ -359,7 +359,7 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    (u8 *) qp->deq_ring - (u8 *) si->shm_base, qp->deq_fd,
 	    qp->hdr->deq.head, qp->deq_tail);
 
-	  for (u32 i = 0; i < MAX_DAQ_VERDICT; i++)
+	  for (u32 i = 0; i < DAQ_VPP_VERDICT_MAX; i++)
 	    if (qp->n_packets_by_verdict[i])
 	      {
 		n += qp->n_packets_by_verdict[i];

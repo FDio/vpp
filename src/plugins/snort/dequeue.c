@@ -16,7 +16,7 @@ snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   daq_vpp_head_tail_t head, tail, old_tail;
   daq_vpp_desc_index_t next_free, mask = pow2_mask (qp->log2_queue_size);
   u32 drop_bitmap = si->drop_bitmap;
-  u16 n_verdicsts[MAX_DAQ_VERDICT] = {};
+  u16 n_verdicsts[DAQ_VPP_VERDICT_MAX] = {};
 
   if (PREDICT_FALSE (qp->cleanup_needed))
     {
@@ -144,7 +144,7 @@ more:
   qp->next_free_desc = next_free;
 
   if (n_total)
-    for (u32 i = 0; i < MAX_DAQ_VERDICT; i++)
+    for (u32 i = 0; i < DAQ_VPP_VERDICT_MAX; i++)
       qp->n_packets_by_verdict[i] += n_verdicsts[i];
 
   if (head != tail)

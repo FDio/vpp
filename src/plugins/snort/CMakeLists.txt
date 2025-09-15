@@ -27,8 +27,6 @@ endif()
 
 message(STATUS "snort plugin needs libdaq ${DAQ_VER} - found at ${LIBDAQ_LINK_LIBRARY}")
 
-include_directories (${LIBDAQ_INCLUDE_DIR})
-
 add_vpp_plugin(snort
   SOURCES
   cli.c
@@ -44,6 +42,7 @@ add_vpp_plugin(snort
   snort.api
 
   INSTALL_HEADERS
+  daq_vpp_shared.h
   export.h
 
   MULTIARCH_SOURCES
@@ -59,5 +58,6 @@ set_target_properties(daq_vpp PROPERTIES SOVERSION ${VPP_LIB_VERSION})
 target_compile_options (daq_vpp PRIVATE "-fvisibility=hidden")
 target_compile_options (daq_vpp PRIVATE "-DHAVE_VISIBILITY")
 target_compile_options (daq_vpp PRIVATE "-I${LIBDAQ_INCLUDE_DIR}")
+target_compile_options (daq_vpp PRIVATE "-I${VPP_INCLUDE_DIR}/vpp_plugins")
 install(TARGETS daq_vpp DESTINATION ${VPP_LIBRARY_DIR}/daq COMPONENT vpp-plugin-snort)
 

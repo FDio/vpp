@@ -80,17 +80,17 @@ format_snort_daq_version (u8 *s, va_list *args)
 u8 *
 format_snort_verdict (u8 *s, va_list *args)
 {
-  DAQ_Verdict v = va_arg (*args, DAQ_Verdict);
-  static char *strings[MAX_DAQ_VERDICT] = {
-    [DAQ_VERDICT_PASS] = "PASS",
-    [DAQ_VERDICT_BLOCK] = "BLOCK",
-    [DAQ_VERDICT_REPLACE] = "REPLACE",
-    [DAQ_VERDICT_WHITELIST] = "WHITELIST",
-    [DAQ_VERDICT_BLACKLIST] = "BLACKLIST",
-    [DAQ_VERDICT_IGNORE] = "IGNORE",
+  daq_vpp_verdict_t v = va_arg (*args, daq_vpp_verdict_t);
+  static char *strings[DAQ_VPP_VERDICT_MAX] = {
+    [DAQ_VPP_VERDICT_PASS] = "PASS",
+    [DAQ_VPP_VERDICT_BLOCK] = "BLOCK",
+    [DAQ_VPP_VERDICT_REPLACE] = "REPLACE",
+    [DAQ_VPP_VERDICT_WHITELIST] = "WHITELIST",
+    [DAQ_VPP_VERDICT_BLACKLIST] = "BLACKLIST",
+    [DAQ_VPP_VERDICT_IGNORE] = "IGNORE",
   };
 
-  if (v >= MAX_DAQ_VERDICT || strings[v] == 0)
+  if (v >= DAQ_VPP_VERDICT_MAX || strings[v] == 0)
     return format (s, "unknown (%d)", v);
 
   return format (s, "%s", strings[v]);
@@ -99,15 +99,15 @@ format_snort_verdict (u8 *s, va_list *args)
 u8 *
 format_snort_mode (u8 *s, va_list *args)
 {
-  DAQ_Mode v = va_arg (*args, DAQ_Mode);
-  static char *strings[MAX_DAQ_MODE] = {
-    [DAQ_MODE_NONE] = "none",
-    [DAQ_MODE_PASSIVE] = "passive",
-    [DAQ_MODE_INLINE] = "inline",
-    [DAQ_MODE_READ_FILE] = "read-file",
+  daq_vpp_mode_t v = va_arg (*args, daq_vpp_mode_t);
+  static char *strings[DAQ_VPP_MODE_MAX] = {
+    [DAQ_VPP_MODE_NONE] = "none",
+    [DAQ_VPP_MODE_PASSIVE] = "passive",
+    [DAQ_VPP_MODE_INLINE] = "inline",
+    [DAQ_VPP_MODE_READ_FILE] = "read-file",
   };
 
-  if (v >= MAX_DAQ_MODE || strings[v] == 0)
+  if (v >= DAQ_VPP_MODE_MAX || strings[v] == 0)
     return format (s, "unknown (%d)", v);
 
   return format (s, "%s", strings[v]);
