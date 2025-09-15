@@ -280,6 +280,9 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
 
+  if (port->attr.caps.rss && args->port.default_rss_key.length)
+    port->rss_key = args->port.default_rss_key;
+
   if (args->port.args)
     for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
       vec_add1 (port->args, *a);
@@ -354,6 +357,11 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	  found = 1;
       if (!found)
 	return VNET_DEV_ERR_NO_SUCH_ENTRY;
+      break;
+
+    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
+      if (!port->attr.caps.rss)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
       break;
 
     default:
@@ -470,6 +478,10 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	    pool_put (port->secondary_hw_addr, a);
 	    break;
 	  }
+      break;
+
+    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
+      port->rss_key = req->rss_key;
       break;
 
     default:

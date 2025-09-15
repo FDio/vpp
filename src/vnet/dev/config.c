@@ -15,34 +15,44 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .subclass_name = "config",
 };
 
+typedef struct
+{
+  vnet_dev_api_create_port_if_args_t intf;
+  vnet_dev_api_port_set_rss_key_args_t rss_key_args;
+} port_config_t;
+
 static clib_error_t *
 vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
-			       vnet_dev_api_create_port_if_args_t *args)
+			       port_config_t *args)
 {
   clib_error_t *err = 0;
 
-  log_debug (0, "port %u %U", args->port_id, format_unformat_input, input);
+  log_debug (0, "port %u %U", args->intf.port_id, format_unformat_input,
+	     input);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       u32 n;
 
-      if (unformat (input, "name %U", unformat_c_string_array, args->intf_name,
-		    sizeof (args->intf_name)))
+      if (unformat (input, "name %U", unformat_c_string_array,
+		    args->intf.intf_name, sizeof (args->intf.intf_name)))
 	;
       else if (unformat (input, "num-rx-queues %u", &n))
-	args->num_rx_queues = n;
+	args->intf.num_rx_queues = n;
       else if (unformat (input, "num-tx-queues %u", &n))
-	args->num_tx_queues = n;
+	args->intf.num_tx_queues = n;
       else if (unformat (input, "rx-queue-size %u", &n))
-	args->rx_queue_size = n;
+	args->intf.rx_queue_size = n;
       else if (unformat (input, "tx-queue-size %u", &n))
-	args->tx_queue_size = n;
+	args->intf.tx_queue_size = n;
+      else if (unformat (input, "rss-key %U", unformat_vnet_dev_rss_key,
+			 &args->rss_key_args.rss_key))
+	;
       else if (unformat (input, "flags %U", unformat_vnet_dev_port_flags,
-			 &args->flags))
+			 &args->intf.flags))
 	;
       else if (unformat (input, "args %U", unformat_single_quoted_string,
-			 &args->args))
+			 &args->intf.args))
 	;
       else
 	{
@@ -112,7 +122,6 @@ vnet_dev_config_driver_args (vlib_main_t *vm, unformat_input_t *input,
 
   return err;
 }
-
 static clib_error_t *
 vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 			    char *device_id)
@@ -120,7 +129,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
   log_debug (0, "device %s %U", device_id, format_unformat_input, input);
   clib_error_t *err = 0;
   vnet_dev_api_attach_args_t args = {};
-  vnet_dev_api_create_port_if_args_t *if_args_vec = 0, *if_args;
+  port_config_t *ports = 0, *p;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -139,10 +148,9 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "port %u %U", &n, unformat_vlib_cli_sub_input,
 			 &sub_input))
 	{
-	  vnet_dev_api_create_port_if_args_t *if_args;
-	  vec_add2 (if_args_vec, if_args, 1);
-	  if_args->port_id = n;
-	  err = vnet_dev_config_one_interface (vm, &sub_input, if_args);
+	  vec_add2 (ports, p, 1);
+	  p->intf.port_id = n;
+	  err = vnet_dev_config_one_interface (vm, &sub_input, p);
 	  unformat_free (&sub_input);
 	  if (err)
 	    break;
@@ -165,12 +173,21 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 
       if (rv == VNET_DEV_OK)
 	{
-	  vec_foreach (if_args, if_args_vec)
+	  vec_foreach (p, ports)
 	    {
-	      if_args->dev_index = args.dev_index;
-	      rv = vnet_dev_api_create_port_if (vm, if_args);
+	      p->intf.dev_index = args.dev_index;
+	      rv = vnet_dev_api_create_port_if (vm, &p->intf);
 	      if (rv != VNET_DEV_OK)
 		break;
+	      if (p->rss_key_args.rss_key.length)
+		{
+		  vnet_dev_api_port_set_rss_key_args_t *rka = &p->rss_key_args;
+		  rka->port_id = p->intf.port_id;
+		  rka->dev_index = p->intf.dev_index;
+		  rv = vnet_dev_api_port_set_rss_key (vm, rka);
+		  if (rv != VNET_DEV_OK)
+		    break;
+		}
 	    }
 	}
 
@@ -179,7 +196,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 				 format_vnet_dev_rv, rv, device_id);
     }
 
-  vec_free (if_args_vec);
+  vec_free (ports);
   return err;
 }
 

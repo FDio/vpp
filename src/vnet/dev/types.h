@@ -17,6 +17,11 @@ typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
 typedef struct vnet_dev_tx_queue vnet_dev_tx_queue_t;
+typedef struct
+{
+  u8 key[48];
+  u8 length;
+} vnet_dev_rss_key_t;
 
 typedef enum
 {
