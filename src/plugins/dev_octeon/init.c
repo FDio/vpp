@@ -88,6 +88,15 @@ static vnet_dev_arg_t oct_port_args[] = {
     .default_val.boolean = false,
   },
   {
+    .id = OCT_PORT_ARG_RSS_FLOW_KEY,
+    .name = "rss_flow_key",
+    .desc = "RSS Flow Key Bitmap, applicable to network devices only",
+    .type = VNET_DEV_ARG_TYPE_UINT32,
+    .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 |
+			  FLOW_KEY_TYPE_TCP | FLOW_KEY_TYPE_UDP |
+			  FLOW_KEY_TYPE_SCTP,
+  },
+  {
     .id = OCT_PORT_ARG_END,
     .name = "end",
     .desc = "Argument end",
