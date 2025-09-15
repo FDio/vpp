@@ -493,6 +493,28 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       goto done;
     }
 
+  if (!(roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix)))
+    {
+
+      rv = roc_nix_npc_promisc_ena_dis (nix, port->promisc);
+      if (rv)
+	{
+	  return oct_roc_err (dev, rv, "roc_nix_npc_promisc_ena_dis failed");
+	}
+
+      if (roc_nix_is_pf (nix))
+	{
+
+	  rv = roc_nix_mac_promisc_mode_enable (nix, port->promisc);
+	  if (rv)
+	    {
+	      return oct_roc_err (dev, rv,
+				  "roc_nix_mac_promisc_mode_enable(%s) failed",
+				  port->promisc ? "true" : "false");
+	    }
+	}
+    }
+
   vnet_dev_poll_port_add (vm, port, 0.5, oct_port_poll);
 
   if (roc_nix_eeprom_info_get (nix, &eeprom_info) == 0)
