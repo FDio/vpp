@@ -3218,6 +3218,7 @@ http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
   http2_conn_ctx_t *h2c;
   http2_req_t *req;
   app_worker_t *app_wrk;
+  int rv;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   h2c = http2_conn_ctx_get_w_thread (hc);
@@ -3231,7 +3232,10 @@ http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
 				      parent_app_api_ctx);
   req = http2_conn_alloc_req (hc, 0);
   http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-  return http_conn_established (hc, &req->base, parent_app_api_ctx, 1);
+  rv = http_conn_established (hc, &req->base, parent_app_api_ctx, 1);
+  if (rv != 0)
+    http2_conn_free_req (h2c, req, hc->c_thread_index);
+  return rv;
 }
 
 static void
