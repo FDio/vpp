@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "148d64e0_c4ead062",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-09-15T13:38:55Z",
+      "side": 1,
+      "message": "It would be nice to be able to customize this. Do you want to do it in this commit?",
+      "range": {
+        "startLine": 21,
+        "startChar": 16,
+        "endLine": 21,
+        "endChar": 31
+      },
+      "revId": "2b1f2e29c0c268464dd0f59f34bd712218b7ad5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
