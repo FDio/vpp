@@ -301,7 +301,7 @@ snort_arc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_pkts = frame->n_vectors, n_left = n_pkts, n_total_left = n_pkts;
   u16 instance_indices[VLIB_FRAME_SIZE], *ii = instance_indices;
   daq_vpp_pkt_metadata_t metadata = {
-    .flags = is_output ? 0 : DAQ_PKT_FLAG_PRE_ROUTING,
+    .flags = is_output ? 0 : DAQ_VPP_PKT_FLAG_PRE_ROUTING,
   };
 
   for (; n_left >= 8; n_left -= 4, bi += 4, ii += 4)
