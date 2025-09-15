@@ -1,17 +1,36 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright(c) 2021 Cisco Systems, Inc.
+ * Copyright(c) 2021-2025 Cisco Systems, Inc.
  */
 
 #ifndef __DAQ_VPP_SHARED_H__
 #define __DAQ_VPP_SHARED_H__
-
-#include <stdint.h>
 
 #define DAQ_VPP_VERSION		    2
 #define DAQ_VPP_DEFAULT_SOCKET_FILE "snort.sock"
 #define DAQ_VPP_DEFAULT_SOCKET_PATH "/run/vpp/" DAQ_VPP_DEFAULT_SOCKET_FILE
 #define DAQ_VPP_MAX_INST_NAME_LEN   32
 #define DAQ_VPP_COOKIE		    0xa196c3e82a4bc68f
+#define DAQ_VPP_PKT_FLAG_PRE_ROUTING (1 << 2)
+
+typedef enum
+{
+  DAQ_VPP_VERDICT_PASS = 0,
+  DAQ_VPP_VERDICT_BLOCK,
+  DAQ_VPP_VERDICT_REPLACE,
+  DAQ_VPP_VERDICT_WHITELIST,
+  DAQ_VPP_VERDICT_BLACKLIST,
+  DAQ_VPP_VERDICT_IGNORE,
+  DAQ_VPP_MAX_DAQ_VERDICT,
+} daq_vpp_verdict_t;
+
+typedef enum
+{
+  DAQ_VPP_MODE_NONE = 0,
+  DAQ_VPP_MODE_PASSIVE,
+  DAQ_VPP_MODE_INLINE,
+  DAQ_VPP_MODE_READ_FILE,
+  DAQ_VPP_MAX_DAQ_MODE,
+} daq_vpp_mode_t;
 
 typedef uint8_t daq_vpp_buffer_pool_index_t;
 typedef uint16_t daq_vpp_input_index_t;
@@ -73,7 +92,7 @@ typedef struct
 {
   uint32_t daq_version;
   uint16_t num_snort_instances;
-  uint8_t mode; /* DAQ_Mode */
+  daq_vpp_mode_t mode; /* mode */
 } daq_vpp_msg_req_connect_t;
 
 typedef struct
@@ -159,7 +178,7 @@ typedef struct
     };
     struct
     {
-      uint8_t verdict; /* DAQ_Verdict */
+      daq_vpp_verdict_t verdict; /* verdict */
     };
     uint32_t data[4];
   };

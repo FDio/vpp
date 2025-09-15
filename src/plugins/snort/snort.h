@@ -12,9 +12,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <snort/export.h>
-#include <snort/daq/daq_vpp_shared.h>
-
-#include <daq_common.h>
+#include <snort/daq_vpp_shared.h>
 
 #define SNORT_INVALID_CLIENT_INDEX CLIB_U32_MAX
 
@@ -43,7 +41,7 @@ typedef struct
   daq_vpp_qpair_id_t qpair_id;
   u32 deq_fd_file_index;
   u32 dequeue_node_index;
-  u64 n_packets_by_verdict[MAX_DAQ_VERDICT];
+  u64 n_packets_by_verdict[DAQ_VPP_MAX_DAQ_VERDICT];
   snort_qpair_entry_t entries[];
 } snort_qpair_t;
 
