@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.19)
 
 if (DEFINED VPP_PLATFORM_C_COMPILER_NAMES)
   set(CMAKE_C_COMPILER_NAMES ${VPP_PLATFORM_C_COMPILER_NAME})
