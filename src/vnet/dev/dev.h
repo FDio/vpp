@@ -158,7 +158,8 @@ typedef struct
   _ (ADD_RX_FLOW)                                                             \
   _ (DEL_RX_FLOW)                                                             \
   _ (GET_RX_FLOW_COUNTER)                                                     \
-  _ (RESET_RX_FLOW_COUNTER)
+  _ (RESET_RX_FLOW_COUNTER)                                                   \
+  _ (SET_RSS_KEY)
 
 typedef enum
 {
@@ -180,6 +181,7 @@ typedef struct vnet_dev_port_cfg_change_req
     vnet_dev_hw_addr_t addr;
     u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
+    vnet_dev_rss_key_t rss_key;
     struct
     {
       u32 flow_index;
@@ -393,6 +395,7 @@ typedef struct vnet_dev_port
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
   vnet_dev_port_interfaces_t *interfaces;
+  vnet_dev_rss_key_t rss_key;
 
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   u8 data[];
@@ -528,6 +531,7 @@ typedef struct
     vnet_dev_arg_t *sec_if_args;
     u16 data_size;
     void *initial_data;
+    vnet_dev_rss_key_t default_rss_key;
   } port;
 
   vnet_dev_node_t *rx_node;
@@ -755,6 +759,7 @@ format_function_t format_vnet_dev_tx_queue_info;
 format_function_t format_vnet_dev_flow;
 unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
+unformat_function_t unformat_vnet_dev_rss_key;
 
 typedef struct
 {

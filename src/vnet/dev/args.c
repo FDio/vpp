@@ -82,7 +82,7 @@ vnet_dev_arg_parse (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_arg_t *args,
       else if (a->type == VNET_DEV_ARG_TYPE_UINT32)
 	{
 	  u32 val, min = 0, max = CLIB_U32_MAX;
-	  if (!unformat (&in, "%u", &val))
+	  if (!unformat (&in, "0x%x", &val) && !unformat (&in, "%u", &val))
 	    {
 	      err = format (0,
 			    "unsigned integer in range %u - %u expected for "

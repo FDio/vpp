@@ -125,6 +125,10 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 	  s = format (s, " %U", format_vnet_dev_hw_addr, a);
 	}
     }
+  if (port->rss_key.length)
+    s = format (s, "\n%URSS Key is %U", format_white_space, indent,
+		format_hex_bytes_no_wrap, port->rss_key.key,
+		port->rss_key.length);
   s = format (s, "\n%UMax RX frame size is %u (max supported %u)",
 	      format_white_space, indent, port->max_rx_frame_size,
 	      port->attr.max_supported_rx_frame_size);
@@ -521,4 +525,26 @@ format_vnet_dev_flow (u8 *s, va_list *args)
 		private_data);
 
   return s;
+}
+
+uword
+unformat_vnet_dev_rss_key (unformat_input_t *input, va_list *args)
+{
+  vnet_dev_rss_key_t *k = va_arg (*args, vnet_dev_rss_key_t *);
+  u8 *v;
+  u32 len;
+
+  if (!(unformat_user (input, unformat_hex_string, &v)))
+    return 0;
+
+  len = vec_len (v);
+  if (len > sizeof (k->key))
+    {
+      vec_free (v);
+      return 0;
+    }
+
+  clib_memcpy (k->key, v, len);
+  k->length = len;
+  return 1;
 }
