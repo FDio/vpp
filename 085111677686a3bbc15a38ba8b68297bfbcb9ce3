@@ -34,6 +34,24 @@
       "parentUuid": "4cf60adf_dac2bf9b",
       "revId": "085111677686a3bbc15a38ba8b68297bfbcb9ce3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32088931_69ab5b2f",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-16T20:21:27Z",
+      "side": 1,
+      "message": "For tcp, udp will always return on first worker as it\u0027s synchronous, if there\u0027s no worker, it\u0027ll be main. \n\nAnd yes, it\u0027s most probably just validating that we\u0027re not getting spurious callbacks (which the infra should not allow for ...)",
+      "parentUuid": "44df1a85_2495e84b",
+      "revId": "085111677686a3bbc15a38ba8b68297bfbcb9ce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
