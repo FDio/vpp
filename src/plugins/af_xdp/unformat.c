@@ -54,6 +54,8 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->mode = AF_XDP_MODE_ZERO_COPY;
       else if (unformat (line_input, "no-syscall-lock"))
 	args->flags |= AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK;
+      else if (unformat (line_input, "allow-skb-mode"))
+      args->flags |= AF_XDP_CREATE_ALLOW_SKB_MODE;
       else
 	{
 	  /* return failure on unknown input */

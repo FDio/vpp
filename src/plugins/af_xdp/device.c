@@ -307,6 +307,25 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
   umem_config.frame_headroom = sizeof (vlib_buffer_t);
   umem_config.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG;
+
+  memset (&sock_config, 0, sizeof (sock_config));
+  sock_config.rx_size = args->rxq_size;
+  sock_config.tx_size = args->txq_size;
+  sock_config.bind_flags = XDP_USE_NEED_WAKEUP;
+  switch (args->mode)
+    {
+    case AF_XDP_MODE_AUTO:
+      break;
+    case AF_XDP_MODE_COPY:
+      sock_config.bind_flags |= XDP_COPY;
+      break;
+    case AF_XDP_MODE_ZERO_COPY:
+      sock_config.bind_flags |= XDP_ZEROCOPY;
+      break;
+    }
+  if (args->prog)
+    sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+retry_create:
   if (xsk_umem__create
       (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
        vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
@@ -326,26 +345,18 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       goto err0;
     }
 
-  memset (&sock_config, 0, sizeof (sock_config));
-  sock_config.rx_size = args->rxq_size;
-  sock_config.tx_size = args->txq_size;
-  sock_config.bind_flags = XDP_USE_NEED_WAKEUP;
-  switch (args->mode)
-    {
-    case AF_XDP_MODE_AUTO:
-      break;
-    case AF_XDP_MODE_COPY:
-      sock_config.bind_flags |= XDP_COPY;
-      break;
-    case AF_XDP_MODE_ZERO_COPY:
-      sock_config.bind_flags |= XDP_ZEROCOPY;
-      break;
-    }
-  if (args->prog)
-    sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
+      if ((args->flags & AF_XDP_CREATE_ALLOW_SKB_MODE) &&
+          !(sock_config.xdp_flags & XDP_FLAGS_SKB_MODE))
+        {
+          af_xdp_log (VLIB_LOG_LEVEL_WARNING, ad,
+            "xsk_socket__create() failed, retrying with SKB mode");
+          sock_config.xdp_flags |= XDP_FLAGS_SKB_MODE;
+          xsk_umem__delete (*umem);
+          goto retry_create;
+        }
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
       args->error =
 	clib_error_return_unix (0,
