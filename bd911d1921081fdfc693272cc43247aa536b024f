@@ -16,6 +16,24 @@
       "message": "not needed anymore, there is cmake option to disable python",
       "revId": "bd911d1921081fdfc693272cc43247aa536b024f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e07eae97_90b17a72",
+        "filename": "extras/oe/recipes-network/vpp/files/0001-disable-python-api.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 3259
+      },
+      "writtenOn": "2025-09-16T09:49:24Z",
+      "side": 1,
+      "message": "yes, I already saw that. There is specific commit to build in thre recipe. For that commit this is needed. Updating recipe might require other changes. I will update it a little bit later. (trying to find a way to compile it under github actions inside 20Gb disk space free acount. Which is quite advanced.)",
+      "parentUuid": "945bb417_fb066e44",
+      "revId": "bd911d1921081fdfc693272cc43247aa536b024f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
