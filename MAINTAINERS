@@ -206,6 +206,7 @@ I:	crypto
 M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/vnet/crypto/
+F:	src/vppinfra/crypto/
 
 VNET TEIB
 I:	teib
