@@ -127,7 +127,7 @@ done:
 VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
   .path = "snort create-instance",
   .short_help = "snort create-instance name <name> [queue-size <size>] "
-		"[on-disconnect drop|pass]",
+		"[queues-per-thread <n>] [on-disconnect drop|pass]",
   .function = snort_create_instance_command_fn,
 };
 
