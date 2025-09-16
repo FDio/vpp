@@ -444,7 +444,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 {
   wg_if_t *wg_if;
   wg_peer_t *peer;
-  int rv;
+  int rv = 0, need_barrier_sync = 0;
 
   vlib_main_t *vm = vlib_get_main ();
 
@@ -466,6 +466,13 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (pool_elts (wg_peer_pool) > MAX_PEERS)
     return (VNET_API_ERROR_LIMIT_EXCEEDED);
 
+  need_barrier_sync = pool_get_will_expand (wg_peer_pool);
+  if (need_barrier_sync)
+    {
+    ASSERT (vm->thread_index == 0);
+    vlib_worker_thread_barrier_sync (vm);
+    }
+
   pool_get_zero (wg_peer_pool, peer);
 
   wg_peer_init (vm, peer);
@@ -477,7 +484,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
     {
       wg_peer_clear (vm, peer);
       pool_put (wg_peer_pool, peer);
-      return (rv);
+      goto done;
     }
 
   noise_remote_init (vm, &peer->remote, peer - wg_peer_pool, public_key,
@@ -492,7 +499,12 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   *peer_index = peer - wg_peer_pool;
   wg_if_peer_add (wg_if, *peer_index);
 
-  return (0);
+done:
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
+  return (rv);
 }
 
 int
