@@ -51,7 +51,8 @@ VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .short_help =
     "create interface af_xdp <host-if linux-ifname> [name ifname] "
     "[rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] "
-    "[prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]",
+    "[prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock] "
+    "[allow-skb-mode]",
   .function = af_xdp_create_command_fn,
 };
 
