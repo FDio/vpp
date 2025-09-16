@@ -16,10 +16,10 @@
 static_always_inline crypto_context_t *
 quic_quicly_crypto_context_get (u32 cr_index, u32 thread_index)
 {
-  ASSERT (cr_index >> 24 == thread_index);
+  ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (cr_index) == thread_index);
   return pool_elt_at_index (
     quic_wrk_ctx_get (quic_quicly_main.qm, thread_index)->crypto_ctx_pool,
-    cr_index & 0x00ffffff);
+    QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (cr_index));
 }
 
 #define QUIC_IV_LEN 17
