@@ -28,6 +28,7 @@ enum af_xdp_mode
 enumflag af_xdp_flag : u8
 {
   AF_XDP_API_FLAGS_NO_SYSCALL_LOCK = 1,
+  AF_XDP_API_FLAGS_ALLOW_SKB_MODE = 2 [backwards_compatible],
 };
 
 /** \brief
