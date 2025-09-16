@@ -148,6 +148,7 @@ typedef enum
 typedef enum
 {
   AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
+  AF_XDP_CREATE_ALLOW_SKB_MODE = 2,
 } af_xdp_create_flag_t;
 
 typedef struct

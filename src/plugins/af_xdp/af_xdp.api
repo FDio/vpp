@@ -30,6 +30,13 @@ enumflag af_xdp_flag : u8
   AF_XDP_API_FLAGS_NO_SYSCALL_LOCK = 1,
 };
 
+enumflag af_xdp_flag_v2 : u8
+{
+  AF_XDP_API_FLAGS_NO_SYSCALL_LOCK_V2 = 1,
+  AF_XDP_API_FLAGS_ALLOW_SKB_MODE = 2,
+};
+
+
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -65,6 +72,7 @@ autoendian define af_xdp_create_v3
   string prog[256];
   string netns[64];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  option replaced_by="af_xdp_create_v4";
 };
 
 /** \brief
@@ -74,6 +82,51 @@ autoendian define af_xdp_create_v3
 */
 
 autoendian define af_xdp_create_v3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if - Linux netdev interface name
+    @param name - new af_xdp interface name (optional)
+    @param rxq_num - number of receive queues. 65535 can be used as special value to request all available queues (optional)
+    @param rxq_size - receive queue size (optional)
+    @param txq_size - transmit queue size (optional)
+    @param mode - operation mode (optional)
+    @param flags - flags (optional)
+    @param prog - eBPF program path (optional)
+    @param netns - netns of nic (optional)
+*/
+
+autoendian define af_xdp_create_v4
+{
+  u32 client_index;
+  u32 context;
+
+  string host_if[64];
+  string name[64];
+  u16 rxq_num [default=1];
+  u16 rxq_size [default=0];
+  u16 txq_size [default=0];
+  vl_api_af_xdp_mode_t mode [default=0];
+  vl_api_af_xdp_flag_v2_t flags [default=0];
+  string prog[256];
+  string netns[64];
+  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock] [allow-skb-mode]";
+  option in_progress;
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new af_xdp interface
+*/
+
+autoendian define af_xdp_create_v4_reply
 {
   u32 context;
   i32 retval;
