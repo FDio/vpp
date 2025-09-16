@@ -350,5 +350,21 @@ test_config = {
             "server_if_version": 3,
             "x_connect_mode": "L3",
         },
+        {
+            "id": 30,
+            "client_if_type": "af_xdp",
+            "client_if_version": 4,
+            "server_if_type": "af_xdp",
+            "server_if_version": 4,
+            "x_connect_mode": "L2",
+        },
+        {
+            "id": 31,
+            "client_if_type": "af_xdp",
+            "client_if_version": 4,
+            "server_if_type": "af_xdp",
+            "server_if_version": 4,
+            "x_connect_mode": "L3",
+        },
     ],
 }
