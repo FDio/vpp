@@ -16,6 +16,24 @@
       "message": "Not sure I follow the comment, i.e., we expect udp connected callbacks to show back on first worker or main. Also, C-style comments :)",
       "revId": "085111677686a3bbc15a38ba8b68297bfbcb9ce3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44df1a85_2495e84b",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-09-16T18:05:13Z",
+      "side": 1,
+      "message": "My assumption was that connected callbacks may be placed on any worker in a multi-worker environment.  Or is worker 1 the only alternative to main (thread \u003d\u003d 0)?  I\u0027m not a fan of hard-coded configuration conventions.\n\nIMHO, the code at this level be enforcing session layer conventions, so it is not clear to me why the asserts are here.  Or am I misunderstanding what the assert is meant to guard against (e.g. a rogue session udp callback)?\n\nMaybe it is just old debug code and can be discarded...",
+      "parentUuid": "4cf60adf_dac2bf9b",
+      "revId": "085111677686a3bbc15a38ba8b68297bfbcb9ce3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
