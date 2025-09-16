@@ -933,6 +933,8 @@ class TestVPPInterfacesQemu:
                         result = self.vapi.af_xdp_create_v2(**api_args)
                     elif version == 3:
                         result = self.vapi.af_xdp_create_v3(**api_args)
+                    elif version == 4:
+                        result = self.vapi.af_xdp_create_v4(**api_args)
                     else:
                         raise ValueError(f"Unsupported AF_XDP version: {version}")
                     break
