@@ -84,6 +84,8 @@ api_af_xdp_create_v3 (vat_main_t *vam)
   mp->mode = api_af_xdp_mode (args.mode);
   if (args.flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK)
     mp->flags |= AF_XDP_API_FLAGS_NO_SYSCALL_LOCK;
+  if (args.flags & AF_XDP_CREATE_ALLOW_SKB_MODE)
+    mp->flags |= AF_XDP_API_FLAGS_ALLOW_SKB_MODE;
   snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ?: "");
 
   S (mp);

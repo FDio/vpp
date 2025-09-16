@@ -330,6 +330,8 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   sock_config.rx_size = args->rxq_size;
   sock_config.tx_size = args->txq_size;
   sock_config.bind_flags = XDP_USE_NEED_WAKEUP;
+  sock_config.xdp_flags =
+    (args->flags & AF_XDP_CREATE_ALLOW_SKB_MODE) ? XDP_FLAGS_SKB_MODE : 0;
   switch (args->mode)
     {
     case AF_XDP_MODE_AUTO:
@@ -665,6 +667,14 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   for (i = 0; i < q_num; i++)
     {
+      if (args->flags & AF_XDP_CREATE_ALLOW_SKB_MODE)
+	{
+	  int ret;
+	  ad->flags &= ~AF_XDP_CREATE_ALLOW_SKB_MODE;
+	  if (!af_xdp_create_queue (vm, args, ad, i))
+	    continue;
+	  ad->flags |= AF_XDP_CREATE_ALLOW_SKB_MODE;
+	}
       if (af_xdp_create_queue (vm, args, ad, i))
 	{
 	  /*
