@@ -320,10 +320,19 @@ static vnet_dev_rv_t
 vnet_dev_process_event_send_and_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				      vnet_dev_event_data_t *ed)
 {
-  ed->calling_process_index = vlib_get_current_process_node_index (vm);
+  vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_rv_t rv = VNET_DEV_ERR_PROCESS_REPLY;
 
   ed->reply_needed = 1;
+
+  if (!dm->main_loop_running)
+    {
+      vnet_dev_process_one_event (vm, dev, ed);
+      rv = ed->rv;
+      goto done;
+    }
+
+  ed->calling_process_index = vlib_get_current_process_node_index (vm);
 
   if (ed->calling_process_index == dev->process_node_index)
     {
@@ -577,3 +586,13 @@ vnet_dev_process_call_port_op_no_wait (vlib_main_t *vm, vnet_dev_port_t *port,
 
   vnet_dev_process_event_send (vm, port->dev, ed);
 }
+
+static clib_error_t *
+vnet_dev_main_loop_init (vlib_main_t *vm)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  dm->main_loop_running = 1;
+  return 0;
+}
+
+VLIB_MAIN_LOOP_ENTER_FUNCTION (vnet_dev_main_loop_init);

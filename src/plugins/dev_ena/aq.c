@@ -153,7 +153,7 @@ ena_aq_req (vlib_main_t *vm, vnet_dev_t *dev, ena_aq_opcode_t opcode,
 
   while (cqe->phase != phase)
     {
-      vlib_process_suspend (vm, suspend_time);
+      vnet_dev_process_suspend (vm, suspend_time);
       suspend_time *= 2;
       if (suspend_time > 1e-3)
 	{

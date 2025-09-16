@@ -420,9 +420,6 @@ vnet_dev_main_init (vlib_main_t *vm)
 	temp_space_sz = r->runtime_temp_space_sz;
     }
 
-  if (dm->startup_config)
-    log_debug (0, "startup config: %v", dm->startup_config);
-
   vec_free (drv);
 
   if (temp_space_sz > 0)

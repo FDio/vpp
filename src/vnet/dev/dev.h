@@ -514,9 +514,9 @@ typedef struct
   u32 *free_rx_node_indices;
   uword *device_index_by_id;
 
-  u8 *startup_config;
   u16 next_rx_queue_thread;
   u8 eth_port_rx_feature_arc_index;
+  u8 main_loop_running;
 } vnet_dev_main_t;
 
 extern vnet_dev_main_t vnet_dev_main;
