@@ -40,6 +40,7 @@ typedef enum http2_req_flags_bit_
 #define _(sym, str) HTTP2_REQ_F_BIT_##sym,
   foreach_http2_req_flags
 #undef _
+    HTTP2_REQ_N_F_BITS
 } http2_req_flags_bit_t;
 
 typedef enum http2_req_flags_
@@ -2709,6 +2710,46 @@ format_http2_stream_state (u8 *s, va_list *args)
   return format (s, "%s", t);
 }
 
+const char *http2_req_flags_str[] = {
+#define _(sym, str) str,
+  foreach_http2_req_flags
+#undef _
+};
+
+static u8 *
+format_http2_req_flags (u8 *s, va_list *args)
+{
+  http2_req_t *req = va_arg (*args, http2_req_t *);
+  int i, last = -1;
+
+  for (i = 0; i < HTTP2_REQ_N_F_BITS; i++)
+    {
+      if (req->flags & (1 << i))
+	last = i;
+    }
+
+  for (i = 0; i < last; i++)
+    {
+      if (req->flags & (1 << i))
+	s = format (s, "%s | ", http2_req_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", http2_req_flags_str[i]);
+
+  return s;
+}
+
+static u8 *
+format_http2_req_vars (u8 *s, va_list *args)
+{
+  http2_req_t *req = va_arg (*args, http2_req_t *);
+  s = format (s, " our_wnd %u peer_wnd %u scheduled %u is_tunnel %u\n",
+	      req->our_window, req->peer_window,
+	      clib_llist_elt_is_linked (req, sched_list), req->base.is_tunnel);
+  s = format (s, " flags: %U\n", format_http2_req_flags, req);
+  return s;
+}
+
 static u8 *
 http2_format_req (u8 *s, va_list *args)
 {
@@ -2726,7 +2767,7 @@ http2_format_req (u8 *s, va_list *args)
       s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http2_stream_state,
 		  req->stream_state);
       if (verbose > 1)
-	s = format (s, "\n");
+	s = format (s, "\n%U", format_http2_req_vars, req);
     }
 
   return s;
