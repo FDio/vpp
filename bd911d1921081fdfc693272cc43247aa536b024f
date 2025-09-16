@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "945bb417_fb066e44",
+        "filename": "extras/oe/recipes-network/vpp/files/0001-disable-python-api.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-09-16T09:12:24Z",
+      "side": 1,
+      "message": "not needed anymore, there is cmake option to disable python",
+      "revId": "bd911d1921081fdfc693272cc43247aa536b024f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
