@@ -33,6 +33,23 @@
       "message": "perftest-3nb-spr mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cAND1518bANDethip4ipsec10000tnlsw-udp-ar-ip4base-int-aes256cbc-hmac256sha",
       "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e8fd03c_2eff16c5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-16T11:31:10Z",
+      "side": 1,
+      "message": "Performance is good, telemetry [1] looks good.\n\n[1] https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-3nb-spr/46/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k10-k10-k10-k1-k1-k1-k14",
+      "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
