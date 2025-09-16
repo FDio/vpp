@@ -446,8 +446,9 @@ quic_stop_listen (u32 lctx_index)
       if (vnet_unlisten (&a))
 	clib_warning ("unlisten errored");
 
-      quic_eng_crypto_context_release (lctx->crypto_context_index,
-				       0 /* thread_index */);
+      quic_eng_crypto_context_release (
+	lctx->crypto_context_index,
+	QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (lctx->crypto_context_index));
       quic_ctx_free (&quic_main, lctx);
     }
   return 0;
@@ -464,7 +465,6 @@ quic_connection_get (u32 ctx_index, clib_thread_index_t thread_index)
 static transport_connection_t *
 quic_listener_get (u32 listener_index)
 {
-  QUIC_DBG (2, "Called quic_listener_get");
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (listener_index, 0);
   return &ctx->connection;
@@ -523,7 +523,7 @@ format_quic_half_open (u8 * s, va_list * args)
   return s;
 }
 
-/*  TODO improve */
+/* TODO improve */
 static u8 *
 format_quic_listener (u8 * s, va_list * args)
 {
@@ -578,14 +578,15 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   clib_thread_index_t thread_index;
   int ret;
 
-  QUIC_DBG (2, "UDP Session connect callback (id %u)",
-	    udp_session->session_index);
+  QUIC_DBG (2, "UDP Session connect callback: session_index %u, thread %u",
+	    udp_session->session_index, udp_session->thread_index);
 
   /* Allocate session on whatever thread udp used, i.e., probably first
    * worker, although this may be main thread. If it is main, it's done
    * with a worker barrier */
   thread_index = udp_session->thread_index;
-  ASSERT (thread_index == 0 || thread_index == 1);
+  ASSERT (thread_index == 0 ||
+	  thread_index == 1); // TODO: FIXME multi-worker support
   ctx = quic_ctx_get (ctx_index, thread_index);
   if (err)
     {
