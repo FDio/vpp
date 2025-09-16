@@ -307,24 +307,6 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
   umem_config.frame_headroom = sizeof (vlib_buffer_t);
   umem_config.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG;
-  if (xsk_umem__create
-      (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
-       vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
-    {
-      uword sys_page_size = clib_mem_get_page_size ();
-      args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
-      args->error = clib_error_return_unix (0, "xsk_umem__create() failed");
-      /* this should mimic the Linux kernel net/xdp/xdp_umem.c:xdp_umem_reg()
-       * check */
-      if (umem_config.frame_size < XDP_UMEM_MIN_CHUNK_SIZE ||
-	  umem_config.frame_size > sys_page_size)
-	args->error = clib_error_return (
-	  args->error,
-	  "(unsupported data-size? (should be between %d and %d))",
-	  XDP_UMEM_MIN_CHUNK_SIZE - sizeof (vlib_buffer_t),
-	  sys_page_size - sizeof (vlib_buffer_t));
-      goto err0;
-    }
 
   memset (&sock_config, 0, sizeof (sock_config));
   sock_config.rx_size = args->rxq_size;
@@ -343,9 +325,38 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
   if (args->prog)
     sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+retry_create:
+  if (xsk_umem__create
+      (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
+       vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
+    {
+      uword sys_page_size = clib_mem_get_page_size ();
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+      args->error = clib_error_return_unix (0, "xsk_umem__create() failed");
+      /* this should mimic the Linux kernel net/xdp/xdp_umem.c:xdp_umem_reg()
+       * check */
+      if (umem_config.frame_size < XDP_UMEM_MIN_CHUNK_SIZE ||
+	  umem_config.frame_size > sys_page_size)
+	args->error = clib_error_return (
+	  args->error,
+	  "(unsupported data-size? (should be between %d and %d))",
+	  XDP_UMEM_MIN_CHUNK_SIZE - sizeof (vlib_buffer_t),
+	  sys_page_size - sizeof (vlib_buffer_t));
+      goto err0;
+    }
+  
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
+      if ((args->flags & AF_XDP_CREATE_ALLOW_SKB_MODE) &&
+          !(sock_config.xdp_flags & XDP_FLAGS_SKB_MODE))
+        {
+          af_xdp_log (VLIB_LOG_LEVEL_WARNING, ad,
+            "xsk_socket__create() failed, retrying with SKB mode");
+          sock_config.xdp_flags |= XDP_FLAGS_SKB_MODE;
+          xsk_umem__delete (*umem);
+          goto retry_create;
+        }
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
       args->error =
 	clib_error_return_unix (0,
