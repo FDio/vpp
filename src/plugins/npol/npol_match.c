@@ -15,21 +15,21 @@
 
 #include <vnet/ip/ip.h>
 
-#include <capo/capo.h>
-#include <capo/capo_match.h>
+#include <npol/npol.h>
+#include <npol/npol_match.h>
 
 /* for our bihash 8_32 */
 #include <vppinfra/bihash_template.c>
 
 int
-capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
+npol_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
 		 fa_5tuple_opaque_t *opaque_5tuple, int is_ip6, u8 *r_action,
 		 u32 *trace_bitmap)
 {
   fa_5tuple_t *pkt_5tuple = (fa_5tuple_t *) opaque_5tuple;
   clib_bihash_kv_8_32_t conf_kv;
-  capo_interface_config_t *if_config;
-  capo_policy_t *policy;
+  npol_interface_config_t *if_config;
+  npol_policy_t *policy;
   u32 *policies;
   int r;
   u32 i;
@@ -37,13 +37,13 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
   u8 profile_default;
 
   conf_kv.key = sw_if_index;
-  if (clib_bihash_search_8_32 (&capo_main.if_config, &conf_kv, &conf_kv) != 0)
+  if (clib_bihash_search_8_32 (&npol_main.if_config, &conf_kv, &conf_kv) != 0)
     {
       /* no config for this interface found, allow */
       *r_action = 2;
       return 0;
     }
-  if_config = (capo_interface_config_t *) conf_kv.value;
+  if_config = (npol_interface_config_t *) conf_kv.value;
   policies = is_inbound ^ if_config->invert_rx_tx ? if_config->rx_policies :
 						    if_config->tx_policies;
   policy_default =
@@ -53,20 +53,20 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
 
   vec_foreach_index (i, policies)
     {
-      policy = &capo_policies[policies[i]];
-      r = capo_match_policy (policy, is_inbound ^ if_config->invert_rx_tx,
+      policy = &npol_policies[policies[i]];
+      r = npol_match_policy (policy, is_inbound ^ if_config->invert_rx_tx,
 			     is_ip6, pkt_5tuple);
       switch (r)
 	{
-	case CAPO_ALLOW:
+	case NPOL_ALLOW:
 	  *r_action = 2; /* allow */
 	  return 1;
-	case CAPO_DENY:
+	case NPOL_DENY:
 	  *r_action = 0;
 	  return 1;
-	case CAPO_PASS:
+	case NPOL_PASS:
 	  goto profiles;
-	case CAPO_LOG:
+	case NPOL_LOG:
 	  /* TODO: support LOG action */
 	  break;
 	default:
@@ -76,13 +76,13 @@ capo_match_func (void *p_acl_main, u32 sw_if_index, u32 is_inbound,
   /* nothing matched, or no policies */
   switch (policy_default)
     {
-    case CAPO_ALLOW:
+    case NPOL_ALLOW:
       *r_action = 2;
       return 1;
-    case CAPO_DEFAULT_DENY:
+    case NPOL_DEFAULT_DENY:
       *r_action = 0;
       return 1;
-    case CAPO_DEFAULT_PASS:
+    case NPOL_DEFAULT_PASS:
       goto profiles;
     default:
       break;
@@ -92,21 +92,21 @@ profiles:
 
   vec_foreach_index (i, if_config->profiles)
     {
-      policy = &capo_policies[if_config->profiles[i]];
-      r = capo_match_policy (policy, is_inbound ^ if_config->invert_rx_tx,
+      policy = &npol_policies[if_config->profiles[i]];
+      r = npol_match_policy (policy, is_inbound ^ if_config->invert_rx_tx,
 			     is_ip6, pkt_5tuple);
       switch (r)
 	{
-	case CAPO_ALLOW:
+	case NPOL_ALLOW:
 	  *r_action = 2; /* allow */
 	  return 1;
-	case CAPO_DENY:
+	case NPOL_DENY:
 	  *r_action = 0;
 	  return 1;
-	case CAPO_PASS:
+	case NPOL_PASS:
 	  clib_warning ("error: pass in profile %u", if_config->profiles[i]);
 	  return 1;
-	case CAPO_LOG:
+	case NPOL_LOG:
 	  /* TODO: support LOG action */
 	  break;
 	default:
@@ -117,13 +117,13 @@ profiles:
   /* nothing matched, or no profiles */
   switch (profile_default)
     {
-    case CAPO_ALLOW:
+    case NPOL_ALLOW:
       *r_action = 2;
       return 1;
-    case CAPO_DEFAULT_DENY:
+    case NPOL_DEFAULT_DENY:
       *r_action = 0;
       return 1;
-    case CAPO_DEFAULT_PASS:
+    case NPOL_DEFAULT_PASS:
       clib_warning ("error: default pass in profile %u",
 		    if_config->profiles[i]);
       return 1;
@@ -134,20 +134,20 @@ profiles:
 }
 
 int
-capo_match_policy (capo_policy_t *policy, u32 is_inbound, u32 is_ip6,
+npol_match_policy (npol_policy_t *policy, u32 is_inbound, u32 is_ip6,
 		   fa_5tuple_t *pkt_5tuple)
 {
   /* packets RX/TX from VPP perspective */
   u32 *rules =
     is_inbound ? policy->rule_ids[VLIB_RX] : policy->rule_ids[VLIB_TX];
   u32 *rule_id;
-  capo_rule_t *rule;
+  npol_rule_t *rule;
   int r;
 
   vec_foreach (rule_id, rules)
     {
-      rule = &capo_rules[*rule_id];
-      r = capo_match_rule (rule, is_ip6, pkt_5tuple);
+      rule = &npol_rules[*rule_id];
+      r = npol_match_rule (rule, is_ip6, pkt_5tuple);
       if (r >= 0)
 	{
 	  return r;
@@ -160,7 +160,7 @@ capo_match_policy (capo_policy_t *policy, u32 is_inbound, u32 is_ip6,
 #define DST 1
 
 int
-capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
+npol_match_rule (npol_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 {
   //   if (is_ip6 != (rule->af == AF_IP6)) {
   //       return -1;
@@ -176,20 +176,20 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
   u16 type = pkt_5tuple->l4.port[0];
   u16 code = pkt_5tuple->l4.port[1];
 
-  capo_rule_filter_t *filter;
+  npol_rule_filter_t *filter;
   vec_foreach (filter, rule->filters)
     {
       switch (filter->type)
 	{
-	case CAPO_RULE_FILTER_NONE_TYPE:
+	case NPOL_RULE_FILTER_NONE_TYPE:
 	  break;
-	case CAPO_RULE_FILTER_L4_PROTO:
+	case NPOL_RULE_FILTER_L4_PROTO:
 	  if (filter->should_match && filter->value != l4proto)
 	    return -1;
 	  if (!filter->should_match && filter->value == l4proto)
 	    return -2;
 	  break;
-	case CAPO_RULE_FILTER_ICMP_TYPE:
+	case NPOL_RULE_FILTER_ICMP_TYPE:
 	  if (l4proto == IP_PROTOCOL_ICMP || l4proto == IP_PROTOCOL_ICMP6)
 	    {
 	      if (filter->should_match && filter->value != type)
@@ -202,7 +202,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    // non-icmp packet
 	    return -5;
 	  break;
-	case CAPO_RULE_FILTER_ICMP_CODE:
+	case NPOL_RULE_FILTER_ICMP_CODE:
 	  if (l4proto == IP_PROTOCOL_ICMP || l4proto == IP_PROTOCOL_ICMP6)
 	    {
 	      if (filter->should_match && filter->value != code)
@@ -216,17 +216,17 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    return -8;
 	  break;
 	default:
-	  // clib_warning ("unimplemented capo filter!");
+	  // clib_warning ("unimplemented npol filter!");
 	  break;
 	}
     }
 
   /* prefixes */
-  if (rule->prefixes[CAPO_SRC])
+  if (rule->prefixes[NPOL_SRC])
     {
       ip_prefix_t *prefix;
       u8 found = 0;
-      vec_foreach (prefix, rule->prefixes[CAPO_SRC])
+      vec_foreach (prefix, rule->prefixes[NPOL_SRC])
 	{
 	  u8 pfx_af = ip_prefix_version (prefix);
 	  if (is_ip6 && pfx_af == AF_IP6)
@@ -256,10 +256,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->prefixes[CAPO_NOT_SRC])
+  if (rule->prefixes[NPOL_NOT_SRC])
     {
       ip_prefix_t *prefix;
-      vec_foreach (prefix, rule->prefixes[CAPO_NOT_SRC])
+      vec_foreach (prefix, rule->prefixes[NPOL_NOT_SRC])
 	{
 	  u8 pfx_af = ip_prefix_version (prefix);
 	  if (is_ip6 && pfx_af == AF_IP6)
@@ -283,11 +283,11 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->prefixes[CAPO_DST])
+  if (rule->prefixes[NPOL_DST])
     {
       ip_prefix_t *prefix;
       u8 found = 0;
-      vec_foreach (prefix, rule->prefixes[CAPO_DST])
+      vec_foreach (prefix, rule->prefixes[NPOL_DST])
 	{
 	  u8 pfx_af = ip_prefix_version (prefix);
 	  if (is_ip6 && pfx_af == AF_IP6)
@@ -317,10 +317,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->prefixes[CAPO_NOT_DST])
+  if (rule->prefixes[NPOL_NOT_DST])
     {
       ip_prefix_t *prefix;
-      vec_foreach (prefix, rule->prefixes[CAPO_NOT_DST])
+      vec_foreach (prefix, rule->prefixes[NPOL_NOT_DST])
 	{
 	  u8 pfx_af = ip_prefix_version (prefix);
 	  if (is_ip6 && pfx_af == AF_IP6)
@@ -345,15 +345,15 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
     }
 
   /* IP ipsets */
-  if (rule->ip_ipsets[CAPO_SRC])
+  if (rule->ip_ipsets[NPOL_SRC])
     {
       u32 *ipset;
       u8 found = 0;
-      vec_foreach (ipset, rule->ip_ipsets[CAPO_SRC])
+      vec_foreach (ipset, rule->ip_ipsets[NPOL_SRC])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipset_contains_ip6 (&capo_ipsets[*ipset], src_ip6))
+	      if (ipset_contains_ip6 (&npol_ipsets[*ipset], src_ip6))
 		{
 		  found = 1;
 		  break;
@@ -361,7 +361,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipset_contains_ip4 (&capo_ipsets[*ipset], src_ip4))
+	      if (ipset_contains_ip4 (&npol_ipsets[*ipset], src_ip4))
 		{
 		  found = 1;
 		  break;
@@ -374,21 +374,21 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ip_ipsets[CAPO_NOT_SRC])
+  if (rule->ip_ipsets[NPOL_NOT_SRC])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ip_ipsets[CAPO_NOT_SRC])
+      vec_foreach (ipset, rule->ip_ipsets[NPOL_NOT_SRC])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipset_contains_ip6 (&capo_ipsets[*ipset], src_ip6))
+	      if (ipset_contains_ip6 (&npol_ipsets[*ipset], src_ip6))
 		{
 		  return -16;
 		}
 	    }
 	  else
 	    {
-	      if (ipset_contains_ip4 (&capo_ipsets[*ipset], src_ip4))
+	      if (ipset_contains_ip4 (&npol_ipsets[*ipset], src_ip4))
 		{
 		  return -17;
 		}
@@ -396,15 +396,15 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ip_ipsets[CAPO_DST])
+  if (rule->ip_ipsets[NPOL_DST])
     {
       u32 *ipset;
       u8 found = 0;
-      vec_foreach (ipset, rule->ip_ipsets[CAPO_DST])
+      vec_foreach (ipset, rule->ip_ipsets[NPOL_DST])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipset_contains_ip6 (&capo_ipsets[*ipset], dst_ip6))
+	      if (ipset_contains_ip6 (&npol_ipsets[*ipset], dst_ip6))
 		{
 		  found = 1;
 		  break;
@@ -412,7 +412,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipset_contains_ip4 (&capo_ipsets[*ipset], dst_ip4))
+	      if (ipset_contains_ip4 (&npol_ipsets[*ipset], dst_ip4))
 		{
 		  found = 1;
 		  break;
@@ -425,21 +425,21 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ip_ipsets[CAPO_NOT_DST])
+  if (rule->ip_ipsets[NPOL_NOT_DST])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ip_ipsets[CAPO_NOT_DST])
+      vec_foreach (ipset, rule->ip_ipsets[NPOL_NOT_DST])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipset_contains_ip6 (&capo_ipsets[*ipset], dst_ip6))
+	      if (ipset_contains_ip6 (&npol_ipsets[*ipset], dst_ip6))
 		{
 		  return -19;
 		}
 	    }
 	  else
 	    {
-	      if (ipset_contains_ip4 (&capo_ipsets[*ipset], dst_ip4))
+	      if (ipset_contains_ip4 (&npol_ipsets[*ipset], dst_ip4))
 		{
 		  return -20;
 		}
@@ -453,10 +453,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
   u8 dst_port_found = 0;
 
   /* port ranges */
-  if (rule->port_ranges[CAPO_SRC])
+  if (rule->port_ranges[NPOL_SRC])
     {
-      capo_port_range_t *range;
-      vec_foreach (range, rule->port_ranges[CAPO_SRC])
+      npol_port_range_t *range;
+      vec_foreach (range, rule->port_ranges[NPOL_SRC])
 	{
 	  if (range->start <= src_port && src_port <= range->end)
 	    {
@@ -466,10 +466,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->port_ranges[CAPO_NOT_SRC])
+  if (rule->port_ranges[NPOL_NOT_SRC])
     {
-      capo_port_range_t *range;
-      vec_foreach (range, rule->port_ranges[CAPO_NOT_SRC])
+      npol_port_range_t *range;
+      vec_foreach (range, rule->port_ranges[NPOL_NOT_SRC])
 	{
 	  if (range->start <= src_port && src_port <= range->end)
 	    {
@@ -478,10 +478,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->port_ranges[CAPO_DST])
+  if (rule->port_ranges[NPOL_DST])
     {
-      capo_port_range_t *range;
-      vec_foreach (range, rule->port_ranges[CAPO_DST])
+      npol_port_range_t *range;
+      vec_foreach (range, rule->port_ranges[NPOL_DST])
 	{
 	  if (range->start <= dst_port && dst_port <= range->end)
 	    {
@@ -491,10 +491,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->port_ranges[CAPO_NOT_DST])
+  if (rule->port_ranges[NPOL_NOT_DST])
     {
-      capo_port_range_t *range;
-      vec_foreach (range, rule->port_ranges[CAPO_NOT_DST])
+      npol_port_range_t *range;
+      vec_foreach (range, rule->port_ranges[NPOL_NOT_DST])
 	{
 	  if (range->start <= dst_port && dst_port <= range->end)
 	    {
@@ -504,14 +504,14 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
     }
 
   /* ipport ipsets */
-  if (rule->ipport_ipsets[CAPO_SRC])
+  if (rule->ipport_ipsets[NPOL_SRC])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ipport_ipsets[CAPO_SRC])
+      vec_foreach (ipset, rule->ipport_ipsets[NPOL_SRC])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipport_ipset_contains_ip6 (&capo_ipsets[*ipset], src_ip6,
+	      if (ipport_ipset_contains_ip6 (&npol_ipsets[*ipset], src_ip6,
 					     l4proto, src_port))
 		{
 		  src_port_found = 1;
@@ -520,7 +520,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipport_ipset_contains_ip4 (&capo_ipsets[*ipset], src_ip4,
+	      if (ipport_ipset_contains_ip4 (&npol_ipsets[*ipset], src_ip4,
 					     l4proto, src_port))
 		{
 		  src_port_found = 1;
@@ -530,14 +530,14 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ipport_ipsets[CAPO_NOT_SRC])
+  if (rule->ipport_ipsets[NPOL_NOT_SRC])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ipport_ipsets[CAPO_NOT_SRC])
+      vec_foreach (ipset, rule->ipport_ipsets[NPOL_NOT_SRC])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipport_ipset_contains_ip6 (&capo_ipsets[*ipset], src_ip6,
+	      if (ipport_ipset_contains_ip6 (&npol_ipsets[*ipset], src_ip6,
 					     l4proto, src_port))
 		{
 		  return -23;
@@ -545,7 +545,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipport_ipset_contains_ip4 (&capo_ipsets[*ipset], src_ip4,
+	      if (ipport_ipset_contains_ip4 (&npol_ipsets[*ipset], src_ip4,
 					     l4proto, src_port))
 		{
 		  return -24;
@@ -554,14 +554,14 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ipport_ipsets[CAPO_DST])
+  if (rule->ipport_ipsets[NPOL_DST])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ipport_ipsets[CAPO_DST])
+      vec_foreach (ipset, rule->ipport_ipsets[NPOL_DST])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipport_ipset_contains_ip6 (&capo_ipsets[*ipset], dst_ip6,
+	      if (ipport_ipset_contains_ip6 (&npol_ipsets[*ipset], dst_ip6,
 					     l4proto, dst_port))
 		{
 		  dst_port_found = 1;
@@ -570,7 +570,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipport_ipset_contains_ip4 (&capo_ipsets[*ipset], dst_ip4,
+	      if (ipport_ipset_contains_ip4 (&npol_ipsets[*ipset], dst_ip4,
 					     l4proto, dst_port))
 		{
 		  dst_port_found = 1;
@@ -580,14 +580,14 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if (rule->ipport_ipsets[CAPO_NOT_DST])
+  if (rule->ipport_ipsets[NPOL_NOT_DST])
     {
       u32 *ipset;
-      vec_foreach (ipset, rule->ipport_ipsets[CAPO_NOT_DST])
+      vec_foreach (ipset, rule->ipport_ipsets[NPOL_NOT_DST])
 	{
 	  if (is_ip6)
 	    {
-	      if (ipport_ipset_contains_ip6 (&capo_ipsets[*ipset], dst_ip6,
+	      if (ipport_ipset_contains_ip6 (&npol_ipsets[*ipset], dst_ip6,
 					     l4proto, dst_port))
 		{
 		  return -25;
@@ -595,7 +595,7 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	    }
 	  else
 	    {
-	      if (ipport_ipset_contains_ip4 (&capo_ipsets[*ipset], dst_ip4,
+	      if (ipport_ipset_contains_ip4 (&npol_ipsets[*ipset], dst_ip4,
 					     l4proto, dst_port))
 		{
 		  return -26;
@@ -604,12 +604,12 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 	}
     }
 
-  if ((rule->port_ranges[CAPO_SRC] || rule->ipport_ipsets[CAPO_SRC]) &&
+  if ((rule->port_ranges[NPOL_SRC] || rule->ipport_ipsets[NPOL_SRC]) &&
       (!src_port_found))
     {
       return -27;
     }
-  if ((rule->port_ranges[CAPO_DST] || rule->ipport_ipsets[CAPO_DST]) &&
+  if ((rule->port_ranges[NPOL_DST] || rule->ipport_ipsets[NPOL_DST]) &&
       (!dst_port_found))
     {
       return -28;
@@ -619,10 +619,10 @@ capo_match_rule (capo_rule_t *rule, u32 is_ip6, fa_5tuple_t *pkt_5tuple)
 }
 
 u8
-ip_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
+ip_ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr)
 {
   ASSERT (ipset->type == IPSET_TYPE_IP);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->address.version != AF_IP4)
@@ -634,10 +634,10 @@ ip_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
 }
 
 u8
-ip_ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
+ip_ipset_contains_ip6 (npol_ipset_t *ipset, ip6_address_t *addr)
 {
   ASSERT (ipset->type == IPSET_TYPE_IP);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->address.version != AF_IP6)
@@ -649,10 +649,10 @@ ip_ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
 }
 
 u8
-net_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
+net_ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr)
 {
   ASSERT (ipset->type == IPSET_TYPE_NET);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->prefix.addr.version != AF_IP4)
@@ -668,10 +668,10 @@ net_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
 }
 
 u8
-net_ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
+net_ipset_contains_ip6 (npol_ipset_t *ipset, ip6_address_t *addr)
 {
   ASSERT (ipset->type == IPSET_TYPE_NET);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->prefix.addr.version != AF_IP6)
@@ -687,7 +687,7 @@ net_ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
 }
 
 u8
-ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
+ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr)
 {
   switch (ipset->type)
     {
@@ -702,7 +702,7 @@ ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr)
 }
 
 u8
-ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
+ipset_contains_ip6 (npol_ipset_t *ipset, ip6_address_t *addr)
 {
   switch (ipset->type)
     {
@@ -717,11 +717,11 @@ ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr)
 }
 
 u8
-ipport_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr,
+ipport_ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr,
 			   u8 l4proto, u16 port)
 {
   ASSERT (ipset->type == IPSET_TYPE_IPPORT);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->ipport.addr.version != AF_IP4)
@@ -736,11 +736,11 @@ ipport_ipset_contains_ip4 (capo_ipset_t *ipset, ip4_address_t *addr,
 }
 
 u8
-ipport_ipset_contains_ip6 (capo_ipset_t *ipset, ip6_address_t *addr,
+ipport_ipset_contains_ip6 (npol_ipset_t *ipset, ip6_address_t *addr,
 			   u8 l4proto, u16 port)
 {
   ASSERT (ipset->type == IPSET_TYPE_IPPORT);
-  capo_ipset_member_t *member;
+  npol_ipset_member_t *member;
   pool_foreach (member, ipset->members)
     {
       if (member->ipport.addr.version != AF_IP6)

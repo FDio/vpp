@@ -13,72 +13,72 @@
  * limitations under the License.
  */
 
-#include <capo/capo.h>
-#include <capo/capo_policy.h>
-#include <capo/capo_rule.h>
+#include <npol/npol.h>
+#include <npol/npol_policy.h>
+#include <npol/npol_rule.h>
 
-capo_policy_t *capo_policies;
+npol_policy_t *npol_policies;
 
-static capo_policy_t *
-capo_policy_alloc ()
+static npol_policy_t *
+npol_policy_alloc ()
 {
-  capo_policy_t *policy;
-  pool_get_zero (capo_policies, policy);
+  npol_policy_t *policy;
+  pool_get_zero (npol_policies, policy);
   return policy;
 }
 
-capo_policy_t *
-capo_policy_get_if_exists (u32 index)
+npol_policy_t *
+npol_policy_get_if_exists (u32 index)
 {
-  if (pool_is_free_index (capo_policies, index))
+  if (pool_is_free_index (npol_policies, index))
     return (NULL);
-  return pool_elt_at_index (capo_policies, index);
+  return pool_elt_at_index (npol_policies, index);
 }
 
 static void
-capo_policy_cleanup (capo_policy_t *policy)
+npol_policy_cleanup (npol_policy_t *policy)
 {
   for (int i = 0; i < VLIB_N_RX_TX; i++)
     vec_free (policy->rule_ids[i]);
 }
 
 int
-capo_policy_update (u32 *id, capo_policy_rule_t *rules)
+npol_policy_update (u32 *id, npol_policy_rule_t *rules)
 {
-  capo_policy_t *policy;
-  capo_policy_rule_t *rule;
+  npol_policy_t *policy;
+  npol_policy_rule_t *rule;
 
-  policy = capo_policy_get_if_exists (*id);
+  policy = npol_policy_get_if_exists (*id);
   if (policy)
-    capo_policy_cleanup (policy);
+    npol_policy_cleanup (policy);
   else
-    policy = capo_policy_alloc ();
+    policy = npol_policy_alloc ();
 
   vec_foreach (rule, rules)
     vec_add1 (policy->rule_ids[rule->direction], rule->rule_id);
 
-  *id = policy - capo_policies;
+  *id = policy - npol_policies;
   return 0;
 }
 
 int
-capo_policy_delete (u32 id)
+npol_policy_delete (u32 id)
 {
-  capo_policy_t *policy;
-  policy = capo_policy_get_if_exists (id);
+  npol_policy_t *policy;
+  policy = npol_policy_get_if_exists (id);
   if (NULL == policy)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  capo_policy_cleanup (policy);
-  pool_put (capo_policies, policy);
+  npol_policy_cleanup (policy);
+  pool_put (npol_policies, policy);
 
   return 0;
 }
 
 u8 *
-format_capo_policy (u8 *s, va_list *args)
+format_npol_policy (u8 *s, va_list *args)
 {
-  capo_policy_t *policy = va_arg (*args, capo_policy_t *);
+  npol_policy_t *policy = va_arg (*args, npol_policy_t *);
   int indent = va_arg (*args, int);
   int verbose = va_arg (*args, int);
   int invert_rx_tx = va_arg (*args, int);
@@ -89,27 +89,27 @@ format_capo_policy (u8 *s, va_list *args)
 
   if (verbose)
     {
-      s = format (s, "[policy#%u]\n", policy - capo_policies);
-      capo_rule_t *rule;
-      if (verbose != CAPO_POLICY_ONLY_RX)
+      s = format (s, "[policy#%u]\n", policy - npol_policies);
+      npol_rule_t *rule;
+      if (verbose != NPOL_POLICY_ONLY_RX)
 	vec_foreach (rule_id, policy->rule_ids[VLIB_TX ^ invert_rx_tx])
 	  {
-	    rule = capo_rule_get_if_exists (*rule_id);
+	    rule = npol_rule_get_if_exists (*rule_id);
 	    s = format (s, "%Utx:%U\n", format_white_space, indent + 2,
-			format_capo_rule, rule);
+			format_npol_rule, rule);
 	  }
-      if (verbose != CAPO_POLICY_ONLY_TX)
+      if (verbose != NPOL_POLICY_ONLY_TX)
 	vec_foreach (rule_id, policy->rule_ids[VLIB_RX ^ invert_rx_tx])
 	  {
-	    rule = capo_rule_get_if_exists (*rule_id);
+	    rule = npol_rule_get_if_exists (*rule_id);
 	    s = format (s, "%Urx:%U\n", format_white_space, indent + 2,
-			format_capo_rule, rule);
+			format_npol_rule, rule);
 	  }
     }
   else
     {
       s = format (s, "[policy#%u] rx-rules:%d tx-rules:%d\n",
-		  policy - capo_policies,
+		  policy - npol_policies,
 		  vec_len (policy->rule_ids[VLIB_RX ^ invert_rx_tx]),
 		  vec_len (policy->rule_ids[VLIB_TX ^ invert_rx_tx]));
     }
@@ -118,12 +118,12 @@ format_capo_policy (u8 *s, va_list *args)
 }
 
 static clib_error_t *
-capo_policies_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_policies_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  capo_policy_t *policy;
+  npol_policy_t *policy;
   u8 verbose = 0, has_input = 0;
 
   if (unformat_user (input, unformat_line_input, line_input))
@@ -142,8 +142,8 @@ capo_policies_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  pool_foreach (policy, capo_policies)
-    vlib_cli_output (vm, "%U", format_capo_policy, policy, 0, /* indent */
+  pool_foreach (policy, npol_policies)
+    vlib_cli_output (vm, "%U", format_npol_policy, policy, 0, /* indent */
 		     verbose, 0 /* invert_rx_tx */);
 
 done:
@@ -152,20 +152,20 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (capo_policies_show_cmd, static) = {
-  .path = "show capo policies",
-  .function = capo_policies_show_cmd_fn,
-  .short_help = "show capo policies [verbose]",
+VLIB_CLI_COMMAND (npol_policies_show_cmd, static) = {
+  .path = "show npol policies",
+  .function = npol_policies_show_cmd_fn,
+  .short_help = "show npol policies [verbose]",
 };
 
 static clib_error_t *
-capo_policies_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_policies_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 id = CAPO_INVALID_INDEX, rule_id;
-  capo_policy_rule_t *policy_rules = 0, *policy_rule;
+  u32 id = NPOL_INVALID_INDEX, rule_id;
+  npol_policy_rule_t *policy_rules = 0, *policy_rule;
   int direction = VLIB_RX;
   int rv;
 
@@ -192,11 +192,11 @@ capo_policies_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = capo_policy_update (&id, policy_rules);
+  rv = npol_policy_update (&id, policy_rules);
   if (rv)
-    error = clib_error_return (0, "capo_policy_delete errored with %d", rv);
+    error = clib_error_return (0, "npol_policy_delete errored with %d", rv);
   else
-    vlib_cli_output (vm, "capo policy %d added", id);
+    vlib_cli_output (vm, "npol policy %d added", id);
 
 done:
   vec_free (policy_rules);
@@ -204,20 +204,20 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (capo_policies_add_cmd, static) = {
-  .path = "capo policy add",
-  .function = capo_policies_add_cmd_fn,
-  .short_help = "capo policy add [rx rule_id rule_id ...] [tx rule_id rule_id "
+VLIB_CLI_COMMAND (npol_policies_add_cmd, static) = {
+  .path = "npol policy add",
+  .function = npol_policies_add_cmd_fn,
+  .short_help = "npol policy add [rx rule_id rule_id ...] [tx rule_id rule_id "
 		"...] [update [id]]",
 };
 
 static clib_error_t *
-capo_policies_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_policies_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 id = CAPO_INVALID_INDEX;
+  u32 id = NPOL_INVALID_INDEX;
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -235,25 +235,25 @@ capo_policies_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  if (CAPO_INVALID_INDEX == id)
+  if (NPOL_INVALID_INDEX == id)
     {
       error = clib_error_return (0, "missing policy id");
       goto done;
     }
 
-  rv = capo_policy_delete (id);
+  rv = npol_policy_delete (id);
   if (rv)
-    error = clib_error_return (0, "capo_policy_delete errored with %d", rv);
+    error = clib_error_return (0, "npol_policy_delete errored with %d", rv);
 
 done:
   unformat_free (line_input);
   return error;
 }
 
-VLIB_CLI_COMMAND (capo_policies_del_cmd, static) = {
-  .path = "capo policy del",
-  .function = capo_policies_del_cmd_fn,
-  .short_help = "capo policy del [id]",
+VLIB_CLI_COMMAND (npol_policies_del_cmd, static) = {
+  .path = "npol policy del",
+  .function = npol_policies_del_cmd_fn,
+  .short_help = "npol policy del [id]",
 };
 
 /*

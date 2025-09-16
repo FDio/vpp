@@ -11,18 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(capo
+add_vpp_plugin(npol
   SOURCES
-  capo_api.c
-  capo_policy.c
-  capo_rule.c
-  capo_ipset.c
-  capo_match.c
-  capo_interface.c
+  npol_api.c
+  npol_policy.c
+  npol_rule.c
+  npol_ipset.c
+  npol_match.c
+  npol_interface.c
 
   API_TEST_SOURCES
-  capo_test.c
+  npol_test.c
 
   API_FILES
-  capo.api
+  npol.api
 )

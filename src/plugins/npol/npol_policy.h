@@ -13,39 +13,39 @@
  * limitations under the License.
  */
 
-#ifndef included_capo_policy_h
-#define included_capo_policy_h
+#ifndef included_npol_policy_h
+#define included_npol_policy_h
 
-#include <capo/capo.h>
+#include <npol/npol.h>
 
 typedef struct
 {
   /* VLIB_RX for inbound
      VLIB_TX for outbound */
   u32 *rule_ids[VLIB_N_RX_TX];
-} capo_policy_t;
+} npol_policy_t;
 
 typedef struct
 {
   u32 rule_id;
   /* VLIB_RX or VLIB_TX */
   u8 direction;
-} capo_policy_rule_t;
+} npol_policy_rule_t;
 
 typedef enum
 {
-  CAPO_POLICY_QUIET,
-  CAPO_POLICY_VERBOSE,
-  CAPO_POLICY_ONLY_RX,
-  CAPO_POLICY_ONLY_TX,
-} capo_policy_format_type_t;
+  NPOL_POLICY_QUIET,
+  NPOL_POLICY_VERBOSE,
+  NPOL_POLICY_ONLY_RX,
+  NPOL_POLICY_ONLY_TX,
+} npol_policy_format_type_t;
 
-extern capo_policy_t *capo_policies;
+extern npol_policy_t *npol_policies;
 
-int capo_policy_update (u32 *id, capo_policy_rule_t *rules);
-int capo_policy_delete (u32 id);
-u8 *format_capo_policy (u8 *s, va_list *args);
-capo_policy_t *capo_policy_get_if_exists (u32 index);
+int npol_policy_update (u32 *id, npol_policy_rule_t *rules);
+int npol_policy_delete (u32 id);
+u8 *format_npol_policy (u8 *s, va_list *args);
+npol_policy_t *npol_policy_get_if_exists (u32 index);
 
 #endif
 

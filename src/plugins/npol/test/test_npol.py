@@ -43,7 +43,7 @@ def random_payload():
     return Raw(load=bytearray(random.getrandbits(8) for _ in range(20)))
 
 
-class VppCapoPolicyItem:
+class VppNpolPolicyItem:
     def __init__(self, is_inbound, rule_id):
         self._is_inbound = is_inbound
         self._rule_id = rule_id
@@ -52,7 +52,7 @@ class VppCapoPolicyItem:
         return {"rule_id": self._rule_id, "is_inbound": self._is_inbound}
 
 
-class VppCapoPolicy(VppObject):
+class VppNpolPolicy(VppObject):
     def __init__(self, test, rules):
         self._test = test
         self._rules = rules
@@ -65,37 +65,37 @@ class VppCapoPolicy(VppObject):
             self.encoded_rules.append(rule.encode())
 
     def add_vpp_config(self):
-        r = self._test.vapi.capo_policy_create(
+        r = self._test.vapi.npol_policy_create(
             len(self.encoded_rules), self.encoded_rules
         )
         self._test.assertEqual(0, r.retval)
         self._test.registry.register(self, self._test.logger)
-        self._test.logger.info("capo_policy_create retval=" + str(r.retval))
+        self._test.logger.info("npol_policy_create retval=" + str(r.retval))
         self._policy_id = r.policy_id
-        self._test.logger.info(self._test.vapi.cli("show capo policies verbose"))
+        self._test.logger.info(self._test.vapi.cli("show npol policies verbose"))
 
-    def capo_policy_update(self, rules):
+    def npol_policy_update(self, rules):
         self._rules = rules
         self.init_rules()
-        r = self._test.vapi.capo_policy_update(
+        r = self._test.vapi.npol_policy_update(
             self._policy_id, len(self.encoded_rules), self.encoded_rules
         )
         self._test.assertEqual(0, r.retval)
 
-    def capo_policy_delete(self):
-        r = self._test.vapi.capo_policy_delete(self._policy_id)
+    def npol_policy_delete(self):
+        r = self._test.vapi.npol_policy_delete(self._policy_id)
         self._test.assertEqual(0, r.retval)
-        self._test.logger.info(self._test.vapi.cli("show capo policies"))
+        self._test.logger.info(self._test.vapi.cli("show npol policies"))
 
     def remove_vpp_config(self):
-        self.capo_policy_delete()
+        self.npol_policy_delete()
 
     def query_vpp_config(self):
         self._test.logger.info("query vpp config")
-        self._test.logger.info(self._test.vapi.cli("show capo policies verbose"))
+        self._test.logger.info(self._test.vapi.cli("show npol policies verbose"))
 
 
-class VppCapoFilter:
+class VppNpolFilter:
     def __init__(self, type=None, value=0, should_match=0):
         self._filter_type = type if type != None else FILTER_TYPE_NONE
         self._filter_value = value
@@ -109,7 +109,7 @@ class VppCapoFilter:
         }
 
 
-class VppCapoRule(VppObject):
+class VppNpolRule(VppObject):
     def __init__(self, test, is_v6, action, filters=[], matches=[]):
         self._test = test
         # This is actually unused
@@ -127,11 +127,11 @@ class VppCapoRule(VppObject):
         for filter in self._filters:
             self.encoded_filters.append(filter.encode())
         while len(self.encoded_filters) < 3:
-            self.encoded_filters.append(VppCapoFilter().encode())
+            self.encoded_filters.append(VppNpolFilter().encode())
         self._test.assertEqual(len(self.encoded_filters), 3)
 
     def add_vpp_config(self):
-        r = self._test.vapi.capo_rule_create(
+        r = self._test.vapi.npol_rule_create(
             {
                 "af": self._af,
                 "action": self._action,
@@ -142,14 +142,14 @@ class VppCapoRule(VppObject):
         )
         self._test.assertEqual(0, r.retval)
         self._test.registry.register(self, self._test.logger)
-        self._test.logger.info("capo_rule_create retval=" + str(r.retval))
+        self._test.logger.info("npol_rule_create retval=" + str(r.retval))
         self._rule_id = r.rule_id
         self._test.logger.info("rules id : " + str(self._rule_id))
-        self._test.logger.info(self._test.vapi.cli("show capo rules"))
+        self._test.logger.info(self._test.vapi.cli("show npol rules"))
 
-    def capo_rule_update(self, filters, matches):
+    def npol_rule_update(self, filters, matches):
         self.init_rule(self._action, filters, matches)
-        r = self._test.vapi.capo_rule_update(
+        r = self._test.vapi.npol_rule_update(
             self._rule_id,
             {
                 "af": self._af,
@@ -161,30 +161,30 @@ class VppCapoRule(VppObject):
         )
         self._test.assertEqual(0, r.retval)
         self._test.registry.register(self, self._test.logger)
-        self._test.logger.info("capo rule update")
-        self._test.logger.info(self._test.vapi.cli("show capo rules"))
+        self._test.logger.info("npol rule update")
+        self._test.logger.info(self._test.vapi.cli("show npol rules"))
 
-    def capo_rule_delete(self):
-        r = self._test.vapi.capo_rule_delete(self._rule_id)
+    def npol_rule_delete(self):
+        r = self._test.vapi.npol_rule_delete(self._rule_id)
         self._test.assertEqual(0, r.retval)
-        self._test.logger.info(self._test.vapi.cli("show capo rules"))
+        self._test.logger.info(self._test.vapi.cli("show npol rules"))
 
     def remove_vpp_config(self):
-        self.capo_rule_delete()
+        self.npol_rule_delete()
 
     def query_vpp_config(self):
         self._test.logger.info("query vpp config")
-        self._test.logger.info(self._test.vapi.cli("show capo rules"))
+        self._test.logger.info(self._test.vapi.cli("show npol rules"))
 
 
-class VppCapoIpset(VppObject):
+class VppNpolIpset(VppObject):
     def __init__(self, test, type, members):
         self.test = test
         self.type = type
         self.members = members
 
     def add_vpp_config(self):
-        r = self.test.vapi.capo_ipset_create(self.type)
+        r = self.test.vapi.npol_ipset_create(self.type)
         self.test.assertEqual(0, r.retval)
         self.vpp_id = r.set_id
         encoded_members = []
@@ -195,7 +195,7 @@ class VppCapoIpset(VppObject):
                 encoded_members.append({"val": {"tuple": m}})
             elif self.type == IPSET_TYPE_NET:
                 encoded_members.append({"val": {"prefix": m}})
-        r = self.test.vapi.capo_ipset_add_del_members(
+        r = self.test.vapi.npol_ipset_add_del_members(
             set_id=self.vpp_id,
             is_add=True,
             len=len(encoded_members),
@@ -207,42 +207,42 @@ class VppCapoIpset(VppObject):
         pass
 
     def remove_vpp_config(self):
-        r = self.test.vapi.capo_ipset_delete(set_id=self.vpp_id)
+        r = self.test.vapi.npol_ipset_delete(set_id=self.vpp_id)
         self.test.assertEqual(0, r.retval)
 
 
-class BaseCapoTest(VppTestCase):
+class BaseNpolTest(VppTestCase):
     @classmethod
     def setUpClass(self):
-        super(BaseCapoTest, self).setUpClass()
+        super(BaseNpolTest, self).setUpClass()
         # We can't define these before the API is loaded, so here they are...
         global ACTION_ALLOW, ACTION_DENY, ACTION_PASS, ACTION_LOG
-        ACTION_ALLOW = VppEnum.vl_api_capo_rule_action_t.CAPO_ALLOW
-        ACTION_DENY = VppEnum.vl_api_capo_rule_action_t.CAPO_DENY
-        ACTION_PASS = VppEnum.vl_api_capo_rule_action_t.CAPO_PASS
-        ACTION_LOG = VppEnum.vl_api_capo_rule_action_t.CAPO_LOG
+        ACTION_ALLOW = VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW
+        ACTION_DENY = VppEnum.vl_api_npol_rule_action_t.NPOL_DENY
+        ACTION_PASS = VppEnum.vl_api_npol_rule_action_t.NPOL_PASS
+        ACTION_LOG = VppEnum.vl_api_npol_rule_action_t.NPOL_LOG
         global FILTER_TYPE_NONE, FILTER_TYPE_L4_PROTO, FILTER_TYPE_ICMP_CODE, FILTER_TYPE_ICMP_TYPE
         FILTER_TYPE_NONE = (
-            VppEnum.vl_api_capo_rule_filter_type_t.CAPO_RULE_FILTER_NONE_TYPE
+            VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_NONE_TYPE
         )
         FILTER_TYPE_L4_PROTO = (
-            VppEnum.vl_api_capo_rule_filter_type_t.CAPO_RULE_FILTER_L4_PROTO
+            VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO
         )
         FILTER_TYPE_ICMP_CODE = (
-            VppEnum.vl_api_capo_rule_filter_type_t.CAPO_RULE_FILTER_ICMP_CODE
+            VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_CODE
         )
         FILTER_TYPE_ICMP_TYPE = (
-            VppEnum.vl_api_capo_rule_filter_type_t.CAPO_RULE_FILTER_ICMP_TYPE
+            VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_TYPE
         )
         global ENTRY_CIDR, ENTRY_PORT_RANGE, ENTRY_PORT_IP_SET, ENTRY_IP_SET
-        ENTRY_CIDR = VppEnum.vl_api_capo_entry_type_t.CAPO_CIDR
-        ENTRY_PORT_RANGE = VppEnum.vl_api_capo_entry_type_t.CAPO_PORT_RANGE
-        ENTRY_PORT_IP_SET = VppEnum.vl_api_capo_entry_type_t.CAPO_PORT_IP_SET
-        ENTRY_IP_SET = VppEnum.vl_api_capo_entry_type_t.CAPO_IP_SET
+        ENTRY_CIDR = VppEnum.vl_api_npol_entry_type_t.NPOL_CIDR
+        ENTRY_PORT_RANGE = VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE
+        ENTRY_PORT_IP_SET = VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET
+        ENTRY_IP_SET = VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET
         global IPSET_TYPE_IP, IPSET_TYPE_IP_PORT, IPSET_TYPE_NET
-        IPSET_TYPE_IP = VppEnum.vl_api_capo_ipset_type_t.CAPO_IP
-        IPSET_TYPE_IP_PORT = VppEnum.vl_api_capo_ipset_type_t.CAPO_IP_AND_PORT
-        IPSET_TYPE_NET = VppEnum.vl_api_capo_ipset_type_t.CAPO_NET
+        IPSET_TYPE_IP = VppEnum.vl_api_npol_ipset_type_t.NPOL_IP
+        IPSET_TYPE_IP_PORT = VppEnum.vl_api_npol_ipset_type_t.NPOL_IP_AND_PORT
+        IPSET_TYPE_NET = VppEnum.vl_api_npol_ipset_type_t.NPOL_NET
 
         self.create_pg_interfaces(range(2))
         for i in self.pg_interfaces:
@@ -260,20 +260,20 @@ class BaseCapoTest(VppTestCase):
             i.unconfig_ip4()
             i.unconfig_ip6()
             i.admin_down()
-        super(BaseCapoTest, self).tearDownClass()
+        super(BaseNpolTest, self).tearDownClass()
 
     def setUp(self):
-        super(BaseCapoTest, self).setUp()
+        super(BaseNpolTest, self).setUp()
 
     def tearDown(self):
-        super(BaseCapoTest, self).tearDown()
+        super(BaseNpolTest, self).tearDown()
 
     def configure_policies(self, interface, ingress, egress, profiles, invert_tx_rx):
         id_list = []
         for policy in ingress + egress + profiles:
             id_list.append(policy._policy_id)
 
-        r = self.vapi.capo_configure_policies(
+        r = self.vapi.npol_configure_policies(
             interface.sw_if_index,
             len(ingress),
             len(egress),
@@ -299,7 +299,7 @@ class BaseCapoTest(VppTestCase):
         # Caution: because of how vpp works, packets may be reordered (v4 first, v6 next)
         # which may break the check on received packets
         # Therefore, in matching packets, all v4 packets must be before all v6 packets
-        self.rule.capo_rule_update(filters, matches)
+        self.rule.npol_rule_update(filters, matches)
         self.send_test_packets(
             self.pg0, self.pg1, matching_packets, not_matching_packets
         )
@@ -325,47 +325,47 @@ class BaseCapoTest(VppTestCase):
         self.vapi.cli("clear acl-plugin sessions")
 
 
-class TestCapoMatches(BaseCapoTest):
+class TestNpolMatches(BaseNpolTest):
     """Calico Policies rule matching tests"""
 
     @classmethod
     def setUpClass(self):
-        super(TestCapoMatches, self).setUpClass()
+        super(TestNpolMatches, self).setUpClass()
 
     @classmethod
     def tearDownClass(self):
-        super(TestCapoMatches, self).tearDownClass()
+        super(TestNpolMatches, self).tearDownClass()
 
     def setUp(self):
-        super(TestCapoMatches, self).setUp()
-        self.rule = VppCapoRule(self, is_v6=False, action=ACTION_ALLOW)
+        super(TestNpolMatches, self).setUp()
+        self.rule = VppNpolRule(self, is_v6=False, action=ACTION_ALLOW)
         self.rule.add_vpp_config()
-        self.policy = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=1, rule_id=self.rule.vpp_id())]
+        self.policy = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=1, rule_id=self.rule.vpp_id())]
         )
         self.policy.add_vpp_config()
         self.configure_policies(self.pg1, [self.policy], [], [])
-        self.src_ip_ipset = VppCapoIpset(
+        self.src_ip_ipset = VppNpolIpset(
             self, IPSET_TYPE_IP, [self.pg0.remote_ip4, self.pg0.remote_ip6]
         )
         self.src_ip_ipset.add_vpp_config()
-        self.dst_ip_ipset = VppCapoIpset(
+        self.dst_ip_ipset = VppNpolIpset(
             self, IPSET_TYPE_IP, [self.pg1.remote_ip4, self.pg1.remote_ip6]
         )
         self.dst_ip_ipset.add_vpp_config()
-        self.src_net_ipset = VppCapoIpset(
+        self.src_net_ipset = VppNpolIpset(
             self,
             IPSET_TYPE_NET,
             [self.pg0.remote_ip4 + "/32", self.pg0.remote_ip6 + "/128"],
         )
         self.src_net_ipset.add_vpp_config()
-        self.dst_net_ipset = VppCapoIpset(
+        self.dst_net_ipset = VppNpolIpset(
             self,
             IPSET_TYPE_NET,
             [self.pg1.remote_ip4 + "/32", self.pg1.remote_ip6 + "/128"],
         )
         self.dst_net_ipset.add_vpp_config()
-        self.src_ipport_ipset = VppCapoIpset(
+        self.src_ipport_ipset = VppNpolIpset(
             self,
             IPSET_TYPE_IP_PORT,
             [
@@ -382,7 +382,7 @@ class TestCapoMatches(BaseCapoTest):
             ],
         )
         self.src_ipport_ipset.add_vpp_config()
-        self.dst_ipport_ipset = VppCapoIpset(
+        self.dst_ipport_ipset = VppNpolIpset(
             self,
             IPSET_TYPE_IP_PORT,
             [
@@ -403,9 +403,9 @@ class TestCapoMatches(BaseCapoTest):
     def tearDown(self):
         self.vapi.cli("clear acl-plugin sessions")
         self.configure_policies(self.pg1, [], [], [])
-        self.policy.capo_policy_delete()
-        self.rule.capo_rule_delete()
-        super(TestCapoMatches, self).tearDown()
+        self.policy.npol_policy_delete()
+        self.rule.npol_rule_delete()
+        super(TestNpolMatches, self).tearDown()
 
     def test_empty_rule(self):
         # Empty rule matches everything
@@ -431,14 +431,14 @@ class TestCapoMatches(BaseCapoTest):
         ]
         self.do_test_one_rule([], [], valid, [])
 
-    def capo_test_icmp(self, is_v6):
+    def npol_test_icmp(self, is_v6):
         ICMP46 = ICMPv6EchoRequest if is_v6 else ICMP
         icmp_type = icmp6_type if is_v6 else icmp4_type
         icmp_code = icmp6_code if is_v6 else icmp4_code
 
         # Define filter on ICMP type
         filters = [
-            VppCapoFilter(FILTER_TYPE_ICMP_TYPE, value=icmp_type, should_match=1)
+            VppNpolFilter(FILTER_TYPE_ICMP_TYPE, value=icmp_type, should_match=1)
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -451,7 +451,7 @@ class TestCapoMatches(BaseCapoTest):
         self.do_test_one_rule(filters, [], [valid], [invalid])
 
         # Define filter on ICMP type  / should match = 0
-        filters = [VppCapoFilter(FILTER_TYPE_ICMP_TYPE, value=11, should_match=0)]
+        filters = [VppNpolFilter(FILTER_TYPE_ICMP_TYPE, value=11, should_match=0)]
         invalid = (
             self.base_ip_packet(is_v6)
             / ICMP46(type=11, code=icmp_code)
@@ -465,19 +465,19 @@ class TestCapoMatches(BaseCapoTest):
         self.do_test_one_rule(filters, [], [valid], [invalid])
 
     def test_icmp4_type(self):
-        self.capo_test_icmp(is_v6=False)
+        self.npol_test_icmp(is_v6=False)
 
     def test_icmp6_type(self):
-        self.capo_test_icmp(is_v6=True)
+        self.npol_test_icmp(is_v6=True)
 
-    def capo_test_icmp_code(self, is_v6):
+    def npol_test_icmp_code(self, is_v6):
         ICMP46 = ICMPv6EchoRequest if is_v6 else ICMP
         icmp_type = 1 if is_v6 else 3  # Destination unreachable
         icmp_code = 9  # admin prohibited
 
         # Define filter on ICMP type
         filters = [
-            VppCapoFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=1)
+            VppNpolFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=1)
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -493,7 +493,7 @@ class TestCapoMatches(BaseCapoTest):
 
         # Define filter on ICMP type  / should match = 0
         filters = [
-            VppCapoFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=0)
+            VppNpolFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=0)
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -508,12 +508,12 @@ class TestCapoMatches(BaseCapoTest):
         self.do_test_one_rule(filters, [], [valid], [invalid])
 
     def test_icmp4_code(self):
-        self.capo_test_icmp(is_v6=False)
+        self.npol_test_icmp(is_v6=False)
 
     def test_icmp6_code(self):
-        self.capo_test_icmp(is_v6=True)
+        self.npol_test_icmp(is_v6=True)
 
-    def capo_test_l4proto(self, is_v6, l4proto):
+    def npol_test_l4proto(self, is_v6, l4proto):
         filter_value = 0
         if l4proto == TCP:
             filter_value = tcp_protocol
@@ -522,7 +522,7 @@ class TestCapoMatches(BaseCapoTest):
 
         # Define filter on l4proto type
         filters = [
-            VppCapoFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=1)
+            VppNpolFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=1)
         ]
 
         # Send tcp pg0 -> pg1
@@ -537,7 +537,7 @@ class TestCapoMatches(BaseCapoTest):
 
         # Define filter on l4proto / should match = 0
         filters = [
-            VppCapoFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=0)
+            VppNpolFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=0)
         ]
         # send l4proto packet and expect it is filtered
         invalid = (
@@ -550,16 +550,16 @@ class TestCapoMatches(BaseCapoTest):
         self.do_test_one_rule(filters, [], [valid], [invalid])
 
     def test_l4proto_tcp4(self):
-        self.capo_test_l4proto(False, TCP)
+        self.npol_test_l4proto(False, TCP)
 
     def test_l4proto_tcp6(self):
-        self.capo_test_l4proto(True, TCP)
+        self.npol_test_l4proto(True, TCP)
 
     def test_l4proto_udp4(self):
-        self.capo_test_l4proto(False, UDP)
+        self.npol_test_l4proto(False, UDP)
 
     def test_l4proto_udp6(self):
-        self.capo_test_l4proto(True, UDP)
+        self.npol_test_l4proto(True, UDP)
 
     def test_prefixes_ip6(self):
         self.test_prefixes(True)
@@ -895,29 +895,29 @@ class TestCapoMatches(BaseCapoTest):
         self.do_test_one_rule([], matches, invalid, valid)
 
 
-class TestCapoPolicies(BaseCapoTest):
+class TestNpolPolicies(BaseNpolTest):
     """Calico Policies tests"""
 
     @classmethod
     def setUpClass(self):
-        super(TestCapoPolicies, self).setUpClass()
+        super(TestNpolPolicies, self).setUpClass()
 
     @classmethod
     def tearDownClass(self):
-        super(TestCapoPolicies, self).tearDownClass()
+        super(TestNpolPolicies, self).tearDownClass()
 
     def setUp(self):
-        super(TestCapoPolicies, self).setUp()
+        super(TestNpolPolicies, self).setUp()
 
     def tearDown(self):
-        super(TestCapoPolicies, self).tearDown()
+        super(TestNpolPolicies, self).tearDown()
 
     def tcp_dport_rule(self, port, action):
-        return VppCapoRule(
+        return VppNpolRule(
             self,
             is_v6=False,
             action=action,
-            filters=[VppCapoFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True)],
+            filters=[VppNpolFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True)],
             matches=[
                 {
                     "is_src": False,
@@ -931,9 +931,9 @@ class TestCapoPolicies(BaseCapoTest):
     def test_inbound_outbound(self):
         r = self.tcp_dport_rule(1000, ACTION_ALLOW)
         r.add_vpp_config()
-        pin = VppCapoPolicy(self, [VppCapoPolicyItem(is_inbound=1, rule_id=r.vpp_id())])
-        pout = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=0, rule_id=r.vpp_id())]
+        pin = VppNpolPolicy(self, [VppNpolPolicyItem(is_inbound=1, rule_id=r.vpp_id())])
+        pout = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=0, rule_id=r.vpp_id())]
         )
         pin.add_vpp_config()
         pout.add_vpp_config()
@@ -971,23 +971,23 @@ class TestCapoPolicies(BaseCapoTest):
         rule2.add_vpp_config()
         rule3.add_vpp_config()
         rule4.add_vpp_config()
-        policy1 = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=1, rule_id=rule1.vpp_id())]
+        policy1 = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=1, rule_id=rule1.vpp_id())]
         )
-        policy2 = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=1, rule_id=rule2.vpp_id())]
+        policy2 = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=1, rule_id=rule2.vpp_id())]
         )
-        policy3 = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=1, rule_id=rule3.vpp_id())]
+        policy3 = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=1, rule_id=rule3.vpp_id())]
         )
-        policy4 = VppCapoPolicy(
-            self, [VppCapoPolicyItem(is_inbound=1, rule_id=rule4.vpp_id())]
+        policy4 = VppNpolPolicy(
+            self, [VppNpolPolicyItem(is_inbound=1, rule_id=rule4.vpp_id())]
         )
-        policy5 = VppCapoPolicy(
+        policy5 = VppNpolPolicy(
             self,
             [
-                VppCapoPolicyItem(is_inbound=1, rule_id=rule4.vpp_id()),
-                VppCapoPolicyItem(is_inbound=1, rule_id=rule3.vpp_id()),
+                VppNpolPolicyItem(is_inbound=1, rule_id=rule4.vpp_id()),
+                VppNpolPolicyItem(is_inbound=1, rule_id=rule3.vpp_id()),
             ],
         )
         policy1.add_vpp_config()
@@ -1033,31 +1033,31 @@ class TestCapoPolicies(BaseCapoTest):
 
     def test_realistic_policy(self):
         # Rule 1 allows ping from everywhere
-        rule1 = VppCapoRule(
+        rule1 = VppNpolRule(
             self,
             is_v6=False,
             action=ACTION_ALLOW,
             filters=[
-                VppCapoFilter(FILTER_TYPE_L4_PROTO, icmp_protocol, True),
-                VppCapoFilter(FILTER_TYPE_ICMP_TYPE, 8, True),
-                VppCapoFilter(FILTER_TYPE_ICMP_CODE, 0, True),
+                VppNpolFilter(FILTER_TYPE_L4_PROTO, icmp_protocol, True),
+                VppNpolFilter(FILTER_TYPE_ICMP_TYPE, 8, True),
+                VppNpolFilter(FILTER_TYPE_ICMP_CODE, 0, True),
             ],
             matches=[],
         )
         rule1.add_vpp_config()
         # Rule 2 allows tcp dport 8080 from a single container
-        src_ipset = VppCapoIpset(
+        src_ipset = VppNpolIpset(
             self,
             IPSET_TYPE_NET,
             [self.pg0.remote_ip4 + "/32", self.pg0.remote_ip6 + "/128"],
         )
         src_ipset.add_vpp_config()
-        rule2 = VppCapoRule(
+        rule2 = VppNpolRule(
             self,
             is_v6=False,
             action=ACTION_ALLOW,
             filters=[
-                VppCapoFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True),
+                VppNpolFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True),
             ],
             matches=[
                 {
@@ -1075,11 +1075,11 @@ class TestCapoPolicies(BaseCapoTest):
             ],
         )
         rule2.add_vpp_config()
-        policy = VppCapoPolicy(
+        policy = VppNpolPolicy(
             self,
             [
-                VppCapoPolicyItem(is_inbound=1, rule_id=rule1.vpp_id()),
-                VppCapoPolicyItem(is_inbound=1, rule_id=rule2.vpp_id()),
+                VppNpolPolicyItem(is_inbound=1, rule_id=rule1.vpp_id()),
+                VppNpolPolicyItem(is_inbound=1, rule_id=rule2.vpp_id()),
             ],
         )
         policy.add_vpp_config()

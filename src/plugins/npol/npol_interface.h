@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef included_capo_interface_h
-#define included_capo_interface_h
+#ifndef included_npol_interface_h
+#define included_npol_interface_h
 
 #include <vppinfra/clib.h>
 
@@ -28,16 +28,16 @@ typedef struct
   u8 policy_default_tx;
   u8 profile_default_rx;
   u8 profile_default_tx;
-} capo_interface_config_t;
+} npol_interface_config_t;
 
-int capo_configure_policies (u32 sw_if_index, u32 num_rx_policies,
+int npol_configure_policies (u32 sw_if_index, u32 num_rx_policies,
 			     u32 num_tx_policies, u32 num_profiles,
 			     u32 *policy_ids, u8 invert_rx_tx,
 			     u8 policy_default_rx, u8 policy_default_tx,
 			     u8 profile_default_rx, u8 profile_default_tx);
-u8 *format_capo_interface (u8 *s, va_list *args);
+u8 *format_npol_interface (u8 *s, va_list *args);
 
-STATIC_ASSERT (sizeof (capo_interface_config_t) <=
+STATIC_ASSERT (sizeof (npol_interface_config_t) <=
 		 (sizeof (clib_bihash_kv_8_32_t) -
 		  STRUCT_OFFSET_OF (clib_bihash_kv_8_32_t, value)),
 	       "bihash value size");

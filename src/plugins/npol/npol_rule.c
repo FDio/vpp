@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-#include <capo/capo.h>
-#include <capo/capo_rule.h>
-#include <capo/capo_ipset.h>
+#include <npol/npol.h>
+#include <npol/npol_rule.h>
+#include <npol/npol_ipset.h>
 
-capo_rule_t *capo_rules;
+npol_rule_t *npol_rules;
 
 u8 *
-format_capo_rule_action (u8 *s, va_list *args)
+format_npol_rule_action (u8 *s, va_list *args)
 {
-  capo_rule_action_t action = va_arg (*args, int);
+  npol_rule_action_t action = va_arg (*args, int);
   switch (action)
     {
-    case CAPO_ALLOW:
+    case NPOL_ALLOW:
       return format (s, "allow");
-    case CAPO_DENY:
+    case NPOL_DENY:
       return format (s, "deny");
-    case CAPO_LOG:
+    case NPOL_LOG:
       return format (s, "log");
-    case CAPO_PASS:
+    case NPOL_PASS:
       return format (s, "pass");
     default:
       return format (s, "unknownaction");
@@ -39,26 +39,26 @@ format_capo_rule_action (u8 *s, va_list *args)
 }
 
 uword
-unformat_capo_rule_action (unformat_input_t *input, va_list *args)
+unformat_npol_rule_action (unformat_input_t *input, va_list *args)
 {
-  capo_rule_action_t *action = va_arg (*args, capo_rule_action_t *);
+  npol_rule_action_t *action = va_arg (*args, npol_rule_action_t *);
   if (unformat (input, "allow"))
-    *action = CAPO_ALLOW;
+    *action = NPOL_ALLOW;
   else if (unformat (input, "deny"))
-    *action = CAPO_DENY;
+    *action = NPOL_DENY;
   else if (unformat (input, "log"))
-    *action = CAPO_LOG;
+    *action = NPOL_LOG;
   else if (unformat (input, "pass"))
-    *action = CAPO_PASS;
+    *action = NPOL_PASS;
   else
     return 0;
   return 1;
 }
 
 u8 *
-format_capo_rule_port_range (u8 *s, va_list *args)
+format_npol_rule_port_range (u8 *s, va_list *args)
 {
-  capo_port_range_t *port_range = va_arg (*args, capo_port_range_t *);
+  npol_port_range_t *port_range = va_arg (*args, npol_port_range_t *);
 
   if (port_range->start != port_range->end)
     s = format (s, "[%u-%u]", port_range->start, port_range->end);
@@ -69,29 +69,29 @@ format_capo_rule_port_range (u8 *s, va_list *args)
 }
 
 u8 *
-format_capo_rule_entry (u8 *s, va_list *args)
+format_npol_rule_entry (u8 *s, va_list *args)
 {
-  capo_rule_entry_t *entry = va_arg (*args, capo_rule_entry_t *);
-  capo_ipset_t *ipset;
+  npol_rule_entry_t *entry = va_arg (*args, npol_rule_entry_t *);
+  npol_ipset_t *ipset;
 
-  s = format (s, "%s", entry->flags & CAPO_IS_SRC ? "src" : "dst");
-  s = format (s, "%s", entry->flags & CAPO_IS_NOT ? "!=" : "==");
+  s = format (s, "%s", entry->flags & NPOL_IS_SRC ? "src" : "dst");
+  s = format (s, "%s", entry->flags & NPOL_IS_NOT ? "!=" : "==");
   switch (entry->type)
     {
-    case CAPO_CIDR:
+    case NPOL_CIDR:
       s = format (s, "%U", format_ip_prefix, &entry->data.cidr);
       break;
-    case CAPO_PORT_RANGE:
+    case NPOL_PORT_RANGE:
       s =
-	format (s, "%U", format_capo_rule_port_range, &entry->data.port_range);
+	format (s, "%U", format_npol_rule_port_range, &entry->data.port_range);
       break;
-    case CAPO_IP_SET:
-      ipset = capo_ipsets_get_if_exists (entry->data.set_id);
-      s = format (s, "%U", format_capo_ipset, ipset);
+    case NPOL_IP_SET:
+      ipset = npol_ipsets_get_if_exists (entry->data.set_id);
+      s = format (s, "%U", format_npol_ipset, ipset);
       break;
-    case CAPO_PORT_IP_SET:
-      ipset = capo_ipsets_get_if_exists (entry->data.set_id);
-      s = format (s, "%U", format_capo_ipset, ipset);
+    case NPOL_PORT_IP_SET:
+      ipset = npol_ipsets_get_if_exists (entry->data.set_id);
+      s = format (s, "%U", format_npol_ipset, ipset);
       break;
     default:
       s = format (s, "unknown");
@@ -103,13 +103,13 @@ format_capo_rule_entry (u8 *s, va_list *args)
 uword
 unformat_rule_key_flag (unformat_input_t *input, va_list *args)
 {
-  capo_rule_key_flag_t *flags = va_arg (*args, capo_rule_key_flag_t *);
+  npol_rule_key_flag_t *flags = va_arg (*args, npol_rule_key_flag_t *);
   if (unformat (input, "src=="))
-    *flags = CAPO_IS_SRC;
+    *flags = NPOL_IS_SRC;
   else if (unformat (input, "src!="))
-    *flags = CAPO_IS_SRC | CAPO_IS_NOT;
+    *flags = NPOL_IS_SRC | NPOL_IS_NOT;
   else if (unformat (input, "dst!="))
-    *flags = CAPO_IS_NOT;
+    *flags = NPOL_IS_NOT;
   else if (unformat (input, "dst=="))
     *flags = 0;
   else
@@ -118,9 +118,9 @@ unformat_rule_key_flag (unformat_input_t *input, va_list *args)
 }
 
 uword
-unformat_capo_port_range (unformat_input_t *input, va_list *args)
+unformat_npol_port_range (unformat_input_t *input, va_list *args)
 {
-  capo_port_range_t *port_range = va_arg (*args, capo_port_range_t *);
+  npol_port_range_t *port_range = va_arg (*args, npol_port_range_t *);
   u32 start, end;
   if (unformat (input, "[%d-%d]", &start, &end))
     {
@@ -133,38 +133,38 @@ unformat_capo_port_range (unformat_input_t *input, va_list *args)
 }
 
 uword
-unformat_capo_rule_entry (unformat_input_t *input, va_list *args)
+unformat_npol_rule_entry (unformat_input_t *input, va_list *args)
 {
-  capo_rule_entry_t *entry = va_arg (*args, capo_rule_entry_t *);
+  npol_rule_entry_t *entry = va_arg (*args, npol_rule_entry_t *);
   if (unformat (input, "%U %U", unformat_rule_key_flag, &entry->flags,
 		unformat_ip_prefix, &entry->data.cidr))
-    entry->type = CAPO_CIDR;
+    entry->type = NPOL_CIDR;
   else if (unformat (input, "%U %U", unformat_rule_key_flag, &entry->flags,
-		     unformat_capo_port_range, &entry->data.port_range))
-    entry->type = CAPO_PORT_RANGE;
+		     unformat_npol_port_range, &entry->data.port_range))
+    entry->type = NPOL_PORT_RANGE;
   else if (unformat (input, "%Uset %u", unformat_rule_key_flag, &entry->flags,
 		     &entry->data.set_id))
-    entry->type = CAPO_PORT_IP_SET;
+    entry->type = NPOL_PORT_IP_SET;
   else
     return 0;
   return 1;
 }
 
 u8 *
-format_capo_rule_filter (u8 *s, va_list *args)
+format_npol_rule_filter (u8 *s, va_list *args)
 {
-  capo_rule_filter_t *filter = va_arg (*args, capo_rule_filter_t *);
+  npol_rule_filter_t *filter = va_arg (*args, npol_rule_filter_t *);
   switch (filter->type)
     {
-    case CAPO_RULE_FILTER_NONE_TYPE:
+    case NPOL_RULE_FILTER_NONE_TYPE:
       return format (s, "<no filter>");
-    case CAPO_RULE_FILTER_ICMP_TYPE:
+    case NPOL_RULE_FILTER_ICMP_TYPE:
       return format (s, "icmp-type%s=%d", filter->should_match ? "=" : "!",
 		     filter->value);
-    case CAPO_RULE_FILTER_ICMP_CODE:
+    case NPOL_RULE_FILTER_ICMP_CODE:
       return format (s, "icmp-code%s=%d", filter->should_match ? "=" : "!",
 		     filter->value);
-    case CAPO_RULE_FILTER_L4_PROTO:
+    case NPOL_RULE_FILTER_L4_PROTO:
       return format (s, "proto%s=%U", filter->should_match ? "=" : "!",
 		     format_ip_protocol, filter->value);
     default:
@@ -173,7 +173,7 @@ format_capo_rule_filter (u8 *s, va_list *args)
 }
 
 uword
-unformat_capo_should_match (unformat_input_t *input, va_list *args)
+unformat_npol_should_match (unformat_input_t *input, va_list *args)
 {
   u8 *should_match = va_arg (*args, u8 *);
   if (unformat (input, "=="))
@@ -186,61 +186,61 @@ unformat_capo_should_match (unformat_input_t *input, va_list *args)
 }
 
 uword
-unformat_capo_rule_filter (unformat_input_t *input, va_list *args)
+unformat_npol_rule_filter (unformat_input_t *input, va_list *args)
 {
   u8 tmp_value;
-  capo_rule_filter_t *filter = va_arg (*args, capo_rule_filter_t *);
-  if (unformat (input, "icmp-type%U%d", unformat_capo_should_match,
+  npol_rule_filter_t *filter = va_arg (*args, npol_rule_filter_t *);
+  if (unformat (input, "icmp-type%U%d", unformat_npol_should_match,
 		&filter->should_match, &filter->value))
-    filter->type = CAPO_RULE_FILTER_ICMP_TYPE;
-  else if (unformat (input, "icmp-code%U%d", unformat_capo_should_match,
+    filter->type = NPOL_RULE_FILTER_ICMP_TYPE;
+  else if (unformat (input, "icmp-code%U%d", unformat_npol_should_match,
 		     &filter->should_match, &filter->value))
-    filter->type = CAPO_RULE_FILTER_ICMP_CODE;
-  else if (unformat (input, "proto%U%U", unformat_capo_should_match,
+    filter->type = NPOL_RULE_FILTER_ICMP_CODE;
+  else if (unformat (input, "proto%U%U", unformat_npol_should_match,
 		     &filter->should_match, unformat_ip_protocol, &tmp_value))
     {
       filter->value = tmp_value;
-      filter->type = CAPO_RULE_FILTER_L4_PROTO;
+      filter->type = NPOL_RULE_FILTER_L4_PROTO;
     }
   else
     return 0;
   return 1;
 }
 
-static capo_rule_entry_t *
-capo_rule_get_entries (capo_rule_t *rule)
+static npol_rule_entry_t *
+npol_rule_get_entries (npol_rule_t *rule)
 {
-  capo_rule_entry_t *entries = NULL, *entry;
-  capo_port_range_t *pr;
+  npol_rule_entry_t *entries = NULL, *entry;
+  npol_port_range_t *pr;
   ip_prefix_t *pfx;
   u32 *set_id;
-  for (int i = 0; i < CAPO_RULE_MAX_FLAGS; i++)
+  for (int i = 0; i < NPOL_RULE_MAX_FLAGS; i++)
     {
       vec_foreach (pfx, rule->prefixes[i])
 	{
 	  vec_add2 (entries, entry, 1);
-	  entry->type = CAPO_CIDR;
+	  entry->type = NPOL_CIDR;
 	  entry->flags = i;
 	  clib_memcpy (&entry->data.cidr, pfx, sizeof (*pfx));
 	}
       vec_foreach (pr, rule->port_ranges[i])
 	{
 	  vec_add2 (entries, entry, 1);
-	  entry->type = CAPO_PORT_RANGE;
+	  entry->type = NPOL_PORT_RANGE;
 	  entry->flags = i;
 	  clib_memcpy (&entry->data.port_range, pr, sizeof (*pr));
 	}
       vec_foreach (set_id, rule->ip_ipsets[i])
 	{
 	  vec_add2 (entries, entry, 1);
-	  entry->type = CAPO_IP_SET;
+	  entry->type = NPOL_IP_SET;
 	  entry->flags = i;
 	  entry->data.set_id = *set_id;
 	}
       vec_foreach (set_id, rule->ipport_ipsets[i])
 	{
 	  vec_add2 (entries, entry, 1);
-	  entry->type = CAPO_PORT_IP_SET;
+	  entry->type = NPOL_PORT_IP_SET;
 	  entry->flags = i;
 	  entry->data.set_id = *set_id;
 	}
@@ -249,56 +249,56 @@ capo_rule_get_entries (capo_rule_t *rule)
 }
 
 u8 *
-format_capo_rule (u8 *s, va_list *args)
+format_npol_rule (u8 *s, va_list *args)
 {
-  capo_rule_t *rule = va_arg (*args, capo_rule_t *);
-  capo_rule_filter_t *filter;
-  capo_rule_entry_t *entry, *entries;
+  npol_rule_t *rule = va_arg (*args, npol_rule_t *);
+  npol_rule_filter_t *filter;
+  npol_rule_entry_t *entry, *entries;
 
   if (rule == NULL)
     return format (s, "deleted rule");
 
-  s = format (s, "[rule#%d;%U][", rule - capo_rules, format_capo_rule_action,
+  s = format (s, "[rule#%d;%U][", rule - npol_rules, format_npol_rule_action,
 	      rule->action);
 
   /* filters */
   vec_foreach (filter, rule->filters)
     {
-      if (filter->type != CAPO_RULE_FILTER_NONE_TYPE)
-	s = format (s, "%U,", format_capo_rule_filter, filter);
+      if (filter->type != NPOL_RULE_FILTER_NONE_TYPE)
+	s = format (s, "%U,", format_npol_rule_filter, filter);
     }
 
-  entries = capo_rule_get_entries (rule);
+  entries = npol_rule_get_entries (rule);
   vec_foreach (entry, entries)
-    s = format (s, "%U,", format_capo_rule_entry, entry);
+    s = format (s, "%U,", format_npol_rule_entry, entry);
   vec_free (entries);
   s = format (s, "]");
 
   return (s);
 }
 
-capo_rule_t *
-capo_rule_alloc ()
+npol_rule_t *
+npol_rule_alloc ()
 {
-  capo_rule_t *rule;
-  pool_get_zero (capo_rules, rule);
+  npol_rule_t *rule;
+  pool_get_zero (npol_rules, rule);
   return rule;
 }
 
-capo_rule_t *
-capo_rule_get_if_exists (u32 index)
+npol_rule_t *
+npol_rule_get_if_exists (u32 index)
 {
-  if (pool_is_free_index (capo_rules, index))
+  if (pool_is_free_index (npol_rules, index))
     return (NULL);
-  return pool_elt_at_index (capo_rules, index);
+  return pool_elt_at_index (npol_rules, index);
 }
 
 static void
-capo_rule_cleanup (capo_rule_t *rule)
+npol_rule_cleanup (npol_rule_t *rule)
 {
   int i;
   vec_free (rule->filters);
-  for (i = 0; i < CAPO_RULE_MAX_FLAGS; i++)
+  for (i = 0; i < NPOL_RULE_MAX_FLAGS; i++)
     {
       vec_free (rule->prefixes[i]);
       vec_free (rule->port_ranges[i]);
@@ -308,19 +308,19 @@ capo_rule_cleanup (capo_rule_t *rule)
 }
 
 int
-capo_rule_update (u32 *id, capo_rule_action_t action, ip_address_family_t af,
-		  capo_rule_filter_t *filters, capo_rule_entry_t *entries)
+npol_rule_update (u32 *id, npol_rule_action_t action, ip_address_family_t af,
+		  npol_rule_filter_t *filters, npol_rule_entry_t *entries)
 {
-  capo_rule_filter_t *filter;
-  capo_rule_entry_t *entry;
-  capo_rule_t *rule;
+  npol_rule_filter_t *filter;
+  npol_rule_entry_t *entry;
+  npol_rule_t *rule;
   int rv;
 
-  rule = capo_rule_get_if_exists (*id);
+  rule = npol_rule_get_if_exists (*id);
   if (rule)
-    capo_rule_cleanup (rule);
+    npol_rule_cleanup (rule);
   else
-    rule = capo_rule_alloc ();
+    rule = npol_rule_alloc ();
 
   rule->af = -1;
   rule->action = action;
@@ -332,16 +332,16 @@ capo_rule_update (u32 *id, capo_rule_action_t action, ip_address_family_t af,
       u8 flags = entry->flags;
       switch (entry->type)
 	{
-	case CAPO_CIDR:
+	case NPOL_CIDR:
 	  vec_add1 (rule->prefixes[flags], entry->data.cidr);
 	  break;
-	case CAPO_PORT_RANGE:
+	case NPOL_PORT_RANGE:
 	  vec_add1 (rule->port_ranges[flags], entry->data.port_range);
 	  break;
-	case CAPO_PORT_IP_SET:
+	case NPOL_PORT_IP_SET:
 	  vec_add1 (rule->ipport_ipsets[flags], entry->data.set_id);
 	  break;
-	case CAPO_IP_SET:
+	case NPOL_IP_SET:
 	  vec_add1 (rule->ip_ipsets[flags], entry->data.set_id);
 	  break;
 	default:
@@ -349,59 +349,59 @@ capo_rule_update (u32 *id, capo_rule_action_t action, ip_address_family_t af,
 	  goto error;
 	}
     }
-  *id = rule - capo_rules;
+  *id = rule - npol_rules;
   return 0;
 error:
-  capo_rule_cleanup (rule);
-  pool_put (capo_rules, rule);
+  npol_rule_cleanup (rule);
+  pool_put (npol_rules, rule);
   return rv;
 }
 
 int
-capo_rule_delete (u32 id)
+npol_rule_delete (u32 id)
 {
-  capo_rule_t *rule;
-  rule = capo_rule_get_if_exists (id);
+  npol_rule_t *rule;
+  rule = npol_rule_get_if_exists (id);
   if (NULL == rule)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  capo_rule_cleanup (rule);
-  pool_put (capo_rules, rule);
+  npol_rule_cleanup (rule);
+  pool_put (npol_rules, rule);
 
   return 0;
 }
 
 static clib_error_t *
-capo_rules_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_rules_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			vlib_cli_command_t *cmd)
 {
-  capo_rule_t *rule;
+  npol_rule_t *rule;
 
-  pool_foreach (rule, capo_rules)
+  pool_foreach (rule, npol_rules)
     {
-      vlib_cli_output (vm, "%U", format_capo_rule, rule);
+      vlib_cli_output (vm, "%U", format_npol_rule, rule);
     }
 
   return 0;
 }
 
-VLIB_CLI_COMMAND (capo_rules_show_cmd, static) = {
-  .path = "show capo rules",
-  .function = capo_rules_show_cmd_fn,
-  .short_help = "show capo rules",
+VLIB_CLI_COMMAND (npol_rules_show_cmd, static) = {
+  .path = "show npol rules",
+  .function = npol_rules_show_cmd_fn,
+  .short_help = "show npol rules",
 };
 
 static clib_error_t *
-capo_rules_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_rules_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  capo_rule_filter_t tmp_filter, *filters = 0;
-  capo_rule_entry_t tmp_entry, *entries = 0;
+  npol_rule_filter_t tmp_filter, *filters = 0;
+  npol_rule_entry_t tmp_entry, *entries = 0;
   clib_error_t *error = 0;
-  capo_rule_action_t action;
+  npol_rule_action_t action;
   ip_address_family_t af = AF_IP4;
-  u32 id = CAPO_INVALID_INDEX;
+  u32 id = NPOL_INVALID_INDEX;
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -413,16 +413,16 @@ capo_rules_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat_user (line_input, unformat_ip_address_family, &af))
 	;
-      else if (unformat_user (line_input, unformat_capo_rule_action, &action))
+      else if (unformat_user (line_input, unformat_npol_rule_action, &action))
 	;
-      else if (unformat_user (line_input, unformat_capo_rule_entry,
+      else if (unformat_user (line_input, unformat_npol_rule_entry,
 			      &tmp_entry))
 	vec_add1 (entries, tmp_entry);
-      else if (unformat_user (line_input, unformat_capo_rule_filter,
+      else if (unformat_user (line_input, unformat_npol_rule_filter,
 			      &tmp_filter))
 	{
 	  vec_add1 (filters, tmp_filter);
-	  vlib_cli_output (vm, "%U", format_capo_rule_filter, &tmp_filter);
+	  vlib_cli_output (vm, "%U", format_npol_rule_filter, &tmp_filter);
 	}
       else
 	{
@@ -432,11 +432,11 @@ capo_rules_add_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = capo_rule_update (&id, action, af, filters, entries);
+  rv = npol_rule_update (&id, action, af, filters, entries);
   if (rv)
-    error = clib_error_return (0, "capo_rule_update error %d", rv);
+    error = clib_error_return (0, "npol_rule_update error %d", rv);
   else
-    vlib_cli_output (vm, "capo rule %d added", id);
+    vlib_cli_output (vm, "npol rule %d added", id);
 
 done:
   vec_free (filters);
@@ -445,10 +445,10 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (capo_rules_add_cmd, static) = {
-  .path = "capo rule add",
-  .function = capo_rules_add_cmd_fn,
-  .short_help = "capo rule add [ip4|ip6] [allow|deny|log|pass]"
+VLIB_CLI_COMMAND (npol_rules_add_cmd, static) = {
+  .path = "npol rule add",
+  .function = npol_rules_add_cmd_fn,
+  .short_help = "npol rule add [ip4|ip6] [allow|deny|log|pass]"
 		"[filter[==|!=]value]"
 		"[[src|dst][==|!=][prefix|set ID|[port-port]]]",
   .long_help = "Add a rule, with given filters and entries\n"
@@ -456,12 +456,12 @@ VLIB_CLI_COMMAND (capo_rules_add_cmd, static) = {
 };
 
 static clib_error_t *
-capo_rules_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+npol_rules_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  u32 id = CAPO_INVALID_INDEX;
+  u32 id = NPOL_INVALID_INDEX;
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -479,25 +479,25 @@ capo_rules_del_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  if (CAPO_INVALID_INDEX == id)
+  if (NPOL_INVALID_INDEX == id)
     {
       error = clib_error_return (0, "missing rule id");
       goto done;
     }
 
-  rv = capo_rule_delete (id);
+  rv = npol_rule_delete (id);
   if (rv)
-    error = clib_error_return (0, "capo_rule_delete errored with %d", rv);
+    error = clib_error_return (0, "npol_rule_delete errored with %d", rv);
 
 done:
   unformat_free (line_input);
   return error;
 }
 
-VLIB_CLI_COMMAND (capo_rules_del_cmd, static) = {
-  .path = "capo rule del",
-  .function = capo_rules_del_cmd_fn,
-  .short_help = "capo rule del [id]",
+VLIB_CLI_COMMAND (npol_rules_del_cmd, static) = {
+  .path = "npol rule del",
+  .function = npol_rules_del_cmd_fn,
+  .short_help = "npol rule del [id]",
 };
 
 /*
