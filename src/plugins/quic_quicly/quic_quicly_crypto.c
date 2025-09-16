@@ -71,8 +71,9 @@ quic_quicly_crypto_context_alloc (u8 thread_index)
   pool_get_aligned_safe (wc->crypto_ctx_pool, crctx, CLIB_CACHE_LINE_BYTES);
   clib_memset (crctx, 0, sizeof (*crctx));
   idx = (crctx - wc->crypto_ctx_pool);
-  crctx->ctx_index = ((u32) thread_index) << 24 | idx;
-  QUIC_DBG (3, "Allocated crctx %u on thread %u", idx, thread_index);
+  crctx->ctx_index = QUIC_CRCTX_CTX_INDEX_ENCODE (thread_index, idx);
+  QUIC_DBG (2, "Allocated crctx_ndx 0x%08lx (%u) on thread %u",
+	    crctx->ctx_index, crctx->ctx_index, thread_index);
 
   return crctx;
 }
@@ -251,8 +252,12 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   ptls_context_t *ptls_ctx;
   u32 i;
 
-  QUIC_DBG (2, "Init quic crctx %d thread %d", crctx->ctx_index,
-	    ctx->c_thread_index);
+  ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx->ctx_index) ==
+	  ctx->c_thread_index);
+  ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx->ctx_index) ==
+	  vlib_get_thread_index ());
+  QUIC_DBG (2, "Init crypto context: crctx_ndx 0x%08lx (%u), thread %d",
+	    crctx->ctx_index, crctx->ctx_index, ctx->c_thread_index);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 				     ptls_openssl_cipher_suites);
 
@@ -402,7 +407,9 @@ quic_quicly_crypto_context_acquire (quic_ctx_t *ctx)
       0)
     {
       crctx = quic_quicly_crypto_context_get (kv.value, ctx->c_thread_index);
-      QUIC_DBG (2, "Found exisiting crypto context %d", kv.value);
+      QUIC_DBG (
+	2, "Found existing crypto context: crctx_ndx 0x%lx (%d), thread %u",
+	kv.value, kv.value, ctx->c_thread_index);
       ctx->crypto_context_index = kv.value;
       crctx->n_subscribers++;
       return 0;
