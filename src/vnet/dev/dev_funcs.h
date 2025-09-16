@@ -168,15 +168,19 @@ vnet_dev_get_bus (vnet_dev_t *dev)
 static_always_inline void
 vnet_dev_validate (vlib_main_t *vm, vnet_dev_t *dev)
 {
-  ASSERT (dev->process_node_index == vlib_get_current_process_node_index (vm));
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  ASSERT (!dm->main_loop_running ||
+	  dev->process_node_index == vlib_get_current_process_node_index (vm));
   ASSERT (vm->thread_index == 0);
 }
 
 static_always_inline void
 vnet_dev_port_validate (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  ASSERT (port->dev->process_node_index ==
-	  vlib_get_current_process_node_index (vm));
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  ASSERT (!dm->main_loop_running ||
+	  port->dev->process_node_index ==
+	    vlib_get_current_process_node_index (vm));
   ASSERT (vm->thread_index == 0);
 }
 
@@ -431,6 +435,27 @@ vnet_dev_arg_get_string (vnet_dev_arg_t *arg)
 {
   ASSERT (arg->type == VNET_DEV_ARG_TYPE_STRING);
   return arg->val_set ? arg->val.string : arg->default_val.string;
+}
+
+static_always_inline void
+vnet_dev_process_suspend (vlib_main_t *vm, f64 t)
+{
+  if (!vnet_dev_main.main_loop_running)
+    {
+      t += vlib_time_now (vm);
+
+      while (vlib_time_now (vm) < t)
+	CLIB_PAUSE ();
+    }
+  else
+    vlib_process_suspend (vm, t);
+}
+
+static_always_inline void
+vnet_dev_process_yield (vlib_main_t *vm, f64 t)
+{
+  if (vnet_dev_main.main_loop_running)
+    vlib_process_yield (vm);
 }
 
 #endif /* _VNET_DEV_FUNCS_H_ */

@@ -416,7 +416,7 @@ iavf_aq_atq_enq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t *desc,
 	      return VNET_DEV_ERR_TIMEOUT;
 	    }
 
-	  vlib_process_suspend (vm, suspend_time);
+	  vnet_dev_process_suspend (vm, suspend_time);
 	  suspend_time *= 2;
 	}
     }
@@ -458,7 +458,7 @@ iavf_aq_arq_next_acq (vlib_main_t *vm, vnet_dev_t *dev, iavf_aq_desc_t **dp,
 	  if (vlib_time_now (vm) - t0 > timeout)
 	    return 0;
 
-	  vlib_process_suspend (vm, suspend_time);
+	  vnet_dev_process_suspend (vm, suspend_time);
 
 	  suspend_time *= 2;
 	}

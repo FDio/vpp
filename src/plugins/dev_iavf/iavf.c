@@ -98,7 +98,7 @@ iavf_reset (vlib_main_t *vm, vnet_dev_t *dev)
     {
       if (n_tries-- == 0)
 	return VNET_DEV_ERR_TIMEOUT;
-      vlib_process_suspend (vm, 0.02);
+      vnet_dev_process_suspend (vm, 0.02);
     }
   while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
 
