@@ -43,6 +43,10 @@
 #define QUIC_CTX_POOL_PER_THREAD_SIZE	     256
 #define QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE 256
 
+#define QUIC_CRCTX_CTX_INDEX_DECODE_INDEX(I)  ((I) &0x00ffffff)
+#define QUIC_CRCTX_CTX_INDEX_DECODE_THREAD(I) ((I) >> 24)
+#define QUIC_CRCTX_CTX_INDEX_ENCODE(T, I)     (((u32) (T)) << 24 | (I))
+
 #if QUIC_DEBUG
 #define QUIC_DBG(_lvl, _fmt, _args...)   \
   if (_lvl <= QUIC_DEBUG)                \
