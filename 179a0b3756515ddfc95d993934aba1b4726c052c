@@ -87,6 +87,24 @@
       "parentUuid": "65e1760d_d8319007",
       "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8cf52b57_2420e29e",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-17T17:01:49Z",
+      "side": 1,
+      "message": "Disagree, but this is why I\u0027m not a maintainer 😊 I\u0027ll factor out this logic.",
+      "parentUuid": "1e41587f_0b9dd879",
+      "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
