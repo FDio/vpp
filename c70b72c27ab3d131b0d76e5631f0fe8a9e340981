@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "903f44ac_484d43b9",
+        "filename": "src/plugins/ping/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-09-17T12:19:51Z",
+      "side": 1,
+      "message": "Sure that one can remain inlined then, I am just wondering if most other functions need to be inlined and if not, then it is better to keep them as regular functions.\nI don\u0027t think a hashtable for now. We\u0027d need to see if we can have a lot of parallel probes running in parallel, but as this one is specifically about cli, I suspect we should not have a lot of cli-run ping in parallel.",
+      "parentUuid": "fd86ccf6_9cbecdee",
+      "revId": "c70b72c27ab3d131b0d76e5631f0fe8a9e340981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3085a4d4_03fb9c47",
         "filename": "src/plugins/ping/traceroute.h",
         "patchSetId": 2
