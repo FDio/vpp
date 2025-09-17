@@ -30,6 +30,153 @@
 #include "daq.h"
 #include "daq_vpp.h"
 
+static char *
+daq_vpp_msg_type_string (daq_vpp_msg_type_t t)
+{
+  switch (t)
+    {
+    case DAQ_VPP_MSG_TYPE_CONNECT:
+      return "CONNECT";
+    case DAQ_VPP_MSG_TYPE_GET_BUFFER_POOL:
+      return "GET_BUFFER_POOL";
+    case DAQ_VPP_MSG_TYPE_GET_INPUT:
+      return "GET_INPUT";
+    case DAQ_VPP_MSG_TYPE_ATTACH_QPAIR:
+      return "ATTACH_QPAIR";
+    default:
+      return "UNKNOWN";
+    }
+}
+
+static char *
+daq_vpp_daq_version_string (uint32_t v)
+{
+  static char buf[32];
+  if (v == 0)
+    return "unknown";
+  else
+    snprintf (buf, sizeof (buf), "%d.%d.%d", (v >> 24) & 0xff,
+	      (v >> 16) & 0xff, (v >> 8) & 0xff);
+  return buf;
+}
+
+static char *
+daq_vpp_mode_string (daq_vpp_mode_t m)
+{
+  switch (m)
+    {
+    case DAQ_VPP_MODE_INLINE:
+      return "INLINE";
+    case DAQ_VPP_MODE_PASSIVE:
+      return "PASSIVE";
+    case DAQ_VPP_MODE_READ_FILE:
+      return "READ_FILE";
+    default:
+      return "UNKNOWN";
+    }
+}
+
+static char *
+daq_vpp_sendmsg_data_string (daq_vpp_msg_req_t *req, ssize_t sz)
+{
+  static char buf[256];
+  int n = 0;
+
+  n += snprintf (buf + n, sizeof (buf) - n, "{ type: %s",
+		 daq_vpp_msg_type_string (req->type));
+
+  switch (req->type)
+    {
+    case DAQ_VPP_MSG_TYPE_CONNECT:
+      n += snprintf (
+	buf + n, sizeof (buf) - n,
+	", connect: { num_snort_instances: %u, daq_version: %s, mode: %s }",
+	req->connect.num_snort_instances,
+	daq_vpp_daq_version_string (req->connect.daq_version),
+	daq_vpp_mode_string (req->connect.mode));
+      break;
+    case DAQ_VPP_MSG_TYPE_GET_BUFFER_POOL:
+      n += snprintf (buf + n, sizeof (buf) - n,
+		     ", get_buffer_pool: { buffer_pool_index: %u }",
+		     req->get_buffer_pool.buffer_pool_index);
+      break;
+    case DAQ_VPP_MSG_TYPE_GET_INPUT:
+      n += snprintf (buf + n, sizeof (buf) - n,
+		     ", get_input: { input_name: \"%s\" }",
+		     req->get_input.input_name);
+      break;
+    case DAQ_VPP_MSG_TYPE_ATTACH_QPAIR:
+      n += snprintf (buf + n, sizeof (buf) - n,
+		     ", attach_qpair: { input_index: %u, qpair_index: %u }",
+		     req->attach_qpair.input_index,
+		     req->attach_qpair.qpair_index);
+      break;
+    default:
+      n += snprintf (buf + n, sizeof (buf) - n, ", unknown");
+      break;
+    }
+
+  n += snprintf (buf + n, sizeof (buf) - n, " }");
+
+  if (n >= sizeof (buf))
+    return "<truncated>";
+
+  return buf;
+}
+
+static char *
+daq_vpp_recvmsg_data_string (daq_vpp_msg_reply_t *reply, ssize_t sz)
+{
+  static char buf[256];
+  int n = 0;
+
+  n += snprintf (buf + n, sizeof (buf) - n, "{ err: %d", reply->err);
+
+  switch (reply->type)
+    {
+    case DAQ_VPP_MSG_TYPE_CONNECT:
+      n +=
+	snprintf (buf + n, sizeof (buf) - n, ", connect: { num_bpools: %u }",
+		  reply->connect.num_bpools);
+      break;
+    case DAQ_VPP_MSG_TYPE_GET_BUFFER_POOL:
+      n += snprintf (buf + n, sizeof (buf) - n,
+		     ", get_buffer_pool: { size: %lu }",
+		     reply->get_buffer_pool.size);
+      break;
+    case DAQ_VPP_MSG_TYPE_GET_INPUT:
+      n += snprintf (
+	buf + n, sizeof (buf) - n,
+	", get_input: { input_index: %u, num_qpairs: %u, shm_size: %lu }",
+	reply->get_input.input_index, reply->get_input.num_qpairs,
+	reply->get_input.shm_size);
+      break;
+    case DAQ_VPP_MSG_TYPE_ATTACH_QPAIR:
+      n += snprintf (buf + n, sizeof (buf) - n,
+		     ", attach_qpair: { qpair_id: { thread_id: %u, "
+		     "queue_id: %u }, log2_queue_size: %u, "
+		     "qpair_header_offset: %u, enq_ring_offset: %u, "
+		     "deq_ring_offset: %u }",
+		     reply->attach_qpair.qpair_id.thread_id,
+		     reply->attach_qpair.qpair_id.queue_id,
+		     reply->attach_qpair.log2_queue_size,
+		     reply->attach_qpair.qpair_header_offset,
+		     reply->attach_qpair.enq_ring_offset,
+		     reply->attach_qpair.deq_ring_offset);
+      break;
+    default:
+      n += snprintf (buf + n, sizeof (buf) - n, ", unknown");
+      break;
+    }
+
+  n += snprintf (buf + n, sizeof (buf) - n, " }");
+
+  if (n >= sizeof (buf))
+    return "<truncated>";
+
+  return buf;
+}
+
 static daq_vpp_rv_t
 daq_vpp_request (daq_vpp_msg_req_t *req, daq_vpp_msg_reply_t *reply, int n_fds,
 		 int fds[])
@@ -44,6 +191,7 @@ daq_vpp_request (daq_vpp_msg_req_t *req, daq_vpp_msg_reply_t *reply, int n_fds,
   struct cmsghdr *cmsg;
   ssize_t rv;
 
+  DEBUG ("send msg: %s", daq_vpp_sendmsg_data_string (req, req_msg_sz));
   if (send (vdm->socket_fd, req, req_msg_sz, 0) != req_msg_sz)
     return DAQ_VPP_ERR_SOCKET;
 
@@ -60,6 +208,8 @@ daq_vpp_request (daq_vpp_msg_req_t *req, daq_vpp_msg_reply_t *reply, int n_fds,
   if (rv != sizeof (daq_vpp_msg_reply_t))
     return DAQ_VPP_ERR_SOCKET;
 
+  DEBUG ("recv msg: %s",
+	 daq_vpp_recvmsg_data_string (reply, sizeof (daq_vpp_msg_reply_t)));
   cmsg = CMSG_FIRSTHDR (&mh);
   while (cmsg)
     {
@@ -81,15 +231,18 @@ daq_vpp_socket_disconnect ()
 {
   daq_vpp_main_t *vdm = &daq_vpp_main;
 
+  DEBUG ("disconnecting...");
   if (vdm->bpools)
     free (vdm->bpools);
 
   if (vdm->socket_fd > -1)
     {
+      DEBUG ("closing socket %s", vdm->socket_name);
       close (vdm->socket_fd);
       vdm->socket_fd = -1;
     }
-  vdm->connected = 1;
+  vdm->connected = 0;
+  DEBUG ("disconnected");
 }
 
 daq_vpp_rv_t
@@ -99,6 +252,8 @@ daq_vpp_socket_connect ()
 
   struct sockaddr_un sun = { .sun_family = AF_UNIX };
   int fd;
+
+  DEBUG ("connecting to socket %s", vdm->socket_name);
 
   fd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
 
@@ -114,6 +269,9 @@ daq_vpp_socket_connect ()
     }
 
   vdm->socket_fd = fd;
+
+  DEBUG ("connected to socket %s", vdm->socket_name);
+
   return DAQ_VPP_OK;
 }
 
@@ -295,9 +453,9 @@ daq_vpp_find_or_add_input (daq_vpp_ctx_t *ctx, char *name,
 			    qp->qpair_id.thread_id, qp->qpair_id.queue_id);
 	  goto err;
 	}
-
-      DEBUG ("qpair %u.%u added, size %u", qp->qpair_id.thread_id,
-	     qp->qpair_id.queue_id, qp->queue_size);
+      DEBUG ("input %s qpair %u.%u: size %u, hdr %p, enq %p, deq %p", name,
+	     qp->qpair_id.thread_id, qp->qpair_id.queue_id, qp->queue_size,
+	     qp->hdr, qp->enq_ring, qp->deq_ring);
     }
 
   vdm->inputs =

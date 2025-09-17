@@ -37,7 +37,7 @@
 
 #define DEBUG(fmt, ...)                                                       \
   if (daq_vpp_main.debug)                                                     \
-    printf ("%s: " fmt "\n", "daq_vpp", ##__VA_ARGS__);
+    printf ("%s: %s: " fmt "\n", "daq_vpp", __func__, ##__VA_ARGS__);
 
 #define SET_ERROR(modinst, ...)                                               \
   daq_vpp_main.daq_base_api.set_errbuf (modinst, __VA_ARGS__)

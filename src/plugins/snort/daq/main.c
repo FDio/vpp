@@ -32,7 +32,6 @@
 #include <sys/eventfd.h>
 
 #include <daq_dlt.h>
-#include <daq_module_api.h>
 
 #include "daq_vpp.h"
 
@@ -85,7 +84,9 @@ daq_vpp_destroy (void *handle)
 {
   daq_vpp_main_t *vdm = &daq_vpp_main;
   daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
+  uint16_t instance_id = ctx->instance_id;
 
+  DEBUG ("destroying instance %u", instance_id);
   free (ctx->qpairs);
   if (ctx->epoll_fd != -1)
     close (ctx->epoll_fd);
@@ -124,6 +125,7 @@ daq_vpp_destroy (void *handle)
 	  free (vdm->bpools);
 	}
     }
+  DEBUG ("destroyed instance %u", instance_id);
 }
 
 daq_vpp_qpair_t *
@@ -157,6 +159,8 @@ daq_vpp_add_qpair_to_instance (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp)
 			      sizeof (daq_vpp_qpair_t *));
   ctx->qpairs[ctx->num_qpairs++] = qp;
 
+  DEBUG ("qpair %u.%u added to instance %u", qp->qpair_id.thread_id,
+	 qp->qpair_id.queue_id, ctx->instance_id);
   return DAQ_SUCCESS;
 }
 
@@ -244,10 +248,6 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
   strncpy (name, input_name, input_name_len);
   name[input_name_len] = 0;
 
-  rv = daq_vpp_parse_qpair_ids (ctx, end_of_name, &qpair_ids, &n_qpair_ids);
-  if (rv != DAQ_SUCCESS)
-    goto err;
-
   if (!vdm->config_parsed)
     {
       rv = daq_vpp_parse_config (ctx, modcfg);
@@ -255,6 +255,10 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
 	goto err;
       vdm->config_parsed = 1;
     }
+
+  rv = daq_vpp_parse_qpair_ids (ctx, end_of_name, &qpair_ids, &n_qpair_ids);
+  if (rv != DAQ_SUCCESS)
+    goto err;
 
   DEBUG ("creating instance %u out of %u with input %s", instance_id,
 	 n_instances, name);
@@ -682,6 +686,7 @@ static int
 daq_vpp_get_msg_pool_info (void *handle, DAQ_MsgPoolInfo_t *info)
 {
   daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
+  DEBUG ("getting msg pool info");
   *info = ctx->msg_pool_info;
   return DAQ_SUCCESS;
 }
@@ -690,6 +695,7 @@ static int
 daq_vpp_get_stats (void __unused *handle, DAQ_Stats_t *stats)
 {
   daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
+  DEBUG ("getting stats");
   *stats = ctx->stats;
   return DAQ_SUCCESS;
 }
@@ -698,6 +704,7 @@ static void
 daq_vpp_reset_stats (void *handle)
 {
   daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
+  DEBUG ("resetting stats");
   ctx->stats = (DAQ_Stats_t){};
 }
 
@@ -714,12 +721,45 @@ daq_vpp_get_datalink_type (void __unused *handle)
   return DLT_IPV4;
 }
 
+static char *
+daq_vpp_ioctl_cmd_to_str (DAQ_IoctlCmd cmd)
+{
+#define IOCTL_CMD_STR(cmd)                                                    \
+  case cmd:                                                                   \
+    return #cmd;
+
+  switch (cmd)
+    {
+      IOCTL_CMD_STR (DIOCTL_GET_DEVICE_INDEX)
+      IOCTL_CMD_STR (DIOCTL_SET_FLOW_OPAQUE)
+      IOCTL_CMD_STR (DIOCTL_SET_FLOW_HA_STATE)
+      IOCTL_CMD_STR (DIOCTL_GET_FLOW_HA_STATE)
+      IOCTL_CMD_STR (DIOCTL_SET_FLOW_QOS_ID)
+      IOCTL_CMD_STR (DIOCTL_SET_PACKET_TRACE_DATA)
+      IOCTL_CMD_STR (DIOCTL_SET_PACKET_VERDICT_REASON)
+      IOCTL_CMD_STR (DIOCTL_SET_FLOW_PRESERVE)
+      IOCTL_CMD_STR (DIOCTL_GET_FLOW_TCP_SCRUBBED_SYN)
+      IOCTL_CMD_STR (DIOCTL_GET_FLOW_TCP_SCRUBBED_SYN_ACK)
+      IOCTL_CMD_STR (DIOCTL_CREATE_EXPECTED_FLOW)
+      IOCTL_CMD_STR (DIOCTL_DIRECT_INJECT_PAYLOAD)
+      IOCTL_CMD_STR (DIOCTL_DIRECT_INJECT_RESET)
+      IOCTL_CMD_STR (DIOCTL_GET_PRIV_DATA_LEN)
+      IOCTL_CMD_STR (DIOCTL_GET_CPU_PROFILE_DATA)
+      IOCTL_CMD_STR (DIOCTL_GET_SNORT_LATENCY_DATA)
+      IOCTL_CMD_STR (DIOCTL_SET_INJECT_DROP)
+    default:
+      return "UNKNOWN";
+    }
+}
+
 static int
 daq_vpp_ioctl (void *handle, DAQ_IoctlCmd cmd, void *arg, size_t arglen)
 {
   daq_vpp_main_t *vdm = &daq_vpp_main;
   daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
   DIOCTL_QueryDeviceIndex *qdi = (DIOCTL_QueryDeviceIndex *) arg;
+
+  DEBUG ("ioctl cmd %s", daq_vpp_ioctl_cmd_to_str (cmd));
 
   if (cmd == DIOCTL_GET_DEVICE_INDEX)
     {
