@@ -185,7 +185,7 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
 int
 interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 				  uword *bitmap, u8 is_sym, int is_l4,
-				  int enable_disable)
+				  u32 fq_nelts, int enable_disable)
 {
   handoff_main_t *hm = &handoff_main;
   vnet_sw_interface_t *sw;
@@ -206,7 +206,7 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
   if (hm->frame_queue_index == ~0)
     {
       vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, 0);
+      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, fq_nelts);
     }
 
   vec_validate (hm->if_data, sw_if_index);
@@ -254,7 +254,7 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
-  u32 sw_if_index = ~0, is_sym = 0, is_l4 = 0;
+  u32 sw_if_index = ~0, is_sym = 0, is_l4 = 0, fq_nelts = 0;
   int enable_disable = 1;
   uword *bitmap = 0;
   int rv = 0;
@@ -274,6 +274,8 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 	is_sym = 0;
       else if (unformat (input, "l4"))
 	is_l4 = 1;
+      else if (unformat (input, "fq-nelts %u", &fq_nelts))
+	;
       else
 	break;
     }
@@ -285,7 +287,7 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "Please specify list of workers...");
 
   rv = interface_handoff_enable_disable (vm, sw_if_index, bitmap, is_sym,
-					 is_l4, enable_disable);
+					 is_l4, fq_nelts, enable_disable);
 
   switch (rv)
     {
@@ -315,7 +317,7 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
   .short_help = "set interface handoff <interface-name> workers <workers-list>"
-		" [symmetrical|asymmetrical]",
+		" [symmetrical|asymmetrical] [l4] [fq-nelts <n>] [disable]",
   .function = set_interface_handoff_command_fn,
 };
 
