@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79b71e20_5173c2b3",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-09-17T16:44:38Z",
+      "side": 1,
+      "message": "you do not need to introduce a new flags type, you can introduce a new value in the existing flag with the flag [backwards_compatible], eg.\n  AF_XDP_API_FLAGS_ALLOW_SKB_MODE \u003d 2 [backwards_compatible],\nSee https://git.fd.io/vpp/tree/src/plugins/af_packet/af_packet.api#n105 for example\nThat way you do not even have to introduce a new version of the create call 😊",
+      "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8f60a2c_f21557fe",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-09-17T16:44:38Z",
+      "side": 1,
+      "message": "instead of this goto maybe it would be better to put this create logic in its own function and call it again if needs be",
+      "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
