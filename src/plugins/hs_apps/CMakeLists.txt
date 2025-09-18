@@ -84,4 +84,9 @@ if(VPP_BUILD_VCL_TESTS)
     LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )
+
+  add_vpp_executable(vcl_test_mix_udp SOURCES "vcl/vcl_test_mix_udp.c"
+    LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
+    NO_INSTALL
+  )
 endif(VPP_BUILD_VCL_TESTS)
