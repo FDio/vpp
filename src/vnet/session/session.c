@@ -828,12 +828,13 @@ session_switch_pool (void *cb_args)
       segment_manager_detach_fifo (sm, &s->tx_fifo);
     }
 
+  new_sh =
+    session_make_handle (args->new_session_index, args->new_thread_index);
+
   /* Check if session closed during migration */
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     goto app_closed;
 
-  new_sh =
-    session_make_handle (args->new_session_index, args->new_thread_index);
   app_worker_migrate_notify (app_wrk, s, new_sh);
 
   clib_mem_free (cb_args);
@@ -844,7 +845,7 @@ app_closed:
   sh = session_handle (s);
   session_send_rpc_evt_to_thread (args->new_thread_index,
 				  session_switch_pool_closed_rpc,
-				  uword_to_pointer (sh, void *));
+				  uword_to_pointer (new_sh, void *));
   clib_mem_free (cb_args);
 }
 
