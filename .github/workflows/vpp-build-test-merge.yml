@@ -168,7 +168,6 @@ jobs:
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       STREAM: ${{ matrix.branch == 'master' && 'master' || matrix.branch == 'stable/2502' && '2502' || '2506' }}
       TEST_RETRIES: 3
-      # VPP source directory path inside the container
       VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'debian-12' }}
       VPP_SRC_DIR: /scratch/docker-build/vpp
       WORKSPACE: ${{ github.workspace }}

@@ -1,17 +1,55 @@
 name: vpp-checkstyle
 
+# yamllint disable-line rule:truthy
 on:
-  pull_request:
-    branches:
-      - master
-      - stable/2502
-      - stable/2506
-  push:
-    branches:
-      - master
-      - stable/2502
-      - stable/2506
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: "Branch that change is against"
+        required: true
+        type: string
+      GERRIT_CHANGE_ID:
+        description: "The ID for the change"
+        required: true
+        type: string
+      GERRIT_CHANGE_NUMBER:
+        description: "The Gerrit number"
+        required: true
+        type: string
+      GERRIT_CHANGE_URL:
+        description: "URL to the change"
+        required: true
+        type: string
+      GERRIT_EVENT_TYPE:
+        description: "Type of Gerrit event"
+        required: true
+        type: string
+      GERRIT_PATCHSET_NUMBER:
+        description: "The patch number for the change"
+        required: true
+        type: string
+      GERRIT_PATCHSET_REVISION:
+        description: "The revision sha"
+        required: true
+        type: string
+      GERRIT_PROJECT:
+        description: "Project in Gerrit"
+        required: true
+        type: string
+      GERRIT_REFSPEC:
+        description: "Gerrit refspec of change"
+        required: true
+        type: string
+      TARGET_REPO:
+        # yamllint disable-line rule:line-length
+        description: "The target GitHub repository needing the required workflow"
+        required: true
+        type: string
+
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: required-verify-${{ github.workflow }}-${{ github.event.inputs.GERRIT_BRANCH }}-${{ github.event.inputs.GERRIT_CHANGE_ID || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   checkstyle:
@@ -21,20 +59,27 @@ jobs:
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
       - fdio:class=builder
-      - fdio:namespace=sandbox
+      - fdio:namespace=${{ matrix.builder_type }}
       - fdio:os=${{ matrix.os }}
 
     strategy:
       matrix:
         os: [ubuntu2404]
         executor_arch: [x86_64]
+        builder_type: [prod]
 
     steps:
-      - name: Checkout VPP repository with the change
-        uses: actions/checkout@v4
+      # yamllint disable-line rule:line-length
+      - name: Gerrit Checkout
+        # yamllint disable-line rule:line-length
+        uses: lfit/checkout-gerrit-change-action@54d751e8bd167bc91f7d665dabe33fae87aaaa63 # v0.9
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          gerrit-refspec: ${{ inputs.GERRIT_REFSPEC }}
+          gerrit-project: ${{ inputs.GERRIT_PROJECT }}
+          gerrit-url: ${{ vars.GERRIT_URL }}
+          delay: "0s"
+          repository: ${{ inputs.TARGET_REPO }}
+          ref: refs/heads/${{ inputs.GERRIT_BRANCH }}
 
       - name: Setup Environment
         run: |
