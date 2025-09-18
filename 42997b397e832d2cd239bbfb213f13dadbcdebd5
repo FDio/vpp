@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9e0877f_2f7ac2ed",
+        "filename": "test-c/kube-test/kube_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-09-18T22:47:54Z",
+      "side": 1,
+      "message": "Pretty late comment and meant for future refactoring, should we wrap these in some command?",
+      "range": {
+        "startLine": 48,
+        "startChar": 13,
+        "endLine": 48,
+        "endChar": 53
+      },
+      "revId": "42997b397e832d2cd239bbfb213f13dadbcdebd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
