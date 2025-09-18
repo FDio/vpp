@@ -149,9 +149,22 @@ ip4_create_fib_with_table_id (u32 table_id,
 {
     fib_table_t *fib_table;
     ip4_fib_t *v4_fib;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (ip4_main.fibs);
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_get(ip4_main.fibs, fib_table);
     clib_memset(fib_table, 0, sizeof(*fib_table));
+
+    if (!need_barrier_sync)
+    {
+        need_barrier_sync = pool_get_will_expand (ip4_fibs);
+        if (need_barrier_sync)
+            vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get_aligned(ip4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
 
@@ -165,6 +178,13 @@ ip4_create_fib_with_table_id (u32 table_id,
      * objects, depending on the context.
      */
     ASSERT(fib_table->ft_index == fib_table - ip4_main.fibs);
+
+    if (!need_barrier_sync)
+    {
+        need_barrier_sync = hash_will_expand (ip4_main.fib_index_by_table_id);
+        if (need_barrier_sync)
+            vlib_worker_thread_barrier_sync (vm);
+    }
 
     hash_set (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
@@ -181,6 +201,9 @@ ip4_create_fib_with_table_id (u32 table_id,
      * add the special entries into the new FIB
      */
     ip4_fib_hash_load_specials(fib_table - ip4_main.fibs);
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
 
     return (fib_table->ft_index);
 }
