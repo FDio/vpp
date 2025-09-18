@@ -278,6 +278,8 @@ wg_peer_if_adj_change (index_t peeri, void *data)
   ip_adjacency_t *adj;
   wg_peer_t *peer;
   fib_prefix_t *allowed_ip;
+  u8 need_barrier_sync = 0;
+  vlib_main_t *vm = vlib_get_main ();
 
   adj = adj_get (*adj_index);
 
@@ -289,6 +291,13 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 	{
 	  vec_add1 (peer->adj_indices, *adj_index);
 
+	  need_barrier_sync = vec_will_move (wg_peer_by_adj_index, *adj_index);
+	  if (need_barrier_sync)
+	    {
+	      ASSERT (vm->thread_index == 0);
+	      vlib_worker_thread_barrier_sync (vm);
+	    }
+
 	  vec_validate_init_empty (wg_peer_by_adj_index, *adj_index,
 				   INDEX_INVALID);
 	  wg_peer_by_adj_index[*adj_index] = peeri;
@@ -299,6 +308,8 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 					   vec_dup (peer->rewrite));
 
 	  wg_peer_adj_stack (peer, *adj_index);
+	  if (need_barrier_sync)
+	    vlib_worker_thread_barrier_release (vm);
 	  return (WALK_STOP);
 	}
     }
@@ -444,7 +455,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 {
   wg_if_t *wg_if;
   wg_peer_t *peer;
-  int rv;
+  int rv = 0, need_barrier_sync = 0;
 
   vlib_main_t *vm = vlib_get_main ();
 
@@ -466,6 +477,13 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (pool_elts (wg_peer_pool) > MAX_PEERS)
     return (VNET_API_ERROR_LIMIT_EXCEEDED);
 
+  need_barrier_sync = pool_get_will_expand (wg_peer_pool);
+  if (need_barrier_sync)
+    {
+    ASSERT (vm->thread_index == 0);
+    vlib_worker_thread_barrier_sync (vm);
+    }
+
   pool_get_zero (wg_peer_pool, peer);
 
   wg_peer_init (vm, peer);
@@ -476,8 +494,14 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (rv)
     {
       wg_peer_clear (vm, peer);
+      if (!need_barrier_sync && pool_put_will_move (wg_peer_pool, peer))
+    {
+      need_barrier_sync = 1;
+      ASSERT (vm->thread_index == 0);
+      vlib_worker_thread_barrier_sync (vm);
+    }
       pool_put (wg_peer_pool, peer);
-      return (rv);
+      goto done;
     }
 
   noise_remote_init (vm, &peer->remote, peer - wg_peer_pool, public_key,
@@ -492,7 +516,12 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   *peer_index = peer - wg_peer_pool;
   wg_if_peer_add (wg_if, *peer_index);
 
-  return (0);
+done:
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
+  return (rv);
 }
 
 int
@@ -501,6 +530,8 @@ wg_peer_remove (index_t peeri)
   wg_main_t *wmp = &wg_main;
   wg_peer_t *peer = NULL;
   wg_if_t *wgi;
+  u8 need_barrier_sync = 0;
+  vlib_main_t *vm = vlib_get_main ();
 
   if (pool_is_free_index (wg_peer_pool, peeri))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -512,7 +543,16 @@ wg_peer_remove (index_t peeri)
 
   noise_remote_clear (wmp->vlib_main, &peer->remote);
   wg_peer_clear (wmp->vlib_main, peer);
+
+  need_barrier_sync = pool_put_will_move (wg_peer_pool, peer);
+  if (need_barrier_sync)
+    {
+      ASSERT (vm->thread_index == 0);
+      vlib_worker_thread_barrier_sync (vm);
+    }
   pool_put (wg_peer_pool, peer);
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
 
   return (0);
 }
