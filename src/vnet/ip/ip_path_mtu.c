@@ -307,8 +307,7 @@ ip_pmtu_dpo_alloc (void)
 
   pool_get_aligned_zero (ip_pmtu_dpo_pool, ipm, sizeof (ip_pmtu_dpo_t));
 
-  if (need_barrier_sync)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   return (ipm);
 }

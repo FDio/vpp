@@ -839,8 +839,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 	  am->vlib_rp = old_vlib_rp;
 	  am->shmem_hdr = save_shmem_hdr;
 	}
-      if (!is_mp_safe)
-	vl_msg_api_barrier_release ();
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
   else
     {
@@ -958,7 +957,7 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
 	  vl_mem_api_handler_with_vm_node (am, am->vlib_rp, (void *) mp, vm,
 					   node, 0 /* is_private */);
 	}
-      vl_msg_api_barrier_release ();
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   return 0;

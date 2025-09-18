@@ -494,12 +494,6 @@ vl_msg_api_barrier_sync (void)
   vlib_worker_thread_barrier_sync (vlib_get_main ());
 }
 
-void
-vl_msg_api_barrier_release (void)
-{
-  vlib_worker_thread_barrier_release (vlib_get_main ());
-}
-
 /* This application needs 1 thread stack for the stats pthread */
 u32
 vlib_app_num_thread_stacks_needed (void)

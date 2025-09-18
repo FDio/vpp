@@ -642,8 +642,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
 				     c - cm->commands, 1 /* after */ );
-	      if (!c->is_mp_safe)
-		vlib_worker_thread_barrier_release (vm);
+	      /* Barrier auto-releases at the end of main thread iteration. */
 
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{

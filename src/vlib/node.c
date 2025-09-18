@@ -231,7 +231,7 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
     }
   }
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   return slot;
 }
 
@@ -750,8 +750,7 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
       node_dups[j] = nodes;
     }
 
-  if (barrier_sync)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   *node_dupsp = node_dups;
   *stat_vmsp = stat_vms;
@@ -891,7 +890,7 @@ vlib_process_create (vlib_main_t * vm, char *name,
   vec_free (r.name);
 
   vlib_worker_thread_node_runtime_update ();
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   n = vlib_get_node (vm, r.index);
   vlib_start_process (vm, n->runtime_index);

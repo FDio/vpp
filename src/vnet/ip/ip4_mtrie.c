@@ -129,8 +129,7 @@ ply_create (ip4_mtrie_leaf_t init_leaf, u32 leaf_prefix_len, u32 ply_base_len)
   ply_8_init (p, init_leaf, leaf_prefix_len, ply_base_len);
   l = ip4_mtrie_leaf_set_next_ply_index (p - ip4_ply_pool);
 
-  if (need_barrier_sync)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   return l;
 }

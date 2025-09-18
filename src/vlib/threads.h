@@ -173,7 +173,11 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 
 void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm,
 					  const char *func_name);
-void vlib_worker_thread_barrier_release (vlib_main_t * vm);
+void _vlib_worker_thread_barrier_release (vlib_main_t *vm, u8 one_level);
+#define vlib_worker_thread_barrier_release(vm)                                \
+  _vlib_worker_thread_barrier_release (vm, 1)
+#define vlib_worker_thread_barrier_release_all()                              \
+  _vlib_worker_thread_barrier_release (vlib_get_main (), 0)
 u8 vlib_worker_thread_barrier_held (void);
 void vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm);
 void vlib_worker_thread_node_refork (void);
@@ -514,6 +518,13 @@ vlib_thread_wakeup (clib_thread_index_t thread_index)
   if (__atomic_load_n (&vm->thread_sleeps, __ATOMIC_RELAXED))
     if (__atomic_exchange_n (&vm->wakeup_pending, 1, __ATOMIC_RELAXED) == 0)
       rv = write (vm->wakeup_fd, &val, sizeof (u64));
+}
+
+always_inline void
+postpone_workers_if_pool_get_will_expand (void *pool)
+{
+  if (pool_get_will_expand (pool))
+    vlib_worker_thread_barrier_sync (vlib_get_main ());
 }
 
 #endif /* included_vlib_threads_h */
