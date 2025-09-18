@@ -647,7 +647,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	      map_user_mem (vui, vui->vrings[q].avail_user_addr);
 	  }
       }
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       break;
 
     case VHOST_USER_SET_VRING_NUM:
@@ -725,7 +725,7 @@ vhost_user_socket_read (clib_file_t * uf)
 
       /* tell driver that we want interrupts or not */
       vhost_user_set_operation_mode (vui, &vui->vrings[msg.state.index]);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       vhost_user_update_iface_state (vui);
       break;
 
@@ -779,7 +779,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	  vlib_worker_thread_barrier_sync (vm);
 	  vec_validate_aligned (vui->vrings, new_max_q - 1,
 				CLIB_CACHE_LINE_BYTES);
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 
 	  for (i = old_max_q; i < vec_len (vui->vrings); i++)
 	    vhost_user_vring_init (vui, i);
@@ -928,7 +928,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	    vui->vrings[msg.state.index].avail_wrap_counter =
 	      VRING_DESC_F_AVAIL;
 	}
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       break;
 
     case VHOST_USER_GET_VRING_BASE:
@@ -963,7 +963,7 @@ vhost_user_socket_read (clib_file_t * uf)
        * VHOST_USER_GET_VRING_BASE
        */
       vhost_user_vring_close (vui, msg.state.index);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       vu_log_debug (vui,
 		    "if %d msg VHOST_USER_GET_VRING_BASE idx %d num 0x%x",
 		    vui->hw_if_index, msg.state.index, msg.state.num);
@@ -1022,7 +1022,7 @@ vhost_user_socket_read (clib_file_t * uf)
       vui->log_base_addr = log_base_addr;
       vui->log_base_addr += msg.log.offset;
       vui->log_size = msg.log.size;
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
 
       msg.flags |= 4;
       msg.size = sizeof (msg.u64);
@@ -1103,7 +1103,7 @@ vhost_user_socket_read (clib_file_t * uf)
 close_socket:
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   vhost_user_update_iface_state (vui);
   return 0;
 }
@@ -1119,7 +1119,7 @@ vhost_user_socket_error (clib_file_t * uf)
   vu_log_debug (vui, "socket error on if %d", vui->sw_if_index);
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   return 0;
 }
 
@@ -1495,7 +1495,7 @@ vhost_user_exit (vlib_main_t * vm)
   pool_foreach (vui, vum->vhost_user_interfaces) {
       vhost_user_delete_if (vnm, vm, vui->sw_if_index);
   }
-  vlib_worker_thread_barrier_release (vlib_get_main ());
+  /* Barrier auto-releases at the end of main thread iteration. */
   return 0;
 }
 
@@ -1684,7 +1684,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vlib_worker_thread_barrier_sync (vm);
   pool_get (vhost_user_main.vhost_user_interfaces, vui);
   vhost_user_create_ethernet (vnm, vm, vui, args);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);

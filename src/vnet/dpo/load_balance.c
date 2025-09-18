@@ -132,8 +132,7 @@ load_balance_alloc_i (void)
     vlib_zero_combined_counter(&(load_balance_main.lbm_via_counters),
                                load_balance_get_index(lb));
 
-    if (need_barrier_sync)
-        vlib_worker_thread_barrier_release (vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     return (lb);
 }
@@ -918,8 +917,7 @@ load_balance_destroy (load_balance_t *lb)
 
     pool_put(load_balance_pool, lb);
 
-    if (PREDICT_FALSE (need_barrier_sync))
-	vlib_worker_thread_barrier_release (vlib_get_main());
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 static void

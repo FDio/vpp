@@ -1303,7 +1303,7 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 					   RT_BACKEND_ENGINE_RULE_TABLE };
   vlib_worker_thread_barrier_sync (vm);
   vnet_session_enable_disable (vm, &args);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
   err = hc_run (vm);

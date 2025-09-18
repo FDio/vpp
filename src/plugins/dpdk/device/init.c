@@ -1633,7 +1633,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
     }
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   tm->worker_thread_release = 1;
 
   f64 now = vlib_time_now (vm);

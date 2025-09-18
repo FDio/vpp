@@ -524,50 +524,6 @@ dpo_get_next_node_by_type_and_proto (dpo_type_t   child_type,
                                      dpo_type_t   parent_type,
                                      dpo_proto_t  parent_proto);
 
-
-/**
- * @brief Barrier sync if a dpo pool is about to expand
- *
- * @param VM (output)
- *  vlib_main_t *, invariably &vlib_global_main
- *
- * @param P
- *  pool pointer
- *
- * @param YESNO (output)
- *  typically a u8, 1 => expand will occur, worker barrier held
- *                  0 => no expand, barrier not held
- *
- * @return YESNO set
- */
-
-#define dpo_pool_barrier_sync(VM,P,YESNO)                               \
-do {                                                                    \
-    YESNO = pool_get_will_expand (P);                                   \
-                                                                        \
-    if (YESNO)                                                          \
-    {                                                                   \
-        VM = vlib_get_main();                                           \
-        ASSERT ((VM)->thread_index == 0);                               \
-        vlib_worker_thread_barrier_sync((VM));                          \
-    }                                                                   \
-} while(0);
-
-/**
- * @brief Release barrier sync after dpo pool expansion
- *
- * @param VM
- *  vlib_main_t pointer, must be &vlib_global_main
- *
- * @param YESNO
- *  typically a u8, 1 => release required
- *                  0 => no release required
- * @return none
- */
-
-#define dpo_pool_barrier_release(VM,YESNO) \
-    if ((YESNO)) vlib_worker_thread_barrier_release((VM));
-
 #endif
 
 // clang-format on

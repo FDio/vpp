@@ -1865,8 +1865,7 @@ idpf_delete_if (vlib_main_t *vm, idpf_device_t *id, int with_barrier)
 	vlib_worker_thread_barrier_sync (vm);
       vnet_hw_interface_set_flags (vnm, id->hw_if_index, 0);
       ethernet_delete_interface (vnm, id->hw_if_index);
-      if (with_barrier)
-	vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   for (i = 0; i < id->cur_vport_nb; i++)

@@ -251,7 +251,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
 
 	  i++;
 	}
-      vlib_worker_thread_barrier_release (vlib_get_first_main ());
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   /* Save the cache, one way or the other */
@@ -414,7 +414,7 @@ vl_api_trace_v2_dump_t_handler (vl_api_trace_v2_dump_t *mp)
 
 	  i++;
 	}
-      vlib_worker_thread_barrier_release (vlib_get_first_main ());
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   /* Save the cache, one way or the other */

@@ -474,7 +474,7 @@ dpo_get_next_node (dpo_type_t child_type,
             cc++;
         }
 
-        vlib_worker_thread_barrier_release(vm);
+        /* Barrier auto-releases at the end of main thread iteration. */
         vec_free(parent_indices);
     }
 
@@ -581,7 +581,7 @@ dpo_stack_from_node (u32 child_node_index,
 
             edge = vlib_node_add_next(vm, child_node_index, *pi);
 
-            vlib_worker_thread_barrier_release(vm);
+            /* Barrier auto-releases at the end of main thread iteration. */
         }
     }
     dpo_stack_i(edge, dpo, parent);

@@ -609,8 +609,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      if (!m->is_mp_safe)
 		vl_msg_api_barrier_sync ();
 	      m->handler (tmpbuf + sizeof (uword));
-	      if (!m->is_mp_safe)
-		vl_msg_api_barrier_release ();
+	      /* Barrier auto-releases at the end of main thread iteration. */
 	    }
 	  else
 	    {
@@ -837,8 +836,7 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
 	  if (!m->is_mp_safe)
 	    vl_msg_api_barrier_sync ();
 	  m->handler (msg);
-	  if (!m->is_mp_safe)
-	    vl_msg_api_barrier_release ();
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	}
     }
 
@@ -963,13 +961,13 @@ api_trace_command_fn (vlib_main_t * vm,
 	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_configure (am, which, nitems);
 	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	}
       else if (unformat (line_input, "off"))
 	{
 	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_onoff (am, which, 0);
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	}
       else if (unformat (line_input, "save-json %s", &filename))
 	{
@@ -1005,7 +1003,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm, "failed to save api trace\n");
 	  else
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	  fclose (fp);
 	}
       else if (unformat (line_input, "save %s", &filename))
@@ -1036,7 +1034,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	    }
 	  vlib_worker_thread_barrier_sync (vm);
 	  rv = vl_msg_api_trace_save (am, which, fp, 0);
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	  fclose (fp);
 	  if (rv == -1)
 	    vlib_cli_output (vm, "API Trace data not present\n");
@@ -1112,7 +1110,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	  vlib_worker_thread_barrier_sync (vm);
 	  vl_msg_api_trace_onoff (am, which, 0);
 	  vl_msg_api_trace_free (am, which);
-	  vlib_worker_thread_barrier_release (vm);
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	}
       else if (unformat (line_input, "post-mortem-on"))
 	vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );

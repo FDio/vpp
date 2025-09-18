@@ -806,7 +806,7 @@ vnet_dev_port_if_remove (vlib_main_t *vm, vnet_dev_port_t *port)
     {
       vlib_worker_thread_barrier_sync (vm);
       vnet_delete_hw_interface (vnm, ifs->primary_interface.hw_if_index);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       pool_put_index (dm->dev_instances, ifs->primary_interface.dev_instance);
       clib_mem_free (port->interfaces);
       port->interfaces = 0;

@@ -228,7 +228,7 @@ show_node_graphviz (vlib_main_t * vm,
 	      vlib_node_runtime_sync_stats_node (nodes[j], rt, 0, 0, 0);
 	    }
 	}
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
 
       for (i = 0; i < vec_len (nodes); i++)
 	{
@@ -522,8 +522,7 @@ show_node_runtime (vlib_main_t * vm,
 	  vec_add1 (internal_node_vector_rates,
 		    vlib_internal_node_vector_rate (stat_vm));
 	}
-      vlib_worker_thread_barrier_release (vm);
-
+      /* Barrier auto-releases at the end of main thread iteration. */
 
       for (j = 0; j < vec_len (stat_vms); j++)
 	{
@@ -659,7 +658,7 @@ clear_node_runtime (vlib_main_t * vm,
 
   vlib_stats_set_timestamp (STAT_COUNTER_LAST_STATS_CLEAR,
 			    vm->node_main.time_last_runtime_stats_clear);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   vec_free (stat_vms);
 

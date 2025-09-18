@@ -1509,8 +1509,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 	vlib_worker_thread_barrier_sync (vm);
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index, 0);
       ethernet_delete_interface (vnm, ad->hw_if_index);
-      if (with_barrier)
-	vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   vlib_pci_device_close (vm, ad->pci_dev_handle);

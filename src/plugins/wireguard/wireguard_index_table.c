@@ -33,7 +33,7 @@ wg_index_table_add (vlib_main_t *vm, wg_index_table_t *table,
 
       vlib_worker_thread_barrier_sync (vm);
       hash_set (table->hash, key, peer_pool_idx);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       break;
     }
   return key;
@@ -48,7 +48,7 @@ wg_index_table_del (vlib_main_t *vm, wg_index_table_t *table, u32 key)
     {
       vlib_worker_thread_barrier_sync (vm);
       hash_unset (table->hash, key);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 }
 

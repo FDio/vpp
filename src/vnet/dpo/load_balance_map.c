@@ -387,12 +387,10 @@ load_balance_map_alloc (const load_balance_path_t *paths)
 {
     load_balance_map_t *lbm;
     u32 ii;
-    vlib_main_t *vm;
-    u8 did_barrier_sync;
 
-    dpo_pool_barrier_sync (vm, load_balance_map_pool, did_barrier_sync);
+    postpone_workers_if_pool_get_will_expand (load_balance_map_pool);
     pool_get_aligned(load_balance_map_pool, lbm, CLIB_CACHE_LINE_BYTES);
-    dpo_pool_barrier_release (vm, did_barrier_sync);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     clib_memset(lbm, 0, sizeof(*lbm));
 

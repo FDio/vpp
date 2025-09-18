@@ -25,17 +25,15 @@ classify_dpo_t *classify_dpo_pool;
 static classify_dpo_t *
 classify_dpo_alloc (void)
 {
-    classify_dpo_t *cd;
-    vlib_main_t *vm;
-    u8 did_barrier_sync;
+  classify_dpo_t *cd;
 
-    dpo_pool_barrier_sync (vm, classify_dpo_pool, did_barrier_sync);
-    pool_get_aligned(classify_dpo_pool, cd, CLIB_CACHE_LINE_BYTES);
-    dpo_pool_barrier_release (vm, did_barrier_sync);
+  postpone_workers_if_pool_get_will_expand (classify_dpo_pool);
+  pool_get_aligned (classify_dpo_pool, cd, CLIB_CACHE_LINE_BYTES);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
-    clib_memset(cd, 0, sizeof(*cd));
+  clib_memset (cd, 0, sizeof (*cd));
 
-    return (cd);
+  return (cd);
 }
 
 static index_t

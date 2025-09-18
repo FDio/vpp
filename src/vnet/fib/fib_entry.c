@@ -546,8 +546,7 @@ fib_entry_alloc (u32 fib_index,
 
     pool_get(fib_entry_pool, fib_entry);
 
-    if (need_barrier_sync)
-        vlib_worker_thread_barrier_release (vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     clib_memset(fib_entry, 0, sizeof(*fib_entry));
 

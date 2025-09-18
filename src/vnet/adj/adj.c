@@ -113,8 +113,7 @@ adj_alloc (fib_protocol_t proto)
     clib_memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
 
-    if (need_barrier_sync)
-        vlib_worker_thread_barrier_release (vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     return (adj);
 }
@@ -317,7 +316,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     ASSERT(0 == vec_len(adj->ia_delegates));
     vec_free(adj->ia_delegates);
     pool_put(adj_pool, adj);
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 u32

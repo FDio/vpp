@@ -487,11 +487,6 @@ vl_msg_api_barrier_sync (void)
 {
 }
 
-void
-vl_msg_api_barrier_release (void)
-{
-}
-
 always_inline void
 msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 		      int trace_it, int do_it, int free_it)
@@ -573,8 +568,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
 				 1 /* after */ );
 
-	  if (!m->is_mp_safe)
-	    vl_msg_api_barrier_release ();
+	  /* Barrier auto-releases at the end of main thread iteration. */
 	}
     }
   else

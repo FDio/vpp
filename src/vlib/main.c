@@ -668,7 +668,7 @@ elog_save_buffer (vlib_main_t * vm,
 
   vlib_worker_thread_barrier_sync (vm);
   error = elog_write_file (em, chroot_file, 1 /* flush ring */ );
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   vec_free (chroot_file);
   return error;
 }
@@ -1722,6 +1722,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      CLIB_SWAP (nm->process_restore_current,
 			 nm->process_restore_next);
 	    }
+	  /* Barrier auto-release at the end of main thread iteration. */
+	  vlib_worker_thread_barrier_release_all ();
 	}
       else
 	expired_timers = process_expired_timers (expired_timers);

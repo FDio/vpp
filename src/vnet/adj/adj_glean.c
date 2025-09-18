@@ -78,7 +78,7 @@ adj_glean_db_insert (fib_protocol_t proto,
     hash_set_mem_alloc (&adj_gleans[proto][sw_if_index],
                         nh_addr, ai);
 
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 static void
@@ -99,7 +99,7 @@ adj_glean_db_remove (fib_protocol_t proto,
         hash_free(adj_gleans[proto][sw_if_index]);
         adj_gleans[proto][sw_if_index] = NULL;
     }
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 /*

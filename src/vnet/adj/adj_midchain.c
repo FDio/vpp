@@ -224,7 +224,7 @@ adj_nbr_midchain_update_next_node (adj_index_t adj_index,
                                                         adj->ia_node_index,
                                                         next_node);
 
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 void
@@ -245,7 +245,7 @@ adj_nbr_midchain_reset_next_node (adj_index_t adj_index)
                            adj->ia_node_index,
                            adj_nbr_midchain_get_next_node(adj));
 
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 /**
