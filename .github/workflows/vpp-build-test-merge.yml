@@ -74,7 +74,7 @@ on:
       builder_type:
         description: 'Builder image type (prod or sandbox)'
         required: false
-        default: 'prod'
+        default: 'sandbox'
         type: string
       build_type:
         description: 'Build type selection (debug, release, or both)'

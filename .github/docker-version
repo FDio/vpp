@@ -1,3 +1,0 @@
-# Docker image version for GitHub Actions cache invalidation
-# Increment this version when you want to force a fresh Docker image download
-1.0.1
