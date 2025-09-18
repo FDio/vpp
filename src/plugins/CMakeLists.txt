@@ -16,6 +16,27 @@ include_directories (
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+set(VPP_PLUGINS
+  ""
+  CACHE
+  STRING "Comma-separated list of plugins included in build"
+)
+
+if(NOT VPP_PLUGINS STREQUAL "")
+  string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _plugins "${VPP_PLUGINS}")
+  list(FILTER _plugins EXCLUDE REGEX "^$")
+
+  foreach(p IN LISTS _plugins)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${p}/CMakeLists.txt")
+      add_subdirectory("${p}")
+    else()
+      message(FATAL_ERROR
+        "VPP plugin '${p}' not found: expected '${CMAKE_CURRENT_SOURCE_DIR}/${p}/CMakeLists.txt'")
+    endif()
+  endforeach()
+  return()
+endif()
+
 ##############################################################################
 # find and add all plugin subdirs
 ##############################################################################
