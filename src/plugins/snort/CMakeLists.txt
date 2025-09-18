@@ -20,12 +20,12 @@ foreach(l ${daq_version})
 endforeach()
 
 set(DAQ_VER "${DAQ_VERSION_MAJOR}.${DAQ_VERSION_MINOR}.${DAQ_VERSION_PATCH}")
-if (NOT DAQ_VERSION_MAJOR MATCHES 3)
-  message(WARNING "-- libdaq version not supported - snort3 DAQ disabled")
+if (${DAQ_VER} VERSION_LESS "3.0.21")
+  message(WARNING "-- libdaq version ${DAQ_VER} is old - required 3.0.21 - snort3 DAQ disabled")
   return()
+else()
+  message(STATUS "snort plugin needs libdaq ${DAQ_VER} - found at ${LIBDAQ_LINK_LIBRARY}")
 endif()
-
-message(STATUS "snort plugin needs libdaq ${DAQ_VER} - found at ${LIBDAQ_LINK_LIBRARY}")
 
 add_vpp_plugin(snort
   SOURCES
