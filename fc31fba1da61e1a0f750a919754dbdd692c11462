@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e37a2386_1e426e79",
+        "filename": "src/plugins/npol/npol.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-09-18T13:32:12Z",
+      "side": 1,
+      "message": "Is a separate control ping for this plugin actually needed for some reason? I know the acl plugin also has its own control ping message defined, is this just being copied from that plugin? I maintain some client code to configure the acl plugin and have never identified a need to use it\u0027s special control ping, my code just uses the regular control ping message.",
+      "revId": "fc31fba1da61e1a0f750a919754dbdd692c11462",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
