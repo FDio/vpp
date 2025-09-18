@@ -1,0 +1,68 @@
+name: vpp-verify
+
+on:
+  workflow_run:
+    workflows: ["vpp-checkstyle"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to verify (master, stable/2502, stable/2506)"
+        required: true
+        default: "master"
+        type: choice
+        options:
+          - master
+          - stable/2502
+          - stable/2506
+      commit_sha:
+        description: "Exact commit SHA to verify (optional)"
+        required: false
+        type: string
+      reason:
+        description: "Reason for manual verification"
+        required: false
+        default: "Manual VPP Build/Test Verification Run"
+        type: string
+      builder_type:
+        description: "Builder image type (prod or sandbox)"
+        required: false
+        default: "prod"
+        type: choice
+        options:
+          - prod
+          - sandbox
+      build_type:
+        description: "Build type selection (debug, release, or both)"
+        required: false
+        default: "both"
+        type: choice
+        options:
+          - both
+          - debug
+          - release
+      make_parallel_jobs:
+        description: "MAKE_PARALLEL_JOBS value (number of parallel make jobs)"
+        required: false
+        default: "16"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-build-test:
+    name: Build & Test VPP
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/vpp-build-test-merge.yml
+    with:
+      branch: ${{ github.event.workflow_run.head_branch || github.event.inputs.branch }}
+      commit_sha: ${{ github.event.workflow_run.head_sha || github.event.inputs.commit_sha }}
+      reason: ${{ github.event_name == 'workflow_run' && format('Verify after checkstyle run ID {0}', github.event.workflow_run.id) || github.event.inputs.reason }}
+      builder_type: ${{ github.event.inputs.builder_type || 'prod' }}
+      build_type: ${{ github.event.inputs.build_type || 'both' }}
+      make_parallel_jobs: ${{ github.event.inputs.make_parallel_jobs || '16' }}
+      is_verify: true
+    secrets: inherit

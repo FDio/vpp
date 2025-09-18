@@ -1,0 +1,227 @@
+name: vpp-build-test-merge
+# This workflow can be triggered ONLY manually (workflow_dispatch) or by other workflows (workflow_call)
+
+on:
+  # Manual trigger via UI/API
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test (master, stable/2502, stable/2506)'
+        required: true
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - stable/2502
+          - stable/2506
+      commit_sha:
+        description: 'Exact commit SHA to build/test/merge (optional)'
+        required: false
+        type: string
+      builder_type:
+        description: 'Builder image type (prod or sandbox)'
+        required: false
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - sandbox
+      build_type:
+        description: 'Build type selection (debug, release, or both)'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - debug
+          - release
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual VPP Build and Test'
+      make_parallel_jobs:
+        description: 'MAKE_PARALLEL_JOBS value (number of parallel make jobs)'
+        required: false
+        default: '16'
+        type: string
+      is_verify:
+        description: 'Run only build phase (no tests, no merge)'
+        required: false
+        default: false
+        type: boolean
+      is_test:
+        description: 'Run build + test phases (skip merge)'
+        required: false
+        default: false
+        type: boolean
+      is_merge:
+        description: 'Run build + merge phases (skip tests)'
+        required: false
+        default: false
+        type: boolean
+  # Invocation from other workflows
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: 'master'
+        type: string
+      commit_sha:
+        description: 'Exact commit SHA to build/test/merge'
+        required: false
+        type: string
+      builder_type:
+        description: 'Builder image type (prod or sandbox)'
+        required: false
+        default: 'prod'
+        type: string
+      build_type:
+        description: 'Build type selection (debug, release, or both)'
+        required: false
+        default: 'both'
+        type: string
+      reason:
+        description: 'Reason for trigger'
+        required: false
+        default: 'Called from another workflow'
+        type: string
+      make_parallel_jobs:
+        description: 'MAKE_PARALLEL_JOBS value (number of parallel make jobs)'
+        required: false
+        default: '16'
+        type: string
+      is_build:
+        description: 'Run only build phase (no tests, no merge)'
+        required: false
+        default: false
+        type: boolean
+      is_verify:
+        description: 'Run build + test phases (skip merge)'
+        required: false
+        default: false
+        type: boolean
+      is_merge:
+        description: 'Run build + merge phases (skip tests)'
+        required: false
+        default: false
+        type: boolean
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  vpp-verify:
+    runs-on:
+      - self-hosted
+      - nomad
+      - fdio:arch=${{ matrix.executor_arch }}
+      - fdio:class=builder
+      - fdio:namespace=${{ inputs.builder_type }}
+      - fdio:os=${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
+        branch: [master, stable/2502, stable/2506]
+        executor_arch: ['x86_64', 'aarch64']
+        build_type: ${{ (inputs.build_type == 'debug' || github.event.inputs.build_type == 'debug') && fromJson('["debug"]') || (inputs.build_type == 'release' || github.event.inputs.build_type == 'release') && fromJson('["release"]') || fromJson('["debug", "release"]') }}
+        exclude:
+          # Exclude debian12 on aarch64 for all builds
+          - os: 'debian12'
+            executor_arch: 'aarch64'
+
+          # Debug build exclusions - only keep [master, ubuntu2204, x86_64]
+          # Exclude non-master branches for debug builds
+          - build_type: 'debug'
+            branch: 'stable/2502'
+          - build_type: 'debug'
+            branch: 'stable/2506'
+
+          # Exclude non-ubuntu2204 OS for debug builds
+          - build_type: 'debug'
+            os: 'ubuntu2404'
+          - build_type: 'debug'
+            os: 'debian12'
+
+          # Exclude aarch64 architecture for debug builds
+          - build_type: 'debug'
+            executor_arch: 'aarch64'
+    if: >-
+      (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'workflow_call'
+      )
+
+    env:
+      # Ensures uniqueness per run
+      CACHE_DATE: ${{ github.run_id }}
+      CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
+      DOCKER_TEST: 1
+      EXECUTOR_ARCH: ${{ matrix.executor_arch }}
+      GERRIT_BRANCH: ${{ matrix.branch }}
+      JOB_NAME: ${{ github.job }}-${{ matrix.branch == 'master' && 'master' || matrix.branch == 'stable/2502' && '2502' || '2506' }}-${{ matrix.os }}-${{ matrix.executor_arch }}
+      MAKE_PARALLEL_JOBS: ${{ inputs.make_parallel_jobs || github.event.inputs.make_parallel_jobs || '16' }}
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'debian-12' }}
+      MAKE_TEST_MULTIWORKER_OS: 'debian-12'
+      SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
+      STREAM: ${{ matrix.branch == 'master' && 'master' || matrix.branch == 'stable/2502' && '2502' || '2506' }}
+      TEST_RETRIES: 3
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'debian-12' }}
+      VPP_SRC_DIR: /scratch/docker-build/vpp
+      WORKSPACE: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Prefer explicit commit SHA if provided, else branch
+          ref: ${{ inputs.commit_sha || github.event.inputs.commit_sha || inputs.branch || github.event.inputs.branch || github.ref }}
+          fetch-depth: 0
+
+      - name: Determine phase selection (Build/Test/Merge)
+        run: |
+          set -euo pipefail
+          BUILD_INPUT='${{ inputs.is_build || github.event.inputs.is_build }}'
+          TEST_INPUT='${{ inputs.is_verify || github.event.inputs.is_verify }}'
+          MERGE_INPUT='${{ inputs.is_merge || github.event.inputs.is_merge }}'
+          RUN_TEST_PHASE=true
+          RUN_MERGE_PHASE=true
+          # Precedence: Build > Test > Merge (if multiple true)
+          if [[ "$BUILD_INPUT" == 'true' ]]; then
+            RUN_TEST_PHASE=false
+            RUN_MERGE_PHASE=false
+            PHASE_MODE='BUILD'
+          elif [[ "$TEST_INPUT" == 'true' ]]; then
+            RUN_TEST_PHASE=true
+            RUN_MERGE_PHASE=false
+            PHASE_MODE='TEST'
+          elif [[ "$MERGE_INPUT" == 'true' ]]; then
+            RUN_TEST_PHASE=false
+            RUN_MERGE_PHASE=true
+            PHASE_MODE='MERGE'
+          else
+            PHASE_MODE='FULL'
+          fi
+          echo "RUN_TEST_PHASE=${RUN_TEST_PHASE}" >> $GITHUB_ENV
+          echo "RUN_MERGE_PHASE=${RUN_MERGE_PHASE}" >> $GITHUB_ENV
+          echo "PHASE_MODE=${PHASE_MODE}" >> $GITHUB_ENV
+          echo "Selected phase mode: ${PHASE_MODE} (RUN_TEST_PHASE=${RUN_TEST_PHASE} RUN_MERGE_PHASE=${RUN_MERGE_PHASE})"
+
+      - name: Setup Environment
+        run: |
+          .ci/scripts/vpp/setup_executor_env.sh
+
+      - name: Setup Docker Environment
+        run: |
+          .ci/scripts/vpp/setup_vpp_ubuntu_docker_test.sh
+
+      - name: Install VPP external dependencies
+        run: |
+          .ci/scripts/vpp/setup_vpp_ext_deps.sh
+
+      - name: Build VPP
+        timeout-minutes: 60
+        run: |
+          .ci/scripts/vpp/build.sh

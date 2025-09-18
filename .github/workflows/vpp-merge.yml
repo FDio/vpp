@@ -1,0 +1,46 @@
+name: vpp-merge
+
+on:
+  workflow_run:
+    workflows: ["vpp-checkstyle"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to merge (master, stable/2502, stable/2506)'
+        required: true
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - stable/2502
+          - stable/2506
+      commit_sha:
+        description: 'Exact commit SHA to merge (optional for manual run)'
+        required: false
+        type: string
+      reason:
+        description: 'Reason for merge operation'
+        required: false
+        default: 'Manual merge operation'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  merge-vpp:
+    name: Build & Merge VPP
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/vpp-build-test-merge.yml
+    with:
+      branch: ${{ github.event.workflow_run.head_branch || github.event.inputs.branch }}
+      commit_sha: ${{ github.event.workflow_run.head_sha || github.event.inputs.commit_sha }}
+      is_merge: true
+      reason: ${{ github.event_name == 'workflow_run' && format('Auto merge after checkstyle run {0}', github.event.workflow_run.id) || github.event.inputs.reason }}
+      builder_type: prod
+      build_type: both
+      make_parallel_jobs: '16'
+    secrets: inherit
