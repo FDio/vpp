@@ -585,8 +585,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t *mp)
       fp = uword_to_pointer (mp->function, int (*) (void *));
       rv = fp (mp->data);
 
-      if (mp->need_barrier_sync)
-	vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   if (mp->send_reply)
@@ -631,7 +630,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 *data, u32 data_length,
       call_fp = fp;
       call_fp (data);
 
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
       return;
     }
 

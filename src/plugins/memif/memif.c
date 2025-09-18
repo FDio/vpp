@@ -203,8 +203,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   vec_free (mif->remote_if_name);
   clib_fifo_free (mif->msg_queue);
 
-  if (with_barrier)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 static clib_error_t *
@@ -449,8 +448,7 @@ memif_connect (memif_if_t * mif)
 				CLIB_CACHE_LINE_BYTES);
 	}
     }
-  if (with_barrier)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
@@ -460,8 +458,7 @@ memif_connect (memif_if_t * mif)
   return 0;
 
 error:
-  if (with_barrier)
-    vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   memif_log_err (mif, "%U", format_clib_error, err);
   return err;
 }

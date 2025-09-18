@@ -2909,7 +2909,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 
       n = vlib_get_node (vm, r.index);
       vlib_worker_thread_node_runtime_update ();
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 
   pool_get_zero (cm->cli_file_pool, cf);

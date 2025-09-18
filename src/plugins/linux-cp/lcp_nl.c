@@ -136,8 +136,7 @@ static nl_main_t nl_main = {
                                                                               \
 	__nv->__func.cb (__arg);                                              \
                                                                               \
-	if (!__nv->__func.is_mp_safe)                                         \
-	  vlib_worker_thread_barrier_release (vlib_get_main ());              \
+	/* Barrier auto-releases at the end of main thread iteration. */      \
       }                                                                       \
   }
 
@@ -155,8 +154,7 @@ static nl_main_t nl_main = {
                                                                               \
 	__nv->__func.cb ();                                                   \
                                                                               \
-	if (!__nv->__func.is_mp_safe)                                         \
-	  vlib_worker_thread_barrier_release (vlib_get_main ());              \
+	/* Barrier auto-releases at the end of main thread iteration. */      \
       }                                                                       \
   }
 
@@ -174,8 +172,7 @@ static nl_main_t nl_main = {
                                                                               \
 	__nv->__func.cb (__arg, __ctx);                                       \
                                                                               \
-	if (!__nv->__func.is_mp_safe)                                         \
-	  vlib_worker_thread_barrier_release (vlib_get_main ());              \
+	/* Barrier auto-releases at the end of main thread iteration. */      \
       }                                                                       \
   }
 

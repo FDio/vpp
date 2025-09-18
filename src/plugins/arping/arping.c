@@ -531,7 +531,7 @@ arping_vnet_feature_enable_disable (vlib_main_t *vm, const char *arc_name,
   vnet_feature_enable_disable (arc_name, node_name, sw_if_index,
 			       enable_disable, feature_config,
 			       n_feature_config_bytes);
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 static void
@@ -543,7 +543,7 @@ arping_vec_validate (vlib_main_t *vm, u32 sw_if_index)
     {
       vlib_worker_thread_barrier_sync (vm);
       vec_validate (am->interfaces, sw_if_index);
-      vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
 }
 

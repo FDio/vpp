@@ -569,7 +569,7 @@ ec_init (vlib_main_t *vm)
     vlib_node_set_state (this_vlib_main, echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   return 0;
 }
