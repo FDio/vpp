@@ -220,7 +220,7 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
 			   VLIB_NODE_STATE_POLLING);
     }
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
   nsm->is_configured = 1;
   return 0;

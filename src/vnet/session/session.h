@@ -1170,7 +1170,7 @@ pool_program_safe_realloc_rpc (void *args)
   pool_realloc_flag (*pra->pool) = 0;
   clib_mem_free (args);
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 always_inline void

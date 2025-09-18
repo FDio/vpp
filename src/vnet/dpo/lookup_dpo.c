@@ -62,15 +62,13 @@ static dpo_type_t lookup_dpo_sub_types[LOOKUP_SUB_TYPE_NUM];
 static lookup_dpo_t *
 lookup_dpo_alloc (void)
 {
-    lookup_dpo_t *lkd;
-    vlib_main_t *vm;
-    u8 did_barrier_sync;
+  lookup_dpo_t *lkd;
 
-    dpo_pool_barrier_sync (vm, lookup_dpo_pool, did_barrier_sync);
-    pool_get_aligned(lookup_dpo_pool, lkd, CLIB_CACHE_LINE_BYTES);
-    dpo_pool_barrier_release (vm, did_barrier_sync);
+  postpone_workers_if_pool_get_will_expand (lookup_dpo_pool);
+  pool_get_aligned (lookup_dpo_pool, lkd, CLIB_CACHE_LINE_BYTES);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
-    return (lkd);
+  return (lkd);
 }
 
 static index_t

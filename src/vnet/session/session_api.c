@@ -2280,7 +2280,7 @@ sapi_sock_read_ready (clib_file_t * cf)
       break;
     }
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 
 error:
   return 0;

@@ -272,7 +272,7 @@ ioam_cache_table_print (vlib_main_t * vm, u8 verbose)
 	  vlib_cli_output (vm, "%U", format_ioam_cache_ts_entry, ts_entry,
 			   (u32) i);
 	}
-	vlib_worker_thread_barrier_release (vm);
+	/* Barrier auto-releases at the end of main thread iteration. */
       }
 
 }

@@ -35,12 +35,10 @@ static receive_dpo_t *
 receive_dpo_alloc (void)
 {
     receive_dpo_t *rd;
-    vlib_main_t *vm;
-    u8 did_barrier_sync;
 
-    dpo_pool_barrier_sync (vm, receive_dpo_pool, did_barrier_sync);
+    postpone_workers_if_pool_get_will_expand (receive_dpo_pool);
     pool_get_aligned(receive_dpo_pool, rd, CLIB_CACHE_LINE_BYTES);
-    dpo_pool_barrier_release (vm, did_barrier_sync);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     clib_memset(rd, 0, sizeof(*rd));
 

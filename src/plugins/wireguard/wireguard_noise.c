@@ -447,7 +447,7 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
       r->r_next = noise_remote_keypair_allocate (r);
       *r->r_next = kp;
     }
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
 
   wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
