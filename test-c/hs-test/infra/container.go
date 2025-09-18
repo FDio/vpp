@@ -429,7 +429,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) CreateFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+c.Suite.Ppid)
+	f, err := os.CreateTemp("/tmp", "kube-test-config"+c.Suite.Ppid)
 	if err != nil {
 		return err
 	}
@@ -578,7 +578,7 @@ func (c *Container) stop() error {
 func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
-	f, err := os.CreateTemp(LogDir, "hst-config")
+	f, err := os.CreateTemp(LogDir, "kube-test-config")
 	c.Suite.AssertNil(err, err)
 	defer os.Remove(f.Name())
 
