@@ -831,7 +831,7 @@ session_wrk_handle_evts_main_rpc (void *args)
       ei = next_ei;
     }
 
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 vlib_node_registration_t session_queue_node;
@@ -2151,7 +2151,7 @@ session_queue_exit (vlib_main_t * vm)
    */
   vlib_worker_thread_barrier_sync (vm);
   session_node_enable_disable (0 /* is_enable */ );
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
   return 0;
 }
 

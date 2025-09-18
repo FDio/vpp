@@ -1428,7 +1428,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 }
 
 void
-vlib_worker_thread_barrier_release (vlib_main_t * vm)
+_vlib_worker_thread_barrier_release (vlib_main_t *vm, u8 one_level)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   f64 deadline;
@@ -1444,14 +1444,17 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   ASSERT (vlib_get_thread_index () == 0);
 
+  if (!one_level && vlib_worker_threads->wait_at_barrier == 0)
+    return;
 
   now = vlib_time_now (vm);
   t_entry = now - vm->barrier_epoch;
 
-  if (--vlib_worker_threads[0].recursion_level > 0)
+  while (--vlib_worker_threads[0].recursion_level > 0)
     {
       barrier_trace_release_rec (t_entry);
-      return;
+      if (one_level)
+	return;
     }
 
   /* Update (all) node runtimes before releasing the barrier, if needed */

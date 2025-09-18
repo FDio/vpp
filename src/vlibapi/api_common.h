@@ -177,7 +177,6 @@ void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
 void vl_msg_api_queue_handler (svm_queue_t * q);
 
 void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
-void vl_msg_api_barrier_release (void) __attribute__ ((weak));
 #ifdef BARRIER_TRACING
 void vl_msg_api_barrier_trace_context (const char *context)
   __attribute__ ((weak));

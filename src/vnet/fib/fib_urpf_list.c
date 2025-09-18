@@ -64,8 +64,7 @@ fib_urpf_list_alloc_and_lock (void)
 
     pool_get(fib_urpf_list_pool, urpf);
 
-    if (need_barrier_sync)
-        vlib_worker_thread_barrier_release (vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     clib_memset(urpf, 0, sizeof(*urpf));
 

@@ -318,8 +318,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	  new_out_runtimes = t;
 	}
 
-      if (with_barrier)
-	vlib_worker_thread_barrier_release (vm);
+      /* Barrier auto-releases at the end of main thread iteration. */
     }
   else
     log_debug ("skipping update of node '%U', no changes detected",

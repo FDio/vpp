@@ -572,10 +572,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
                                                         this_node,
                                                         next_node);
 
-    /*
-     * done with the rewrite update - let the workers loose.
-     */
-    vlib_worker_thread_barrier_release(vm);
+    /* Barrier auto-releases at the end of main thread iteration. */
 
     if (do_walk &&
         (old_next != adj->lookup_next_index) &&

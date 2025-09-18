@@ -357,7 +357,7 @@ vlib_packet_template_init (vlib_main_t * vm,
 
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
   t->min_n_buffers_each_alloc = min_n_buffers_each_alloc;
-  vlib_worker_thread_barrier_release (vm);
+  /* Barrier auto-releases at the end of main thread iteration. */
 }
 
 void *
