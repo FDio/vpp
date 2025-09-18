@@ -808,13 +808,15 @@ static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
-  session_handle_t sh, new_sh;
+  session_handle_t new_sh;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
   session_t *s;
 
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
+  new_sh =
+    session_make_handle (args->new_session_index, args->new_thread_index);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
@@ -832,8 +834,6 @@ session_switch_pool (void *cb_args)
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     goto app_closed;
 
-  new_sh =
-    session_make_handle (args->new_session_index, args->new_thread_index);
   app_worker_migrate_notify (app_wrk, s, new_sh);
 
   clib_mem_free (cb_args);
@@ -841,10 +841,12 @@ session_switch_pool (void *cb_args)
 
 app_closed:
   /* Session closed during migration. Clean everything up */
-  sh = session_handle (s);
   session_send_rpc_evt_to_thread (args->new_thread_index,
 				  session_switch_pool_closed_rpc,
-				  uword_to_pointer (sh, void *));
+				  uword_to_pointer (new_sh, void *));
+  transport_cleanup (session_get_transport_proto (s), s->connection_index,
+		     s->thread_index);
+  session_free (s);
   clib_mem_free (cb_args);
 }
 
