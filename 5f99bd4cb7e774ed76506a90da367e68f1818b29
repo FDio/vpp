@@ -387,6 +387,24 @@
       "parentUuid": "0a8dbe44_3d8dabda",
       "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3854d27_913d4a92",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1414,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-18T12:15:55Z",
+      "side": 1,
+      "message": "But we can\u0027t align everything right due to some columns having multiple variables in them. We could do this with a custom format function, but this would be pretty much what format_lalign_fmt already does, just the other way around.\nMaybe we could go for \"align everything right, leave the special columns alone\" approach. \nI think that when aligning to the number part instead of the unit part, it still looks good within the context of the column \u0026 report. We can go the other way, but because of those special columns, I don\u0027t think it\u0027ll save us any code.\n\n@Florin, what do you think?",
+      "parentUuid": "57771fbb_26ffc777",
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
