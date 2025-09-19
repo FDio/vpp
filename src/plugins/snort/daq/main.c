@@ -787,6 +787,21 @@ daq_vpp_ioctl (void *handle, DAQ_IoctlCmd cmd, void *arg, size_t arglen)
 
       return DAQ_ERROR_NODEV;
     }
+  else if (cmd == DIOCTL_GET_PRIV_DATA_LEN)
+    {
+      DIOCTL_GetPrivDataLen *gpl = (DIOCTL_GetPrivDataLen *) arg;
+
+      if (arglen != sizeof (DIOCTL_GetPrivDataLen))
+	return DAQ_ERROR_NOTSUP;
+      if (gpl->msg->priv != NULL)
+	gpl->priv_data_len = sizeof (daq_vpp_msg_pool_entry_t);
+      else
+	gpl->priv_data_len = 0;
+
+      DEBUG ("ioctl cmd %s %u", daq_vpp_ioctl_cmd_to_str (cmd),
+	     gpl->priv_data_len);
+      return DAQ_SUCCESS;
+    }
 
   return DAQ_ERROR_NOTSUP;
 }
