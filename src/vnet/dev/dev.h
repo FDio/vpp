@@ -514,9 +514,13 @@ typedef struct
   u32 *free_rx_node_indices;
   uword *device_index_by_id;
 
+  /* startup config */
+  u8 *startup_config;
+  u32 *process_nodes_waiting_for_startup_conf;
+  u8 startup_config_completed;
+
   u16 next_rx_queue_thread;
   u8 eth_port_rx_feature_arc_index;
-  u8 main_loop_running;
 } vnet_dev_main_t;
 
 extern vnet_dev_main_t vnet_dev_main;
@@ -575,6 +579,9 @@ void vnet_dev_arg_clear_value (vnet_dev_arg_t *);
 format_function_t format_vnet_dev_arg_type;
 format_function_t format_vnet_dev_arg_value;
 format_function_t format_vnet_dev_args;
+
+/* config.c */
+void vnet_dev_wait_for_startup_config_complete (vlib_main_t *);
 
 /* dev.c */
 vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t,
