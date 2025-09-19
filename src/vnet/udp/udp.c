@@ -384,7 +384,12 @@ udp_session_close (u32 connection_index, clib_thread_index_t thread_index)
   if (!transport_tx_fifo_has_dgram (&uc->connection))
     udp_connection_program_cleanup (uc);
   else
-    uc->flags |= UDP_CONN_F_CLOSING;
+    {
+      session_program_tx_io_evt (
+	session_make_handle (uc->c_s_index, uc->c_thread_index),
+	SESSION_IO_EVT_TX);
+      uc->flags |= UDP_CONN_F_CLOSING;
+    }
 }
 
 static void
