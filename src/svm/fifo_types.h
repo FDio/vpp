@@ -124,15 +124,12 @@ typedef struct _svm_fifo
 #endif
 } svm_fifo_t;
 
-/* To minimize size of svm_fifo_t reuse ooo pointers for tracking chunks and
+/* To minimize size of svm_fifo_t reuse ooo lookup for tracking chunks and
  * hdr at attach/detach. Fifo being migrated should not receive new data */
-#define svm_fifo_chunks_at_attach(f) f->ooo_deq
-#define svm_fifo_hdr_at_attach(f)                                             \
-  ((union {                                                                   \
-     svm_fifo_shared_t *hdr;                                                  \
-     svm_fifo_chunk_t *ooo_enq;                                               \
-   } *) &f->ooo_enq)                                                          \
-    ->hdr
+#define svm_fifo_chunks_at_attach(f)                                          \
+  (*(svm_fifo_chunk_t **) &f->ooo_enq_lookup)
+
+#define svm_fifo_hdr_at_attach(f) (*(svm_fifo_shared_t **) &f->ooo_deq_lookup)
 
 typedef struct fifo_segment_slice_
 {
