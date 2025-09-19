@@ -196,6 +196,13 @@ vt_udp_accept (int listen_fd, vcl_test_session_t *ts)
   ts->read = vcl_test_read;
   ts->write = vcl_test_write;
 
+  /* Help client sessions migrate if need be */
+  if (!ts->cfg.test_bytes)
+    {
+      char *buf[1];
+      ts->write (ts, buf, 1);
+    }
+
   return 0;
 }
 
