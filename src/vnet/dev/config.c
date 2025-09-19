@@ -200,24 +200,34 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
   return err;
 }
 
-static clib_error_t *
-devices_config (vlib_main_t *vm, unformat_input_t *input)
+uword
+dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			    vlib_frame_t *f)
 {
+  vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_driver_name_t driver_name;
+  unformat_input_t input;
   clib_error_t *err = 0;
+  u32 *i;
 
-  while (!err && unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (dm->startup_config == 0)
+    goto done;
+
+  unformat_init_vector (&input, dm->startup_config);
+  dm->startup_config = 0;
+
+  while (!err && unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
       unformat_input_t sub_input;
       vnet_dev_device_id_t device_id;
-      if (unformat (input, "dev %U %U", unformat_c_string_array, device_id,
+      if (unformat (&input, "dev %U %U", unformat_c_string_array, device_id,
 		    sizeof (device_id), unformat_vlib_cli_sub_input,
 		    &sub_input))
 	{
 	  err = vnet_dev_config_one_device (vm, &sub_input, device_id);
 	  unformat_free (&sub_input);
 	}
-      else if (unformat (input, "dev %U", unformat_c_string_array, device_id,
+      else if (unformat (&input, "dev %U", unformat_c_string_array, device_id,
 			 sizeof (device_id)))
 	{
 	  unformat_input_t no_input = {};
@@ -225,7 +235,7 @@ devices_config (vlib_main_t *vm, unformat_input_t *input)
 	  err = vnet_dev_config_one_device (vm, &no_input, device_id);
 	  unformat_free (&no_input);
 	}
-      else if (unformat (input, "driver %U %U", unformat_c_string_array,
+      else if (unformat (&input, "driver %U %U", unformat_c_string_array,
 			 driver_name, sizeof (driver_name),
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{
@@ -237,9 +247,54 @@ devices_config (vlib_main_t *vm, unformat_input_t *input)
 				 format_unformat_error, &input);
     }
 
-  unformat_free (input);
+  unformat_free (&input);
 
-  return err;
+  if (err)
+    {
+      log_err (0, "%U", format_clib_error, err);
+      clib_error_free (err);
+    }
+
+done:
+  vec_foreach (i, dm->process_nodes_waiting_for_startup_conf)
+    vlib_process_signal_event (vm, *i, 0, 0);
+  vec_free (dm->process_nodes_waiting_for_startup_conf);
+
+  vlib_node_set_state (vm, rt->node_index, VLIB_NODE_STATE_DISABLED);
+  vlib_node_rename (vm, rt->node_index, "deleted-%u", rt->node_index);
+  vec_add1 (dm->free_process_node_indices, rt->node_index);
+  return 0;
+}
+
+VLIB_REGISTER_NODE (dev_config_process_node) = {
+  .function = dev_config_process_node_fn,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "dev-config",
+};
+
+static clib_error_t *
+devices_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  uword c;
+
+  while ((c = unformat_get_input (input)) != UNFORMAT_END_OF_INPUT)
+    vec_add1 (dm->startup_config, c);
+
+  return 0;
 }
 
 VLIB_CONFIG_FUNCTION (devices_config, "devices");
+
+void
+vnet_dev_wait_for_startup_config_complete (vlib_main_t *vm)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  uword *event_data = 0;
+
+  vec_add1 (dm->process_nodes_waiting_for_startup_conf,
+	    vlib_get_current_process_node_index (vm));
+  vlib_process_wait_for_event (vm);
+  vlib_process_get_events (vm, &event_data);
+  vec_free (event_data);
+}

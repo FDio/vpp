@@ -144,7 +144,7 @@ ena_reg_reset (vlib_main_t *vm, vnet_dev_t *dev, ena_reset_reason_t reason)
 	break;
       if (i++ == 20)
 	return ena_err (dev, VNET_DEV_ERR_BUS, "failed to initiate reset");
-      vnet_dev_process_suspend (vm, 0.001);
+      vlib_process_suspend (vm, 0.001);
     }
 
   ena_reg_write (dev, ENA_REG_DEV_CTL, &(ena_reg_dev_ctl_t){});
@@ -158,7 +158,7 @@ ena_reg_reset (vlib_main_t *vm, vnet_dev_t *dev, ena_reset_reason_t reason)
 	break;
       if (i++ == 20)
 	return ena_err (dev, VNET_DEV_ERR_BUS, "failed to complete reset");
-      vnet_dev_process_suspend (vm, 0.001);
+      vlib_process_suspend (vm, 0.001);
     }
 
   ena_reg_read (dev, ENA_REG_VERSION, &ver);
