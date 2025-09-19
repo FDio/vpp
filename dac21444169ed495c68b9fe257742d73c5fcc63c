@@ -67,6 +67,23 @@
       "message": "Intel team says \"it might break on older CPUs\". Not sure how old or whether that \"break\" is worse than newer CPU \"performance\".",
       "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8b6355df_38a90565",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-19T11:50:35Z",
+      "side": 1,
+      "message": "Manually triggered run [2] shows small progressions on 3n-icxd.\n\n[2] https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-3n-icxd/1/console.log.gz",
+      "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
