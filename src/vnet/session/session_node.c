@@ -1138,8 +1138,11 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
 	      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
 	      svm_fifo_dequeue_drop (f, offset);
 	      if (ctx->left_to_snd > n_bytes_read)
-		svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
-			       (u8 *) & ctx->hdr);
+		{
+		  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
+				 (u8 *) &ctx->hdr);
+		  ASSERT (hdr->data_length > hdr->data_offset);
+		}
 	    }
 	  else if (ctx->left_to_snd == n_bytes_read)
 	    svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
