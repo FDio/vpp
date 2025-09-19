@@ -660,9 +660,13 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
   vcl_session_table_add_vpp_handle (wrk, mp->new_handle, s->session_index);
 
   /* Generate new tx event if we have outstanding data */
-  if (svm_fifo_has_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->vpp_session_index,
-			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
+  if (svm_fifo_max_dequeue (s->tx_fifo))
+    {
+      VDBG (0, "session %u: sending tx event to new thread %u",
+	    s->session_index, mp->vpp_thread_index);
+      app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->vpp_session_index,
+			      SESSION_IO_EVT_TX, SVM_Q_WAIT);
+    }
 
   VDBG (0, "Migrated 0x%lx to thread %u 0x%lx", mp->handle,
 	mp->vpp_thread_index, mp->new_handle);
