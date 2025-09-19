@@ -405,6 +405,24 @@
       "parentUuid": "57771fbb_26ffc777",
       "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac52ad2a_11ff3a00",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1414,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-19T12:12:15Z",
+      "side": 1,
+      "message": "Talked with Florin, we agreed to right-align only the columns with problematic suffixes, as iperf does a similar thing.",
+      "parentUuid": "c3854d27_913d4a92",
+      "revId": "5f99bd4cb7e774ed76506a90da367e68f1818b29",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
