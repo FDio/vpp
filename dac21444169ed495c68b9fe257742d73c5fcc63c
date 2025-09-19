@@ -50,6 +50,23 @@
       "message": "Performance is good, telemetry [1] looks good.\n\n[1] https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-3nb-spr/46/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k10-k10-k10-k1-k1-k1-k14",
       "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba9d87f4_849d21dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-09-19T10:50:54Z",
+      "side": 1,
+      "message": "Intel team says \"it might break on older CPUs\". Not sure how old or whether that \"break\" is worse than newer CPU \"performance\".",
+      "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
