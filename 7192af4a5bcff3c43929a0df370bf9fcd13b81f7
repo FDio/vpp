@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8be72ab8_0a27a34b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-09-19T18:14:50Z",
+      "side": 1,
+      "message": "checkstyle job failed due to formatting issues.\n\nRun \u0027make fixstyle\u0027 to run the changes through the formatter.  You can verify this fixes the issue by running \u0027make checkstyle\u0027 prior to uploading to gerrit.",
+      "revId": "7192af4a5bcff3c43929a0df370bf9fcd13b81f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
