@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a20da99_a3e72fc5",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-20T13:39:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a47d592e_6031adbe",
+      "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c8f60a2c_f21557fe",
@@ -103,6 +121,24 @@
       "side": 1,
       "message": "Disagree, but this is why I\u0027m not a maintainer 😊 I\u0027ll factor out this logic.",
       "parentUuid": "1e41587f_0b9dd879",
+      "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c3e83d3_9119e64f",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-20T13:39:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8cf52b57_2420e29e",
       "revId": "179a0b3756515ddfc95d993934aba1b4726c052c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
