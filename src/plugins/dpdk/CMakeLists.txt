@@ -91,7 +91,7 @@ else()
     # libnuma
     ##############################################################################
     if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-      vpp_plugin_find_library(dpdk NUMA_LIB "numa")
+      vpp_plugin_find_library(dpdk NUMA_LIB "libnuma.so")
       list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
     endif()
 
@@ -101,7 +101,7 @@ else()
     if(DPDK_RTE_NET_MLX4 OR DPDK_RTE_NET_MLX5)
       if (DPDK_RTE_IBVERBS_LINK_DLOPEN)
         message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
-        vpp_plugin_find_library(dpdk MNL_LIB "mnl")
+        vpp_plugin_find_library(dpdk MNL_LIB "libmnl.so")
         list(APPEND DPDK_LINK_LIBRARIES "${MNL_LIB}")
       else()
         message(WARNING "EXPERIMENTAL: DPDK plugin without dlopen mode")
