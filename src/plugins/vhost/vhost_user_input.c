@@ -337,10 +337,20 @@ vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_intf_t * vui,
   f64 now = vlib_time_now (vm);
 
   if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
-    vhost_user_send_call (vm, vui, txvq);
+    {
+      vhost_user_reset_int (vm, txvq);
+      vhost_user_send_call (vm, vui, txvq);
+    }
 
+  clib_spinlock_lock_if_init (&rxvq->int_lock);
   if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
-    vhost_user_send_call (vm, vui, rxvq);
+    {
+      vhost_user_reset_int (vm, rxvq);
+      clib_spinlock_unlock_if_init (&rxvq->int_lock);
+      vhost_user_send_call (vm, vui, rxvq);
+    }
+  else
+    clib_spinlock_unlock_if_init (&rxvq->int_lock);
 }
 
 static_always_inline void
@@ -773,7 +783,10 @@ stop:
       txvq->n_since_last_int += n_rx_packets;
 
       if (txvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, vui, txvq);
+	{
+	  vhost_user_reset_int (vm, txvq);
+	  vhost_user_send_call (vm, vui, txvq);
+	}
     }
 
   /* increase rx counters */
@@ -1417,7 +1430,10 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
     {
       txvq->n_since_last_int += n_rx_packets;
       if (txvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, vui, txvq);
+	{
+	  vhost_user_reset_int (vm, txvq);
+	  vhost_user_send_call (vm, vui, txvq);
+	}
     }
 
   /* increase rx counters */

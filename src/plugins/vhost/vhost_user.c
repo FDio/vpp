@@ -304,6 +304,8 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
   vring->mode = VNET_HW_IF_RX_MODE_POLLING;
 
   clib_spinlock_init (&vring->vring_lock);
+  if (vlib_num_workers () > 0)
+    clib_spinlock_init (&vring->int_lock);
 
   /*
    * We have a bug with some qemu 2.5, and this may be a fix.
@@ -342,6 +344,7 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
     }
 
   clib_spinlock_free (&vring->vring_lock);
+  clib_spinlock_free (&vring->int_lock);
 
   // save the needed information in vrings prior to being wiped out
   u16 q = vui->vrings[qid].qid;
@@ -1242,17 +1245,25 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	      next_timeout = timeout;
 	      FOR_ALL_VHOST_RX_TXQ (qid, vui)
 	      {
+		u32 is_rxq = (qid & 1) == 0;
 		vhost_user_vring_t *vq = &vui->vrings[qid];
 
 		if (vq->started == 0)
 		  continue;
+		if (is_rxq)
+		  clib_spinlock_lock_if_init (&vq->int_lock);
 		if (vq->n_since_last_int)
 		  {
 		    if (now >= vq->int_deadline)
-		      vhost_user_send_call (vm, vui, vq);
+		      {
+			vhost_user_reset_int (vm, vq);
+			clib_spinlock_unlock_if_init (&vq->int_lock);
+			vhost_user_send_call (vm, vui, vq);
+		      }
 		    else
 		      next_timeout = vq->int_deadline - now;
 		  }
+		clib_spinlock_unlock_if_init (&vq->int_lock);
 
 		if ((next_timeout < timeout) && (next_timeout > 0.0))
 		  timeout = next_timeout;
@@ -1401,7 +1412,10 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   vhost_user_update_iface_state (vui);
 
   for (q = 0; q < vec_len (vui->vrings); q++)
-    clib_spinlock_free (&vui->vrings[q].vring_lock);
+    {
+      clib_spinlock_free (&vui->vrings[q].vring_lock);
+      clib_spinlock_free (&vui->vrings[q].int_lock);
+    }
 
   if (vui->unix_server_index != ~0)
     {
