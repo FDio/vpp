@@ -665,28 +665,6 @@ lcp_router_count_interface_addresses (u32 sw_if_index, u8 address_family)
 }
 
 static void
-lcp_router_update_mroutes_ip4_on_addr_change (u32 sw_if_index, int is_del)
-{
-  u32 count_after;
-
-  count_after = lcp_router_count_interface_addresses (sw_if_index, AF_IP4);
-
-  if ((!is_del && count_after == 1) || (is_del && count_after == 0))
-    lcp_router_ip4_mroutes_add_del (sw_if_index, !is_del);
-}
-
-static void
-lcp_router_update_mroutes_ip6_on_addr_change (u32 sw_if_index, int is_del)
-{
-  u32 count_after;
-
-  count_after = lcp_router_count_interface_addresses (sw_if_index, AF_IP6);
-
-  if ((!is_del && count_after == 1) || (is_del && count_after == 0))
-    lcp_router_ip6_mroutes_add_del (sw_if_index, !is_del);
-}
-
-static void
 lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 {
   u32 sw_if_index;
@@ -704,7 +682,9 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	  ip4_add_del_interface_address (
 	    vlib_get_main (), sw_if_index, &ip_addr_v4 (&nh),
 	    rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_update_mroutes_ip4_on_addr_change (sw_if_index, is_del);
+	  if (!is_del ||
+	      !lcp_router_count_interface_addresses (sw_if_index, AF_IP4))
+	    lcp_router_ip4_mroutes_add_del (sw_if_index, !is_del);
 	}
       else if (AF_IP6 == ip_addr_version (&nh))
 	{
@@ -720,7 +700,9 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	    ip6_add_del_interface_address (
 	      vlib_get_main (), sw_if_index, &ip_addr_v6 (&nh),
 	      rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_update_mroutes_ip6_on_addr_change (sw_if_index, is_del);
+	  if (!is_del ||
+	      !lcp_router_count_interface_addresses (sw_if_index, AF_IP6))
+	    lcp_router_ip6_mroutes_add_del (sw_if_index, !is_del);
 	}
 
       LCP_ROUTER_DBG ("link-addr: %U %U/%d", format_vnet_sw_if_index_name,
