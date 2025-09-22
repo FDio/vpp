@@ -28,13 +28,13 @@ monitor_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *error = 0;
   vlib_counter_t vrx[2], vtx[2];
   f64 ts[2];
-  u32 hw_if_index = ~0;
+  u32 sw_if_index = ~0;
   u8 spin = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "interval %f", &refresh_interval))
 	;
@@ -48,15 +48,15 @@ monitor_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  if (hw_if_index == ~0)
+  if (sw_if_index == ~0)
     {
       error = clib_error_return (0, "no interface passed");
       goto done;
     }
 
-  vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_RX, hw_if_index,
+  vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_RX, sw_if_index,
 			     &vrx[spin]);
-  vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_TX, hw_if_index,
+  vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_TX, sw_if_index,
 			     &vtx[spin]);
   ts[spin] = vlib_time_now (vm);
 
@@ -83,9 +83,9 @@ monitor_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
       spin ^= 1;
       vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_RX,
-				 hw_if_index, &vrx[spin]);
+				 sw_if_index, &vrx[spin]);
       vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_TX,
-				 hw_if_index, &vtx[spin]);
+				 sw_if_index, &vtx[spin]);
       ts[spin] = vlib_time_now (vm);
 
       tsd = ts[spin] - ts[spin ^ 1];
