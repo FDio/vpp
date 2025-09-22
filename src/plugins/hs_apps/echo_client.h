@@ -49,7 +49,6 @@ typedef struct ec_session_
   u64 bytes_paced_current;
   f64 send_rtt;
   u8 rtt_stat;
-  u8 *test_send_buffer;
   u64 dgrams_sent;
   u64 dgrams_received;
 } ec_session_t;
