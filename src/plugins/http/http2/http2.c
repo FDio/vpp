@@ -2517,6 +2517,7 @@ http2_handle_rst_stream_frame (http_conn_t *hc, http2_frame_header_t *fh)
     }
 
   req->stream_state = HTTP2_STREAM_STATE_CLOSED;
+  http_stats_stream_reset_by_peer_inc (hc->c_thread_index);
 
   if (!(req->flags & HTTP2_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->base.connection);
@@ -2950,6 +2951,7 @@ http2_app_reset_callback (http_conn_t *hc, u32 req_index,
 	    req_index);
   req = http2_req_get (req_index, thread_index);
   req->flags |= HTTP2_REQ_F_APP_CLOSED;
+  http_stats_stream_reset_by_app_inc (thread_index);
   http2_send_stream_error (hc, req->stream_id,
 			   req->base.is_tunnel ? HTTP2_ERROR_CONNECT_ERROR :
 						 HTTP2_ERROR_INTERNAL_ERROR,
