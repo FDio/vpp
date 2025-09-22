@@ -97,6 +97,7 @@ proxy_send_http_resp (session_t *s, http_status_code_t sc,
   rv =
     svm_fifo_enqueue_segments (s->tx_fifo, seg, n_segs, 0 /* allow partial */);
   ASSERT (rv == (sizeof (msg) + (n_segs == 2 ? sizeof (headers_ptr) : 0)));
+  ASSERT (svm_fifo_max_dequeue (s->tx_fifo) != 0);
 
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
@@ -1157,6 +1158,9 @@ static int
 active_open_rx_callback (session_t * s)
 {
   svm_fifo_t *proxy_tx_fifo;
+
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
+    return -1;
 
   proxy_tx_fifo = s->rx_fifo;
 
