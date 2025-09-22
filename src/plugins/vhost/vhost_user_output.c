@@ -330,9 +330,16 @@ vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_intf_t * vui,
     {
       vhost_user_main_t *vum = &vhost_user_main;
 
+      clib_spinlock_lock_if_init (&rxvq->int_lock);
       rxvq->n_since_last_int += frame->n_vectors - n_left;
       if (rxvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, vui, rxvq);
+	{
+	  vhost_user_reset_int (vm, rxvq);
+	  clib_spinlock_unlock_if_init (&rxvq->int_lock);
+	  vhost_user_send_call (vm, vui, rxvq);
+	}
+      else
+	clib_spinlock_unlock_if_init (&rxvq->int_lock);
     }
 }
 
@@ -1005,10 +1012,16 @@ done:
   if ((rxvq->callfd_idx != ~0) &&
       !(rxvq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
     {
+      clib_spinlock_lock_if_init (&rxvq->int_lock);
       rxvq->n_since_last_int += frame->n_vectors - n_left;
-
       if (rxvq->n_since_last_int > vum->coalesce_frames)
-	vhost_user_send_call (vm, vui, rxvq);
+	{
+	  vhost_user_reset_int (vm, rxvq);
+	  clib_spinlock_unlock_if_init (&rxvq->int_lock);
+	  vhost_user_send_call (vm, vui, rxvq);
+	}
+      else
+	clib_spinlock_unlock_if_init (&rxvq->int_lock);
     }
 
   clib_spinlock_unlock (&rxvq->vring_lock);
