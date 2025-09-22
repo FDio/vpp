@@ -264,7 +264,6 @@ vhost_user_is_event_idx_supported (vhost_user_intf_t * vui)
 static_always_inline void
 vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
   u64 x = 1;
   int fd = UNIX_GET_FD (vq->callfd_idx);
   int rv;
@@ -272,13 +271,9 @@ vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
   rv = write (fd, &x, sizeof (x));
   if (PREDICT_FALSE (rv <= 0))
     {
-      clib_unix_warning
-	("Error: Could not write to unix socket for callfd %d", fd);
-      return;
+      clib_unix_warning ("Error: Could not write to unix socket for callfd %d",
+			 fd);
     }
-
-  vq->n_since_last_int = 0;
-  vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
 }
 
 static_always_inline u16
@@ -306,7 +301,6 @@ vhost_user_need_event (u16 event_idx, u16 new_idx, u16 old_idx)
 static_always_inline void
 vhost_user_send_call_event_idx (vlib_main_t * vm, vhost_user_vring_t * vq)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
   u8 first_kick = vq->first_kick;
   u16 event_idx = vhost_user_used_event_idx (vq);
 
@@ -317,18 +311,12 @@ vhost_user_send_call_event_idx (vlib_main_t * vm, vhost_user_vring_t * vq)
       vhost_user_kick (vm, vq);
       vq->last_kick = event_idx;
     }
-  else
-    {
-      vq->n_since_last_int = 0;
-      vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
-    }
 }
 
 static_always_inline void
 vhost_user_send_call_event_idx_packed (vlib_main_t * vm,
 				       vhost_user_vring_t * vq)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
   u8 first_kick = vq->first_kick;
   u16 off_wrap;
   u16 event_idx;
@@ -351,11 +339,6 @@ vhost_user_send_call_event_idx_packed (vlib_main_t * vm,
       if (vhost_user_need_event (event_idx, new_idx, old_idx) ||
 	  PREDICT_FALSE (!first_kick))
 	vhost_user_kick (vm, vq);
-      else
-	{
-	  vq->n_since_last_int = 0;
-	  vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
-	}
     }
   else
     vhost_user_kick (vm, vq);
@@ -374,6 +357,15 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_intf_t * vui,
     }
   else
     vhost_user_kick (vm, vq);
+}
+
+static_always_inline void
+vhost_user_reset_int (vlib_main_t *vm, vhost_user_vring_t *vq)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+
+  vq->n_since_last_int = 0;
+  vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
 }
 
 static_always_inline u8
