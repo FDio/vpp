@@ -839,9 +839,6 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s,
   es->vpp_session_index = s->session_index;
   es->bytes_paced_target = ~0;
   es->bytes_paced_current = ~0;
-  if (ecm->transport_proto != TRANSPORT_PROTO_TCP && ecm->cfg.test_bytes)
-    vec_validate (es->test_send_buffer,
-		  ecm->max_chunk_bytes + sizeof (int) + 1);
   s->opaque = es->session_index;
 
   vec_add1 (wrk->conn_indices, es->session_index);
@@ -883,13 +880,7 @@ static void
 ec_session_disconnect_callback (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
-  ec_worker_t *wrk;
-  ec_session_t *es;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
-  wrk = ec_worker_get (s->thread_index);
-  es = ec_session_get (wrk, s->opaque);
-  vec_free (es->test_send_buffer);
 
   if (session_handle (s) == ecm->ctrl_session_handle)
     {
@@ -907,13 +898,7 @@ void
 ec_session_disconnect (session_t *s)
 {
   ec_main_t *ecm = &ec_main;
-  ec_worker_t *wrk;
-  ec_session_t *es;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
-  wrk = ec_worker_get (s->thread_index);
-  es = ec_session_get (wrk, s->opaque);
-  vec_free (es->test_send_buffer);
 
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
