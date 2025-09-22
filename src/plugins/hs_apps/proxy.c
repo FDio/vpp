@@ -1158,6 +1158,9 @@ active_open_rx_callback (session_t * s)
 {
   svm_fifo_t *proxy_tx_fifo;
 
+  if (s->session_state >= SESSION_STATE_APP_CLOSED)
+    return -1;
+
   proxy_tx_fifo = s->rx_fifo;
 
   /*
