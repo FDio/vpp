@@ -1142,17 +1142,24 @@ fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
 {
     fib_table_t *fib_table;
     fib_node_index_t fi;
+    vlib_main_t *vm = vlib_get_main();
 
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = ip4_fib_table_find_or_create_and_lock(table_id, src);
+        vlib_worker_thread_barrier_release (vm);
         break;
     case FIB_PROTOCOL_IP6:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = ip6_fib_table_find_or_create_and_lock(table_id, src);
+        vlib_worker_thread_barrier_release (vm);
         break;
     case FIB_PROTOCOL_MPLS:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = mpls_fib_table_find_or_create_and_lock(table_id, src);
+        vlib_worker_thread_barrier_release (vm);
         break;
     default:
         return (~0);        
@@ -1213,18 +1220,25 @@ fib_table_create_and_lock (fib_protocol_t proto,
     fib_table_t *fib_table;
     fib_node_index_t fi;
     va_list ap;
+    vlib_main_t *vm = vlib_get_main();
 
 
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = ip4_fib_table_create_and_lock(src);
+        vlib_worker_thread_barrier_release (vm);
         break;
     case FIB_PROTOCOL_IP6:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = ip6_fib_table_create_and_lock(src, FIB_TABLE_FLAG_NONE, NULL);
+        vlib_worker_thread_barrier_release (vm);
         break;
      case FIB_PROTOCOL_MPLS:
+        vlib_worker_thread_barrier_sync (vm);
 	fi = mpls_fib_table_create_and_lock(src);
+        vlib_worker_thread_barrier_release (vm);
         break;
    default:
         return (~0);        
