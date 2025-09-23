@@ -650,6 +650,12 @@ hash_dup (void *old)
   return hash_resize_internal (old, vec_len (old), 0);
 }
 
+__clib_export u8
+_hash_full_enough_to_expand (void *v, uword elts)
+{
+  return (4 * elts > 3 * vec_len (v));
+}
+
 __clib_export void *
 _hash_set3 (void *v, uword key, void *value, void *old_value)
 {
@@ -664,7 +670,7 @@ _hash_set3 (void *v, uword key, void *value, void *old_value)
   if (!(h->flags & HASH_FLAG_NO_AUTO_GROW))
     {
       /* Resize when 3/4 full. */
-      if (4 * (h->elts + 1) > 3 * vec_len (v))
+      if (_hash_full_enough_to_expand (v, h->elts))
 	v = hash_resize (v, 2 * vec_len (v));
     }
 

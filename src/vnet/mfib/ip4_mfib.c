@@ -323,6 +323,8 @@ ip4_mfib_table_entry_insert (ip4_mfib_t *mfib,
 {
     uword * hash, * result;
     u64 key;
+    vlib_main_t *vm = vlib_get_main();
+    u8 need_barrier_sync = 0;
 
     IP4_MFIB_MK_KEY(grp, src, len, key);
     hash = mfib->fib_entry_by_dst_address[len];
@@ -336,8 +338,17 @@ ip4_mfib_table_entry_insert (ip4_mfib_t *mfib,
             hash = hash_create (32 /* elts */, sizeof (uword));
             hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
         }
+        else
+            need_barrier_sync = hash_will_expand(hash);
+
+        if (need_barrier_sync)
+            vlib_worker_thread_barrier_sync (vm);
+
         hash = hash_set(hash, key, fib_entry_index);
         mfib->fib_entry_by_dst_address[len] = hash;
+
+        if (need_barrier_sync)
+            vlib_worker_thread_barrier_release (vm);
     }
     else
     {
