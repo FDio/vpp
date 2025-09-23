@@ -72,8 +72,10 @@ typedef struct
   volatile u32 ready_connections;
   volatile u64 rx_total;
   volatile u64 tx_total;
+  volatile u64 rx_total_dgrams;
+  volatile u64 tx_total_dgrams;
   volatile int run_test; /**< Signal start of test */
-  volatile bool timer_expired; /**< Signal end of timed test */
+  volatile bool end_test; /**< Signal end of test */
 
   f64 syn_start_time;
   f64 test_start_time;

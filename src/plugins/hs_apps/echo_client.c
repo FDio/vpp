@@ -59,6 +59,14 @@ ec_worker_get (clib_thread_index_t thread_index)
   return vec_elt_at_index (ec_main.wrk, thread_index);
 }
 
+static inline void
+ec_sessions_stop_clean ()
+{
+  ec_main_t *ecm = &ec_main;
+  ecm->test_timeout += 1;
+  ecm->end_test = true;
+}
+
 static inline ec_session_t *
 ec_session_alloc (ec_worker_t *wrk)
 {
@@ -397,10 +405,12 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 	  delete_session = 0;
 	}
 
-      if (PREDICT_FALSE (delete_session == 1) || ecm->timer_expired)
+      if (PREDICT_FALSE (delete_session == 1) || ecm->end_test)
 	{
 	  clib_atomic_fetch_add (&ecm->tx_total, es->bytes_sent);
 	  clib_atomic_fetch_add (&ecm->rx_total, es->bytes_received);
+	  clib_atomic_fetch_add (&ecm->tx_total_dgrams, es->dgrams_sent);
+	  clib_atomic_fetch_add (&ecm->rx_total_dgrams, es->dgrams_received);
 	  s = session_get_from_handle_if_valid (es->vpp_session_handle);
 
 	  if (s)
@@ -471,11 +481,13 @@ ec_reset_runtime_config (ec_main_t *ecm)
   ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = EC_STARTING;
-  ecm->timer_expired = false;
+  ecm->end_test = false;
   ecm->ready_connections = 0;
   ecm->connect_conn_index = 0;
   ecm->rx_total = 0;
   ecm->tx_total = 0;
+  ecm->rx_total_dgrams = 0;
+  ecm->tx_total_dgrams = 0;
   ecm->barrier_acq_needed = 0;
   ecm->prealloc_sessions = 0;
   ecm->prealloc_fifos = 0;
@@ -1392,6 +1404,7 @@ ec_print_final_stats (vlib_main_t *vm, f64 total_delta)
 {
   ec_main_t *ecm = &ec_main;
   u64 total_bytes;
+  f64 dgram_loss;
   char *transfer_type;
 
   if (ecm->transport_proto == TRANSPORT_PROTO_TCP ||
@@ -1408,7 +1421,18 @@ ec_print_final_stats (vlib_main_t *vm, f64 total_delta)
       else
 	ec_cli ("error measuring roundtrip time");
     }
-
+  if (ecm->transport_proto == TRANSPORT_PROTO_UDP)
+    {
+      ec_cli ("sent total %llu datagrams, received total %llu datagrams",
+	      ecm->tx_total_dgrams, ecm->rx_total_dgrams);
+      dgram_loss = (ecm->tx_total_dgrams ?
+		      ((f64) (ecm->tx_total_dgrams - ecm->rx_total_dgrams) /
+		       (f64) ecm->tx_total_dgrams * 100.0) :
+		      0.0);
+      if (ecm->echo_bytes && dgram_loss > 0.0)
+	ec_cli ("lost %llu datagrams (%.2f%%)",
+		ecm->tx_total_dgrams - ecm->rx_total_dgrams, dgram_loss);
+    }
   total_bytes = (ecm->echo_bytes ? ecm->rx_total : ecm->tx_total);
   transfer_type = ecm->echo_bytes ? "full-duplex" : "half-duplex";
   ec_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
@@ -1596,10 +1620,13 @@ parse_config:
       goto stop_test;
 
     case EC_CLI_CONNECTS_DONE:
-      delta = vlib_time_now (vm) - ecm->syn_start_time;
-      if (delta != 0.0)
-	ec_cli ("%d three-way handshakes in %.2f seconds %.2f/s",
-		ecm->n_clients, delta, ((f64) ecm->n_clients) / delta);
+      if (ecm->transport_proto == TRANSPORT_PROTO_TCP)
+	{
+	  delta = vlib_time_now (vm) - ecm->syn_start_time;
+	  if (delta != 0.0)
+	    ec_cli ("%d three-way handshakes in %.2f seconds %.2f/s",
+		    ecm->n_clients, delta, ((f64) ecm->n_clients) / delta);
+	}
       break;
 
     case EC_CLI_CONNECTS_FAILED:
@@ -1652,8 +1679,7 @@ parse_config:
 	    {
 	      if (ecm->run_time)
 		{
-		  ecm->timer_expired = true;
-		  ecm->test_timeout += 1;
+		  ec_sessions_stop_clean ();
 		  break;
 		}
 	      ec_print_timeout_stats (vm);
@@ -1661,6 +1687,11 @@ parse_config:
 		error =
 		  clib_error_return (0, "failed: timeout with %d sessions",
 				     ecm->ready_connections);
+	      else if (ecm->echo_bytes)
+		{
+		  ec_sessions_stop_clean ();
+		  break;
+		}
 	      goto stop_test;
 	    }
 	  else

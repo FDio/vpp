@@ -166,6 +166,7 @@ func EchoBuiltinEchobytesTest(s *VethsSuite) {
 	o := clientVpp.Vppctl("test echo client echo-bytes verbose uri" +
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	s.Log(o)
+	s.AssertContains(o, "sent total 6 datagrams, received total 6 datagrams")
 	s.AssertNotContains(o, "test echo clients: failed: timeout with 1 sessions")
 }
 
@@ -185,6 +186,7 @@ func EchoBuiltinTestbytesTest(s *VethsSuite) {
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	s.Log(o)
 	s.AssertNotContains(o, "failed")
+	s.AssertContains(o, "lost")
 	s.AssertContains(o, " bytes out of 32768 sent (32768 target)")
 }
 
