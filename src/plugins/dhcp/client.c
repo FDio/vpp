@@ -510,7 +510,11 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = c->ai_bcast;
     }
   else
-    node_index = dcm->ip4_lookup_node_index;
+    {
+      node_index = dcm->ip4_lookup_node_index;
+      vnet_buffer (b)->sw_if_index[VLIB_TX] =
+	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, c->sw_if_index);
+    }
 
   /* Enqueue the packet right now */
   f = vlib_get_frame_to_node (vm, node_index);
