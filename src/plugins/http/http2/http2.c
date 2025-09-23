@@ -732,12 +732,8 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   max_write = clib_min (max_write, h2c->peer_window);
   max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
 
-  if (req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED &&
-      max_write >= max_read)
-    {
-      HTTP_DBG (1, "closing tunnel");
-      flags = HTTP2_FRAME_FLAG_END_STREAM;
-    }
+  if ((req->flags & HTTP2_REQ_F_APP_CLOSED) && (max_write >= max_read))
+    flags = HTTP2_FRAME_FLAG_END_STREAM;
 
   max_read = clib_min (max_write, max_read);
   n_read = http_io_as_read_segs (&req->base, segs + 1, &n_segs, max_read);
@@ -774,7 +770,22 @@ http2_sched_dispatch_tunnel (http2_req_t *req, http_conn_t *hc,
   http_io_ts_after_write (hc, 0);
 
   if (flags & HTTP2_FRAME_FLAG_END_STREAM)
-    http2_stream_close (req, hc);
+    {
+      switch (req->stream_state)
+	{
+	case HTTP2_STREAM_STATE_OPEN:
+	  HTTP_DBG (1, "tunnel half-closed");
+	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+	  break;
+	case HTTP2_STREAM_STATE_HALF_CLOSED:
+	  HTTP_DBG (1, "tunnel closed");
+	  http2_stream_close (req, hc);
+	  break;
+	default:
+	  ASSERT (0);
+	  break;
+	}
+    }
 }
 
 static void
@@ -2868,6 +2879,7 @@ static void
 http2_app_close_callback (http_conn_t *hc, u32 req_index,
 			  clib_thread_index_t thread_index, u8 is_shutdown)
 {
+  http2_conn_ctx_t *h2c;
   http2_req_t *req;
 
   HTTP_DBG (1, "hc [%u]%x req_index %x", hc->c_thread_index, hc->hc_hc_index,
@@ -2902,12 +2914,8 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	{
 	case HTTP2_STREAM_STATE_OPEN:
 	  HTTP_DBG (1, "app want to close tunnel");
-	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 	  if (http_io_as_max_read (&req->base))
-	    {
-	      HTTP_DBG (1, "wait for all data to be written to ts");
-	      return;
-	    }
+	    goto check_reschedule;
 	  if (req->our_window == 0 && !is_shutdown)
 	    {
 	      HTTP_DBG (1, "app has unread data, going to reset stream");
@@ -2915,6 +2923,7 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	      return;
 	    }
 	  HTTP_DBG (1, "nothing more to send, closing tunnel");
+	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 	  http2_tunnel_send_close (hc, req);
 	  break;
 	case HTTP2_STREAM_STATE_HALF_CLOSED:
@@ -2926,18 +2935,22 @@ http2_app_close_callback (http_conn_t *hc, u32 req_index,
 	      http2_stream_close (req, hc);
 	      return;
 	    }
-	  HTTP_DBG (1, "wait for all data to be written to ts");
-	  break;
+	  goto check_reschedule;
 	default:
 	  ASSERT (0);
 	  break;
+	check_reschedule:
+	  if (!clib_llist_elt_is_linked (req, sched_list) &&
+	      req->base.state == HTTP_REQ_STATE_TUNNEL)
+	    {
+	      http2_req_schedule_data_tx (hc, req);
+	      h2c = http2_conn_ctx_get_w_thread (hc);
+	      if (h2c->peer_window > 0)
+		http2_conn_schedule (h2c, hc->c_thread_index);
+	    }
 	}
     }
-  else
-    {
-      HTTP_DBG (1, "wait for all data to be written to ts");
-      req->flags |= HTTP2_REQ_F_APP_CLOSED;
-    }
+  HTTP_DBG (1, "wait for all data to be written to ts");
 }
 
 static void
