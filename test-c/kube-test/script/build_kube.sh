@@ -80,7 +80,7 @@ fi
 echo "=== Building all containers using build-images.sh ==="
 (
     # Export necessary environment variables for build-images.sh
-    export BASE_TAG="localhost:$REGISTRY_PORT/vpp-test-base:latest"
+    export BASE_TAG="localhost:$REGISTRY_PORT/vpp-kube-base:latest"
     export OS_ARCH
     export UBUNTU_VERSION
     export HTTP_PROXY
