@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a08688bf_b2ea7020",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-23T23:10:16Z",
+      "side": 1,
+      "message": "If we want to restrict our changes to the non-broadcast case, we can move the added line to the else statement below. Either fix will work. Up to you.",
+      "revId": "a1754bd72ca51359b1cdb1c17a75e42a3ebc54dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
