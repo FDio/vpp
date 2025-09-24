@@ -12,6 +12,7 @@ DOCKER_BUILD_DIR="/scratch/docker-build"
 DOCKER_CACHE_DIR="${DOCKER_BUILD_DIR}/docker_cache"
 DOCKER_HST_BUILDER="hst_builder"
 DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
+NO_REGISTRY=${NO_REGISTRY:-"false"}
 
 if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   mkdir -p "${DOCKER_CACHE_DIR}"
@@ -50,11 +51,17 @@ docker buildx build ${DOCKER_CACHE_ARGS} \
     exit 1
 }
 
-# Push the base image to the local registry
-docker push $BASE_TAG || {
-    echo "Error: Failed to push base image to local registry"
-    exit 1
+if [ "$NO_REGISTRY" = "true" ]; then
+  set -x
+  docker image tag $BASE_TAG kube-test/vpp:latest
+  set +x
+else
+  # Push the base image to the local registry
+  docker push $BASE_TAG || {
+      echo "Error: Failed to push base image to local registry"
+      exit 1
 }
+fi
 
 # Function to build each image
 build_image() {

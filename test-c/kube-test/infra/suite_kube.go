@@ -3,37 +3,19 @@ package kube_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
 
-	"github.com/a8m/envsubst"
 	. "github.com/onsi/ginkgo/v2"
 
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type KubeSuite struct {
 	BaseSuite
-	ClientSet        *kubernetes.Clientset
-	Config           *rest.Config
-	Namespace        string
-	KubeconfigPath   string
-	CurrentlyRunning map[string]*Pod
-	images           []string
-	AllPods          map[string]*Pod
-	MainContext      context.Context
-	Pods             struct {
-		ServerGeneric *Pod
-		ClientGeneric *Pod
-		Nginx         *Pod
-		NginxProxy    *Pod
-		Ab            *Pod
-	}
 }
 
 var imagesLoaded bool
@@ -77,26 +59,16 @@ func (s *KubeSuite) SetupSuite() {
 	s.CurrentlyRunning = make(map[string]*Pod)
 	s.LoadPodConfigs()
 	s.initPods()
-	if !imagesLoaded {
-		s.loadDockerImages()
-	}
-
-	if *WhoAmI == "root" {
-		s.KubeconfigPath = "/.kube/config"
-	} else {
-		s.KubeconfigPath = "/home/" + *WhoAmI + "/.kube/config"
-	}
-	s.Log("User: '%s'", *WhoAmI)
-	s.Log("Config path: '%s'", s.KubeconfigPath)
 
 	var err error
-	s.Config, err = clientcmd.BuildConfigFromFlags("", s.KubeconfigPath)
+	s.Config, err = clientcmd.BuildConfigFromFlags("", Kubeconfig)
 	s.AssertNil(err)
 
 	s.ClientSet, err = kubernetes.NewForConfig(s.Config)
 	s.AssertNil(err)
 
 	if !imagesLoaded {
+		s.loadDockerImages()
 		s.createNamespace(s.Namespace)
 		imagesLoaded = true
 	}
@@ -105,7 +77,7 @@ func (s *KubeSuite) SetupSuite() {
 func (s *KubeSuite) TeardownTest() {
 	s.BaseSuite.TeardownTest()
 	if len(s.CurrentlyRunning) != 0 {
-		s.Log("Removing:")
+		s.Log("Removing pods:")
 		for _, pod := range s.CurrentlyRunning {
 			s.Log("   %s", pod.Name)
 			s.AssertNil(s.deletePod(s.Namespace, pod.Name))
@@ -115,11 +87,6 @@ func (s *KubeSuite) TeardownTest() {
 
 func (s *KubeSuite) TeardownSuite() {
 	s.BaseSuite.TeardownSuite()
-	if len(s.CurrentlyRunning) == 0 {
-		return
-	}
-	s.Log("Removing:\n   %s", s.Namespace)
-	s.AssertNil(s.deleteNamespace(s.Namespace))
 }
 
 // Quick and dirty fix for now. Runs 'ldd /usr/lib/libvcl_ldpreload.so'
@@ -168,12 +135,6 @@ func (s *KubeSuite) CreateNginxConfig(pod *Pod) {
 		"./resources/nginx/nginx.conf",
 		values,
 	)
-}
-
-func (s *KubeSuite) Envsubst(inputPath string, outputPath string) {
-	o, err := envsubst.ReadFile(inputPath)
-	s.AssertNil(err)
-	os.WriteFile(outputPath, o, 0644)
 }
 
 func (s *KubeSuite) CreateNginxProxyConfig(pod *Pod) {
@@ -234,7 +195,7 @@ var _ = Describe("KubeSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("KubeMWSuite", Ordered, ContinueOnFailure, Label("Multi-worker"), func() {
+var _ = Describe("KubeMWSuite", Ordered, ContinueOnFailure, Label("Perf", "Multi-worker"), func() {
 	var s KubeSuite
 	BeforeAll(func() {
 		s.SetupSuite()

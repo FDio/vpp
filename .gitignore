@@ -154,7 +154,9 @@ compile_commands.json
 /test-c/kube-test/summary/
 /test-c/kube-test/.last_state_hash
 /test-c/kube-test/.kube_deps.ok
-/test-c/kube-test/kubernetes/calico-config.yaml
+/test-c/kube-test/kubernetes/baremetal-calicovpp-config.yaml
+/test-c/kube-test/kubernetes/kind-calicovpp-config.yaml
+/test-c/kube-test/kubernetes/pod-definitions.yaml
 /test-c/kube-test/kubernetes/.vars
 
 # ./configure
