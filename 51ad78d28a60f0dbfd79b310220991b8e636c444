@@ -33,6 +33,24 @@
       "message": "Shouldn\u0027t there be a unit test?",
       "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31fc8c8e_247a5f09",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-09-24T20:03:34Z",
+      "side": 1,
+      "message": "Hi Ben,\n\nIdeally, yes there should be. I don\u0027t know of a way to test it currently though.\n\nThere are some existing unit tests for the host connectivity piece of linux-cp, but the host-side tap or tun is emulated in those tests. So any of the code which deals with netlink message processing, which includes the code being changed here, will never see any netlink messages over the socket that was opened because there is no host-side tap or tun to apply configurations to.\n\nI will consult with Dave Wallace about whether he has ideas on how we could set up linux-cp sans emulation in a way that would allow it to run in CI jobs. It will involve creating actual taps/tuns possibly in a secondary netns (not sure what has to happen for that to work inside a CI job container which might already be attached to its own dedicated netns). That\u0027s probably something that will take some time to figure out. In the meantime, to fix the bug currently experienced by a user, would you be ok with merging this sans a unit test?\n\nThanks,\n-Matt",
+      "parentUuid": "9960a652_bce0837d",
+      "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
