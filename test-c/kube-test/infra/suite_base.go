@@ -1,6 +1,7 @@
 package kube_test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -10,27 +11,46 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a8m/envsubst"
 	"github.com/joho/godotenv"
 	. "github.com/onsi/ginkgo/v2"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
-var WhoAmI = flag.String("whoami", "root", "what user ran kube-test")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 30, "test timeout override (in minutes)")
 var TestTimeout time.Duration
+var Kubeconfig string
+var KindCluster bool
 
 const (
 	LogDir string = "/tmp/kube-test/"
 )
 
 type BaseSuite struct {
-	Ppid    string
-	Logger  *log.Logger
-	LogFile *os.File
+	ClientSet        *kubernetes.Clientset
+	Config           *rest.Config
+	Namespace        string
+	CurrentlyRunning map[string]*Pod
+	images           []string
+	AllPods          map[string]*Pod
+	MainContext      context.Context
+	Ppid             string
+	Logger           *log.Logger
+	LogFile          *os.File
+	Pods             struct {
+		ServerGeneric *Pod
+		ClientGeneric *Pod
+		Nginx         *Pod
+		NginxProxy    *Pod
+		Ab            *Pod
+	}
 }
 
 func init() {
@@ -71,6 +91,13 @@ func (s *BaseSuite) TeardownSuite() {
 	s.Log("[* SUITE TEARDOWN]")
 }
 
+// reads a file and writes a new one with substituted vars
+func (s *BaseSuite) Envsubst(inputPath string, outputPath string) {
+	o, err := envsubst.ReadFile(inputPath)
+	s.AssertNil(err)
+	s.AssertNil(os.WriteFile(outputPath, o, 0644))
+}
+
 func (s *BaseSuite) GetCurrentSuiteName() string {
 	return CurrentSpecReport().ContainerHierarchyTexts[0]
 }
@@ -105,22 +132,32 @@ func (s *BaseSuite) Log(log any, arg ...any) {
 }
 
 // sets CALICO_NETWORK_CONFIG, ADDITIONAL_VPP_CONFIG, env vars, applies configs and rollout restarts cluster
-func (s *KubeSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VPP_CONFIG string) {
+func (s *BaseSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VPP_CONFIG string) {
 	os.Setenv("CALICO_NETWORK_CONFIG", CALICO_NETWORK_CONFIG)
 	os.Setenv("ADDITIONAL_VPP_CONFIG", ADDITIONAL_VPP_CONFIG)
-	s.AssertNil(godotenv.Load("kubernetes/.vars"))
 
-	s.Envsubst("kubernetes/calico-config-template.yaml", "kubernetes/calico-config.yaml")
+	if KindCluster {
+		s.AssertNil(godotenv.Load("kubernetes/.vars"))
+		s.Envsubst("kubernetes/kind-calicovpp-config-template.yaml", "kubernetes/kind-calicovpp-config.yaml")
 
-	cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/calico-config.yaml")
+		cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/kind-calicovpp-config.yaml")
+		s.Log(cmd.String())
+		o, err := cmd.CombinedOutput()
+		s.Log(string(o))
+		s.AssertNil(err)
+	} else {
+		s.Envsubst("kubernetes/baremetal-calicovpp-config-template.yaml", "kubernetes/baremetal-calicovpp-config.yaml")
+
+		cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/baremetal-calicovpp-config.yaml")
+		s.Log(cmd.String())
+		o, err := cmd.CombinedOutput()
+		s.Log(string(o))
+		s.AssertNil(err)
+	}
+
+	cmd := exec.Command("kubectl", "-n", "calico-vpp-dataplane", "rollout", "restart", "ds/calico-vpp-node")
 	s.Log(cmd.String())
 	o, err := cmd.CombinedOutput()
-	s.Log(string(o))
-	s.AssertNil(err)
-
-	cmd = exec.Command("kubectl", "-n", "calico-vpp-dataplane", "rollout", "restart", "ds/calico-vpp-node")
-	s.Log(cmd.String())
-	o, err = cmd.CombinedOutput()
 	s.Log(string(o))
 	s.AssertNil(err)
 
@@ -139,4 +176,10 @@ func (s *KubeSuite) SetMtuAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VP
 	// let vpp-dataplane recover, should help with stability issues
 	s.Log("Waiting for 20 seconds")
 	time.Sleep(time.Second * 20)
+}
+
+func (s *BaseSuite) SkipIfBareMetalCluster() {
+	if !KindCluster {
+		Skip("Kube-Test running on a bare metal cluster. Skipping")
+	}
 }
