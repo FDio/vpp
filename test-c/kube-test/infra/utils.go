@@ -3,10 +3,13 @@ package kube_test
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 func boolPtr(b bool) *bool {
@@ -149,4 +152,51 @@ func (s *BaseSuite) LogJsonIperfOutput(result IPerfResult) {
 			result.End.Udp.LostPercent)
 	}
 	s.Log("*******************************************\n")
+}
+
+func (s *BaseSuite) handleExistingVarsFile(fileValues map[string]string) error {
+	varsToWatch := []string{"CALICOVPP_VERSION", "CALICOVPP_INTERFACE"}
+	needsWrite := false
+
+	for _, key := range varsToWatch {
+		envValue := os.Getenv(key)
+		if envValue != "" {
+			if fileValue, ok := fileValues[key]; !ok || fileValue != envValue {
+				s.Log("Updating '%s'. New value: '%s'", key, envValue)
+				fileValues[key] = envValue
+				needsWrite = true
+			}
+		}
+	}
+
+	if needsWrite {
+		if err := godotenv.Write(fileValues, EnvVarsFile); err != nil {
+			return err
+		}
+		s.Log("File %s updated", EnvVarsFile)
+	} else {
+		s.Log("%s OK", EnvVarsFile)
+	}
+	return nil
+}
+
+func (s *BaseSuite) handleNewVarsFile() error {
+	iface := os.Getenv("CALICOVPP_INTERFACE")
+	version := os.Getenv("CALICOVPP_VERSION")
+
+	if iface != "" && version != "" {
+		newFileValues := map[string]string{
+			"CALICOVPP_INTERFACE": iface,
+			"CALICOVPP_VERSION":   version,
+		}
+
+		s.Log("\nCreating '%s' from environment variables\n", EnvVarsFile)
+		if err := godotenv.Write(newFileValues, EnvVarsFile); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Error: '%s' not found and env vars are not set. "+
+			"To create it, please set both CALICOVPP_INTERFACE and CALICOVPP_VERSION env vars", EnvVarsFile)
+	}
+	return nil
 }

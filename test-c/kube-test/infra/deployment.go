@@ -11,7 +11,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (s *KubeSuite) loadDockerImages() {
+func (s *BaseSuite) loadDockerImages() {
+	if !KindCluster {
+		return
+	}
 	s.Log("This may take a while. If you encounter problems, " +
 		"try loading docker images manually: 'kind load docker-image [image]'")
 
@@ -27,7 +30,7 @@ func (s *KubeSuite) loadDockerImages() {
 	}
 }
 
-func (s *KubeSuite) createNamespace(name string) {
+func (s *BaseSuite) createNamespace(name string) {
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -40,16 +43,16 @@ func (s *KubeSuite) createNamespace(name string) {
 	s.Log("Namespace '%s' created", name)
 }
 
-func (s *KubeSuite) deletePod(namespace string, podName string) error {
+func (s *BaseSuite) deletePod(namespace string, podName string) error {
 	delete(s.CurrentlyRunning, podName)
 	return s.ClientSet.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)})
 }
 
-func (s *KubeSuite) deleteNamespace(namespace string) error {
+func (s *BaseSuite) DeleteNamespace(namespace string) error {
 	return s.ClientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 }
 
-func (s *KubeSuite) DeployPod(pod *Pod) {
+func (s *BaseSuite) DeployPod(pod *Pod) {
 	pod.CreatedPod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
@@ -71,11 +74,6 @@ func (s *KubeSuite) DeployPod(pod *Pod) {
 					},
 					Command:         []string{"tail", "-f", "/dev/null"},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Ports: []corev1.ContainerPort{
-						{
-							ContainerPort: 5201,
-						},
-					},
 				},
 			},
 			NodeName: pod.Worker,
