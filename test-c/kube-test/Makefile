@@ -56,6 +56,7 @@ help:
 	@echo "'make build' and 'make test' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
 	@echo " FORCE_BUILD=[true|false] - force docker image building"
+	@echo " NO_REGISTRY=[true|false] - attempts to build docker images without using a local registry"
 	@echo
 	@echo "'make test' specific arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
@@ -132,7 +133,7 @@ build-debug: .deps.ok build-vpp-debug
 
 .PHONY: install-kube-deps
 install-kube-deps: .deps.ok
-	-@if ! command -v kube >/dev/null 2>&1; then \
+	-@if ! command -v kind >/dev/null 2>&1; then \
 		echo "Installing KinD"; \
 		go install sigs.k8s.io/kind@v0.29.0; \
 		echo "Creating symlink from '$(HOME)/go/bin/kind' to '/usr/bin/kind'"; \
@@ -162,18 +163,22 @@ install-deps:
     else \
         echo "Installing Go 1.23"; \
 		wget -t 2 https://go.dev/dl/go1.23.10.linux-$(ARCH).tar.gz -O /tmp/go1.23.10.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.23.10.linux-$(ARCH).tar.gz; \
-		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
+		echo "Go installed successfully. Add it to your PATH by running:"; \
+        echo "echo 'export PATH=/usr/local/go/bin:\$$PATH' >> ~/.bashrc && source ~/.bashrc"; \
 	fi
-	@sudo -E apt-get update
-	@sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
-		bridge-utils gpg
-	@if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
-		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
-		echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
-			| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
-		apt-get update; \
+	@if ! command -v docker >/dev/null 2>&1; then \
+		sudo -E apt-get update; \
+		sudo -E apt-get install -y apt-transport-https ca-certificates curl software-properties-common; \
+		if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
+			curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
+			echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
+				| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
+			apt-get update; \
+		fi; \
+		sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; \
+	else \
+		echo "Docker already installed. You may need to update."; \
 	fi
-	@sudo -E apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 	@touch .deps.ok
 
 .PHONY: checkstyle-go

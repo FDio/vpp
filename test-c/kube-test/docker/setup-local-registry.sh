@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to set up a local Docker registry
-
+NO_REGISTRY=${NO_REGISTRY:-"false"}
 set -e
 
 DOCKER_LOGIN_SCRIPT="/scratch/nomad/.docker-ro/dlogin.sh"
@@ -18,6 +18,10 @@ fi
 REGISTRY_NAME="local-registry"
 REGISTRY_PORT=${1:-5001}
 
+if [ "$NO_REGISTRY" = "true" ]; then
+    echo "NO_REGISTRY=true -> not setting up a registry."
+    exit 0
+fi
 # Check if registry container is already running
 if docker container inspect "$REGISTRY_NAME" &>/dev/null; then
     echo "=== Local registry '$REGISTRY_NAME' is already running ==="

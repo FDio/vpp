@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+NO_REGISTRY=${NO_REGISTRY:-"false"}
 
 if [ "$(lsb_release -is)" != Ubuntu ]; then
 	echo "Host stack test framework is supported only on Ubuntu"
@@ -43,16 +44,18 @@ if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
   $DOCKER_LOGIN_SCRIPT
 fi
 
-# Set up the local registry before creating containers
-echo "=== Setting up local registry ==="
-if [ -x "$(dirname "$0")/../docker/setup-local-registry.sh" ]; then
-  "$(dirname "$0")/../docker/setup-local-registry.sh" "$REGISTRY_PORT"
-else
-  echo "Warning: setup-local-registry.sh not found or not executable"
-  echo "Attempting to create and use local registry at localhost:5000"
-  if ! docker ps | grep -q "local-registry"; then
-    docker run -d --restart=always -p $REGISTRY_PORT:5000 --name local-registry registry:2
-  fi
+if [ $NO_REGISTRY != "false" ]; then
+    # Set up the local registry before creating containers
+    echo "=== Setting up local registry ==="
+    if [ -x "$(dirname "$0")/../docker/setup-local-registry.sh" ]; then
+      "$(dirname "$0")/../docker/setup-local-registry.sh" "$REGISTRY_PORT"
+    else
+      echo "Warning: setup-local-registry.sh not found or not executable"
+      echo "Attempting to create and use local registry at localhost:5000"
+      if ! docker ps | grep -q "local-registry"; then
+        docker run -d --restart=always -p $REGISTRY_PORT:5000 --name local-registry registry:2
+      fi
+    fi
 fi
 
 echo "Taking build objects from ${VPP_BUILD_ROOT}"
