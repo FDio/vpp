@@ -42,8 +42,8 @@ func kubeIperfVclTest(s *KubeSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 5s")
-	time.Sleep(time.Second * 5)
+	s.Log("Sleeping for 2s")
+	time.Sleep(time.Second * 2)
 	s.AssertNil(err)
 	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
 	s.Log(out)
@@ -81,8 +81,8 @@ func kubeIperfVclMtuTest(s *LargeMtuSuite, clientArgs string) IPerfResult {
 
 	o, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c",
 		vcl + " " + ldp + " iperf3 -s -D --logfile /iperf_server.log -B " + s.Pods.ServerGeneric.IpAddress})
-	s.Log("Sleeping for 5s")
-	time.Sleep(time.Second * 5)
+	s.Log("Sleeping for 2s")
+	time.Sleep(time.Second * 2)
 	s.AssertNil(err)
 	out, err := s.Pods.ServerGeneric.Exec(ctx, []string{"/bin/bash", "-c", "pidof iperf3"})
 	s.Log(out)
