@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1f26343_b08b69db",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 11
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-24T12:02:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e949cfb8_172d4525",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 0
+      },
+      "revId": "072035f49d86c81541ea33866ce61ae0f9058ac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "682c80cc_91a07d6c",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-09-24T09:40:50Z",
       "side": 1,
       "message": "could you please add some comment here?",
+      "range": {
+        "startLine": 304,
+        "startChar": 3,
+        "endLine": 306,
+        "endChar": 29
+      },
+      "revId": "072035f49d86c81541ea33866ce61ae0f9058ac6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e45e14f8_be759116",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-09-24T12:02:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "682c80cc_91a07d6c",
       "range": {
         "startLine": 304,
         "startChar": 3,
