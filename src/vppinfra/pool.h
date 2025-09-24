@@ -309,6 +309,25 @@ _pool_put_index (void *p, uword index, uword elt_sz)
 #define pool_put_index(P, I) _pool_put_index ((void *) (P), I, _vec_elt_sz (P))
 #define pool_put(P, E)	     pool_put_index (P, (E) - (P))
 
+static_always_inline u8
+_pool_put_index_will_move (void *p, uword index, uword elt_sz)
+{
+  pool_header_t *ph = pool_header (p);
+
+  ASSERT (index < ph->max_elts ? ph->max_elts : vec_len (p));
+  ASSERT (!pool_is_free_index (p, index));
+
+  /* Preallocated pool? */
+  if (ph->max_elts)
+    return (0);
+
+  return vec_will_move (ph->free_indices, index);
+}
+
+#define pool_put_index_will_move(P, I)                                        \
+  _pool_put_index_will_move ((void *) (P), I, _vec_elt_sz (P))
+#define pool_put_will_move(P, E) pool_put_index_will_move (P, (E) - (P))
+
 /** Allocate N more free elements to pool (general version). */
 
 static_always_inline void
