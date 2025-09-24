@@ -1,11 +1,11 @@
 definitions:
   image-names:
     - image: &kube-test
-        name: "kube-test/vpp:latest"
+        name: "docker.io/kube-test/vpp:latest"
     - image: &nginx-ldp
-        name: "kube-test/nginx-ldp:latest"
+        name: "docker.io/kube-test/nginx-ldp:latest"
     - image: &ab
-        name: "kube-test/ab:latest"
+        name: "docker.io/kube-test/ab:latest"
 
   container-names:
     - container: &client
@@ -19,9 +19,9 @@ definitions:
 
   worker-names:
     - worker: &worker1
-        name: "kind-worker"
+        name: ${KUBE_WRK1}
     - worker: &worker2
-        name: "kind-worker2"
+        name: ${KUBE_WRK2}
 
 pods:
   - name: "client-generic"
