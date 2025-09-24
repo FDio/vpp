@@ -16,7 +16,7 @@ export TIGERA_VERSION="${TIGERA_VERSION:-master}"
 echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 
-envsubst < kubernetes/calico-config-template.yaml > kubernetes/calico-config.yaml
+envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 kind_config=$(cat kubernetes/kind-config.yaml)
 kind_config=$(cat <<EOF
 $kind_config
@@ -65,7 +65,7 @@ help() {
   echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.29),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
     CALICOVPP_VERSION: latest | v[x].[y].[z] (default=latest)
-    TIGERA_VERSION:    master | v[x].[y].[z] (default=v3.28.3)"
+    TIGERA_VERSION:    master | v[x].[y].[z] (default="release-v3.31")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }
@@ -108,7 +108,7 @@ cherry_pick() {
 build_load_start_cni() {
   # make -C $VPP_DIR/test-c/kube-test build-vpp-release
   make -C $CALICOVPP_DIR image-kind
-  kubectl create --save-config -f kubernetes/calico-config.yaml
+  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
 }
 
 restore_repo() {
@@ -150,7 +150,7 @@ setup_master() {
 
 rebuild_master() {
   echo "Shutting down pods may take some time, timeout is set to 1m."
-  timeout 1m kubectl delete -f kubernetes/calico-config.yaml || true
+  timeout 1m kubectl delete -f kubernetes/kind-calicovpp-config.yaml || true
   cherry_pick
   build_load_start_cni
   # temporarily disabled
@@ -169,7 +169,7 @@ setup_release() {
 
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
-  kubectl create --save-config -f kubernetes/calico-config.yaml
+  kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
 
   echo "Done. Please wait for the cluster to come fully online before running tests."
   echo "Use 'watch kubectl get pods -A' to monitor cluster status."

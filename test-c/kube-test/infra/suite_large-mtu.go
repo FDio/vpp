@@ -26,15 +26,18 @@ func (s *LargeMtuSuite) SetupSuite() {
 var _ = Describe("LargeMtuSuite", Ordered, ContinueOnFailure, Label("Large MTU"), func() {
 	var s LargeMtuSuite
 	BeforeAll(func() {
+		s.SkipIfBareMetalCluster()
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
 		s.SetupTest()
 	})
 	AfterEach(func() {
+		s.SkipIfBareMetalCluster()
 		s.TeardownTest()
 	})
 	AfterAll(func() {
+		s.SkipIfBareMetalCluster()
 		s.TeardownSuite()
 	})
 

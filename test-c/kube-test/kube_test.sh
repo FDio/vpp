@@ -84,8 +84,6 @@ if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ] || [ $dryrun_set -eq 1 ];
     exit 2
 fi
 
-args="$args -whoami $(whoami)"
-
 if [ -n "${BUILD_NUMBER}" ]; then
         ginkgo_args="$ginkgo_args --no-color"
 fi
