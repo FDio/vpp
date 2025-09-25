@@ -471,6 +471,13 @@ mfib_entry_alloc (u32 fib_index,
                   fib_node_index_t *mfib_entry_index)
 {
     mfib_entry_t *mfib_entry;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+
+    need_barrier_sync = pool_get_will_expand (mfib_entry_pool);
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_get_aligned(mfib_entry_pool, mfib_entry, CLIB_CACHE_LINE_BYTES);
 
@@ -494,6 +501,9 @@ mfib_entry_alloc (u32 fib_index,
     *mfib_entry_index = mfib_entry_get_index(mfib_entry);
 
     MFIB_ENTRY_DBG(mfib_entry, "alloc");
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
 
     return (mfib_entry);
 }

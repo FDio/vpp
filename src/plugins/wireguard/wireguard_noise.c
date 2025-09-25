@@ -400,6 +400,8 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
       return false;
     }
 
+  /* Activate barrier to synchronization keys between threads */
+  vlib_worker_thread_barrier_sync (vm);
   kp.kp_valid = 1;
   kp.kp_send_index = vnet_crypto_key_add (vm,
 					  VNET_CRYPTO_ALG_CHACHA20_POLY1305,
@@ -414,8 +416,6 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
 
   /* Now we need to add_new_keypair */
   clib_rwlock_writer_lock (&r->r_keypair_lock);
-  /* Activate barrier to synchronization keys between threads */
-  vlib_worker_thread_barrier_sync (vm);
   next = r->r_next;
   current = r->r_current;
   previous = r->r_previous;
@@ -447,8 +447,8 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
       r->r_next = noise_remote_keypair_allocate (r);
       *r->r_next = kp;
     }
-  vlib_worker_thread_barrier_release (vm);
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
+  vlib_worker_thread_barrier_release (vm);
 
   wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
 
