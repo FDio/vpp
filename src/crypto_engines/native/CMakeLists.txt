@@ -11,6 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c sha2.c)
+set (COMPILE_OPTS -Wall -fno-common)
+
+if(DEFINED VPP_PLATFORM)
+  add_vpp_crypto_engine(native SOURCES main.c ${COMPILE_FILES})
+  target_compile_options(native_crypto_engine PUBLIC ${COMPILE_OPTS})
+  return()
+endif()
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   list(APPEND VARIANTS "slm\;-march=silvermont -maes")
   list(APPEND VARIANTS "hsw\;-march=haswell -maes")
@@ -28,9 +37,6 @@ endif()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   list(APPEND VARIANTS "armv8\;-march=armv8.1-a+crc+crypto")
 endif()
-
-set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c sha2.c)
-set (COMPILE_OPTS -Wall -fno-common)
 
 if (NOT VARIANTS)
   return()
