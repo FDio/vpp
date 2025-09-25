@@ -51,6 +51,24 @@
       "parentUuid": "9960a652_bce0837d",
       "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb5b700c_7f133d60",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-09-25T12:30:24Z",
+      "side": 1,
+      "message": "Sounds good to me. Re tests, we have this framework to run tests in a VM for various virtual interfaces (afpacket etc) because it requires privileges. Maybe that could be reused for linux-cp too?",
+      "parentUuid": "31fc8c8e_247a5f09",
+      "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
