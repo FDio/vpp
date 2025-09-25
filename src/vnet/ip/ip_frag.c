@@ -173,8 +173,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
 
-      /* Copy ip4 header */
-      to_data = vlib_buffer_get_current (to_b);
+      /* Make sure we have as much space for headers as the original and copy
+       * ip4 header */
+      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
       clib_memcpy_fast (to_data, org_from_packet, head_bytes);
       to_ip4 = (ip4_header_t *) (to_data + l2unfragmentablesize);
       to_data = (void *) (to_ip4 + 1);
