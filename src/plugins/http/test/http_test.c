@@ -6,6 +6,7 @@
 #include <vpp/app/version.h>
 #include <http/http.h>
 #include <http/http_header_names.h>
+#include <http/http2/hpack_inlines.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
 #include <http/http3/qpack.h>
@@ -846,10 +847,6 @@ http_test_hpack (vlib_main_t *vm)
 {
   vlib_cli_output (vm, "hpack_decode_int");
 
-  static uword (*_hpack_decode_int) (u8 * *pos, u8 * end, u8 prefix_len);
-  _hpack_decode_int =
-    vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_int");
-
   u8 *pos, *end, *input = 0;
   uword value;
 #define TEST(i, pl, e)                                                        \
@@ -857,7 +854,7 @@ http_test_hpack (vlib_main_t *vm)
   memcpy (input, i, sizeof (i) - 1);                                          \
   pos = input;                                                                \
   end = vec_end (input);                                                      \
-  value = _hpack_decode_int (&pos, end, (u8) pl);                             \
+  value = hpack_decode_int (&pos, end, (u8) pl);                              \
   HTTP_TEST ((value == (uword) e && pos == end),                              \
 	     "%U with prefix length %u is %llu", format_hex_bytes, input,     \
 	     vec_len (input), (u8) pl, value);                                \
@@ -880,7 +877,7 @@ http_test_hpack (vlib_main_t *vm)
   memcpy (input, i, sizeof (i) - 1);                                          \
   pos = input;                                                                \
   end = vec_end (input);                                                      \
-  value = _hpack_decode_int (&pos, end, (u8) pl);                             \
+  value = hpack_decode_int (&pos, end, (u8) pl);                              \
   HTTP_TEST ((value == HPACK_INVALID_INT),                                    \
 	     "%U with prefix length %u should be invalid", format_hex_bytes,  \
 	     input, vec_len (input), (u8) pl);                                \
@@ -897,16 +894,12 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_encode_int");
 
-  static u8 *(*_hpack_encode_int) (u8 * dst, uword value, u8 prefix_len);
-  _hpack_encode_int =
-    vlib_get_plugin_symbol ("http_plugin.so", "hpack_encode_int");
-
   u8 *buf = 0;
   u8 *p;
 
 #define TEST(v, pl, e)                                                        \
   vec_validate_init_empty (buf, 15, 0);                                       \
-  p = _hpack_encode_int (buf, v, (u8) pl);                                    \
+  p = hpack_encode_int (buf, v, (u8) pl);                                     \
   HTTP_TEST (((p - buf) == (sizeof (e) - 1) && !memcmp (buf, e, p - buf)),    \
 	     "%llu with prefix length %u is encoded as %U", v, (u8) pl,       \
 	     format_hex_bytes, buf, p - buf);                                 \
@@ -924,14 +917,14 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_decode_string");
 
-  static http2_error_t (*_hpack_decode_string) (u8 * *src, u8 * end, u8 * *buf,
+  static hpack_error_t (*_hpack_decode_string) (u8 * *src, u8 * end, u8 * *buf,
 						uword * buf_len);
   _hpack_decode_string =
     vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_string");
 
   u8 *bp;
   uword blen, len;
-  http2_error_t rv;
+  hpack_error_t rv;
 
 #define TEST(i, e)                                                            \
   vec_validate (input, sizeof (i) - 2);                                       \
@@ -944,7 +937,7 @@ http_test_hpack (vlib_main_t *vm)
   len = vec_len (buf) - blen;                                                 \
   HTTP_TEST ((len == strlen (e) && !memcmp (buf, e, len) &&                   \
 	      pos == vec_end (input) && bp == buf + len &&                    \
-	      rv == HTTP2_ERROR_NO_ERROR),                                    \
+	      rv == HPACK_ERROR_NONE),                                        \
 	     "%U is decoded as %U", format_hex_bytes, input, vec_len (input), \
 	     format_http_bytes, buf, len);                                    \
   vec_free (input);                                                           \
@@ -989,20 +982,20 @@ http_test_hpack (vlib_main_t *vm)
   vec_free (buf);
 
   /* incomplete */
-  N_TEST ("\x87", HTTP2_ERROR_COMPRESSION_ERROR);
-  N_TEST ("\x07priv", HTTP2_ERROR_COMPRESSION_ERROR);
+  N_TEST ("\x87", HPACK_ERROR_COMPRESSION);
+  N_TEST ("\x07priv", HPACK_ERROR_COMPRESSION);
   /* invalid length */
-  N_TEST ("\x7Fprivate", HTTP2_ERROR_COMPRESSION_ERROR);
+  N_TEST ("\x7Fprivate", HPACK_ERROR_COMPRESSION);
   /* invalid EOF */
-  N_TEST ("\x81\x8C", HTTP2_ERROR_COMPRESSION_ERROR);
+  N_TEST ("\x81\x8C", HPACK_ERROR_COMPRESSION);
   N_TEST ("\x98\xDC\x53\xFF\xFF\xFF\xDF\xFF\xFF\xFF\x14\xFF\xFF\xFF\xF7\xFF"
 	  "\xFF\xFF\xC5\x3F\xFF\xFF\xFD\xFF\xFF",
-	  HTTP2_ERROR_COMPRESSION_ERROR);
+	  HPACK_ERROR_COMPRESSION);
   /* not enough space for decoding */
   N_TEST (
     "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66"
     "\xE0\x82\xA6\x2D\x1B\xFF",
-    HTTP2_ERROR_INTERNAL_ERROR);
+    HPACK_ERROR_UNKNOWN);
 #undef N_TEST
 
   vlib_cli_output (vm, "hpack_encode_string");
@@ -1043,7 +1036,7 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_decode_header");
 
-  static http2_error_t (*_hpack_decode_header) (
+  static hpack_error_t (*_hpack_decode_header) (
     u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
     u32 * value_len, hpack_dynamic_table_t * dt);
 
@@ -1076,7 +1069,7 @@ http_test_hpack (vlib_main_t *vm)
   rv = _hpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
 			     &value_len, &table);                             \
   len = vec_len (buf) - blen;                                                 \
-  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR && table.used == dt_size &&          \
+  HTTP_TEST ((rv == HPACK_ERROR_NONE && table.used == dt_size &&              \
 	      name_len == strlen (e_name) && value_len == strlen (e_value) && \
 	      !memcmp (buf, e_name, name_len) &&                              \
 	      !memcmp (buf + name_len, e_value, value_len) &&                 \
@@ -1623,7 +1616,7 @@ http_test_qpack (vlib_main_t *vm)
 {
   vlib_cli_output (vm, "qpack_decode_header");
 
-  static http3_error_t (*_qpack_decode_header) (
+  static hpack_error_t (*_qpack_decode_header) (
     u8 * *src, u8 * end, u8 * *buf, uword * buf_len, u32 * name_len,
     u32 * value_len);
 
@@ -1633,7 +1626,7 @@ http_test_qpack (vlib_main_t *vm)
   u8 *pos, *bp, *buf = 0, *input = 0;
   uword blen;
   u32 name_len, value_len;
-  http3_error_t rv;
+  hpack_error_t rv;
 
 #define TEST(i, e_name, e_value)                                              \
   vec_validate (input, sizeof (i) - 2);                                       \
@@ -1644,7 +1637,7 @@ http_test_qpack (vlib_main_t *vm)
   blen = vec_len (buf);                                                       \
   rv = _qpack_decode_header (&pos, vec_end (input), &bp, &blen, &name_len,    \
 			     &value_len);                                     \
-  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR && name_len == strlen (e_name) &&    \
+  HTTP_TEST ((rv == HPACK_ERROR_NONE && name_len == strlen (e_name) &&        \
 	      value_len == strlen (e_value) &&                                \
 	      !memcmp (buf, e_name, name_len) &&                              \
 	      !memcmp (buf + name_len, e_value, value_len) &&                 \
