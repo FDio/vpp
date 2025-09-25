@@ -3,7 +3,7 @@
  */
 
 #include <http/http3/qpack.h>
-#include <http/http2/hpack.h>
+#include <http/http2/hpack_inlines.h>
 
 typedef struct
 {
@@ -130,12 +130,12 @@ static qpack_static_table_entry_t qpack_static_table[] = {
 STATIC_ASSERT (QPACK_STATIC_TABLE_SIZE == 99,
 	       "static table must have 99 entries");
 
-static http3_error_t
+static hpack_error_t
 qpack_get_static_table_entry (uword index, http_token_t *name,
 			      http_token_t *value, u8 value_is_indexed)
 {
   if (index >= QPACK_STATIC_TABLE_SIZE)
-    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+    return HPACK_ERROR_COMPRESSION;
 
   qpack_static_table_entry_t *e = &qpack_static_table[index];
   name->base = e->name;
@@ -143,25 +143,24 @@ qpack_get_static_table_entry (uword index, http_token_t *name,
   if (value_is_indexed)
     {
       if (e->value_len == 0)
-	return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+	return HPACK_ERROR_COMPRESSION;
       value->base = e->value;
       value->len = e->value_len;
     }
 
-  return HTTP3_ERROR_NO_ERROR;
+  return HPACK_ERROR_NONE;
 }
 
-static http3_error_t
+static hpack_error_t
 qpack_decode_string (u8 **src, u8 *end, u8 **buf, uword *buf_len,
 		     u8 prefix_len)
 {
   u8 *p, is_huffman;
   uword len;
-  int rv;
 
   ASSERT (prefix_len >= 2 && prefix_len <= 8);
   if (*src == end)
-    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+    return HPACK_ERROR_COMPRESSION;
 
   p = *src;
   /* first bit for H flag */
@@ -170,48 +169,46 @@ qpack_decode_string (u8 **src, u8 *end, u8 **buf, uword *buf_len,
   /* length is integer with (N-1) bit prefix */
   len = hpack_decode_int (&p, end, prefix_len - 1);
   if (PREDICT_FALSE (len == HPACK_INVALID_INT))
-    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+    return HPACK_ERROR_COMPRESSION;
 
   /* do we have everything? */
   if (len > (end - p))
-    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+    return HPACK_ERROR_COMPRESSION;
 
   if (is_huffman)
     {
       *src = (p + len);
-      rv = hpack_decode_huffman (&p, p + len, buf, buf_len);
-      return rv ? HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED :
-		  HTTP3_ERROR_NO_ERROR;
+      return hpack_decode_huffman (&p, p + len, buf, buf_len);
     }
   else
     {
       /* enough space? */
       if (len > *buf_len)
-	return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+	return HPACK_ERROR_UNKNOWN;
 
       clib_memcpy (*buf, p, len);
       *buf_len -= len;
       *buf += len;
       *src = (p + len);
-      return HTTP3_ERROR_NO_ERROR;
+      return HPACK_ERROR_NONE;
     }
 }
 
-__clib_export http3_error_t
+__clib_export hpack_error_t
 qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
 		     u32 *name_len, u32 *value_len, void *decoder_ctx)
 {
   u8 *p;
   uword index, old_len;
   http_token_t name, value;
-  http3_error_t rv;
+  hpack_error_t rv;
 
   ASSERT (*src < end);
   p = *src;
 
 #define COPY_TOKEN(_token)                                                    \
   if (_token.len > *buf_len)                                                  \
-    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;                            \
+    return HPACK_ERROR_COMPRESSION;                                           \
   clib_memcpy (*buf, _token.base, _token.len);                                \
   *buf_len -= _token.len;                                                     \
   *buf += _token.len;
@@ -222,9 +219,9 @@ qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
       /* indexed field line, static table */
       index = hpack_decode_int (&p, end, 6);
       if (index == HPACK_INVALID_INT)
-	return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+	return HPACK_ERROR_COMPRESSION;
       rv = qpack_get_static_table_entry (index, &name, &value, 1);
-      if (rv != HTTP3_ERROR_NO_ERROR)
+      if (rv)
 	return rv;
       COPY_TOKEN (name);
       *name_len = name.len;
@@ -233,53 +230,53 @@ qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
       break;
     case 8 ... 11:
       /* TODO: indexed field line, dynamic table */
-      return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+      return HPACK_ERROR_COMPRESSION;
     case 7:
     case 5:
       /* literal field line with name reference, static table */
       index = hpack_decode_int (&p, end, 4);
       if (index == HPACK_INVALID_INT)
-	return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+	return HPACK_ERROR_COMPRESSION;
       rv = qpack_get_static_table_entry (index, &name, &value, 0);
-      if (rv != HTTP3_ERROR_NO_ERROR)
+      if (rv)
 	return rv;
       COPY_TOKEN (name);
       *name_len = name.len;
       old_len = *buf_len;
       rv = qpack_decode_string (&p, end, buf, buf_len, 8);
-      if (rv != HTTP3_ERROR_NO_ERROR)
+      if (rv)
 	return rv;
       *value_len = old_len - *buf_len;
       break;
     case 6:
     case 4:
       /* TODO: literal field line with name reference, dynamic table */
-      return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+      return HPACK_ERROR_COMPRESSION;
     case 3:
     case 2:
       /* literal field line with literal name */
       old_len = *buf_len;
       rv = qpack_decode_string (&p, end, buf, buf_len, 4);
-      if (rv != HTTP3_ERROR_NO_ERROR)
+      if (rv)
 	return rv;
       *name_len = old_len - *buf_len;
       old_len = *buf_len;
       rv = qpack_decode_string (&p, end, buf, buf_len, 8);
-      if (rv != HTTP3_ERROR_NO_ERROR)
+      if (rv)
 	return rv;
       *value_len = old_len - *buf_len;
       break;
     case 1:
       /* TODO: indexed field line with post-base index */
-      return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+      return HPACK_ERROR_COMPRESSION;
     case 0:
       /* TODO: literal field line with post-base name reference */
-      return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+      return HPACK_ERROR_COMPRESSION;
     default:
       ASSERT (0);
       break;
     }
 
   *src = p;
-  return HTTP3_ERROR_NO_ERROR;
+  return HPACK_ERROR_NONE;
 }
