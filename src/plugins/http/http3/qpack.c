@@ -280,3 +280,81 @@ qpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len,
   *src = p;
   return HPACK_ERROR_NONE;
 }
+
+static const http3_error_t hpack_error_to_http3_error[] = {
+  [HPACK_ERROR_NONE] = HTTP3_ERROR_NO_ERROR,
+  [HPACK_ERROR_COMPRESSION] = HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+  [HPACK_ERROR_PROTOCOL] = HTTP3_ERROR_GENERAL_PROTOCOL_ERROR,
+  [HPACK_ERROR_UNKNOWN] = HTTP3_ERROR_INTERNAL_ERROR,
+};
+
+static inline hpack_error_t
+qpack_parse_headers_prefix (u8 **src, u8 *end, qpack_decoder_ctx_t *ctx)
+{
+  u8 *p;
+
+  ASSERT (*src < end);
+  p = *src;
+
+  ctx->req_insert_count = hpack_decode_int (&p, end, 8);
+  if (ctx->req_insert_count == HPACK_INVALID_INT || p == end)
+    return HPACK_ERROR_COMPRESSION;
+
+  ctx->delta_base_sign = *p & 0x80;
+  ctx->delta_base = hpack_decode_int (&p, end, 7);
+  if (ctx->req_insert_count == HPACK_INVALID_INT)
+    return HPACK_ERROR_COMPRESSION;
+
+  *src = p;
+  return HPACK_ERROR_NONE;
+}
+
+__clib_export http3_error_t
+qpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+		     hpack_request_control_data_t *control_data,
+		     http_field_line_t **headers,
+		     qpack_decoder_ctx_t *decoder_ctx)
+{
+  hpack_error_t rv;
+  u8 *p, *end;
+
+  if (src_len < 3)
+    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+
+  p = src;
+  end = src + src_len;
+
+  /* encoded field section prefix */
+  rv = qpack_parse_headers_prefix (&p, end, decoder_ctx);
+  if (rv || p == end)
+    return hpack_error_to_http3_error[rv];
+
+  rv = hpack_decode_request (p, end, dst, dst_len, control_data, headers,
+			     decoder_ctx, (void *) qpack_decode_header);
+  return hpack_error_to_http3_error[rv];
+}
+
+__clib_export http3_error_t
+qpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+		      hpack_response_control_data_t *control_data,
+		      http_field_line_t **headers,
+		      qpack_decoder_ctx_t *decoder_ctx)
+{
+  hpack_error_t rv;
+  u8 *p, *end;
+
+  if (src_len < 3)
+    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+
+  p = src;
+  end = src + src_len;
+
+  /* encoded field section prefix */
+  rv = qpack_parse_headers_prefix (&p, end, decoder_ctx);
+  if (rv || p == end)
+    return hpack_error_to_http3_error[rv];
+
+  rv = hpack_decode_response (p, end, dst, dst_len, control_data, headers,
+			      decoder_ctx, qpack_decode_header);
+  return hpack_error_to_http3_error[rv];
+}

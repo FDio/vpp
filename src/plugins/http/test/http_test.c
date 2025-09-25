@@ -1657,6 +1657,71 @@ http_test_qpack (vlib_main_t *vm)
   /* literal field line with literal name */
   TEST ("\x23\x61\x62\x63\x01\x5A", "abc", "Z");
 
+  vlib_cli_output (vm, "qpack_parse_request");
+
+  static http3_error_t (*_qpack_parse_request) (
+    u8 * src, u32 src_len, u8 * dst, u32 dst_len,
+    hpack_request_control_data_t * control_data, http_field_line_t * *headers,
+    qpack_decoder_ctx_t * decoder_ctx);
+
+  _qpack_parse_request =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_request");
+
+  http3_error_t err;
+  http_field_line_t *headers = 0;
+  qpack_decoder_ctx_t decoder_ctx = {};
+  hpack_request_control_data_t req_control_data = {};
+  u8 req[] = { 0x00, 0x00, 0xD1, 0xD7, 0x50, 0x01, 0x61,
+	       0xC1, 0x23, 0x61, 0x62, 0x63, 0x01, 0x5A };
+  u16 parsed_bitmap =
+    HPACK_PSEUDO_HEADER_METHOD_PARSED | HPACK_PSEUDO_HEADER_SCHEME_PARSED |
+    HPACK_PSEUDO_HEADER_PATH_PARSED | HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+
+  vec_validate_init_empty (buf, 254, 0);
+  err = _qpack_parse_request (req, 14, buf, vec_len (buf), &req_control_data,
+			      &headers, &decoder_ctx);
+  HTTP_TEST (
+    (err == HTTP3_ERROR_NO_ERROR &&
+     req_control_data.parsed_bitmap == parsed_bitmap &&
+     req_control_data.method == HTTP_REQ_GET &&
+     req_control_data.scheme == HTTP_URL_SCHEME_HTTPS &&
+     req_control_data.path_len == 1 && req_control_data.path[0] == '/' &&
+     req_control_data.authority_len == 1 &&
+     req_control_data.authority[0] == 'a' && vec_len (headers) == 1 &&
+     req_control_data.headers_len == 4 && headers[0].name_len == 3 &&
+     headers[0].value_len == 1 &&
+     !memcmp (req_control_data.headers + headers[0].name_offset, "abc", 3) &&
+     !memcmp (req_control_data.headers + headers[0].value_offset, "Z", 1)),
+    "decoder result: %U", format_http3_error, err);
+
+  vec_free (buf);
+  vec_free (headers);
+  memset (&decoder_ctx, 0, sizeof (decoder_ctx));
+
+  vlib_cli_output (vm, "qpack_parse_response");
+
+  static http3_error_t (*_qpack_parse_response) (
+    u8 * src, u32 src_len, u8 * dst, u32 dst_len,
+    hpack_response_control_data_t * control_data, http_field_line_t * *headers,
+    qpack_decoder_ctx_t * decoder_ctx);
+
+  _qpack_parse_response =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_response");
+
+  hpack_response_control_data_t resp_control_data = {};
+  u8 resp[] = { 0x00, 0x00, 0xD9 };
+
+  vec_validate_init_empty (buf, 63, 0);
+  err = _qpack_parse_response (resp, 3, buf, vec_len (buf), &resp_control_data,
+			       &headers, &decoder_ctx);
+  HTTP_TEST (
+    (err == HTTP3_ERROR_NO_ERROR &&
+     resp_control_data.parsed_bitmap == HPACK_PSEUDO_HEADER_STATUS_PARSED &&
+     resp_control_data.sc == HTTP_STATUS_OK && vec_len (headers) == 0),
+    "decoder result: %U", format_http3_error, err);
+  vec_free (buf);
+  vec_free (headers);
+
   return 0;
 }
 
