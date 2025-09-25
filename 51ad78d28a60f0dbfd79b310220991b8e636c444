@@ -69,6 +69,24 @@
       "parentUuid": "31fc8c8e_247a5f09",
       "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cec3b6e_104bcd2a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-09-25T12:44:55Z",
+      "side": 1,
+      "message": "Thanks! I noticed the VM tests yesterday when I tried to figure out if there was some way to add a unit test for this patch. That does seem like a good possibility. I\u0027ll try to learn more about those and make it work for testing linux-nl.",
+      "parentUuid": "fb5b700c_7f133d60",
+      "revId": "51ad78d28a60f0dbfd79b310220991b8e636c444",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
