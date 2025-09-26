@@ -113,6 +113,7 @@ add_vpp_library(vlib
   stats/init.c
   stats/provider_mem.c
   stats/stats.c
+  stats/statsfs.c
   threads.c
   threads_cli.c
   time.c

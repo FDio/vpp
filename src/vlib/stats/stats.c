@@ -242,6 +242,9 @@ vlib_stats_new_entry_internal (stat_directory_type_t t, u8 *name)
 
   vlib_stats_segment_unlock ();
 
+  if (sm->fuse_handle)
+    vlib_statsfs_add_node (sm, vector_index);
+
 done:
   vec_free (name);
   return vector_index;
