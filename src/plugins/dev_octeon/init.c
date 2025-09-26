@@ -97,6 +97,20 @@ static vnet_dev_arg_t oct_port_args[] = {
 			  FLOW_KEY_TYPE_SCTP,
   },
   {
+    .id = OCT_PORT_ARG_SWITCH_HEADER_TYPE,
+    .name = "switch_header_type",
+    .desc = "Type of header used by underlying switch (none, edsa, higig, "
+	    "len-90b, vlan-exdsa), applicable to network devices only",
+    .type = VNET_DEV_ARG_TYPE_ENUM,
+    .enum_vals = VNET_DEV_ARG_ENUM_VALS (
+      { .val = ROC_PRIV_FLAGS_DEFAULT, .name = "none" },
+      { .val = ROC_PRIV_FLAGS_EDSA, .name = "edsa" },
+      { .val = ROC_PRIV_FLAGS_HIGIG, .name = "higig" },
+      { .val = ROC_PRIV_FLAGS_LEN_90B, .name = "len-90b" },
+      { .val = ROC_PRIV_FLAGS_VLAN_EXDSA, .name = "vlan-exdsa" }, ),
+    .default_val.enum_val = ROC_PRIV_FLAGS_DEFAULT,
+  },
+  {
     .id = OCT_PORT_ARG_END,
     .name = "end",
     .desc = "Argument end",
