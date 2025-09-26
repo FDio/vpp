@@ -442,8 +442,10 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
 
-      /* Copy ip6 header */
-      clib_memcpy_fast (to_b->data, org_from_packet,
+      /* Make sure we have as much space for headers as the original and copy
+       * ip6 header */
+      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      clib_memcpy_fast (to_data, org_from_packet,
 			l2unfragmentablesize + sizeof (ip6_header_t));
       to_ip6 = vlib_buffer_get_current (to_b) + l2unfragmentablesize;
       to_frag_hdr = (ip6_frag_hdr_t *) (to_ip6 + 1);
