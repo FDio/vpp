@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2dab4e77_fe033654",
+        "filename": "src/vnet/dev/dev_funcs.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2025-09-26T14:31:38Z",
+      "side": 1,
+      "message": "This is useless and incorrect, I wanted to protect against a vec_free of `default_val` (which will be a fixed C-string), but `vnet_dev_arg_clear_value` already handles it properly:\n\n```\nvoid\nvnet_dev_arg_clear_value (vnet_dev_arg_t *a)\n{\n  if (a-\u003etype \u003d\u003d VNET_DEV_ARG_TYPE_STRING)\n    vec_free (a-\u003eval.string);\n  a-\u003eval \u003d (typeof (a-\u003eval)){};\n  a-\u003eval_set \u003d 0;\n}\n```",
+      "range": {
+        "startLine": 434,
+        "startChar": 3,
+        "endLine": 434,
+        "endChar": 45
+      },
+      "revId": "1d9b652acb50eeb5c0fd0d3335f253fb19fe8017",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
