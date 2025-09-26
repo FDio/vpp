@@ -142,7 +142,7 @@ func (s *VppUdpProxySuite) ClientSendReceive(toSend []byte, rcvBuffer []byte) (i
 	return n, nil
 }
 
-var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, Label("Proxy", "UDP", "UDPproxy", "VPPproxy"), func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -171,7 +171,7 @@ var _ = Describe("VppUdpProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Proxy", "UDP", "UDPproxy", "VPPproxy"), func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -192,7 +192,7 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, fun
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -200,7 +200,7 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, fun
 	}
 })
 
-var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("Proxy", "UDP", "UDPproxy", "VPPproxy", "MW"), func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -221,7 +221,7 @@ var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, func(
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -229,7 +229,7 @@ var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, func(
 	}
 })
 
-var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2", "UDP", "Proxy", "UDPproxy"), func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -306,5 +306,4 @@ var _ = Describe("H2SpecUdpProxySuite", Ordered, ContinueOnFailure, func() {
 			s.AssertEqual(0, tg.FailedCount)
 		}, SpecTimeout(TestTimeout))
 	}
-
 })

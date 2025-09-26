@@ -121,6 +121,7 @@ help:
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
+	@echo " LABEL=[suite labels]     - filter by suite labels, case insensitive (https://onsi.github.io/ginkgo/#spec-labels)"
 	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
 	@echo " CPUS=[n]                 - number of cpus to allocate to each non-VPP container (default = 1)"
 	@echo " VPP_CPUS=[n]             - number of cpus to allocate to each VPP container (default = 1)"
@@ -168,7 +169,8 @@ test: .deps.ok .build.ok
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --cpu0=$(CPU0) \
 		--dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
+		--label="$(LABEL)"; \
 		./script/compress.sh $$?
 
 .PHONY: test-debug
@@ -180,7 +182,8 @@ test-debug: .deps.ok .build_debug.ok
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true \
 		--cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
+		--label="$(LABEL)"; \
 		./script/compress.sh $$?
 
 .PHONY: wipe-lcov
@@ -195,7 +198,8 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 		.$(HS_ROOT)/hs_test.sh --coverage=true --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
-		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT); \
+		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
+		--label="$(LABEL)"; \
 		./script/compress.sh $$?
 	$(MAKE) -C ../.. test-cov-post-standalone HS_TEST=1
 
@@ -205,7 +209,7 @@ test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e BUILD_NUMBER=$(BUILD_NUMBER) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) --timeout=$(TIMEOUT) \
-		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT);
+		--ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) --label="$(LABEL)";
 
 # this is executed in a container by hs-test.sh
 .PHONY: build-go

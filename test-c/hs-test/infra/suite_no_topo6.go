@@ -187,7 +187,7 @@ func (s *NoTopo6Suite) CreateNginxHttp3Config(container *Container) {
 	)
 }
 
-var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("IPv6"), func() {
+var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("Generic", "IPv6"), func() {
 	var s NoTopo6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -216,7 +216,7 @@ var _ = Describe("NoTopo6Suite", Ordered, ContinueOnFailure, Label("IPv6"), func
 	}
 })
 
-var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("IPv6"), func() {
+var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Generic", "IPv6"), func() {
 	var s NoTopo6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -237,7 +237,7 @@ var _ = Describe("NoTopo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

@@ -197,7 +197,7 @@ func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
 	)
 }
 
-var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, Label("Generic"), func() {
 	var s NoTopoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -226,7 +226,7 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Generic"), func() {
 	var s NoTopoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -247,7 +247,7 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -255,7 +255,7 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, Label("Generic", "MW"), func() {
 	var s NoTopoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -276,7 +276,7 @@ var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

@@ -209,7 +209,7 @@ func (s *MasqueSuite) ProxyAddr() string {
 	return s.Interfaces.TunnelServer.Ip4AddressString()
 }
 
-var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, Label("Masque", "Proxy", "ConnectProxy"), func() {
 	var s MasqueSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -238,7 +238,7 @@ var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy"), func() {
 	var s MasqueSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -259,7 +259,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -267,7 +267,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
 	var s MasqueSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -288,7 +288,7 @@ var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

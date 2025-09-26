@@ -246,7 +246,7 @@ func handleConn(conn net.Conn) {
 	}
 }
 
-var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, Label("VPPproxy", "Proxy"), func() {
 	var s VppProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -275,7 +275,7 @@ var _ = Describe("VppProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Label("VPPproxy", "Proxy"), func() {
 	var s VppProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -296,7 +296,7 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func()
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -304,7 +304,7 @@ var _ = Describe("VppProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func()
 	}
 })
 
-var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("VPPproxy", "Proxy", "MW"), func() {
 	var s VppProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -325,7 +325,7 @@ var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -333,7 +333,7 @@ var _ = Describe("VppProxyMWSuite", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("H2SpecProxySuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2", "H2Spec", "H2SpecProxy", "Proxy"), func() {
 	var s VppProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()

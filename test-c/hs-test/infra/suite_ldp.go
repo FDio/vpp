@@ -157,7 +157,7 @@ func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	s.AssertNotEqual(0, idx)
 }
 
-var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, Label("LDP", "VCL"), func() {
 	var s LdpSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -188,7 +188,7 @@ var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("LDP", "VCL"), func() {
 	var s LdpSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -210,7 +210,7 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -218,7 +218,7 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", "VCL", "MW"), func() {
 	var s LdpSuite
 	BeforeAll(func() {
 		s.SetupSuite()

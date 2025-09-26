@@ -44,7 +44,7 @@ func (s *IperfSuite) SetupSuite() {
 	s.Ports.Port1 = s.GeneratePort()
 }
 
-var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, Label("Iperf", "Linux"), func() {
 	var s IperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -73,7 +73,7 @@ var _ = Describe("IperfSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("IperfSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("IperfSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Iperf", "Linux"), func() {
 	var s IperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -94,7 +94,7 @@ var _ = Describe("IperfSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

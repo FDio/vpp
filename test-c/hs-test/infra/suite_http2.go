@@ -138,7 +138,7 @@ func (s *Http2Suite) CreateNginxServer() {
 	)
 }
 
-var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2"), func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -167,7 +167,7 @@ var _ = Describe("Http2Suite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP2", "Solo"), func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -188,7 +188,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -196,7 +196,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP2", "MW"), func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -217,7 +217,7 @@ var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -411,7 +411,7 @@ var specs = []struct {
 	{ExtrasTestGroup, extrasTests},
 }
 
-var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2", "H2Spec"), func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -498,7 +498,7 @@ func h2specdVerifyResult(s Http2Suite, nExecuted int) bool {
 	return strings.Contains(string(report), expected)
 }
 
-var _ = Describe("H2SpecClientSuite", Ordered, Serial, func() {
+var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H2Spec", "H2SpecClient"), func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()

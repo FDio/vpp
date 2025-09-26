@@ -127,7 +127,7 @@ func (s *Http1Suite) HostAddr() string {
 	return s.Interfaces.Tap.Ip4AddressString()
 }
 
-var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"), func() {
 	var s Http1Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -156,7 +156,7 @@ var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP1"), func() {
 	var s Http1Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -177,7 +177,7 @@ var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -185,7 +185,7 @@ var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP1", "MW"), func() {
 	var s Http1Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -206,7 +206,7 @@ var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
