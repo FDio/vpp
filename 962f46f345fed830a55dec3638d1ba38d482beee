@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe8ef24f_cd9c6be5",
+        "filename": "test-c/hs-test/infra/suite_envoy_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-26T16:18:15Z",
+      "side": 1,
+      "message": "add Label(\"VCL\")",
+      "revId": "962f46f345fed830a55dec3638d1ba38d482beee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e34f48c7_e6193558",
+        "filename": "test-c/hs-test/infra/suite_http2.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-26T16:18:15Z",
+      "side": 1,
+      "message": "H2SpecClient",
+      "range": {
+        "startLine": 501,
+        "startChar": 89,
+        "endLine": 501,
+        "endChar": 101
+      },
+      "revId": "962f46f345fed830a55dec3638d1ba38d482beee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5289ec7_f7a952da",
+        "filename": "test-c/hs-test/infra/suite_ldp.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-26T16:18:15Z",
+      "side": 1,
+      "message": "labels?",
+      "revId": "962f46f345fed830a55dec3638d1ba38d482beee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da5d5cd7_8897977d",
+        "filename": "test-c/hs-test/infra/suite_nginx_proxy.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-09-26T16:18:15Z",
+      "side": 1,
+      "message": "LDP? VCL?",
+      "revId": "962f46f345fed830a55dec3638d1ba38d482beee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
