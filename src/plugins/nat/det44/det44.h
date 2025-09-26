@@ -401,10 +401,39 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
 }
 
 static_always_inline void
-snat_det_ses_close (snat_det_map_t * dm, snat_det_session_t * ses)
+snat_det_ses_close (u32 thread_index, snat_det_map_t * dm, snat_det_session_t * ses)
 {
+  det44_main_t *dmain = &det44_main;
+  u16 ses_in_port = ses->in_port;
+  u32 user_index = 0;
+  ip4_address_t in_addr, out_addr;
+  u32 out_offset;
+
   if (clib_atomic_bool_cmp_and_swap (&ses->in_port, ses->in_port, 0))
     {
+
+      u8 proto = 6; /* tcp */
+      if (ses->state == DET44_SESSION_UDP_ACTIVE)
+	proto = 17; /* udp */
+      else if (ses->state == DET44_SESSION_ICMP_ACTIVE)
+	proto = 1; /* icmp 1*/
+      else if (ses->state == DET44_SESSION_UNKNOWN)
+	proto = 0;
+
+      user_index = ses - dm->sessions;
+      user_index /= DET44_SES_PER_USER;
+
+      in_addr.as_u32 = clib_host_to_net_u32 (
+	clib_net_to_host_u32 (dm->in_addr.as_u32) + user_index);
+
+      out_offset = user_index / dm->sharing_ratio;
+      out_addr.as_u32 = clib_host_to_net_u32 (
+	clib_net_to_host_u32 (dm->out_addr.as_u32) + out_offset);
+
+      nat_ipfix_logging_nat44_ses_delete (
+	thread_index, in_addr.as_u32, out_addr.as_u32, proto, ses_in_port,
+	ses->out.out_port, dmain->outside_fib_index); /* add vrf index */
+
       ses->out.as_u64 = 0;
       clib_atomic_add_fetch (&dm->ses_num, -1);
     }

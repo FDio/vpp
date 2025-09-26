@@ -502,7 +502,7 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
 	    ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
 	  else if (tcp0->flags & TCP_FLAG_ACK
 		   && ses0->state == DET44_SESSION_TCP_LAST_ACK)
-	    snat_det_ses_close (mp0, ses0);
+	    snat_det_ses_close (thread_index, mp0, ses0);
 
 	  sum0 = tcp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,
@@ -620,7 +620,7 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
 	    ses1->state = DET44_SESSION_TCP_CLOSE_WAIT;
 	  else if (tcp1->flags & TCP_FLAG_ACK
 		   && ses1->state == DET44_SESSION_TCP_LAST_ACK)
-	    snat_det_ses_close (mp1, ses1);
+	    snat_det_ses_close (thread_index, mp1, ses1);
 
 	  sum1 = tcp1->checksum;
 	  sum1 = ip_csum_update (sum1, old_addr1.as_u32, new_addr1.as_u32,
@@ -765,7 +765,7 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
 	    ses0->state = DET44_SESSION_TCP_CLOSE_WAIT;
 	  else if (tcp0->flags & TCP_FLAG_ACK
 		   && ses0->state == DET44_SESSION_TCP_LAST_ACK)
-	    snat_det_ses_close (mp0, ses0);
+	    snat_det_ses_close (thread_index, mp0, ses0);
 
 	  sum0 = tcp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0.as_u32, new_addr0.as_u32,

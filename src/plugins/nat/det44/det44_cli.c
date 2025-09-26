@@ -245,7 +245,7 @@ det44_close_session_out_fn (vlib_main_t * vm,
       if (!ses)
 	vlib_cli_output (vm, "no match");
       else
-	snat_det_ses_close (mp, ses);
+	snat_det_ses_close (vm->thread_index, mp, ses);
     }
 
 done:
@@ -297,7 +297,7 @@ det44_close_session_in_fn (vlib_main_t * vm,
       if (!ses)
 	vlib_cli_output (vm, "no match");
       else
-	snat_det_ses_close (mp, ses);
+	snat_det_ses_close (vm->thread_index, mp, ses);
     }
 
 done:
