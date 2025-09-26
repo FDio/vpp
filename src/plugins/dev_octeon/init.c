@@ -97,6 +97,14 @@ static vnet_dev_arg_t oct_port_args[] = {
 			  FLOW_KEY_TYPE_SCTP,
   },
   {
+    .id = OCT_PORT_ARG_SWITCH_HEADER_TYPE,
+    .name = "switch_header_type",
+    .desc = "Type of header used by underlying switch (none, edsa, higig, "
+	    "len_90b, vlan_exdsa), applicable to network devices only",
+    .type = VNET_DEV_ARG_TYPE_STRING,
+    .default_val.string = (u8 *) "none",
+  },
+  {
     .id = OCT_PORT_ARG_END,
     .name = "end",
     .desc = "Argument end",
