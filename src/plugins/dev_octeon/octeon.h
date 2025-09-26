@@ -34,6 +34,7 @@ typedef enum
 {
   OCT_PORT_ARG_EN_ETH_PAUSE_FRAME = 1,
   OCT_PORT_ARG_RSS_FLOW_KEY = 2,
+  OCT_PORT_ARG_SWITCH_HEADER_TYPE = 3,
   OCT_PORT_ARG_END
 } oct_port_args_t;
 
@@ -85,6 +86,7 @@ typedef struct
   struct roc_npc npc;
   oct_flow_entry_t *flow_entries;
   u32 rss_flowkey;
+  u64 switch_header_type;
 } oct_port_t;
 
 typedef struct
