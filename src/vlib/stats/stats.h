@@ -8,6 +8,7 @@
 #include <vppinfra/socket.h>
 #include <vppinfra/lock.h>
 #include <vlib/stats/shared.h>
+#include <vlib/unix/fuse.h>
 
 /* Default stat segment 32m */
 #define STAT_SEGMENT_DEFAULT_SIZE (32 << 20)
@@ -74,6 +75,8 @@ typedef struct
   u32 n_locks;
   clib_socket_t *socket;
   u8 *socket_name;
+  vlib_fuse_handle_t fuse_handle;
+  u8 *fs_mountpoint;
   ssize_t memory_size;
   clib_mem_page_sz_t log2_page_sz;
   u8 node_counters_enabled;
@@ -158,6 +161,8 @@ int vlib_stats_validate_will_expand (u32 entry_index, ...);
 void vlib_stats_remove_entry (u32 entry_index);
 u32 vlib_stats_find_entry_index (char *fmt, ...);
 void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
+
+vlib_fuse_nodeid_t vlib_statsfs_add_node (vlib_stats_segment_t *sm, u32 idx);
 
 format_function_t format_vlib_stats_symlink;
 
