@@ -86,20 +86,6 @@ static hpack_static_table_entry_t
     { name_val_token_lit ("www-authenticate", "") },
   };
 
-typedef struct
-{
-  char *base;
-  uword len;
-  u8 static_table_index;
-} hpack_token_t;
-
-static hpack_token_t hpack_headers[] = {
-#define _(sym, str_canonical, str_lower, hpack_index)                         \
-  { http_token_lit (str_lower), hpack_index },
-  foreach_http_header_name
-#undef _
-};
-
 static http_token_t http_methods[] = {
 #define _(s, str) { http_token_lit (str) },
   foreach_http_method
