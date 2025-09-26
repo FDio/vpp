@@ -59,7 +59,7 @@ func (s *CpuPinningSuite) TeardownTest() {
 	s.CpusPerContainer = *NConfiguredCpus
 }
 
-var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, Label("CpuPinning"), func() {
 	var s CpuPinningSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -90,7 +90,7 @@ var _ = Describe("CpuPinningSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("CpuPinning"), func() {
 	var s CpuPinningSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -111,7 +111,7 @@ var _ = Describe("CpuPinningSuiteSolo", Ordered, ContinueOnFailure, Serial, func
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

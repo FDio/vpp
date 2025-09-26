@@ -15,6 +15,7 @@ skip_names=()
 dryrun=
 no_color=
 hs_root=
+label=
 
 for i in "$@"
 do
@@ -122,6 +123,12 @@ case "${i}" in
     --hs_root=*)
         hs_root="${i#*=}"
         cd $hs_root
+        ;;
+    --label=*)
+        label="${i#*=}"
+        ginkgo_args="$ginkgo_args --label-filter="$label" -v"
+        args="$args -verbose"
+        ;;
 esac
 done
 
