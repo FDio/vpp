@@ -86,20 +86,6 @@ static hpack_static_table_entry_t
     { name_val_token_lit ("www-authenticate", "") },
   };
 
-typedef struct
-{
-  char *base;
-  uword len;
-  u8 static_table_index;
-} hpack_token_t;
-
-static hpack_token_t hpack_headers[] = {
-#define _(sym, str_canonical, str_lower, hpack_index)                         \
-  { http_token_lit (str_lower), hpack_index },
-  foreach_http_header_name
-#undef _
-};
-
 static http_token_t http_methods[] = {
 #define _(s, str) { http_token_lit (str) },
   foreach_http_method
@@ -489,12 +475,11 @@ static inline u8 *
 hpack_encode_header (u8 *dst, http_header_name_t name, const u8 *value,
 		     u32 value_len)
 {
-  hpack_token_t *name_token;
   u8 *a, *b;
   u32 orig_len, actual_size;
 
   orig_len = vec_len (dst);
-  name_token = &hpack_headers[name];
+  const hpack_token_t *name_token = &hpack_headers[name];
   if (name_token->static_table_index)
     {
       /* static table index with 4 bit prefix is max 2 bytes */
