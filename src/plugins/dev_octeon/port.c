@@ -112,6 +112,34 @@ oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
   return VNET_DEV_OK;
 }
 
+#define foreach_oct_switch_header_type                                        \
+  _ (ROC_PRIV_FLAGS_DEFAULT, "none")                                          \
+  _ (ROC_PRIV_FLAGS_EDSA, "edsa")                                             \
+  _ (ROC_PRIV_FLAGS_HIGIG, "higig")                                           \
+  _ (ROC_PRIV_FLAGS_LEN_90B, "len_90b")                                       \
+  _ (ROC_PRIV_FLAGS_VLAN_EXDSA, "vlan_exdsa")
+
+static u64
+oct_switch_port_from_dev_arg_string (vnet_dev_t *dev, vnet_dev_arg_t *arg)
+{
+  u8 *str = vnet_dev_arg_get_string (arg);
+  u64 switch_header_type = ~0;
+  if (0) /* nada */
+    ;
+#define _(type, name)                                                         \
+  else if (!memcmp (str, name, sizeof (name) - 1)) switch_header_type = type;
+  foreach_oct_switch_header_type
+#undef _
+    ;
+
+  if (switch_header_type == ~0)
+    {
+      log_err (dev, "invalid switch_header_type %s", str);
+      switch_header_type = ROC_PRIV_FLAGS_DEFAULT;
+    }
+  return switch_header_type;
+}
+
 vnet_dev_rv_t
 oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -134,6 +162,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	is_pause_frame_enable = true;
       else if (arg->id == OCT_PORT_ARG_RSS_FLOW_KEY)
 	cp->rss_flowkey = vnet_dev_arg_get_uint32 (arg);
+      else if (arg->id == OCT_PORT_ARG_SWITCH_HEADER_TYPE)
+	cp->switch_header_type =
+	  oct_switch_port_from_dev_arg_string (dev, arg);
     }
 
   if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,
@@ -194,6 +225,12 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return oct_roc_err (dev, rrv, "roc_npc_init() failed");
     }
   cp->npc_initialized = 1;
+
+  if ((rrv = roc_nix_switch_hdr_set (nix, cp->switch_header_type, 0, 0, 0)))
+    {
+      oct_port_deinit (vm, port);
+      return oct_roc_err (dev, rrv, "roc_nix_switch_hdr_set() failed");
+    }
 
   foreach_vnet_dev_port_rx_queue (q, port)
     if (q->enabled)
