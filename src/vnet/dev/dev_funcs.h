@@ -430,7 +430,7 @@ static_always_inline u8 *
 vnet_dev_arg_get_string (vnet_dev_arg_t *arg)
 {
   ASSERT (arg->type == VNET_DEV_ARG_TYPE_STRING);
-  return arg->val_set ? arg->val.string : arg->default_val.string;
+  return arg->val_set ? arg->val.string : format(0, "%s", arg->default_val.string);
 }
 
 #endif /* _VNET_DEV_FUNCS_H_ */
