@@ -290,6 +290,8 @@ typedef enum http_status_code_
   _ (CONTENT_LENGTH, "Content-Length", "content-length", 28)                  \
   _ (CONTENT_LOCATION, "Content-Location", "content-location", 29)            \
   _ (CONTENT_RANGE, "Content-Range", "content-range", 30)                     \
+  _ (CONTENT_SECURITY_POLICY, "Content-Security-Policy",                      \
+     "content-security-policy", 0)                                            \
   _ (CONTENT_TYPE, "Content-Type", "content-type", 31)                        \
   _ (COOKIE, "Cookie", "cookie", 32)                                          \
   _ (DATE, "Date", "date", 33)                                                \
@@ -299,6 +301,7 @@ typedef enum http_status_code_
   _ (EARLY_DATA, "Early-Data", "early-data", 0)                               \
   _ (ETAG, "ETag", "etag", 34)                                                \
   _ (EXPECT, "Expect", "expect", 35)                                          \
+  _ (EXPECT_CT, "Expect-CT", "expect-ct", 0)                                  \
   _ (EXPIRES, "Expires", "expires", 36)                                       \
   _ (FORWARDED, "Forwarded", "forwarded", 0)                                  \
   _ (FROM, "From", "from", 37)                                                \
@@ -320,6 +323,7 @@ typedef enum http_status_code_
      "proxy-authentication-info", 0)                                          \
   _ (PROXY_AUTHORIZATION, "Proxy-Authorization", "proxy-authorization", 49)   \
   _ (PROXY_STATUS, "Proxy-Status", "proxy-status", 0)                         \
+  _ (PURPOSE, "Purpose", "purpose", 0)                                        \
   _ (RANGE, "Range", "range", 50)                                             \
   _ (REFERER, "Referer", "referer", 51)                                       \
   _ (REFRESH, "Refresh", "refresh", 52)                                       \
@@ -332,15 +336,23 @@ typedef enum http_status_code_
   _ (STRICT_TRANSPORT_SECURITY, "Strict-Transport-Security",                  \
      "strict-transport-security", 56)                                         \
   _ (TE, "TE", "te", 0)                                                       \
+  _ (TIMING_ALLOW_ORIGIN, "Timing-Allow-Origin", "timing-allow-origin", 0)    \
   _ (TRAILER, "Trailer", "trailer", 0)                                        \
   _ (TRANSFER_ENCODING, "Transfer-Encoding", "transfer-encoding", 57)         \
   _ (UPGRADE, "Upgrade", "upgrade", 0)                                        \
+  _ (UPGRADE_INSECURE_REQUESTS, "Upgrade-Insecure-Requests",                  \
+     "upgrade-insecure-requests", 0)                                          \
   _ (USER_AGENT, "User-Agent", "user-agent", 58)                              \
   _ (VARY, "Vary", "vary", 59)                                                \
   _ (VIA, "Via", "via", 60)                                                   \
   _ (WANT_CONTENT_DIGEST, "Want-Content-Digest", "want-content-digest", 0)    \
   _ (WANT_REPR_DIGEST, "Want-Repr-Digest", "want-repr-digest", 0)             \
-  _ (WWW_AUTHENTICATE, "WWW-Authenticate", "www-authenticate", 61)
+  _ (WWW_AUTHENTICATE, "WWW-Authenticate", "www-authenticate", 61)            \
+  _ (X_CONTENT_TYPE_OPTIONS, "X-Content-Type-Options",                        \
+     "x-content-type-options", 0)                                             \
+  _ (X_FORWARDED_FOR, "X-Forwarded-For", "x-forwarded-for", 0)                \
+  _ (X_FRAME_OPTIONS, "X-Frame-Options", "x-frame-options", 0)                \
+  _ (X_XSS_PROTECTION, "X-XSS-Protection", "x-xss-protection", 0)
 
 typedef enum http_header_name_
 {
