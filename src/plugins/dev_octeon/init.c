@@ -82,24 +82,35 @@ static vnet_dev_arg_t oct_port_args[] = {
   {
     .id = OCT_PORT_ARG_EN_ETH_PAUSE_FRAME,
     .name = "eth_pause_frame",
-    .desc = "Enable ethernet pause frame support, applicable to network "
-	    "devices only",
+    .desc = "Enable ethernet pause frame support",
     .type = VNET_DEV_ARG_TYPE_BOOL,
     .default_val.boolean = false,
   },
   {
     .id = OCT_PORT_ARG_RSS_FLOW_KEY,
     .name = "rss_flow_key",
-    .desc = "RSS Flow Key Bitmap, applicable to network devices only",
-    .type = VNET_DEV_ARG_TYPE_UINT32,
+    .desc = "RSS Flow Key Bitmap",
+    .type = VNET_DEV_ARG_TYPE_HEX32,
     .default_val.uint32 = FLOW_KEY_TYPE_IPV4 | FLOW_KEY_TYPE_IPV6 |
 			  FLOW_KEY_TYPE_TCP | FLOW_KEY_TYPE_UDP |
 			  FLOW_KEY_TYPE_SCTP,
   },
   {
-    .id = OCT_PORT_ARG_END,
-    .name = "end",
-    .desc = "Argument end",
+    .id = OCT_PORT_ARG_SWITCH_HEADER_TYPE,
+    .name = "switch_header_type",
+    .desc = "Type of header used by underlying switch (none, edsa, higig, "
+	    "len_90b, exdsa, vlan_exdsa)",
+    .type = VNET_DEV_ARG_TYPE_ENUM,
+    .enum_vals = VNET_DEV_ARG_ENUM_VALS (
+      { .val = ROC_PRIV_FLAGS_DEFAULT, .name = "none" },
+      { .val = ROC_PRIV_FLAGS_EDSA, .name = "edsa" },
+      { .val = ROC_PRIV_FLAGS_HIGIG, .name = "higig" },
+      { .val = ROC_PRIV_FLAGS_LEN_90B, .name = "len_90b" },
+      { .val = ROC_PRIV_FLAGS_EXDSA, .name = "exdsa" },
+      { .val = ROC_PRIV_FLAGS_VLAN_EXDSA, .name = "vlan_exdsa" }, ),
+    .default_val.enum_val = ROC_PRIV_FLAGS_DEFAULT,
+  },
+  {
     .type = VNET_DEV_ARG_END,
   },
 };
@@ -244,7 +255,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .data_size = sizeof (oct_port_t),
       .initial_data = &oct_port,
-      .args = oct_port_args,
+      .args = roc_nix_is_vf_or_sdp(cd->nix) == 0 ? oct_port_args : 0,
     },
     .rx_node = &oct_rx_node,
     .tx_node = &oct_tx_node,
