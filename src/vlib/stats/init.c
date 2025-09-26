@@ -134,11 +134,39 @@ vlib_stats_init (vlib_main_t *vm)
   return 0;
 }
 
+clib_error_t *
+statseg_config_fs (vlib_stats_segment_t *sm, unformat_input_t *in)
+{
+  clib_error_t *err = 0;
+
+  while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (in, "mount-point %v", &sm->fs_mountpoint))
+	;
+      else
+	{
+	  err = clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, in);
+	  goto done;
+	}
+    }
+
+  if (!sm->fs_mountpoint)
+    {
+      err = clib_error_return (0, "no mount point provided");
+      goto done;
+    }
+
+done:
+  return err;
+}
+
 static clib_error_t *
 statseg_config (vlib_main_t *vm, unformat_input_t *input)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   sm->update_interval = 10.0;
+  unformat_input_t sub_input;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -159,6 +187,14 @@ statseg_config (vlib_main_t *vm, unformat_input_t *input)
 	sm->node_counters_enabled = 0;
       else if (unformat (input, "update-interval %f", &sm->update_interval))
 	;
+      else if (unformat (input, "file-system %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  clib_error_t *err = statseg_config_fs (sm, &sub_input);
+	  unformat_free (&sub_input);
+	  if (err)
+	    return err;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
