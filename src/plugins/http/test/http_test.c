@@ -1722,6 +1722,59 @@ http_test_qpack (vlib_main_t *vm)
   vec_free (buf);
   vec_free (headers);
 
+  vlib_cli_output (vm, "qpack_encode_header");
+
+  static u8 *(*_qpack_encode_header) (u8 * dst, http_header_name_t name,
+				      const u8 *value, u32 value_len);
+  _qpack_encode_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_encode_header");
+
+  /* indexed field line, static table */
+  buf = _qpack_encode_header (buf, HTTP_HEADER_CACHE_CONTROL,
+			      (const u8 *) "no-cache", 8);
+  HTTP_TEST ((vec_len (buf) == 1 && buf[0] == 0xE7),
+	     "'cache-control: no-cache' encoded as: %U", format_hex_bytes, buf,
+	     vec_len (buf));
+  vec_free (buf);
+
+  /* literal field line with name reference, static table */
+  u8 expected1[] = "\x56\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
+		   "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF";
+  buf = _qpack_encode_header (
+    buf, HTTP_HEADER_DATE, (const u8 *) "Mon, 21 Oct 2013 20:13:21 GMT", 29);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected1) - 1) &&
+	      !memcmp (buf, expected1, vec_len (buf))),
+	     "'date: Mon, 21 Oct 2013 20:13:21 GMT' encoded as: %U",
+	     format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+
+  /* literal field line with literal name */
+  u8 expected2[] = "\x2F\x01\x20\xC9\x39\x56\x42\x46\x9B\x51\x8D\xC1\xE4\x74"
+		   "\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F";
+  buf = _qpack_encode_header (buf, HTTP_HEADER_CACHE_STATUS,
+			      (const u8 *) "ExampleCache; hit", 17);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected2) - 1) &&
+	      !memcmp (buf, expected2, vec_len (buf))),
+	     "'cache-status: ExampleCache; hit' encoded as: %U",
+	     format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+
+  vlib_cli_output (vm, "qpack_encode_custom_header");
+
+  static u8 *(*_qpack_encode_custom_header) (
+    u8 * dst, const u8 *name, u32 name_len, const u8 *value, u32 value_len);
+  _qpack_encode_custom_header =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_encode_custom_header");
+
+  u8 expected3[] = "\x2E\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  buf = _qpack_encode_custom_header (buf, (const u8 *) "sandwich", 8,
+				     (const u8 *) "spam", 4);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected3) - 1) &&
+	      !memcmp (buf, expected3, vec_len (buf))),
+	     "'sandwich: spam' encoded as: %U", format_hex_bytes, buf,
+	     vec_len (buf));
+  vec_free (buf);
+
   return 0;
 }
 
