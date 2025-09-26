@@ -134,6 +134,8 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	is_pause_frame_enable = true;
       else if (arg->id == OCT_PORT_ARG_RSS_FLOW_KEY)
 	cp->rss_flowkey = vnet_dev_arg_get_uint32 (arg);
+      else if (arg->id == OCT_PORT_ARG_SWITCH_HEADER_TYPE)
+	cp->switch_header_type = vnet_dev_arg_get_enum (arg);
     }
 
   if ((rrv = roc_nix_lf_alloc (nix, ifs->num_rx_queues, ifs->num_tx_queues,
@@ -194,6 +196,12 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return oct_roc_err (dev, rrv, "roc_npc_init() failed");
     }
   cp->npc_initialized = 1;
+
+  if ((rrv = roc_nix_switch_hdr_set (nix, cp->switch_header_type, 0, 0, 0)))
+    {
+      oct_port_deinit (vm, port);
+      return oct_roc_err (dev, rrv, "roc_nix_switch_hdr_set() failed");
+    }
 
   foreach_vnet_dev_port_rx_queue (q, port)
     if (q->enabled)
