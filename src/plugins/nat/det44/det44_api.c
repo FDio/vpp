@@ -170,7 +170,7 @@ vl_api_det44_close_session_out_t_handler (vl_api_det44_close_session_out_t
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
+  snat_det_ses_close (dm->vnet_main->vlib_main->thread_index, m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_DET44_CLOSE_SESSION_OUT_REPLY);
@@ -204,7 +204,7 @@ vl_api_det44_close_session_in_t_handler (vl_api_det44_close_session_in_t * mp)
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
+  snat_det_ses_close (dm->vnet_main->vlib_main->thread_index, m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_DET44_CLOSE_SESSION_OUT_REPLY);
@@ -505,7 +505,7 @@ vl_api_nat_det_close_session_out_t_handler (vl_api_nat_det_close_session_out_t
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
+  snat_det_ses_close (dm->vnet_main->vlib_main->thread_index, m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_DET_CLOSE_SESSION_OUT_REPLY);
@@ -540,7 +540,7 @@ vl_api_nat_det_close_session_in_t_handler (vl_api_nat_det_close_session_in_t *
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
+  snat_det_ses_close (dm->vnet_main->vlib_main->thread_index, m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_DET_CLOSE_SESSION_OUT_REPLY);

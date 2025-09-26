@@ -217,6 +217,10 @@ icmp_match_in2out_det (vlib_node_runtime_t * node,
 	  b0->error = node->errors[DET44_IN2OUT_ERROR_OUT_OF_PORTS];
 	  goto out;
 	}
+	nat_ipfix_logging_nat44_ses_create (
+	  thread_index, in_addr.as_u32, new_addr0.as_u32, 1,
+	  echo0->identifier, key0.out_port, dm->outside_fib_index);
+
     }
 
   if (PREDICT_FALSE
@@ -536,6 +540,9 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	      next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace0;
 	    }
+		nat_ipfix_logging_nat44_ses_create (
+		  thread_index, ip0->src_address.as_u32, new_addr0.as_u32, ip0->protocol,
+		  tcp0->src_port, key0.out_port, dm->outside_fib_index);
 	}
 
       old_port0 = udp0->src_port;
@@ -562,7 +569,7 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	    ses0->state = DET44_SESSION_TCP_FIN_WAIT;
 	  else if (tcp0->flags & TCP_FLAG_ACK
 		   && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
-	    snat_det_ses_close (mp0, ses0);
+	    snat_det_ses_close (thread_index, mp0, ses0);
 	  else if (tcp0->flags & TCP_FLAG_FIN
 		   && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
 	    ses0->state = DET44_SESSION_TCP_LAST_ACK;
@@ -706,6 +713,9 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	      next1 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace1;
 	    }
+		nat_ipfix_logging_nat44_ses_create (
+		  thread_index, ip1->src_address.as_u32, new_addr1.as_u32, ip1->protocol,
+		  tcp1->src, key1.out_port, dm->outside_fib_index);
 	}
 
       old_port1 = udp1->src_port;
@@ -732,7 +742,7 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	    ses1->state = DET44_SESSION_TCP_FIN_WAIT;
 	  else if (tcp1->flags & TCP_FLAG_ACK
 		   && ses1->state == DET44_SESSION_TCP_FIN_WAIT)
-	    snat_det_ses_close (mp1, ses1);
+	    snat_det_ses_close (thread_index, mp1, ses1);
 	  else if (tcp1->flags & TCP_FLAG_FIN
 		   && ses1->state == DET44_SESSION_TCP_CLOSE_WAIT)
 	    ses1->state = DET44_SESSION_TCP_LAST_ACK;
@@ -904,6 +914,9 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	      next0 = DET44_IN2OUT_NEXT_ICMP_ERROR;
 	      goto trace00;
 	    }
+		nat_ipfix_logging_nat44_ses_create (
+		  thread_index, ip0->src_address.as_u32, new_addr0.as_u32, ip0->protocol,
+		  tcp0->src, key0.out_port, dm->outside_fib_index);
 	}
 
       old_port0 = udp0->src_port;
@@ -930,7 +943,7 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	    ses0->state = DET44_SESSION_TCP_FIN_WAIT;
 	  else if (tcp0->flags & TCP_FLAG_ACK
 		   && ses0->state == DET44_SESSION_TCP_FIN_WAIT)
-	    snat_det_ses_close (mp0, ses0);
+	    snat_det_ses_close (thread_index, mp0, ses0);
 	  else if (tcp0->flags & TCP_FLAG_FIN
 		   && ses0->state == DET44_SESSION_TCP_CLOSE_WAIT)
 	    ses0->state = DET44_SESSION_TCP_LAST_ACK;
