@@ -23,6 +23,20 @@ typedef hpack_error_t (hpack_header_decoder_fn) (u8 **src, u8 *end, u8 **buf,
 						 u32 *value_len,
 						 void *decoder_ctx);
 
+typedef struct
+{
+  char *base;
+  uword len;
+  u8 static_table_index;
+} hpack_token_t;
+
+static const hpack_token_t hpack_headers[] = {
+#define _(sym, str_canonical, str_lower, hpack_index)                         \
+  { http_token_lit (str_lower), hpack_index },
+  foreach_http_header_name
+#undef _
+};
+
 /**
  * Decode unsigned variable-length integer (RFC7541 section 5.1)
  *
