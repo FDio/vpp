@@ -102,7 +102,7 @@ func (s *Veths6Suite) SetupClientVpp() {
 	s.AssertNotEqual(0, idx)
 }
 
-var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, Label("Veth", "IPv6"), func() {
 	var s Veths6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -133,7 +133,7 @@ var _ = Describe("Veths6Suite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("Veths6SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("Veths6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "IPv6"), func() {
 	var s Veths6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -155,7 +155,7 @@ var _ = Describe("Veths6SuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

@@ -185,7 +185,7 @@ func (s *EnvoyProxySuite) CurlUploadResource(uri, file string) {
 	s.AssertNotContains(log, "Operation timed out")
 }
 
-var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, Label("Envoy", "Proxy", "VCL"), func() {
 	var s EnvoyProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -214,7 +214,7 @@ var _ = Describe("EnvoyProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, func() {
+var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, Label("Envoy", "Proxy"), func() {
 	var s EnvoyProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -235,7 +235,7 @@ var _ = Describe("EnvoyProxySuiteSolo", Ordered, ContinueOnFailure, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

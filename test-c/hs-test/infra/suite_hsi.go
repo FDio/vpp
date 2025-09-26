@@ -134,7 +134,7 @@ func (s *HsiSuite) ServerAddr() string {
 	return s.Interfaces.Server.Peer.Ip4AddressString()
 }
 
-var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, Label("HSI"), func() {
 	var s HsiSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -163,7 +163,7 @@ var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("HsiSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("HsiSoloSuite", Ordered, ContinueOnFailure, Serial, Label("HSI"), func() {
 	var s HsiSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -184,7 +184,7 @@ var _ = Describe("HsiSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
@@ -192,7 +192,7 @@ var _ = Describe("HsiSoloSuite", Ordered, ContinueOnFailure, Serial, func() {
 	}
 })
 
-var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, Label("HSI", "Solo", "MW"), func() {
 	var s HsiSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -213,7 +213,7 @@ var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, func() {
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))

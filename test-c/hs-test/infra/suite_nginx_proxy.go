@@ -197,7 +197,7 @@ func (s *NginxProxySuite) AddVclConfig(container *Container, multiThreadWorkers 
 	s.AssertNil(err, fmt.Sprint(err))
 }
 
-var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {
+var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, Label("Nginx", "Proxy", "LDP", "VCL"), func() {
 	var s NginxProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -226,7 +226,7 @@ var _ = Describe("NginxProxySuite", Ordered, ContinueOnFailure, func() {
 	}
 })
 
-var _ = Describe("NginxProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+var _ = Describe("NginxProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Nginx", "Proxy", "LDP", "VCL"), func() {
 	var s NginxProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -247,7 +247,7 @@ var _ = Describe("NginxProxySuiteSolo", Ordered, ContinueOnFailure, Serial, func
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO"), func(ctx SpecContext) {
+			It(testName, func(ctx SpecContext) {
 				s.Log(testName + ": BEGIN")
 				test(&s)
 			}, SpecTimeout(TestTimeout))
