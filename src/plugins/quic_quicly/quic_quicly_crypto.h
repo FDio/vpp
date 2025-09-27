@@ -37,8 +37,6 @@ quic_quicly_crypto_context_get (u32 cr_index, u32 thread_index)
 #define quic_quicly_load_openssl3_legacy_provider()
 #endif
 
-extern vnet_crypto_main_t *cm;
-
 typedef struct crypto_key_
 {
   vnet_crypto_alg_t algo;
@@ -73,14 +71,34 @@ typedef struct quic_quicly_crypto_context_data_
   ptls_context_t ptls_ctx;
 } quic_quicly_crypto_context_data_t;
 
-static_always_inline void
+static_always_inline u8
 quic_quicly_register_cipher_suite (crypto_engine_type_t type,
 				   ptls_cipher_suite_t **ciphers)
 {
   quic_quicly_main_t *qqm = &quic_quicly_main;
-  vec_validate (qqm->quic_ciphers, type);
-  clib_bitmap_set (qqm->available_crypto_engines, type, 1);
-  qqm->quic_ciphers[type] = ciphers;
+  u8 rv = 1;
+
+  if (!qqm->quic_ciphers)
+    {
+      vec_validate (qqm->quic_ciphers, type);
+    }
+  if (!qqm->quic_ciphers[type])
+    {
+      QUIC_DBG (3,
+		"Register cipher suite: engine_type %U (%u), cipher_suites %p",
+		format_crypto_engine, type, type, ciphers);
+      clib_bitmap_set (qqm->available_crypto_engines, type, 1);
+      qqm->quic_ciphers[type] = ciphers;
+    }
+  else
+    {
+      QUIC_DBG (3,
+		"Cipher suite already registered: engine_type %U (%u), "
+		"cipher_suites %p",
+		format_crypto_engine, type, type, ciphers);
+      rv = 0;
+    }
+  return rv;
 }
 
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
