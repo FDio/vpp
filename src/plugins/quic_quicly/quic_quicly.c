@@ -226,11 +226,11 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   // TODO: GET THIS IOVEC OFF OF THE STACK!!!
   struct iovec
     packets[QUIC_SEND_PACKET_VEC_SIZE]; // TODO: GET THIS OFF OF THE STACK
-
-  uint8_t buf[QUIC_SEND_PACKET_VEC_SIZE *
-	      quic_quicly_get_quicly_ctx_from_ctx (ctx)
-		->transport_params.max_udp_payload_size]; // TODO: GET THIS OFF
-							  // OF THE STACK
+  uint64_t max_udp_payload_size = quic_quicly_get_quicly_ctx_from_ctx (ctx)
+				    ->transport_params.max_udp_payload_size;
+  uint8_t
+    buf[QUIC_SEND_PACKET_VEC_SIZE * max_udp_payload_size]; // TODO: GET THIS
+							   // OFF OF THE STACK
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
@@ -270,6 +270,8 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 	}
 
       num_packets = max_packets;
+      QUIC_DBG (3, "num_packets %u, packets %p, buf %p, buf_size %u",
+		num_packets, packets, buf, sizeof (buf));
       if ((err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets,
 			      &num_packets, buf, sizeof (buf))))
 	{
@@ -618,7 +620,7 @@ quic_quicly_update_conn_ctx (quicly_conn_t *conn,
 static void
 quic_quicly_connection_migrate (quic_ctx_t *ctx)
 {
-  u32 new_ctx_id, thread_index = vlib_get_thread_index ();
+  u32 new_ctx_index, thread_index = vlib_get_thread_index ();
   quic_ctx_t *new_ctx;
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
@@ -626,16 +628,18 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
   session_t *udp_session;
   int64_t next_timeout;
 
-  new_ctx_id = quic_ctx_alloc (quic_quicly_main.qm, thread_index);
-  new_ctx = quic_quicly_get_quic_ctx (new_ctx_id, thread_index);
+  new_ctx_index = quic_ctx_alloc (quic_quicly_main.qm, thread_index);
+  new_ctx = quic_quicly_get_quic_ctx (new_ctx_index, thread_index);
 
-  QUIC_DBG (2, "Received conn %u (now %u)", ctx->c_thread_index, new_ctx_id);
+  QUIC_DBG (
+    2, "Migrate conn (ctx_index %u, thread %u) to new_ctx_index %u, thread %u",
+    ctx->c_c_index, ctx->c_thread_index, new_ctx_index, thread_index);
 
   clib_memcpy (new_ctx, ctx, sizeof (quic_ctx_t));
   clib_mem_free (ctx);
 
   new_ctx->c_thread_index = thread_index;
-  new_ctx->c_c_index = new_ctx_id;
+  new_ctx->c_c_index = new_ctx_index;
   quic_quicly_crypto_context_acquire (new_ctx);
 
   conn = new_ctx->conn;
@@ -644,8 +648,10 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
 
   quic_quicly_store_conn_ctx (conn, new_ctx);
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
-  kv.value = ((u64) thread_index) << 32 | (u64) new_ctx_id;
-  QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
+  kv.value = ((u64) thread_index) << 32 | (u64) new_ctx_index;
+  QUIC_DBG (2, "Registering conn: key value 0x%llx, ctx_index %u, thread %u",
+	    kv.value, new_ctx_index, thread_index);
+
   clib_bihash_add_del_16_8 (&quic_quicly_main.connection_hash, &kv,
 			    1 /* is_add */);
   new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
@@ -656,7 +662,7 @@ quic_quicly_connection_migrate (quic_ctx_t *ctx)
 
   /*  Trigger write on this connection if necessary */
   udp_session = session_get_from_handle (new_ctx->udp_session_handle);
-  udp_session->opaque = new_ctx_id;
+  udp_session->opaque = new_ctx_index;
   udp_session->flags &= ~SESSION_F_IS_MIGRATING;
   if (svm_fifo_max_dequeue (udp_session->tx_fifo))
     {
@@ -807,7 +813,7 @@ quic_quicly_find_packet_ctx (quic_quicly_rx_packet_ctx_t *pctx,
 
   h = &qqm->connection_hash;
   quic_quicly_make_connection_key (&kv, &pctx->packet.cid.dest.plaintext);
-  QUIC_DBG (3, "Searching conn with id %lu %lu", kv.key[0], kv.key[1]);
+  QUIC_DBG (3, "Searching conn with id 0x%llx", *(u64 *) kv.key);
 
   if (clib_bihash_search_16_8 (h, &kv, &kv))
     {
@@ -857,12 +863,17 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   int rv;
   quic_quicly_main_t *qqm = &quic_quicly_main;
 
+  QUIC_DBG (2, "Accept connection: pkt ctx_index %u, thread %u",
+	    pctx->ctx_index, pctx->thread_index);
+
   /* new connection, accept and create context if packet is valid
    * TODO: check if socket is actually listening? */
   ctx = quic_quicly_get_quic_ctx (pctx->ctx_index, pctx->thread_index);
   if (ctx->c_s_index != QUIC_SESSION_INVALID)
     {
-      QUIC_DBG (2, "already accepted ctx 0x%x", ctx->c_s_index);
+      QUIC_DBG (
+	2, "Accept connection (already accepted): session_index %u, thread %u",
+	ctx->c_s_index, ctx->c_thread_index);
       return;
     }
 
@@ -873,7 +884,8 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
     {
       /* Invalid packet, pass */
       assert (conn == NULL);
-      QUIC_ERR ("Accept failed with %U", quic_quicly_format_err, rv);
+      QUIC_ERR ("Accept connection: failed with %U", quic_quicly_format_err,
+		rv);
       /* TODO: cleanup created quic ctx and UDP session */
       return;
     }
@@ -885,8 +897,11 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   ctx->conn = conn;
 
   quic_session = session_alloc (ctx->c_thread_index);
-  QUIC_DBG (2, "Allocated quic_session, 0x%lx ctx %u",
-	    session_handle (quic_session), ctx->c_c_index);
+  QUIC_DBG (2,
+	    "Accept connection (new quic_session): session_handle 0x%lx, "
+	    "session_index %u, ctx_index %u, thread %u",
+	    session_handle (quic_session), quic_session->session_index,
+	    ctx->c_c_index, ctx->c_thread_index);
   ctx->c_s_index = quic_session->session_index;
 
   lctx = quic_quicly_get_quic_ctx (ctx->listener_ctx_id, 0);
@@ -901,13 +916,15 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) pctx->thread_index) << 32 | (u64) pctx->ctx_index;
   clib_bihash_add_del_16_8 (&qqm->connection_hash, &kv, 1 /* is_add */);
-  QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
+  QUIC_DBG (
+    2, "Accept connection: conn key value 0x%llx, ctx_index %u, thread %u",
+    kv.value, pctx->ctx_index, pctx->thread_index);
 
   /* If notify fails, reset connection immediatly */
   rv = app_worker_init_accepted (quic_session);
   if (rv)
     {
-      QUIC_ERR ("failed to allocate fifos");
+      QUIC_ERR ("Accept connection: failed to allocate fifos");
       quic_quicly_proto_on_close (pctx->ctx_index, pctx->thread_index);
       return;
     }
@@ -920,7 +937,7 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   rv = app_worker_accept_notify (app_wrk, quic_session);
   if (rv)
     {
-      QUIC_ERR ("failed to notify accept worker app");
+      QUIC_ERR ("Accept connection: failed to notify accept worker app");
       quic_quicly_proto_on_close (pctx->ctx_index, pctx->thread_index);
       return;
     }
@@ -1030,7 +1047,9 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   quic_quicly_make_connection_key (
     &kv, quicly_get_master_id ((quicly_conn_t *) ctx->conn));
   kv.value = ((u64) thread_index) << 32 | (u64) ctx_index;
-  QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
+  QUIC_DBG (
+    2, "UDP Session connected: conn key value 0x%llx, ctx_index %u, thread %u",
+    kv.value, ctx_index, thread_index);
   clib_bihash_add_del_16_8 (&qqm->connection_hash, &kv, 1 /* is_add */);
 
   return (ret);
@@ -1214,7 +1233,7 @@ quic_quicly_engine_init (quic_main_t *qm)
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
   u32 i;
 
-  QUIC_DBG (2, "quic_quicly_engine_init -- start");
+  QUIC_DBG (2, "Quic engine init: quicly");
   qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   qm->default_quic_cc = QUIC_CC_RENO;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
@@ -1246,10 +1265,6 @@ quic_quicly_engine_init (quic_main_t *qm)
       next_cid[i].thread_id = i;
       clib_bihash_init_24_8 (&crctx_hash[i], "quic crypto contexts", 64,
 			     128 << 10);
-      QUIC_DBG (2,
-		"Initialized crctx_hash[%u] "
-		"(buckets = 0x%lx)",
-		i, crctx_hash[i].buckets);
     }
 }
 

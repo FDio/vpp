@@ -84,13 +84,13 @@ quic_engine_type_str (quic_engine_type_t engine_type)
   switch (engine_type)
     {
     case QUIC_ENGINE_NONE:
-      return ("QUIC_ENGINE_NONE");
+      return ("none");
     case QUIC_ENGINE_QUICLY:
-      return ("QUIC_ENGINE_QUICLY");
+      return ("quicly");
     case QUIC_ENGINE_OPENSSL:
-      return ("QUIC_ENGINE_OPENSSL");
+      return ("openssl");
     default:
-      return ("UNKNOWN");
+      return ("unknown");
     }
 }
 extern vlib_node_registration_t quic_input_node;
@@ -241,7 +241,7 @@ typedef struct quic_main_
   vlib_node_registration_t *quic_input_node;
   u32 app_index;
   quic_worker_ctx_t *wrk_ctx;
-
+  u8 vnet_crypto_init;
   u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE
 			       (0) */
   u64 max_packets_per_key;  /**< number of packets that can be sent without a
@@ -269,8 +269,7 @@ quic_ctx_alloc (quic_main_t *qm, clib_thread_index_t thread_index)
 {
   quic_ctx_t *ctx;
 
-  pool_get_aligned_safe (qm->wrk_ctx[thread_index].ctx_pool, ctx,
-			 CLIB_CACHE_LINE_BYTES);
+  pool_get (qm->wrk_ctx[thread_index].ctx_pool, ctx);
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
