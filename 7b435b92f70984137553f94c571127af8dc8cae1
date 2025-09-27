@@ -33,6 +33,24 @@
       "message": "Looks good to me but what is the behavior if both our static library and the system dynamic are present? Does it prefer the dynamic one? We should prefer static unless explicitly told.",
       "revId": "7b435b92f70984137553f94c571127af8dc8cae1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23b50b59_2cc2d5d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-27T18:26:01Z",
+      "side": 1,
+      "message": "CMAKE doesn\u0027t have a preference by default - effectively whichever path it readdirs first. However - I don\u0027t want to add this behavior here, can we add it to the definition of vpp_plugin_find_library?",
+      "parentUuid": "dc38665e_f0f50b06",
+      "revId": "7b435b92f70984137553f94c571127af8dc8cae1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
