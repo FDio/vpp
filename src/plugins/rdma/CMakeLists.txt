@@ -18,8 +18,8 @@ if (NOT IBVERBS_INCLUDE_DIR)
   return()
 endif()
 
-vpp_plugin_find_library(rdma IBVERBS_LIB libibverbs.a)
-vpp_plugin_find_library(rdma MLX5_LIB libmlx5.a)
+vpp_plugin_find_library(rdma IBVERBS_LIB ibverbs)
+vpp_plugin_find_library(rdma MLX5_LIB mlx5)
 
 if (NOT IBVERBS_LIB OR NOT MLX5_LIB)
   message(WARNING "rdma plugin - ibverbs not found - rdma plugin disabled")
