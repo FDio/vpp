@@ -51,6 +51,24 @@
       "parentUuid": "dc38665e_f0f50b06",
       "revId": "7b435b92f70984137553f94c571127af8dc8cae1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c80267e3_74d27b0f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-27T18:30:26Z",
+      "side": 1,
+      "message": "Added to macro definition to look for the \"libLIBRARY.a\" path first, and then default to the regular name if not found.",
+      "parentUuid": "23b50b59_2cc2d5d9",
+      "revId": "7b435b92f70984137553f94c571127af8dc8cae1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
