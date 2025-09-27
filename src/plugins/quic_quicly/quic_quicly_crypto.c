@@ -72,8 +72,8 @@ quic_quicly_crypto_context_alloc (u8 thread_index)
   clib_memset (crctx, 0, sizeof (*crctx));
   idx = (crctx - wc->crypto_ctx_pool);
   crctx->ctx_index = QUIC_CRCTX_CTX_INDEX_ENCODE (thread_index, idx);
-  QUIC_DBG (2, "Allocated crctx_ndx 0x%08lx (%u) on thread %u",
-	    crctx->ctx_index, crctx->ctx_index, thread_index);
+  QUIC_DBG (2, "Allocated crctx: crctx_ndx 0x%08lx, index %u, thread %u",
+	    crctx->ctx_index, idx, thread_index);
 
   return crctx;
 }
@@ -250,37 +250,48 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   application_t *app;
   quic_quicly_crypto_context_data_t *data;
   ptls_context_t *ptls_ctx;
-  u32 i;
 
   ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx->ctx_index) ==
 	  ctx->c_thread_index);
   ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx->ctx_index) ==
 	  vlib_get_thread_index ());
-  QUIC_DBG (2, "Init crypto context: crctx_ndx 0x%08lx (%u), thread %d",
-	    crctx->ctx_index, crctx->ctx_index, ctx->c_thread_index);
-  quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
-				     ptls_openssl_cipher_suites);
+  QUIC_DBG (2, "Init crctx: crctx_ndx 0x%08lx, thread %d", crctx->ctx_index,
+	    ctx->c_thread_index);
 
-  vnet_crypto_main_t *cm = &crypto_main;
-  if (vec_len (cm->engines) > 0)
-    qqm->vnet_crypto_enabled = 0;
-  else
+  if (PREDICT_FALSE (!qm->vnet_crypto_init))
     {
-      qqm->vnet_crypto_enabled = 1;
-      u8 empty_key[32] = {};
-      quic_quicly_register_cipher_suite (CRYPTO_ENGINE_VPP,
-					 quic_quicly_crypto_cipher_suites);
-      qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
-      vec_validate (qqm->per_thread_crypto_key_indices, qm->num_threads);
-      for (i = 0; i < qm->num_threads; i++)
+      qm->vnet_crypto_init = 1;
+      if ((vec_len (cm->engines) == 0) ||
+	  (qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS))
 	{
-	  qqm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
-	    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
+	  qqm->vnet_crypto_enabled = 0;
+	  (void) quic_quicly_register_cipher_suite (
+	    CRYPTO_ENGINE_PICOTLS, ptls_openssl_cipher_suites);
 	}
-    }
+      else
+	{
+	  qqm->vnet_crypto_enabled = 1;
+	  if (quic_quicly_register_cipher_suite (
+		CRYPTO_ENGINE_VPP, quic_quicly_crypto_cipher_suites))
+	    {
+	      u8 empty_key[32] = {};
+	      u32 i;
+	      qm->default_crypto_engine = ctx->crypto_engine =
+		CRYPTO_ENGINE_VPP;
+	      vec_validate (qqm->per_thread_crypto_key_indices,
+			    qm->num_threads);
+	      for (i = 0; i < qm->num_threads; i++)
+		{
+		  qqm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
+		    vlib_get_main (), VNET_CRYPTO_ALG_AES_256_CTR, empty_key,
+		    32);
+		}
+	    }
+	}
 
   /* TODO: Remove this and clean up legacy provider code in quicly */
   quic_quicly_load_openssl3_legacy_provider ();
+    }
 
   data = clib_mem_alloc (sizeof (*data));
   /* picotls depends on data being zeroed */
@@ -293,6 +304,9 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   ptls_ctx->get_time = &ptls_get_time;
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
   ptls_ctx->cipher_suites = qqm->quic_ciphers[ctx->crypto_engine];
+  QUIC_DBG (2, "Init crctx: engine_type %U (%u), cipher_suites %p",
+	    format_crypto_engine, ctx->crypto_engine, ctx->crypto_engine,
+	    ptls_ctx->cipher_suites);
   ptls_ctx->certificates.list = NULL;
   ptls_ctx->certificates.count = 0;
   ptls_ctx->on_client_hello = NULL;
@@ -313,11 +327,19 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   quicly_ctx->now = &quicly_vpp_now_cb;
   quicly_amend_ptls_context (quicly_ctx->tls);
 
-  if (qqm->vnet_crypto_enabled &&
-      qm->default_crypto_engine == CRYPTO_ENGINE_VPP)
-    quicly_ctx->crypto_engine = &quic_quicly_crypto_engine;
+  if (qqm->vnet_crypto_enabled && ctx->crypto_engine == CRYPTO_ENGINE_VPP)
+    {
+  QUIC_DBG (2, "Init crctx: crypto engine vpp, crctx_ndx 0x%08lx, thread %d",
+	    crctx->ctx_index, ctx->c_thread_index);
+  quicly_ctx->crypto_engine = &quic_quicly_crypto_engine;
+    }
   else
-    quicly_ctx->crypto_engine = &quicly_default_crypto_engine;
+    {
+  QUIC_DBG (2,
+	    "Init crctx: crypto engine quicly, crctx_ndx 0x%08lx, thread %d",
+	    crctx->ctx_index, ctx->c_thread_index);
+  quicly_ctx->crypto_engine = &quicly_default_crypto_engine;
+    }
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
   quicly_ctx->transport_params.max_streams_uni = (uint64_t) 1 << 60;
@@ -369,10 +391,12 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 }
 
 void
-quic_quicly_crypto_context_release (u32 crypto_context_index, u8 thread_index)
+quic_quicly_crypto_context_release (u32 crctx_ndx, u8 thread_index)
 {
   crypto_context_t *crctx;
-  crctx = quic_quicly_crypto_context_get (crypto_context_index, thread_index);
+  QUIC_DBG (3, "crctx_ndx 0x%x (%u), thread %u", crctx_ndx, crctx_ndx,
+	    thread_index);
+  crctx = quic_quicly_crypto_context_get (crctx_ndx, thread_index);
   crctx->n_subscribers--;
   quic_quicly_crypto_context_free_if_needed (crctx, thread_index);
 }
@@ -389,18 +413,9 @@ quic_quicly_crypto_context_acquire (quic_ctx_t *ctx)
   crypto_context_t *crctx;
   clib_bihash_kv_24_8_t kv;
 
-  if (ctx->crypto_engine == CRYPTO_ENGINE_NONE)
-    {
-      QUIC_DBG (2, "No crypto engine specified, using %U",
-		format_crypto_engine, qm->default_crypto_engine);
-      ctx->crypto_engine = qm->default_crypto_engine;
-    }
-  if (!clib_bitmap_get (qqm->available_crypto_engines, ctx->crypto_engine))
-    {
-      QUIC_DBG (1, "Quic does not support crypto engine %U",
-		format_crypto_engine, ctx->crypto_engine);
-      return SESSION_E_NOCRYPTOENG;
-    }
+  ctx->crypto_engine = (ctx->crypto_engine == CRYPTO_ENGINE_NONE) ?
+			 qm->default_crypto_engine :
+			 ctx->crypto_engine;
   /* Check for exisiting crypto ctx */
   quic_quicly_crypto_context_make_key_from_ctx (&kv, ctx);
   if (clib_bihash_search_24_8 (&crctx_hash[ctx->c_thread_index], &kv, &kv) ==
@@ -515,12 +530,13 @@ quic_quicly_crypto_set_key (crypto_key_t *key)
   u32 key_id = qqm->per_thread_crypto_key_indices[thread_index];
   vnet_crypto_key_t *vnet_key = vnet_crypto_get_key (key_id);
   vnet_crypto_engine_t *engine;
-  vnet_crypto_main_t *cm = &crypto_main;
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, key_id);
 
+  ASSERT (key->algo);
+  ASSERT (key->key_len);
   vnet_key->alg = key->algo;
   clib_memcpy (vnet_key->data, key->key, key->key_len);
 
@@ -544,7 +560,7 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
 
   struct cipher_context_t *hp_ctx =
     (struct cipher_context_t *) header_protect_ctx;
-  struct aead_crypto_context_t *aead_ctx =
+  struct aead_crypto_context_t *aead_crctx =
     (struct aead_crypto_context_t *) packet_protect_ctx;
 
   void *input = datagram.base + payload_from;
@@ -555,20 +571,26 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   size_t aadlen = payload_from - first_byte_at;
 
   /* Build AEAD encrypt crypto operation */
-  vnet_crypto_op_init (&aead_ctx->op, aead_ctx->id);
-  aead_ctx->op.aad = (u8 *) aad;
-  aead_ctx->op.aad_len = aadlen;
-  aead_ctx->op.iv = aead_ctx->iv;
-  ptls_aead__build_iv (aead_ctx->super.algo, aead_ctx->op.iv,
-		       aead_ctx->static_iv, packet_number);
-  aead_ctx->op.key_index = quic_quicly_crypto_set_key (&aead_ctx->key);
-  aead_ctx->op.src = (u8 *) input;
-  aead_ctx->op.dst = output;
-  aead_ctx->op.len = inlen;
-  aead_ctx->op.tag_len = aead_ctx->super.algo->tag_size;
-  aead_ctx->op.tag = aead_ctx->op.src + inlen;
-  vnet_crypto_process_ops (vm, &(aead_ctx->op), 1);
-  assert (aead_ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
+  vnet_crypto_op_init (&aead_crctx->op, aead_crctx->id);
+  aead_crctx->op.aad = (u8 *) aad;
+  aead_crctx->op.aad_len = aadlen;
+  aead_crctx->op.iv = aead_crctx->iv;
+  ptls_aead__build_iv (aead_crctx->super.algo, aead_crctx->op.iv,
+		       aead_crctx->static_iv, packet_number);
+  QUIC_DBG (
+    3, "id %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
+    aead_crctx->id, &aead_crctx->key, aead_crctx->key.algo,
+    aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
+    *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
+    *(u64 *) &aead_crctx->key.key[24]);
+  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.src = (u8 *) input;
+  aead_crctx->op.dst = output;
+  aead_crctx->op.len = inlen;
+  aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
+  aead_crctx->op.tag = aead_crctx->op.src + inlen;
+  vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
+  assert (aead_crctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
   /* Build Header protection crypto operation */
   ptls_aead_supplementary_encryption_t supp = {
@@ -605,24 +627,31 @@ quic_quicly_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
 {
   vlib_main_t *vm = vlib_get_main ();
 
-  struct aead_crypto_context_t *ctx = (struct aead_crypto_context_t *) _ctx;
+  struct aead_crypto_context_t *aead_crctx =
+    (struct aead_crypto_context_t *) _ctx;
 
-  vnet_crypto_op_init (&ctx->op, ctx->id);
-  ctx->op.aad = (u8 *) aad;
-  ctx->op.aad_len = aadlen;
-  ctx->op.iv = ctx->iv;
-  ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv,
-		       decrypted_pn);
-  ctx->op.src = (u8 *) input;
-  ctx->op.dst = _output;
-  ctx->op.key_index = quic_quicly_crypto_set_key (&ctx->key);
-  ctx->op.len = inlen - ctx->super.algo->tag_size;
-  ctx->op.tag_len = ctx->super.algo->tag_size;
-  ctx->op.tag = ctx->op.src + ctx->op.len;
+  vnet_crypto_op_init (&aead_crctx->op, aead_crctx->id);
+  aead_crctx->op.aad = (u8 *) aad;
+  aead_crctx->op.aad_len = aadlen;
+  aead_crctx->op.iv = aead_crctx->iv;
+  ptls_aead__build_iv (aead_crctx->super.algo, aead_crctx->op.iv,
+		       aead_crctx->static_iv, decrypted_pn);
+  aead_crctx->op.src = (u8 *) input;
+  aead_crctx->op.dst = _output;
+  QUIC_DBG (
+    3, "id %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
+    aead_crctx->id, &aead_crctx->key, aead_crctx->key.algo,
+    aead_crctx->key.key_len, *(u64 *) &aead_crctx->key.key[0],
+    *(u64 *) &aead_crctx->key.key[8], *(u64 *) &aead_crctx->key.key[16],
+    *(u64 *) &aead_crctx->key.key[24]);
+  aead_crctx->op.key_index = quic_quicly_crypto_set_key (&aead_crctx->key);
+  aead_crctx->op.len = inlen - aead_crctx->super.algo->tag_size;
+  aead_crctx->op.tag_len = aead_crctx->super.algo->tag_size;
+  aead_crctx->op.tag = aead_crctx->op.src + aead_crctx->op.len;
 
-  vnet_crypto_process_ops (vm, &(ctx->op), 1);
+  vnet_crypto_process_ops (vm, &(aead_crctx->op), 1);
 
-  return ctx->op.len;
+  return aead_crctx->op.len;
 }
 
 void
@@ -630,7 +659,7 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx)
 {
   ptls_cipher_context_t *header_protection = NULL;
-  ptls_aead_context_t *aead = NULL;
+  ptls_aead_context_t *ptls_aead_ctx = NULL;
   int pn;
 
   /* Long Header packets are not decrypted by vpp */
@@ -642,10 +671,10 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
   if (next_expected_packet_number == UINT64_MAX)
     return;
 
-  aead = (ptls_aead_context_t *) qctx->ingress_keys.aead_ctx;
+  ptls_aead_ctx = (ptls_aead_context_t *) qctx->ingress_keys.aead_ctx;
   header_protection = (ptls_cipher_context_t *) qctx->ingress_keys.hp_ctx;
 
-  if (!aead || !header_protection)
+  if (!ptls_aead_ctx || !header_protection)
     return;
 
   size_t encrypted_len = pctx->packet.octets.len - pctx->packet.encrypted_off;
@@ -695,7 +724,7 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
     }
 
   if ((ptlen = quic_quicly_crypto_aead_decrypt (
-	 qctx, aead, pctx->packet.octets.base + aead_off,
+	 qctx, ptls_aead_ctx, pctx->packet.octets.base + aead_off,
 	 pctx->packet.octets.base + aead_off,
 	 pctx->packet.octets.len - aead_off, pn, pctx->packet.octets.base,
 	 aead_off)) == SIZE_MAX)
@@ -743,15 +772,17 @@ quic_quicly_crypto_cipher_setup_crypto (ptls_cipher_context_t *_ctx,
 
   if (qqm->vnet_crypto_enabled)
     {
-      // TODO: why is this commented out (from original quic plugin)?
-      //       ctx->key_index =
-      //   quic_quicly_crypto_go_setup_key (algo, key, _ctx->algo->key_size);
       ctx->key.algo = algo;
       ctx->key.key_len = _ctx->algo->key_size;
       assert (ctx->key.key_len <= 32);
       clib_memcpy (&ctx->key.key, key, ctx->key.key_len);
     }
 
+  QUIC_DBG (
+    2, "id %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
+    ctx->id, &ctx->key, ctx->key.algo, ctx->key.key_len,
+    *(u64 *) &ctx->key.key[0], *(u64 *) &ctx->key.key[8],
+    *(u64 *) &ctx->key.key[16], *(u64 *) &ctx->key.key[24]);
   return 0;
 }
 
@@ -803,15 +834,17 @@ quic_quicly_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
   if (qqm->vnet_crypto_enabled)
     {
       clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
-      // TODO: why is this commented out (from original quic plugin)?
-      //       ctx->key_index =
-      //   quic_quicly_crypto_go_setup_key (algo, key, _ctx->algo->key_size);
       ctx->key.algo = algo;
       ctx->key.key_len = _ctx->algo->key_size;
       assert (ctx->key.key_len <= 32);
       clib_memcpy (&ctx->key.key, key, ctx->key.key_len);
     }
 
+  QUIC_DBG (
+    3, "id %u, key %p, algo %u, key_len %u, key 0x%llx 0x%llx 0x%llx 0x%llx ",
+    ctx->id, &ctx->key, ctx->key.algo, ctx->key.key_len,
+    *(u64 *) &ctx->key.key[0], *(u64 *) &ctx->key.key[8],
+    *(u64 *) &ctx->key.key[16], *(u64 *) &ctx->key.key[24]);
   return 0;
 }
 
