@@ -1921,7 +1921,7 @@ session_manager_main_enable (vlib_main_t *vm,
   session_vpp_wrk_mqs_alloc (smm);
 
   /* Initialize segment manager properties */
-  segment_manager_main_init ();
+  segment_manager_main_init (smm->no_dump_segments);
 
   /* Preallocate sessions */
   if (smm->preallocated_sessions)
@@ -2277,6 +2277,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  smm->original_dst_lookup = vlib_get_plugin_symbol (
 	    "nat_plugin.so", "nat44_original_dst_lookup");
 	}
+      else if (unformat (input, "no-dump-segments"))
+	smm->no_dump_segments = 1;
       /*
        * Deprecated but maintained for compatibility
        */

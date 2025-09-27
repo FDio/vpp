@@ -32,7 +32,9 @@ typedef struct _segment_manager_props
   uword add_segment_size;		/**< additional segment size */
   u8 add_segment:1;			/**< can add new segments flag */
   u8 use_mq_eventfd:1;			/**< use eventfds for mqs flag */
-  u8 reserved:6;			/**< reserved flags */
+  u8 use_huge_page : 1;			/**< use hugepage */
+  u8 no_dump_segments : 1;		/**< don't dump segs in core files */
+  u8 reserved : 4;			/**< reserved flags */
   u8 n_slices;				/**< number of fs slices/threads */
   ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
 					     private segments are used */
@@ -40,7 +42,6 @@ typedef struct _segment_manager_props
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
-  u8 huge_page;				/**< use hugepage */
   u32 max_segments; /**< max number of segments, 0 for unlimited */
 } segment_manager_props_t;
 
@@ -189,7 +190,7 @@ void segment_manager_del_sessions_filter (segment_manager_t *sm,
 					  session_state_t *states);
 void segment_manager_format_sessions (segment_manager_t * sm, int verbose);
 
-void segment_manager_main_init (void);
+void segment_manager_main_init (u8 no_dump_segments);
 
 segment_manager_props_t *segment_manager_props_init (segment_manager_props_t *
 						     sm);
