@@ -54,8 +54,7 @@ typedef struct quic_quicly_session_cache_
 typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
-  ptls_cipher_suite_t **
-    *quic_ciphers; /**< available ciphers by crypto engine */
+  ptls_cipher_suite_t ***quic_ciphers;
   u32 *per_thread_crypto_key_indices;
   ptls_handshake_properties_t hs_properties;
   clib_bihash_16_8_t connection_hash; /**< quic connection id -> conn handle */

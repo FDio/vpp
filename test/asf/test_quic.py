@@ -116,8 +116,13 @@ class QUICTestCase(VppAsfTestCase):
         self.ip_t01.add_vpp_config()
         self.ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
+        # TODO: refactor test suites to use all crypto cipher suites
+        # self.vapi.cli("quic set crypto api vpp")
+        # self.vapi.cli("quic set crypto api engine-lib")
+        self.logger.debug(self.vapi.cli("show quic"))
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show quic"))
         self.vapi.app_namespace_add_del_v4(
             is_add=0,
             namespace_id=self.server_appns,

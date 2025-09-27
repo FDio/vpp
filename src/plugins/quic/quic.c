@@ -179,7 +179,8 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 
   /*  Find base session to which the user want to attach a stream */
   quic_session_handle = session_handle (quic_session);
-  QUIC_DBG (2, "Opening new stream (qsession %u)", quic_session_handle);
+  QUIC_DBG (2, "Connect stream: quic_session_handle 0x%lx",
+	    quic_session_handle);
 
   if (session_type_transport_proto (quic_session->session_type) !=
       TRANSPORT_PROTO_QUIC)
@@ -221,10 +222,10 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   rv = quic_eng_connect_stream (conn, &stream, &stream_data, is_unidir);
   if (rv)
     {
-      QUIC_DBG (2,
-		"quic_eng_connect_stream (c=0x%lx, s=0x%lx, sd=0x%lx, u=%d) "
-		"failed (rv=%d)",
-		conn, &stream, &stream_data, is_unidir, rv);
+      QUIC_DBG (1,
+		"Connect stream: failed %d, conn %p, stream %p, stream_data "
+		"%p, unidir %d",
+		rv, conn, &stream, &stream_data, is_unidir);
       return -1;
     }
   quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
@@ -233,8 +234,9 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   sctx->crypto_context_index = qctx->crypto_context_index;
 
   stream_session = session_alloc (qctx->c_thread_index);
-  QUIC_DBG (2, "Allocated stream_session 0x%lx ctx %u",
-	    session_handle (stream_session), sctx_index);
+  QUIC_DBG (
+    2, "Connect stream: stream_session handle 0x%lx, sctx_index %u, thread %u",
+    session_handle (stream_session), sctx_index, qctx->c_thread_index);
   stream_session->app_wrk_index = app_wrk->wrk_index;
   stream_session->connection_index = sctx_index;
   stream_session->listener_handle = quic_session_handle;
@@ -254,7 +256,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   /* For now we only reset streams. Cleanup will be triggered by timers */
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
     {
-      QUIC_ERR ("failed to app_worker_init_connected");
+      QUIC_ERR ("Connect stream: failed app_worker_init_connected %d", rv);
       quic_eng_connect_stream_error_reset (stream);
       return app_worker_connect_notify (app_wrk, NULL, rv, sep->opaque);
     }
@@ -268,7 +270,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   if (app_worker_connect_notify (app_wrk, stream_session, SESSION_E_NONE,
 				 sep->opaque))
     {
-      QUIC_ERR ("failed to notify app");
+      QUIC_ERR ("Connect stream: failed to notify app");
       quic_increment_counter (qm, QUIC_ERROR_CLOSED_STREAM, 1);
       quic_eng_connect_stream_error_reset (stream);
       return -1;
@@ -578,7 +580,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   clib_thread_index_t thread_index;
   int ret;
 
-  QUIC_DBG (2, "UDP Session connect callback: session_index %u, thread %u",
+  QUIC_DBG (2, "UDP Session connected: session_index %u, thread %u",
 	    udp_session->session_index, udp_session->thread_index);
 
   /* Allocate session on whatever thread udp used, i.e., probably first
@@ -601,8 +603,8 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
       return 0;
     }
 
-  QUIC_DBG (2, "New ctx [thread=0x%x] ctx_index=0x%x", thread_index,
-	    (ctx) ? ctx_index : ~0);
+  QUIC_DBG (2, "UDP Session connected: quic ctx_index %u, thread %u",
+	    (ctx) ? ctx_index : ~0, thread_index);
 
   ctx->udp_session_handle = session_handle (udp_session);
   udp_session->opaque = ctx_index;
@@ -749,17 +751,16 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 		      stream_session->thread_index);
   if (PREDICT_FALSE (!quic_ctx_is_stream (ctx)))
     {
+      QUIC_DBG (1, "NOT a stream: ctx_index %u, thread %u",
+		stream_session->connection_index,
+		stream_session->thread_index);
       goto tx_end; /* Most probably a reschedule */
     }
 
   QUIC_DBG (3, "Stream TX event");
   quic_eng_ack_rx_data (stream_session);
-
   if (PREDICT_FALSE (!quic_eng_stream_tx (ctx, stream_session)))
-    {
-      QUIC_DBG (3, "quic_eng_stream_tx(ctx=0x%lx) failed!", ctx);
-      return 0;
-    }
+    return 0;
 
 tx_end:
   return quic_eng_send_packets (ctx);
@@ -852,11 +853,11 @@ static clib_error_t *
 quic_enable (vlib_main_t *vm, u8 is_en)
 {
   quic_main_t *qm = &quic_main;
-  quic_worker_ctx_t *wrk_ctx;
+  quic_worker_ctx_t *qwc;
   quic_ctx_t *ctx;
   crypto_context_t *crctx;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  int i;
+  u64 i;
 
   qm->engine_type =
     quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
@@ -886,14 +887,14 @@ quic_enable (vlib_main_t *vm, u8 is_en)
 
   for (i = 0; i < qm->num_threads; i++)
     {
-      wrk_ctx = quic_wrk_ctx_get (qm, i);
-      pool_get_aligned_safe (wrk_ctx->crypto_ctx_pool, crctx,
+      qwc = quic_wrk_ctx_get (qm, i);
+      pool_get_aligned_safe (qwc->crypto_ctx_pool, crctx,
 			     CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->crypto_ctx_pool,
+      pool_program_safe_realloc ((void **) &qwc->crypto_ctx_pool,
 				 QUIC_CRYPTO_CTX_POOL_PER_THREAD_SIZE,
 				 CLIB_CACHE_LINE_BYTES);
-      pool_get_aligned_safe (wrk_ctx->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
-      pool_program_safe_realloc ((void **) &wrk_ctx->ctx_pool,
+      pool_get_aligned_safe (qwc->ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
+      pool_program_safe_realloc ((void **) &qwc->ctx_pool,
 				 QUIC_CTX_POOL_PER_THREAD_SIZE,
 				 CLIB_CACHE_LINE_BYTES);
     }
@@ -929,7 +930,7 @@ quic_init (vlib_main_t * vm)
   quic_main_t *qm = &quic_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  // TODO: Don't use hard-coded values for segment_size and seed[]
+  /* TODO: Don't use hard-coded values for segment_size and seed[] */
   u32 segment_size = 256 << 20;
   u8 seed[32];
 
@@ -987,9 +988,33 @@ quic_plugin_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "vpp"))
-	qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
-      else if (unformat (line_input, "picotls"))
-	qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
+	{
+	  qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+	  qm->vnet_crypto_init = 0;
+	}
+      else if (unformat (line_input, "engine-lib"))
+	{
+	  qm->default_crypto_engine =
+	    (qm->engine_type == QUIC_ENGINE_QUICLY) ?
+	      CRYPTO_ENGINE_PICOTLS :
+	      ((qm->engine_type == QUIC_ENGINE_OPENSSL) ?
+		 CRYPTO_ENGINE_OPENSSL :
+		 CRYPTO_ENGINE_NONE);
+	  if (qm->default_crypto_engine != CRYPTO_ENGINE_NONE)
+	    {
+	      qm->vnet_crypto_init = 0;
+	    }
+	  else
+	    {
+	      e = clib_error_return (0,
+				     "No quic engine available, using default "
+				     "crypto engine '%U' (%u)",
+				     format_crypto_engine,
+				     qm->default_crypto_engine,
+				     qm->default_crypto_engine);
+	      goto done;
+	    }
+	}
       else
 	{
 	  e = clib_error_return (0, "unknown input '%U'",
@@ -1201,7 +1226,13 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
       return 0;
     }
 
-  vlib_cli_output (vm, "engine: %s", quic_engine_type_str (qm->engine_type));
+  vlib_cli_output (vm, "quic engine: %s",
+		   quic_engine_type_str (qm->engine_type));
+  vlib_cli_output (
+    vm, "crypto engine: %s",
+    qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS ?
+      "picotls" :
+      (qm->default_crypto_engine == CRYPTO_ENGINE_VPP ? "vpp" : "none"));
   if (!unformat_user (input, unformat_line_input, line_input))
     {
       quic_show_aggregated_stats (vm);
@@ -1242,9 +1273,13 @@ done:
   return error;
 }
 
+/* TODO: This command should not be engine specific.
+ * Current implementation is for quicly engine!
+ * Fix quicly specific syntax (e.g. picotls) to be generic.
+ */
 VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) = {
   .path = "quic set crypto api",
-  .short_help = "quic set crypto api [picotls|vpp]",
+  .short_help = "quic set crypto api [engine-lib|vpp]",
   .function = quic_plugin_crypto_command_fn,
 };
 VLIB_CLI_COMMAND(quic_plugin_set_fifo_size_command, static)=
@@ -1277,8 +1312,8 @@ VLIB_CLI_COMMAND (quic_set_cc, static) = {
   .function = quic_set_cc_fn,
 };
 VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER, .description = "Quic transport protocol",
-  // .default_disabled = 1,
+  .version = VPP_BUILD_VER,
+  .description = "Quic transport protocol",
 };
 
 static clib_error_t *
@@ -1313,7 +1348,7 @@ quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	qm->connection_timeout = i;
       else if (unformat (line_input, "fifo-prealloc %u", &i))
 	qm->udp_fifo_prealloc = i;
-      // TODO: add cli selection of quic_eng_<types>
+      /* TODO: add cli selection of quic_eng_<types> */
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
