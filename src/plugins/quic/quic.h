@@ -84,13 +84,13 @@ quic_engine_type_str (quic_engine_type_t engine_type)
   switch (engine_type)
     {
     case QUIC_ENGINE_NONE:
-      return ("QUIC_ENGINE_NONE");
+      return ("none");
     case QUIC_ENGINE_QUICLY:
-      return ("QUIC_ENGINE_QUICLY");
+      return ("quicly");
     case QUIC_ENGINE_OPENSSL:
-      return ("QUIC_ENGINE_OPENSSL");
+      return ("openssl");
     default:
-      return ("UNKNOWN");
+      return ("unknown");
     }
 }
 extern vlib_node_registration_t quic_input_node;
@@ -224,7 +224,7 @@ typedef struct quic_rx_packet_ctx_
 #define _(type, name) type name;
   foreach_quic_rx_pkt_ctx_field
 #undef _
-    u8 padding[1024 * 128]; // FIXME: remove hardcoded size
+    u8 padding[1024 * 128]; /* FIXME: remove hardcoded size */
 } quic_rx_packet_ctx_t;
 
 typedef struct quic_worker_ctx_
@@ -241,7 +241,7 @@ typedef struct quic_main_
   vlib_node_registration_t *quic_input_node;
   u32 app_index;
   quic_worker_ctx_t *wrk_ctx;
-
+  u8 vnet_crypto_init;
   u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE
 			       (0) */
   u64 max_packets_per_key;  /**< number of packets that can be sent without a
@@ -359,7 +359,8 @@ typedef enum quic_session_connected_
   QUIC_SESSION_CONNECTED_SERVER,
 } quic_session_connected_t;
 
-// TODO: Define appropriate QUIC return values for quic_engine_vft functions!
+/* TODO: Define appropriate QUIC return values for quic_engine_vft functions!
+ */
 typedef struct quic_engine_vft_
 {
   void (*engine_init) (quic_main_t *qm);
@@ -375,7 +376,7 @@ typedef struct quic_engine_vft_
   void (*connection_get_stats) (void *conn, quic_stats_t *conn_stats);
   int (*udp_session_rx_packets) (session_t *udp_session);
   void (*ack_rx_data) (session_t *stream_session);
-  int (*stream_tx) (quic_ctx_t *ctx, session_t *stream_session);
+  u64 (*stream_tx) (quic_ctx_t *ctx, session_t *stream_session);
   int (*send_packets) (quic_ctx_t *ctx);
   u8 *(*format_connection_stats) (u8 *s, va_list *args);
   u8 *(*format_stream_connection) (u8 *s, va_list *args);
