@@ -216,7 +216,8 @@ typedef enum
   _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")                     \
   _ (USE_HUGE_PAGE, "Use huge page for FIFO")                                 \
   _ (GET_ORIGINAL_DST, "Get original dst enabled")                            \
-  _ (EVT_COLLECTOR, "App requests event collector")
+  _ (EVT_COLLECTOR, "App requests event collector")                           \
+  _ (NO_DUMP_SEGMENTS, "Do not dump segments in core dumps")
 
 typedef enum _app_options
 {

@@ -16,6 +16,7 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
+#include <sys/mman.h>
 
 typedef struct segment_manager_main_
 {
@@ -31,6 +32,7 @@ typedef struct segment_manager_main_
   u32 default_max_fifo_size;	/**< default max fifo size */
   u8 default_high_watermark;	/**< default high watermark % */
   u8 default_low_watermark;	/**< default low watermark % */
+  u8 no_dump_segments;		/**< don't dump segs in core files */
 } segment_manager_main_t;
 
 static segment_manager_main_t sm_main;
@@ -135,7 +137,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
     vlib_thread_main.n_vlib_mains * sizeof (fifo_segment_slice_t) +
     FIFO_SEGMENT_ALLOC_OVERHEAD;
 
-  if (props->huge_page)
+  if (props->use_huge_page)
     {
       uword hugepage_size = clib_mem_get_default_hugepage_size ();
       segment_size = round_pow2 (segment_size, hugepage_size);
@@ -157,6 +159,12 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 		    segment_size);
       pool_put (sm->segments, fs);
       goto done;
+    }
+
+  if (props->no_dump_segments || smm->no_dump_segments)
+    {
+      if (madvise (fs->ssvm.sh, fs->ssvm.ssvm_size, MADV_DONTDUMP) != 0)
+	clib_warning ("madvise MADV_DONTDUMP failed for seg %s", seg_name);
     }
 
   /*
@@ -1014,7 +1022,7 @@ segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q)
  * Init segment vm address allocator
  */
 void
-segment_manager_main_init (void)
+segment_manager_main_init (u8 no_dump_segments)
 {
   segment_manager_main_t *sm = &sm_main;
 
@@ -1024,6 +1032,7 @@ segment_manager_main_init (void)
   sm->default_max_fifo_size = 4 << 20;
   sm->default_high_watermark = 80;
   sm->default_low_watermark = 50;
+  sm->no_dump_segments = no_dump_segments;
 }
 
 static u8 *
