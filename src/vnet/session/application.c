@@ -837,7 +837,7 @@ application_alloc_and_init (app_init_args_t *a)
       props->add_segment = 1;
     }
   if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_USE_HUGE_PAGE)
-    props->huge_page = 1;
+    props->use_huge_page = 1;
   if (opts[APP_OPTIONS_RX_FIFO_SIZE])
     props->rx_fifo_size = opts[APP_OPTIONS_RX_FIFO_SIZE];
   if (opts[APP_OPTIONS_TX_FIFO_SIZE])
@@ -867,6 +867,8 @@ application_alloc_and_init (app_init_args_t *a)
 
   if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_COLLECTOR)
     app->cb_fns.app_evt_callback = app_evt_collector_get_cb_fn ();
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_NO_DUMP_SEGMENTS)
+    props->no_dump_segments = 1;
 
   /* Add app to lookup by api_client_index table */
   if (!application_is_builtin (app))

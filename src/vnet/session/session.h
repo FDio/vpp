@@ -297,10 +297,14 @@ typedef struct session_main_
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
 
-  u16 msg_id_base;
-
   /** Query nat44-ed session to get original dst ip4 & dst port. */
   nat44_original_dst_lookup_fn original_dst_lookup;
+
+  /** Do not dump segments in core file */
+  u8 no_dump_segments;
+
+  u16 msg_id_base;
+
   session_stats_segs_indicies_t stats_seg_idx;
 } session_main_t;
 
