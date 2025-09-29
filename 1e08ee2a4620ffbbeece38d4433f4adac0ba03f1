@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e37b9f5_a292afd9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-29T15:50:27Z",
+      "side": 1,
+      "message": "The application for spinlock is to protect a large section of code. For the race condition of a simple variable, it makes more sense to use atomic operations and not spinlock unless you tell me atomic operations do not work.",
+      "parentUuid": "ff47f558_80551c02",
+      "revId": "1e08ee2a4620ffbbeece38d4433f4adac0ba03f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "440fec1f_d2a8d228",
