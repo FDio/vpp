@@ -764,6 +764,7 @@ format_function_t format_vnet_dev_rv;
 format_function_t format_vnet_dev_rx_queue_info;
 format_function_t format_vnet_dev_tx_queue_info;
 format_function_t format_vnet_dev_flow;
+unformat_function_t unformat_vnet_dev_vector;
 unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
 unformat_function_t unformat_vnet_dev_rss_key;
