@@ -362,60 +362,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
-  .short_help = "show device [counters]",
+  .short_help = "show device [counters] [zero-counters] [debug]",
   .function = show_devices_cmd_fn,
-  .is_mp_safe = 1,
-};
-
-static clib_error_t *
-show_device_counters_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
-			     vlib_cli_command_t *cmd)
-{
-  vnet_dev_main_t *dm = &vnet_dev_main;
-  vnet_dev_format_args_t fa = { .counters = 1 };
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "all"))
-	fa.show_zero_counters = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  pool_foreach_pointer (dev, dm->devices)
-    {
-      vlib_cli_output (vm, "device '%s':", dev->device_id);
-      foreach_vnet_dev_port (p, dev)
-	{
-	  vlib_cli_output (vm, "  Port %u:", p->port_id);
-	  vlib_cli_output (vm, "    %U", format_vnet_dev_counters, &fa,
-			   p->counter_main);
-
-	  foreach_vnet_dev_port_rx_queue (q, p)
-	    if (q->counter_main)
-	      {
-		vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
-		vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa,
-				 q->counter_main);
-	      }
-
-	  foreach_vnet_dev_port_tx_queue (q, p)
-	    if (q->counter_main)
-	      {
-		vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
-		vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa,
-				 q->counter_main);
-	      }
-	}
-    }
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_device_counters_cmd, static) = {
-  .path = "show device counters",
-  .short_help = "show device counters [all]",
-  .function = show_device_counters_cmd_fn,
   .is_mp_safe = 1,
 };
 
