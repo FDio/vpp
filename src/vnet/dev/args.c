@@ -107,6 +107,33 @@ vnet_dev_arg_parse (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_arg_t *args,
 	    }
 	  a->val.uint32 = val;
 	}
+      else if (a->type == VNET_DEV_ARG_TYPE_ENUM)
+	{
+	  u8 *s;
+	  if (!unformat (&in, "%s", &s))
+	    {
+	      err = format (0, "string expected for argument '%s', found '%U'",
+			    a->name, format_unformat_error, &in);
+	      goto done;
+	    }
+
+	  for (vnet_dev_arg_enum_val_t *ev = a->enum_vals; ev && ev->name;
+	       ev++)
+	    if (strcmp (ev->name, (char *) s) == 0)
+	      {
+		a->val.enum_val = ev->val;
+		vec_free (s);
+		break;
+	      }
+
+	  if (s)
+	    {
+	      err = format (0, "unknown enum value '%s' for argument '%s'", s,
+			    a->name);
+	      vec_free (s);
+	      goto done;
+	    }
+	}
       else if (a->type == VNET_DEV_ARG_TYPE_STRING)
 	{
 	  if (!unformat (&in, "%U", unformat_double_quoted_string,

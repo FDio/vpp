@@ -11,7 +11,8 @@
 #define foreach_vnet_dev_arg_type                                             \
   _ (BOOL, "%u", boolean)                                                     \
   _ (UINT32, "%u", uint32)                                                    \
-  _ (STRING, "\'%v\'", string)
+  _ (STRING, "\'%v\'", string)                                                \
+  _ (ENUM, "%d", enum_val)
 
 typedef enum
 {
@@ -25,8 +26,15 @@ typedef union
 {
   u8 boolean;
   u32 uint32;
+  int enum_val;
   u8 *string;
 } vnet_dev_arg_value_t;
+
+typedef struct
+{
+  char *name;
+  int val;
+} vnet_dev_arg_enum_val_t;
 
 typedef struct
 {
@@ -37,9 +45,18 @@ typedef struct
   u32 min;
   u32 max;
   u64 id;
+  vnet_dev_arg_enum_val_t *enum_vals;
   vnet_dev_arg_value_t val;
   vnet_dev_arg_value_t default_val;
 } vnet_dev_arg_t;
+
+#define VNET_DEV_ARG_ENUM_VALS(...)                                           \
+  (vnet_dev_arg_enum_val_t[])                                                 \
+  {                                                                           \
+    __VA_ARGS__                                                               \
+    {                                                                         \
+    }                                                                         \
+  }
 
 #define VNET_DEV_ARG_BOOL(ud, n, d, ...)                                      \
   {                                                                           \
