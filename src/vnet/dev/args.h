@@ -9,14 +9,16 @@
 #include <vnet/dev/errors.h>
 
 #define foreach_vnet_dev_arg_type                                             \
-  _ (BOOL, "%u", boolean)                                                     \
-  _ (UINT32, "%u", uint32)                                                    \
-  _ (STRING, "\'%v\'", string)
+  _ (BOOL)                                                                    \
+  _ (UINT32)                                                                  \
+  _ (HEX32)                                                                   \
+  _ (STRING)                                                                  \
+  _ (ENUM)
 
 typedef enum
 {
   VNET_DEV_ARG_END,
-#define _(n, f, v) VNET_DEV_ARG_TYPE_##n,
+#define _(n) VNET_DEV_ARG_TYPE_##n,
   foreach_vnet_dev_arg_type
 #undef _
 } __clib_packed vnet_dev_arg_type_t;
@@ -25,8 +27,15 @@ typedef union
 {
   u8 boolean;
   u32 uint32;
+  int enum_val;
   u8 *string;
 } vnet_dev_arg_value_t;
+
+typedef struct
+{
+  char *name;
+  int val;
+} vnet_dev_arg_enum_val_t;
 
 typedef struct
 {
@@ -37,9 +46,18 @@ typedef struct
   u32 min;
   u32 max;
   u64 id;
+  vnet_dev_arg_enum_val_t *enum_vals;
   vnet_dev_arg_value_t val;
   vnet_dev_arg_value_t default_val;
 } vnet_dev_arg_t;
+
+#define VNET_DEV_ARG_ENUM_VALS(...)                                           \
+  (vnet_dev_arg_enum_val_t[])                                                 \
+  {                                                                           \
+    __VA_ARGS__                                                               \
+    {                                                                         \
+    }                                                                         \
+  }
 
 #define VNET_DEV_ARG_BOOL(ud, n, d, ...)                                      \
   {                                                                           \
@@ -49,6 +67,16 @@ typedef struct
 #define VNET_DEV_ARG_UINT32(ud, n, d, ...)                                    \
   {                                                                           \
     .type = VNET_DEV_ARG_TYPE_UINT32, .id = ud, .name = n, .desc = d,         \
+    __VA_ARGS__                                                               \
+  }
+#define VNET_DEV_ARG_HEX32(ud, n, d, ...)                                     \
+  {                                                                           \
+    .type = VNET_DEV_ARG_TYPE_HEX32, .id = ud, .name = n, .desc = d,          \
+    __VA_ARGS__                                                               \
+  }
+#define VNET_DEV_ARG_ENUM(ud, n, d, ...)                                      \
+  {                                                                           \
+    .type = VNET_DEV_ARG_TYPE_ENUM, .id = ud, .name = n, .desc = d,           \
     __VA_ARGS__                                                               \
   }
 #define VNET_DEV_ARG_STRING(ud, n, d, ...)                                    \

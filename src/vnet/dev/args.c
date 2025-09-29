@@ -79,7 +79,8 @@ vnet_dev_arg_parse (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_arg_t *args,
 	      goto done;
 	    }
 	}
-      else if (a->type == VNET_DEV_ARG_TYPE_UINT32)
+      else if (a->type == VNET_DEV_ARG_TYPE_UINT32 ||
+	       a->type == VNET_DEV_ARG_TYPE_HEX32)
 	{
 	  u32 val, min = 0, max = CLIB_U32_MAX;
 	  if (!unformat (&in, "0x%x", &val) && !unformat (&in, "%u", &val))
@@ -106,6 +107,36 @@ vnet_dev_arg_parse (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_arg_t *args,
 	      goto done;
 	    }
 	  a->val.uint32 = val;
+	}
+      else if (a->type == VNET_DEV_ARG_TYPE_ENUM)
+	{
+	  u8 *s;
+	  if (!unformat (&in, "%U", unformat_token, "a-zA-Z0-9_", &s))
+	    {
+	      err = format (
+		0, "enum string expected for argument '%s', found '%U'",
+		a->name, format_unformat_error, &in);
+	      goto done;
+	    }
+
+	  vec_add1 (s, 0);
+
+	  for (vnet_dev_arg_enum_val_t *ev = a->enum_vals; ev && ev->name;
+	       ev++)
+	    if (strcmp (ev->name, (char *) s) == 0)
+	      {
+		a->val.enum_val = ev->val;
+		vec_free (s);
+		break;
+	      }
+
+	  if (s)
+	    {
+	      err = format (0, "unknown enum value '%s' for argument '%s'", s,
+			    a->name);
+	      vec_free (s);
+	      goto done;
+	    }
 	}
       else if (a->type == VNET_DEV_ARG_TYPE_STRING)
 	{
@@ -143,7 +174,7 @@ vnet_dev_arg_parse (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_arg_t *args,
       a->val_set = 1;
       log_debug (dev, "name '%s' type %U value %U", name,
 		 format_vnet_dev_arg_type, a->type, format_vnet_dev_arg_value,
-		 a->type, &a->val);
+		 a, &a->val);
       vec_free (name);
       unformat (&in, ",");
     }
@@ -174,7 +205,7 @@ format_vnet_dev_arg_type (u8 *s, va_list *args)
   vnet_dev_arg_type_t t = va_arg (*args, u32);
   switch (t)
     {
-#define _(n, f, val)                                                          \
+#define _(n)                                                                  \
   case VNET_DEV_ARG_TYPE_##n:                                                 \
     return format (s, #n);
       foreach_vnet_dev_arg_type
@@ -188,19 +219,31 @@ format_vnet_dev_arg_type (u8 *s, va_list *args)
 u8 *
 format_vnet_dev_arg_value (u8 *s, va_list *args)
 {
-  vnet_dev_arg_type_t t = va_arg (*args, u32);
+  vnet_dev_arg_t *a = va_arg (*args, vnet_dev_arg_t *);
   vnet_dev_arg_value_t *v = va_arg (*args, vnet_dev_arg_value_t *);
 
-  switch (t)
+  if (a->type == VNET_DEV_ARG_TYPE_ENUM)
     {
-#define _(n, f, value)                                                        \
-  case VNET_DEV_ARG_TYPE_##n:                                                 \
-    s = format (s, f, v->value);                                              \
-    break;
-      foreach_vnet_dev_arg_type
-#undef _
-	default : break;
+      for (vnet_dev_arg_enum_val_t *ev = a->enum_vals; ev && ev->name; ev++)
+	if (ev->val == v->enum_val)
+	  return format (s, "%s", ev->name);
+      return format (s, "%d", v->enum_val);
     }
+
+  if (a->type == VNET_DEV_ARG_TYPE_UINT32)
+    return format (s, "%u", v->uint32);
+
+  if (a->type == VNET_DEV_ARG_TYPE_HEX32)
+    return format (s, "0x%08x", v->uint32);
+
+  if (a->type == VNET_DEV_ARG_TYPE_BOOL)
+    return format (s, "%s", v->boolean ? "true" : "false");
+
+  if (a->type == VNET_DEV_ARG_TYPE_STRING)
+    return format (s, "'%v'", v->string);
+
+  ASSERT (0);
+
   return s;
 }
 
@@ -218,12 +261,12 @@ format_vnet_dev_args (u8 *s, va_list *va)
       int r = a - args;
       table_format_cell (&t, r, 0, "%s", a->name);
       if (a->val_set)
-	table_format_cell (&t, r, 1, "%U", format_vnet_dev_arg_value, a->type,
+	table_format_cell (&t, r, 1, "%U", format_vnet_dev_arg_value, a,
 			   &a->val);
       else
 	table_format_cell (&t, r, 1, "<not set>");
 
-      table_format_cell (&t, r, 2, "%U", format_vnet_dev_arg_value, a->type,
+      table_format_cell (&t, r, 2, "%U", format_vnet_dev_arg_value, a,
 			 &a->default_val);
       table_format_cell (&t, r, 3, "%s", a->desc);
       table_set_cell_align (&t, r, 0, TTAA_LEFT);

@@ -422,8 +422,16 @@ vnet_dev_arg_get_bool (vnet_dev_arg_t *arg)
 static_always_inline u32
 vnet_dev_arg_get_uint32 (vnet_dev_arg_t *arg)
 {
-  ASSERT (arg->type == VNET_DEV_ARG_TYPE_UINT32);
+  ASSERT (arg->type == VNET_DEV_ARG_TYPE_UINT32 ||
+	  arg->type == VNET_DEV_ARG_TYPE_HEX32);
   return arg->val_set ? arg->val.uint32 : arg->default_val.uint32;
+}
+
+static_always_inline int
+vnet_dev_arg_get_enum (vnet_dev_arg_t *arg)
+{
+  ASSERT (arg->type == VNET_DEV_ARG_TYPE_ENUM);
+  return arg->val_set ? arg->val.enum_val : arg->default_val.enum_val;
 }
 
 static_always_inline u8 *
