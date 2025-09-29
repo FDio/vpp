@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# Build products and minimal root live under .linux inside the repo.
+LINUX_DIR="$ROOT/.linux"
+KERNEL="$LINUX_DIR/arch/x86/boot/bzImage"
+LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.17.tar.xz"
+
+if [ ! -f ${KERNEL} ] ; then
+  mkdir -p ${LINUX_DIR}
+  [ -f ${LINUX_DIR}/linux.txz ] || curl -o ${LINUX_DIR}/linux.txz ${LINUX_URL}
+  tar \
+    --extract \
+    --strip-components 1 \
+    --file ${LINUX_DIR}/linux.txz \
+    --directory ${LINUX_DIR}
+
+  #make -C ${LINUX_DIR} tinyconfig
+  make -C ${LINUX_DIR} defconfig
+
+
+  for i in \
+    VIRTIO VIRTIO_PCI VIRTIO_PCI_LEGACY 9P_FS ; do
+    ${LINUX_DIR}/scripts/config --file ${LINUX_DIR}/.config --enable $i
+  done
+
+  for i in MODULES DRM FB ; do
+    ${LINUX_DIR}/scripts/config --file ${LINUX_DIR}/.config --disable $i
+  done
+
+  make -C ${LINUX_DIR} olddefconfig
+  make -C ${LINUX_DIR} -j"$(nproc)" bzImage
+
+  exit
+fi
+
+sudo qemu-system-x86_64 \
+  -enable-kvm \
+  -cpu host \
+  -m 2048 \
+  -smp 4 \
+  -kernel "$KERNEL" \
+  -fsdev local,id=fs0,path=/,security_model=passthrough \
+  -device virtio-9p-pci,fsdev=fs0,mount_tag=hostroot \
+  -append "console=ttyS0 init=/bin/sh root=hostroot rootfstype=9p rootflags=trans=virtio,version=9p2000.L,msize=262144,cache=loose" \
+  -serial mon:stdio \
+  -nographic
