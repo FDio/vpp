@@ -16,6 +16,23 @@
       "message": "Ping.",
       "revId": "de8063b2c01b949f0189fe2bdb59be47da6b3ba5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8eb462a1_6b5ee639",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-09-29T22:19:48Z",
+      "side": 1,
+      "message": "The commit comment \u0027breaks nothing\u0027 to be rather disingenuous and inappropriate, given that there is no indication of how in under what conditions this gerrit change was tested.\n\n/usr/bin/env depends on the PATH environment variable to find bash, and relying upon it may break other downstream consumers with different execution environments.\n\nThe FD.io VPP project only officially supports builds on Ubuntu 22.04/24.04 and Debian 12.  While there are folks who maintain the VPP builds systems for other OS / distros, there is no plan to accept addtional OS variants in the VPP CI.  The criteria for accepting changes for non-supported distros is for there to be a published maintainer for the distro in the MAINTAINERS file and the changes to the build system should be isolated from the officially supported OS build infra.\n\nAlso, this change is made only to the checkstyle.sh script, but not any of the other scripts which introduces an inconsistent design pattern for shell scripts which is undesirable.",
+      "revId": "de8063b2c01b949f0189fe2bdb59be47da6b3ba5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
