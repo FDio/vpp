@@ -23,6 +23,11 @@ set(VPP_PLUGINS
 )
 
 if(NOT VPP_PLUGINS STREQUAL "")
+  if(VPP_PLUGINS STREQUAL "none")
+    message(STATUS "VPP plugins explicitly disabled")
+    return()
+  endif()
+
   string(REGEX REPLACE "[ \t]*,[ \t]*" ";" _plugins "${VPP_PLUGINS}")
   list(FILTER _plugins EXCLUDE REGEX "^$")
 
