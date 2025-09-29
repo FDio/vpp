@@ -1775,6 +1775,63 @@ http_test_qpack (vlib_main_t *vm)
 	     vec_len (buf));
   vec_free (buf);
 
+  vlib_cli_output (vm, "qpack_serialize_response");
+
+  static void (*_qpack_serialize_response) (
+    u8 * app_headers, u32 app_headers_len,
+    hpack_response_control_data_t * control_data, u8 * *dst);
+  _qpack_serialize_response =
+    vlib_get_plugin_symbol ("http_plugin.so", "qpack_serialize_response");
+
+  u8 *server_name = format (0, "http unit tests");
+  u8 *date = format (0, "Mon, 21 Oct 2013 20:13:21 GMT");
+
+  memset (&resp_control_data, 0, sizeof (resp_control_data));
+  vec_validate_init_empty (buf, 127, 0xFF);
+  vec_reset_length (buf);
+  resp_control_data.sc = HTTP_STATUS_GATEWAY_TIMEOUT;
+  resp_control_data.server_name = server_name;
+  resp_control_data.server_name_len = vec_len (server_name);
+  resp_control_data.date = date;
+  resp_control_data.date_len = vec_len (date);
+  u8 expected4[] =
+    "\x00\x00\x5F\x09\x03\x35\x30\x34\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54"
+    "\x49\x50\x94\x7F\x56\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95"
+    "\x04\x0B\x81\x66\xE0\x82\xA6\x2D\x1B\xFF\xC4";
+  _qpack_serialize_response (0, 0, &resp_control_data, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected4) - 1) &&
+	      !memcmp (buf, expected4, vec_len (buf))),
+	     "response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+
+  resp_control_data.sc = HTTP_STATUS_OK;
+  resp_control_data.content_len = 1024;
+  http_headers_ctx_t headers_ctx;
+  u8 *headers_buf = 0;
+  vec_validate_init_empty (headers_buf, 127, 0xFF);
+  http_init_headers_ctx (&headers_ctx, headers_buf, vec_len (headers_buf));
+  http_add_header (&headers_ctx, HTTP_HEADER_CONTENT_TYPE,
+		   http_token_lit ("text/plain"));
+  http_add_header (&headers_ctx, HTTP_HEADER_CACHE_STATUS,
+		   http_token_lit ("ExampleCache; hit"));
+  http_add_custom_header (&headers_ctx, http_token_lit ("sandwich"),
+			  http_token_lit ("spam"));
+  u8 expected5[] =
+    "\x00\x00\xD9\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7F\x56"
+    "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66\xE0"
+    "\x82\xA6\x2D\x1B\xFF\x54\x83\x08\x04\xD7\xF5\x2F\x01\x20\xC9\x39\x56\x42"
+    "\x46\x9B\x51\x8D\xC1\xE4\x74\xD7\x41\x6F\x0C\x93\x97\xED\x49\xCC\x9F\x2E"
+    "\x40\xEA\x93\xC1\x89\x3F\x83\x45\x63\xA7";
+  _qpack_serialize_response (headers_buf, headers_ctx.tail_offset,
+			     &resp_control_data, &buf);
+  HTTP_TEST ((vec_len (buf) == (sizeof (expected5) - 1) &&
+	      !memcmp (buf, expected5, vec_len (buf))),
+	     "response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (headers_buf);
+  vec_free (buf);
+  vec_free (server_name);
+  vec_free (date);
+
   return 0;
 }
 

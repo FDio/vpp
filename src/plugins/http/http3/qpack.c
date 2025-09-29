@@ -4,6 +4,7 @@
 
 #include <http/http3/qpack.h>
 #include <http/http2/hpack_inlines.h>
+#include <http/http_status_codes.h>
 
 typedef struct
 {
@@ -405,6 +406,14 @@ qpack_lookup_content_encoding (const char *value, u32 value_len,
 }
 
 static int
+qpack_lookup_content_length (const char *value, u32 value_len, u8 *full_match)
+{
+  /* "content-length: 0" is encoded directly in qpack_encode_content_len */
+  *full_match = 0;
+  return 4;
+}
+
+static int
 qpack_lookup_content_security_policy (const char *value, u32 value_len,
 				      u8 *full_match)
 {
@@ -776,7 +785,7 @@ static qpack_static_table_lookup_fn qpack_static_table_lookup[] = {
   [HTTP_HEADER_CONTENT_DISPOSITION] = qpack_lookup_content_disposition,
   [HTTP_HEADER_CONTENT_ENCODING] = qpack_lookup_content_encoding,
   [HTTP_HEADER_CONTENT_LANGUAGE] = qpack_lookup_no_match,
-  [HTTP_HEADER_CONTENT_LENGTH] = qpack_lookup_no_match,
+  [HTTP_HEADER_CONTENT_LENGTH] = qpack_lookup_content_length,
   [HTTP_HEADER_CONTENT_LOCATION] = qpack_lookup_no_match,
   [HTTP_HEADER_CONTENT_RANGE] = qpack_lookup_no_match,
   [HTTP_HEADER_CONTENT_SECURITY_POLICY] = qpack_lookup_content_security_policy,
@@ -1092,6 +1101,101 @@ static const http3_error_t hpack_error_to_http3_error[] = {
   [HPACK_ERROR_UNKNOWN] = HTTP3_ERROR_INTERNAL_ERROR,
 };
 
+#define encode_static_entry(_index)                                           \
+  vec_add2 (dst, a, 1);                                                       \
+  *a++ = 0xC0 | _index;
+
+static u8 *
+qpack_encode_status_code (u8 *dst, http_status_code_t sc)
+{
+  u32 orig_len, actual_size;
+  u8 *a, *b;
+
+  switch (sc)
+    {
+    case HTTP_STATUS_EARLY_HINTS:
+      encode_static_entry (24);
+      break;
+    case HTTP_STATUS_OK:
+      encode_static_entry (25);
+      break;
+    case HTTP_STATUS_NOT_MODIFIED:
+      encode_static_entry (26);
+      break;
+    case HTTP_STATUS_NOT_FOUND:
+      encode_static_entry (27);
+      break;
+    case HTTP_STATUS_SERVICE_UNAVAILABLE:
+      encode_static_entry (28);
+      break;
+    case HTTP_STATUS_CONTINUE:
+      encode_static_entry (63);
+      break;
+    case HTTP_STATUS_NO_CONTENT:
+      encode_static_entry (64);
+      break;
+    case HTTP_STATUS_PARTIAL_CONTENT:
+      encode_static_entry (65);
+      break;
+    case HTTP_STATUS_FOUND:
+      encode_static_entry (66);
+      break;
+    case HTTP_STATUS_BAD_REQUEST:
+      encode_static_entry (67);
+      break;
+    case HTTP_STATUS_FORBIDDEN:
+      encode_static_entry (68);
+      break;
+    case HTTP_STATUS_MISDIRECTED_REQUEST:
+      encode_static_entry (69);
+      break;
+    case HTTP_STATUS_TOO_EARLY:
+      encode_static_entry (70);
+      break;
+    case HTTP_STATUS_INTERNAL_ERROR:
+      encode_static_entry (71);
+      break;
+    default:
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, 5);
+      *a = 0x50;
+      b = hpack_encode_int (a, 24, 4);
+      b = qpack_encode_string (b, (const u8 *) http_status_code_str[sc], 3, 8);
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
+      break;
+    }
+  return dst;
+}
+
+static u8 *
+qpack_encode_content_len (u8 *dst, u64 content_len)
+{
+  u8 digit_buffer[20];
+  u8 *d = digit_buffer + sizeof (digit_buffer);
+  u8 *a;
+
+  /* save some cycles and encode "content-length: 0" directly */
+  if (content_len == 0)
+    {
+      vec_add2 (dst, a, 1);
+      /* static table index 4 */
+      *a = 0xC4;
+      return dst;
+    }
+
+  do
+    {
+      *--d = '0' + content_len % 10;
+      content_len /= 10;
+    }
+  while (content_len);
+
+  dst = qpack_encode_header (dst, HTTP_HEADER_CONTENT_LENGTH, d,
+			     digit_buffer + sizeof (digit_buffer) - d);
+  return dst;
+}
+
 static inline hpack_error_t
 qpack_parse_headers_prefix (u8 **src, u8 *end, qpack_decoder_ctx_t *ctx)
 {
@@ -1161,4 +1265,68 @@ qpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
   rv = hpack_decode_response (p, end, dst, dst_len, control_data, headers,
 			      decoder_ctx, qpack_decode_header);
   return hpack_error_to_http3_error[rv];
+}
+
+__clib_export void
+qpack_serialize_response (u8 *app_headers, u32 app_headers_len,
+			  hpack_response_control_data_t *control_data,
+			  u8 **dst)
+{
+  u8 *a, *p, *end;
+
+  p = *dst;
+  /* encoded field section prefix, two zero bytes because we don't use dynamic
+   * table */
+  vec_add2 (p, a, 2);
+  a[0] = 0;
+  a[1] = 0;
+
+  /* status code must be first since it is pseudo-header */
+  p = qpack_encode_status_code (p, control_data->sc);
+
+  /* server name */
+  p = qpack_encode_header (p, HTTP_HEADER_SERVER, control_data->server_name,
+			   control_data->server_name_len);
+
+  /* date */
+  p = qpack_encode_header (p, HTTP_HEADER_DATE, control_data->date,
+			   control_data->date_len);
+
+  /* content length if any */
+  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+    p = qpack_encode_content_len (p, control_data->content_len);
+
+  if (!app_headers_len)
+    {
+      *dst = p;
+      return;
+    }
+
+  end = app_headers + app_headers_len;
+  while (app_headers < end)
+    {
+      /* custom header name? */
+      u32 *tmp = (u32 *) app_headers;
+      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+	{
+	  http_custom_token_t *name, *value;
+	  name = (http_custom_token_t *) app_headers;
+	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
+	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  value = (http_custom_token_t *) app_headers;
+	  app_headers += sizeof (http_custom_token_t) + value->len;
+	  p = qpack_encode_custom_header (p, name->token, name_len,
+					  value->token, value->len);
+	}
+      else
+	{
+	  http_app_header_t *header;
+	  header = (http_app_header_t *) app_headers;
+	  app_headers += sizeof (http_app_header_t) + header->value.len;
+	  p = qpack_encode_header (p, header->name, header->value.token,
+				   header->value.len);
+	}
+    }
+
+  *dst = p;
 }
