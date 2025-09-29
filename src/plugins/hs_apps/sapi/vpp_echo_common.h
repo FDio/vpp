@@ -304,11 +304,6 @@ typedef struct
   u8 has_failed;		/* stores the exit code */
   u8 *fail_descr;		/* vector containing fail description */
 
-  /** Flag that decides if socket, instead of svm, api is used to connect to
-   * vpp. If sock api is used, shm binary api is subsequently bootstrapped
-   * and all other messages are exchanged using shm IPC. */
-  u8 use_sock_api;
-
   u8 *connect_test_data;
   u8 test_return_packets;
   u64 bytes_to_send;		/* target per stream */

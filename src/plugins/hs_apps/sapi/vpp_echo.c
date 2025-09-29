@@ -92,30 +92,18 @@ connect_to_vpp (echo_main_t *em)
   if (em->use_app_socket_api)
     return echo_api_connect_app_socket (em);
 
-  if (em->use_sock_api)
+  if (vl_socket_client_connect ((char *) em->socket_name,
+				(char *) em->app_name,
+				0 /* default rx, tx buffer */))
     {
-      if (vl_socket_client_connect ((char *) em->socket_name,
-				    (char *) em->app_name,
-				    0 /* default rx, tx buffer */))
-	{
-	  ECHO_FAIL (ECHO_FAIL_SOCKET_CONNECT, "socket connect failed");
-	  return -1;
-	}
-
-      if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
-	{
-	  ECHO_FAIL (ECHO_FAIL_INIT_SHM_API, "init shm api failed");
-	  return -1;
-	}
+      ECHO_FAIL (ECHO_FAIL_SOCKET_CONNECT, "socket connect failed");
+      return -1;
     }
-  else
+
+  if (vl_socket_client_init_shm (0, 1 /* want_pthread */))
     {
-      if (vl_client_connect_to_vlib ("/vpe-api", (char *) em->app_name, 32) <
-	  0)
-	{
-	  ECHO_FAIL (ECHO_FAIL_SHMEM_CONNECT, "shmem connect failed");
-	  return -1;
-	}
+      ECHO_FAIL (ECHO_FAIL_INIT_SHM_API, "init shm api failed");
+      return -1;
     }
   em->vl_input_queue = am->shmem_hdr->vl_input_queue;
   em->my_client_index = am->my_client_index;
@@ -1010,47 +998,58 @@ print_usage_and_exit (void)
 {
   echo_main_t *em = &echo_main;
   int i;
-  fprintf (stderr,
-	   "Usage: vpp_echo [socket-name SOCKET] [client|server] [uri URI] [OPTIONS]\n"
-	   "Generates traffic and assert correct teardown of the hoststack\n"
-	   "\n"
-	   "  socket-name PATH    Specify the binary socket path to connect to VPP\n"
-	   "  use-svm-api         Use SVM API to connect to VPP\n"
-	   "  test-bytes[:assert] Check data correctness when receiving (assert fails on first error)\n"
-	   "  fifo-size N[K|M|G]  Use N[K|M|G] fifos\n"
-	   "  mq-size N           Use mq with N slots for [vpp_echo->vpp] communication\n"
-	   "  max-sim-connects N  Do not allow more than N mq events inflight\n"
-	   "  rx-buf N[K|M|G]     Use N[Kb|Mb|GB] RX buffer\n"
-	   "  tx-buf N[K|M|G]     Use N[Kb|Mb|GB] TX test buffer\n"
-	   "  appns NAMESPACE     Use the namespace NAMESPACE\n"
-	   "  all-scope           all-scope option\n"
-	   "  local-scope         local-scope option\n"
-	   "  global-scope        global-scope option\n"
-	   "  secret SECRET       set namespace secret\n"
-	   "  chroot prefix PATH  Use PATH as memory root path\n"
-	   "  sclose=[Y|N|W]      When stream is done, send[Y]|nop[N]|wait[W] for close\n"
-	   "  nuris N             Cycle through N consecutive (src&dst) ips when creating connections\n"
-	   "  lcl IP              Set the local ip to use as a client (use with nuris to set first src ip)\n"
-	   "\n"
-	   "  time START:END      Time between evts START & END, events being :\n"
-	   "                       start - Start of the app\n"
-	   "                       qconnect    - first Connection connect sent\n"
-	   "                       qconnected  - last Connection connected\n"
-	   "                       sconnect    - first Stream connect sent\n"
-	   "                       sconnected  - last Stream got connected\n"
-	   "                       lastbyte    - Last expected byte received\n"
-	   "                       exit        - Exiting of the app\n"
-	   "  rx-results-diff     Rx results different to pass test\n"
-	   "  tx-results-diff     Tx results different to pass test\n"
-	   "  json                Output global stats in json\n"
-	   "  stats N             Output stats evry N secs\n"
-	   "  log=N               Set the log level to [0: no output, 1:errors, 2:log]\n"
-	   "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, mbedtls]\n"
-	   "\n"
-	   "  nclients N          Open N clients sending data\n"
-	   "  nthreads N          Use N busy loop threads for data [in addition to main & msg queue]\n"
-	   "  TX=1337[K|M|G]|RX   Send 1337 [K|M|G]bytes, use TX=RX to reflect the data\n"
-	   "  RX=1337[K|M|G]      Expect 1337 [K|M|G]bytes\n" "\n");
+  fprintf (
+    stderr,
+    "Usage: vpp_echo [socket-name SOCKET] [client|server] [uri URI] "
+    "[OPTIONS]\n"
+    "Generates traffic and assert correct teardown of the hoststack\n"
+    "\n"
+    "  socket-name PATH    Specify the binary socket path to connect to VPP\n"
+    "  test-bytes[:assert] Check data correctness when receiving (assert "
+    "fails on first error)\n"
+    "  fifo-size N[K|M|G]  Use N[K|M|G] fifos\n"
+    "  mq-size N           Use mq with N slots for [vpp_echo->vpp] "
+    "communication\n"
+    "  max-sim-connects N  Do not allow more than N mq events inflight\n"
+    "  rx-buf N[K|M|G]     Use N[Kb|Mb|GB] RX buffer\n"
+    "  tx-buf N[K|M|G]     Use N[Kb|Mb|GB] TX test buffer\n"
+    "  appns NAMESPACE     Use the namespace NAMESPACE\n"
+    "  all-scope           all-scope option\n"
+    "  local-scope         local-scope option\n"
+    "  global-scope        global-scope option\n"
+    "  secret SECRET       set namespace secret\n"
+    "  chroot prefix PATH  Use PATH as memory root path\n"
+    "  sclose=[Y|N|W]      When stream is done, send[Y]|nop[N]|wait[W] for "
+    "close\n"
+    "  nuris N             Cycle through N consecutive (src&dst) ips when "
+    "creating connections\n"
+    "  lcl IP              Set the local ip to use as a client (use with "
+    "nuris to set first src ip)\n"
+    "\n"
+    "  time START:END      Time between evts START & END, events being :\n"
+    "                       start - Start of the app\n"
+    "                       qconnect    - first Connection connect sent\n"
+    "                       qconnected  - last Connection connected\n"
+    "                       sconnect    - first Stream connect sent\n"
+    "                       sconnected  - last Stream got connected\n"
+    "                       lastbyte    - Last expected byte received\n"
+    "                       exit        - Exiting of the app\n"
+    "  rx-results-diff     Rx results different to pass test\n"
+    "  tx-results-diff     Tx results different to pass test\n"
+    "  json                Output global stats in json\n"
+    "  stats N             Output stats evry N secs\n"
+    "  log=N               Set the log level to [0: no output, 1:errors, "
+    "2:log]\n"
+    "  crypto [engine]     Set the crypto engine [openssl, vpp, picotls, "
+    "mbedtls]\n"
+    "\n"
+    "  nclients N          Open N clients sending data\n"
+    "  nthreads N          Use N busy loop threads for data [in addition to "
+    "main & msg queue]\n"
+    "  TX=1337[K|M|G]|RX   Send 1337 [K|M|G]bytes, use TX=RX to reflect the "
+    "data\n"
+    "  RX=1337[K|M|G]      Expect 1337 [K|M|G]bytes\n"
+    "\n");
   for (i = 0; i < vec_len (em->available_proto_cb_vft); i++)
     {
       echo_proto_cb_vft_t *vft = em->available_proto_cb_vft[i];
@@ -1125,8 +1124,6 @@ echo_process_opts (int argc, char **argv)
 	;
       else if (unformat (a, "use-app-socket-api"))
 	em->use_app_socket_api = 1;
-      else if (unformat (a, "use-svm-api"))
-	em->use_sock_api = 0;
       else if (unformat (a, "fifo-size %U", unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
@@ -1335,10 +1332,7 @@ echo_disconnect (echo_main_t *em)
   if (em->use_app_socket_api)
     return;
 
-  if (em->use_sock_api)
-    vl_socket_client_disconnect ();
-  else
-    vl_client_disconnect_from_vlib ();
+  vl_socket_client_disconnect ();
 }
 
 static int
@@ -1375,7 +1369,6 @@ main (int argc, char **argv)
   em->shared_segment_handles = hash_create (0, sizeof (uword));
   clib_spinlock_init (&em->segment_handles_lock);
   em->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
-  em->use_sock_api = 1;
   em->fifo_size = 64 << 10;
   em->prealloc_fifo_pairs = 16;
   em->n_clients = 1;
