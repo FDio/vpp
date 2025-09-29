@@ -191,6 +191,8 @@ typedef enum http_content_type_
 #define foreach_http_status_code                                              \
   _ (100, CONTINUE, "100 Continue")                                           \
   _ (101, SWITCHING_PROTOCOLS, "101 Switching Protocols")                     \
+  _ (102, PROCESSING, "102 Processing")                                       \
+  _ (103, EARLY_HINTS, "103 Early Hints")                                     \
   _ (200, OK, "200 OK")                                                       \
   _ (201, CREATED, "201 Created")                                             \
   _ (202, ACCEPTED, "202 Accepted")                                           \
@@ -226,13 +228,26 @@ typedef enum http_content_type_
   _ (417, EXPECTATION_FAILED, "417 Expectation Failed")                       \
   _ (421, MISDIRECTED_REQUEST, "421 Misdirected Request")                     \
   _ (422, UNPROCESSABLE_CONTENT, "422 Unprocessable_Content")                 \
+  _ (423, LOCKED, "423 Locked")                                               \
+  _ (424, FAILED_DEPENDENCY, "424 Failed Dependency")                         \
+  _ (425, TOO_EARLY, "425 Too Early")                                         \
   _ (426, UPGRADE_REQUIRED, "426 Upgrade Required")                           \
+  _ (428, PRECONDITION_REQUIRED, "428 Precondition Required")                 \
+  _ (429, TOO_MANY_REQUESTS, "429 Too Many Requests")                         \
+  _ (431, REQUEST_HEADER_FIELDS_TOO_LARGE,                                    \
+     "431 Request Header Fields Too Large")                                   \
+  _ (451, UNAVAILABLE_FOR_LEGAL_REASONS, "451 Unavailable For Legal Reasons") \
   _ (500, INTERNAL_ERROR, "500 Internal Server Error")                        \
   _ (501, NOT_IMPLEMENTED, "501 Not Implemented")                             \
   _ (502, BAD_GATEWAY, "502 Bad Gateway")                                     \
   _ (503, SERVICE_UNAVAILABLE, "503 Service Unavailable")                     \
   _ (504, GATEWAY_TIMEOUT, "504 Gateway Timeout")                             \
-  _ (505, HTTP_VERSION_NOT_SUPPORTED, "505 HTTP Version Not Supported")
+  _ (505, HTTP_VERSION_NOT_SUPPORTED, "505 HTTP Version Not Supported")       \
+  _ (506, VARIANT_ALSO_NEGOTIATES, "506 Variant Also Negotiates")             \
+  _ (507, INSUFFICIENT_STORAGE, "507 Insufficient Storage")                   \
+  _ (508, LOOP_DETECTED, "508 Loop Detected")                                 \
+  _ (511, NETWORK_AUTHENTICATION_REQUIRED,                                    \
+     "511 Network Authentication Required")
 
 typedef enum http_status_code_
 {
