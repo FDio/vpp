@@ -254,6 +254,7 @@ void *clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
 				     uword align);
 uword clib_mem_heap_is_heap_object (void *heap, void *p);
 void clib_mem_heap_free (void *heap, void *p);
+void clib_mem_heap_free_mt_safe (void *heap, void *p);
 
 uword clib_mem_size (void *p);
 void clib_mem_free_s (void *p);

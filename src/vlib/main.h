@@ -48,9 +48,37 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
+#include <vppinfra/fifo.h>
 
 #include <pthread.h>
 
+/**
+ * @brief Delayed Free Entry
+ *
+ * Structure to hold information for a delayed free operation.
+ */
+typedef enum
+{
+  CLIB_DELAYED_FREE_DLMALLOC,
+} clib_delayed_free_type_t;
+
+typedef struct
+{
+  void *ptr_to_free;
+  clib_mem_heap_t *heap;
+  clib_delayed_free_type_t type;
+} clib_delayed_free_entry_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /** FIFO of free lists */
+  clib_delayed_free_entry_t **frees_by_epoch_fifo;
+  /** Last seen epoch for each worker thread */
+  u32 *worker_last_seen_epochs;
+  /** Last safe epoch across all workers, to avoid redundant checks */
+  u32 last_known_safe_epoch;
+} clib_delayed_free_main_t;
 
 /* By default turn off node/error event logging.
    Override with -DVLIB_ELOG_MAIN_LOOP */
@@ -207,6 +235,9 @@ typedef struct vlib_main_t
   clib_thread_index_t thread_index;
   u32 numa_node;
 
+  /** per-thread epoch for relativistic frees */
+  u32 local_epoch;
+
   /* epoll and eventfd */
   int epoll_fd;
   int wakeup_fd;
@@ -262,6 +293,9 @@ typedef struct vlib_main_t
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
+
+  /** Pending frees enqueued during this main loop iteration */
+  clib_delayed_free_entry_t *pending_frees;
 
   /* buffer fault injector */
   u32 buffer_alloc_success_seed;
@@ -326,6 +360,9 @@ typedef struct vlib_global_main_t
 
   /* Hash table to record which init functions have been called. */
   uword *init_functions_called;
+
+  /* Delayed free main structure. */
+  clib_delayed_free_main_t delayed_free_main;
 
 } vlib_global_main_t;
 
