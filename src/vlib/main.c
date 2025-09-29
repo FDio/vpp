@@ -53,6 +53,40 @@ vlib_frame_find_magic (vlib_frame_t * f, vlib_node_t * node)
   return (void *) f + node->magic_offset;
 }
 
+/* TODO: Move to a different file? */
+__clib_export __clib_flatten void
+clib_mem_heap_free_mt_safe (void *heap, void *p)
+{
+  clib_mem_heap_t *h;
+  clib_delayed_free_entry_t *e;
+  vlib_main_t *vm = vlib_get_main ();
+
+  /*
+   * For now, only the main thread can perform mt-safe reallocations.
+   * This could be relaxed later if a multi-writer system is implemented.
+   */
+  ASSERT (vlib_get_thread_index () == 0);
+
+  /* If no workers, no need for delayed free. */
+  if (vlib_num_workers () == 0)
+    {
+      clib_mem_heap_free (heap, p);
+      return;
+    }
+
+  if (heap == 0)
+    h = clib_mem_get_per_cpu_heap ();
+  else
+    h = heap;
+
+  /* Allocate the element in the vector. */
+  vec_add2 (vm->pending_frees, e, 1);
+
+  e->ptr_to_free = p;
+  e->heap = h;
+  e->type = CLIB_DELAYED_FREE_DLMALLOC;
+}
+
 static vlib_frame_t *
 vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 			  u32 frame_flags)
@@ -1485,6 +1519,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   vlib_frame_queue_main_t *fqm;
   u32 frame_queue_check_counter = 0;
   u32 *expired_timers = 0;
+  u32 worker_index, min_worker_epoch, current_worker_epoch;
+  vlib_main_t *worker_vm;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1540,7 +1576,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	}
 
       if (!is_main)
-	vlib_worker_thread_barrier_check ();
+	{
+	  vlib_worker_thread_barrier_check ();
+	  vlib_global_main_t *vgm = vlib_get_global_main ();
+	  clib_delayed_free_main_t *dfm = &vgm->delayed_free_main;
+	  vm->local_epoch =
+	    clib_ring_header (dfm->frees_by_epoch_fifo)->tail_index;
+	}
 
       if (PREDICT_FALSE (vm->check_frame_queues + frame_queue_check_counter))
 	{
@@ -1757,6 +1799,66 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  vm->loop_interval_end = now + 2e-4;
 	  vm->loops_this_reporting_interval = 0;
 	}
+
+      if (!is_main || vlib_num_workers () <= 0))
+        continue;
+
+      /* Handle delayed frees if any were generated */
+      if (vec_len (vm->pending_frees))
+	{
+	  vlib_global_main_t *vgm = vlib_get_global_main ();
+	  clib_delayed_free_main_t *dfm = &vgm->delayed_free_main;
+	  clib_delayed_free_entry_t **free_list_slot;
+
+	  /* Add the vector of pending frees to the fifo for this epoch */
+	  clib_fifo_add2 (dfm->frees_by_epoch_fifo, free_list_slot);
+	  *free_list_slot = vm->pending_frees;
+	  vm->pending_frees = 0;
+	}
+
+      /* Check worker progress and execute delayed frees */
+      vlib_global_main_t *vgm = vlib_get_global_main ();
+      clib_delayed_free_main_t *dfm = &vgm->delayed_free_main;
+
+      if (clib_fifo_elts (dfm->frees_by_epoch_fifo) <= 0)
+	continue;
+
+      /* 1. Check one worker's progress using main loop counter */
+      worker_index = (vm->main_loop_count % vlib_num_workers ()) + 1;
+      worker_vm = vlib_get_main_by_index (worker_index);
+      min_worker_epoch = worker_vm->local_epoch;
+      vec_elt (dfm->worker_last_seen_epochs, worker_index) = min_worker_epoch;
+
+      if (min_worker_epoch == dfm->last_known_safe_epoch)
+	continue;
+
+      /* 2. Find the minimum epoch across all workers */
+      for (i = 1; i < vlib_get_n_threads (); i++)
+	{
+	  current_worker_epoch = vec_elt (dfm->worker_last_seen_epochs, i);
+	  if ((i32) (min_worker_epoch - current_worker_epoch) > 0)
+	    min_worker_epoch = current_worker_epoch;
+	}
+
+      if (min_worker_epoch == dfm->last_known_safe_epoch)
+	continue;
+
+      dfm->last_known_safe_epoch = min_worker_epoch;
+      while ((i32) (min_worker_epoch -
+		    clib_ring_header (dfm->frees_by_epoch_fifo)->head_index) >
+	     0)
+	{
+	  clib_delayed_free_entry_t **slot, *free_list, *e;
+	  clib_fifo_sub2 (dfm->frees_by_epoch_fifo, slot);
+	  free_list = *slot;
+	  vec_foreach (e, free_list)
+	    {
+	      ASSERT (e->type == CLIB_DELAYED_FREE_DLMALLOC);
+	      clib_mem_heap_free (e->heap, e->ptr_to_free);
+	    }
+	  vec_free (free_list);
+	}
+    }
     }
 }
 
@@ -1997,6 +2099,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vec_validate (vm->processing_rpc_requests, 0);
   vec_set_len (vm->processing_rpc_requests, 0);
 
+  m->pending_frees = 0;
+
   /* Default params for the buffer allocator fault injector, if configured */
   if (VLIB_BUFFER_ALLOC_FAULT_INJECTOR > 0)
     {
@@ -2006,6 +2110,12 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   if ((error = vlib_call_all_config_functions (vm, input, 0 /* is_early */ )))
     goto done;
+
+  /* Initialize delayed_free_main */
+  clib_fifo_new (vgm->delayed_free_main.frees_by_epoch_fifo, 128);
+  vec_validate_init_empty (vgm->delayed_free_main.worker_last_seen_epochs,
+			   vlib_get_n_threads () - 1, 0);
+  vgm->delayed_free_main.last_known_safe_epoch = 0;
 
   /*
    * Use exponential smoothing, with a half-life of 1 second
