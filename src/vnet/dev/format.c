@@ -548,3 +548,24 @@ unformat_vnet_dev_rss_key (unformat_input_t *input, va_list *args)
   k->length = len;
   return 1;
 }
+uword
+unformat_vnet_dev_vector (unformat_input_t *in, va_list *args)
+{
+  vnet_dev_t *dev, ***devs = va_arg (*args, vnet_dev_t ***);
+  u8 *s = 0;
+  uword rv = 0;
+
+  while (unformat (in, "%s", &s))
+    {
+      dev = vnet_dev_by_id ((char *) s);
+      if (!dev)
+	break;
+
+      vec_add1 (*devs, dev);
+      vec_reset_length (s);
+      rv++;
+    }
+
+  vec_free (s);
+  return rv;
+}

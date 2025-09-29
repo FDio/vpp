@@ -316,21 +316,28 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_format_args_t fa = {}, *a = &fa;
+  vnet_dev_t **devs = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "counters"))
 	fa.counters = 1;
-      else if (unformat (input, "all"))
-	fa.show_zero_counters = 1;
+      else if (unformat (input, "zero-counters"))
+	fa.show_zero_counters = fa.counters = 1;
       else if (unformat (input, "debug"))
 	fa.debug = 1;
+      else if (unformat (input, "%U", unformat_vnet_dev_vector, &devs))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  pool_foreach_pointer (dev, dm->devices)
+  if (vec_len (devs) == 0)
+    pool_foreach_pointer (dev, dm->devices)
+      vec_add1 (devs, dev);
+
+  vec_foreach_pointer (dev, devs)
     {
       vlib_cli_output (vm, "device '%s':", dev->device_id);
       vlib_cli_output (vm, "  %U", format_vnet_dev_info, a, dev);
@@ -362,7 +369,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
-  .short_help = "show device [counters] [zero-counters] [debug]",
+  .short_help =
+    "show device [counters] [zero-counters] [debug] [<device-id> ...]",
   .function = show_devices_cmd_fn,
   .is_mp_safe = 1,
 };
