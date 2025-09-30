@@ -27,6 +27,7 @@ typedef struct crypto_native_op_handler
   vnet_crypto_op_id_t op_id;
   vnet_crypto_simple_op_fn_t *fn;
   vnet_crypto_chained_op_fn_t *cfn;
+  vnet_crypto_simple_op_fn_t *tfn;
   crypto_native_variant_probe_t *probe;
   int priority;
 } crypto_native_op_handler_t;

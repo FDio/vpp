@@ -34,11 +34,10 @@ crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)
 }
 
 static_always_inline u32
-vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
-				      vnet_crypto_main_t * cm,
-				      vnet_crypto_op_id_t opt,
-				      vnet_crypto_op_t * ops[],
-				      vnet_crypto_op_chunk_t * chunks,
+vnet_crypto_process_ops_call_handler (vlib_main_t *vm, vnet_crypto_main_t *cm,
+				      vnet_crypto_op_id_t opt, u8 flags,
+				      vnet_crypto_op_t *ops[],
+				      vnet_crypto_op_chunk_t *chunks,
 				      u32 n_ops)
 {
   vnet_crypto_op_data_t *od = cm->opt_data + opt;
@@ -46,7 +45,17 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
   if (n_ops == 0)
     return 0;
 
-  if (chunks)
+  if (flags & VNET_CRYPTO_OP_FLAG_FULL_KEY)
+    {
+      vnet_crypto_simple_op_fn_t *fn =
+	od->handlers[VNET_CRYPTO_HANDLER_TYPE_THREAD_SAFE];
+      if (fn == 0)
+	crypto_set_op_status (ops, n_ops,
+			      VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER);
+      else
+	rv = fn (vm, ops, n_ops);
+    }
+  else if (chunks)
     {
       vnet_crypto_chained_op_fn_t *fn =
 	od->handlers[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
@@ -78,6 +87,7 @@ vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
   const int op_q_size = VLIB_FRAME_SIZE;
   vnet_crypto_op_t *op_queue[op_q_size];
   vnet_crypto_op_id_t opt, current_op_type = ~0;
+  u8 flags, current_op_flags = 0;
   u32 n_op_queue = 0;
   u32 rv = 0, i;
 
@@ -86,21 +96,23 @@ vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
   for (i = 0; i < n_ops; i++)
     {
       opt = ops[i].op;
+      flags = ops[i].flags;
 
       if (current_op_type != opt || n_op_queue >= op_q_size)
 	{
-	  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-						      op_queue, chunks,
-						      n_op_queue);
+	  rv += vnet_crypto_process_ops_call_handler (
+	    vm, cm, current_op_type, current_op_flags, op_queue, chunks,
+	    n_op_queue);
 	  n_op_queue = 0;
 	  current_op_type = opt;
+	  current_op_flags = flags;
 	}
 
       op_queue[n_op_queue++] = &ops[i];
     }
 
-  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-					      op_queue, chunks, n_op_queue);
+  rv += vnet_crypto_process_ops_call_handler (
+    vm, cm, current_op_type, current_op_flags, op_queue, chunks, n_op_queue);
   return rv;
 }
 
@@ -209,7 +221,8 @@ void
 vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
 					 vnet_crypto_op_id_t opt,
 					 vnet_crypto_simple_op_fn_t *fn,
-					 vnet_crypto_chained_op_fn_t *cfn)
+					 vnet_crypto_chained_op_fn_t *cfn,
+					 vnet_crypto_simple_op_fn_t *tfn)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
@@ -245,6 +258,21 @@ vnet_crypto_register_ops_handler_inline (vlib_main_t *vm, u32 engine_index,
 	crypto_set_active_engine (otd, opt, engine_index, t);
     }
 
+  if (tfn)
+    {
+      vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_THREAD_SAFE;
+      e->ops[opt].handlers[t] = tfn;
+      if (!otd->active_engine_index[t])
+	{
+	  otd->active_engine_index[t] = engine_index;
+	  cm->opt_data[opt].handlers[t] = tfn;
+	}
+
+      ae = vec_elt_at_index (cm->engines, otd->active_engine_index[t]);
+      if (ae->priority < e->priority)
+	crypto_set_active_engine (otd, opt, engine_index, t);
+    }
+
   return;
 }
 
@@ -253,7 +281,7 @@ vnet_crypto_register_ops_handler (vlib_main_t *vm, u32 engine_index,
 				  vnet_crypto_op_id_t opt,
 				  vnet_crypto_simple_op_fn_t *fn)
 {
-  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, 0);
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, 0, 0);
 }
 
 void
@@ -261,16 +289,18 @@ vnet_crypto_register_chained_ops_handler (vlib_main_t *vm, u32 engine_index,
 					  vnet_crypto_op_id_t opt,
 					  vnet_crypto_chained_op_fn_t *fn)
 {
-  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, 0, fn);
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, 0, fn, 0);
 }
 
 void
 vnet_crypto_register_ops_handlers (vlib_main_t *vm, u32 engine_index,
 				   vnet_crypto_op_id_t opt,
 				   vnet_crypto_simple_op_fn_t *fn,
-				   vnet_crypto_chained_op_fn_t *cfn)
+				   vnet_crypto_chained_op_fn_t *cfn,
+				   vnet_crypto_simple_op_fn_t *tfn)
 {
-  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, cfn);
+  vnet_crypto_register_ops_handler_inline (vm, engine_index, opt, fn, cfn,
+					   tfn);
 }
 
 void
@@ -687,7 +717,7 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	  while (oh->opt != VNET_CRYPTO_OP_NONE)
 	    {
 	      vnet_crypto_register_ops_handlers (vm, eidx, oh->opt, oh->fn,
-						 oh->cfn);
+						 oh->cfn, oh->tfn);
 	      oh++;
 	    }
 

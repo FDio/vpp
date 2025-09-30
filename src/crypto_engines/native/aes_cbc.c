@@ -61,6 +61,31 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   return n_ops;
 }
 
+static_always_inline u32
+aes_ops_enc_aes_cbc_threadsafe (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				u32 n_ops, aes_key_size_t ks)
+{
+  vnet_crypto_op_t *op = ops[0];
+  aes_cbc_key_data_t *kd;
+  u32 n_left = n_ops;
+
+next:
+  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
+  clib_aes_cbc_key_expand (kd, op->key, ks);
+
+  clib_aes_cbc_encrypt (kd, op->src, op->len, op->iv, ks, op->dst);
+
+  clib_mem_free_s (kd);
+  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  if (--n_left)
+    {
+      op += 1;
+      goto next;
+    }
+
+  return n_ops;
+}
 
 static_always_inline u32
 aes_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
@@ -91,6 +116,42 @@ decrypt:
     {
       op += 1;
       kd = (aes_cbc_key_data_t *) cm->key_data[op->key_index];
+      goto decrypt;
+    }
+
+  return n_ops;
+}
+
+static_always_inline u32
+aes_ops_dec_aes_cbc_threadsafe (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+				u32 n_ops, aes_key_size_t ks)
+{
+  int rounds = AES_KEY_ROUNDS (ks);
+  vnet_crypto_op_t *op = ops[0];
+  aes_cbc_key_data_t *kd;
+  u32 n_left = n_ops;
+
+  ASSERT (n_ops >= 1);
+
+decrypt:
+  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
+  clib_aes_cbc_key_expand (kd, op->key, ks);
+#if defined(__VAES__) && defined(__AVX512F__)
+  aes4_cbc_dec (kd->decrypt_key, (u8x64u *) op->src, (u8x64u *) op->dst,
+		(u8x16u *) op->iv, op->len, rounds);
+#elif defined(__VAES__)
+  aes2_cbc_dec (kd->decrypt_key, (u8x32u *) op->src, (u8x32u *) op->dst,
+		(u8x16u *) op->iv, op->len, rounds);
+#else
+  aes_cbc_dec (kd->decrypt_key, (u8x16u *) op->src, (u8x16u *) op->dst,
+	       (u8x16u *) op->iv, op->len, rounds);
+#endif
+  clib_mem_free_s (kd);
+  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  if (--n_left)
+    {
+      op += 1;
       goto decrypt;
     }
 
@@ -157,10 +218,16 @@ aes_cbc_key_exp_256 (vnet_crypto_key_t *key)
   {                                                                           \
     return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
   }                                                                           \
+  static u32 aes_ops_enc_aes_cbc_##x##_threadsafe (                           \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return aes_ops_enc_aes_cbc_threadsafe (vm, ops, n_ops, AES_KEY_##x);      \
+  }                                                                           \
                                                                               \
   CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                            \
     .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                \
     .fn = aes_ops_enc_aes_cbc_##x,                                            \
+    .tfn = aes_ops_enc_aes_cbc_##x##_threadsafe,                              \
     .probe = aes_cbc_cpu_probe,                                               \
   };                                                                          \
                                                                               \
@@ -169,10 +236,16 @@ aes_cbc_key_exp_256 (vnet_crypto_key_t *key)
   {                                                                           \
     return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
   }                                                                           \
+  static u32 aes_ops_dec_aes_cbc_##x##_threadsafe (                           \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return aes_ops_dec_aes_cbc_threadsafe (vm, ops, n_ops, AES_KEY_##x);      \
+  }                                                                           \
                                                                               \
   CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                            \
     .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                \
     .fn = aes_ops_dec_aes_cbc_##x,                                            \
+    .tfn = aes_ops_dec_aes_cbc_##x##_threadsafe,                              \
     .probe = aes_cbc_cpu_probe,                                               \
   };                                                                          \
                                                                               \

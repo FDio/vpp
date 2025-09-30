@@ -86,9 +86,9 @@ crypto_native_init (vnet_crypto_engine_registration_t *r)
   vec_foreach_pointer (oh, best_by_op_id)
     if (oh)
       {
-	*ophp = (vnet_crypto_engine_op_handlers_t){ .opt = oh->op_id,
-						    .fn = oh->fn,
-						    .cfn = oh->cfn };
+	*ophp = (vnet_crypto_engine_op_handlers_t){
+	  .opt = oh->op_id, .fn = oh->fn, .cfn = oh->cfn, .tfn = oh->tfn
+	};
 	ophp++;
 	ASSERT ((ophp - op_handlers) < ARRAY_LEN (op_handlers));
       }

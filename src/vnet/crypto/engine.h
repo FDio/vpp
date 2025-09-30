@@ -14,6 +14,7 @@ typedef struct
   vnet_crypto_op_id_t opt;
   vnet_crypto_simple_op_fn_t *fn;
   vnet_crypto_chained_op_fn_t *cfn;
+  vnet_crypto_simple_op_fn_t *tfn;
 } vnet_crypto_engine_op_handlers_t;
 
 struct vnet_crypto_engine_registration;

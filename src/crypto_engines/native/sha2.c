@@ -94,6 +94,12 @@ probe ()
   {                                                                           \
     return crypto_native_ops_hmac_sha2 (vm, ops, n_ops, 0, CLIB_SHA2_##b);    \
   }                                                                           \
+  static u32 crypto_native_ops_hmac_sha##b##_threadsafe (                     \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return crypto_native_ops_hmac_sha2_threadsafe (vm, ops, n_ops, 0,         \
+						   CLIB_SHA2_##b);            \
+  }                                                                           \
                                                                               \
   static u32 crypto_native_ops_chained_hmac_sha##b (                          \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
@@ -118,6 +124,7 @@ probe ()
     .op_id = VNET_CRYPTO_OP_SHA##b##_HMAC,                                    \
     .fn = crypto_native_ops_hmac_sha##b,                                      \
     .cfn = crypto_native_ops_chained_hmac_sha##b,                             \
+    .tfn = crypto_native_ops_hmac_sha##b##_threadsafe,                        \
     .probe = probe,                                                           \
   };                                                                          \
   CRYPTO_NATIVE_KEY_HANDLER (crypto_native_hmac_sha##b) = {                   \

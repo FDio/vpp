@@ -46,6 +46,42 @@ next:
   return n_ops;
 }
 
+static_always_inline u32
+aes_ops_aes_ctr_threadsafe (vlib_main_t *vm, vnet_crypto_op_t *ops[],
+			    u32 n_ops, vnet_crypto_op_chunk_t *chunks,
+			    aes_key_size_t ks, int maybe_chained)
+{
+  vnet_crypto_op_t *op = ops[0];
+  aes_ctr_key_data_t *kd;
+  aes_ctr_ctx_t ctx;
+  u32 n_left = n_ops;
+
+next:
+  kd = clib_mem_alloc_aligned (sizeof (*kd), CLIB_CACHE_LINE_BYTES);
+  clib_aes_ctr_key_expand (kd, op->key, ks);
+
+  clib_aes_ctr_init (&ctx, kd, op->iv, ks);
+  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
+      for (int j = 0; j < op->n_chunks; j++, chp++)
+	clib_aes_ctr_transform (&ctx, chp->src, chp->dst, chp->len, ks);
+    }
+  else
+    clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
+
+  clib_mem_free_s (kd);
+  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+
+  if (--n_left)
+    {
+      op += 1;
+      goto next;
+    }
+
+  return n_ops;
+}
+
 static_always_inline void *
 aes_ctr_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 {
@@ -65,6 +101,11 @@ aes_ctr_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 				  u32 n_ops)                                  \
   {                                                                           \
     return aes_ops_aes_ctr (vm, ops, n_ops, 0, AES_KEY_##x, 0);               \
+  }                                                                           \
+  static u32 aes_ops_aes_ctr_##x##_threadsafe (                               \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return aes_ops_aes_ctr_threadsafe (vm, ops, n_ops, 0, AES_KEY_##x, 0);    \
   }                                                                           \
   static u32 aes_ops_aes_ctr_##x##_chained (                                  \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
@@ -110,6 +151,7 @@ probe ()
     .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_ENC,                                \
     .fn = aes_ops_aes_ctr_##b,                                                \
     .cfn = aes_ops_aes_ctr_##b##_chained,                                     \
+    .tfn = aes_ops_aes_ctr_##b##_threadsafe,                                  \
     .probe = probe,                                                           \
   };                                                                          \
                                                                               \
@@ -117,6 +159,7 @@ probe ()
     .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_DEC,                                \
     .fn = aes_ops_aes_ctr_##b,                                                \
     .cfn = aes_ops_aes_ctr_##b##_chained,                                     \
+    .tfn = aes_ops_aes_ctr_##b##_threadsafe,                                  \
     .probe = probe,                                                           \
   };                                                                          \
   CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_ctr) = {                               \

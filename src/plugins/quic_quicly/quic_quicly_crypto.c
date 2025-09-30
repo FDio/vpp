@@ -561,7 +561,9 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   aead_ctx->op.iv = aead_ctx->iv;
   ptls_aead__build_iv (aead_ctx->super.algo, aead_ctx->op.iv,
 		       aead_ctx->static_iv, packet_number);
-  aead_ctx->op.key_index = quic_quicly_crypto_set_key (&aead_ctx->key);
+  aead_ctx->op.key = aead_ctx->key.key;
+  aead_ctx->op.key_length = aead_ctx->key.key_len;
+  aead_ctx->op.flags |= VNET_CRYPTO_OP_FLAG_FULL_KEY;
   aead_ctx->op.src = (u8 *) input;
   aead_ctx->op.dst = output;
   aead_ctx->op.len = inlen;
@@ -581,8 +583,9 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
   vnet_crypto_op_init (&hp_ctx->op, hp_ctx->id);
   memset (supp.output, 0, sizeof (supp.output));
   hp_ctx->op.iv = (u8 *) supp.input;
-  hp_ctx->op.key_index = quic_quicly_crypto_set_key (&hp_ctx->key);
-  ;
+  hp_ctx->op.key = aead_ctx->key.key;
+  hp_ctx->op.key_length = aead_ctx->key.key_len;
+  hp_ctx->op.flags |= VNET_CRYPTO_OP_FLAG_FULL_KEY;
   hp_ctx->op.src = (u8 *) supp.output;
   hp_ctx->op.dst = (u8 *) supp.output;
   hp_ctx->op.len = sizeof (supp.output);

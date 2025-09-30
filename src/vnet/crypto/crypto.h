@@ -225,12 +225,19 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  uword user_data;
+  union
+  {
+    uword user_data;
+
+    /* valid if VNET_CRYPTO_OP_FLAG_FULL_KEY is set */
+    u8 *key;
+  };
   vnet_crypto_op_id_t op;
   vnet_crypto_op_status_t status:8;
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK	    (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 1)
+#define VNET_CRYPTO_OP_FLAG_FULL_KEY	    (1 << 2)
 
   union
   {
@@ -258,7 +265,13 @@ typedef struct
     u32 chunk_index;
   };
 
-  u32 key_index;
+  union
+  {
+    u32 key_index;
+
+    /* valid if VNET_CRYPTO_OP_FLAG_FULL_KEY is set */
+    u16 key_length;
+  };
   u8 *iv;
   u8 *aad;
 
@@ -274,7 +287,8 @@ STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 #define foreach_crypto_handler_type                                           \
   _ (SIMPLE, "simple")                                                        \
   _ (CHAINED, "chained")                                                      \
-  _ (ASYNC, "async")
+  _ (ASYNC, "async")                                                          \
+  _ (THREAD_SAFE, "threadsafe")
 
 typedef enum
 {
@@ -373,7 +387,8 @@ vnet_crypto_register_chained_ops_handler (vlib_main_t *vm, u32 engine_index,
 void vnet_crypto_register_ops_handlers (vlib_main_t *vm, u32 engine_index,
 					vnet_crypto_op_id_t opt,
 					vnet_crypto_simple_op_fn_t *fn,
-					vnet_crypto_chained_op_fn_t *cfn);
+					vnet_crypto_chained_op_fn_t *cfn,
+					vnet_crypto_simple_op_fn_t *tfn);
 
 void vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
 				       vnet_crypto_key_fn_t *keyh);
