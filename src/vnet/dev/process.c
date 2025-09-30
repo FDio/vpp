@@ -146,7 +146,7 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
       ed->call_op_no_rv.op (vm, dev);
       break;
     case VNET_DEV_EVENT_CALL_OP_WITH_PTR:
-      ev_log_debug (vm, dev, ed, "call op woth ptr");
+      ev_log_debug (vm, dev, ed, "call op with ptr");
       rv = ed->call_op_with_ptr.op (vm, dev, ed->call_op_with_ptr.ptr);
       break;
     case VNET_DEV_EVENT_CALL_OP_NO_WAIT:
@@ -162,7 +162,7 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
       ed->call_port_op_no_rv.op (vm, ed->call_port_op_no_rv.port);
       break;
     case VNET_DEV_EVENT_CALL_PORT_OP_WITH_PTR:
-      ev_log_debug (vm, dev, ed, "call port op woth ptr");
+      ev_log_debug (vm, dev, ed, "call port op with ptr");
       rv = ed->call_port_op_with_ptr.op (vm, ed->call_port_op_with_ptr.port,
 					 ed->call_port_op_with_ptr.ptr);
       break;
