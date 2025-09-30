@@ -72,6 +72,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6fc53835_3329103a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-09-30T22:08:21Z",
+      "side": 1,
+      "message": "Vratko, would you please run csit vhost performance test on this patch to ensure that there is no degradation?",
+      "revId": "1e08ee2a4620ffbbeece38d4433f4adac0ba03f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "440fec1f_d2a8d228",
