@@ -385,7 +385,7 @@ vnet_dev_pci_msix_disable (vlib_main_t *vm, vnet_dev_t *dev, u16 first,
 
   if (err)
     {
-      log_err (dev, "pci_disble_msix_irq: %U", format_clib_error, err);
+      log_err (dev, "pci_disable_msix_irq: %U", format_clib_error, err);
       clib_error_free (err);
       return VNET_DEV_ERR_BUS;
     }

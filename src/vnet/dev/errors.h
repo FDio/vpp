@@ -30,7 +30,7 @@
   _ (NOT_SUPPORTED, "not supported")                                          \
   _ (NO_CHANGE, "no change")                                                  \
   _ (NO_AVAIL_QUEUES, "no queues available")                                  \
-  _ (NO_SUCH_ENTRY, "no such enty")                                           \
+  _ (NO_SUCH_ENTRY, "no such entry")                                          \
   _ (PORT_STARTED, "port started")                                            \
   _ (PROCESS_REPLY, "dev process reply error")                                \
   _ (RESOURCE_NOT_AVAILABLE, "resource not available")                        \

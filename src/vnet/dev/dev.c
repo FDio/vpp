@@ -324,7 +324,7 @@ vnet_dev_feature_update_cb (u32 sw_if_index, u8 arc_index, u8 is_enable,
 	  vm, rxq,
 	  (vnet_dev_rx_queue_rt_req_t){ .update_next_index = 1,
 					.update_feature_arc = 1 });
-      log_debug (port->dev, "runtime update requested due to chgange in "
+      log_debug (port->dev, "runtime update requested due to change in "
 			    "feature arc configuration");
     }
 }
