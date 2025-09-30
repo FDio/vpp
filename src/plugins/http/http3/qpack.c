@@ -1196,6 +1196,92 @@ qpack_encode_content_len (u8 *dst, u64 content_len)
   return dst;
 }
 
+static u8 *
+qpack_encode_method (u8 *dst, http_req_method_t method)
+{
+  u8 *a;
+
+  switch (method)
+    {
+    case HTTP_REQ_CONNECT:
+      encode_static_entry (15);
+      break;
+    case HTTP_REQ_GET:
+      encode_static_entry (17);
+      break;
+    case HTTP_REQ_POST:
+      encode_static_entry (20);
+      break;
+    case HTTP_REQ_PUT:
+      encode_static_entry (21);
+    default:
+      ASSERT (0);
+      break;
+    }
+  return dst;
+}
+
+static u8 *
+qpack_encode_scheme (u8 *dst, http_url_scheme_t scheme)
+{
+  u8 *a;
+
+  switch (scheme)
+    {
+    case HTTP_URL_SCHEME_HTTP:
+      encode_static_entry (22);
+      break;
+    case HTTP_URL_SCHEME_HTTPS:
+      encode_static_entry (23);
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
+  return dst;
+}
+
+static u8 *
+qpack_encode_path (u8 *dst, u8 *path, u32 path_len)
+{
+  u8 *a, *b;
+  u32 orig_len, actual_size;
+
+  if (path_len == 1 && path[0] == '/')
+    {
+      encode_static_entry (1);
+    }
+  else
+    {
+      orig_len = vec_len (dst);
+      vec_add2 (dst, a, path_len + 1 + HPACK_ENCODED_INT_MAX_LEN);
+      b = a;
+      *b++ = 0x81;
+      b = qpack_encode_string (b, path, path_len, 8);
+      actual_size = b - a;
+      vec_set_len (dst, orig_len + actual_size);
+    }
+
+  return dst;
+}
+
+static u8 *
+qpack_encode_authority (u8 *dst, u8 *authority, u32 authority_len)
+{
+  u8 *a, *b;
+  u32 orig_len, actual_size;
+
+  orig_len = vec_len (dst);
+  vec_add2 (dst, a, authority_len + 1 + HPACK_ENCODED_INT_MAX_LEN);
+  b = a;
+  *b++ = 0x80;
+  b = qpack_encode_string (b, authority, authority_len, 8);
+  actual_size = b - a;
+  vec_set_len (dst, orig_len + actual_size);
+
+  return dst;
+}
+
 static inline hpack_error_t
 qpack_parse_headers_prefix (u8 **src, u8 *end, qpack_decoder_ctx_t *ctx)
 {
@@ -1291,6 +1377,81 @@ qpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   /* date */
   p = qpack_encode_header (p, HTTP_HEADER_DATE, control_data->date,
 			   control_data->date_len);
+
+  /* content length if any */
+  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+    p = qpack_encode_content_len (p, control_data->content_len);
+
+  if (!app_headers_len)
+    {
+      *dst = p;
+      return;
+    }
+
+  end = app_headers + app_headers_len;
+  while (app_headers < end)
+    {
+      /* custom header name? */
+      u32 *tmp = (u32 *) app_headers;
+      if (PREDICT_FALSE (*tmp & HTTP_CUSTOM_HEADER_NAME_BIT))
+	{
+	  http_custom_token_t *name, *value;
+	  name = (http_custom_token_t *) app_headers;
+	  u32 name_len = name->len & ~HTTP_CUSTOM_HEADER_NAME_BIT;
+	  app_headers += sizeof (http_custom_token_t) + name_len;
+	  value = (http_custom_token_t *) app_headers;
+	  app_headers += sizeof (http_custom_token_t) + value->len;
+	  p = qpack_encode_custom_header (p, name->token, name_len,
+					  value->token, value->len);
+	}
+      else
+	{
+	  http_app_header_t *header;
+	  header = (http_app_header_t *) app_headers;
+	  app_headers += sizeof (http_app_header_t) + header->value.len;
+	  p = qpack_encode_header (p, header->name, header->value.token,
+				   header->value.len);
+	}
+    }
+
+  *dst = p;
+}
+
+__clib_export void
+qpack_serialize_request (u8 *app_headers, u32 app_headers_len,
+			 hpack_request_control_data_t *control_data, u8 **dst)
+{
+  u8 *a, *p, *end;
+
+  p = *dst;
+  /* encoded field section prefix, two zero bytes because we don't use dynamic
+   * table */
+  vec_add2 (p, a, 2);
+  a[0] = 0;
+  a[1] = 0;
+
+  /* pseudo-headers must go first */
+  p = qpack_encode_method (p, control_data->method);
+
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED)
+    p = qpack_encode_scheme (p, control_data->scheme);
+
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
+    p = qpack_encode_path (p, control_data->path, control_data->path_len);
+
+  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
+    p = qpack_encode_custom_header (p, (u8 *) ":protocol", 9,
+				    control_data->protocol,
+				    control_data->protocol_len);
+
+  p = qpack_encode_authority (p, control_data->authority,
+			      control_data->authority_len);
+
+  /* user agent */
+  if (control_data->user_agent_len)
+    p =
+      qpack_encode_header (p, HTTP_HEADER_USER_AGENT, control_data->user_agent,
+			   control_data->user_agent_len);
 
   /* content length if any */
   if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
