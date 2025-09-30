@@ -673,6 +673,9 @@ vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
   ASSERT (log2_page_size != CLIB_MEM_PAGE_SZ_UNKNOWN);
 
   pagesize = clib_mem_page_bytes (log2_page_size);
+  if (pagesize == 0)
+    return clib_error_return (0, "page size unknown");
+
   buffer_size = vlib_buffer_alloc_size (bm->ext_hdr_size,
 					vlib_buffer_get_default_data_size
 					(vm));

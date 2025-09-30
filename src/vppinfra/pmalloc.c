@@ -59,7 +59,10 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 
   ASSERT (pm->error == 0);
 
-  pagesize = clib_mem_get_default_hugepage_size ();
+  if (clib_mem_get_log2_default_hugepage_size () != CLIB_MEM_PAGE_SZ_UNKNOWN)
+    pagesize = clib_mem_get_default_hugepage_size ();
+  else
+    pagesize = clib_mem_get_page_size ();
   pm->def_log2_page_sz = min_log2 (pagesize);
   pm->lookup_log2_page_sz = pm->def_log2_page_sz;
 

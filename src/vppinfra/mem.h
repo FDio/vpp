@@ -406,19 +406,6 @@ void mheap_trace (clib_mem_heap_t * v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
 
-always_inline uword
-clib_mem_round_to_page_size (uword size, clib_mem_page_sz_t log2_page_size)
-{
-  ASSERT (log2_page_size != CLIB_MEM_PAGE_SZ_UNKNOWN);
-
-  if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT)
-    log2_page_size = clib_mem_get_log2_page_size ();
-  else if (log2_page_size == CLIB_MEM_PAGE_SZ_DEFAULT_HUGE)
-    log2_page_size = clib_mem_get_log2_default_hugepage_size ();
-
-  return round_pow2 (size, 1ULL << log2_page_size);
-}
-
 typedef struct
 {
   clib_mem_page_sz_t log2_page_sz;
@@ -459,7 +446,8 @@ clib_mem_log2_page_size_validate (clib_mem_page_sz_t log2_page_size)
 static_always_inline uword
 clib_mem_page_bytes (clib_mem_page_sz_t log2_page_size)
 {
-  return 1ULL << clib_mem_log2_page_size_validate (log2_page_size);
+  log2_page_size = clib_mem_log2_page_size_validate (log2_page_size);
+  return log2_page_size ? 1ULL << log2_page_size : 0;
 }
 
 static_always_inline clib_error_t *
