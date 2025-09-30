@@ -61,7 +61,7 @@ class VCLAppWorker(Worker):
 class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
-    session_startup = ["poll-main"]
+    session_startup = ["poll-main", "use-app-socket-api"]
 
     @classmethod
     def setUpClass(cls):
@@ -85,8 +85,8 @@ class VCLTestCase(VppAsfTestCase):
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
         self.pre_test_sleep = 0.3
         self.post_test_sleep = 1
-        self.sapi_client_sock = ""
-        self.sapi_server_sock = ""
+        self.sapi_client_sock = "default"
+        self.sapi_server_sock = "default"
 
         if os.path.isfile("/tmp/ldp_server_af_unix_socket"):
             os.remove("/tmp/ldp_server_af_unix_socket")
@@ -187,6 +187,8 @@ class VCLTestCase(VppAsfTestCase):
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show ip fib"))
+        self.sapi_server_sock = "1"
+        self.sapi_client_sock = "2"
 
     def thru_host_stack_tear_down(self):
         self.vapi.app_namespace_add_del_v4(
@@ -244,6 +246,8 @@ class VCLTestCase(VppAsfTestCase):
         ip_t10.add_vpp_config()
         self.logger.debug(self.vapi.cli("show interface addr"))
         self.logger.debug(self.vapi.cli("show ip6 fib"))
+        self.sapi_server_sock = "1"
+        self.sapi_client_sock = "2"
 
     def thru_host_stack_ipv6_tear_down(self):
         self.vapi.app_namespace_add_del_v4(
@@ -316,7 +320,6 @@ class LDPCutThruTestCase(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(LDPCutThruTestCase, cls).setUpClass()
 
     @classmethod
@@ -569,7 +572,6 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(VCLThruHostStackCLUDPEcho, cls).setUpClass()
 
     @classmethod
@@ -625,7 +627,6 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(VCLThruHostStackCLUDPBinds, cls).setUpClass()
 
     @classmethod
@@ -707,7 +708,6 @@ class VCLThruHostStackTLS(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(VCLThruHostStackTLS, cls).setUpClass()
 
     @classmethod
@@ -1496,6 +1496,53 @@ class VCLIpv6ThruHostStackEcho(VCLTestCase):
             self.server_ipv6_args,
             "vcl_test_client",
             self.client_ipv6_echo_test_args,
+        )
+
+
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
+class VCLCutThruTestCaseBAPI(VCLTestCase):
+    """VCL Cut Thru BAPI Test"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-bapi-socket-api"]
+        super(VCLCutThruTestCaseBAPI, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VCLCutThruTestCaseBAPI, cls).tearDownClass()
+
+    def setUp(self):
+        super(VCLCutThruTestCaseBAPI, self).setUp()
+
+        self.cut_thru_setup()
+        self.client_uni_dir_test_args = [
+            "-N",
+            "1000",
+            self.server_addr,
+            self.server_port,
+        ]
+        self.sapi_client_sock = ""
+        self.sapi_server_sock = ""
+
+    def tearDown(self):
+        super(VCLCutThruTestCaseBAPI, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
+        self.logger.debug(self.vapi.cli("show app mq"))
+
+    def test_vcl_cut_thru_tcp_bapi(self):
+        """run VCL cut thru tcp test bapi"""
+
+        # Single binary api test after switching to app socket api as default
+        self.cut_thru_test(
+            "vcl_test_server",
+            self.server_args,
+            "vcl_test_client",
+            self.client_uni_dir_test_args,
         )
 
 
