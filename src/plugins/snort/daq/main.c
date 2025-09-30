@@ -32,6 +32,7 @@
 #include <sys/eventfd.h>
 
 #include <daq_dlt.h>
+#include <daq.h>
 
 #include "daq_vpp.h"
 
@@ -54,6 +55,7 @@ daq_vpp_err (daq_vpp_ctx_t *ctx, char *fmt, ...)
   daq_vpp_main.daq_base_api.set_errbuf (ctx->modinst, "%s", buffer);
   return DAQ_ERROR;
 }
+
 static inline __attribute__ ((always_inline)) void
 daq_vpp_prefetch_read (void *p)
 {
@@ -457,6 +459,7 @@ daq_vpp_fill_msg (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, uint32_t desc_index,
   pe->msg.data = data;
   pe->msg.data_len = d->length;
 
+  DEBUG_DUMP_MSG (&pe->msg);
   return &pe->msg;
 }
 
@@ -654,6 +657,8 @@ daq_vpp_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
   daq_vpp_qpair_header_t *h = qp->hdr;
   daq_vpp_desc_t *d;
 
+  DEBUG_DUMP_MSG (msg);
+
   if (verdict >= MAX_DAQ_VERDICT)
     verdict = DAQ_VERDICT_PASS;
   ctx->stats.verdicts[verdict]++;
@@ -798,8 +803,8 @@ daq_vpp_ioctl (void *handle, DAQ_IoctlCmd cmd, void *arg, size_t arglen)
       else
 	gpl->priv_data_len = 0;
 
-      DEBUG ("ioctl cmd %s %u", daq_vpp_ioctl_cmd_to_str (cmd),
-	     gpl->priv_data_len);
+      DEBUG2 ("ioctl cmd %s %u", daq_vpp_ioctl_cmd_to_str (cmd),
+	      gpl->priv_data_len);
       return DAQ_SUCCESS;
     }
 

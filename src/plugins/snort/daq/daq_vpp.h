@@ -39,6 +39,58 @@
   if (daq_vpp_main.debug)                                                     \
     printf ("%s: %s: " fmt "\n", "daq_vpp", __func__, ##__VA_ARGS__);
 
+/* dump.c */
+char *daq_vpp_dump_pkt_hdr (const DAQ_PktHdr_t *hdr);
+void daq_vpp_dump_msg_type (DAQ_MsgType type);
+void daq_vpp_dump_msg (DAQ_Msg_h msg);
+char *daq_vpp_dump_packet_data (const uint8_t *data, uint32_t len);
+
+#define DEBUG2(fmt, ...)                                                      \
+  if (daq_vpp_main.debug_msg)                                                 \
+    printf ("%s: %s: " fmt "\n", "daq_vpp", __func__, ##__VA_ARGS__);
+
+#define DEBUG_DUMP_MSG(msg)                                                   \
+  if (daq_vpp_main.debug_msg)                                                 \
+    {                                                                         \
+      printf ("%s: %s: MSG DUMP START \n", "daq_vpp", __func__);              \
+      if (msg)                                                                \
+	daq_vpp_dump_msg (msg);                                               \
+      printf ("%s: %s: MSG DUMP END \n", "daq_vpp", __func__);                \
+    }
+
+#define DEBUG_DUMP_DATA_HEX(data, len)                                        \
+  if (daq_vpp_main.debug_msg)                                                 \
+    {                                                                         \
+      printf ("%s: %s: MSG DUMP START \n", "daq_vpp", __func__);              \
+      char *data_buf = daq_vpp_dump_packet_data (data, len);                  \
+      if (data_buf)                                                           \
+	{                                                                     \
+	  printf ("%s", data_buf);                                            \
+	  free (data_buf);                                                    \
+	}                                                                     \
+      printf ("%s: %s: MSG DUMP END \n", "daq_vpp", __func__);                \
+    }
+
+#define DEBUG_DUMP_MSG2(hdr, type, data, len)                                 \
+  if (daq_vpp_main.debug_msg)                                                 \
+    {                                                                         \
+      printf ("%s: %s: MSG DUMP START \n", "daq_vpp", __func__);              \
+      char *pkt_hdr_buf = daq_vpp_dump_pkt_hdr (hdr);                         \
+      char *data_buf = daq_vpp_dump_packet_data (data, len);                  \
+      if (pkt_hdr_buf)                                                        \
+	{                                                                     \
+	  printf ("%s", pkt_hdr_buf);                                         \
+	  free (pkt_hdr_buf);                                                 \
+	}                                                                     \
+      daq_vpp_dump_msg_type (type);                                           \
+      if (data_buf)                                                           \
+	{                                                                     \
+	  printf ("%s", data_buf);                                            \
+	  free (data_buf);                                                    \
+	}                                                                     \
+      printf ("%s: %s: MSG DUMP END \n", "daq_vpp", __func__);                \
+    }
+
 #define SET_ERROR(modinst, ...)                                               \
   daq_vpp_main.daq_base_api.set_errbuf (modinst, __VA_ARGS__)
 
@@ -117,6 +169,7 @@ typedef struct _vpp_context
 typedef struct
 {
   uint32_t debug : 1;
+  uint32_t debug_msg : 1;
   uint32_t config_parsed : 1;
   uint32_t connected : 1;
   uint32_t buffer_pools_initialized : 1;

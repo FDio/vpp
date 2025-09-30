@@ -56,6 +56,8 @@ daq_vpp_parse_config (daq_vpp_ctx_t *ctx, DAQ_ModuleConfig_h modcfg)
     {
       if (!strcmp (varKey, "debug"))
 	vdm->debug = true;
+      else if (!strcmp (varKey, "debug-msg"))
+	vdm->debug_msg = vdm->debug = true;
       else if (!strcmp (varKey, "socket"))
 	{
 	  vdm->socket_name = varValue;
