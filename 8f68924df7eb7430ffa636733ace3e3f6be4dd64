@@ -22,6 +22,30 @@
       },
       "revId": "8f68924df7eb7430ffa636733ace3e3f6be4dd64",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b89c0414_f4fe86b0",
+        "filename": "src/plugins/dev_octeon/init.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-09-30T09:14:26Z",
+      "side": 1,
+      "message": "I disagree on roc handling errors. options which are not supported should not be exposed. we can have multiple args list (oct_port_args_sdp, ...). Just let us know which option are supported under which condition...",
+      "parentUuid": "59cc9c50_eedfad04",
+      "range": {
+        "startLine": 258,
+        "startChar": 14,
+        "endLine": 258,
+        "endChar": 49
+      },
+      "revId": "8f68924df7eb7430ffa636733ace3e3f6be4dd64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
