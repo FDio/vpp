@@ -33,6 +33,24 @@
       "message": "I am not sure to follow the logic here: why 1st try to create in non-skb mode and in case of failure retry in skb mode?",
       "revId": "1a08e46658fdd829f06dbfa032aad58d8dc8ded7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f247c195_6b090f8e",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 3260
+      },
+      "writtenOn": "2025-09-30T05:48:59Z",
+      "side": 1,
+      "message": "SKB mode is only used as a fallback - if a driver supports Native or Auto mode, we can use true zero-copy and don\u0027t need to create an SKB. Only use SKB mode for drivers that don\u0027t have support (which we confirm by first trying auto mode).",
+      "parentUuid": "2a047634_21e5cc7b",
+      "revId": "1a08e46658fdd829f06dbfa032aad58d8dc8ded7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
