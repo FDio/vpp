@@ -46,6 +46,30 @@
       },
       "revId": "8f68924df7eb7430ffa636733ace3e3f6be4dd64",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e952ba3b_7dad3718",
+        "filename": "src/plugins/dev_octeon/init.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-09-30T18:15:32Z",
+      "side": 1,
+      "message": "\u003e\u003e we can have multiple args list (oct_port_args_sdp, ...).\nAgree with this.\nWe can go ahead with this patch and will raise new patch for sdp/vf/lbk.",
+      "parentUuid": "b89c0414_f4fe86b0",
+      "range": {
+        "startLine": 258,
+        "startChar": 14,
+        "endLine": 258,
+        "endChar": 49
+      },
+      "revId": "8f68924df7eb7430ffa636733ace3e3f6be4dd64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
