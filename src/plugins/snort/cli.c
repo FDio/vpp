@@ -332,6 +332,16 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   snort_main_t *sm = &snort_main;
   snort_instance_t *si;
+  int verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
 
   pool_foreach (si, sm->instances)
     {
@@ -373,6 +383,22 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  else
 	    vlib_cli_output (vm, "    packets processed: 0");
 	  vec_free (s);
+
+	  if (verbose)
+	    {
+	      vlib_cli_output (vm, "   desc   buffer_index   next_index "
+				   "  freelist_next\n");
+	      vlib_cli_output (
+		vm, "  ====== ============== ============ ===============\n");
+	      u32 total_desc = 1 << qp->log2_queue_size;
+	      for (u32 i = 0; i < total_desc; i++)
+		{
+		  snort_qpair_entry_t *qpe = qp->entries + i;
+		  vlib_cli_output (vm, "  %-6d  %-12u   %-12u  %-12u", i,
+				   qpe->buffer_index, qpe->next_index,
+				   qpe->freelist_next);
+		}
+	    }
 	}
     }
 
@@ -381,7 +407,7 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (snort_show_instances_command, static) = {
   .path = "show snort instances",
-  .short_help = "show snort instances",
+  .short_help = "show snort instances [verbose]",
   .function = snort_show_instances_command_fn,
 };
 
