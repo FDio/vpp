@@ -2141,6 +2141,9 @@ session_main_init (vlib_main_t * vm)
   smm->port_allocator_min_src_port = 1024;
   smm->port_allocator_max_src_port = 65535;
 
+  /* default enable app socket api */
+  (void) appns_sapi_enable_disable (1 /* is_enable */);
+
   return 0;
 }
 
@@ -2262,8 +2265,6 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  smm->rt_engine_type = RT_BACKEND_ENGINE_NONE;
 	  smm->session_enable_asap = 1;
 	}
-      else if (unformat (input, "use-app-socket-api"))
-	(void) appns_sapi_enable_disable (1 /* is_enable */);
       else if (unformat (input, "poll-main"))
 	smm->poll_main = 1;
       else if (unformat (input, "use-private-rx-mqs"))
@@ -2280,6 +2281,15 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       /*
        * Deprecated but maintained for compatibility
        */
+      else if (unformat (input, "use-app-socket-api"))
+	;
+      else if (unformat (input, "use-bapi-socket-api"))
+	{
+	  clib_warning (
+	    "App attachment using binary-api is deprecated in favor "
+	    "of socket api. Support for bapi may be removed in the future.");
+	  (void) appns_sapi_enable_disable (0 /* is_enable */);
+	}
       else if (unformat (input, "evt_qs_memfd_seg"))
 	;
       else if (unformat (input, "segment-baseva 0x%lx", &tmp))
