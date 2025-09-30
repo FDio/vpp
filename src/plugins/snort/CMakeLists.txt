@@ -53,7 +53,7 @@ add_vpp_plugin(snort
   vpp-plugin-snort
 )
 
-add_library(daq_vpp SHARED daq/main.c daq/config.c daq/socket.c)
+add_library(daq_vpp SHARED daq/main.c daq/config.c daq/socket.c daq/dump.c)
 set_target_properties(daq_vpp PROPERTIES SOVERSION ${VPP_LIB_VERSION})
 target_compile_options (daq_vpp PRIVATE "-fvisibility=hidden")
 target_compile_options (daq_vpp PRIVATE "-DHAVE_VISIBILITY")
