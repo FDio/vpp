@@ -515,6 +515,10 @@ u8 *format_clib_mem_bulk (u8 *s, va_list *args);
 
 #include <vppinfra/error.h>	/* clib_panic */
 
+/* TODO: Solve import issues better. */
+static_always_inline int check_vpp_heap (void);
+extern void *__libc_realloc (void *, size_t);
+
 #endif /* _included_clib_mem_h */
 
 /*
