@@ -729,6 +729,22 @@ unformat_function_t unformat_hash_string;
 /* Main test routine. */
 int test_hash_main (unformat_input_t * input);
 
+/* TODO: Solve the import issues better. */
+
+enum lookup_opcode
+{
+  GET = 1,
+  SET = 2,
+  UNSET = 3,
+};
+
+static hash_pair_union_t *get_indirect (void *v, hash_pair_indirect_t *pi,
+					uword key);
+
+always_inline void init_pair (hash_t *h, hash_pair_t *p);
+
+always_inline hash_pair_union_t *get_pair (void *v, uword i);
+
 #endif /* included_hash_h */
 
 /*
