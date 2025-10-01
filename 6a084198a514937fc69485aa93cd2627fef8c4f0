@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a9293c02_35626a7c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "LGTM, just some quick nits",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e44b9b42_cba494e4",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "Maybe in the future consider using a struct as an argument?",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cdb16aaf_5e896ebb",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "Let\u0027s maybe make a macro and reuse it all over the place, e.g., \n```\n#if NPOL_DEBUG \u003e 0\n#define NPOL_DBG(lvl, fmt, ..) clib_warning (...)\n#else\n#define NPOL_DBG(lvl, fmt, ..) \n#endif \n```",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "081f6c90_f1c88662",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "Let\u0027s change the copyright headers to SPDX",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc19e163_f469ee3b",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "I guess we can remove. Subsequent instances as well",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a47b8ce_65391fd3",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "C-style comments?",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "098b11d7_000d8ca7",
+        "filename": "src/plugins/npol/npol_policy.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "Soft suggestion, maybe move format/unformat functions to a separate file",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c977295_efef24ce",
+        "filename": "src/plugins/npol/npol_test.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-01T16:32:54Z",
+      "side": 1,
+      "message": "Do we need this? :)",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
