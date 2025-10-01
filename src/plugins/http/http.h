@@ -1526,6 +1526,8 @@ http_parse_masque_host_port (u8 *path, u32 path_len,
 }
 
 #define HTTP_INVALID_VARINT			 ((u64) ~0)
+#define HTTP_VARINT_MAX				 0x3FFFFFFFFFFFFFFF
+#define HTTP_VARINT_MAX_LEN			 8
 #define HTTP_CAPSULE_HEADER_MAX_SIZE		 8
 #define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 5
 #define HTTP_UDP_PAYLOAD_MAX_LEN		 65527
@@ -1541,7 +1543,7 @@ typedef enum http_capsule_type_
 
 /* variable-length integer (RFC9000 section 16) */
 always_inline u64
-_http_decode_varint (u8 **pos, u8 *end)
+http_decode_varint (u8 **pos, u8 *end)
 {
   u8 first_byte, bytes_left, *p;
   u64 value;
@@ -1578,10 +1580,10 @@ _http_decode_varint (u8 **pos, u8 *end)
 }
 
 always_inline u8 *
-_http_encode_varint (u8 *dst, u64 value)
+http_encode_varint (u8 *dst, u64 value)
 {
-  ASSERT (value <= 0x3FFFFFFFFFFFFFFF);
-  if (value <= 0x3f)
+  ASSERT (value <= HTTP_VARINT_MAX);
+  if (value <= 0x3F)
     {
       *dst++ = (u8) value;
       return dst;
@@ -1614,6 +1616,22 @@ _http_encode_varint (u8 *dst, u64 value)
     }
 }
 
+always_inline u8
+http_varint_len (u64 value)
+{
+  if (value > 0x3F)
+    {
+      if (value > 0x3FFF)
+	{
+	  if (value > 0x3FFFFFFF)
+	    return 8;
+	  return 4;
+	}
+      return 2;
+    }
+  return 1;
+}
+
 always_inline int
 _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
 		     u64 *value_len)
@@ -1622,7 +1640,7 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
   u8 *p = data;
   u8 *end = data + len;
 
-  capsule_type = _http_decode_varint (&p, end);
+  capsule_type = http_decode_varint (&p, end);
   if (capsule_type == HTTP_INVALID_VARINT)
     {
       clib_warning ("failed to parse capsule type");
@@ -1635,7 +1653,7 @@ _http_parse_capsule (u8 *data, u64 len, u64 *type, u8 *value_offset,
       return -1;
     }
 
-  capsule_value_len = _http_decode_varint (&p, end);
+  capsule_value_len = http_decode_varint (&p, end);
   if (capsule_value_len == HTTP_INVALID_VARINT)
     {
       clib_warning ("failed to parse capsule length");
@@ -1691,7 +1709,7 @@ http_decap_udp_payload_datagram (u8 *data, u64 len, u8 *payload_offset,
     }
 
   /* context ID field should be zero (RFC9298 section 4) */
-  context_id = _http_decode_varint (&p, end);
+  context_id = http_decode_varint (&p, end);
   if (context_id != 0)
     {
       *payload_len = value_len + value_offset;
@@ -1729,7 +1747,7 @@ http_encap_udp_payload_datagram (u8 *buf, u64 payload_len)
   *buf++ = HTTP_CAPSULE_TYPE_DATAGRAM;
 
   /* capsule length */
-  buf = _http_encode_varint (buf, payload_len + 1);
+  buf = http_encode_varint (buf, payload_len + 1);
 
   /* context ID */
   *buf++ = 0;
