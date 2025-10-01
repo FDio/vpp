@@ -1214,6 +1214,7 @@ qpack_encode_method (u8 *dst, http_req_method_t method)
       break;
     case HTTP_REQ_PUT:
       encode_static_entry (21);
+      break;
     default:
       ASSERT (0);
       break;
