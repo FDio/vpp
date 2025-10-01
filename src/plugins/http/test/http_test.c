@@ -10,6 +10,7 @@
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
 #include <http/http3/qpack.h>
+#include <http/http3/frame.h>
 
 #define HTTP_TEST_I(_cond, _comment, _args...)                                \
   ({                                                                          \
@@ -1895,6 +1896,96 @@ http_test_qpack (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_h3_frame (vlib_main_t *vm)
+{
+  vlib_cli_output (vm, "http3_frame_header_read");
+
+  static http3_error_t (*_http3_frame_header_read) (
+    u8 * src, u64 src_len, http3_stream_type_t stream_type,
+    http3_frame_header_t * fh);
+  _http3_frame_header_read =
+    vlib_get_plugin_symbol ("http_plugin.so", "http3_frame_header_read");
+
+  http3_error_t rv;
+  http3_frame_header_t fh = {};
+  u8 data[] = {
+    0x00, 0x09, 0x6e, 0x6f, 0x74, 0x20, 0x66, 0x6f, 0x75, 0x6e, 0x64,
+  };
+  rv = _http3_frame_header_read (data, sizeof (data),
+				 HTTP3_STREAM_TYPE_REQUEST, &fh);
+  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR && fh.type == HTTP3_FRAME_TYPE_DATA &&
+	      fh.length == 9 && fh.payload[0] == data[2]),
+	     "frame identified as DATA");
+
+  rv = _http3_frame_header_read (data, 1, HTTP3_STREAM_TYPE_REQUEST, &fh);
+  HTTP_TEST ((rv == HTTP3_ERROR_INCOMPLETE), "frame is incomplete (rv=%d)",
+	     rv);
+
+  rv = _http3_frame_header_read (data, sizeof (data),
+				 HTTP3_STREAM_TYPE_CONTROL, &fh);
+  HTTP_TEST ((rv == HTTP3_ERROR_FRAME_UNEXPECTED),
+	     "frame is on wrong stream (rv=0x%04x)", rv);
+
+  vlib_cli_output (vm, "http3_frame_goaway_read");
+
+  static http3_error_t (*_http3_frame_goaway_read) (u8 * payload, u64 len,
+						    u64 * stream_or_push_id);
+  _http3_frame_goaway_read =
+    vlib_get_plugin_symbol ("http_plugin.so", "http3_frame_goaway_read");
+
+  u8 goaway[] = {
+    0x07, 0x02, 0x7B, 0xBD, 0xFE,
+  };
+  u64 stream_id;
+  rv = _http3_frame_header_read (goaway, 4, HTTP3_STREAM_TYPE_CONTROL, &fh);
+  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR &&
+	      fh.type == HTTP3_FRAME_TYPE_GOAWAY && fh.length == 2 &&
+	      fh.payload[0] == goaway[2]),
+	     "frame identified as GOAWAY");
+  rv = _http3_frame_goaway_read (fh.payload, fh.length, &stream_id);
+  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR && stream_id == 15293),
+	     "GOAWAY stream ID %lu (rv=0x%04x)", stream_id, rv);
+
+  rv = _http3_frame_goaway_read (fh.payload, 1, &stream_id);
+  HTTP_TEST ((rv == HTTP3_ERROR_FRAME_ERROR),
+	     "GOAWAY frame payload is corrupted (rv=0x%04x)", rv);
+
+  rv = _http3_frame_goaway_read (fh.payload, 3, &stream_id);
+  HTTP_TEST ((rv == HTTP3_ERROR_FRAME_ERROR),
+	     "GOAWAY frame payload has extra bytes (rv=0x%04x)", rv);
+
+  vlib_cli_output (vm, "http3_frame_settings_read");
+
+  static http3_error_t (*_http3_frame_settings_read) (
+    u8 * payload, u64 len, http3_conn_settings_t * settings);
+
+  _http3_frame_settings_read =
+    vlib_get_plugin_symbol ("http_plugin.so", "http3_frame_settings_read");
+
+  http3_conn_settings_t h3_settings = {};
+  u8 settings[] = {
+    0x04, 0x04, 0x07, 0x05, 0x08, 0x01, 0x33, 0x02,
+  };
+  rv = _http3_frame_header_read (settings, 6, HTTP3_STREAM_TYPE_CONTROL, &fh);
+  HTTP_TEST ((rv == HTTP3_ERROR_NO_ERROR &&
+	      fh.type == HTTP3_FRAME_TYPE_SETTINGS && fh.length == 4 &&
+	      fh.payload[0] == settings[2]),
+	     "frame identified as SETTINGS");
+  rv = _http3_frame_settings_read (fh.payload, fh.length, &h3_settings);
+  HTTP_TEST (
+    (rv == HTTP3_ERROR_NO_ERROR && h3_settings.qpack_blocked_streams == 5 &&
+     h3_settings.enable_connect_protocol == 1 &&
+     h3_settings.h3_datagram == 0 && h3_settings.max_field_section_size == 0 &&
+     h3_settings.qpack_max_table_capacity == 0),
+    "SETTINGS frame payload parsed (rv=0x%04x)", rv);
+  rv = _http3_frame_settings_read (fh.payload, 6, &h3_settings);
+  HTTP_TEST ((rv == HTTP3_ERROR_SETTINGS_ERROR),
+	     "invalid setting value (rv=0x%04x)", rv);
+
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -1918,6 +2009,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_h2_frame (vm);
       else if (unformat (input, "qpack"))
 	res = http_test_qpack (vm);
+      else if (unformat (input, "h3-frame"))
+	res = http_test_h3_frame (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_parse_authority (vm)))
@@ -1935,6 +2028,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_h2_frame (vm)))
 	    goto done;
 	  if ((res = http_test_qpack (vm)))
+	    goto done;
+	  if ((res = http_test_h3_frame (vm)))
 	    goto done;
 	}
       else
