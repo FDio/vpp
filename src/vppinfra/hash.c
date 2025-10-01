@@ -348,13 +348,6 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
     }
 }
 
-enum lookup_opcode
-{
-  GET = 1,
-  SET = 2,
-  UNSET = 3,
-};
-
 static hash_pair_t *
 lookup (void *v, uword key, enum lookup_opcode op,
 	void *new_value, void *old_value)
