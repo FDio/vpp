@@ -933,16 +933,6 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 	s->vpp_handle, wrk->wrk_index);
 }
 
-static int
-vcl_api_recv_fd (vcl_worker_t * wrk, int *fds, int n_fds)
-{
-
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_recv_fds (wrk, fds, n_fds);
-
-  return vcl_bapi_recv_fds (wrk, fds, n_fds);
-}
-
 static void
 vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
 {
@@ -1370,15 +1360,6 @@ vppcom_app_exit (void)
   vcl_elog_stop (vcm);
 }
 
-static int
-vcl_api_attach (void)
-{
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_attach ();
-
-  return vcl_bapi_attach ();
-}
-
 int
 vcl_is_first_reattach_to_execute ()
 {
@@ -1454,20 +1435,6 @@ vcl_api_handle_disconnect (vcl_worker_t *wrk)
   vcl_worker_detach_sessions (wrk);
 }
 
-static void
-vcl_api_detach (vcl_worker_t * wrk)
-{
-  if (wrk->api_client_handle == ~0)
-    return;
-
-  vcl_send_app_detach (wrk);
-
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_detach (wrk);
-
-  return vcl_bapi_disconnect_from_vpp ();
-}
-
 /*
  * VPPCOM Public API functions
  */
@@ -1534,7 +1501,12 @@ vppcom_app_destroy (void)
       vcl_worker_cleanup (wrk, 0 /* notify vpp */ );
   }
 
-  vcl_api_detach (current_wrk);
+  if (current_wrk->api_client_handle != ~0)
+  {
+    vcl_send_app_detach (current_wrk);
+    vcl_api_detach (current_wrk);
+  }
+
   vcl_worker_cleanup (current_wrk, 0 /* notify vpp */ );
   vcl_set_worker_index (~0);
 
@@ -4952,19 +4924,13 @@ vppcom_retval_str (int retval)
 int
 vppcom_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
 {
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_add_cert_key_pair (ckpair);
-  else
-    return vcl_bapi_add_cert_key_pair (ckpair);
+  return vcl_api_add_cert_key_pair (ckpair);
 }
 
 int
 vppcom_del_cert_key_pair (uint32_t ckpair_index)
 {
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_del_cert_key_pair (ckpair_index);
-  else
-    return vcl_bapi_del_cert_key_pair (ckpair_index);
+  return vcl_api_del_cert_key_pair (ckpair_index);
 }
 
 int

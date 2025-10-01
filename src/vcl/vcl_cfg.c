@@ -225,7 +225,9 @@ vppcom_cfg_read_file (char *conf_fname)
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 vc_cfg_input = 0;
   struct stat s;
+#if VCL_BAPI_ENABLED
   u32 uid, gid;
+#endif
 
   fd = open (conf_fname, O_RDONLY);
   if (fd < 0)
@@ -279,29 +281,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
 			vcl_cfg->max_workers);
 	    }
-	  else if (unformat (line_input, "api-socket-name %s",
-			     &vcl_cfg->vpp_bapi_socket_name))
-	    {
-	      vec_terminate_c_string (vcl_cfg->vpp_bapi_socket_name);
-	      VCFG_DBG (0, "VCL<%d>: configured api-socket-name (%s)",
-			getpid (), vcl_cfg->vpp_bapi_socket_name);
-	    }
 	  else if (unformat (line_input, "app-socket-api %s",
 			     &vcl_cfg->vpp_app_socket_api))
 	    {
 	      vec_terminate_c_string (vcl_cfg->vpp_app_socket_api);
 	      VCFG_DBG (0, "VCL<%d>: configured app-socket-api (%s)",
 			getpid (), vcl_cfg->vpp_app_socket_api);
-	    }
-	  else if (unformat (line_input, "uid %d", &uid))
-	    {
-	      vl_set_memory_uid (uid);
-	      VCFG_DBG (0, "VCL<%d>: configured uid %d", getpid (), uid);
-	    }
-	  else if (unformat (line_input, "gid %d", &gid))
-	    {
-	      vl_set_memory_gid (gid);
-	      VCFG_DBG (0, "VCL<%d>: configured gid %d", getpid (), gid);
 	    }
 	  else if (unformat (line_input, "segment-size 0x%lx",
 			     &vcl_cfg->segment_size))
@@ -422,30 +407,6 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured huge_page (%d)", getpid (),
 			vcl_cfg->huge_page);
 	    }
-	  else if (unformat (line_input, "namespace-secret %lu",
-			     &vcl_cfg->namespace_secret))
-	    {
-	      VCFG_DBG (0, "VCL<%d>: configured namespace_secret %llu "
-			"(0x%llx)", getpid (),
-			(unsigned long long) vcl_cfg->namespace_secret,
-			(unsigned long long) vcl_cfg->namespace_secret);
-	    }
-	  else if (unformat (line_input, "namespace-id %v",
-			     &vcl_cfg->namespace_id))
-	    {
-	      u32 max_nsid_vec_len = vcl_bapi_max_nsid_len ();
-	      u32 nsid_vec_len = vec_len (vcl_cfg->namespace_id);
-	      if (nsid_vec_len > max_nsid_vec_len)
-		{
-		  vec_set_len (vcl_cfg->namespace_id, max_nsid_vec_len);
-		  VCFG_DBG (0, "VCL<%d>: configured namespace_id is too long,"
-			    " truncated to %d characters!",
-			    getpid (), max_nsid_vec_len);
-		}
-
-	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %s",
-			getpid (), (char *) vcl_cfg->namespace_id);
-	    }
 	  else if (unformat (line_input, "use-mq-eventfd"))
 	    {
 	      vcl_cfg->use_mq_eventfd = 1;
@@ -469,6 +430,52 @@ vppcom_cfg_read_file (char *conf_fname)
 	      vcl_cfg->app_original_dst = 1;
 	      VCFG_DBG (0, "VCL<%d>: support original destination", getpid ());
 	    }
+#if VCL_BAPI_ENABLED
+	  else if (unformat (line_input, "namespace-secret %lu",
+			     &vcl_cfg->namespace_secret))
+	    {
+	      VCFG_DBG (0,
+			"VCL<%d>: configured namespace_secret %llu "
+			"(0x%llx)",
+			getpid (),
+			(unsigned long long) vcl_cfg->namespace_secret,
+			(unsigned long long) vcl_cfg->namespace_secret);
+	    }
+	  else if (unformat (line_input, "namespace-id %v",
+			     &vcl_cfg->namespace_id))
+	    {
+	      u32 max_nsid_vec_len = vcl_bapi_max_nsid_len ();
+	      u32 nsid_vec_len = vec_len (vcl_cfg->namespace_id);
+	      if (nsid_vec_len > max_nsid_vec_len)
+		{
+		  vec_set_len (vcl_cfg->namespace_id, max_nsid_vec_len);
+		  VCFG_DBG (0,
+			    "VCL<%d>: configured namespace_id is too long,"
+			    " truncated to %d characters!",
+			    getpid (), max_nsid_vec_len);
+		}
+
+	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %s", getpid (),
+			(char *) vcl_cfg->namespace_id);
+	    }
+	  else if (unformat (line_input, "api-socket-name %s",
+			     &vcl_cfg->vpp_bapi_socket_name))
+	    {
+	      vec_terminate_c_string (vcl_cfg->vpp_bapi_socket_name);
+	      VCFG_DBG (0, "VCL<%d>: configured api-socket-name (%s)",
+			getpid (), vcl_cfg->vpp_bapi_socket_name);
+	    }
+	  else if (unformat (line_input, "uid %d", &uid))
+	    {
+	      vl_set_memory_uid (uid);
+	      VCFG_DBG (0, "VCL<%d>: configured uid %d", getpid (), uid);
+	    }
+	  else if (unformat (line_input, "gid %d", &gid))
+	    {
+	      vl_set_memory_gid (gid);
+	      VCFG_DBG (0, "VCL<%d>: configured gid %d", getpid (), gid);
+	    }
+#endif
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;

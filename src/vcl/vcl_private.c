@@ -126,27 +126,6 @@ vcl_worker_free (vcl_worker_t * wrk)
   pool_put (vcm->workers, wrk);
 }
 
-int
-vcl_api_app_worker_add (void)
-{
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_app_worker_add ();
-
-  return vcl_bapi_app_worker_add ();
-}
-
-void
-vcl_api_app_worker_del (vcl_worker_t * wrk)
-{
-  if (wrk->api_client_handle == ~0)
-    return;
-
-  if (vcm->cfg.vpp_app_socket_api)
-    return vcl_sapi_app_worker_del (wrk);
-
-  vcl_bapi_app_worker_del (wrk);
-}
-
 void
 vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
