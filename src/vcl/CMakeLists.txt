@@ -20,21 +20,38 @@ if(NOT VPP_BUILD_VCL)
   return()
 endif(NOT VPP_BUILD_VCL)
 
-add_vpp_library(vppcom
-  SOURCES
-  vppcom.c
-  vcl_bapi.c
-  vcl_cfg.c
-  vcl_private.c
-  vcl_locked.c
-  vcl_sapi.c
+option(VPP_BUILD_VCL_BAPI "Build VCL BAPI" ON)
 
-  LINK_LIBRARIES
-  vppinfra svm vlibmemoryclient rt pthread
+if (NOT VPP_BUILD_VCL_BAPI)
+  add_vpp_library(vppcom
+    SOURCES
+    vppcom.c
+    vcl_cfg.c
+    vcl_private.c
+    vcl_locked.c
+    vcl_sapi.c
 
-  DEPENDS
-  api_headers
-)
+    LINK_LIBRARIES
+    vppinfra svm rt pthread
+  )
+else()
+  add_definitions(-DVCL_BAPI_ENABLED)
+  add_vpp_library(vppcom
+    SOURCES
+    vppcom.c
+    vcl_bapi.c
+    vcl_cfg.c
+    vcl_private.c
+    vcl_locked.c
+    vcl_sapi.c
+
+    LINK_LIBRARIES
+    vppinfra svm vlibmemoryclient rt pthread
+
+    DEPENDS
+    api_headers
+  )
+endif()
 
 option(LDP_HAS_GNU_SOURCE "LDP configured to use _GNU_SOURCE" ON)
 if (LDP_HAS_GNU_SOURCE)
