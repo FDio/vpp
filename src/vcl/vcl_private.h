@@ -820,6 +820,7 @@ void vcl_init_epoll_fns (void);
 /*
  * VCL Binary API
  */
+#if defined(VCL_BAPI_ENABLED)
 int vcl_bapi_attach (void);
 int vcl_bapi_app_worker_add (void);
 void vcl_bapi_app_worker_del (vcl_worker_t * wrk);
@@ -829,6 +830,7 @@ int vcl_bapi_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair);
 int vcl_bapi_del_cert_key_pair (u32 ckpair_index);
 u32 vcl_bapi_max_nsid_len (void);
 int vcl_bapi_worker_set (void);
+#endif
 
 /*
  * VCL Socket API
@@ -840,6 +842,95 @@ void vcl_sapi_detach (vcl_worker_t * wrk);
 int vcl_sapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds);
 int vcl_sapi_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair);
 int vcl_sapi_del_cert_key_pair (u32 ckpair_index);
+
+static inline int
+vcl_api_attach (void)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_attach ();
+#if VCL_BAPI_ENABLED
+  return vcl_bapi_attach ();
+#else
+  return -1;
+#endif
+}
+
+static inline int
+vcl_api_recv_fd (vcl_worker_t *wrk, int *fds, int n_fds)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_recv_fds (wrk, fds, n_fds);
+
+#if VCL_BAPI_ENABLED
+  return vcl_bapi_recv_fds (wrk, fds, n_fds);
+#else
+  return -1;
+#endif
+}
+
+static inline void
+vcl_api_detach (vcl_worker_t *wrk)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_detach (wrk);
+
+#if VCL_BAPI_ENABLED
+  vcl_bapi_disconnect_from_vpp ();
+#endif
+}
+
+static inline int
+vcl_api_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_add_cert_key_pair (ckpair);
+
+#if VCL_BAPI_ENABLED
+  return vcl_bapi_add_cert_key_pair (ckpair);
+#else
+  return -1;
+#endif
+}
+
+static inline int
+vcl_api_app_worker_add (void)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_app_worker_add ();
+
+#if VCL_BAPI_ENABLED
+  return vcl_bapi_app_worker_add ();
+#else
+  return -1;
+#endif
+}
+
+static inline void
+vcl_api_app_worker_del (vcl_worker_t *wrk)
+{
+  if (wrk->api_client_handle == ~0)
+    return;
+
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_app_worker_del (wrk);
+
+#if VCL_BAPI_ENABLED
+  vcl_bapi_app_worker_del (wrk);
+#endif
+}
+
+static inline int
+vcl_api_del_cert_key_pair (uint32_t ckpair_index)
+{
+  if (vcm->cfg.vpp_app_socket_api)
+    return vcl_sapi_del_cert_key_pair (ckpair_index);
+
+#if VCL_BAPI_ENABLED
+  return vcl_bapi_del_cert_key_pair (ckpair_index);
+#else
+  return -1;
+#endif
+}
 
 /*
  * Utility functions
