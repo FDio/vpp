@@ -156,13 +156,12 @@ retry:
     {
       slot = tail = ring->tail;
       head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
-      mq->last_tail += tail - mq->last_tail;
       free_slots = head - tail;
     }
 
   while (n_left && free_slots)
     {
-      memif_desc_t *d0;
+      memif_desc_t *d0, saved_desc;
       void *mb0;
       i32 src_off;
       u32 bi0, dst_off, src_left, dst_left, bytes_to_copy;
@@ -173,6 +172,7 @@ retry:
       clib_prefetch_load (&ring->desc[(slot + 8) & mask]);
 
       d0 = &ring->desc[slot & mask];
+      saved_desc = *d0;
       if (PREDICT_FALSE (last_region != d0->region))
 	{
 	  last_region_shm = mif->regions[d0->region].shm;
@@ -226,6 +226,7 @@ retry:
 		  vlib_error_count (vm, node->node_index,
 				    MEMIF_TX_ERROR_ROLLBACK, 1);
 		  slot = saved_slot;
+		  ring->desc[slot & mask] = saved_desc;
 		  goto no_free_slots;
 		}
 	    }
