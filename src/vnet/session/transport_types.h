@@ -17,7 +17,7 @@
 #define VNET_VNET_URI_TRANSPORT_TYPES_H_
 
 #include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
+#include <vnet/ip/ip_types.h>
 #include <vnet/tcp/tcp_debug.h>
 #include <vppinfra/bihash_24_8.h>
 

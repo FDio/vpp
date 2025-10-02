@@ -146,6 +146,13 @@ extern void ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 extern void ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask);
 extern u32 ip6_mask_to_preflen (ip6_address_t * mask);
 
+extern u8 ip4_is_local_host (ip4_address_t *ip4_address);
+extern u8 ip6_is_local_host (ip6_address_t *ip6_address);
+extern u8 ip_is_zero (ip46_address_t *ip46_address, u8 is_ip4);
+extern u8 ip_is_local_host (ip46_address_t *ip46_address, u8 is_ip4);
+extern void ip_copy (ip46_address_t *dst, ip46_address_t *src, u8 is_ip4);
+extern void ip_set (ip46_address_t *dst, void *src, u8 is_ip4);
+
 #endif /* __IP_TYPES_H__ */
 
 /*
