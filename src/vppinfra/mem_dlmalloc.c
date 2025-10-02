@@ -45,7 +45,7 @@ mheap_trace_main_t mheap_trace_main;
 
 static __thread int mheap_trace_thread_disable;
 
-static void
+void
 mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
 			  uword size)
 {
@@ -129,7 +129,7 @@ out:
   clib_spinlock_unlock (&tm->lock);
 }
 
-static void
+void
 mheap_put_trace_internal (const clib_mem_heap_t *heap, uword offset,
 			  uword size)
 {
