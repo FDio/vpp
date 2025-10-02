@@ -1274,4 +1274,8 @@ _vec_is_equal (void *v1, void *v2, uword v1_elt_sz, uword v2_elt_sz)
     }                                                                         \
   while (0)
 
+/* TODO: Solve the import issues better. */
+void _vec_update_len (void *v, uword n_elts, uword elt_sz, uword n_data_bytes,
+		      uword unused_bytes);
+
 #endif /* included_vec_h */
