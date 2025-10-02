@@ -131,8 +131,8 @@ hash_is_user (void *v, uword i)
 
 /* Set the format function and format argument for a hash table */
 always_inline void
-hash_set_pair_format (void *v,
-		      format_function_t * format_pair, void *format_pair_arg)
+hash_set_pair_format (void *v, format_function_t *format_pair,
+		      void *format_pair_arg)
 {
   hash_t *h = hash_header (v);
   h->format_pair = format_pair;
@@ -184,14 +184,14 @@ typedef union
 
 /* Log2 number of bytes allocated in pairs array. */
 always_inline uword
-indirect_pair_get_log2_bytes (hash_pair_indirect_t * p)
+indirect_pair_get_log2_bytes (hash_pair_indirect_t *p)
 {
   return p->alloc_len >> PAIR_BITS;
 }
 
 /* Get the length of an indirect pair */
 always_inline uword
-indirect_pair_get_len (hash_pair_indirect_t * p)
+indirect_pair_get_len (hash_pair_indirect_t *p)
 {
   if (!p->pairs)
     return 0;
@@ -201,7 +201,7 @@ indirect_pair_get_len (hash_pair_indirect_t * p)
 
 /* Set the length of an indirect pair */
 always_inline void
-indirect_pair_set (hash_pair_indirect_t * p, uword log2_alloc, uword len)
+indirect_pair_set (hash_pair_indirect_t *p, uword log2_alloc, uword len)
 {
   ASSERT (len < ((uword) 1 << PAIR_BITS));
   ASSERT (log2_alloc < ((uword) 1 << LOG2_ALLOC_BITS));
@@ -267,7 +267,7 @@ uword hash_bytes (void *v);
 
 /* Public inline function allocate and copy key to use in hash for pointer key */
 always_inline void
-hash_set_mem_alloc (uword ** h, const void *key, uword v)
+hash_set_mem_alloc (uword **h, const void *key, uword v)
 {
   int objsize = __builtin_object_size (key, 0);
   size_t ksz = hash_header (*h)->user;
@@ -294,7 +294,7 @@ hash_set_mem_alloc (uword ** h, const void *key, uword v)
 
 /* Public inline function to unset pointer key and then free the key memory */
 always_inline void
-hash_unset_mem_free (uword ** h, const void *key)
+hash_unset_mem_free (uword **h, const void *key)
 {
   hash_pair_t *hp = hash_get_pair_mem (*h, key);
   if (PREDICT_TRUE (hp != NULL))
@@ -315,7 +315,7 @@ clib_error_t *hash_validate (void *v);
 
 /* Public inline function to get the number of value bytes for a hash table */
 always_inline uword
-hash_value_bytes (hash_t * h)
+hash_value_bytes (hash_t *h)
 {
   hash_pair_t *p;
   return (sizeof (p->value[0]) << h->log2_pair_size) - sizeof (p->key);
@@ -323,7 +323,7 @@ hash_value_bytes (hash_t * h)
 
 /* Public inline function to get log2(size of a (key,value) pair) */
 always_inline uword
-hash_pair_log2_bytes (hash_t * h)
+hash_pair_log2_bytes (hash_t *h)
 {
   uword log2_bytes = h->log2_pair_size;
   ASSERT (BITS (hash_pair_t) == 32 || BITS (hash_pair_t) == 64);
@@ -336,21 +336,21 @@ hash_pair_log2_bytes (hash_t * h)
 
 /* Public inline function to get size of a (key,value) pair */
 always_inline uword
-hash_pair_bytes (hash_t * h)
+hash_pair_bytes (hash_t *h)
 {
   return (uword) 1 << hash_pair_log2_bytes (h);
 }
 
 /* Public inline function to advance a pointer past one (key,value) pair */
 always_inline void *
-hash_forward1 (hash_t * h, void *v)
+hash_forward1 (hash_t *h, void *v)
 {
   return (u8 *) v + hash_pair_bytes (h);
 }
 
 /* Public inline function to advance a pointer past N (key,value) pairs */
 always_inline void *
-hash_forward (hash_t * h, void *v, uword n)
+hash_forward (hash_t *h, void *v, uword n)
 {
   return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size);
 }
@@ -485,7 +485,7 @@ hash_pair_t *hash_next (void *v, hash_next_t * hn);
 void *_hash_create (uword elts, hash_t * h);
 
 always_inline void
-hash_set_value_bytes (hash_t * h, uword value_bytes)
+hash_set_value_bytes (hash_t *h, uword value_bytes)
 {
   hash_pair_t *p;
   h->log2_pair_size =
@@ -728,6 +728,36 @@ unformat_function_t unformat_hash_string;
 
 /* Main test routine. */
 int test_hash_main (unformat_input_t * input);
+
+/* TODO: Solve the import issues better. */
+
+enum lookup_opcode
+{
+  GET = 1,
+  SET = 2,
+  UNSET = 3,
+};
+
+hash_pair_union_t *get_indirect (void *v, hash_pair_indirect_t *pi, uword key);
+
+uword key_sum (hash_t *h, uword key);
+
+uword key_equal1 (hash_t *h, uword key1, uword key2, uword e);
+
+uword key_equal (hash_t *h, uword key1, uword key2);
+
+void set_is_user (void *v, uword i, uword is_user);
+
+hash_pair_union_t *set_indirect_is_user (void *v, uword i,
+					 hash_pair_union_t *p, uword key);
+
+void unset_indirect (void *v, uword i, hash_pair_t *q);
+
+void zero_pair (hash_t *h, hash_pair_t *p);
+
+void init_pair (hash_t *h, hash_pair_t *p);
+
+hash_pair_union_t *get_pair (void *v, uword i);
 
 #endif /* included_hash_h */
 
