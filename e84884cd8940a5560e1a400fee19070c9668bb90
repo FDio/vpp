@@ -16,6 +16,24 @@
       "message": "you might want to keep this pool_get_aligned_safe, if we peek between workers. Typically happens during half-open establishment and migration",
       "revId": "e84884cd8940a5560e1a400fee19070c9668bb90",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15a71fb0_ff904c41",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-02T15:52:48Z",
+      "side": 0,
+      "message": "Ack.  This was new with the quic-engine patch and got reverted during the debug of this patch wrt. pre-quic-engine implementation (e.g. stable/2502).\n\nWill revert to using pool_get_aligned_safe() and retest",
+      "parentUuid": "139b787e_04ca4198",
+      "revId": "e84884cd8940a5560e1a400fee19070c9668bb90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
