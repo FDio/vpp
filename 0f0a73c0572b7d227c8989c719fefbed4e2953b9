@@ -34,6 +34,24 @@
       "parentUuid": "fd640d81_217e8085",
       "revId": "0f0a73c0572b7d227c8989c719fefbed4e2953b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f86603c5_5dbd6f15",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 760,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-02T18:51:44Z",
+      "side": 1,
+      "message": "As it turns out we were both wrong.  The underlying quicly code does not return errors, but a u64 with 0 if not able to tx.\n\nI fixed the quic-engine API and cleaned up the debug output here as well (which is basically unnecessary) and cleaned up the quic_quicly function as well.",
+      "parentUuid": "2355784f_1536a85b",
+      "revId": "0f0a73c0572b7d227c8989c719fefbed4e2953b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
