@@ -90,6 +90,7 @@ add_vpp_library(vlib
   buffer_funcs.c
   cli.c
   counter.c
+  delayed_free.c
   drop.c
   error.c
   file.c
@@ -140,6 +141,7 @@ add_vpp_library(vlib
   counter.h
   counter_types.h
   defs.h
+  delayed_free.h
   dma/dma.h
   error_funcs.h
   error.h
