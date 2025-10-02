@@ -40,19 +40,19 @@
 #include <vppinfra/mem.h>
 #include <vppinfra/byte_order.h>	/* for clib_arch_is_big_endian */
 
-always_inline void
-zero_pair (hash_t * h, hash_pair_t * p)
+void
+zero_pair (hash_t *h, hash_pair_t *p)
 {
   clib_memset (p, 0, hash_pair_bytes (h));
 }
 
-always_inline void
-init_pair (hash_t * h, hash_pair_t * p)
+void
+init_pair (hash_t *h, hash_pair_t *p)
 {
   clib_memset (p->value, ~0, hash_value_bytes (h));
 }
 
-always_inline hash_pair_union_t *
+hash_pair_union_t *
 get_pair (void *v, uword i)
 {
   hash_t *h = hash_header (v);
@@ -63,7 +63,7 @@ get_pair (void *v, uword i)
   return (hash_pair_union_t *) p;
 }
 
-always_inline void
+void
 set_is_user (void *v, uword i, uword is_user)
 {
   hash_t *h = hash_header (v);
@@ -113,7 +113,7 @@ hash_memory (void *p, word n_bytes, uword state)
   return c;
 }
 
-always_inline uword
+uword
 hash_uword (uword x)
 {
   uword a, b, c;
@@ -127,8 +127,8 @@ hash_uword (uword x)
 
 /* Call sum function.  Hash code will be sum function value
    modulo the prime length of the hash table. */
-always_inline uword
-key_sum (hash_t * h, uword key)
+uword
+key_sum (hash_t *h, uword key)
 {
   uword sum;
   switch (pointer_to_uword ((void *) h->key_sum))
@@ -161,8 +161,8 @@ key_sum (hash_t * h, uword key)
   return sum;
 }
 
-always_inline uword
-key_equal1 (hash_t * h, uword key1, uword key2, uword e)
+uword
+key_equal1 (hash_t *h, uword key1, uword key2, uword e)
 {
   switch (pointer_to_uword ((void *) h->key_equal))
     {
@@ -195,8 +195,8 @@ key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 }
 
 /* Compares two keys: returns 1 if equal, 0 if not. */
-always_inline uword
-key_equal (hash_t * h, uword key1, uword key2)
+uword
+key_equal (hash_t *h, uword key1, uword key2)
 {
   uword e = key1 == key2;
   if (CLIB_DEBUG > 0 && key1 == key2)
@@ -206,8 +206,8 @@ key_equal (hash_t * h, uword key1, uword key2)
   return e;
 }
 
-static hash_pair_union_t *
-get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
+hash_pair_union_t *
+get_indirect (void *v, hash_pair_indirect_t *pi, uword key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *p0, *p1;
@@ -228,8 +228,8 @@ get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
   return (hash_pair_union_t *) 0;
 }
 
-static hash_pair_union_t *
-set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
+hash_pair_union_t *
+set_indirect_is_user (void *v, uword i, hash_pair_union_t *p, uword key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *q;
@@ -258,9 +258,8 @@ set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
   return (hash_pair_union_t *) q;
 }
 
-static hash_pair_union_t *
-set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
-	      uword * found_key)
+hash_pair_union_t *
+set_indirect (void *v, hash_pair_indirect_t *pi, uword key, uword *found_key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *new_pair;
@@ -298,8 +297,8 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
   return (hash_pair_union_t *) new_pair;
 }
 
-static void
-unset_indirect (void *v, uword i, hash_pair_t * q)
+void
+unset_indirect (void *v, uword i, hash_pair_t *q)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = get_pair (v, i);
@@ -348,16 +347,9 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
     }
 }
 
-enum lookup_opcode
-{
-  GET = 1,
-  SET = 2,
-  UNSET = 3,
-};
-
-static hash_pair_t *
-lookup (void *v, uword key, enum lookup_opcode op,
-	void *new_value, void *old_value)
+hash_pair_t *
+lookup (void *v, uword key, enum lookup_opcode op, void *new_value,
+	void *old_value)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = 0;
@@ -617,7 +609,7 @@ _hash_free (void *v)
   return 0;
 }
 
-static void *
+void *
 hash_resize_internal (void *old, uword new_size, uword free_old)
 {
   void *new;
