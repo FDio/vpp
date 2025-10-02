@@ -414,6 +414,11 @@ I:	iavf
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/dev_iavf/
 
+Plugin - IGE Device driver
+I:	ige
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/dev_ige/
+
 Plugin - Amazon Elastic Network Adapter (ENA) device driver
 I:	ena
 M:	Damjan Marion <damarion@cisco.com>

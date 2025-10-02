@@ -251,6 +251,7 @@ det
 dev
 devbind
 dev_iavf
+dev_ige
 dev_octeon
 df
 dhcp
