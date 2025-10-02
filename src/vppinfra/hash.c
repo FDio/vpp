@@ -228,8 +228,8 @@ get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
   return (hash_pair_union_t *) 0;
 }
 
-static hash_pair_union_t *
-set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
+hash_pair_union_t *
+set_indirect_is_user (void *v, uword i, hash_pair_union_t *p, uword key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *q;
@@ -298,8 +298,8 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
   return (hash_pair_union_t *) new_pair;
 }
 
-static void
-unset_indirect (void *v, uword i, hash_pair_t * q)
+void
+unset_indirect (void *v, uword i, hash_pair_t *q)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = get_pair (v, i);
@@ -347,13 +347,6 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
 	indirect_pair_set (pi, indirect_pair_get_log2_bytes (pi), len - 1);
     }
 }
-
-enum lookup_opcode
-{
-  GET = 1,
-  SET = 2,
-  UNSET = 3,
-};
 
 static hash_pair_t *
 lookup (void *v, uword key, enum lookup_opcode op,
