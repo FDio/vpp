@@ -1480,3 +1480,9 @@ DLMALLOC_EXPORT int mspace_is_traced (mspace msp);
   on the next line, as well as in programs that use this malloc.
   ========================================================================
 */
+
+/* TODO: Solve the import issues better. */
+
+inline void *
+clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
+			    int os_out_of_memory_on_failure);
