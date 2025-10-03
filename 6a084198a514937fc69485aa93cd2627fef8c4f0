@@ -18,6 +18,40 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "77591885_21bc8480",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:45:20Z",
+      "side": 1,
+      "message": "year 2020, also please use shorter SPDX version ....",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6741753f_b8731b20",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:45:20Z",
+      "side": 1,
+      "message": "we have logging infra, why not use it instead of macro and clib_warning?",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "e44b9b42_cba494e4",
