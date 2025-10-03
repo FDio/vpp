@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36574d2e_8750ca36",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:15:02Z",
+      "side": 1,
+      "message": "please use SPDX license and remove fd.io coding-style-patch-verification: ON\nblocks, we don\u0027t use that since we moved to clang-format",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5dab20e7_5a24450e",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:15:02Z",
+      "side": 1,
+      "message": "SPDX license",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d53d7f34_d84c7301",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:15:02Z",
+      "side": 1,
+      "message": "__clib_unused",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bac947e_b98b26cc",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:15:02Z",
+      "side": 1,
+      "message": "writing directly to stderr should not be even a fallback option....",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
