@@ -16,6 +16,23 @@
       "message": "Could you just give me your feedback about this experimental approach which gives op+key single handlers. Does it have a perspective?\nOr is there a better option - make crypto_key_t variable size alloc and store pre-calculated data?",
       "revId": "96e331ae584f123127b3cbe4d9afee92ce2fc4f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b240536c_6ebf29b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:03:38Z",
+      "side": 1,
+      "message": "trad safety needs to be ensured on crypto infra level, not in engine....",
+      "revId": "96e331ae584f123127b3cbe4d9afee92ce2fc4f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
