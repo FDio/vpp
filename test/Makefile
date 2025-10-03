@@ -387,7 +387,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
 				 	 "*/vppinfra/bihash_vec8_8.h" "*/vppinfra/maplog.c" \
 					 "*/vppinfra/format_table.c" "*/vppinfra/timing_wheel.c" \
 					 "*/vppinfra/macros.c" "*/vppinfra/valloc.c" \
-					 "*/vppinfra/jsonformat.c" "*/vppinfra/vector/array_mask.h" \
+					 "*/vlibapi/jsonformat.c" "*/vppinfra/vector/array_mask.h" \
 					 "*/vppinfra/vector/toeplitz.c" "*/plugins/vrrp/vrrp_packet.h" \
 					 "*/vnet/srv6/sr.h" "*/vlibapi/api_format.c" \
 					 "*/vlibapi/node_serialize.c" "*/plugins/quic/error.c" \

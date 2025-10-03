@@ -17,7 +17,7 @@
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_format_fns.h>
-#include <vpp/api/types.h>
+#include <vlibapi/api_types.h>
 #include "jsonformat.h"
 
 #define _(T)                                                                  \
