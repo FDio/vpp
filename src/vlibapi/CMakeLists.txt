@@ -17,6 +17,7 @@ add_vpp_library (vlibapi
   api_format.c
   node_serialize.c
   memory_shared.c
+  jsonformat.c
 
   INSTALL_HEADERS
   api.h
@@ -25,5 +26,6 @@ add_vpp_library (vlibapi
   api_types.h
   vat_helper_macros.h
   memory_shared.h
+  jsonformat.h
 )
 

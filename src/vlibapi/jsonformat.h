@@ -18,8 +18,7 @@
 
 #include <stdbool.h>
 #include <vppinfra/cJSON.h>
-#include <vnet/ethernet/mac_address.h>
-#include <vnet/ip/ip6_packet.h>
+/* vppapigen generated types */
 #include <vnet/ip/ip_types.api_types.h>
 #include <vnet/ethernet/ethernet_types.api_types.h>
 
