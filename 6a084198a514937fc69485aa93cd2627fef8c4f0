@@ -20,6 +20,57 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3e30e0fe_888c7aea",
+        "filename": "src/plugins/npol/CMakeLists.txt",
+        "patchSetId": 9
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "if you care about performance, add MULTIARCH_SOURCES",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4463d4fd_bf5658d4",
+        "filename": "src/plugins/npol/bihash_8_32.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "year...\nspdx...\n\nput this into vppinfra/ ...",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89124a58_27d8e3d1",
+        "filename": "src/plugins/npol/bihash_8_32.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "not needed anymore...",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "77591885_21bc8480",
         "filename": "src/plugins/npol/npol_interface.c",
         "patchSetId": 9
@@ -88,6 +139,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "42703fbe_f63ef6eb",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "not needed, and it breaks multiline input with \\",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d4b180b_ecb483a6",
+        "filename": "src/plugins/npol/npol_interface.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "not needed",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "081f6c90_f1c88662",
         "filename": "src/plugins/npol/npol_match.c",
         "patchSetId": 9
@@ -133,6 +218,24 @@
       "writtenOn": "2025-10-01T16:32:54Z",
       "side": 1,
       "message": "C-style comments?",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4aaf1c43_96dab514",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T10:56:50Z",
+      "side": 1,
+      "message": "+1, we use C style comments....",
+      "parentUuid": "3a47b8ce_65391fd3",
       "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
