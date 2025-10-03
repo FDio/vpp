@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "37cf081a_3178fab9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2789
+      },
+      "writtenOn": "2025-10-03T08:26:23Z",
+      "side": 1,
+      "message": "Hello, this fix was merged after the stable/2510 branch was created so it\u0027s not included in it, shouldn\u0027t it be submitted to that branch too?",
+      "revId": "bf440243c1f854a97e0084d268d68f5f5e8e2b9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
