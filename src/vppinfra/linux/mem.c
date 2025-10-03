@@ -248,6 +248,10 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
       memfd_flags = MFD_HUGETLB | log2_page_size << MFD_HUGE_SHIFT;
     }
 
+  /* Set FD_CLOEXEC flag on memory file descriptor, such that mapped memory
+   * doesn't leak through child processes if VPP crashes. */
+  memfd_flags |= MFD_CLOEXEC;
+
   va_start (va, fmt);
   s = va_format (0, fmt, &va);
   va_end (va);
