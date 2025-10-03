@@ -14,6 +14,7 @@
  */
 
 #include <vppinfra/format.h>
+#include <vppinfra/mem.h>
 #include <vppinfra/dlmalloc.h>
 #include <vppinfra/os.h>
 #include <vppinfra/lock.h>
@@ -45,7 +46,7 @@ mheap_trace_main_t mheap_trace_main;
 
 static __thread int mheap_trace_thread_disable;
 
-static void
+__clib_export void
 mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
 			  uword size)
 {
@@ -129,7 +130,7 @@ out:
   clib_spinlock_unlock (&tm->lock);
 }
 
-static void
+__clib_export void
 mheap_put_trace_internal (const clib_mem_heap_t *heap, uword offset,
 			  uword size)
 {
@@ -630,7 +631,7 @@ clib_mem_get_heap_size (clib_mem_heap_t *heap)
 }
 
 /* Memory allocator which may call os_out_of_memory() if it fails */
-static inline void *
+__clib_export void *
 clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
 			    int os_out_of_memory_on_failure)
 {

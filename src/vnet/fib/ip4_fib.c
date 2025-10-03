@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vlib/vlib.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
@@ -150,10 +151,10 @@ ip4_create_fib_with_table_id (u32 table_id,
     fib_table_t *fib_table;
     ip4_fib_t *v4_fib;
 
-    pool_get(ip4_main.fibs, fib_table);
+    pool_get_mt_safe(ip4_main.fibs, fib_table);
     clib_memset(fib_table, 0, sizeof(*fib_table));
 
-    pool_get_aligned(ip4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
+    pool_get_aligned_mt_safe(ip4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
 
     fib_table->ft_proto = FIB_PROTOCOL_IP4;
     fib_table->ft_index = (v4_fib - ip4_fibs);
@@ -166,7 +167,7 @@ ip4_create_fib_with_table_id (u32 table_id,
      */
     ASSERT(fib_table->ft_index == fib_table - ip4_main.fibs);
 
-    hash_set (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
+    hash_set_mt_safe (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
     fib_table->ft_table_id =
 	v4_fib->hash.table_id =
@@ -210,15 +211,15 @@ ip4_fib_table_destroy (u32 fib_index)
 
     if (~0 != fib_table->ft_table_id)
     {
-	hash_unset (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
+	hash_unset_mt_safe (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
     }
 
-    vec_free (fib_table->ft_locks);
-    vec_free(fib_table->ft_src_route_counts);
+    vec_free_mt_safe (fib_table->ft_locks);
+    vec_free_mt_safe(fib_table->ft_src_route_counts);
     ip4_fib_table_free(v4_fib);
 
-    pool_put(ip4_fibs, v4_fib);
-    pool_put(ip4_main.fibs, fib_table);
+    pool_put_mt_safe(ip4_fibs, v4_fib);
+    pool_put_mt_safe(ip4_main.fibs, fib_table);
 }
 
 

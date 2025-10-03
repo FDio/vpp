@@ -19,7 +19,7 @@ static void no_heap (void)
     fprintf (stderr, "vpp mem: libc allocation requested but no vpp heap ready, defaulting to libc.\n");
 }
 
-static_always_inline int
+__clib_export int
 check_vpp_heap (void)
 {
   if (PREDICT_TRUE (clib_mem_get_per_cpu_heap () != 0))
