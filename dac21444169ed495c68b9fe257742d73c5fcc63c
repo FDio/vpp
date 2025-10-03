@@ -84,6 +84,23 @@
       "message": "Manually triggered run [2] shows small progressions on 3n-icxd.\n\n[2] https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-x86_64-3n-icxd/1/console.log.gz",
       "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3aee12d3_8bcc017f",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-03T11:05:40Z",
+      "side": 1,
+      "message": "disagree on this, \"src/vppinfra/crypto/\" is nto VNET crypto infra",
+      "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
