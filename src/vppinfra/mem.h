@@ -515,6 +515,19 @@ u8 *format_clib_mem_bulk (u8 *s, va_list *args);
 
 #include <vppinfra/error.h>	/* clib_panic */
 
+/* TODO: Solve import issues better. */
+
+extern void *__libc_realloc (void *, size_t);
+
+void *clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
+				  int os_out_of_memory_on_failure);
+
+void mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
+			       uword size);
+
+void mheap_put_trace_internal (const clib_mem_heap_t *heap, uword offset,
+			       uword size);
+
 #endif /* _included_clib_mem_h */
 
 /*
