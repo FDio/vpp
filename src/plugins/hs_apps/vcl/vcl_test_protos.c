@@ -121,6 +121,49 @@ static const vcl_test_proto_vft_t vcl_test_tcp = {
 
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_TCP, vcl_test_tcp);
 
+/* For efficiencty, udp should write more than one dgram as the calling app
+ * might potentailly poll vcl for new events which in turn might involve
+ * syscalls like epoll_wait */
+static int
+vcl_test_write_udp (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
+{
+  uint64_t max_burst = 32 << 10, nbytes_left;
+  vcl_test_stats_t *stats = &ts->stats;
+  uint32_t nbytes_dgram;
+  int rv;
+
+  max_burst = (max_burst / nbytes) * nbytes;
+  nbytes_left = ts->cfg.total_bytes - ts->stats.tx_bytes;
+  nbytes_left = nbytes_left < max_burst ? nbytes_left : max_burst;
+  max_burst = nbytes_left;
+
+  while (nbytes_left)
+    {
+      while (1)
+	{
+	  stats->tx_xacts++;
+	  nbytes_dgram = nbytes < nbytes_left ? nbytes : nbytes_left;
+	  rv = vppcom_session_write (ts->fd, buf, nbytes_dgram);
+	  if (rv < 0)
+	    {
+	      errno = -rv;
+	      if (!((errno == EAGAIN || errno == EWOULDBLOCK)))
+		vterr ("vpcom_session_write", -errno);
+	      stats->tx_eagain++;
+	      continue;
+	    }
+	  if (rv != nbytes_dgram)
+	    {
+	      vtwrn ("vppcom_session_write - incomplete write?");
+	    }
+	  break;
+	}
+      nbytes_left -= rv;
+    }
+  stats->tx_bytes += max_burst;
+  return max_burst;
+}
+
 static int
 vt_udp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
@@ -142,7 +185,7 @@ vt_udp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
     }
 
   ts->read = vcl_test_read;
-  ts->write = vcl_test_write;
+  ts->write = vcl_test_write_udp;
 
   if (!ts->noblk_connect)
     {
@@ -194,7 +237,7 @@ vt_udp_accept (int listen_fd, vcl_test_session_t *ts)
   ts->fd = client_fd;
   ts->is_open = 1;
   ts->read = vcl_test_read;
-  ts->write = vcl_test_write;
+  ts->write = vcl_test_write_udp;
 
   /* Help client sessions migrate if need be */
   if (!ts->cfg.test_bytes)
