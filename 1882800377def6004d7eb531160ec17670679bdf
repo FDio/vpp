@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "188d95cd_56a96ccb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2025-10-04T21:33:47Z",
+      "side": 1,
+      "message": "Any ideas why compilation fails on Fedora but succeeded on el8-el10?\n\n```\nFAILED: CMakeFiles/vlib/CMakeFiles/vlib_objs.dir/unix/fuse.c.o \n/usr/bin/clang -DHAVE_FCNTL64 -D_FORTIFY_SOURCE\u003d2 -I/builddir/build/BUILD/vpp-26.02-build/vpp-26.02/src -I/builddir/build/BUILD/vpp-26.02-build/vpp-26.02/build-root/build-vpp-native/vpp/CMakeFiles -fPIC -g -Werror -Wall -Wno-address-of-packed-member -O3 -fstack-protector -fno-common -march\u003darmv8-a+crc -MD -MT CMakeFiles/vlib/CMakeFiles/vlib_objs.dir/unix/fuse.c.o -MF CMakeFiles/vlib/CMakeFiles/vlib_objs.dir/unix/fuse.c.o.d -o CMakeFiles/vlib/CMakeFiles/vlib_objs.dir/unix/fuse.c.o -c /builddir/build/BUILD/vpp-26.02-build/vpp-26.02/src/vlib/unix/fuse.c\n/builddir/build/BUILD/vpp-26.02-build/vpp-26.02/src/vlib/unix/fuse.c:8:10: fatal error: \u0027vpp/app/version.h\u0027 file not found\n    8 | #include \u003cvpp/app/version.h\u003e\n      |          ^~~~~~~~~~~~~~~~~~~\n1 error generated.\n```",
+      "revId": "1882800377def6004d7eb531160ec17670679bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
