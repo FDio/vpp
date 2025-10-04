@@ -89,7 +89,8 @@ typedef struct tcp_transport_stats_
   _ (u64, bytes_out)                                                          \
   _ (u64, dgrams_out)                                                         \
   _ (u32, errors_in)                                                          \
-  _ (u16, mss)
+  _ (u16, mss)                                                                \
+  _ (f64, start_ts)
 
 typedef struct udp_transport_stats_
 {
