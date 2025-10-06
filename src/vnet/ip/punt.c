@@ -394,33 +394,31 @@ punt_l4_add_del (vlib_main_t * vm,
     {
       if (protocol == IP_PROTOCOL_UDP)
 	udp_punt_unknown (vm, is_ip4, is_add);
-      else if (protocol == IP_PROTOCOL_TCP)
+      else
 	tcp_punt_unknown (vm, is_ip4, is_add);
-
-      return 0;
     }
 
-  else if (is_add)
+  else if (is_add && protocol == IP_PROTOCOL_TCP)
+    {
+      const vlib_node_registration_t *punt_node =
+	is_ip4 ? &ip4_punt_node : &ip6_punt_node;
+
+      tcp_register_dst_port (vm, port, punt_node->index, is_ip4);
+    }
+  else if (is_add && protocol == IP_PROTOCOL_UDP)
     {
       const vlib_node_registration_t *punt_node =
 	is_ip4 ? &udp4_punt_node : &udp6_punt_node;
-
-      if (protocol == IP_PROTOCOL_TCP)
-	return clib_error_return (0, "punt TCP ports is not supported yet");
-
       udp_register_dst_port (vm, port, punt_node->index, is_ip4);
-
-      return 0;
     }
   else
     {
       if (protocol == IP_PROTOCOL_TCP)
-	return clib_error_return (0, "punt TCP ports is not supported yet");
-
-      udp_unregister_dst_port (vm, port, is_ip4);
-
-      return 0;
+	tcp_unregister_dst_port (vm, port, is_ip4);
+      else
+	udp_unregister_dst_port (vm, port, is_ip4);
     }
+  return 0;
 }
 
 /**
@@ -495,10 +493,8 @@ punt_cli (vlib_main_t * vm,
       else if (unformat (input, "reason %U", unformat_punt_reason,
 			 &pr.punt.exception.reason))
 	pr.type = PUNT_TYPE_EXCEPTION;
-      else if (unformat (input, "ipv4"))
+      else if (unformat (input, "ip4"))
 	pr.punt.l4.af = AF_IP4;
-      else if (unformat (input, "ipv6"))
-	pr.punt.l4.af = AF_IP6;
       else if (unformat (input, "ip6"))
 	pr.punt.l4.af = AF_IP6;
       else if (unformat (input, "%d", &port))
@@ -551,7 +547,7 @@ done:
 ?*/
 VLIB_CLI_COMMAND (punt_command, static) = {
   .path = "set punt",
-  .short_help = "set punt [IPV4|ip6|ipv6] [UDP|tcp] [del] [ALL|<port-num>]",
+  .short_help = "set punt [ip4|ip6] [udp|tcp] [del] [all|<port-num>]",
   .function = punt_cli,
 };
 
