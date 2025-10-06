@@ -425,11 +425,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.ct_segment_handle = cct->segment_handle;
     }
 
-  /* Setup client session index in advance, in case data arrives
-   * before the app processes message and updates it
-   * Maybe this needs to be done via a reply message from app */
-  s->rx_fifo->shr->client_session_index = api_context;
-  s->tx_fifo->shr->client_session_index = api_context;
+  /* Setup app session index based on api_context */
   s->rx_fifo->app_session_index = api_context;
   s->tx_fifo->app_session_index = api_context;
 
