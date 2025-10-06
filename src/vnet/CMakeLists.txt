@@ -619,6 +619,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_sack.c
   tcp/tcp_timer.c
   tcp/tcp.c
+  tcp/tcp_local.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
