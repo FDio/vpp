@@ -2,10 +2,12 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
+#include <vnet/plugin/plugin.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/tls/tls_types.h>
+#include <plugins/quic/quic.h>
 
 typedef struct
 {
@@ -18,6 +20,7 @@ typedef struct
   tls_alpn_proto_t alpn_proto_selected;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
+  quic_get_alpn_selected_fn quic_get_selected_alpn;
 } alpn_client_main_t;
 
 typedef enum
@@ -63,7 +66,11 @@ ac_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
       return -1;
     }
 
-  cm->alpn_proto_selected = tls_get_alpn_selected (s->connection_index);
+  if (cm->connect_sep.transport_proto == TRANSPORT_PROTO_TLS)
+    cm->alpn_proto_selected = tls_get_alpn_selected (s->connection_index);
+  else if (cm->connect_sep.transport_proto == TRANSPORT_PROTO_QUIC)
+    cm->alpn_proto_selected =
+      cm->quic_get_selected_alpn (s->connection_index, s->thread_index);
 
   a->handle = session_handle (s);
   a->app_index = cm->app_index;
@@ -313,6 +320,17 @@ alpn_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       error = clib_error_return (0, "invalid uri");
       goto done;
+    }
+
+  if (cm->connect_sep.transport_proto == TRANSPORT_PROTO_QUIC)
+    {
+      cm->quic_get_selected_alpn =
+	vlib_get_plugin_symbol ("quic_plugin.so", "quic_get_alpn_selected");
+      if (cm->quic_get_selected_alpn == 0)
+	{
+	  error = clib_error_return (0, "quic_plugin.so not loaded");
+	  goto done;
+	}
     }
 
   session_enable_disable_args_t args = { .is_en = 1,
