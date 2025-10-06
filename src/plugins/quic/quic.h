@@ -168,6 +168,8 @@ typedef struct quic_ctx_
   u32 ckpair_index;
   u32 crypto_engine;
   u32 crypto_context_index;
+  u8 alpn_protos[4];
+  tls_alpn_proto_t alpn_selected;
   u8 flags;
 
   struct
