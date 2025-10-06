@@ -346,6 +346,18 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .max_supported_rx_frame_size = 9216,
 	    .caps.secondary_interfaces = mvpp2_port.is_dsa != 0,
           },
+	  .args = VNET_DEV_ARGS ({
+            .id = MVPP2_PORT_ARG_DSA_ENABLED,
+            .type = VNET_DEV_ARG_TYPE_ENUM,
+            .name = "dsa_enable",
+            .desc = "DSA header parsing (on, off, auto)",
+            .default_val.enum_val = MVPP2_PORT_DSA_ENABLED_AUTO,
+            .enum_vals = VNET_DEV_ARG_ENUM_VALS(
+              { .val = MVPP2_PORT_DSA_ENABLED_OFF, .name = "off", },
+              { .val = MVPP2_PORT_DSA_ENABLED_ON, .name = "on", },
+              { .val = MVPP2_PORT_DSA_ENABLED_AUTO, .name = "auto", },
+            ),
+          }),
           .ops = {
             .init = mvpp2_port_init,
             .deinit = mvpp2_port_deinit,

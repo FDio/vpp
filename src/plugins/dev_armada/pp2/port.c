@@ -30,6 +30,23 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (port->dev, "");
 
+  foreach_vnet_dev_args (arg, port)
+    if (arg->id == MVPP2_PORT_ARG_DSA_ENABLED)
+      switch (vnet_dev_arg_get_enum (arg))
+	{
+	case MVPP2_PORT_DSA_ENABLED_ON:
+	  mp->is_dsa = 1;
+	  break;
+	case MVPP2_PORT_DSA_ENABLED_OFF:
+	  mp->is_dsa = 0;
+	  break;
+	case MVPP2_PORT_DSA_ENABLED_AUTO:
+	  break;
+	default:
+	  ASSERT (0);
+	  break;
+	}
+
   snprintf (match, sizeof (match), "ppio-%d:%d", md->pp_id, port->port_id);
 
   struct pp2_ppio_params ppio_params = {
