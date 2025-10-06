@@ -622,8 +622,9 @@ udp_local_init (vlib_main_t * vm)
 #define _(n,s) udp_add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
     foreach_udp6_dst_port
 #undef _
-    ip4_register_protocol (IP_PROTOCOL_UDP, udp4_local_node.index);
-  /* Note: ip6 differs from ip4, UDP is hotwired to ip6-udp-lookup */
+
+  ip4_register_protocol (IP_PROTOCOL_UDP, udp4_local_node.index);
+  ip6_register_protocol (IP_PROTOCOL_UDP, udp6_local_node.index);
   return 0;
 }
 
