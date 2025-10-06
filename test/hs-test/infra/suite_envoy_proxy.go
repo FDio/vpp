@@ -70,6 +70,7 @@ func (s *EnvoyProxySuite) SetupSuite() {
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
+	s.Skip("temporarily skip envoy tests until we update envoy to latest vcl")
 	s.HstSuite.SetupTest()
 
 	// VPP
