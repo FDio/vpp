@@ -586,9 +586,9 @@ session_notify_subscribers (u32 app_index, session_t *s, svm_fifo_t *f,
     return -1;
 
   is_cl = s->thread_index != vlib_get_thread_index ();
-  for (i = 0; i < f->shr->n_subscribers; i++)
+  for (i = 0; i < f->signals->n_subscribers; i++)
     {
-      app_wrk = application_get_worker (app, f->shr->subscribers[i]);
+      app_wrk = application_get_worker (app, f->signals->subscribers[i]);
       if (!app_wrk)
 	continue;
       session_program_io_event (app_wrk, s, evt_type, is_cl ? 1 : 0);
