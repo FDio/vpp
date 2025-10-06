@@ -185,6 +185,7 @@ vlib_stats_remove_entry (u32 entry_index)
 
     case STAT_DIR_TYPE_SCALAR_INDEX:
     case STAT_DIR_TYPE_SYMLINK:
+    case STAT_DIR_TYPE_GAUGE:
       break;
     default:
       ASSERT (0);
