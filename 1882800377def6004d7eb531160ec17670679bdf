@@ -16,6 +16,24 @@
       "message": "Hm, why would we want this? Also not sure at what point v6 disappeared from this list.",
       "revId": "1882800377def6004d7eb531160ec17670679bdf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "949da2b4_43cd0815",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-06T15:59:36Z",
+      "side": 0,
+      "message": "`ip{4/6}-udp-lookup` are already next nodes for `ip{4/6}-local` nodes.\nSee `vnet/ip{4/6}_forward.h` (ip{4/6}_local_inline functions) and `vnet/lookup.c:106`",
+      "parentUuid": "2c737665_e657ace1",
+      "revId": "1882800377def6004d7eb531160ec17670679bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
