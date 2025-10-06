@@ -187,15 +187,16 @@ vcl_send_app_detach (vcl_worker_t * wrk)
 }
 
 static void
-vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
-				 session_handle_t handle, int retval)
+vcl_send_session_accepted_reply (svm_msg_q_t *mq, session_accepted_msg_t *mp,
+				 vcl_session_t *s, int retval)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_accepted_reply_msg_t *rmp;
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_ACCEPTED_REPLY);
   rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
-  rmp->handle = handle;
-  rmp->context = context;
+  rmp->handle = mp->handle;
+  rmp->context = mp->context;
+  rmp->app_session_index = s->session_index;
   rmp->retval = retval;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
@@ -379,16 +380,14 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
 
-  vcl_send_session_accepted_reply (session->vpp_evt_q, mp->context,
-				   session->vpp_handle, 0);
+  vcl_send_session_accepted_reply (session->vpp_evt_q, mp, session, 0);
 
   return session->session_index;
 
 error:
   vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0),
 			 mp->vpp_event_queue_address, mp->mq_index, &evt_q);
-  vcl_send_session_accepted_reply (evt_q, mp->context, mp->handle,
-				   VNET_API_ERROR_INVALID_ARGUMENT);
+  vcl_send_session_accepted_reply (evt_q, mp, 0, SESSION_E_INVALID);
   vcl_session_free (wrk, session);
   return VCL_INVALID_SESSION_INDEX;
 }
@@ -1319,9 +1318,8 @@ vppcom_session_unbind (u32 session_handle)
       clib_fifo_sub2 (session->accept_evts_fifo, evt);
       accepted_msg = &evt->accepted_msg;
       vcl_session_table_del_vpp_handle (wrk, accepted_msg->handle);
-      vcl_send_session_accepted_reply (session->vpp_evt_q,
-				       accepted_msg->context,
-				       accepted_msg->handle, -1);
+      vcl_send_session_accepted_reply (session->vpp_evt_q, accepted_msg, 0,
+				       SESSION_E_REFUSED);
     }
   clib_fifo_free (session->accept_evts_fifo);
 
