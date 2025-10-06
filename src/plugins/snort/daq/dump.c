@@ -357,6 +357,22 @@ daq_vpp_dump_pkt_hdr (const DAQ_PktHdr_t *hdr)
   return buf;
 }
 
+const char *
+daq_vpp_inject_direction (int reverse)
+{
+  switch (reverse)
+    {
+    case (DAQ_DIR_FORWARD):
+      return "Forward Injection";
+    case (DAQ_DIR_REVERSE):
+      return "Reverse Injection";
+    case (DAQ_DIR_BOTH):
+      return "Forward & Reverse Injection";
+    default:
+      return "Unknown";
+    }
+}
+
 static inline const char *
 daq_vpp_msg_type_to_str (DAQ_MsgType type)
 {

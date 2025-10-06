@@ -22,6 +22,72 @@ typedef struct
   u8 use_rewrite_length_offset;
 } snort_enq_scalar_args_t;
 
+static_always_inline void
+snort_empty_buffers_enqueue (vlib_main_t *vm, snort_qpair_t *qp,
+			     u32 next_index)
+{
+  snort_main_t *sm = &snort_main;
+  daq_vpp_desc_index_t mask = pow2_mask (qp->log2_ebuf_queue_size);
+  daq_vpp_desc_index_t next_free_desc = qp->next_free_desc;
+  u32 n_free_descs = qp->n_free_descs;
+  u32 ebuf_size = 1 << qp->log2_ebuf_queue_size;
+  daq_vpp_head_tail_t head;
+  vlib_buffer_t *b[VLIB_FRAME_SIZE / 4];
+  u32 bi[VLIB_FRAME_SIZE / 4];
+  u32 i = 0;
+  u32 n_present, n_req;
+
+  head = __atomic_load_n (&qp->hdr->ebuf.head, __ATOMIC_ACQUIRE);
+
+  n_present = head - qp->ebuf_tail;
+  if (n_present > (ebuf_size >> 2)) // less than 1/4 free
+    return;
+
+  n_req = ebuf_size - n_present;
+  n_req = clib_min (n_req, VLIB_FRAME_SIZE / 4); // max 64 at once
+  n_req = clib_min (n_req, n_free_descs);
+
+  n_req = vlib_buffer_alloc (vm, bi, n_req);
+  if (n_req == 0)
+    return;
+
+  vlib_get_buffers (vm, bi, b, n_req);
+
+  while (i < n_req)
+    {
+      u32 desc_index = next_free_desc;
+      snort_qpair_entry_t *qpe = qp->entries + desc_index;
+      daq_vpp_desc_t *d = qp->hdr->descs + desc_index;
+
+      if (!(d->flags & DAQ_VPP_DESC_FLAG_FREE))
+	break;
+
+      /* take next empty descriptor from freelist */
+      next_free_desc = qpe->freelist_next;
+      n_free_descs--;
+      b[i]->current_data = 0;
+      *d = (daq_vpp_desc_t){
+       .buffer_pool = b[i]->buffer_pool_index,
+       .length = vlib_buffer_get_default_data_size (vm),
+       .offset = (u8 *) b[i]->data -
+                 sm->buffer_pool_base_addrs[d->buffer_pool],
+       .metadata = { .desc_index = ~0, },
+        .flags = DAQ_VPP_DESC_FLAG_EMPTY_BUFFER,
+      };
+      qpe->buffer_index = bi[i];
+      qpe->next_index = next_index;
+
+      /* ebuf queue */
+      qp->ebuf_ring[head & mask] = desc_index;
+      head++;
+      i++;
+    }
+
+  __atomic_store_n (&qp->hdr->ebuf.head, head, __ATOMIC_RELEASE);
+  qp->n_free_descs = n_free_descs;
+  qp->next_free_desc = next_free_desc;
+}
+
 static_always_inline uword
 snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 snort_instance_t *si, snort_qpair_t *qp, u16 qpi, u32 *from,
@@ -70,7 +136,7 @@ snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
 	snort_qpair_entry_t *qpe = qp->entries + desc_index;
 	daq_vpp_desc_t *d = qp->hdr->descs + desc_index;
 
-	if (n_free_descs == 0)
+	if (n_free_descs == 0 || (d->flags & DAQ_VPP_DESC_FLAG_FREE) == 0)
 	  break;
 
 	/* take empty descriptor from freelist */
@@ -164,6 +230,11 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d,
       d[2].offset = p[2] + off[2] - sm->buffer_pool_base_addrs[bpi[2]];
       d[3].offset = p[3] + off[3] - sm->buffer_pool_base_addrs[bpi[3]];
 
+      d[0].flags = DAQ_VPP_DESC_FLAG_AVAIL;
+      d[1].flags = DAQ_VPP_DESC_FLAG_AVAIL;
+      d[2].flags = DAQ_VPP_DESC_FLAG_AVAIL;
+      d[3].flags = DAQ_VPP_DESC_FLAG_AVAIL;
+
       if (with_hash)
 	{
 	  iph[0] = p[0];
@@ -189,6 +260,7 @@ snort_enq_prepare_descs (vlib_main_t *vm, vlib_buffer_t **b, daq_vpp_desc_t *d,
       d[0].length = b[0]->current_length - off[0];
       p[0] = (u8 *) b[0]->data + b[0]->current_data;
       d[0].offset = p[0] + off[0] - sm->buffer_pool_base_addrs[bpi[0]];
+      d[0].flags = DAQ_VPP_DESC_FLAG_AVAIL;
 
       if (with_hash)
 	iph[0] = p[0];
@@ -269,12 +341,18 @@ VLIB_NODE_FN (snort_enq_node)
     }
 
   if (qpairs_per_thread == 1)
-    return snort_enq_qpair (vm, node, si, qp[0], 0, from, descs, 0, n_from,
-			    next_index, /* single_qpair */ 1);
+    {
+      snort_empty_buffers_enqueue (vm, qp[0], next_index);
+      return snort_enq_qpair (vm, node, si, qp[0], 0, from, descs, 0, n_from,
+			      next_index, /* single_qpair */ 1);
+    }
 
   for (u32 qpi = 0; qpi < qpairs_per_thread; qpi++)
-    rv += snort_enq_qpair (vm, node, si, qp[qpi], qpi, from, descs, hashes,
-			   n_from, next_index, /* single_qpair */ 0);
+    {
+      snort_empty_buffers_enqueue (vm, qp[qpi], next_index);
+      rv += snort_enq_qpair (vm, node, si, qp[qpi], qpi, from, descs, hashes,
+			     n_from, next_index, /* single_qpair */ 0);
+    }
   return rv;
 }
 

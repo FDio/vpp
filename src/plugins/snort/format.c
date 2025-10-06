@@ -112,3 +112,25 @@ format_snort_mode (u8 *s, va_list *args)
 
   return format (s, "%s", strings[v]);
 }
+
+u8 *
+format_snort_desc_flags (u8 *s, va_list *args)
+{
+  daq_vpp_desc_flags_t flags = va_arg (*args, daq_vpp_desc_flags_t);
+
+  if (flags == DAQ_VPP_DESC_FLAG_NONE)
+    return format (s, "none");
+  if (flags & DAQ_VPP_DESC_FLAG_FREE)
+    s = format (s, "free ");
+  if (flags & DAQ_VPP_DESC_FLAG_AVAIL)
+    s = format (s, "avail ");
+  if (flags & DAQ_VPP_DESC_FLAG_IN_PROCESSING)
+    s = format (s, "in-processing ");
+  if (flags & DAQ_VPP_DESC_FLAG_USED)
+    s = format (s, "used ");
+  if (flags & DAQ_VPP_DESC_FLAG_EMPTY_BUFFER)
+    s = format (s, "empty-buffer ");
+  if (flags & DAQ_VPP_DESC_FLAG_INJECTED)
+    s = format (s, "injected ");
+  return s;
+}

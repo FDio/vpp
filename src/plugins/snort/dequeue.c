@@ -62,8 +62,8 @@ snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (head == tail)
     return 0;
 
-more:
   old_tail = tail;
+more:
 
   n_left = clib_min (VLIB_FRAME_SIZE, head - tail);
 
@@ -72,12 +72,12 @@ more:
     {
       u32 desc_index = qp->deq_ring[tail & mask];
       snort_qpair_entry_t *qpe = qp->entries + desc_index;
-      daq_vpp_desc_t *d;
+      daq_vpp_desc_t *d = qp->hdr->descs + desc_index;
       vlib_buffer_t *b;
-      u32 bi;
+      u32 bi = qpe->buffer_index;
       u8 verdict;
 
-      /* check if descriptor index taken from dequqe ring is valid */
+      /* check if descriptor index taken from dequeue ring is valid */
       if (desc_index & ~mask)
 	{
 	  error = 1;
@@ -86,10 +86,9 @@ more:
 	  break;
 	}
 
-      /* check if descriptor index taken from dequeue ring points to
-       * enqueued buffer */
-      bi = qpe->buffer_index;
-      if (bi == ~0)
+      /* check if descriptor index taken from dequeue ring is already
+       * consumed by snort */
+      if ((d->flags & DAQ_VPP_DESC_FLAG_USED) == 0)
 	{
 	  error = 1;
 	  vlib_node_increment_counter (vm, node->node_index,
@@ -97,7 +96,22 @@ more:
 	  break;
 	}
 
-      d = qp->hdr->descs + desc_index;
+      b = vlib_get_buffer (vm, bi);
+
+      if (d->flags & DAQ_VPP_DESC_FLAG_INJECTED)
+	{
+	  qp->ebuf_tail++;
+	  snort_qpair_entry_t *respective_qpe =
+	    qp->entries + d->metadata.desc_index;
+	  d->metadata.desc_index = 0;
+	  u32 respective_bi = respective_qpe->buffer_index;
+	  vlib_buffer_t *respective_b = vlib_get_buffer (vm, respective_bi);
+	  b->current_config_index = respective_b->current_config_index;
+	  vnet_buffer (b)->feature_arc_index =
+	    vnet_buffer (respective_b)->feature_arc_index;
+	  d->metadata.verdict = 0; // DAQ_VPP_VERDICT_PASS
+	}
+
       verdict = d->metadata.verdict;
       from[0] = bi;
       if ((1U << verdict) & drop_bitmap)
@@ -106,12 +120,12 @@ more:
 	nexts[0] = qpe->next_index;
       n_verdicsts[verdict]++;
       qpe->buffer_index = ~0;
-      b = vlib_get_buffer (vm, bi);
       *snort_get_buffer_metadata (b) = d->metadata;
 
       /* put descriptor back to freelist */
       qpe->freelist_next = next_free;
       next_free = desc_index;
+      d->flags = DAQ_VPP_DESC_FLAG_FREE;
 
       /* next */
       tail++;

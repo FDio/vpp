@@ -32,6 +32,25 @@ typedef enum
   DAQ_VPP_MAX_DAQ_MODE,
 } daq_vpp_mode_t;
 
+typedef enum
+{
+  DAQ_VPP_DESC_FLAG_NONE = 0,
+  // descriptor is free
+  DAQ_VPP_DESC_FLAG_FREE = (1 << 0),
+  // descriptor is available (to be processed)
+  DAQ_VPP_DESC_FLAG_AVAIL =
+    (1 << 1), // descriptor is available (to be processed)
+  // descriptor is being processed (by snort), do not modify
+  DAQ_VPP_DESC_FLAG_IN_PROCESSING = (1 << 2),
+  // descriptor has been processed (by snort) and can be recycled
+  DAQ_VPP_DESC_FLAG_USED = (1 << 3),
+  // descriptor is an empty buffer (to be filled with new packet data) for
+  // packet injection
+  DAQ_VPP_DESC_FLAG_EMPTY_BUFFER = (1 << 4),
+  // descriptor has been injected (by snort) and is ready for transmission
+  DAQ_VPP_DESC_FLAG_INJECTED = (1 << 5),
+} daq_vpp_desc_flags_t;
+
 typedef uint8_t daq_vpp_buffer_pool_index_t;
 typedef uint16_t daq_vpp_input_index_t;
 typedef uint16_t daq_vpp_qpair_index_t;
@@ -135,9 +154,11 @@ typedef struct
   daq_vpp_input_index_t input_index;
   daq_vpp_qpair_index_t qpair_index;
   uint8_t log2_queue_size;
+  uint8_t log2_ebuf_queue_size;
   daq_vpp_offset_t qpair_header_offset;
   daq_vpp_offset_t enq_ring_offset;
   daq_vpp_offset_t deq_ring_offset;
+  daq_vpp_offset_t ebuf_ring_offset;
 } daq_vpp_msg_reply_attach_qpair_t;
 
 typedef struct
@@ -178,6 +199,10 @@ typedef struct
     };
     struct
     {
+      uint32_t desc_index; /* descriptor index */
+    };
+    struct
+    {
       daq_vpp_verdict_t verdict; /* verdict */
     };
     uint32_t data[4];
@@ -189,6 +214,7 @@ _Static_assert (sizeof (daq_vpp_pkt_metadata_t) == 16,
 
 typedef struct
 {
+  daq_vpp_desc_flags_t flags;
   daq_vpp_offset_t offset;
   uint16_t length;
   uint8_t buffer_pool;
@@ -212,11 +238,18 @@ typedef struct
     uint8_t interrupt_pending;
   } __attribute__ ((__aligned__ (64))) deq;
 
+  /* empty buffer enqueue */
+  struct
+  {
+    daq_vpp_head_tail_t head;
+    uint8_t interrupt_pending;
+  } __attribute__ ((__aligned__ (64))) ebuf;
+
   /* descriptors */
   daq_vpp_desc_t __attribute__ ((__aligned__ (64))) descs[];
 } daq_vpp_qpair_header_t;
 
-_Static_assert (sizeof (daq_vpp_qpair_header_t) == 128,
-		"size must be two achelines");
+_Static_assert (sizeof (daq_vpp_qpair_header_t) == 192,
+		"size must be three cachelines");
 
 #endif /* __DAQ_VPP_SHARED_H__ */

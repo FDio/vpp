@@ -432,16 +432,101 @@ daq_vpp_interrupt (void *handle)
   return DAQ_SUCCESS;
 }
 
+static int
+daq_vpp_inject (void *handle, DAQ_MsgType type, const void *hdr,
+		const uint8_t *data, uint32_t data_len)
+{
+  daq_vpp_ctx_t __unused *ctx = (daq_vpp_ctx_t *) handle;
+  daq_vpp_main_t __unused *vdm = &daq_vpp_main;
+  DAQ_PktHdr_t *pkthdr = (DAQ_PktHdr_t *) hdr;
+
+  DEBUG_DUMP_MSG2 (pkthdr, type, data, data_len);
+
+  return DAQ_ERROR_NOTSUP;
+}
+
+static int
+daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
+			 uint32_t data_len, int reverse)
+{
+  daq_vpp_ctx_t *ctx = (daq_vpp_ctx_t *) handle;
+  daq_vpp_main_t *vdm = &daq_vpp_main;
+  daq_vpp_msg_pool_entry_t *pe = msg->priv;
+  daq_vpp_qpair_t *qp = pe->qpair;
+  daq_vpp_head_tail_t head, tail, mask = qp->ebuf_queue_size - 1;
+  daq_vpp_qpair_header_t *h = qp->hdr;
+  daq_vpp_desc_t *d;
+  uint32_t desc_index, n_buf;
+  uint8_t *buf_data;
+
+  DEBUG_DUMP_MSG (msg);
+  DEBUG2 ("%s", daq_vpp_inject_direction (reverse));
+  DEBUG_DUMP_DATA_HEX (data, data_len);
+
+  // check the injection direction against the packet direction
+  // if direction is not the supported one, return error
+  switch (reverse)
+    {
+    case DAQ_DIR_FORWARD:
+      break;
+    case DAQ_DIR_REVERSE:
+      break;
+    case DAQ_DIR_BOTH:
+      break;
+    default:
+      return daq_vpp_err (ctx, "invalid direction %d", reverse);
+    }
+
+  tail = qp->ebuf_tail;
+  head = __atomic_load_n (&qp->hdr->ebuf.head, __ATOMIC_ACQUIRE);
+  n_buf = head - tail;
+  if (n_buf == 0)
+    {
+      DEBUG2 ("no empty buffer available to inject packet");
+      return daq_vpp_err (ctx, "no empty buffer available to inject packet");
+    }
+  desc_index = qp->ebuf_ring[tail++ & mask];
+  qp->ebuf_tail = tail;
+  d = qp->hdr->descs + desc_index;
+  if (!(d->flags & DAQ_VPP_DESC_FLAG_EMPTY_BUFFER))
+    return daq_vpp_err (ctx, "descriptor %u not with empty buffer, flags: %x",
+			desc_index, d->flags);
+  buf_data = vdm->bpools[d->buffer_pool].base + d->offset;
+  d->metadata.desc_index = pe->index;
+  d->flags = DAQ_VPP_DESC_FLAG_USED | DAQ_VPP_DESC_FLAG_INJECTED;
+
+  if (d->length < data_len)
+    return daq_vpp_err (ctx, "descriptor %u buffer too small (%u < %u)",
+			desc_index, d->length, data_len);
+
+  memcpy (buf_data, data, data_len);
+  d->length = data_len;
+
+  mask = qp->queue_size - 1;
+  head = __atomic_load_n (&h->deq.head, __ATOMIC_RELAXED);
+
+  qp->deq_ring[head & mask] = desc_index;
+  head = head + 1;
+  __atomic_store_n (&h->deq.head, head, __ATOMIC_RELEASE);
+
+  if (!__atomic_exchange_n (&qp->hdr->deq.interrupt_pending, 1,
+			    __ATOMIC_RELAXED))
+    {
+      ssize_t __unused rv;
+      rv = write (qp->deq_fd, &(uint64_t){ 1 }, sizeof (uint64_t));
+    }
+  return DAQ_SUCCESS;
+}
+
 const DAQ_Msg_t *
-daq_vpp_fill_msg (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, uint32_t desc_index,
-		  struct timeval tv)
+daq_vpp_fill_msg (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp, daq_vpp_desc_t *d,
+		  uint32_t desc_index, struct timeval tv)
 {
   daq_vpp_main_t *vdm = &daq_vpp_main;
   daq_vpp_msg_pool_entry_t *pe;
-  daq_vpp_desc_t *d;
   uint8_t *data;
 
-  d = qp->hdr->descs + desc_index;
+  d->flags = DAQ_VPP_DESC_FLAG_IN_PROCESSING;
   data = vdm->bpools[d->buffer_pool].base + d->offset;
 
   daq_vpp_prefetch_read (data);
@@ -467,9 +552,11 @@ uint32_t
 daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
 			 const DAQ_Msg_t *msgs[], unsigned max_recv)
 {
-  uint32_t n_recv, n_left, desc_index, next_desc_index;
+  uint32_t n_recv, desc_index;
   daq_vpp_head_tail_t head, tail, mask = qp->queue_size - 1;
+  daq_vpp_desc_t *d;
   struct timeval tv;
+  uint32_t i = 0;
 
   if (max_recv == 0)
     return 0;
@@ -484,23 +571,23 @@ daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
   if (n_recv > max_recv)
     n_recv = max_recv;
 
-  next_desc_index = qp->enq_ring[tail++ & mask];
-
   gettimeofday (&tv, NULL);
-  for (n_left = n_recv; n_left > 1; n_left--, msgs++)
+  for (; i < n_recv; i++)
     {
-      desc_index = next_desc_index;
-
-      msgs[0] = daq_vpp_fill_msg (ctx, qp, desc_index, tv);
-      next_desc_index = qp->enq_ring[tail++ & mask];
+      desc_index = qp->enq_ring[tail & mask];
+      d = qp->hdr->descs + desc_index;
+      if (d->flags & DAQ_VPP_DESC_FLAG_AVAIL)
+	{
+	  msgs[i] = daq_vpp_fill_msg (ctx, qp, d, desc_index, tv);
+	  tail++;
+	}
+      else
+	break;
     }
-
-  /* last packet */
-  msgs[0] = daq_vpp_fill_msg (ctx, qp, next_desc_index, tv);
 
   qp->tail = tail;
 
-  return n_recv;
+  return i;
 }
 
 static inline void
@@ -659,13 +746,27 @@ daq_vpp_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
 
   DEBUG_DUMP_MSG (msg);
 
+  if (ctx->msg_pool_info.available == ctx->msg_pool_info.size)
+    {
+      DEBUG2 ("all messages are already finalized");
+      return DAQ_SUCCESS;
+    }
+
   if (verdict >= MAX_DAQ_VERDICT)
-    verdict = DAQ_VERDICT_PASS;
+    {
+      DEBUG2 ("verdict %d out of range, setting to PASS", verdict);
+      verdict = DAQ_VERDICT_PASS;
+    }
   ctx->stats.verdicts[verdict]++;
 
   mask = qp->queue_size - 1;
   head = __atomic_load_n (&h->deq.head, __ATOMIC_RELAXED);
   d = h->descs + pe->index;
+
+  if (!(d->flags & DAQ_VPP_DESC_FLAG_IN_PROCESSING))
+    return daq_vpp_err (ctx, "descriptor %u not in processing, flags: %x",
+			pe->index, d->flags);
+  d->flags = DAQ_VPP_DESC_FLAG_USED;
 
   d->metadata.verdict = (daq_vpp_verdict_t) verdict;
   qp->deq_ring[head & mask] = pe->index;
@@ -716,8 +817,12 @@ daq_vpp_reset_stats (void *handle)
 static uint32_t
 daq_vpp_get_capabilities (void __unused *handle)
 {
-  return DAQ_CAPA_BLOCK | DAQ_CAPA_UNPRIV_START | DAQ_CAPA_INTERRUPT |
-	 DAQ_CAPA_DEVICE_INDEX;
+  return DAQ_CAPA_BLOCK |	 /* can block packets */
+	 DAQ_CAPA_INJECT |	 /* can inject packets */
+	 DAQ_CAPA_UNPRIV_START | /* can start without root privileges */
+	 DAQ_CAPA_INTERRUPT |	 /* can be interrupted */
+	 DAQ_CAPA_DEVICE_INDEX; /* can consistently fill the device index field
+				   in DAQ_PktHdr */
 }
 
 static int
@@ -726,7 +831,7 @@ daq_vpp_get_datalink_type (void __unused *handle)
   return DLT_IPV4;
 }
 
-static char *
+static const char *
 daq_vpp_ioctl_cmd_to_str (DAQ_IoctlCmd cmd)
 {
 #define IOCTL_CMD_STR(cmd)                                                    \
@@ -766,46 +871,57 @@ daq_vpp_ioctl (void *handle, DAQ_IoctlCmd cmd, void *arg, size_t arglen)
 
   DEBUG ("ioctl cmd %s", daq_vpp_ioctl_cmd_to_str (cmd));
 
-  if (cmd == DIOCTL_GET_DEVICE_INDEX)
+  switch (cmd)
     {
-      char name[DAQ_VPP_MAX_INST_NAME_LEN], *colon;
+    case DIOCTL_GET_DEVICE_INDEX:
+      {
+	char name[DAQ_VPP_MAX_INST_NAME_LEN], *colon;
 
-      if (arglen != sizeof (DIOCTL_QueryDeviceIndex))
-	return DAQ_ERROR_NOTSUP;
+	if (arglen != sizeof (DIOCTL_QueryDeviceIndex))
+	  return DAQ_ERROR_NOTSUP;
 
-      if (qdi->device == 0)
-	{
-	  daq_vpp_err (ctx, "no device name in IOCTL_GET_DEVICE_INDEX");
-	  return DAQ_ERROR_INVAL;
-	}
-      snprintf (name, sizeof (name), "%s", qdi->device);
-      colon = strchr (name, ':');
-      if (colon)
-	colon[0] = 0;
-
-      for (daq_vpp_input_index_t ii = 0; ii < vdm->n_inputs; ii++)
-	if (strcmp (name, vdm->inputs[ii]->name) == 0)
+	if (qdi->device == 0)
 	  {
-	    qdi->index = ii + 1;
-	    return DAQ_SUCCESS;
+	    daq_vpp_err (ctx, "no device name in IOCTL_GET_DEVICE_INDEX");
+	    return DAQ_ERROR_INVAL;
 	  }
+	snprintf (name, sizeof (name), "%s", qdi->device);
+	colon = strchr (name, ':');
+	if (colon)
+	  colon[0] = 0;
 
-      return DAQ_ERROR_NODEV;
-    }
-  else if (cmd == DIOCTL_GET_PRIV_DATA_LEN)
-    {
-      DIOCTL_GetPrivDataLen *gpl = (DIOCTL_GetPrivDataLen *) arg;
+	for (daq_vpp_input_index_t ii = 0; ii < vdm->n_inputs; ii++)
+	  if (strcmp (name, vdm->inputs[ii]->name) == 0)
+	    {
+	      qdi->index = ii + 1;
+	      return DAQ_SUCCESS;
+	    }
 
-      if (arglen != sizeof (DIOCTL_GetPrivDataLen))
-	return DAQ_ERROR_NOTSUP;
-      if (gpl->msg->priv != NULL)
-	gpl->priv_data_len = sizeof (daq_vpp_msg_pool_entry_t);
-      else
-	gpl->priv_data_len = 0;
+	return DAQ_ERROR_NODEV;
+      }
+    case DIOCTL_GET_PRIV_DATA_LEN:
+      {
+	DIOCTL_GetPrivDataLen *gpl = (DIOCTL_GetPrivDataLen *) arg;
 
-      DEBUG2 ("ioctl cmd %s %u", daq_vpp_ioctl_cmd_to_str (cmd),
-	      gpl->priv_data_len);
-      return DAQ_SUCCESS;
+	if (arglen != sizeof (DIOCTL_GetPrivDataLen))
+	  return DAQ_ERROR_NOTSUP;
+	if (gpl->msg->priv != NULL)
+	  gpl->priv_data_len = sizeof (daq_vpp_msg_pool_entry_t);
+	else
+	  gpl->priv_data_len = 0;
+
+	DEBUG2 ("ioctl cmd %s %u", daq_vpp_ioctl_cmd_to_str (cmd),
+		gpl->priv_data_len);
+	return DAQ_SUCCESS;
+      }
+    case DIOCTL_DIRECT_INJECT_PAYLOAD:
+    case DIOCTL_DIRECT_INJECT_RESET:
+    case DIOCTL_SET_INJECT_DROP:
+      DEBUG2 ("%s is a no-op", daq_vpp_ioctl_cmd_to_str (cmd));
+
+    default:
+      // not supported yet
+      return DAQ_ERROR_NOTSUP;
     }
 
   return DAQ_ERROR_NOTSUP;
@@ -825,6 +941,8 @@ const DAQ_ModuleAPI_t DAQ_MODULE_DATA = {
   .instantiate = daq_vpp_instantiate,
   .destroy = daq_vpp_destroy,
   .start = daq_vpp_start,
+  .inject = daq_vpp_inject,
+  .inject_relative = daq_vpp_inject_relative,
   .interrupt = daq_vpp_interrupt,
   .ioctl = daq_vpp_ioctl,
   .get_stats = daq_vpp_get_stats,

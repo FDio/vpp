@@ -31,12 +31,15 @@ typedef struct
   daq_vpp_qpair_header_t *hdr;
   daq_vpp_desc_index_t *enq_ring;
   daq_vpp_desc_index_t *deq_ring;
+  daq_vpp_desc_index_t *ebuf_ring;
   int enq_fd, deq_fd;
   u32 client_index;
   daq_vpp_desc_index_t next_free_desc;
   u16 n_free_descs;
   daq_vpp_head_tail_t deq_tail;
+  daq_vpp_head_tail_t ebuf_tail;
   u8 log2_queue_size;
+  u8 log2_ebuf_queue_size;
   u8 cleanup_needed;
   daq_vpp_qpair_id_t qpair_id;
   u32 deq_fd_file_index;
@@ -148,6 +151,7 @@ format_function_t format_snort_deq_trace;
 format_function_t format_snort_daq_version;
 format_function_t format_snort_verdict;
 format_function_t format_snort_mode;
+format_function_t format_snort_desc_flags;
 
 /* enqueue.c */
 typedef struct
@@ -211,16 +215,20 @@ always_inline void
 snort_qpair_init (snort_qpair_t *qp)
 {
   u16 qsz = 1 << qp->log2_queue_size;
-  for (int j = 0; j < qsz - 1; j++)
+  u16 mask = qsz - 1;
+  for (int j = 0; j < qsz; j++)
     {
-      qp->entries[j].freelist_next = j + 1;
+      qp->entries[j].freelist_next = (j + 1) & mask;
+      qp->hdr->descs[j].flags = DAQ_VPP_DESC_FLAG_FREE;
       qp->entries[j].buffer_index = VLIB_BUFFER_INVALID_INDEX;
     }
-  qp->entries[qsz - 1].freelist_next = ~0;
   qp->next_free_desc = 0;
   qp->hdr->enq.head = qp->hdr->deq.head = 0;
   qp->hdr->enq.interrupt_pending = qp->hdr->deq.interrupt_pending = 0;
   qp->deq_tail = 0;
+  qp->hdr->ebuf.head = 0;
+  qp->hdr->ebuf.interrupt_pending = 0;
+  qp->ebuf_tail = 0;
   qp->n_free_descs = qsz;
 }
 

@@ -14,6 +14,7 @@
 typedef struct
 {
   u8 log2_queue_sz;
+  u8 log2_ebuf_queue_sz;
   u8 drop_on_disconnect;
   u8 qpairs_per_thread;
   u8 drop_bitmap; /* bits indexed by verdict, 0 = pass, 1 = drop */
