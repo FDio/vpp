@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2462c95_c2e44c5d",
+        "filename": "src/cmake/plugin.cmake",
+        "patchSetId": 5
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-06T09:34:07Z",
+      "side": 1,
+      "message": "I am not sure we should *always* prefer static. We prefer static only for the dependencies we built ourselves, but for external dependencies eg. openssl we should let the default happen.",
+      "revId": "a36a627880aedbce39c277b20bfa54761cdc05a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
