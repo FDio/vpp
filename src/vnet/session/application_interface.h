@@ -382,6 +382,7 @@ typedef struct session_accepted_reply_msg_
   u32 context;
   i32 retval;
   session_handle_t handle;
+  u32 app_session_index;
 } __clib_packed session_accepted_reply_msg_t;
 
 typedef struct session_connect_msg_

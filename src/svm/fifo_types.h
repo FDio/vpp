@@ -83,7 +83,7 @@ typedef struct svm_fifo_shr_
   u32 min_alloc;		/**< min chunk alloc if space available */
   u32 size;			/**< size of the fifo in bytes */
   u32 master_session_index;	/**< session layer session index */
-  u32 client_session_index;	/**< app session index */
+  //   u32 client_session_index;	/**< app session index */
   u8 slice_index;		/**< segment slice for fifo */
   union
   {
