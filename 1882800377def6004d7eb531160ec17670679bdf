@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c737665_e657ace1",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-06T15:49:39Z",
+      "side": 0,
+      "message": "Hm, why would we want this? Also not sure at what point v6 disappeared from this list.",
+      "revId": "1882800377def6004d7eb531160ec17670679bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
