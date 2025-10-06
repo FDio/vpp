@@ -12,7 +12,7 @@ BASE=${BASE:-"$COMMIT_HASH"}
 
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
-export TIGERA_VERSION="${TIGERA_VERSION:-v3.28.3}"
+export TIGERA_VERSION="${TIGERA_VERSION:-master}"
 echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 
@@ -86,14 +86,6 @@ push_release_to_registry() {
   done
 }
 
-push_master_to_registry() {
-  for component in vpp agent multinet-monitor; do
-    docker pull docker.io/calicovpp/$component:latest
-    docker image tag docker.io/calicovpp/$component:latest localhost:5000/calicovpp/$component:latest
-	  docker push localhost:5000/calicovpp/$component:latest
-  done
-}
-
 cherry_pick() {
   STASHED_CHANGES=0
   echo "checkpoint: $COMMIT_HASH"
@@ -113,8 +105,7 @@ cherry_pick() {
 
 build_load_start_cni() {
   make -C $VPP_DIR/test-c/kube-test build-vpp-release
-  make -C $CALICOVPP_DIR dev-kind
-  make -C $CALICOVPP_DIR load-kind
+  make -C $CALICOVPP_DIR image-kind VPP_DIR=$VPP_DIR
   kubectl create --save-config -f kubernetes/calico-config.yaml
 }
 
@@ -143,7 +134,6 @@ setup_master() {
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
-  push_master_to_registry
   push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
@@ -170,8 +160,7 @@ setup_release() {
   push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
-  echo "Waiting for tigera-operator pod to start up."
-  kubectl -n tigera-operator wait --for=condition=Ready pod --all --timeout=1m
+  while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
   kubectl create --save-config -f kubernetes/calico-config.yaml
 
