@@ -336,8 +336,6 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
   s->tx_fifo->vpp_session_index = s->tx_fifo->shr->master_session_index;
   s->rx_fifo->app_session_index = s->session_index;
   s->tx_fifo->app_session_index = s->session_index;
-  s->rx_fifo->shr->client_session_index = s->session_index;
-  s->tx_fifo->shr->client_session_index = s->session_index;
 
   if (mq_offset != (uword) ~0)
     {
