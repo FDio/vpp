@@ -605,6 +605,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
   rmp->handle = mp->handle;
   rmp->context = mp->context;
+  rmp->app_session_index = session->session_index;
   app_send_ctrl_evt_to_vpp (session->vpp_evt_q, app_evt);
   em->proto_cb_vft->accepted_cb (mp, session);
 }
