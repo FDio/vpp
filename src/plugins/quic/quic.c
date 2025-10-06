@@ -330,6 +330,10 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   cargs->sep_ext.ns_index = app->ns_index;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
 
+  ctx->alpn_protos[0] = ccfg->alpn_protos[0];
+  ctx->alpn_protos[1] = ccfg->alpn_protos[1];
+  ctx->alpn_protos[2] = ccfg->alpn_protos[2];
+  ctx->alpn_protos[3] = ccfg->alpn_protos[3];
   ctx->crypto_engine = ccfg->crypto_engine;
   ctx->ckpair_index = ccfg->ckpair_index;
   error = quic_eng_crypto_context_acquire (ctx);
@@ -420,6 +424,11 @@ quic_start_listen (u32 quic_listen_session_index,
   lctx->parent_app_id = app_wrk->app_index;
   lctx->udp_session_handle = udp_handle;
   lctx->c_s_index = quic_listen_session_index;
+  lctx->c_c_index = lctx_index;
+  lctx->alpn_protos[0] = ccfg->alpn_protos[0];
+  lctx->alpn_protos[1] = ccfg->alpn_protos[1];
+  lctx->alpn_protos[2] = ccfg->alpn_protos[2];
+  lctx->alpn_protos[3] = ccfg->alpn_protos[3];
   lctx->crypto_engine = ccfg->crypto_engine;
   lctx->ckpair_index = ccfg->ckpair_index;
   if ((rv = quic_eng_crypto_context_acquire (lctx)))
@@ -849,6 +858,14 @@ static transport_proto_vft_t quic_proto = {
   },
 };
 
+__clib_export tls_alpn_proto_t
+quic_get_alpn_selected (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx;
+  ctx = quic_ctx_get (ctx_index, thread_index);
+  return ctx->alpn_selected;
+}
+
 static clib_error_t *
 quic_enable (vlib_main_t *vm, u8 is_en)
 {
@@ -924,6 +941,30 @@ quic_update_fifo_size ()
   seg_mgr_props->rx_fifo_size = qm->udp_fifo_size;
 }
 
+static uword
+quic_alpn_proto_hash_key_sum (hash_t *h, uword key)
+{
+  quic_alpn_proto_id_t *id = uword_to_pointer (key, quic_alpn_proto_id_t *);
+  return hash_memory (id->base, id->len, 0);
+}
+
+always_inline u8
+quic_alpn_proto_id_eq (quic_alpn_proto_id_t *actual,
+		       quic_alpn_proto_id_t *expected)
+{
+  if (actual->len != expected->len)
+    return 0;
+  return memcmp (actual->base, expected->base, actual->len) == 0 ? 1 : 0;
+}
+
+static uword
+quic_alpn_proto_hash_key_equal (hash_t *h, uword key1, uword key2)
+{
+  quic_alpn_proto_id_t *id1 = uword_to_pointer (key1, quic_alpn_proto_id_t *);
+  quic_alpn_proto_id_t *id2 = uword_to_pointer (key2, quic_alpn_proto_id_t *);
+  return id1 && id2 && quic_alpn_proto_id_eq (id1, id2);
+}
+
 static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
@@ -933,6 +974,7 @@ quic_init (vlib_main_t * vm)
   /* TODO: Don't use hard-coded values for segment_size and seed[] */
   u32 segment_size = 256 << 20;
   u8 seed[32];
+  const quic_alpn_proto_id_t *alpn_proto;
 
   QUIC_DBG (1, "QUIC plugin init");
 
@@ -968,7 +1010,17 @@ quic_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
-  vec_free (a->name);
+  qm->alpn_proto_by_str = hash_create2 (
+    0, sizeof (quic_alpn_proto_id_t), sizeof (uword),
+    quic_alpn_proto_hash_key_sum, quic_alpn_proto_hash_key_equal, 0, 0);
+
+#define _(sym, str)                                                           \
+  alpn_proto = &quic_alpn_proto_ids[TLS_ALPN_PROTO_##sym];                    \
+  hash_set_mem (qm->alpn_proto_by_str, alpn_proto, TLS_ALPN_PROTO_##sym);
+  foreach_tls_alpn_protos
+#undef _
+
+    vec_free (a->name);
   return 0;
 }
 

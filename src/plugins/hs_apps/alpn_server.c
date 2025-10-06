@@ -2,9 +2,11 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
+#include <vnet/plugin/plugin.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <vnet/tls/tls_types.h>
+#include <plugins/quic/quic.h>
 
 typedef struct
 {
@@ -15,6 +17,8 @@ typedef struct
   u32 ckpair_index;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
+  transport_proto_t proto;
+  quic_get_alpn_selected_fn quic_get_selected_alpn;
 } alpn_server_main_t;
 
 alpn_server_main_t alpn_server_main;
@@ -36,11 +40,21 @@ as_ts_tx_callback (session_t *ts)
 static int
 as_ts_accept_callback (session_t *ts)
 {
+  alpn_server_main_t *sm = &alpn_server_main;
   tls_alpn_proto_t alpn_proto;
 
   ts->session_state = SESSION_STATE_READY;
 
-  alpn_proto = tls_get_alpn_selected (ts->connection_index);
+  if (sm->proto == TRANSPORT_PROTO_TLS)
+    alpn_proto = tls_get_alpn_selected (ts->connection_index);
+  else if (sm->proto == TRANSPORT_PROTO_QUIC)
+    alpn_proto =
+      sm->quic_get_selected_alpn (ts->connection_index, ts->thread_index);
+  else
+    {
+      clib_warning ("BUG unsupported transport protocol");
+      return -1;
+    }
   clib_warning ("ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
 
   return 0;
@@ -166,6 +180,19 @@ as_listen ()
 
   if (parse_uri (uri, &a->sep_ext))
     return -1;
+
+  sm->proto = a->sep_ext.transport_proto;
+
+  if (sm->proto == TRANSPORT_PROTO_QUIC)
+    {
+      sm->quic_get_selected_alpn =
+	vlib_get_plugin_symbol ("quic_plugin.so", "quic_get_alpn_selected");
+      if (sm->quic_get_selected_alpn == 0)
+	{
+	  clib_warning ("quic_plugin.so not loaded");
+	  return -1;
+	}
+    }
 
   ext_cfg =
     session_endpoint_add_ext_cfg (&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,

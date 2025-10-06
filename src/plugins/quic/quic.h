@@ -136,6 +136,18 @@ typedef enum quic_cc_type
   QUIC_CC_CUBIC,
 } quic_cc_type_t;
 
+typedef struct quic_alpn_proto_id_
+{
+  u8 *base;
+  size_t len;
+} quic_alpn_proto_id_t;
+
+static const quic_alpn_proto_id_t quic_alpn_proto_ids[] = {
+#define _(sym, str) { (u8 *) str, sizeof (str) - 1 },
+  foreach_tls_alpn_protos
+#undef _
+};
+
 /* This structure is used to implement the concept of VPP connection for QUIC.
  * We create one per connection and one per stream. */
 typedef struct quic_ctx_
@@ -168,6 +180,8 @@ typedef struct quic_ctx_
   u32 ckpair_index;
   u32 crypto_engine;
   u32 crypto_context_index;
+  u8 alpn_protos[4];
+  tls_alpn_proto_t alpn_selected;
   u8 flags;
 
   struct
@@ -254,6 +268,7 @@ typedef struct quic_main_
   int num_threads;
   quic_engine_type_t engine_type;
   u8 engine_is_initialized[QUIC_ENGINE_LAST + 1];
+  uword *alpn_proto_by_str; /**< ALPN protocol id reverse lookup */
 } quic_main_t;
 
 extern quic_main_t quic_main;
@@ -352,6 +367,18 @@ quic_disconnect_transport (quic_ctx_t *ctx, u32 app_index)
 		  ctx->udp_session_handle);
 }
 
+static_always_inline tls_alpn_proto_t
+quic_alpn_proto_by_str (quic_main_t *qm, quic_alpn_proto_id_t *alpn_id)
+{
+  uword *p;
+
+  p = hash_get_mem (qm->alpn_proto_by_str, alpn_id);
+  if (p)
+    return p[0];
+
+  return TLS_ALPN_PROTO_NONE;
+}
+
 typedef enum quic_session_connected_
 {
   QUIC_SESSION_CONNECTED_NONE,
@@ -389,6 +416,13 @@ extern void quic_register_engine (const quic_engine_vft_t *vft,
 				  quic_engine_type_t engine_type);
 typedef void (*quic_register_engine_fn) (const quic_engine_vft_t *vft,
 					 quic_engine_type_t engine_type);
+
+/* for apps which use QUIC transport with ALPN */
+tls_alpn_proto_t quic_get_alpn_selected (u32 ctx_index,
+					 clib_thread_index_t thread_index);
+
+typedef tls_alpn_proto_t (*quic_get_alpn_selected_fn) (
+  u32 ctx_index, clib_thread_index_t thread_index);
 
 #endif /* __included_quic_h__ */
 

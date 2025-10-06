@@ -64,11 +64,18 @@ struct cipher_context_t
   crypto_key_t key;
 };
 
+typedef struct quic_quicly_on_client_hello_
+{
+  ptls_on_client_hello_t super;
+  u32 lctx_index;
+} quic_quicly_on_client_hello_t;
+
 typedef struct quic_quicly_crypto_context_data_
 {
   quicly_context_t quicly_ctx;
   char cid_key[QUIC_IV_LEN];
   ptls_context_t ptls_ctx;
+  quic_quicly_on_client_hello_t client_hello_ctx;
 } quic_quicly_crypto_context_data_t;
 
 static_always_inline u8
