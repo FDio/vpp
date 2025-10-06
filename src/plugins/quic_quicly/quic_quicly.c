@@ -895,7 +895,7 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
 
   quic_session = session_alloc (ctx->c_thread_index);
   QUIC_DBG (2,
-	    "Accept connection (new quic_session): session_handle 0x%lx, "
+	    "Accept connection (new quic_session): session 0x%lx, "
 	    "session_index %u, ctx_index %u, thread %u",
 	    session_handle (quic_session), quic_session->session_index,
 	    ctx->c_c_index, ctx->c_thread_index);
@@ -916,6 +916,17 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   QUIC_DBG (
     2, "Accept connection: conn key value 0x%llx, ctx_index %u, thread %u",
     kv.value, pctx->ctx_index, pctx->thread_index);
+
+  if (lctx->alpn_protos[0])
+    {
+      const char *proto = ptls_get_negotiated_protocol (quicly_get_tls (conn));
+      if (proto)
+	{
+	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
+				     .len = strlen (proto) };
+	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+	}
+    }
 
   /* If notify fails, reset connection immediatly */
   rv = app_worker_init_accepted (quic_session);
@@ -1027,14 +1038,27 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 {
   clib_bihash_kv_16_8_t kv;
   quicly_context_t *quicly_ctx;
+  ptls_iovec_t alpn_list[4];
+  ptls_handshake_properties_t hs_properties = {
+    .client.negotiated_protocols.list = alpn_list
+  };
+  const tls_alpn_proto_id_t *alpn_proto;
   quic_quicly_main_t *qqm = &quic_quicly_main;
-  int ret;
+  int ret, i;
 
+  /* build alpn list if app provided something */
+  for (i = 0; i < sizeof (ctx->alpn_protos) && ctx->alpn_protos[i]; i++)
+    {
+      alpn_proto = &tls_alpn_proto_ids[ctx->alpn_protos[i]];
+      alpn_list[i].base = alpn_proto->base;
+      alpn_list[i].len = (size_t) alpn_proto->len;
+      hs_properties.client.negotiated_protocols.count++;
+    }
   quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
-  ret = quicly_connect (
-    (quicly_conn_t **) &ctx->conn, quicly_ctx, (char *) ctx->srv_hostname, sa,
-    NULL, &qqm->next_cid[thread_index], ptls_iovec_init (NULL, 0),
-    &qqm->hs_properties, NULL, NULL);
+  ret = quicly_connect ((quicly_conn_t **) &ctx->conn, quicly_ctx,
+			(char *) ctx->srv_hostname, sa, NULL,
+			&qqm->next_cid[thread_index],
+			ptls_iovec_init (NULL, 0), &hs_properties, NULL, NULL);
   ++qqm->next_cid[thread_index].master_id;
   /*  save context handle in quicly connection */
   quic_quicly_store_conn_ctx (ctx->conn, ctx);
@@ -1288,6 +1312,19 @@ quic_quicly_on_quic_session_connected (quic_ctx_t *ctx)
   quic_session->listener_handle = SESSION_INVALID_HANDLE;
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
+
+  if (ctx->alpn_protos[0])
+    {
+      const char *proto =
+	ptls_get_negotiated_protocol (quicly_get_tls (ctx->conn));
+      if (proto)
+	{
+	  QUIC_DBG (2, "alpn proto selected %s", proto);
+	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
+				     .len = strlen (proto) };
+	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+	}
+    }
 
   /* If quic session connected fails, immediatly close connection */
   app_wrk = app_worker_get (ctx->parent_app_wrk_id);

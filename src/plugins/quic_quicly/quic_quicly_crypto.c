@@ -206,16 +206,20 @@ quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
 #if QUIC_DEBUG >= 2
   if (ctx->c_s_index == QUIC_SESSION_INVALID)
     {
-      clib_warning ("Unopened Session closed by peer (%U) %.*S ",
-		    quic_quicly_format_err, code, reason_len, reason);
+      clib_warning ("Unopened Session closed by peer: error %U, reason %U, "
+		    "ctx_index %u, thread %u",
+		    quic_quicly_format_err, code, format_ascii_bytes, reason,
+		    reason_len, ctx->c_c_index, ctx->c_thread_index);
     }
   else
     {
       session_t *quic_session =
 	session_get (ctx->c_s_index, ctx->c_thread_index);
-      clib_warning ("Session 0x%lx closed by peer (%U) %.*s ",
+      clib_warning ("Session closed by peer: session 0x%lx, error %U, reason "
+		    "%U, ctx_index %u, thread %u",
 		    session_handle (quic_session), quic_quicly_format_err,
-		    code, reason_len, reason);
+		    code, format_ascii_bytes, reason, reason_len,
+		    ctx->c_c_index, ctx->c_thread_index);
     }
 #endif
   ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
@@ -238,6 +242,67 @@ static quicly_closed_by_remote_t on_closed_by_remote = {
   quic_quicly_on_closed_by_remote
 };
 static quicly_now_t quicly_vpp_now_cb = { quic_quicly_get_time };
+
+static int
+quic_quicly_on_client_hello_ptls (ptls_on_client_hello_t *self, ptls_t *tls,
+				  ptls_on_client_hello_parameters_t *params)
+{
+  quic_quicly_on_client_hello_t *ch_ctx =
+    (quic_quicly_on_client_hello_t *) self;
+  quic_ctx_t *lctx;
+  const tls_alpn_proto_id_t *alpn_proto;
+  int i, j, ret;
+
+  lctx = quic_quicly_get_quic_ctx (ch_ctx->lctx_index, 0);
+
+  /* handle ALPN, both sides need to offer something */
+  if (params->negotiated_protocols.count && lctx->alpn_protos[0])
+    {
+      for (i = 0; i < sizeof (lctx->alpn_protos) && lctx->alpn_protos[i]; i++)
+	{
+	  alpn_proto = &tls_alpn_proto_ids[lctx->alpn_protos[i]];
+	  for (j = 0; j < params->negotiated_protocols.count; j++)
+	    {
+	      if (alpn_proto->len != params->negotiated_protocols.list[j].len)
+		continue;
+	      if (!memcmp (alpn_proto->base,
+			   params->negotiated_protocols.list[j].base,
+			   alpn_proto->len))
+		goto alpn_proto_match;
+	    }
+	}
+#if QUIC_DEBUG >= 2
+      u8 *client_alpn_list = 0;
+      for (j = 0; j < params->negotiated_protocols.count; j++)
+	{
+	  if (j > 0)
+	    vec_add (client_alpn_list, ", ", 2);
+	  vec_add (client_alpn_list, params->negotiated_protocols.list[j].base,
+		   params->negotiated_protocols.list[j].len);
+	}
+      clib_warning (
+	"unsupported alpn proto(s) requested by client: proto [%U], "
+	"ctx_index %u, thread %u",
+	format_ascii_bytes, client_alpn_list,
+	(uword) vec_len (client_alpn_list), lctx->c_c_index,
+	lctx->c_thread_index);
+#endif
+      return PTLS_ALERT_NO_APPLICATION_PROTOCOL;
+    alpn_proto_match:
+      if ((ret = ptls_set_negotiated_protocol (tls, (char *) alpn_proto->base,
+					       alpn_proto->len)) != 0)
+	{
+	  QUIC_ERR ("ptls_set_negotiated_protocol failed: error %d, ctx_index "
+		    "%u, thread %u",
+		    ret, lctx->c_c_index, lctx->c_thread_index);
+	  return ret;
+	}
+      QUIC_DBG (2, "alpn proto selected %U, ctx_index %u, thread %u",
+		format_ascii_bytes, alpn_proto->base, (uword) alpn_proto->len,
+		lctx->c_c_index, lctx->c_thread_index);
+    }
+  return 0;
+}
 
 static int
 quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
@@ -300,6 +365,9 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   quicly_ctx = &data->quicly_ctx;
   ptls_ctx = &data->ptls_ctx;
 
+  data->client_hello_ctx.super.cb = quic_quicly_on_client_hello_ptls;
+  data->client_hello_ctx.lctx_index = ctx->listener_ctx_id;
+
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->get_time = &ptls_get_time;
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges;
@@ -309,7 +377,7 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 	    ptls_ctx->cipher_suites);
   ptls_ctx->certificates.list = NULL;
   ptls_ctx->certificates.count = 0;
-  ptls_ctx->on_client_hello = NULL;
+  ptls_ctx->on_client_hello = &data->client_hello_ctx.super;
   ptls_ctx->emit_certificate = NULL;
   ptls_ctx->sign_certificate = NULL;
   ptls_ctx->verify_certificate = NULL;
