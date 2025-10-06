@@ -44,6 +44,7 @@ char *daq_vpp_dump_pkt_hdr (const DAQ_PktHdr_t *hdr);
 void daq_vpp_dump_msg_type (DAQ_MsgType type);
 void daq_vpp_dump_msg (DAQ_Msg_h msg);
 char *daq_vpp_dump_packet_data (const uint8_t *data, uint32_t len);
+const char *daq_vpp_inject_direction (int reverse);
 
 #define DEBUG2(fmt, ...)                                                      \
   if (daq_vpp_main.debug_msg)                                                 \
@@ -106,8 +107,10 @@ typedef struct _vpp_qpair
   daq_vpp_qpair_header_t *hdr;
   daq_vpp_desc_index_t *enq_ring;
   daq_vpp_desc_index_t *deq_ring;
+  daq_vpp_empty_buf_desc_t *empty_buf_ring;
   daq_vpp_head_tail_t tail;
   uint16_t queue_size;
+  uint16_t empty_buf_queue_size;
   int enq_fd;
   int deq_fd;
   daq_vpp_input_index_t input_index;

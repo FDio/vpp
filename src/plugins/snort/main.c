@@ -67,6 +67,7 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
   u8 *base = CLIB_MEM_VM_MAP_FAILED, *name;
   int rv = 0, fd = -1;
   u32 qsz = 1 << args->log2_queue_sz;
+  u32 empty_buf_qsz = 1 << args->log2_empty_buf_queue_sz;
   u32 qpairs_per_thread, total_qpairs, n_threads = tm->n_vlib_mains;
   u8 align = CLIB_CACHE_LINE_BYTES;
 
@@ -99,6 +100,10 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 
   /* enq and deq ring */
   qpair_mem_sz += 2 * round_pow2 (qsz * sizeof (daq_vpp_desc_index_t), align);
+
+  /* empty buffers ring */
+  qpair_mem_sz +=
+    round_pow2 (empty_buf_qsz * sizeof (daq_vpp_empty_buf_desc_t), align);
 
   /* total size of shared memory */
   size = round_pow2 ((uword) total_qpairs * qpair_mem_sz,
@@ -212,6 +217,7 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 	  .client_index = SNORT_INVALID_CLIENT_INDEX,
 	  .dequeue_node_index = si->dequeue_node_index,
 	  .log2_queue_size = args->log2_queue_sz,
+	  .log2_empty_buf_queue_size = args->log2_empty_buf_queue_sz,
 	  .qpair_id.thread_id = thread_id,
 	  .qpair_id.queue_id = queue_id,
 	  .enq_fd = eventfd (0, EFD_NONBLOCK),
@@ -226,12 +232,13 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 	base += round_pow2 (qsz * sizeof (daq_vpp_desc_index_t), align);
 	qp->deq_ring = (void *) base;
 	base += round_pow2 (qsz * sizeof (daq_vpp_desc_index_t), align);
-
-	for (u32 i = 0; i < qsz; i++)
-	  qp->entries[i].buffer_index = VLIB_BUFFER_INVALID_INDEX;
+	qp->empty_buf_ring = (void *) base;
+	base += round_pow2 (empty_buf_qsz * sizeof (daq_vpp_empty_buf_desc_t),
+			    align);
 
 	qp->hdr->enq.cookie = DAQ_VPP_COOKIE;
 	snort_qpair_init (qp);
+	snort_qpair_empty_buf_alloc_buffers (vm, qp);
 
 	/* listen on dequeue events */
 	qp->deq_fd_file_index = clib_file_add (
@@ -305,6 +312,7 @@ snort_instance_delete (vlib_main_t *vm, snort_instance_index_t instance_index)
 
   vec_foreach_pointer (qp, si->qpairs)
     {
+      snort_qpair_empty_buf_free_buffers (vm, qp);
       clib_file_del_by_index (&file_main, qp->deq_fd_file_index);
       close (qp->enq_fd);
       close (qp->deq_fd);

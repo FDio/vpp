@@ -135,9 +135,11 @@ typedef struct
   daq_vpp_input_index_t input_index;
   daq_vpp_qpair_index_t qpair_index;
   uint8_t log2_queue_size;
+  uint8_t log2_empty_buf_queue_size;
   daq_vpp_offset_t qpair_header_offset;
   daq_vpp_offset_t enq_ring_offset;
   daq_vpp_offset_t deq_ring_offset;
+  daq_vpp_offset_t empty_buf_ring_offset;
 } daq_vpp_msg_reply_attach_qpair_t;
 
 typedef struct
@@ -197,6 +199,15 @@ typedef struct
 
 typedef struct
 {
+  daq_vpp_offset_t offset;
+  uint16_t length;
+  uint8_t buffer_pool;
+  uint32_t ref_buffer_desc_index;
+  uint8_t direction;
+} daq_vpp_empty_buf_desc_t;
+
+typedef struct
+{
   /* enqueue */
   struct
   {
@@ -209,6 +220,9 @@ typedef struct
   struct
   {
     daq_vpp_head_tail_t head;
+    // empty buffer ring head/tail
+    daq_vpp_head_tail_t empty_buf_head;
+    daq_vpp_head_tail_t empty_buf_tail;
     uint8_t interrupt_pending;
   } __attribute__ ((__aligned__ (64))) deq;
 
@@ -217,6 +231,6 @@ typedef struct
 } daq_vpp_qpair_header_t;
 
 _Static_assert (sizeof (daq_vpp_qpair_header_t) == 128,
-		"size must be two achelines");
+		"size must be two cachelines");
 
 #endif /* __DAQ_VPP_SHARED_H__ */
