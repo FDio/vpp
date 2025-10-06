@@ -112,3 +112,13 @@ format_snort_mode (u8 *s, va_list *args)
 
   return format (s, "%s", strings[v]);
 }
+
+u8 *
+format_snort_desc (u8 *s, va_list *args)
+{
+  daq_vpp_desc_t *d = va_arg (*args, daq_vpp_desc_t *);
+
+  s = format (s, "desc: buffer-pool %u offset %u length %u", d->buffer_pool,
+	      d->offset, d->length);
+  return s;
+}

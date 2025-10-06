@@ -31,12 +31,16 @@ typedef struct
   daq_vpp_qpair_header_t *hdr;
   daq_vpp_desc_index_t *enq_ring;
   daq_vpp_desc_index_t *deq_ring;
+  daq_vpp_ebuf_desc_t *ebuf_ring;
   int enq_fd, deq_fd;
   u32 client_index;
   daq_vpp_desc_index_t next_free_desc;
   u16 n_free_descs;
   daq_vpp_head_tail_t deq_tail;
+  daq_vpp_head_tail_t ebuf_tail;
   u8 log2_queue_size;
+  u8 log2_ebuf_queue_size;
+  u32 *ebuffers;
   u8 cleanup_needed;
   daq_vpp_qpair_id_t qpair_id;
   u32 deq_fd_file_index;
@@ -148,6 +152,8 @@ format_function_t format_snort_deq_trace;
 format_function_t format_snort_daq_version;
 format_function_t format_snort_verdict;
 format_function_t format_snort_mode;
+format_function_t format_snort_desc_flags;
+format_function_t format_snort_desc;
 
 /* enqueue.c */
 typedef struct
@@ -196,7 +202,8 @@ typedef struct
 #define foreach_snort_deq_error                                               \
   _ (BAD_DESC, "bad descriptor")                                              \
   _ (BAD_DESC_INDEX, "bad descriptor index")                                  \
-  _ (NO_CLIENT_FREE, "packets freed on client dissapear")
+  _ (NO_CLIENT_FREE, "packets freed on client dissapear")                     \
+  _ (NO_FREE_BUFFERS, "no free buffers to allocate to snort")
 
 typedef enum
 {
@@ -211,17 +218,108 @@ always_inline void
 snort_qpair_init (snort_qpair_t *qp)
 {
   u16 qsz = 1 << qp->log2_queue_size;
-  for (int j = 0; j < qsz - 1; j++)
+  u16 ebuf_qsz = 1 << qp->log2_ebuf_queue_size;
+  u16 mask = qsz - 1;
+  for (int j = 0; j < qsz; j++)
     {
-      qp->entries[j].freelist_next = j + 1;
+      qp->entries[j].freelist_next = (j + 1) & mask;
       qp->entries[j].buffer_index = VLIB_BUFFER_INVALID_INDEX;
     }
-  qp->entries[qsz - 1].freelist_next = ~0;
   qp->next_free_desc = 0;
   qp->hdr->enq.head = qp->hdr->deq.head = 0;
   qp->hdr->enq.interrupt_pending = qp->hdr->deq.interrupt_pending = 0;
   qp->deq_tail = 0;
+  qp->hdr->deq.ebuf_head = 0;
+  qp->hdr->deq.ebuf_tail = 0;
+  qp->ebuf_tail = 0;
   qp->n_free_descs = qsz;
+  vec_validate_aligned (qp->ebuffers, ebuf_qsz - 1, CLIB_CACHE_LINE_BYTES);
+
+  for (int i = 0; i < ebuf_qsz; i++)
+    qp->ebuffers[i] = VLIB_BUFFER_INVALID_INDEX;
+}
+
+static_always_inline void
+snort_qpair_ebuf_alloc_buffers (vlib_main_t *vm, snort_qpair_t *qp)
+{
+  snort_main_t *sm = &snort_main;
+  u32 i = 0;
+  daq_vpp_desc_index_t mask = pow2_mask (qp->log2_ebuf_queue_size);
+  u32 ebuf_size = 1 << qp->log2_ebuf_queue_size;
+  daq_vpp_head_tail_t head, tail = qp->ebuf_tail;
+  u32 n_alloc, n_req = 0;
+
+  // allocate new buffers for ebuf ring
+  head = __atomic_load_n (&qp->hdr->deq.ebuf_head, __ATOMIC_ACQUIRE);
+
+  n_req = ebuf_size - (head - tail);
+  if (n_req == 0 || n_req < ebuf_size / 4)
+    return;
+
+  // allocate at most 64 buffers at a time
+  if (n_req > 64)
+    n_req = 64;
+
+  if ((head & mask) + n_req <= ebuf_size)
+    n_alloc = vlib_buffer_alloc (vm, &qp->ebuffers[head & mask], n_req);
+  else
+    {
+      u32 n_first = ebuf_size - (head & mask);
+      u32 n_second = n_req - n_first;
+
+      n_alloc = vlib_buffer_alloc (vm, &qp->ebuffers[head & mask], n_first);
+      if (n_alloc == n_first && n_second)
+	n_alloc += vlib_buffer_alloc (vm, &qp->ebuffers[0], n_second);
+    }
+
+  while (i < n_alloc)
+    {
+      daq_vpp_ebuf_desc_t *ebuf_desc = &qp->ebuf_ring[head & mask];
+      vlib_buffer_t *b = vlib_get_buffer (vm, qp->ebuffers[head & mask]);
+      b->current_data = 0;
+      *ebuf_desc = (daq_vpp_ebuf_desc_t){
+	.buffer_pool = b->buffer_pool_index,
+	.length = vlib_buffer_get_default_data_size (vm),
+	.offset =
+	  (u8 *) b->data - sm->buffer_pool_base_addrs[ebuf_desc->buffer_pool],
+      };
+      head++;
+      i++;
+    }
+  __atomic_store_n (&qp->hdr->deq.ebuf_head, head, __ATOMIC_RELEASE);
+}
+
+static_always_inline u32
+snort_qpair_ebuf_free_buffers (vlib_main_t *vm, snort_qpair_t *qp)
+{
+  u32 ebuf_size = 1 << qp->log2_ebuf_queue_size;
+  u32 n_total = 0;
+  u32 n_free = 0;
+  u32 buffer_indices[VLIB_FRAME_SIZE];
+
+  for (u32 i = 0; i < ebuf_size; i++)
+    {
+      u32 bi = qp->ebuffers[i];
+      if (bi != VLIB_BUFFER_INVALID_INDEX)
+	{
+	  buffer_indices[n_free] = bi;
+	  qp->ebuffers[i] = VLIB_BUFFER_INVALID_INDEX;
+	  n_free++;
+	}
+      if (n_free == VLIB_FRAME_SIZE)
+	{
+	  vlib_buffer_free (vm, buffer_indices, VLIB_FRAME_SIZE);
+	  n_total += VLIB_FRAME_SIZE;
+	  n_free = 0;
+	}
+    }
+
+  if (n_free)
+    vlib_buffer_free (vm, buffer_indices, n_free);
+  n_total += n_free;
+
+  vec_free (qp->ebuffers);
+  return n_total;
 }
 
 static_always_inline snort_qpair_t **

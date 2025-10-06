@@ -51,6 +51,7 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   u8 *name = 0;
   u32 queue_size = 1024;
+  u32 ebuf_queue_size = 64;
   u32 qpairs_per_thread = 1;
   u8 drop_on_disconnect = 1;
   int rv = 0;
@@ -60,6 +61,8 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (unformat (input, "queue-size %u", &queue_size))
 	;
       else if (unformat (input, "queues-per-thread %u", &qpairs_per_thread))
+	;
+      else if (unformat (input, "ebuf-queue-size %u", &ebuf_queue_size))
 	;
       else if (unformat (input, "on-disconnect drop"))
 	drop_on_disconnect = 1;
@@ -87,15 +90,17 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  rv = snort_instance_create (vm,
-			      &(snort_instance_create_args_t){
-				.log2_queue_sz = min_log2 (queue_size),
-				.drop_on_disconnect = drop_on_disconnect,
-				.drop_bitmap = 1 << DAQ_VPP_VERDICT_BLOCK |
-					       1 << DAQ_VPP_VERDICT_BLACKLIST,
-				.qpairs_per_thread = qpairs_per_thread,
-			      },
-			      "%s", name);
+  rv =
+    snort_instance_create (vm,
+			   &(snort_instance_create_args_t){
+			     .log2_queue_sz = min_log2 (queue_size),
+			     .log2_ebuf_queue_sz = min_log2 (ebuf_queue_size),
+			     .drop_on_disconnect = drop_on_disconnect,
+			     .drop_bitmap = 1 << DAQ_VPP_VERDICT_BLOCK |
+					    1 << DAQ_VPP_VERDICT_BLACKLIST,
+			     .qpairs_per_thread = qpairs_per_thread,
+			   },
+			   "%s", name);
 
   switch (rv)
     {
@@ -127,7 +132,8 @@ done:
 VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
   .path = "snort create-instance",
   .short_help = "snort create-instance name <name> [queue-size <size>] "
-		"[queues-per-thread <n>] [on-disconnect drop|pass]",
+		"[queues-per-thread <n>] [ebuf-queue-size <size>] "
+		"[on-disconnect drop|pass]",
   .function = snort_create_instance_command_fn,
 };
 
@@ -369,6 +375,13 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    (u8 *) qp->deq_ring - (u8 *) si->shm_base, qp->deq_fd,
 	    qp->hdr->deq.head, qp->deq_tail);
 
+	  vlib_cli_output (
+	    vm,
+	    "    ebuf-queue: ring_offset %u ring_size %u head %lu tail %lu",
+	    (u8 *) qp->ebuf_ring - (u8 *) si->shm_base,
+	    1 << qp->log2_ebuf_queue_size, qp->hdr->deq.ebuf_head,
+	    qp->ebuf_tail);
+
 	  for (u32 i = 0; i < DAQ_VPP_MAX_DAQ_VERDICT; i++)
 	    if (qp->n_packets_by_verdict[i])
 	      {
@@ -387,16 +400,18 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if (verbose)
 	    {
 	      vlib_cli_output (vm, "   desc   buffer_index   next_index "
-				   "  freelist_next\n");
+				   "  freelist_next                   desc\n");
 	      vlib_cli_output (
-		vm, "  ====== ============== ============ ===============\n");
+		vm, "  ====== ============== ============ "
+		    "=============== ====================================\n");
 	      u32 total_desc = 1 << qp->log2_queue_size;
 	      for (u32 i = 0; i < total_desc; i++)
 		{
 		  snort_qpair_entry_t *qpe = qp->entries + i;
-		  vlib_cli_output (vm, "  %-6d  %-12u   %-12u  %-12u", i,
+		  daq_vpp_desc_t *d = qp->hdr->descs + i;
+		  vlib_cli_output (vm, "  %-6d  %-12u   %-12u  %-14u %U", i,
 				   qpe->buffer_index, qpe->next_index,
-				   qpe->freelist_next);
+				   qpe->freelist_next, format_snort_desc, d);
 		}
 	    }
 	}
