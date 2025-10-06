@@ -1,3 +1,3 @@
 
 set(VPP_PLATFORM_CACHE_LINE_SIZE 64)
-set(VPP_PLATFORM_MARCH_FLAGS -march=armv8-a+crc+crypto)
+set(VPP_PLATFORM_MARCH_FLAGS -mcpu=cortex-a72+crypto)
