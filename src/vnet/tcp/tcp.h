@@ -26,6 +26,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_cc.h>
 #include <vnet/tcp/tcp_sdl.h>
+#include <vnet/tcp/tcp_local.h>
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
@@ -224,6 +225,11 @@ typedef struct _tcp_main
 
   /* Pool of listeners. */
   tcp_connection_t *listener_pool;
+
+  /* Sparse vector mapping udp dst_port in network byte order
+     to next index. */
+  u16 *next_by_dst_port4;
+  u16 *next_by_dst_port6;
 
   /** vlib buffer size */
   u32 bytes_per_buffer;

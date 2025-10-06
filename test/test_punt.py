@@ -1,34 +1,32 @@
 #!/usr/bin/env python3
+import copy
+import errno
+import fcntl
+import os
 import random
 import socket
-import os
 import threading
-import copy
-import fcntl
 import time
-import errno
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether
-from scapy.layers.l2 import Dot1Q
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet6 import IPv6
-from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
-from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
-from vpp_sub_interface import VppDot1QSubint
-
+from framework import VppTestCase
+from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.ipsec import ESP
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect, VppIpsecInterface
+from vpp_ipsec import VppIpsecInterface, VppIpsecSA, VppIpsecTunProtect
 from vpp_papi import VppEnum
+from vpp_sub_interface import VppDot1QSubint
 
 NUM_PKTS = 67
 
@@ -154,11 +152,11 @@ class TestPuntSocket(VppTestCase):
             vpr.punt.punt.ip_proto.protocol, pr["punt"]["ip_proto"]["protocol"]
         )
 
-    def verify_udp_pkts(self, rxs, n_rx, port):
+    def verify_pkts(self, rxs, n_rx, port, l4_hdr):
         n_match = 0
         for rx in rxs:
-            self.assertTrue(rx.haslayer(UDP))
-            if rx[UDP].dport == port:
+            self.assertTrue(rx.haslayer(l4_hdr))
+            if rx[l4_hdr].dport == port:
                 n_match += 1
         self.assertEqual(n_match, n_rx)
 
@@ -173,19 +171,36 @@ def set_reason(pr, reason):
     return pr
 
 
-def mk_vpp_cfg4():
+def get_l4_hdr(proto: VppEnum.vl_api_ip_proto_t):
+    if proto == VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP:
+        return UDP
+    elif proto == VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP:
+        return TCP
+    else:
+        raise Exception("Unsupported L4 protocol %d" % proto)
+
+
+def mk_vpp_cfg4(
+    proto: VppEnum.vl_api_ip_proto_t = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+    port: int = 0,
+):
     pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
     af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
-    udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip4, "protocol": udp_proto}}}
+    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip4, "protocol": proto}}}
+    if port != 0:
+        punt_l4["punt"]["l4"]["port"] = port
     return punt_l4
 
 
-def mk_vpp_cfg6():
+def mk_vpp_cfg6(
+    proto: VppEnum.vl_api_ip_proto_t = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+    port: int = 0,
+):
     pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
     af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
-    udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip6, "protocol": udp_proto}}}
+    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip6, "protocol": proto}}}
+    if port != 0:
+        punt_l4["punt"]["l4"]["port"] = port
     return punt_l4
 
 
@@ -213,12 +228,12 @@ class TestIP4PuntSocket(TestPuntSocket):
             i.unconfig_ip4()
             i.admin_down()
 
-    def test_punt_socket_dump(self):
-        """Punt socket registration/deregistration"""
+    def __test_punt_socket_dump(
+        self,
+        proto: VppEnum.vl_api_ip_proto_t,
+    ):
 
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
-        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
 
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
@@ -226,7 +241,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        punt_l4 = mk_vpp_cfg4()
+        punt_l4 = mk_vpp_cfg4(proto=proto)
 
         self.vapi.punt_socket_register(
             set_port(punt_l4, 1111), "%s/socket_punt_1111" % self.tempdir
@@ -269,17 +284,28 @@ class TestIP4PuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
-    def test_punt_socket_traffic_single_port_single_socket(self):
+    def test_punt_socket_dump_udp(self):
+        """Punt UDP socket registration/deregistration"""
+        self.__test_punt_socket_dump(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP)
+
+    def test_punt_socket_dump_tcp(self):
+        """Punt TCP socket registration/deregistration"""
+        self.__test_punt_socket_dump(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP)
+
+    def __test_punt_socket_traffic_single_port_single_socket(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic single port single socket"""
 
         port = self.ports[0]
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        punt_l4 = set_port(mk_vpp_cfg4(), port)
+        punt_l4 = mk_vpp_cfg4(proto=proto, port=port)
+        l4_hdr = get_l4_hdr(proto)
 
         p = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
-            / UDP(sport=9876, dport=port)
+            / l4_hdr(sport=9876, dport=port)
             / Raw(b"\xa5" * 100)
         )
 
@@ -310,7 +336,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         self.send_and_assert_no_replies(self.pg0, pkts)
         rx = self.socket_client_close()
-        self.verify_udp_pkts(rx, len(pkts), port)
+        self.verify_pkts(rx, len(pkts), port, l4_hdr)
 
         #
         # remove punt socket. expect ICMP - port unreachable for all packets
@@ -324,10 +350,25 @@ class TestIP4PuntSocket(TestPuntSocket):
             self.assertEqual(int(p[IP].proto), 1)  # ICMP
             self.assertEqual(int(p[ICMP].code), 3)  # unreachable
 
-    def test_punt_socket_traffic_multi_ports_multi_sockets(self):
+    def test_punt_socket_traffic_single_port_single_socket_udp(self):
+        """Punt UDP socket traffic single port single socket"""
+        self.__test_punt_socket_traffic_single_port_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_single_port_single_socket_tcp(self):
+        """Punt TCP socket traffic single port single socket"""
+        self.__test_punt_socket_traffic_single_port_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
+
+    def __test_punt_socket_traffic_multi_ports_multi_sockets(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic multi ports and multi sockets"""
 
-        punt_l4 = mk_vpp_cfg4()
+        punt_l4 = mk_vpp_cfg4(proto=proto)
+        l4_hdr = get_l4_hdr(proto)
 
         # configuration for each UDP port
         cfgs = dict()
@@ -342,7 +383,7 @@ class TestIP4PuntSocket(TestPuntSocket):
             pkt = (
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
-                / UDP(sport=9876, dport=port)
+                / l4_hdr(sport=9876, dport=port)
                 / Raw(b"\xa5" * 100)
             )
             cfgs[port]["pkts"] = pkt * self.nr_packets
@@ -371,11 +412,26 @@ class TestIP4PuntSocket(TestPuntSocket):
             self.verify_udp_pkts(rx, len(cfg["pkts"]), cfg["port"])
             self.vapi.punt_socket_deregister(cfg["vpp"])
 
-    def test_punt_socket_traffic_multi_ports_single_socket(self):
+    def test_punt_socket_traffic_multi_ports_multi_sockets_udp(self):
+        """Punt UDP socket traffic multi ports and multi sockets"""
+        self.__test_punt_socket_traffic_multi_ports_multi_sockets(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_multi_ports_multi_sockets_tcp(self):
+        """Punt TCP socket traffic multi ports and multi sockets"""
+        self.__test_punt_socket_traffic_multi_ports_multi_sockets(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
+
+    def __test_punt_socket_traffic_multi_ports_single_socket(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic multi ports and single socket"""
 
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        punt_l4 = mk_vpp_cfg4()
+        punt_l4 = mk_vpp_cfg4(proto=proto)
+        l4_hdr = get_l4_hdr(proto)
 
         #
         # create stream of packets with each port
@@ -386,7 +442,7 @@ class TestIP4PuntSocket(TestPuntSocket):
             pkt = (
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
-                / UDP(sport=9876, dport=port)
+                / l4_hdr(sport=9876, dport=port)
                 / Raw(b"\xa5" * 100)
             )
             pkts += pkt * self.nr_packets
@@ -410,10 +466,22 @@ class TestIP4PuntSocket(TestPuntSocket):
         rx = self.socket_client_close()
 
         for p in self.ports:
-            self.verify_udp_pkts(rx, self.nr_packets, p)
+            self.verify_pkts(rx, self.nr_packets, p, l4_hdr)
             self.vapi.punt_socket_deregister(set_port(punt_l4, p))
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
+
+    def test_punt_socket_traffic_multi_ports_single_socket_udp(self):
+        """Punt UDP socket traffic multi ports and single socket"""
+        self.__test_punt_socket_traffic_multi_ports_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_multi_ports_single_socket_tcp(self):
+        """Punt TCP socket traffic multi ports and single socket"""
+        self.__test_punt_socket_traffic_multi_ports_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
 
 
 class TestIP6PuntSocket(TestPuntSocket):
@@ -440,16 +508,11 @@ class TestIP6PuntSocket(TestPuntSocket):
             i.unconfig_ip6()
             i.admin_down()
 
-    def test_punt_socket_dump(self):
+    def __test_punt_socket_dump(self, proto: VppEnum.vl_api_ip_proto_t):
         """Punt socket registration"""
 
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
-        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-        #
-        # configure a punt socket
-        #
-        punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip6, "protocol": udp_proto}}}
+        punt_l4 = mk_vpp_cfg6(proto=proto)
 
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
@@ -493,28 +556,28 @@ class TestIP6PuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
-    def test_punt_socket_traffic_single_port_single_socket(self):
+    def test_punt_socket_dump_udp(self):
+        """Punt UDP socket registration/deregistration"""
+        self.__test_punt_socket_dump(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP)
+
+    def test_punt_socket_dump_tcp(self):
+        """Punt TCP socket registration/deregistration"""
+        self.__test_punt_socket_dump(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP)
+
+    def __test_punt_socket_traffic_single_port_single_socket(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic single port single socket"""
 
         port = self.ports[0]
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
-        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-        punt_l4 = {
-            "type": pt_l4,
-            "punt": {
-                "l4": {
-                    "af": af_ip6,
-                    "protocol": udp_proto,
-                    "port": port,
-                }
-            },
-        }
+        punt_l4 = mk_vpp_cfg6(proto=proto, port=port)
+        l4_hdr = get_l4_hdr(proto)
 
         p = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
-            / inet6.UDP(sport=9876, dport=port)
+            / l4_hdr(sport=9876, dport=port)
             / Raw(b"\xa5" * 100)
         )
 
@@ -555,7 +618,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.pg0.get_capture(0)
         self.logger.info(self.vapi.cli("show trace"))
         rx = self.socket_client_close()
-        self.verify_udp_pkts(rx, len(pkts), port)
+        self.verify_pkts(rx, len(pkts), port, l4_hdr)
 
         #
         # remove punt socket. expect ICMP - dest. unreachable for all packets
@@ -569,10 +632,25 @@ class TestIP6PuntSocket(TestPuntSocket):
         # FIXME - when punt socket deregister is implemented
         # self.pg0.get_capture(nr_packets)
 
-    def test_punt_socket_traffic_multi_ports_multi_sockets(self):
+    def test_punt_socket_traffic_single_port_single_socket_udp(self):
+        """Punt UDP socket traffic single port single socket"""
+        self.__test_punt_socket_traffic_single_port_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_single_port_single_socket_tcp(self):
+        """Punt TCP socket traffic single port single socket"""
+        self.__test_punt_socket_traffic_single_port_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
+
+    def __test_punt_socket_traffic_multi_ports_multi_sockets(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic multi ports and multi sockets"""
 
-        punt_l4 = mk_vpp_cfg6()
+        punt_l4 = mk_vpp_cfg6(proto=proto)
+        l4_hdr = get_l4_hdr(proto)
 
         # configuration for each UDP port
         cfgs = dict()
@@ -587,7 +665,7 @@ class TestIP6PuntSocket(TestPuntSocket):
             pkt = (
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
-                / UDP(sport=9876, dport=port)
+                / l4_hdr(sport=9876, dport=port)
                 / Raw(b"\xa5" * 100)
             )
             cfgs[port]["pkts"] = pkt * self.nr_packets
@@ -613,24 +691,29 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         for cfg in cfgs.values():
             rx = cfg["sock"].close()
-            self.verify_udp_pkts(rx, len(cfg["pkts"]), cfg["port"])
+            self.verify_pkts(rx, len(cfg["pkts"]), cfg["port"], l4_hdr)
             self.vapi.punt_socket_deregister(cfg["vpp"])
 
-    def test_punt_socket_traffic_multi_ports_single_socket(self):
+    def test_punt_socket_traffic_multi_ports_multi_sockets_udp(self):
+        """Punt UDP socket traffic multi ports and multi sockets"""
+        self.__test_punt_socket_traffic_multi_ports_multi_sockets(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_multi_ports_multi_sockets_tcp(self):
+        """Punt TCP socket traffic multi ports and multi sockets"""
+        self.__test_punt_socket_traffic_multi_ports_multi_sockets(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
+
+    def __test_punt_socket_traffic_multi_ports_single_socket(
+        self, proto: VppEnum.vl_api_ip_proto_t
+    ):
         """Punt socket traffic multi ports and single socket"""
 
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
-        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-        punt_l4 = {
-            "type": pt_l4,
-            "punt": {
-                "l4": {
-                    "af": af_ip6,
-                    "protocol": udp_proto,
-                }
-            },
-        }
+        punt_l4 = mk_vpp_cfg6(proto=proto)
+        l4_hdr = get_l4_hdr(proto)
 
         #
         # create stream of packets with each port
@@ -641,7 +724,7 @@ class TestIP6PuntSocket(TestPuntSocket):
             pkt = (
                 Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
-                / UDP(sport=9876, dport=port)
+                / l4_hdr(sport=9876, dport=port)
                 / Raw(b"\xa5" * 100)
             )
             pkts += pkt * self.nr_packets
@@ -677,10 +760,22 @@ class TestIP6PuntSocket(TestPuntSocket):
         rx = self.socket_client_close()
 
         for p in self.ports:
-            self.verify_udp_pkts(rx, self.nr_packets, p)
+            self.verify_pkts(rx, self.nr_packets, p, l4_hdr)
             self.vapi.punt_socket_deregister(set_port(punt_l4, p))
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
+
+    def test_punt_socket_traffic_multi_ports_single_socket_udp(self):
+        """Punt UDP socket traffic multi ports and single socket"""
+        self.__test_punt_socket_traffic_multi_ports_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+        )
+
+    def test_punt_socket_traffic_multi_ports_single_socket_tcp(self):
+        """Punt TCP socket traffic multi ports and single socket"""
+        self.__test_punt_socket_traffic_multi_ports_single_socket(
+            VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        )
 
 
 class TestExceptionPuntSocket(TestPuntSocket):
@@ -1033,7 +1128,7 @@ class TestDot1QPuntSocket(TestPuntSocket):
 
         port = self.ports[0]
         pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
-        punt_l4 = set_port(mk_vpp_cfg4(), port)
+        punt_l4 = mk_vpp_cfg4(port=port)
 
         # VLAN ID
         vlan_id = 100

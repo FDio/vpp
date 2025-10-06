@@ -23,9 +23,9 @@
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
-#include <math.h>
-
 #include <vlib/stats/stats.h>
+#include <vppinfra/sparse_vec.h>
+#include <vnet/tcp/tcp_local.h>
 
 tcp_main_t tcp_main;
 
@@ -113,6 +113,38 @@ tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
   return tm->cc_last_type;
 }
 
+static void
+tcp_connection_register_port (u16 lcl_port, u8 is_ip4)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  u16 *n;
+
+  /* Setup tcp protocol -> next index sparse vector mapping. Do not setup
+   * udp_dst_port_info_t as that is used to distinguish between external
+   * and transport consumed ports */
+
+  if (is_ip4)
+    n = sparse_vec_validate (tm->next_by_dst_port4, lcl_port);
+  else
+    n = sparse_vec_validate (tm->next_by_dst_port6, lcl_port);
+
+  n[0] = TCP_LOCAL_NEXT_INPUT;
+}
+
+static void
+tcp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  u16 *n;
+
+  if (is_ip4)
+    n = sparse_vec_validate (tm->next_by_dst_port4, lcl_port);
+  else
+    n = sparse_vec_validate (tm->next_by_dst_port6, lcl_port);
+
+  n[0] = TCP_NO_NODE_SET;
+}
+
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 {
@@ -142,6 +174,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
 
   tcp_connection_timers_init (listener);
+  tcp_connection_register_port (listener->c_lcl_port, lcl->is_ip4);
 
   TCP_EVT (TCP_EVT_BIND, listener);
 
@@ -168,6 +201,7 @@ tcp_connection_unbind (u32 listener_index)
   if (CLIB_DEBUG > 0)
     clib_memset (tc, 0xFA, sizeof (*tc));
 
+  tcp_connection_unregister_port (tc->c_lcl_port, tc->c_is_ip4);
   pool_put_index (tm->listener_pool, listener_index);
 }
 
@@ -239,6 +273,8 @@ void
 tcp_connection_cleanup (tcp_connection_t * tc)
 {
   TCP_EVT (TCP_EVT_DELETE, tc);
+
+  tcp_connection_unregister_port (tc->c_lcl_port, tc->c_is_ip4);
 
   /* Cleanup local endpoint if this was an active connect */
   if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
@@ -848,6 +884,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   tcp_init_snd_vars (tc);
   tcp_send_syn (tc);
 
+  tcp_connection_register_port (tc->c_lcl_port, tc->c_is_ip4);
   return tc->c_c_index;
 }
 
@@ -1525,13 +1562,6 @@ tcp_main_enable (vlib_main_t * vm)
     return error;
 
   /*
-   * Registrations
-   */
-
-  ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
-  ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
-
-  /*
    * Initialize data structures
    */
 
@@ -1603,16 +1633,6 @@ vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en)
     }
 
   return 0;
-}
-
-void
-tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
-{
-  tcp_main_t *tm = &tcp_main;
-  if (is_ip4)
-    tm->punt_unknown4 = is_add;
-  else
-    tm->punt_unknown6 = is_add;
 }
 
 void
