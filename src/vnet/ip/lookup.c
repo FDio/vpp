@@ -103,7 +103,6 @@ ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 	lm->builtin_protocol_by_ip_protocol[i] = IP_BUILTIN_PROTOCOL_UNKNOWN;
       }
 
-    lm->local_next_by_ip_protocol[IP_PROTOCOL_UDP] = IP_LOCAL_NEXT_UDP_LOOKUP;
     lm->local_next_by_ip_protocol[is_ip6 ? IP_PROTOCOL_ICMP6 :
 				  IP_PROTOCOL_ICMP] = IP_LOCAL_NEXT_ICMP;
     lm->builtin_protocol_by_ip_protocol[IP_PROTOCOL_UDP] =
