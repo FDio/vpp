@@ -654,6 +654,8 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
       txf->app_session_index = s->session_index;
       rxf->client_thread_index = vcl_get_worker_index ();
       txf->client_thread_index = vcl_get_worker_index ();
+      rxf->signals = &rxf->shr->signals;
+      txf->signals = &txf->shr->signals;
       s->rx_fifo = rxf;
       s->tx_fifo = txf;
     }

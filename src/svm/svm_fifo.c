@@ -374,6 +374,7 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->shr->head = f->shr->tail = f->flags = 0;
   f->shr->head_chunk = f->shr->tail_chunk = f->shr->start_chunk;
   f->ooo_deq = f->ooo_enq = 0;
+  f->signals = &f->shr->signals;
 
   min_alloc = size > 32 << 10 ? size >> 3 : 4096;
   min_alloc = clib_min (min_alloc, 64 << 10);
@@ -444,6 +445,7 @@ svm_fifo_alloc (u32 data_size_in_bytes)
   c->enq_rb_index = RBTREE_TNIL_INDEX;
   c->deq_rb_index = RBTREE_TNIL_INDEX;
   f->shr->start_chunk = f->shr->end_chunk = f_csptr (f, c);
+  f->signals = &f->shr->signals;
 
   return f;
 }
@@ -1381,9 +1383,9 @@ svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail)
 void
 svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber)
 {
-  if (f->shr->n_subscribers >= SVM_FIFO_MAX_EVT_SUBSCRIBERS)
+  if (f->signals->n_subscribers >= SVM_FIFO_MAX_EVT_SUBSCRIBERS)
     return;
-  f->shr->subscribers[f->shr->n_subscribers++] = subscriber;
+  f->signals->subscribers[f->signals->n_subscribers++] = subscriber;
 }
 
 void
@@ -1391,12 +1393,13 @@ svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber)
 {
   int i;
 
-  for (i = 0; i < f->shr->n_subscribers; i++)
+  for (i = 0; i < f->signals->n_subscribers; i++)
     {
-      if (f->shr->subscribers[i] != subscriber)
+      if (f->signals->subscribers[i] != subscriber)
 	continue;
-      f->shr->subscribers[i] = f->shr->subscribers[f->shr->n_subscribers - 1];
-      f->shr->n_subscribers--;
+      f->signals->subscribers[i] =
+	f->signals->subscribers[f->signals->n_subscribers - 1];
+      f->signals->n_subscribers--;
       break;
     }
 }
@@ -1636,7 +1639,7 @@ format_svm_fifo (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
   s = format (s, "cursize %u nitems %u has_event %d min_alloc %u\n",
-	      svm_fifo_max_dequeue (f), f->shr->size, f->shr->has_event,
+	      svm_fifo_max_dequeue (f), f->shr->size, f->signals->has_event,
 	      f->shr->min_alloc);
   s = format (s, "%Uhead %u tail %u segment manager %u\n", format_white_space,
 	      indent, f->shr->head, f->shr->tail, f->segment_manager);
