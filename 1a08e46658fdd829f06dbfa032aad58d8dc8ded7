@@ -51,6 +51,24 @@
       "parentUuid": "2a047634_21e5cc7b",
       "revId": "1a08e46658fdd829f06dbfa032aad58d8dc8ded7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba882291_a7d5037e",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-06T09:11:19Z",
+      "side": 1,
+      "message": "ok then, I\u0027d rather do this logic in the if() on lines 679 and below. Something like this:\n\n    if (af_xdp_create_queue (vm, args, ad, i)) {\n      if (args-\u003eflags \u0026 AF_XDP_CREATE_ALLOW_SKB_MODE) {\n        /* try to default to SKB mode */\n        ...\n      }\n      af_xdp_log (VLIB_LOG_LEVEL_DEBUG, ad, \"create interface failed to create queue qid\u003d%d\", i);\n      ...\n    }",
+      "parentUuid": "f247c195_6b090f8e",
+      "revId": "1a08e46658fdd829f06dbfa032aad58d8dc8ded7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
