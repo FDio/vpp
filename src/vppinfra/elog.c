@@ -100,8 +100,8 @@ find_or_create_type (elog_main_t * em, elog_event_type_t * t)
 }
 
 /* External function to register types. */
-word
-elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
+__clib_export word
+elog_event_type_register (elog_main_t *em, elog_event_type_t *t)
 {
   elog_event_type_t *static_type = t;
   word l;
