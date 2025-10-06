@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e3628ae7_718675dc",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-06T07:58:58Z",
+      "side": 1,
+      "message": "Should I change it in the ping part also?",
+      "parentUuid": "5dab20e7_5a24450e",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d53d7f34_d84c7301",
         "filename": "src/plugins/ping/traceroute.c",
         "patchSetId": 11
@@ -48,6 +66,24 @@
       "writtenOn": "2025-10-03T11:15:02Z",
       "side": 1,
       "message": "__clib_unused",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca7c3aa2_6446d449",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-06T07:58:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d53d7f34_d84c7301",
       "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -65,6 +101,24 @@
       "writtenOn": "2025-10-03T11:15:02Z",
       "side": 1,
       "message": "writing directly to stderr should not be even a fallback option....",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab84993f_ea0a7017",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-06T07:58:58Z",
+      "side": 1,
+      "message": "This was taken from the original `vlib_cli_output` (vlib/cli.c), what should I do?",
+      "parentUuid": "9bac947e_b98b26cc",
       "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
