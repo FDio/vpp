@@ -164,9 +164,11 @@ snort_msg_attach_qpair (snort_client_t *c, daq_vpp_msg_req_t *req,
   r->qpair_id = qp->qpair_id;
   r->input_index = si->index;
   r->log2_queue_size = qp->log2_queue_size;
+  r->log2_empty_buf_queue_size = qp->log2_empty_buf_queue_size;
   r->qpair_header_offset = (u8 *) qp->hdr - base;
   r->enq_ring_offset = (u8 *) qp->enq_ring - base;
   r->deq_ring_offset = (u8 *) qp->deq_ring - base;
+  r->empty_buf_ring_offset = (u8 *) qp->empty_buf_ring - base;
   e->fds[0] = qp->enq_fd;
   e->fds[1] = qp->deq_fd;
   e->n_fds = 2;
@@ -175,10 +177,12 @@ snort_msg_attach_qpair (snort_client_t *c, daq_vpp_msg_req_t *req,
 
   log_debug (
     "qpair_id %u.%u input_index %u log2_queue_size %u qpair_header_offset %u "
-    "enq_ring_offset %u deq_ring_offset %u enq_fd %d deq_fd %d",
+    "enq_ring_offset %u deq_ring_offset %u enq_fd %d deq_fd %d "
+    "log2_empty_buf_queue_size %u empty_buf_ring_offset %u",
     r->qpair_id.thread_id, r->qpair_id.queue_id, r->input_index,
     r->log2_queue_size, r->qpair_header_offset, r->enq_ring_offset,
-    r->deq_ring_offset, e->fds[0], e->fds[1]);
+    r->deq_ring_offset, e->fds[0], e->fds[1], r->log2_empty_buf_queue_size,
+    r->empty_buf_ring_offset);
 }
 
 static clib_error_t *

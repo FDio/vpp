@@ -156,13 +156,16 @@ daq_vpp_recvmsg_data_string (daq_vpp_msg_reply_t *reply, ssize_t sz)
 		     ", attach_qpair: { qpair_id: { thread_id: %u, "
 		     "queue_id: %u }, log2_queue_size: %u, "
 		     "qpair_header_offset: %u, enq_ring_offset: %u, "
-		     "deq_ring_offset: %u }",
+		     "deq_ring_offset: %u, log2_empty_buf_queue_size: %u "
+		     "empty_buf_ring_offset: %u }",
 		     reply->attach_qpair.qpair_id.thread_id,
 		     reply->attach_qpair.qpair_id.queue_id,
 		     reply->attach_qpair.log2_queue_size,
 		     reply->attach_qpair.qpair_header_offset,
 		     reply->attach_qpair.enq_ring_offset,
-		     reply->attach_qpair.deq_ring_offset);
+		     reply->attach_qpair.deq_ring_offset,
+		     reply->attach_qpair.log2_empty_buf_queue_size,
+		     reply->attach_qpair.empty_buf_ring_offset);
       break;
     default:
       n += snprintf (buf + n, sizeof (buf) - n, ", unknown");
@@ -440,9 +443,12 @@ daq_vpp_find_or_add_input (daq_vpp_ctx_t *ctx, char *name,
 
       qp->qpair_id = g->qpair_id;
       qp->queue_size = 1 << g->log2_queue_size;
+      qp->empty_buf_queue_size = 1 << g->log2_empty_buf_queue_size;
       qp->hdr = (daq_vpp_qpair_header_t *) (base + g->qpair_header_offset);
       qp->enq_ring = (daq_vpp_desc_index_t *) (base + g->enq_ring_offset);
       qp->deq_ring = (daq_vpp_desc_index_t *) (base + g->deq_ring_offset);
+      qp->empty_buf_ring =
+	(daq_vpp_empty_buf_desc_t *) (base + g->empty_buf_ring_offset);
       qp->enq_fd = fds[0];
       qp->deq_fd = fds[1];
       qp->input_index = ii;
@@ -453,9 +459,11 @@ daq_vpp_find_or_add_input (daq_vpp_ctx_t *ctx, char *name,
 			    qp->qpair_id.thread_id, qp->qpair_id.queue_id);
 	  goto err;
 	}
-      DEBUG ("input %s qpair %u.%u: size %u, hdr %p, enq %p, deq %p", name,
-	     qp->qpair_id.thread_id, qp->qpair_id.queue_id, qp->queue_size,
-	     qp->hdr, qp->enq_ring, qp->deq_ring);
+      DEBUG ("input %s qpair %u.%u: size %u, hdr %p, enq %p, deq %p, "
+	     "empty_buf_queue_size %u, empty_buf_queue %p",
+	     name, qp->qpair_id.thread_id, qp->qpair_id.queue_id,
+	     qp->queue_size, qp->hdr, qp->enq_ring, qp->deq_ring,
+	     qp->empty_buf_queue_size, qp->empty_buf_ring);
     }
 
   vdm->inputs =

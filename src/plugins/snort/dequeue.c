@@ -6,6 +6,61 @@
 #include <vnet/feature/feature.h>
 #include <snort/snort.h>
 
+static_always_inline void
+snort_deq_node_inject (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       snort_qpair_t *qp)
+{
+  daq_vpp_desc_index_t mask = pow2_mask (qp->log2_empty_buf_queue_size);
+  daq_vpp_head_tail_t tail, last_tail = qp->empty_buf_tail;
+  u32 from[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  u32 n_recv;
+
+  /* recv injected buffers from empty_buf ring */
+  tail = __atomic_load_n (&qp->hdr->deq.empty_buf_tail, __ATOMIC_ACQUIRE);
+
+  n_recv = tail - last_tail;
+
+  for (u32 i = 0; i < n_recv; i++)
+    {
+      daq_vpp_empty_buf_desc_t *desc = &qp->empty_buf_ring[last_tail & mask];
+      u32 ref_desc_index = desc->ref_buffer_desc_index;
+      snort_qpair_entry_t *ref_qpe = qp->entries + ref_desc_index;
+      daq_vpp_desc_t *ref_d = qp->hdr->descs + ref_desc_index;
+      vlib_buffer_t *b, *ref_b;
+      u32 bi, ref_bi;
+
+      bi = qp->empty_buffers[last_tail & mask];
+      qp->empty_buffers[last_tail & mask] = VLIB_BUFFER_INVALID_INDEX;
+
+      b = vlib_get_buffer (vm, bi);
+      b->current_length = desc->length;
+
+      /* set the buffer metadata */
+      ref_bi = ref_qpe->buffer_index;
+      ref_b = vlib_get_buffer (vm, ref_bi);
+
+      *snort_get_buffer_metadata (b) = ref_d->metadata;
+
+      b->current_config_index = ref_b->current_config_index;
+      vnet_buffer (b)->feature_arc_index =
+	vnet_buffer (ref_b)->feature_arc_index;
+
+      from[i] = bi;
+      nexts[i] = ref_qpe->next_index;
+      last_tail++;
+    }
+
+  if (n_recv)
+    {
+      vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_recv);
+      qp->empty_buf_tail = last_tail;
+    }
+
+  /* allocate more empty_bufs if needed */
+  snort_qpair_empty_buf_alloc_buffers (vm, qp);
+}
+
 static u32
 snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       snort_instance_t *si, snort_qpair_t *qp)
@@ -50,7 +105,9 @@ snort_deq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vm, node->node_index, SNORT_DEQ_ERROR_NO_CLIENT_FREE, n_total);
 	}
 
+      snort_qpair_empty_buf_free_buffers (vm, qp);
       snort_qpair_init (qp);
+      snort_qpair_empty_buf_alloc_buffers (vm, qp);
       __atomic_store_n (&qp->cleanup_needed, 0, __ATOMIC_RELEASE);
       return 0;
     }
@@ -77,7 +134,7 @@ more:
       u32 bi;
       u8 verdict;
 
-      /* check if descriptor index taken from dequqe ring is valid */
+      /* check if descriptor index taken from dequeue ring is valid */
       if (desc_index & ~mask)
 	{
 	  error = 1;
@@ -161,11 +218,15 @@ VLIB_NODE_FN (snort_deq_node)
     vlib_node_get_runtime_data (vm, node->node_index);
   snort_instance_t *si = pool_elt_at_index (sm->instances, rt->instance_index);
   u32 qpairs_per_thread = si->qpairs_per_thread;
-  snort_qpair_t **qp = snort_get_qpairs (si, vm->thread_index);
+  snort_qpair_t **qp_vec = snort_get_qpairs (si, vm->thread_index);
   uword rv = 0;
 
   while (qpairs_per_thread--)
-    rv += snort_deq_node_inline (vm, node, si, qp++[0]);
+    {
+      snort_qpair_t *qp = qp_vec++[0];
+      snort_deq_node_inject (vm, node, qp);
+      rv += snort_deq_node_inline (vm, node, si, qp);
+    }
 
   return rv;
 }
