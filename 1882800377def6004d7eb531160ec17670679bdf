@@ -52,6 +52,24 @@
       "parentUuid": "949da2b4_43cd0815",
       "revId": "1882800377def6004d7eb531160ec17670679bdf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5093d0e_cb108acc",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 625,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-06T16:13:17Z",
+      "side": 0,
+      "message": "Okay! Then I could remove the static registration in lookup.c and register from the udp initialisation function",
+      "parentUuid": "5422f63b_16dad945",
+      "revId": "1882800377def6004d7eb531160ec17670679bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
