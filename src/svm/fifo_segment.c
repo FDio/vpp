@@ -968,7 +968,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   if (CLIB_DEBUG)
     {
-      sf->master_session_index = ~0;
+      //       sf->master_session_index = ~0;
       f->vpp_session_index = ~0;
       f->master_thread_index = ~0;
     }
