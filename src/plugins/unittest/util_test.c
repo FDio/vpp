@@ -27,7 +27,7 @@ test_crash_command_fn (vlib_main_t * vm,
       .format = "deliberate crash: touching %x",
       .format_args = "i4",
     };
-  elog (&vlib_global_main.elog_main, &e, 0xdefec8ed);
+  elog (vlib_get_elog_main (), &e, 0xdefec8ed);
 
   *p = 0xdeadbeef;
 

@@ -143,7 +143,7 @@ lacp_elog_start_event (void)
     u32 count;
   } *ed;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->count = lm->lacp_int;
 }
 
@@ -161,7 +161,7 @@ lacp_elog_stop_event (void)
     u32 count;
   } *ed;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->count = lm->lacp_int;
 }
 

@@ -62,9 +62,9 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
     u32 caller, count, t_entry, t_open, t_closed;
   } *ed = 0;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->count = (int) vlib_worker_threads[0].barrier_sync_count;
-  ed->caller = elog_string (&vlib_global_main.elog_main,
+  ed->caller = elog_string (vlib_get_elog_main (),
 			    (char *) vlib_worker_threads[0].barrier_caller);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_open = (int) (1000000.0 * t_open);
@@ -87,9 +87,9 @@ barrier_trace_sync_rec (f64 t_entry)
     u32 caller, depth;
   } *ed = 0;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
-  ed->caller = elog_string (&vlib_global_main.elog_main,
+  ed->caller = elog_string (vlib_get_elog_main (),
 			    (char *) vlib_worker_threads[0].barrier_caller);
 }
 
@@ -109,7 +109,7 @@ barrier_trace_release_rec (f64 t_entry)
     u32 depth;
   } *ed = 0;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level;
 }
 
@@ -129,7 +129,7 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
     u32 count, t_entry, t_update_main, t_closed_total;
   } *ed = 0;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  ed = ELOG_DATA (vlib_get_elog_main (), e);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_update_main = (int) (1000000.0 * t_update_main);
   ed->t_closed_total = (int) (1000000.0 * t_closed_total);

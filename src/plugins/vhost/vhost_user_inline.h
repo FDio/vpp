@@ -144,7 +144,7 @@ vhost_map_guest_mem_done:
   {
     uword addr;
   } *ed;
-  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+  ed = ELOG_DATA (vlib_get_elog_main (), el);
   ed->addr = addr;
   *hint = 0;
   return 0;

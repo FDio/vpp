@@ -156,16 +156,16 @@ extern session_dbg_main_t session_dbg_main;
   } *ed;                                                                      \
   transport_connection_t *_tc = session_get_transport (_s);                   \
   if (_tc->elog_track.name == 0)                                              \
-    ed = ELOG_DATA (&vlib_global_main.elog_main, _e);                         \
+    ed = ELOG_DATA (vlib_get_elog_main (), _e);                               \
   else                                                                        \
-    ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, _tc->elog_track)
+    ed = ELOG_TRACK_DATA (vlib_get_elog_main (), _e, _tc->elog_track)
 
-#define DEC_SESSION_ED(_e, _size)					\
-  struct								\
-  {									\
-    u32 data[_size];							\
-  } * ed;								\
-  ed = ELOG_DATA (&vlib_global_main.elog_main, _e)
+#define DEC_SESSION_ED(_e, _size)                                             \
+  struct                                                                      \
+  {                                                                           \
+    u32 data[_size];                                                          \
+  } *ed;                                                                      \
+  ed = ELOG_DATA (vlib_get_elog_main (), _e)
 
 #if SESSION_SM
 #define SESSION_EVT_STATE_CHANGE_HANDLER(_s)                                  \

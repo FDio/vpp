@@ -205,13 +205,12 @@ lacp_ptx_debug_func (member_if_t * mif, int event, int state,
     u32 event;
   } *ed = 0;
 
-  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
-  ed->event =
-    elog_string (&vlib_global_main.elog_main, "%U-PTX: %U, %U->%U%c",
-		 format_vnet_sw_if_index_name, vnet_get_main (),
-		 mif->sw_if_index, format_ptx_event, event,
-		 format_ptx_sm_state, state, format_ptx_sm_state,
-		 transition->next_state, 0);
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
+  ed->event = elog_string (vlib_get_elog_main (), "%U-PTX: %U, %U->%U%c",
+			   format_vnet_sw_if_index_name, vnet_get_main (),
+			   mif->sw_if_index, format_ptx_event, event,
+			   format_ptx_sm_state, state, format_ptx_sm_state,
+			   transition->next_state, 0);
 }
 
 void

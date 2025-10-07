@@ -32,7 +32,7 @@
 	    .format = "nat-msg " _str,                                        \
 	    .format_args = "",                                                \
 	  };                                                                  \
-	  ELOG_DATA (&vlib_global_main.elog_main, e);                         \
+	  ELOG_DATA (vlib_get_elog_main (), e);                               \
 	}                                                                     \
     }                                                                         \
   while (0);
@@ -53,7 +53,7 @@
 	    u8 oct4;                                                          \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);                    \
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
 	  ed->oct4 = _addr >> 24;                                             \
 	  ed->oct3 = _addr >> 16;                                             \
 	  ed->oct2 = _addr >> 8;                                              \
@@ -86,7 +86,7 @@
 	    u32 fib;                                                          \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);                    \
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
 	  ed->src_oct1 = _src >> 24;                                          \
 	  ed->src_oct2 = _src >> 16;                                          \
 	  ed->src_oct3 = _src >> 8;                                           \
@@ -127,7 +127,7 @@
 	    u32 fib;                                                          \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);                    \
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
 	  ed->src_oct1 = _src >> 24;                                          \
 	  ed->src_oct2 = _src >> 16;                                          \
 	  ed->src_oct3 = _src >> 8;                                           \
@@ -153,7 +153,7 @@
 	    .format_args = _arg,                                              \
 	  };                                                                  \
 	  CLIB_PACKED (struct { typeof (_val1) val1; }) * ed;                 \
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);                    \
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);                          \
 	  ed->val1 = _val1;                                                   \
 	}                                                                     \
     }                                                                         \

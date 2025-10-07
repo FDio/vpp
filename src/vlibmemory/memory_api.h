@@ -78,8 +78,8 @@ vl_msg_api_handle_is_valid (u32 handle, u32 restarts)
 	struct                                                                \
 	{                                                                     \
 	  u32 len;                                                            \
-	} * ed;                                                               \
-	ed = ELOG_DATA (&vlib_global_main.elog_main, e);                      \
+	} *ed;                                                                \
+	ed = ELOG_DATA (vlib_get_elog_main (), e);                            \
 	ed->len = qlen;                                                       \
       }                                                                       \
   while (0)
