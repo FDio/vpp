@@ -62,7 +62,7 @@ always_inline elog_main_t *
 vlib_get_elog_main ()
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
-  return &vgm->elog_main;
+  return vgm->elog_main;
 }
 
 #endif /* included_vlib_global_funcs_h_ */

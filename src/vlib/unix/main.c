@@ -738,8 +738,10 @@ vlib_unix_main (int argc, char *argv[])
 
   /* Turn on the event logger at the first possible moment */
   vgm->configured_elog_ring_size = 128 << 10;
-  elog_init (vlib_get_elog_main (), vgm->configured_elog_ring_size);
-  elog_enable_disable (vlib_get_elog_main (), 1);
+  vgm->elog_main =
+    clib_mem_alloc_aligned (sizeof (elog_main_t), CLIB_CACHE_LINE_BYTES);
+  elog_init (vgm->elog_main, vgm->configured_elog_ring_size);
+  elog_enable_disable (vgm->elog_main, 1);
 
   unformat_init_command_line (&input, (char **) vgm->argv);
   if ((e = vlib_plugin_config (vm, &input)))
