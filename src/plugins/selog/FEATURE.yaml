@@ -1,0 +1,9 @@
+---
+name: selog
+maintainer: Mohammed Hawari <mohammed@hawari.fr>
+
+description: |-
+       This plugin implements elog in shared memory over ssvm.
+
+state: experimental
+properties: [CLI, API, MULTITHREAD]
