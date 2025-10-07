@@ -646,8 +646,10 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
 
   if (!is_ct)
     {
-      rxf->vpp_session_index = rxf->shr->master_session_index;
-      txf->vpp_session_index = txf->shr->master_session_index;
+      rxf->vpp_sh = s->vpp_handle;
+      txf->vpp_sh = s->vpp_handle;
+      //       rxf->vpp_session_index = rxf->shr->master_session_index;
+      //       txf->vpp_session_index = txf->shr->master_session_index;
       //       rxf->shr->client_session_index = s->session_index;
       //       txf->shr->client_session_index = s->session_index;
       rxf->app_session_index = s->session_index;

@@ -332,8 +332,10 @@ echo_attach_session (uword segment_handle, uword rxf_offset, uword txf_offset,
   s->tx_fifo = fifo_segment_alloc_fifo_w_offset (fs, txf_offset);
   s->rx_fifo->segment_index = fs_index;
   s->tx_fifo->segment_index = fs_index;
-  s->rx_fifo->vpp_session_index = s->rx_fifo->shr->master_session_index;
-  s->tx_fifo->vpp_session_index = s->tx_fifo->shr->master_session_index;
+  s->rx_fifo->vpp_sh = s->vpp_session_handle;
+  s->tx_fifo->vpp_sh = s->vpp_session_handle;
+  //   s->rx_fifo->vpp_session_index = s->rx_fifo->shr->master_session_index;
+  //   s->tx_fifo->vpp_session_index = s->tx_fifo->shr->master_session_index;
   s->rx_fifo->app_session_index = s->session_index;
   s->tx_fifo->app_session_index = s->session_index;
   //   s->rx_fifo->shr->client_session_index = s->session_index;
