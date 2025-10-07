@@ -129,7 +129,7 @@ memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   memif_ring_t *ring;
   u32 n_copy_op;
-  u16 ring_size, mask, slot, free_slots;
+  u16 i, ring_size, mask, slot, free_slots;
   int n_retries = 5;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   memif_copy_op_t *co;
@@ -137,6 +137,9 @@ memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   void *last_region_shm = 0;
   u16 head, tail;
   u64 local_n_packets = 0;
+  memif_desc_t *pending_descs = 0;
+
+  vec_prealloc (pending_descs, 6);
 
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
@@ -156,13 +159,12 @@ retry:
     {
       slot = tail = ring->tail;
       head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
-      mq->last_tail += tail - mq->last_tail;
       free_slots = head - tail;
     }
 
   while (n_left && free_slots)
     {
-      memif_desc_t *d0;
+      memif_desc_t *d0, *dpend;
       void *mb0;
       i32 src_off;
       u32 bi0, dst_off, src_left, dst_left, bytes_to_copy;
@@ -203,13 +205,17 @@ retry:
 		{
 		  slot++;
 		  free_slots--;
-		  d0->length = dst_off;
-		  d0->flags = MEMIF_DESC_FLAG_NEXT;
+		  /* I wish for dpend = vec_add(pending_descs, d0, 1); */
+		  vec_add (pending_descs, d0, 1);
+		  dpend = vec_elt_at_index (pending_descs,
+					    vec_len (pending_descs) - 1);
+
+		  dpend->length = dst_off;
+		  dpend->flags = MEMIF_DESC_FLAG_NEXT;
 		  d0 = &ring->desc[slot & mask];
 		  dst_off = 0;
-		  dst_left =
-		    (type ==
-		     MEMIF_RING_S2M) ? mif->run.buffer_size : d0->length;
+		  dst_left = (type == MEMIF_RING_S2M) ? mif->run.buffer_size :
+							d0->length;
 
 		  if (PREDICT_FALSE (last_region != d0->region))
 		    {
@@ -226,6 +232,7 @@ retry:
 		  vlib_error_count (vm, node->node_index,
 				    MEMIF_TX_ERROR_ROLLBACK, 1);
 		  slot = saved_slot;
+		  vec_reset_length (pending_descs);
 		  goto no_free_slots;
 		}
 	    }
@@ -244,6 +251,11 @@ retry:
 	  bi0 = b0->next_buffer;
 	  goto next_in_chain;
 	}
+
+      /* Apply pending descriptor edits, if any. */
+      vec_foreach_index (i, pending_descs)
+	ring->desc[(saved_slot + i) & mask] = vec_elt (pending_descs, i);
+      vec_reset_length (pending_descs);
 
       d0->length = dst_off;
       d0->flags = 0;
@@ -305,6 +317,7 @@ no_free_slots:
   if (n_left && n_retries--)
     goto retry;
 
+  vec_free (pending_descs);
   return n_left;
 }
 
@@ -314,13 +327,16 @@ memif_interface_tx_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			      memif_per_thread_data_t *ptd, u32 n_left)
 {
   memif_ring_t *ring = mq->ring;
-  u16 slot, free_slots, n_free;
+  u16 i, slot, free_slots, n_free;
   u16 ring_size = 1 << mq->log2_ring_size;
   u16 mask = ring_size - 1;
   int n_retries = 5;
   vlib_buffer_t *b0;
   u16 head, tail;
   u64 local_n_packets = 0;
+  memif_desc_t *pending_descs = 0;
+
+  vec_prealloc (pending_descs, 6);
 
 retry:
   local_n_packets = 0;
@@ -342,7 +358,7 @@ retry:
     {
       u16 s0;
       u16 slots_in_packet = 1;
-      memif_desc_t *d0;
+      memif_desc_t *d0, *dpend;
       u32 bi0;
 
       clib_prefetch_store (&ring->desc[(slot + 8) & mask]);
@@ -358,10 +374,14 @@ retry:
       mq->buffers[s0] = bi0;
       b0 = vlib_get_buffer (vm, bi0);
 
-      d0->region = b0->buffer_pool_index + 1;
-      d0->offset = (void *) b0->data + b0->current_data -
-	mif->regions[d0->region].shm;
-      d0->length = b0->current_length;
+      /* I wish for dpend = vec_add(pending_descs, d0, 1); */
+      vec_add (pending_descs, d0, 1);
+      dpend = vec_elt_at_index (pending_descs, vec_len (pending_descs) - 1);
+
+      dpend->region = b0->buffer_pool_index + 1;
+      dpend->offset =
+	(void *) b0->data + b0->current_data - mif->regions[d0->region].shm;
+      dpend->length = b0->current_length;
 
       free_slots--;
       slot++;
@@ -371,12 +391,12 @@ retry:
 	  if (PREDICT_FALSE (free_slots == 0))
 	    {
 	      /* revert to last fully processed packet */
-	      free_slots += slots_in_packet;
 	      slot -= slots_in_packet;
+	      vec_reset_length (pending_descs);
 	      goto no_free_slots;
 	    }
 
-	  d0->flags = MEMIF_DESC_FLAG_NEXT;
+	  dpend->flags = MEMIF_DESC_FLAG_NEXT;
 	  bi0 = b0->next_buffer;
 
 	  /* next */
@@ -384,7 +404,12 @@ retry:
 	  goto next_in_chain;
 	}
 
-      d0->flags = 0;
+      dpend->flags = 0;
+      /* Apply pending descriptor edits. */
+      vec_foreach_index (i, pending_descs)
+	ring->desc[(slot - slots_in_packet + i) & mask] =
+	  vec_elt (pending_descs, i);
+      vec_reset_length (pending_descs);
 
       /* next from */
       buffers++;
@@ -399,6 +424,7 @@ no_free_slots:
   if (n_left && n_retries--)
     goto retry;
 
+  vec_free (pending_descs);
   return n_left;
 }
 
