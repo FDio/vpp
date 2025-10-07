@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "080f61bf_60fb2845",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-07T16:11:41Z",
+      "side": 1,
+      "message": "Inline function?",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "88fa6b4d_c7ebbee8",
         "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
         "patchSetId": 3
