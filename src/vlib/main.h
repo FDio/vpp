@@ -309,7 +309,7 @@ typedef struct vlib_global_main_t
   vlib_node_registration_t *node_registrations;
 
   /* Event logger. */
-  elog_main_t elog_main;
+  elog_main_t *elog_main;
   u32 configured_elog_ring_size;
 
   /* Packet trace capture filter */

@@ -602,9 +602,9 @@ start_workers (vlib_main_t * vm)
       vlib_set_thread_name ((char *) w->name);
     }
 
-  vgm->elog_main.lock =
+  vgm->elog_main->lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  vgm->elog_main.lock[0] = 0;
+  vgm->elog_main->lock[0] = 0;
 
   clib_callback_data_init (&vm->vlib_node_runtime_perf_callbacks,
 			   &vm->worker_thread_main_loop_callback_lock);

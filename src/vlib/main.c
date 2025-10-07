@@ -1895,8 +1895,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   /* Reconfigure event log which is enabled very early */
   if (vgm->configured_elog_ring_size &&
-      vgm->configured_elog_ring_size != vgm->elog_main.event_ring_size)
-    elog_resize (&vgm->elog_main, vgm->configured_elog_ring_size);
+      vgm->configured_elog_ring_size != vgm->elog_main->event_ring_size)
+    elog_resize (vgm->elog_main, vgm->configured_elog_ring_size);
   vl_api_set_elog_main (vlib_get_elog_main ());
 
   /* Default name. */
