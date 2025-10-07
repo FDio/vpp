@@ -1341,7 +1341,6 @@ hcpc_http_alloc_session_fifos (session_t *s)
 	  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 	  return rv;
 	}
-      rx_fifo->shr->master_session_index = s->session_index;
       rx_fifo->vpp_sh = s->handle;
       s->flags &= ~SESSION_F_PROXY;
     }
@@ -1362,7 +1361,6 @@ hcpc_http_alloc_session_fifos (session_t *s)
       tx_fifo->refcnt++;
     }
 
-  tx_fifo->shr->master_session_index = s->session_index;
   tx_fifo->vpp_sh = s->handle;
 
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);

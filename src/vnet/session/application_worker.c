@@ -174,10 +174,7 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 						 &rx_fifo, &tx_fifo)))
     return rv;
 
-  rx_fifo->shr->master_session_index = s->session_index;
   rx_fifo->vpp_sh = s->handle;
-
-  tx_fifo->shr->master_session_index = s->session_index;
   tx_fifo->vpp_sh = s->handle;
 
   s->rx_fifo = rx_fifo;
@@ -209,10 +206,7 @@ app_worker_alloc_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
   segment_manager_alloc_session_fifos (sm, s->thread_index, &rx_fifo,
 				       &tx_fifo);
 
-  rx_fifo->shr->master_session_index = s->session_index;
   rx_fifo->vpp_sh = s->handle;
-
-  tx_fifo->shr->master_session_index = s->session_index;
   tx_fifo->vpp_sh = s->handle;
 
   s->rx_fifo = rx_fifo;
@@ -425,10 +419,7 @@ app_worker_alloc_session_fifos_ct (segment_manager_t *sm, session_t *s)
 						    &rx_fifo, &tx_fifo)))
     return rv;
 
-  rx_fifo->shr->master_session_index = s->session_index;
   rx_fifo->vpp_sh = s->handle;
-
-  tx_fifo->shr->master_session_index = s->session_index;
   tx_fifo->vpp_sh = s->handle;
 
   s->rx_fifo = rx_fifo;

@@ -569,6 +569,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
 
   /* Allocate local session and set it up */
   session = echo_session_new (em);
+  session->vpp_session_handle = mp->handle;
 
   if (echo_attach_session (mp->segment_handle, mp->server_rx_fifo,
 			   mp->server_tx_fifo, mp->vpp_event_queue_address,
@@ -578,8 +579,6 @@ session_accepted_handler (session_accepted_msg_t * mp)
 		 "accepted wait_for_segment_allocation errored");
       return;
     }
-
-  session->vpp_session_handle = mp->handle;
 
   /* session->transport needed by app_send_dgram */
   clib_memcpy_fast (&session->transport.rmt_ip, &mp->rmt.ip,
@@ -629,6 +628,7 @@ session_connected_handler (session_connected_msg_t * mp)
     }
 
   session = echo_session_new (em);
+  session->vpp_session_handle = mp->handle;
 
   if (echo_attach_session (mp->segment_handle, mp->server_rx_fifo,
 			   mp->server_tx_fifo, mp->vpp_event_queue_address,
@@ -639,7 +639,6 @@ session_connected_handler (session_connected_msg_t * mp)
       return;
     }
 
-  session->vpp_session_handle = mp->handle;
   session->start = clib_time_now (&em->clib_time);
   session->listener_index = listener_index;
   /* session->transport needed by app_send_dgram */
