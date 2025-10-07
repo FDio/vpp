@@ -485,6 +485,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
       m.rx_fifo = fifo_segment_fifo_offset (wrk_ls->rx_fifo);
       m.tx_fifo = fifo_segment_fifo_offset (wrk_ls->tx_fifo);
       m.segment_handle = session_segment_handle (wrk_ls);
+      m.cl_sh_handle = session_handle (wrk_ls);
 
       /* Keep pointer to app session */
       wrk_ls->rx_fifo->app_session_index = api_context;

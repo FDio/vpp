@@ -131,6 +131,7 @@ udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
   if (!em->i_am_master || em->uri_elts.transport_proto != TRANSPORT_PROTO_UDP)
     return;
 
+  session->vpp_session_handle = mp->handle;
   if (echo_attach_session (mp->segment_handle, mp->rx_fifo, mp->tx_fifo,
 			   mp->vpp_evt_q, session))
     {

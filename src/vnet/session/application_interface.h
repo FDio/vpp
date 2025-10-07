@@ -333,6 +333,7 @@ typedef struct session_bound_msg_
 {
   u32 context;
   session_handle_t handle;
+  session_handle_t cl_sh_handle;
   i32 retval;
   u8 lcl_is_ip4;
   u8 lcl_ip[16];
