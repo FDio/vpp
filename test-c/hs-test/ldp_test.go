@@ -90,33 +90,17 @@ func LdpIperfUdpTest(s *LdpSuite) {
 
 func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
-	stopServerCh := make(chan struct{}, 1)
-	srvCh := make(chan error, 1)
-	clnCh := make(chan error)
-	clnRes := make(chan []byte, 1)
 
-	defer func() {
-		stopServerCh <- struct{}{}
-	}()
+	cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s -1 -D -B %s -p %s --logfile %s\"",
+		serverVethAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
+	o, err := s.Containers.ServerApp.Exec(true, cmd)
+	s.AssertNil(err, o)
 
-	go func() {
-		defer GinkgoRecover()
-		cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s -B %s -p %s > %s 2>&1\"", serverVethAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
-		s.StartServerApp(s.Containers.ServerApp, "iperf3", cmd, srvCh, stopServerCh)
-	}()
+	cmd = fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -b 10g -J -p %s %s", serverVethAddress, s.Interfaces.Client.Ip4AddressString(), s.Ports.Port1, extraClientArgs)
+	o, err = s.Containers.ClientApp.Exec(true, cmd)
 
-	err := <-srvCh
-	s.AssertNil(err, fmt.Sprint(err))
-
-	go func() {
-		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -b 10g -J -p %s %s", serverVethAddress, s.Interfaces.Client.Ip4AddressString(), s.Ports.Port1, extraClientArgs)
-		s.StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
-	}()
-
-	s.AssertChannelClosed(time.Minute*4, clnCh)
-	output := <-clnRes
-	result := s.ParseJsonIperfOutput(output)
+	s.AssertNil(err, o)
+	result := s.ParseJsonIperfOutput([]byte(o))
 	s.LogJsonIperfOutput(result)
 
 	return result

@@ -70,32 +70,19 @@ func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
 		proto = ""
 	}
 
-	stopServerCh := make(chan struct{}, 1)
-	srvCh := make(chan error, 1)
-	clnCh := make(chan error)
-	clnRes := make(chan []byte, 1)
+	cmd := fmt.Sprintf("iperf3 -4 -s -1 -D -B %s -p %s --logfile %s",
+		s.ServerAddr(), fmt.Sprint(s.Ports.Server), s.IperfLogFileName(s.Containers.IperfS))
+	o, err := s.Containers.IperfS.Exec(true, cmd)
 
-	defer func() {
-		stopServerCh <- struct{}{}
-	}()
+	s.AssertNil(err, o)
 
-	go func() {
-		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -4 -s -B %s -p %s --logfile %s", s.ServerAddr(), fmt.Sprint(s.Ports.Server), s.IperfLogFileName(s.Containers.IperfS))
-		s.StartServerApp(s.Containers.IperfS, "iperf3", cmd, srvCh, stopServerCh)
-	}()
+	cmd = fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s",
+		s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr(), proto)
 
-	err := <-srvCh
-	s.AssertNil(err, fmt.Sprint(err))
+	o, err = s.Containers.IperfC.Exec(true, cmd)
 
-	go func() {
-		defer GinkgoRecover()
-		cmd := fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr(), proto)
-		s.StartClientApp(s.Containers.IperfC, cmd, clnCh, clnRes)
-	}()
-
-	s.AssertChannelClosed(time.Minute*4, clnCh)
-	result := s.ParseJsonIperfOutput(<-clnRes)
+	s.AssertNil(err, o)
+	result := s.ParseJsonIperfOutput([]byte(o))
 	s.LogJsonIperfOutput(result)
 	s.AssertIperfMinTransfer(result, 200)
 }
@@ -803,21 +790,10 @@ func VppConnectProxyIperfTcpTest(s *MasqueSuite) {
 	s.ProxyClientConnect("tcp", s.Ports.Nginx)
 	clientVpp := s.Containers.VppClient.VppInstance
 
-	stopServerCh := make(chan struct{})
-	srvCh := make(chan error, 1)
-
-	defer func() {
-		stopServerCh <- struct{}{}
-	}()
-
-	go func() {
-		defer GinkgoRecover()
-		c := "iperf3 -s -B " + s.NginxAddr() + " -p " + s.Ports.Nginx
-		s.StartServerApp(s.Containers.IperfServer, "iperf3", c, srvCh, stopServerCh)
-	}()
-	err := <-srvCh
-	s.AssertNil(err, fmt.Sprint(err))
-	s.Log("server running")
+	c := fmt.Sprintf("iperf3 -s -1 -D -B %s -p %s --logfile %s",
+		s.NginxAddr(), s.Ports.Nginx, s.IperfLogFileName(s.Containers.IperfServer))
+	o, err := s.Containers.IperfServer.Exec(true, c)
+	s.AssertNil(err, o)
 
 	finished := make(chan error, 1)
 	go func() {
@@ -834,24 +810,13 @@ func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
 	// test listen all, we are running solo anyway
 	s.ProxyClientConnect("udp", "0")
 	clientVpp := s.Containers.VppClient.VppInstance
-	cmd := fmt.Sprintf("http connect proxy client listener add listener tcp://0.0.0.0:0")
+	cmd := "http connect proxy client listener add listener tcp://0.0.0.0:0"
 	s.Log(clientVpp.Vppctl(cmd))
 
-	stopServerCh := make(chan struct{})
-	srvCh := make(chan error, 1)
-
-	defer func() {
-		stopServerCh <- struct{}{}
-	}()
-
-	go func() {
-		defer GinkgoRecover()
-		c := "iperf3 -s -B " + s.NginxAddr() + " -p " + s.Ports.Nginx
-		s.StartServerApp(s.Containers.IperfServer, "iperf3", c, srvCh, stopServerCh)
-	}()
-	err := <-srvCh
-	s.AssertNil(err, fmt.Sprint(err))
-	s.Log("server running")
+	c := fmt.Sprintf("iperf3 -s -1 -D -B %s -p %s --logfile %s",
+		s.NginxAddr(), s.Ports.Nginx, s.IperfLogFileName(s.Containers.IperfServer))
+	o, err := s.Containers.IperfServer.Exec(true, c)
+	s.AssertNil(err, o)
 
 	finished := make(chan error, 1)
 	go func() {
@@ -878,7 +843,7 @@ func VppConnectProxyIperfUdpMWTest(s *MasqueSuite) {
 	VppConnectProxyIperfUdpTest(s)
 	clientVpp := s.Containers.VppClient.VppInstance
 	closed := false
-	for nTries := 0; nTries < 60; nTries++ {
+	for range 60 {
 		o := clientVpp.Vppctl("show http connect proxy client sessions")
 		if !strings.Contains(o, "] tcp ") {
 			closed = true
