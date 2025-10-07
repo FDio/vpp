@@ -2154,7 +2154,16 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 read_again:
 
   if (s->is_dgram)
-    rv = app_recv_dgram_raw (rx_fifo, buf, n, &s->transport, 0, peek);
+    {
+      rv = app_recv_dgram_raw (rx_fifo, buf, n, &s->transport, 0, peek);
+      /* Incomplete dgram. Probably due to how transport handled the enq */
+      if (PREDICT_FALSE (!rv))
+	{
+	  if (is_nonblocking)
+	    return VPPCOM_EWOULDBLOCK;
+	  goto read_again;
+	}
+    }
   else
     rv = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
