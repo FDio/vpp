@@ -2107,6 +2107,15 @@ vlib_get_elog_main_not_inline ()
 }
 
 void
+vlib_update_elog_main (elog_main_t *em)
+{
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+
+  vgm->elog_main = em;
+  vl_api_set_elog_main (em);
+}
+
+void
 vlib_exit_with_status (vlib_main_t *vm, int status)
 {
   vm->main_loop_exit_status = status;
