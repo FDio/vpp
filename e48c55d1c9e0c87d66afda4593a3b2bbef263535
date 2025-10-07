@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec86ed14_0d7d74e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-07T15:39:10Z",
+      "side": 1,
+      "message": "I would really like to avoid more nodes on tcp input path and implicit slowdown",
+      "revId": "e48c55d1c9e0c87d66afda4593a3b2bbef263535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
