@@ -498,6 +498,8 @@ void vlib_add_del_post_mortem_callback (void *cb, int is_add);
 vlib_main_t *vlib_get_main_not_inline (void);
 elog_main_t *vlib_get_elog_main_not_inline ();
 
+void vlib_update_elog_main (elog_main_t *elog_main);
+
 #endif /* included_vlib_main_h */
 
 /*
