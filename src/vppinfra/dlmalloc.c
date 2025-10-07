@@ -4623,7 +4623,7 @@ void* mspace_realloc(mspace msp, void* oldmem, size_t bytes) {
   return mem;
 }
 
-__clib_nosanitize_addr
+__clib_export __clib_nosanitize_addr
 void* mspace_realloc_in_place(mspace msp, void* oldmem, size_t bytes) {
   void* mem = 0;
   if (oldmem != 0) {
@@ -4806,7 +4806,7 @@ struct dlmallinfo mspace_mallinfo(mspace msp) {
 }
 #endif /* NO_MALLINFO */
 
-__clib_nosanitize_addr
+__clib_export __clib_nosanitize_addr
 size_t mspace_usable_size(const void* mem) {
   if (mem != 0) {
     mchunkptr p = mem2chunk(mem);

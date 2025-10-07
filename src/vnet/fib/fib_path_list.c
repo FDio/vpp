@@ -14,6 +14,8 @@
  */
 
 #include <vppinfra/mhash.h>
+#include <vlib/vlib.h>
+
 #include <vnet/ip/ip.h>
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/load_balance.h>
@@ -545,7 +547,7 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
 {
     fib_path_list_t *path_list;
 
-    pool_get(fib_path_list_pool, path_list);
+    pool_get_mt_safe(fib_path_list_pool, path_list);
     clib_memset(path_list, 0, sizeof(*path_list));
 
     fib_node_init(&path_list->fpl_node,
