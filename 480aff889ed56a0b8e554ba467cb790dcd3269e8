@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88fa6b4d_c7ebbee8",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-07T16:04:17Z",
+      "side": 1,
+      "message": "Please include ctx_index and thread:\n\n\"Unopened session closed by peer: error %U, reason %U, ctx_index %u, thread %u\",",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d652820a_11bf8e78",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-07T16:04:17Z",
+      "side": 1,
+      "message": "Please include ctx_index and thread:\n\n\"Session closed by peer: session 0x%lx, error %U, reason %U, ctx_index %u, thread %u\"\n\nNote: I introduced an inconsistency in my previous patch labeling session_handle in debug output as \"session_handle 0x%lx\" .vs. \"session 0x%lx\" used here.  Looks like the standard nomenclature is to use \"session\" in debug output printing the session handle.  Feel free to clean up the other debug output if you want.  If not, I\u0027ll clean it up in a separate patch.",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "acbb052a_dfd9eca6",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-07T16:04:17Z",
+      "side": 1,
+      "message": "please include the proto requested by client in the debug output as well as ctx_index and thread.  E.g.\n\nQUIC_DBG (2, \"unsupported alpn proto requested by client: proto %U, ctx_index %u, thread %u\", format_ascii_bytes, alpn_proto-\u003ebase, alpn_proto-\u003elen, lctx-\u003ec_c_index, lctx-\u003ec_thread_index\");",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fcbea752_d2861278",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-07T16:04:17Z",
+      "side": 1,
+      "message": "please add ctx_index and thread as mentioned above:\n\n\"ptls_set_negotiated_protocol failed: error %d, ctx_index %u, thread %u\"",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b26097b7_de86958a",
+        "filename": "src/plugins/quic_quicly/quic_quicly_crypto.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-07T16:04:17Z",
+      "side": 1,
+      "message": "please add ctx_index and thread as mentioned above:\n\n\"alpn proto %U, ctx_index %u, thread %u\"\n\nAlso, maybe use \"%U\" format_ascii_bytes instead of %s to avoid string overrun in rare case of missing null terminator.",
+      "revId": "480aff889ed56a0b8e554ba467cb790dcd3269e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
