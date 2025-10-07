@@ -16,6 +16,23 @@
       "message": "It seems the issue can be fixed with this patchset https://lists.fd.io/g/vpp-dev/message/25926",
       "revId": "cf21ce11d6fa3352dd93b3d434a1ccb47ad394c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39200a83_f35ed2b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3051
+      },
+      "writtenOn": "2025-10-07T13:21:03Z",
+      "side": 1,
+      "message": "Hello Folks, Need help with reviewing this patch. Happy to work with you folks to get this merged.\n\nThanks,Vinod",
+      "revId": "cf21ce11d6fa3352dd93b3d434a1ccb47ad394c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
