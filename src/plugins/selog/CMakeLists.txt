@@ -15,3 +15,5 @@ add_vpp_plugin(selog
   selog.h
   selog_shared.h
 )
+
+add_subdirectory(selog_client)
