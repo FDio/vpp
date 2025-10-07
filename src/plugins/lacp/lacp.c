@@ -218,7 +218,7 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
 	    {
 	      .format = "lacp-int-en-dis: BUG lacp_int == 0",
 	    };
-	  ELOG_DATA (&vlib_global_main.elog_main, e);
+	  ELOG_DATA (vlib_get_elog_main (), e);
 	}
       else
 	{

@@ -81,20 +81,20 @@ typedef struct
   vlib_simple_counter_main_t out2in_packets;;
 } nat66_main_t;
 
-#define nat66_elog(_level, _str)                         \
-do                                                       \
-  {                                                      \
-    nat66_main_t *nm = &nat66_main;                      \
-    if (PREDICT_FALSE (nm->log_level >= _level))         \
-      {                                                  \
-        ELOG_TYPE_DECLARE (e) =                          \
-          {                                              \
-            .format = "nat66-msg " _str,                 \
-            .format_args = "",                           \
-          };                                             \
-        ELOG_DATA (&vlib_global_main.elog_main, e);      \
-      }                                                  \
-  } while (0);
+#define nat66_elog(_level, _str)                                              \
+  do                                                                          \
+    {                                                                         \
+      nat66_main_t *nm = &nat66_main;                                         \
+      if (PREDICT_FALSE (nm->log_level >= _level))                            \
+	{                                                                     \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "nat66-msg " _str,                                      \
+	    .format_args = "",                                                \
+	  };                                                                  \
+	  ELOG_DATA (vlib_get_elog_main (), e);                               \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 #define nat66_elog_warn(nat_elog_str) \
   nat66_elog(0x02, "[warning] " nat_elog_str)

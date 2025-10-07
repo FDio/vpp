@@ -625,7 +625,7 @@ static clib_error_t *
 vlib_cli_elog_clear (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_reset_buffer (&vlib_global_main.elog_main);
+  elog_reset_buffer (vlib_get_elog_main ());
   return 0;
 }
 
@@ -640,7 +640,7 @@ static clib_error_t *
 elog_save_buffer (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vlib_global_main.elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
   char *file, *chroot_file;
   clib_error_t *error = 0;
 
@@ -692,7 +692,7 @@ static clib_error_t *
 elog_stop (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vlib_global_main.elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
 
   em->n_total_events_disable_limit = em->n_total_events;
 
@@ -710,7 +710,7 @@ static clib_error_t *
 elog_restart (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vlib_global_main.elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
 
   em->n_total_events_disable_limit = ~0;
 
@@ -728,7 +728,7 @@ static clib_error_t *
 elog_resize_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vlib_global_main.elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
   u32 tmp;
 
   /* Stop the parade */
@@ -757,7 +757,7 @@ VLIB_CLI_COMMAND (elog_resize_cli, static) = {
 static void
 elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 {
-  elog_main_t *em = &vlib_global_main.elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
   elog_event_t *e, *es;
   f64 dt;
 
@@ -994,8 +994,7 @@ dispatch_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vlib_worker_thread_t *w = vlib_worker_threads
 		+ vm->thread_index;
 
-	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				    w->elog_track);
+	      ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
 	      ed->node_name = n->name_elog_string;
 	      ed->vector_length = v;
 	      ed->is_polling = 1;
@@ -1027,11 +1026,10 @@ dispatch_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (PREDICT_FALSE (
 		    vlib_get_first_main ()->elog_trace_graph_dispatch))
 		{
-		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-					w->elog_track);
-		  ed->node_name = n->name_elog_string;
-		  ed->vector_length = v;
-		  ed->is_polling = 0;
+		ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
+		ed->node_name = n->name_elog_string;
+		ed->vector_length = v;
+		ed->is_polling = 0;
 		}
 	    }
 	}
@@ -1663,7 +1661,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  ASSERT (nm->process_restore_current != 0);
 
 	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
-	    ed = ELOG_DATA (&vlib_global_main.elog_main, es);
+	    ed = ELOG_DATA (vlib_get_elog_main (), es);
 
 	  expired_timers = process_expired_timers (expired_timers);
 
@@ -1671,7 +1669,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
 	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
 	    {
-	      ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
+	      ed = ELOG_DATA (vlib_get_elog_main (), ee);
 	      ed->nready_procs = _vec_len (nm->process_restore_current);
 	    }
 
@@ -2105,7 +2103,7 @@ vlib_get_main_not_inline (void)
 elog_main_t *
 vlib_get_elog_main_not_inline ()
 {
-  return &vlib_global_main.elog_main;
+  return vlib_get_elog_main ();
 }
 
 void

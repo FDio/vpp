@@ -37,7 +37,7 @@ avf_elog_aq_enq_req (avf_device_t *ad, avf_aq_desc_t *d)
 	u16 v_opcode_val;
       } * ed;
 
-      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+      ed = ELOG_DATA (vlib_get_elog_main (), el);
       ed->dev_instance = ad->dev_instance;
       ed->flags = d->flags;
       ed->datalen = d->datalen;
@@ -58,7 +58,7 @@ avf_elog_aq_enq_req (avf_device_t *ad, avf_aq_desc_t *d)
 	u16 datalen;
       } * ed;
 
-      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+      ed = ELOG_DATA (vlib_get_elog_main (), el);
       ed->dev_instance = ad->dev_instance;
       ed->opcode = d->opcode;
       ed->flags = d->flags;
@@ -80,7 +80,7 @@ avf_elog_aq_enq_resp (avf_device_t *ad, avf_aq_desc_t *d)
     u16 retval;
   } * ed;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+  ed = ELOG_DATA (vlib_get_elog_main (), el);
   ed->dev_instance = ad->dev_instance;
   ed->flags = d->flags;
   ed->retval = d->retval;
@@ -113,7 +113,7 @@ avf_elog_arq_desc (avf_device_t *ad, avf_aq_desc_t *d)
 	u16 v_retval;
       } * ed;
 
-      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+      ed = ELOG_DATA (vlib_get_elog_main (), el);
       ed->dev_instance = ad->dev_instance;
       ed->flags = d->flags;
       ed->retval = d->retval;
@@ -134,7 +134,7 @@ avf_elog_arq_desc (avf_device_t *ad, avf_aq_desc_t *d)
 	u16 opcode;
       } * ed;
 
-      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+      ed = ELOG_DATA (vlib_get_elog_main (), el);
       ed->dev_instance = ad->dev_instance;
       ed->flags = d->flags;
       ed->retval = d->retval;
@@ -160,7 +160,7 @@ avf_elog_reg (avf_device_t *ad, u32 addr, u32 val, int is_read)
     u32 val;
   } * ed;
 
-  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+  ed = ELOG_DATA (vlib_get_elog_main (), el);
   ed->dev_instance = ad->dev_instance;
   ed->addr = addr;
   ed->val = val;

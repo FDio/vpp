@@ -63,16 +63,16 @@ static u8 well_known_prefix[] = {
   0x00, 0x00, 0x00, 0x00
 };
 
-#define nat_elog_str(_str)                      \
-do                                              \
-  {                                             \
-    ELOG_TYPE_DECLARE (e) =                     \
-      {                                         \
-        .format = "nat-msg " _str,              \
-        .format_args = "",                      \
-      };                                        \
-    ELOG_DATA (&vlib_global_main.elog_main, e); \
-  } while (0);
+#define nat_elog_str(_str)                                                    \
+  do                                                                          \
+    {                                                                         \
+      ELOG_TYPE_DECLARE (e) = {                                               \
+	.format = "nat-msg " _str,                                            \
+	.format_args = "",                                                    \
+      };                                                                      \
+      ELOG_DATA (vlib_get_elog_main (), e);                                   \
+    }                                                                         \
+  while (0);
 
 static void
 nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,

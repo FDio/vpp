@@ -241,10 +241,10 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 	    u32 log_level;
 	    u32 string_index;
 	  } * ed;
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
+	  ed = ELOG_DATA (vlib_get_elog_main (), ee);
 	  ed->log_level = level;
 	  ed->string_index =
-	    elog_string (&vlib_global_main.elog_main, "%v%c", e->string, 0);
+	    elog_string (vlib_get_elog_main (), "%v%c", e->string, 0);
 	}
     }
 

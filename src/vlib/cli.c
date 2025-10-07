@@ -1685,7 +1685,7 @@ event_logger_trace_command_fn (vlib_main_t * vm,
    */
   if (dispatch || circuit)
     {
-      elog_main_t *em = &vlib_global_main.elog_main;
+      elog_main_t *em = vlib_get_elog_main ();
 
       em->n_total_events_disable_limit =
 	em->n_total_events + vec_len (em->event_ring);

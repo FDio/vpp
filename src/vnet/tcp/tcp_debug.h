@@ -154,13 +154,12 @@ typedef enum tcp_evt_to_grp_
 void tcp_evt_track_register (elog_track_t * et);
 void tcp_debug_init (void);
 
-#define TCP_DECLARE_ETD(_tc, _e, _size)					\
-struct									\
-{									\
-  u32 data[_size];							\
-} * ed;									\
-ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, _e, 			\
-                      _tc->c_elog_track)				\
+#define TCP_DECLARE_ETD(_tc, _e, _size)                                       \
+  struct                                                                      \
+  {                                                                           \
+    u32 data[_size];                                                          \
+  } *ed;                                                                      \
+  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), _e, _tc->c_elog_track)
 
 /*
  * Event handlers definitions

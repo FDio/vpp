@@ -381,7 +381,7 @@ vlib_worker_thread_barrier_check (void)
 	    clib_thread_index_t thread_index;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
 	  ed->thread_index = thread_index;
 	}
 
@@ -428,8 +428,7 @@ vlib_worker_thread_barrier_check (void)
 		clib_thread_index_t thread_index;
 	      } __clib_packed *ed;
 
-	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				    w->elog_track);
+	      ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
 	      ed->thread_index = thread_index;
 	    }
 
@@ -454,7 +453,7 @@ vlib_worker_thread_barrier_check (void)
 	    u32 duration;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);
 	  ed->thread_index = thread_index;
 	  ed->duration = (int) (1000000.0 * t);
 	}

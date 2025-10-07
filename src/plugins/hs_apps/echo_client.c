@@ -244,7 +244,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	  {
 	    u32 data[3];
 	  } *ed;
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);
 	  ed->data[0] = rv;
 	  ed->data[1] = es->bytes_sent;
 	  ed->data[2] = es->bytes_to_send;
@@ -328,7 +328,7 @@ receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 	  {
 	    u32 data[1];
 	  } *ed;
-	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	  ed = ELOG_DATA (vlib_get_elog_main (), e);
 	  ed->data[0] = n_read;
 	}
 

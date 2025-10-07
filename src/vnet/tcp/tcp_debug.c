@@ -30,7 +30,7 @@ tcp_evt_track_register (elog_track_t * et)
       et->track_index_plus_one = track_index + 1;
     }
   else
-    elog_track_register (&vlib_global_main.elog_main, et);
+    elog_track_register (vlib_get_elog_main (), et);
 }
 
 static const char *tcp_evt_grp_str[] = {

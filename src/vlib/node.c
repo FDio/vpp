@@ -69,7 +69,7 @@ node_set_elog_name (vlib_main_t * vm, uword node_index)
   t->format = (char *) format (0, "%v-return: %%d%c", n->name, 0);
 
   n->name_elog_string =
-    elog_string (&vlib_global_main.elog_main, "%v%c", n->name, 0);
+    elog_string (vlib_get_elog_main (), "%v%c", n->name, 0);
 }
 
 void

@@ -275,8 +275,7 @@ u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 	    typeof (acl_elog_val1) val1;                                      \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed =                                                                \
-	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);     \
 	  ed->thread = thread_index;                                          \
 	  ed->val1 = acl_elog_val1;                                           \
 	}                                                                     \
@@ -308,8 +307,7 @@ u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 	    typeof (acl_elog_val2) val2;                                      \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed =                                                                \
-	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);     \
 	  ed->thread = thread_index;                                          \
 	  ed->val1 = acl_elog_val1;                                           \
 	  ed->val2 = acl_elog_val2;                                           \
@@ -344,8 +342,7 @@ u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 	    typeof (acl_elog_val3) val3;                                      \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed =                                                                \
-	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);     \
 	  ed->thread = thread_index;                                          \
 	  ed->val1 = acl_elog_val1;                                           \
 	  ed->val2 = acl_elog_val2;                                           \
@@ -383,8 +380,7 @@ u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 	    typeof (acl_elog_val4) val4;                                      \
 	  }) *                                                                \
 	    ed;                                                               \
-	  ed =                                                                \
-	    ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);  \
+	  ed = ELOG_TRACK_DATA (vlib_get_elog_main (), e, w->elog_track);     \
 	  ed->thread = thread_index;                                          \
 	  ed->val1 = acl_elog_val1;                                           \
 	  ed->val2 = acl_elog_val2;                                           \
