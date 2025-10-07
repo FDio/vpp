@@ -990,7 +990,7 @@ segment_manager_attach_fifo (segment_manager_t *sm, svm_fifo_t **f,
   fifo_segment_attach_fifo (fs, f, s->thread_index);
   segment_manager_segment_reader_unlock (sm);
 
-  (*f)->shr->master_session_index = s->session_index;
+  //   (*f)->shr->master_session_index = s->session_index;
   (*f)->vpp_sh = s->handle;
 }
 

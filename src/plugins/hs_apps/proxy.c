@@ -884,7 +884,7 @@ active_open_alloc_session_fifos (session_t *s)
    * Reset the active-open tx-fifo master indices so the active-open session
    * will receive data, etc.
    */
-  txf->shr->master_session_index = s->session_index;
+  //   txf->shr->master_session_index = s->session_index;
   txf->vpp_sh = s->handle;
 
   /*
@@ -1122,8 +1122,8 @@ active_open_migrate_callback (session_t *s, session_handle_t new_sh)
 
   ps = proxy_session_get (sc->ps_index);
   ps->ao.session_handle = new_sh;
-  ps->ao.tx_fifo->shr->master_session_index =
-    session_index_from_handle (new_sh);
+  //   ps->ao.tx_fifo->shr->master_session_index =
+  //     session_index_from_handle (new_sh);
   ps->ao.tx_fifo->master_thread_index = session_thread_from_handle (new_sh);
 
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
