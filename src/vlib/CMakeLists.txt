@@ -107,6 +107,7 @@ add_vpp_library(vlib
   physmem.c
   punt.c
   punt_node.c
+  selog.c
   stats/cli.c
   stats/collector.c
   stats/format.c
@@ -158,6 +159,7 @@ add_vpp_library(vlib
   physmem_funcs.h
   physmem.h
   punt.h
+  selog.h
   stats/shared.h
   stats/stats.h
   threads.h
