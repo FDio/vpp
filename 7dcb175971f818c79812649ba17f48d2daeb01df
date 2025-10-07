@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "7dcb175971f818c79812649ba17f48d2daeb01df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46ff4ec7_db4df221",
+        "filename": "src/vppinfra/rbtree.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-10-07T22:45:49Z",
+      "side": 1,
+      "message": "We are using the 4 padding bytes in pool_header_t at the end due to alignment issue. If one day, someone notices there is 4 unused bytes and adds a field in pool_header_t, we will break miserably. Should we mark the 4 unused bytes in pool_header_t being used and warn about the possible breakage?",
+      "revId": "7dcb175971f818c79812649ba17f48d2daeb01df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
