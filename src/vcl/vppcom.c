@@ -343,6 +343,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
+  session->vpp_handle = mp->handle;
   if (vcl_segment_attach_session (
 	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
 	mp->vpp_event_queue_address, mp->mq_index, 0, session))
@@ -352,7 +353,6 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
       goto error;
     }
 
-  session->vpp_handle = mp->handle;
   session->session_state = VCL_STATE_READY;
   if (mp->rmt.is_ip4 && mp->original_dst_port)
     {
@@ -582,6 +582,9 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 	  session->session_state = VCL_STATE_DETACHED;
 	  return VCL_INVALID_SESSION_INDEX;
 	}
+        /* Fix vpp sh to point to the cl sh as opposed to the app listener */
+        session->rx_fifo->vpp_sh = mp->cl_sh_handle;
+        session->tx_fifo->vpp_sh = mp->cl_sh_handle;
     }
 
   VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
@@ -2480,8 +2483,7 @@ vppcom_session_write_segments (uint32_t session_handle,
     return VPPCOM_EAGAIN;
 
   if (svm_fifo_set_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q,
-			    s->tx_fifo->shr->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->vpp_session_index,
 			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 
   return n_write;
