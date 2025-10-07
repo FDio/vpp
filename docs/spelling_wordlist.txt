@@ -1026,6 +1026,7 @@ seatbelt
 seg
 segfault
 selinux
+selog
 semodule
 semver
 setjmp

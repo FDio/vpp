@@ -1,0 +1,50 @@
+autoreply define selog_get_shm {
+    u32 client_index;
+    u32 context;
+};
+
+define selog_get_string_table {
+  u32 client_index;
+  u32 context;
+};
+
+define selog_get_string_table_reply {
+  u32 context;
+  i32 retval;
+  string s[];
+};
+
+define selog_track_dump {
+  u32 client_index;
+  u32 context;
+};
+
+define selog_track_details {
+  u32 context;
+  u32 index;
+  string name[];
+};
+
+define selog_event_type_dump {
+  u32 client_index;
+  u32 context;
+};
+
+define selog_event_type_details {
+  u32 context;
+  u32 index;
+  string fmt_args[32];
+  string fmt[];
+};
+
+define selog_event_type_string_dump {
+  u32 client_index;
+  u32 context;
+  u32 event_type_index;
+};
+
+define selog_event_type_string_details {
+  u32 context;
+  u32 index;
+  string s[];
+};
