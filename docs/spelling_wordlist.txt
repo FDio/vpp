@@ -1026,6 +1026,7 @@ seatbelt
 seg
 segfault
 selinux
+selog
 semodule
 semver
 setjmp
@@ -1078,6 +1079,7 @@ SRv6
 sshd
 ssl
 ssm
+ssvm
 stateful
 Stateful
 statfs
