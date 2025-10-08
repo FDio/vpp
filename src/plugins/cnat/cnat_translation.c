@@ -476,7 +476,7 @@ cnat_translation_purge (void)
   }
 
   vec_foreach (trp, trs)
-    cnat_translation_delete (*trp, CNAT_FIB_TABLE);
+  cnat_translation_delete (*trp, CNAT_FIB_TABLE);
 
   ASSERT (0 == pool_elts (cnat_translation_pool));
 
