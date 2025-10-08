@@ -31,8 +31,8 @@ format_cnat_rewrite (u8 *s, va_list *args)
 {
   cnat_timestamp_rewrite_t *rw = va_arg (*args, cnat_timestamp_rewrite_t *);
 
-  s = format (s, "%U node:%u lbi:%u fl:%u", format_cnat_5tuple, &rw->tuple, rw->cts_dpoi_next_node,
-	      rw->cts_lbi, rw->cts_flags);
+  s = format (s, "%U node:%u lbi:%u fl:%u fib:%u", format_cnat_5tuple, &rw->tuple,
+	      rw->cts_dpoi_next_node, rw->cts_lbi, rw->cts_flags, rw->fib_index);
 
   return (s);
 }
