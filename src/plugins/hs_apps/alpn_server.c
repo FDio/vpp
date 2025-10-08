@@ -4,7 +4,6 @@
 
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
-#include <vnet/tls/tls_types.h>
 
 typedef struct
 {
@@ -40,7 +39,8 @@ as_ts_accept_callback (session_t *ts)
 
   ts->session_state = SESSION_STATE_READY;
 
-  alpn_proto = tls_get_alpn_selected (ts->connection_index);
+  alpn_proto = transport_get_alpn_selected (
+    session_get_transport_proto (ts), ts->connection_index, ts->thread_index);
   clib_warning ("ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
 
   return 0;

@@ -350,6 +350,30 @@ typedef enum tls_alpn_proto_
 #undef _
 } __clib_packed tls_alpn_proto_t;
 
+typedef struct tls_alpn_proto_id_
+{
+  u8 len;
+  u8 *base;
+} tls_alpn_proto_id_t;
+
+static const tls_alpn_proto_id_t tls_alpn_proto_ids[] = {
+#define _(sym, str) { (u8) (sizeof (str) - 1), (u8 *) str },
+  foreach_tls_alpn_protos
+#undef _
+};
+
+static_always_inline u8
+tls_alpn_proto_id_eq (tls_alpn_proto_id_t *actual,
+		      tls_alpn_proto_id_t *expected)
+{
+  if (actual->len != expected->len)
+    return 0;
+  return memcmp (actual->base, expected->base, expected->len) == 0 ? 1 : 0;
+}
+
+tls_alpn_proto_t tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id);
+format_function_t format_tls_alpn_proto;
+
 typedef struct transport_endpt_crypto_cfg_
 {
   u32 ckpair_index;   /**< index of ck pair in application crypto layer */

@@ -16,7 +16,6 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
-#include <vnet/tls/tls_types.h>
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_content_types.h>

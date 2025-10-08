@@ -7,7 +7,6 @@
 #include <vnet/session/session.h>
 #include <http/http.h>
 #include <http/http_status_codes.h>
-#include <vnet/tls/tls_types.h>
 #include <vnet/tcp/tcp.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 

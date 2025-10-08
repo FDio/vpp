@@ -16,7 +16,6 @@
 #include <vpp/app/version.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
-#include <vnet/tls/tls_types.h>
 
 #include <http/http.h>
 #include <http/http_private.h>
@@ -457,7 +456,8 @@ http_ts_accept_callback (session_t *ts)
   tp = session_get_transport_proto (ts);
   if (tp == TRANSPORT_PROTO_TLS)
     {
-      alpn_proto = tls_get_alpn_selected (ts->connection_index);
+      alpn_proto = transport_get_alpn_selected (tp, ts->connection_index,
+						ts->thread_index);
       HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
       switch (alpn_proto)
 	{
@@ -544,7 +544,8 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   /* TLS set by ALPN result, TCP: prior knowledge (set in ho) */
   if (tp == TRANSPORT_PROTO_TLS)
     {
-      alpn_proto = tls_get_alpn_selected (ts->connection_index);
+      alpn_proto = transport_get_alpn_selected (tp, ts->connection_index,
+						ts->thread_index);
       HTTP_DBG (1, "ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
       switch (alpn_proto)
 	{

@@ -20,7 +20,6 @@
 #include <hs_apps/proxy.h>
 #include <vnet/tcp/tcp.h>
 #include <http/http_header_names.h>
-#include <vnet/tls/tls_types.h>
 
 proxy_main_t proxy_main;
 

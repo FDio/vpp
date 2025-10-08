@@ -1028,7 +1028,6 @@ list(APPEND VNET_HEADERS
   tls/tls_inlines.h
   tls/tls_record.h
   tls/tls_test.h
-  tls/tls_types.h
 )
 
 
