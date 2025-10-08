@@ -178,5 +178,5 @@ add_vpp_library(vlib
 
   LINK_LIBRARIES ${VLIB_LIBS}
 
-  DEPENDS api_headers
+  DEPENDS vpp_version_h api_headers
 )
