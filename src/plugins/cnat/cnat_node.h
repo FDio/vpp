@@ -888,8 +888,8 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 
   /* is this the first time we've seen this source address */
   cc = (AF_IP4 == af ?
-		cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
-		cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
+	  cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
+	  cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
 
   if (cc)
     {
@@ -987,7 +987,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id,
 	      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey,
 					    2 /* no overwrite */);
 	      if (!rv)
-		goto out;  /* success ! */
+		goto out;   /* success ! */
 	      hash_ >>= 16; /* try next port... */
 	    }
 	}
@@ -1013,7 +1013,7 @@ cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw,
 	rw->cts_dpoi_next_node == (u16) ~0 ? *next0 : rw->cts_dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] =
 	rw->cts_lbi == (u32) ~0 ? vnet_buffer (b)->ip.adj_index[VLIB_TX] :
-					rw->cts_lbi;
+				  rw->cts_lbi;
     }
 }
 
@@ -1054,7 +1054,7 @@ cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
 always_inline uword
 cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame, ip_address_family_t af, u8 do_trace,
-		    cnat_node_sub_t cnat_sub, u8 is_feature,
+		    cnat_node_sub_t cnat_sub, u8 is_feature, bool is_output,
 		    bool alloc_if_not_found)
 {
   u32 n_left, *from;
@@ -1073,7 +1073,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   int rv[4];
   const bool is_v6 = AF_IP6 == af;
   u32 *fib_index_by_sw_if_index = is_v6 ? ip6_main.fib_index_by_sw_if_index :
-						ip4_main.fib_index_by_sw_if_index;
+					  ip4_main.fib_index_by_sw_if_index;
 
   session[0] = ((cnat_session_t *) &bkey[0]);
   session[1] = ((cnat_session_t *) &bkey[1]);
@@ -1089,15 +1089,32 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   /* Kickstart our state */
   if (n_left >= 4)
     {
-      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
-      cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
-      cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
-      cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
-
-      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
-      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
-      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[2]);
-      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[3]);
+      if (is_output)
+	{
+	  cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0],
+				   vnet_buffer (b[0])->ip.save_rewrite_length,
+				   0);
+	  cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1],
+				   vnet_buffer (b[1])->ip.save_rewrite_length,
+				   0);
+	  cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2],
+				   vnet_buffer (b[2])->ip.save_rewrite_length,
+				   0);
+	  cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3],
+				   vnet_buffer (b[3])->ip.save_rewrite_length,
+				   0);
+	}
+      else
+	{
+	  cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
+	  cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
+	  cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
+	  cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[2]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[3]);
+	}
 
       session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
       session[1]->key.fib_index = vnet_buffer (b[1])->ip.fib_index;
@@ -1156,15 +1173,36 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (n_left >= 8)
 	{
-	  cnat_make_buffer_5tuple (b[4], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
-	  cnat_make_buffer_5tuple (b[5], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
-	  cnat_make_buffer_5tuple (b[6], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
-	  cnat_make_buffer_5tuple (b[7], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
-
-	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[4]);
-	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[5]);
-	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[6]);
-	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[7]);
+	  if (is_output)
+	    {
+	      cnat_make_buffer_5tuple (
+		b[4], af, (cnat_5tuple_t *) &bkey[0],
+		vnet_buffer (b[4])->ip.save_rewrite_length, 0);
+	      cnat_make_buffer_5tuple (
+		b[5], af, (cnat_5tuple_t *) &bkey[1],
+		vnet_buffer (b[5])->ip.save_rewrite_length, 0);
+	      cnat_make_buffer_5tuple (
+		b[6], af, (cnat_5tuple_t *) &bkey[2],
+		vnet_buffer (b[6])->ip.save_rewrite_length, 0);
+	      cnat_make_buffer_5tuple (
+		b[7], af, (cnat_5tuple_t *) &bkey[3],
+		vnet_buffer (b[7])->ip.save_rewrite_length, 0);
+	    }
+	  else
+	    {
+	      cnat_make_buffer_5tuple (b[4], af, (cnat_5tuple_t *) &bkey[0], 0,
+				       0);
+	      cnat_make_buffer_5tuple (b[5], af, (cnat_5tuple_t *) &bkey[1], 0,
+				       0);
+	      cnat_make_buffer_5tuple (b[6], af, (cnat_5tuple_t *) &bkey[2], 0,
+				       0);
+	      cnat_make_buffer_5tuple (b[7], af, (cnat_5tuple_t *) &bkey[3], 0,
+				       0);
+	      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[4]);
+	      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[5]);
+	      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[6]);
+	      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[7]);
+	    }
 
 	  session[0]->key.fib_index = vnet_buffer (b[4])->ip.fib_index;
 	  session[1]->key.fib_index = vnet_buffer (b[5])->ip.fib_index;
@@ -1216,8 +1254,17 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_feature)
 	vnet_feature_next_u16 (&next[0], b[0]);
 
-      cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
-      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
+      if (is_output)
+	{
+	  cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0],
+				   vnet_buffer (b[0])->ip.save_rewrite_length,
+				   0);
+	}
+      else
+	{
+	  cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
+	}
       session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
       hash[0] = cnat_bihash_hash (&bkey[0]);
 

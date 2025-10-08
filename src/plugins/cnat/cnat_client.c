@@ -104,7 +104,7 @@ cnat_client_free_by_ip (const ip46_address_t *ip, u32 fib_index,
 {
   cnat_client_t *cc;
   cc = (ip46_address_is_ip4 (ip) ? cnat_client_ip4_find (&ip->ip4, fib_index) :
-					 cnat_client_ip6_find (&ip->ip6, fib_index));
+				   cnat_client_ip6_find (&ip->ip6, fib_index));
   ASSERT (NULL != cc);
 
   if (0 == cc->tr_refcnt &&
@@ -126,8 +126,8 @@ cnat_client_throttle_pool_process (void)
   clib_spinlock_lock (&cnat_client_db.throttle_lock);
   hash_foreach_mem (args, refcnt, cnat_client_db.throttle_mem, {
     cc = (AF_IP4 == args->addr.version ?
-		  cnat_client_ip4_find (&ip_addr_v4 (&args->addr), args->fib_index) :
-		  cnat_client_ip6_find (&ip_addr_v6 (&args->addr), args->fib_index));
+	    cnat_client_ip4_find (&ip_addr_v4 (&args->addr), args->fib_index) :
+	    cnat_client_ip6_find (&ip_addr_v6 (&args->addr), args->fib_index));
     /* Client might not already be created */
     if (NULL != cc)
       {
@@ -181,7 +181,7 @@ cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index,
   /* check again if we need this client */
   cc =
     (AF_IP4 == pfx->version ? cnat_client_ip4_find (&pfx->ip.ip4, fib_index) :
-				    cnat_client_ip6_find (&pfx->ip.ip6, fib_index));
+			      cnat_client_ip6_find (&pfx->ip.ip6, fib_index));
 
   if (NULL != cc)
     return (cc - cnat_client_pool);
@@ -210,7 +210,7 @@ cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index,
 
   fib_flags = FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
   fib_flags |= (flags & CNAT_TR_FLAG_EXCLUSIVE) ? FIB_ENTRY_FLAG_EXCLUSIVE :
-							FIB_ENTRY_FLAG_INTERPOSE;
+						  FIB_ENTRY_FLAG_INTERPOSE;
 
   fei = fib_table_entry_special_dpo_add (fib_index, &fib_pfx, cnat_fib_source,
 					 fib_flags, &tmp);

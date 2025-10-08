@@ -349,25 +349,25 @@ vl_api_cnat_snat_addresses_dump_t_handler (
 
   pool_foreach (cpe, cpm->snat_policies_pool)
     {
-      vl_api_cnat_snat_addresses_details_t *rmp;
-      rmp = vl_msg_api_alloc (sizeof (*rmp));
-      if (!rmp)
+    vl_api_cnat_snat_addresses_details_t *rmp;
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    if (!rmp)
 	break;
 
-      rmp->_vl_msg_id = msg_id;
-      rmp->context = mp->context;
-      rmp->fwd_table_id4 = clib_host_to_net_u32 (
-	fib_table_get_table_id (cpe->fwd_fib_index4, FIB_PROTOCOL_IP4));
-      rmp->fwd_table_id6 = clib_host_to_net_u32 (
-	fib_table_get_table_id (cpe->fwd_fib_index6, FIB_PROTOCOL_IP6));
-      rmp->ret_table_id4 = clib_host_to_net_u32 (
-	fib_table_get_table_id (cpe->ret_fib_index4, FIB_PROTOCOL_IP4));
-      rmp->ret_table_id6 = clib_host_to_net_u32 (
-	fib_table_get_table_id (cpe->ret_fib_index6, FIB_PROTOCOL_IP6));
-      ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
-      ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
-      rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
-      vl_api_send_msg (reg, (u8 *) rmp);
+    rmp->_vl_msg_id = msg_id;
+    rmp->context = mp->context;
+    rmp->fwd_table_id4 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->fwd_fib_index4, FIB_PROTOCOL_IP4));
+    rmp->fwd_table_id6 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->fwd_fib_index6, FIB_PROTOCOL_IP6));
+    rmp->ret_table_id4 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->ret_fib_index4, FIB_PROTOCOL_IP4));
+    rmp->ret_table_id6 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->ret_fib_index6, FIB_PROTOCOL_IP6));
+    ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
+    ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
+    rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
+    vl_api_send_msg (reg, (u8 *) rmp);
     }
 }
 
@@ -396,7 +396,8 @@ vl_api_cnat_set_snat_policy_t_handler (vl_api_cnat_set_snat_policy_t *mp)
   int rv = 0;
   cnat_snat_policy_type_t policy = (cnat_snat_policy_type_t) mp->policy;
 
-  rv = cnat_set_snat_policy (policy);
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
+  rv = cnat_set_snat_policy (cpe, policy);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_POLICY_REPLY);
 }
@@ -410,10 +411,11 @@ vl_api_cnat_snat_policy_add_del_exclude_pfx_t_handler (
   int rv;
 
   ip_prefix_decode2 (&mp->prefix, &pfx);
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
   if (mp->is_add)
-    rv = cnat_snat_policy_add_pfx (&pfx);
+    rv = cnat_snat_policy_add_pfx (cpe, &pfx, 0 /* rw */, 0 /* is_src */);
   else
-    rv = cnat_snat_policy_del_pfx (&pfx);
+    rv = cnat_snat_policy_del_pfx (cpe, &pfx, 0 /* is_src */);
 
   REPLY_MACRO (VL_API_CNAT_SNAT_POLICY_ADD_DEL_EXCLUDE_PFX_REPLY);
 }

@@ -67,8 +67,8 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
     }
 
   cc = AF_IP4 == af ?
-	       cnat_client_ip4_find (&ip4->dst_address, CNAT_FIB_TABLE) :
-	       cnat_client_ip6_find (&ip6->dst_address, CNAT_FIB_TABLE);
+	 cnat_client_ip4_find (&ip4->dst_address, CNAT_FIB_TABLE) :
+	 cnat_client_ip6_find (&ip6->dst_address, CNAT_FIB_TABLE);
   if (!cc)
     return NULL; /* dst address is not a vip */
 
@@ -108,8 +108,8 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 		     &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] =
     trk0->ct_ep[VLIB_TX].ce_port ?
-	    clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
-	    rw->tuple.port[VLIB_TX];
+      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
+      rw->tuple.port[VLIB_TX];
 
   if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
     {
@@ -154,12 +154,12 @@ cnat_input_feature_get_rw (vlib_main_t *vm, vlib_buffer_t *b,
 {
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     return (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT)) ?
-		   &ts->cts_rewrites[CNAT_LOCATION_INPUT] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_LOCATION_INPUT] :
+	     NULL;
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
     return (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_INPUT))) ?
-		   &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_INPUT] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_INPUT] :
+	     NULL;
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     return cnat_input_feature_new_flow_inline (vm, b, af, ts);
   else
@@ -349,49 +349,30 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 				     cnat_timestamp_t *ts)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
-  ip_protocol_t iproto;
 
   u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
   cnat_snat_policy_entry_t *cpe =
-    cnat_snat_policy_entry_get (af, fwd_fib_index);
+    cnat_snat_policy_entry_get__ (af, fwd_fib_index);
   if (!cpe)
     return 0; /* no policy for this vrf */
-
-  ip4_header_t *ip4 = NULL;
-  ip6_header_t *ip6 = NULL;
-  udp_header_t *udp0;
 
   int rv;
   u16 sport;
   u8 do_snat = 0;
   u32 iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
 
-  if (AF_IP4 == af)
-    {
-      ip4 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
-      udp0 = (udp_header_t *) (ip4 + 1);
-      iproto = ip4->protocol;
-    }
-  else
-    {
-      ip6 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
-      udp0 = (udp_header_t *) (ip6 + 1);
-      iproto = ip6->protocol;
-    }
-
   /* new session */
-  do_snat = cpe->snat_policy (b, af, ip4, ip6, iproto, udp0);
+  rw = &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
+  do_snat = cpe->snat_policy (&rw->tuple, cpe, b, af);
   if (do_snat != 1)
     return (NULL);
 
-  rw = &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
   ts->ts_rw_bm |= 1 << (CNAT_LOCATION_OUTPUT);
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
   rw->fib_index = ~0;
-
-  cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
 
   if (AF_IP4 == af)
     {
@@ -417,12 +398,12 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
     }
 
   sport = 0;
-  rv = cnat_allocate_port (fwd_fib_index, &sport, iproto);
+  rv = cnat_allocate_port (fwd_fib_index, &sport, rw->tuple.iproto);
   if (rv)
     {
       vlib_node_registration_t *node = (AF_IP4 == af) ?
-					       &cnat_output_feature_ip4_node :
-					       &cnat_output_feature_ip6_node;
+					 &cnat_output_feature_ip4_node :
+					 &cnat_output_feature_ip6_node;
       vlib_node_increment_counter (vm, node->index, CNAT_ERROR_EXHAUSTED_PORTS,
 				   1);
       rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
@@ -457,12 +438,12 @@ cnat_output_feature_get_rw (vlib_main_t *vm, vlib_buffer_t *b,
 {
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     return (ts->ts_rw_bm & (1 << CNAT_LOCATION_OUTPUT)) ?
-		   &ts->cts_rewrites[CNAT_LOCATION_OUTPUT] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_LOCATION_OUTPUT] :
+	     NULL;
   if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
     return (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT))) ?
-		   &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_OUTPUT] :
+	     NULL;
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     return cnat_output_feature_new_flow_inline (vm, b, af, ts);
   else

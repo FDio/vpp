@@ -82,12 +82,12 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 		     &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] =
     trk0->ct_ep[VLIB_TX].ce_port ?
-	    clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
-	    rw->tuple.port[VLIB_TX];
+      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
+      rw->tuple.port[VLIB_TX];
   rw->tuple.port[VLIB_RX] =
     trk0->ct_ep[VLIB_RX].ce_port ?
-	    clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port) :
-	    rw->tuple.port[VLIB_RX];
+      clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port) :
+      rw->tuple.port[VLIB_RX];
 
   if (!ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
     {
@@ -167,14 +167,14 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
     {
       /* Translate & follow the translation given LB */
       rw = (ts->ts_rw_bm & (1 << CNAT_LOCATION_FIB)) ?
-		   &ts->cts_rewrites[CNAT_LOCATION_FIB] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_LOCATION_FIB] :
+	     NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
     {
       rw = (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_FIB))) ?
-		   &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
-		   NULL;
+	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
+	     NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
@@ -194,10 +194,11 @@ VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP4, 1 /* do_trace */,
 			       cnat_vip_node_fn, 0 /* is_feature */,
+			       false /* is_output */,
 			       true /* alloc_if_not_found */);
-  return cnat_lookup_inline (vm, node, frame, AF_IP4, 0 /* do_trace */,
-			     cnat_vip_node_fn, 0 /* is_feature */,
-			     true /* alloc_if_not_found */);
+  return cnat_lookup_inline (
+    vm, node, frame, AF_IP4, 0 /* do_trace */, cnat_vip_node_fn,
+    0 /* is_feature */, false /* is_output */, true /* alloc_if_not_found */);
 }
 
 VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
@@ -207,10 +208,11 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP6, 1 /* do_trace */,
 			       cnat_vip_node_fn, 0 /* is_feature */,
+			       false /* is_output */,
 			       true /* alloc_if_not_found */);
-  return cnat_lookup_inline (vm, node, frame, AF_IP6, 0 /* do_trace */,
-			     cnat_vip_node_fn, 0 /* is_feature */,
-			     true /* alloc_if_not_found */);
+  return cnat_lookup_inline (
+    vm, node, frame, AF_IP6, 0 /* do_trace */, cnat_vip_node_fn,
+    0 /* is_feature */, false /* is_output */, true /* alloc_if_not_found */);
 }
 
 VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
@@ -269,8 +271,8 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
   rw = (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_FIB))) ?
-	       &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
-	       NULL;
+	 &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
+	 NULL;
 
   cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age,
 		    0 /* iph_offset */);
@@ -287,10 +289,11 @@ VLIB_NODE_FN (cnat_return_ip4_node)
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP4, 1 /* do_trace */,
 			       cnat_return_node_fn, 0 /* is_feature */,
+			       false /* is_output */,
 			       false /* alloc_if_not_found */);
-  return cnat_lookup_inline (vm, node, frame, AF_IP4, 0 /* do_trace */,
-			     cnat_return_node_fn, 0 /* is_feature */,
-			     false /* alloc_if_not_found */);
+  return cnat_lookup_inline (
+    vm, node, frame, AF_IP4, 0 /* do_trace */, cnat_return_node_fn,
+    0 /* is_feature */, false /* is_output */, false /* alloc_if_not_found */);
 }
 
 VLIB_NODE_FN (cnat_return_ip6_node)
@@ -299,10 +302,11 @@ VLIB_NODE_FN (cnat_return_ip6_node)
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP6, 1 /* do_trace */,
 			       cnat_return_node_fn, 0 /* is_feature */,
+			       false /* is_output */,
 			       false /* alloc_if_not_found */);
-  return cnat_lookup_inline (vm, node, frame, AF_IP6, 0 /* do_trace */,
-			     cnat_return_node_fn, 0 /* is_feature */,
-			     false /* alloc_if_not_found */);
+  return cnat_lookup_inline (
+    vm, node, frame, AF_IP6, 0 /* do_trace */, cnat_return_node_fn,
+    0 /* is_feature */, false /* is_output */, false /* alloc_if_not_found */);
 }
 
 VLIB_REGISTER_NODE (cnat_return_ip4_node) =
