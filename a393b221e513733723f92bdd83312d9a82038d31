@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bedff880_7da47b70",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-10-08T18:23:48Z",
+      "side": 1,
+      "message": "How will this plugin be tested in the CI?\n\nEither \u0027make test\u0027 or HST test cases will be recorded in the daily coverage job: https://jenkins.fd.io/view/vpp/job/vpp-cov-verify-master-ubuntu2404-x86_64/",
+      "revId": "a393b221e513733723f92bdd83312d9a82038d31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
