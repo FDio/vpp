@@ -33,6 +33,23 @@
       "message": "Hello Folks, Need help with reviewing this patch. Happy to work with you folks to get this merged.\n\nThanks,Vinod",
       "revId": "cf21ce11d6fa3352dd93b3d434a1ccb47ad394c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "96df814e_18a0ef26",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-08T19:19:26Z",
+      "side": 1,
+      "message": "needs rebase...",
+      "revId": "cf21ce11d6fa3352dd93b3d434a1ccb47ad394c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
