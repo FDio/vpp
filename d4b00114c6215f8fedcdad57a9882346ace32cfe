@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f8d894e_3163e4aa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-10-08T18:01:34Z",
+      "side": 1,
+      "message": "Hi guys,\n\nCan this bug fix be cherry-picked to stable/2510?\n\nThanks,\n-Matt",
+      "revId": "d4b00114c6215f8fedcdad57a9882346ace32cfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
