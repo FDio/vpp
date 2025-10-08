@@ -888,8 +888,8 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 
   /* is this the first time we've seen this source address */
   cc = (AF_IP4 == af ?
-		cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
-		cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
+	  cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
+	  cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
 
   if (cc)
     {
@@ -987,7 +987,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id,
 	      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey,
 					    2 /* no overwrite */);
 	      if (!rv)
-		goto out;  /* success ! */
+		goto out;   /* success ! */
 	      hash_ >>= 16; /* try next port... */
 	    }
 	}
@@ -1013,7 +1013,7 @@ cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw,
 	rw->cts_dpoi_next_node == (u16) ~0 ? *next0 : rw->cts_dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] =
 	rw->cts_lbi == (u32) ~0 ? vnet_buffer (b)->ip.adj_index[VLIB_TX] :
-					rw->cts_lbi;
+				  rw->cts_lbi;
     }
 }
 
@@ -1073,7 +1073,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   int rv[4];
   const bool is_v6 = AF_IP6 == af;
   u32 *fib_index_by_sw_if_index = is_v6 ? ip6_main.fib_index_by_sw_if_index :
-						ip4_main.fib_index_by_sw_if_index;
+					  ip4_main.fib_index_by_sw_if_index;
 
   session[0] = ((cnat_session_t *) &bkey[0]);
   session[1] = ((cnat_session_t *) &bkey[1]);
