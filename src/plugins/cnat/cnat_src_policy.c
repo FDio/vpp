@@ -31,13 +31,13 @@ cnat_source_policy_errors_t
 cnat_vip_default_source_policy (ip_protocol_t iproto, u16 *sport)
 {
   int rv = 0;
-    {
-      /* Allocate a port only if asked and if we actually sNATed */
-      *sport = 0; /* force allocation */
-      rv = cnat_allocate_port (CNAT_FIB_TABLE, sport, iproto);
-      if (rv)
-	return CNAT_SOURCE_ERROR_EXHAUSTED_PORTS;
-    }
+  {
+    /* Allocate a port only if asked and if we actually sNATed */
+    *sport = 0; /* force allocation */
+    rv = cnat_allocate_port (CNAT_FIB_TABLE, sport, iproto);
+    if (rv)
+      return CNAT_SOURCE_ERROR_EXHAUSTED_PORTS;
+  }
   return 0;
 }
 
