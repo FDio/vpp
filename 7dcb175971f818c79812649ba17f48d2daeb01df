@@ -33,6 +33,24 @@
       "message": "We are using the 4 padding bytes in pool_header_t at the end due to alignment issue. If one day, someone notices there is 4 unused bytes and adds a field in pool_header_t, we will break miserably. Should we mark the 4 unused bytes in pool_header_t being used and warn about the possible breakage?",
       "revId": "7dcb175971f818c79812649ba17f48d2daeb01df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "050761d8_4468f721",
+        "filename": "src/vppinfra/rbtree.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-08T01:57:06Z",
+      "side": 1,
+      "message": "Most of what we can do is explicitly call out those 4 bytes and give them a name, i.e., something like opaque.",
+      "parentUuid": "46ff4ec7_db4df221",
+      "revId": "7dcb175971f818c79812649ba17f48d2daeb01df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
