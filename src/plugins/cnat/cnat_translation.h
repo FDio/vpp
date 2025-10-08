@@ -63,6 +63,8 @@ typedef enum cnat_translation_flag_t_
   CNAT_TR_FLAG_EXCLUSIVE = (1 << 4),
   /* only return traffic is allowed through this translation */
   CNAT_TR_FLAG_RETURN_ONLY = (1 << 5),
+  /* this is a SNAT+DNAT translation */
+  CNAT_TR_FLAG_SNAT_DNAT = (1 << 6),
 } __clib_packed cnat_translation_flag_t;
 
 typedef enum

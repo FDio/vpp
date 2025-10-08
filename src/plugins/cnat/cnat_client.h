@@ -64,6 +64,11 @@ typedef struct cnat_client_t_
    */
   index_t parent_cci;
 
+  /* SNAT policy index */
+  u32 fwd_fib_index;
+
+  dpo_type_t dpo_type;
+
   /**
    * Client flags
    */
@@ -103,7 +108,8 @@ extern void cnat_client_translation_added (index_t cci);
  */
 extern void cnat_client_learn (const cnat_client_learn_args_t *args);
 
-extern index_t cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u8 flags);
+extern index_t cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index,
+				    u32 fwd_fib_index, u8 flags);
 extern index_t cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags);
 
 /**
