@@ -353,7 +353,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 
   u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
   cnat_snat_policy_entry_t *cpe =
-    cnat_snat_policy_entry_get (af, fwd_fib_index);
+    cnat_snat_policy_entry_get__ (af, fwd_fib_index);
   if (!cpe)
     return 0; /* no policy for this vrf */
 
@@ -380,7 +380,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
     }
 
   /* new session */
-  do_snat = cpe->snat_policy (b, af, ip4, ip6, iproto, udp0);
+  do_snat = cpe->snat_policy (cpe, b, af, ip4, ip6, iproto, udp0);
   if (do_snat != 1)
     return (NULL);
 

@@ -20,9 +20,17 @@
 
 /* function to use to decide whether to snat connections in the output
  * feature. Returns 1 if we should source NAT */
-typedef int (*cnat_snat_policy_t) (vlib_buffer_t *b, ip_address_family_t af,
-				   ip4_header_t *ip4, ip6_header_t *ip6,
-				   ip_protocol_t iproto, udp_header_t *udp0);
+typedef struct cnat_snat_policy_entry_t_ cnat_snat_policy_entry_t;
+typedef enum cnat_snat_policy_action_t_
+{
+  CNAT_SNAT_POLICY_ACTION_NOOP = 0,
+  CNAT_SNAT_POLICY_ACTION_SNAT_ALLOC = 1,
+  CNAT_SNAT_POLICY_ACTION_SNAT_KEEP = 2,
+} __clib_packed cnat_snat_policy_action_t;
+typedef cnat_snat_policy_action_t (*cnat_snat_policy_t) (
+  cnat_snat_policy_entry_t *cpe, vlib_buffer_t *b, ip_address_family_t af,
+  ip4_header_t *ip4, ip6_header_t *ip6, ip_protocol_t iproto,
+  udp_header_t *udp0);
 
 typedef struct cnat_snat_pfx_table_meta_t_
 {
@@ -57,6 +65,7 @@ typedef enum cnat_snat_policy_type_t_
   CNAT_SNAT_POLICY_NONE = 0,
   CNAT_SNAT_POLICY_IF_PFX = 1,
   CNAT_SNAT_POLICY_K8S = 2,
+  CNAT_SNAT_POLICY_DNAT = 3,
 } __clib_packed cnat_snat_policy_type_t;
 
 typedef enum cnat_snat_policy_flags_t_
@@ -111,16 +120,18 @@ extern int cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index,
 			  const ip4_address_t *ip4, u8 ip4_pfx_len,
 			  const ip6_address_t *ip6, u8 ip6_pfx_len,
 			  u32 sw_if_index, cnat_snat_policy_flags_t flags);
-extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
-extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);
-extern int cnat_set_snat_policy (cnat_snat_policy_type_t policy);
+extern int cnat_snat_policy_add_pfx (cnat_snat_policy_entry_t *cpe,
+				     ip_prefix_t *pfx, const ip_address_t *rw,
+				     u8 is_src);
+extern int cnat_snat_policy_del_pfx (cnat_snat_policy_entry_t *cpe,
+				     ip_prefix_t *pfx, u8 is_src);
+extern int cnat_set_snat_policy (cnat_snat_policy_entry_t *cpe,
+				 cnat_snat_policy_type_t policy);
 extern int cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
 					cnat_snat_interface_map_type_t table);
 
-int cnat_search_snat_prefix (ip46_address_t *addr, ip_address_family_t af);
-
 static_always_inline cnat_snat_policy_entry_t *
-cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_fib_index)
+cnat_snat_policy_entry_get__ (ip_address_family_t af, u32 fwd_fib_index)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   u32 *cp_fwd_fib_index = AF_IP4 == af ? cpm->snat_policy_per_fwd_fib_index4 :
@@ -132,6 +143,9 @@ cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_fib_index)
     return 0;
   return pool_elt_at_index (cpm->snat_policies_pool, cpe_index);
 }
+
+cnat_snat_policy_entry_t *cnat_snat_policy_entry_get (ip_address_family_t af,
+						      u32 fwd_fib_index);
 
 cnat_snat_policy_entry_t *cnat_snat_policy_entry_get_default (void);
 
