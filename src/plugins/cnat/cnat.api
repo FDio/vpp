@@ -220,6 +220,8 @@ enum cnat_snat_policies:u8
   CNAT_POLICY_IF_PFX = 1,
   /* Kubernetes specific policy */
   CNAT_POLICY_K8S = 2,
+  /* DNAT policy with source/destination address rewrite */
+  CNAT_POLICY_DNAT = 3,
 };
 
 autoreply define cnat_set_snat_policy

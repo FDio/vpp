@@ -374,7 +374,8 @@ vl_api_cnat_set_snat_policy_t_handler (vl_api_cnat_set_snat_policy_t *mp)
   int rv = 0;
   cnat_snat_policy_type_t policy = (cnat_snat_policy_type_t) mp->policy;
 
-  rv = cnat_set_snat_policy (policy);
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
+  rv = cnat_set_snat_policy (cpe, policy);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_POLICY_REPLY);
 }
@@ -388,10 +389,11 @@ vl_api_cnat_snat_policy_add_del_exclude_pfx_t_handler (
   int rv;
 
   ip_prefix_decode2 (&mp->prefix, &pfx);
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
   if (mp->is_add)
-    rv = cnat_snat_policy_add_pfx (&pfx);
+    rv = cnat_snat_policy_add_pfx (cpe, &pfx, 0 /* rw */, 0 /* is_src */);
   else
-    rv = cnat_snat_policy_del_pfx (&pfx);
+    rv = cnat_snat_policy_del_pfx (cpe, &pfx, 0 /* is_src */);
 
   REPLY_MACRO (VL_API_CNAT_SNAT_POLICY_ADD_DEL_EXCLUDE_PFX_REPLY);
 }
