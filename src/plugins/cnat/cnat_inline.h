@@ -220,8 +220,8 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
 	session->value.cs_session_index;
       vnet_buffer2 (b)->session.state =
 	session->value.cs_flags & CNAT_SESSION_IS_RETURN ?
-		CNAT_LOOKUP_IS_RETURN :
-		CNAT_LOOKUP_IS_OK;
+	  CNAT_LOOKUP_IS_RETURN :
+	  CNAT_LOOKUP_IS_OK;
       cnat_timestamp_update (session->value.cs_session_index, now);
     }
   else
