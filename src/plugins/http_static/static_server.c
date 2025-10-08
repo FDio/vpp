@@ -15,7 +15,6 @@
 
 #include <http_static/http_static.h>
 #include <vnet/session/application.h>
-#include <vnet/tls/tls_types.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>

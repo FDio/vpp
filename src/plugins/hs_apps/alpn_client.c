@@ -5,7 +5,6 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
-#include <vnet/tls/tls_types.h>
 
 typedef struct
 {
@@ -63,7 +62,8 @@ ac_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
       return -1;
     }
 
-  cm->alpn_proto_selected = tls_get_alpn_selected (s->connection_index);
+  cm->alpn_proto_selected = transport_get_alpn_selected (
+    session_get_transport_proto (s), s->connection_index, s->thread_index);
 
   a->handle = session_handle (s);
   a->app_index = cm->app_index;

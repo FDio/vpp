@@ -40,6 +40,7 @@ typedef struct transport_main_
   u16 port_allocator_max_src_port;
   u8 lcl_endpts_cleanup_pending;
   clib_spinlock_t local_endpoints_lock;
+  uword *alpn_proto_by_str;
 } transport_main_t;
 
 static transport_main_t tp_main;
@@ -468,6 +469,16 @@ transport_connection_attribute (transport_proto_t tp, u32 conn_index,
     return -1;
 
   return tp_vfts[tp].attribute (conn_index, thread_index, is_get, attr);
+}
+
+tls_alpn_proto_t
+transport_get_alpn_selected (transport_proto_t tp, u32 conn_index,
+			     clib_thread_index_t thread_index)
+{
+  if (!tp_vfts[tp].get_alpn_selected)
+    return TLS_ALPN_PROTO_NONE;
+
+  return tp_vfts[tp].get_alpn_selected (conn_index, thread_index);
 }
 
 #define PORT_MASK ((1 << 16)- 1)
@@ -989,6 +1000,53 @@ transport_connection_reschedule (transport_connection_t * tc)
     }
 }
 
+tls_alpn_proto_t
+tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id)
+{
+  transport_main_t *tm = &tp_main;
+  uword *p;
+
+  p = hash_get_mem (tm->alpn_proto_by_str, alpn_id);
+  if (p)
+    return p[0];
+
+  return TLS_ALPN_PROTO_NONE;
+}
+
+u8 *
+format_tls_alpn_proto (u8 *s, va_list *args)
+{
+  tls_alpn_proto_t alpn_proto = va_arg (*args, int);
+  u8 *t = 0;
+
+  switch (alpn_proto)
+    {
+#define _(sym, str)                                                           \
+  case TLS_ALPN_PROTO_##sym:                                                  \
+    t = (u8 *) str;                                                           \
+    break;
+      foreach_tls_alpn_protos
+#undef _
+	default : return format (s, "BUG: unknown");
+    }
+  return format (s, "%s", t);
+}
+
+static uword
+tls_alpn_proto_hash_key_sum (hash_t *h, uword key)
+{
+  tls_alpn_proto_id_t *id = uword_to_pointer (key, tls_alpn_proto_id_t *);
+  return hash_memory (id->base, id->len, 0);
+}
+
+static uword
+tls_alpn_proto_hash_key_equal (hash_t *h, uword key1, uword key2)
+{
+  tls_alpn_proto_id_t *id1 = uword_to_pointer (key1, tls_alpn_proto_id_t *);
+  tls_alpn_proto_id_t *id2 = uword_to_pointer (key2, tls_alpn_proto_id_t *);
+  return id1 && id2 && tls_alpn_proto_id_eq (id1, id2);
+}
+
 void
 transport_fifos_init_ooo (transport_connection_t * tc)
 {
@@ -1029,6 +1087,7 @@ transport_init (void)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   session_main_t *smm = vnet_get_session_main ();
   transport_main_t *tm = &tp_main;
+  const tls_alpn_proto_id_t *alpn_proto;
   u32 num_threads;
 
   if (smm->local_endpoints_table_buckets == 0)
@@ -1052,6 +1111,16 @@ transport_init (void)
       /* Main not polled if there are workers */
       smm->transport_cl_thread = 1;
     }
+
+  tm->alpn_proto_by_str = hash_create2 (
+    0, sizeof (tls_alpn_proto_id_t), sizeof (uword),
+    tls_alpn_proto_hash_key_sum, tls_alpn_proto_hash_key_equal, 0, 0);
+
+#define _(sym, str)                                                           \
+  alpn_proto = &tls_alpn_proto_ids[TLS_ALPN_PROTO_##sym];                     \
+  hash_set_mem (tm->alpn_proto_by_str, alpn_proto, TLS_ALPN_PROTO_##sym);
+  foreach_tls_alpn_protos
+#undef _
 }
 
 /*

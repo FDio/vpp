@@ -10,7 +10,6 @@
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
-#include <vnet/tls/tls_types.h>
 
 #define foreach_hc_s_flag                                                     \
   _ (1, IS_CLOSED)                                                            \
