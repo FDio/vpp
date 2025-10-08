@@ -374,9 +374,6 @@ vcl_session_read_ready (vcl_session_t * s)
 
   if (vcl_session_is_open (s))
     {
-      if (vcl_session_is_ct (s))
-	return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
-
       if (s->is_dgram)
 	{
 	  session_dgram_pre_hdr_t ph;
@@ -420,9 +417,6 @@ vcl_session_read_ready2 (vcl_session_t *s)
 {
   if (vcl_session_is_open (s))
     {
-      if (vcl_session_is_ct (s))
-	return svm_fifo_max_dequeue_cons (s->ct_rx_fifo);
-
       if (s->is_dgram)
 	{
 	  /* CL listener that's not yet ready */
@@ -460,9 +454,6 @@ vcl_session_write_ready (vcl_session_t * s)
 
   if (vcl_session_is_open (s))
     {
-      if (vcl_session_is_ct (s))
-	return svm_fifo_max_enqueue_prod (s->ct_tx_fifo);
-
       if (s->is_dgram)
 	{
 	  u32 max_enq = svm_fifo_max_enqueue_prod (s->tx_fifo);
@@ -659,10 +650,19 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
     }
   else
     {
-      rxf->signals = &rxf->shr->signals;
-      txf->signals = &txf->shr->signals;
-      s->ct_rx_fifo = rxf;
-      s->ct_tx_fifo = txf;
+      rxf->signals = s->rx_fifo->signals;
+      txf->signals = s->tx_fifo->signals;
+      rxf->vpp_sh = s->vpp_handle;
+      txf->vpp_sh = s->vpp_handle;
+      rxf->app_session_index = s->session_index;
+      txf->app_session_index = s->session_index;
+      rxf->client_thread_index = vcl_get_worker_index ();
+      txf->client_thread_index = vcl_get_worker_index ();
+      /* Remember client side fifos as they need to be cleaned up */
+      s->ct_rx_fifo = s->rx_fifo;
+      s->ct_tx_fifo = s->tx_fifo;
+      s->rx_fifo = rxf;
+      s->tx_fifo = txf;
     }
 
   return 0;
