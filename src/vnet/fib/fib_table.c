@@ -1243,7 +1243,7 @@ fib_table_create_and_lock (fib_protocol_t proto,
 static void
 fib_table_destroy (fib_table_t *fib_table)
 {
-    vec_free(fib_table->ft_desc);
+    vec_free_mt_safe(fib_table->ft_desc);
 
     switch (fib_table->ft_proto)
     {
@@ -1339,7 +1339,7 @@ static void
 fib_table_lock_dec (fib_table_t *fib_table,
                     fib_source_t source)
 {
-    vec_validate(fib_table->ft_locks, source);
+    vec_validate_mt_safe(fib_table->ft_locks, source);
 
     ASSERT(fib_table->ft_locks[source] > 0);
     fib_table->ft_locks[source]--;
@@ -1350,7 +1350,7 @@ static void
 fib_table_lock_inc (fib_table_t *fib_table,
                     fib_source_t source)
 {
-    vec_validate(fib_table->ft_locks, source);
+    vec_validate_mt_safe(fib_table->ft_locks, source);
 
     ASSERT(fib_table->ft_total_locks < (0xffffffff - 1));
     fib_table->ft_locks[source]++;
@@ -1362,7 +1362,7 @@ static void
 fib_table_lock_clear (fib_table_t *fib_table,
                       fib_source_t source)
 {
-    vec_validate(fib_table->ft_locks, source);
+    vec_validate_mt_safe(fib_table->ft_locks, source);
 
     ASSERT(fib_table->ft_locks[source] <= 1);
     if (fib_table->ft_locks[source])
@@ -1376,7 +1376,7 @@ static void
 fib_table_lock_set (fib_table_t *fib_table,
                     fib_source_t source)
 {
-    vec_validate(fib_table->ft_locks, source);
+    vec_validate_mt_safe(fib_table->ft_locks, source);
 
     ASSERT(fib_table->ft_locks[source] <= 1);
     ASSERT(fib_table->ft_total_locks < (0xffffffff - 1));

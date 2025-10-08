@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <vlib/vlib.h>
+
 #include <vnet/mfib/ip4_mfib.h>
 
 #include <vnet/mfib/mfib_table.h>
@@ -336,7 +338,7 @@ ip4_mfib_table_entry_insert (ip4_mfib_t *mfib,
             hash = hash_create (32 /* elts */, sizeof (uword));
             hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
         }
-        hash = hash_set(hash, key, fib_entry_index);
+        hash = hash_set_mt_safe(hash, key, fib_entry_index);
         mfib->fib_entry_by_dst_address[len] = hash;
     }
     else
@@ -366,7 +368,7 @@ ip4_mfib_table_entry_remove (ip4_mfib_t *mfib,
     }
     else
     {
-        hash_unset(hash, key);
+        hash_unset_mt_safe(hash, key);
     }
 
     mfib->fib_entry_by_dst_address[len] = hash;
