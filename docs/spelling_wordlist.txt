@@ -1033,6 +1033,8 @@ setjmp
 settingupenvironment
 setUp
 setUpClass
+sfdp
+SFDP
 sflow
 sFlow
 sfr
@@ -1058,6 +1060,7 @@ snat
 socketsvr
 socksvr
 sourceNATing
+sp
 spd
 Specialisations
 spinlock
