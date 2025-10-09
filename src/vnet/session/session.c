@@ -294,7 +294,6 @@ session_is_valid (u32 si, u8 thread_index)
        s->session_state == SESSION_STATE_TRANSPORT_CLOSED) &&
       (s->flags & SESSION_F_HALF_OPEN))
     return 1;
-
   tc = session_get_transport (s);
   if (s->connection_index != tc->c_index ||
       s->thread_index != tc->thread_index || tc->s_index != si)
