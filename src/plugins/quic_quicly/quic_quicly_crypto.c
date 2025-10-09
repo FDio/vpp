@@ -222,6 +222,12 @@ quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
 		    ctx->c_c_index, ctx->c_thread_index);
     }
 #endif
+  if (ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
+    {
+      QUIC_DBG (2, "Handshake failed: ctx_index %u, thread %u", ctx->c_c_index,
+		ctx->c_thread_index);
+      return;
+    }
   ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
   if (ctx->c_s_index != QUIC_SESSION_INVALID)
     {

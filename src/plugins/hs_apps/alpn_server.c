@@ -14,6 +14,7 @@ typedef struct
   u32 ckpair_index;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
+  u32 accepted_count;
 } alpn_server_main_t;
 
 alpn_server_main_t alpn_server_main;
@@ -35,6 +36,7 @@ as_ts_tx_callback (session_t *ts)
 static int
 as_ts_accept_callback (session_t *ts)
 {
+  alpn_server_main_t *sm = &alpn_server_main;
   tls_alpn_proto_t alpn_proto;
 
   ts->session_state = SESSION_STATE_READY;
@@ -42,6 +44,7 @@ as_ts_accept_callback (session_t *ts)
   alpn_proto = transport_get_alpn_selected (
     session_get_transport_proto (ts), ts->connection_index, ts->thread_index);
   clib_warning ("ALPN selected: %U", format_tls_alpn_proto, alpn_proto);
+  sm->accepted_count++;
 
   return 0;
 }
@@ -248,6 +251,26 @@ VLIB_CLI_COMMAND (alpn_server_create_command, static) = {
   .path = "test alpn server",
   .short_help = "test alpn server uri <tls://ip/port> [tls-engine %d]",
   .function = alpn_server_create_command_fn,
+};
+
+static clib_error_t *
+show_alpn_server_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  alpn_server_main_t *sm = &alpn_server_main;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  vlib_cli_output (vm, "accepted connections %u", sm->accepted_count);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_alpn_server, static) = {
+  .path = "show test alpn server",
+  .short_help = "show test alpn server",
+  .function = show_alpn_server_fn,
 };
 
 clib_error_t *
