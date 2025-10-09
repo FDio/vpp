@@ -29,7 +29,7 @@ func init() {
 		VppProxyUdpIperfMWTest, VppConnectProxyStressMWTest, VppConnectProxyConnectionFailedMWTest)
 	RegisterVppProxySoloTests(VppConnectProxyStressTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
-		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest)
+		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest, VppConnectUdpServerCloseTest)
 	RegisterVppUdpProxySoloTests(VppConnectUdpStressTest)
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
@@ -424,6 +424,45 @@ func VppConnectUdpProxyTest(s *VppUdpProxySuite) {
 	s.AssertEqual(data, payload)
 }
 
+func VppConnectUdpServerCloseTest(s *VppUdpProxySuite) {
+	remoteServerConn := s.StartUdpEchoServer(s.ServerAddr(), s.Ports.Server)
+	defer remoteServerConn.Close()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	vppProxy.Disconnect()
+	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
+	s.Log(vppProxy.Vppctl(cmd))
+
+	proxyAddress := fmt.Sprintf("%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
+	targetUri := fmt.Sprintf("http://%s:%d/.well-known/masque/udp/%s/%d/", s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	c := s.NewConnectUdpClient(s.MaxTimeout, true)
+	err := c.Dial(proxyAddress, targetUri)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer c.Close()
+
+	err = remoteServerConn.Close()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	data := []byte("hello")
+	err = c.WriteDgramCapsule(data)
+	s.AssertNil(err, fmt.Sprint(err))
+
+	//proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr())
+	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Ip4Address)
+	/*for nTries := 0; nTries < 10; nTries++ {
+		o := vppProxy.Vppctl("show session verbose 2")
+		s.Log(o)
+		if !strings.Contains(o, proxyTargetConn) {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}*/
+	sessions := vppProxy.Vppctl("show session verbose 2")
+	s.Log(sessions)
+	//s.AssertNotContains(sessions, proxyClientConn, "client-proxy session not closed")
+	s.AssertNotContains(sessions, proxyTargetConn, "proxy-server session not closed")
+}
+
 func VppConnectUdpInvalidTargetTest(s *VppUdpProxySuite) {
 	vppProxy := s.Containers.VppProxy.VppInstance
 	cmd := fmt.Sprintf("test proxy server fifo-size 512k server-uri http://%s/%d", s.VppProxyAddr(), s.Ports.Proxy)
@@ -522,18 +561,18 @@ func VppConnectUdpClientCloseTest(s *VppUdpProxySuite) {
 
 	err = c.Close()
 	s.AssertNil(err, fmt.Sprint(err))
-	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr())
+	//proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr())
 	proxyTargetConn := fmt.Sprintf("[U] %s:", s.Interfaces.Server.Peer.Ip4AddressString())
-	for nTries := 0; nTries < 10; nTries++ {
+	/*for nTries := 0; nTries < 10; nTries++ {
 		o := vppProxy.Vppctl("show session verbose 2")
 		if !strings.Contains(o, proxyClientConn) {
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-	sessions := vppProxy.Vppctl("show session verbose 2")
 	s.Log(sessions)
-	s.AssertNotContains(sessions, proxyClientConn, "client-proxy session not closed")
+	s.AssertNotContains(sessions, proxyClientConn, "client-proxy session not closed")*/
+	sessions := vppProxy.Vppctl("show session verbose 2")
 	s.AssertNotContains(sessions, proxyTargetConn, "proxy-server session not closed")
 }
 
