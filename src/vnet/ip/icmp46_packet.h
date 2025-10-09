@@ -360,5 +360,22 @@ typedef struct
     u16 identifier;
     u16 sequence;
 } icmp_echo_header_t;
+typedef struct icmp_udp_partial_hdr_u
+{
+    u16 dgram_len;
+    u16 hdr_chksum;
+} icmp_udp_partial_hdr_t;
+
+typedef struct
+{
+    icmp46_header_t icmp;
+    u16 src_port;
+    u16 dst_port;
+    union
+    {
+      u32 tcp_seq;
+      icmp_udp_partial_hdr_t udp;
+    } data;
+} icmp_destination_unreachable_header_t;
 
 #endif /* included_vnet_icmp46_packet_h */

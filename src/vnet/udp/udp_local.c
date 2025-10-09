@@ -16,6 +16,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vnet/session/session.h>
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/udp/udp_packet.h>
@@ -64,7 +65,7 @@ udp_dispatch_error (vlib_node_runtime_t *node, vlib_buffer_t *b, u32 advance,
 {
   udp_main_t *um = &udp_main;
   u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
-
+  clib_warning ("%s", __func__);
   if (PREDICT_FALSE (punt_unknown))
     {
       vlib_buffer_advance (b, -(word) advance);
@@ -83,6 +84,7 @@ udp_dispatch_error (vlib_node_runtime_t *node, vlib_buffer_t *b, u32 advance,
 
       if (is_ip4)
 	{
+	  clib_warning ("destination unreachable");
 	  icmp4_error_set_vnet_buffer (
 	    b, ICMP4_destination_unreachable,
 	    ICMP4_destination_unreachable_port_unreachable, 0);
@@ -91,6 +93,7 @@ udp_dispatch_error (vlib_node_runtime_t *node, vlib_buffer_t *b, u32 advance,
 	}
       else
 	{
+	  clib_warning ("destination unreachable");
 	  icmp6_error_set_vnet_buffer (
 	    b, ICMP6_destination_unreachable,
 	    ICMP6_destination_unreachable_port_unreachable, 0);
@@ -125,6 +128,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  udp_header_t *h0 = 0, *h1 = 0;
+	  // ip4_header_t *iph0 = 0, *iph1 = 0;
 	  u32 i0, i1, next0, next1;
 	  u32 advance0, advance1;
 
@@ -159,6 +163,8 @@ udp46_local_inline (vlib_main_t * vm,
 	    {
 	      advance0 = ip4_header_bytes (vlib_buffer_get_current (b0));
 	      advance1 = ip4_header_bytes (vlib_buffer_get_current (b1));
+	      /*iph0 = vlib_buffer_get_current (b0);
+	      iph1 = vlib_buffer_get_current (b1);*/
 	    }
 	  else
 	    {
@@ -214,6 +220,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
 				 next0 == UDP_NO_NODE_SET))
 		{
+		  clib_warning ("udp_dispatch_error triggered!");
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
 	      else
@@ -226,6 +233,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
 				 next1 == UDP_NO_NODE_SET))
 		{
+		  clib_warning ("udp_dispatch_error triggered!");
 		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 		}
 	      else
@@ -243,6 +251,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
 				 next0 == UDP_NO_NODE_SET))
 		{
+		  clib_warning ("udp_dispatch_error triggered!");
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
 	      else
@@ -260,6 +269,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
 				 next1 == UDP_NO_NODE_SET))
 		{
+		  clib_warning ("udp_dispatch_error triggered!");
 		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 		}
 	      else
@@ -303,6 +313,8 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  udp_header_t *h0 = 0;
+	  ip4_header_t *iph0 = 0;
+	  session_t *s = 0;
 	  u32 i0, next0;
 	  u32 advance0;
 
@@ -317,7 +329,10 @@ udp46_local_inline (vlib_main_t * vm,
 
 	  /* ip4/6_local hands us the ip header, not the udp header */
 	  if (is_ip4)
-	    advance0 = ip4_header_bytes (vlib_buffer_get_current (b0));
+	    {
+	      advance0 = ip4_header_bytes (vlib_buffer_get_current (b0));
+	      iph0 = vlib_buffer_get_current (b0);
+	    }
 	  else
 	    advance0 = sizeof (ip6_header_t);
 
@@ -341,7 +356,14 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE ((i0 == SPARSE_VEC_INVALID_INDEX) ||
 				 next0 == UDP_NO_NODE_SET))
 		{
+		  clib_warning ("udp_dispatch_error triggered!");
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
+		  s = session_lookup_safe4 (
+		    ((vnet_buffer_opaque_t *) (b0 - advance0)->opaque)
+		      ->ip.fib_index,
+		    &iph0->dst_address, &iph0->src_address, h0->dst_port,
+		    h0->src_port, TRANSPORT_PROTO_UDP);
+		  session_close (s);
 		}
 	      else
 		{

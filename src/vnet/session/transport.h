@@ -169,6 +169,7 @@ transport_get_connection (transport_proto_t tp, u32 conn_index,
 static inline transport_connection_t *
 transport_get_listener (transport_proto_t tp, u32 conn_index)
 {
+  clib_warning ("Pointer to transport handler %08X", tp_vfts[tp]);
   return tp_vfts[tp].get_listener (conn_index);
 }
 

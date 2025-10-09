@@ -14,6 +14,7 @@
  */
 
 #include <vnet/udp/udp.h>
+#include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/session/session.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/ip/ip4_inlines.h>
@@ -167,7 +168,8 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   transport_endpoint_cfg_t *lcl_ext;
   udp_connection_t *listener;
   void *iface_ip;
-
+  clib_warning ("Binding to port %u, is_ip4 %u",
+		clib_net_to_host_u16 (lcl->port), lcl->is_ip4);
   if (udp_connection_port_used_extern (clib_net_to_host_u16 (lcl->port),
 				       lcl->is_ip4))
     {
@@ -637,6 +639,87 @@ static const transport_proto_vft_t udp_proto = {
   },
 };
 
+static uword
+ip4_udp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next;
+  u32 next_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  icmp46_header_t *icmp0;
+	  ip4_header_t *ip0;
+	  /*
+	   * The buffers (replies) are either posted to the CLI thread
+	   * awaiting for them for subsequent analysis and disposal,
+	   * or are sent to the punt node.
+	   *
+	   * So the only "next" node is a punt, normally.
+	   */
+	  u32 next0 = 0; // TODO: punt node?
+
+	  bi0 = from[0];
+	  b0 = vlib_get_buffer (vm, bi0);
+	  from += 1;
+	  n_left_from -= 1;
+	  ip0 = vlib_buffer_get_current (b0);
+	  icmp0 = ip4_next_header (ip0);
+	  clib_warning (
+	    "ICMP type %d code %d, port %u, ext %u", icmp0->type, icmp0->code,
+	    ip4_get_port (ip0, 1),
+	    udp_connection_port_used_extern (ip4_get_port (ip0, 0), 1));
+	  if (udp_connection_port_used_extern (ip4_get_port (ip0, 0), 1))
+	    {
+	      clib_warning ("external port used");
+	    }
+
+	  if (false /* if we can't consume */)
+	    {
+	      /* no outstanding requests for this reply, punt */
+	      /* speculatively enqueue b0 to the current next frame */
+	      to_next[0] = bi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      /* verify speculative enqueue, maybe switch current next frame */
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					       n_left_to_next, bi0, next0);
+	    }
+	  else
+	    {
+	      /* Post the buffer to CLI thread. It will take care of freeing
+	       * it. */
+	      // ip46_post_icmp_reply_event (vm, cli_process_id, bi0, is_ip6);
+	    }
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return frame->n_vectors;
+};
+
+VLIB_REGISTER_NODE (ip4_udp_dest_unreachable_node) = {
+  .function = ip4_udp_dest_unreachable,
+  .name = "ip4-udp-dest-unreachable",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "ip4-punt",
+  },
+};
+
 static clib_error_t *
 udp_init (vlib_main_t * vm)
 {
@@ -677,6 +760,9 @@ udp_init (vlib_main_t * vm)
 
   um->default_mtu = 1500;
   um->csum_offload = 1;
+  clib_warning ("udp init");
+  // ip4_icmp_register_type (vlib_get_main (), ICMP4_destination_unreachable,
+  // ip4_udp_dest_unreachable_node.index);
   return 0;
 }
 

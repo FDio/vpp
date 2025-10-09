@@ -466,6 +466,8 @@ void session_program_cleanup (session_t *s);
 void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
 
+void session_icmp_unreach_handle (session_t *s);
+
 always_inline session_t *
 session_get (u32 si, clib_thread_index_t thread_index)
 {

@@ -294,8 +294,8 @@ session_is_valid (u32 si, u8 thread_index)
        s->session_state == SESSION_STATE_TRANSPORT_CLOSED) &&
       (s->flags & SESSION_F_HALF_OPEN))
     return 1;
-
   tc = session_get_transport (s);
+  clib_warning ("session ptr %08X, transport ptr %08X", s, tc);
   if (s->connection_index != tc->c_index ||
       s->thread_index != tc->thread_index || tc->s_index != si)
     return 0;
@@ -1781,12 +1781,13 @@ session_add_transport_proto (void)
 transport_connection_t *
 session_get_transport (session_t * s)
 {
-  if (s->session_state != SESSION_STATE_LISTENING)
-    return transport_get_connection (session_get_transport_proto (s),
-				     s->connection_index, s->thread_index);
-  else
-    return transport_get_listener (session_get_transport_proto (s),
-				   s->connection_index);
+  transport_connection_t *tc = NULL;
+  tc = transport_get_connection (session_get_transport_proto (s),
+				 s->connection_index, s->thread_index);
+  if (tc == NULL)
+    tc = transport_get_listener (session_get_transport_proto (s),
+				 s->connection_index);
+  return tc;
 }
 
 void
@@ -1799,6 +1800,37 @@ session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
   else
     return transport_get_listener_endpoint (session_get_transport_proto (s),
 					    s->connection_index, tep, is_lcl);
+}
+
+void
+session_icmp_unreach_handle (session_t *s)
+{
+  transport_connection_t *tc;
+  session_handle_t sh;
+  session_error_t err;
+  app_worker_t *at;
+  if (s->app_wrk_index)
+    {
+      sh = session_handle (s);
+      at = app_worker_get (s->app_wrk_index);
+      tc = session_get_transport (s);
+      if (s->session_state != SESSION_STATE_LISTENING)
+	{
+	  vnet_disconnect_args_t da = {
+	    .handle = sh,
+	    .app_index = at->app_index,
+	  };
+	  session_transport_closing_notify (tc);
+	  session_transport_closed_notify (tc);
+	  err = vnet_disconnect_session (&da);
+	  session_transport_delete_notify (tc);
+	  clib_warning ("Disconnect session returned %d", err);
+	}
+      else
+	{
+	  /* TODO: CL sessions not handled for now */
+	}
+    }
 }
 
 int
