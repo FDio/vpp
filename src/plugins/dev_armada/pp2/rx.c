@@ -18,7 +18,6 @@ desc_to_vlib_buffer (vlib_main_t *vm, struct pp2_ppio_desc *d)
 
 static_always_inline u64
 mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vnet_dev_rx_queue_t *rxq,
 		    vnet_dev_rx_queue_if_rt_data_t *if_rt_data,
 		    struct pp2_ppio_desc **desc_ptrs, u32 n_desc,
 		    i32 current_data, i32 len_adj, mv_dsa_tag_t tag)
@@ -95,17 +94,18 @@ mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 static_always_inline uword
 mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vlib_frame_t *frame, vnet_dev_rx_queue_t *rxq)
+		    vnet_dev_rx_queue_t *rxq)
 {
   vnet_dev_port_t *port = rxq->port;
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (rxq);
   mv_dsa_tag_t dsa_tags[VLIB_FRAME_SIZE];
   u16 n_desc = VLIB_FRAME_SIZE;
   vlib_buffer_t *b;
   u32 i;
 
   if (PREDICT_FALSE (
-	pp2_ppio_recv (mp->ppio, 0, rxq->queue_id, mp->descs, &n_desc)))
+	pp2_ppio_recv (mp->ppio, 0, rxq->queue_id, mrq->descs, &n_desc)))
     {
       vlib_error_count (vm, node->node_index, MVPP2_RX_NODE_CTR_PPIO_RECV, 1);
       return 0;
@@ -115,7 +115,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       for (i = 0; i < n_desc; i++)
 	{
-	  b = desc_to_vlib_buffer (vm, mp->descs + i);
+	  b = desc_to_vlib_buffer (vm, mrq->descs + i);
 	  u8 *start = b->data;
 	  mv_dsa_tag_t tag = mv_dsa_tag_read (start + 14);
 	  dsa_tags[i] = tag;
@@ -144,9 +144,9 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (uword_bitmap_is_bit_set (mp->valid_dsa_src_bitmap, index))
 	    {
-	      clib_compress_u64 ((uword *) sel_descs, (uword *) mp->desc_ptrs,
+	      clib_compress_u64 ((uword *) sel_descs, (uword *) mrq->desc_ptrs,
 				 selected_bmp, n_desc);
-	      mrvl_pp2_rx_one_if (vm, node, rxq,
+	      mrvl_pp2_rx_one_if (vm, node,
 				  vnet_dev_get_rx_queue_sec_if_rt_data (
 				    rxq, mp->dsa_to_sec_if[index]),
 				  sel_descs, n_sel, 6, -4, tag);
@@ -157,7 +157,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      foreach_vlib_frame_bitmap_set_bit_index (i, selected_bmp)
 		buffer_indices[n_free++] =
-		  pp2_ppio_inq_desc_get_cookie (mp->descs + i);
+		  pp2_ppio_inq_desc_get_cookie (mrq->descs + i);
 
 	      u32 n_trace = vlib_get_trace_count (vm, node);
 	      if (PREDICT_FALSE (n_trace > 0))
@@ -165,7 +165,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  foreach_vlib_frame_bitmap_set_bit_index (i, selected_bmp)
 		    {
 		      vlib_buffer_t *b =
-			desc_to_vlib_buffer (vm, mp->descs + i);
+			desc_to_vlib_buffer (vm, mrq->descs + i);
 
 		      if (PREDICT_TRUE (vlib_trace_buffer (
 			    vm, node, VNET_DEV_ETH_RX_PORT_NEXT_DROP, b,
@@ -173,7 +173,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			{
 			  mvpp2_rx_trace_t *tr;
 			  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-			  tr->desc = mp->descs[i];
+			  tr->desc = mrq->descs[i];
 			  tr->next_index = VNET_DEV_ETH_RX_PORT_NEXT_DROP;
 			  tr->sw_if_index = CLIB_U32_MAX;
 			  tr->dsa_tag = dsa_tags[i];
@@ -187,84 +187,90 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      vlib_buffer_free (vm, buffer_indices, n_free);
 	      vlib_error_count (vm, node->node_index,
-				MVPP2_RX_NODE_CTR_UNKNOWN_DSA_SRC, 1);
+				MVPP2_RX_NODE_CTR_UNKNOWN_DSA_SRC, n_free);
 	    }
 	}
     }
   else
     {
-      mrvl_pp2_rx_one_if (vm, node, rxq,
-			  vnet_dev_get_rx_queue_if_rt_data (rxq),
-			  mp->desc_ptrs, n_desc, 2, 0, (mv_dsa_tag_t){});
+      mrvl_pp2_rx_one_if (vm, node, vnet_dev_get_rx_queue_if_rt_data (rxq),
+			  mrq->desc_ptrs, n_desc, 2, 0, (mv_dsa_tag_t){});
     }
 
+  mrq->n_bpool_refill += n_desc;
   return n_desc;
 }
 
-static_always_inline void
-mrvl_pp2_rx_refill (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vnet_dev_rx_queue_t *rxq)
+static_always_inline u32
+mrvl_pp2_bpool_put (vlib_main_t *vm, u32 node_index, vnet_dev_rx_queue_t *rxq)
 {
-  vnet_dev_port_t *port = rxq->port;
-  vnet_dev_t *dev = port->dev;
-  mvpp2_device_t *md = vnet_dev_get_data (dev);
-  clib_thread_index_t thread_index = vm->thread_index;
-  struct pp2_hif *hif = md->hif[thread_index];
-  struct pp2_bpool *bpool = md->thread[thread_index].bpool;
-  struct buff_release_entry *bre = md->thread[thread_index].bre;
-  u32 n_bufs, *bi;
+  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (rxq);
+  mvpp2_device_t *md = vnet_dev_get_data (rxq->port->dev);
+  struct pp2_hif *hif = md->hif[vm->thread_index];
+  struct buff_release_entry *bre = mrq->bre;
+  u32 buffer_indices[MRVL_PP2_BUFF_BATCH_SZ];
+  vlib_buffer_t *buffers[MRVL_PP2_BUFF_BATCH_SZ];
+  u32 i, n_put = 0;
+  u32 n_bufs = mrq->n_bpool_refill;
 
-  if (PREDICT_FALSE (pp2_bpool_get_num_buffs (bpool, &n_bufs)))
-    {
-      vlib_error_count (vm, node->node_index,
-			MVPP2_RX_NODE_CTR_BPOOL_GET_NUM_BUFFS, 1);
-      return;
-    }
-
-  n_bufs = rxq->size - n_bufs;
   while (n_bufs >= MRVL_PP2_BUFF_BATCH_SZ)
     {
-      u16 n_alloc, i;
+      u16 n_alloc;
       struct buff_release_entry *e = bre;
-      u32 buffer_indices[MRVL_PP2_BUFF_BATCH_SZ];
 
       n_alloc = vlib_buffer_alloc (vm, buffer_indices, MRVL_PP2_BUFF_BATCH_SZ);
 
-      if (PREDICT_FALSE (n_alloc == 0))
+      if (PREDICT_FALSE (n_alloc < MRVL_PP2_BUFF_BATCH_SZ))
 	{
-	  vlib_error_count (vm, node->node_index,
-			    MVPP2_RX_NODE_CTR_BUFFER_ALLOC, 1);
-	  return;
+	  if (n_alloc > 0)
+	    vlib_buffer_free (vm, buffer_indices, n_alloc);
+	  if (node_index != CLIB_U32_MAX)
+	    vlib_error_count (vm, node_index, MVPP2_RX_NODE_CTR_BUFFER_ALLOC,
+			      1);
+
+	  break;
 	}
 
-      for (i = n_alloc, bi = buffer_indices; i--; e++, bi++)
-	{
+      vlib_get_buffers (vm, buffer_indices, buffers, MRVL_PP2_BUFF_BATCH_SZ);
 
-	  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
-	  e->buff.addr = vlib_buffer_get_pa (vm, b) - 64;
-	  e->buff.cookie = bi[0];
+      for (i = 0, e = bre; i < MRVL_PP2_BUFF_BATCH_SZ; i++, e++)
+	{
+	  e->buff.addr = vlib_buffer_get_pa (vm, buffers[i]) - 64;
+	  e->buff.cookie = buffer_indices[i];
 	}
 
       if (PREDICT_FALSE (pp2_bpool_put_buffs (hif, bre, &n_alloc)))
 	{
-	  vlib_error_count (vm, node->node_index,
-			    MVPP2_RX_NODE_CTR_BPOOL_PUT_BUFFS, 1);
 	  vlib_buffer_free (vm, buffer_indices, n_alloc);
-	  return;
+	  if (node_index != CLIB_U32_MAX)
+	    vlib_error_count (vm, node_index,
+			      MVPP2_RX_NODE_CTR_BPOOL_PUT_BUFFS, 1);
+	  break;
 	}
 
+      n_put += MRVL_PP2_BUFF_BATCH_SZ;
       n_bufs -= n_alloc;
     }
+
+  mrq->n_bpool_refill -= n_put;
+  return n_put;
+}
+
+u32
+mrvl_pp2_bpool_put_no_inline (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
+{
+  return mrvl_pp2_bpool_put (vm, CLIB_U32_MAX, rxq);
 }
 
 VNET_DEV_NODE_FN (mvpp2_rx_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_rx = 0;
+  u32 node_index = node->node_index;
   foreach_vnet_dev_rx_queue_runtime (rxq, node)
     {
-      n_rx += mrvl_pp2_rx_inline (vm, node, frame, rxq);
-      mrvl_pp2_rx_refill (vm, node, rxq);
+      n_rx += mrvl_pp2_rx_inline (vm, node, rxq);
+      mrvl_pp2_bpool_put (vm, node_index, rxq);
     }
   return n_rx;
 }
