@@ -61,6 +61,8 @@ typedef struct
   /** Maximum size of the pool, in elements */
   u32 max_elts;
 
+  /** Unsed by pool, can be used as opaque storage by consumers */
+  u32 opaque;
 } pool_header_t;
 
 /** Get pool header from user pool pointer */
