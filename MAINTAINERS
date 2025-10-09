@@ -54,6 +54,11 @@ I:	pmalloc
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vppinfra/pmalloc.[ch]
 
+VPPINFRA crypto
+I:	crypto-infra
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vppinfra/crypto/
+
 Vector Library
 I:	vlib
 M:	Dave Barach <vpp@barachs.net>
