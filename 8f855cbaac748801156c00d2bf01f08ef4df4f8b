@@ -16,6 +16,24 @@
       "message": "I think there was a concern for certain platforms if we always use the zero upper?",
       "revId": "8f855cbaac748801156c00d2bf01f08ef4df4f8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8257d54e_259360bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-09T18:06:58Z",
+      "side": 1,
+      "message": "Isn\u0027t zeroupper useless on Icelake and newer CPUs as there is no AVX→SSE transition penalty?",
+      "parentUuid": "da1c66be_71635438",
+      "revId": "8f855cbaac748801156c00d2bf01f08ef4df4f8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
