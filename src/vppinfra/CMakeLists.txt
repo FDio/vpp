@@ -37,6 +37,7 @@ endif()
 # Generate vppinfra/config.h
 ##############################################################################
 set(LOG2_CACHE_LINE_BYTES ${VPP_LOG2_CACHE_LINE_SIZE})
+set(N_PREFETCHES ${VPP_N_PREFETCHES})
 
 option(VPP_VECTOR_GROW_BY_ONE "Vectors grow by one, instead of 3/2" OFF)
 if(VPP_VECTOR_GROW_BY_ONE)
