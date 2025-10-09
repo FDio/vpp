@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa24bb32_b8fae321",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-10-09T14:52:43Z",
+      "side": 1,
+      "message": "Older history was in https://gerrit.fd.io/r/c/vpp/+/43789",
+      "revId": "e41b72eefa73b65c038f29cdb23ddd5201093005",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
