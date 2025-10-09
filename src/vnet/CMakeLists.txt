@@ -1400,6 +1400,48 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
+# SFDP - StateFul Data Plane Infra
+##############################################################################
+list (APPEND VNET_SOURCES
+  sfdp/lookup/node.c
+  sfdp/lookup/icmp_error_node.c
+  sfdp/lookup/parser.c
+  sfdp/drop/node.c
+  sfdp/format.c
+  sfdp/sfdp.c
+  sfdp/service.c
+  sfdp/cli.c
+  sfdp/api.c
+  sfdp/timer/timer.c
+  sfdp/expiry/expiry.c
+  sfdp/expiry/expiry_cli.c
+  sfdp/callbacks.c
+)
+
+list (APPEND VNET_HEADERS
+  sfdp/sfdp.h
+  sfdp/callbacks.h
+  sfdp/service.h
+  sfdp/sfdp_funcs.h
+  sfdp/sfdp_types_funcs.h
+  sfdp/common.h
+  sfdp/lookup/lookup_inlines.h
+  sfdp/timer/timer.h
+  sfdp/expiry/expiry.h
+)
+
+list (APPEND VNET_API_FILES
+  sfdp/sfdp_types.api
+  sfdp/sfdp.api
+)
+
+list (APPEND VNET_MULTIARCH_SOURCES
+  sfdp/lookup/node.c
+  sfdp/lookup/parser.c
+  sfdp/drop/node.c
+)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 

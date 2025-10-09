@@ -1033,6 +1033,8 @@ setjmp
 settingupenvironment
 setUp
 setUpClass
+sfdp
+SFDP
 sflow
 sFlow
 sfr
