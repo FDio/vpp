@@ -269,7 +269,7 @@ noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
       u->u_index_drop (vm, (*kp)->kp_local_index);
       vnet_crypto_key_del (vm, (*kp)->kp_send_index);
       vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
-      clib_mem_free (*kp);
+      clib_mem_free_mt_safe (*kp);
     }
 }
 

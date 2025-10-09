@@ -289,8 +289,8 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 	{
 	  vec_add1 (peer->adj_indices, *adj_index);
 
-	  vec_validate_init_empty (wg_peer_by_adj_index, *adj_index,
-				   INDEX_INVALID);
+	  vec_validate_init_empty_mt_safe (wg_peer_by_adj_index, *adj_index,
+					   INDEX_INVALID);
 	  wg_peer_by_adj_index[*adj_index] = peeri;
 
 	  fixup = wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));

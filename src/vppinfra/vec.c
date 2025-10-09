@@ -58,7 +58,7 @@ _vec_alloc_internal (uword n_elts, const vec_attr_t *const attr)
   return v;
 }
 
-static inline void
+__clib_export void
 _vec_update_len (void *v, uword n_elts, uword elt_sz, uword n_data_bytes,
 		 uword unused_bytes)
 {
