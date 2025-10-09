@@ -28,7 +28,7 @@ static int dma_mem_initialized = 0;
 static int global_pp2_initialized = 0;
 
 #define _(f, n, s, d)                                                         \
-  { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
+  { .name = #n, .desc = (d), .severity = VL_COUNTER_SEVERITY_##s },
 
 vlib_error_desc_t mvpp2_rx_node_counters[] = { foreach_mvpp2_rx_node_counter };
 vlib_error_desc_t mvpp2_tx_node_counters[] = { foreach_mvpp2_tx_node_counter };
@@ -61,14 +61,14 @@ mvpp2_global_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   log_debug (dev, "");
   if (--num_pp2_in_use == 0)
     {
+      if (md->dummy_short_bpool)
+	{
+	  pp2_bpool_deinit (md->dummy_short_bpool);
+	  md->dummy_short_bpool = 0;
+	}
+
       if (global_pp2_initialized)
 	{
-	  for (u32 i = 0; i < ARRAY_LEN (md->thread); i++)
-	    if (md->thread[i].bpool)
-	      {
-		pp2_bpool_deinit (md->thread[i].bpool);
-		md->thread[i].bpool = 0;
-	      }
 	  for (u32 i = 0; i < ARRAY_LEN (md->hif); i++)
 	    if (md->hif[i])
 	      {
@@ -100,8 +100,10 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  char match[16];
   int mrv;
-  u16 free_hifs, free_bpools;
+  u8 index;
+  u16 free_hifs;
   u16 n_threads = vlib_get_n_threads ();
 
   struct pp2_init_params init_params = {
@@ -133,7 +135,7 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
   log_debug (dev, "pp2_init() ok");
 
   free_hifs = pow2_mask (MVPP2_NUM_HIFS) ^ init_params.hif_reserved_map;
-  free_bpools =
+  md->free_bpools =
     pow2_mask (MVPP2_NUM_BPOOLS) ^ init_params.bm_pool_reserved_map;
 
   if (n_threads > count_set_bits (free_hifs))
@@ -146,15 +148,9 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   for (u32 i = 0; i < n_threads; i++)
     {
-      char match[16];
-      u8 index;
       struct pp2_hif_params hif_params = {
 	.match = match,
 	.out_size = 2048,
-      };
-      struct pp2_bpool_params bpool_params = {
-	.match = match,
-	.buff_len = vlib_buffer_get_default_data_size (vm),
       };
 
       index = get_lowest_set_bit_index (free_hifs);
@@ -170,25 +166,26 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  goto done;
 	}
       log_debug (dev, "pp2_hif_init(hif %u, thread %u) ok", index, i);
-
-      index = get_lowest_set_bit_index (free_bpools);
-      free_bpools ^= 1 << index;
-      snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
-
-      mrv = pp2_bpool_init (&bpool_params, &md->thread[i].bpool);
-      if (mrv < 0)
-	{
-	  log_err (dev, "pp2_bpool_init failed for bpool %u thread %u, err %d",
-		   index, i, mrv);
-	  rv = VNET_DEV_ERR_INIT_FAILED;
-	  goto done;
-	}
-      log_debug (dev, "pp2_bpool_init(bpool %u, thread %u) pool-%u:%u ok",
-		 index, i, md->thread[i].bpool->pp2_id,
-		 md->thread[i].bpool->id);
-      for (u32 j = 0; j < ARRAY_LEN (md->thread[0].bre); j++)
-	md->thread[i].bre[j].bpool = md->thread[i].bpool;
     }
+
+  index = get_lowest_set_bit_index (md->free_bpools);
+  md->free_bpools ^= 1 << index;
+  snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
+
+  mrv = pp2_bpool_init (
+    &(struct pp2_bpool_params){
+      .match = match,
+      .buff_len = 64,
+      .dummy_short_pool = 1,
+    },
+    &md->dummy_short_bpool);
+  if (mrv < 0)
+    {
+      log_err (dev, "pp2_bpool_init failed for bpool %s, err %d", match, mrv);
+      rv = VNET_DEV_ERR_INIT_FAILED;
+      goto done;
+    }
+  log_debug (dev, "pp2_bpool_init(bpool %u) %s ok", index, match);
 
 done:
   return rv;
@@ -347,6 +344,16 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 	    .caps.secondary_interfaces = mvpp2_port.is_dsa != 0,
           },
 	  .args = VNET_DEV_ARGS ({
+            .id = MVPP2_PORT_ARG_DSA_ENABLED,
+            .type = VNET_DEV_ARG_TYPE_ENUM,
+            .name = "rss_hash",
+            .desc = "RSS Hash type (2-tuple, 5-tuple)",
+            .default_val.enum_val = PP2_PPIO_HASH_T_5_TUPLE,
+            .enum_vals = VNET_DEV_ARG_ENUM_VALS(
+              { .val = PP2_PPIO_HASH_T_2_TUPLE, .name = "2-tuple", },
+              { .val = PP2_PPIO_HASH_T_5_TUPLE , .name = "5-tuple", },
+            ),
+          },{
             .id = MVPP2_PORT_ARG_DSA_ENABLED,
             .type = VNET_DEV_ARG_TYPE_ENUM,
             .name = "dsa_enable",
