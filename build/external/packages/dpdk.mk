@@ -16,7 +16,7 @@ DPDK_USE_LIBBSD              ?= n
 DPDK_DEBUG                   ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
-DPDK_MACHINE                 ?= default
+DPDK_MACHINE                 ?= generic
 DPDK_MLX_IBV_LINK            ?= static
 # On most of the systems, default value for max lcores is 128
 DPDK_MAX_LCORES              ?=
@@ -184,7 +184,7 @@ DPDK_MESON_ARGS = \
 	"-Ddisable_drivers=$(DPDK_DRIVERS_DISABLED)" \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
 	-Db_pie=true \
-	-Dmachine=$(DPDK_MACHINE) \
+	-Dplatform=$(DPDK_MACHINE) \
 	$(DPDK_MAX_LCORES_FLAG) \
         --buildtype=$(DPDK_BUILD_TYPE) \
 	-Denable_kmods=false \

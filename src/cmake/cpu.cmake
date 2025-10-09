@@ -68,6 +68,17 @@ endif()
 set_log2_cacheline_size(VPP_LOG2_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE})
 
 ##############################################################################
+# Quad/Dual loop unrolling selection --- CLIB_N_PREFETCHES
+# CLIB_N_PREFETCHES is set to 16 by default on x86
+# CLIB_N_PREFETCHES is tuned to achieve optimal performance on AArch64
+##############################################################################
+if(DEFINED VPP_PLATFORM_N_PREFETCHES)
+  set(VPP_N_PREFETCHES ${VPP_PLATFORM_N_PREFETCHES})
+else()
+  set(VPP_N_PREFETCHES 16)
+endif()
+
+##############################################################################
 # Gnu Assembler AVX-512 bug detection
 # - see: https://sourceware.org/bugzilla/show_bug.cgi?id=23465
 ##############################################################################
