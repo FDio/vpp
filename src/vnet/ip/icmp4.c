@@ -46,6 +46,12 @@
 /** ICMP throttling */
 static throttle_t icmp_throttle;
 
+typedef enum
+{
+  ICMP_INPUT_NEXT_ERROR,
+  ICMP_INPUT_N_NEXT,
+} icmp_input_next_t;
+
 static u8 *
 format_ip4_icmp_type_and_code (u8 * s, va_list * args)
 {
@@ -121,12 +127,6 @@ format_icmp_input_trace (u8 * s, va_list * va)
 
   return s;
 }
-
-typedef enum
-{
-  ICMP_INPUT_NEXT_ERROR,
-  ICMP_INPUT_N_NEXT,
-} icmp_input_next_t;
 
 typedef struct
 {
@@ -215,7 +215,7 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
   .n_errors = ICMP4_N_ERROR,
   .error_counters = icmp4_error_counters,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = ICMP_INPUT_N_NEXT,
   .next_nodes = {
     [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
   },
@@ -402,7 +402,6 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
 
   .format_trace = format_icmp_input_trace,
 };
-
 
 static uword
 unformat_icmp_type_and_code (unformat_input_t * input, va_list * args)

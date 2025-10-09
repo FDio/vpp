@@ -214,6 +214,9 @@ void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (clib_thread_index_t thread_index);
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
+void udp_connection_handle_icmp (transport_connection_t *tconn, u8 icmp_type,
+				 u8 icmp_code);
+
 always_inline udp_connection_t *
 udp_connection_clone_safe (u32 connection_index,
 			   clib_thread_index_t thread_index)
