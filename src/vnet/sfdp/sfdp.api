@@ -1,0 +1,115 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+import "vnet/ip/ip_types.api";
+import "vnet/sfdp/sfdp_types.api";
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param tenant_id - tenant id to add
+    @param context_id - context id for this tenant (optional, default to same as tenant id)
+    @param is_del
+*/
+
+autoreply define sfdp_tenant_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  u32 context_id [default=0xffffffff];
+  bool is_del;
+};
+
+autoreply define sfdp_set_services
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  vl_api_sfdp_session_direction_t dir;
+  u8 n_services;
+  vl_api_sfdp_service_name_t services[n_services];
+};
+
+define sfdp_session_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sfdp_session_details
+{
+  u32 context;
+
+  u64 session_id;
+  u32 thread_index;
+  u32 tenant_id;
+  u32 session_idx;
+  vl_api_sfdp_session_type_t session_type;
+  vl_api_ip_proto_t protocol;
+  vl_api_sfdp_session_state_t state;
+  f64 remaining_time;
+/* Avoid service strings to keep it compact */
+  u64 forward_bitmap;
+  u64 reverse_bitmap;
+  u8 n_keys;
+  vl_api_sfdp_session_key_t keys[n_keys];
+};
+
+define sfdp_tenant_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sfdp_tenant_details
+{
+  u32 context;
+
+  u32 index;
+  u32 context_id;
+  u64 forward_bitmap;
+  u64 reverse_bitmap;
+  u32 n_timeout;
+  u32 timeout[n_timeout];
+};
+
+autoreply define sfdp_set_timeout
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  u32 timeout_id;
+  u32 timeout_value;
+};
+
+autoreply define sfdp_set_sp_node
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  vl_api_sfdp_sp_node_t sp_node;
+  u32 node_index;
+};
+
+autoreply define sfdp_set_icmp_error_node
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  bool is_ip6;
+  u32 node_index;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
