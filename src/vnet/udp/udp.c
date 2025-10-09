@@ -16,6 +16,8 @@
 #include <vnet/udp/udp.h>
 #include <vnet/session/session.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/ip/icmp46_packet.h>
+#include <vnet/udp/udp_icmp.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
 #include <vppinfra/sparse_vec.h>
@@ -528,6 +530,35 @@ format_udp_listener_session (u8 * s, va_list * args)
   return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
+void udp_session_handle_icmp (transport_connection_t *tconn, u8 icmp_type, u8 icmp_code)
+{
+  udp_connection_t *uc;
+  session_t *s;
+  uc = udp_connection_from_transport(tconn);
+  if(tconn->is_ip4)
+  {
+    switch(icmp_type)
+    {
+      case ICMP4_destination_unreachable:
+        /* For now handle only hoststack connections */
+        if(!(s = session_get_if_valid (uc->connection.s_index, uc->connection.thread_index)))
+          break;
+        /* Ignore connectionless UDP */
+        if(s->session_state != SESSION_STATE_LISTENING)
+        {
+          session_transport_closing_notify(&uc->connection);
+          session_transport_closed_notify(&uc->connection);
+          udp_connection_program_cleanup(uc);
+        }
+        break;
+      default:
+        break;
+    }
+  } else {
+    /* not handled yet */
+  }
+}
+
 static void
 udp_realloc_ports_sv (u16 **ports_nh_svp)
 {
@@ -629,6 +660,7 @@ static const transport_proto_vft_t udp_proto = {
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
+  .handle_icmp = udp_session_handle_icmp,
   .transport_options = {
     .name = "udp",
     .short_name = "U",

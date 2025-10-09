@@ -93,6 +93,7 @@ typedef struct _transport_proto_vft
   void (*flush_data) (transport_connection_t *tconn);
   int (*custom_tx) (void *session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
+  void (*handle_icmp) (transport_connection_t *tconn, u8 icmp_type, u8 icmp_code);
 
   /*
    * Connection retrieval
@@ -195,6 +196,15 @@ transport_app_rx_evt (transport_proto_t tp, u32 conn_index,
   tc = transport_get_connection (tp, conn_index, thread_index);
   return tp_vfts[tp].app_rx_evt (tc);
 }
+
+/* Leaving tconn here as we have to make sure the connection exists before calling this in icmp4.c.
+   Additionally, I don't think that we're going to call this from anywhere else so maybe it's better to not retrieve the connection twice? */
+static inline void
+transport_handle_icmp (transport_connection_t *tconn, u8 type, u8 code)
+{
+  tp_vfts[tconn->proto].handle_icmp(tconn, type, code);
+}
+
 
 /**
  * Get send parameters for transport connection
