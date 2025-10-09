@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da1c66be_71635438",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-09T08:33:23Z",
+      "side": 1,
+      "message": "I think there was a concern for certain platforms if we always use the zero upper?",
+      "revId": "8f855cbaac748801156c00d2bf01f08ef4df4f8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
