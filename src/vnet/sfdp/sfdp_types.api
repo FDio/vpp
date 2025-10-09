@@ -1,0 +1,48 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+import "vnet/ip/ip_types.api";
+
+enum sfdp_session_direction : u8
+{
+  SFDP_API_FORWARD = 0,
+  SFDP_API_REVERSE = 1,
+};
+
+enum sfdp_session_state : u8
+{
+  SFDP_API_SESSION_STATE_FSOL = 0,
+  SFDP_API_SESSION_STATE_ESTABLISHED = 1,
+  SFDP_API_SESSION_STATE_TIME_WAIT = 2,
+};
+
+enum sfdp_sp_node : u8
+{
+  SFDP_API_SP_NODE_IP4_REASS = 0,
+  SFDP_API_SP_NODE_IP6_REASS = 1,
+  SFDP_API_SP_NODE_IP4_UNKNOWN_PROTO = 2,
+  SFDP_API_SP_NODE_IP6_UNKNOWN_PROTO = 3,
+  SFDP_API_SP_NODE_IP4_ICMP4_ERROR = 4,
+  SFDP_API_SP_NODE_IP6_ICMP6_ERROR = 5,
+};
+
+enum sfdp_session_type : u8
+{
+  SFDP_API_SESSION_TYPE_IP4 = 0,
+};
+
+typedef sfdp_service_name
+{
+  string data[32];
+};
+
+typedef sfdp_session_key
+{
+  u32 context_id;
+  vl_api_address_t init_addr;
+  u16 init_port;
+  vl_api_address_t resp_addr;
+  u16 resp_port;
+};

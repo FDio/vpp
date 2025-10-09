@@ -217,6 +217,12 @@ I:	span
 M:	N/A
 F:	src/vnet/span
 
+VNET StateFul Data Plane
+I:      sfdp
+M:      Mohammed Hawari <mohammed@hawari.fr>
+M:      Ole Troan <otroan@employees.org>
+F:      src/vnet/sfdp/
+
 Plugin - Crypto - native
 I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>
