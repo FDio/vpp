@@ -24,6 +24,19 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	INSTALL_DIR=$(PACKAGE_INSTALL_DIR) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
+# Only for aarch64, pass through developer-specified VPP_PLATFORM
+ifeq ($(MACHINE),aarch64)
+ifneq ($(strip $(VPP_PLATFORM)),)
+  SUPPORTED_PLATFORMS := neoverse-n1 neoverse-n2 neoverse-v2
+  ifneq ($(filter $(VPP_PLATFORM),$(SUPPORTED_PLATFORMS)),)
+    DPDK_MAKE_ARGS += DPDK_MACHINE=native
+  else
+    $(warning [VPP WARNING] Unsupported VPP_PLATFORM '$(VPP_PLATFORM)'.)
+    $(warning [VPP WARNING] Currently supported: neoverse-n1, neoverse-n2, neoverse-v2.)
+  endif
+endif
+endif
+
 DPDK_MLX5_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx5_pmd))
 ifneq ($(DPDK_MLX5_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y
