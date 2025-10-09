@@ -31,9 +31,7 @@ wg_index_table_add (vlib_main_t *vm, wg_index_table_t *table,
       if (hash_get (table->hash, key))
 	continue;
 
-      vlib_worker_thread_barrier_sync (vm);
-      hash_set (table->hash, key, peer_pool_idx);
-      vlib_worker_thread_barrier_release (vm);
+      hash_set_mt_safe (table->hash, key, peer_pool_idx);
       break;
     }
   return key;
@@ -46,9 +44,7 @@ wg_index_table_del (vlib_main_t *vm, wg_index_table_t *table, u32 key)
   p = hash_get (table->hash, key);
   if (p)
     {
-      vlib_worker_thread_barrier_sync (vm);
-      hash_unset (table->hash, key);
-      vlib_worker_thread_barrier_release (vm);
+      hash_unset_mt_safe (table->hash, key);
     }
 }
 

@@ -552,6 +552,7 @@ _(andnot, a = a & ~b, 1)
 _(or, a = a | b, 0)
 _(xor, a = a ^ b, 1)
 #undef _
+
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
     @param ai - pointer to the destination bitmap

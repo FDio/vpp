@@ -289,8 +289,8 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 	{
 	  vec_add1 (peer->adj_indices, *adj_index);
 
-	  vec_validate_init_empty (wg_peer_by_adj_index, *adj_index,
-				   INDEX_INVALID);
+	  vec_validate_init_empty_mt_safe (wg_peer_by_adj_index, *adj_index,
+					   INDEX_INVALID);
 	  wg_peer_by_adj_index[*adj_index] = peeri;
 
 	  fixup = wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));
@@ -466,7 +466,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (pool_elts (wg_peer_pool) > MAX_PEERS)
     return (VNET_API_ERROR_LIMIT_EXCEEDED);
 
-  pool_get_zero (wg_peer_pool, peer);
+  pool_get_zero_mt_safe (wg_peer_pool, peer);
 
   wg_peer_init (vm, peer);
 
@@ -476,7 +476,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (rv)
     {
       wg_peer_clear (vm, peer);
-      pool_put (wg_peer_pool, peer);
+      pool_put_mt_safe (wg_peer_pool, peer);
       return (rv);
     }
 

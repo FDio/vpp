@@ -459,8 +459,8 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
       engine->key_op_handler (VNET_CRYPTO_KEY_OP_DEL, index);
 
   clib_memset (key, 0xfe, sz);
-  clib_mem_free (key);
-  pool_put_index (cm->keys, index);
+  clib_mem_free_mt_safe (key);
+  pool_put_index_mt_safe (cm->keys, index);
 }
 
 void
