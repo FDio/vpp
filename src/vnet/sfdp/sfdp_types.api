@@ -1,0 +1,61 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+option version = "0.0.1";
+import "vnet/ip/ip_types.api";
+
+enum sfdp_session_direction : u8
+{
+  SFDP_API_FORWARD = 0,
+  SFDP_API_REVERSE = 1,
+};
+
+enum sfdp_session_state : u8
+{
+  SFDP_API_SESSION_STATE_FSOL = 0,
+  SFDP_API_SESSION_STATE_ESTABLISHED = 1,
+  SFDP_API_SESSION_STATE_TIME_WAIT = 2,
+};
+
+enum sfdp_sp_node : u8
+{
+  SFDP_API_SP_NODE_IP4_REASS = 0,
+  SFDP_API_SP_NODE_IP6_REASS = 1,
+  SFDP_API_SP_NODE_IP4_UNKNOWN_PROTO = 2,
+  SFDP_API_SP_NODE_IP6_UNKNOWN_PROTO = 3,
+  SFDP_API_SP_NODE_IP4_ICMP4_ERROR = 4,
+  SFDP_API_SP_NODE_IP6_ICMP6_ERROR = 5,
+};
+
+enum sfdp_session_type : u8
+{
+  SFDP_API_SESSION_TYPE_IP4 = 0,
+};
+
+typedef sfdp_service_name
+{
+  string data[32];
+};
+
+typedef sfdp_session_key
+{
+  u32 context_id;
+  vl_api_address_t init_addr;
+  u16 init_port;
+  vl_api_address_t resp_addr;
+  u16 resp_port;
+};
