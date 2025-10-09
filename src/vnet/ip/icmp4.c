@@ -42,6 +42,8 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/ip_sas.h>
 #include <vnet/util/throttle.h>
+#include <vnet/session/session.h>
+#include <vnet/session/application.h>
 
 /** ICMP throttling */
 static throttle_t icmp_throttle;
@@ -125,6 +127,7 @@ format_icmp_input_trace (u8 * s, va_list * va)
 typedef enum
 {
   ICMP_INPUT_NEXT_ERROR,
+  ICMP_INPUT_NEXT_DEST_UNREACHABLE,
   ICMP_INPUT_N_NEXT,
 } icmp_input_next_t;
 
@@ -139,6 +142,88 @@ typedef struct
 } icmp4_main_t;
 
 icmp4_main_t icmp4_main;
+
+transport_proto_t
+ip_proto_to_transport (u8 ip_proto)
+{
+  switch (ip_proto)
+    {
+    case IP_PROTOCOL_TCP:
+      return TRANSPORT_PROTO_TCP;
+    case IP_PROTOCOL_UDP:
+      return TRANSPORT_PROTO_UDP;
+    default:
+      return TRANSPORT_PROTO_NONE;
+    }
+}
+
+static uword
+ip4_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next;
+  u32 next_index;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  u16 *src_port, *dst_port;
+	  vlib_buffer_t *b0;
+	  icmp46_header_t *icmp0;
+	  ip4_header_t *ip0, *ip1;
+	  transport_connection_t *tc;
+
+	  bi0 = from[0];
+	  b0 = vlib_get_buffer (vm, bi0);
+	  from += 1;
+	  n_left_from -= 1;
+	  ip0 = vlib_buffer_get_current (b0);
+	  icmp0 = ip4_next_header (ip0);
+
+	  vlib_buffer_advance (b0, ip4_header_bytes (ip0) +
+				     (sizeof (icmp46_header_t) * 2));
+	  ip1 = vlib_buffer_get_current (b0);
+	  src_port = (u16 *) ip4_next_header (ip1);
+	  dst_port = src_port + 1;
+	  clib_warning (
+	    "ICMP type %d code %d, src port echo %lu, dst port echo %lu",
+	    icmp0->type, icmp0->code, clib_net_to_host_u16 (*src_port),
+	    clib_net_to_host_u16 (*dst_port));
+
+	  u8 is_filtered = 0;
+	  tc = session_lookup_connection_wt4 (
+	    0, &ip0->dst_address, &ip0->src_address, *src_port, *dst_port,
+	    ip_proto_to_transport (ip1->protocol), vlib_get_thread_index (),
+	    &is_filtered);
+	  if (PREDICT_TRUE (tc != NULL))
+	    transport_handle_icmp (tc, icmp0->type, icmp0->code);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return frame->n_vectors;
+};
+
+VLIB_REGISTER_NODE (ip4_icmp_dest_unreachable_node) = {
+  .function = ip4_icmp_dest_unreachable,
+  .name = "ip4-icmp-dest-unreachable",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
+  },
+};
 
 static uword
 ip4_icmp_input (vlib_main_t * vm,
@@ -191,6 +276,8 @@ ip4_icmp_input (vlib_main_t * vm,
 	  type0 = icmp0->type;
 	  next0 = im->ip4_input_next_index_by_type[type0];
 
+	  clib_warning ("ICMP type %d code %d", icmp0->type, icmp0->code);
+
 	  p0->error = node->errors[ICMP4_ERROR_UNKNOWN_TYPE];
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
@@ -215,9 +302,10 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
   .n_errors = ICMP4_N_ERROR,
   .error_counters = icmp4_error_counters,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = ICMP_INPUT_N_NEXT,
   .next_nodes = {
     [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
+    [ICMP_INPUT_NEXT_DEST_UNREACHABLE] = "ip4-icmp-dest-unreachable",
   },
 };
 
@@ -403,7 +491,6 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
   .format_trace = format_icmp_input_trace,
 };
 
-
 static uword
 unformat_icmp_type_and_code (unformat_input_t * input, va_list * args)
 {
@@ -583,6 +670,8 @@ icmp4_init (vlib_main_t * vm)
   clib_memset (cm->ip4_input_next_index_by_type,
 	       ICMP_INPUT_NEXT_ERROR,
 	       sizeof (cm->ip4_input_next_index_by_type));
+  cm->ip4_input_next_index_by_type[ICMP4_destination_unreachable] =
+    ICMP_INPUT_NEXT_DEST_UNREACHABLE;
 
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
