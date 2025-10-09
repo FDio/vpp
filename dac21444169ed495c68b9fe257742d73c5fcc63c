@@ -101,6 +101,24 @@
       "message": "disagree on this, \"src/vppinfra/crypto/\" is nto VNET crypto infra",
       "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "426bb732_cbaa8faa",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-10-09T08:20:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3aee12d3_8bcc017f",
+      "revId": "dac21444169ed495c68b9fe257742d73c5fcc63c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
