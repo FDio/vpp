@@ -89,6 +89,24 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   session_transport_delete_notify (&ctx->connection);
 }
 
+static void
+quic_quicly_notify_app_connect_failed (quic_ctx_t *ctx, session_error_t err)
+{
+  app_worker_t *app_wrk;
+  int rv;
+
+  app_wrk = app_worker_get (ctx->parent_app_wrk_id);
+  if (!app_wrk)
+    {
+      QUIC_DBG (2, "no app worker: ctx_index %u, thread %u", ctx->c_c_index,
+		ctx->c_thread_index);
+      return;
+    }
+  if ((rv = app_worker_connect_notify (app_wrk, 0, err, ctx->client_opaque)))
+    QUIC_ERR ("failed to notify app: err %d, ctx_index %u, thread %u", rv,
+	      ctx->c_c_index, ctx->c_thread_index);
+}
+
 /**
  * Called when quicly return an error
  * This function interacts tightly with quic_quicly_proto_on_close
@@ -98,9 +116,6 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
 {
   QUIC_DBG (2, "QUIC connection %u/%u closed", ctx->c_thread_index,
 	    ctx->c_c_index);
-
-  /* TODO if connection is not established, just delete the session? */
-  /* Actually should send connect or accept error */
 
   switch (ctx->conn_state)
     {
@@ -122,8 +137,12 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
       /* App already confirmed close, we can delete the connection */
       quic_quicly_connection_delete (ctx);
       break;
-    case QUIC_CONN_STATE_OPENED:
     case QUIC_CONN_STATE_HANDSHAKE:
+      /* handshake failed notify app that connect failed */
+      quic_quicly_notify_app_connect_failed (ctx, SESSION_E_TLS_HANDSHAKE);
+      quic_quicly_connection_delete (ctx);
+      break;
+    case QUIC_CONN_STATE_OPENED:
     case QUIC_CONN_STATE_ACTIVE_CLOSING:
       quic_quicly_connection_delete (ctx);
       break;
@@ -892,6 +911,16 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   /* Save ctx handle in quicly connection */
   quic_quicly_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
+
+  /* if handshake failed (e.g. ALPN negotiation failed) quicly connection is in
+   * closing state, in this case we don't need to create session and notify
+   * app, connection will be closed when error response is sent */
+  if (quicly_get_state (conn) >= QUICLY_STATE_CLOSING)
+    {
+      QUIC_DBG (2, "Handshake failed, closing: ctx_index %u, thread %u",
+		ctx->c_c_index, ctx->c_thread_index);
+      return;
+    }
 
   quic_session = session_alloc (ctx->c_thread_index);
   QUIC_DBG (2,

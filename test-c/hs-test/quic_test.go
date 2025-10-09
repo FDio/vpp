@@ -5,10 +5,10 @@ import (
 )
 
 func init() {
-	RegisterVethTests(QuicAlpMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest, QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest)
+	RegisterVethTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest, QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest)
 }
 
-func QuicAlpMatchTest(s *VethsSuite) {
+func QuicAlpnMatchTest(s *VethsSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 3 uri quic://" + serverAddress))
 
@@ -48,17 +48,30 @@ func QuicAlpnServerPriorityMatchTest(s *VethsSuite) {
 }
 
 func QuicAlpnMismatchTest(s *VethsSuite) {
-	s.Skip("QUIC bug: handshake failure not reported to client app as connect error, skipping...")
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	s.Log(s.Containers.ServerVpp.VppInstance.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri quic://" + serverAddress))
+	s.Log(serverVpp.Vppctl("test alpn server alpn-proto1 2 alpn-proto2 1 uri quic://" + serverAddress))
 
 	uri := "quic://" + serverAddress
-	o := s.Containers.ClientVpp.VppInstance.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 4 uri " + uri)
+	o := clientVpp.Vppctl("test alpn client alpn-proto1 3 alpn-proto2 4 uri " + uri)
 	s.Log(o)
 	s.AssertNotContains(o, "timeout")
 	s.AssertNotContains(o, "ALPN selected")
 	// connection refused on mismatch
-	s.AssertContains(o, "connect error failed quic handshake")
+	s.AssertContains(o, "connect error failed tls handshake")
+	// check if everything is cleanup
+	// server should have only 2 listener sessions (udp and quic) and app no accepted connection
+	o = serverVpp.Vppctl("show test alpn server")
+	s.Log(o)
+	s.AssertContains(o, "accepted connections 0")
+	o = serverVpp.Vppctl("show session verbose 2")
+	s.Log(o)
+	s.AssertContains(o, "active sessions 2")
+	// no session on client
+	o = clientVpp.Vppctl("show session verbose 2")
+	s.Log(o)
+	s.AssertContains(o, "no sessions")
 }
 
 func QuicAlpnEmptyServerListTest(s *VethsSuite) {
