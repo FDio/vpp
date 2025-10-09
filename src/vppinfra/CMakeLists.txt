@@ -133,6 +133,7 @@ set(VPPINFRA_HEADERS
   bihash_24_16.h
   bihash_template.c
   bihash_template.h
+  bihash_template_inlines.h
   bihash_vec8_8.h
   bitmap.h
   bitops.h
