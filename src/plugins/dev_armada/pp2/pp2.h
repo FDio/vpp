@@ -20,9 +20,6 @@
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
 
-#include "mv_std.h"
-#include "env/mv_sys_dma.h"
-#include "drivers/mv_pp2.h"
 #include <drivers/mv_pp2_bpool.h>
 #include <drivers/mv_pp2_ppio.h>
 
@@ -61,6 +58,7 @@ typedef enum
 
 typedef enum
 {
+  MVPP2_PORT_ARG_RSS_HASH,
   MVPP2_PORT_ARG_DSA_ENABLED,
 } mvpp2_port_args_t;
 
@@ -98,13 +96,8 @@ mv_dsa_tag_write (void *p, mv_dsa_tag_t tag)
 typedef struct
 {
   u8 pp_id;
+  u16 free_bpools;
   struct pp2_hif *hif[MVPP2_NUM_HIFS];
-  struct
-  {
-    struct pp2_bpool *bpool;
-    struct buff_release_entry bre[MRVL_PP2_BUFF_BATCH_SZ];
-  } thread[MVPP2_NUM_BPOOLS];
-
 } mvpp2_device_t;
 
 typedef struct
@@ -114,6 +107,7 @@ typedef struct
   struct pp2_ppio *ppio;
   u8 ppio_id;
   struct pp2_ppio_link_info last_link_info;
+  struct pp2_bpool *bpool;
   clib_dt_node_t *switch_node;
   clib_dt_node_t *switch_port_node;
 
@@ -132,6 +126,8 @@ typedef struct
 
 typedef struct
 {
+  struct buff_release_entry bre[MRVL_PP2_BUFF_BATCH_SZ];
+  u16 n_bpool_refill;
 } mvpp2_rxq_t;
 
 typedef struct
@@ -225,5 +221,7 @@ typedef enum
   foreach_mvpp2_rx_node_counter
 #undef _
 } mvpp2_rx_node_counter_t;
+
+u32 mrvl_pp2_bpool_put_no_inline (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq);
 
 #endif /* _PP2_H_ */
