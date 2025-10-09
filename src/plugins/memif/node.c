@@ -314,6 +314,7 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
   ptd->n_packets -= bad_packets;
   return n_buffers;
 }
+
 static_always_inline void
 memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
 				memif_per_thread_data_t *ptd,
@@ -766,7 +767,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   clib_thread_index_t thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
-  u16 cur_slot, last_slot, ring_size, n_slots, mask, head;
+  u16 cur_slot, saved_slot, last_slot, ring_size, n_slots, mask, head;
   i16 start_offset;
   u64 offset;
   u32 buffer_length;
@@ -785,7 +786,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   start_offset = (mode == MEMIF_INTERFACE_MODE_IP) ? 14 : 0;
   buffer_length = vlib_buffer_get_default_data_size (vm) - start_offset;
 
-  cur_slot = mq->last_tail;
+  cur_slot = saved_slot = mq->last_tail;
   last_slot = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
   if (cur_slot == last_slot)
     goto refill;
@@ -836,10 +837,13 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots)
 	    goto next_slot;
 	}
+      if (!d0->flags & MEMIF_DESC_FLAG_NEXT)
+	saved_slot = cur_slot
+      /* TODO: Repair also n_rx_bytes used only for counters. */
     }
 
   /* release slots from the ring */
-  mq->last_tail = cur_slot;
+  mq->last_tail = saved_slot;
 
   n_from = n_rx_packets;
   buffers = ptd->buffers;
