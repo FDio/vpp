@@ -23,15 +23,29 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
-  vnet_dev_rx_queue_t *rxq0 = vnet_dev_get_port_rx_queue_by_id (port, 0);
   struct pp2_ppio_link_info li;
+  enum pp2_ppio_hash_type hash_type = PP2_PPIO_HASH_T_5_TUPLE;
+  struct pp2_ppio_inq_params *inqs_params = 0;
   char match[16];
   int mrv;
+  u16 n_rxq = 0;
+  u8 index;
 
   log_debug (port->dev, "");
 
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      vec_add1 (inqs_params, (struct pp2_ppio_inq_params){ .size = q->size });
+      n_rxq++;
+    }
+
   foreach_vnet_dev_args (arg, port)
-    if (arg->id == MVPP2_PORT_ARG_DSA_ENABLED)
+    if (arg->id == MVPP2_PORT_ARG_RSS_HASH)
+      {
+	if (n_rxq > 1)
+	  hash_type = vnet_dev_arg_get_enum (arg);
+      }
+    else if (arg->id == MVPP2_PORT_ARG_DSA_ENABLED)
       switch (vnet_dev_arg_get_enum (arg))
 	{
 	case MVPP2_PORT_DSA_ENABLED_ON:
@@ -47,6 +61,36 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	  break;
 	}
 
+  index = get_lowest_set_bit_index (md->free_bpools);
+  md->free_bpools ^= 1 << index;
+  snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
+
+  mrv = pp2_bpool_init (
+    &(struct pp2_bpool_params){
+      .match = match,
+      .buff_len = vlib_buffer_get_default_data_size (vm),
+    },
+    &mp->bpool);
+  if (mrv < 0)
+    {
+      log_err (dev, "pp2_bpool_init failed for bpool %u, err %d", index, mrv);
+      rv = VNET_DEV_ERR_INIT_FAILED;
+      goto done;
+    }
+  log_debug (dev, "pp2_bpool_init(bpool %u) pool-%u:%u ok", index,
+	     mp->bpool->pp2_id, mp->bpool->id);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      mvpp2_rxq_t *prq = vnet_dev_get_rx_queue_data (q);
+
+      for (u32 j = 0; j < ARRAY_LEN (prq->bre); j++)
+	prq->bre[j].bpool = mp->bpool;
+
+      for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
+	prq->desc_ptrs[i] = prq->descs + i;
+    }
+
   snprintf (match, sizeof (match), "ppio-%d:%d", md->pp_id, port->port_id);
 
   struct pp2_ppio_params ppio_params = {
@@ -55,11 +99,12 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     .eth_start_hdr = mp->is_dsa ? PP2_PPIO_HDR_ETH_DSA : PP2_PPIO_HDR_ETH,
     .inqs_params = {
       .num_tcs = 1,
+      .hash_type = n_rxq > 1 ? hash_type : PP2_PPIO_HASH_T_NONE,
       .tcs_params[0] = {
-        .pkt_offset = 0,
-	.num_in_qs = 1,
-	.inqs_params = &(struct pp2_ppio_inq_params) { .size = rxq0->size },
-	.pools[0][0] = md->thread[rxq0->rx_thread_index].bpool,
+	.num_in_qs = n_rxq,
+	.inqs_params = inqs_params,
+	.pools[0][0] = mp->bpool,
+	.pools[0][1] = md->dummy_short_bpool,
       },
     },
   };
@@ -93,9 +138,6 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port %u %U", port->port_id, format_pp2_ppio_link_info, &li);
 
-  for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
-    mp->desc_ptrs[i] = mp->descs + i;
-
   mvpp2_port_add_counters (vm, port);
 
 done:
@@ -115,6 +157,12 @@ mvpp2_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
     {
       pp2_ppio_deinit (mp->ppio);
       mp->ppio = 0;
+    }
+
+  if (mp->bpool)
+    {
+      pp2_bpool_deinit (mp->bpool);
+      mp->bpool = 0;
     }
 }
 
@@ -185,6 +233,16 @@ mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (port->dev, "");
 
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      mvpp2_rxq_t *prq = vnet_dev_get_rx_queue_data (q);
+      prq->n_bpool_refill = VLIB_FRAME_SIZE;
+      mrvl_pp2_bpool_put_no_inline (vm, q);
+      if (prq->n_bpool_refill)
+	log_warn (port->dev, "mrvl_pp2_bpool_put failed to fill %u buffers",
+		  prq->n_bpool_refill);
+    }
+
   mrv = pp2_ppio_enable (mp->ppio);
   if (mrv)
     {
@@ -202,8 +260,11 @@ mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 void
 mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  int rv;
+  vnet_dev_t *dev = port->dev;
+  mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  struct pp2_buff_inf bi;
+  int rv;
 
   log_debug (port->dev, "");
 
@@ -213,7 +274,7 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
       rv = pp2_ppio_disable (mp->ppio);
       if (rv)
-	log_err (port->dev, "pp2_ppio_disable() failed, rv %d", rv);
+	log_err (dev, "pp2_ppio_disable() failed, rv %d", rv);
 
       vnet_dev_port_state_change (vm, port,
 				  (vnet_dev_port_state_changes_t){
@@ -224,6 +285,9 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 				  });
       mp->is_enabled = 0;
     }
+
+  while (pp2_bpool_get_buff (md->hif[vm->thread_index], mp->bpool, &bi) == 0)
+    vlib_buffer_free (vm, &(u32){ bi.cookie }, 1);
 }
 
 vnet_dev_rv_t
