@@ -15,7 +15,9 @@
 
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
+#include <vnet/ip/icmp4.h>
 #include <vnet/fib/fib.h>
+#include <vnet/udp/udp.h>
 
 /**
  * Per-type vector of transport protocol virtual function tables
@@ -322,6 +324,102 @@ transport_register_new_protocol (const transport_proto_vft_t * vft,
 
   return transport_proto;
 }
+
+static transport_proto_t
+transport_proto_from_ip_proto (u8 ip_proto)
+{
+  switch (ip_proto)
+    {
+    case IP_PROTOCOL_TCP:
+      return TRANSPORT_PROTO_TCP;
+    case IP_PROTOCOL_UDP:
+      return TRANSPORT_PROTO_UDP;
+    default:
+      return TRANSPORT_PROTO_NONE;
+    }
+}
+
+/* 4 bytes of ICMP header & 4 reserved */
+#define ICMP_HEADER_SIZE 8
+
+static uword
+transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 vlib_frame_t *frame)
+{
+  u32 next_index, n_left_from, *from, *to_next;
+  u8 is_filtered = 0;
+  clib_thread_index_t t_index = vlib_get_thread_index ();
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  vlib_node_increment_counter (vm, node->node_index, 0, n_left_from);
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  u16 *src_port, *dst_port;
+	  vlib_buffer_t *b0;
+	  icmp46_header_t *icmp0;
+	  ip4_header_t *ip0, *ip1;
+	  transport_connection_t *tc;
+
+	  bi0 = from[0];
+	  b0 = vlib_get_buffer (vm, bi0);
+	  from += 1;
+	  n_left_from -= 1;
+	  ip0 = vlib_buffer_get_current (b0);
+	  icmp0 = ip4_next_header (ip0);
+
+	  vlib_buffer_advance (b0, ip4_header_bytes (ip0) + ICMP_HEADER_SIZE);
+	  ip1 = vlib_buffer_get_current (b0);
+	  src_port = (u16 *) ip4_next_header (ip1);
+	  dst_port = src_port + 1;
+	  tc = session_lookup_connection_wt4 (
+	    0, &ip0->dst_address, &ip0->src_address, *src_port, *dst_port,
+	    transport_proto_from_ip_proto (ip1->protocol), t_index,
+	    &is_filtered);
+	  if (PREDICT_TRUE (tc != NULL))
+	    {
+	      switch (tc->proto)
+		{
+		case TRANSPORT_PROTO_UDP:
+		  udp_connection_handle_icmp (tc, icmp0->type, icmp0->code);
+		  break;
+		default:
+		  clib_warning ("transport handler unimplemented!");
+		  break;
+		}
+	    }
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return frame->n_vectors;
+};
+
+static char *transport_icmp_dest_unreachable_node_error_strings[] = {
+  "received ICMPs",
+};
+
+VLIB_REGISTER_NODE (transport_icmp_dest_unreachable_node) = {
+  .function = transport_icmp_dest_unreachable,
+  .name = "transport-icmp-dest-unreachable",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "ip4-punt",
+  },
+  .error_strings = transport_icmp_dest_unreachable_node_error_strings,
+  .n_errors = 1,
+};
 
 /**
  * Get transport virtual function table
@@ -1079,6 +1177,9 @@ transport_enable_disable (vlib_main_t * vm, u8 is_en)
     if (vft->update_time)
       session_register_update_time_fn (vft->update_time, is_en);
   }
+  if (is_en)
+  ip4_icmp_register_type (vlib_get_main (), ICMP4_destination_unreachable,
+			  transport_icmp_dest_unreachable_node.index);
 }
 
 void
