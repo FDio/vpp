@@ -279,6 +279,9 @@ clib_sha256_vec_cycle_w (u32x4 w[], u8 i)
   u8 k = (i + 2) % 4;
   u8 l = (i + 3) % 4;
 #ifdef CLIB_SHA256_ISA_INTEL
+#ifdef __AVX__
+  _mm256_zeroupper ();
+#endif
   w[i] = (u32x4) _mm_sha256msg1_epu32 ((__m128i) w[i], (__m128i) w[j]);
   w[i] += (u32x4) _mm_alignr_epi8 ((__m128i) w[l], (__m128i) w[k], 4);
   w[i] = (u32x4) _mm_sha256msg2_epu32 ((__m128i) w[i], (__m128i) w[l]);
@@ -292,6 +295,9 @@ clib_sha256_vec_4_rounds (u32x4 w, u8 n, u32x4 s[])
 {
 #ifdef CLIB_SHA256_ISA_INTEL
   u32x4 r = *(u32x4 *) (clib_sha2_256_k + 4 * n) + w;
+#ifdef __AVX__
+  _mm256_zeroupper ();
+#endif
   s[0] = (u32x4) _mm_sha256rnds2_epu32 ((__m128i) s[0], (__m128i) s[1],
 					(__m128i) r);
   r = (u32x4) u64x2_interleave_hi ((u64x2) r, (u64x2) r);
