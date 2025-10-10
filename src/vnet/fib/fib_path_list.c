@@ -14,6 +14,8 @@
  */
 
 #include <vppinfra/mhash.h>
+#include <vlib/vlib.h>
+
 #include <vnet/ip/ip.h>
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/load_balance.h>
@@ -282,7 +284,7 @@ fib_path_list_db_insert (fib_node_index_t path_list_index)
 
     ASSERT(FIB_NODE_INDEX_INVALID == fib_path_list_db_find(path_list));
 
-    hash_set (fib_path_list_db,
+    hash_set_mt_safe (fib_path_list_db,
 	      fib_path_list_db_hash_key_from_index(path_list_index),
 	      path_list_index);
 
@@ -298,7 +300,7 @@ fib_path_list_db_remove (fib_node_index_t path_list_index)
 
     ASSERT(FIB_NODE_INDEX_INVALID != fib_path_list_db_find(path_list));
 
-    hash_unset(fib_path_list_db,
+    hash_unset_mt_safe(fib_path_list_db,
 	       fib_path_list_db_hash_key_from_index(path_list_index));
 
     FIB_PATH_LIST_DBG(path_list, "DB-removed");
@@ -320,7 +322,7 @@ fib_path_list_destroy (fib_path_list_t *path_list)
     fib_urpf_list_unlock(path_list->fpl_urpf);
 
     fib_node_deinit(&path_list->fpl_node);
-    pool_put(fib_path_list_pool, path_list);
+    pool_put_mt_safe(fib_path_list_pool, path_list);
 }
 
 static void
@@ -545,7 +547,7 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
 {
     fib_path_list_t *path_list;
 
-    pool_get(fib_path_list_pool, path_list);
+    pool_get_mt_safe(fib_path_list_pool, path_list);
     clib_memset(path_list, 0, sizeof(*path_list));
 
     fib_node_init(&path_list->fpl_node,
