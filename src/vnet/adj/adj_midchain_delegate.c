@@ -118,7 +118,7 @@ adj_midchain_delegate_stack (adj_index_t ai,
     }
     else
     {
-        pool_get(amd_pool, amd);
+        pool_get_mt_safe(amd_pool, amd);
         amd->amd_fei = FIB_NODE_INDEX_INVALID;
         adj_delegate_add(adj, ADJ_DELEGATE_MIDCHAIN, amd - amd_pool);
 

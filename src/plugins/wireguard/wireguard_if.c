@@ -276,17 +276,17 @@ wg_if_create (u32 user_instance,
     .u_index_drop = wg_index_drop,
   };
 
-  pool_get (noise_local_pool, local);
+  pool_get_mt_safe (noise_local_pool, local);
 
   noise_local_init (local, &upcall);
   if (!noise_local_set_private (local, private_key))
     {
-      pool_put (noise_local_pool, local);
+      pool_put_mt_safe (noise_local_pool, local);
       wg_if_instance_free (instance);
       return VNET_API_ERROR_INVALID_REGISTRATION;
     }
 
-  pool_get_zero (wg_if_pool, wg_if);
+  pool_get_zero_mt_safe (wg_if_pool, wg_if);
 
   /* tunnel index (or instance) */
   u32 t_idx = wg_if - wg_if_pool;
@@ -295,7 +295,7 @@ wg_if_create (u32 user_instance,
   if (~0 == wg_if->user_instance)
     wg_if->user_instance = t_idx;
 
-  vec_validate_init_empty (wg_if_indexes_by_port, port, NULL);
+  vec_validate_init_empty_mt_safe (wg_if_indexes_by_port, port, NULL);
   if (vec_len (wg_if_indexes_by_port[port]) == 0)
     {
       udp_register_dst_port (vlib_get_main (), port, wg4_input_node.index,
@@ -304,7 +304,7 @@ wg_if_create (u32 user_instance,
 			     UDP_IP6);
     }
 
-  vec_add1 (wg_if_indexes_by_port[port], t_idx);
+  vec_add1_mt_safe (wg_if_indexes_by_port[port], t_idx);
 
   wg_if->port = port;
   wg_if->local_idx = local - noise_local_pool;
@@ -318,8 +318,8 @@ wg_if_create (u32 user_instance,
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
 
-  vec_validate_init_empty (wg_if_index_by_sw_if_index, hi->sw_if_index,
-			   INDEX_INVALID);
+  vec_validate_init_empty_mt_safe (wg_if_index_by_sw_if_index, hi->sw_if_index,
+				   INDEX_INVALID);
   wg_if_index_by_sw_if_index[hi->sw_if_index] = t_idx;
 
   ip_address_copy (&wg_if->src_ip, src_ip);
@@ -385,7 +385,7 @@ wg_if_delete (u32 sw_if_index)
 void
 wg_if_peer_add (wg_if_t * wgi, index_t peeri)
 {
-  hash_set (wgi->peers, peeri, peeri);
+  hash_set_mt_safe (wgi->peers, peeri, peeri);
 
   if (1 == hash_elts (wgi->peers))
     {
@@ -399,7 +399,7 @@ wg_if_peer_add (wg_if_t * wgi, index_t peeri)
 void
 wg_if_peer_remove (wg_if_t * wgi, index_t peeri)
 {
-  hash_unset (wgi->peers, peeri);
+  hash_unset_mt_safe (wgi->peers, peeri);
 
   if (0 == hash_elts (wgi->peers))
     {

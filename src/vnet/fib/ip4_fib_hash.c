@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vlib/vlib.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
@@ -116,7 +117,7 @@ ip4_fib_hash_table_entry_insert (ip4_fib_hash_t *fib,
 	    hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
 
 	}
-	hash = hash_set(hash, key, fib_entry_index);
+	hash = hash_set_mt_safe(hash, key, fib_entry_index);
 	fib->fib_entry_by_dst_address[len] = hash;
     }
     else
@@ -145,7 +146,7 @@ ip4_fib_hash_table_entry_remove (ip4_fib_hash_t *fib,
     }
     else
     {
-	hash_unset(hash, key);
+	hash_unset_mt_safe(hash, key);
     }
 
     fib->fib_entry_by_dst_address[len] = hash;

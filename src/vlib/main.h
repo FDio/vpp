@@ -45,12 +45,10 @@
 #include <vppinfra/elog.h>
 #include <vppinfra/format.h>
 #include <vppinfra/longjmp.h>
-#include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
 
 #include <pthread.h>
-
 
 /* By default turn off node/error event logging.
    Override with -DVLIB_ELOG_MAIN_LOOP */
@@ -207,6 +205,9 @@ typedef struct vlib_main_t
   clib_thread_index_t thread_index;
   u32 numa_node;
 
+  /** per-thread epoch for relativistic frees */
+  u64 local_epoch;
+
   /* epoll and eventfd */
   int epoll_fd;
   int wakeup_fd;
@@ -262,6 +263,9 @@ typedef struct vlib_main_t
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
+
+  /** Pending frees enqueued during this main loop iteration */
+  clib_delayed_free_entry_t *pending_frees;
 
   /* buffer fault injector */
   u32 buffer_alloc_success_seed;
@@ -326,6 +330,9 @@ typedef struct vlib_global_main_t
 
   /* Hash table to record which init functions have been called. */
   uword *init_functions_called;
+
+  /* Delayed free main structure. */
+  clib_delayed_free_main_t delayed_free_main;
 
 } vlib_global_main_t;
 

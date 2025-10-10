@@ -288,7 +288,7 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   cryptodev_key_t *ckey = 0;
   u32 i;
 
-  vec_validate (cmt->keys, idx);
+  vec_validate_mt_safe (cmt->keys, idx);
   ckey = vec_elt_at_index (cmt->keys, idx);
 
   if (kop == VNET_CRYPTO_KEY_OP_DEL || kop == VNET_CRYPTO_KEY_OP_MODIFY)
@@ -321,9 +321,9 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   if (cryptodev_check_supported_vnet_alg (key) == 0)
     return;
 
-  vec_validate (ckey->keys, vec_len (cmt->per_numa_data) - 1);
+  vec_validate_mt_safe (ckey->keys, vec_len (cmt->per_numa_data) - 1);
   vec_foreach_index (i, ckey->keys)
-    vec_validate (ckey->keys[i], CRYPTODEV_N_OP_TYPES - 1);
+    vec_validate_mt_safe (ckey->keys[i], CRYPTODEV_N_OP_TYPES - 1);
 }
 
 /*static*/ void
