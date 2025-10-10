@@ -481,6 +481,35 @@ quic_listener_get (u32 listener_index)
 }
 
 static u8 *
+format_quic_ctx_state (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx;
+  session_t *as;
+
+  ctx = va_arg (*args, quic_ctx_t *);
+  as = session_get (ctx->c_s_index, ctx->c_thread_index);
+  if (as->session_state == SESSION_STATE_LISTENING)
+    s = format (s, "%s", "LISTEN");
+  else
+    {
+      if (as->session_state == SESSION_STATE_READY)
+	s = format (s, "%s", "ESTABLISHED");
+      else if (as->session_state == SESSION_STATE_ACCEPTING)
+	s = format (s, "%s", "ACCEPTING");
+      else if (as->session_state == SESSION_STATE_CONNECTING)
+	s = format (s, "%s", "CONNECTING");
+      else if (as->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	s = format (s, "%s", "CLOSED");
+      else if (as->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	s = format (s, "%s", "CLOSING");
+      else
+	s = format (s, "UNHANDLED %u", as->session_state);
+    }
+
+  return s;
+}
+
+static u8 *
 format_quic_ctx (u8 * s, va_list * args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
@@ -503,8 +532,8 @@ format_quic_ctx (u8 * s, va_list * args)
     format (str, " app %d wrk %d", ctx->parent_app_id, ctx->parent_app_wrk_id);
 
   if (verbose == 1)
-    s = format (s, "%-" SESSION_CLI_ID_LEN "s%-" SESSION_CLI_STATE_LEN "d",
-		str, ctx->conn_state);
+    s = format (s, "%-" SESSION_CLI_ID_LEN "s%-" SESSION_CLI_STATE_LEN "U",
+		str, format_quic_ctx_state, ctx);
   else
     s = format (s, "%s\n", str);
   vec_free (str);
