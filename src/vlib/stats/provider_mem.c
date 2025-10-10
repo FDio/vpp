@@ -54,13 +54,17 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
 
   vec_add1 (memory_heaps_vec, heap);
 
-  r.entry_index = idx = vlib_stats_add_counter_vector ("/mem/%s", heap->name);
+  r.entry_index = idx =
+    vlib_stats_add_counter_vector ("/mem/%U", format_clib_mem_heap_name, heap);
   vlib_stats_validate (idx, 0, STAT_MEM_RELEASABLE);
 
   /* Create symlink */
-  vlib_stats_add_symlink (idx, STAT_MEM_USED, "/mem/%s/used", heap->name);
-  vlib_stats_add_symlink (idx, STAT_MEM_TOTAL, "/mem/%s/total", heap->name);
-  vlib_stats_add_symlink (idx, STAT_MEM_FREE, "/mem/%s/free", heap->name);
+  vlib_stats_add_symlink (idx, STAT_MEM_USED, "/mem/%U/used",
+			  format_clib_mem_heap_name, heap);
+  vlib_stats_add_symlink (idx, STAT_MEM_TOTAL, "/mem/%U/total",
+			  format_clib_mem_heap_name, heap);
+  vlib_stats_add_symlink (idx, STAT_MEM_FREE, "/mem/%U/free",
+			  format_clib_mem_heap_name, heap);
 
   r.private_data = vec_len (memory_heaps_vec) - 1;
   r.collect_fn = stat_provider_mem_usage_update_fn;

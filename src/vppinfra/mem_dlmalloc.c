@@ -21,6 +21,27 @@
 #include <vppinfra/elf_clib.h>
 #include <vppinfra/stack.h>
 
+struct clib_mem_heap_t
+{
+  /* base address */
+  void *base;
+
+  /* dlmalloc mspace */
+  void *mspace;
+
+  /* heap size */
+  uword size;
+
+  /* page size (log2) */
+  clib_mem_page_sz_t log2_page_sz : 8;
+
+  /* flags */
+  clib_mem_heap_flag_t flags : 8;
+
+  /* name - _MUST_ be last */
+  char name[0];
+};
+
 typedef struct
 {
   clib_spinlock_t lock;
@@ -822,4 +843,10 @@ clib_mem_free_s (void *p)
   clib_mem_unpoison (p, size);
   memset_s_inline (p, size, 0, size);
   clib_mem_free (p);
+}
+__clib_export u8 *
+format_clib_mem_heap_name (u8 *s, va_list *va)
+{
+  clib_mem_heap_t *h = va_arg (*va, clib_mem_heap_t *);
+  return format (s, "%s", h->name);
 }
