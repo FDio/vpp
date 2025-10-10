@@ -16,6 +16,24 @@
       "message": "Any reason why we don\u0027t want to factor out the common code between the if and else?",
       "revId": "a218f5a957f0fff458945f15770839083d269bc7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "016c0370_f2303605",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 652,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-10T19:09:18Z",
+      "side": 1,
+      "message": "None, just trying to minimize impact on non-ct branch, although I did consider pulling out for a second the common code out. \n\nAlso, still debating if we should be changing something more in the messages. Today we pass both fifos through (because we need to use signals from one and shared fifo from the other).",
+      "parentUuid": "2bd553e1_d9da61bc",
+      "revId": "a218f5a957f0fff458945f15770839083d269bc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
