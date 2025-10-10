@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+
+import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
+
+autoreply define sfdp_nat_set_external_interface
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  u32 tenant_id;
+  u8 is_disable;
+};
+
+autoreply define sfdp_nat_alloc_pool_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u32 alloc_pool_id;
+  u8 is_del;
+  u32 n_addr;
+  vl_api_ip4_address_t addr[n_addr];
+};
+
+autoreply define sfdp_nat_snat_set_unset
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  u32 outside_tenant_id;
+  u32 table_id;
+  u32 alloc_pool_id;
+  u8 is_disable;
+};

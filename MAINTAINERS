@@ -223,6 +223,11 @@ M:      Mohammed Hawari <mohammed@hawari.fr>
 M:      Ole Troan <otroan@employees.org>
 F:      src/vnet/sfdp/
 
+Plugin StateFul Data Plane Services
+I:      sfdp_services
+M:      Mohammed Hawari <mohammed@hawari.fr>
+F:      src/plugins/sfdp_services
+
 Plugin - Crypto - native
 I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>

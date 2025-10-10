@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+import "vnet/ip/ip_types.api";
+import "vnet/sfdp/sfdp_types.api";
+
+enumflag sfdp_tcp_check_session_flags : u32
+{
+  SFDP_API_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN = 0x1,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_WAIT_FOR_INIT_ACK_TO_SYN,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN = 0x4,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_SEEN_FIN_INIT = 0x8,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_SEEN_FIN_RESP = 0x10,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT = 0x20,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP = 0x40,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_ESTABLISHED = 0x80,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_REMOVING = 0x100,
+  SFDP_API_TCP_CHECK_SESSION_FLAG_BLOCKED = 0x200,
+};
+
+define sfdp_tcp_session_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sfdp_tcp_session_details
+{
+  u32 context;
+
+  u64 session_id;
+  u32 thread_index;
+  u32 tenant_id;
+  u32 session_idx;
+  vl_api_sfdp_session_type_t session_type;
+  vl_api_sfdp_tcp_check_session_flags_t flags;
+  u8 n_keys;
+  vl_api_sfdp_session_key_t keys[n_keys];
+};
