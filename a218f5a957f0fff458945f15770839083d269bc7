@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2bd553e1_d9da61bc",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 652,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2025-10-10T17:29:35Z",
+      "side": 1,
+      "message": "Any reason why we don\u0027t want to factor out the common code between the if and else?",
+      "revId": "a218f5a957f0fff458945f15770839083d269bc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
