@@ -22,6 +22,10 @@ vl_api_selog_get_shm_t_handler (vl_api_selog_get_shm_t *mp)
   u32 file_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
+
+  if (!reg)
+    return;
+
   if ((file_index = vl_api_registration_file_index (reg)) == VL_API_INVALID_FI)
     rv = VNET_API_ERROR_UNIMPLEMENTED;
 
