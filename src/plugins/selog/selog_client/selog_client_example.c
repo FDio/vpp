@@ -14,8 +14,15 @@
  */
 #include <selog/selog_client/selog_client.h>
 #include <stdio.h>
+#include <signal.h>
 #include <time.h>
 
+volatile sig_atomic_t stop;
+void
+interrupt_handler (int signum)
+{
+  stop = 1;
+}
 int
 main (int argc, char *argv[])
 {
@@ -30,7 +37,8 @@ main (int argc, char *argv[])
 	      selog_client_error_strings[-rv]);
       return rv;
     }
-  while (1)
+  signal (SIGINT, interrupt_handler);
+  while (!stop)
     {
       selog_event_t event;
       int rv = selog_client_poll_event (ctx, &event, 1);
