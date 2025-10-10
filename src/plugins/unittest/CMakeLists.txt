@@ -16,6 +16,11 @@ if (OPENSSL_VERSION VERSION_GREATER_EQUAL 1.1.0)
     set(chacha20_poly1305 crypto/chacha20_poly1305.c)
 endif()
 include_directories(${CMAKE_SOURCE_DIR}/vpp-api ${CMAKE_CURRENT_BINARY_DIR}/../../vpp-api)
+set(SFDP_TEST_SRC
+  sfdp_test/unittest.c
+  sfdp_test/test_parser.c
+)
+set(UNITY_SRC unity/unity.c)
 add_vpp_plugin(unittest
   SOURCES
   api_test.c
@@ -50,6 +55,7 @@ add_vpp_plugin(unittest
   rbtree_test.c
   session_test.c
   sparse_vec_test.c
+  ${SFDP_TEST_SRC}
   string_test.c
   svm_fifo_test.c
   segment_manager_test.c
@@ -58,6 +64,7 @@ add_vpp_plugin(unittest
   unittest.c
   udp_test.c
   util_test.c
+  ${UNITY_SRC}
   vlib_test.c
   counter_test.c
   ring_buffer_test.c
@@ -67,3 +74,4 @@ add_vpp_plugin(unittest
   vpp-plugin-devtools
   LINK_LIBRARIES vapiclient
 )
+target_compile_options(unittest_plugin PRIVATE "-DUNITY_INCLUDE_CONFIG_H=1")
