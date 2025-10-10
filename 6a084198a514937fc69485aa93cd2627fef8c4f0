@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "22b78da5_72ac06b1",
+        "filename": "src/plugins/npol/bihash_8_32.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-10-10T14:26:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4463d4fd_bf5658d4",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89124a58_27d8e3d1",
@@ -83,6 +101,24 @@
       "writtenOn": "2025-10-03T10:56:50Z",
       "side": 1,
       "message": "not needed anymore...",
+      "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba3ef9a9_2a2e0bbf",
+        "filename": "src/plugins/npol/bihash_8_32.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2025-10-10T14:26:48Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "89124a58_27d8e3d1",
       "revId": "6a084198a514937fc69485aa93cd2627fef8c4f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
