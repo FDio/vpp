@@ -32,18 +32,19 @@ sfdp_reass_main_init (vlib_main_t *vm)
   vrm->ip6_sv_reass_next_index =
     ip6_sv_reass_custom_context_register_next_node (
       sfdp_lookup_ip6_node.index);
-  vrm->ip4_full_reass_next_index =
+  /*vrm->ip4_full_reass_next_index =
     ip4_full_reass_custom_context_register_next_node (
       sfdp_lookup_ip4_node.index);
   vrm->ip6_full_reass_next_index =
     ip6_full_reass_custom_context_register_next_node (
       sfdp_lookup_ip6_node.index);
   vrm->ip4_full_reass_err_next_index = ip4_full_reass_get_error_next_index ();
-  vrm->ip6_full_reass_err_next_index = ip6_full_reass_get_error_next_index ();
+  vrm->ip6_full_reass_err_next_index = ip6_full_reass_get_error_next_index
+  ();*/
   return 0;
 }
 
-void
+/*void
 sfdp_ip4_full_reass_custom_context_register_next_node (u16 node_index)
 {
   sfdp_reass_main.ip4_full_reass_next_index =
@@ -70,5 +71,5 @@ sfdp_ip6_full_reass_custom_context_register_next_err_node (u16 node_index)
   sfdp_reass_main.ip6_full_reass_err_next_index =
     ip6_full_reass_custom_context_register_next_node (node_index);
 }
-
+*/
 VLIB_INIT_FUNCTION (sfdp_reass_main_init);
