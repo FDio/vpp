@@ -109,26 +109,8 @@ typedef enum
 #undef _
 } clib_mem_heap_flag_t;
 
-typedef struct
-{
-  /* base address */
-  void *base;
-
-  /* dlmalloc mspace */
-  void *mspace;
-
-  /* heap size */
-  uword size;
-
-  /* page size (log2) */
-  clib_mem_page_sz_t log2_page_sz:8;
-
-  /* flags */
-  clib_mem_heap_flag_t flags:8;
-
-  /* name - _MUST_ be last */
-  char name[0];
-} clib_mem_heap_t;
+struct clib_mem_heap_t;
+typedef struct clib_mem_heap_t clib_mem_heap_t;
 
 typedef struct
 {
@@ -354,6 +336,7 @@ uword clib_mem_get_heap_free_space (clib_mem_heap_t * heap);
 
 u8 *format_clib_mem_usage (u8 * s, va_list * args);
 u8 *format_clib_mem_heap (u8 * s, va_list * va);
+u8 *format_clib_mem_heap_name (u8 *s, va_list *va);
 u8 *format_clib_mem_page_stats (u8 * s, va_list * va);
 
 /* Allocate virtual address space. */
