@@ -423,7 +423,15 @@ quic_start_listen (u32 quic_listen_session_index,
   lctx->crypto_engine = ccfg->crypto_engine;
   lctx->ckpair_index = ccfg->ckpair_index;
   if ((rv = quic_eng_crypto_context_acquire (lctx)))
-    return rv;
+    {
+      vnet_unlisten_args_t a = {
+	.handle = udp_handle,
+	.app_index = qm->app_index,
+      };
+      vnet_unlisten (&a);
+      quic_ctx_free (qm, lctx);
+      return rv;
+    }
 
   QUIC_DBG (2, "Listening UDP session 0x%lx",
 	    session_handle (udp_listen_session));
