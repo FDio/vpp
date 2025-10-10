@@ -289,7 +289,7 @@ main (int argc, char *argv[])
 defaulted:
 
   /* temporary heap */
-  clib_mem_init (0, 1 << 20);
+  clib_mem_init (0, 32 << 20);
   unformat_init_command_line (&input, (char **) argv);
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)

@@ -10,7 +10,7 @@
 #include <vlib/stats/shared.h>
 
 /* Default stat segment 32m */
-#define STAT_SEGMENT_DEFAULT_SIZE (32 << 20)
+#define STAT_SEGMENT_DEFAULT_SIZE (64 << 20)
 
 /* Shared segment memory layout version */
 #define STAT_SEGMENT_VERSION 2

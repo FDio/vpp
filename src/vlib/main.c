@@ -1957,23 +1957,26 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 	goto done;
     }
 
-  /* Direct call / weak reference, for vlib standalone use-cases */
-  if ((error = vpe_api_init (vm)))
+  if (0)
     {
-      clib_error_report (error);
-      goto done;
-    }
+      /* Direct call / weak reference, for vlib standalone use-cases */
+      if ((error = vpe_api_init (vm)))
+	{
+	  clib_error_report (error);
+	  goto done;
+	}
 
-  if ((error = vlibmemory_init (vm)))
-    {
-      clib_error_report (error);
-      goto done;
-    }
+      if ((error = vlibmemory_init (vm)))
+	{
+	  clib_error_report (error);
+	  goto done;
+	}
 
-  if ((error = map_api_segment_init (vm)))
-    {
-      clib_error_report (error);
-      goto done;
+      if ((error = map_api_segment_init (vm)))
+	{
+	  clib_error_report (error);
+	  goto done;
+	}
     }
 
   vlib_tw_init (vm);

@@ -34,6 +34,25 @@ else()
 endif()
 
 ##############################################################################
+# allocator selection
+##############################################################################
+option(VPP_USE_DLMALLOC "Force using dlmalloc allocator backend" OFF)
+set(VPPINFRA_USE_MIMALLOC OFF)
+
+if (NOT VPP_USE_DLMALLOC)
+  vpp_find_path(MIMALLOC_INCLUDE_DIR mimalloc.h)
+  vpp_find_library(MIMALLOC_LIB NAMES mimalloc libmimalloc)
+
+  if (MIMALLOC_INCLUDE_DIR AND MIMALLOC_LIB)
+    set(VPPINFRA_USE_MIMALLOC ON)
+    message(STATUS "mimalloc found at ${MIMALLOC_LIB}")
+    list(APPEND VPPINFRA_LIBS ${MIMALLOC_LIB})
+  endif()
+else()
+  message(STATUS "Using dlmalloc by user request (VPP_USE_DLMALLOC=ON)")
+endif()
+
+##############################################################################
 # Generate vppinfra/config.h
 ##############################################################################
 set(LOG2_CACHE_LINE_BYTES ${VPP_LOG2_CACHE_LINE_SIZE})
@@ -234,6 +253,12 @@ set(VPPINFRA_HEADERS
   linux/sysfs.h
 )
 
+if(VPPINFRA_USE_MIMALLOC)
+  list(REMOVE_ITEM VPPINFRA_SRCS dlmalloc.c mem_dlmalloc.c)
+  list(APPEND VPPINFRA_SRCS mem_mimalloc.c)
+  list(REMOVE_ITEM VPPINFRA_HEADERS dlmalloc.h)
+endif()
+
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   list(APPEND VPPINFRA_SRCS
     elf_clib.c
@@ -339,4 +364,3 @@ vpp_library_set_multiarch_sources(test_infra
   SOURCES
   ${test_files}
 )
-
