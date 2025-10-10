@@ -146,6 +146,9 @@ app_evt_collector_log_session (app_evt_collector_t *c, session_t *s)
 	clib_memcpy_fast (tcp_stats->conn_id, tc->opaque_conn_id,
 			  sizeof (tc->opaque_conn_id));
 	tcp_stats->end_ts = transport_time_now (s->thread_index);
+	tcp_stats->close_reason = s->flags & SESSION_F_TPT_INIT_CLOSE ?
+				    APP_EVT_SESSION_STAT_TRANSPORT_CLOSED :
+				    APP_EVT_SESSION_STAT_APP_CLOSED;
 
 #define _(type, name) tcp_stats->name = tcp_conn->name;
 	foreach_tcp_transport_stat
@@ -179,6 +182,9 @@ app_evt_collector_log_session (app_evt_collector_t *c, session_t *s)
 			  sizeof (tc->opaque_conn_id));
 	ct_stats->actual_proto = ct_conn->actual_tp;
 	ct_stats->end_ts = transport_time_now (s->thread_index);
+	ct_stats->close_reason = s->flags & SESSION_F_TPT_INIT_CLOSE ?
+				   APP_EVT_SESSION_STAT_TRANSPORT_CLOSED :
+				   APP_EVT_SESSION_STAT_APP_CLOSED;
       }
       break;
     default:
