@@ -1707,8 +1707,19 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
 
 	  ef = vlib_frame_scalar_args (f);
-	  ef->sw_if_index = pi->sw_if_index;
-	  ef->hw_if_index = pi->hw_if_index;
+          if (s->sw_if_index[VLIB_RX] == ~0)
+            {
+              /* Mark (all) packets in frame as originating from pg-XXX */
+              ef->sw_if_index = pi->sw_if_index;
+              ef->hw_if_index = pi->hw_if_index;
+            }
+          else
+            {
+              /* Mark packets from the configured interface: see cli.c:new_stream() */
+              ef->sw_if_index = s->sw_if_index[VLIB_RX];
+              ef->hw_if_index = s->sw_if_index[VLIB_RX];
+            }
+
 	  vlib_frame_no_append (f);
 	}
       else
