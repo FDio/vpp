@@ -30,6 +30,7 @@
 #include <vnet/l2/l2_bd.h>
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/l2/l2_arp_term.h>
+#include <vnet/l2/l2_lldp_bd_punt.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
@@ -1293,6 +1294,56 @@ want_l2_arp_term_events_reaper (u32 client_index)
 }
 
 VL_MSG_API_REAPER_FUNCTION (want_l2_arp_term_events_reaper);
+
+static void
+vl_api_l2_lldp_bd_punt_enable_disable_t_handler (
+  vl_api_l2_lldp_bd_punt_enable_disable_t *mp)
+{
+  extern l2_lldp_bd_punt_main_t l2_lldp_bd_punt_main;
+  vl_api_l2_lldp_bd_punt_enable_disable_reply_t *rmp;
+  int rv = 0;
+  bd_main_t *bdm = &bd_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  uword *p;
+  u32 enable = mp->enable_disable;
+  u32 bd_id = clib_net_to_host_u32 (mp->bd_id);
+  u32 sw_if_index = clib_net_to_host_u32 (mp->tx_sw_if_index);
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (p == 0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+
+  if (enable && sw_if_index == ~0)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  if (sw_if_index != ~0)
+    {
+      const u8 *mac;
+      vec_validate (l2_lldp_bd_punt_main.bd_punt_src_mac, sw_if_index);
+      mac = vnet_sw_interface_get_hw_address (vnm, sw_if_index);
+      clib_memcpy (l2_lldp_bd_punt_main.bd_punt_src_mac[sw_if_index].bytes,
+		   mac, 6);
+    }
+  if (enable)
+    {
+      vec_validate (l2_lldp_bd_punt_main.bd_punt_if, p[0]);
+      l2_lldp_bd_punt_main.bd_punt_if[p[0]] = sw_if_index;
+      bd_set_flags (0, p[0], L2_LLDP_BD_PUNT, 1);
+    }
+  else
+    {
+      bd_set_flags (0, p[0], L2_LLDP_BD_PUNT, 0);
+    }
+
+out:
+  REPLY_MACRO (VL_API_L2_LLDP_BD_PUNT_ENABLE_DISABLE_REPLY);
+}
 
 #include <vnet/l2/l2.api.c>
 static clib_error_t *

@@ -365,16 +365,15 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  l2_input_seq_num_inc (sw_if_index);
 
 	  /*
-	   * Enable forwarding, flooding, learning and ARP termination by default
-	   * (note that ARP term is disabled on BD feature bitmap by default)
+	   * Enable forwarding, flooding, learning and ARP termination, and
+	   * LLDP punting by default (note that ARP term & LLDP punting are
+	   * disabled on BD feature bitmap by default)
+	   *
 	   */
-	  config->feature_bitmap |= (L2INPUT_FEAT_FWD |
-				     L2INPUT_FEAT_UU_FLOOD |
-				     L2INPUT_FEAT_UU_FWD |
-				     L2INPUT_FEAT_FLOOD |
-				     L2INPUT_FEAT_LEARN |
-				     L2INPUT_FEAT_ARP_UFWD |
-				     L2INPUT_FEAT_ARP_TERM);
+	  config->feature_bitmap |=
+	    (L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_UU_FWD |
+	     L2INPUT_FEAT_FLOOD | L2INPUT_FEAT_LEARN | L2INPUT_FEAT_ARP_UFWD |
+	     L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_LLDP_BD_PUNT);
 
 	  /* Make sure last-chance drop is configured */
 	  config->feature_bitmap |= L2INPUT_FEAT_DROP;
