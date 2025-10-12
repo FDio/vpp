@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76dfe397_5e43e8bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-12T22:43:52Z",
+      "side": 1,
+      "message": "Quick comments",
+      "revId": "43d0d8503d256cc1673803f07eca35b24320ae31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "264c60fc_c735c1af",
+        "filename": "src/plugins/unittest/sfdp_test/unittest.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-12T22:43:52Z",
+      "side": 1,
+      "message": "Copyright header, in all files",
+      "revId": "43d0d8503d256cc1673803f07eca35b24320ae31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e4820059_e1e271d2",
+        "filename": "src/plugins/unittest/sfdp_test/unittest.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-12T22:43:52Z",
+      "side": 1,
+      "message": "If we\u0027re to convince others to move to this, would be good to get a list of benefits :)",
+      "revId": "43d0d8503d256cc1673803f07eca35b24320ae31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc2a1ffb_a8404be1",
+        "filename": "src/plugins/unittest/sfdp_test/unittest.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-12T22:43:52Z",
+      "side": 1,
+      "message": "C-style and maybe an explanation?",
+      "revId": "43d0d8503d256cc1673803f07eca35b24320ae31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52da9a01_afcebb1d",
+        "filename": "src/plugins/unittest/unity/unity_config.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-12T22:43:52Z",
+      "side": 1,
+      "message": "Copyright header",
+      "revId": "43d0d8503d256cc1673803f07eca35b24320ae31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
