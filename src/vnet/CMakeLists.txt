@@ -204,6 +204,7 @@ list(APPEND VNET_SOURCES
   l2/l2_efp_filter.c
   l2/l2_fib.c
   l2/l2_flood.c
+  l2/l2_lldp_bd_punt.c
   l2/l2_fwd.c
   l2/l2_input.c
   l2/l2_input_node.c
