@@ -53,7 +53,8 @@ bd_validate (l2_bridge_domain_t * bd_config)
   if (bd_is_valid (bd_config))
     return;
   bd_config->feature_bitmap =
-    ~(L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_ARP_UFWD);
+    ~(L2INPUT_FEAT_ARP_TERM | L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_ARP_UFWD |
+      L2INPUT_FEAT_LLDP_BD_PUNT);
   bd_config->bvi_sw_if_index = ~0;
   bd_config->uu_fwd_sw_if_index = ~0;
   bd_config->members = 0;
@@ -319,6 +320,10 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
   if (flags & L2_ARP_UFWD)
     {
       feature_bitmap |= L2INPUT_FEAT_ARP_UFWD;
+    }
+  if (flags & L2_LLDP_BD_PUNT)
+    {
+      feature_bitmap |= L2INPUT_FEAT_LLDP_BD_PUNT;
     }
 
   if (enable)

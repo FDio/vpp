@@ -1376,6 +1376,12 @@ api_bvi_delete (vat_main_t *vam)
 }
 
 static int
+api_l2_lldp_bd_punt_enable_disable (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
 api_bridge_flags (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

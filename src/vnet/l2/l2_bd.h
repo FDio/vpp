@@ -160,6 +160,7 @@ typedef enum bd_flags_t_
   L2_UU_FLOOD = (1 << 3),
   L2_ARP_TERM = (1 << 4),
   L2_ARP_UFWD = (1 << 5),
+  L2_LLDP_BD_PUNT = (1 << 6),
 } bd_flags_t;
 
 u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,
