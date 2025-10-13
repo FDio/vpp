@@ -121,9 +121,10 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
 	  s->flags &= ~SESSION_F_RX_EVT;
-	  /* Application didn't confirm accept yet */
+	  /* App is unaware of the session or closing notification provided */
 	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
-			     s->session_state == SESSION_STATE_CONNECTING))
+			     s->session_state == SESSION_STATE_CONNECTING ||
+			     (s->flags & SESSION_F_TPT_RX_DONE)))
 	    break;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
@@ -134,7 +135,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	    break;
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
-			     s->session_state == SESSION_STATE_CONNECTING))
+			     s->session_state == SESSION_STATE_CONNECTING ||
+			     (s->flags & SESSION_F_TPT_RX_DONE)))
 	    break;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
@@ -172,8 +174,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 				     clib_max (old_state, s->session_state));
 		  if (svm_fifo_max_dequeue (s->rx_fifo))
 		    app->cb_fns.builtin_app_rx_callback (s);
+		  s->flags |= SESSION_F_TPT_RX_DONE;
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
-		    app->cb_fns.session_disconnect_callback (s);
+		    {
+		      s->flags |= SESSION_F_TPT_INIT_CLOSE;
+		      app->cb_fns.session_disconnect_callback (s);
+		    }
 		}
 	      else if (!session_has_transport (s))
 		{
@@ -207,19 +213,33 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	      session_set_state (s, clib_max (old_state, s->session_state));
 	      if (svm_fifo_max_dequeue (s->rx_fifo))
 		app->cb_fns.builtin_app_rx_callback (s);
+	      s->flags |= SESSION_F_TPT_RX_DONE;
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
-		app->cb_fns.session_disconnect_callback (s);
+		{
+		  s->flags |= SESSION_F_TPT_INIT_CLOSE;
+		  app->cb_fns.session_disconnect_callback (s);
+		}
 	    }
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
 	  s = session_get (evt->session_index, thread_index);
-	  if (!(s->flags & SESSION_F_APP_CLOSED))
-	    app->cb_fns.session_disconnect_callback (s);
+	  if (s->flags & SESSION_F_APP_CLOSED)
+	    {
+	      s->flags |= SESSION_F_TPT_RX_DONE;
+	      break;
+	    }
+	  s->flags |= SESSION_F_TPT_INIT_CLOSE | SESSION_F_TPT_RX_DONE;
+	  app->cb_fns.session_disconnect_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_RESET:
 	  s = session_get (evt->session_index, thread_index);
-	  if (!(s->flags & SESSION_F_APP_CLOSED))
-	    app->cb_fns.session_reset_callback (s);
+	  if (s->flags & SESSION_F_APP_CLOSED)
+	    {
+	      s->flags |= SESSION_F_TPT_RX_DONE;
+	      break;
+	    }
+	  s->flags |= SESSION_F_TPT_INIT_CLOSE | SESSION_F_TPT_RX_DONE;
+	  app->cb_fns.session_reset_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_UNLISTEN_REPLY:
 	  if (is_builtin)

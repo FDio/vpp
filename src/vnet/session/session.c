@@ -1124,6 +1124,7 @@ session_transport_reset_notify (transport_connection_t * tc)
   s = session_get (tc->s_index, tc->thread_index);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
+
   if (s->session_state == SESSION_STATE_ACCEPTING)
     {
       session_set_state (s, SESSION_STATE_TRANSPORT_CLOSING);
