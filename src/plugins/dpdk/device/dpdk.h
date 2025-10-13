@@ -35,7 +35,6 @@
 #include <rte_pci.h>
 #include <ctype.h>
 
-#include <bus_driver.h>
 #include <bus_pci_driver.h>
 #ifdef __linux__
 #include <bus_vmbus_driver.h>
