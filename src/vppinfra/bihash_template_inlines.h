@@ -142,7 +142,7 @@ BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
   else
     {
       alloc_arena (h) =
-	clib_mem_vm_reserve (0, h->memory_size, BIHASH_LOG2_HUGEPAGE_SIZE);
+	clib_mem_vm_reserve (0, h->memory_size, BIHASH_LOG2_HUGEPAGE_SIZE, 0);
       if (alloc_arena (h) == ~0)
 	os_out_of_memory ();
       alloc_arena_next (h) = 0;

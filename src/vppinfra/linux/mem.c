@@ -292,62 +292,6 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   return fd;
 }
 
-uword
-clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
-{
-  clib_mem_main_t *mm = &clib_mem_main;
-  uword pagesize = 1ULL << log2_page_sz;
-  uword sys_page_sz = 1ULL << mm->log2_page_sz;
-  uword n_bytes;
-  void *base = 0, *p;
-
-  size = round_pow2 (size, pagesize);
-
-  /* in adition of requested reservation, we also rserve one system page
-   * (typically 4K) adjacent to the start off reservation */
-
-  if (start)
-    {
-      /* start address is provided, so we just need to make sure we are not
-       * replacing existing map */
-      if (start & pow2_mask (log2_page_sz))
-	return ~0;
-
-      base = (void *) start - sys_page_sz;
-      base = mmap (base, size + sys_page_sz, PROT_NONE,
-		   MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
-      return (base == MAP_FAILED) ? ~0 : start;
-    }
-
-  /* to make sure that we get reservation aligned to page_size we need to
-   * request one additional page as mmap will return us address which is
-   * aligned only to system page size */
-  base = mmap (0, size + pagesize, PROT_NONE,
-	       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  if (base == MAP_FAILED)
-    return ~0;
-
-  /* return additional space at the end of allocation */
-  p = base + size + pagesize;
-  n_bytes = (uword) p & pow2_mask (log2_page_sz);
-  if (n_bytes)
-    {
-      p -= n_bytes;
-      munmap (p, n_bytes);
-    }
-
-  /* return additional space at the start of allocation */
-  n_bytes = pagesize - sys_page_sz - n_bytes;
-  if (n_bytes)
-    {
-      munmap (base, n_bytes);
-      base += n_bytes;
-    }
-
-  return (uword) base + sys_page_sz;
-}
-
 __clib_export clib_mem_vm_map_hdr_t *
 clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
 {
@@ -370,7 +314,8 @@ clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
 
 void *
 clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
-			  uword size, int fd, uword offset, char *name)
+			  uword size, int fd, u8 log2_align, uword offset,
+			  char *name)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   clib_mem_vm_map_hdr_t *hdr;
@@ -416,7 +361,8 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   size = round_pow2 (size, 1ULL << log2_page_sz);
 
-  base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_page_sz);
+  base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_page_sz,
+				       log2_align);
 
   if (base == (void *) ~0)
     return CLIB_MEM_VM_MAP_FAILED;
