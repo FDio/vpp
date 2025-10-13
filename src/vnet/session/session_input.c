@@ -120,6 +120,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	{
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
+	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_EVT)))
+	    break;
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  /* Application didn't confirm accept yet */
 	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
@@ -170,8 +172,11 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		{
 		  session_set_state (s,
 				     clib_max (old_state, s->session_state));
-		  if (svm_fifo_max_dequeue (s->rx_fifo))
-		    app->cb_fns.builtin_app_rx_callback (s);
+		  if (s->flags & SESSION_F_RX_EVT)
+		    {
+		      s->flags &= ~SESSION_F_RX_EVT;
+		      app->cb_fns.builtin_app_rx_callback (s);
+		    }
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
 		    app->cb_fns.session_disconnect_callback (s);
 		}
@@ -205,8 +210,11 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
 	      session_set_state (s, clib_max (old_state, s->session_state));
-	      if (svm_fifo_max_dequeue (s->rx_fifo))
-		app->cb_fns.builtin_app_rx_callback (s);
+	      if (s->flags & SESSION_F_RX_EVT)
+		{
+		  s->flags &= ~SESSION_F_RX_EVT;
+		  app->cb_fns.builtin_app_rx_callback (s);
+		}
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
 		app->cb_fns.session_disconnect_callback (s);
 	    }
