@@ -73,7 +73,7 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 
   pm->max_pages = size >> pm->def_log2_page_sz;
 
-  base = clib_mem_vm_reserve (base_addr, size, pm->def_log2_page_sz);
+  base = clib_mem_vm_reserve (base_addr, size, pm->def_log2_page_sz, 0);
 
   if (base == ~0)
     {
