@@ -52,6 +52,24 @@
       "parentUuid": "d8c1f80c_60615284",
       "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8976b945_7a08559e",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-10-13T14:13:19Z",
+      "side": 1,
+      "message": "Can you provide crypto perf number to crypto+hmac for native/ipsecmb perf? Matthew\u0027s point is valid - from perf perspective doing bulk crypto and then bulk hmac, although more complicated in implementation, will keep the instruction cache hot; Doing crypto and then hmac for each op has less optimal icache utilization. Providing performance results should help verifying it is still the case for today.",
+      "parentUuid": "5a42c67c_e5c6be45",
+      "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
