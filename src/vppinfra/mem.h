@@ -383,7 +383,8 @@ clib_mem_vm_free (void *addr, uword size)
 }
 
 void *clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
-				uword size, int fd, uword offset, char *name);
+				uword size, int fd, u8 log2_align,
+				uword offset, char *name);
 
 void *clib_mem_vm_map (void *start, uword size,
 		       clib_mem_page_sz_t log2_page_size, char *fmt, ...);
@@ -429,7 +430,7 @@ int clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...);
 uword clib_mem_get_fd_page_size (int fd);
 clib_mem_page_sz_t clib_mem_get_fd_log2_page_size (int fd);
 uword clib_mem_vm_reserve (uword start, uword size,
-			   clib_mem_page_sz_t log2_page_sz);
+			   clib_mem_page_sz_t log2_page_sz, u8 log2_align);
 u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 			    int n_pages);
 void clib_mem_destroy (void);

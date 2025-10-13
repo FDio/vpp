@@ -211,7 +211,7 @@ clib_mem_create_heap_internal (void *base, uword size,
     {
       log2_page_sz = clib_mem_log2_page_size_validate (log2_page_sz);
       size = round_pow2 (size, clib_mem_page_bytes (log2_page_sz));
-      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0,
+      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0, 0,
 				       "main heap");
 
       if (base == CLIB_MEM_VM_MAP_FAILED)

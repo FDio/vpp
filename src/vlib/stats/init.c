@@ -83,7 +83,7 @@ vlib_stats_init (vlib_main_t *vm)
   if (memaddr == CLIB_MEM_VM_MAP_FAILED)
     return clib_error_return (0, "stat segment mmap failure");
 
-  sys_page_sz = clib_mem_get_page_size ();
+  sys_page_sz = 65536;
 
   heap =
     clib_mem_create_heap (((u8 *) memaddr) + sys_page_sz,
