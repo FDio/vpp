@@ -189,7 +189,8 @@ typedef enum
   _ (HALF_OPEN, "half-open")                                                  \
   _ (APP_CLOSED, "app-closed")                                                \
   _ (IS_CLESS, "connectionless")                                              \
-  _ (RX_READY, "rx-ready")
+  _ (RX_READY, "rx-ready")                                                    \
+  _ (TPT_INIT_CLOSE, "transport-init-close")
 
 typedef enum session_flags_bits_
 {
