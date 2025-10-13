@@ -69,7 +69,7 @@ typedef enum transport_connection_flags_
   TRANSPORT_CONNECTION_F_##sym = 1 << TRANSPORT_CONNECTION_F_BIT_##sym,
   foreach_transport_connection_flag
 #undef _
-} transport_connection_flags_t;
+} __clib_packed transport_connection_flags_t;
 
 typedef struct _spacer
 {
@@ -111,11 +111,11 @@ typedef struct _transport_connection
     u8 opaque_conn_id[TRANSPORT_CONN_ID_LEN];
   };
 
-  u32 s_index;			/**< Parent session index */
-  u32 c_index;			/**< Connection index in transport pool */
+  u32 s_index;			    /**< Parent session index */
+  u32 c_index;			    /**< Connection index in transport pool */
   clib_thread_index_t thread_index; /**< Worker-thread index */
-  u8 flags;			/**< Transport specific flags */
-  u8 dscp;			/**< Differentiated Services Code Point */
+  transport_connection_flags_t flags; /**< Transport specific flags */
+  u8 dscp; /**< Differentiated Services Code Point */
 
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
