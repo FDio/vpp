@@ -237,6 +237,8 @@ http_listener_alloc (void)
   lhc->hc_hc_index = lhc - hm->listener_pool;
   lhc->timeout = HTTP_CONN_TIMEOUT;
   lhc->version = HTTP_VERSION_NA;
+  lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
+  lhc->hc_tl_handle_quic = SESSION_INVALID_HANDLE;
   return lhc->hc_hc_index;
 }
 
@@ -283,6 +285,78 @@ http_shutdown_transport (http_conn_t *hc)
 
   if (vnet_shutdown_session (&a))
     clib_warning ("shutdown returned");
+}
+
+int
+http_connect_transport_stream (http_conn_t *parent, u8 is_unidirectional,
+			       http_conn_t **stream)
+{
+  vnet_connect_args_t _cargs, *cargs = &_cargs;
+  http_main_t *hm = &http_main;
+  http_conn_t *hc;
+  http_conn_handle_t hc_handle;
+  u32 hc_index;
+  int error;
+
+  hc_index = http_conn_alloc_w_thread (parent->c_thread_index);
+  hc = http_conn_get_w_thread (hc_index, parent->c_thread_index);
+  clib_memcpy_fast (hc, parent, sizeof (*parent));
+  hc->hc_hc_index = hc_index;
+  hc->hc_http_conn_index = parent->hc_hc_index;
+  hc->hc_ho_index = SESSION_INVALID_INDEX;
+
+  hc_handle.version = parent->version;
+  hc_handle.conn_index = hc_index;
+  clib_memset (cargs, 0, sizeof (*cargs));
+  cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+  cargs->sep_ext.parent_handle = parent->hc_tc_session_handle;
+  cargs->app_index = hm->app_index;
+  cargs->api_context = hc_handle.as_u32;
+  if (is_unidirectional)
+    {
+      cargs->sep.transport_flags |= TRANSPORT_CFG_F_UNIDIRECTIONAL;
+      hc->flags |= HTTP_CONN_F_UNIDIRECTIONAL_STREAM;
+    }
+  else
+    hc->flags |= HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+
+  if ((error = vnet_connect_stream (cargs)))
+    {
+      clib_warning ("stream connect failed: %U", format_session_error, error);
+      http_conn_free (hc);
+      return error;
+    }
+
+  HTTP_DBG (1, "stream connected");
+  hc->hc_tc_session_handle = cargs->sh;
+  hc->state = HTTP_CONN_STATE_ESTABLISHED;
+  *stream = hc;
+
+  return 0;
+}
+
+void
+http_reset_transport_stream (http_conn_t *stream, u64 error_code)
+{
+  ASSERT (http_conn_is_stream (stream));
+  stream->state = HTTP_CONN_STATE_CLOSED;
+  session_reset (session_get_from_handle (stream->hc_tc_session_handle));
+}
+
+void
+http_close_transport_stream (http_conn_t *stream)
+{
+  ASSERT (http_conn_is_stream (stream));
+
+  vnet_disconnect_args_t a = {
+    .handle = stream->hc_tc_session_handle,
+    .app_index = http_main.app_index,
+  };
+
+  stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+
+  if (vnet_disconnect_session (&a))
+    clib_warning ("disconnect returned");
 }
 
 http_status_code_t
@@ -430,8 +504,8 @@ http_conn_timeout_cb (void *hc_handlep)
 /* session VFT callbacks */
 /*************************/
 
-int
-http_ts_accept_callback (session_t *ts)
+static int
+http_ts_accept_connection (session_t *ts)
 {
   session_t *ts_listener;
   http_conn_t *lhc, *hc;
@@ -503,6 +577,72 @@ http_ts_accept_callback (session_t *ts)
 }
 
 static int
+http_ts_accept_stream (session_t *stream_session)
+{
+  session_t *conn_session;
+  http_conn_t *hc, *stream;
+  u32 stream_index, thresh;
+  http_conn_handle_t hc_handle;
+  int rv;
+
+  ASSERT (session_get_transport_proto (stream_session) ==
+	  TRANSPORT_PROTO_QUIC);
+  ASSERT (stream_session->thread_index ==
+	  session_thread_from_handle (stream_session->listener_handle));
+
+  conn_session = session_get_from_handle (stream_session->listener_handle);
+  hc =
+    http_conn_get_w_thread (conn_session->opaque, conn_session->thread_index);
+  ASSERT (hc->version == HTTP_VERSION_3);
+
+  stream_index = http_conn_alloc_w_thread (stream_session->thread_index);
+  stream = http_conn_get_w_thread (stream_index, stream_session->thread_index);
+  clib_memcpy_fast (stream, hc, sizeof (*hc));
+  stream->hc_hc_index = stream_index;
+  stream->flags |= HTTP_CONN_F_NO_APP_SESSION;
+  stream->flags |= stream_session->flags & SESSION_F_UNIDIRECTIONAL ?
+		     HTTP_CONN_F_UNIDIRECTIONAL_STREAM :
+		     HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+  stream->hc_tc_session_handle = session_handle (stream_session);
+  stream->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  stream->state = HTTP_CONN_STATE_ESTABLISHED;
+  stream->hc_http_conn_index = hc->hc_hc_index;
+
+  if ((rv =
+	 http_vfts[stream->version].transport_stream_accept_callback (stream)))
+    {
+      http_conn_free (stream);
+      return rv;
+    }
+
+  hc_handle.version = stream->version;
+  hc_handle.conn_index = stream_index;
+  stream_session->opaque = hc_handle.as_u32;
+  stream_session->session_state = SESSION_STATE_READY;
+  HTTP_DBG (1, "Accepted on connection [%u]%x new stream %x",
+	    hc->c_thread_index, hc->hc_hc_index, stream_index);
+
+  /* Avoid enqueuing small chunks of data on transport tx notifications. If
+   * the fifo is small (under 16K) we set the threshold to it's size, meaning
+   * a notification will be given when the fifo empties.
+   */
+  thresh =
+    clib_min (svm_fifo_size (stream_session->tx_fifo), HTTP_FIFO_THRESH);
+  svm_fifo_set_deq_thresh (stream_session->tx_fifo, thresh);
+
+  return 0;
+}
+
+int
+http_ts_accept_callback (session_t *ts)
+{
+  if (ts->flags & SESSION_F_STREAM)
+    return http_ts_accept_stream (ts);
+  else
+    return http_ts_accept_connection (ts);
+}
+
+static int
 http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 			    session_error_t err)
 {
@@ -541,9 +681,9 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
   ts->session_state = SESSION_STATE_READY;
   hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
-  hc->ho_index = ho_hc_index;
+  hc->hc_ho_index = ho_hc_index;
   tp = session_get_transport_proto (ts);
-  /* TLS set by ALPN result, TCP: prior knowledge (set in ho) */
+  /* TLS set by ALPN result, TCP and QUIC: prior knowledge (set in ho) */
   if (tp == TRANSPORT_PROTO_TLS)
     {
       alpn_proto = transport_get_alpn_selected (tp, ts->connection_index,
@@ -564,12 +704,12 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
 	}
     }
 
-  HTTP_DBG (1, "identified HTTP/%u", hc->version == HTTP_VERSION_1 ? 1 : 2);
+  HTTP_DBG (1, "identified version %U", format_http_version, hc->version);
   hc_handle.version = hc->version;
   hc_handle.conn_index = new_hc_index;
   ts->opaque = hc_handle.as_u32;
 
-  HTTP_DBG (1, "half-open hc index %x,  hc [%u]%x", ts->thread_index,
+  HTTP_DBG (1, "half-open hc index %x, hc [%u]%x", ts->thread_index,
 	    ho_hc_index, new_hc_index);
 
   if ((rv = http_vfts[hc->version].transport_connected_callback (hc)))
@@ -603,7 +743,10 @@ http_ts_disconnect_callback (session_t *ts)
   if (PREDICT_FALSE (hc->version == HTTP_VERSION_NA))
     return;
 
-  http_vfts[hc->version].transport_close_callback (hc);
+  if (http_conn_is_stream (hc))
+    http_vfts[hc->version].transport_stream_close_callback (hc);
+  else
+    http_vfts[hc->version].transport_close_callback (hc);
 }
 
 static void
@@ -617,12 +760,19 @@ http_ts_reset_callback (session_t *ts)
   HTTP_DBG (1, "hc [%u]%x", ts->thread_index, hc_handle.conn_index);
 
   hc = http_conn_get_w_thread (hc_handle.conn_index, ts->thread_index);
-
   hc->state = HTTP_CONN_STATE_CLOSED;
-  /* in case peer reset cleartext connection before send something */
-  if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
-    http_vfts[hc->version].transport_reset_callback (hc);
 
+  if (http_conn_is_stream (hc))
+    {
+      ASSERT (hc->version == HTTP_VERSION_3);
+      http_vfts[hc->version].transport_stream_reset_callback (hc);
+    }
+  else
+    {
+      /* in case peer reset cleartext connection before send something */
+      if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
+	http_vfts[hc->version].transport_reset_callback (hc);
+    }
   http_disconnect_transport (hc);
 }
 
@@ -649,6 +799,7 @@ http_ts_rx_callback (session_t *ts)
 
   if (hc_handle.version == HTTP_VERSION_NA)
     {
+      ASSERT (!(ts->flags & SESSION_F_STREAM));
       HTTP_DBG (1, "unknown http version");
       max_deq = svm_fifo_max_dequeue_cons (ts->rx_fifo);
       if (max_deq >= http2_conn_preface.len)
@@ -722,17 +873,25 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
   HTTP_DBG (1, "going to free hc [%u]%x", ts->thread_index,
 	    hc_handle.conn_index);
 
-  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
-    http_conn_timer_stop (hc);
-
-  /* in case nothing received on cleartext connection */
-  if (PREDICT_TRUE (hc->version != HTTP_VERSION_NA))
-    http_vfts[hc->version].conn_cleanup_callback (hc);
-
-  if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
+  if (http_conn_is_stream (hc))
     {
-      vec_free (hc->app_name);
-      vec_free (hc->host);
+      ASSERT (hc->version == HTTP_VERSION_3);
+      http_vfts[hc->version].stream_cleanup_callback (hc);
+    }
+  else
+    {
+      if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
+	http_conn_timer_stop (hc);
+
+      /* in case nothing received on cleartext connection */
+      if (PREDICT_TRUE (hc->version != HTTP_VERSION_NA))
+	http_vfts[hc->version].conn_cleanup_callback (hc);
+
+      if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
+	{
+	  vec_free (hc->app_name);
+	  vec_free (hc->host);
+	}
     }
   http_conn_free (hc);
 }
@@ -906,15 +1065,22 @@ http_connect_connection (session_endpoint_cfg_t *sep)
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
     {
-      HTTP_DBG (1, "app set tls");
-      hc->version = HTTP_VERSION_NA;
-      cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
-      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+      HTTP_DBG (1, "app want secure connection");
+      switch (ext_cfg->crypto.alpn_protos[0])
 	{
+	case TLS_ALPN_PROTO_HTTP_3:
+	  HTTP_DBG (1, "app want to use http/3");
+	  cargs->sep.transport_proto = TRANSPORT_PROTO_QUIC;
+	  break;
+	case TLS_ALPN_PROTO_NONE:
 	  HTTP_DBG (1,
 		    "app do not set alpn list, using default (h2,http/1.1)");
 	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
 	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	default:
+	  hc->version = HTTP_VERSION_NA;
+	  cargs->sep.transport_proto = TRANSPORT_PROTO_TLS;
+	  break;
 	}
     }
 
@@ -1006,21 +1172,35 @@ http_transport_connect_stream (transport_endpoint_cfg_t *tep,
   return http_connect_stream (sep->parent_handle, conn_index);
 }
 
+always_inline void
+http_listener_link_with_tl (session_handle_t tlh, u32 hl_index)
+{
+  app_listener_t *tl;
+  session_t *ts_listener;
+
+  /* Grab transport connection listener and link to http listener */
+  tl = app_listener_get_w_handle (tlh);
+  ts_listener = app_listener_get_session (tl);
+  ts_listener->opaque = hl_index;
+}
+
 static u32
 http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _args = {}, *args = &_args;
-  session_t *ts_listener, *app_listener;
+  session_t *app_listener;
   http_main_t *hm = &http_main;
   session_endpoint_cfg_t *sep;
   app_worker_t *app_wrk;
-  transport_proto_t tp = TRANSPORT_PROTO_TCP;
-  app_listener_t *al;
   application_t *app;
   http_conn_t *lhc;
   u32 lhc_index;
   transport_endpt_ext_cfg_t *ext_cfg;
   segment_manager_props_t *props;
+  u8 alpn_protos[2] = {};
+  int i;
+  transport_endpt_crypto_cfg_t *cc;
+  u8 listen_tls = 0, listen_quic = 0;
 
   sep = (session_endpoint_cfg_t *) tep;
 
@@ -1031,26 +1211,97 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
 
+  lhc_index = http_listener_alloc ();
+  lhc = http_listener_get (lhc_index);
+
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
     {
-      HTTP_DBG (1, "app set tls");
-      tp = TRANSPORT_PROTO_TLS;
-      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+      HTTP_DBG (1, "app want secure listen");
+      cc = &ext_cfg->crypto;
+      if (cc->alpn_protos[0] == TLS_ALPN_PROTO_NONE)
 	{
 	  HTTP_DBG (1,
 		    "app do not set alpn list, using default (h2,http/1.1)");
-	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
-	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	  alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	  listen_tls = 1;
+	  goto tls_listen;
+	}
+      else
+	{
+	  for (i = 0; i < sizeof (cc->alpn_protos) && cc->alpn_protos[i]; i++)
+	    {
+	      switch (cc->alpn_protos[i])
+		{
+		case TLS_ALPN_PROTO_HTTP_1_1:
+		case TLS_ALPN_PROTO_HTTP_2:
+		  alpn_protos[listen_tls++] = cc->alpn_protos[i];
+		  break;
+		case TLS_ALPN_PROTO_HTTP_3:
+		  listen_quic = 1;
+		  break;
+		default:
+		  ASSERT (0);
+		  break;
+		}
+	      cc->alpn_protos[i] = TLS_ALPN_PROTO_NONE;
+	    }
+	}
+
+      if (listen_quic)
+	{
+	  HTTP_DBG (1, "app want listen quic");
+	  args->sep_ext.transport_proto = TRANSPORT_PROTO_QUIC;
+	  cc->alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+
+	  if (vnet_listen (args))
+	    {
+	      http_listener_free (lhc);
+	      return SESSION_INVALID_INDEX;
+	    }
+	  lhc->hc_tl_handle_quic = args->handle;
+	  http_listener_link_with_tl (args->handle, lhc_index);
+	}
+    tls_listen:
+      if (listen_tls)
+	{
+	  HTTP_DBG (1, "app want listen tls");
+	  args->sep_ext.transport_proto = TRANSPORT_PROTO_TLS;
+	  cc->alpn_protos[0] = alpn_protos[0];
+	  cc->alpn_protos[1] = alpn_protos[1];
+
+	  if (vnet_listen (args))
+	    {
+	      if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+		{
+		  vnet_unlisten_args_t a = {
+		    .handle = lhc->hc_tl_handle_quic,
+		    .app_index = http_main.app_index,
+		    .wrk_map_index = 0,
+		  };
+		  vnet_unlisten (&a);
+		}
+	      http_listener_free (lhc);
+	      return SESSION_INVALID_INDEX;
+	    }
+	  lhc->hc_tl_handle_tcp = args->handle;
+	  http_listener_link_with_tl (args->handle, lhc_index);
 	}
     }
-  args->sep_ext.transport_proto = tp;
+  else
+    {
+      HTTP_DBG (1, "app want unsecure listen");
+      args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
 
-  if (vnet_listen (args))
-    return SESSION_INVALID_INDEX;
-
-  lhc_index = http_listener_alloc ();
-  lhc = http_listener_get (lhc_index);
+      if (vnet_listen (args))
+	{
+	  http_listener_free (lhc);
+	  return SESSION_INVALID_INDEX;
+	}
+      lhc->hc_tl_handle_tcp = args->handle;
+      http_listener_link_with_tl (args->handle, lhc_index);
+    }
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
   if (ext_cfg && ext_cfg->opaque)
@@ -1061,12 +1312,6 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       lhc->timeout = http_cfg->timeout;
       lhc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
     }
-
-  /* Grab transport connection listener and link to http listener */
-  lhc->hc_tc_session_handle = args->handle;
-  al = app_listener_get_w_handle (lhc->hc_tc_session_handle);
-  ts_listener = app_listener_get_session (al);
-  ts_listener->opaque = lhc_index;
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
@@ -1096,19 +1341,35 @@ http_stop_listen (u32 listener_index)
 
   lhc = http_listener_get (listener_index);
 
-  vnet_unlisten_args_t a = {
-    .handle = lhc->hc_tc_session_handle,
-    .app_index = http_main.app_index,
-    .wrk_map_index = 0 /* default wrk */
-  };
+  if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t a = {
+	.handle = lhc->hc_tl_handle_tcp,
+	.app_index = http_main.app_index,
+	.wrk_map_index = 0 /* default wrk */
+      };
 
-  if ((rv = vnet_unlisten (&a)))
-    clib_warning ("unlisten returned %d", rv);
+      if ((rv = vnet_unlisten (&a)))
+	clib_warning ("unlisten returned %d", rv);
+    }
+
+  if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t a = {
+	.handle = lhc->hc_tl_handle_quic,
+	.app_index = http_main.app_index,
+	.wrk_map_index = 0 /* default wrk */
+      };
+
+      if ((rv = vnet_unlisten (&a)))
+	clib_warning ("unlisten returned %d", rv);
+    }
 
   http_listener_free (lhc);
 
   return 0;
 }
+
 static_always_inline void
 http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
 {
@@ -1271,11 +1532,22 @@ format_http_listener (u8 *s, va_list *args)
   app_listener_t *al;
   session_t *lts;
 
-  al = app_listener_get_w_handle (lhc->hc_tc_session_handle);
-  lts = app_listener_get_session (al);
-  s = format (s, "[%d:%d][H] app_wrk %u ts %d:%d", lhc->c_thread_index,
-	      lhc->c_s_index, lhc->hc_pa_wrk_index, lts->thread_index,
-	      lts->session_index);
+  s = format (s, "[%d:%d][H] app_wrk %u", lhc->c_thread_index, lhc->c_s_index,
+	      lhc->hc_pa_wrk_index);
+
+  if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
+    {
+      al = app_listener_get_w_handle (lhc->hc_tl_handle_tcp);
+      lts = app_listener_get_session (al);
+      s = format (s, " ts %d:%d", lts->thread_index, lts->session_index);
+    }
+
+  if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+    {
+      al = app_listener_get_w_handle (lhc->hc_tl_handle_quic);
+      lts = app_listener_get_session (al);
+      s = format (s, " ts %d:%d", lts->thread_index, lts->session_index);
+    }
 
   return s;
 }
