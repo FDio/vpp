@@ -816,9 +816,12 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   clib_error_t *err = 0;
   u32 n_buffers, n_alloc = 0, warmup_rounds, rounds;
   u32 *buffer_indices = 0;
-  vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
+  vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *ops3 = 0, *ops4 = 0, *op1, *op2,
+		   *op3, *op4;
   vnet_crypto_alg_data_t *ad = cm->algs + tm->alg;
+  vnet_crypto_alg_data_t *crypto_ad = NULL, *integ_ad = NULL;
   vnet_crypto_key_index_t key_index = ~0;
+  vnet_crypto_key_index_t crypto_key_index = ~0, integ_key_index = ~0;
   u8 key[64];
   int buffer_size = vlib_buffer_get_default_data_size (vm);
   u64 seed = clib_cpu_time_now ();
@@ -839,6 +842,8 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   vec_validate_aligned (buffer_indices, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (ops1, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (ops2, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ops3, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ops4, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
 
   n_alloc = vlib_buffer_alloc (vm, buffer_indices, n_buffers);
   if (n_alloc != n_buffers)
@@ -861,8 +866,31 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   for (i = 0; i < sizeof (key); i++)
     key[i] = i;
 
-  key_index = vnet_crypto_key_add (vm, tm->alg, key,
-				   test_crypto_get_key_sz (tm->alg));
+  vnet_crypto_op_id_t *op_by_type, *integ_op_by_type;
+
+  if (ad->is_link)
+    {
+      crypto_ad = cm->algs + ad->link_crypto_alg;
+      integ_ad = cm->algs + ad->link_integ_alg;
+      op_by_type = crypto_ad->op_by_type;
+      integ_op_by_type = integ_ad->op_by_type;
+
+      crypto_key_index =
+	vnet_crypto_key_add (vm, ad->link_crypto_alg, key,
+			     test_crypto_get_key_sz (ad->link_crypto_alg));
+      integ_key_index = vnet_crypto_key_add (vm, ad->link_integ_alg, key, 20);
+      key_index =
+	vnet_crypto_key_add_linked (vm, crypto_key_index, integ_key_index);
+    }
+  else
+    {
+      op_by_type = ad->op_by_type;
+      u32 key_sz = test_crypto_get_key_sz (tm->alg);
+      if (key_sz == 0)
+	key_sz = 20; /* Use 20 bytes for HMAC algorithms (0 key_length) */
+
+      key_index = vnet_crypto_key_add (vm, tm->alg, key, key_sz);
+    }
 
   for (i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
     {
@@ -878,20 +906,35 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
       vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
       op1 = ops1 + i;
       op2 = ops2 + i;
+      op3 = ops3 + i;
+      op4 = ops4 + i;
 
       switch (ot)
 	{
 	case VNET_CRYPTO_OP_TYPE_ENCRYPT:
 	case VNET_CRYPTO_OP_TYPE_DECRYPT:
-	  vnet_crypto_op_init (op1,
-			       ad->op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT]);
-	  vnet_crypto_op_init (op2,
-			       ad->op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT]);
+	  vnet_crypto_op_init (op1, op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT]);
+	  vnet_crypto_op_init (op2, op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT]);
 	  op1->src = op2->src = op1->dst = op2->dst = b->data;
 	  op1->key_index = op2->key_index = key_index;
 	  op1->iv = op2->iv = b->data - 64;
 
-	  if (ad->is_aead)
+	  if (ad->is_link)
+	    {
+	      op1->key_index = op2->key_index = crypto_key_index;
+	      vnet_crypto_op_init (op3,
+				   integ_op_by_type[VNET_CRYPTO_OP_TYPE_HMAC]);
+	      vnet_crypto_op_init (op4,
+				   integ_op_by_type[VNET_CRYPTO_OP_TYPE_HMAC]);
+	      op3->src = op4->src = b->data;
+	      op3->key_index = op4->key_index = integ_key_index;
+	      op3->iv = op4->iv = 0;
+	      op3->digest = op4->digest = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
+	      op3->digest_len = op4->digest_len = 0;
+	      op3->len = op4->len = buffer_size;
+	      op4->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+	    }
+	  else if (ad->is_aead)
 	    {
 	      op1->tag = op2->tag = b->data - 32;
 	      op1->aad = op2->aad = b->data - VLIB_BUFFER_PRE_DATA_SIZE;
@@ -923,19 +966,33 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
       for (j = 0; j < warmup_rounds; j++)
 	{
 	  vnet_crypto_process_ops (vm, ops1, n_buffers);
+	  if (ad->is_link)
+	    vnet_crypto_process_ops (vm, ops3, n_buffers);
 	  if (ot != VNET_CRYPTO_OP_TYPE_HMAC)
-	    vnet_crypto_process_ops (vm, ops2, n_buffers);
+	    {
+	      vnet_crypto_process_ops (vm, ops2, n_buffers);
+	      if (ad->is_link)
+		vnet_crypto_process_ops (vm, ops4, n_buffers);
+	    }
 	}
 
       t0[i] = clib_cpu_time_now ();
       for (j = 0; j < rounds; j++)
-	vnet_crypto_process_ops (vm, ops1, n_buffers);
+	{
+	  vnet_crypto_process_ops (vm, ops1, n_buffers);
+	  if (ad->is_link)
+	    vnet_crypto_process_ops (vm, ops3, n_buffers);
+	}
       t1[i] = clib_cpu_time_now ();
 
       if (ot != VNET_CRYPTO_OP_TYPE_HMAC)
 	{
 	  for (j = 0; j < rounds; j++)
-	    vnet_crypto_process_ops (vm, ops2, n_buffers);
+	    {
+	      vnet_crypto_process_ops (vm, ops2, n_buffers);
+	      if (ad->is_link)
+		vnet_crypto_process_ops (vm, ops4, n_buffers);
+	    }
 	  t2[i] = clib_cpu_time_now ();
 	}
     }
@@ -965,12 +1022,24 @@ done:
   if (n_alloc)
     vlib_buffer_free (vm, buffer_indices, n_alloc);
 
+  /* Clean up component keys first for linked algorithms */
+  if (ad->is_link)
+    {
+      if (crypto_key_index != ~0)
+	vnet_crypto_key_del (vm, crypto_key_index);
+      if (integ_key_index != ~0)
+	vnet_crypto_key_del (vm, integ_key_index);
+    }
+
+  /* Then delete the main/linked key */
   if (key_index != ~0)
     vnet_crypto_key_del (vm, key_index);
 
   vec_free (buffer_indices);
   vec_free (ops1);
   vec_free (ops2);
+  vec_free (ops3);
+  vec_free (ops4);
   return err;
 }
 
