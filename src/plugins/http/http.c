@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+#include "vnet/interface.h"
+#include "vnet/session/session_types.h"
+#include "vnet/session/transport_types.h"
+#include "vppinfra/clib.h"
+#include "vppinfra/error_bootstrap.h"
 #include <vpp/app/version.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
@@ -236,6 +241,8 @@ http_listener_alloc (void)
   lhc->hc_hc_index = lhc - hm->listener_pool;
   lhc->timeout = HTTP_CONN_TIMEOUT;
   lhc->version = HTTP_VERSION_NA;
+  lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
+  lhc->hc_tl_handle_quic = SESSION_INVALID_HANDLE;
   return lhc->hc_hc_index;
 }
 
@@ -260,7 +267,7 @@ void
 http_disconnect_transport (http_conn_t *hc)
 {
   vnet_disconnect_args_t a = {
-    .handle = hc->hc_tc_session_handle,
+    .handle = hc->hc_tl_handle_tcp,
     .app_index = http_main.app_index,
   };
 
@@ -274,7 +281,7 @@ void
 http_shutdown_transport (http_conn_t *hc)
 {
   vnet_shutdown_args_t a = {
-    .handle = hc->hc_tc_session_handle,
+    .handle = hc->hc_tl_handle_tcp,
     .app_index = http_main.app_index,
   };
 
@@ -539,7 +546,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
   ts->session_state = SESSION_STATE_READY;
   hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
-  hc->ho_index = ho_hc_index;
+  hc->hc_ho_index = ho_hc_index;
   tp = session_get_transport_proto (ts);
   /* TLS set by ALPN result, TCP: prior knowledge (set in ho) */
   if (tp == TRANSPORT_PROTO_TLS)
@@ -1069,21 +1076,35 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
     return http_connect_connection (sep);
 }
 
+always_inline void
+http_listener_link_with_tl (session_handle_t tlh, u32 hl_index)
+{
+  app_listener_t *tl;
+  session_t *ts_listener;
+
+  /* Grab transport connection listener and link to http listener */
+  tl = app_listener_get_w_handle (tlh);
+  ts_listener = app_listener_get_session (tl);
+  ts_listener->opaque = hl_index;
+}
+
 static u32
 http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _args = {}, *args = &_args;
-  session_t *ts_listener, *app_listener;
+  session_t *app_listener;
   http_main_t *hm = &http_main;
   session_endpoint_cfg_t *sep;
   app_worker_t *app_wrk;
-  transport_proto_t tp = TRANSPORT_PROTO_TCP;
-  app_listener_t *al;
   application_t *app;
   http_conn_t *lhc;
   u32 lhc_index;
   transport_endpt_ext_cfg_t *ext_cfg;
   segment_manager_props_t *props;
+  u8 alpn_protos[2] = {};
+  int i;
+  transport_endpt_crypto_cfg_t *cc;
+  u8 listen_tls = 0, listen_quic = 0;
 
   sep = (session_endpoint_cfg_t *) tep;
 
@@ -1094,26 +1115,97 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   args->sep_ext = *sep;
   args->sep_ext.ns_index = app->ns_index;
 
+  lhc_index = http_listener_alloc ();
+  lhc = http_listener_get (lhc_index);
+
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
     {
-      HTTP_DBG (1, "app set tls");
-      tp = TRANSPORT_PROTO_TLS;
-      if (ext_cfg->crypto.alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+      HTTP_DBG (1, "app want secure listen");
+      cc = &ext_cfg->crypto;
+      if (cc->alpn_protos[0] == TLS_ALPN_PROTO_NONE)
 	{
 	  HTTP_DBG (1,
 		    "app do not set alpn list, using default (h2,http/1.1)");
-	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
-	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	  alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  alpn_protos[1] = TLS_ALPN_PROTO_HTTP_1_1;
+	  listen_tls = 1;
+	  goto tls_listen;
+	}
+      else
+	{
+	  for (i = 0; i < sizeof (cc->alpn_protos) && cc->alpn_protos[i]; i++)
+	    {
+	      switch (cc->alpn_protos[i])
+		{
+		case TLS_ALPN_PROTO_HTTP_1_1:
+		case TLS_ALPN_PROTO_HTTP_2:
+		  alpn_protos[listen_tls++] = cc->alpn_protos[i];
+		  break;
+		case TLS_ALPN_PROTO_HTTP_3:
+		  listen_quic = 1;
+		  break;
+		default:
+		  ASSERT (0);
+		  break;
+		}
+	      cc->alpn_protos[i] = TLS_ALPN_PROTO_NONE;
+	    }
+	}
+
+      if (listen_quic)
+	{
+	  HTTP_DBG (1, "app want listen quic");
+	  args->sep_ext.transport_proto = TRANSPORT_PROTO_QUIC;
+	  cc->alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+
+	  if (vnet_listen (args))
+	    {
+	      http_listener_free (lhc);
+	      return SESSION_INVALID_INDEX;
+	    }
+	  lhc->hc_tl_handle_quic = args->handle;
+	  http_listener_link_with_tl (args->handle, lhc_index);
+	}
+    tls_listen:
+      if (listen_tls)
+	{
+	  HTTP_DBG (1, "app want listen tls");
+	  args->sep_ext.transport_proto = TRANSPORT_PROTO_TLS;
+	  cc->alpn_protos[0] = alpn_protos[0];
+	  cc->alpn_protos[1] = alpn_protos[1];
+
+	  if (vnet_listen (args))
+	    {
+	      if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+		{
+		  vnet_unlisten_args_t a = {
+		    .handle = lhc->hc_tl_handle_quic,
+		    .app_index = http_main.app_index,
+		    .wrk_map_index = 0,
+		  };
+		  vnet_unlisten (&a);
+		}
+	      http_listener_free (lhc);
+	      return SESSION_INVALID_INDEX;
+	    }
+	  lhc->hc_tl_handle_tcp = args->handle;
+	  http_listener_link_with_tl (args->handle, lhc_index);
 	}
     }
-  args->sep_ext.transport_proto = tp;
+  else
+    {
+      HTTP_DBG (1, "app want unsecure listen");
+      args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
 
-  if (vnet_listen (args))
-    return SESSION_INVALID_INDEX;
-
-  lhc_index = http_listener_alloc ();
-  lhc = http_listener_get (lhc_index);
+      if (vnet_listen (args))
+	{
+	  http_listener_free (lhc);
+	  return SESSION_INVALID_INDEX;
+	}
+      lhc->hc_tl_handle_tcp = args->handle;
+      http_listener_link_with_tl (args->handle, lhc_index);
+    }
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
   if (ext_cfg && ext_cfg->opaque)
@@ -1124,12 +1216,6 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       lhc->timeout = http_cfg->timeout;
       lhc->udp_tunnel_mode = http_cfg->udp_tunnel_mode;
     }
-
-  /* Grab transport connection listener and link to http listener */
-  lhc->hc_tc_session_handle = args->handle;
-  al = app_listener_get_w_handle (lhc->hc_tc_session_handle);
-  ts_listener = app_listener_get_session (al);
-  ts_listener->opaque = lhc_index;
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
@@ -1159,19 +1245,35 @@ http_stop_listen (u32 listener_index)
 
   lhc = http_listener_get (listener_index);
 
-  vnet_unlisten_args_t a = {
-    .handle = lhc->hc_tc_session_handle,
-    .app_index = http_main.app_index,
-    .wrk_map_index = 0 /* default wrk */
-  };
+  if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t a = {
+	.handle = lhc->hc_tl_handle_tcp,
+	.app_index = http_main.app_index,
+	.wrk_map_index = 0 /* default wrk */
+      };
 
-  if ((rv = vnet_unlisten (&a)))
-    clib_warning ("unlisten returned %d", rv);
+      if ((rv = vnet_unlisten (&a)))
+	clib_warning ("unlisten returned %d", rv);
+    }
+
+  if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t a = {
+	.handle = lhc->hc_tl_handle_quic,
+	.app_index = http_main.app_index,
+	.wrk_map_index = 0 /* default wrk */
+      };
+
+      if ((rv = vnet_unlisten (&a)))
+	clib_warning ("unlisten returned %d", rv);
+    }
 
   http_listener_free (lhc);
 
   return 0;
 }
+
 static_always_inline void
 http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
 {
@@ -1334,7 +1436,7 @@ format_http_listener (u8 *s, va_list *args)
   app_listener_t *al;
   session_t *lts;
 
-  al = app_listener_get_w_handle (lhc->hc_tc_session_handle);
+  al = app_listener_get_w_handle (lhc->hc_tl_handle_tcp);
   lts = app_listener_get_session (al);
   s = format (s, "[%d:%d][H] app_wrk %u ts %d:%d", lhc->c_thread_index,
 	      lhc->c_s_index, lhc->hc_pa_wrk_index, lts->thread_index,
