@@ -56,7 +56,9 @@ typedef struct
   u8 *resp_headers_buf;
 } hcs_session_t;
 
-#define foreach_hcs_listener_flags _ (HTTP1_ONLY)
+#define foreach_hcs_listener_flags                                            \
+  _ (HTTP1_ONLY)                                                              \
+  _ (HTTP3_ENABLED)
 
 typedef enum hcs_listener_flags_bit_
 {
@@ -658,6 +660,12 @@ hcs_listen ()
       ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
       if (hcm->flags & HCS_LISTENER_F_HTTP1_ONLY)
 	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
+      else if (hcm->flags & HCS_LISTENER_F_HTTP3_ENABLED)
+	{
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+	  ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
+	  ext_cfg->crypto.alpn_protos[2] = TLS_ALPN_PROTO_HTTP_1_1;
+	}
     }
 
   rv = vnet_listen (a);
@@ -785,6 +793,8 @@ hcs_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "http1-only"))
 	hcm->flags |= HCS_LISTENER_F_HTTP1_ONLY;
+      else if (unformat (line_input, "http3-enabled"))
+	hcm->flags |= HCS_LISTENER_F_HTTP3_ENABLED;
       else if (unformat (line_input, "listener"))
 	{
 	  if (unformat (line_input, "add"))
@@ -872,7 +882,8 @@ VLIB_CLI_COMMAND (hcs_create_command, static) = {
   .path = "http cli server",
   .short_help = "http cli server [uri <uri>] [fifo-size <nbytes>] "
 		"[private-segment-size <nMG>] [prealloc-fifos <n>] "
-		"[listener <add|del>] [appns <app-ns> secret <appns-secret>]",
+		"[listener <add|del>] [appns <app-ns> secret <appns-secret>] "
+		"[http1-only] [http3-enabled]",
   .function = hcs_create_command_fn,
 };
 
