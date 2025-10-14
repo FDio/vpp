@@ -102,5 +102,6 @@ typedef u64 http3_stream_type_t;
 #define HTTP3_STREAM_TYPE_ENCODER 0x02
 #define HTTP3_STREAM_TYPE_DECODER 0x03
 #define HTTP3_STREAM_TYPE_REQUEST (((u64) 1) << 62) /* internal use only */
+#define HTTP3_STREAM_TYPE_UNKNOWN ((u64) ~0)
 
 #endif /* SRC_PLUGINS_HTTP_HTTP3_H_ */
