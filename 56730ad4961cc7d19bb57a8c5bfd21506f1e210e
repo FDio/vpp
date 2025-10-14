@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15c99619_08e94543",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-14T15:47:51Z",
+      "side": 1,
+      "message": "we should have discussion on the next community call abut introducing another (3rd party) framework....",
+      "revId": "56730ad4961cc7d19bb57a8c5bfd21506f1e210e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
