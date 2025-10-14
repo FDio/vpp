@@ -480,6 +480,8 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
   s->rx_fifo->app_session_index = s->rx_fifo->shr->client_session_index;
   s->tx_fifo->app_session_index = s->tx_fifo->shr->client_session_index;
 
+  s->flags |= SESSION_F_RX_READY;
+
   /* Special handling for cut-through sessions */
   if (!session_has_transport (s))
     {
