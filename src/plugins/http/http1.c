@@ -2055,6 +2055,12 @@ http1_transport_conn_reschedule_callback (http_conn_t *hc)
 }
 
 static void
+http1_conn_accept_callback (http_conn_t *hc)
+{
+  /* nothing to do */
+}
+
+static void
 http1_conn_cleanup_callback (http_conn_t *hc)
 {
   http_req_t *req;
@@ -2095,6 +2101,7 @@ const static http_engine_vft_t http1_engine = {
   .transport_conn_reschedule_callback =
     http1_transport_conn_reschedule_callback,
   .transport_reset_callback = http1_transport_reset_callback,
+  .conn_accept_callback = http1_conn_accept_callback,
   .conn_cleanup_callback = http1_conn_cleanup_callback,
   .enable_callback = http1_enable_callback,
 };

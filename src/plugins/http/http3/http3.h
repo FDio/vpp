@@ -102,5 +102,28 @@ typedef u64 http3_stream_type_t;
 #define HTTP3_STREAM_TYPE_ENCODER 0x02
 #define HTTP3_STREAM_TYPE_DECODER 0x03
 #define HTTP3_STREAM_TYPE_REQUEST (((u64) 1) << 62) /* internal use only */
+#define HTTP3_STREAM_TYPE_UNKNOWN ((u64) ~0)
+
+static inline u8 *
+format_http3_stream_type (u8 *s, va_list *va)
+{
+  http3_stream_type_t t = va_arg (*va, http3_stream_type_t);
+
+  switch (t)
+    {
+    case HTTP3_STREAM_TYPE_CONTROL:
+      return format (s, "control-stream");
+    case HTTP3_STREAM_TYPE_PUSH:
+      return format (s, "push-stream");
+    case HTTP3_STREAM_TYPE_ENCODER:
+      return format (s, "qpack-encoder-stream");
+    case HTTP3_STREAM_TYPE_DECODER:
+      return format (s, "qpack-decoder-stream");
+    case HTTP3_STREAM_TYPE_REQUEST:
+      return format (s, "request-stream");
+    default:
+      return format (s, "BUG: unknown");
+    }
+}
 
 #endif /* SRC_PLUGINS_HTTP_HTTP3_H_ */
