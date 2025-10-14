@@ -70,6 +70,24 @@
       "parentUuid": "5a42c67c_e5c6be45",
       "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92586e24_a664369e",
+        "filename": "src/vnet/crypto/crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2025-10-14T22:28:16Z",
+      "side": 1,
+      "message": "**Crypto+HMAC Performance Tests** have been ran on the single-op crypto+HMAC (current patch and [baseline][1] (master code) on the same [ci env][4]. Single-op has better results:\n* AES_128_CBC_HMAC_SHA1: **~12–38%** (encrypt+hmac), **~27–38%** (decrypt+hmac)\n* AES_128_CTR_HMAC_SHA1: **~3–6%** (encrypt+hmac), **~22–27%** (decrypt+hmac).\nAll results are available in a [single-op patch logs][2] and [baseline logs][3].\n\n[1]: https://gerrit.fd.io/r/c/vpp/+/43891\n[2]: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-verify-master-ubuntu2404-x86_64/3440/console.log.gz\n[3]: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-verify-master-ubuntu2404-x86_64/3439/console.log.gz\n[4]: https://jenkins.fd.io/job/vpp-verify-master-ubuntu2404-x86_64",
+      "parentUuid": "8976b945_7a08559e",
+      "revId": "3214927b4e00a4390ae7a74e626f41d16fc46005",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
