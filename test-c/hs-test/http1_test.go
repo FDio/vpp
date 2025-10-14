@@ -38,7 +38,7 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest)
+		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest, HttpSendGetAndCloseTest)
 	RegisterHttp1SoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
@@ -1947,4 +1947,23 @@ func HttpIgnoreH2UpgradeTest(s *Http1Suite) {
 	s.Log(DumpHttpResp(resp, true))
 	s.AssertHttpStatus(resp, 200)
 	s.AssertHttpHeaderNotPresent(resp, "Upgrade")
+}
+
+func HttpSendGetAndCloseTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	content := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	err := vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + " private-segment-size 256m"))
+
+	err = TcpSendAndClose(serverAddress, "GET http://www.example.com/index.html HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	s.AssertNil(err, fmt.Sprint(err))
+
+	// mostly to verify that vpp is still up
+	o := vpp.Vppctl("show session verbose proto http")
+	s.Log(o)
+	s.AssertNotContains(o, "established")
 }
