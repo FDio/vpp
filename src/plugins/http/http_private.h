@@ -58,6 +58,7 @@ STATIC_ASSERT (sizeof (http_conn_handle_t) == sizeof (u32), "must fit in u32");
   _ (ESTABLISHED, "ESTABLISHED")                                              \
   _ (TRANSPORT_CLOSED, "TRANSPORT-CLOSED")                                    \
   _ (APP_CLOSED, "APP-CLOSED")                                                \
+  _ (HALF_CLOSED, "HALF-CLOSED")                                              \
   _ (CLOSED, "CLOSED")
 
 typedef enum http_conn_state_
@@ -173,7 +174,9 @@ typedef struct http_req_
   _ (NO_APP_SESSION, "no-app-session")                                        \
   _ (PENDING_TIMER, "pending-timer")                                          \
   _ (IS_SERVER, "is-server")                                                  \
-  _ (HAS_REQUEST, "has-request")
+  _ (HAS_REQUEST, "has-request")                                              \
+  _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                          \
+  _ (BIDIRECTIONAL_STREAM, "bidirectional-stream")
 
 typedef enum http_conn_flags_bit_
 {
@@ -196,8 +199,19 @@ typedef struct http_conn_id_
     session_handle_t app_session_handle;
     u32 parent_app_api_ctx;
   };
-  session_handle_t tc_session_handle;
+  union
+  {
+    session_handle_t tc_session_handle;
+    struct
+    {
+      /* listener case */
+      session_handle_t tl_handle_tcp;
+      session_handle_t tl_handle_quic;
+    };
+  };
   u32 parent_app_wrk_index;
+  u32 ho_index;
+  u32 http_connection_index; /* stream case */
 } http_conn_id_t;
 
 STATIC_ASSERT (sizeof (http_conn_id_t) <= TRANSPORT_CONN_ID_LEN,
@@ -211,9 +225,13 @@ typedef struct http_tc_
     http_conn_id_t c_http_conn_id;
   };
 #define hc_tc_session_handle c_http_conn_id.tc_session_handle
+#define hc_tl_handle_tcp     c_http_conn_id.tl_handle_tcp
+#define hc_tl_handle_quic    c_http_conn_id.tl_handle_quic
 #define hc_pa_wrk_index	     c_http_conn_id.parent_app_wrk_index
 #define hc_pa_session_handle c_http_conn_id.app_session_handle
 #define hc_pa_app_api_ctx    c_http_conn_id.parent_app_api_ctx
+#define hc_ho_index	     c_http_conn_id.ho_index
+#define hc_http_conn_index   c_http_conn_id.http_connection_index
 #define hc_hc_index	     connection.c_index
 
   http_version_t version;
@@ -221,7 +239,6 @@ typedef struct http_tc_
   u32 timer_handle;
   u32 timeout;
   u32 app_rx_fifo_size;
-  u32 ho_index;
   u8 *app_name;
   u8 *host;
   http_conn_flags_t flags;
@@ -229,6 +246,10 @@ typedef struct http_tc_
 
   void *opaque; /* version specific data */
 } http_conn_t;
+
+#define http_conn_is_stream(_hc)                                              \
+  ((_hc)->flags &                                                             \
+   (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
 
 typedef struct http_pending_connect_stream_
 {
@@ -293,10 +314,14 @@ typedef struct http_engine_vft_
   void (*transport_close_callback) (http_conn_t *hc);
   void (*transport_reset_callback) (http_conn_t *hc);
   void (*transport_conn_reschedule_callback) (http_conn_t *hc);
+  int (*transport_stream_accept_callback) (http_conn_t *hc);
+  void (*transport_stream_close_callback) (http_conn_t *hc);
+  void (*transport_stream_reset_callback) (http_conn_t *hc);
   void (*conn_accept_callback) (http_conn_t *hc); /* optional */
   int (*conn_connect_stream_callback) (http_conn_t *hc,
 				       u32 *req_index); /* optional */
   void (*conn_cleanup_callback) (http_conn_t *hc);
+  void (*stream_cleanup_callback) (http_conn_t *hc);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
 } http_engine_vft_t;
@@ -440,6 +465,32 @@ u8 *http_get_app_target (http_req_t *req, http_msg_t *msg);
  * @note Use for streaming of body sent by app.
  */
 void http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg);
+
+/**
+ * Open new stream on existing transport connection.
+ *
+ * @param parent            Parent transport connection ctx.
+ * @param is_unidirectional Stream can be unidirectional or bidirectional.
+ * @param stream            Opened stream ctx.
+ *
+ * @return @c 0 if stream was opened, non-zero value otherwise.
+ */
+int http_connect_transport_stream (http_conn_t *parent, u8 is_unidirectional,
+				   http_conn_t **stream);
+
+/**
+ * Reset stream.
+ *
+ * @param stream Stream ctx.
+ */
+void http_reset_transport_stream (http_conn_t *stream, u64 error_code);
+
+/**
+ * Close stream for sending.
+ *
+ * @param stream Stream ctx.
+ */
+void http_close_transport_stream (http_conn_t *stream);
 
 /**
  * Change state of given HTTP request.
@@ -897,7 +948,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   http_conn_t *ho_hc;
   int rv;
 
-  ho_hc = http_ho_conn_get (hc->ho_index);
+  ho_hc = http_ho_conn_get (hc->hc_ho_index);
   /* in chain with TLS there is race on half-open cleanup */
   __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
