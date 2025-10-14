@@ -144,6 +144,20 @@ func TcpSendReceive(address, data string) (string, error) {
 	return string(reply), nil
 }
 
+func TcpSendAndClose(address, data string) error {
+	conn, err := net.DialTimeout("tcp", address, time.Second*30)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Write([]byte(data))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /*
 RunCurlContainer execute curl command with given args.
 Container with name "curl" must be available.
