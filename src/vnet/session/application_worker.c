@@ -200,7 +200,7 @@ app_worker_alloc_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
 
   s = session_alloc (0 /* listener on main worker */);
   session_set_state (s, SESSION_STATE_LISTENING);
-  s->flags |= SESSION_F_IS_CLESS;
+  s->flags |= SESSION_F_IS_CLESS | SESSION_F_RX_READY;
   s->app_wrk_index = app_wrk->wrk_index;
   ls = session_get_from_handle (lsh);
   s->session_type = ls->session_type;
