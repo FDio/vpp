@@ -121,9 +121,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
 	  s->flags &= ~SESSION_F_RX_EVT;
-	  /* Application didn't confirm accept yet */
-	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
-			     s->session_state == SESSION_STATE_CONNECTING))
+	  /* App is unaware of the session or closing notification provided */
+	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
@@ -133,8 +132,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  if (!s)
 	    break;
 	  s->flags &= ~SESSION_F_RX_EVT;
-	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
-			     s->session_state == SESSION_STATE_CONNECTING))
+	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
@@ -175,12 +173,16 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
 		    app->cb_fns.session_disconnect_callback (s);
 		}
-	      else if (!session_has_transport (s))
+	      else
 		{
-		  /* Special handling for cut-through sessions for builtin apps
-		   * similar to session_mq_accepted_reply_handler */
-		  session_set_state (s, SESSION_STATE_READY);
-		  ct_session_connect_notify (s, SESSION_E_NONE);
+		  s->flags |= SESSION_F_RX_READY;
+		  if (!session_has_transport (s))
+		    {
+		      /* Special handling for cut-through sessions for builtin
+		       * apps similar to session_mq_accepted_reply_handler */
+		      session_set_state (s, SESSION_STATE_READY);
+		      ct_session_connect_notify (s, SESSION_E_NONE);
+		    }
 		}
 	    }
 	  break;
@@ -210,14 +212,20 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
 		app->cb_fns.session_disconnect_callback (s);
 	    }
+	  else
+	    {
+	      s->flags |= SESSION_F_RX_READY;
+	    }
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
 	  s = session_get (evt->session_index, thread_index);
+	  s->flags &= ~SESSION_F_RX_READY;
 	  if (!(s->flags & SESSION_F_APP_CLOSED))
 	    app->cb_fns.session_disconnect_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_RESET:
 	  s = session_get (evt->session_index, thread_index);
+	  s->flags &= ~SESSION_F_RX_READY;
 	  if (!(s->flags & SESSION_F_APP_CLOSED))
 	    app->cb_fns.session_reset_callback (s);
 	  break;

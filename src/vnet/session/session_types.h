@@ -188,7 +188,8 @@ typedef enum
   _ (CUSTOM_FIFO_TUNING, "custom-fifo-tuning")                                \
   _ (HALF_OPEN, "half-open")                                                  \
   _ (APP_CLOSED, "app-closed")                                                \
-  _ (IS_CLESS, "connectionless")
+  _ (IS_CLESS, "connectionless")                                              \
+  _ (RX_READY, "rx-ready")
 
 typedef enum session_flags_bits_
 {
