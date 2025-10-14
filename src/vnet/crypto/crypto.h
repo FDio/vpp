@@ -212,7 +212,11 @@ typedef struct
   u16 key_length;
   u8 is_aead : 1;
   u8 variable_key_length : 1;
+  u8 is_link : 1;
+  vnet_crypto_alg_t link_crypto_alg : 8;
+  vnet_crypto_alg_t link_integ_alg : 8;
   vnet_crypto_op_id_t op_by_type[VNET_CRYPTO_OP_N_TYPES];
+
 } vnet_crypto_alg_data_t;
 
 typedef struct
