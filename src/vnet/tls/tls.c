@@ -126,34 +126,30 @@ tls_listener_ctx_index (tls_ctx_t * ctx)
 }
 
 u32
-tls_ctx_half_open_alloc (void)
+tls_ctx_half_open_alloc (crypto_engine_type_t engine_type)
 {
   tls_main_t *tm = &tls_main;
-  tls_ctx_t *ctx;
 
   if (vec_len (tm->postponed_ho_free))
     tls_flush_postponed_ho_cleanups ();
 
-  pool_get_aligned_safe (tm->half_open_ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
-
-  clib_memset (ctx, 0, sizeof (*ctx));
-  ctx->c_c_index = ctx - tm->half_open_ctx_pool;
-  ctx->c_thread_index = transport_cl_thread ();
-
-  return ctx->c_c_index;
-}
-
-void
-tls_ctx_half_open_free (u32 ho_index)
-{
-  pool_put_index (tls_main.half_open_ctx_pool, ho_index);
+  ASSERT (vlib_get_thread_index () == transport_cl_thread ());
+  return tls_ctx_alloc (engine_type);
 }
 
 tls_ctx_t *
 tls_ctx_half_open_get (u32 ctx_index)
 {
-  tls_main_t *tm = &tls_main;
-  return pool_elt_at_index (tm->half_open_ctx_pool, ctx_index);
+  return tls_ctx_get_w_thread (ctx_index, transport_cl_thread ());
+}
+
+void
+tls_ctx_half_open_free (u32 ho_index)
+{
+  tls_ctx_t *ctx = tls_ctx_half_open_get (ho_index);
+  /* avoid transport internal ssl related cleanups */
+  ctx->flags |= TLS_CONN_F_MIGRATED;
+  tls_ctx_free (ctx);
 }
 
 void
@@ -651,7 +647,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
       return SESSION_E_NOCRYPTOENG;
     }
 
-  ctx_index = tls_ctx_half_open_alloc ();
+  ctx_index = tls_ctx_half_open_alloc (engine_type);
   ctx = tls_ctx_half_open_get (ctx_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
