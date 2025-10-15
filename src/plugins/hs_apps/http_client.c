@@ -1488,7 +1488,11 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
   err = hc_run (vm);
 
-  if ((rv = hc_detach ()))
+  vlib_worker_thread_barrier_sync (vm);
+  rv = hc_detach ();
+  vlib_worker_thread_barrier_release (vm);
+
+  if (rv)
     {
       /* don't override last error */
       if (!err)
