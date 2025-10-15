@@ -1606,6 +1606,132 @@ fib_test_v4 (void)
     dpo_reset(&ex_dpo);
 
     /*
+     * Test route flags when combining address and interface nexthops.
+     *  - add route via nexthop address (recursive path)
+     *  - add another nexthop for same route via interface (attached path)
+     *  - verify flags are correct
+     *  - remove address nexthop and verify flags again
+     */
+    {
+        fib_prefix_t nh_addr_pfx = {
+            .fp_len = 32,
+            .fp_proto = FIB_PROTOCOL_IP4,
+            .fp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a0b), /* 10.10.10.11 */
+            },
+        };
+        fib_prefix_t route_pfx = {
+            .fp_len = 24,
+            .fp_proto = FIB_PROTOCOL_IP4,
+            .fp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x02020200), /* 2.2.2.0 */
+            },
+        };
+        ip46_address_t nh_addr = {
+            .ip4.as_u32 = nh_addr_pfx.fp_addr.ip4.as_u32,
+        };
+
+        /* connected/attached route for the nexthop address */
+        fib_table_entry_update_one_path(fib_index, &nh_addr_pfx,
+                                        FIB_SOURCE_INTERFACE,
+                                        (FIB_ENTRY_FLAG_CONNECTED |
+                                         FIB_ENTRY_FLAG_ATTACHED),
+                                        DPO_PROTO_IP4,
+                                        NULL,
+                                        tm->hw[0]->sw_if_index,
+                                        ~0,
+                                        1,
+                                        NULL,
+                                        FIB_ROUTE_PATH_FLAG_NONE);
+
+        /* add route via nexthop address */
+        fei = fib_table_entry_path_add(fib_index,
+                                       &route_pfx,
+                                       FIB_SOURCE_API,
+                                       FIB_ENTRY_FLAG_NONE,
+                                       DPO_PROTO_IP4,
+                                       &nh_addr,
+                                       ~0,
+                                       fib_index,
+                                       1,
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+        FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
+                 "route via address nexthop present");
+
+        /* add second path for same route via interface */
+        fei = fib_table_entry_path_add(fib_index,
+                                 &route_pfx,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 DPO_PROTO_IP4,
+                                 NULL,
+                                 tm->hw[0]->sw_if_index,
+                                 fib_index,
+                                 1,
+                                 NULL,
+                                 FIB_ROUTE_PATH_FLAG_NONE);
+
+        FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
+                 "route with interface nexthop present");
+        FIB_TEST((FIB_ENTRY_FLAG_ATTACHED == fib_entry_get_flags(fei)),
+                 "route flags with address + interface nexthops are ATTACHED");
+
+        /* remove the address nexthop path */
+        fib_table_entry_path_remove(fib_index,
+                                    &route_pfx,
+                                    FIB_SOURCE_API,
+                                    DPO_PROTO_IP4,
+                                    &nh_addr,
+                                    ~0,
+                                    fib_index,
+                                    1,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+
+        FIB_TEST((FIB_ENTRY_FLAG_ATTACHED == fib_entry_get_flags(fei)),
+                 "route flags with only interface nexthop are ATTACHED");
+        
+        /* add route via nexthop address */
+        fei = fib_table_entry_path_add(fib_index,
+                                       &route_pfx,
+                                       FIB_SOURCE_API,
+                                       FIB_ENTRY_FLAG_NONE,
+                                       DPO_PROTO_IP4,
+                                       &nh_addr,
+                                       ~0,
+                                       fib_index,
+                                       1,
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+        FIB_TEST((FIB_ENTRY_FLAG_ATTACHED == fib_entry_get_flags(fei)),
+                 "route flags with only interface nexthop are ATTACHED");
+        /* remove the via interface route */
+        fib_table_entry_path_remove(fib_index,
+                        &route_pfx,
+                        FIB_SOURCE_API,
+                        DPO_PROTO_IP4,
+                        NULL,
+                        tm->hw[0]->sw_if_index,
+                        fib_index,
+                        1,
+                        FIB_ROUTE_PATH_FLAG_NONE);
+
+        FIB_TEST((FIB_ENTRY_FLAG_NONE == fib_entry_get_flags(fei)),
+                 "route flags with only address nexthop are NONE");
+        /* cleanup */
+        fib_table_entry_path_remove(fib_index,
+                                    &route_pfx,
+                                    FIB_SOURCE_API,
+                                    DPO_PROTO_IP4,
+                                    &nh_addr,
+                                    ~0,
+                                    fib_index,
+                                    1,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+        fib_table_entry_delete(fib_index, &nh_addr_pfx, FIB_SOURCE_INTERFACE);
+    }
+
+    /*
      * Add a recursive route:
      *   200.200.200.200/32 via 1.1.1.2/32  => the via entry is NOT installed.
      */
