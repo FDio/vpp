@@ -123,7 +123,6 @@ typedef struct tls_main_
 {
   u32 app_index;
   tls_ctx_t *listener_ctx_pool;
-  tls_ctx_t *half_open_ctx_pool;
   u32 *postponed_ho_free;
   u32 *ho_free_list;
   u8 **rx_bufs;
