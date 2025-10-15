@@ -2718,6 +2718,16 @@ fib_path_is_deag (fib_node_index_t path_index)
 }
 
 int
+fib_path_is_attached (fib_node_index_t path_index)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    return (FIB_PATH_TYPE_ATTACHED == path->fp_type);
+}
+
+int
 fib_path_is_resolved (fib_node_index_t path_index)
 {
     fib_path_t *path;
