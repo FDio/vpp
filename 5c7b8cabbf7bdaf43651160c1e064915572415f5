@@ -16,6 +16,24 @@
       "message": "Let\u0027s leave this data structure here and create a copy of it where `u8 *` that are meant to be string are converted to `char *`. Also helps with isolation, i.e., we can slightly change internal config and not have to expose that to the users. Let\u0027s call this data structure `vcl_cfg_t` and the public one `vppcom_cfg_t`",
       "revId": "5c7b8cabbf7bdaf43651160c1e064915572415f5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f8be441_2e1a3508",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "2ceeb3e0_74411cf0",
+      "revId": "5c7b8cabbf7bdaf43651160c1e064915572415f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

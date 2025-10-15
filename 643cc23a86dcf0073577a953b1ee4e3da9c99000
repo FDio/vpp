@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "720b6371_8f0d26f4",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_cl_udp_cfg.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Let\u0027s rename to vcl_cfg_test.c, or any other name that is a bit more suggestive",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94a3cb50_bd53bd0b",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_cl_udp_cfg.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Remove this usage comment, not relevant for this app",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8468b5e_ee027854",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_cl_udp_cfg.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Probably we can remove this function",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ab2556f_60ea66c6",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Let\u0027s call it now vcl_cfg_parse_heapsize",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8534f437_d45e10e5",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Maybe rename to vcl_heap_alloc and let\u0027s move it to vcl_private.c (and declare it in vcl_private.h)",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a5322fe_808fc5c1",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "Let\u0027s declare these in vcl_private.h",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67292768_a91a1309",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T23:54:34Z",
+      "side": 1,
+      "message": "You will need to run a `make fixstyle` before you `git commit -a --amend` your patch",
+      "revId": "643cc23a86dcf0073577a953b1ee4e3da9c99000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
