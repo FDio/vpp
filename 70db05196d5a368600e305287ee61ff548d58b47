@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae1df20f_2509c6ec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 30
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2025-10-15T10:00:37Z",
+      "side": 1,
+      "message": "Adding Kai and Damjan as reviewers.",
+      "revId": "70db05196d5a368600e305287ee61ff548d58b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
