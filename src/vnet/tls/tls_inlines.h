@@ -15,6 +15,12 @@ tls_ctx_parse_handle (u32 ctx_handle, u32 *ctx_index, u32 *engine_type)
 }
 
 static inline u32
+tls_ctx_engine_from_handle (u32 ctx_handle)
+{
+  return ctx_handle >> TLS_ENGINE_TYPE_SHIFT;
+}
+
+static inline u32
 tls_ctx_alloc (crypto_engine_type_t engine_type)
 {
   u32 ctx_index;
