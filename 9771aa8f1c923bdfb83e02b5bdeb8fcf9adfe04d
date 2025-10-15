@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9ffe7b63_976a0fea",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-15T12:23:03Z",
+      "side": 1,
+      "message": "Usually you do not need to change existing files, but as you are introducing new files you should use the most recent format.",
+      "parentUuid": "e3628ae7_718675dc",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d53d7f34_d84c7301",
         "filename": "src/plugins/ping/traceroute.c",
         "patchSetId": 11
@@ -119,6 +137,24 @@
       "side": 1,
       "message": "This was taken from the original `vlib_cli_output` (vlib/cli.c), what should I do?",
       "parentUuid": "9bac947e_b98b26cc",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d522df7e_7065d593",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-15T12:23:03Z",
+      "side": 1,
+      "message": "Why do we need to duplicate all vlib_cli_output logic? If you need a version without crlf it would be better to just introduce it in vlib, or just take a simpler approach where the various attempts are displayed on different lines.",
+      "parentUuid": "ab84993f_ea0a7017",
       "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
