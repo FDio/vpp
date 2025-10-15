@@ -33,6 +33,24 @@
       "message": "As it as been discussed offline, it will be better to merge the logic of the local node into the input one and use the session table lookup mechanism (with 3-tuple) instead of adding a new lookup datastructure.",
       "revId": "e48c55d1c9e0c87d66afda4593a3b2bbef263535",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84853dab_65b85e3b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T19:41:42Z",
+      "side": 1,
+      "message": "Let\u0027s try to reuse/improve the actions that we have associated with session lookups in tcp input",
+      "parentUuid": "505e05f5_62fc046a",
+      "revId": "e48c55d1c9e0c87d66afda4593a3b2bbef263535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
