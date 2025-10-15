@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6eac4dca_08ebd647",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-15T12:28:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9ffe7b63_976a0fea",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d53d7f34_d84c7301",
@@ -155,6 +173,24 @@
       "side": 1,
       "message": "Why do we need to duplicate all vlib_cli_output logic? If you need a version without crlf it would be better to just introduce it in vlib, or just take a simpler approach where the various attempts are displayed on different lines.",
       "parentUuid": "ab84993f_ea0a7017",
+      "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "973a536a_81c0e1fc",
+        "filename": "src/plugins/ping/traceroute.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2025-10-15T12:28:08Z",
+      "side": 1,
+      "message": "The output format is the following:\n\u003chop\u003e: \u003cip\u003e: \u003c1st rtt\u003e \u003c2nd rtt\u003e ....\n\nthere is some time between two RTT measurements, and to avoid waiting potentially multiple seconds to have some results I wanted the results to get printed incrementally. So when the 1st RTT measure is done, you see directly the result onscreen. (as it is for traceroute on linux)\n\nHowever, that means that no carriage return gets printed out until the last RTT for the current hop. And as of today, `vlib_cli_output` add a CR at the end of the string that will be printed out.",
+      "parentUuid": "d522df7e_7065d593",
       "revId": "9771aa8f1c923bdfb83e02b5bdeb8fcf9adfe04d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
