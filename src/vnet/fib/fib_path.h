@@ -184,6 +184,7 @@ extern int fib_path_is_resolved(fib_node_index_t path_index);
 extern int fib_path_is_recursive_constrained(fib_node_index_t path_index);
 extern int fib_path_is_exclusive(fib_node_index_t path_index);
 extern int fib_path_is_deag(fib_node_index_t path_index);
+extern int fib_path_is_attached(fib_node_index_t path_index);
 extern int fib_path_is_looped(fib_node_index_t path_index);
 extern dpo_proto_t fib_path_get_proto(fib_node_index_t path_index);
 extern void fib_path_destroy(fib_node_index_t path_index);
