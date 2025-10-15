@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49dd1103_38901e1f",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T07:02:33Z",
+      "side": 1,
+      "message": "Let\u0027s give transports a chance to handle these, i.e., call udp/tcp specific functions. UDP should just shut down, tcp needs to figure out, probably, how to cleanup its half-open. For now focus on udp, we can deal with tcp after",
+      "revId": "5ac8a2785ddf7f410589886697f4e68a3daed981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab051ed2_93bee8de",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1804,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T07:02:33Z",
+      "side": 1,
+      "message": "I suspect all of this should reside in udp/tcp. See my other comment",
+      "revId": "5ac8a2785ddf7f410589886697f4e68a3daed981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4a2ef238_4e0730af",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1809,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T07:02:33Z",
+      "side": 1,
+      "message": "typically we call this app_wrk",
+      "revId": "5ac8a2785ddf7f410589886697f4e68a3daed981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71809d0f_7d6ac0a5",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1819,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-15T07:02:33Z",
+      "side": 1,
+      "message": "This part is not needed, i.e., it\u0027s within session layer, the only thing we can do is the closing, closed and deleted notifications, it\u0027s up to the app to call vnet_disconnect_session (which would eventually release the session object). \n\nRegarding the notifications, the udp handler should probably just call closing and closed notifications and program and cleanup (which eventually forces a delete)",
+      "revId": "5ac8a2785ddf7f410589886697f4e68a3daed981",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
