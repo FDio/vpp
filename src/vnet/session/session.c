@@ -749,6 +749,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   s = session_alloc_for_connection (tc);
   session_set_state (s, SESSION_STATE_CONNECTING);
   s->app_wrk_index = app_wrk->wrk_index;
+  s->listener_handle = SESSION_INVALID_HANDLE;
   s->opaque = opaque;
   new_si = s->session_index;
   new_ti = s->thread_index;
@@ -869,6 +870,7 @@ session_dgram_connect_notify (transport_connection_t *tc,
    */
   new_s = session_clone_safe (tc->s_index, osh.thread_index);
   new_s->connection_index = tc->c_index;
+  new_s->listener_handle = SESSION_INVALID_HANDLE;
   session_set_state (new_s, SESSION_STATE_READY);
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
