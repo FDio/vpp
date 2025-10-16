@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0ba2b84_7fd45224",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1473,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-16T16:43:25Z",
+      "side": 1,
+      "message": "ha two \"opned\" so I claim that your \"o\" key is burnt in :)",
+      "revId": "c2b308c84f05e1ac5744fc3b1b8f4e0ba68175cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
