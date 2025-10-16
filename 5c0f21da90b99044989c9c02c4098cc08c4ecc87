@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a724531_224062ba",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2025-10-16T19:30:49Z",
+      "side": 1,
+      "message": "Add Marvell folks as I\u0027m not sure if native build of DPDK library in VPP is what they would do for octeontx2 in the first place",
+      "revId": "5c0f21da90b99044989c9c02c4098cc08c4ecc87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
