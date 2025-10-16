@@ -1350,6 +1350,53 @@ session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 }
 
 /**
+ * Ask transport to open stream on existing connection.
+ */
+int
+session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
+{
+  transport_connection_t *tc;
+  transport_endpoint_cfg_t *tep;
+  app_worker_t *app_wrk;
+  session_handle_t sh;
+  session_t *s;
+  int rv;
+
+  tep = session_endpoint_to_transport_cfg (sep);
+  rv = transport_connect_stream (sep->transport_proto, tep);
+  if (rv < 0)
+    {
+      SESSION_DBG ("Transport failed to open stream.");
+      return rv;
+    }
+
+  tc =
+    transport_get_connection (sep->transport_proto, (u32) rv,
+			      session_thread_from_handle (sep->parent_handle));
+
+  /* allocate session and fifos now */
+  app_wrk = app_worker_get (sep->app_wrk_index);
+  s = session_alloc_for_connection (tc);
+  s->app_wrk_index = app_wrk->wrk_index;
+  s->opaque = sep->opaque;
+  session_set_state (s, SESSION_STATE_OPENED);
+  s->flags |= SESSION_F_STREAM;
+  if (app_worker_init_connected (app_wrk, s))
+    {
+      session_free (s);
+      return -1;
+    }
+
+  sh = session_handle (s);
+  *rsh = sh;
+
+  if (app_worker_application_is_builtin (app_wrk))
+    return 0;
+
+  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, sep->opaque);
+}
+
+/**
  * Ask transport to listen on session endpoint.
  *
  * @param s Session for which listen will be called. Note that unlike
