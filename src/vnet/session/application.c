@@ -1466,6 +1466,25 @@ vnet_connect (vnet_connect_args_t *a)
 }
 
 session_error_t
+vnet_connect_stream (vnet_connect_args_t *a)
+{
+  app_worker_t *client_wrk;
+  application_t *client;
+
+  /* stream must be opened on same thread as parent connection */
+  ASSERT (a->sep_ext.parent_handle != SESSION_INVALID_HANDLE);
+  ASSERT (vlib_get_thread_index () ==
+	  session_thread_from_handle (a->sep_ext.parent_handle));
+
+  a->sep_ext.opaque = a->api_context;
+
+  client = application_get (a->app_index);
+  client_wrk = application_get_worker (client, a->wrk_map_index);
+
+  return app_worker_connect_stream (client_wrk, &a->sep_ext, &a->sh);
+}
+
+session_error_t
 vnet_unlisten (vnet_unlisten_args_t *a)
 {
   app_worker_t *app_wrk;
