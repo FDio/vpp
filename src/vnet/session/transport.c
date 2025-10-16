@@ -369,6 +369,15 @@ transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
   return tp_vfts[tp].connect (tep);
 }
 
+int
+transport_connect_stream (transport_proto_t tp, transport_endpoint_cfg_t *tep,
+			  u32 session_index, u32 *conn_index)
+{
+  if (PREDICT_FALSE (!tp_vfts[tp].connect_stream))
+    return SESSION_E_TRANSPORT_NO_REG;
+  return tp_vfts[tp].connect_stream (tep, session_index, conn_index);
+}
+
 void
 transport_half_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
 {
