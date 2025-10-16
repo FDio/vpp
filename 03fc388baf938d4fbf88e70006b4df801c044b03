@@ -33,6 +33,24 @@
       "message": "am I confused, or this sets up a registry when NO_REGISTRY is true?",
       "revId": "03fc388baf938d4fbf88e70006b4df801c044b03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8ef89ab_912c62f6",
+        "filename": "test-c/kube-test/script/build_kube.sh",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-10-16T12:28:03Z",
+      "side": 1,
+      "message": "my fault, fixed",
+      "parentUuid": "2afc1747_5c421144",
+      "revId": "03fc388baf938d4fbf88e70006b4df801c044b03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
