@@ -132,7 +132,7 @@ typedef struct application_
   u32 app_index;
 
   /** Flags */
-  u32 flags;
+  app_options_flags_t flags;
 
   /** Callbacks: shoulder-taps for the server/client */
   session_cb_vft_t cb_fns;
@@ -169,6 +169,9 @@ typedef struct application_
 
   /** collector index, if any */
   u32 evt_collector_index;
+
+  /* collector session filter, if any */
+  uword *evt_collector_session_filter;
 
   /** app crypto state */
   app_crypto_ctx_t crypto_ctx;
