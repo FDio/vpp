@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac8c603a_74dd99db",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-16T16:58:22Z",
+      "side": 1,
+      "message": "let\u0027s follow the typical \"\u003c\u003e\" pattern. Also isn\u0027t it pulled in via session.h?",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ab4c66f_265aea2b",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1406,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-16T16:58:22Z",
+      "side": 1,
+      "message": "hm, maybe READY? Any reason why you chose OPENED?",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f948ae8e_48b706c2",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1416,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-16T16:58:22Z",
+      "side": 1,
+      "message": "Should we collapse these 2 lines?",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d480299b_06522342",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1419,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-16T16:58:22Z",
+      "side": 1,
+      "message": "Maybe add comment that this is meant to make builtin synchronous",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
