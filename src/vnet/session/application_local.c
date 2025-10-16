@@ -644,8 +644,7 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
    * in session delete due to session_lookup_del_session returns an error.
    * session_transport_closed_notify (&ct->connection);
    */
-  session_transport_delete_notify (&ct->connection);
-  ct_connection_free (ct);
+  session_transport_delete_request (&ct->connection, ct_connection_free);
 }
 
 static void
