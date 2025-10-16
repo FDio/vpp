@@ -667,6 +667,18 @@ app_worker_connect_session (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
 }
 
 int
+app_worker_connect_stream (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
+			   session_handle_t *rsh)
+{
+  if (PREDICT_FALSE (app_worker_mq_is_congested (app_wrk)))
+    return SESSION_E_REFUSED;
+
+  sep->app_wrk_index = app_wrk->wrk_index;
+
+  return session_open_stream (sep, rsh);
+}
+
+int
 app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
 				svm_fifo_t * f,
 				session_ft_action_t act, u32 len)

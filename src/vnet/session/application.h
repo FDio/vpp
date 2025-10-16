@@ -350,6 +350,8 @@ int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
 int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
+int app_worker_connect_stream (app_worker_t *app, session_endpoint_cfg_t *sep,
+			       session_handle_t *rsh);
 session_error_t app_worker_start_listen (app_worker_t *app_wrk,
 					 app_listener_t *lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
