@@ -17,6 +17,7 @@
  * @brief Session and session manager
  */
 
+#include "vnet/session/session_types.h"
 #include <vnet/plugin/plugin.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
@@ -497,6 +498,26 @@ session_alloc_for_connection (transport_connection_t * tc)
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
+  session_set_state (s, SESSION_STATE_CLOSED);
+
+  /* Attach transport to session and vice versa */
+  s->connection_index = tc->c_index;
+  tc->s_index = s->session_index;
+  return s;
+}
+
+static session_t *
+session_alloc_for_stream (transport_connection_t *tc,
+			  session_handle_t parent_handle)
+{
+  session_t *s, *ps;
+  clib_thread_index_t thread_index = tc->thread_index;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  ps = session_get_from_handle (parent_handle);
+  s = session_alloc (thread_index);
+  s->session_type = ps->session_type;
   session_set_state (s, SESSION_STATE_CLOSED);
 
   /* Attach transport to session and vice versa */
@@ -1347,6 +1368,58 @@ session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   transport_service_type_t tst;
   tst = transport_protocol_service_type (rmt->transport_proto);
   return session_open_srv_fns[tst](rmt, rsh);
+}
+
+/**
+ * Ask transport to open stream on existing connection.
+ */
+int
+session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
+{
+  transport_connection_t *tc;
+  transport_endpoint_cfg_t *tep;
+  app_worker_t *app_wrk;
+  session_handle_t sh;
+  session_t *s;
+  u32 conn_index;
+  int rv;
+
+  app_wrk = app_worker_get (sep->app_wrk_index);
+  tep = session_endpoint_to_transport_cfg (sep);
+  rv = transport_connect_stream (sep->transport_proto, tep, &conn_index);
+  if (rv < 0)
+    {
+      SESSION_DBG ("Transport failed to open stream.");
+      if (app_worker_application_is_builtin (app_wrk))
+	return rv;
+      return app_worker_connect_notify (app_wrk, 0, rv, sep->opaque);
+    }
+
+  tc =
+    transport_get_connection (sep->transport_proto, conn_index,
+			      session_thread_from_handle (sep->parent_handle));
+
+  /* allocate session and fifos now */
+  s = session_alloc_for_stream (tc, sep->parent_handle);
+  s->app_wrk_index = app_wrk->wrk_index;
+  s->opaque = sep->opaque;
+  session_set_state (s, SESSION_STATE_OPENED);
+  s->flags |= SESSION_F_STREAM;
+  if ((rv = app_worker_init_connected (app_wrk, s)))
+    {
+      session_free (s);
+      if (app_worker_application_is_builtin (app_wrk))
+	return rv;
+      return app_worker_connect_notify (app_wrk, 0, rv, sep->opaque);
+    }
+
+  sh = session_handle (s);
+  *rsh = sh;
+
+  if (app_worker_application_is_builtin (app_wrk))
+    return SESSION_E_NONE;
+
+  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, sep->opaque);
 }
 
 /**
