@@ -931,6 +931,7 @@ application_free (application_t * app)
   if (application_is_builtin (app))
     application_name_table_del (app);
 
+  hash_free (app->evt_collector_session_filter);
   app_crypto_ctx_free (&app->crypto_ctx);
 
   vec_free (app->name);

@@ -216,6 +216,13 @@ typedef struct app_evt_main_
   u32 fifo_size;    /**< fifo size */
 } app_evt_main_t;
 
+static inline app_evt_collector_wrk_t *
+app_evt_collector_wrk_get (app_evt_collector_t *c,
+			   clib_thread_index_t thread_index)
+{
+  return &c->wrk[thread_index];
+}
+
 int app_evt_collector_add (app_evt_collector_cfg_t *cfg);
 app_evt_collector_t *app_evt_collector_get (u32 c_index);
 void *app_evt_collector_get_cb_fn ();
