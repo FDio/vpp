@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c3a7632_b7ad4410",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-16T18:12:33Z",
+      "side": 1,
+      "message": "blame on lsp :)",
+      "parentUuid": "ac8c603a_74dd99db",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4ab4c66f_265aea2b",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-10-16T16:58:22Z",
       "side": 1,
       "message": "hm, maybe READY? Any reason why you chose OPENED?",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a7212e66_b300e7c2",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1406,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-16T18:12:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ab4c66f_265aea2b",
       "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "010a0ef0_cf162171",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1416,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-16T18:12:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f948ae8e_48b706c2",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d480299b_06522342",
@@ -65,6 +119,24 @@
       "writtenOn": "2025-10-16T16:58:22Z",
       "side": 1,
       "message": "Maybe add comment that this is meant to make builtin synchronous",
+      "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6fb676b1_b3ed1356",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1419,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-16T18:12:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d480299b_06522342",
       "revId": "35f6b2e59511334a0e51b031ae7c454dc159ee40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
