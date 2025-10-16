@@ -689,13 +689,16 @@ vlib_thread_stack_init (uword thread_index)
 {
   void *stack;
   ASSERT (thread_index < vec_len (vlib_thread_stacks));
-  stack = clib_mem_vm_map_stack (VLIB_THREAD_STACK_SIZE,
-				 CLIB_MEM_PAGE_SZ_DEFAULT,
-				 "thread stack: thread %u", thread_index);
+  clib_mem_vm_map_args_t args = {
+    .size = VLIB_THREAD_STACK_SIZE,
+    .log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT,
+    .stack = 1,
+  };
 
-  if (stack == CLIB_MEM_VM_MAP_FAILED)
+  if (clib_mem_vm_map (&args, "thread stack: thread %u", thread_index))
     clib_panic ("failed to allocate thread %u stack", thread_index);
 
+  stack = args.addr;
   vlib_thread_stacks[thread_index] = stack;
   return stack;
 }

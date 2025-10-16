@@ -519,14 +519,19 @@ memif_init_regions_and_queues (memif_if_t * mif)
     }
 
   msf = pool_elt_at_index (memif_main.socket_files, mif->socket_file_index);
-  r->shm = clib_mem_vm_map_shared (0, r->region_size, fd, 0, "memif%lu/%lu:0",
-				   msf->socket_id, mif->id);
+  clib_mem_vm_map_args_t map_args = {
+    .size = r->region_size,
+    .fd = fd,
+    .shared = 1,
+  };
 
-  if (r->shm == CLIB_MEM_VM_MAP_FAILED)
+  if (clib_mem_vm_map (&map_args, "memif%lu/%lu:0", msf->socket_id, mif->id))
     {
       err = clib_error_return_unix (0, "memif shared region map failed");
       goto error;
     }
+
+  r->shm = map_args.addr;
 
   r->fd = fd;
 

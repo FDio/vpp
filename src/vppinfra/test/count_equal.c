@@ -5,6 +5,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/test/test.h>
 #include <vppinfra/vector/count_equal.h>
+#include <vppinfra/mem.h>
 
 #define foreach_clib_count_equal(type)                                        \
   typedef uword (wrapper_fn_##type) (type * a, uword maxcount);               \
@@ -19,16 +20,22 @@
   static clib_error_t *test_clib_count_equal_##type (clib_error_t *err)       \
   {                                                                           \
     u32 ps = clib_mem_get_log2_page_size ();                                  \
-    void *map;                                                                \
+    u8 *map;                                                                  \
                                                                               \
     u16 lengths[] = {                                                         \
       1, 2, 3, 5, 7, 9, 15, 16, 17, 31, 32, 33, 255, 256, 257                 \
     };                                                                        \
     type *data;                                                               \
                                                                               \
-    map = clib_mem_vm_map (0, 2ULL << ps, ps, "test");                        \
-    if (map == CLIB_MEM_VM_MAP_FAILED)                                        \
+    clib_mem_vm_map_args_t map_args = {                                       \
+      .log2_page_sz = ps,                                                     \
+      .size = 2ULL << ps,                                                     \
+    };                                                                        \
+                                                                              \
+    if (clib_mem_vm_map (&map_args, "test"))                                  \
       return clib_error_return (err, "clib_mem_vm_map failed");               \
+                                                                              \
+    map = map_args.addr;                                                      \
                                                                               \
     data = ((type *) (map + (1ULL << ps)));                                   \
     data[-1] = 0xfe;                                                          \

@@ -52,8 +52,7 @@
 #endif
 
 #define CLIB_MAX_MHEAPS 256
-#define CLIB_MAX_NUMAS 16
-#define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
+#define CLIB_MAX_NUMAS		16
 #define CLIB_MEM_ERROR (-1)
 #define CLIB_MEM_LOG2_MIN_ALIGN (3)
 #define CLIB_MEM_MIN_ALIGN	(1 << CLIB_MEM_LOG2_MIN_ALIGN)
@@ -365,16 +364,20 @@ clib_mem_vm_free (void *addr, uword size)
   munmap (addr, size);
 }
 
-void *clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
-				uword size, int fd, u8 log2_align,
-				uword offset, char *name);
+typedef struct
+{
+  void *addr;
+  clib_mem_page_sz_t log2_page_sz;
+  uword size;
+  int fd;
+  u8 log2_align;
+  uword offset;
+  u8 shared : 1;
+  u8 stack : 1;
+} clib_mem_vm_map_args_t;
 
-void *clib_mem_vm_map (void *start, uword size,
-		       clib_mem_page_sz_t log2_page_size, char *fmt, ...);
-void *clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_size,
-			     char *fmt, ...);
-void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
-			      char *fmt, ...);
+int clib_mem_vm_map (clib_mem_vm_map_args_t *args, char *fmt, ...);
+
 int clib_mem_vm_unmap (void *base);
 clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
 						     hdr);

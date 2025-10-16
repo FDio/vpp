@@ -83,15 +83,21 @@ ssvm_server_init_shm (ssvm_private_t * ssvm)
       clib_mem_vm_randomize_va (&requested_va, min_log2 (page_size));
     }
 
-  sh = clib_mem_vm_map_shared (uword_to_pointer (requested_va, void *),
-			       ssvm->ssvm_size, ssvm_fd, 0,
-			       (char *) ssvm->name);
-  if (sh == CLIB_MEM_VM_MAP_FAILED)
+  clib_mem_vm_map_args_t map_args = {
+    .addr = uword_to_pointer (requested_va, void *),
+    .size = ssvm->ssvm_size,
+    .fd = ssvm_fd,
+    .shared = 1,
+  };
+
+  if (clib_mem_vm_map (&map_args, "%s", (char *) ssvm->name))
     {
       clib_unix_warning ("mmap");
       close (ssvm_fd);
       return SSVM_API_ERROR_MMAP;
     }
+
+  sh = map_args.addr;
 
   close (ssvm_fd);
 
@@ -255,15 +261,21 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  sh = clib_mem_vm_map_shared (uword_to_pointer (memfd->requested_va, void *),
-			       memfd->ssvm_size, memfd->fd, 0,
-			       (char *) memfd->name);
-  if (sh == CLIB_MEM_VM_MAP_FAILED)
+  clib_mem_vm_map_args_t memfd_args = {
+    .addr = uword_to_pointer (memfd->requested_va, void *),
+    .size = memfd->ssvm_size,
+    .fd = memfd->fd,
+    .shared = 1,
+  };
+
+  if (clib_mem_vm_map (&memfd_args, "%s", (char *) memfd->name))
     {
       clib_unix_warning ("memfd map (fd %d)", memfd->fd);
       close (memfd->fd);
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
+
+  sh = memfd_args.addr;
 
   memfd->sh = sh;
   memfd->my_pid = getpid ();
@@ -380,13 +392,18 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
   rnd_size = clib_max (ssvm->ssvm_size + (page_size - 1), ssvm->ssvm_size);
   rnd_size &= ~(page_size - 1);
 
-  sh = clib_mem_vm_map (0, rnd_size + page_size, log2_page_size,
-			(char *) ssvm->name);
-  if (sh == CLIB_MEM_VM_MAP_FAILED)
+  clib_mem_vm_map_args_t map_args = {
+    .size = rnd_size + page_size,
+    .log2_page_sz = log2_page_size,
+  };
+
+  if (clib_mem_vm_map (&map_args, "%s", (char *) ssvm->name))
     {
       clib_unix_warning ("private map failed");
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
+
+  sh = map_args.addr;
 
   heap = clib_mem_create_heap ((u8 *) sh + page_size, rnd_size,
 			       1 /* locked */ , "ssvm server private");

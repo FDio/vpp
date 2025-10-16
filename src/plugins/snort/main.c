@@ -64,7 +64,8 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
   snort_instance_t *si;
   va_list va;
   u32 size, index, qpair_mem_sz;
-  u8 *base = CLIB_MEM_VM_MAP_FAILED, *name;
+  u8 *base = 0, *name;
+  int base_mapped = 0;
   int rv = 0, fd = -1;
   u32 qsz = 1 << args->log2_queue_sz;
   u32 qpairs_per_thread, total_qpairs, n_threads = tm->n_vlib_mains;
@@ -119,13 +120,20 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
       goto done;
     }
 
-  base = clib_mem_vm_map_shared (0, size, fd, 0, "snort instance %s", name);
+  clib_mem_vm_map_args_t map_args = {
+    .size = size,
+    .fd = fd,
+    .shared = 1,
+  };
 
-  if (base == CLIB_MEM_VM_MAP_FAILED)
+  if (clib_mem_vm_map (&map_args, "snort instance %s", name))
     {
       rv = VNET_API_ERROR_SYSCALL_ERROR_3;
       goto done;
     }
+
+  base = map_args.addr;
+  base_mapped = 1;
 
   pool_get_zero (sm->instances, si);
   si->index = si - sm->instances;
@@ -252,7 +260,7 @@ snort_instance_create (vlib_main_t *vm, snort_instance_create_args_t *args,
 done:
   if (rv)
     {
-      if (base != CLIB_MEM_VM_MAP_FAILED)
+      if (base_mapped)
 	clib_mem_vm_unmap (base);
       if (fd != -1)
 	close (fd);

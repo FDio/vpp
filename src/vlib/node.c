@@ -532,15 +532,18 @@ vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r, char *fmt,
 	clib_memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
 
-	p->stack = clib_mem_vm_map_stack (1ULL << log2_n_stack_bytes,
-					  CLIB_MEM_PAGE_SZ_DEFAULT,
-					  "process stack: %U",
-					  format_vlib_node_name, vm,
-					  n->index);
+	clib_mem_vm_map_args_t map_args = {
+	  .size = 1ULL << log2_n_stack_bytes,
+	  .log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT,
+	  .stack = 1,
+	};
 
-	if (p->stack == CLIB_MEM_VM_MAP_FAILED)
+	if (clib_mem_vm_map (&map_args, "process stack: %U",
+			     format_vlib_node_name, vm, n->index))
 	  clib_panic ("failed to allocate process stack (%d bytes)",
 		      1ULL << log2_n_stack_bytes);
+
+	p->stack = (u32 *) map_args.addr;
 
 	/* Process node's runtime index is really index into process
 	   pointer vector. */

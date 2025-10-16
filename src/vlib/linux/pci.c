@@ -1228,16 +1228,24 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   if ((error = vlib_pci_region (vm, h, bar, &fd, &size, &offset)))
     return error;
 
-  *result = clib_mem_vm_map_shared (addr, size, fd, offset,
-				    "PCIe %U region %u", format_vlib_pci_addr,
-				    vlib_pci_get_addr (vm, h), bar);
-  if (*result == CLIB_MEM_VM_MAP_FAILED)
+  clib_mem_vm_map_args_t map_args = {
+    .addr = addr,
+    .size = size,
+    .fd = fd,
+    .offset = offset,
+    .shared = 1,
+  };
+
+  if (clib_mem_vm_map (&map_args, "PCIe %U region %u", format_vlib_pci_addr,
+		       vlib_pci_get_addr (vm, h), bar))
     {
       error = clib_error_return_unix (0, "mmap `BAR%u'", bar);
       if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && (fd != -1))
 	close (fd);
       return error;
     }
+
+  *result = map_args.addr;
 
   vec_validate_init_empty (p->regions, bar,
 			   (linux_pci_region_t) { .fd = -1});

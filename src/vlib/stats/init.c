@@ -78,10 +78,16 @@ vlib_stats_init (vlib_main_t *vm)
       return clib_error_return (0, "stat segment ftruncate failure");
     }
 
-  memaddr = clib_mem_vm_map_shared (0, memory_size, mfd, 0, mem_name);
+  clib_mem_vm_map_args_t map_args = {
+    .size = memory_size,
+    .fd = mfd,
+    .shared = 1,
+  };
 
-  if (memaddr == CLIB_MEM_VM_MAP_FAILED)
+  if (clib_mem_vm_map (&map_args, "%s", mem_name))
     return clib_error_return (0, "stat segment mmap failure");
+
+  memaddr = map_args.addr;
 
   sys_page_sz = clib_mem_get_page_size ();
 

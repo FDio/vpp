@@ -196,18 +196,26 @@ uword
   return NULL;
 }
 
-void *
-clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
-			  uword size, int fd, u8 log2_align, uword offset,
-			  char *name)
+__clib_export int
+clib_mem_vm_map (clib_mem_vm_map_args_t *args, char *fmt, ...)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   clib_mem_vm_map_hdr_t *hdr;
+  void *base = args->addr;
+  clib_mem_page_sz_t log2_page_sz = args->log2_page_sz;
+  uword size = args->size;
+  int fd = args->fd;
+  u8 log2_align = args->log2_align;
+  uword offset = args->offset;
   uword sys_page_sz = 1ULL << mm->log2_page_sz;
   int mmap_flags = MAP_FIXED, is_huge = 0;
-
-  if (fd != -1)
+  int is_shared = args->shared || (fd != -1);
+  int is_stack = args->stack;
+  int rv = -1;
+  if (is_shared)
     {
+      if (fd == -1)
+	goto done;
       mmap_flags |= MAP_SHARED;
       log2_page_sz = clib_mem_get_fd_log2_page_size (fd);
       if (log2_page_sz > mm->log2_page_sz)
@@ -217,6 +225,10 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
     {
       mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
 
+#ifdef MAP_STACK
+      if (is_stack)
+	mmap_flags |= MAP_STACK;
+#endif
       if (log2_page_sz == mm->log2_page_sz)
 	log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
 
@@ -244,17 +256,17 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 				       log2_align);
 
   if (base == (void *) ~0)
-    return CLIB_MEM_VM_MAP_FAILED;
+    goto done;
 
   base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, fd, offset);
 
   if (base == MAP_FAILED)
-    return CLIB_MEM_VM_MAP_FAILED;
+    goto done;
 
   if (is_huge && (mlock (base, size) != 0))
     {
       munmap (base, size);
-      return CLIB_MEM_VM_MAP_FAILED;
+      goto done;
     }
 
   hdr = mmap (base - sys_page_sz, sys_page_sz, PROT_READ | PROT_WRITE,
@@ -263,7 +275,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   if (hdr != base - sys_page_sz)
     {
       munmap (base, size);
-      return CLIB_MEM_VM_MAP_FAILED;
+      goto done;
     }
 
   map_lock ();
@@ -280,7 +292,16 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   clib_mem_unpoison (hdr, sys_page_sz);
   hdr->next = 0;
   hdr->prev = mm->last_map;
-  snprintf (hdr->name, CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1, "%s", (char *) name);
+  if (fmt)
+    {
+      va_list va;
+      va_start (va, fmt);
+      vsnprintf (hdr->name, CLIB_VM_MAP_HDR_NAME_MAX_LEN, fmt, va);
+      va_end (va);
+    }
+  else
+    hdr->name[0] = 0;
+  hdr->name[CLIB_VM_MAP_HDR_NAME_MAX_LEN - 1] = 0;
   mm->last_map = hdr;
 
   hdr->base_addr = (uword) base;
@@ -293,7 +314,17 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
   map_unlock ();
 
   clib_mem_unpoison (base, size);
-  return base;
+  args->addr = base;
+  args->log2_page_sz = log2_page_sz;
+  args->size = size;
+  args->shared = is_shared;
+  args->stack = is_stack;
+  rv = 0;
+
+done:
+  if (rv != 0)
+    args->addr = 0;
+  return rv;
 }
 
 __clib_export int

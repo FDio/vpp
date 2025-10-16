@@ -74,14 +74,21 @@ intel_dsa_map_region (intel_dsa_channel_t *ch)
   if (fd < 0)
     return clib_error_return (0, "failed to open dsa device %s", path);
 
-  ch->portal =
-    clib_mem_vm_map_shared (0, size, fd, offset, "%s", (char *) path);
-  if (ch->portal == CLIB_MEM_VM_MAP_FAILED)
+  clib_mem_vm_map_args_t map_args = {
+    .size = size,
+    .fd = fd,
+    .offset = offset,
+    .shared = 1,
+  };
+
+  if (clib_mem_vm_map (&map_args, "%s", (char *) path))
     {
       error = clib_error_return (0, "mmap portal %s failed", path);
       close (fd);
       return error;
     }
+
+  ch->portal = map_args.addr;
 
   return NULL;
 }
