@@ -505,6 +505,24 @@ session_alloc_for_connection (transport_connection_t * tc)
   return s;
 }
 
+static session_t *
+session_alloc_for_stream (session_handle_t parent_handle)
+{
+  session_t *s, *ps;
+  clib_thread_index_t thread_index =
+    session_thread_from_handle (parent_handle);
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  ps = session_get_from_handle (parent_handle);
+  s = session_alloc (thread_index);
+  s->listener_handle = SESSION_INVALID_HANDLE;
+  s->session_type = ps->session_type;
+  session_set_state (s, SESSION_STATE_CLOSED);
+
+  return s;
+}
+
 session_t *
 session_alloc_for_half_open (transport_connection_t *tc)
 {
@@ -1349,6 +1367,68 @@ session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   transport_service_type_t tst;
   tst = transport_protocol_service_type (rmt->transport_proto);
   return session_open_srv_fns[tst](rmt, rsh);
+}
+
+/**
+ * Ask transport to open stream on existing connection.
+ */
+int
+session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
+{
+  transport_connection_t *tc;
+  transport_endpoint_cfg_t *tep;
+  app_worker_t *app_wrk;
+  session_t *s;
+  u32 conn_index;
+  int rv;
+
+  app_wrk = app_worker_get (sep->app_wrk_index);
+  tep = session_endpoint_to_transport_cfg (sep);
+
+  /* allocate session and fifos now */
+  s = session_alloc_for_stream (sep->parent_handle);
+  s->app_wrk_index = app_wrk->wrk_index;
+  s->opaque = sep->opaque;
+  s->flags |= SESSION_F_STREAM;
+  if ((rv = app_worker_init_connected (app_wrk, s)))
+    {
+      session_free (s);
+      if (app_worker_application_is_builtin (app_wrk))
+	return rv;
+      return app_worker_connect_notify (app_wrk, 0, rv, sep->opaque);
+    }
+
+  rv = transport_connect_stream (sep->transport_proto, tep, s->session_index,
+				 &conn_index);
+  if (rv < 0)
+    {
+      SESSION_DBG ("Transport failed to open stream.");
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      session_free (s);
+      if (app_worker_application_is_builtin (app_wrk))
+	return rv;
+      return app_worker_connect_notify (app_wrk, 0, rv, sep->opaque);
+    }
+
+  session_set_state (s, SESSION_STATE_READY);
+
+  tc =
+    transport_get_connection (sep->transport_proto, conn_index,
+			      session_thread_from_handle (sep->parent_handle));
+
+  /* Attach transport to session and vice versa */
+  s->connection_index = tc->c_index;
+  tc->s_index = s->session_index;
+  *rsh = session_handle (s);
+
+  /* builtin apps are synchronous */
+  if (app_worker_application_is_builtin (app_wrk))
+    {
+      s->flags |= SESSION_F_RX_READY;
+      return SESSION_E_NONE;
+    }
+
+  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, sep->opaque);
 }
 
 /**

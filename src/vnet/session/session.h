@@ -538,6 +538,7 @@ session_clone_safe (u32 session_index, clib_thread_index_t thread_index)
 }
 
 int session_open (session_endpoint_cfg_t *sep, session_handle_t *rsh);
+int session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
 int session_stop_listen (session_t * s);
 void session_half_close (session_t *s);
