@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9d91100_579a02d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-17T11:55:23Z",
+      "side": 1,
+      "message": "Proper fix in:\nhttps://gerrit.fd.io/r/c/vpp/+/43905",
+      "revId": "81b1389f713c702f0a55b10ace995fc45948e8b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
