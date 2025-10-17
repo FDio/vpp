@@ -107,7 +107,7 @@ cherry_pick() {
 
 build_load_start_cni() {
   # make -C $VPP_DIR/test-c/kube-test build-vpp-release
-  make -C $CALICOVPP_DIR image-kind
+  make -C $CALICOVPP_DIR image-kind TAG=latest
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
 }
 
