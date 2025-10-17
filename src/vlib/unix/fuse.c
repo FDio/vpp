@@ -4,12 +4,11 @@
 
 #include <vlib/vlib.h>
 #include <vlib/file.h>
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
 
 #include <fcntl.h>
 #include <sys/uio.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/statfs.h>
 #include <dirent.h>
 #include <linux/fuse.h>
@@ -17,6 +16,7 @@
 #include <stdbool.h>
 
 #include <vlib/unix/fuse.h>
+#include <vlib/unix/unix.h>
 
 VLIB_REGISTER_LOG_CLASS (fuse_log, static) = {
   .class_name = "fuse",

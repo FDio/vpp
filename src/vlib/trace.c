@@ -39,7 +39,6 @@
 
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
-#include <vnet/classify/vnet_classify.h>
 
 u8 *vnet_trace_placeholder;
 
