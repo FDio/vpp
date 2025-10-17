@@ -16,6 +16,23 @@
       "message": "Adding Kai and Damjan as reviewers.",
       "revId": "70db05196d5a368600e305287ee61ff548d58b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ceca028_f78e74e7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 30
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-17T11:28:35Z",
+      "side": 1,
+      "message": "before merging, we need to see impact on performance, can you ask csit guys to run ipsec tests?",
+      "revId": "70db05196d5a368600e305287ee61ff548d58b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
