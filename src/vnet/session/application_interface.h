@@ -667,11 +667,11 @@ app_send_dgram_segs_raw (svm_fifo_t *f, app_session_transport_t *at,
   int rv;
 
   if (svm_fifo_max_enqueue_prod (f) < seg_len)
-    return 0;
+    return -1;
 
   rv = svm_fifo_enqueue_segments (f, segs, nsegs, 0 /* allow partial */);
   if (PREDICT_FALSE (rv < 0))
-    return 0;
+    return rv;
 
   if (do_evt)
     {
