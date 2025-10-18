@@ -113,7 +113,6 @@ typedef struct http_req_
     http_req_id_t c_http_req_id;
   };
 #define hr_pa_wrk_index	     c_http_req_id.parent_app_wrk_index
-#define hr_pa_session_handle c_http_req_id.app_session_handle
 #define hr_hc_index	     c_http_req_id.hc_index
 #define hr_req_handle	     connection.c_index
 
@@ -240,9 +239,6 @@ typedef struct http_pending_connect_stream_
 typedef struct http_worker_
 {
   http_conn_t *conn_pool;
-  clib_spinlock_t pending_stream_connects_lock;
-  http_pending_connect_stream_t *pending_connect_streams;
-  http_pending_connect_stream_t *burst_connect_streams;
   http_wrk_stats_t stats;
 } http_worker_t;
 
@@ -299,7 +295,7 @@ typedef struct http_engine_vft_
   void (*transport_conn_reschedule_callback) (http_conn_t *hc);
   void (*conn_accept_callback) (http_conn_t *hc); /* optional */
   int (*conn_connect_stream_callback) (http_conn_t *hc,
-				       u32 parent_app_api_ctx); /* optional */
+				       u32 *req_index); /* optional */
   void (*conn_cleanup_callback) (http_conn_t *hc);
   void (*enable_callback) (void);			    /* optional */
   uword (*unformat_cfg_callback) (unformat_input_t *input); /* optional */
@@ -471,7 +467,7 @@ http_app_worker_rx_notify (http_req_t *req)
   session_t *as;
   app_worker_t *app_wrk;
 
-  as = session_get_from_handle (req->hr_pa_session_handle);
+  as = session_get (req->c_s_index, req->c_thread_index);
   if (!(as->flags & SESSION_F_RX_EVT))
     {
       app_wrk = app_worker_get_if_valid (as->app_wrk_index);
@@ -509,7 +505,7 @@ http_get_app_msg (http_req_t *req, http_msg_t *msg)
   session_t *as;
   int rv;
 
-  as = session_get_from_handle (req->hr_pa_session_handle);
+  as = session_get (req->c_s_index, req->c_thread_index);
   rv = svm_fifo_dequeue (as->tx_fifo, sizeof (*msg), (u8 *) msg);
   ASSERT (rv == sizeof (*msg));
 }
@@ -581,14 +577,14 @@ http_req_deschedule (http_req_t *req, transport_send_params_t *sp)
 always_inline void
 http_io_as_add_want_deq_ntf (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 }
 
 always_inline void
 http_io_as_add_want_read_ntf (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_add_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 }
@@ -596,7 +592,7 @@ http_io_as_add_want_read_ntf (http_req_t *req)
 always_inline void
 http_io_as_del_want_read_ntf (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_del_want_deq_ntf (as->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 					    SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 }
@@ -604,14 +600,14 @@ http_io_as_del_want_read_ntf (http_req_t *req)
 always_inline void
 http_io_as_reset_has_read_ntf (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_reset_has_deq_ntf (as->rx_fifo);
 }
 
 always_inline void
 http_io_as_dequeue_notify (http_req_t *req, u32 n_last_deq)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   if (svm_fifo_needs_deq_ntf (as->tx_fifo, n_last_deq))
     session_dequeue_notify (as);
 }
@@ -619,14 +615,14 @@ http_io_as_dequeue_notify (http_req_t *req, u32 n_last_deq)
 always_inline u32
 http_io_as_max_write (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   return svm_fifo_max_enqueue_prod (as->rx_fifo);
 }
 
 always_inline u32
 http_io_as_max_read (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   return svm_fifo_max_dequeue_cons (as->tx_fifo);
 }
 
@@ -634,7 +630,7 @@ always_inline void
 http_io_as_write (http_req_t *req, u8 *data, u32 len)
 {
   int n_written;
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
 
   n_written = svm_fifo_enqueue (as->rx_fifo, len, data);
   ASSERT (n_written == len);
@@ -645,7 +641,7 @@ http_io_as_write_segs (http_req_t *req, const svm_fifo_seg_t segs[],
 		       u32 n_segs)
 {
   int n_written;
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   n_written = svm_fifo_enqueue_segments (as->rx_fifo, segs, n_segs, 0);
   ASSERT (n_written > 0);
   return (u32) n_written;
@@ -655,7 +651,7 @@ always_inline u32
 http_io_as_peek (http_req_t *req, u8 *buf, u32 len, u32 offset)
 {
   int n_read;
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
 
   n_read = svm_fifo_peek (as->tx_fifo, offset, len, buf);
   ASSERT (n_read > 0);
@@ -667,7 +663,7 @@ http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
 		      u32 max_bytes)
 {
   int n_read;
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   n_read = svm_fifo_segments (as->tx_fifo, 0, segs, n_segs, max_bytes);
   ASSERT (n_read > 0);
   return (u32) n_read;
@@ -676,21 +672,21 @@ http_io_as_read_segs (http_req_t *req, svm_fifo_seg_t *segs, u32 *n_segs,
 always_inline void
 http_io_as_drain (http_req_t *req, u32 len)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop (as->tx_fifo, len);
 }
 
 always_inline void
 http_io_as_drain_all (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop_all (as->tx_fifo);
 }
 
 always_inline void
 http_io_as_drain_unread (http_req_t *req)
 {
-  session_t *as = session_get_from_handle (req->hr_pa_session_handle);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
   svm_fifo_dequeue_drop_all (as->rx_fifo);
 }
 
@@ -871,13 +867,12 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   if ((rv = app_worker_init_accepted (as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
-      req->hr_pa_session_handle = SESSION_INVALID_HANDLE;
+      req->c_s_index = SESSION_INVALID_INDEX;
       session_free (as);
       hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
       return rv;
     }
 
-  req->hr_pa_session_handle = session_handle (as);
   req->hr_pa_wrk_index = as->app_wrk_index;
 
   app_wrk = app_worker_get (as->app_wrk_index);
@@ -885,7 +880,7 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
   if ((rv = app_worker_accept_notify (app_wrk, as)))
     {
       HTTP_DBG (1, "app accept returned");
-      req->hr_pa_session_handle = SESSION_INVALID_HANDLE;
+      req->c_s_index = SESSION_INVALID_INDEX;
       session_free (as);
       hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
       return rv;
@@ -896,7 +891,7 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
 
 always_inline int
 http_conn_established (http_conn_t *hc, http_req_t *req,
-		       u32 parent_app_api_ctx, u8 is_stream)
+		       u32 parent_app_api_ctx)
 {
   session_t *as;
   app_worker_t *app_wrk;
@@ -904,12 +899,9 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   http_conn_t *ho_hc;
   int rv;
 
-  if (!is_stream)
-    {
-      ho_hc = http_ho_conn_get (hc->ho_index);
-      /* in chain with TLS there is race on half-open cleanup */
-      __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
-    }
+  ho_hc = http_ho_conn_get (hc->ho_index);
+  /* in chain with TLS there is race on half-open cleanup */
+  __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
   /* allocate app session and initialize */
   as = session_alloc (hc->c_thread_index);
@@ -943,7 +935,6 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
 
   app_worker_connect_notify (app_wrk, as, 0, parent_app_api_ctx);
 
-  req->hr_pa_session_handle = session_handle (as);
   req->hr_pa_wrk_index = as->app_wrk_index;
 
   return 0;
