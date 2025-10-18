@@ -809,6 +809,8 @@ hcpc_open_http_stream (u32 session_index)
   hcpc_main_t *hcpcm = &hcpc_main;
   vnet_connect_args_t _a, *a = &_a;
   session_error_t rv;
+  session_t *s;
+  hcpc_session_t *ps;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memcpy (&a->sep_ext, &hcpcm->proxy_server_sep,
@@ -817,9 +819,74 @@ hcpc_open_http_stream (u32 session_index)
   a->app_index = hcpcm->http_app_index;
   a->api_context = session_index;
 
-  rv = vnet_connect (a);
+  rv = vnet_connect_stream (a);
   if (rv)
-    clib_warning ("connect returned: %U", format_session_error, rv);
+    {
+      clib_warning ("session %u connect error: %U", session_index,
+		    format_session_error, rv);
+      clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+      ps = hcpc_session_get (session_index);
+      ASSERT (ps);
+      ps->state = HCPC_SESSION_CLOSED;
+      ps->http_disconnected = 1;
+      ps->http_establishing = 0;
+      if (!ps->intercept_diconnected)
+	{
+	  ps->intercept.rx_fifo->master_thread_index =
+	    ps->intercept.tx_fifo->master_thread_index;
+	  if (ps->intercept.session_handle != SESSION_INVALID_HANDLE)
+	    {
+	      session_reset (
+		session_get_from_handle (ps->intercept.session_handle));
+	      ps->intercept_diconnected = 1;
+	    }
+	  else
+	    {
+	      if (session_thread_from_handle (hcpcm->http_connection_handle) !=
+		  ps->intercept.tx_fifo->master_thread_index)
+		{
+		  session_send_rpc_evt_to_thread (
+		    ps->intercept.tx_fifo->master_thread_index,
+		    hcpc_session_postponed_free_rpc,
+		    uword_to_pointer (ps->session_index, void *));
+		}
+	      else
+		hcpc_session_free (ps);
+	    }
+	  if (rv == SESSION_E_MAX_STREAMS_HIT)
+	    hcpc_worker_stats_inc (vlib_get_thread_index (), max_streams_hit,
+				   1);
+	}
+      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+      return;
+    }
+
+  HCPC_DBG ("stream for session [%u] opened", session_index);
+  s = session_get_from_handle (a->sh);
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+  ps = hcpc_session_get (session_index);
+  ASSERT (ps);
+  ps->http.session_handle = session_handle (s);
+  ps->http.rx_fifo = s->rx_fifo;
+  ps->http.tx_fifo = s->tx_fifo;
+
+  /* listener session was already closed */
+  if (ps->intercept_diconnected)
+    {
+      hcpc_worker_stats_inc (s->thread_index,
+			     client_closed_before_stream_opened, 1);
+      session_reset (s);
+      ps->http_establishing = 0;
+      ps->http_disconnected = 1;
+      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+      return;
+    }
+
+  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+
+  if (svm_fifo_max_dequeue (s->tx_fifo))
+    if (svm_fifo_set_event (s->tx_fifo))
+      session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 }
 
 static void
@@ -833,8 +900,10 @@ hcpc_connect_http_stream_rpc (void *rpc_args)
 static void
 hcpc_connect_http_stream (u32 session_index)
 {
-  u32 connects_thread = transport_cl_thread (), thread_index;
+  hcpc_main_t *hcpcm = &hcpc_main;
+  u32 connects_thread, thread_index;
 
+  connects_thread = session_thread_from_handle (hcpcm->http_connection_handle);
   thread_index = vlib_get_thread_index ();
 
   if (thread_index == connects_thread)
@@ -844,7 +913,7 @@ hcpc_connect_http_stream (u32 session_index)
     }
 
   session_send_rpc_evt_to_thread_force (
-    transport_cl_thread (), hcpc_connect_http_stream_rpc,
+    connects_thread, hcpc_connect_http_stream_rpc,
     uword_to_pointer (session_index, void *));
 }
 
@@ -1018,82 +1087,27 @@ hcpc_http_session_connected_callback (u32 app_index, u32 session_index,
   hcpc_main_t *hcpcm = &hcpc_main;
   hcpc_session_t *ps;
 
+  ASSERT (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE);
+
   if (err)
     {
-      clib_warning ("session %u connect error: %U", session_index,
+      clib_warning ("connect to http proxy server failed: %U",
 		    format_session_error, err);
-
-      /* connect to http proxy server failed */
-      if (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE)
-	return 0;
-
-      clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
-      ps = hcpc_session_get (session_index);
-      ASSERT (ps);
-      ps->state = HCPC_SESSION_CLOSED;
-      ps->http_disconnected = 1;
-      ps->http_establishing = 0;
-      if (!ps->intercept_diconnected)
-	{
-	  if (ps->intercept.session_handle != SESSION_INVALID_HANDLE)
-	    {
-	      session_reset (
-		session_get_from_handle (ps->intercept.session_handle));
-	      ps->intercept_diconnected = 1;
-	    }
-	  else
-	    hcpc_delete_session (s, 1);
-	}
-      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-      if (err == SESSION_E_MAX_STREAMS_HIT)
-	hcpc_worker_stats_inc (vlib_get_thread_index (), max_streams_hit, 1);
       return 0;
     }
 
-  if (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE)
-    {
-      HCPC_DBG ("parent session connected");
-      clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
-      ps = hcpc_session_alloc ();
-      ps->http.session_handle = session_handle (s);
-      ps->http.rx_fifo = s->rx_fifo;
-      ps->http.tx_fifo = s->tx_fifo;
-      ps->flags |= HCPC_SESSION_F_IS_PARENT;
-      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-      s->opaque = ps->session_index;
-      hcpcm->http_connection_handle = session_handle (s);
-      vlib_process_signal_event_mt (vlib_get_main (),
-				    hcpcm->process_node_index,
-				    HCPC_EVENT_PROXY_CONNECTED, 0);
-      return 0;
-    }
-
-  HCPC_DBG ("stream for session [%u] opened", session_index);
+  HCPC_DBG ("parent session connected");
   clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
-  ps = hcpc_session_get (session_index);
-  ASSERT (ps);
+  ps = hcpc_session_alloc ();
   ps->http.session_handle = session_handle (s);
   ps->http.rx_fifo = s->rx_fifo;
   ps->http.tx_fifo = s->tx_fifo;
-
-  /* listener session was already closed */
-  if (ps->intercept_diconnected)
-    {
-      hcpc_worker_stats_inc (s->thread_index,
-			     client_closed_before_stream_opened, 1);
-      session_reset (s);
-      ps->http_establishing = 0;
-      ps->http_disconnected = 1;
-      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-      return -1;
-    }
-
+  ps->flags |= HCPC_SESSION_F_IS_PARENT;
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-
-  if (svm_fifo_max_dequeue (s->tx_fifo))
-    if (svm_fifo_set_event (s->tx_fifo))
-      session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
-
+  s->opaque = ps->session_index;
+  hcpcm->http_connection_handle = session_handle (s);
+  vlib_process_signal_event_mt (vlib_get_main (), hcpcm->process_node_index,
+				HCPC_EVENT_PROXY_CONNECTED, 0);
   return 0;
 }
 
