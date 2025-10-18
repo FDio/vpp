@@ -16,6 +16,24 @@
       "message": "Let\u0027s also s-\u003elistener_handle \u003d SESSION_INVALID_HANDLE; found these yesterday https://gerrit.fd.io/r/c/vpp/+/43900\n\nOr we could do it in session_alloc_for_stream, wherever works",
       "revId": "64968f8a8b627215435fe0485eb67b33f7588670",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a6d84ee_015ac1dc",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1403,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-18T15:03:25Z",
+      "side": 1,
+      "message": "added in session_alloc_for_stream",
+      "parentUuid": "f2decf71_3e55bb61",
+      "revId": "64968f8a8b627215435fe0485eb67b33f7588670",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
