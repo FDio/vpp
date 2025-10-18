@@ -251,7 +251,7 @@ http2_conn_alloc_req (http_conn_t *hc, u8 is_parent)
 
   pool_get_aligned_safe (wrk->req_pool, req, CLIB_CACHE_LINE_BYTES);
   clib_memset (req, 0, sizeof (*req));
-  req->base.hr_pa_session_handle = SESSION_INVALID_HANDLE;
+  req->base.c_s_index = SESSION_INVALID_INDEX;
   req_index = req - wrk->req_pool;
   hr_handle.version = HTTP_VERSION_2;
   hr_handle.req_index = req_index;
@@ -2450,7 +2450,7 @@ http2_handle_settings_frame (http_conn_t *hc, http2_frame_header_t *fh)
 	    http2_default_conn_settings.header_table_size);
 	  http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  http_stats_connections_established_inc (hc->c_thread_index);
-	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx, 0))
+	  if (http_conn_established (hc, &req->base, hc->hc_pa_app_api_ctx))
 	    return HTTP2_ERROR_INTERNAL_ERROR;
 	}
 
@@ -3278,29 +3278,22 @@ http2_conn_accept_callback (http_conn_t *hc)
 }
 
 static int
-http2_conn_connect_stream_callback (http_conn_t *hc, u32 parent_app_api_ctx)
+http2_conn_connect_stream_callback (http_conn_t *hc, u32 *req_index)
 {
   http2_conn_ctx_t *h2c;
   http2_req_t *req;
-  app_worker_t *app_wrk;
-  int rv;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   h2c = http2_conn_ctx_get_w_thread (hc);
   ASSERT (!(hc->flags & HTTP_CONN_F_IS_SERVER));
   ASSERT (!(h2c->flags & HTTP2_CONN_F_EXPECT_SERVER_SETTINGS));
-  app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
-  if (!app_wrk)
-    return -1;
   if (h2c->req_num == h2c->settings.max_concurrent_streams)
-    return app_worker_connect_notify (app_wrk, 0, SESSION_E_MAX_STREAMS_HIT,
-				      parent_app_api_ctx);
+    return SESSION_E_MAX_STREAMS_HIT;
   req = http2_conn_alloc_req (hc, 0);
+  req->base.hr_pa_wrk_index = hc->hc_pa_wrk_index;
   http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_APP_METHOD);
-  rv = http_conn_established (hc, &req->base, parent_app_api_ctx, 1);
-  if (rv != 0)
-    http2_conn_free_req (h2c, req, hc->c_thread_index);
-  return rv;
+  *req_index = req->base.hr_req_handle;
+  return SESSION_E_NONE;
 }
 
 static void
