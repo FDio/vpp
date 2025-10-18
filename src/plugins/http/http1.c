@@ -77,7 +77,7 @@ http1_conn_alloc_req (http_conn_t *hc)
   pool_get_aligned_safe (h1m->req_pool[hc->c_thread_index], req,
 			 CLIB_CACHE_LINE_BYTES);
   clib_memset (req, 0, sizeof (*req));
-  req->hr_pa_session_handle = SESSION_INVALID_HANDLE;
+  req->c_s_index = SESSION_INVALID_INDEX;
   req_index = req - h1m->req_pool[hc->c_thread_index];
   hr_handle.version = HTTP_VERSION_1;
   hr_handle.req_index = req_index;
@@ -1967,7 +1967,7 @@ http1_transport_connected_callback (http_conn_t *hc)
   req = http1_conn_alloc_req (hc);
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
   http_stats_connections_established_inc (hc->c_thread_index);
-  return http_conn_established (hc, req, hc->hc_pa_app_api_ctx, 0);
+  return http_conn_established (hc, req, hc->hc_pa_app_api_ctx);
 }
 
 static void
