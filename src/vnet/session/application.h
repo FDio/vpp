@@ -414,6 +414,7 @@ void app_worker_del_detached_sm (app_worker_t * app_wrk, u32 sm_index);
 u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 *s, va_list *args);
 u8 *format_crypto_context (u8 * s, va_list * args);
+uword unformat_app_index (unformat_input_t *input, va_list *args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
