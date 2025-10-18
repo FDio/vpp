@@ -873,7 +873,7 @@ application_alloc_and_init (app_init_args_t *a)
   /* Add app to lookup by api_client_index table */
   if (!application_is_builtin (app))
     application_api_table_add (app->app_index, a->api_client_index);
-  else
+  if (a->name)
     application_name_table_add (app);
 
   app_crypto_ctx_init (&app->crypto_ctx);
@@ -1752,10 +1752,11 @@ application_get_segment_manager_properties (u32 app_index)
   return &app->sm_properties;
 }
 
-static void
-application_format_listeners (application_t * app, int verbose)
+static u8 *
+format_app_listeners (u8 *s, va_list *args)
 {
-  vlib_main_t *vm = vlib_get_main ();
+  application_t *app = va_arg (*args, application_t *);
+  int verbose = va_arg (*args, int);
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
   u32 sm_index;
@@ -1763,9 +1764,9 @@ application_format_listeners (application_t * app, int verbose)
 
   if (!app)
     {
-      vlib_cli_output (vm, "%U", format_app_worker_listener, NULL /* header */,
-		       0, 0, verbose);
-      return;
+      s = format (s, "%U\n", format_app_worker_listener, NULL /* header */, 0,
+		  0, verbose);
+      return s;
     }
 
   pool_foreach (wrk_map, app->worker_maps)  {
@@ -1773,10 +1774,12 @@ application_format_listeners (application_t * app, int verbose)
     if (hash_elts (app_wrk->listeners_table) == 0)
       continue;
     hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
-      vlib_cli_output (vm, "%U", format_app_worker_listener, app_wrk,
-                       handle, sm_index, verbose);
-    }));
+		    s = format (s, "%U\n", format_app_worker_listener, app_wrk,
+				handle, sm_index, verbose);
+		  }));
   }
+
+  return s;
 }
 
 static void
@@ -1811,14 +1814,12 @@ u8 *
 format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
-  CLIB_UNUSED (int verbose) = va_arg (*args, int);
+  int verbose = va_arg (*args, int);
   segment_manager_props_t *props;
   const u8 *app_ns_name, *app_name;
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
-  segment_manager_t *sm;
-  u64 handle;
-  u32 sm_index;
+  u32 indent = 2;
 
   if (app == 0)
     {
@@ -1848,27 +1849,27 @@ format_application (u8 * s, va_list * args)
 
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
-      s = format (s, "%U", format_app_worker, app_wrk);
       if (verbose > 1)
-	{
-	  sm = segment_manager_get (app_wrk->connects_seg_manager);
-	  s = format (s, "segment manager\n %U", format_segment_manager, sm,
-		      1 /* verbose */);
-	  hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
-			  sm = segment_manager_get (sm_index);
-			  s = format (s, " %U\n", format_segment_manager, sm,
-				      1 /* verbose */);
-			}));
-	}
-  }
+	s = format (s, "\n");
+      s = format (s, "%U%U", format_white_space, indent, format_app_worker,
+		  app_wrk, verbose);
+    }
 
   return s;
 }
 
 void
-application_format_all_listeners (vlib_main_t * vm, int verbose)
+application_format_listeners (vlib_main_t *vm, application_t *req_app,
+			      int verbose)
 {
   application_t *app;
+
+  if (req_app)
+    {
+      vlib_cli_output (vm, "%U", format_app_listeners, 0, verbose);
+      vlib_cli_output (vm, "%U", format_app_listeners, req_app, verbose);
+      return;
+    }
 
   if (!pool_elts (app_main.app_pool))
     {
@@ -1876,10 +1877,9 @@ application_format_all_listeners (vlib_main_t * vm, int verbose)
       return;
     }
 
-  application_format_listeners (0, verbose);
-
+  vlib_cli_output (vm, "%U", format_app_listeners, 0, verbose);
   pool_foreach (app, app_main.app_pool)  {
-    application_format_listeners (app, verbose);
+      vlib_cli_output (vm, "%U", format_app_listeners, app, verbose);
   }
 }
 
@@ -1901,30 +1901,38 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
   }
 }
 
-static inline void
-appliction_format_app_mq (vlib_main_t * vm, application_t * app)
+static u8 *
+format_app_mq (u8 *s, va_list *args)
 {
+  application_t *app = va_arg (*args, application_t *);
   app_worker_map_t *map;
   app_worker_t *wrk;
   int i;
 
   pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
-    vlib_cli_output (vm, "[A%d][%d]%U", app->app_index,
-		     map->wrk_index, format_svm_msg_q,
-		     wrk->event_queue);
+    s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index,
+		format_svm_msg_q, wrk->event_queue);
   }
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
-    vlib_cli_output (vm, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
-		     app->rx_mqs[i].mq);
+  s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
+	      app->rx_mqs[i].mq);
+
+  return s;
 }
 
 static clib_error_t *
-appliction_format_all_app_mq (vlib_main_t * vm)
+application_format_mqs (vlib_main_t *vm, application_t *req_app)
 {
   application_t *app;
   int i, n_threads;
+
+  if (req_app)
+  {
+    vlib_cli_output (vm, "%U", format_app_mq, req_app);
+    return 0;
+  }
 
   n_threads = vlib_get_n_threads ();
 
@@ -1934,10 +1942,24 @@ appliction_format_all_app_mq (vlib_main_t * vm)
 		       session_main_get_vpp_event_queue (i));
     }
 
-  pool_foreach (app, app_main.app_pool)  {
-      appliction_format_app_mq (vm, app);
-  }
+  pool_foreach (app, app_main.app_pool)
+    {
+      vlib_cli_output (vm, "%U", format_app_mq, app);
+    }
   return 0;
+}
+
+uword
+unformat_app_index (unformat_input_t *input, va_list *args)
+{
+  u32 *app_index = va_arg (*args, u32 *);
+  app_main_t *am = &app_main;
+
+  if (unformat (input, "%d", app_index))
+    return 1;
+
+  return unformat_user (input, unformat_hash_vec_string, am->app_by_name,
+			app_index);
 }
 
 static clib_error_t *
@@ -1945,7 +1967,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
   int do_server = 0, do_client = 0, do_mq = 0, do_transports = 0;
-  application_t *app;
+  application_t *app = 0;
   u32 app_index = ~0;
   int verbose = 0;
   u8 is_ta;
@@ -1956,40 +1978,39 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "server"))
 	do_server = 1;
+      else if (unformat (input, "listeners"))
+	do_server = 1;
       else if (unformat (input, "client"))
 	do_client = 1;
       else if (unformat (input, "transports"))
 	do_transports = 1;
       else if (unformat (input, "mq"))
 	do_mq = 1;
-      else if (unformat (input, "%u", &app_index))
-	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
+      else if (unformat (input, "%U", unformat_app_index, &app_index))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  if (do_mq && app_index != ~0)
+  if (app_index != ~0)
     {
       app = application_get_if_valid (app_index);
       if (!app)
 	return clib_error_return (0, "No app with index %u", app_index);
-
-      appliction_format_app_mq (vm, app);
-      return 0;
     }
 
   if (do_mq)
     {
-      appliction_format_all_app_mq (vm);
+      application_format_mqs (vm, app);
       return 0;
     }
 
   if (do_server)
     {
-      application_format_all_listeners (vm, verbose);
+      application_format_listeners (vm, app, verbose);
       return 0;
     }
 
@@ -1999,12 +2020,8 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return 0;
     }
 
-  if (app_index != ~0)
+  if (app)
     {
-      app = application_get_if_valid (app_index);
-      if (!app)
-	return clib_error_return (0, "No app with index %u", app_index);
-
       vlib_cli_output (vm, "%U", format_application, app, ++verbose);
       return 0;
     }
@@ -2042,7 +2059,7 @@ VLIB_INIT_FUNCTION (application_init);
 
 VLIB_CLI_COMMAND (show_app_command, static) = {
   .path = "show app",
-  .short_help = "show app [index] [server|client] [mq] [verbose] "
+  .short_help = "show app [index] [listeners|client] [mq] [verbose] "
 		"[transports]",
   .function = show_app_command_fn,
 };

@@ -1139,12 +1139,12 @@ format_segment_manager (u8 *s, va_list *args)
   max_fifo_size = sm->max_fifo_size;
 
   s = format (s,
-	      "%U[%u] %v app-wrk: %u segs: %u max-fifo-sz: %U "
+	      "[%u] %v app-wrk: %u segs: %u max-fifo-sz: %U "
 	      "wmarks: %u %u %s flags: %U",
-	      format_white_space, indent, segment_manager_index (sm),
-	      app ? app->name : 0, sm->app_wrk_index, pool_elts (sm->segments),
-	      format_memory_size, max_fifo_size, sm->high_watermark,
-	      sm->low_watermark, custom_logic ? "custom-tuning" : "no-tuning",
+	      segment_manager_index (sm), app ? app->name : 0,
+	      sm->app_wrk_index, pool_elts (sm->segments), format_memory_size,
+	      max_fifo_size, sm->high_watermark, sm->low_watermark,
+	      custom_logic ? "custom-tuning" : "no-tuning",
 	      format_segment_manager_flags, (int) sm->flags);
 
   if (!verbose || !pool_elts (sm->segments))

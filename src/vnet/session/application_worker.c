@@ -929,9 +929,8 @@ format_app_worker_listener (u8 * s, va_list * args)
   if (!app_wrk)
     {
       if (verbose)
-	s = format (s, "%-" SESSION_CLI_ID_LEN "s%-25s%-10s%-15s%-15s%-10s",
-		    "Connection", "App", "Wrk", "API Client", "ListenerID",
-		    "SegManager");
+	s = format (s, "%-" SESSION_CLI_ID_LEN "s%-25s%-10s%-10s",
+		    "Connection", "App", "Wrk", "SegMngr");
       else
 	s = format (s, "%-" SESSION_CLI_ID_LEN "s%-25s%-10s", "Connection",
 		    "App", "Wrk");
@@ -947,12 +946,12 @@ format_app_worker_listener (u8 * s, va_list * args)
     {
       u8 *buf;
       buf = format (0, "%u(%u)", app_wrk->wrk_map_index, app_wrk->wrk_index);
-      s = format (s, "%-" SESSION_CLI_ID_LEN "v%-25v%-10v%-15u%-15u%-10u", str,
-		  app_name, buf, app_wrk->api_client_index, handle, sm_index);
+      s = format (s, "%-" SESSION_CLI_ID_LEN "v%-25v%-10v%-10u", str, app_name,
+		  buf, sm_index);
       vec_free (buf);
     }
   else
-    s = format (s, "%-" SESSION_CLI_ID_LEN "v%-25v%=10u", str, app_name,
+    s = format (s, "%-" SESSION_CLI_ID_LEN "v%-25v%-10u", str, app_name,
 		app_wrk->wrk_map_index);
 
   vec_free (str);
@@ -964,14 +963,29 @@ u8 *
 format_app_worker (u8 * s, va_list * args)
 {
   app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
-  u32 indent = 1;
+  u32 verbose = va_arg (*args, u32);
+  u32 sm_index, indent = format_get_indent (s);
+  segment_manager_t *sm;
+  u64 handle;
 
   s = format (s,
-	      "%U wrk-index %u app-index %u map-index %u "
+	      "wrk-index %u app-index %u map-index %u "
 	      "api-client-index %d mq-cong %u\n",
-	      format_white_space, indent, app_wrk->wrk_index,
-	      app_wrk->app_index, app_wrk->wrk_map_index,
+	      app_wrk->wrk_index, app_wrk->app_index, app_wrk->wrk_map_index,
 	      app_wrk->api_client_index, app_wrk->mq_congested);
+
+  if (verbose > 1)
+    {
+      sm = segment_manager_get (app_wrk->connects_seg_manager);
+      s = format (s, "%Usegment managers:\n%U%U", format_white_space, indent,
+		  format_white_space, indent, format_segment_manager, sm,
+		  1 /* verbose */);
+      hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
+		      sm = segment_manager_get (sm_index);
+		      s = format (s, "%U%U\n", format_white_space, indent,
+				  format_segment_manager, sm, 1 /* verbose */);
+		    }));
+    }
   return s;
 }
 

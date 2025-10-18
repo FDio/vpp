@@ -549,7 +549,7 @@ app_evt_collector_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	alm->segment_size = tmp64;
       else if (unformat (line_input, "uri %s", &collector_uri))
 	vec_add1 (collector_uri, 0);
-      else if (unformat (line_input, "app %d", &app_index))
+      else if (unformat (line_input, "app %U", unformat_app_index, &app_index))
 	;
       else if (unformat (line_input, "add"))
 	;
