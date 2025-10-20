@@ -943,3 +943,8 @@ Plugin - Shared Elog
 I:	selog
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/selog
+
+Plugin - Soft RSS
+I:	soft-rss
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/soft-rss/

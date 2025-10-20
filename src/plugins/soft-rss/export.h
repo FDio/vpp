@@ -1,0 +1,98 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Cisco and/or its affiliates.
+ */
+
+#pragma once
+
+#include <vlib/vlib.h>
+#include <vlib/unix/plugin.h>
+#include <vppinfra/error.h>
+
+#define foreach_soft_rss_type                                                 \
+  _ (4_TUPLE, "4-tuple")                                                      \
+  _ (2_TUPLE, "2-tuple")                                                      \
+  _ (SRC_IP, "src-ip")                                                        \
+  _ (DST_IP, "dst-ip")
+
+typedef enum
+{
+#define _(a, b) SOFT_RSS_TYPE_##a,
+  foreach_soft_rss_type
+#undef _
+    SOFT_RSS_N_TYPES,
+} __clib_packed soft_rss_type_t;
+
+typedef struct
+{
+  soft_rss_type_t type;
+  u8 ip4_only : 1;
+  u8 ip6_only : 1;
+  u8 with_main_thread : 1;
+  u16 l2_hdr_offset; /* typically 0, used if another header exists (e.g. DSA */
+  clib_bitmap_t *threads; /* bitmap of RSS threads, NULL means all */
+  u8 *key;		  /* vector, NULL means default */
+} soft_rss_config_t;
+
+typedef clib_error_t *(*soft_rss_config_fn_t) (vlib_main_t *vm,
+					       const soft_rss_config_t *config,
+					       u32 hw_if_index);
+typedef clib_error_t *(*soft_rss_clear_fn_t) (vlib_main_t *vm,
+					      u32 hw_if_index);
+typedef clib_error_t *(*soft_rss_enable_fn_t) (vlib_main_t *vm,
+					       u32 hw_if_index);
+typedef clib_error_t *(*soft_rss_disable_fn_t) (vlib_main_t *vm,
+						u32 hw_if_index);
+
+#ifdef SOFT_RSS_PLUGIN_INTERNAL
+
+clib_error_t *soft_rss_config (vlib_main_t *vm,
+			       const soft_rss_config_t *config,
+			       u32 hw_if_index);
+clib_error_t *soft_rss_clear (vlib_main_t *vm, u32 hw_if_index);
+clib_error_t *soft_rss_enable (vlib_main_t *vm, u32 hw_if_index);
+clib_error_t *soft_rss_disable (vlib_main_t *vm, u32 hw_if_index);
+
+#else /* SOFT_RSS_PLUGIN_INTERNAL */
+
+static inline clib_error_t *
+soft_rss_config (vlib_main_t *vm, const soft_rss_config_t *config,
+		 u32 hw_if_index)
+{
+  soft_rss_config_fn_t fn = (soft_rss_config_fn_t) vlib_get_plugin_symbol (
+    "soft_rss_plugin.so", "soft_rss_config");
+  if (!fn)
+    return clib_error_return (0, "soft-rss plugin not loaded");
+  return fn (vm, config, hw_if_index);
+}
+
+static inline clib_error_t *
+soft_rss_clear (vlib_main_t *vm, u32 hw_if_index)
+{
+  soft_rss_clear_fn_t fn = (soft_rss_clear_fn_t) vlib_get_plugin_symbol (
+    "soft_rss_plugin.so", "soft_rss_clear");
+  if (!fn)
+    return clib_error_return (0, "soft-rss plugin not loaded");
+  return fn (vm, hw_if_index);
+}
+
+static inline clib_error_t *
+soft_rss_enable (vlib_main_t *vm, u32 hw_if_index)
+{
+  soft_rss_enable_fn_t fn = (soft_rss_enable_fn_t) vlib_get_plugin_symbol (
+    "soft_rss_plugin.so", "soft_rss_enable");
+  if (!fn)
+    return clib_error_return (0, "soft-rss plugin not loaded");
+  return fn (vm, hw_if_index);
+}
+
+static inline clib_error_t *
+soft_rss_disable (vlib_main_t *vm, u32 hw_if_index)
+{
+  soft_rss_disable_fn_t fn = (soft_rss_disable_fn_t) vlib_get_plugin_symbol (
+    "soft_rss_plugin.so", "soft_rss_disable");
+  if (!fn)
+    return clib_error_return (0, "soft-rss plugin not loaded");
+  return fn (vm, hw_if_index);
+}
+
+#endif /* SOFT_RSS_PLUGIN_INTERNAL */
