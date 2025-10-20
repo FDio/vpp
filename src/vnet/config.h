@@ -141,6 +141,16 @@ vnet_get_config_data (vnet_config_main_t * cm,
   return (void *) d;
 }
 
+always_inline void *
+vnet_get_config_data_next16 (vnet_config_main_t *cm, u32 *config_index,
+			     u16 *next_index, u32 n_data_bytes)
+{
+  u32 ni;
+  void *rv = vnet_get_config_data (cm, config_index, &ni, n_data_bytes);
+  *next_index = (u16) ni;
+  return rv;
+}
+
 void vnet_config_init (vlib_main_t * vm,
 		       vnet_config_main_t * cm,
 		       char *start_node_names[],
