@@ -647,7 +647,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   clib_socket_t *sock;
   uword *event_data = 0, event_type;
   u8 enabled = 0;
-  f64 start_time, last_run_duration = 0, now;
+  f64 start_time, last_run_duration = 0;
   clib_error_t *err;
 
   sock = clib_mem_alloc (sizeof (clib_socket_t));
@@ -683,14 +683,8 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       last_run_duration = start_time = vlib_time_now (vm);
       pool_foreach (mif, mm->interfaces)
          {
-	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
-	  /* Allow no more than 10us without a pause */
-	  now = vlib_time_now (vm);
-	  if (now > start_time + 10e-6)
-	    {
-	      vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
-	      start_time = vlib_time_now (vm);
-	    }
+	  memif_socket_file_t *msf =
+	    vec_elt_at_index (mm->socket_files, mif->socket_file_index);
 
 	  if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) == 0)
 	    continue;
