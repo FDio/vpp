@@ -1416,6 +1416,19 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
     {
       if ((now = vlib_time_now (vm)) > deadline)
 	{
+	  clib_warning ("worker thread deadlock, caller %s wait_at_barrier %d "
+			"count %d workers_at_barrier %d\n",
+			func_name == NULL ? "N/A" : func_name,
+			*vlib_worker_threads->wait_at_barrier, count,
+			*vlib_worker_threads->workers_at_barrier);
+	  for (int i = 1; i <= count; i++)
+	    {
+	      vlib_main_t *vm_local = vlib_get_main_by_index (i);
+	      if (!(vm_local->parked_at_barrier))
+	      clib_warning ("Thread %v is not parked\n",
+			    vlib_worker_threads[i].name);
+	    }
+
 	  fformat (stderr, "%s: worker thread deadlock\n", __func__);
 	  os_panic ();
 	}

@@ -385,11 +385,9 @@ vlib_worker_thread_barrier_check (void)
 	  ed->thread_index = thread_index;
 	}
 
-      if (CLIB_DEBUG > 0)
-	{
-	  vm = vlib_get_main ();
-	  vm->parked_at_barrier = 1;
-	}
+      vm = vlib_get_main ();
+      vm->parked_at_barrier = 1;
+
       clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
       while (*vlib_worker_threads->wait_at_barrier)
 	;
@@ -408,8 +406,7 @@ vlib_worker_thread_barrier_check (void)
 	vm->time_last_barrier_release = vlib_time_now (vm);
       }
 
-      if (CLIB_DEBUG > 0)
-	vm->parked_at_barrier = 0;
+      vm->parked_at_barrier = 0;
       clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
 
       if (PREDICT_FALSE (*vlib_worker_threads->node_reforks_required))
