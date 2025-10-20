@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7510237_38cf4194",
+        "filename": "src/plugins/npol/npol.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2025-10-20T16:27:56Z",
+      "side": 1,
+      "message": "Thanks for this cli, maybe just add `sw_if_index \u003cswifindex\u003e` here in the help",
+      "revId": "fa0083477718a59537dfff88bd7957291cdc3089",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
