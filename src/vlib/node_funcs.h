@@ -71,8 +71,9 @@ vlib_process_finish_switch_stack (vlib_main_t * vm)
   const void *bottom_old;
   size_t size_old;
 
-  __sanitizer_finish_switch_fiber (&vm->asan_stack_save, &bottom_old,
+  __sanitizer_finish_switch_fiber (vm->asan_stack_save, &bottom_old,
 				   &size_old);
+  vm->asan_stack_save = NULL;
 #endif
 }
 
