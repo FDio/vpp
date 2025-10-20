@@ -416,13 +416,17 @@ clib_memset_uword (void *p, uword val, uword count)
 #endif
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 static_always_inline void
 clib_ptr_array_pad_tail (void **ptrs, u32 count, u32 n_pad)
 {
   uword *p = (uword *) ptrs;
   ASSERT (count > 0);
+  CLIB_ASSUME(count > 0);
   clib_memset_uword (p + count, p[count - 1], n_pad);
 }
+#pragma GCC diagnostic pop
 
 static_always_inline void
 clib_memset_u16 (void *p, u16 val, uword count)
