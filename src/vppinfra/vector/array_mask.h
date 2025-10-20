@@ -6,6 +6,109 @@
 #define included_vector_array_mask_h
 #include <vppinfra/clib.h>
 
+/** \brief Mask array of 16-bit elemments
+
+    @param src source array of u16 elements
+    @param mask use to mask the values of source array
+    @param n_elts number of elements in the source array
+    @return masked values are return in source array
+*/
+
+static_always_inline void
+clib_array_mask_u16 (u16 *src, u16 mask, u32 n_elts)
+{
+#if defined(CLIB_HAVE_VEC512)
+  u16x32 mask32 = u16x32_splat (mask);
+  if (n_elts <= 32)
+    {
+      u32 m = pow2_mask (n_elts);
+      u16x32 r = u16x32_mask_load_zero (src, m);
+      u16x32_mask_store (r & mask32, src, m);
+      return;
+    }
+  for (; n_elts >= 32; n_elts -= 32, src += 32)
+    *((u16x32u *) src) &= mask32;
+  *((u16x32u *) (src + n_elts - 32)) &= mask32;
+#elif defined(CLIB_HAVE_VEC256)
+  u16x16 mask16 = u16x16_splat (mask);
+#if defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  if (n_elts <= 16)
+    {
+      u32 m = pow2_mask (n_elts);
+      u16x16 r = u16x16_mask_load_zero (src, m);
+      u16x16_mask_store (r & mask16, src, m);
+      return;
+    }
+#else
+  if (PREDICT_FALSE (n_elts < 8))
+    {
+      if (n_elts & 4)
+	{
+	  src[0] &= mask;
+	  src[1] &= mask;
+	  src[2] &= mask;
+	  src[3] &= mask;
+	  src += 4;
+	}
+      if (n_elts & 2)
+	{
+	  src[0] &= mask;
+	  src[1] &= mask;
+	  src += 2;
+	}
+      if (n_elts & 1)
+	src[0] &= mask;
+      return;
+    }
+  if (n_elts <= 16)
+    {
+      u16x8 mask8 = u16x8_splat (mask);
+      *(u16x8u *) src &= mask8;
+      *(u16x8u *) (src + n_elts - 8) &= mask8;
+      return;
+    }
+#endif
+  for (; n_elts >= 16; n_elts -= 16, src += 16)
+    *((u16x16u *) src) &= mask16;
+  *((u16x16u *) (src + n_elts - 16)) &= mask16;
+#elif defined(CLIB_HAVE_VEC128)
+  u16x8 mask8 = u16x8_splat (mask);
+
+  if (PREDICT_FALSE (n_elts < 8))
+    {
+      if (n_elts & 4)
+	{
+	  src[0] &= mask;
+	  src[1] &= mask;
+	  src[2] &= mask;
+	  src[3] &= mask;
+	  src += 4;
+	}
+      if (n_elts & 2)
+	{
+	  src[0] &= mask;
+	  src[1] &= mask;
+	  src += 2;
+	}
+      if (n_elts & 1)
+	src[0] &= mask;
+      return;
+    }
+
+  for (; n_elts >= 8; n_elts -= 8, src += 8)
+    *((u16x8u *) src) &= mask8;
+  *((u16x8u *) (src + n_elts - 8)) &= mask8;
+  return;
+#else
+  while (n_elts > 0)
+    {
+      src[0] &= mask;
+      src++;
+      n_elts--;
+    }
+#endif
+}
+
 /** \brief Mask array of 32-bit elemments
 
     @param src source array of u32 elements

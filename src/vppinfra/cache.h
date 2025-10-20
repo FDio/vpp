@@ -124,6 +124,14 @@ clib_prefetch_store (void *p)
   __builtin_prefetch (p, /* rw */ 1, /* locality */ 3);
 }
 
+static_always_inline void
+clib_cacheline_demote (void *p)
+{
+#if __has_builtin(__builtin_ia32_cldemote)
+  __builtin_ia32_cldemote (p);
+#endif
+}
+
 #endif /* included_clib_cache_h */
 
 
