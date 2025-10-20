@@ -725,7 +725,8 @@ vlib_buffer_main_alloc (vlib_main_t * vm)
   if (vm->buffer_main)
     return;
 
-  vm->buffer_main = bm = clib_mem_alloc (sizeof (bm[0]));
+  vm->buffer_main = bm =
+    clib_mem_alloc_aligned (sizeof (bm[0]), CLIB_CACHE_LINE_BYTES);
   clib_memset (vm->buffer_main, 0, sizeof (bm[0]));
   bm->default_data_size = VLIB_BUFFER_DEFAULT_DATA_SIZE;
 }
