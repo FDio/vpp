@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42d2bd37_717acb2c",
+        "filename": "src/plugins/hs_apps/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Remember to `git add vcl_cfg_test.c` and then add a python test that uses this app. Just add another vcl test in test_vcl.py",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46a712c5_7add1f42",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "VCFG_DBG to indicate that we\u0027re going to attempt to read configuration from env variables and config file",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b8b1849c_0a4d2b5b",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Take this comment out",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7919685c_38e77ccf",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Internal VCL configuration structure. Makes use of VPP internal types like vectors",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37d8655d_0120cbf0",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Maybe move lower, to utiliy/heap management functions. You can add them under utiliy, I guess ..",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9e1b465_43cfdeb0",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1458,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Let\u0027s decide in this function is use_pid_suffix is needed based on app_name value. That is, if app_name is 0/NULL, we use pid, otherwise we use what we have been given",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab5818ff_3d308827",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1488,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "We can reduce this to just VDBG(), without if, and maybe add another debug message on the path where cfg is provided, to indicate that we\u0027ve received explicit config instead of reading it from env variables/config files.",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79a258b0_50443e5d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1582,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Remove curly braces",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f26d538_7464e4bd",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1587,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "I guess this needs to be removed",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af2d482c_1e74f8e9",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1594,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "On the first branch, add VDBG to indicate that config was provided explicitly and on the else branch, maybe do something like `VDBG(0, \"no config provided, using defaults\");` to indicate that we\u0027re not going to read the environment variables. \n\nAnd you can remove curly braces.",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f110358c_1bed15d3",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1598,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "See previous comment. In theory we should be okay to just call `vppcom_app_init_common (user_cfg-\u003eapp_name)` here and let `vppcom_app_init_common` if it wants to use pid suffix or not",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e7afcf4_c231e567",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T21:55:30Z",
+      "side": 1,
+      "message": "Do we need this? Maybe try to build with it commented out",
+      "revId": "002579c04e702523de5b48f2a8853bb7d6dfb8a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
