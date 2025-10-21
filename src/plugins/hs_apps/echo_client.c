@@ -650,41 +650,6 @@ ec_cleanup (ec_main_t *ecm)
 }
 
 static int
-quic_ec_qsession_connected_callback (u32 app_index, u32 api_context,
-				     session_t *s, session_error_t err)
-{
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  ec_main_t *ecm = &ec_main;
-  vnet_connect_args_t _a, *a = &_a;
-  u32 stream_n;
-  int rv;
-
-  ec_dbg ("QUIC Connection handle %d", session_handle (s));
-
-  a->uri = (char *) ecm->connect_uri;
-  if (parse_uri (a->uri, &sep))
-    return -1;
-  sep.parent_handle = session_handle (s);
-
-  for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
-    {
-      clib_memset (a, 0, sizeof (*a));
-      a->app_index = ecm->app_index;
-      a->api_context = -2 - api_context;
-      clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-
-      ec_dbg ("QUIC opening stream %d", stream_n);
-      if ((rv = vnet_connect (a)))
-	{
-	  clib_error ("Stream session %d opening failed: %d", stream_n, rv);
-	  return -1;
-	}
-      ec_dbg ("QUIC stream %d connected", stream_n);
-    }
-  return 0;
-}
-
-static int
 ec_ctrl_send (hs_test_cmd_t cmd)
 {
   ec_main_t *ecm = &ec_main;
@@ -735,7 +700,11 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
   ec_main_t *ecm = &ec_main;
   ec_session_t *es;
   ec_worker_t *wrk;
-  clib_thread_index_t thread_index;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  vnet_connect_args_t _a, *a = &_a;
+  session_t *stream_session;
+  u32 stream_n;
+  int rv;
 
   if (PREDICT_FALSE (api_context == HS_CTRL_HANDLE))
     return ec_ctrl_session_connected_callback (s);
@@ -751,31 +720,42 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
       return 0;
     }
 
-  if (s->listener_handle == SESSION_INVALID_HANDLE)
-    return quic_ec_qsession_connected_callback (app_index, api_context, s,
-						err);
-  ec_dbg ("STREAM Connection callback %d", api_context);
+  ASSERT (s->listener_handle == SESSION_INVALID_HANDLE);
+  ASSERT (!(s->flags & SESSION_F_STREAM));
 
-  thread_index = s->thread_index;
-  ASSERT (thread_index == vlib_get_thread_index ()
-	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
+  ec_dbg ("QUIC Connection handle %d", session_handle (s));
 
-  wrk = ec_worker_get (thread_index);
+  clib_memset (a, 0, sizeof (*a));
+  a->app_index = ecm->app_index;
+  sep.parent_handle = session_handle (s);
+  sep.transport_proto = TRANSPORT_PROTO_QUIC;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+  wrk = ec_worker_get (s->thread_index);
 
-  /*
-   * Setup session
-   */
-  es = ec_session_alloc (wrk);
-  hs_test_app_session_init (es, s);
+  for (stream_n = 0; stream_n < ecm->quic_streams; stream_n++)
+    {
+      ec_dbg ("QUIC opening stream %d", stream_n);
+      es = ec_session_alloc (wrk);
+      a->api_context = es->session_index;
+      if ((rv = vnet_connect_stream (a)))
+	{
+	  clib_error ("Stream session %d opening failed: %U", stream_n,
+		      format_session_error, rv);
+	  ecm->run_test = EC_EXITING;
+	  signal_evt_to_cli (EC_CLI_CONNECTS_FAILED);
+	  return -1;
+	}
+      ec_dbg ("QUIC stream %d connected", stream_n);
+      stream_session = session_get_from_handle (a->sh);
+      hs_test_app_session_init (es, stream_session);
+      es->bytes_to_send = ecm->bytes_to_send;
+      es->bytes_to_receive = ecm->echo_bytes ? ecm->bytes_to_send : 0ULL;
+      es->vpp_session_handle = a->sh;
+      es->vpp_session_index = stream_session->session_index;
+      vec_add1 (wrk->conn_indices, es->session_index);
+    }
 
-  es->bytes_to_send = ecm->bytes_to_send;
-  es->bytes_to_receive = ecm->echo_bytes ? ecm->bytes_to_send : 0ULL;
-  es->vpp_session_handle = session_handle (s);
-  es->vpp_session_index = s->session_index;
-  s->opaque = es->session_index;
-
-  vec_add1 (wrk->conn_indices, es->session_index);
-  clib_atomic_fetch_add (&ecm->ready_connections, 1);
+  clib_atomic_fetch_add (&ecm->ready_connections, ecm->quic_streams);
   if (ecm->ready_connections == ecm->expected_connections)
     {
       ecm->run_test = EC_RUNNING;
