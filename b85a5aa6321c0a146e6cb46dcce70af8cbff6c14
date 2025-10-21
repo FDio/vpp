@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "661a1fa1_61f8d2a3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:45:00Z",
+      "side": 1,
+      "message": "quick nit. I think it\u0027s good for now",
+      "revId": "b85a5aa6321c0a146e6cb46dcce70af8cbff6c14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f10b397a_261cb095",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:45:00Z",
+      "side": 1,
+      "message": "connect_stream",
+      "revId": "b85a5aa6321c0a146e6cb46dcce70af8cbff6c14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
