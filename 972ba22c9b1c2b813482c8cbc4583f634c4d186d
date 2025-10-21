@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b7ab8e9_4d1b32ff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-21T09:23:56Z",
+      "side": 1,
+      "message": "Hi Anna, thanks! Does it fix a real bug you encountered?\nIf so, can you share the scenario, and contribute a testcase?",
+      "revId": "972ba22c9b1c2b813482c8cbc4583f634c4d186d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
