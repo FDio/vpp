@@ -1230,6 +1230,8 @@ quic_quicly_connect_stream (void *quic_conn, void **quic_stream,
       QUIC_DBG (2, "quicly_open_stream() failed with %d", rv);
       /* TODO: Define appropriate QUIC return values for QUIC VFT's!
        */
+      if (rv == QUICLY_TRANSPORT_ERROR_STREAM_LIMIT)
+	return SESSION_E_MAX_STREAMS_HIT;
       return -1;
     }
 

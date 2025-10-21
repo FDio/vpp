@@ -151,6 +151,7 @@ class QUICEchoIntTestCase(QUICTestCase):
 
     test_bytes = " test-bytes"
     extra_vpp_config = ["session", "{", "enable", "poll-main", "}"]
+    vpp_worker_count = 2
 
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
@@ -177,7 +178,6 @@ class QUICEchoIntTestCase(QUICTestCase):
             self.assertNotIn("failed", error)
 
 
-@tag_fixme_vpp_workers
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
 
@@ -187,7 +187,6 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
         self.client("bytes", "2m")
 
 
-@tag_fixme_vpp_workers
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
 
@@ -201,7 +200,6 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
         self.client("bytes", "2m")
 
 
-@tag_fixme_vpp_workers
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
 
