@@ -361,9 +361,97 @@ quic_connect (transport_endpoint_cfg_t * tep)
 
   quic_session = session_get_from_handle_if_valid (sep->parent_handle);
   if (quic_session)
-    return quic_connect_stream (quic_session, sep);
+    {
+      clib_warning ("deprecated, use vnet_connect_stream to open stream");
+      return quic_connect_stream (quic_session, sep);
+    }
   else
     return quic_connect_connection (sep);
+}
+
+static int
+quic_proto_connect_stream (transport_endpoint_cfg_t *tep,
+			   session_t *stream_session, u32 *conn_index)
+{
+  quic_main_t *qm = &quic_main;
+  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) tep;
+  session_t *quic_session;
+  sep = (session_endpoint_cfg_t *) tep;
+  u32 sctx_index;
+  quic_ctx_t *qctx, *sctx;
+  quic_stream_data_t *stream_data;
+  void *conn;
+  void *stream;
+  u8 is_unidir;
+  int rv;
+
+  quic_session = session_get_from_handle (sep->parent_handle);
+
+  /*  Find base session to which the user want to attach a stream */
+  QUIC_DBG (2, "Connect stream: session 0x%lx", sep->parent_handle);
+  if (session_type_transport_proto (quic_session->session_type) !=
+      TRANSPORT_PROTO_QUIC)
+    {
+      QUIC_ERR ("received incompatible session");
+      return SESSION_E_UNKNOWN;
+    }
+
+  sctx_index = quic_ctx_alloc (
+    qm, quic_session->thread_index); /*  Allocate before we get pointers */
+  sctx = quic_ctx_get (sctx_index, quic_session->thread_index);
+  qctx =
+    quic_ctx_get (quic_session->connection_index, quic_session->thread_index);
+  if (quic_ctx_is_stream (qctx))
+    {
+      QUIC_ERR ("session is a stream");
+      quic_ctx_free (qm, sctx);
+      return SESSION_E_UNKNOWN;
+    }
+
+  sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
+  sctx->parent_app_id = qctx->parent_app_id;
+  sctx->quic_connection_ctx_id = qctx->c_c_index;
+  sctx->c_c_index = sctx_index;
+  sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  sctx->flags |= QUIC_F_IS_STREAM;
+
+  if (!(conn = qctx->conn))
+    return SESSION_E_UNKNOWN;
+
+  is_unidir = sep->transport_flags & TRANSPORT_CFG_F_UNIDIRECTIONAL;
+  rv = quic_eng_connect_stream (conn, &stream, &stream_data, is_unidir);
+  if (rv)
+    {
+      QUIC_DBG (1,
+		"Connect stream: failed %d, conn %p, stream %p, stream_data "
+		"%p, unidir %d",
+		rv, conn, &stream, &stream_data, is_unidir);
+      return rv;
+    }
+  quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
+
+  sctx->stream = stream;
+  sctx->crypto_context_index = qctx->crypto_context_index;
+  sctx->c_s_index = stream_session->session_index;
+  stream_data->ctx_id = sctx->c_c_index;
+  stream_data->thread_index = sctx->c_thread_index;
+  stream_data->app_rx_data_len = 0;
+  stream_data->app_tx_data_len = 0;
+
+  *conn_index = sctx_index;
+
+  QUIC_DBG (
+    2, "Connect stream: stream_session handle 0x%lx, sctx_index %u, thread %u",
+    session_handle (stream_session), sctx_index, qctx->c_thread_index);
+  if (is_unidir)
+    stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
+  svm_fifo_init_ooo_lookup (stream_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (stream_session->tx_fifo, 1 /* ooo deq */);
+  svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
+			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+			       SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+
+  return SESSION_E_NONE;
 }
 
 static void
@@ -884,6 +972,7 @@ static clib_error_t *quic_enable (vlib_main_t *vm, u8 is_en);
 static transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect,
+  .connect_stream = quic_proto_connect_stream,
   .close = quic_proto_on_close,
   .start_listen = quic_start_listen,
   .stop_listen = quic_stop_listen,

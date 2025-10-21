@@ -140,6 +140,7 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
       return 0;
     }
   stream_session = session_alloc (qctx->c_thread_index);
+  stream_session->flags |= SESSION_F_STREAM;
   QUIC_DBG (2, "ACCEPTED stream_session 0x%lx ctx %u",
 	    session_handle (stream_session), sctx_id);
   sctx = quic_quicly_get_quic_ctx (sctx_id, qctx->c_thread_index);
