@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f23ea42_09d99bfd",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "Remember to update these and to run `make fixstyle`",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1539ab33_859c6c32",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "We can remove this, as we\u0027re not going to test multiple workers. We can add another option -t (for timeout) and read the amount of seconds we should wait before server should exit",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f748bcc_50b17513",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "Probably you can move all the code straight into main",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1586fc14_b68c2599",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "We don\u0027t need workers we can remove these",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14c9d30a_a39cf230",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "We don\u0027t support client so vt_clu_server_worker is the only option. Probably you can move all the useful code from there into main, so we don\u0027t need this function anymore.",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7f6f9a7_4c9b2a5b",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-21T22:08:03Z",
+      "side": 1,
+      "message": "Since we may need to do some validation of bind working in vpp, probably we want to make this a while (1), alternatively we can take as input a timeout as a config variable and then just sleep for that amount of seconds",
+      "revId": "4a2af2ac71bd69ad363f51ec03cd573ab6f5a20d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
