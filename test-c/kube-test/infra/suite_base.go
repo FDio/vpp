@@ -24,7 +24,6 @@ var IsCoverage = flag.Bool("coverage", false, "use coverage run config")
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
-var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 30, "test timeout override (in minutes)")
 var TestTimeout time.Duration
 var Kubeconfig string
@@ -88,14 +87,14 @@ func (s *BaseSuite) SetupSuite() {
 }
 
 func (s *BaseSuite) TeardownTest() {
-	if *IsPersistent || *DryRun {
+	if *IsPersistent {
 		s.Skip("Skipping test teardown")
 	}
 	s.Log("[* TEST TEARDOWN]")
 }
 
 func (s *BaseSuite) TeardownSuite() {
-	if *IsPersistent || *DryRun {
+	if *IsPersistent {
 		s.Skip("Skipping suite teardown")
 	}
 	s.Log("[* SUITE TEARDOWN]")
