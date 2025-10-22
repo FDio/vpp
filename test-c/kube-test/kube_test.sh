@@ -3,13 +3,11 @@
 args=
 focused_test=0
 persist_set=0
-dryrun_set=0
 debug_set=0
 debug_build=
 ginkgo_args=
 tc_names=()
 skip_names=()
-dryrun=
 no_color=
 
 for i in "$@"
@@ -47,13 +45,6 @@ case "${i}" in
     --repeat=*)
         ginkgo_args="$ginkgo_args --repeat=${i#*=}"
         ;;
-    --dryrun=*)
-        dryrun="${i#*=}"
-        if [ "$dryrun" = "true" ]; then
-            args="$args -dryrun"
-            dryrun_set=1
-        fi
-        ;;
     --no_color=*)
         no_color="${i#*=}"
         if [ "$no_color" = "true" ]; then
@@ -79,8 +70,8 @@ for skip in "${skip_names[@]}"; do
     ginkgo_args="$ginkgo_args --skip $skip"
 done
 
-if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ] || [ $dryrun_set -eq 1 ]; }; then
-    echo -e "\e[1;31mpersist/dryrun flag is not supported while running all tests!\e[1;0m"
+if [ $focused_test -eq 0 ] && { [ $persist_set -eq 1 ]; }; then
+    echo -e "\e[1;31mpersist flag is not supported while running all tests!\e[1;0m"
     exit 2
 fi
 

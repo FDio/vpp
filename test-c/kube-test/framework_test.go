@@ -57,12 +57,12 @@ func TestKube(t *testing.T) {
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "kube-test")
-	if *DryRun || *IsPersistent {
+	if *IsPersistent {
 		fmt.Println("\033[36m" + "Use 'make cleanup-kube' to remove pods " +
 			"and namespaces. \nPPID: " + Ppid + "\033[0m")
 	}
 	// deleting the namespace here since we use the same namespace for every suite
-	if !*DryRun || !*IsPersistent {
+	if !*IsPersistent {
 		fmt.Println("Deleting kube-test namespace")
 		cmd := exec.Command("kubectl", "delete", "ns", "kube-test"+Ppid)
 		fmt.Println(cmd.String())

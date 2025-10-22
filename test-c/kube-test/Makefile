@@ -70,7 +70,6 @@ help:
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
 	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
-	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " TIMEOUT=[minutes]        - test timeout override (30 minutes by default)"
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
