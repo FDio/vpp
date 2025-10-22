@@ -161,6 +161,7 @@ retry:
 	  break;
 
 	case STAT_DIR_TYPE_SCALAR_INDEX:
+	case STAT_DIR_TYPE_GAUGE:
 	  s = dump_scalar_index (&res[i], s, used_only);
 	  break;
 
@@ -169,6 +170,8 @@ retry:
 	  break;
 
 	case STAT_DIR_TYPE_EMPTY:
+	case STAT_DIR_TYPE_RING_BUFFER:
+	case STAT_DIR_TYPE_HISTOGRAM_LOG2:
 	  break;
 
 	default:
