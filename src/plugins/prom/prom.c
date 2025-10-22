@@ -169,6 +169,9 @@ retry:
 	  break;
 
 	case STAT_DIR_TYPE_EMPTY:
+	case STAT_DIR_TYPE_RING_BUFFER:
+	case STAT_DIR_TYPE_HISTOGRAM_LOG2:
+	case STAT_DIR_TYPE_GAUGE:
 	  break;
 
 	default:
