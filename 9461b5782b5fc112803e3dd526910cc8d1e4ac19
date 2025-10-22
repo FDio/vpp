@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c7e4930_2c908227",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-22T08:51:28Z",
+      "side": 1,
+      "message": "I am a bit afraid it could be counter-productive:\n 1) we should be able to tell from the backtrace which workers are not parked on the barrier\n 2) when going through workers and dumping their state, we are further delaying the call to os_panic(): if the problematic workers are close to the limit, they might have finished their processing and parked at the barrier by the time we reach the backtrace dumping in os_panic(). That means we might know which workers were problematic but not what they were doing. I have seen that happening already with the current code.\n\nCould you share more insight on when it can be helpful?",
+      "revId": "9461b5782b5fc112803e3dd526910cc8d1e4ac19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
