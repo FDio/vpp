@@ -219,6 +219,7 @@ http_ho_conn_alloc (void)
   pool_get_aligned_safe (hm->ho_conn_pool, hc, CLIB_CACHE_LINE_BYTES);
   clib_memset (hc, 0, sizeof (*hc));
   hc->hc_hc_index = hc - hm->ho_conn_pool;
+  hc->c_thread_index = transport_cl_thread ();
   hc->hc_pa_session_handle = SESSION_INVALID_HANDLE;
   hc->hc_tc_session_handle = SESSION_INVALID_HANDLE;
   hc->timeout = HTTP_CONN_TIMEOUT;
@@ -1377,26 +1378,36 @@ format_http_transport_listener (u8 *s, va_list *args)
 }
 
 static u8 *
+format_http_ho_conn_id (u8 *s, va_list *args)
+{
+  http_conn_t *ho_hc = va_arg (*args, http_conn_t *);
+
+  s = format (s, "[%d:%d][H] half-open app_wrk %u ts %d:%d",
+	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->hc_pa_wrk_index,
+	      session_thread_from_handle (ho_hc->hc_tc_session_handle),
+	      session_index_from_handle (ho_hc->hc_tc_session_handle));
+
+  return s;
+}
+
+static u8 *
 format_http_transport_half_open (u8 *s, va_list *args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
   http_conn_t *ho_hc;
-  session_t *tcp_ho;
 
   ho_hc = http_ho_conn_get (ho_index);
-  tcp_ho = session_get_from_handle_if_valid (ho_hc->hc_tc_session_handle);
 
-  if (tcp_ho)
-    s =
-      format (s, "[%d:%d][H] half-open app_wrk %u ts %d:%d",
-	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->hc_pa_wrk_index,
-	      tcp_ho->thread_index, tcp_ho->session_index);
-  else
-    s =
-      format (s, "[%d:%d][H] half-open app_wrk %u (postponed cleanup)",
-	      ho_hc->c_thread_index, ho_hc->c_s_index, ho_hc->hc_pa_wrk_index);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_http_ho_conn_id, ho_hc);
+
+  if (verbose)
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
+		(ho_hc->hc_tc_session_handle == SESSION_INVALID_HANDLE) ?
+		  (ho_hc->flags & HTTP_CONN_F_HO_DONE) ? "CLOSED" :
+							 "CLOSED-PNDG" :
+		  "CONNECTING");
 
   return s;
 }
