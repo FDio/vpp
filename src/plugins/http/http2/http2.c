@@ -1097,7 +1097,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   hpack_request_control_data_t control_data;
   u8 flags = 0;
-  u32 n_written, stream_id, n_deq, max_write, headers_len, headers_left;
+  u32 n_written, n_deq, max_write, headers_len, headers_left;
   http2_conn_ctx_t *h2c;
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
 
@@ -1197,9 +1197,6 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   max_write -= HTTP2_FRAME_HEADER_SIZE;
   max_write = clib_min (max_write, h2c->peer_settings.max_frame_size);
 
-  stream_id = http2_conn_get_next_stream_id (h2c);
-  http2_req_set_stream_id (req, h2c, stream_id, 1);
-
   http_io_as_dequeue_notify (&req->base, n_deq);
 
   if (headers_len <= max_write)
@@ -1240,7 +1237,7 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
       *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_CONTINUATION;
     }
 
-  http2_frame_write_headers_header (headers_len, stream_id, flags, fh);
+  http2_frame_write_headers_header (headers_len, req->stream_id, flags, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
 			     { request, headers_len } };
   n_written = http_io_ts_write_segs (hc, segs, 2, 0);
@@ -1904,6 +1901,9 @@ http2_req_state_wait_app_method (http_conn_t *hc, http2_req_t *req,
   he = clib_llist_elt (wrk->req_pool, h2c->new_tx_streams);
   clib_llist_add_tail (wrk->req_pool, sched_list, req, he);
   http2_conn_schedule (h2c, hc->c_thread_index);
+
+  u32 stream_id = http2_conn_get_next_stream_id (h2c);
+  http2_req_set_stream_id (req, h2c, stream_id, 1);
 
   req->dispatch_headers_cb = http2_sched_dispatch_req_headers;
   http_req_state_change (&req->base, HTTP_REQ_STATE_APP_IO_MORE_DATA);
@@ -3196,6 +3196,15 @@ http2_transport_close_callback (http_conn_t *hc)
       if (clib_llist_elt_is_linked (h2c, sched_list))
 	clib_llist_remove (wrk->conn_pool, sched_list, h2c);
       http_disconnect_transport (hc);
+      /* Notify app that transport for parent req is closing to avoid
+       * potentially deleting the connection in ready state on transport
+       * cleanup */
+      if (!(hc->flags & HTTP_CONN_F_IS_SERVER) &&
+	  h2c->parent_req_index != SESSION_INVALID_INDEX)
+	{
+	  req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+	  session_transport_closing_notify (&req->base.connection);
+	}
     }
 }
 
