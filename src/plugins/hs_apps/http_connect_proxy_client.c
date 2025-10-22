@@ -22,7 +22,16 @@
 
 #define HCPC_TIMER_HANDLE_INVALID ((u32) ~0)
 
-#define HCPC_EVENT_PROXY_CONNECTED 1
+#define foreach_hcpc_event                                                    \
+  _ (PROXY_CONNECTED, "proxy-connected")                                      \
+  _ (PROXY_DISCONNECTED, "proxy-disconnected")
+
+typedef enum
+{
+#define _(sym, str) HCPC_EVENT_##sym,
+  foreach_hcpc_event
+#undef _
+} hcpc_event_t;
 
 #define foreach_hcpc_session_state                                            \
   _ (CREATED, "CREATED")                                                      \
@@ -498,13 +507,10 @@ hcpc_delete_session (session_t *s, u8 is_http)
 }
 
 static void
-hcpc_http_stop_listeners_rpc (void *args)
+hcpc_http_stop_listeners ()
 {
-  vlib_main_t *vm = vlib_get_main ();
   hcpc_main_t *hcpcm = &hcpc_main;
   hcpc_listener_t *l;
-
-  vlib_worker_thread_barrier_sync (vm);
 
   pool_foreach (l, hcpcm->listeners)
     {
@@ -515,8 +521,6 @@ hcpc_http_stop_listeners_rpc (void *args)
 	  vnet_unlisten (&a);
 	}
     }
-
-  vlib_worker_thread_barrier_release (vm);
 }
 
 static void
@@ -532,7 +536,8 @@ hcpc_http_connection_closed ()
       ps->http_disconnected = 1;
     }
 
-  session_send_rpc_evt_to_thread (0, hcpc_http_stop_listeners_rpc, 0);
+  vlib_process_signal_event_mt (vlib_get_main (), hcpcm->process_node_index,
+				HCPC_EVENT_PROXY_DISCONNECTED, 0);
 }
 
 static void
@@ -889,6 +894,7 @@ hcpc_connect_http_connection ()
   clib_memcpy (&a->sep_ext, &hcpcm->proxy_server_sep,
 	       sizeof (hcpcm->proxy_server_sep));
   a->app_index = hcpcm->http_app_index;
+  a->api_context = ~0;
 
   if (hcpcm->proxy_server_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     {
@@ -1046,7 +1052,12 @@ hcpc_http_session_connected_callback (u32 app_index, u32 session_index,
 
       /* connect to http proxy server failed */
       if (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE)
-	return 0;
+	{
+	  vlib_process_signal_event_mt (vlib_get_main (),
+					hcpcm->process_node_index,
+					HCPC_EVENT_PROXY_DISCONNECTED, 0);
+	  return 0;
+	}
 
       clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
       ps = hcpc_session_get (session_index);
@@ -1716,6 +1727,12 @@ hcpc_event_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	  hcpc_start_listen ();
 	  vlib_worker_thread_barrier_release (vm);
 	  break;
+	case HCPC_EVENT_PROXY_DISCONNECTED:
+	  vlib_worker_thread_barrier_sync (vm);
+	  hcpc_http_stop_listeners ();
+	  vlib_worker_thread_barrier_release (vm);
+	  hcpc_connect_http_connection ();
+	  break;
 	case ~0:
 	  /* TODO: proxy connection keep-alive */
 	  /* expire timers */
@@ -1724,7 +1741,6 @@ hcpc_event_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	  tw_timer_expire_timers_2t_1w_2048sl (&hcpcm->tw, now);
 	  clib_spinlock_unlock_if_init (&hcpcm->tw_lock);
 	  break;
-	/* TODO: auto proxy reconnect */
 	default:
 	  HCPC_DBG ("unknown event %u", event_type);
 	  break;
