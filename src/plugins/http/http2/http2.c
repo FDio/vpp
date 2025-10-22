@@ -3196,6 +3196,15 @@ http2_transport_close_callback (http_conn_t *hc)
       if (clib_llist_elt_is_linked (h2c, sched_list))
 	clib_llist_remove (wrk->conn_pool, sched_list, h2c);
       http_disconnect_transport (hc);
+      /* Notify app that transport for parent req is closing to avoid
+       * potentially deleting the connection in ready state on transport
+       * cleanup */
+      if (!(hc->flags & HTTP_CONN_F_IS_SERVER) &&
+	  h2c->parent_req_index != SESSION_INVALID_INDEX)
+	{
+	  req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+	  session_transport_closing_notify (&req->base.connection);
+	}
     }
 }
 
