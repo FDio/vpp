@@ -1049,16 +1049,21 @@ format_tls_half_open (u8 * s, va_list * args)
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
   u32 __clib_unused verbose = va_arg (*args, u32);
-  session_t *tcp_ho;
   tls_ctx_t *ho_ctx;
 
   ho_ctx = tls_ctx_half_open_get (ho_index);
 
-  tcp_ho = session_get_from_handle (ho_ctx->tls_session_handle);
   s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u ts %d:%d",
 	      ho_ctx->c_thread_index, ho_ctx->c_s_index, "TLS",
 	      ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
-	      tcp_ho->thread_index, tcp_ho->session_index);
+	      session_thread_from_handle (ho_ctx->tls_session_handle),
+	      session_index_from_handle (ho_ctx->tls_session_handle));
+  if (verbose)
+    s = format (
+      s, "%-" SESSION_CLI_STATE_LEN "s",
+      (ho_ctx->tls_session_handle == SESSION_INVALID_HANDLE) ?
+	((ho_ctx->flags & TLS_CONN_F_HO_DONE) ? "CLOSED" : "CLOSED-PNDG") :
+	"CONNECTING");
 
   return s;
 }
