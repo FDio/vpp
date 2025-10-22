@@ -1255,7 +1255,7 @@ ip_neighbor_populate (ip_address_family_t af, u32 sw_if_index)
 }
 
 void
-ip_neighbor_flush (ip_address_family_t af, u32 sw_if_index)
+ip_neighbor_flush (ip_address_family_t af, u32 sw_if_index, u8 flush_static)
 {
   index_t *ipnis = NULL, *ipni;
   ip_neighbor_t *ipn;
@@ -1267,9 +1267,9 @@ ip_neighbor_flush (ip_address_family_t af, u32 sw_if_index)
 
   pool_foreach (ipn, ip_neighbor_pool)
    {
-    if (ip_neighbor_get_af(ipn) == af &&
-        ipn->ipn_key->ipnk_sw_if_index == sw_if_index &&
-        ip_neighbor_is_dynamic (ipn))
+    if (ip_neighbor_get_af (ipn) == af &&
+	ipn->ipn_key->ipnk_sw_if_index == sw_if_index &&
+	(ip_neighbor_is_dynamic (ipn) || flush_static))
       vec_add1 (ipnis, ipn - ip_neighbor_pool);
   }
 
@@ -1352,7 +1352,8 @@ ip_neighbor_interface_admin_change (vnet_main_t * vnm,
   else
     {
       /* admin down, flush all neighbours */
-      FOR_EACH_IP_ADDRESS_FAMILY (af) ip_neighbor_flush (af, sw_if_index);
+      FOR_EACH_IP_ADDRESS_FAMILY (af)
+      ip_neighbor_flush (af, sw_if_index, 0 /* flush_static */);
     }
 
   return (NULL);
@@ -1375,7 +1376,8 @@ ip_neighbor_add_del_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
     {
       ip_address_family_t af;
 
-      FOR_EACH_IP_ADDRESS_FAMILY (af) ip_neighbor_flush (af, sw_if_index);
+      FOR_EACH_IP_ADDRESS_FAMILY (af)
+      ip_neighbor_flush (af, sw_if_index, 1 /* flush_static */);
     }
 
   if (is_add)
