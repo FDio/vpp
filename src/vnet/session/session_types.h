@@ -34,7 +34,7 @@ typedef union session_handle_tu_
   struct
   {
     u32 session_index;
-    clib_thread_index_t thread_index;
+    u32 thread_index;
   };
 } __attribute__ ((__transparent_union__)) session_handle_tu_t;
 

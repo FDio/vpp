@@ -908,6 +908,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
     {
       ho_hc = http_ho_conn_get (hc->ho_index);
       /* in chain with TLS there is race on half-open cleanup */
+      clib_warning ("ho done %u", hc->ho_index);
       __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
     }
 
