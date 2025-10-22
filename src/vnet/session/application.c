@@ -928,7 +928,7 @@ application_free (application_t * app)
   /*
    * Cleanup remaining state
    */
-  if (application_is_builtin (app))
+  if (app->name)
     application_name_table_del (app);
 
   hash_free (app->evt_collector_session_filter);
