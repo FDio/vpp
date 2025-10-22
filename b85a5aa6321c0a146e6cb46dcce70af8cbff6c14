@@ -33,6 +33,24 @@
       "message": "connect_stream",
       "revId": "b85a5aa6321c0a146e6cb46dcce70af8cbff6c14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f74f43d_0cd82bfb",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-22T07:52:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f10b397a_261cb095",
+      "revId": "b85a5aa6321c0a146e6cb46dcce70af8cbff6c14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
