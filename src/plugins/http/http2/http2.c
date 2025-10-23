@@ -469,10 +469,15 @@ http2_connection_error (http_conn_t *hc, http2_error_t error,
 	    app_worker_connect_notify (app_wrk, 0, SESSION_E_UNKNOWN,
 				       hc->hc_pa_app_api_ctx);
 	}
-      else
+      else if (!(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
 	{
 	  req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->base.connection);
+	}
+      else
+	{
+	  http_disconnect_transport (hc);
+	  return;
 	}
     }
   if (clib_llist_elt_is_linked (h2c, sched_list))

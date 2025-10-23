@@ -937,6 +937,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
       HTTP_DBG (1, "failed to allocate fifos");
       session_free (as);
       hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
+      req->hr_pa_session_handle = SESSION_INVALID_HANDLE;
       app_worker_connect_notify (app_wrk, 0, rv, parent_app_api_ctx);
       return rv;
     }
