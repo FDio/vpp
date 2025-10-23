@@ -124,7 +124,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, rv;
   u64 bytes_to_send;
-  u32 bytes_this_chunk, test_buf_offset;
+  u32 test_buf_offset;
   svm_fifo_t *f = es->tx_fifo;
 
   test_buf_len = vec_len (test_data);
@@ -137,21 +137,23 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
   if (ecm->throughput)
     bytes_to_send = clib_min (es->bytes_paced_current, bytes_to_send);
   test_buf_offset = es->bytes_sent % test_buf_len;
-
-  bytes_this_chunk = clib_min (test_buf_len - test_buf_offset, bytes_to_send);
+  /* make sure we're sending evenly sized dgrams */
+  if (ecm->transport_proto == TRANSPORT_PROTO_UDP &&
+      (test_buf_len - test_buf_offset) < bytes_to_send)
+    test_buf_offset = 0;
+  bytes_to_send = clib_min (test_buf_len - test_buf_offset, bytes_to_send);
 
   if (!es->is_dgram)
     {
       if (ecm->no_copy)
 	{
-	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_this_chunk);
+	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_to_send);
 	  svm_fifo_enqueue_nocopy (f, rv);
 	  session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 	}
       else
-	rv =
-	  app_send_stream ((app_session_t *) es, test_data + test_buf_offset,
-			   bytes_this_chunk, 0);
+	rv = app_send_stream ((app_session_t *) es,
+			      test_data + test_buf_offset, bytes_to_send, 0);
     }
   else
     {
@@ -167,7 +169,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	  session_dgram_hdr_t hdr;
 	  app_session_transport_t *at = &es->transport;
 
-	  rv = clib_min (max_enqueue, bytes_this_chunk);
+	  rv = clib_min (max_enqueue, bytes_to_send);
 
 	  hdr.data_length = rv;
 	  hdr.data_offset = 0;
@@ -185,9 +187,9 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	}
       else
 	{
-	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
+	  bytes_to_send = clib_min (bytes_to_send, max_enqueue);
 	  if (!ecm->throughput)
-	    bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
+	    bytes_to_send = clib_min (bytes_to_send, 1460);
 	  if (ecm->include_buffer_offset)
 	    {
 	      /* Include buffer offset info to also be able to verify
@@ -195,7 +197,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	      svm_fifo_seg_t data_segs[3] = {
 		{ NULL, 0 },
 		{ (u8 *) &test_buf_offset, sizeof (u32) },
-		{ test_data + test_buf_offset, bytes_this_chunk }
+		{ test_data + test_buf_offset, bytes_to_send }
 	      };
 	      if (ecm->echo_bytes &&
 		  ((es->rtt_stat & EC_UDP_RTT_TX_FLAG) == 0))
@@ -205,14 +207,14 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 		  es->rtt_stat |= EC_UDP_RTT_TX_FLAG;
 		}
 	      rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2,
-					bytes_this_chunk + sizeof (u32), 0);
+					bytes_to_send + sizeof (u32), 0);
 	      if (rv)
 		rv -= sizeof (u32);
 	    }
 	  else
-	    rv = app_send_dgram ((app_session_t *) es,
-				 test_data + test_buf_offset, bytes_this_chunk,
-				 0);
+	    rv =
+	      app_send_dgram ((app_session_t *) es,
+			      test_data + test_buf_offset, bytes_to_send, 0);
 	}
     }
 
@@ -412,24 +414,31 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
       ecm->prev_conns = vec_len (conns_this_batch);
       ecm->repeats = 0;
     }
-
-  time_now = vlib_time_now (vm);
+  if (ecm->throughput)
+    time_now = vlib_time_now (vm);
   /*
    * Handle connections in this batch
    */
   for (i = 0; i < vec_len (conns_this_batch); i++)
     {
       es = ec_session_get (wrk, conns_this_batch[i]);
-      if (ecm->throughput && time_now < es->time_to_send)
-	continue;
+      if (ecm->throughput)
+	if (time_now < es->time_to_send)
+	  continue;
 
       delete_session = 1;
-
       if (es->bytes_to_send > 0)
 	{
 	  send_data_chunk (ecm, es);
 	  if (ecm->throughput)
 	    es->time_to_send += ecm->pacing_window_len;
+	  else
+	    {
+	      while (svm_fifo_max_enqueue_prod (es->tx_fifo) >
+		       sizeof (session_dgram_hdr_t) &&
+		     es->bytes_to_send > 0)
+		send_data_chunk (ecm, es);
+	    }
 	  delete_session = 0;
 	}
 
