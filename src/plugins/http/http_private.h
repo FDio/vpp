@@ -903,6 +903,14 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   /* in chain with TLS there is race on half-open cleanup */
   __atomic_fetch_or (&ho_hc->flags, HTTP_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
+  app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
+  if (!app_wrk)
+    {
+      HTTP_DBG (1, "no app worker");
+      req->c_s_index = SESSION_INVALID_INDEX;
+      return -1;
+    }
+
   /* allocate app session and initialize */
   as = session_alloc (hc->c_thread_index);
   HTTP_DBG (1, "allocated session 0x%lx", session_handle (as));
@@ -916,19 +924,11 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
 
   /* init session fifos and notify app */
-  app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
-  if (!app_wrk)
-    {
-      HTTP_DBG (1, "no app worker");
-      hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
-      return -1;
-    }
-
   if ((rv = app_worker_init_connected (app_wrk, as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
       session_free (as);
-      hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
+      req->c_s_index = SESSION_INVALID_INDEX;
       app_worker_connect_notify (app_wrk, 0, rv, parent_app_api_ctx);
       return rv;
     }
@@ -936,6 +936,7 @@ http_conn_established (http_conn_t *hc, http_req_t *req,
   app_worker_connect_notify (app_wrk, as, 0, parent_app_api_ctx);
 
   req->hr_pa_wrk_index = as->app_wrk_index;
+  hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
 
   return 0;
 }
