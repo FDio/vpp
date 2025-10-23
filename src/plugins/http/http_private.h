@@ -869,7 +869,6 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
       HTTP_DBG (1, "failed to allocate fifos");
       req->c_s_index = SESSION_INVALID_INDEX;
       session_free (as);
-      hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
       return rv;
     }
 
@@ -882,7 +881,6 @@ http_conn_accept_request (http_conn_t *hc, http_req_t *req)
       HTTP_DBG (1, "app accept returned");
       req->c_s_index = SESSION_INVALID_INDEX;
       session_free (as);
-      hc->flags |= HTTP_CONN_F_NO_APP_SESSION;
       return rv;
     }
 

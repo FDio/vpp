@@ -2066,7 +2066,11 @@ http2_handle_headers_frame (http_conn_t *hc, http2_frame_header_t *fh)
       req = http2_conn_alloc_req (hc, 0);
       http2_req_set_stream_id (req, h2c, fh->stream_id, 0);
       req->dispatch_headers_cb = http2_sched_dispatch_resp_headers;
-      http_conn_accept_request (hc, &req->base);
+      if (http_conn_accept_request (hc, &req->base))
+	{
+	  http2_conn_free_req (h2c, req, hc->c_thread_index);
+	  return HTTP2_ERROR_INTERNAL_ERROR;
+	}
       http_req_state_change (&req->base, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
       req->stream_state = HTTP2_STREAM_STATE_OPEN;
       hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
