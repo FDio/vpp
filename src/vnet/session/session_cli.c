@@ -585,7 +585,7 @@ static clib_error_t *
 show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
-  u8 one_session = 0, do_listeners = 0, sst, do_elog = 0, do_filter = 0;
+  u8 one_session = 0, do_listeners = 0, do_elog = 0, do_filter = 0;
   u32 track_index, thread_index = 0, session_index;
   transport_proto_t transport_proto = TRANSPORT_PROTO_INVALID;
   session_state_t state = SESSION_N_STATES;
@@ -765,18 +765,18 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (do_listeners)
     {
-      sst = session_type_from_proto_and_ip (transport_proto, 1);
+      u8 sst4 = session_type_from_proto_and_ip (transport_proto, 1);
+      u8 sst6 = session_type_from_proto_and_ip (transport_proto, 0);
       vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-24s", "Listener",
 		       "App");
 
       pool_foreach (s, smm->wrk[0].sessions)  {
-	if (s->session_state != SESSION_STATE_LISTENING
-	    || s->session_type != sst)
-	  continue;
-	app_wrk = app_worker_get (s->app_wrk_index);
-	app_name = application_name_from_index (app_wrk->app_index);
-	vlib_cli_output (vm, "%U%-25v%", format_session, s, 0,
-			 app_name);
+	  if (s->session_state != SESSION_STATE_LISTENING ||
+	      (s->session_type != sst4 && s->session_type != sst6))
+	    continue;
+	  app_wrk = app_worker_get (s->app_wrk_index);
+	  app_name = application_name_from_index (app_wrk->app_index);
+	  vlib_cli_output (vm, "%U%-25v%", format_session, s, 0, app_name);
       }
       goto done;
     }
