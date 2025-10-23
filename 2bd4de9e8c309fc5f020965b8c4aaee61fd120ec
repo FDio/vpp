@@ -51,6 +51,23 @@
       "parentUuid": "2329d154_64391b0a",
       "revId": "2bd4de9e8c309fc5f020965b8c4aaee61fd120ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15ea952d_a1ea363e",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-23T13:19:42Z",
+      "side": 1,
+      "message": "isn\u0027t it better to call vlib_time_now() here? you are calling it before loop and in the end of each loop cycle anyway?",
+      "revId": "2bd4de9e8c309fc5f020965b8c4aaee61fd120ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
