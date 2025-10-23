@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c9aadc81_46eed46a",
+        "filename": "src/plugins/hs_apps/vcl/vcl_cfg_test.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-23T22:27:39Z",
+      "side": 1,
+      "message": "If error, we should stop the test. The timeout was meant as a wait after bind is successful, to be able to validate in test framework that the app successfully bound to vpp",
+      "revId": "983805475e9ff233d13c669be282517a4562b1e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3318fe5b_d173f43f",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 7
