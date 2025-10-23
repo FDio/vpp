@@ -1980,7 +1980,11 @@ http1_transport_rx_callback (http_conn_t *hc)
       ASSERT (hc->flags & HTTP_CONN_F_IS_SERVER);
       /* first request - create request ctx and notify app about new conn */
       req = http1_conn_alloc_req (hc);
-      http_conn_accept_request (hc, req);
+      if (http_conn_accept_request (hc, req))
+	{
+	  http_disconnect_transport (hc);
+	  return;
+	}
       http_stats_connections_accepted_inc (hc->c_thread_index);
       http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
       hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
