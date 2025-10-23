@@ -33,6 +33,24 @@
       "message": "you need to fix gcc build issue (it sometimes catch more than clang):\n12:02:15  /w/workspace/vpp-gcc-verify-master-ubuntu2404-x86_64/src/plugins/hs_apps/echo_client.c: In function â€˜ec_node_fnâ€™:\n12:02:15  /w/workspace/vpp-gcc-verify-master-ubuntu2404-x86_64/src/plugins/hs_apps/echo_client.c:426:12: error: â€˜time_nowâ€™ may be used uninitialized [-Werror\u003dmaybe-uninitialized]\n12:02:15    426 |         if (time_now \u003c es-\u003etime_to_send)\n12:02:15        |            ^\n12:02:15  /w/workspace/vpp-gcc-verify-master-ubuntu2404-x86_64/src/plugins/hs_apps/echo_client.c:368:7: note: â€˜time_nowâ€™ was declared here\n12:02:15    368 |   f64 time_now;\n12:02:15        |       ^~~~~~~~",
       "revId": "2bd4de9e8c309fc5f020965b8c4aaee61fd120ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a845a265_2a2e82d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T13:19:35Z",
+      "side": 1,
+      "message": "Sometimes even too much, I guess...",
+      "parentUuid": "2329d154_64391b0a",
+      "revId": "2bd4de9e8c309fc5f020965b8c4aaee61fd120ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
