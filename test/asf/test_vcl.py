@@ -872,6 +872,20 @@ class VCLThruHostStackQUIC(VCLTestCase):
             self.loop0.local_ip4,
             self.server_port,
         ]
+        self.client_bi_dir_multi_stream_quic_test_args = [
+            "-N",
+            "1000",
+            "-B",
+            "-X",
+            "-p",
+            "quic",
+            "-s",
+            "10",
+            "-q",
+            "10",
+            self.loop0.local_ip4,
+            self.server_port,
+        ]
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vcl_thru_host_stack_quic_uni_dir(self):
@@ -883,6 +897,18 @@ class VCLThruHostStackQUIC(VCLTestCase):
             self.server_quic_args,
             "vcl_test_client",
             self.client_uni_dir_quic_test_args,
+        )
+
+    @unittest.skipUnless(config.extended, "part of extended tests")
+    def test_vcl_thru_host_stack_quic_bi_dir_multi_stream(self):
+        """run VCL thru host stack bi-directional multi stream QUIC test"""
+
+        self.timeout = self.client_uni_dir_quic_timeout
+        self.thru_host_stack_test(
+            "vcl_test_server",
+            self.server_quic_args,
+            "vcl_test_client",
+            self.client_bi_dir_multi_stream_quic_test_args,
         )
 
     def tearDown(self):
