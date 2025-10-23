@@ -392,6 +392,7 @@ typedef enum
   SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY,
   SESSION_CTRL_EVT_TRANSPORT_CLOSED,
   SESSION_CTRL_EVT_HALF_CLEANUP,
+  SESSION_CTRL_EVT_CONNECT_STREAM,
 } session_evt_type_t;
 
 #define foreach_session_ctrl_evt                                              \
@@ -421,6 +422,7 @@ typedef enum
   _ (APP_WRK_RPC, app_wrk_rpc)                                                \
   _ (TRANSPORT_ATTR, transport_attr)                                          \
   _ (TRANSPORT_ATTR_REPLY, transport_attr_reply)                              \
+  _ (CONNECT_STREAM, connect)                                                 \
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
 #define FIFO_EVENT_APP_TX SESSION_IO_EVT_TX

@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
 )
 
 func init() {
-	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest,
+	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclEchoQuicTest,
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest)
 	RegisterSoloVethTests(VclRetryAttachTest)
+	RegisterVethMWTests(VclEchoQuicMWTest)
 }
 
 func getVclConfig(c *Container, ns_id_optional ...string) string {
@@ -80,7 +82,12 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	s.AssertContains(o, "Test finished at")
 }
 
-func testVclEcho(s *VethsSuite, proto string) {
+func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
+	extras := ""
+	if len(extraArgs) > 0 {
+		extras = strings.Join(extraArgs, " ")
+		extras += " "
+	}
 	srvVppCont := s.Containers.ServerVpp
 	srvAppCont := s.Containers.ServerApp
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
@@ -93,7 +100,7 @@ func testVclEcho(s *VethsSuite, proto string) {
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
-	testClientCommand := "vcl_test_client -p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
+	testClientCommand := "vcl_test_client " + extras + "-p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	o, err := echoClnContainer.Exec(true, testClientCommand)
 	s.AssertNil(err)
@@ -106,6 +113,16 @@ func VclEchoTcpTest(s *VethsSuite) {
 
 func VclEchoUdpTest(s *VethsSuite) {
 	testVclEcho(s, "udp")
+}
+
+func VclEchoQuicTest(s *VethsSuite) {
+	testVclEcho(s, "quic", "-N 1000")
+}
+
+func VclEchoQuicMWTest(s *VethsSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	testVclEcho(s, "quic", "-s 20 -q 10 -N 1000")
 }
 
 func VclHttpPostTest(s *VethsSuite) {

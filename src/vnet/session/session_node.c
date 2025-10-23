@@ -322,6 +322,61 @@ session_mq_connect_handler (session_worker_t *wrk, session_evt_elt_t *elt)
 }
 
 static void
+session_mq_connect_stream_handler (session_worker_t *wrk,
+				   session_evt_elt_t *elt)
+{
+  session_connect_msg_t *mp;
+  vnet_connect_args_t _a, *a = &_a;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+  clib_thread_index_t thread_index = wrk - session_main.wrk;
+
+  mp = session_evt_ctrl_data (wrk, elt);
+
+  if (PREDICT_FALSE (thread_index !=
+		     session_thread_from_handle (mp->parent_handle)))
+    {
+      clib_warning ("Connect on wrong thread. Dropping");
+      return;
+    }
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    {
+      return;
+    }
+
+  clib_memset (a, 0, sizeof (*a));
+  a->sep.transport_proto = mp->proto;
+  a->sep_ext.parent_handle = mp->parent_handle;
+  a->sep_ext.transport_flags = mp->flags;
+  a->api_context = mp->context;
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
+
+  if (mp->ext_config)
+    {
+      transport_endpt_ext_cfg_t *ext_cfg =
+	session_mq_get_ext_config (app, mp->ext_config);
+      a->sep_ext.ext_cfgs.data = (u8 *) ext_cfg;
+      a->sep_ext.ext_cfgs.len =
+	ext_cfg->len + TRANSPORT_ENDPT_EXT_CFG_HEADER_SIZE;
+      a->sep_ext.ext_cfgs.tail_offset = a->sep_ext.ext_cfgs.len;
+    }
+
+  if ((rv = vnet_connect_stream (a)))
+    {
+      session_worker_stat_error_inc (wrk, rv, 1);
+      app_wrk = application_get_worker (app, mp->wrk_index);
+      app_worker_connect_notify (app_wrk, 0, rv, mp->context);
+    }
+
+  if (mp->ext_config)
+    session_mq_free_ext_config (app, mp->ext_config);
+}
+
+static void
 session_mq_connect_uri_handler (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   vnet_connect_args_t _a, *a = &_a;
@@ -1731,6 +1786,9 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_CONNECT:
       session_mq_connect_handler (wrk, elt);
+      break;
+    case SESSION_CTRL_EVT_CONNECT_STREAM:
+      session_mq_connect_stream_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_CONNECT_URI:
       session_mq_connect_uri_handler (wrk, elt);
