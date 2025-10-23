@@ -373,17 +373,29 @@ esp_encrypt_chain_integ (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
 always_inline void
 esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
-		     vnet_crypto_op_t **crypto_ops,
-		     vnet_crypto_op_t **integ_ops, ipsec_sa_outb_rt_t *ort,
+		     vnet_crypto_op_t **ops, ipsec_sa_outb_rt_t *ort,
 		     u32 seq_hi, u8 *payload, u16 payload_len, u8 iv_sz,
 		     u8 icv_sz, u32 bi, vlib_buffer_t **b, vlib_buffer_t *lb,
 		     u32 hdr_len, esp_header_t *esp)
 {
-  if (ort->cipher_op_id)
+  if (ort->key_index == ~0 || !ort->op_id)
+    return;
+
+  vnet_crypto_op_t *op;
+  vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
+  vnet_crypto_op_init (op, ort->op_id);
+  op->key_index = ort->key_index;
+  op->user_data = bi;
+
+  if (PREDICT_FALSE (lb != b[0]))
     {
-      vnet_crypto_op_t *op;
-      vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->cipher_op_id);
+      /* is chained */
+      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      op->chunk_index = vec_len (ptd->chunks);
+    }
+
+  if (ort->cipher_iv_size)
+    {
       u8 *crypto_start = payload;
       /* esp_add_footer_and_icv() in esp_encrypt_inline() makes sure we always
        * have enough space for ESP header and footer which includes ICV */
@@ -392,9 +404,6 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
       /* generate the IV in front of the payload */
       void *pkt_iv = esp_generate_iv (ort, payload, iv_sz);
-
-      op->key_index = ort->cipher_key_index;
-      op->user_data = bi;
 
       if (ort->is_ctr)
 	{
@@ -436,10 +445,7 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
       if (PREDICT_FALSE (lb != b[0]))
 	{
-	  /* is chained */
-	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-	  op->chunk_index = vec_len (ptd->chunks);
-	  op->tag = vlib_buffer_get_tail (lb) - icv_sz;
+	  op->digest = vlib_buffer_get_tail (lb) - icv_sz;
 	  esp_encrypt_chain_crypto (vm, ptd, b[0], lb, icv_sz, crypto_start,
 				    crypto_len + icv_sz, &op->n_chunks);
 	}
@@ -451,35 +457,43 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	}
     }
 
-  if (ort->integ_op_id)
+  if (ort->integ_icv_size && !ort->is_aead)
     {
-      vnet_crypto_op_t *op;
-      vec_add2_aligned (integ_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-      vnet_crypto_op_init (op, ort->integ_op_id);
-      op->src = payload - iv_sz - sizeof (esp_header_t);
-      op->digest = payload + payload_len - icv_sz;
-      op->key_index = ort->integ_key_index;
-      op->digest_len = icv_sz;
-      op->len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
-      op->user_data = bi;
-
       if (lb != b[0])
 	{
-	  /* is chained */
-	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
-	  op->chunk_index = vec_len (ptd->chunks);
 	  op->digest = vlib_buffer_get_tail (lb) - icv_sz;
-
+    op->digest_len = icv_sz;
+	  u16 *n_chunks =
+	    !ort->cipher_iv_size ? &op->n_chunks : &op->integ_n_chunks;
 	  esp_encrypt_chain_integ (vm, ptd, ort, b[0], lb, icv_sz,
 				   payload - iv_sz - sizeof (esp_header_t),
 				   payload_len + iv_sz + sizeof (esp_header_t),
-				   op->digest, &op->n_chunks);
+				   op->digest, n_chunks);
 	}
-      else if (ort->use_esn)
+      else
 	{
-	  u32 tmp = clib_net_to_host_u32 (seq_hi);
-	  clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
-	  op->len += sizeof (seq_hi);
+	  u8 *integ_src = payload - iv_sz - sizeof (esp_header_t);
+	  u16 integ_len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
+
+	  op->digest_len = icv_sz;
+	  op->digest = payload + payload_len - icv_sz;
+
+	  if (ort->use_esn)
+	    {
+	      u32 tmp = clib_net_to_host_u32 (seq_hi);
+	      clib_memcpy_fast (op->digest, &tmp, sizeof (seq_hi));
+	      integ_len += sizeof (seq_hi);
+	    }
+	  if (!ort->cipher_iv_size)
+	    {
+	      op->src = integ_src;
+	      op->len = integ_len;
+	    }
+	  else
+	    {
+	      op->integ_src = integ_src;
+	      op->integ_len = integ_len;
+	    }
 	}
     }
 }
@@ -495,7 +509,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  const u32 key_index = ort->cipher_key_index;
+  const u32 key_index = ort->key_index;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -555,7 +569,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	crypto_total_len + icv_sz, 0);
     }
 
-  if (ort->integ_op_id)
+  if (ort->integ_icv_size && !ort->is_aead)
     {
       integ_start_offset -= iv_sz + sizeof (esp_header_t);
       integ_total_len += iv_sz + sizeof (esp_header_t);
@@ -615,7 +629,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   ipsec_sa_outb_rt_t *ort = 0;
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
-  vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
   vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_N_OP_IDS];
   int is_async = 0;
   vnet_crypto_op_id_t async_op = ~0;
@@ -638,9 +651,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_get_buffers (vm, from, b, n_left);
 
   vec_reset_length (ptd->crypto_ops);
-  vec_reset_length (ptd->integ_ops);
   vec_reset_length (ptd->chained_crypto_ops);
-  vec_reset_length (ptd->chained_integ_ops);
   vec_reset_length (ptd->async_frames);
   vec_reset_length (ptd->chunks);
   clib_memset (async_frames, 0, sizeof (async_frames));
@@ -1007,12 +1018,10 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (lb != b[0])
 	{
 	  crypto_ops = &ptd->chained_crypto_ops;
-	  integ_ops = &ptd->chained_integ_ops;
 	}
       else
 	{
 	  crypto_ops = &ptd->crypto_ops;
-	  integ_ops = &ptd->integ_ops;
 	}
 
       esp->spi = spi;
@@ -1049,9 +1058,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   async_next_node, lb);
 	}
       else
-	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, ort,
-			     ort->seq64 >> 32, payload, payload_len, iv_sz,
-			     icv_sz, n_sync, b, lb, hdr_len, esp);
+	esp_prepare_sync_op (vm, ptd, crypto_ops, ort, ort->seq64 >> 32,
+			     payload, payload_len, iv_sz, icv_sz, n_sync, b,
+			     lb, hdr_len, esp);
 
       vlib_buffer_advance (b[0], 0LL - hdr_len);
 
@@ -1107,11 +1116,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       esp_process_ops (vm, node, ptd->crypto_ops, sync_bufs, sync_nexts,
 		       drop_next);
       esp_process_chained_ops (vm, node, ptd->chained_crypto_ops, sync_bufs,
-			       sync_nexts, ptd->chunks, drop_next);
-
-      esp_process_ops (vm, node, ptd->integ_ops, sync_bufs, sync_nexts,
-		       drop_next);
-      esp_process_chained_ops (vm, node, ptd->chained_integ_ops, sync_bufs,
 			       sync_nexts, ptd->chunks, drop_next);
 
       vlib_buffer_enqueue_to_next (vm, node, sync_bi, sync_nexts, n_sync);

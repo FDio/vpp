@@ -232,14 +232,18 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->integ_ops, op, 1, CLIB_CACHE_LINE_BYTES);
-	  vnet_crypto_op_init (op, irt->integ_op_id);
+	  vnet_crypto_key_t *key = vnet_crypto_get_key (irt->key_index);
+	  if (key->is_link)
+	    key = vnet_crypto_get_key (key->index_integ);
+	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
+	  vnet_crypto_op_init (op, op_ids[VNET_CRYPTO_OP_TYPE_HMAC]);
 
 	  op->src = (u8 *) ih4;
 	  op->len = b[0]->current_length;
 	  op->digest = (u8 *) ih4 - pd->icv_size;
 	  op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
 	  op->digest_len = pd->icv_size;
-	  op->key_index = irt->integ_key_index;
+	  op->key_index = key->index;
 	  op->user_data = b - bufs;
 	  if (irt->use_esn)
 	    {
