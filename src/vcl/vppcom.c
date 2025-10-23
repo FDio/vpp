@@ -119,6 +119,32 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
     }
 }
 
+static void
+vcl_send_session_connect_stream (vcl_worker_t *wrk, vcl_session_t *s)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_connect_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  mq = vcl_worker_ctrl_mq (wrk);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT_STREAM);
+  mp = (session_connect_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = wrk->api_client_handle;
+  mp->context = s->session_index;
+  mp->wrk_index = wrk->vpp_wrk_index;
+  mp->parent_handle = s->parent_handle;
+  if (s->ext_config)
+    vcl_msg_add_ext_config (s, &mp->ext_config);
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+  if (s->ext_config)
+    {
+      clib_mem_free (s->ext_config);
+      s->ext_config = 0;
+    }
+}
+
 void
 vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s)
 {
@@ -2051,19 +2077,15 @@ vppcom_session_stream_connect (uint32_t session_handle,
       return VPPCOM_OK;
     }
 
-  /* Connect to quic session specifics */
-  session->transport.is_ip4 = parent_session->transport.is_ip4;
-  session->transport.rmt_ip.ip4.as_u32 = (uint32_t) 1;
-  session->transport.rmt_port = 0;
   session->parent_handle = parent_session->vpp_handle;
 
   VDBG (0, "session handle %u: connecting to session %u [0x%llx]",
 	session_handle, parent_session_handle, parent_session->vpp_handle);
 
   /*
-   * Send connect request and wait for reply from vpp
+   * Send connect stream request and wait for reply from vpp
    */
-  vcl_send_session_connect (wrk, session);
+  vcl_send_session_connect_stream (wrk, session);
   rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_READY,
 					     vcm->cfg.session_timeout);
 
