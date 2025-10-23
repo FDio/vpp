@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cb123e3_b6e1c723",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T15:10:10Z",
+      "side": 1,
+      "message": "Yes, 4 bytes for the header and 4 reserved - after that we get origin ip header. But you\u0027re right, this probably could be more readable.",
+      "parentUuid": "b358150c_16b17ae0",
+      "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a0825f6e_bfd6e659",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-10-21T22:37:32Z",
       "side": 1,
       "message": "This could probably move the the start of the function as well",
+      "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bcc844d2_6836a6d4",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T15:10:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a0825f6e_bfd6e659",
       "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf86d45a_f42738bc",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T15:10:10Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "88147eb2_591ee8fd",
+      "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c1d5326d_64c1f178",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb1bcefc_7d15b576",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T15:10:10Z",
+      "side": 1,
+      "message": "Exactly, yes. I\u0027m keeping it in for now as we\u0027re iterating upon the approach.",
+      "parentUuid": "c1d5326d_64c1f178",
+      "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3278d292_21bc234a",
@@ -82,6 +154,24 @@
       "writtenOn": "2025-10-21T22:37:32Z",
       "side": 1,
       "message": "And this helped me find ip4_icmp_register_type, which we should be using. No need to change ip4_icmp_input_node. \n\nI think this means we can move the new node you\u0027ve added to transport.c or session.c",
+      "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a79593e_78ae43dc",
+        "filename": "src/vnet/ip/icmp4.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T15:10:10Z",
+      "side": 1,
+      "message": "I purposefully didn\u0027t use it as the api was overkill if the node is placed within icmp4.c. Will do.",
+      "parentUuid": "3278d292_21bc234a",
       "revId": "4c40f8ad609c887a06c8e0b9a8b6461d96516d6f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
