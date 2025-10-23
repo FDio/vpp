@@ -16,6 +16,24 @@
       "message": "isn\u0027t better to have burst limit other than fifo size?",
       "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d223d9a_8bd33b8d",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-23T14:02:57Z",
+      "side": 1,
+      "message": "Why though? If not limiting throughput, we want to keep transport as busy as possible.",
+      "parentUuid": "b71bc554_ed47e99b",
+      "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
