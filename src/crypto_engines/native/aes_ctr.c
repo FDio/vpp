@@ -23,20 +23,23 @@ aes_ops_aes_ctr (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   u32 n_left = n_ops;
 
 next:
-  kd = (aes_ctr_key_data_t *) cm->key_data[op->key_index];
+  {
+    vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+    u32 key_index = key->is_link ? key->index_crypto : key->index;
+    kd = (aes_ctr_key_data_t *) cm->key_data[key_index];
 
-  clib_aes_ctr_init (&ctx, kd, op->iv, ks);
-  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
-    {
-      vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
-      for (int j = 0; j < op->n_chunks; j++, chp++)
-	clib_aes_ctr_transform (&ctx, chp->src, chp->dst, chp->len, ks);
-    }
-  else
-    clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
+    clib_aes_ctr_init (&ctx, kd, op->iv, ks);
+    if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+      {
+	vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
+	for (int j = 0; j < op->n_chunks; j++, chp++)
+	  clib_aes_ctr_transform (&ctx, chp->src, chp->dst, chp->len, ks);
+      }
+    else
+      clib_aes_ctr_transform (&ctx, op->src, op->dst, op->len, ks);
 
-  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-
+    op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+  }
   if (--n_left)
     {
       op += 1;
@@ -105,6 +108,14 @@ probe ()
   return -1;
 }
 
+static int
+aes_ctr_sha2_probe ()
+{
+  int r_ctr = probe ();
+  int r_sha2 = sha2_probe ();
+  return clib_min (r_ctr, r_sha2);
+}
+
 #define _(b)                                                                  \
   CRYPTO_NATIVE_OP_HANDLER (aes_##b##_ctr_enc) = {                            \
     .op_id = VNET_CRYPTO_OP_AES_##b##_CTR_ENC,                                \
@@ -130,45 +141,56 @@ _ (192)
 _ (256)
 #undef _
 
-#define foreach_crypto_native_ctr_hmac_op                                     \
-  _ (128, 256, CLIB_SHA2_256, 16)                                             \
-  _ (192, 256, CLIB_SHA2_256, 16)                                             \
-  _ (256, 256, CLIB_SHA2_256, 16)
-
-#define _(k, b, clib_sha2, t)                                                 \
-  static u32 crypto_native_ops_enc_aes_##k##_ctr_hmac_sha##b##_tag##t (       \
+#define _(a, b, c)                                                            \
+  static u32 crypto_native_ops_enc_aes_ctr_##a##_hmac_sha##b (                \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
   {                                                                           \
-    aes_ops_aes_ctr (vm, ops, n_ops, 0, AES_KEY_##k, 0);                      \
-    crypto_native_ops_hmac_sha2 (vm, ops, n_ops, 0, clib_sha2);               \
-    return n_ops;                                                             \
+    aes_ops_aes_ctr (vm, ops, n_ops, 0, AES_KEY_##a, 0);                      \
+    return crypto_native_ops_hmac_sha2 (vm, ops, n_ops, 0, CLIB_SHA2_##b);    \
   }                                                                           \
                                                                               \
-  static u32 crypto_native_ops_dec_aes_##k##_ctr_hmac_sha##b##_tag##t (       \
+  static u32 crypto_native_ops_enc_aes_ctr_##a##_hmac_sha##b##_chained (      \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+    u32 n_ops)                                                                \
+  {                                                                           \
+    aes_ops_aes_ctr (vm, ops, n_ops, chunks, AES_KEY_##a, 1);                 \
+    return crypto_native_ops_hmac_sha2 (vm, ops, n_ops, chunks,               \
+					CLIB_SHA2_##b);                       \
+  }                                                                           \
+  static u32 crypto_native_ops_dec_aes_ctr_##a##_hmac_sha##b (                \
     vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
   {                                                                           \
-    crypto_native_ops_hmac_sha2 (vm, ops, n_ops, 0, clib_sha2);               \
-    aes_ops_aes_ctr (vm, ops, n_ops, 0, AES_KEY_##k, 0);                      \
-    return n_ops;                                                             \
+    u32 r = crypto_native_ops_hmac_sha2 (vm, ops, n_ops, 0, CLIB_SHA2_##b);   \
+    if (r != n_ops)                                                           \
+      return r;                                                               \
+    return aes_ops_aes_ctr (vm, ops, n_ops, 0, AES_KEY_##a, 0);               \
   }                                                                           \
-                                                                              \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##k##_ctr_hmac_sha##b##_tag##t##_enc) = {     \
-    .op_id = VNET_CRYPTO_OP_AES_##k##_CTR_SHA##b##_TAG##t##_ENC,              \
-    .fn = crypto_native_ops_enc_aes_##k##_ctr_hmac_sha##b##_tag##t,           \
-    .probe = probe,                                                           \
+  static u32 crypto_native_ops_dec_aes_ctr_##a##_hmac_sha##b##_chained (      \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+    u32 n_ops)                                                                \
+  {                                                                           \
+    u32 r =                                                                   \
+      crypto_native_ops_hmac_sha2 (vm, ops, n_ops, chunks, CLIB_SHA2_##b);    \
+    if (r != n_ops)                                                           \
+      return r;                                                               \
+    return aes_ops_aes_ctr (vm, ops, n_ops, chunks, AES_KEY_##a, 1);          \
+  }                                                                           \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_ctr_hmac_sha##b##_enc) = {              \
+    .op_id = VNET_CRYPTO_OP_AES_##a##_CTR_SHA##b##_TAG##c##_ENC,              \
+    .fn = crypto_native_ops_enc_aes_ctr_##a##_hmac_sha##b,                    \
+    .cfn = crypto_native_ops_enc_aes_ctr_##a##_hmac_sha##b##_chained,         \
+    .probe = aes_ctr_sha2_probe,                                              \
   };                                                                          \
                                                                               \
-  CRYPTO_NATIVE_OP_HANDLER (aes_##k##_ctr_hmac_sha##b##_tag##t##_dec) = {     \
-    .op_id = VNET_CRYPTO_OP_AES_##k##_CTR_SHA##b##_TAG##t##_DEC,              \
-    .fn = crypto_native_ops_dec_aes_##k##_ctr_hmac_sha##b##_tag##t,           \
-    .probe = probe,                                                           \
-  };                                                                          \
-                                                                              \
-  CRYPTO_NATIVE_KEY_HANDLER (aes_##k##_ctr_hmac_sha##b##_tag##t) = {          \
-    .alg_id = VNET_CRYPTO_ALG_AES_##k##_CTR_SHA##b##_TAG##t,                  \
-    .key_fn = aes_ctr_key_exp_##k,                                            \
-    .probe = probe,                                                           \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##a##_ctr_hmac_sha##b##_dec) = {              \
+    .op_id = VNET_CRYPTO_OP_AES_##a##_CTR_SHA##b##_TAG##c##_DEC,              \
+    .fn = crypto_native_ops_dec_aes_ctr_##a##_hmac_sha##b,                    \
+    .cfn = crypto_native_ops_dec_aes_ctr_##a##_hmac_sha##b##_chained,         \
+    .probe = aes_ctr_sha2_probe,                                              \
   };
 
-foreach_crypto_native_ctr_hmac_op
+_ (128, 256, 16)
+_ (192, 256, 16)
+_ (256, 256, 16)
+
 #undef _

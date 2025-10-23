@@ -35,16 +35,18 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
   for (; n_left; n_left--, op++)
     {
+      vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
+      u32 key_index = key->is_link ? key->index_integ : key->index;
       clib_sha2_hmac_init (
-	&ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[op->key_index]);
+	&ctx, type, (clib_sha2_hmac_key_data_t *) cm->key_data[key_index]);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
-	  vnet_crypto_op_chunk_t *chp = chunks + op->chunk_index;
-	  for (int j = 0; j < op->n_chunks; j++, chp++)
+	  vnet_crypto_op_chunk_t *chp = chunks + op->integ_chunk_index;
+	  for (int j = 0; j < op->integ_n_chunks; j++, chp++)
 	    clib_sha2_hmac_update (&ctx, chp->src, chp->len);
 	}
       else
-	clib_sha2_hmac_update (&ctx, op->src, op->len);
+	clib_sha2_hmac_update (&ctx, op->integ_src, op->integ_len);
 
       clib_sha2_hmac_final (&ctx, buffer);
 
@@ -83,5 +85,30 @@ crypto_native_ops_hmac_sha2 (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     }
 
   return n_ops - n_fail;
+}
+
+static int
+sha2_probe ()
+{
+#if defined(__x86_64__)
+
+#if defined(__SHA__) && defined(__AVX512F__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx512f ())
+    return 30;
+#elif defined(__SHA__) && defined(__AVX2__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx2 ())
+    return 20;
+#elif defined(__SHA__)
+  if (clib_cpu_supports_sha ())
+    return 10;
+#endif
+
+#elif defined(__aarch64__)
+#if defined(__ARM_FEATURE_SHA2)
+  if (clib_cpu_supports_sha2 ())
+    return 10;
+#endif
+#endif
+  return -1;
 }
 #endif /* __sha2_h__ */
