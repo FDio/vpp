@@ -114,6 +114,7 @@ typedef struct
   u64 bytes_to_send;			/**< Bytes to send */
   u32 configured_segment_size;
   u32 fifo_size;
+  u32 fifo_fill_threshold;
   u32 expected_connections;		/**< Number of clients/connections */
   u32 connections_per_batch;		/**< Connections to rx/tx at once */
   u32 private_segment_count;		/**< Number of private fifo segs */
