@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b71bc554_ed47e99b",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-23T13:32:13Z",
+      "side": 1,
+      "message": "isn\u0027t better to have burst limit other than fifo size?",
+      "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
