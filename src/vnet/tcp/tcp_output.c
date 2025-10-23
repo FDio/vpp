@@ -1817,27 +1817,11 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	      goto done;
 	    }
 
-	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
-	    break;
-
-	  /* If rescue rxt undefined or less than snd_una then one segment of
-	   * up to SMSS octets that MUST include the highest outstanding
-	   * unSACKed sequence number SHOULD be returned, and RescueRxt set to
-	   * RecoveryPoint. HighRxt MUST NOT be updated.
+	  /* RFC 6675 is too conservative.
+	   * Schedule repeated retransmittions while we have snd_space.
 	   */
-	  hole = scoreboard_last_hole (sb);
-	  max_bytes = clib_min (tc->snd_mss, hole->end - hole->start);
-	  max_bytes = clib_min (max_bytes, snd_space);
-	  offset = hole->end - tc->snd_una - max_bytes;
-	  n_written = tcp_prepare_retransmit_segment (wrk, tc, offset,
-						      max_bytes, &b);
-	  if (!n_written)
-	    goto done;
-
-	  sb->rescue_rxt = tc->snd_congestion;
-	  bi = vlib_get_buffer_index (vm, b);
-	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
-	  n_segs += 1;
+	  scoreboard_init_rxt (sb, tc->snd_una);
+	  /* TODO: Look if there is any hole and send immediately? */
 	  break;
 	}
 
