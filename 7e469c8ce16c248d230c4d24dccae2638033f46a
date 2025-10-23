@@ -34,6 +34,24 @@
       "parentUuid": "b71bc554_ed47e99b",
       "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef221733_b6f1b6e6",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-23T15:10:45Z",
+      "side": 1,
+      "message": "you want transport busy but not oversubscribe, if your fifo is big enough transport might not catch up to drain it properly and you will waste rest of cycles here to just top up fifo. did you try to run it with big fifo?",
+      "parentUuid": "5d223d9a_8bd33b8d",
+      "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
