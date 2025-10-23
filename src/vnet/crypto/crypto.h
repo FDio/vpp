@@ -237,8 +237,13 @@ typedef struct
     u8 digest_len;
     u8 tag_len;
   };
-  u16 aad_len;
 
+  union
+  {
+    u16 integ_len;
+    u16 integ_n_chunks;
+    u16 aad_len;
+  };
   union
   {
     struct
@@ -248,19 +253,29 @@ typedef struct
     };
 
     /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
-    u16 n_chunks;
+    struct
+    {
+      u32 chunk_index;
+      u32 integ_chunk_index;
+    };
   };
 
   union
   {
     u32 len;
+
     /* valid if VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS is set */
-    u32 chunk_index;
+    u16 n_chunks;
   };
 
   u32 key_index;
   u8 *iv;
-  u8 *aad;
+
+  union
+  {
+    u8 *integ_src;
+    u8 *aad;
+  };
 
   union
   {
@@ -481,6 +496,8 @@ u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
 
 vnet_crypto_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 					 vnet_crypto_alg_t integ_alg);
+
+vnet_crypto_op_id_t *vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
