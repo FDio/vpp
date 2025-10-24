@@ -59,12 +59,10 @@ quic_echo_on_connected_connect (session_connected_msg_t * mp,
 
   a->parent_session_handle = mp->handle;
   a->context = session_index;
-  clib_memcpy_fast (&a->lcl_ip, &em->lcl_ip, sizeof (ip46_address_t));
-  clib_memcpy_fast (&a->ip, &em->uri_elts.ip, sizeof (ip46_address_t));
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (echo_rpc_args_t *) a);
+    echo_send_connect_stream (em, a);
 
   ECHO_LOG (1, "Qsession 0x%llx S[%d] connected to %U:%d",
 	    mp->handle, session_index, format_ip46_address, &mp->lcl.ip,
@@ -118,12 +116,10 @@ quic_echo_on_accept_connect (session_accepted_msg_t * mp, u32 session_index)
 
   a->parent_session_handle = mp->handle;
   a->context = session_index;
-  clib_memcpy_fast (&a->lcl_ip, &em->lcl_ip, sizeof (ip46_address_t));
-  clib_memcpy_fast (&a->ip, &em->uri_elts.ip, sizeof (ip46_address_t));
 
   echo_notify_event (em, ECHO_EVT_FIRST_SCONNECT);
   for (i = 0; i < eqm->n_stream_clients; i++)
-    echo_send_rpc (em, echo_send_connect, (echo_rpc_args_t *) a);
+    echo_send_connect_stream (em, a);
 }
 
 static void
