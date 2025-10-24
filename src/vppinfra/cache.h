@@ -119,9 +119,29 @@ clib_prefetch_load (void *p)
 }
 
 static_always_inline void
+clib_prefetch_slc_load (void *p)
+{
+  __builtin_prefetch (p, /* rw */ 0, /* locality */ 2);
+}
+
+static_always_inline void
+clib_prefetch_llc_load (void *p)
+{
+  __builtin_prefetch (p, /* rw */ 0, /* locality */ 1);
+}
+
+static_always_inline void
 clib_prefetch_store (void *p)
 {
   __builtin_prefetch (p, /* rw */ 1, /* locality */ 3);
+}
+
+static_always_inline void
+clib_cl_demote (void *p)
+{
+#ifdef __CLDEMOTE__
+  __builtin_ia32_cldemote (p);
+#endif
 }
 
 #endif /* included_clib_cache_h */
