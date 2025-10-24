@@ -407,6 +407,24 @@ clib_memset_u32 (void *p, u32 val, uword count)
 }
 
 static_always_inline void
+clib_memset_uword (void *p, uword val, uword count)
+{
+#if uword_bits == 64
+  clib_memset_u64 (p, val, count);
+#else
+  clib_memset_u32 (p, val, count);
+#endif
+}
+
+static_always_inline void
+clib_ptr_array_pad_tail (void **ptrs, u32 count, u32 n_pad)
+{
+  uword *p = (uword *) ptrs;
+  ASSERT (count > 0);
+  clib_memset_uword (p + count, p[count - 1], n_pad);
+}
+
+static_always_inline void
 clib_memset_u16 (void *p, u16 val, uword count)
 {
   u16 *ptr = p;
