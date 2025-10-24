@@ -39,6 +39,30 @@
       },
       "revId": "d483a0e6b8985f205a5d3edda4573c1681ab8520",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d7ba608_73f6799d",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-24T15:00:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a161bbe8_ce84e4c2",
+      "range": {
+        "startLine": 440,
+        "startChar": 9,
+        "endLine": 440,
+        "endChar": 27
+      },
+      "revId": "d483a0e6b8985f205a5d3edda4573c1681ab8520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
