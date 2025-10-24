@@ -70,6 +70,24 @@
       "parentUuid": "ef221733_b6f1b6e6",
       "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d0869b9_f771a8e0",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-24T08:31:02Z",
+      "side": 1,
+      "message": "not sure if it should be related to fifo size, it might be capped by fixed value. you don\u0027t want to spend too much time here in one cycle and do less or nothing in the next. I would recommend run it and watch \"show runtime\" output to find optimal burst size, preferably two physical hosts and nics",
+      "parentUuid": "cdcaea86_e3e73fff",
+      "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
