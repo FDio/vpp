@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "026720df_f9ae6b7b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-24T14:28:00Z",
+      "side": 1,
+      "message": "looks good, just one nit",
+      "revId": "d483a0e6b8985f205a5d3edda4573c1681ab8520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a161bbe8_ce84e4c2",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-24T14:28:00Z",
+      "side": 1,
+      "message": "can we store it in ecm? division is not cheapest operation",
+      "range": {
+        "startLine": 440,
+        "startChar": 9,
+        "endLine": 440,
+        "endChar": 27
+      },
+      "revId": "d483a0e6b8985f205a5d3edda4573c1681ab8520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
