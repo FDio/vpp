@@ -123,6 +123,9 @@ typedef struct
   /* log2 system default hugepage size */
   clib_mem_page_sz_t log2_sys_default_hugepage_sz;
 
+  /* flags */
+  u8 alloc_free_intercept : 1;
+
   /* bitmap of available numa nodes */
   u32 numa_node_bitmap;
 

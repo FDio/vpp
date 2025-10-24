@@ -278,6 +278,7 @@ clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 				     "main heap");
 
   clib_mem_set_heap (h);
+  clib_mem_main.alloc_free_intercept = 1;
 
   if (mheap_trace_main.lock == 0)
     {
@@ -317,6 +318,8 @@ clib_mem_destroy (void)
   if (heap->mspace == tm->current_traced_mheap)
     mheap_trace (heap, 0);
 
+  clib_mem_main.alloc_free_intercept = 0;
+  clib_mem_set_heap (0);
   destroy_mspace (heap->mspace);
   clib_mem_vm_unmap (heap);
 }
