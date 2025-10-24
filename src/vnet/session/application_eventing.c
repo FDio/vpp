@@ -684,16 +684,29 @@ static clib_error_t *
 show_app_evt_collector_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				   vlib_cli_command_t *cmd)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   app_evt_main_t *alm = &app_evt_main;
   clib_error_t *error = 0;
   app_evt_collector_t *c;
+  u8 do_listeners = 0;
+  u32 app_index = ~0, val;
+  application_t *app = 0;
+  session_handle_t lsh;
+  session_t *ls;
 
-  if (unformat_user (input, unformat_line_input, line_input))
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
-      goto done;
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "listeners-filter"))
+	{
+	  do_listeners = 1;
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
     }
 
   if (alm->app_index == APP_INVALID_INDEX)
@@ -702,6 +715,29 @@ show_app_evt_collector_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  if (app_index != ~0)
+    {
+      app = application_get (app_index);
+      if (!app)
+	{
+	  error = clib_error_return (0, "Invalid app index %u", app_index);
+	  goto done;
+	}
+    }
+  if (do_listeners)
+    {
+      if (!app)
+	{
+	  error =
+	    clib_error_return (0, "app index required to show listeners");
+	  goto done;
+	}
+      hash_foreach (lsh, val, app->evt_collector_session_filter, ({
+		      ls = listen_session_get_from_handle (lsh);
+		      vlib_cli_output (vm, "%U", format_session, ls);
+		    }));
+      goto done;
+    }
   vlib_cli_output (vm, "app evt-collector app-index: %u", alm->app_index);
   vlib_cli_output (vm, " fifo size %U segment size %U", format_memory_size,
 		   alm->fifo_size, format_memory_size, alm->segment_size);
@@ -714,6 +750,6 @@ done:
 
 VLIB_CLI_COMMAND (show_app_evt_collector_command, static) = {
   .path = "show app evt-collector",
-  .short_help = "show app evt-collector",
+  .short_help = "show app evt-collector [app <app> listeners-filter]",
   .function = show_app_evt_collector_command_fn,
 };
