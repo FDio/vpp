@@ -52,6 +52,24 @@
       "parentUuid": "5d223d9a_8bd33b8d",
       "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cdcaea86_e3e73fff",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-24T06:23:30Z",
+      "side": 1,
+      "message": "So what limit would you suggest? Maybe 80% of the fifo space?",
+      "parentUuid": "ef221733_b6f1b6e6",
+      "revId": "7e469c8ce16c248d230c4d24dccae2638033f46a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
