@@ -33,6 +33,23 @@
       "message": "As expected, without CSIT support this has no effect on performance there, but with the support it increased ip4base by 20% on 2n-grc: https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2404-aarch64-2n-grc/17/console.log.gz",
       "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92a39283_e438b72a",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-24T10:49:29Z",
+      "side": 1,
+      "message": "what about other arm platforms we have? octeon10, cn913x",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
