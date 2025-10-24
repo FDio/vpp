@@ -1787,12 +1787,15 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   while (snd_space > 0 && n_segs < burst_size)
     {
-      hole = scoreboard_next_rxt_hole (sb, hole, max_deq != 0, &can_rescue,
-				       &snd_limited);
+      /* Some optimizations below avoid sending small apckets with new data.
+       * so we treat max_deq < tc->snd_mss as max_deq == 0.
+       */
+      hole = scoreboard_next_rxt_hole (sb, hole, max_deq < tc->snd_mss,
+				       &can_rescue, &snd_limited);
       if (!hole)
 	{
 	  /* We are out of lost holes to retransmit so send some new data. */
-	  if (max_deq)
+	  if (max_deq >= tc->snd_mss)
 	    {
 	      u32 n_segs_new;
 	      int av_wnd;
