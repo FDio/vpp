@@ -16,6 +16,5 @@ Core Architecture
     multiarch/index
     bihash
     buildsystem/index
-    mem
     multi_thread
 
