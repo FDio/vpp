@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ff045d2_99f8f98b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-24T17:50:40Z",
+      "side": 1,
+      "message": "Any reason why we shouldn\u0027t be doing this in interface handoff?",
+      "revId": "98880adc44d9bb8a680b38c1fda7aaafed07a074",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
