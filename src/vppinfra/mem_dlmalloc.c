@@ -302,6 +302,7 @@ clib_mem_init_internal (clib_mem_init_ex_args_t *a)
   clib_mem_thread_init ();
   clib_mem_set_heap (h);
   vec_add1 (clib_mem_main.heaps, h);
+  clib_mem_main.alloc_free_intercept = a->alloc_free_intercept;
 
   if (mheap_trace_main.lock == 0)
     {
@@ -335,6 +336,7 @@ clib_mem_init_ex (clib_mem_init_ex_args_t *a)
 __clib_export void
 clib_mem_destroy (void)
 {
+  clib_mem_main_t *mm = &clib_mem_main;
   mheap_trace_main_t *tm = &mheap_trace_main;
   clib_mem_heap_t *heap = clib_mem_main.main_heap;
   clib_mem_thread_main_t *t = clib_mem_main.threads;
@@ -347,6 +349,7 @@ clib_mem_destroy (void)
 
   clib_mem_set_heap (0);
   clib_mem_main.main_heap = 0;
+  mm->alloc_free_intercept = 0;
 
   while (t)
     {
