@@ -211,6 +211,30 @@ echo_send_connect (echo_main_t * em, void *args)
 }
 
 void
+echo_send_connect_stream (echo_main_t *em, void *args)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_connect_msg_t *mp;
+  echo_connect_args_t *a = (echo_connect_args_t *) args;
+  svm_msg_q_t *mq = em->ctrl_mq;
+
+  clib_atomic_sub_fetch (&em->max_sim_connects, 1);
+  while (em->max_sim_connects <= 0)
+    ;
+
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_CONNECT_STREAM);
+  mp = (session_connect_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = em->my_client_index;
+  mp->context = ntohl (a->context);
+  mp->wrk_index = 0;
+  mp->proto = em->uri_elts.transport_proto;
+  mp->parent_handle = a->parent_session_handle;
+  mp->flags = em->connect_flag;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+
+void
 echo_send_disconnect_session (echo_main_t * em, void *args)
 {
   echo_session_t *s;

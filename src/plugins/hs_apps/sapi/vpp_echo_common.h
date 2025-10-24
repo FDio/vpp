@@ -446,6 +446,7 @@ void echo_send_detach (echo_main_t * em);
 void echo_send_listen (echo_main_t * em, ip46_address_t * ip);
 void echo_send_unbind (echo_main_t * em, echo_session_t * s);
 void echo_send_connect (echo_main_t * em, void *args);
+void echo_send_connect_stream (echo_main_t *em, void *args);
 void echo_send_disconnect_session (echo_main_t * em, void *args);
 void echo_api_hookup (echo_main_t * em);
 void echo_send_add_cert_key (echo_main_t * em);
