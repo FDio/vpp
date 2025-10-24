@@ -50,6 +50,24 @@
       "message": "what about other arm platforms we have? octeon10, cn913x",
       "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe10ba05_8bebff22",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2025-10-24T12:24:41Z",
+      "side": 1,
+      "message": "We can definitely add them to the list. However,\na) I don\u0027t have access to Marvell hardware to verify my patch on octeon10 or cn913x\nb) I\u0027m also not sure whether Marvell folks use a customized DPDK library within VPP, or if `Dplatform\u003dnative` works fine for them.\nI\u0027ve added @Monendra Singh Kushwaha to the reviewer list, as I believe he is in a better position to determine whether Marvell platforms should be included as well for native DPDK library build within VPP.\n@Monendra --- could you please kindly take a look?",
+      "parentUuid": "92a39283_e438b72a",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
