@@ -127,6 +127,9 @@ main (int argc, char *argv[])
   cpu_set_t cpuset;
   void *main_heap;
 
+  /* temporary heap */
+  clib_mem_init (0, 1 << 20);
+
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
     = "ERROR: This binary requires CPU with %s extensions.\n";
@@ -288,8 +291,6 @@ main (int argc, char *argv[])
     }
 defaulted:
 
-  /* temporary heap */
-  clib_mem_init (0, 1 << 20);
   unformat_init_command_line (&input, (char **) argv);
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
@@ -365,7 +366,7 @@ defaulted:
   vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
 
   /* destroy temporary heap and create main one */
-  clib_mem_destroy ();
+  // clib_mem_destroy ();
 
   if ((main_heap = clib_mem_init_with_page_size (main_heap_size,
 						 main_heap_log2_page_sz)))
