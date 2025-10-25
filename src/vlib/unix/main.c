@@ -677,7 +677,7 @@ thread0 (uword arg)
 
   vlib_process_finish_switch_stack (vm);
 
-  unformat_init_command_line (&input, (char **) vgm->argv);
+  unformat_init_vector (&input, vec_dup (vgm->startup_config));
   i = vlib_main (vm, &input);
   unformat_free (&input);
 
@@ -705,7 +705,7 @@ vlib_thread_stack_init (uword thread_index)
 #endif
 
 int
-vlib_unix_main (int argc, char *argv[])
+vlib_unix_main (int argc, char *argv[], u8 *startup_config)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_main_t *vm = vlib_get_first_main (); /* one and only time for this! */
@@ -733,6 +733,7 @@ vlib_unix_main (int argc, char *argv[])
     vgm->exec_path = vgm->name = argv[0];
 
   vgm->argv = (u8 **) argv;
+  vgm->startup_config = startup_config;
 
   clib_time_init (&vm->clib_time);
 
@@ -743,7 +744,7 @@ vlib_unix_main (int argc, char *argv[])
   elog_init (vgm->elog_main, vgm->configured_elog_ring_size);
   elog_enable_disable (vgm->elog_main, 1);
 
-  unformat_init_command_line (&input, (char **) vgm->argv);
+  unformat_init_vector (&input, vec_dup (startup_config));
   if ((e = vlib_plugin_config (vm, &input)))
     {
       clib_error_report (e);
@@ -755,7 +756,7 @@ vlib_unix_main (int argc, char *argv[])
   if (i)
     return i;
 
-  unformat_init_command_line (&input, (char **) vgm->argv);
+  unformat_init_vector (&input, vec_dup (startup_config));
   if (vgm->init_functions_called == 0)
     vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
   e = vlib_call_all_config_functions (vm, &input, 1 /* early */ );
