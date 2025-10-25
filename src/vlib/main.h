@@ -293,6 +293,9 @@ typedef struct vlib_global_main_t
   /* command line arguments */
   u8 **argv;
 
+  /* startup config */
+  u8 *startup_config;
+
   /* post-mortem callbacks */
   void (**post_mortem_callbacks) (void);
 

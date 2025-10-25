@@ -135,7 +135,7 @@ unix_save_error (unix_main_t * um, clib_error_t * error)
 }
 
 /* Main function for Unix VLIB. */
-int vlib_unix_main (int argc, char *argv[]);
+int vlib_unix_main (int argc, char *argv[], u8 *startup_config);
 
 /* Set prompt for CLI. */
 void vlib_unix_cli_set_prompt (char *prompt);
