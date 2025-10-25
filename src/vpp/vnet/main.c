@@ -19,6 +19,8 @@
 #include <pthread_np.h>
 #endif /* __FreeBSD__ */
 #include <sched.h>
+#include <fcntl.h>
+#include <getopt.h>
 
 #include <vppinfra/clib.h>
 #include <vppinfra/cpu.h>
@@ -40,6 +42,7 @@
 char *vlib_plugin_path = NULL;
 char *vlib_plugin_app_version = VPP_BUILD_VER;
 char *vat_plugin_path = NULL;
+char *vlib_default_runtime_dir = "vpp";
 
 static void
 vpp_find_plugin_path ()
@@ -80,35 +83,24 @@ done:
 }
 
 static void
-vpe_main_init (vlib_main_t * vm)
+print_help (const char *progname)
 {
-#if VPP_API_TEST_BUILTIN > 0
-  void vat_plugin_hash_create (void);
-#endif
-
-  if (CLIB_DEBUG > 0)
-    vlib_unix_cli_set_prompt ("DBGvpp# ");
-  else
-    vlib_unix_cli_set_prompt ("vpp# ");
-
-  /* Turn off network stack components which we don't want */
-  vlib_mark_init_function_complete (vm, srp_init);
-
-  /*
-   * Create the binary api plugin hashes before loading plugins
-   */
-#if VPP_API_TEST_BUILTIN > 0
-  vat_plugin_hash_create ();
-#endif
-
-  if (!vlib_plugin_path)
-    vpp_find_plugin_path ();
+  fformat (
+    stdout,
+    "Usage: %s [options] [startup configuration]\n"
+    "  -c, --config <file>         Read startup configuration from file\n"
+    "  -i, --interactive           Enable interactive Unix CLI\n"
+    "  -v, --version               Print version information and exit\n"
+    "  -h, --help                  Show this help message and exit\n",
+    progname);
 }
 
-/*
- * Default path for runtime data
- */
-char *vlib_default_runtime_dir = "vpp";
+static void
+print_version (void)
+{
+  fformat (stdout, "vpp v%s built by %s on %s at %s\n", VPP_BUILD_VER,
+	   VPP_BUILD_USER, VPP_BUILD_HOST, VPP_BUILD_DATE);
+}
 
 int
 main (int argc, char *argv[])
@@ -116,208 +108,210 @@ main (int argc, char *argv[])
   int i;
   void vl_msg_api_set_first_available_msg_id (u16);
   uword main_heap_size = (1ULL << 30);
-  u8 *sizep;
-  u32 size;
   clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
   clib_mem_page_sz_t default_log2_hugepage_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
+  const size_t config_max_size = 1ULL << 18;
   unformat_input_t input, sub_input;
-  u8 *s = 0, *v = 0;
-  int main_core = ~0;
+  u8 *s = 0, *v = 0, *config;
+  u32 main_core = ~0;
   int cpu_translate = 0;
   cpu_set_t cpuset;
   void *main_heap;
+  u32 cfg_len = 0;
+  char *config_file = 0;
+  int opt;
+  int config_arg_index = 1;
 
-#if __x86_64__
-  CLIB_UNUSED (const char *msg)
-    = "ERROR: This binary requires CPU with %s extensions.\n";
-#define _(a,b)                                  \
-    if (!clib_cpu_supports_ ## a ())            \
-      {                                         \
-	fprintf(stderr, msg, b);                \
-	exit(1);                                \
-      }
+  const struct option long_options[] = {
+    { "config", required_argument, 0, 'c' },
+    { "version", no_argument, 0, 'v' },
+    { "interactive", no_argument, 0, 'i' },
+    { "help", no_argument, 0, 'h' },
+    {},
+  };
 
-#if __AVX2__
-  _(avx2, "AVX2")
-#endif
-#if __AVX__
-    _(avx, "AVX")
-#endif
-#if __SSE4_2__
-    _(sse42, "SSE4.2")
-#endif
-#if __SSE4_1__
-    _(sse41, "SSE4.1")
-#endif
-#if __SSSE3__
-    _(ssse3, "SSSE3")
-#endif
-#if __SSE3__
-    _(sse3, "SSE3")
-#endif
-#undef _
-#endif
-    /*
-     * Load startup config from file.
-     * usage: vpp -c /etc/vpp/startup.conf
-     */
-    if ((argc == 3) && !strncmp (argv[1], "-c", 2))
-    {
-      FILE *fp;
-      char inbuf[4096];
-      int argc_ = 1;
-      char **argv_ = NULL;
-      char *arg = NULL;
-      char *p;
-
-      fp = fopen (argv[2], "r");
-      if (fp == NULL)
-	{
-	  fprintf (stderr, "open configuration file '%s' failed\n", argv[2]);
-	  return 1;
-	}
-      argv_ = calloc (1, sizeof (char *));
-      if (argv_ == NULL)
-	{
-	  fclose (fp);
-	  return 1;
-	}
-      arg = strndup (argv[0], 1024);
-      if (arg == NULL)
-	{
-	  fclose (fp);
-	  free (argv_);
-	  return 1;
-	}
-      argv_[0] = arg;
-
-      while (1)
-	{
-	  if (fgets (inbuf, 4096, fp) == 0)
-	    break;
-	  p = strtok (inbuf, " \t\n");
-	  while (p != NULL)
-	    {
-	      if (*p == '#')
-		break;
-	      argc_++;
-	      char **tmp = realloc (argv_, argc_ * sizeof (char *));
-	      if (tmp == NULL)
-		return 1;
-	      argv_ = tmp;
-	      arg = strndup (p, 1024);
-	      if (arg == NULL)
-		return 1;
-	      argv_[argc_ - 1] = arg;
-	      p = strtok (NULL, " \t\n");
-	    }
-	}
-
-      fclose (fp);
-
-      char **tmp = realloc (argv_, (argc_ + 1) * sizeof (char *));
-      if (tmp == NULL)
-	return 1;
-      argv_ = tmp;
-      argv_[argc_] = NULL;
-
-      argc = argc_;
-      argv = argv_;
-    }
-
-  /*
-   * Look for and parse the "heapsize" config parameter.
-   * Manual since none of the clib infra has been bootstrapped yet.
-   *
-   * Format: heapsize <nn>[mM][gG]
-   */
-
-  for (i = 1; i < (argc - 1); i++)
-    {
-      if (!strncmp (argv[i], "plugin_path", 11))
-	{
-	  if (i < (argc - 1))
-	    vlib_plugin_path = argv[++i];
-	}
-      if (!strncmp (argv[i], "test_plugin_path", 16))
-	{
-	  if (i < (argc - 1))
-	    vat_plugin_path = argv[++i];
-	}
-      else if (!strncmp (argv[i], "heapsize", 8))
-	{
-	  sizep = (u8 *) argv[i + 1];
-	  size = 0;
-	  while (*sizep >= '0' && *sizep <= '9')
-	    {
-	      size *= 10;
-	      size += *sizep++ - '0';
-	    }
-	  if (size == 0)
-	    {
-	      fprintf
-		(stderr,
-		 "warning: heapsize parse error '%s', use default %lld\n",
-		 argv[i], (long long int) main_heap_size);
-	      goto defaulted;
-	    }
-
-	  main_heap_size = size;
-
-	  if (*sizep == 'g' || *sizep == 'G')
-	    main_heap_size <<= 30;
-	  else if (*sizep == 'm' || *sizep == 'M')
-	    main_heap_size <<= 20;
-	}
-      else if (!strncmp (argv[i], "main-core", 9))
-	{
-	  if (i < (argc - 1))
-	    {
-	      errno = 0;
-	      unsigned long x = strtol (argv[++i], 0, 0);
-	      if (errno == 0)
-		main_core = x;
-	    }
-	}
-      else if (!strncmp (argv[i], "interactive", 11))
-	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
-      else if (!strncmp (argv[i], "nosyslog", 8))
-	unix_main.flags |= UNIX_FLAG_NOSYSLOG;
-      else if (!strncmp (argv[i], "relative", 8))
-	cpu_translate = 1;
-    }
-defaulted:
-
-  /* temporary heap */
   clib_mem_init (0, 1 << 20);
-  unformat_init_command_line (&input, (char **) argv);
+
+  opterr = 0;
+  while ((opt = getopt_long (argc, argv, "c:ivh", long_options, 0)) != -1)
+    {
+      switch (opt)
+	{
+	case 'c':
+	  config_file = optarg;
+	  break;
+	case 'i':
+	  unix_main.flags |= UNIX_FLAG_INTERACTIVE;
+	  break;
+	case 'v':
+	  print_version ();
+	  return 0;
+	case 'h':
+	  print_help (argv[0]);
+	  return 0;
+	case '?':
+	  if (optopt == 'c')
+	    fprintf (stderr, "%s: option '-%c' requires an argument\n",
+		     argv[0], optopt);
+	  else if (optopt)
+	    fprintf (stderr, "%s: unrecognized option '-%c'\n", argv[0],
+		     optopt);
+	  else if (optind > 0 && optind <= argc)
+	    fprintf (stderr, "%s: unrecognized option '%s'\n", argv[0],
+		     argv[optind - 1]);
+	  else
+	    fprintf (stderr, "%s: unrecognized option\n", argv[0]);
+	  print_help (argv[0]);
+	  return 1;
+	default:
+	  break;
+	}
+    }
+
+  /* map some memory for config so it survives main heap swap */
+  config = mmap (0, config_max_size, PROT_READ | PROT_WRITE,
+		 MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+  if (config == MAP_FAILED)
+    {
+      fprintf (stderr, "Failed to allocate config buffer\n");
+      return 1;
+    }
+
+  config_arg_index = optind;
+
+  if (config_file)
+    {
+      int fd = open (config_file, O_RDONLY);
+      ssize_t n_read;
+      u8 buf[4096];
+      int skip_line = 0;
+
+      if (fd < 0)
+	{
+	  fprintf (stderr, "failed to open configuration file '%s'\n",
+		   config_file);
+	  munmap (config, config_max_size);
+	  return 1;
+	}
+
+      while ((n_read = read (fd, buf, sizeof (buf))) > 0)
+	{
+	  for (u32 j = 0; j < n_read; j++)
+	    {
+	      u8 c = buf[j];
+
+	      if (skip_line)
+		{
+		  if (c == '\n' || c == '\r')
+		    {
+		      skip_line = 0;
+		      c = ' ';
+		    }
+		  else
+		    continue;
+		}
+	      else if (c == '#')
+		{
+		  skip_line = 1;
+		  continue;
+		}
+
+	      if (c == '\r' || c == '\n' || c == '\t')
+		c = ' ';
+
+	      if (c == ' ')
+		{
+		  if (cfg_len == 0 || config[cfg_len - 1] == ' ')
+		    continue;
+		}
+
+	      if (cfg_len + 1 >= config_max_size)
+		{
+		  fprintf (stderr, "startup config file is too large\n");
+		  close (fd);
+		  munmap (config, config_max_size);
+		  return 1;
+		}
+
+	      config[cfg_len++] = c;
+	    }
+	}
+
+      close (fd);
+
+      if (n_read < 0)
+	{
+	  fprintf (stderr, "failed to read startup config file '%s'\n",
+		   config_file);
+	  munmap (config, config_max_size);
+	  return 1;
+	}
+
+      if (cfg_len && config[cfg_len - 1] == ' ')
+	cfg_len--;
+
+      config[cfg_len] = 0;
+    }
+  else
+    {
+      /* construct config out of argvs */
+      for (i = config_arg_index; i < argc; i++)
+	cfg_len += sprintf ((char *) (config + cfg_len), "%s%s",
+			    cfg_len ? " " : "", argv[i]);
+      config[cfg_len] = 0;
+    }
+
+  unformat_init_string (&input, (const char *) config, (int) cfg_len);
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (&input, "memory %v", &v))
+      if (unformat (&input, "plugin_path %s", &vlib_plugin_path))
+	;
+      else if (unformat (&input, "test_plugin_path %s", &vat_plugin_path))
+	;
+      else if (unformat (&input, "memory %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
 	{
-	  unformat_init_vector (&sub_input, v);
-	  v = 0;
 	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
 	    {
-	      if (unformat (&sub_input, "main-heap-size %U",
-			    unformat_memory_size, &main_heap_size))
+	      if (unformat (&sub_input, "default-hugepage-size %U",
+			    unformat_log2_page_size,
+			    &default_log2_hugepage_sz))
+		;
+	      else if (unformat (&sub_input, "main-heap-size %U",
+				 unformat_memory_size, &main_heap_size))
 		;
 	      else if (unformat (&sub_input, "main-heap-page-size %U",
 				 unformat_log2_page_size,
 				 &main_heap_log2_page_sz))
 		;
-	      else if (unformat (&sub_input, "default-hugepage-size %U",
-				 unformat_log2_page_size,
-				 &default_log2_hugepage_sz))
-		;
-	      else
-		{
-		  fformat (stderr, "unknown 'memory' config input '%U'\n",
-			   format_unformat_error, &sub_input);
-		  exit (1);
-		}
-
+	      else if (unformat (&sub_input, "%v", &v))
+		vec_reset_length (v);
+	    }
+	  unformat_free (&sub_input);
+	}
+      else if (unformat (&input, "cpu %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  if (unformat (&sub_input, "main-core %u", &main_core))
+	    ;
+	  if (unformat (&sub_input, "relative"))
+	    cpu_translate = 1;
+	  else if (unformat (&sub_input, "%v", &v))
+	    vec_reset_length (v);
+	}
+      else if (unformat (&input, "unix %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&sub_input, "interactive"))
+		unix_main.flags |= UNIX_FLAG_INTERACTIVE;
+	      if (unformat (&sub_input, "nosyslog"))
+		unix_main.flags |= UNIX_FLAG_NOSYSLOG;
+	      else if (unformat (&sub_input, "%v", &v))
+		vec_reset_length (v);
 	    }
 	  unformat_free (&sub_input);
 	}
@@ -332,7 +326,8 @@ defaulted:
 
   unformat_free (&input);
 
-  int translate_main_core = os_translate_cpu_to_affinity_bitmap (main_core);
+  int translate_main_core =
+    os_translate_cpu_to_affinity_bitmap ((int) main_core);
 
   if (cpu_translate && main_core != ~0)
     {
@@ -361,35 +356,59 @@ defaulted:
 	}
     }
 
+  clib_mem_destroy ();
+
+  main_heap =
+    clib_mem_init_with_page_size (main_heap_size, main_heap_log2_page_sz);
+
+  if (!main_heap)
+    {
+      fprintf (stderr, "main heap allocation failure");
+      munmap (config, config_max_size);
+      return 1;
+    }
+
+  vec_add (s, config, cfg_len);
+  munmap (config, config_max_size);
+  config = s;
+  s = 0;
+
+  /* Figure out which numa runs the main thread */
+  __os_numa_index = clib_get_current_numa_node ();
+
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
 
-  /* destroy temporary heap and create main one */
-  clib_mem_destroy ();
+  if (default_log2_hugepage_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
+    clib_mem_set_log2_default_hugepage_size (default_log2_hugepage_sz);
 
-  if ((main_heap = clib_mem_init_with_page_size (main_heap_size,
-						 main_heap_log2_page_sz)))
-    {
-      /* Figure out which numa runs the main thread */
-      __os_numa_index = clib_get_current_numa_node ();
+  /* and use the main heap as that numa's numa heap */
+  clib_mem_set_per_numa_heap (main_heap);
+  vlib_main_init ();
 
-      if (default_log2_hugepage_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
-	clib_mem_set_log2_default_hugepage_size (default_log2_hugepage_sz);
+#if VPP_API_TEST_BUILTIN > 0
+  void vat_plugin_hash_create (void);
+#endif
 
-      /* and use the main heap as that numa's numa heap */
-      clib_mem_set_per_numa_heap (main_heap);
-      vlib_main_init ();
-      vpe_main_init (vlib_get_first_main ());
-      return vlib_unix_main (argc, argv);
-    }
+  if (CLIB_DEBUG > 0)
+    vlib_unix_cli_set_prompt ("DBGvpp# ");
   else
-    {
-      {
-	int rv __attribute__ ((unused)) =
-	  write (2, "Main heap allocation failure!\r\n", 31);
-      }
-      return 1;
-    }
+    vlib_unix_cli_set_prompt ("vpp# ");
+
+  /* Turn off network stack components which we don't want */
+  vlib_mark_init_function_complete (vm, srp_init);
+
+  /*
+   * Create the binary api plugin hashes before loading plugins
+   */
+#if VPP_API_TEST_BUILTIN > 0
+  vat_plugin_hash_create ();
+#endif
+
+  if (!vlib_plugin_path)
+    vpp_find_plugin_path ();
+
+  return vlib_unix_main (argc, argv, config);
 }
 
 static clib_error_t *
