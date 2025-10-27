@@ -422,7 +422,7 @@ main (int argc, char **argv)
   clib_error_t *error;
   vlib_main_t *vm;
 
-  clib_mem_init_thread_safe (0, 128 << 20);
+  clib_mem_init (0, 128 << 20);
   vlib_main_init ();
   vm = vlib_get_first_main ();
 

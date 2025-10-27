@@ -193,7 +193,7 @@ defaulted:
       ASSERT (vcl_mem != MAP_FAILED);
       return;
     }
-  heap = clib_mem_init_thread_safe (vcl_mem, vcl_cfg->heapsize);
+  heap = clib_mem_init (vcl_mem, vcl_cfg->heapsize);
   if (!heap)
     {
       fprintf (stderr, "VCL<%d>: ERROR: clib_mem_init() failed!", getpid ());

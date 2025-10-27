@@ -267,15 +267,15 @@ clib_mem_create_heap_internal (void *base, uword size,
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
 static void *
-clib_mem_init_internal (void *base, uword size,
-			clib_mem_page_sz_t log2_page_sz)
+clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 {
   clib_mem_heap_t *h;
 
   clib_mem_main_init ();
 
-  h = clib_mem_create_heap_internal (base, size, log2_page_sz,
-				     1 /*is_locked */ , "main heap");
+  h = clib_mem_create_heap_internal (a->base_addr, a->memory_size,
+				     a->log2_page_sz, 1 /*is_locked */,
+				     "main heap");
 
   clib_mem_set_heap (h);
 
@@ -295,22 +295,17 @@ clib_mem_init_internal (void *base, uword size,
 __clib_export void *
 clib_mem_init (void *memory, uword memory_size)
 {
-  return clib_mem_init_internal (memory, memory_size,
-				 CLIB_MEM_PAGE_SZ_DEFAULT);
+  return clib_mem_init_internal (&(clib_mem_init_ex_args_t){
+    .base_addr = memory,
+    .memory_size = memory_size,
+    .log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT,
+  });
 }
 
 __clib_export void *
-clib_mem_init_with_page_size (uword memory_size,
-			      clib_mem_page_sz_t log2_page_sz)
+clib_mem_init_ex (clib_mem_init_ex_args_t *a)
 {
-  return clib_mem_init_internal (0, memory_size, log2_page_sz);
-}
-
-__clib_export void *
-clib_mem_init_thread_safe (void *memory, uword memory_size)
-{
-  return clib_mem_init_internal (memory, memory_size,
-				 CLIB_MEM_PAGE_SZ_DEFAULT);
+  return clib_mem_init_internal (a);
 }
 
 __clib_export void
