@@ -969,6 +969,9 @@ hcpc_connect_http_connection ()
   transport_endpt_ext_cfg_t *ext_cfg;
   transport_endpt_cfg_http_t http_cfg = { 120, HTTP_UDP_TUNNEL_DGRAM, 0 };
 
+  if (hcpcm->http_state >= HCPC_HTTP_STATE_CONNECTING)
+    return;
+
   vec_validate (a, 0);
   clib_memset (a, 0, sizeof (a[0]));
   clib_memcpy (&a->sep_ext, &hcpcm->proxy_server_sep,

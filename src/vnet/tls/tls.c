@@ -377,6 +377,7 @@ tls_session_disconnect_callback (session_t * tls_session)
   ASSERT (tls_session->thread_index == vlib_get_thread_index ()
 	  || vlib_thread_is_main_w_barrier ());
 
+  clib_warning ("transport closing s %u", tls_session->session_index);
   ctx = tls_ctx_get_w_thread (tls_session->opaque, tls_session->thread_index);
   ctx->flags |= TLS_CONN_F_PASSIVE_CLOSE;
   tls_ctx_transport_close (ctx);
@@ -1043,27 +1044,36 @@ format_tls_listener (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
-format_tls_half_open (u8 * s, va_list * args)
+static u8 *
+format_tls_ho_conn_id (u8 *s, va_list *args)
 {
-  u32 ho_index = va_arg (*args, u32);
-  u32 __clib_unused thread_index = va_arg (*args, u32);
-  u32 __clib_unused verbose = va_arg (*args, u32);
-  tls_ctx_t *ho_ctx;
-
-  ho_ctx = tls_ctx_half_open_get (ho_index);
+  tls_ctx_t *ho_ctx = va_arg (*args, tls_ctx_t *);
 
   s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u ts %d:%d",
 	      ho_ctx->c_thread_index, ho_ctx->c_s_index, "TLS",
 	      ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
 	      session_thread_from_handle (ho_ctx->tls_session_handle),
 	      session_index_from_handle (ho_ctx->tls_session_handle));
+  return s;
+}
+
+u8 *
+format_tls_half_open (u8 *s, va_list *args)
+{
+  u32 ho_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  tls_ctx_t *ho_ctx;
+
+  ho_ctx = tls_ctx_half_open_get (ho_index);
+
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tls_ho_conn_id, ho_ctx);
   if (verbose)
-    s = format (
-      s, "%-" SESSION_CLI_STATE_LEN "s",
-      (ho_ctx->tls_session_handle == SESSION_INVALID_HANDLE) ?
-	((ho_ctx->flags & TLS_CONN_F_HO_DONE) ? "CLOSED" : "CLOSED-PNDG") :
-	"CONNECTING");
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "s",
+		(ho_ctx->tls_session_handle == SESSION_INVALID_HANDLE) ?
+		  (ho_ctx->flags & TLS_CONN_F_HO_DONE) ? "CLOSED" :
+							 "CLOSED-PNDG" :
+		  "CONNECTING");
 
   return s;
 }
