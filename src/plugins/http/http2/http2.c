@@ -3185,6 +3185,8 @@ http2_transport_close_callback (http_conn_t *hc)
 
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     {
+      ASSERT (hc->flags & HTTP_CONN_F_NO_APP_SESSION);
+      http_disconnect_transport (hc);
       HTTP_DBG (1, "no request");
       return;
     }
