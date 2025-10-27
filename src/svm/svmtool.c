@@ -454,7 +454,7 @@ main (int argc, char **argv)
   char *chroot_path = 0;
   u8 *chroot_u8;
 
-  clib_mem_init_thread_safe (0, 128 << 20);
+  clib_mem_init (0, 128 << 20);
 
   unformat_init_command_line (&input, argv);
 

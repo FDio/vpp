@@ -382,7 +382,7 @@ main (int argc, char **argv)
   struct group _grp, *grp;
   char *s, buf[128];
 
-  clib_mem_init_thread_safe (0, 128 << 20);
+  clib_mem_init (0, 128 << 20);
 
   svmdbtool_main.uid = geteuid ();
   svmdbtool_main.gid = getegid ();

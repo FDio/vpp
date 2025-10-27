@@ -1275,7 +1275,7 @@ vpp_echo_init ()
 {
   /* init memory before proto register themselves */
   echo_main_t *em = &echo_main;
-  clib_mem_init_thread_safe (0, 256 << 20);
+  clib_mem_init (0, 256 << 20);
   clib_memset (em, 0, sizeof (*em));
 }
 

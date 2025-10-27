@@ -275,9 +275,14 @@ clib_mem_heap_t *clib_mem_create_heap (void *base, uword size, int is_locked,
 
 void clib_mem_main_init ();
 void *clib_mem_init (void *base, uword size);
-void *clib_mem_init_with_page_size (uword memory_size,
-				    clib_mem_page_sz_t log2_page_sz);
-void *clib_mem_init_thread_safe (void *memory, uword memory_size);
+
+typedef struct
+{
+  void *base_addr;
+  uword memory_size;
+  clib_mem_page_sz_t log2_page_sz;
+} clib_mem_init_ex_args_t;
+void *clib_mem_init_ex (clib_mem_init_ex_args_t *args);
 
 void clib_mem_exit (void);
 

@@ -44,7 +44,7 @@ selog_client_init_mem (void)
       abort ();
     }
 
-  heap = clib_mem_init_thread_safe (mem, SELOG_CLIENT_HEAPSIZE);
+  heap = clib_mem_init (mem, SELOG_CLIENT_HEAPSIZE);
   if (!heap)
     {
       SELOG_LOG_ERROR ("clib_mem_init_thread_safe failed");

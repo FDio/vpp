@@ -107,8 +107,10 @@ main (int argc, char *argv[])
 {
   int i;
   void vl_msg_api_set_first_available_msg_id (u16);
-  uword main_heap_size = (1ULL << 30);
-  clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
+  clib_mem_init_ex_args_t mem_init_args = {
+    .log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT,
+    .memory_size = (1ULL << 30),
+  };
   clib_mem_page_sz_t default_log2_hugepage_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
   const size_t config_max_size = 1ULL << 18;
   unformat_input_t input, sub_input;
@@ -280,11 +282,12 @@ main (int argc, char *argv[])
 			    &default_log2_hugepage_sz))
 		;
 	      else if (unformat (&sub_input, "main-heap-size %U",
-				 unformat_memory_size, &main_heap_size))
+				 unformat_memory_size,
+				 &mem_init_args.memory_size))
 		;
 	      else if (unformat (&sub_input, "main-heap-page-size %U",
 				 unformat_log2_page_size,
-				 &main_heap_log2_page_sz))
+				 &mem_init_args.log2_page_sz))
 		;
 	      else if (unformat (&sub_input, "%v", &v))
 		vec_reset_length (v);
@@ -358,8 +361,7 @@ main (int argc, char *argv[])
 
   clib_mem_destroy ();
 
-  main_heap =
-    clib_mem_init_with_page_size (main_heap_size, main_heap_log2_page_sz);
+  main_heap = clib_mem_init_ex (&mem_init_args);
 
   if (!main_heap)
     {
