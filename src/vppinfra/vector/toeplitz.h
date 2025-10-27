@@ -5,16 +5,49 @@
 #ifndef included_vector_toeplitz_h
 #define included_vector_toeplitz_h
 #include <vppinfra/clib.h>
+#include <vppinfra/vector.h>
+#include <vppinfra/string.h>
 
 typedef struct
 {
   u16 key_length;
+  u16 reverse_key_offset;
   u16 gfni_offset;
-  u8 data[];
+  u8 data[] __clib_aligned (16);
 } clib_toeplitz_hash_key_t;
 
 clib_toeplitz_hash_key_t *clib_toeplitz_hash_key_init (u8 *key, u32 keylen);
 void clib_toeplitz_hash_key_free (clib_toeplitz_hash_key_t *k);
+
+#if defined(__PCLMUL__) || defined(__ARM_FEATURE_CRYPTO)
+static_always_inline u32
+clib_toeplitz_hash_clmul_chunk (const u8x16 kv, const u8 *data, u32 len)
+{
+  const u8x16 byte_mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+  };
+  u8x16 m = {};
+  u64x2 lo = {}, hi = {};
+  u8x16 dv = *(u8x16u *) (data - 16 + len);
+  u32 sbits = (len * 8) - 1;
+
+  dv &= (u8x16_splat (len) > byte_mask);
+  dv = u8x16_reflect (dv);
+
+  m ^= (u8x16) u64x2_clmul64 ((u64x2) dv, 0, (u64x2) kv, 1);
+  m ^= (u8x16) u64x2_clmul64 ((u64x2) dv, 1, (u64x2) kv, 0);
+
+  lo ^= u64x2_clmul64 ((u64x2) dv, 0, (u64x2) kv, 0);
+  lo ^= (u64x2) u8x16_word_shift_left (m, 8);
+  hi ^= u64x2_clmul64 ((u64x2) dv, 1, (u64x2) kv, 1);
+  hi ^= (u64x2) u8x16_word_shift_right (m, 8);
+
+  if (sbits < 64)
+    return (lo[0] >> sbits) | (lo[1] << (64 - sbits));
+  else
+    return (lo[1] >> (sbits - 64)) | (hi[0] << (128 - sbits));
+}
+#endif
 
 #ifdef CLIB_HAVE_VEC256
 static_always_inline u32x8
@@ -88,11 +121,11 @@ clib_toeplitz_hash_gfni_two (u8x64 d0, u8x64 d1, u64x8 m, int i)
 static_always_inline u32
 clib_toeplitz_hash (clib_toeplitz_hash_key_t *k, u8 *data, int n_bytes)
 {
-  u8 *key = k->data;
   /* key must be 4 bytes longer than data */
   ASSERT (k->key_length - n_bytes >= 4);
 
 #if defined(__GFNI__) && defined(__AVX512F__)
+  u8 *key = k->data;
   u8x64 d0;
   u64x8 h0 = {};
   u64x8u *m = (u64x8u *) ((u8 *) k + k->gfni_offset);
@@ -143,54 +176,20 @@ last8:
 
 done:
   return u64x8_hxor (h0);
-#elif defined(CLIB_HAVE_VEC256)
-  u64x4 v4, shift = { 0, 1, 2, 3 };
-  u32x8 h0 = {};
+#elif defined(__PCLMUL__) || defined(__ARM_FEATURE_CRYPTO)
+  u32 hash = 0;
 
-  while (n_bytes >= 4)
-    {
-      v4 = u64x4_splat (clib_net_to_host_u64 (*(u64u *) key)) << shift;
+  u8 *key = (u8 *) k + k->reverse_key_offset;
 
-      h0 = toeplitz_hash_one_x8 (h0, v4, data[0], 0);
-      h0 = toeplitz_hash_one_x8 (h0, v4, data[1], 1);
-      h0 = toeplitz_hash_one_x8 (h0, v4, data[2], 2);
-      h0 = toeplitz_hash_one_x8 (h0, v4, data[3], 3);
-
-      data += 4;
-      key += 4;
-      n_bytes -= 4;
-    }
+  for (; n_bytes >= 12; key += 12, n_bytes -= 12, data += 12)
+    hash ^= clib_toeplitz_hash_clmul_chunk (*(u8x16u *) key, data, 12);
 
   if (n_bytes)
-    {
-      u64 v = (u64) clib_net_to_host_u32 ((u64) (*(u32u *) key)) << 32;
-      v |= (u64) key[4] << 24;
+    hash ^= clib_toeplitz_hash_clmul_chunk (*(u8x16u *) key, data, n_bytes);
 
-      if (n_bytes == 3)
-	{
-	  v |= (u64) key[5] << 16;
-	  v |= (u64) key[6] << 8;
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[0], 0);
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[1], 1);
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[2], 2);
-	}
-      else if (n_bytes == 2)
-	{
-	  v |= (u64) key[5] << 16;
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[0], 0);
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[1], 1);
-	}
-      else
-	{
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data[0], 0);
-	}
-    }
-
-  return u32x8_hxor (h0);
-#endif
+  return clib_bit_reverse_u32 (hash);
+#else
+  u8 *key = k->data;
   u64 v, hash = 0;
 
   while (n_bytes >= 4)
@@ -231,6 +230,7 @@ done:
 	}
     }
   return hash >> 32;
+#endif
 }
 
 static_always_inline void
@@ -334,96 +334,35 @@ done:
   h = u64x8_hxor (h2);
   *hash2 = h;
   *hash3 = h >> 32;
-#elif defined(CLIB_HAVE_VEC256)
-  u8 *key = k->data;
-  u64x4 v4, shift = { 0, 1, 2, 3 };
-  u32x8 h0 = {}, h1 = {}, h2 = {}, h3 = {};
+#elif defined(__PCLMUL__) || defined(__ARM_FEATURE_CRYPTO)
+  u32 h0 = 0, h1 = 0, h2 = 0, h3 = 0;
 
-  while (n_bytes >= 4)
+  u8 *key = (u8 *) k + k->reverse_key_offset;
+  u8x16 kv;
+
+  for (; n_bytes >= 12; key += 12, n_bytes -= 12, data0 += 12, data1 += 12,
+			data2 += 12, data3 += 12)
     {
-      v4 = u64x4_splat (clib_net_to_host_u64 (*(u64u *) key)) << shift;
-
-      h0 = toeplitz_hash_one_x8 (h0, v4, data0[0], 0);
-      h1 = toeplitz_hash_one_x8 (h1, v4, data1[0], 0);
-      h2 = toeplitz_hash_one_x8 (h2, v4, data2[0], 0);
-      h3 = toeplitz_hash_one_x8 (h3, v4, data3[0], 0);
-
-      h0 = toeplitz_hash_one_x8 (h0, v4, data0[1], 1);
-      h1 = toeplitz_hash_one_x8 (h1, v4, data1[1], 1);
-      h2 = toeplitz_hash_one_x8 (h2, v4, data2[1], 1);
-      h3 = toeplitz_hash_one_x8 (h3, v4, data3[1], 1);
-
-      h0 = toeplitz_hash_one_x8 (h0, v4, data0[2], 2);
-      h1 = toeplitz_hash_one_x8 (h1, v4, data1[2], 2);
-      h2 = toeplitz_hash_one_x8 (h2, v4, data2[2], 2);
-      h3 = toeplitz_hash_one_x8 (h3, v4, data3[2], 2);
-
-      h0 = toeplitz_hash_one_x8 (h0, v4, data0[3], 3);
-      h1 = toeplitz_hash_one_x8 (h1, v4, data1[3], 3);
-      h2 = toeplitz_hash_one_x8 (h2, v4, data2[3], 3);
-      h3 = toeplitz_hash_one_x8 (h3, v4, data3[3], 3);
-
-      data0 += 4;
-      data1 += 4;
-      data2 += 4;
-      data3 += 4;
-      key += 4;
-      n_bytes -= 4;
+      kv = *(u8x16u *) key;
+      h0 ^= clib_toeplitz_hash_clmul_chunk (kv, data0, 12);
+      h1 ^= clib_toeplitz_hash_clmul_chunk (kv, data1, 12);
+      h2 ^= clib_toeplitz_hash_clmul_chunk (kv, data2, 12);
+      h3 ^= clib_toeplitz_hash_clmul_chunk (kv, data3, 12);
     }
 
   if (n_bytes)
     {
-      u64 v = (u64) clib_net_to_host_u32 ((u64) (*(u32u *) key)) << 32;
-      v |= (u64) key[4] << 24;
-
-      if (n_bytes == 3)
-	{
-	  v |= (u64) key[5] << 16;
-	  v |= (u64) key[6] << 8;
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[0], 0);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[0], 0);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[0], 0);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[0], 0);
-
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[1], 1);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[1], 1);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[1], 1);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[1], 1);
-
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[2], 2);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[2], 2);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[2], 2);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[2], 2);
-	}
-      else if (n_bytes == 2)
-	{
-	  v |= (u64) key[5] << 16;
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[0], 0);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[0], 0);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[0], 0);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[0], 0);
-
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[1], 1);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[1], 1);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[1], 1);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[1], 1);
-	}
-      else
-	{
-	  v4 = u64x4_splat (v) << shift;
-	  h0 = toeplitz_hash_one_x8 (h0, v4, data0[0], 0);
-	  h1 = toeplitz_hash_one_x8 (h1, v4, data1[0], 0);
-	  h2 = toeplitz_hash_one_x8 (h2, v4, data2[0], 0);
-	  h3 = toeplitz_hash_one_x8 (h3, v4, data3[0], 0);
-	}
+      kv = *(u8x16u *) key;
+      h0 ^= clib_toeplitz_hash_clmul_chunk (kv, data0, n_bytes);
+      h1 ^= clib_toeplitz_hash_clmul_chunk (kv, data1, n_bytes);
+      h2 ^= clib_toeplitz_hash_clmul_chunk (kv, data2, n_bytes);
+      h3 ^= clib_toeplitz_hash_clmul_chunk (kv, data3, n_bytes);
     }
 
-  *hash0 = u32x8_hxor (h0);
-  *hash1 = u32x8_hxor (h1);
-  *hash2 = u32x8_hxor (h2);
-  *hash3 = u32x8_hxor (h3);
+  *hash0 = clib_bit_reverse_u32 (h0);
+  *hash1 = clib_bit_reverse_u32 (h1);
+  *hash2 = clib_bit_reverse_u32 (h2);
+  *hash3 = clib_bit_reverse_u32 (h3);
 #else
   u8 *key = k->data;
   u64 v, h0 = 0, h1 = 0, h2 = 0, h3 = 0;
