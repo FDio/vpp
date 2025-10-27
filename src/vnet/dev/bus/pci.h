@@ -57,7 +57,10 @@ vnet_dev_get_pci_n_msix_interrupts (vnet_dev_t *dev)
 
 vnet_dev_rv_t vnet_dev_pci_read_config_header (vlib_main_t *, vnet_dev_t *,
 					       vlib_pci_config_hdr_t *);
-
+vnet_dev_rv_t vnet_dev_pci_read_config (vlib_main_t *, vnet_dev_t *,
+					vlib_pci_config_t *);
+vnet_dev_rv_t vnet_dev_pci_read_config_ext (vlib_main_t *, vnet_dev_t *,
+					    vlib_pci_config_ext_t *);
 vnet_dev_rv_t vnet_dev_pci_map_region (vlib_main_t *, vnet_dev_t *, u8,
 				       void **);
 vnet_dev_rv_t vnet_dev_pci_function_level_reset (vlib_main_t *, vnet_dev_t *);

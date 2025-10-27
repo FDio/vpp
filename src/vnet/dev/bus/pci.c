@@ -181,6 +181,42 @@ vnet_dev_pci_read_config_header (vlib_main_t *vm, vnet_dev_t *dev,
 }
 
 vnet_dev_rv_t
+vnet_dev_pci_read_config (vlib_main_t *vm, vnet_dev_t *dev,
+			  vlib_pci_config_t *config)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  clib_error_t *err;
+
+  err =
+    vlib_pci_read_write_config (vm, h, VLIB_READ, 0, config, sizeof (*config));
+  if (err)
+    {
+      log_err (dev, "pci_read_config: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+vnet_dev_pci_read_config_ext (vlib_main_t *vm, vnet_dev_t *dev,
+			      vlib_pci_config_ext_t *config_ext)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  clib_error_t *err;
+
+  err = vlib_pci_read_write_config (vm, h, VLIB_READ, 0, config_ext,
+				    sizeof (*config_ext));
+  if (err)
+    {
+      log_err (dev, "pci_read_config_ext: %U", format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_BUS;
+    }
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
 vnet_dev_pci_map_region (vlib_main_t *vm, vnet_dev_t *dev, u8 region,
 			 void **pp)
 {
