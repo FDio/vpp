@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9152065_bcb329d4",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 3045
+      },
+      "writtenOn": "2025-10-27T21:34:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "40429552_a507787d",
+      "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1c9f2435_846a3c47",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-10-24T10:44:07Z",
       "side": 1,
       "message": "Avoid C++ comments",
+      "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "982061e4_72d1afc5",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 3045
+      },
+      "writtenOn": "2025-10-27T21:34:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1c9f2435_846a3c47",
       "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "85776c47_072132ce",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 3045
+      },
+      "writtenOn": "2025-10-27T21:34:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "76b58635_7af6970b",
+      "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7aa59d44_0cf97697",
@@ -82,6 +136,24 @@
       "writtenOn": "2025-10-24T10:44:07Z",
       "side": 1,
       "message": "PREDICT_FALSE ?",
+      "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d62fecc_62141ab7",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 3045
+      },
+      "writtenOn": "2025-10-27T21:34:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7aa59d44_0cf97697",
       "revId": "12dc615f49342bcb54b674bf3d1e737d291883e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
