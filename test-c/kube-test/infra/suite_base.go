@@ -158,6 +158,7 @@ func (s *BaseSuite) WaitForComponents() {
 
 	for _, check := range checks {
 		go func(c kubeComponent) {
+			defer GinkgoRecover()
 			defer wg.Done()
 
 			cmd := exec.Command("kubectl", "-n", c.namespace, "rollout", "status", fmt.Sprintf("%s/%s", c.resourceType, c.resourceName))
@@ -171,6 +172,7 @@ func (s *BaseSuite) WaitForComponents() {
 
 	wg.Add(1)
 	go func() {
+		defer GinkgoRecover()
 		defer wg.Done()
 
 		cmd := exec.Command("kubectl", "-n", "calico-apiserver", "rollout", "status", "deployment/calico-apiserver")
