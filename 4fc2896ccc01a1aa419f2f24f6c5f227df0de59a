@@ -52,6 +52,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "40d25703_6cff3f63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-10-27T12:27:48Z",
+      "side": 1,
+      "message": "(This one should be no-effect, triggering anyway.)\n\nperftest-3n-alt",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "92a39283_e438b72a",
