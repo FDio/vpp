@@ -87,6 +87,7 @@ clib_toeplitz_hash_key_init (u8 *key, u32 keylen)
 {
   clib_toeplitz_hash_key_t *k;
   u32 size, gfni_size = 0;
+  uword rnd_keylen;
 
   if (key == 0)
     {
@@ -94,9 +95,10 @@ clib_toeplitz_hash_key_init (u8 *key, u32 keylen)
       keylen = sizeof (default_key);
     }
 
-  size =
-    round_pow2 (sizeof (clib_toeplitz_hash_key_t) + round_pow2 (keylen, 16),
-		CLIB_CACHE_LINE_BYTES);
+  rnd_keylen = round_pow2 (keylen, 16);
+
+  size = round_pow2 (sizeof (clib_toeplitz_hash_key_t) + rnd_keylen * 2,
+		     CLIB_CACHE_LINE_BYTES);
 #ifdef __x86_64__
   gfni_size = round_pow2 ((keylen + 1) * 8, CLIB_CACHE_LINE_BYTES);
 #endif
@@ -104,8 +106,13 @@ clib_toeplitz_hash_key_init (u8 *key, u32 keylen)
   k = clib_mem_alloc_aligned (size + gfni_size, CLIB_CACHE_LINE_BYTES);
   clib_memset_u8 (k, 0, size + gfni_size);
   k->key_length = keylen;
+  k->reverse_key_offset = sizeof (clib_toeplitz_hash_key_t) + rnd_keylen;
+
   k->gfni_offset = size;
   clib_memcpy_fast (k->data, key, keylen);
+
+  for (u32 i = 0; i < keylen; i++)
+    k->data[i + rnd_keylen] = clib_bit_reverse_u8 (k->data[i]);
 
 #ifdef __x86_64__
   clib_toeplitz_hash_key_expand ((u64 *) ((u8 *) k + k->gfni_offset), k->data,
