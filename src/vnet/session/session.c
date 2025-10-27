@@ -514,7 +514,9 @@ session_alloc_for_stream (session_handle_t parent_handle)
 
   ASSERT (thread_index == vlib_get_thread_index ());
 
-  ps = session_get_from_handle (parent_handle);
+  ps = session_get_from_handle_if_valid (parent_handle);
+  if (!ps)
+    return 0;
   s = session_alloc (thread_index);
   s->listener_handle = SESSION_INVALID_HANDLE;
   s->session_type = ps->session_type;
@@ -1387,6 +1389,9 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
 
   /* allocate session and fifos now */
   s = session_alloc_for_stream (sep->parent_handle);
+  if (PREDICT_FALSE (!s))
+    return SESSION_E_INVALID;
+
   s->app_wrk_index = app_wrk->wrk_index;
   s->opaque = sep->opaque;
   s->flags |= SESSION_F_STREAM;
