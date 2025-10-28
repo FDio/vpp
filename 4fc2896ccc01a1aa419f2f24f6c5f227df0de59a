@@ -120,6 +120,24 @@
       "parentUuid": "fe10ba05_8bebff22",
       "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e493cd1_d4575c9d",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2025-10-28T10:03:51Z",
+      "side": 1,
+      "message": "We can go with generic as native can break for few part_number which are not mentioned in dpdk meson build.",
+      "parentUuid": "2a379dea_5cda8277",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
