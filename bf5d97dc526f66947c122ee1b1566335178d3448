@@ -33,6 +33,23 @@
       "message": "can you review this code?",
       "revId": "bf5d97dc526f66947c122ee1b1566335178d3448",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1717652_682378a9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-28T21:10:13Z",
+      "side": 1,
+      "message": "What problem this patch is solving? How to reproduce?",
+      "revId": "bf5d97dc526f66947c122ee1b1566335178d3448",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
