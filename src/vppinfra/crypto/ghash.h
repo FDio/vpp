@@ -108,44 +108,25 @@
 static_always_inline u8x16
 gmul_lo_lo (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
-  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x00);
-#elif defined (__ARM_FEATURE_CRYPTO)
-  return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
-			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
-#endif
+  return (u8x16) u64x2_clmul64 ((u64x2) a, 0, (u64x2) b, 0);
 }
 
 static_always_inline u8x16
 gmul_hi_lo (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
-  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
-#elif defined (__ARM_FEATURE_CRYPTO)
-  return (u8x16) vmull_p64 ((poly64_t) vget_high_p64 ((poly64x2_t) a),
-			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
-#endif
+  return (u8x16) u64x2_clmul64 ((u64x2) a, 1, (u64x2) b, 0);
 }
 
 static_always_inline u8x16
 gmul_lo_hi (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
-  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
-#elif defined (__ARM_FEATURE_CRYPTO)
-  return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
-			    (poly64_t) vget_high_p64 ((poly64x2_t) b));
-#endif
+  return (u8x16) u64x2_clmul64 ((u64x2) a, 0, (u64x2) b, 1);
 }
 
 static_always_inline u8x16
 gmul_hi_hi (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
-  return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x11);
-#elif defined (__ARM_FEATURE_CRYPTO)
-  return (u8x16) vmull_high_p64 ((poly64x2_t) a, (poly64x2_t) b);
-#endif
+  return (u8x16) u64x2_clmul64 ((u64x2) a, 1, (u64x2) b, 1);
 }
 
 typedef struct

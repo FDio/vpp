@@ -284,6 +284,37 @@ u8x16_store_partial (u8x16 r, u8 *data, uword n)
     data[0] = r[0];
 }
 
+#ifdef __ARM_FEATURE_CRYPTO
+static inline u64x2
+u64x2_clmul64 (u64x2 a, const int a_hi, u64x2 b, const int b_hi)
+{
+  u64x2 p;
+
+  switch (a_hi + 2 * b_hi)
+    {
+    case 0:
+      p = (u64x2) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
+			     (poly64_t) vget_low_p64 ((poly64x2_t) b));
+      break;
+    case 1:
+      p = (u64x2) vmull_p64 ((poly64_t) vget_high_p64 ((poly64x2_t) a),
+			     (poly64_t) vget_low_p64 ((poly64x2_t) b));
+      break;
+    case 2:
+      p = (u64x2) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
+			     (poly64_t) vget_high_p64 ((poly64x2_t) b));
+      break;
+    case 3:
+      p = (u64x2) vmull_high_p64 ((poly64x2_t) a, (poly64x2_t) b);
+      break;
+    default:
+      __builtin_unreachable ();
+    }
+
+  return p;
+}
+#endif
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
