@@ -551,6 +551,34 @@ u8x16_store_partial (u8x16 r, u8 *data, uword n)
 #endif
 }
 
+#ifdef __PCLMUL__
+static inline u64x2
+u64x2_clmul64 (u64x2 a, const int a_hi, u64x2 b, const int b_hi)
+{
+  u64x2 p;
+
+  switch (2 * a_hi + b_hi)
+    {
+    case 0:
+      p = (u64x2) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x00);
+      break;
+    case 1:
+      p = (u64x2) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
+      break;
+    case 2:
+      p = (u64x2) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
+      break;
+    case 3:
+      p = (u64x2) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x11);
+      break;
+    default:
+      __builtin_unreachable ();
+    }
+
+  return p;
+}
+#endif
+
 #endif /* included_vector_sse2_h */
 
 /*
