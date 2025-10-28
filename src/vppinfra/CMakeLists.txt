@@ -336,8 +336,8 @@ add_vpp_executable(test_infra
   NO_INSTALL
 )
 
-vpp_library_set_multiarch_sources(test_infra
-  SOURCES
-  ${test_files}
-)
+vpp_add_variant(test_infra VARIANT scalar SOURCES ${test_files} FLAGS -O3 -march=core2 -mno-mmx -mno-sse)
+vpp_add_variant(test_infra VARIANT adl SOURCES ${test_files} FLAGS -O3 -march=alderlake -mprefer-vector-width=256)
+vpp_add_variant(test_infra VARIANT trm SOURCES ${test_files} FLAGS -O3 -march=tremont)
+vpp_add_variant(test_infra VARIANT hsw SOURCES ${test_files} FLAGS -O3 -march=haswell)
 

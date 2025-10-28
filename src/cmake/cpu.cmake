@@ -261,6 +261,31 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
 
 endif()
 
+macro(vpp_add_variant lib)
+  cmake_parse_arguments(ARG
+    ""
+    "VARIANT;NAME"
+    "FLAGS;SOURCES;DEPENDS"
+    ${ARGN}
+  )
+
+  set(l ${lib}_${ARG_VARIANT})
+  add_library(${l} OBJECT ${ARG_SOURCES})
+  if(ARG_DEPENDS)
+    add_dependencies(${l} ${ARG_DEPENDS})
+  endif()
+  if(ARG_NAME)
+    target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT=${ARG_NAME})
+  else()
+    target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT_NAME=${ARG_VARIANT})
+  endif()
+
+  set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT=${ARG_VARIANT})
+  target_compile_options(${l} PUBLIC ${ARG_FLAGS})
+  target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)
+endmacro()
+
 macro(vpp_library_set_multiarch_sources lib)
   cmake_parse_arguments(ARG
     ""
