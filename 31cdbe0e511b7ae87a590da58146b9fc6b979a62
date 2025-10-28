@@ -69,6 +69,24 @@
       "parentUuid": "a3533f9a_75149fc0",
       "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62f89461_c6f522c2",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-28T17:27:20Z",
+      "side": 1,
+      "message": "I was thinking about flushing several dgrams. But the way this is written, it would apply to both stream and dgram protocols, if we just want to allow multiple dgram writes, probably we should make send_data_chunk a bit smarter. That is, for tcp it should keep on doing what it\u0027s doing, for udp it should try multiple writes",
+      "parentUuid": "a34c5783_3b8eb445",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
