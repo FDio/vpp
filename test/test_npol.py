@@ -107,7 +107,11 @@ class VppNpolPolicy(VppObject):
 
 class VppNpolFilter:
     def __init__(self, type=None, value=0, should_match=0):
-        self._filter_type = type if type != None else FILTER_TYPE_NONE
+        self._filter_type = (
+            type
+            if type != None
+            else VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_NONE_TYPE
+        )
         self._filter_value = value
         self._should_match = should_match
 
@@ -199,11 +203,11 @@ class VppNpolIpset(VppObject):
         self.vpp_id = r.set_id
         encoded_members = []
         for m in self.members:
-            if self.type == IPSET_TYPE_IP:
+            if self.type == VppEnum.vl_api_npol_ipset_type_t.NPOL_IP:
                 encoded_members.append({"val": {"address": m}})
-            elif self.type == IPSET_TYPE_IP_PORT:
+            elif self.type == VppEnum.vl_api_npol_ipset_type_t.NPOL_IP_AND_PORT:
                 encoded_members.append({"val": {"tuple": m}})
-            elif self.type == IPSET_TYPE_NET:
+            elif self.type == VppEnum.vl_api_npol_ipset_type_t.NPOL_NET:
                 encoded_members.append({"val": {"prefix": m}})
         r = self.test.vapi.npol_ipset_add_del_members(
             set_id=self.vpp_id,
@@ -219,30 +223,6 @@ class VppNpolIpset(VppObject):
     def remove_vpp_config(self):
         r = self.test.vapi.npol_ipset_delete(set_id=self.vpp_id)
         self.test.assertEqual(0, r.retval)
-
-
-ACTION_ALLOW = VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW
-ACTION_DENY = VppEnum.vl_api_npol_rule_action_t.NPOL_DENY
-ACTION_PASS = VppEnum.vl_api_npol_rule_action_t.NPOL_PASS
-ACTION_LOG = VppEnum.vl_api_npol_rule_action_t.NPOL_LOG
-DEFAULT_ALLOW = VppEnum.vl_api_npol_policy_default_t.NPOL_DEFAULT_ALLOW
-DEFAULT_DENY = VppEnum.vl_api_npol_policy_default_t.NPOL_DEFAULT_DENY
-DEFAULT_PASS = VppEnum.vl_api_npol_policy_default_t.NPOL_DEFAULT_PASS
-FILTER_TYPE_NONE = VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_NONE_TYPE
-FILTER_TYPE_L4_PROTO = VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO
-FILTER_TYPE_ICMP_CODE = (
-    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_CODE
-)
-FILTER_TYPE_ICMP_TYPE = (
-    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_TYPE
-)
-ENTRY_CIDR = VppEnum.vl_api_npol_entry_type_t.NPOL_CIDR
-ENTRY_PORT_RANGE = VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE
-ENTRY_PORT_IP_SET = VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET
-ENTRY_IP_SET = VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET
-IPSET_TYPE_IP = VppEnum.vl_api_npol_ipset_type_t.NPOL_IP
-IPSET_TYPE_IP_PORT = VppEnum.vl_api_npol_ipset_type_t.NPOL_IP_AND_PORT
-IPSET_TYPE_NET = VppEnum.vl_api_npol_ipset_type_t.NPOL_NET
 
 
 class BaseNpolTest(VppTestCase):
@@ -412,7 +392,9 @@ class TestNpolMatches(BaseNpolTest):
 
     def setUp(self):
         super(TestNpolMatches, self).setUp()
-        self.rule = VppNpolRule(self, is_v6=False, action=ACTION_ALLOW)
+        self.rule = VppNpolRule(
+            self, is_v6=False, action=VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW
+        )
         self.rule.add_vpp_config()
         self.policy = VppNpolPolicy(
             self, [VppNpolPolicyItem(is_inbound=1, rule_id=self.rule.vpp_id())]
@@ -420,28 +402,32 @@ class TestNpolMatches(BaseNpolTest):
         self.policy.add_vpp_config()
         self.configure_policies(self.pg1, [self.policy], [], [])
         self.src_ip_ipset = VppNpolIpset(
-            self, IPSET_TYPE_IP, [self.pg0.remote_ip4, self.pg0.remote_ip6]
+            self,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_IP,
+            [self.pg0.remote_ip4, self.pg0.remote_ip6],
         )
         self.src_ip_ipset.add_vpp_config()
         self.dst_ip_ipset = VppNpolIpset(
-            self, IPSET_TYPE_IP, [self.pg1.remote_ip4, self.pg1.remote_ip6]
+            self,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_IP,
+            [self.pg1.remote_ip4, self.pg1.remote_ip6],
         )
         self.dst_ip_ipset.add_vpp_config()
         self.src_net_ipset = VppNpolIpset(
             self,
-            IPSET_TYPE_NET,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_NET,
             [self.pg0.remote_ip4 + "/32", self.pg0.remote_ip6 + "/128"],
         )
         self.src_net_ipset.add_vpp_config()
         self.dst_net_ipset = VppNpolIpset(
             self,
-            IPSET_TYPE_NET,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_NET,
             [self.pg1.remote_ip4 + "/32", self.pg1.remote_ip6 + "/128"],
         )
         self.dst_net_ipset.add_vpp_config()
         self.src_ipport_ipset = VppNpolIpset(
             self,
-            IPSET_TYPE_IP_PORT,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_IP_AND_PORT,
             [
                 {
                     "address": self.pg0.remote_ip4,
@@ -458,7 +444,7 @@ class TestNpolMatches(BaseNpolTest):
         self.src_ipport_ipset.add_vpp_config()
         self.dst_ipport_ipset = VppNpolIpset(
             self,
-            IPSET_TYPE_IP_PORT,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_IP_AND_PORT,
             [
                 {
                     "address": self.pg1.remote_ip4,
@@ -512,7 +498,11 @@ class TestNpolMatches(BaseNpolTest):
 
         # Define filter on ICMP type
         filters = [
-            VppNpolFilter(FILTER_TYPE_ICMP_TYPE, value=icmp_type, should_match=1)
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_TYPE,
+                value=icmp_type,
+                should_match=1,
+            )
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -525,7 +515,13 @@ class TestNpolMatches(BaseNpolTest):
         self.do_test_one_rule(filters, [], [valid], [invalid])
 
         # Define filter on ICMP type  / should match = 0
-        filters = [VppNpolFilter(FILTER_TYPE_ICMP_TYPE, value=11, should_match=0)]
+        filters = [
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_TYPE,
+                value=11,
+                should_match=0,
+            )
+        ]
         invalid = (
             self.base_ip_packet(is_v6)
             / ICMP46(type=11, code=icmp_code)
@@ -551,7 +547,11 @@ class TestNpolMatches(BaseNpolTest):
 
         # Define filter on ICMP type
         filters = [
-            VppNpolFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=1)
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_CODE,
+                value=icmp_code,
+                should_match=1,
+            )
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -567,7 +567,11 @@ class TestNpolMatches(BaseNpolTest):
 
         # Define filter on ICMP type  / should match = 0
         filters = [
-            VppNpolFilter(FILTER_TYPE_ICMP_CODE, value=icmp_code, should_match=0)
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_CODE,
+                value=icmp_code,
+                should_match=0,
+            )
         ]
         valid = (
             self.base_ip_packet(is_v6)
@@ -596,7 +600,11 @@ class TestNpolMatches(BaseNpolTest):
 
         # Define filter on l4proto type
         filters = [
-            VppNpolFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=1)
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                value=filter_value,
+                should_match=1,
+            )
         ]
 
         # Send tcp pg0 -> pg1
@@ -611,7 +619,11 @@ class TestNpolMatches(BaseNpolTest):
 
         # Define filter on l4proto / should match = 0
         filters = [
-            VppNpolFilter(FILTER_TYPE_L4_PROTO, value=filter_value, should_match=0)
+            VppNpolFilter(
+                VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                value=filter_value,
+                should_match=0,
+            )
         ]
         # send l4proto packet and expect it is filtered
         invalid = (
@@ -648,7 +660,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_CIDR,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_CIDR,
             "data": {"cidr": dst_ip_match},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -664,7 +676,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": True,
             "is_not": False,
-            "type": ENTRY_CIDR,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_CIDR,
             "data": {"cidr": src_ip_match},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -684,7 +696,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_PORT_RANGE,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
             "data": {"port_range": {"start": test_port, "end": test_port}},
         }
         valid = base / TCP(sport=test_port, dport=test_port) / random_payload()
@@ -700,7 +712,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": True,
             "is_not": False,
-            "type": ENTRY_PORT_RANGE,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
             "data": {"port_range": {"start": test_port, "end": test_port}},
         }
         valid = base / TCP(sport=test_port, dport=test_port) / random_payload()
@@ -717,7 +729,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_PORT_RANGE,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
             "data": {
                 "port_range": {
                     "start": test_port,
@@ -752,7 +764,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET,
             "data": {"set_id": {"set_id": self.dst_ip_ipset.vpp_id}},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -768,7 +780,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": True,
             "is_not": False,
-            "type": ENTRY_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET,
             "data": {"set_id": {"set_id": self.src_ip_ipset.vpp_id}},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -791,7 +803,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET,
             "data": {"set_id": {"set_id": self.dst_net_ipset.vpp_id}},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -807,7 +819,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": True,
             "is_not": False,
-            "type": ENTRY_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET,
             "data": {"set_id": {"set_id": self.src_net_ipset.vpp_id}},
         }
         valid = self.base_ip_packet(is_ip6) / pload()
@@ -824,7 +836,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": False,
             "is_not": False,
-            "type": ENTRY_PORT_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET,
             "data": {"set_id": {"set_id": self.dst_ipport_ipset.vpp_id}},
         }
         valid = (
@@ -851,7 +863,7 @@ class TestNpolMatches(BaseNpolTest):
         match = {
             "is_src": True,
             "is_not": False,
-            "type": ENTRY_PORT_IP_SET,
+            "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET,
             "data": {"set_id": {"set_id": self.src_ipport_ipset.vpp_id}},
         }
         valid = (
@@ -887,13 +899,13 @@ class TestNpolMatches(BaseNpolTest):
             {
                 "is_src": False,
                 "is_not": False,
-                "type": ENTRY_PORT_IP_SET,
+                "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET,
                 "data": {"set_id": {"set_id": self.dst_ipport_ipset.vpp_id}},
             },
             {
                 "is_src": False,
                 "is_not": False,
-                "type": ENTRY_PORT_RANGE,
+                "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
                 "data": {"port_range": {"start": test_port, "end": test_port}},
             },
         ]
@@ -935,13 +947,13 @@ class TestNpolMatches(BaseNpolTest):
             {
                 "is_src": True,
                 "is_not": False,
-                "type": ENTRY_PORT_IP_SET,
+                "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_IP_SET,
                 "data": {"set_id": {"set_id": self.src_ipport_ipset.vpp_id}},
             },
             {
                 "is_src": True,
                 "is_not": False,
-                "type": ENTRY_PORT_RANGE,
+                "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
                 "data": {"port_range": {"start": test_port, "end": test_port}},
             },
         ]
@@ -1002,19 +1014,25 @@ class TestNpolPolicies(BaseNpolTest):
             self,
             is_v6=False,
             action=action,
-            filters=[VppNpolFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True)],
+            filters=[
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                    tcp_protocol,
+                    True,
+                )
+            ],
             matches=[
                 {
                     "is_src": False,
                     "is_not": False,
-                    "type": ENTRY_PORT_RANGE,
+                    "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
                     "data": {"port_range": {"start": port, "end": port}},
                 }
             ],
         )
 
     def test_inbound_outbound(self):
-        r = self.tcp_dport_rule(1000, ACTION_ALLOW)
+        r = self.tcp_dport_rule(1000, VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW)
         r.add_vpp_config()
         pin = VppNpolPolicy(self, [VppNpolPolicyItem(is_inbound=1, rule_id=r.vpp_id())])
         pout = VppNpolPolicy(
@@ -1049,10 +1067,10 @@ class TestNpolPolicies(BaseNpolTest):
         # If there are policies + profiles (pass_id > 0), then default
         # is to deny before evaluating profiles, unless a rule with a PASS
         # target matches
-        rule1 = self.tcp_dport_rule(1000, ACTION_ALLOW)
-        rule2 = self.tcp_dport_rule(2000, ACTION_ALLOW)
-        rule3 = self.tcp_dport_rule(1000, ACTION_DENY)
-        rule4 = self.tcp_dport_rule(1000, ACTION_PASS)
+        rule1 = self.tcp_dport_rule(1000, VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW)
+        rule2 = self.tcp_dport_rule(2000, VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW)
+        rule3 = self.tcp_dport_rule(1000, VppEnum.vl_api_npol_rule_action_t.NPOL_DENY)
+        rule4 = self.tcp_dport_rule(1000, VppEnum.vl_api_npol_rule_action_t.NPOL_PASS)
         rule1.add_vpp_config()
         rule2.add_vpp_config()
         rule3.add_vpp_config()
@@ -1124,11 +1142,23 @@ class TestNpolPolicies(BaseNpolTest):
         rule1 = VppNpolRule(
             self,
             is_v6=False,
-            action=ACTION_ALLOW,
+            action=VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW,
             filters=[
-                VppNpolFilter(FILTER_TYPE_L4_PROTO, icmp_protocol, True),
-                VppNpolFilter(FILTER_TYPE_ICMP_TYPE, 8, True),
-                VppNpolFilter(FILTER_TYPE_ICMP_CODE, 0, True),
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                    icmp_protocol,
+                    True,
+                ),
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_TYPE,
+                    8,
+                    True,
+                ),
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_ICMP_CODE,
+                    0,
+                    True,
+                ),
             ],
             matches=[],
         )
@@ -1136,28 +1166,32 @@ class TestNpolPolicies(BaseNpolTest):
         # Rule 2 allows tcp dport 8080 from a single container
         src_ipset = VppNpolIpset(
             self,
-            IPSET_TYPE_NET,
+            VppEnum.vl_api_npol_ipset_type_t.NPOL_NET,
             [self.pg0.remote_ip4 + "/32", self.pg0.remote_ip6 + "/128"],
         )
         src_ipset.add_vpp_config()
         rule2 = VppNpolRule(
             self,
             is_v6=False,
-            action=ACTION_ALLOW,
+            action=VppEnum.vl_api_npol_rule_action_t.NPOL_ALLOW,
             filters=[
-                VppNpolFilter(FILTER_TYPE_L4_PROTO, tcp_protocol, True),
+                VppNpolFilter(
+                    VppEnum.vl_api_npol_rule_filter_type_t.NPOL_RULE_FILTER_L4_PROTO,
+                    tcp_protocol,
+                    True,
+                ),
             ],
             matches=[
                 {
                     "is_src": True,
                     "is_not": False,
-                    "type": ENTRY_IP_SET,
+                    "type": VppEnum.vl_api_npol_entry_type_t.NPOL_IP_SET,
                     "data": {"set_id": {"set_id": src_ipset.vpp_id}},
                 },
                 {
                     "is_src": False,
                     "is_not": False,
-                    "type": ENTRY_PORT_RANGE,
+                    "type": VppEnum.vl_api_npol_entry_type_t.NPOL_PORT_RANGE,
                     "data": {"port_range": {"start": 8080, "end": 8080}},
                 },
             ],
