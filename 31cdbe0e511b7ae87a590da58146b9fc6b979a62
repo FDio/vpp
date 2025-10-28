@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff3527c4_eaa6bcce",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-28T00:05:27Z",
+      "side": 1,
+      "message": "Let\u0027s move this test on the else branch of es-\u003eis_dgram",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3533f9a_75149fc0",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-10-28T00:05:27Z",
+      "side": 1,
+      "message": "Maybe we should be changing the amount of bytes to send in a single write, instead of doing this. That is, we might have to dynamically compute how many bytes to write (e.g., 8, 16 ... 128kB)",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
