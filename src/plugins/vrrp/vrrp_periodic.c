@@ -130,7 +130,7 @@ vrrp_vr_timer_set (vrrp_vr_t * vr, vrrp_vr_timer_type_t type)
 			     VRRP_EVENT_VR_TIMER_UPDATE, 0);
 }
 
-void
+static void
 vrrp_vr_timer_timeout (u32 timer_index)
 {
   vrrp_main_t *vmp = &vrrp_main;
@@ -144,6 +144,9 @@ vrrp_vr_timer_timeout (u32 timer_index)
     }
 
   timer = pool_elt_at_index (vmp->vr_timers, timer_index);
+  if (timer->expire_time > vlib_time_now (vlib_get_main ()))
+    return;
+
   vr = pool_elt_at_index (vmp->vrs, timer->vr_index);
 
   switch (timer->type)
