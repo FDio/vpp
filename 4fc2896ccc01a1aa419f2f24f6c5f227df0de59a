@@ -69,6 +69,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68e23cb5_e5950155",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2025-10-28T10:30:03Z",
+      "side": 1,
+      "message": "Thanks Vratko for triggering the tests and checking if my patch breaks other Arm platforms. It seems they are all fine, and as Vratko commented on the related CSIT patch, we can see the expected performance uplift by applying both changes.\nPlease let me know if there are any more comments or concerns over the patch.\nThanks,\nJay Wang",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "92a39283_e438b72a",
@@ -136,6 +153,24 @@
       "side": 1,
       "message": "We can go with generic as native can break for few part_number which are not mentioned in dpdk meson build.",
       "parentUuid": "2a379dea_5cda8277",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4efd813a_e822f95c",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2025-10-28T10:30:03Z",
+      "side": 1,
+      "message": "Thanks Monendra for confirming the Marvell platforms. In that case, I believe the current SUPPORTED_PLATFORMS list includes all the necessary Arm platforms required to enable native DPDK builds within VPP.",
+      "parentUuid": "0e493cd1_d4575c9d",
       "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
