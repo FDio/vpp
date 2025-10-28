@@ -1021,6 +1021,8 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 	session_thread_from_handle (ps->po.session_handle),
 	active_open_send_http_resp_rpc,
 	uword_to_pointer (ps->ps_index, void *));
+      /* http side does not currently support rx fifo tuning */
+      s->flags &= ~SESSION_F_CUSTOM_FIFO_TUNING;
     }
   else
     {
