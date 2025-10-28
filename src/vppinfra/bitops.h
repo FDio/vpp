@@ -380,6 +380,58 @@ u32_is_bit_set (u32 v, u8 bit_index)
   return (v & 1U << bit_index) != 0;
 }
 
+static_always_inline u8
+clib_bit_reverse_u8 (u8 x)
+{
+#ifdef __aarch64__
+  return (u8) (__builtin_aarch64_rbit ((u32) x) >> 24);
+#endif
+  x = ((x & 0xF0u) >> 4) | ((x & 0x0Fu) << 4);
+  x = ((x & 0xCCu) >> 2) | ((x & 0x33u) << 2);
+  x = ((x & 0xAAu) >> 1) | ((x & 0x55u) << 1);
+  return x;
+}
+
+static_always_inline u16
+clib_bit_reverse_u16 (u16 x)
+{
+#ifdef __aarch64__
+  return (u16) (__builtin_aarch64_rbit ((u32) x) >> 16);
+#endif
+  x = ((x & 0x00AAu) << 7) | ((x >> 1) & 0x0055u);
+  x = ((x & 0x00CCu) << 5) | ((x >> 2) & 0x0033u);
+  return (u16) ((x << 8) | (x >> 8));
+}
+
+static_always_inline u32
+clib_bit_reverse_u32 (u32 x)
+{
+#ifdef __aarch64__
+  return __builtin_aarch64_rbit (x);
+#endif
+  x = ((x & 0x55555555u) << 1) | ((x >> 1) & 0x55555555u);
+  x = ((x & 0x33333333u) << 2) | ((x >> 2) & 0x33333333u);
+  x = ((x & 0x0F0F0F0Fu) << 4) | ((x >> 4) & 0x0F0F0F0Fu);
+  x = ((x & 0x00FF00FFu) << 8) | ((x >> 8) & 0x00FF00FFu);
+  x = (x << 16) | (x >> 16);
+  return x;
+}
+
+static_always_inline u64
+clib_bit_reverse_u64 (u64 x)
+{
+#ifdef __aarch64__
+  return __builtin_aarch64_rbitll (x);
+#endif
+  x = ((x & 0x5555555555555555ull) << 1) | ((x >> 1) & 0x5555555555555555ull);
+  x = ((x & 0x3333333333333333ull) << 2) | ((x >> 2) & 0x3333333333333333ull);
+  x = ((x & 0x0F0F0F0F0F0F0F0Full) << 4) | ((x >> 4) & 0x0F0F0F0F0F0F0F0Full);
+  x = ((x & 0x00FF00FF00FF00FFull) << 8) | ((x >> 8) & 0x00FF00FF00FF00FFull);
+  x =
+    ((x & 0x0000FFFF0000FFFFull) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFull);
+  return (x << 32) | (x >> 32);
+}
+
 #else
 #warning "already included"
 #endif /* included_clib_bitops_h */
