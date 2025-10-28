@@ -86,6 +86,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "af8f2ea8_f2e9c6da",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2025-10-28T11:47:19Z",
+      "side": 1,
+      "message": "I am fairly sure that 3n-oct is not affected, but I am getting confusing results from 3n-alt. Even with larger number of MRR trials I can see big regressions (-22%) and progressions (+8%). But looking at trending, I guess 3n-alt is just this unstable in general (after migration to ubuntu2404 and subsequent issues), so I guess we can merge this and if needed address 3n-alt in a separate change (maybe few weeks after merging this, so we can better see the impact in trending).",
+      "revId": "4fc2896ccc01a1aa419f2f24f6c5f227df0de59a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "92a39283_e438b72a",
