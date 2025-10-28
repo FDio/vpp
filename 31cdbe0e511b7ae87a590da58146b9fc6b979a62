@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e207c759_363ac3a3",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-28T13:14:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ff3527c4_eaa6bcce",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a3533f9a_75149fc0",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-10-28T00:05:27Z",
       "side": 1,
       "message": "Maybe we should be changing the amount of bytes to send in a single write, instead of doing this. That is, we might have to dynamically compute how many bytes to write (e.g., 8, 16 ... 128kB)",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a34c5783_3b8eb445",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-28T13:14:07Z",
+      "side": 1,
+      "message": "We\u0027re doing this to avoid dgram segmentation and potential drops if some parts end up missing. Unless you meant flushing several dgrams with each call, regarding that the existing application interface APIs only allow to send a single dgram with each call.",
+      "parentUuid": "a3533f9a_75149fc0",
       "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
