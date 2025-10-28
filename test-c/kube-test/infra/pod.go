@@ -52,20 +52,23 @@ type Config struct {
 func (s *BaseSuite) LoadPodConfigs() {
 	envVarsSet := os.Getenv("KUBE_WRK1") != "" && os.Getenv("KUBE_WRK2") != ""
 
-	if KindCluster {
-		if !envVarsSet {
-			os.Setenv("KUBE_WRK1", "kind-worker")
-			os.Setenv("KUBE_WRK2", "kind-worker2")
-		}
+	if KindCluster && !envVarsSet {
+		s.Log("KUBE_WRK1, KUBE_WRK2 not set, using default names (KinD only)")
+		os.Setenv("KUBE_WRK1", "kind-worker")
+		os.Setenv("KUBE_WRK2", "kind-worker2")
+		envVarsSet = true
+	}
+
+	_, err := os.Stat("kubernetes/pod-definitions.yaml")
+	if envVarsSet {
 		s.Envsubst("kubernetes/pod-definitions-template.yaml", "kubernetes/pod-definitions.yaml")
+		s.Log("pod-definitions.yaml OK [updated]")
+	} else if err == nil {
+		s.Log("pod-definitions.yaml OK")
+	} else if errors.Is(err, os.ErrNotExist) {
+		s.AssertNil(err, "Please set KUBE_WRK1 and KUBE_WRK2 env vars")
 	} else {
-		_, err := os.Stat("kubernetes/pod-definitions.yaml")
-		if errors.Is(err, os.ErrNotExist) {
-			if !envVarsSet {
-				s.AssertNil(err, "Please set KUBE_WRK1 and KUBE_WRK2 env vars")
-			}
-			s.Envsubst("kubernetes/pod-definitions-template.yaml", "kubernetes/pod-definitions.yaml")
-		}
+		s.AssertNil(err)
 	}
 
 	data, err := os.ReadFile("kubernetes/pod-definitions.yaml")
