@@ -270,6 +270,7 @@ typedef struct
   ipsec_sa_t *sa_pool;
   ipsec_sa_inb_rt_t **inb_sa_runtimes;
   ipsec_sa_outb_rt_t **outb_sa_runtimes;
+  u32 last_builder_accumulator;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
