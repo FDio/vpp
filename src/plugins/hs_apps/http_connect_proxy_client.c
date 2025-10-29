@@ -525,23 +525,6 @@ hcpc_delete_session (session_t *s, u8 is_http)
 }
 
 static void
-hcpc_http_stop_listeners ()
-{
-  hcpc_main_t *hcpcm = &hcpc_main;
-  hcpc_listener_t *l;
-
-  pool_foreach (l, hcpcm->listeners)
-    {
-      if (l->session_handle != SESSION_INVALID_HANDLE)
-	{
-	  vnet_unlisten_args_t a = { .handle = l->session_handle,
-				     .app_index = hcpcm->listener_app_index };
-	  vnet_unlisten (&a);
-	}
-    }
-}
-
-static void
 hcpc_http_connection_closed (hcpc_session_t *parent_ps)
 {
   hcpc_main_t *hcpcm = &hcpc_main;
@@ -687,6 +670,56 @@ hcpc_close_session (session_t *s, u8 is_http)
   clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
 }
 
+#define HCPC_ARC_IP4  "ip4-unicast"
+#define HCPC_ARC_IP6  "ip6-unicast"
+#define HCPC_NODE_IP4 "hsi4-in"
+#define HCPC_NODE_IP6 "hsi6-in"
+
+static clib_error_t *
+hcpc_enable_hsi (u8 is_ip4)
+{
+  hcpc_main_t *hcpcm = &hcpc_main;
+  vnet_feature_registration_t *reg;
+  clib_error_t *err = 0;
+  int rv;
+
+  if (is_ip4)
+    {
+      if (hcpcm->hsi4_enabled)
+	return 0;
+      reg = vnet_get_feature_reg (HCPC_ARC_IP4, HCPC_NODE_IP4);
+    }
+  else
+    {
+      if (hcpcm->hsi6_enabled)
+	return 0;
+      reg = vnet_get_feature_reg (HCPC_ARC_IP6, HCPC_NODE_IP6);
+    }
+  if (reg == 0)
+    return clib_error_return (0, "hsi plugin not loaded");
+
+  if (reg->enable_disable_cb)
+    {
+      if ((err = reg->enable_disable_cb (hcpcm->sw_if_index, 1)))
+	return err;
+    }
+
+  if (is_ip4)
+    rv = vnet_feature_enable_disable (HCPC_ARC_IP4, HCPC_NODE_IP4,
+				      hcpcm->sw_if_index, 1, 0, 0);
+  else
+    rv = vnet_feature_enable_disable (HCPC_ARC_IP6, HCPC_NODE_IP6,
+				      hcpcm->sw_if_index, 1, 0, 0);
+  if (rv)
+    return clib_error_return (0, "vnet feature enable failed (rv=%d)", rv);
+
+  if (is_ip4)
+    hcpcm->hsi4_enabled = 1;
+  else
+    hcpcm->hsi6_enabled = 1;
+  return 0;
+}
+
 static void
 hcpc_listen (hcpc_listener_t *l)
 {
@@ -738,54 +771,31 @@ hcpc_start_listen ()
     }
 }
 
-#define HCPC_ARC_IP4  "ip4-unicast"
-#define HCPC_ARC_IP6  "ip6-unicast"
-#define HCPC_NODE_IP4 "hsi4-in"
-#define HCPC_NODE_IP6 "hsi6-in"
-
-static clib_error_t *
-hcpc_enable_hsi (u8 is_ip4)
+static void
+hcpc_http_stop_listeners ()
 {
   hcpc_main_t *hcpcm = &hcpc_main;
-  vnet_feature_registration_t *reg;
-  clib_error_t *err = 0;
-  int rv;
+  hcpc_listener_t *l;
 
-  if (is_ip4)
+  pool_foreach (l, hcpcm->listeners)
     {
-      if (hcpcm->hsi4_enabled)
-	return 0;
-      reg = vnet_get_feature_reg (HCPC_ARC_IP4, HCPC_NODE_IP4);
-    }
-  else
-    {
-      if (hcpcm->hsi6_enabled)
-	return 0;
-      reg = vnet_get_feature_reg (HCPC_ARC_IP6, HCPC_NODE_IP6);
-    }
-  if (reg == 0)
-    return clib_error_return (0, "hsi plugin not loaded");
+      if (l->session_handle == SESSION_INVALID_HANDLE)
+	continue;
 
-  if (reg->enable_disable_cb)
-    {
-      if ((err = reg->enable_disable_cb (hcpcm->sw_if_index, 1)))
-	return err;
+      /* if listen all (wildcard ip and port) disable it in hsi */
+      if (l->sep.port == 0)
+	{
+	  if (l->sep.is_ip4 && l->sep.ip.ip4.as_u32 == 0)
+	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0);
+	  else if (!l->sep.is_ip4 && l->sep.ip.ip6.as_u64[0] == 0 &&
+		   l->sep.ip.ip6.as_u64[1] == 0)
+	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0);
+	}
+
+      vnet_unlisten_args_t a = { .handle = l->session_handle,
+				 .app_index = hcpcm->listener_app_index };
+      vnet_unlisten (&a);
     }
-
-  if (is_ip4)
-    rv = vnet_feature_enable_disable (HCPC_ARC_IP4, HCPC_NODE_IP4,
-				      hcpcm->sw_if_index, 1, 0, 0);
-  else
-    rv = vnet_feature_enable_disable (HCPC_ARC_IP6, HCPC_NODE_IP6,
-				      hcpcm->sw_if_index, 1, 0, 0);
-  if (rv)
-    return clib_error_return (0, "vnet feature enable failed (rv=%d)", rv);
-
-  if (is_ip4)
-    hcpcm->hsi4_enabled = 1;
-  else
-    hcpcm->hsi6_enabled = 1;
-  return 0;
 }
 
 static clib_error_t *
