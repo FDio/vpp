@@ -93,6 +93,30 @@
       },
       "revId": "e238f58ae79a4b236cdb39cdd678d94db8607d3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc49292a_706fc4a5",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-29T13:41:40Z",
+      "side": 1,
+      "message": "you have direct access to tp_vfts so you don\u0027t need any wrapper functions in session layer...",
+      "parentUuid": "7ce1d817_2f7dbc99",
+      "range": {
+        "startLine": 394,
+        "startChar": 4,
+        "endLine": 394,
+        "endChar": 62
+      },
+      "revId": "e238f58ae79a4b236cdb39cdd678d94db8607d3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
