@@ -300,7 +300,7 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
 vapi_error_e
 vapi_ctx_alloc (vapi_ctx_t * result)
 {
-  if (!clib_mem_get_per_cpu_heap () && !clib_mem_init (0, 1024L * 1024 * 32))
+  if (!clib_mem_get_heap () && !clib_mem_init (0, 1024L * 1024 * 32))
     {
       return VAPI_ENOMEM;
     }

@@ -284,9 +284,6 @@ vcl_worker_alloc_and_init ()
   /* Grab lock before selecting mem thread index */
   clib_spinlock_lock (&vcm->workers_lock);
 
-  /* Use separate heap map entry for worker */
-  clib_mem_set_thread_index ();
-
   if (pool_elts (vcm->workers) == vcm->cfg.max_workers)
     {
       VDBG (0, "max-workers %u limit reached", vcm->cfg.max_workers);
