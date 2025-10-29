@@ -22,6 +22,30 @@
       },
       "revId": "ea8e854ddf7333df2e289d5b6100790fe48d39c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d0c9fb2_7b674845",
+        "filename": "test-c/hs-test/proxy_test.go",
+        "patchSetId": 18
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-29T14:19:55Z",
+      "side": 1,
+      "message": "I changed it to wait till TCP closes, now both connections are tested for closure.",
+      "parentUuid": "28c8c513_1958d046",
+      "range": {
+        "startLine": 452,
+        "startChar": 0,
+        "endLine": 459,
+        "endChar": 4
+      },
+      "revId": "ea8e854ddf7333df2e289d5b6100790fe48d39c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
