@@ -9,6 +9,7 @@
 #include <http/http_status_codes.h>
 #include <vnet/tcp/tcp.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
+#include <vppinfra/unix.h>
 
 #define HCPC_DEBUG 0
 
@@ -132,30 +133,38 @@ typedef enum
 
 typedef struct
 {
-  u32 http_app_index;
-  u32 listener_app_index;
-  u32 ckpair_index;
-  session_endpoint_cfg_t proxy_server_sep;
-  http_headers_ctx_t capsule_proto_header;
-  u8 *capsule_proto_header_buf;
-  hcpc_listener_t *listeners;
   hcpc_session_t *sessions;
-  session_handle_t http_connection_handle;
-  u8 is_init;
-  hcpc_http_session_state_t http_state;
-  u8 hsi4_enabled;
-  u8 hsi6_enabled;
-  u32 sw_if_index;
-  u32 fifo_size;
-  u32 prealloc_fifos;
-  u64 private_segment_size;
-  u32 process_node_index;
-  u32 udp_idle_timeout;
+  hcpc_worker_t *workers;
+  hcpc_listener_t *listeners;
   clib_spinlock_t sessions_lock;
   clib_spinlock_t tw_lock;
   tw_timer_wheel_2t_1w_2048sl_t tw;
   hsi_intercept_proto_fn intercept_proto_fn;
-  hcpc_worker_t *workers;
+  http_headers_ctx_t capsule_proto_header;
+  u8 *capsule_proto_header_buf;
+  /*
+   * runtime flags and state
+   */
+  u32 http_app_index;
+  u32 listener_app_index;
+  u32 process_node_index;
+  u32 ckpair_index;
+  u8 is_init;
+  u8 hsi4_enabled;
+  u8 hsi6_enabled;
+  hcpc_http_session_state_t http_state;
+  session_handle_t http_connection_handle;
+  /*
+   * configuration
+   */
+  session_endpoint_cfg_t proxy_server_sep;
+  u32 sw_if_index;
+  u32 fifo_size;
+  u32 prealloc_fifos;
+  u64 private_segment_size;
+  u32 udp_idle_timeout;
+  u8 *cert_file;
+  u8 *key_file;
 } hcpc_main_t;
 
 hcpc_main_t hcpc_main;
@@ -1180,7 +1189,12 @@ hcpc_http_session_reset_callback (session_t *s)
   HCPC_DBG ("session [%u]", s->opaque);
   clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
   ps = hcpc_session_get (s->opaque);
-  ASSERT (ps);
+  if (ps->flags & HCPC_SESSION_F_IS_PARENT)
+    {
+      hcpc_http_connection_closed (ps);
+      clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+      return;
+    }
   ps->state = HCPC_SESSION_CLOSED;
   hcpc_session_close_http (ps);
   if (!ps->intercept_diconnected &&
@@ -1847,6 +1861,59 @@ hcpc_enable (vlib_main_t *vm)
 /* cli */
 /*******/
 
+static int
+hcpc_load_cert_key_pair (u8 *cert_file, u8 *key_file)
+{
+  hcpc_main_t *hcpcm = &hcpc_main;
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  clib_error_t *error;
+  u8 *cert_data = 0, *key_data = 0;
+
+  /* Read certificate file */
+  error = clib_file_contents ((char *) cert_file, &cert_data);
+  if (error)
+    {
+      clib_warning ("failed to read certificate file %s: %U", cert_file,
+		    format_clib_error, error);
+      clib_error_free (error);
+      return -1;
+    }
+
+  /* Read key file */
+  error = clib_file_contents ((char *) key_file, &key_data);
+  if (error)
+    {
+      clib_warning ("failed to read key file %s: %U", key_file,
+		    format_clib_error, error);
+      clib_error_free (error);
+      vec_free (cert_data);
+      return -1;
+    }
+
+  /* Add certificate and key pair */
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = cert_data;
+  ck_pair->key = key_data;
+  ck_pair->cert_len = vec_len (cert_data);
+  ck_pair->key_len = vec_len (key_data);
+
+  if (vnet_app_add_cert_key_pair (ck_pair))
+    {
+      clib_warning ("failed to add certificate key pair");
+      vec_free (cert_data);
+      vec_free (key_data);
+      return -1;
+    }
+
+  hcpcm->ckpair_index = ck_pair->index;
+
+  /* Free the allocated memory */
+  vec_free (cert_data);
+  vec_free (key_data);
+
+  return 0;
+}
+
 static clib_error_t *
 hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			vlib_cli_command_t *cmd)
@@ -1887,6 +1954,10 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "udp-idle-timeout %u",
 			 &hcpcm->udp_idle_timeout))
 	;
+      else if (unformat (line_input, "cert %s", &hcpcm->cert_file))
+	;
+      else if (unformat (line_input, "key %s", &hcpcm->key_file))
+	;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -1925,6 +1996,15 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  if (hcpcm->cert_file && hcpcm->key_file)
+    {
+      if (hcpc_load_cert_key_pair (hcpcm->cert_file, hcpcm->key_file))
+	{
+	  err = clib_error_return (0, "failed to load cert/key pair");
+	  goto done;
+	}
+    }
+
   err = hcpc_enable (vm);
   if (err)
     goto done;
@@ -1948,7 +2028,8 @@ VLIB_CLI_COMMAND (hcpc_create_command, static) = {
   .short_help =
     "http connect proxy client enable server-uri <http[s]://ip:port>\n"
     "interface <intfc> listener <tcp|udp://ip:port> [udp-idle-timeout <n>]\n"
-    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]",
+    "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]\n"
+    "[cert <cert> key <key>]",
   .function = hcpc_create_command_fn,
 };
 
@@ -2059,13 +2140,17 @@ hcpc_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  vlib_cli_output (vm, "connection state: %s",
-		   hcpcm->http_connection_handle == SESSION_INVALID_HANDLE ?
-		     "disconnected" :
-		     "connected");
+  vlib_cli_output (
+    vm, "http connection state: %s",
+    hcpcm->http_state == HCPC_HTTP_STATE_CONNECTED  ? "CONNECTED" :
+    hcpcm->http_state == HCPC_HTTP_STATE_CONNECTING ? "CONNECTING" :
+						      "DISCONNECTED");
+  vlib_cli_output (vm, "http session handle: 0x%lx",
+		   hcpcm->http_connection_handle);
   vlib_cli_output (vm, "server address: %U:%u", format_ip46_address,
 		   &hcpcm->proxy_server_sep.ip, hcpcm->proxy_server_sep.is_ip4,
 		   clib_net_to_host_u16 (hcpcm->proxy_server_sep.port));
+  vlib_cli_output (vm, "certkey index: %u", hcpcm->ckpair_index);
 
   if (show_listeners)
     {
