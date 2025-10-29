@@ -171,13 +171,13 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 	connected := false
 	for nTries := 0; nTries < 10; nTries++ {
 		o := vpp.Vppctl("show http connect proxy client")
-		if strings.Contains(o, "connection state: connected") {
+		if strings.Contains(strings.ToLower(o), "connection state: connected") {
 			connected = true
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-	vpp.Container.Suite.AssertEqual(connected, true)
+	vpp.Container.Suite.AssertEqual(connected, true, "client not connected to the server")
 }
 
 func (s *MasqueSuite) StartNginxServer() {
