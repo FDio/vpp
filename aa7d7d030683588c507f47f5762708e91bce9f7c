@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff8ac0c3_2814ca08",
+        "filename": "src/vppinfra/vector_neon.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-29T08:52:18Z",
+      "side": 1,
+      "message": "should it be static_always_inline just in case?",
+      "revId": "aa7d7d030683588c507f47f5762708e91bce9f7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b6200b9_62fab642",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2025-10-29T08:52:18Z",
+      "side": 1,
+      "message": "should it be static_always_inline just in case?",
+      "revId": "aa7d7d030683588c507f47f5762708e91bce9f7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
