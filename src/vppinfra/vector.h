@@ -147,10 +147,11 @@ typedef union
 } vec512_t;
 
 /* universal inlines */
-#define _(t, s, c) \
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_zero ()                                                    \
-{ return (t##s##x##c) {}; }                                             \
+#define _(t, s, c)                                                            \
+  static_always_inline t##s##x##c t##s##x##c##_zero ()                        \
+  {                                                                           \
+    return (t##s##x##c){};                                                    \
+  }
 
 foreach_vec
 #undef _
@@ -256,8 +257,92 @@ t##s##x##c##_splat (t##s x)				\
 							\
     return r;						\
 }
-  foreach_vec128i foreach_vec128u
+  foreach_vec128i foreach_vec128u;
 #undef _
 #endif
+
+static_always_inline u8
+clib_bit_reverse_u8 (u8 x)
+{
+#if defined(__x86_64__) && defined(__GFNI__)
+  u8x16 matrix = { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+  u8x16 t = { x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  t = (u8x16) _mm_gf2p8affine_epi64_epi8 ((__m128i) t, (__m128i) matrix, 0);
+
+  return t[0];
+#elif defined(__aarch64__) && !defined(__clang__)
+  return (u8) (__builtin_aarch64_rbit ((u32) x) >> 24);
+#else
+  x = ((x & 0xF0u) >> 4) | ((x & 0x0Fu) << 4);
+  x = ((x & 0xCCu) >> 2) | ((x & 0x33u) << 2);
+  x = ((x & 0xAAu) >> 1) | ((x & 0x55u) << 1);
+  return x;
+#endif
+}
+
+static_always_inline u16
+clib_bit_reverse_u16 (u16 x)
+{
+#if defined(__x86_64__) && defined(__GFNI__)
+  u8x16 matrix = { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+  u16x8 t = { x, 0, 0, 0, 0, 0, 0, 0 };
+
+  t = (u16x8) _mm_gf2p8affine_epi64_epi8 ((__m128i) t, (__m128i) matrix, 0);
+
+  return __builtin_bswap16 (t[0]);
+#elif defined(__aarch64__) && !defined(__clang__)
+  return (u16) (__builtin_aarch64_rbit ((u32) x) >> 16);
+#else
+  x = ((x & 0x00AAu) << 7) | ((x >> 1) & 0x0055u);
+  x = ((x & 0x00CCu) << 5) | ((x >> 2) & 0x0033u);
+  return (u16) ((x << 8) | (x >> 8));
+#endif
+}
+
+static_always_inline u32
+clib_bit_reverse_u32 (u32 x)
+{
+#if defined(__x86_64__) && defined(__GFNI__)
+  u8x16 matrix = { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+  u32x4 t = { x, 0, 0, 0 };
+
+  t = (u32x4) _mm_gf2p8affine_epi64_epi8 ((__m128i) t, (__m128i) matrix, 0);
+
+  return __builtin_bswap32 (t[0]);
+#elif defined(__aarch64__) && !defined(__clang__)
+  return __builtin_aarch64_rbit (x);
+#else
+  x = ((x & 0x55555555u) << 1) | ((x >> 1) & 0x55555555u);
+  x = ((x & 0x33333333u) << 2) | ((x >> 2) & 0x33333333u);
+  x = ((x & 0x0F0F0F0Fu) << 4) | ((x >> 4) & 0x0F0F0F0Fu);
+  x = ((x & 0x00FF00FFu) << 8) | ((x >> 8) & 0x00FF00FFu);
+  x = (x << 16) | (x >> 16);
+  return x;
+#endif
+}
+
+static_always_inline u64
+clib_bit_reverse_u64 (u64 x)
+{
+#if defined(__x86_64__) && defined(__GFNI__)
+  u8x16 matrix = { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+  u64x2 t = { x, 0 };
+
+  t = (u64x2) _mm_gf2p8affine_epi64_epi8 ((__m128i) t, (__m128i) matrix, 0);
+
+  return __builtin_bswap64 (t[0]);
+#elif defined(__aarch64__) && !defined(__clang__)
+  return __builtin_aarch64_rbitll (x);
+#else
+  x = ((x & 0x5555555555555555ull) << 1) | ((x >> 1) & 0x5555555555555555ull);
+  x = ((x & 0x3333333333333333ull) << 2) | ((x >> 2) & 0x3333333333333333ull);
+  x = ((x & 0x0F0F0F0F0F0F0F0Full) << 4) | ((x >> 4) & 0x0F0F0F0F0F0F0F0Full);
+  x = ((x & 0x00FF00FF00FF00FFull) << 8) | ((x >> 8) & 0x00FF00FF00FF00FFull);
+  x =
+    ((x & 0x0000FFFF0000FFFFull) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFull);
+  return (x << 32) | (x >> 32);
+#endif
+}
 
 #endif /* included_clib_vector_h */
