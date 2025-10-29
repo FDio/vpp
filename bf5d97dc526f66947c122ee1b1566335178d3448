@@ -50,6 +50,23 @@
       "message": "What problem this patch is solving? How to reproduce?",
       "revId": "bf5d97dc526f66947c122ee1b1566335178d3448",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bed22998_93769f0c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2025-10-29T05:54:57Z",
+      "side": 1,
+      "message": "hello thank you for review.\nthe problem can be generated in master if you run make install-ext-dep you can clearly see the path for pkg-config in vpp_ext_deb file is missmatch with debian installation path which can cause problem if the developer wants to use the pkg-config to load vpp_ext_deb library\u0027s.\nin master version the original path is address to this\n${project_root}/build-data/packages/debian/tmp/.../lib\nwhile in this new patch it\u0027s fix to this\n/opt/vpp/external/.../lib\n\nif you still had problem tell me",
+      "revId": "bf5d97dc526f66947c122ee1b1566335178d3448",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
