@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "28c8c513_1958d046",
+        "filename": "test-c/hs-test/proxy_test.go",
+        "patchSetId": 18
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-29T13:32:04Z",
+      "side": 1,
+      "message": "isn\u0027t it working or what? one thing is that udp session is not there but we need to be sure that application get notification and cleanup its own context, in this case http connection is closed (it might take couple of seconds since it\u0027s tcp)",
+      "range": {
+        "startLine": 452,
+        "startChar": 0,
+        "endLine": 459,
+        "endChar": 4
+      },
+      "revId": "ea8e854ddf7333df2e289d5b6100790fe48d39c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
