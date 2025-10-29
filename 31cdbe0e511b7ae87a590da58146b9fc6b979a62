@@ -87,6 +87,24 @@
       "parentUuid": "a34c5783_3b8eb445",
       "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f792af29_5cb3843c",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-10-29T11:24:57Z",
+      "side": 1,
+      "message": "Oh, I had a clause restricting this to UDP, I think it got lost during review iteration. This way, we would be still iterating upon send_data_chunk, just for UDP only. \nI don\u0027t know what the benefit would be of looping the sends in send_data_chunk as we would have to loop around large parts of the code, as well as the common parts which would add lots of \"if not TCP\" conditionals.",
+      "parentUuid": "62f89461_c6f522c2",
+      "revId": "31cdbe0e511b7ae87a590da58146b9fc6b979a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
