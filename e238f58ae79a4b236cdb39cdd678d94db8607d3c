@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba6999ff_1ce38f95",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-29T09:38:55Z",
+      "side": 1,
+      "message": "can we have something like ICMP_HEADER_SIZE?",
+      "range": {
+        "startLine": 381,
+        "startChar": 8,
+        "endLine": 381,
+        "endChar": 20
+      },
+      "revId": "e238f58ae79a4b236cdb39cdd678d94db8607d3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "906436dd_7e045396",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-10-29T09:38:55Z",
+      "side": 1,
+      "message": "this makes session/transport dependent on udp, can we have rather icmp handler callback in transport_proto_vft_t?",
+      "range": {
+        "startLine": 394,
+        "startChar": 4,
+        "endLine": 394,
+        "endChar": 62
+      },
+      "revId": "e238f58ae79a4b236cdb39cdd678d94db8607d3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
