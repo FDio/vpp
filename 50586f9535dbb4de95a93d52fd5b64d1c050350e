@@ -16,6 +16,24 @@
       "message": "please resolve verify job failure...",
       "revId": "50586f9535dbb4de95a93d52fd5b64d1c050350e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7231335_feaaa9e3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2025-10-29T09:51:57Z",
+      "side": 1,
+      "message": "Updated the patch set. The latest job completed successfully and got a verified +1",
+      "parentUuid": "1e395dcd_32b4acc4",
+      "revId": "50586f9535dbb4de95a93d52fd5b64d1c050350e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
