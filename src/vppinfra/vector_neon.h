@@ -194,6 +194,12 @@ u32x4_min_scalar (u32x4 v)
   return vminvq_u32 (v);
 }
 
+static_always_inline u32
+u32x4_sum_elts (u32x4 v)
+{
+  return vaddvq_u32 (v);
+}
+
 #define u8x16_word_shift_left(x,n)  vextq_u8(u8x16_splat (0), x, 16 - n)
 #define u8x16_word_shift_right(x,n) vextq_u8(x, u8x16_splat (0), n)
 
