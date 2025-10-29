@@ -277,6 +277,8 @@ clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 				     a->log2_page_sz, 1 /*is_locked */,
 				     "main heap");
 
+  ASSERT (clib_mem_main.main_heap == 0);
+  clib_mem_main.main_heap = h;
   clib_mem_set_heap (h);
 
   if (mheap_trace_main.lock == 0)
@@ -312,11 +314,12 @@ __clib_export void
 clib_mem_destroy (void)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
-  clib_mem_heap_t *heap = clib_mem_get_heap ();
+  clib_mem_heap_t *heap = clib_mem_main.main_heap;
 
   if (heap->mspace == tm->current_traced_mheap)
     mheap_trace (heap, 0);
 
+  clib_mem_main.main_heap = 0;
   destroy_mspace (heap->mspace);
   clib_mem_vm_unmap (heap);
 }
@@ -650,7 +653,7 @@ static inline void *
 clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
 			    int os_out_of_memory_on_failure)
 {
-  clib_mem_heap_t *h = heap ? heap : clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
   void *p;
 
   align = clib_max (CLIB_MEM_MIN_ALIGN, align);
@@ -734,7 +737,7 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
 			       uword align)
 {
   uword old_alloc_size;
-  clib_mem_heap_t *h = heap ? heap : clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
   void *new;
 
   ASSERT (count_set_bits (align) == 1);
@@ -793,7 +796,7 @@ clib_mem_realloc (void *p, uword new_size)
 __clib_export __clib_flatten uword
 clib_mem_heap_is_heap_object (void *heap, void *p)
 {
-  clib_mem_heap_t *h = heap ? heap : clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
   return mspace_is_heap_object (h->mspace, p);
 }
 
@@ -806,7 +809,7 @@ clib_mem_is_heap_object (void *p)
 __clib_export __clib_flatten void
 clib_mem_heap_free (void *heap, void *p)
 {
-  clib_mem_heap_t *h = heap ? heap : clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
   uword size = clib_mem_size (p);
 
   /* Make sure object is in the correct heap. */
