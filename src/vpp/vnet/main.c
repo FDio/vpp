@@ -386,7 +386,6 @@ main (int argc, char *argv[])
     clib_mem_set_log2_default_hugepage_size (default_log2_hugepage_sz);
 
   /* and use the main heap as that numa's numa heap */
-  clib_mem_set_per_numa_heap (main_heap);
   vlib_main_init ();
 
 #if VPP_API_TEST_BUILTIN > 0

@@ -75,7 +75,6 @@ rx_thread_fn (void *arg)
   if (setjmp (mm->rx_thread_jmpbuf) == 0)
     {
       mm->rx_thread_jmpbuf_valid = 1;
-      clib_mem_set_thread_index ();
       while (1)
 	vl_msg_api_queue_handler (q);
     }

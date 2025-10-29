@@ -518,36 +518,13 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 static clib_error_t *
 vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
-  clib_mem_main_t *mm = &clib_mem_main;
-  vlib_thread_main_t *tm = &vlib_thread_main;
   pthread_t worker;
   pthread_attr_t attr;
   cpu_set_t cpuset;
   void *(*fp_arg) (void *) = fp;
-  void *numa_heap;
 
   w->cpu_id = cpu_id;
   vlib_get_thread_core_numa (w, cpu_id);
-
-  /* Set up NUMA-bound heap if indicated */
-  if (mm->per_numa_mheaps[w->numa_id] == 0)
-    {
-      /* If the user requested a NUMA heap, create it... */
-      if (tm->numa_heap_size)
-	{
-	  clib_mem_set_numa_affinity (w->numa_id, 1 /* force */ );
-	  numa_heap = clib_mem_create_heap (0 /* DIY */ , tm->numa_heap_size,
-					    1 /* is_locked */ ,
-					    "numa %u heap", w->numa_id);
-	  clib_mem_set_default_numa_affinity ();
-	  mm->per_numa_mheaps[w->numa_id] = numa_heap;
-	}
-      else
-	{
-	  /* Or, use the main heap */
-	  mm->per_numa_mheaps[w->numa_id] = w->thread_mheap;
-	}
-    }
 
       CPU_ZERO (&cpuset);
       CPU_SET (cpu_id, &cpuset);
@@ -586,7 +563,7 @@ start_workers (vlib_main_t * vm)
   u32 n_vlib_mains = tm->n_vlib_mains;
   u32 worker_thread_index;
   u32 stats_err_entry_index = fvm->error_main.stats_err_entry_index;
-  clib_mem_heap_t *main_heap = clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *main_heap = clib_mem_get_heap ();
   vlib_stats_register_mem_heap (main_heap);
 
   vec_reset_length (vlib_worker_threads);

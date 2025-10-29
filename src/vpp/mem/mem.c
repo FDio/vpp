@@ -22,7 +22,7 @@ static void no_heap (void)
 static_always_inline int
 check_vpp_heap (void)
 {
-  if (PREDICT_TRUE (clib_mem_get_per_cpu_heap () != 0))
+  if (PREDICT_TRUE (clib_mem_get_heap () != 0))
     return 1;
 
   no_heap ();

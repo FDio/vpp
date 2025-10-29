@@ -2363,7 +2363,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 static f32
 session_get_memory_usage (void)
 {
-  clib_mem_heap_t *heap = clib_mem_get_per_cpu_heap ();
+  clib_mem_heap_t *heap = clib_mem_get_heap ();
   u8 *s = 0;
   char *ss;
   f32 used = 0.0;
