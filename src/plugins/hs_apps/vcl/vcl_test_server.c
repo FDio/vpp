@@ -865,7 +865,6 @@ main (int argc, char **argv)
   vcl_test_main_t *vt = &vcl_test_main;
   int rv, i;
 
-  clib_mem_init (0, 64 << 20);
   vsm->server_cfg.port = VCL_TEST_SERVER_PORT;
   vsm->server_cfg.workers = 1;
   vsm->active_workers = 0;
