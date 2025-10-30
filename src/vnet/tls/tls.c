@@ -1079,19 +1079,21 @@ format_tls_half_open (u8 *s, va_list *args)
 
 static void
 tls_transport_endpoint_get (u32 ctx_handle, clib_thread_index_t thread_index,
-			    transport_endpoint_t *tep, u8 is_lcl)
+			    transport_endpoint_t *tep_rmt,
+			    transport_endpoint_t *tep_lcl)
 {
   tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
   session_t *ts;
 
   ts = session_get_from_handle (ctx->tls_session_handle);
   if (ts && ts->session_state < SESSION_STATE_TRANSPORT_DELETED)
-    session_get_endpoint (ts, tep, is_lcl);
+    session_get_endpoint (ts, tep_rmt, tep_lcl);
 }
 
 static void
 tls_transport_listener_endpoint_get (u32 ctx_handle,
-				     transport_endpoint_t * tep, u8 is_lcl)
+				     transport_endpoint_t *tep_rmt,
+				     transport_endpoint_t *tep_lcl)
 {
   session_t *tls_listener;
   app_listener_t *al;
@@ -1099,7 +1101,7 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
 
   al = app_listener_get_w_handle (ctx->tls_session_handle);
   tls_listener = app_listener_get_session (al);
-  session_get_endpoint (tls_listener, tep, is_lcl);
+  session_get_endpoint (tls_listener, tep_rmt, tep_lcl);
 }
 
 static clib_error_t *

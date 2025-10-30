@@ -283,8 +283,7 @@ mq_send_session_accepted_cb (session_t * s)
       m.mq_index = s->thread_index;
       m.handle = session_handle (s);
 
-      session_get_endpoint (s, &m.rmt, 0 /* is_lcl */);
-      session_get_endpoint (s, &m.lcl, 1 /* is_lcl */);
+      session_get_endpoint (s, &m.rmt, &m.lcl);
     }
   else
     {
@@ -399,7 +398,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
 
-      session_get_endpoint (s, &m.lcl, 1 /* is_lcl */);
+      session_get_endpoint (s, NULL, &m.lcl);
 
       m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
       m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);

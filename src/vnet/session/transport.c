@@ -422,50 +422,53 @@ transport_protocol_is_cl (transport_proto_t tp)
 }
 
 always_inline void
-default_get_transport_endpoint (transport_connection_t * tc,
-				transport_endpoint_t * tep, u8 is_lcl)
+default_get_transport_endpoint (transport_connection_t *tc,
+				transport_endpoint_t *tep_rmt,
+				transport_endpoint_t *tep_lcl)
 {
-  if (is_lcl)
+  if (tep_lcl)
     {
-      tep->port = tc->lcl_port;
-      tep->is_ip4 = tc->is_ip4;
-      clib_memcpy_fast (&tep->ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+      tep_lcl->port = tc->lcl_port;
+      tep_lcl->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep_lcl->ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
     }
-  else
+  if (tep_rmt)
     {
-      tep->port = tc->rmt_port;
-      tep->is_ip4 = tc->is_ip4;
-      clib_memcpy_fast (&tep->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+      tep_rmt->port = tc->rmt_port;
+      tep_rmt->is_ip4 = tc->is_ip4;
+      clib_memcpy_fast (&tep_rmt->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
     }
 }
 
 void
 transport_get_endpoint (transport_proto_t tp, u32 conn_index,
 			clib_thread_index_t thread_index,
-			transport_endpoint_t *tep, u8 is_lcl)
+			transport_endpoint_t *tep_rmt,
+			transport_endpoint_t *tep_lcl)
 {
   if (tp_vfts[tp].get_transport_endpoint)
-    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep,
-					is_lcl);
+    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep_rmt,
+					tep_lcl);
   else
     {
       transport_connection_t *tc;
       tc = transport_get_connection (tp, conn_index, thread_index);
-      default_get_transport_endpoint (tc, tep, is_lcl);
+      default_get_transport_endpoint (tc, tep_rmt, tep_lcl);
     }
 }
 
 void
 transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
-				 transport_endpoint_t * tep, u8 is_lcl)
+				 transport_endpoint_t *tep_rmt,
+				 transport_endpoint_t *tep_lcl)
 {
   if (tp_vfts[tp].get_transport_listener_endpoint)
-    tp_vfts[tp].get_transport_listener_endpoint (conn_index, tep, is_lcl);
+    tp_vfts[tp].get_transport_listener_endpoint (conn_index, tep_rmt, tep_lcl);
   else
     {
       transport_connection_t *tc;
       tc = transport_get_listener (tp, conn_index);
-      default_get_transport_endpoint (tc, tep, is_lcl);
+      default_get_transport_endpoint (tc, tep_rmt, tep_lcl);
     }
 }
 
