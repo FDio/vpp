@@ -1359,7 +1359,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	{
 	  tcp_send_reset (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-	  session_transport_closing_notify (&tc->connection);
+	  session_transport_reset_notify (&tc->connection);
 	  session_transport_closed_notify (&tc->connection);
 	  tcp_connection_timers_reset (tc);
 	  tcp_program_cleanup (wrk, tc);
