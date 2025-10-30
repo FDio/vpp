@@ -755,13 +755,19 @@ send_one_locator_set_details (lisp_cp_main_t * lcm,
   if (lsit->local)
     {
       ASSERT (lsit->name != NULL);
-      strncpy ((char *) rmp->ls_name, (char *) lsit->name,
-	       vec_len (lsit->name));
+      uword name_len =
+	clib_min (vec_len (lsit->name), ARRAY_LEN (rmp->ls_name) - 1);
+      if (name_len)
+	clib_memcpy_fast (rmp->ls_name, lsit->name, name_len);
+      rmp->ls_name[name_len] = 0;
     }
   else
     {
       str = format (0, "<remote-%d>", ls_index);
-      strncpy ((char *) rmp->ls_name, (char *) str, vec_len (str));
+      uword name_len = clib_min (vec_len (str), ARRAY_LEN (rmp->ls_name) - 1);
+      if (name_len)
+	clib_memcpy_fast (rmp->ls_name, str, name_len);
+      rmp->ls_name[name_len] = 0;
       vec_free (str);
     }
 

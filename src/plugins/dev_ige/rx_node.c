@@ -45,7 +45,7 @@ ige_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int use_va_dma)
     }
 }
 
-static_always_inline u64
+static_always_inline u32
 ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vnet_dev_rx_queue_t *rxq, vlib_buffer_template_t bt,
 		    u32 *to, u32 max_pkts, u32 *n_rx_bytes, u32 *n_trace)
