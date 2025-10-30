@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c1ba272a_11a4bc41",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-10-30T13:31:38Z",
+      "side": 1,
+      "message": "do you plan to update https://gerrit.fd.io/r/c/vpp/+/42257, i would like to see how that fits in...",
+      "revId": "e5837b98a5ecdc5446b7472531d325361c6aeec2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
