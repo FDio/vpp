@@ -1248,7 +1248,8 @@ http_app_rx_evt_cb (transport_connection_t *tc)
 
 static void
 http_transport_get_endpoint (u32 rh, clib_thread_index_t thread_index,
-			     transport_endpoint_t *tep, u8 is_lcl)
+			     transport_endpoint_t *tep_rmt,
+			     transport_endpoint_t *tep_lcl)
 {
   http_conn_t *hc;
   session_t *ts;
@@ -1261,7 +1262,7 @@ http_transport_get_endpoint (u32 rh, clib_thread_index_t thread_index,
   hc = http_conn_get_w_thread (hc_index, thread_index);
 
   ts = session_get_from_handle (hc->hc_tc_session_handle);
-  session_get_endpoint (ts, tep, is_lcl);
+  session_get_endpoint (ts, tep_rmt, tep_lcl);
 }
 
 static u8 *

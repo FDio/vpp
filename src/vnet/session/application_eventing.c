@@ -667,7 +667,7 @@ format_app_evt_collector (u8 *s, va_list *args)
 	{
 	  session_t *cs = session_get_from_handle (c->wrk[i].session_handle);
 	  transport_endpoint_t tep;
-	  session_get_endpoint (cs, &tep, 1 /* is_lcl */);
+	  session_get_endpoint (cs, NULL, &tep);
 	  s = format (s, "%U [%u:%u] %U:%u\n", format_white_space, indent,
 		      cs->thread_index, cs->session_index, format_ip46_address,
 		      &tep.ip, tep.is_ip4, tep.port);

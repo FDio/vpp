@@ -937,18 +937,20 @@ format_srtp_half_open (u8 *s, va_list *args)
 
 static void
 srtp_transport_endpoint_get (u32 ctx_handle, clib_thread_index_t thread_index,
-			     transport_endpoint_t *tep, u8 is_lcl)
+			     transport_endpoint_t *tep_rmt,
+			     transport_endpoint_t *tep_lcl)
 {
   srtp_tc_t *ctx = srtp_ctx_get_w_thread (ctx_handle, thread_index);
   session_t *udp_session;
 
   udp_session = session_get_from_handle (ctx->srtp_session_handle);
-  session_get_endpoint (udp_session, tep, is_lcl);
+  session_get_endpoint (udp_session, tep_rmt, tep_lcl);
 }
 
 static void
 srtp_transport_listener_endpoint_get (u32 ctx_handle,
-				      transport_endpoint_t *tep, u8 is_lcl)
+				      transport_endpoint_t *tep_rmt,
+				      transport_endpoint_t *tep_lcl)
 {
   session_t *srtp_listener;
   app_listener_t *al;
@@ -956,7 +958,7 @@ srtp_transport_listener_endpoint_get (u32 ctx_handle,
 
   al = app_listener_get_w_handle (ctx->srtp_session_handle);
   srtp_listener = app_listener_get_session (al);
-  session_get_endpoint (srtp_listener, tep, is_lcl);
+  session_get_endpoint (srtp_listener, tep_rmt, tep_lcl);
 }
 
 static const transport_proto_vft_t srtp_proto = {
