@@ -110,6 +110,9 @@ typedef struct
   u32 ckpair_index;
   u64 max_body_size;
   http_version_t http_version;
+  u32 max_redirects;
+  u32 redirect_count;
+  bool allow_redirect;
 } hc_main_t;
 
 typedef enum
@@ -121,6 +124,8 @@ typedef enum
   HC_FOPEN_FAILED,
   HC_REPEAT_DONE,
   HC_MAX_STREAMS_HIT,
+  HC_MAX_REDIRECTS_HIT,
+  HC_NO_LOCATION_HEADER,
 } hc_cli_signal_t;
 
 #define mime_printable_max_len 35
@@ -209,7 +214,6 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
   rv = svm_fifo_enqueue (s->tx_fifo, wrk->req_headers.tail_offset,
 			 wrk->headers_buf);
   ASSERT (rv == wrk->req_headers.tail_offset);
-
   if (hcm->req_method == HTTP_REQ_POST)
     {
       to_send = vec_len (hcm->data);
@@ -279,6 +283,77 @@ hc_connect_streams (u64 parent_handle, u32 parent_index)
 
   session_send_rpc_evt_to_thread_force (transport_cl_thread (),
 					hc_connect_streams_rpc, args);
+}
+
+static void
+hc_connect_rpc (void *rpc_args)
+{
+  vnet_connect_args_t *a = rpc_args;
+  int rv = ~0;
+  hc_main_t *hcm = &hc_main;
+  hc_worker_t *wrk;
+  hc_session_t *ho_hs;
+
+  for (u32 i = 0; i < hcm->max_sessions; i++)
+    {
+      /* allocate half-open session */
+      wrk = hc_worker_get (transport_cl_thread ());
+      ho_hs = hc_session_alloc (wrk);
+      ho_hs->session_flags |= HC_S_FLAG_IS_PARENT;
+      a->api_context = ho_hs->session_index;
+
+      rv = vnet_connect (a);
+      if (rv)
+	clib_warning (0, "connect returned: %U", format_session_error, rv);
+    }
+
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
+  vec_free (a);
+}
+
+static void
+hc_connect ()
+{
+  hc_main_t *hcm = &hc_main;
+  vnet_connect_args_t *a = 0;
+  transport_endpt_ext_cfg_t *ext_cfg;
+  transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0, 0 };
+
+  vec_validate (a, 0);
+  clib_memset (a, 0, sizeof (a[0]));
+  clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
+  a->app_index = hcm->app_index;
+
+  if (hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
+    {
+      ext_cfg = session_endpoint_add_ext_cfg (
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	sizeof (transport_endpt_crypto_cfg_t));
+      ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
+      switch (hcm->http_version)
+	{
+	case HTTP_VERSION_1:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
+	  break;
+	case HTTP_VERSION_2:
+	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
+	  break;
+	default:
+	  break;
+	}
+    }
+  else
+    {
+      if (hcm->http_version == HTTP_VERSION_2)
+	http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
+    }
+
+  ext_cfg = session_endpoint_add_ext_cfg (
+    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
+					a);
 }
 
 static int
@@ -495,6 +570,215 @@ hc_session_reset_callback (session_t *s)
 }
 
 static int
+hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
+	     session_error_t err, http_msg_t msg)
+{
+  hc_main_t *hcm = &hc_main;
+  int rv;
+  session_error_t session_err = 0;
+  int send_err = 0;
+  wrk->has_common_headers = false;
+  http_truncate_headers_list (&wrk->req_headers);
+  const http_token_t *location_header = http_get_header (
+    &hc_session->resp_headers, http_header_name_token (HTTP_HEADER_LOCATION));
+  
+  if (!location_header)
+    {
+      vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+				    HC_NO_LOCATION_HEADER, 0);
+      hc_session_disconnect_callback (s);
+      return -1;
+    }
+  u8 *formatted_location_header = format(0, "%U", format_http_bytes, location_header->base, location_header->len);
+  HTTP_DBG (2, "found location header + redirect allowed");
+
+  if (hcm->redirect_count >= hcm->max_redirects)
+    {
+      HTTP_DBG (1, "redirect limit hit (count: %d)", hcm->redirect_count);
+      vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+				    HC_MAX_REDIRECTS_HIT, 0);
+      hc_session_disconnect_callback (s);
+      return 0;
+    }
+  
+  switch (msg.code)
+    {
+    case HTTP_STATUS_MOVED:	/* 301 Moved Permanently */
+    case HTTP_STATUS_FOUND:	/* 302 Found */
+    case HTTP_STATUS_SEE_OTHER: /* 303 See Other */
+      hcm->req_method = HTTP_REQ_GET;
+      vec_reset_length (hcm->data);
+    case HTTP_STATUS_TEMPORARY_REDIRECT: /* 307 Temporary Redirect */
+    case HTTP_STATUS_PERMANENT_REDIRECT: /* 308 Permanent Redirect */
+      if (*location_header->base == '/')
+	{
+	  hcm->target = format (0, "%U", format_http_bytes,
+				location_header->base, location_header->len);
+	  hc_http_header_t *header;
+	  HTTP_DBG (2, "first char is \"/\", relative location");
+
+	  /* ********************************* */
+	  if (!wrk->has_common_headers)
+	    {
+	      wrk->has_common_headers = true;
+	      if (hcm->req_method == HTTP_REQ_POST)
+		{
+		  if (hcm->is_file)
+		    http_add_header (
+		      &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
+		      http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
+		  else
+		    http_add_header (
+		      &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
+		      http_content_type_token (
+			HTTP_CONTENT_APP_X_WWW_FORM_URLENCODED));
+		}
+	      http_add_header (&wrk->req_headers, HTTP_HEADER_ACCEPT, "*", 1);
+
+	      vec_foreach (header, hcm->custom_header)
+		http_add_custom_header (
+		  &wrk->req_headers, (const char *) header->name,
+		  vec_len (header->name), (const char *) header->value,
+		  vec_len (header->value));
+
+	      wrk->msg.method_type = hcm->req_method;
+	      if (hcm->req_method == HTTP_REQ_POST)
+		wrk->msg.data.body_len = vec_len (hcm->data);
+	      else
+		wrk->msg.data.body_len = 0;
+
+	      wrk->msg.type = HTTP_MSG_REQUEST;
+	      /* request target len must be without null termination */
+	      wrk->msg.data.target_path_len = strlen ((char *) hcm->target);
+	      /* custom headers */
+	      wrk->msg.data.headers_len = wrk->req_headers.tail_offset;
+	      /* total length */
+	      wrk->msg.data.len = wrk->msg.data.target_path_len +
+				  wrk->msg.data.headers_len +
+				  wrk->msg.data.body_len;
+
+	      if (hcm->use_ptr)
+		{
+		  wrk->msg.data.type = HTTP_MSG_DATA_PTR;
+		}
+	      else
+		{
+		  wrk->msg.data.type = HTTP_MSG_DATA_INLINE;
+		  wrk->msg.data.target_path_offset = 0;
+		  wrk->msg.data.headers_offset = wrk->msg.data.target_path_len;
+		  wrk->msg.data.body_offset =
+		    wrk->msg.data.headers_offset + wrk->msg.data.headers_len;
+		}
+	    }
+
+	  /* **********************************/
+
+	  send_err = hc_request (s, wrk, hc_session, session_err);
+	  if (send_err)
+	    clib_warning ("failed to send request, error %d", send_err);
+	}
+      else
+	{
+	  if ((rv = parse_target ((char **) &formatted_location_header,
+				  (char **) &hcm->target)))
+	    {
+	      clib_warning ("target parse error: %U", format_session_error,
+			    rv);
+	      return -1;
+	    }
+
+    session_endpoint_cfg_t parsed;
+      if ((rv = parse_uri(location_header->base, &parsed))){
+	      clib_warning ("URI parse error: %U", format_session_error, rv);
+	      vlib_process_signal_event_mt (
+		wrk->vlib_main, hcm->cli_node_index, HC_GENERIC_ERR, 0);
+	      hc_session_disconnect_callback (s);
+	      return -1;
+	    }
+      
+      if (!ip46_address_is_equal(&hcm->connect_sep.ip, &parsed.ip) && hcm->connect_sep.port == parsed.port){
+        hc_http_header_t *header;
+	  HTTP_DBG (2, "ip addresses are the same, reusing connection");
+
+	  /* ********************************* */
+	  if (!wrk->has_common_headers)
+	    {
+	      wrk->has_common_headers = true;
+	      if (hcm->req_method == HTTP_REQ_POST)
+		{
+		  if (hcm->is_file)
+		    http_add_header (
+		      &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
+		      http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
+		  else
+		    http_add_header (
+		      &wrk->req_headers, HTTP_HEADER_CONTENT_TYPE,
+		      http_content_type_token (
+			HTTP_CONTENT_APP_X_WWW_FORM_URLENCODED));
+		}
+	      http_add_header (&wrk->req_headers, HTTP_HEADER_ACCEPT, "*", 1);
+
+	      vec_foreach (header, hcm->custom_header)
+		http_add_custom_header (
+		  &wrk->req_headers, (const char *) header->name,
+		  vec_len (header->name), (const char *) header->value,
+		  vec_len (header->value));
+
+	      wrk->msg.method_type = hcm->req_method;
+	      if (hcm->req_method == HTTP_REQ_POST)
+		wrk->msg.data.body_len = vec_len (hcm->data);
+	      else
+		wrk->msg.data.body_len = 0;
+
+	      wrk->msg.type = HTTP_MSG_REQUEST;
+	      /* request target len must be without null termination */
+	      wrk->msg.data.target_path_len = strlen ((char *) hcm->target);
+	      /* custom headers */
+	      wrk->msg.data.headers_len = wrk->req_headers.tail_offset;
+	      /* total length */
+	      wrk->msg.data.len = wrk->msg.data.target_path_len +
+				  wrk->msg.data.headers_len +
+				  wrk->msg.data.body_len;
+
+	      if (hcm->use_ptr)
+		{
+		  wrk->msg.data.type = HTTP_MSG_DATA_PTR;
+		}
+	      else
+		{
+		  wrk->msg.data.type = HTTP_MSG_DATA_INLINE;
+		  wrk->msg.data.target_path_offset = 0;
+		  wrk->msg.data.headers_offset = wrk->msg.data.target_path_len;
+		  wrk->msg.data.body_offset =
+		    wrk->msg.data.headers_offset + wrk->msg.data.headers_len;
+		}
+	    }
+
+      send_err = hc_request (s, wrk, hc_session, session_err);
+	  if (send_err)
+	    clib_warning ("failed to send request, error %d", send_err);
+      } else {
+        hcm->connect_sep.ip = parsed.ip;
+        hcm->connect_sep.port = parsed.port;
+        hc_connect ();
+      }
+	}
+      break;
+    default:
+      clib_warning ("unsupported status code: %U", msg.code);
+      vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
+				    HC_GENERIC_ERR, 0);
+      hc_session_disconnect_callback (s);
+      break;
+    }
+
+  hcm->redirect_count++;
+  http_reset_header_table (&hc_session->resp_headers);
+  vec_free(formatted_location_header);
+  return 0;
+}
+
+static int
 hc_rx_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
@@ -657,6 +941,7 @@ done:
       hc_session->stats.end = vlib_time_now (wrk->vlib_main);
       hc_session->stats.elapsed_time =
 	hc_session->stats.end - hc_session->stats.start;
+
       if (hcm->repeat)
 	{
 	  hc_session->stats.request_count++;
@@ -692,6 +977,12 @@ done:
 	      if (send_err)
 		clib_warning ("failed to send request, error %d", send_err);
 	    }
+	}
+      else if (hcm->allow_redirect &&
+	       (msg.code >= HTTP_STATUS_MOVED &&
+		msg.code <= HTTP_STATUS_PERMANENT_REDIRECT))
+	{
+	  hc_redirect (s, wrk, hc_session, session_err, msg);
 	}
       else
 	{
@@ -807,77 +1098,6 @@ hc_attach ()
 }
 
 static void
-hc_connect_rpc (void *rpc_args)
-{
-  vnet_connect_args_t *a = rpc_args;
-  int rv = ~0;
-  hc_main_t *hcm = &hc_main;
-  hc_worker_t *wrk;
-  hc_session_t *ho_hs;
-
-  for (u32 i = 0; i < hcm->max_sessions; i++)
-    {
-      /* allocate half-open session */
-      wrk = hc_worker_get (transport_cl_thread ());
-      ho_hs = hc_session_alloc (wrk);
-      ho_hs->session_flags |= HC_S_FLAG_IS_PARENT;
-      a->api_context = ho_hs->session_index;
-
-      rv = vnet_connect (a);
-      if (rv)
-	clib_warning (0, "connect returned: %U", format_session_error, rv);
-    }
-
-  session_endpoint_free_ext_cfgs (&a->sep_ext);
-  vec_free (a);
-}
-
-static void
-hc_connect ()
-{
-  hc_main_t *hcm = &hc_main;
-  vnet_connect_args_t *a = 0;
-  transport_endpt_ext_cfg_t *ext_cfg;
-  transport_endpt_cfg_http_t http_cfg = { (u32) hcm->timeout, 0, 0 };
-
-  vec_validate (a, 0);
-  clib_memset (a, 0, sizeof (a[0]));
-  clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
-  a->app_index = hcm->app_index;
-
-  if (hcm->connect_sep.flags & SESSION_ENDPT_CFG_F_SECURE)
-    {
-      ext_cfg = session_endpoint_add_ext_cfg (
-	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
-	sizeof (transport_endpt_crypto_cfg_t));
-      ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
-      switch (hcm->http_version)
-	{
-	case HTTP_VERSION_1:
-	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
-	  break;
-	case HTTP_VERSION_2:
-	  ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
-	  break;
-	default:
-	  break;
-	}
-    }
-  else
-    {
-      if (hcm->http_version == HTTP_VERSION_2)
-	http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
-    }
-
-  ext_cfg = session_endpoint_add_ext_cfg (
-    &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
-  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
-
-  session_send_rpc_evt_to_thread_force (transport_cl_thread (), hc_connect_rpc,
-					a);
-}
-
-static void
 hc_get_req_stats (vlib_main_t *vm)
 {
   hc_main_t *hcm = &hc_main;
@@ -913,8 +1133,8 @@ hc_get_req_stats (vlib_main_t *vm)
 	}
       else
 	{
-	  vlib_cli_output (vm, "* latency: %.4fms",
-			   hc_stats.elapsed_time * 1000);
+	  vlib_cli_output (vm, "* latency: %.4fms\n* redirect count: %d",
+			   hc_stats.elapsed_time * 1000, hcm->redirect_count);
 	}
     }
 }
@@ -956,6 +1176,11 @@ hc_get_event (vlib_main_t *vm)
     case HC_FOPEN_FAILED:
       err = clib_error_return (0, "* couldn't open file %v", hcm->filename);
       break;
+    case HC_NO_LOCATION_HEADER:
+      err = clib_error_return (0, "error: status 3xx but no location header");
+      break;
+    case HC_MAX_REDIRECTS_HIT:
+      vlib_cli_output (vm, "Redirect limit (%d) reached.", hcm->max_redirects);
     case HC_REPLY_RECEIVED:
       if (hcm->filename)
 	{
@@ -1123,6 +1348,9 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->was_transport_closed = false;
   hcm->verbose = false;
   hcm->http_version = HTTP_VERSION_NA;
+  hcm->allow_redirect = false;
+  hcm->max_redirects = 10;
+  hcm->redirect_count = 0;
   /* default max - 64MB */
   hcm->max_body_size = 64 << 20;
   hc_stats.request_count = 0;
@@ -1215,6 +1443,10 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->http_version = HTTP_VERSION_1;
       else if (unformat (line_input, "http2"))
 	hcm->http_version = HTTP_VERSION_2;
+      else if (unformat (line_input, "redirect"))
+	hcm->allow_redirect = true;
+      else if (unformat (line_input, "max-redirects %d", &hcm->max_redirects))
+	;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -1334,7 +1566,7 @@ VLIB_CLI_COMMAND (hc_command, static) = {
     "[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
     "[sessions <# of sessions>] [appns <app-ns> secret <appns-secret>] "
     "[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]"
-    "[max-body-size <nM|G>] [http1|http2]",
+    "[max-body-size <nM|G>] [http1|http2] [redirect] [max-redirects <n> (default 10)]",
   .function = hc_command_fn,
   .is_mp_safe = 1,
 };

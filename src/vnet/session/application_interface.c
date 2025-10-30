@@ -152,37 +152,54 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
  * **target'. char **target is resized automatically.
  */
 session_error_t
-parse_target (char **uri, char **target)
+parse_target(char **uri, char **target)
 {
-  u8 counter = 0;
-
-  for (u32 i = 0; i < (u32) strlen (*uri); i++)
-    {
-      if ((*uri)[i] == '/')
-	counter++;
-
-      if (counter == 3)
-	{
-	  /* resize and make space for NULL terminator */
-	  if (vec_len (*target) < strlen (*uri) - i + 2)
-	    vec_resize (*target, strlen (*uri) - i + 2);
-
-	  strncpy (*target, *uri + i, strlen (*uri) - i);
-	  (*uri)[i + 1] = '\0';
-	  break;
-	}
-    }
-
-  if (!*target)
-    {
-      vec_resize (*target, 2);
-      **target = '/';
-    }
-
-  vec_terminate_c_string (*target);
-
-  if (!*target)
+  if (!uri || !*uri || !target)
     return SESSION_E_INVALID;
+
+  size_t ulen = strlen(*uri);
+  bool path_found = false;
+
+  if (ulen > 0 && (*uri)[0] == '/')
+    {
+      if (vec_len(*target) < (ulen + 1))
+        vec_resize(*target, ulen + 1);
+      
+      memcpy(*target, *uri, ulen);
+      (*target)[ulen] = '\0';
+      path_found = true;
+    }
+  else
+    {
+      u32 slash_count = 0;
+      for (size_t i = 0; i < ulen; i++)
+        {
+          if ((*uri)[i] == '/')
+            {
+              slash_count++;
+              if (slash_count == 3)
+                {
+                  size_t path_len = ulen - i;
+                  if (vec_len(*target) < (path_len + 1))
+                    vec_resize(*target, path_len + 1);
+
+                  clib_memcpy_fast(*target, *uri + i, path_len);
+                  (*target)[path_len] = '\0';
+                  path_found = true;
+                  break;
+                }
+            }
+        }
+    }
+
+  if (!path_found)
+    {
+      if (vec_len(*target) < 2)
+        vec_resize(*target, 2);
+      
+      (*target)[0] = '/';
+      (*target)[1] = '\0';
+    }
 
   return 0;
 }
