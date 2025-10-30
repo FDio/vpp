@@ -156,6 +156,9 @@ vnet_dev_free (vlib_main_t *vm, vnet_dev_t *dev)
   foreach_vnet_dev_port (p, dev)
     vnet_dev_port_free (vm, p);
 
+  if (dev->ops.free)
+    dev->ops.free (vm, dev);
+
   vec_free (dev->description);
   pool_free (dev->ports);
   pool_free (dev->periodic_ops);
