@@ -3230,26 +3230,29 @@ http2_transport_reset_callback (http_conn_t *hc)
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
-    return;
+    {
+      ASSERT (hc->flags & HTTP_CONN_F_NO_APP_SESSION);
+      http_disconnect_transport (hc);
+      return;
+    }
 
   h2c = http2_conn_ctx_get_w_thread (hc);
-  if (hc->flags & HTTP_CONN_F_IS_SERVER)
-    {
-      hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
-		      req = http2_req_get (req_index, hc->c_thread_index);
-		      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
-			{
-			  HTTP_DBG (1, "req_index %x", req_index);
-			  session_transport_reset_notify (
-			    &req->base.connection);
-			}
-		    }));
-    }
-  else
+  hash_foreach (stream_id, req_index, h2c->req_by_stream_id, ({
+		  req = http2_req_get (req_index, hc->c_thread_index);
+		  if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
+		    {
+		      HTTP_DBG (1, "req_index %x", req_index);
+		      session_transport_reset_notify (&req->base.connection);
+		    }
+		}));
+
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) &&
+      h2c->parent_req_index != SESSION_INVALID_INDEX)
     {
       req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
       session_transport_reset_notify (&req->base.connection);
     }
+
   if (clib_llist_elt_is_linked (h2c, sched_list))
     clib_llist_remove (wrk->conn_pool, sched_list, h2c);
 }
@@ -3330,6 +3333,8 @@ http2_conn_cleanup_callback (http_conn_t *hc)
       (h2c->parent_req_index != SESSION_INVALID_INDEX))
     {
       req = http2_req_get (h2c->parent_req_index, hc->c_thread_index);
+      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
+	session_transport_closing_notify (&req->base.connection);
       session_transport_delete_notify (&req->base.connection);
       http2_conn_free_req (h2c, req, hc->c_thread_index);
     }
