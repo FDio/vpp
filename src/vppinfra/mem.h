@@ -51,7 +51,6 @@
 #include <sanitizer/asan_interface.h>
 #endif
 
-#define CLIB_MAX_MHEAPS 256
 #define CLIB_MAX_NUMAS 16
 #define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
 #define CLIB_MEM_ERROR (-1)
@@ -112,11 +111,31 @@ typedef enum
 struct clib_mem_heap_t;
 typedef struct clib_mem_heap_t clib_mem_heap_t;
 
+typedef struct clib_mem_thread_main_t
+{
+  /* active heap */
+  clib_mem_heap_t *active_heap;
+
+  /* owning thread index */
+  clib_thread_index_t thread_index;
+
+  /* linked list of thread mains */
+  struct clib_mem_thread_main_t *next;
+
+  /* per-thread mheap trace control */
+  int mheap_trace_thread_disable;
+} clib_mem_thread_main_t;
+
 typedef struct
 {
-  /* main and active heap */
+  /* main heap */
   clib_mem_heap_t *main_heap;
-  clib_mem_heap_t *active_heap[CLIB_MAX_MHEAPS];
+
+  /* list of all heaps */
+  clib_mem_heap_t **heaps;
+
+  /* linked list of thread mains */
+  struct clib_mem_thread_main_t *threads;
 
   /* log2 system page size */
   clib_mem_page_sz_t log2_page_sz;
@@ -141,6 +160,7 @@ typedef struct
 } clib_mem_main_t;
 
 extern clib_mem_main_t clib_mem_main;
+extern __thread clib_mem_thread_main_t clib_mem_thread_main;
 
 /* Unspecified NUMA socket */
 #define VEC_NUMA_UNSPECIFIED (0xFF)
@@ -202,19 +222,21 @@ void clib_mem_free_s (void *p);
 /* Alias to stack allocator for naming consistency. */
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
 
+void clib_mem_thread_init ();
+
 always_inline clib_mem_heap_t *
 clib_mem_get_heap (void)
 {
-  int cpu = os_get_thread_index ();
-  return clib_mem_main.active_heap[cpu];
+  if (PREDICT_FALSE (clib_mem_thread_main.active_heap == 0))
+    clib_mem_thread_init ();
+  return clib_mem_thread_main.active_heap;
 }
 
 always_inline clib_mem_heap_t *
 clib_mem_set_heap (clib_mem_heap_t * heap)
 {
-  int cpu = os_get_thread_index ();
-  clib_mem_heap_t *old_heap = clib_mem_main.active_heap[cpu];
-  clib_mem_main.active_heap[cpu] = heap;
+  clib_mem_heap_t *old_heap = clib_mem_thread_main.active_heap;
+  clib_mem_thread_main.active_heap = heap;
   return old_heap;
 }
 

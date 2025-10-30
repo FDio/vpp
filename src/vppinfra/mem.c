@@ -24,6 +24,18 @@
 #endif
 
 __clib_export clib_mem_main_t clib_mem_main;
+__clib_export __thread clib_mem_thread_main_t clib_mem_thread_main;
+
+__clib_export void
+clib_mem_thread_init ()
+{
+  clib_mem_thread_main_t *m = &clib_mem_thread_main;
+
+  clib_mem_thread_main.active_heap = clib_mem_main.main_heap;
+  m = __atomic_exchange_n (&clib_mem_main.threads, m, __ATOMIC_RELAXED);
+  clib_mem_thread_main.next = m;
+  clib_mem_thread_main.thread_index = os_get_thread_index ();
+}
 
 __clib_export uword
 clib_mem_vm_reserve (uword start, uword size, u8 log2_align)
