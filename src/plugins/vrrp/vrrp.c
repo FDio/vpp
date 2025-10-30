@@ -108,6 +108,18 @@ vlib_simple_counter_main_t vrrp_stats[] = {
     .name = "PRIO0_RCVD",
     .stat_segment_name = "/net/vrrp/prio0-rcvd",
   },
+  /* Number of advertisements received by a VRRP instance which cause it to
+   * be preempted. Higher priority or same priority + tiebreaker.
+   */
+  {
+    .name = "ADV_PREEMPT",
+    .stat_segment_name = "/net/vrrp/adv-preempt",
+  },
+  /* Number of lower priority advertisements ignored by a VRRP instance */
+  {
+    .name = "ADV_IGNORE",
+    .stat_segment_name = "/net/vrrp/adv-ignored",
+  },
 };
 
 void
