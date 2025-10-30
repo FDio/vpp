@@ -201,12 +201,14 @@ typedef enum vrrp_err_counter_
 #define VRRP_ERR_COUNTER_MAX 6
 
 /* per-instance stats */
-#define foreach_vrrp_stat_counter                                             \
-  _ (MASTER_TRANS, 0)                                                         \
-  _ (ADV_SENT, 1)                                                             \
-  _ (ADV_RCVD, 2)                                                             \
-  _ (PRIO0_SENT, 3)                                                           \
-  _ (PRIO0_RCVD, 4)
+#define foreach_vrrp_stat_counter                                                                  \
+  _ (MASTER_TRANS, 0)                                                                              \
+  _ (ADV_SENT, 1)                                                                                  \
+  _ (ADV_RCVD, 2)                                                                                  \
+  _ (PRIO0_SENT, 3)                                                                                \
+  _ (PRIO0_RCVD, 4)                                                                                \
+  _ (ADV_PREEMPT, 5)                                                                               \
+  _ (ADV_IGNORE, 6)
 
 typedef enum vrrp_stat_counter_
 {
@@ -215,7 +217,7 @@ typedef enum vrrp_stat_counter_
 #undef _
 } vrrp_stat_counter_t;
 
-#define VRRP_STAT_COUNTER_MAX 5
+#define VRRP_STAT_COUNTER_MAX 7
 
 clib_error_t *vrrp_plugin_api_hookup (vlib_main_t * vm);
 
