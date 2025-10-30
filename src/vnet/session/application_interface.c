@@ -154,35 +154,52 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
 session_error_t
 parse_target (char **uri, char **target)
 {
-  u8 counter = 0;
+  if (!uri || !*uri || !target)
+    return SESSION_E_INVALID;
 
-  for (u32 i = 0; i < (u32) strlen (*uri); i++)
+  size_t ulen = strlen (*uri);
+  bool path_found = false;
+
+  if (ulen > 0 && (*uri)[0] == '/')
     {
-      if ((*uri)[i] == '/')
-	counter++;
+      if (vec_len (*target) < (ulen + 1))
+	vec_resize (*target, ulen + 1);
 
-      if (counter == 3)
+      memcpy (*target, *uri, ulen);
+      (*target)[ulen] = '\0';
+      path_found = true;
+    }
+  else
+    {
+      u32 slash_count = 0;
+      for (size_t i = 0; i < ulen; i++)
 	{
-	  /* resize and make space for NULL terminator */
-	  if (vec_len (*target) < strlen (*uri) - i + 2)
-	    vec_resize (*target, strlen (*uri) - i + 2);
+	  if ((*uri)[i] == '/')
+	    {
+	      slash_count++;
+	      if (slash_count == 3)
+		{
+		  size_t path_len = ulen - i;
+		  if (vec_len (*target) < (path_len + 1))
+		    vec_resize (*target, path_len + 1);
 
-	  strncpy (*target, *uri + i, strlen (*uri) - i);
-	  (*uri)[i + 1] = '\0';
-	  break;
+		  clib_memcpy_fast (*target, *uri + i, path_len);
+		  (*target)[path_len] = '\0';
+		  path_found = true;
+		  break;
+		}
+	    }
 	}
     }
 
-  if (!*target)
+  if (!path_found)
     {
-      vec_resize (*target, 2);
-      **target = '/';
+      if (vec_len (*target) < 2)
+	vec_resize (*target, 2);
+
+      (*target)[0] = '/';
+      (*target)[1] = '\0';
     }
-
-  vec_terminate_c_string (*target);
-
-  if (!*target)
-    return SESSION_E_INVALID;
 
   return 0;
 }
