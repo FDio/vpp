@@ -477,6 +477,15 @@ bucket_changed_retry:
 	  if (BV (clib_bihash_is_free) (&rv))
 	    return -1;
 
+	  if (PREDICT_FALSE (
+		!BV (clib_bihash_key_compare) (rv.key, key_result->key)))
+	    {
+	      if (PREDICT_FALSE (
+		    BV (clib_bihash_search_need_retry) (b, &localb)))
+		goto bucket_changed_retry;
+	      continue;
+	    }
+
 	  *key_result = rv;
 
 	  if (PREDICT_FALSE (BV (clib_bihash_search_need_retry) (b, &localb)))
@@ -586,6 +595,15 @@ bucket_changed_retry:
 	  rv = v->kvp[i];
 	  if (BV (clib_bihash_is_free) (&rv))
 	    return -1;
+
+	  if (PREDICT_FALSE (
+		!BV (clib_bihash_key_compare) (rv.key, search_key->key)))
+	    {
+	      if (PREDICT_FALSE (
+		    BV (clib_bihash_search_need_retry) (b, &localb)))
+		goto bucket_changed_retry;
+	      continue;
+	    }
 
 	  *valuep = rv;
 
