@@ -379,5 +379,3 @@ application_crypto_init ()
   acm->last_crypto_engine = CRYPTO_ENGINE_LAST;
   return 0;
 }
-
-VLIB_INIT_FUNCTION (application_crypto_init);
