@@ -139,12 +139,12 @@ vnet_dev_api_reset (vlib_main_t *vm, vnet_dev_api_reset_args_t *args)
 {
   vnet_dev_t *dev = vnet_dev_by_id (args->device_id);
 
-  log_debug (dev, "detach");
+  log_debug (dev, "reset");
 
   if (!dev)
     return VNET_DEV_ERR_NOT_FOUND;
 
-  if (dev->ops.reset)
+  if (dev->ops.reset == 0)
     return VNET_DEV_ERR_NOT_SUPPORTED;
 
   return vnet_dev_process_call_op (vm, dev, vnet_dev_reset);
