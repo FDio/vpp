@@ -806,7 +806,7 @@ show_memory_usage (vlib_main_t * vm,
 {
   clib_mem_main_t *mm = &clib_mem_main;
   int verbose __attribute__ ((unused)) = 0;
-  int api_segment = 0, stats_segment = 0, main_heap = 0, numa_heaps = 0;
+  int api_segment = 0, stats_segment = 0, main_heap = 0;
   int map = 0;
   clib_error_t *error;
   uword clib_mem_trace_enable_disable (uword enable);
@@ -823,8 +823,6 @@ show_memory_usage (vlib_main_t * vm,
 	stats_segment = 1;
       else if (unformat (input, "main-heap"))
 	main_heap = 1;
-      else if (unformat (input, "numa-heaps"))
-	numa_heaps = 1;
       else if (unformat (input, "map"))
 	map = 1;
       else
@@ -835,10 +833,15 @@ show_memory_usage (vlib_main_t * vm,
 	}
     }
 
-  if ((api_segment + stats_segment + main_heap + numa_heaps + map) == 0)
-    return clib_error_return
-      (0, "Need one of api-segment, stats-segment, main-heap, numa-heaps "
-       "or map");
+  if ((api_segment + stats_segment + main_heap + map) == 0)
+    {
+      was_enabled = clib_mem_trace_enable_disable (0);
+      vec_foreach_pointer (h, clib_mem_main.heaps)
+	vlib_cli_output (vm, "%U\n", format_clib_mem_heap, h, 1);
+
+      clib_mem_trace_enable_disable (was_enabled);
+      return 0;
+    }
 
   if (api_segment)
     {
@@ -881,10 +884,6 @@ show_memory_usage (vlib_main_t * vm,
   {
     if (main_heap)
       {
-	/*
-	 * Note: the foreach_vlib_main causes allocator traffic,
-	 * so shut off tracing before we go there...
-	 */
 	was_enabled = clib_mem_trace_enable_disable (0);
 
 	vlib_cli_output (vm, "  %U\n", format_clib_mem_heap, mm->main_heap,
@@ -942,7 +941,7 @@ show_memory_usage (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-		"            [numa-heaps][map][main-heap]",
+		"            [map][main-heap]",
   .function = show_memory_usage,
 };
 
