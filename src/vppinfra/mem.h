@@ -395,8 +395,8 @@ typedef struct
 {
   clib_mem_page_sz_t log2_page_sz;
   uword total;
-  uword mapped;
-  uword not_mapped;
+  uword populated;
+  uword not_populated;
   uword per_numa[CLIB_MAX_NUMAS];
   uword unknown;
 } clib_mem_page_stats_t;

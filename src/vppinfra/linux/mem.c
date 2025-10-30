@@ -505,11 +505,11 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 	}
       if (status[i] >= 0 && status[i] < CLIB_MAX_NUMAS)
 	{
-	  stats->mapped++;
+	  stats->populated++;
 	  stats->per_numa[status[i]]++;
 	}
-      else if (status[i] == -EFAULT)
-	stats->not_mapped++;
+      else if (status[i] == -EFAULT || status[i] == -ENOENT)
+	stats->not_populated++;
       else
 	stats->unknown++;
     }

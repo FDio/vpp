@@ -125,9 +125,11 @@ format_clib_mem_page_stats (u8 * s, va_list * va)
   clib_mem_page_stats_t *stats = va_arg (*va, clib_mem_page_stats_t *);
   u32 indent = format_get_indent (s) + 2;
 
-  s = format (s, "page stats: page-size %U, total %lu, mapped %lu, "
-	      "not-mapped %lu", format_log2_page_size, stats->log2_page_sz,
-	      stats->total, stats->mapped, stats->not_mapped);
+  s = format (s,
+	      "page stats: page-size %U, total %lu, populated %lu, "
+	      "not-populated %lu",
+	      format_log2_page_size, stats->log2_page_sz, stats->total,
+	      stats->populated, stats->not_populated);
 
   if (stats->unknown)
     s = format (s, ", unknown %lu", stats->unknown);

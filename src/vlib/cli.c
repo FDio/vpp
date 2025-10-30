@@ -904,7 +904,7 @@ show_memory_usage (vlib_main_t * vm,
 		    "StartAddr", "size", "FD", "PageSz", "Pages");
 	while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
 	  s = format (s, " Numa%u", numa);
-	s = format (s, " NotMap");
+	s = format (s, " NotPop");
 	s = format (s, " Name");
 	vlib_cli_output (vm, "%v", s);
 	vec_reset_length (s);
@@ -928,7 +928,7 @@ show_memory_usage (vlib_main_t * vm,
 			hdr->num_pages);
 	    while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
 	      s = format (s, "%6lu", stats.per_numa[numa]);
-	    s = format (s, "%7lu", stats.not_mapped);
+	    s = format (s, "%7lu", stats.not_populated);
 	    s = format (s, " %s", hdr->name);
 	    vlib_cli_output (vm, "%v", s);
 	    vec_reset_length (s);
