@@ -1442,6 +1442,95 @@ http_parse_authority (u8 *authority, u32 authority_len,
 }
 
 /**
+ * Update session endpoint and target from location header.
+ * For relative URLs ("/example"), it updates only the target path.
+ *
+ * @param location_header Location header value to parse.
+ * @param parsed_sep      Updated session endpoint (updated for absolute URLs
+ * only).
+ * @param parsed_target   Updated target.
+ *
+ * @return @c 0 on success.
+ */
+always_inline int
+http_parse_from_location_header (const http_token_t *location_header,
+				 session_endpoint_cfg_t *parsed_sep,
+				 u8 *parsed_target)
+{
+  http_uri_authority_t parsed_authority;
+  unformat_input_t _input, *input = &_input;
+  u32 offset = 0;
+  u8 *formatted_header = 0;
+  int rv = 0;
+  vec_reset_length (parsed_target);
+
+  if (*location_header->base == '/')
+    parsed_target = format (parsed_target, "%U%c", format_http_bytes,
+			    location_header->base, location_header->len, 0);
+  else
+    {
+      formatted_header =
+	format (0, "%U%c", format_http_bytes, location_header->base,
+		location_header->len, 0);
+
+      unformat_init_string (input, (char *) formatted_header,
+			    location_header->len);
+      if (unformat (input, "http://"))
+	{
+	  parsed_sep->transport_proto = TRANSPORT_PROTO_HTTP;
+	  offset = 7;
+	}
+      else if (unformat (input, "https://"))
+	{
+	  parsed_sep->flags |= SESSION_ENDPT_CFG_F_SECURE;
+	  parsed_sep->transport_proto = TRANSPORT_PROTO_TLS;
+	  offset = 8;
+	}
+      else
+	{
+	  clib_warning ("parse error: missing scheme");
+	  vec_free (formatted_header);
+	  unformat_free (input);
+	  return -1;
+	}
+
+      unformat_free (input);
+
+      rv = http_parse_authority (formatted_header + offset,
+				 location_header->len - offset,
+				 &parsed_authority);
+      if (rv)
+	{
+	  vec_free (formatted_header);
+	  return rv;
+	}
+      parsed_sep->port = parsed_authority.port;
+      parsed_sep->ip = parsed_authority.ip;
+
+      while (offset < vec_len (formatted_header))
+	{
+	  if (*(formatted_header + offset) != '/')
+	    offset++;
+	  else
+	    {
+	      vec_free (parsed_target);
+	      parsed_target = formatted_header + offset;
+	      break;
+	    }
+	}
+      /* was target found? set to "/" if not */
+      if (offset == vec_len (formatted_header))
+	{
+	  *parsed_target = '/';
+	  *(parsed_target + 1) = '\0';
+	  vec_free (formatted_header);
+	}
+    }
+
+  return 0;
+}
+
+/**
  * Format given authority (RFC3986 section 3.2)
  *
  * @param authority Authority to format.
