@@ -474,6 +474,7 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;
+  clib_mem_thread_init ();
 
   if (CLIB_DEBUG > 0)
     {
