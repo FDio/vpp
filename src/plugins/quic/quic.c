@@ -777,20 +777,22 @@ quic_udp_session_rx_callback (session_t * udp_session)
 }
 
 always_inline void
-quic_common_get_transport_endpoint (quic_ctx_t *ctx, transport_endpoint_t *tep,
-				    u8 is_lcl)
+quic_common_get_transport_endpoint (quic_ctx_t *ctx,
+				    transport_endpoint_t *tep_rmt,
+				    transport_endpoint_t *tep_lcl)
 {
   session_t *udp_session;
   if (!quic_ctx_is_stream (ctx))
     {
       udp_session = session_get_from_handle (ctx->udp_session_handle);
-      session_get_endpoint (udp_session, tep, is_lcl);
+      session_get_endpoint (udp_session, tep_rmt, tep_lcl);
     }
 }
 
 static void
 quic_get_transport_listener_endpoint (u32 listener_index,
-				      transport_endpoint_t *tep, u8 is_lcl)
+				      transport_endpoint_t *tep_rmt,
+				      transport_endpoint_t *tep_lcl)
 {
   quic_ctx_t *ctx;
   app_listener_t *app_listener;
@@ -800,18 +802,19 @@ quic_get_transport_listener_endpoint (u32 listener_index,
     {
       app_listener = app_listener_get_w_handle (ctx->udp_session_handle);
       udp_listen_session = app_listener_get_session (app_listener);
-      return session_get_endpoint (udp_listen_session, tep, is_lcl);
+      return session_get_endpoint (udp_listen_session, tep_rmt, tep_lcl);
     }
-  quic_common_get_transport_endpoint (ctx, tep, is_lcl);
+  quic_common_get_transport_endpoint (ctx, tep_rmt, tep_lcl);
 }
 
 static void
 quic_get_transport_endpoint (u32 ctx_index, clib_thread_index_t thread_index,
-			     transport_endpoint_t *tep, u8 is_lcl)
+			     transport_endpoint_t *tep_rmt,
+			     transport_endpoint_t *tep_lcl)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (ctx_index, thread_index);
-  quic_common_get_transport_endpoint (ctx, tep, is_lcl);
+  quic_common_get_transport_endpoint (ctx, tep_rmt, tep_lcl);
 }
 
 static tls_alpn_proto_t

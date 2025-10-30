@@ -1876,15 +1876,16 @@ session_get_transport (session_t * s)
 }
 
 void
-session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
+session_get_endpoint (session_t *s, transport_endpoint_t *tep_rmt,
+		      transport_endpoint_t *tep_lcl)
 {
   if (s->session_state != SESSION_STATE_LISTENING)
     return transport_get_endpoint (session_get_transport_proto (s),
-				   s->connection_index, s->thread_index, tep,
-				   is_lcl);
+				   s->connection_index, s->thread_index,
+				   tep_rmt, tep_lcl);
   else
-    return transport_get_listener_endpoint (session_get_transport_proto (s),
-					    s->connection_index, tep, is_lcl);
+    return transport_get_listener_endpoint (
+      session_get_transport_proto (s), s->connection_index, tep_rmt, tep_lcl);
 }
 
 int
