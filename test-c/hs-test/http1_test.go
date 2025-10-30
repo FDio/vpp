@@ -38,7 +38,9 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpStaticHttp1OnlyTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest, HttpSendGetAndCloseTest)
+		HttpStaticRedirectTest, HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPostRejectedTest,
+		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
+		HttpClientRedirectPostMemLeakTest)
 	RegisterHttp1SoloTests(HttpStaticPromTest, HttpGetTpsTest, HttpGetTpsInterruptModeTest, PromConcurrentConnectionsTest,
 		PromMemLeakTest, HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpPostTpsTest, HttpPostTpsInterruptModeTest,
 		PromConsecutiveConnectionsTest, HttpGetTpsTlsTest, HttpPostTpsTlsTest)
@@ -551,12 +553,11 @@ func HttpClientGetTlsNoRespBodyTest(s *Http1Suite) {
 	httpClientGet(s, response, 0, "https")
 }
 
-func httpClientGet(s *Http1Suite, response string, size int, proto string) {
+func golangServer(s *Http1Suite, serverAddress string, proto string) *ghttp.Server {
 	var l net.Listener
 	var err error
-	vpp := s.Containers.Vpp.VppInstance
-	server := ghttp.NewUnstartedServer()
-	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+
+	destinationServer := ghttp.NewUnstartedServer()
 
 	if proto == "https" {
 		certFile := "resources/cert/localhost.crt"
@@ -564,22 +565,34 @@ func httpClientGet(s *Http1Suite, response string, size int, proto string) {
 		cer, err := tls.LoadX509KeyPair(certFile, keyFile)
 		s.AssertNil(err)
 		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
-		server.HTTPTestServer.TLS = tlsConfig
+		destinationServer.HTTPTestServer.TLS = tlsConfig
 		l, err = tls.Listen("tcp", serverAddress, tlsConfig)
 	} else {
 		l, err = net.Listen("tcp", serverAddress)
 	}
 	s.AssertNil(err, fmt.Sprint(err))
 
-	server.HTTPTestServer.Listener = l
+	destinationServer.HTTPTestServer.Listener = l
+
+	return destinationServer
+}
+
+func httpClientGet(s *Http1Suite, response string, size int, proto string) {
+	var err error
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Http
+	server := golangServer(s, serverAddress, proto)
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			s.LogHttpReq(false),
+			s.LogHttpReq(true),
 			ghttp.VerifyRequest("GET", "/"),
-			ghttp.VerifyHeaderKV("Hello", "World"),
-			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
-			ghttp.RespondWith(http.StatusOK, string(response), http.Header{"Content-Length": {strconv.Itoa(size)}}),
-		))
+			ghttp.RespondWith(
+				http.StatusOK,
+				response,
+				http.Header{"Content-Length": {strconv.Itoa(size)}},
+			),
+		),
+	)
 	server.Start()
 	defer server.Close()
 
@@ -600,6 +613,142 @@ func httpClientGet(s *Http1Suite, response string, size int, proto string) {
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	s.AssertNil(err)
 	s.AssertContains(file_contents, response)
+}
+
+func httpClientGetRedirect(s *Http1Suite, requestMethod string, response string, size int, proto string, httpResponseCode int,
+	server1Method string, server2Method string, clientUri string) {
+	vpp := s.Containers.Vpp.VppInstance
+	destinationAddress := s.HostAddr() + ":" + s.Ports.NginxServer
+	redirectServerAddress := s.HostAddr() + ":" + s.Ports.Http
+	data := "field1=value1&field2=value2"
+
+	redirectServer := golangServer(s, redirectServerAddress, proto)
+	redirectServer.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest(server1Method, "/"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.VerifyBody([]byte(data)),
+			ghttp.RespondWith(
+				httpResponseCode,
+				"",
+				http.Header{
+					"Location": {"/test123"},
+				},
+			),
+		),
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest(server2Method, "/test123"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.RespondWith(
+				httpResponseCode,
+				"",
+				http.Header{
+					"Location": {"/test"},
+				},
+			),
+		),
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest(server2Method, "/test"),
+			ghttp.VerifyHeaderKV("Hello", "World"),
+			ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+			ghttp.RespondWith(
+				httpResponseCode,
+				"",
+				http.Header{
+					"Location": {"http://" + destinationAddress},
+				},
+			),
+		),
+	)
+
+	redirectServer.Start()
+	defer redirectServer.Close()
+
+	destinationServer := golangServer(s, destinationAddress, proto)
+	destinationServer.AppendHandlers(
+		ghttp.CombineHandlers(
+			s.LogHttpReq(true),
+			ghttp.VerifyRequest(server2Method, "/"),
+			ghttp.RespondWith(
+				http.StatusOK,
+				response,
+				http.Header{"Content-Length": {strconv.Itoa(size)}},
+			),
+		),
+	)
+	destinationServer.Start()
+	defer destinationServer.Close()
+
+	if requestMethod == "post" {
+		requestMethod += " data " + data
+	}
+	cmd := "http client " + requestMethod + " redirect max-redirects 5 verbose use-ptr header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + clientUri
+
+	o := vpp.Vppctl(cmd)
+	outputLen := len(o)
+	if outputLen > 500 {
+		s.Log(o[:500])
+		s.Log("* HST Framework: output limited to 500 chars to avoid flooding the console. Output length: " + fmt.Sprint(outputLen))
+	} else {
+		s.Log(o)
+	}
+
+	s.AssertContains(o, "200 OK")
+	s.AssertContains(o, "Content-Length: "+strconv.Itoa(size))
+	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
+	s.AssertNil(err)
+	s.AssertContains(file_contents, response)
+}
+
+func HttpClientRedirect302Test(s *Http1Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	uri := "http://" + s.HostAddr() + ":" + s.Ports.Http
+	httpClientGetRedirect(s, "post", response, size, "http", http.StatusFound, "POST", "GET", uri)
+}
+
+func HttpClientRedirect308Test(s *Http1Suite) {
+	response := "<body>hello world</body>"
+	size := len(response)
+	uri := "http://" + s.HostAddr() + ":" + s.Ports.Http
+	httpClientGetRedirect(s, "post", response, size, "http", http.StatusPermanentRedirect, "POST", "POST", uri)
+}
+
+func HttpClientRedirectLimitTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddr := s.HostAddr() + ":" + s.Ports.Http
+	server := golangServer(s, serverAddr, "http")
+	handlers := ghttp.CombineHandlers(
+		s.LogHttpReq(false),
+		ghttp.VerifyRequest("GET", "/"),
+		ghttp.VerifyHeaderKV("Hello", "World"),
+		ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+		ghttp.RespondWith(
+			http.StatusPermanentRedirect,
+			"",
+			http.Header{
+				"Location": {"http://" + serverAddr},
+			},
+		),
+	)
+	for range 6 {
+		server.AppendHandlers(handlers)
+	}
+	server.Start()
+	defer server.Close()
+
+	uri := "http://" + serverAddr
+	cmd := "http client redirect max-redirects 5 verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + uri
+
+	o := vpp.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "redirect limit")
+	s.AssertContains(o, http.StatusPermanentRedirect)
 }
 
 // registered as a solo test and not using generated ports
@@ -931,7 +1080,7 @@ func PromMemLeakTest(s *Http1Suite) {
 	time.Sleep(time.Second * 3)
 
 	/* warmup requests (FIB, pool allocations) */
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		time.Sleep(time.Second * 1)
 		promReq(s, url, defaultHttpTimeout)
 	}
@@ -988,6 +1137,113 @@ func HttpClientGetMemLeakTest(s *VethsSuite) {
 	traces2, err := clientVpp.GetMemoryTrace()
 	s.AssertNil(err, fmt.Sprint(err))
 	clientVpp.MemLeakCheck(traces1, traces2)
+}
+
+func httpClientRedirectMemLeakFunc(s *Http1Suite, clientMethod string, server1Method string, server2Method string) {
+	s.SkipUnlessLeakCheck()
+
+	args := "http://" + s.HostAddr() + ":" + s.Ports.Http + "/"
+	if clientMethod == "post" {
+		args += " post data field1=value1&field2=value2"
+	}
+	response := "Hello"
+	vpp := s.Containers.Vpp.VppInstance
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	destinationAddress := s.HostAddr() + ":" + s.Ports.NginxServer
+	redirectServerAddress := s.HostAddr() + ":" + s.Ports.Http
+
+	redirectServer := golangServer(s, redirectServerAddress, "http")
+	for range 2 {
+		redirectServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				s.LogHttpReq(true),
+				ghttp.VerifyRequest(server1Method, "/"),
+				ghttp.VerifyHeaderKV("Hello", "World"),
+				ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+				ghttp.RespondWith(
+					http.StatusFound,
+					"",
+					http.Header{
+						"Location": {"/test123"},
+					},
+				),
+			),
+			ghttp.CombineHandlers(
+				s.LogHttpReq(true),
+				ghttp.VerifyRequest(server2Method, "/test123"),
+				ghttp.VerifyHeaderKV("Hello", "World"),
+				ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+				ghttp.RespondWith(
+					http.StatusFound,
+					"",
+					http.Header{
+						"Location": {"/test"},
+					},
+				),
+			),
+			ghttp.CombineHandlers(
+				s.LogHttpReq(true),
+				ghttp.VerifyRequest(server2Method, "/test"),
+				ghttp.VerifyHeaderKV("Hello", "World"),
+				ghttp.VerifyHeaderKV("Test-H2", "Test-K2"),
+				ghttp.RespondWith(
+					http.StatusFound,
+					"",
+					http.Header{
+						"Location": {"http://" + destinationAddress},
+					},
+				),
+			),
+		)
+	}
+
+	redirectServer.Start()
+	defer redirectServer.Close()
+
+	destinationServer := golangServer(s, destinationAddress, "http")
+	for range 2 {
+		destinationServer.AppendHandlers(
+			ghttp.CombineHandlers(
+				s.LogHttpReq(true),
+				ghttp.VerifyRequest(server2Method, "/"),
+				ghttp.RespondWith(
+					http.StatusOK,
+					response,
+					http.Header{"Content-Length": {strconv.Itoa(len(response))}},
+				),
+			),
+		)
+	}
+	destinationServer.Start()
+	defer destinationServer.Close()
+
+	vpp.Vppctl("http client redirect timeout 5 verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + args)
+	// 10s is not enough sometimes
+	s.Log("Sleeping for 12s")
+	time.Sleep(time.Second * 12)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+
+	s.Log(vpp.Vppctl("http client redirect timeout 5 verbose header Hello:World header Test-H2:Test-K2 save-to response.txt uri " + args))
+	s.Log("Sleeping for 12s")
+	time.Sleep(time.Second * 12)
+
+	traces2, err := vpp.GetMemoryTrace()
+	s.AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func HttpClientRedirectGetMemLeakTest(s *Http1Suite) {
+	httpClientRedirectMemLeakFunc(s, "", "GET", "GET")
+}
+
+func HttpClientRedirectPostMemLeakTest(s *Http1Suite) {
+	httpClientRedirectMemLeakFunc(s, "post", "POST", "GET")
 }
 
 func HttpClientPostMemLeakTest(s *Http1Suite) {

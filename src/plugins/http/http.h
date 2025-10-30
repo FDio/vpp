@@ -416,6 +416,12 @@ typedef enum http_url_scheme_
   HTTP_URL_SCHEME_UNKNOWN, /* for internal use */
 } http_url_scheme_t;
 
+typedef enum http_uri_type_
+{
+  HTTP_URI_TYPE_RELATIVE,
+  HTTP_URI_TYPE_ABSOLUTE,
+} http_uri_type_t;
+
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
@@ -1342,7 +1348,7 @@ _http_parse_port (u8 **pos, u8 *end, u16 *port)
  *
  * @param authority     Target URL to parse.
  * @param authority_len Length of URL.
- * @param parsed        Parsed authority (port is se to 0 if not present).
+ * @param parsed        Parsed authority (port is set to 0 if not present).
  *
  * @return @c 0 on success.
  */
@@ -1439,6 +1445,70 @@ http_parse_authority (u8 *authority, u32 authority_len,
     }
 
   return token_start == end ? 0 : -1;
+}
+
+typedef struct
+{
+  http_uri_authority_t http_authority;
+  http_url_scheme_t scheme;
+  http_uri_type_t uri_type;
+  u32 path_offset;
+} http_location_t;
+
+/**
+ * Update session endpoint and target from location header.
+ * For relative URLs ("/example"), it updates only the target path.
+ *
+ * @param location_header Location header to parse.
+ * @param http_location   Parsed values (path_offset = 0 if no path was found)
+ *
+ * @return @c 0 on success.
+ */
+always_inline int
+http_parse_from_location_header (const http_token_t *location_header,
+				 http_location_t *http_location)
+{
+  int rv = 0;
+
+  if (*location_header->base == '/')
+    http_location->uri_type = HTTP_URI_TYPE_RELATIVE;
+  else
+    {
+      http_location->uri_type = HTTP_URI_TYPE_ABSOLUTE;
+      if (http_token_contains (location_header->base, location_header->len,
+			       http_token_lit ("http://")))
+	{
+	  http_location->scheme = HTTP_URL_SCHEME_HTTP;
+	  http_location->path_offset = 7;
+	}
+      else if (http_token_contains (location_header->base,
+				    location_header->len,
+				    http_token_lit ("https://")))
+	{
+	  http_location->scheme = HTTP_URL_SCHEME_HTTPS;
+	  http_location->path_offset = 8;
+	}
+      else
+	{
+	  clib_warning ("parse error: missing scheme");
+	  return -1;
+	}
+
+      if ((rv = http_parse_authority (
+	     (u8 *) location_header->base + http_location->path_offset,
+	     location_header->len - http_location->path_offset,
+	     &http_location->http_authority)))
+	return rv;
+
+      while (http_location->path_offset < location_header->len &&
+	     location_header->base[http_location->path_offset] != '/')
+	http_location->path_offset++;
+
+      if (http_location->path_offset == location_header->len)
+	http_location->path_offset = 0;
+    }
+
+  return 0;
 }
 
 /**
