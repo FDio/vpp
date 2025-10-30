@@ -116,7 +116,7 @@ typedef struct
 {
   /* main and active heap */
   clib_mem_heap_t *main_heap;
-  clib_mem_heap_t *active_heap;
+  clib_mem_heap_t *active_heap[CLIB_MAX_MHEAPS];
 
   /* log2 system page size */
   clib_mem_page_sz_t log2_page_sz;
@@ -205,14 +205,16 @@ void clib_mem_free_s (void *p);
 always_inline clib_mem_heap_t *
 clib_mem_get_heap (void)
 {
-  return clib_mem_main.active_heap;
+  int cpu = os_get_thread_index ();
+  return clib_mem_main.active_heap[cpu];
 }
 
 always_inline clib_mem_heap_t *
 clib_mem_set_heap (clib_mem_heap_t * heap)
 {
-  clib_mem_heap_t *old_heap = clib_mem_main.active_heap;
-  clib_mem_main.active_heap = heap;
+  int cpu = os_get_thread_index ();
+  clib_mem_heap_t *old_heap = clib_mem_main.active_heap[cpu];
+  clib_mem_main.active_heap[cpu] = heap;
   return old_heap;
 }
 

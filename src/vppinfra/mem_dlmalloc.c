@@ -270,6 +270,7 @@ static void *
 clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 {
   clib_mem_heap_t *h;
+  int i;
 
   clib_mem_main_init ();
 
@@ -279,7 +280,8 @@ clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 
   ASSERT (clib_mem_main.main_heap == 0);
   clib_mem_main.main_heap = h;
-  clib_mem_set_heap (h);
+  for (i = 0; i < CLIB_MAX_MHEAPS; i++)
+    clib_mem_main.active_heap[i] = h;
 
   if (mheap_trace_main.lock == 0)
     {
