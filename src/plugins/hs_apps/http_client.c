@@ -1327,7 +1327,7 @@ VLIB_CLI_COMMAND (hc_command, static) = {
 };
 
 static clib_error_t *
-hc_main_init ()
+hc_main_init (vlib_main_t __clib_unused *vm)
 {
   hc_main_t *hcm = &hc_main;
   session_endpoint_cfg_t sep_null = SESSION_ENDPOINT_CFG_NULL;

@@ -85,7 +85,7 @@ vl_socket_client_read_internal (socket_client_main_t * scm, int wait)
   u32 data_len = 0, msg_size;
   int n, current_rx_index;
   msgbuf_t *mbp = 0;
-  f64 timeout;
+  f64 timeout = 0;
 
   if (scm->socket_fd == 0)
     return -1;
