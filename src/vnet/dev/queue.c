@@ -10,7 +10,7 @@
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
-  .subclass_name = "error",
+  .subclass_name = "queue",
 };
 
 void
