@@ -1616,6 +1616,85 @@ tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
 }
 
 void
+tcp_register_lcl_port (vlib_main_t *vm, u16 lcl_port, u32 fib_index,
+		       u32 node_index, u8 is_ip4)
+{
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  session_t *session;
+  u16 n;
+
+  if (fib_index == ~0)
+    return;
+
+  sep.fib_index = fib_index;
+  sep.is_ip4 = is_ip4;
+  sep.port = clib_host_to_net_u16 (lcl_port);
+  sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  n = vlib_node_add_next (
+    vm, is_ip4 ? tcp4_input_node.index : tcp6_input_node.index, node_index);
+  session = punt_session_alloc (0, TRANSPORT_PROTO_TCP, is_ip4, n);
+  session_lookup_add_punting_session (&sep, session->session_index);
+}
+
+void
+tcp_unregister_lcl_port (vlib_main_t *vm, u16 lcl_port, u32 fib_index,
+			 u8 is_ip4)
+{
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  session_t *session;
+  u64 session_index;
+  u32 session_table_index;
+  u32 fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+
+  sep.is_ip4 = is_ip4;
+  sep.port = clib_host_to_net_u16 (lcl_port);
+  sep.transport_proto = TRANSPORT_PROTO_TCP;
+  sep.fib_index = fib_index;
+
+  session_table_index =
+    session_lookup_get_index_for_fib (fib_proto, fib_index);
+  if (session_table_index == SESSION_TABLE_INVALID_INDEX)
+    return;
+
+  session_index = session_lookup_endpoint_punter (session_table_index, &sep);
+  if (session_index == SESSION_INVALID_HANDLE)
+    return;
+
+  session = punt_session_get (session_index);
+  if (!session)
+    return;
+
+  punt_session_free (session);
+  session_lookup_del_punting_session (&sep);
+}
+
+u8
+tcp_is_valid_lcl_port (u16 lcl_port, u32 fib_index, u8 is_ip4)
+{
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  session_t *session;
+  u64 session_index;
+  u32 session_table_index;
+  u32 fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  sep.is_ip4 = is_ip4;
+  sep.port = lcl_port;
+  sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  session_table_index =
+    session_lookup_get_index_for_fib (fib_proto, fib_index);
+  if (session_table_index == SESSION_TABLE_INVALID_INDEX)
+    return 0;
+
+  session_index = session_lookup_endpoint_punter (session_table_index, &sep);
+  if (session_index == SESSION_INVALID_HANDLE)
+    return 0;
+
+  session = punt_session_get (session_index);
+  return session != 0;
+}
+
+void
 tcp_sdl_enable_disable (tcp_sdl_cb_fn_t fp)
 {
   tcp_main_t *tm = &tcp_main;
@@ -1686,6 +1765,15 @@ tcp_init (vlib_main_t * vm)
   tcp_configuration_init ();
 
   tm->cc_algo_by_name = hash_create_string (0, sizeof (uword));
+
+  /* don't punt by default */
+  tm->punt_unknown4 = 0;
+  tm->punt_unknown6 = 0;
+
+  /* register punt node initialy, will be overwritten when the session layer
+   * comes up */
+  ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_punt_node.index);
+  ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_punt_node.index);
 
   return 0;
 }

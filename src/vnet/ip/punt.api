@@ -37,6 +37,7 @@ typedef punt_l4
 {
     vl_api_address_family_t af;
     vl_api_ip_proto_t protocol;
+    u32 table_id;
     u16 port;
 };
 

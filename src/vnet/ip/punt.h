@@ -77,6 +77,7 @@ typedef struct punt_l4_t_
 {
   ip_address_family_t af;
   ip_protocol_t protocol;
+  u32 table_id;
   u16 port;
 } punt_l4_t;
 

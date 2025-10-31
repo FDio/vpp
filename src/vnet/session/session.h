@@ -1052,7 +1052,10 @@ listen_session_alloc (u8 thread_index, session_type_t type)
 always_inline session_t *
 listen_session_get (u32 ls_index)
 {
-  return session_get (ls_index, 0);
+  session_t *s = session_get (ls_index, 0);
+  if (s && s->session_state == SESSION_STATE_LISTENING)
+    return s;
+  return 0;
 }
 
 always_inline void
@@ -1084,6 +1087,39 @@ ho_session_free (session_t *s)
 {
   ASSERT (!s->rx_fifo && s->thread_index == 0);
   session_free (s);
+}
+
+always_inline session_t *
+punt_session_alloc (u32 thread_index, transport_proto_t proto, u8 is_ip4,
+		    u32 next_node)
+{
+  session_t *s;
+  s = session_alloc (thread_index);
+  s->session_type = session_type_from_proto_and_ip (proto, is_ip4);
+  s->session_state = SESSION_STATE_PUNTING;
+  s->opaque = next_node;
+  return s;
+}
+
+always_inline session_t *
+punt_session_get (u32 si)
+{
+  session_t *s = session_get (si, 0);
+  if (s && s->session_state == SESSION_STATE_PUNTING)
+    return s;
+  return 0;
+}
+
+always_inline void
+punt_session_free (session_t *s)
+{
+  session_free (s);
+}
+
+always_inline u32
+punt_session_next_node (session_t *s)
+{
+  return s->opaque;
 }
 
 transport_connection_t *listen_session_get_transport (session_t * s);
