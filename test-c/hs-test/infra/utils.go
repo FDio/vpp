@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
@@ -596,4 +597,15 @@ func (s *HstSuite) LogJsonIperfOutput(result IPerfResult) {
 			result.End.Udp.LostPercent)
 	}
 	s.Log("*******************************************\n")
+}
+
+// Check if the error is an exec.ExitError caused by SIGKILL
+func IsKilledError(err error) bool {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+			return status.Signaled() && status.Signal() == syscall.SIGKILL
+		}
+	}
+	return false
 }

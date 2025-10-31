@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
@@ -67,6 +70,9 @@ func XEchoVclServerTcpTest(s *VethsSuite) {
 }
 
 func testXEchoVclServer(s *VethsSuite, proto string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	defer cancel()
 	srvVppCont := s.Containers.ServerVpp
 	srvAppCont := s.Containers.ServerApp
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
@@ -74,15 +80,29 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s", proto, serverVethAddress, s.Ports.Port1)
-	srvAppCont.ExecServer(true, vclSrvCmd)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer GinkgoRecover()
+		o, oErr, err := srvAppCont.ExecLineBuffered(ctx, true, vclSrvCmd)
+		s.Log(o)
+		s.Log(oErr)
+		s.AssertNil(err, o+oErr)
+	}()
 
+	time.Sleep(time.Millisecond * 500)
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	o := clientVpp.Vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose bytes 2m", proto, serverVethAddress, s.Ports.Port1)
+	cancel()
+	wg.Wait()
 	s.Log(o)
 	s.AssertContains(o, "Test finished at")
 }
 
 func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	defer cancel()
 	extras := ""
 	if len(extraArgs) > 0 {
 		extras = strings.Join(extraArgs, " ")
@@ -95,16 +115,28 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) {
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s", proto, serverVethAddress, s.Ports.Port1)
-	srvAppCont.ExecServer(true, vclSrvCmd)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer GinkgoRecover()
+		o, oErr, err := srvAppCont.ExecLineBuffered(ctx, true, vclSrvCmd)
+		s.Log(o)
+		s.Log(oErr)
+		s.AssertNil(err, o+oErr)
+		s.AssertEmpty(oErr)
+	}()
 
+	time.Sleep(time.Millisecond * 500)
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client " + extras + "-p " + proto + " " + serverVethAddress + " " + s.Ports.Port1
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	o, err := echoClnContainer.Exec(true, testClientCommand)
-	s.AssertNil(err)
+	cancel()
+	wg.Wait()
 	s.Log(o)
+	s.AssertNil(err, o)
 }
 
 func VclEchoTcpTest(s *VethsSuite) {

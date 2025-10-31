@@ -496,6 +496,32 @@ func (c *Container) Exec(useEnvVars bool, command string, arguments ...any) (str
 	return string(byteOutput), err
 }
 
+// Returns outputBuffer.String(), errorBuffer.String(), error. Runs commands with 'stdbuf -oL'.
+func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, command string, arguments ...any) (string, string, error) {
+	var envVars string
+	outputBuffer := bytes.NewBuffer([]byte{})
+	errBuffer := bytes.NewBuffer([]byte{})
+	serverCommand := fmt.Sprintf(command, arguments...)
+	if useEnvVars {
+		envVars = c.getEnvVarsAsCliOption()
+	} else {
+		envVars = ""
+	}
+
+	containerExecCommand := fmt.Sprintf("docker exec %s %s stdbuf -oL %s", envVars, c.Name, serverCommand)
+	ginkgo.GinkgoHelper()
+	c.Suite.Log(containerExecCommand)
+	err := exechelper.Run(containerExecCommand, exechelper.WithContext(ctx),
+		exechelper.WithStdout(outputBuffer), exechelper.WithStderr(errBuffer))
+
+	// ignore SIGKILL errors
+	if IsKilledError(err) {
+		err = nil
+	}
+
+	return outputBuffer.String(), errBuffer.String(), err
+}
+
 func (c *Container) saveLogs() {
 	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.Name + ".log"
 
