@@ -286,8 +286,9 @@ session_is_valid (u32 si, u8 thread_index)
   if (s->thread_index != thread_index || s->session_index != si)
     return 0;
 
-  if (s->session_state == SESSION_STATE_TRANSPORT_DELETED
-      || s->session_state <= SESSION_STATE_LISTENING)
+  if (s->session_state == SESSION_STATE_TRANSPORT_DELETED ||
+      s->session_state == SESSION_STATE_PUNTING ||
+      s->session_state <= SESSION_STATE_LISTENING)
     return 1;
 
   if ((s->session_state == SESSION_STATE_CONNECTING ||
@@ -1964,7 +1965,7 @@ session_manager_main_enable (vlib_main_t *vm,
 {
   session_main_t *smm = &session_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads, preallocated_sessions_per_worker;
+  u32 num_threads;
   session_worker_t *wrk;
   int i;
 
@@ -1975,14 +1976,7 @@ session_manager_main_enable (vlib_main_t *vm,
   if (smm->is_initialized)
     goto done;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
-
-  if (num_threads < 1)
-    return clib_error_return (0, "n_thread_stacks not set");
-
-  /* Allocate cache line aligned worker contexts */
-  vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
-  clib_spinlock_init (&session_main.pool_realloc_lock);
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   for (i = 0; i < num_threads; i++)
     {
@@ -2008,28 +2002,6 @@ session_manager_main_enable (vlib_main_t *vm,
 
   /* Initialize segment manager properties */
   segment_manager_main_init (smm->no_dump_segments);
-
-  /* Preallocate sessions */
-  if (smm->preallocated_sessions)
-    {
-      if (num_threads == 1)
-	{
-	  pool_init_fixed (smm->wrk[0].sessions, smm->preallocated_sessions);
-	}
-      else
-	{
-	  int j;
-	  preallocated_sessions_per_worker =
-	    (1.1 * (f64) smm->preallocated_sessions /
-	     (f64) (num_threads - 1));
-
-	  for (j = 1; j < num_threads; j++)
-	    {
-	      pool_init_fixed (smm->wrk[j].sessions,
-			       preallocated_sessions_per_worker);
-	    }
-	}
-    }
 
   session_lookup_init ();
   app_namespaces_init ();
@@ -2217,6 +2189,8 @@ clib_error_t *
 session_main_init (vlib_main_t * vm)
 {
   session_main_t *smm = &session_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads, preallocated_sessions_per_worker;
 
   smm->is_enabled = 0;
   smm->session_enable_asap = 0;
@@ -2229,6 +2203,36 @@ session_main_init (vlib_main_t * vm)
 
   /* default enable app socket api */
   (void) appns_sapi_enable_disable (1 /* is_enable */);
+
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+
+  if (num_threads < 1)
+    return clib_error_return (0, "n_thread_stacks not set");
+
+  /* Allocate cache line aligned worker contexts */
+  vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
+  clib_spinlock_init (&session_main.pool_realloc_lock);
+
+  /* Preallocate sessions */
+  if (smm->preallocated_sessions)
+    {
+      if (num_threads == 1)
+	{
+	  pool_init_fixed (smm->wrk[0].sessions, smm->preallocated_sessions);
+	}
+      else
+	{
+	  int j;
+	  preallocated_sessions_per_worker =
+	    (1.1 * (f64) smm->preallocated_sessions / (f64) (num_threads - 1));
+
+	  for (j = 1; j < num_threads; j++)
+	    {
+	      pool_init_fixed (smm->wrk[j].sessions,
+			       preallocated_sessions_per_worker);
+	    }
+	}
+    }
 
   return 0;
 }

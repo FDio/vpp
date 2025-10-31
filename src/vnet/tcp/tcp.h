@@ -283,6 +283,8 @@ extern vlib_node_registration_t tcp4_rcv_process_node;
 extern vlib_node_registration_t tcp6_rcv_process_node;
 extern vlib_node_registration_t tcp4_listen_node;
 extern vlib_node_registration_t tcp6_listen_node;
+extern vlib_node_registration_t tcp4_input_punt_node;
+extern vlib_node_registration_t tcp6_input_punt_node;
 extern vlib_node_registration_t tcp4_input_nolookup_node;
 extern vlib_node_registration_t tcp6_input_nolookup_node;
 extern vlib_node_registration_t tcp4_drop_node;
@@ -348,6 +350,11 @@ void tcp_check_gso (tcp_connection_t *tc);
 
 int tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4);
 void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+void tcp_register_lcl_port (vlib_main_t *vm, u16 lcl_port, u32 fib_index,
+			    u32 node_index, u8 is_ip4);
+void tcp_unregister_lcl_port (vlib_main_t *vm, u16 lcl_port, u32 fib_index,
+			      u8 is_ip4);
+u8 tcp_is_valid_dst_port (u16 dst_port, u8 is_ip4);
 int tcp_configure_v4_source_address_range (vlib_main_t * vm,
 					   ip4_address_t * start,
 					   ip4_address_t * end, u32 table_id);

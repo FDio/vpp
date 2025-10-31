@@ -76,6 +76,7 @@ vl_api_punt_l4_decode (const vl_api_punt_l4_t * in, punt_l4_t * out)
   rv = ip_proto_decode (in->protocol, &out->protocol);
   if (rv < 0)
     return (rv);
+  out->table_id = clib_net_to_host_u32 (in->table_id);
   out->port = clib_net_to_host_u16 (in->port);
 
   return (rv);
@@ -137,7 +138,8 @@ vl_api_punt_l4_encode (const punt_l4_t * in, vl_api_punt_l4_t * out)
 {
   out->af = ip_address_family_encode (in->af);
   out->protocol = ip_proto_encode (in->protocol);
-  out->port = clib_net_to_host_u16 (in->port);
+  out->table_id = clib_host_to_net_u32 (in->table_id);
+  out->port = clib_host_to_net_u16 (in->port);
 }
 
 static void
