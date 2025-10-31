@@ -76,6 +76,24 @@ vl_api_punt_l4_decode (const vl_api_punt_l4_t * in, punt_l4_t * out)
   rv = ip_proto_decode (in->protocol, &out->protocol);
   if (rv < 0)
     return (rv);
+  out->table_id = 0;
+  out->port = clib_net_to_host_u16 (in->port);
+
+  return (rv);
+}
+
+static int
+vl_api_punt_l4_v2_decode (const vl_api_punt_l4_v2_t *in, punt_l4_t *out)
+{
+  int rv;
+
+  rv = ip_address_family_decode (in->af, &out->af);
+  if (rv < 0)
+    return (rv);
+  rv = ip_proto_decode (in->protocol, &out->protocol);
+  if (rv < 0)
+    return (rv);
+  out->table_id = clib_net_to_host_u32 (in->table_id);
   out->port = clib_net_to_host_u16 (in->port);
 
   return (rv);
@@ -132,12 +150,46 @@ vl_api_punt_decode (const vl_api_punt_t * in, punt_reg_t * out)
   return (-1);
 }
 
+static int
+vl_api_punt_v2_decode (const vl_api_punt_v2_t *in, punt_reg_t *out)
+{
+  int rv;
+
+  rv = vl_api_punt_type_decode (in->type, &out->type);
+
+  if (rv)
+    return (rv);
+
+  switch (out->type)
+    {
+    case PUNT_TYPE_L4:
+      return (vl_api_punt_l4_v2_decode (&in->punt.l4, &out->punt.l4));
+    case PUNT_TYPE_EXCEPTION:
+      return (vl_api_punt_exception_decode (&in->punt.exception,
+					    &out->punt.exception));
+    case PUNT_TYPE_IP_PROTO:
+      return (
+	vl_api_punt_ip_proto_decode (&in->punt.ip_proto, &out->punt.ip_proto));
+    }
+
+  return (-1);
+}
+
 static void
 vl_api_punt_l4_encode (const punt_l4_t * in, vl_api_punt_l4_t * out)
 {
   out->af = ip_address_family_encode (in->af);
   out->protocol = ip_proto_encode (in->protocol);
-  out->port = clib_net_to_host_u16 (in->port);
+  out->port = clib_host_to_net_u16 (in->port);
+}
+
+static void
+vl_api_punt_l4_v2_encode (const punt_l4_t *in, vl_api_punt_l4_v2_t *out)
+{
+  out->af = ip_address_family_encode (in->af);
+  out->protocol = ip_proto_encode (in->protocol);
+  out->table_id = clib_host_to_net_u32 (in->table_id);
+  out->port = clib_host_to_net_u16 (in->port);
 }
 
 static void
@@ -175,6 +227,25 @@ vl_api_punt_encode (const punt_reg_t * in, vl_api_punt_t * out)
     }
 }
 
+static void __clib_unused
+vl_api_punt_v2_encode (const punt_reg_t *in, vl_api_punt_v2_t *out)
+{
+  out->type = vl_api_punt_type_encode (in->type);
+
+  switch (in->type)
+    {
+    case PUNT_TYPE_L4:
+      vl_api_punt_l4_v2_encode (&in->punt.l4, &out->punt.l4);
+      break;
+    case PUNT_TYPE_IP_PROTO:
+      vl_api_punt_ip_proto_encode (&in->punt.ip_proto, &out->punt.ip_proto);
+      break;
+    case PUNT_TYPE_EXCEPTION:
+      vl_api_punt_exception_encode (&in->punt.exception, &out->punt.exception);
+      break;
+    }
+}
+
 static void
 vl_api_set_punt_t_handler (vl_api_set_punt_t * mp)
 {
@@ -185,6 +256,31 @@ vl_api_set_punt_t_handler (vl_api_set_punt_t * mp)
   int rv;
 
   rv = vl_api_punt_decode (&mp->punt, &pr);
+
+  if (rv)
+    goto out;
+
+  error = vnet_punt_add_del (vm, &pr, mp->is_add);
+  if (error)
+    {
+      rv = -1;
+      clib_error_report (error);
+    }
+
+out:
+  REPLY_MACRO (VL_API_SET_PUNT_REPLY);
+}
+
+static void
+vl_api_set_punt_v2_t_handler (vl_api_set_punt_v2_t *mp)
+{
+  vl_api_set_punt_v2_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  punt_reg_t pr;
+  int rv;
+
+  rv = vl_api_punt_v2_decode (&mp->punt, &pr);
 
   if (rv)
     goto out;

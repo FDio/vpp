@@ -40,6 +40,21 @@ typedef punt_l4
     u16 port;
 };
 
+/** \brief Punt L4 traffic definition v2
+    @param af - Address Family, IPv4 or IPV6
+    @param protocol - L4 protocol to be punted
+    @param table_id - table in which the punt
+      is enforced (TCP only)
+    @param port - TCP/UDP port to be punted
+*/
+typedef punt_l4_v2
+{
+    vl_api_address_family_t af;
+    vl_api_ip_proto_t protocol;
+    u32 table_id;
+    u16 port;
+};
+
 /** \brief Punt IP protocol traffic definition
     @param af - Address Family, IPv4 or IPV6
     @param protocol - IP protocol to be punted
@@ -67,6 +82,15 @@ union punt_union
     vl_api_punt_ip_proto_t ip_proto;
 };
 
+/** \brief Union of the different punt packet descriptions
+*/
+union punt_union_v2
+{
+    vl_api_punt_exception_t exception;
+    vl_api_punt_l4_v2_t l4;
+    vl_api_punt_ip_proto_t ip_proto;
+};
+
 /** \brief Full description of which packets are requested to be punted
     @param type - Which packet type
     @param punt - Description corresponding to the type
@@ -75,6 +99,16 @@ typedef punt
 {
     vl_api_punt_type_t type;
     vl_api_punt_union_t punt;
+};
+
+/** \brief Full description of which packets are requested to be punted
+    @param type - Which packet type
+    @param punt - Description corresponding to the type
+*/
+typedef punt_v2
+{
+    vl_api_punt_type_t type;
+    vl_api_punt_union_v2_t punt;
 };
 
 /** \brief Punt traffic to the host
@@ -88,6 +122,19 @@ autoreply define set_punt {
     u32 context;
     bool is_add;
     vl_api_punt_t punt;
+};
+
+/** \brief Punt traffic to the host
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add punt if non-zero, else delete
+    @param punt - punt definition
+*/
+autoreply define set_punt_v2 {
+    u32 client_index;
+    u32 context;
+    bool is_add;
+    vl_api_punt_v2_t punt;
 };
 
 /** \brief Punt traffic to the host via socket

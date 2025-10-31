@@ -169,7 +169,8 @@ typedef enum session_ft_action_
   _ (APP_CLOSED, "app-closed")                                                \
   _ (TRANSPORT_CLOSED, "transport-closed")                                    \
   _ (CLOSED, "closed")                                                        \
-  _ (TRANSPORT_DELETED, "transport-deleted")
+  _ (TRANSPORT_DELETED, "transport-deleted")                                  \
+  _ (PUNTING, "punting")
 
 typedef enum
 {

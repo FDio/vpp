@@ -208,6 +208,7 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
       else
 	{
 	  u32 error = 0;
+	  session_t __clib_unused *punt_session;
 
 	  if (!hsi_have_intercept_proto (TRANSPORT_PROTO_TCP, is_ip4) ||
 	      !tcp_syn (tcp_hdr))
@@ -217,8 +218,9 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
 	    }
 
 	  /* force parsing of buffer in preparation for tcp-listen */
-	  tcp_input_lookup_buffer (b, vlib_get_thread_index (), &error, is_ip4,
-				   1 /* is_nolookup*/);
+	  tcp_input_lookup_buffer (b, vlib_get_thread_index (), &error,
+				   &punt_session, is_ip4, 1 /* is_nolookup*/,
+				   0 /* punt_only */);
 	  if (error)
 	    {
 	      vnet_feature_next (next, b);

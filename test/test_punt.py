@@ -7,6 +7,7 @@ import copy
 import fcntl
 import time
 import errno
+from typing import Optional
 
 try:
     import unittest2 as unittest
@@ -16,10 +17,10 @@ except ImportError:
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.l2 import Dot1Q
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP, TCP, ICMP
 from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
@@ -173,19 +174,38 @@ def set_reason(pr, reason):
     return pr
 
 
-def mk_vpp_cfg4():
+def set_table_id(pr, table_id):
+    pr["punt"]["l4"]["table_id"] = table_id
+    return pr
+
+
+def mk_vpp_cfg4(
+    proto: VppEnum.vl_api_ip_proto_t = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+    port: Optional[int] = None,
+):
     pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
     af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
-    udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip4, "protocol": udp_proto}}}
+    punt_l4 = {
+        "type": pt_l4,
+        "punt": {"l4": {"af": af_ip4, "protocol": proto}},
+    }
+    if port is not None:
+        return set_port(punt_l4, port)
     return punt_l4
 
 
-def mk_vpp_cfg6():
+def mk_vpp_cfg6(
+    proto: VppEnum.vl_api_ip_proto_t = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+    port: Optional[int] = None,
+):
     pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
     af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
-    udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
-    punt_l4 = {"type": pt_l4, "punt": {"l4": {"af": af_ip6, "protocol": udp_proto}}}
+    punt_l4 = {
+        "type": pt_l4,
+        "punt": {"l4": {"af": af_ip6, "protocol": proto}},
+    }
+    if port is not None:
+        return set_port(punt_l4, port)
     return punt_l4
 
 
@@ -1091,6 +1111,15 @@ class TestDot1QPuntSocket(TestPuntSocket):
             self.assertEqual(int(p[ICMP].code), 3)  # unreachable
 
 
+def get_l4_hdr(proto: VppEnum.vl_api_ip_proto_t):
+    if proto == VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP:
+        return UDP
+    elif proto == VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP:
+        return TCP
+    else:
+        raise Exception("Unsupported L4 protocol %d" % proto)
+
+
 @tag_fixme_vpp_workers
 class TestPunt(VppTestCase):
     """Exception Punt Test Case"""
@@ -1122,7 +1151,81 @@ class TestPunt(VppTestCase):
             i.admin_down()
         super(TestPunt, self).tearDown()
 
-    def test_punt(self):
+    def __test_punt_l4(self, proto: VppEnum.vl_api_ip_proto_t):
+        l4_hdr = get_l4_hdr(proto)
+        port = 4321
+        punt4_l4 = mk_vpp_cfg4(proto=proto, port=port)
+        punt6_l4 = mk_vpp_cfg6(proto=proto, port=port)
+
+        self.vapi.set_punt_v2(punt=punt4_l4, is_add=True)
+        self.vapi.set_punt_v2(punt=punt6_l4, is_add=True)
+
+        p4 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4)
+            / l4_hdr(sport=1234, dport=port)
+            / Raw(b"\xa5" * 100)
+        )
+        p6 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IPv6(src=self.pg2.remote_ip6, dst=self.pg2.local_ip6)
+            / l4_hdr(sport=1234, dport=port)
+            / Raw(b"\xa5" * 100)
+        )
+
+        ip_punt4 = {
+            "rx_sw_if_index": self.pg2.sw_if_index,
+            "tx_sw_if_index": self.pg3.sw_if_index,
+            "nh": self.pg3.remote_ip4,
+        }
+        ip_punt6 = {
+            "rx_sw_if_index": self.pg2.sw_if_index,
+            "tx_sw_if_index": self.pg3.sw_if_index,
+            "nh": self.pg3.remote_ip6,
+        }
+
+        self.vapi.ip_punt_redirect(punt=ip_punt4, is_add=True)
+        self.vapi.ip_punt_redirect(punt=ip_punt6, is_add=True)
+
+        # packets should be punter accordingly
+        self.send_and_expect(self.pg2, p4 * 1, self.pg3)
+        self.send_and_expect(self.pg2, p6 * 1, self.pg3)
+
+        p4[l4_hdr].dport = port + 1
+        p6[l4_hdr].dport = port + 1
+
+        # packets shouldn't be punted
+        # a packet is sent to the sender (ICMP for UDP, and a reset in TCP)
+        rx4 = self.send_and_expect(self.pg2, p4 * 1, self.pg2)
+        rx6 = self.send_and_expect(self.pg2, p6 * 1, self.pg2)
+        if proto == VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP:
+            for p in rx4:
+                self.assertEqual(int(p[IP].proto), 1)  # ICMP
+                self.assertEqual(int(p[ICMP].code), 3)  # unreachable
+            for p in rx6:
+                self.assertEqual(int(p[IPv6].nh), 58)  # ICMP6
+                self.assertEqual(int(p[ICMPv6DestUnreach].code), 4)  # port unreachable
+        else:
+            for p in rx4:
+                self.assertEqual(int(p[IP].proto), 6)  # TCP
+                self.assertEqual(p[TCP].flags, "RA")  # RST + ACK
+            for p in rx6:
+                self.assertEqual(int(p[IPv6].nh), 6)  # TCP
+                self.assertEqual(p[TCP].flags, "RA")  # RST + ACK
+
+        self.vapi.ip_punt_redirect(punt=ip_punt4, is_add=False)
+        self.vapi.ip_punt_redirect(punt=ip_punt6, is_add=False)
+
+    def test_01_punt_l4_udp(self):
+        """Test L4 Punt UDP"""
+        self.__test_punt_l4(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP)
+
+    def test_01_punt_l4_tcp(self):
+        """Test L4 Punt TCP"""
+        self.__test_punt_l4(VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP)
+
+    # enforce this test to run last
+    def test_02_punt_exception(self):
         """Exception Path testing"""
 
         #
