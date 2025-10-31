@@ -256,14 +256,17 @@ tcp_update_time_now (tcp_worker_ctx_t *wrk)
 }
 
 always_inline tcp_connection_t *
-tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
-			 u8 is_ip4, u8 is_nolookup)
+tcp_input_lookup_buffer (vlib_buffer_t *b, u8 thread_index, u32 *error,
+			 session_t **punt_session, u8 is_ip4, u8 is_nolookup,
+			 u8 punt_only)
 {
   u32 fib_index = vnet_buffer (b)->ip.fib_index;
   int n_advance_bytes, n_data_bytes;
-  transport_connection_t *tc;
+  transport_connection_t *tc = 0;
   tcp_header_t *tcp;
   u8 result = 0;
+
+  *punt_session = NULL;
 
   if (is_ip4)
     {
@@ -287,11 +290,16 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	}
 
       if (!is_nolookup)
-	tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
-					    &ip4->src_address, tcp->dst_port,
-					    tcp->src_port,
-					    TRANSPORT_PROTO_TCP, thread_index,
-					    &result);
+	{
+	  if (PREDICT_FALSE (!punt_only))
+	    tc = session_lookup_connection_wt4 (
+	      fib_index, &ip4->dst_address, &ip4->src_address, tcp->dst_port,
+	      tcp->src_port, TRANSPORT_PROTO_TCP, thread_index, &result);
+
+	  if (PREDICT_FALSE (punt_only || !tc))
+	    *punt_session = session_lookup_punter4 (fib_index, tcp->dst_port,
+						    TRANSPORT_PROTO_TCP);
+	}
     }
   else
     {
@@ -316,19 +324,24 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 
       if (!is_nolookup)
 	{
-	  if (PREDICT_FALSE
-	      (ip6_address_is_link_local_unicast (&ip6->dst_address)))
+	  if (PREDICT_FALSE (!punt_only))
 	    {
-	      ip6_main_t *im = &ip6_main;
-	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
-				   vnet_buffer (b)->ip.rx_sw_if_index);
+	      if (PREDICT_FALSE (
+		    ip6_address_is_link_local_unicast (&ip6->dst_address)))
+		{
+		  ip6_main_t *im = &ip6_main;
+		  fib_index = vec_elt (im->fib_index_by_sw_if_index,
+				       vnet_buffer (b)->ip.rx_sw_if_index);
+		}
+
+	      tc = session_lookup_connection_wt6 (
+		fib_index, &ip6->dst_address, &ip6->src_address, tcp->dst_port,
+		tcp->src_port, TRANSPORT_PROTO_TCP, thread_index, &result);
 	    }
 
-	  tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
-					      &ip6->src_address,
-					      tcp->dst_port, tcp->src_port,
-					      TRANSPORT_PROTO_TCP,
-					      thread_index, &result);
+	  if (PREDICT_FALSE (punt_only || !tc))
+	    *punt_session = session_lookup_punter6 (fib_index, tcp->dst_port,
+						    TRANSPORT_PROTO_TCP);
 	}
     }
 

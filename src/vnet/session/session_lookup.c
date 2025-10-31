@@ -107,6 +107,14 @@ make_v4_proxy_kv (session_kv4_t * kv, ip4_address_t * lcl, u8 proto)
 }
 
 always_inline void
+make_v4_punter_kv (session_kv4_t *kv, u16 lcl_port, u8 proto)
+{
+  kv->key[0] = 0;
+  kv->key[1] = (u64) proto << 32 | lcl_port;
+  kv->value = ~0ULL;
+}
+
+always_inline void
 make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * tc)
 {
   make_v4_ss_kv (kv, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
@@ -147,6 +155,18 @@ make_v6_proxy_kv (session_kv6_t * kv, ip6_address_t * lcl, u8 proto)
   kv->key[2] = 0;
   kv->key[3] = 0;
   kv->key[4] = (u64) proto << 32;
+  kv->key[5] = 0;
+  kv->value = ~0ULL;
+}
+
+always_inline void
+make_v6_punter_kv (session_kv6_t *kv, u16 lcl_port, u8 proto)
+{
+  kv->key[0] = 0;
+  kv->key[1] = 0;
+  kv->key[2] = 0;
+  kv->key[3] = 0;
+  kv->key[4] = (u64) proto << 32 | (u64) lcl_port;
   kv->key[5] = 0;
   kv->value = ~0ULL;
 }
@@ -381,6 +401,56 @@ session_lookup_del_session_endpoint2 (session_endpoint_t * sep)
     }
 }
 
+int
+session_lookup_add_punting_session (session_endpoint_t *sep, u64 value)
+{
+  fib_protocol_t fib_proto;
+  session_table_t *st;
+  session_kv4_t kv4;
+  session_kv6_t kv6;
+
+  fib_proto = sep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  st = session_table_get_or_alloc (fib_proto, sep->fib_index);
+  if (!st)
+    return -1;
+  if (sep->is_ip4)
+    {
+      make_v4_punter_kv (&kv4, sep->port, sep->transport_proto);
+      kv4.value = value;
+      return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4, 1);
+    }
+  else
+    {
+      make_v6_punter_kv (&kv6, sep->port, sep->transport_proto);
+      kv6.value = value;
+      return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 1);
+    }
+}
+
+int
+session_lookup_del_punting_session (session_endpoint_t *sep)
+{
+  fib_protocol_t fib_proto;
+  session_table_t *st;
+  session_kv4_t kv4;
+  session_kv6_t kv6;
+
+  fib_proto = sep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  st = session_table_get_for_fib_index (fib_proto, sep->fib_index);
+  if (!st)
+    return -1;
+  if (sep->is_ip4)
+    {
+      make_v4_punter_kv (&kv4, sep->port, sep->transport_proto);
+      return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4, 0);
+    }
+  else
+    {
+      make_v6_punter_kv (&kv6, sep->port, sep->transport_proto);
+      return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 0);
+    }
+}
+
 /**
  * Delete transport connection from session table
  *
@@ -569,6 +639,36 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 	  if (session_lookup_action_index_is_valid (ai))
 	    return session_lookup_action_to_handle (ai);
 	}
+    }
+  return SESSION_INVALID_HANDLE;
+}
+
+u64
+session_lookup_endpoint_punter (u32 table_index, session_endpoint_t *sep)
+{
+  session_table_t *st;
+  int rv;
+
+  st = session_table_get (table_index);
+  if (!st)
+    return SESSION_INVALID_HANDLE;
+  if (sep->is_ip4)
+    {
+      session_kv4_t kv4;
+
+      make_v4_punter_kv (&kv4, sep->port, sep->transport_proto);
+      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+      if (rv == 0)
+	return kv4.value;
+    }
+  else
+    {
+      session_kv6_t kv6;
+
+      make_v6_punter_kv (&kv6, sep->port, sep->transport_proto);
+      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+      if (rv == 0)
+	return kv6.value;
     }
   return SESSION_INVALID_HANDLE;
 }
@@ -832,6 +932,67 @@ session_lookup_listener_wildcard (u32 table_index, session_endpoint_t * sep)
     return session_lookup_listener6_i (st, &sep->ip.ip6, sep->port,
 				       sep->transport_proto,
 				       1 /* use_wildcard */ );
+  return 0;
+}
+
+static inline session_t *
+session_lookup_punter4_i (session_table_t *st, u16 lcl_port, u8 proto)
+{
+  session_kv4_t kv4;
+  int rv;
+
+  make_v4_punter_kv (&kv4, lcl_port, proto);
+  rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+  if (rv == 0)
+    return punt_session_get ((u32) kv4.value);
+  return 0;
+}
+
+session_t *
+session_lookup_punter4 (u32 fib_index, u16 lcl_port, u8 proto)
+{
+  session_table_t *st;
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+  if (!st)
+    return 0;
+  return session_lookup_punter4_i (st, lcl_port, proto);
+}
+
+static session_t *
+session_lookup_punter6_i (session_table_t *st, u16 lcl_port, u8 proto)
+{
+  session_kv6_t kv6;
+  int rv;
+
+  make_v6_punter_kv (&kv6, lcl_port, proto);
+  rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+  if (rv == 0)
+    return punt_session_get ((u32) kv6.value);
+
+  return 0;
+}
+
+session_t *
+session_lookup_punter6 (u32 fib_index, u16 lcl_port, u8 proto)
+{
+  session_table_t *st;
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
+  if (!st)
+    return 0;
+  return session_lookup_punter6_i (st, lcl_port, proto);
+}
+
+session_t *
+session_lookup_punter (u32 table_index, session_endpoint_t *sep)
+{
+  session_table_t *st;
+  st = session_table_get (table_index);
+  if (!st)
+    return 0;
+  if (sep->is_ip4)
+    return session_lookup_punter4_i (st, sep->port, sep->transport_proto);
+  else
+    return session_lookup_punter6_i (st, sep->port, sep->transport_proto);
   return 0;
 }
 

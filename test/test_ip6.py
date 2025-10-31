@@ -2483,6 +2483,24 @@ class IP6PuntSetup(object):
             i.config_ip6()
             i.resolve_ndp()
 
+        # use TCP packet that have a port we need to explicitly
+        # register to get punted.
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip6 = VppEnum.vl_api_address_family_t.ADDRESS_IP6
+        tcp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        punt_tcp = {
+            "type": pt_l4,
+            "punt": {
+                "l4": {
+                    "af": af_ip6,
+                    "protocol": tcp_proto,
+                    "port": 1234,
+                }
+            },
+        }
+
+        self.vapi.set_punt_v2(is_add=1, punt=punt_tcp)
+
         self.pkt = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)

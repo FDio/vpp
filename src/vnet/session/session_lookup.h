@@ -75,11 +75,15 @@ session_t *session_lookup_listener (u32 table_index,
 				    session_endpoint_t * sep);
 session_t *session_lookup_listener_wildcard (u32 table_index,
 					     session_endpoint_t * sep);
+session_t *session_lookup_punter4 (u32 fib_index, u16 lcl_port, u8 proto);
+session_t *session_lookup_punter6 (u32 fib_index, u16 lcl_port, u8 proto);
+session_t *session_lookup_punter (u32 table_index, session_endpoint_t *sep);
 int session_lookup_add_connection (transport_connection_t * tc, u64 value);
 int session_lookup_del_connection (transport_connection_t * tc);
 u64 session_lookup_endpoint_listener (u32 table_index,
 				      session_endpoint_t * sepi,
 				      u8 use_rules);
+u64 session_lookup_endpoint_punter (u32 table_index, session_endpoint_t *sep);
 u64 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep);
 session_t *session_lookup_global_session_endpoint (session_endpoint_t *);
 int session_lookup_add_session_endpoint (u32 table_index,
@@ -87,6 +91,8 @@ int session_lookup_add_session_endpoint (u32 table_index,
 int session_lookup_del_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep);
 int session_lookup_del_session_endpoint2 (session_endpoint_t * sep);
+int session_lookup_add_punting_session (session_endpoint_t *sep, u64 value);
+int session_lookup_del_punting_session (session_endpoint_t *sep);
 int session_lookup_del_session (session_t * s);
 int session_lookup_del_half_open (transport_connection_t * tc);
 int session_lookup_add_half_open (transport_connection_t * tc, u64 value);

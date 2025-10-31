@@ -1020,6 +1020,24 @@ class ARPTestCase(VppTestCase):
         )
         redirect.add_vpp_config()
 
+        # use TCP packet that have a port we need to explicitly
+        # register to get punted.
+        pt_l4 = VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4
+        af_ip4 = VppEnum.vl_api_address_family_t.ADDRESS_IP4
+        tcp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        punt_tcp = {
+            "type": pt_l4,
+            "punt": {
+                "l4": {
+                    "af": af_ip4,
+                    "protocol": tcp_proto,
+                    "port": 80,
+                }
+            },
+        }
+
+        self.vapi.set_punt_v2(is_add=1, punt=punt_tcp)
+
         p_tcp = (
             Ether(
                 src=self.pg0.remote_mac,
