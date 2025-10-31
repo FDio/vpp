@@ -152,16 +152,39 @@ spec:
             name: calico-vpp-config
         image: docker.io/calicovpp/agent:${CALICOVPP_VERSION}
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /liveness
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
         name: agent
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readiness
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
         resources:
-          limits:
-            cpu: "2"
-            memory: 1Gi
           requests:
-            cpu: "2"
-            memory: 1Gi
+            cpu: 250m
         securityContext:
           privileged: true
+        startupProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /liveness
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 3
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
