@@ -26,6 +26,9 @@
 /* only in the default table for v4 and v6 */
 #define CNAT_FIB_TABLE 0
 
+/* we support max 2^24 timetamps */
+#define CNAT_MAX_SESSIONS (1 << 24)
+
 /* default lifetime of NAT sessions (seconds) */
 #define CNAT_DEFAULT_SESSION_MAX_AGE 30
 /* lifetime of TCP conn NAT sessions after SYNACK (seconds) */
@@ -34,13 +37,11 @@
 #define CNAT_DEFAULT_TCP_RST_TIMEOUT 5
 #define CNAT_DEFAULT_SCANNER_TIMEOUT (1.0)
 
-#define CNAT_DEFAULT_SESSION_BUCKETS     1024
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
 #define CNAT_DEFAULT_CLIENT_BUCKETS	 1024
 #define CNAT_DEFAULT_SNAT_BUCKETS        1024
 #define CNAT_DEFAULT_SNAT_IF_MAP_LEN	 4096
 
-#define CNAT_DEFAULT_SESSION_MEMORY      (1 << 20)
 #define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
 #define CNAT_DEFAULT_CLIENT_MEMORY	 (256 << 10)
 #define CNAT_DEFAULT_SNAT_MEMORY	 (64 << 10)
@@ -48,14 +49,12 @@
 /* Should be prime >~ 100 * numBackends */
 #define CNAT_DEFAULT_MAGLEV_LEN 1009
 
+/* 65536 NAT session is ~20MB */
+#define CNAT_DEFAULT_TS_LOG2_POOL_SZ 16
+
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
-
-/* Initial number of timestamps for a session
- * this will be incremented when adding the reverse
- * session in cnat_rsession_create */
-#define CNAT_TIMESTAMP_INIT_REFCNT 1
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
@@ -72,11 +71,11 @@ typedef struct
 
 typedef enum cnat_trk_flag_t_
 {
-  /* Endpoint is active (static or dhcp resolved) */
-  CNAT_TRK_ACTIVE = (1 << 0),
   /* Don't translate this endpoint, but still
    * forward. Used by maglev for DSR */
   CNAT_TRK_FLAG_NO_NAT = (1 << 1),
+  /* Endpoint is active (static or dhcp resolved) */
+  CNAT_TRK_ACTIVE = (1 << 2),
   /* */
   CNAT_TRK_FLAG_TEST_DISABLED = (1 << 7),
 } cnat_trk_flag_t;
@@ -162,15 +161,92 @@ typedef struct cnat_main_
   u32 maglev_len;
 } cnat_main_t;
 
+typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
+{
+  ip46_address_t ip[VLIB_N_DIR];
+  u16 port[VLIB_N_DIR];
+  ip_protocol_t iproto;
+} cnat_5tuple_t;
+
+static_always_inline void
+cnat_5tuple_copy (cnat_5tuple_t *dst, const cnat_5tuple_t *src, u8 swap)
+{
+  dst->ip[VLIB_RX] = src->ip[VLIB_RX ^ swap];
+  dst->ip[VLIB_TX] = src->ip[VLIB_TX ^ swap];
+  dst->port[VLIB_RX] = src->port[VLIB_RX ^ swap];
+  dst->port[VLIB_TX] = src->port[VLIB_TX ^ swap];
+  dst->iproto = src->iproto;
+}
+
+typedef struct cnat_cksum_diff_t_
+{
+  u16 l3;
+  u16 l4;
+} cnat_cksum_diff_t;
+
+typedef struct cnat_timestamp_rewrite_t_
+{
+  /**
+   * The 5tuple to rewrite to
+   */
+  cnat_5tuple_t tuple;
+
+  /**
+   * Persist translation->ct_lb.dpoi_next_node
+   */
+  u16 cts_dpoi_next_node;
+
+  /**
+   * The load balance object to use to forward
+   */
+  index_t cts_lbi;
+
+  cnat_cksum_diff_t cksum;
+
+  u32 fib_index : 24;
+  u32 cts_flags : 8;
+} cnat_timestamp_rewrite_t;
+
+typedef enum cnat_session_location_t_
+{
+  CNAT_LOCATION_INPUT,
+  CNAT_LOCATION_OUTPUT,
+  CNAT_LOCATION_FIB,
+  CNAT_N_LOCATIONS,
+} cnat_session_location_t;
+
+typedef enum cnat_timestamp_direction_t_
+{
+  CNAT_IS_FWD = 0,
+  CNAT_IS_RETURN = CNAT_N_LOCATIONS,
+} cnat_timestamp_direction_t;
+
+typedef enum cnat_lookup_state_t_
+{
+  CNAT_LOOKUP_IS_OK = 0,
+  CNAT_LOOKUP_IS_NEW = 1,
+  CNAT_LOOKUP_IS_ERR = 2,
+  CNAT_LOOKUP_IS_RETURN = 3,
+} cnat_lookup_state_t;
+
 typedef struct cnat_timestamp_t_
 {
   /* Last time said session was seen */
-  f64 last_seen;
+  u32 last_seen;
+
+  u32 fib_index;
+
   /* expire after N seconds */
   u16 lifetime;
-  /* Users refcount, initially 3 (session, rsession, dpo) */
-  u16 refcnt;
+
+  /* Session refcount, can be 2 (session, rsession) */
+  u8 ts_session_refcnt;
+
+  u8 ts_rw_bm;
+  cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
+
 } cnat_timestamp_t;
+STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");
 
 /* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
 #define CNAT_TS_BASE_SIZE (8)
@@ -179,26 +255,28 @@ typedef struct cnat_timestamp_t_
 
 typedef struct cnat_timestamp_mpool_t_
 {
-  /* Increasing fixed size pools of timestamps */
-  cnat_timestamp_t *ts_pools[1 << CNAT_TS_MPOOL_BITS];
-  /* Bitmap of pools with free space */
-  uword *ts_free;
-  /* Index of next pool to init */
-  u8 next_empty_pool_idx;
   /* ts creation lock */
-  clib_spinlock_t ts_lock;
+  clib_rwlock_t ts_lock;
+  /* vector of timestamps fixed size pools */
+  cnat_timestamp_t **ts_pools;
+  /* Bitmap of pools with free space */
+  clib_bitmap_t *ts_free;
+  /* How many sessions per VRF */
+  int *sessions_per_vrf_ip4;
+  int *sessions_per_vrf_ip6;
+  /* max number of sessions per vrf */
+  int max_sessions_per_vrf;
+  /* max number of pools */
+  u32 pool_max;
+  /* fixed pool size */
+  u8 log2_pool_sz;
 } cnat_timestamp_mpool_t;
-
-typedef struct cnat_node_ctx_
-{
-  f64 now;
-  clib_thread_index_t thread_index;
-  ip_address_family_t af;
-  u8 do_trace;
-} cnat_node_ctx_t;
 
 cnat_main_t *cnat_get_main ();
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
+extern u8 *format_cnat_rewrite (u8 *s, va_list *args);
+extern u8 *format_cnat_rewrite_type (u8 *s, va_list *args);
+extern u8 *format_cnat_5tuple (u8 *s, va_list *args);
 extern uword unformat_cnat_ep_tuple (unformat_input_t * input,
 				     va_list * args);
 extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);

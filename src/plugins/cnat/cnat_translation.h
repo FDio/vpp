@@ -67,6 +67,12 @@ typedef enum cnat_translation_flag_t_
   CNAT_TR_FLAG_STACKED = (1 << 1),
   /* Do not create a return session */
   CNAT_TR_FLAG_NO_RETURN_SESSION = (1 << 2),
+  /* Do not create a client */
+  CNAT_TR_FLAG_NO_CLIENT = (1 << 3),
+  /* IP already present in the FIB, need to interpose dpo */
+  CNAT_TR_FLAG_EXCLUSIVE = (1 << 4),
+  /* only return traffic is allowed through this translation */
+  CNAT_TR_FLAG_RETURN_ONLY = (1 << 5),
 } __clib_packed cnat_translation_flag_t;
 
 typedef enum
@@ -204,7 +210,7 @@ extern u32 cnat_translation_update (cnat_endpoint_t *vip,
  *
  * @param id the ID as returned from the create
  */
-extern int cnat_translation_delete (u32 id);
+extern int cnat_translation_delete (u32 id, u32 fib_index);
 
 /**
  * Callback function invoked during a walk of all translations
