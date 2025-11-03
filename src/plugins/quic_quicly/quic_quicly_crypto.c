@@ -953,7 +953,8 @@ quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self, ptls_t *tls,
     {
 
       /* replace the cached entry along with a newly generated session id */
-      clib_mem_free (self->data.base);
+      if (self->data.base)
+	clib_mem_free (self->data.base);
       if ((self->data.base = clib_mem_alloc (src.len)) == NULL)
 	return PTLS_ERROR_NO_MEMORY;
 
