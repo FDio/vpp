@@ -1217,13 +1217,6 @@ quic_quicly_connect_stream (void *quic_conn, void **quic_stream,
   quicly_stream_t *quicly_stream;
   int rv;
 
-  if (!quicly_connection_is_ready (conn))
-    {
-      /* TODO: Define appropriate QUIC return values for QUIC VFT's!
-       */
-      return -1;
-    }
-
   rv = quicly_open_stream (conn, (quicly_stream_t **) quic_stream, is_unidir);
   if (rv)
     {
