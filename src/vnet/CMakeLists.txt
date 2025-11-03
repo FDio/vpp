@@ -1447,7 +1447,7 @@ add_vpp_library(vnet
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
-  LINK_LIBRARIES vppinfra svm vlib
+  LINK_LIBRARIES vppinfra svm vlib vlibapi vlibmemory
   DEPENDS vpp_version_h api_headers
 )
 
