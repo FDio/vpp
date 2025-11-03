@@ -96,18 +96,6 @@ typedef struct _clib_mem_vm_map_hdr
   struct _clib_mem_vm_map_hdr *prev, *next;
 } clib_mem_vm_map_hdr_t;
 
-#define foreach_clib_mem_heap_flag                                            \
-  _ (0, LOCKED, "locked")                                                     \
-  _ (1, UNMAP_ON_DESTROY, "unmap-on-destroy")                                 \
-  _ (2, TRACED, "traced")
-
-typedef enum
-{
-#define _(i, v, s) CLIB_MEM_HEAP_F_##v = (1 << i),
-  foreach_clib_mem_heap_flag
-#undef _
-} clib_mem_heap_flag_t;
-
 struct clib_mem_heap_t;
 typedef struct clib_mem_heap_t clib_mem_heap_t;
 
@@ -258,6 +246,7 @@ typedef struct
 
   /* flags */
   u8 alloc_free_intercept : 1;
+  u8 per_thread_slabs : 1;
 } clib_mem_init_ex_args_t;
 void *clib_mem_init_ex (clib_mem_init_ex_args_t *args);
 

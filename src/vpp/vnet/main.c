@@ -112,6 +112,7 @@ main (int argc, char *argv[])
     .log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT,
     .memory_size = (1ULL << 30),
     .alloc_free_intercept = 1,
+    .per_thread_slabs = 1,
   };
   clib_mem_page_sz_t default_log2_hugepage_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
   const size_t config_max_size = 1ULL << 18;
