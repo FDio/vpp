@@ -224,9 +224,10 @@ clib_mem_create_heap_internal (void *base, uword size,
 			       clib_mem_page_sz_t log2_page_sz, int is_locked,
 			       char *name)
 {
-  clib_mem_heap_t *h;
+  clib_mem_heap_t h = {}, *hp;
   u8 flags = 0;
-  int sz = sizeof (clib_mem_heap_t);
+  size_t sz;
+  size_t align = __alignof (clib_mem_heap_t);
 
   if (base == 0)
     {
@@ -256,30 +257,30 @@ clib_mem_create_heap_internal (void *base, uword size,
   if (is_locked)
     flags |= CLIB_MEM_HEAP_F_LOCKED;
 
-  h = base;
-  h->base = base;
-  h->size = size;
-  h->log2_page_sz = log2_page_sz;
-  h->flags = flags;
-  sz = strlen (name);
-  strcpy (h->name, name);
-  sz = round_pow2 (sz + sizeof (clib_mem_heap_t), 16);
-  h->mspace = create_mspace_with_base (base + sz, size - sz, is_locked);
+  h.base = base;
+  h.size = size;
+  h.log2_page_sz = log2_page_sz;
+  h.flags = flags;
+  h.mspace = create_mspace_with_base (base, size, is_locked);
+  mspace_disable_expand (h.mspace);
+  clib_mem_poison (mspace_least_addr (h.mspace), mspace_footprint (h.mspace));
 
-  mspace_disable_expand (h->mspace);
+  sz = round_pow2 (sizeof (clib_mem_heap_t) + strlen (name) + 1, align);
+  hp = mspace_memalign (h.mspace, align, sz);
+  clib_mem_unpoison (hp, sz);
+  *hp = h;
 
-  clib_mem_poison (mspace_least_addr (h->mspace),
-		   mspace_footprint (h->mspace));
+  strcpy (hp->name, name);
 
   if (clib_mem_main.heaps)
     {
       clib_mem_heap_t *old = clib_mem_get_heap ();
       clib_mem_set_heap (clib_mem_main.main_heap);
-      vec_add1 (clib_mem_main.heaps, h);
+      vec_add1 (clib_mem_main.heaps, hp);
       clib_mem_set_heap (old);
     }
 
-  return h;
+  return hp;
 }
 
 /* Initialize CLIB heap based on memory/size given by user.
