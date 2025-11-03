@@ -868,6 +868,21 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
+  /* check whether we're rejecting invalid fibs */
+  attach_args.namespace_id = 0;
+  attach_args.api_client_index = placeholder_client_api_index;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "client attachment should work");
+  connect_args.sep.fib_index = ENDPOINT_INVALID_INDEX - 1;
+  error = vnet_connect (&connect_args);
+  clib_warning ("connect error %d", error);
+  SESSION_TEST ((error == SESSION_E_INVALID_FIB),
+		"error code should be invalid fib");
+  connect_args.sep.fib_index = 0;
+  attach_args.namespace_id = ns_id;
+  detach_args.app_index = client_index;
+  vnet_application_detach (&detach_args);
+
   options[APP_OPTIONS_FLAGS] &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   attach_args.api_client_index = placeholder_client_api_index;

@@ -49,6 +49,22 @@ fib_table_get (fib_node_index_t index,
     return (NULL);
 }
 
+int
+fib_table_is_valid (fib_node_index_t index,
+	       fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return !pool_is_free_index (ip4_main.fibs, index);
+    case FIB_PROTOCOL_IP6:
+	return !pool_is_free_index (ip6_main.fibs, index);
+    case FIB_PROTOCOL_MPLS:
+	return !pool_is_free_index (mpls_main.fibs, index);
+    }
+    return 0;
+}
+
 static inline fib_node_index_t
 fib_table_lookup_i (fib_table_t *fib_table,
 		    const fib_prefix_t *prefix)
