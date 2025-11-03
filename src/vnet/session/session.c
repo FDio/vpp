@@ -1367,6 +1367,10 @@ int
 session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 {
   transport_service_type_t tst;
+  /* check if requested fib is valid */
+  if (!fib_table_get (rmt->fib_index,
+		      (rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6)))
+    return SESSION_E_INVALID_FIB;
   tst = transport_protocol_service_type (rmt->transport_proto);
   return session_open_srv_fns[tst](rmt, rsh);
 }
