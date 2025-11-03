@@ -1439,6 +1439,11 @@ vnet_connect (vnet_connect_args_t *a)
 
   client = application_get (a->app_index);
   session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
+  /* check if requested fib is valid */
+  if (!fib_table_is_valid (
+	a->sep_ext.fib_index,
+	(a->sep_ext.is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6)))
+    return SESSION_E_INVALID_FIB;
   client_wrk = application_get_worker (client, a->wrk_map_index);
 
   a->sep_ext.opaque = a->api_context;

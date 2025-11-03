@@ -913,6 +913,9 @@ extern u32 fib_table_get_num_entries(u32 fib_index,
  */
 extern fib_table_t *fib_table_get(fib_node_index_t index,
 				  fib_protocol_t proto);
+extern int
+fib_table_is_valid (fib_node_index_t index,
+	       fib_protocol_t proto);
 
 /**
  * @brief return code controlling how a table walk proceeds
