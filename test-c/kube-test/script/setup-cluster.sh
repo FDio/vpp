@@ -2,13 +2,14 @@
 set -e
 
 COMMAND=$1
-CALICOVPP_DIR="$HOME/vpp-dataplane"
+CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
 VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%test-c*}
 COMMIT_HASH=$(git rev-parse HEAD)
 reg_name='kind-registry'
 reg_port='5000'
 BASE=${BASE:-"master"}
+echo "CALICOVPP_DIR=$CALICOVPP_DIR"
 
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 export CALICOVPP_VERSION="${CALICOVPP_VERSION:-latest}"
