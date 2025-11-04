@@ -1142,8 +1142,8 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
   /* current size of fifo can only increase during peek: SPSC */
   cursize = f_cursize (f, head, tail);
 
-  if (PREDICT_FALSE (cursize < offset))
-    return SVM_FIFO_EEMPTY;
+  if (PREDICT_FALSE (cursize <= offset))
+    return offset ? 0 : SVM_FIFO_EEMPTY;
 
   len = clib_min (cursize - offset, len);
   head_idx = head + offset;

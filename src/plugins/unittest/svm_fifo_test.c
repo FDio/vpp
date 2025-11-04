@@ -455,6 +455,20 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_peek (f, svm_fifo_max_dequeue (f), vec_len (data), data_buf);
   SFIFO_TEST ((rv == 0), "peeked %u expected 0", rv);
 
+  /* Try to peek empty fifo with no f->ooo_deq */
+  svm_fifo_dequeue_drop_all (f);
+  f->ooo_deq = 0;
+  rv = svm_fifo_peek (f, 0, vec_len (data), data_buf);
+  SFIFO_TEST ((rv == SVM_FIFO_EEMPTY), "peeked %d expected %d", rv,
+	      SVM_FIFO_EEMPTY);
+
+  /* and no ooo_deq_lookup */
+  f->ooo_deq = 0;
+  rb_tree_free_nodes (&f->ooo_deq_lookup);
+  rv = svm_fifo_peek (f, 0, vec_len (data), data_buf);
+  SFIFO_TEST ((rv == SVM_FIFO_EEMPTY), "peeked %d expected %d", rv,
+	      SVM_FIFO_EEMPTY);
+
   vec_free (data_buf);
   ft_fifo_free (fs, f);
   ft_fifo_segment_free (fsm, fs);
