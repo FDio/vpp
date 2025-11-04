@@ -246,6 +246,7 @@ typedef struct
 
   /* flags */
   u8 alloc_free_intercept : 1;
+  u8 per_thread_slabs : 1;
 } clib_mem_init_ex_args_t;
 void *clib_mem_init_ex (clib_mem_init_ex_args_t *args);
 

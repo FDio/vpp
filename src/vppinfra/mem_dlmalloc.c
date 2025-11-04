@@ -9,9 +9,26 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/stack.h>
+#include <sys/mman.h>
+
+/* SLAB forwards */
+#define CLIB_MEM_SLAB_LOG2_SZ		16
+#define CLIB_MEM_SLAB_MIN_CHUNK_LOG2_SZ 4
+#define CLIB_MEM_SLAB_MAX_CHUNK_LOG2_SZ 12
+
+typedef struct clib_mem_slab_thread_t clib_mem_slab_thread_t;
+
+static_always_inline clib_mem_slab_thread_t *
+clib_mem_slab_thread_init (clib_mem_heap_t *h, clib_thread_index_t ti);
+static_always_inline void *clib_mem_slab_chunk_alloc (clib_mem_heap_t *h,
+						      void *old, uword size,
+						      uword align);
+static_always_inline int clib_mem_slab_chunk_free (void *p);
+static_always_inline u32 clib_mem_slab_ptr_chunk_size (void *p);
 
 #define foreach_clib_mem_heap_flag                                            \
   _ (locked, "locked")                                                        \
+  _ (slab, "slab")                                                            \
   _ (traced, "traced")                                                        \
   _ (unmap_on_destroy, "unmap-on-destroy")
 
@@ -34,25 +51,34 @@ struct clib_mem_heap_t
   foreach_clib_mem_heap_flag;
 #undef _
 
+  /* per-thread mains */
+  clib_thread_index_t n_threads;
+  u8 thread_array_lock;
+  clib_mem_slab_thread_t **threads;
+
   /* name - _MUST_ be last */
   char name[0];
 };
 
 static clib_mem_heap_t *
 clib_mem_create_heap_internal (void *base, uword size,
-			       clib_mem_page_sz_t log2_page_sz, int is_locked,
-			       char *name)
+			       clib_mem_page_sz_t log2_page_sz, u8 log2_align,
+			       int is_locked, char *name)
 {
   clib_mem_heap_t h = {}, *hp;
   size_t sz;
   size_t align = __alignof (clib_mem_heap_t);
 
+  log2_align = clib_max (log2_align, 16);
+
   if (base == 0)
     {
       log2_page_sz = clib_mem_log2_page_size_validate (log2_page_sz);
       size = round_pow2 (size, clib_mem_page_bytes (log2_page_sz));
-      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0, 0,
-				       "main heap");
+      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, log2_align,
+				       0, "main heap");
+
+      fprintf (stderr, "BASE  %p\n", base);
 
       if (base == CLIB_MEM_VM_MAP_FAILED)
 	return 0;
@@ -72,12 +98,10 @@ clib_mem_create_heap_internal (void *base, uword size,
 	}
     }
 
-  if (is_locked)
-    h.locked = 1;
-
   h.base = base;
   h.size = size;
   h.log2_page_sz = log2_page_sz;
+  h.locked = is_locked != 0,
   h.mspace = create_mspace_with_base (base, size, is_locked);
   mspace_disable_expand (h.mspace);
   clib_mem_poison (mspace_least_addr (h.mspace), mspace_footprint (h.mspace));
@@ -86,6 +110,9 @@ clib_mem_create_heap_internal (void *base, uword size,
   hp = mspace_memalign (h.mspace, align, sz);
   clib_mem_unpoison (hp, sz);
   *hp = h;
+
+  void *p = mspace_memalign (h.mspace, 1 << 16, 1 << 16);
+  fprintf (stderr, "ALIGN %p\n", p);
 
   strcpy (hp->name, name);
 
@@ -106,12 +133,18 @@ static void *
 clib_mem_init_internal (clib_mem_init_ex_args_t *a)
 {
   clib_mem_heap_t *h;
+  u8 log2_align = a->per_thread_slabs ? CLIB_MEM_SLAB_LOG2_SZ : 0;
 
   clib_mem_main_init ();
 
   h = clib_mem_create_heap_internal (a->base_addr, a->memory_size,
-				     a->log2_page_sz, 1 /*is_locked */,
-				     "main heap");
+				     a->log2_page_sz, log2_align,
+				     1 /*is_locked */, "main heap");
+  if (a->per_thread_slabs)
+    {
+      h->slab = 1;
+      clib_mem_slab_thread_init (h, os_get_thread_index ());
+    }
 
   ASSERT (clib_mem_main.main_heap == 0);
   ASSERT (clib_mem_main.heaps == 0);
@@ -313,7 +346,7 @@ clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
   else
     name = fmt;
 
-  h = clib_mem_create_heap_internal (base, size, log2_page_sz, is_locked,
+  h = clib_mem_create_heap_internal (base, size, log2_page_sz, 0, is_locked,
 				     name);
   vec_free (s);
   return h;
@@ -364,11 +397,20 @@ clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
 			    int os_out_of_memory_on_failure)
 {
   clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
-  void *p;
+  void *p = 0;
 
   align = clib_max (CLIB_MEM_MIN_ALIGN, align);
 
-  p = mspace_memalign (h->mspace, align, size);
+  if (h->slab)
+    {
+      clib_thread_index_t ti = os_get_thread_index ();
+      clib_mem_slab_thread_init (h, ti);
+      if (size <= 4096 && align <= 4096)
+	p = clib_mem_slab_chunk_alloc (h, 0, size, align);
+    }
+
+  if (p == 0)
+    p = mspace_memalign (h->mspace, align, size);
 
   if (PREDICT_FALSE (0 == p))
     {
@@ -528,6 +570,9 @@ clib_mem_heap_free (void *heap, void *p)
     clib_mem_trace_put (h, pointer_to_uword (p), size);
   clib_mem_poison (p, clib_mem_size (p));
 
+  if (h->slab && clib_mem_slab_chunk_free (p))
+    return;
+
   mspace_free (h->mspace, p);
 }
 
@@ -540,7 +585,8 @@ clib_mem_free (void *p)
 __clib_export __clib_flatten uword
 clib_mem_size (void *p)
 {
-  return mspace_usable_size (p);
+  u32 sz = clib_mem_slab_ptr_chunk_size (p);
+  return sz ? sz : mspace_usable_size (p);
 }
 
 __clib_export void
@@ -562,4 +608,412 @@ void
 clib_mem_heap_set_trace (clib_mem_heap_t *h, int enabled)
 {
   h->traced = (enabled != 0);
+}
+
+/*
+ * SLAB allocator
+ */
+
+#define CLIB_MEM_SLAB_CLASS_COUNT                                             \
+  (CLIB_MEM_SLAB_MAX_CHUNK_LOG2_SZ - CLIB_MEM_SLAB_MIN_CHUNK_LOG2_SZ + 1)
+
+static_always_inline int
+clib_mem_slab_class_from_size (uword size)
+{
+  if (size > (1ull << CLIB_MEM_SLAB_MAX_CHUNK_LOG2_SZ))
+    return -1;
+
+  if (size <= (1u << CLIB_MEM_SLAB_MIN_CHUNK_LOG2_SZ))
+    return 0;
+
+  return uword_bits - (uword) count_leading_zeros (
+			(size - 1) >> CLIB_MEM_SLAB_MIN_CHUNK_LOG2_SZ);
+}
+
+typedef struct clib_mem_slab_thread_t clib_mem_slab_thread_t;
+typedef u8 *clib_mem_slab_chunk_t;
+
+typedef struct clib_mem_slab_t clib_mem_slab_t;
+static_always_inline clib_mem_slab_t *clib_mem_slab_get_from_ptr (void *p);
+
+struct clib_mem_slab_t
+{
+#define CLIB_MEM_SLAB_COOKIE 0xf19a7e2ca1b9f1b4ULL
+  u64 cookie;
+  u32 n_free;
+  u32 n_chunks;
+  u8 log2_chunk_sz;
+  u8 class_index;
+  clib_thread_index_t thread_index;
+  clib_mem_heap_t *heap;
+  clib_mem_slab_thread_t *heap_thread;
+  clib_mem_slab_t *next;
+} __clib_aligned (CLIB_CACHE_LINE_BYTES);
+
+typedef struct
+{
+  clib_mem_slab_t *slabs;
+  clib_mem_slab_chunk_t local_free;
+  clib_mem_slab_chunk_t remote_free;
+} clib_mem_slab_class_t;
+
+struct clib_mem_slab_thread_t
+{
+  clib_thread_index_t thread_index;
+  clib_mem_heap_t *heap;
+  clib_mem_slab_class_t classes[CLIB_MEM_SLAB_CLASS_COUNT];
+};
+
+static_always_inline u32
+clib_mem_slab_chunk_size (clib_mem_slab_t *slab)
+{
+  return 1u << slab->log2_chunk_sz;
+}
+
+static_always_inline clib_mem_slab_chunk_t
+clib_mem_slab_freelist_next (clib_mem_slab_chunk_t chunk)
+{
+  clib_mem_slab_chunk_t next;
+
+  clib_mem_unpoison (chunk, sizeof (void *));
+  next = *(clib_mem_slab_chunk_t *) chunk;
+  clib_mem_poison (chunk, sizeof (void *));
+  return next;
+}
+
+static clib_mem_slab_t *
+clib_mem_slab_alloc (clib_mem_slab_thread_t *thread, u8 class_index)
+{
+  clib_mem_heap_t *h = thread->heap;
+  clib_mem_slab_t *slab;
+  u32 slab_size = 1u << CLIB_MEM_SLAB_LOG2_SZ;
+  u8 log2_chunk_sz = CLIB_MEM_SLAB_MIN_CHUNK_LOG2_SZ + class_index;
+  u32 total_slots = slab_size >> log2_chunk_sz;
+  u32 chunk_size = 1u << log2_chunk_sz;
+  u32 first_slot =
+    round_pow2 (sizeof (clib_mem_slab_t), chunk_size) >> log2_chunk_sz;
+  u32 slots = total_slots - first_slot;
+  clib_mem_slab_class_t *class = thread->classes + class_index;
+  clib_mem_slab_chunk_t tail;
+
+  ASSERT (class_index < CLIB_MEM_SLAB_CLASS_COUNT);
+  ASSERT (first_slot < total_slots);
+
+  slab = mspace_memalign (h->mspace, slab_size, slab_size);
+  if (PREDICT_FALSE (slab == 0))
+    return 0;
+
+  clib_mem_unpoison (slab, slab_size);
+  ASSERT ((pointer_to_uword (slab) & pow2_mask (CLIB_MEM_SLAB_LOG2_SZ)) == 0);
+
+  *slab = (clib_mem_slab_t){
+    .cookie = CLIB_MEM_SLAB_COOKIE,
+    .log2_chunk_sz = log2_chunk_sz,
+    .n_free = slots,
+    .n_chunks = slots,
+    .class_index = (u8) class_index,
+    .thread_index = thread->thread_index,
+    .heap = h,
+    .heap_thread = thread,
+    .next = class->slabs,
+  };
+
+  tail = class->local_free;
+  for (u32 slot = total_slots; slot-- > first_slot;)
+    {
+      clib_mem_slab_chunk_t chunk =
+	((u8 *) slab) + ((uword) slot << log2_chunk_sz);
+      *(clib_mem_slab_chunk_t *) chunk = tail;
+      tail = chunk;
+    }
+
+  class->local_free = tail;
+
+  clib_mem_poison (((u8 *) slab) + ((uword) first_slot << log2_chunk_sz),
+		   (uword) slots << log2_chunk_sz);
+
+  class->slabs = slab;
+  fprintf (stderr, "%s[%u]: %p size %u\n", __func__, os_get_thread_index (),
+	   slab, 1u << slab->log2_chunk_sz);
+  return slab;
+}
+
+static void
+clib_mem_slab_free (clib_mem_slab_class_t *class, clib_mem_slab_t *slab)
+{
+  clib_mem_slab_chunk_t chunk = class->local_free;
+  clib_mem_slab_chunk_t *linkp = &class->local_free;
+  u32 slab_size = 1u << CLIB_MEM_SLAB_LOG2_SZ;
+  u32 n_removed = 0;
+
+  fprintf (stderr, "%s[%u]: %p size %u\n", __func__, os_get_thread_index (),
+	   slab, 1u << slab->log2_chunk_sz);
+
+  /* reove all elements from freelist */
+  while (chunk)
+    {
+      clib_mem_slab_chunk_t next = clib_mem_slab_freelist_next (chunk);
+
+      if (clib_mem_slab_get_from_ptr (chunk) == slab)
+	{
+	  *linkp = next;
+	  n_removed++;
+	}
+      else
+	linkp = (clib_mem_slab_chunk_t *) chunk;
+
+      chunk = next;
+    }
+
+  ASSERT (n_removed == slab->n_chunks);
+
+  /* remove from linkes list of slabs */
+  for (clib_mem_slab_t **sp = &class->slabs; *sp; sp = &(*sp)->next)
+    if (*sp == slab)
+      {
+	*sp = slab->next;
+	break;
+      }
+
+#ifdef MADV_DONTNEED
+  madvise (slab, slab_size, MADV_DONTNEED);
+#endif
+  clib_mem_poison (slab, slab_size);
+  mspace_free (slab->heap->mspace, slab);
+}
+
+static_always_inline clib_mem_slab_thread_t *
+clib_mem_slab_thread_init (clib_mem_heap_t *h, clib_thread_index_t ti)
+{
+  clib_mem_slab_thread_t *t = 0;
+
+  ASSERT (h->slab == 1);
+
+  CLIB_SPINLOCK_LOCK (h->thread_array_lock);
+
+  if (PREDICT_FALSE (ti >= h->n_threads))
+    {
+      void *p;
+      u32 old_n = h->n_threads;
+      u32 n = ti + 1;
+      u32 sz = sizeof (clib_mem_slab_thread_t *);
+
+      p = mspace_realloc (h->mspace, h->threads, n * sz);
+
+      if (PREDICT_FALSE (p == 0))
+	goto done;
+
+      h->threads = p;
+      clib_memset (h->threads + old_n, 0, (n - old_n) * sz);
+      h->n_threads = n;
+    }
+
+  if (PREDICT_FALSE (h->threads[ti] == 0))
+    {
+      t = mspace_memalign (h->mspace, __alignof(clib_mem_slab_thread_t),
+			   sizeof (clib_mem_slab_thread_t));
+
+      if (PREDICT_FALSE (t == 0))
+	goto done;
+
+      *t = (clib_mem_slab_thread_t){
+	.thread_index = ti,
+	.heap = h,
+      };
+
+      h->threads[ti] = t;
+    }
+  else
+    t = h->threads[ti];
+
+done:
+  CLIB_SPINLOCK_UNLOCK (h->thread_array_lock);
+  return t;
+}
+
+static_always_inline clib_mem_slab_thread_t *
+clib_mem_slab_get_thread (clib_mem_heap_t *h)
+{
+  static __thread clib_mem_heap_t *cached_heap = 0;
+  static __thread clib_mem_slab_thread_t *cached_thread = 0;
+  clib_mem_slab_thread_t *t = 0;
+
+  if (cached_heap == h)
+    return cached_thread;
+
+  t = clib_mem_slab_thread_init (h, os_get_thread_index ());
+
+  cached_heap = h, cached_thread = t;
+
+  return t;
+}
+
+static_always_inline clib_mem_slab_t *
+clib_mem_slab_get_from_ptr (void *p)
+{
+  uword addr = pointer_to_uword (p);
+  clib_mem_slab_t *slab;
+
+  addr &= ~pow2_mask (CLIB_MEM_SLAB_LOG2_SZ);
+  slab = uword_to_pointer (addr, clib_mem_slab_t *);
+  if (slab->cookie == CLIB_MEM_SLAB_COOKIE)
+    return slab;
+  return 0;
+}
+
+static_always_inline void *
+clib_mem_slab_chunk_alloc (clib_mem_heap_t *h, void *old, uword size,
+			   uword align)
+{
+  clib_mem_slab_thread_t *thread;
+  clib_mem_slab_class_t *class;
+  clib_mem_slab_t *old_slab = 0;
+  u32 old_chunk_size = 0;
+  uword need = size;
+  int class_index;
+
+  if (align > need)
+    need = align;
+
+  class_index = clib_mem_slab_class_from_size (need);
+  if (class_index < 0)
+    return 0;
+
+  if (old)
+    {
+      old_slab = clib_mem_slab_get_from_ptr (old);
+      if (PREDICT_FALSE (old_slab == 0 || old_slab->heap != h))
+	{
+	  old_slab = 0;
+	}
+      else
+	{
+	  old_chunk_size = clib_mem_slab_chunk_size (old_slab);
+	  if (need <= old_chunk_size && align <= old_chunk_size)
+	    return old;
+	}
+    }
+
+  ASSERT (h && h->slab);
+
+  thread = clib_mem_slab_get_thread (h);
+  if (PREDICT_FALSE (thread == 0))
+    return 0;
+
+  class = thread->classes + class_index;
+
+  if (PREDICT_FALSE (!!__atomic_load_n (&class->local_free, __ATOMIC_RELAXED)))
+    {
+      clib_mem_slab_chunk_t remote =
+	__atomic_exchange_n (&class->remote_free, 0, __ATOMIC_ACQUIRE);
+
+      while (remote)
+	{
+	  clib_mem_slab_t *slab = clib_mem_slab_get_from_ptr (remote);
+	  clib_mem_slab_chunk_t next = clib_mem_slab_freelist_next (remote);
+	  u32 chunk_size = clib_mem_slab_chunk_size (slab);
+
+	  slab->n_free++;
+
+	  clib_mem_unpoison (remote, chunk_size);
+	  *(clib_mem_slab_chunk_t *) remote = class->local_free;
+	  class->local_free = remote;
+
+	  if (slab->n_free == slab->n_chunks)
+	    clib_mem_slab_free (class, slab);
+	  else
+	    clib_mem_poison (remote, chunk_size);
+
+	  remote = next;
+	}
+    }
+
+  if (class->local_free == 0)
+    {
+      clib_mem_slab_t *new_slab = clib_mem_slab_alloc (thread, class_index);
+      if (PREDICT_FALSE (new_slab == 0))
+	return 0;
+    }
+
+  clib_mem_slab_chunk_t chunk = class->local_free;
+  if (PREDICT_FALSE (chunk == 0))
+    return 0;
+
+  clib_mem_slab_t *slab = clib_mem_slab_get_from_ptr (chunk);
+  u32 chunk_size = clib_mem_slab_chunk_size (slab);
+  clib_mem_slab_chunk_t *link = (clib_mem_slab_chunk_t *) chunk;
+
+  clib_mem_unpoison (chunk, chunk_size);
+  class->local_free = *link;
+  *link = 0;
+  ASSERT (slab->n_free > 0);
+  slab->n_free--;
+
+  if (old_slab)
+    {
+      uword copy_size = clib_min (chunk_size, old_chunk_size);
+
+      if (copy_size)
+	{
+	  clib_mem_unpoison (old, copy_size);
+	  clib_memcpy_fast (chunk, old, copy_size);
+	}
+
+      clib_mem_slab_chunk_free (old);
+    }
+
+  return chunk;
+}
+
+static_always_inline int
+clib_mem_slab_chunk_free (void *p)
+{
+  clib_mem_slab_t *slab = clib_mem_slab_get_from_ptr (p);
+  clib_mem_slab_class_t *class;
+  clib_mem_slab_chunk_t *link;
+
+  if (!slab)
+    return 0;
+
+  fprintf (stderr, "%s[%u]: %p size %u\n", __func__, os_get_thread_index (), p,
+	   1u << slab->log2_chunk_sz);
+
+  class = slab->heap_thread->classes + slab->class_index;
+  link = (clib_mem_slab_chunk_t *) p;
+  clib_mem_unpoison (p, sizeof (void *));
+
+  if (os_get_thread_index () == slab->thread_index)
+    {
+      *link = class->local_free;
+      class->local_free = (clib_mem_slab_chunk_t) p;
+      slab->n_free++;
+      ASSERT (slab->n_free <= slab->n_chunks);
+      if (slab->n_free == slab->n_chunks)
+	{
+	  clib_mem_slab_free (class, slab);
+	  return 1;
+	}
+    }
+  else
+    {
+      clib_mem_slab_chunk_t head;
+      clib_mem_slab_chunk_t *rfree = &class->remote_free;
+    retry_remote:
+      head = __atomic_load_n (rfree, __ATOMIC_RELAXED);
+      *link = head;
+      if (!__atomic_compare_exchange_n (rfree, &head,
+					(clib_mem_slab_chunk_t) p, 0,
+					__ATOMIC_RELEASE, __ATOMIC_RELAXED))
+	goto retry_remote;
+    }
+
+  clib_mem_poison (p, clib_mem_slab_chunk_size (slab));
+  return 1;
+}
+
+static_always_inline u32
+clib_mem_slab_ptr_chunk_size (void *p)
+{
+  clib_mem_slab_t *slab = clib_mem_slab_get_from_ptr (p);
+  return slab ? clib_mem_slab_chunk_size (slab) : 0;
 }
