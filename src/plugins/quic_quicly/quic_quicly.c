@@ -1046,16 +1046,74 @@ quic_quicly_find_packet_ctx (quic_quicly_rx_packet_ctx_t *pctx,
 }
 
 static void
+quic_quicly_on_quic_session_accepted (quic_ctx_t *ctx)
+{
+  session_t *quic_session;
+  app_worker_t *app_wrk;
+  quic_ctx_t *lctx;
+  int rv;
+
+  quic_session = session_alloc (ctx->c_thread_index);
+  QUIC_DBG (2,
+	    "Accept connection (new quic_session): session 0x%lx, "
+	    "session_index %u, ctx_index %u, thread %u",
+	    session_handle (quic_session), quic_session->session_index,
+	    ctx->c_c_index, ctx->c_thread_index);
+  ctx->c_s_index = quic_session->session_index;
+
+  lctx = quic_quicly_get_quic_ctx (ctx->listener_ctx_id, 0);
+
+  quic_session->app_wrk_index = lctx->parent_app_wrk_id;
+  quic_session->connection_index = ctx->c_c_index;
+  quic_session->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
+  quic_session->listener_handle = lctx->c_s_index;
+
+  if (lctx->alpn_protos[0])
+    {
+      const char *proto =
+	ptls_get_negotiated_protocol (quicly_get_tls (ctx->conn));
+      if (proto)
+	{
+	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
+				     .len = strlen (proto) };
+	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
+	}
+    }
+
+  /* If notify fails, reset connection immediatly */
+  rv = app_worker_init_accepted (quic_session);
+  if (rv)
+    {
+      QUIC_ERR ("Accept connection: failed to allocate fifos");
+      quic_quicly_proto_on_close (ctx->c_c_index, ctx->c_thread_index);
+      return;
+    }
+
+  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
+
+  app_wrk = app_worker_get (quic_session->app_wrk_index);
+  quic_session->session_state = SESSION_STATE_ACCEPTING;
+  rv = app_worker_accept_notify (app_wrk, quic_session);
+  if (rv)
+    {
+      QUIC_ERR ("Accept connection: failed to notify accept worker app");
+      quic_quicly_proto_on_close (ctx->c_c_index, ctx->c_thread_index);
+      return;
+    }
+
+  ctx->conn_state = QUIC_CONN_STATE_READY;
+}
+
+static void
 quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
 {
   quicly_context_t *quicly_ctx;
-  session_t *quic_session;
   clib_bihash_kv_16_8_t kv;
-  app_worker_t *app_wrk;
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
-  quic_ctx_t *lctx;
-  int rv;
+  int rv, quicly_state;
   quic_quicly_main_t *qqm = &quic_quicly_main;
 
   QUIC_DBG (2, "Accept connection: pkt ctx_index %u, thread %u",
@@ -1091,32 +1149,6 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   quic_quicly_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
 
-  /* if handshake failed (e.g. ALPN negotiation failed) quicly connection is in
-   * closing state, in this case we don't need to create session and notify
-   * app, connection will be closed when error response is sent */
-  if (quicly_get_state (conn) >= QUICLY_STATE_CLOSING)
-    {
-      QUIC_DBG (2, "Handshake failed, closing: ctx_index %u, thread %u",
-		ctx->c_c_index, ctx->c_thread_index);
-      return;
-    }
-
-  quic_session = session_alloc (ctx->c_thread_index);
-  QUIC_DBG (2,
-	    "Accept connection (new quic_session): session 0x%lx, "
-	    "session_index %u, ctx_index %u, thread %u",
-	    session_handle (quic_session), quic_session->session_index,
-	    ctx->c_c_index, ctx->c_thread_index);
-  ctx->c_s_index = quic_session->session_index;
-
-  lctx = quic_quicly_get_quic_ctx (ctx->listener_ctx_id, 0);
-
-  quic_session->app_wrk_index = lctx->parent_app_wrk_id;
-  quic_session->connection_index = ctx->c_c_index;
-  quic_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
-  quic_session->listener_handle = lctx->c_s_index;
-
   /* Register connection in connections map */
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) pctx->thread_index) << 32 | (u64) pctx->ctx_index;
@@ -1125,40 +1157,24 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
     2, "Accept connection: conn key value 0x%llx, ctx_index %u, thread %u",
     kv.value, pctx->ctx_index, pctx->thread_index);
 
-  if (lctx->alpn_protos[0])
+  quicly_state = quicly_get_state (conn);
+  /* if handshake failed (e.g. ALPN negotiation failed) quicly connection is in
+   * closing state, in this case we don't need to create session and notify
+   * app, connection will be closed when error response is sent */
+  if (quicly_state >= QUICLY_STATE_CLOSING)
     {
-      const char *proto = ptls_get_negotiated_protocol (quicly_get_tls (conn));
-      if (proto)
-	{
-	  tls_alpn_proto_id_t id = { .base = (u8 *) proto,
-				     .len = strlen (proto) };
-	  ctx->alpn_selected = tls_alpn_proto_by_str (&id);
-	}
+      QUIC_DBG (2, "Handshake failed, closing: ctx_index %u, thread %u",
+		ctx->c_c_index, ctx->c_thread_index);
+      ctx->conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
+      return;
     }
-
-  /* If notify fails, reset connection immediatly */
-  rv = app_worker_init_accepted (quic_session);
-  if (rv)
+  if (quicly_state < QUICLY_STATE_CONNECTED)
     {
-      QUIC_ERR ("Accept connection: failed to allocate fifos");
-      quic_quicly_proto_on_close (pctx->ctx_index, pctx->thread_index);
+      ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
       return;
     }
 
-  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
-  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
-
-  app_wrk = app_worker_get (quic_session->app_wrk_index);
-  quic_session->session_state = SESSION_STATE_ACCEPTING;
-  rv = app_worker_accept_notify (app_wrk, quic_session);
-  if (rv)
-    {
-      QUIC_ERR ("Accept connection: failed to notify accept worker app");
-      quic_quicly_proto_on_close (pctx->ctx_index, pctx->thread_index);
-      return;
-    }
-
-  ctx->conn_state = QUIC_CONN_STATE_READY;
+  quic_quicly_on_quic_session_accepted (ctx);
 }
 
 static int
@@ -1577,9 +1593,9 @@ quic_quicly_check_quic_session_connected (quic_ctx_t *ctx)
 
   ctx->conn_state = QUIC_CONN_STATE_READY;
   if (session_connected == QUIC_SESSION_CONNECTED_CLIENT)
-    {
-      quic_quicly_on_quic_session_connected (ctx);
-    }
+    quic_quicly_on_quic_session_connected (ctx);
+  else
+    quic_quicly_on_quic_session_accepted (ctx);
 }
 
 static int
@@ -1679,9 +1695,12 @@ rx_start:
 	case QUIC_PACKET_TYPE_RECEIVE:
 	  ctx = quic_quicly_get_quic_ctx (packets_ctx[i].ctx_index,
 					  packets_ctx[i].thread_index);
-	  quic_quicly_check_quic_session_connected (ctx);
-	  ctx = quic_quicly_get_quic_ctx (packets_ctx[i].ctx_index,
-					  packets_ctx[i].thread_index);
+	  if (ctx->conn_state <= QUIC_CONN_STATE_HANDSHAKE)
+	    {
+	      quic_quicly_check_quic_session_connected (ctx);
+	      ctx = quic_quicly_get_quic_ctx (packets_ctx[i].ctx_index,
+					      packets_ctx[i].thread_index);
+	    }
 	  break;
 	case QUIC_PACKET_TYPE_ACCEPT:
 	  ctx = quic_quicly_get_quic_ctx (packets_ctx[i].ctx_index,
