@@ -88,6 +88,7 @@ set(VPPINFRA_SRCS
   mem.c
   mem_bulk.c
   mem_dlmalloc.c
+  mem_trace.c
   mhash.c
   mpcap.c
   pcap.c
