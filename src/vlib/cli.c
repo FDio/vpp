@@ -1073,7 +1073,7 @@ save_memory_trace (vlib_main_t *vm, unformat_input_t *input,
 {
   char *file, *chroot_file;
   uword was_enabled;
-  mheap_trace_t *t, *mem_traces = 0;
+  clib_mem_trace_t *t, *mem_traces = 0;
   u8 *tmp;
   cJSON *traces, *trace, *traceback, *symbol;
   int i;

@@ -96,18 +96,6 @@ typedef struct _clib_mem_vm_map_hdr
   struct _clib_mem_vm_map_hdr *prev, *next;
 } clib_mem_vm_map_hdr_t;
 
-#define foreach_clib_mem_heap_flag                                            \
-  _ (0, LOCKED, "locked")                                                     \
-  _ (1, UNMAP_ON_DESTROY, "unmap-on-destroy")                                 \
-  _ (2, TRACED, "traced")
-
-typedef enum
-{
-#define _(i, v, s) CLIB_MEM_HEAP_F_##v = (1 << i),
-  foreach_clib_mem_heap_flag
-#undef _
-} clib_mem_heap_flag_t;
-
 struct clib_mem_heap_t;
 typedef struct clib_mem_heap_t clib_mem_heap_t;
 
@@ -122,8 +110,8 @@ typedef struct clib_mem_thread_main_t
   /* linked list of thread mains */
   struct clib_mem_thread_main_t *next;
 
-  /* per-thread mheap trace control */
-  int mheap_trace_thread_disable;
+  /* per-thread heap trace control */
+  int trace_thread_disable;
 } clib_mem_thread_main_t;
 
 typedef struct
@@ -276,13 +264,14 @@ typedef struct
 
   /* Offset of this item */
   uword offset;
-} mheap_trace_t;
+} clib_mem_trace_t;
 
 void clib_mem_trace (int enable);
 
 int clib_mem_is_traced (void);
 
-mheap_trace_t *clib_mem_trace_dup (clib_mem_heap_t *heap);
+clib_mem_trace_t *clib_mem_trace_dup (clib_mem_heap_t *heap);
+void clib_mem_heap_set_trace (clib_mem_heap_t *h, int enabled);
 
 typedef struct
 {
@@ -402,9 +391,19 @@ int clib_mem_set_numa_affinity (u8 numa_node, int force);
 int clib_mem_set_default_numa_affinity ();
 void clib_mem_vm_randomize_va (uword * requested_va,
 			       clib_mem_page_sz_t log2_page_size);
-void mheap_trace (clib_mem_heap_t * v, int enable);
+
+/* mem_trace.c */
+typedef struct clib_mem_trace_main_t clib_mem_trace_main_t;
+void clib_mem_trace_heap (clib_mem_heap_t *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
+clib_mem_heap_t *clib_mem_trace_get_current_heap ();
+void clib_mem_trace_get (const clib_mem_heap_t *heap, uword offset,
+			 uword size);
+void clib_mem_trace_put (const clib_mem_heap_t *heap, uword offset,
+			 uword size);
+clib_mem_trace_main_t *clib_mem_trace_get_main ();
+u8 *format_clib_mem_trace (u8 *s, va_list *args);
 
 typedef struct
 {
