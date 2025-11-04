@@ -4219,7 +4219,7 @@ void* mspace_get_aligned (mspace msp,
     if (rv && use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
-      mheap_get_trace ((unsigned long)rv, psize);
+      clib_mem_trace_get (0, (unsigned long)rv, psize);
     }
     return rv;
   }
@@ -4260,7 +4260,7 @@ void* mspace_get_aligned (mspace msp,
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace (searchp, psize);
+    clib_mem_trace_get (0, searchp, psize);
   }
   return (void *) searchp;
 }
@@ -4286,7 +4286,7 @@ void mspace_put (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(object_header);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((unsigned long)p_arg, psize);
+      clib_mem_trace_put (0, (unsigned long)p_arg, psize);
     }
 
 #if CLIB_DEBUG > 0 && !defined(CLIB_SANITIZE_ADDR)
@@ -4310,7 +4310,7 @@ void mspace_put_no_offset (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(p_arg);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((unsigned long)p_arg, psize);
+      clib_mem_trace_put (0, (unsigned long)p_arg, psize);
     }
   mspace_free (msp, p_arg);
 }
