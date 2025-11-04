@@ -110,9 +110,9 @@ quic_quicly_register_cipher_suite (crypto_engine_type_t type,
 
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
 extern ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[];
-extern int quic_quicly_crypto_context_acquire (quic_ctx_t *ctx);
-extern void quic_quicly_crypto_context_release (u32 crypto_context_index,
-						u8 thread_index);
+extern int quic_quicly_crypto_context_init (quic_ctx_t *ctx);
+extern void quic_quicly_crypto_context_free (u32 crypto_context_index,
+					     u8 thread_index);
 extern int quic_quicly_app_cert_key_pair_delete (app_cert_key_pair_t *ckpair);
 extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
 					  ptls_t *tls, int is_encrypt,

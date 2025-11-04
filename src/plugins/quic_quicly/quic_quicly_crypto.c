@@ -95,162 +95,6 @@ quic_quicly_crypto_context_free_if_needed (crypto_context_t *crctx,
 }
 
 static int
-quic_quicly_on_stream_open (quicly_stream_open_t *self,
-			    quicly_stream_t *stream)
-{
-  /* Return code for this function ends either
-   * - in quicly_receive : if not QUICLY_ERROR_PACKET_IGNORED, will close
-   * connection
-   * - in quicly_open_stream, returned directly
-   */
-
-  session_t *stream_session, *quic_session;
-  quic_stream_data_t *stream_data;
-  app_worker_t *app_wrk;
-  quic_ctx_t *qctx, *sctx;
-  u32 sctx_id;
-  int rv;
-
-  QUIC_DBG (2, "on_stream_open called");
-  stream->data = clib_mem_alloc (sizeof (quic_stream_data_t));
-  stream->callbacks = &quic_quicly_stream_callbacks;
-  /* Notify accept on parent qsession, but only if this is not a locally
-   * initiated stream */
-  if (quicly_stream_is_self_initiated (stream))
-    {
-      QUIC_DBG (2, "Nothing to do on locally initiated stream");
-      return 0;
-    }
-
-  sctx_id = quic_ctx_alloc (quic_quicly_main.qm, vlib_get_thread_index ());
-  qctx = quic_quicly_get_conn_ctx (stream->conn);
-
-  /* Might need to signal that the connection is ready if the first thing the
-   * server does is open a stream */
-  quic_quicly_check_quic_session_connected (qctx);
-  /* ctx might be invalidated */
-  qctx = quic_quicly_get_conn_ctx (stream->conn);
-  QUIC_DBG (2, "qctx->c_s_index %u, qctx->c_c_index %u", qctx->c_s_index,
-	    qctx->c_c_index);
-
-  if (qctx->c_s_index == QUIC_SESSION_INVALID)
-    {
-      QUIC_DBG (2, "Invalid session index on quic c_index %u",
-		qctx->c_c_index);
-      return 0;
-    }
-  stream_session = session_alloc (qctx->c_thread_index);
-  stream_session->flags |= SESSION_F_STREAM;
-  QUIC_DBG (2, "ACCEPTED stream_session 0x%lx ctx %u",
-	    session_handle (stream_session), sctx_id);
-  sctx = quic_quicly_get_quic_ctx (sctx_id, qctx->c_thread_index);
-  sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
-  sctx->parent_app_id = qctx->parent_app_id;
-  sctx->quic_connection_ctx_id = qctx->c_c_index;
-  sctx->c_c_index = sctx_id;
-  sctx->c_s_index = stream_session->session_index;
-  sctx->stream = stream;
-  sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  sctx->flags |= QUIC_F_IS_STREAM;
-  sctx->crypto_context_index = qctx->crypto_context_index;
-  if (quicly_stream_is_unidirectional (stream->stream_id))
-    stream_session->flags |= SESSION_F_UNIDIRECTIONAL;
-
-  stream_data = (quic_stream_data_t *) stream->data;
-  stream_data->ctx_id = sctx_id;
-  stream_data->thread_index = sctx->c_thread_index;
-  stream_data->app_rx_data_len = 0;
-  stream_data->app_tx_data_len = 0;
-
-  sctx->c_s_index = stream_session->session_index;
-  stream_session->session_state = SESSION_STATE_CREATED;
-  stream_session->app_wrk_index = sctx->parent_app_wrk_id;
-  stream_session->connection_index = sctx->c_c_index;
-  stream_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
-  quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
-  /* Make sure quic session is in listening state */
-  quic_session->session_state = SESSION_STATE_LISTENING;
-  stream_session->listener_handle = listen_session_get_handle (quic_session);
-
-  app_wrk = app_worker_get (stream_session->app_wrk_index);
-  if ((rv = app_worker_init_connected (app_wrk, stream_session)))
-    {
-      QUIC_ERR ("failed to allocate fifos");
-      quicly_reset_stream (stream, QUIC_QUICLY_APP_ALLOCATION_ERROR);
-      return 0; /* Frame is still valid */
-    }
-  svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
-			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
-			       SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
-  svm_fifo_init_ooo_lookup (stream_session->rx_fifo, 0 /* ooo enq */);
-  svm_fifo_init_ooo_lookup (stream_session->tx_fifo, 1 /* ooo deq */);
-
-  stream_session->session_state = SESSION_STATE_ACCEPTING;
-  if ((rv = app_worker_accept_notify (app_wrk, stream_session)))
-    {
-      QUIC_ERR ("failed to notify accept worker app");
-      quicly_reset_stream (stream, QUIC_QUICLY_APP_ACCEPT_NOTIFY_ERROR);
-      return 0; /* Frame is still valid */
-    }
-
-  return 0;
-}
-
-static void
-quic_quicly_on_closed_by_remote (quicly_closed_by_remote_t *self,
-				 quicly_conn_t *conn, int code,
-				 uint64_t frame_type, const char *reason,
-				 size_t reason_len)
-{
-  quic_ctx_t *ctx = quic_quicly_get_conn_ctx (conn);
-#if QUIC_DEBUG >= 2
-  if (ctx->c_s_index == QUIC_SESSION_INVALID)
-    {
-      clib_warning ("Unopened Session closed by peer: error %U, reason %U, "
-		    "ctx_index %u, thread %u",
-		    quic_quicly_format_err, code, format_ascii_bytes, reason,
-		    reason_len, ctx->c_c_index, ctx->c_thread_index);
-    }
-  else
-    {
-      session_t *quic_session =
-	session_get (ctx->c_s_index, ctx->c_thread_index);
-      clib_warning ("Session closed by peer: session 0x%lx, error %U, reason "
-		    "%U, ctx_index %u, thread %u",
-		    session_handle (quic_session), quic_quicly_format_err,
-		    code, format_ascii_bytes, reason, reason_len,
-		    ctx->c_c_index, ctx->c_thread_index);
-    }
-#endif
-  if (ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
-    {
-      QUIC_DBG (2, "Handshake failed: ctx_index %u, thread %u", ctx->c_c_index,
-		ctx->c_thread_index);
-      return;
-    }
-  ctx->conn_state = QUIC_CONN_STATE_PASSIVE_CLOSING;
-  if (ctx->c_s_index != QUIC_SESSION_INVALID)
-    {
-      session_transport_closing_notify (&ctx->connection);
-    }
-}
-
-static int64_t
-quic_quicly_get_time (quicly_now_t *self)
-{
-  return (int64_t) quic_wrk_ctx_get (quic_quicly_main.qm,
-				     vlib_get_thread_index ())
-    ->time_now;
-}
-
-static quicly_stream_open_t on_stream_open = { quic_quicly_on_stream_open };
-static quicly_closed_by_remote_t on_closed_by_remote = {
-  quic_quicly_on_closed_by_remote
-};
-static quicly_now_t quicly_vpp_now_cb = { quic_quicly_get_time };
-
-static int
 quic_quicly_on_client_hello_ptls (ptls_on_client_hello_t *self, ptls_t *tls,
 				  ptls_on_client_hello_parameters_t *params)
 {
@@ -361,8 +205,8 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 	    }
 	}
 
-  /* TODO: Remove this and clean up legacy provider code in quicly */
-  quic_quicly_load_openssl3_legacy_provider ();
+      /* TODO: Remove this and clean up legacy provider code in quicly */
+      quic_quicly_load_openssl3_legacy_provider ();
     }
 
   data = clib_mem_alloc (sizeof (*data));
@@ -397,23 +241,22 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 
   quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
   quicly_ctx->tls = ptls_ctx;
-  quicly_ctx->stream_open = &on_stream_open;
-  quicly_ctx->closed_by_remote = &on_closed_by_remote;
-  quicly_ctx->now = &quicly_vpp_now_cb;
+
   quicly_amend_ptls_context (quicly_ctx->tls);
 
   if (qqm->vnet_crypto_enabled && ctx->crypto_engine == CRYPTO_ENGINE_VPP)
     {
-  QUIC_DBG (2, "Init crctx: crypto engine vpp, crctx_ndx 0x%08lx, thread %d",
-	    crctx->ctx_index, ctx->c_thread_index);
-  quicly_ctx->crypto_engine = &quic_quicly_crypto_engine;
+      QUIC_DBG (2,
+		"Init crctx: crypto engine vpp, crctx_ndx 0x%08lx, thread %d",
+		crctx->ctx_index, ctx->c_thread_index);
+      quicly_ctx->crypto_engine = &quic_quicly_crypto_engine;
     }
   else
     {
-  QUIC_DBG (2,
-	    "Init crctx: crypto engine quicly, crctx_ndx 0x%08lx, thread %d",
-	    crctx->ctx_index, ctx->c_thread_index);
-  quicly_ctx->crypto_engine = &quicly_default_crypto_engine;
+      QUIC_DBG (
+	2, "Init crctx: crypto engine quicly, crctx_ndx 0x%08lx, thread %d",
+	crctx->ctx_index, ctx->c_thread_index);
+      quicly_ctx->crypto_engine = &quicly_default_crypto_engine;
     }
 
   quicly_ctx->transport_params.max_data = QUIC_INT_MAX;
@@ -466,7 +309,7 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 }
 
 void
-quic_quicly_crypto_context_release (u32 crctx_ndx, u8 thread_index)
+quic_quicly_crypto_context_free (u32 crctx_ndx, u8 thread_index)
 {
   crypto_context_t *crctx;
   QUIC_DBG (3, "crctx_ndx 0x%x (%u), thread %u", crctx_ndx, crctx_ndx,
@@ -477,7 +320,7 @@ quic_quicly_crypto_context_release (u32 crctx_ndx, u8 thread_index)
 }
 
 int
-quic_quicly_crypto_context_acquire (quic_ctx_t *ctx)
+quic_quicly_crypto_context_init (quic_ctx_t *ctx)
 {
   /* import from src/vnet/session/application.c */
   extern u8 *format_crypto_engine (u8 * s, va_list * args);
