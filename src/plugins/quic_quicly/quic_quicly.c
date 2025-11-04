@@ -60,6 +60,7 @@ static void
 quic_quicly_connection_delete (quic_ctx_t *ctx)
 {
   clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_24_8_t accepting_key = {};
   quicly_conn_t *conn;
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quic_main_t *qm = qqm->qm;
@@ -82,7 +83,11 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   ctx->conn = NULL;
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
   QUIC_DBG (2, "Deleting conn with id %lu %lu from map", kv.key[0], kv.key[1]);
-  clib_bihash_add_del_16_8 (&qqm->connection_hash, &kv, 0 /* is_add */);
+  clib_bihash_add_del_16_8 (&qqm->connection_hash, &kv, 0 /* is_del */);
+  const quicly_cid_t *rcid = quicly_get_remote_cid (conn);
+  clib_memcpy_fast (&accepting_key.key, rcid->cid, rcid->len);
+  clib_bihash_add_del_24_8 (&qqm->conn_accepting_hash, &accepting_key,
+			    0 /* is del */);
 
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (conn);
@@ -1002,6 +1007,7 @@ quic_quicly_find_packet_ctx (quic_quicly_rx_packet_ctx_t *pctx,
 {
   clib_bihash_kv_16_8_t kv;
   clib_bihash_16_8_t *h;
+  clib_bihash_kv_24_8_t accepting_key = {};
   quic_ctx_t *ctx;
   u32 index, thread_id;
   quic_quicly_main_t *qqm = &quic_quicly_main;
@@ -1012,6 +1018,19 @@ quic_quicly_find_packet_ctx (quic_quicly_rx_packet_ctx_t *pctx,
 
   if (clib_bihash_search_16_8 (h, &kv, &kv))
     {
+      if (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]))
+	{
+	  QUIC_DBG (3, "Searching in accepting connections");
+	  clib_memcpy_fast (&accepting_key.key, pctx->packet.cid.src.base,
+			    pctx->packet.cid.src.len);
+	  if (!clib_bihash_search_24_8 (&qqm->conn_accepting_hash,
+					&accepting_key, &accepting_key))
+	    {
+	      index = accepting_key.value & UINT32_MAX;
+	      thread_id = accepting_key.value >> 32;
+	      goto conn_found;
+	    }
+	}
       QUIC_DBG (3, "connection not found");
       return QUIC_PACKET_TYPE_NONE;
     }
@@ -1020,6 +1039,7 @@ quic_quicly_find_packet_ctx (quic_quicly_rx_packet_ctx_t *pctx,
   thread_id = kv.value >> 32;
   /* Check if this connection belongs to this thread, otherwise
    * ask for it to be moved */
+conn_found:
   if (thread_id != caller_thread_index)
     {
       QUIC_DBG (2, "Connection is on wrong thread");
@@ -1111,6 +1131,7 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
 {
   quicly_context_t *quicly_ctx;
   clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_24_8_t accepting_key = {};
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
   int rv, quicly_state;
@@ -1153,6 +1174,11 @@ quic_quicly_accept_connection (quic_quicly_rx_packet_ctx_t *pctx)
   quic_quicly_make_connection_key (&kv, quicly_get_master_id (conn));
   kv.value = ((u64) pctx->thread_index) << 32 | (u64) pctx->ctx_index;
   clib_bihash_add_del_16_8 (&qqm->connection_hash, &kv, 1 /* is_add */);
+  clib_memcpy_fast (&accepting_key.key, pctx->packet.cid.src.base,
+		    pctx->packet.cid.src.len);
+  accepting_key.value = kv.value;
+  clib_bihash_add_del_24_8 (&qqm->conn_accepting_hash, &accepting_key,
+			    1 /* is add */);
   QUIC_DBG (
     2, "Accept connection: conn key value 0x%llx, ctx_index %u, thread %u",
     kv.value, pctx->ctx_index, pctx->thread_index);
@@ -1495,6 +1521,9 @@ quic_quicly_engine_init (quic_main_t *qm)
 		     app_crypto_engine_n_types ());
   clib_bihash_init_16_8 (&qqm->connection_hash,
 			 "quic (quicly engine) connections", 1024, 4 << 20);
+  clib_bihash_init_24_8 (&qqm->conn_accepting_hash,
+			 "quic (quicly engine) accepting connections", 1024,
+			 4 << 20);
   quic_quicly_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
 				     ptls_openssl_cipher_suites);
 
