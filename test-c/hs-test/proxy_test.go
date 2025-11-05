@@ -158,7 +158,7 @@ func nginxMirroring(s *NginxProxySuite, multiThreadWorkers bool) {
 
 	s.AddVclConfig(s.Containers.NginxProxy, multiThreadWorkers)
 	s.CreateNginxProxyConfig(s.Containers.NginxProxy, multiThreadWorkers)
-	s.Containers.NginxProxy.Start()
+	s.AssertNil(s.Containers.NginxProxy.Start())
 	vpp.WaitForApp("nginx-", 5)
 	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ProxyAddr(), s.Ports.Proxy)
 	s.CurlDownloadResource(uri)

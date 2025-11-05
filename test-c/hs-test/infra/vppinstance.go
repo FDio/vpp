@@ -151,9 +151,12 @@ func (vpp *VppInstance) Start() error {
 		cliConfig = fmt.Sprintf("exec %s/cli-config.conf", containerWorkDir)
 	}
 
-	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getRunDir())
-	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getLogDir())
-	vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getEtcDir())
+	o, err := vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getRunDir())
+	vpp.Container.Suite.AssertNil(err, o)
+	o, err = vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getLogDir())
+	vpp.Container.Suite.AssertNil(err, o)
+	o, err = vpp.Container.Exec(false, "mkdir --mode=0700 -p "+vpp.getEtcDir())
+	vpp.Container.Suite.AssertNil(err, o)
 
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
