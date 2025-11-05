@@ -53,10 +53,11 @@ format_wg_if (u8 * s, va_list * args)
   noise_local_t *local = noise_local_get (wgi->local_idx);
   u8 key[NOISE_KEY_LEN_BASE64];
 
-  s = format (s, "[%d] %U src:%U port:%d",
+  s = format (s, "[%d] %U src:%U port:%d transport:%U",
 	      wgii,
 	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      wgi->sw_if_index, format_ip_address, &wgi->src_ip, wgi->port);
+	      wgi->sw_if_index, format_ip_address, &wgi->src_ip, wgi->port,
+	      format_wg_transport_type, wgi->transport);
 
   key_to_base64 (local->l_private, NOISE_PUBLIC_KEY_LEN, key);
 
@@ -250,7 +251,8 @@ wg_if_instance_free (u32 instance)
 int
 wg_if_create (u32 user_instance,
 	      const u8 private_key[NOISE_PUBLIC_KEY_LEN],
-	      u16 port, const ip_address_t * src_ip, u32 * sw_if_indexp)
+	      u16 port, const ip_address_t * src_ip,
+	      wg_transport_type_t transport, u32 * sw_if_indexp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 instance, hw_if_index;
@@ -298,15 +300,34 @@ wg_if_create (u32 user_instance,
   vec_validate_init_empty (wg_if_indexes_by_port, port, NULL);
   if (vec_len (wg_if_indexes_by_port[port]) == 0)
     {
-      udp_register_dst_port (vlib_get_main (), port, wg4_input_node.index,
-			     UDP_IP4);
-      udp_register_dst_port (vlib_get_main (), port, wg6_input_node.index,
-			     UDP_IP6);
+      /* Register transport-specific input handler */
+      if (transport == WG_TRANSPORT_TCP)
+        {
+          /* TODO: Register TCP input nodes when implemented
+           * For now, TCP transport is not fully functional.
+           * Need to implement:
+           * - wg4_tcp_input_node and wg6_tcp_input_node
+           * - TCP connection management
+           * - TCP framing/deframing
+           */
+          pool_put (noise_local_pool, local);
+          pool_put (wg_if_pool, wg_if);
+          wg_if_instance_free (instance);
+          return VNET_API_ERROR_UNIMPLEMENTED;
+        }
+      else
+        {
+          udp_register_dst_port (vlib_get_main (), port, wg4_input_node.index,
+                                 UDP_IP4);
+          udp_register_dst_port (vlib_get_main (), port, wg6_input_node.index,
+                                 UDP_IP6);
+        }
     }
 
   vec_add1 (wg_if_indexes_by_port[port], t_idx);
 
   wg_if->port = port;
+  wg_if->transport = transport;
   wg_if->local_idx = local - noise_local_pool;
   cookie_checker_init (&wg_if->cookie_checker, wg_ratelimit_pool);
   cookie_checker_update (&wg_if->cookie_checker, local->l_public);
@@ -371,8 +392,15 @@ wg_if_delete (u32 sw_if_index)
     }
   if (vec_len (ifs) == 0)
     {
-      udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
-      udp_unregister_dst_port (vlib_get_main (), wg_if->port, 0);
+      if (wg_if->transport == WG_TRANSPORT_TCP)
+        {
+          /* TODO: Unregister TCP input nodes when implemented */
+        }
+      else
+        {
+          udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
+          udp_unregister_dst_port (vlib_get_main (), wg_if->port, 0);
+        }
     }
 
   cookie_checker_deinit (&wg_if->cookie_checker);

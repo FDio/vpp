@@ -20,6 +20,7 @@
 #include <wireguard/wireguard_index_table.h>
 #include <wireguard/wireguard_messages.h>
 #include <wireguard/wireguard_awg.h>
+#include <wireguard/wireguard_transport.h>
 
 typedef struct wg_if_t_
 {
@@ -31,6 +32,7 @@ typedef struct wg_if_t_
   u32 local_idx;
   cookie_checker_t cookie_checker;
   u16 port;
+  wg_transport_type_t transport; /* Transport protocol (UDP or TCP) */
 
   /* Source IP address for originated packets */
   ip_address_t src_ip;
@@ -49,7 +51,8 @@ typedef struct wg_if_t_
 
 int wg_if_create (u32 user_instance,
 		  const u8 private_key_64[NOISE_PUBLIC_KEY_LEN],
-		  u16 port, const ip_address_t * src_ip, u32 * sw_if_indexp);
+		  u16 port, const ip_address_t * src_ip,
+		  wg_transport_type_t transport, u32 * sw_if_indexp);
 int wg_if_delete (u32 sw_if_index);
 index_t wg_if_find_by_sw_if_index (u32 sw_if_index);
 
