@@ -53,7 +53,8 @@ static void
     clib_memcpy (private_key, mp->interface.private_key, NOISE_PUBLIC_KEY_LEN);
 
   rv = wg_if_create (ntohl (mp->interface.user_instance), private_key,
-		     ntohs (mp->interface.port), &src, &sw_if_index);
+		     ntohs (mp->interface.port), &src,
+		     (wg_transport_type_t) mp->interface.transport, &sw_if_index);
 
   REPLY_MACRO2(VL_API_WIREGUARD_INTERFACE_CREATE_REPLY,
   {

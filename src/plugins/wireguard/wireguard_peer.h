@@ -26,6 +26,7 @@
 #include <wireguard/wireguard_key.h>
 #include <wireguard/wireguard_messages.h>
 #include <wireguard/wireguard_if.h>
+#include <wireguard/wireguard_transport.h>
 
 typedef struct ip4_udp_header_t_
 {
@@ -60,6 +61,7 @@ typedef struct wg_peer_endpoint_t_
 {
   ip46_address_t addr;
   u16 port;
+  wg_transport_type_t transport; /* Transport protocol for this endpoint */
 } wg_peer_endpoint_t;
 
 typedef enum
@@ -84,6 +86,9 @@ typedef struct wg_peer
 
   /* rewrite built from address information */
   u8 *rewrite;
+
+  /* TCP state (only used when transport is TCP) */
+  wg_tcp_state_t tcp_state;
 
   /* Vector of allowed-ips */
   fib_prefix_t *allowed_ips;

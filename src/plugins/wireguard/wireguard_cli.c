@@ -31,6 +31,7 @@ wg_if_create_cli (vlib_main_t * vm,
   clib_error_t *error;
   u8 *private_key_64;
   u32 port, generate_key = 0;
+  wg_transport_type_t transport = WG_TRANSPORT_UDP; /* Default to UDP */
   int rv;
 
   error = NULL;
@@ -61,6 +62,10 @@ wg_if_create_cli (vlib_main_t * vm,
 	    ;
 	  else if (unformat (line_input, "generate-key"))
 	    generate_key = 1;
+	  else if (unformat (line_input, "transport udp"))
+	    transport = WG_TRANSPORT_UDP;
+	  else if (unformat (line_input, "transport tcp"))
+	    transport = WG_TRANSPORT_TCP;
 	  else
 	    if (unformat (line_input, "src %U", unformat_ip_address, &src_ip))
 	    ;
@@ -81,10 +86,15 @@ wg_if_create_cli (vlib_main_t * vm,
   if (generate_key)
     curve25519_gen_secret (private_key);
 
-  rv = wg_if_create (instance, private_key, port, &src_ip, &sw_if_index);
+  rv = wg_if_create (instance, private_key, port, &src_ip, transport,
+		     &sw_if_index);
 
   if (rv)
-    return clib_error_return (0, "wireguard interface create failed");
+    {
+      if (rv == VNET_API_ERROR_UNIMPLEMENTED)
+	return clib_error_return (0, "TCP transport is not yet fully implemented");
+      return clib_error_return (0, "wireguard interface create failed");
+    }
 
   vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index);
@@ -97,7 +107,7 @@ wg_if_create_cli (vlib_main_t * vm,
 VLIB_CLI_COMMAND (wg_if_create_command, static) = {
   .path = "wireguard create",
   .short_help = "wireguard create listen-port <port> "
-    "private-key <key> src <IP> [generate-key]",
+    "private-key <key> src <IP> [generate-key] [transport udp|tcp]",
   .function = wg_if_create_cli,
 };
 

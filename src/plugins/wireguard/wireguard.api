@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 
-option version = "1.3.0";
+option version = "1.4.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+
+enum wireguard_transport_type : u8
+{
+  WIREGUARD_TRANSPORT_UDP = 0,
+  WIREGUARD_TRANSPORT_TCP = 1,
+};
 
 /** \brief Create wireguard interface
     @param client_index - opaque cookie to identify the sender
@@ -27,6 +33,7 @@ import "vnet/ip/ip_types.api";
     @param port - port of this device
     @param src_ip - packet sent through this interface us this
                     address as the IP source.
+    @param transport - transport protocol type (UDP or TCP)
 */
 typedef wireguard_interface
 {
@@ -36,6 +43,7 @@ typedef wireguard_interface
   u8 public_key[32];
   u16 port;
   vl_api_address_t src_ip;
+  vl_api_wireguard_transport_type_t transport [default=0];
 };
 
 /** \brief Create an Wireguard interface
