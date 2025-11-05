@@ -58,6 +58,8 @@ add_vpp_plugin(wireguard
   wireguard_timer.h
   wireguard_index_table.c
   wireguard_index_table.h
+  wireguard_awg.c
+  wireguard_awg.h
   wireguard_api.c
 
   LINK_LIBRARIES ${OPENSSL_CRYPTO_LIBRARIES}

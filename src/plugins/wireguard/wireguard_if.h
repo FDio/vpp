@@ -19,6 +19,7 @@
 
 #include <wireguard/wireguard_index_table.h>
 #include <wireguard/wireguard_messages.h>
+#include <wireguard/wireguard_awg.h>
 
 typedef struct wg_if_t_
 {
@@ -40,6 +41,9 @@ typedef struct wg_if_t_
   /* Under load params */
   f64 handshake_counting_end;
   u32 handshake_num;
+
+  /* AmneziaWG obfuscation configuration */
+  wg_awg_cfg_t awg_cfg;
 } wg_if_t;
 
 

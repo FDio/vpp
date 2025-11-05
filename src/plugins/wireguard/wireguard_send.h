@@ -31,6 +31,11 @@ bool wg_send_handshake_cookie (vlib_main_t *vm, u32 sender_index,
 			       ip46_address_t *wg_if_addr, u16 wg_if_port,
 			       ip46_address_t *remote_addr, u16 remote_port);
 
+/* AWG helper functions - exported for use in awg.c */
+bool wg_create_buffer (vlib_main_t *vm, const u8 *rewrite, const u8 *packet,
+		       u32 packet_len, u32 *bi, u8 is_ip4);
+int ip46_enqueue_packet (vlib_main_t *vm, u32 bi0, int is_ip4);
+
 always_inline void
 ip4_header_set_len_w_chksum (ip4_header_t * ip4, u16 len)
 {

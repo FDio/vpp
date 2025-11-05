@@ -327,6 +327,9 @@ wg_if_create (u32 user_instance,
   vnet_set_interface_l3_output_node (vnm->vlib_main, hi->sw_if_index,
 				     (u8 *) "tunnel-output");
 
+  /* Initialize AmneziaWG configuration with defaults (disabled) */
+  wg_awg_cfg_init (&wg_if->awg_cfg);
+
   return 0;
 }
 
