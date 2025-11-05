@@ -13,6 +13,8 @@
 #include <vnet/sfdp/sfdp_funcs.h>
 #include "lookup_inlines.h"
 
+#pragma GCC diagnostic ignored "-Wpsabi"
+
 #define foreach_sfdp_lookup_icmp_error                                        \
   _ (NO_SESSION, "no session")                                                \
   _ (INVALID_INNER_PKT, "invalid inner packet")

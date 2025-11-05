@@ -15,6 +15,8 @@
 #include "lookup_inlines.h"
 #include "lookup.h"
 
+#pragma GCC diagnostic ignored "-Wpsabi"
+
 #define foreach_sfdp_handoff_error                                            \
   _ (SESS_DROP, sess_drop, INFO, "Session expired during handoff")            \
   _ (NOERROR, noerror, INFO, "no error")
