@@ -85,6 +85,11 @@ typedef struct wg_peer
   /* rewrite built from address information */
   u8 *rewrite;
 
+  /* Obfuscation support - per-peer obfuscation configuration */
+  bool obfuscate;		       /* Enable obfuscation for this peer */
+  wg_peer_endpoint_t obfuscation_dst; /* Obfuscated destination endpoint */
+  u8 *obfuscated_rewrite;	       /* Obfuscated rewrite template */
+
   /* Vector of allowed-ips */
   fib_prefix_t *allowed_ips;
 
@@ -132,7 +137,10 @@ int wg_peer_add (u32 tun_sw_if_index,
 		 u32 table_id,
 		 const ip46_address_t * endpoint,
 		 const fib_prefix_t * allowed_ips,
-		 u16 port, u16 persistent_keepalive, index_t * peer_index);
+		 u16 port, u16 persistent_keepalive,
+		 bool obfuscate,
+		 const ip46_address_t * obfuscation_endpoint,
+		 u16 obfuscation_port, index_t * peer_index);
 int wg_peer_remove (u32 peer_index);
 
 typedef walk_rc_t (*wg_peer_walk_cb_t) (index_t peeri, void *arg);
@@ -211,6 +219,12 @@ static inline bool
 wg_peer_can_send (wg_peer_t *peer)
 {
   return peer && peer->rewrite;
+}
+
+static inline u8 *
+wg_peer_get_rewrite (wg_peer_t *peer)
+{
+  return (peer->obfuscate && peer->obfuscated_rewrite) ? peer->obfuscated_rewrite : peer->rewrite;
 }
 
 #endif // __included_wg_peer_h__

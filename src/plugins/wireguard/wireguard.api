@@ -97,6 +97,9 @@ enum wireguard_peer_flags : u8
     @param flags - peer status flags
     @param n_allowed_ips - number of prefixes in allowed_ips
     @param allowed_ips - allowed incoming tunnel prefixes
+    @param obfuscate - enable obfuscation for this peer
+    @param obfuscation_endpoint - obfuscated destination ip
+    @param obfuscation_port - obfuscated destination port
 */
 typedef wireguard_peer
 {
@@ -110,6 +113,9 @@ typedef wireguard_peer
   vl_api_wireguard_peer_flags_t flags;
   u8 n_allowed_ips;
   vl_api_prefix_t allowed_ips[n_allowed_ips];
+  bool obfuscate;
+  vl_api_address_t obfuscation_endpoint;
+  u16 obfuscation_port;
 };
 
 service {

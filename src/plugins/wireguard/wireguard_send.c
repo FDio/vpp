@@ -241,30 +241,33 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
   u32 bi0 = 0;
   f64 now = vlib_time_now (vm);
 
+  /* Get the appropriate rewrite (normal or obfuscated) for this peer */
+  u8 *rewrite = wg_peer_get_rewrite (peer);
+
   /* Check if this is a special handshake (every 120s) for i-headers */
   if (wg_awg_is_enabled (awg_cfg) && wg_awg_needs_special_handshake (awg_cfg, now))
     {
       /* Send i-header signature chain (i1-i5) for protocol masquerading */
-      wg_awg_send_i_header_packets (vm, awg_cfg, peer->rewrite, is_ip4);
+      wg_awg_send_i_header_packets (vm, awg_cfg, rewrite, is_ip4);
     }
 
   /* Send junk packets before handshake if AWG is enabled */
   if (wg_awg_is_enabled (awg_cfg))
     {
-      wg_awg_send_junk_packets (vm, awg_cfg, peer->rewrite, is_ip4);
+      wg_awg_send_junk_packets (vm, awg_cfg, rewrite, is_ip4);
     }
 
   /* Create packet with or without AWG junk header */
   if (wg_awg_is_enabled (awg_cfg))
     {
-      if (!wg_create_buffer_with_junk (vm, peer->rewrite, (u8 *) &packet,
+      if (!wg_create_buffer_with_junk (vm, rewrite, (u8 *) &packet,
 				       sizeof (packet), &bi0, is_ip4, awg_cfg,
 				       MESSAGE_HANDSHAKE_INITIATION))
 	return false;
     }
   else
     {
-      if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet, sizeof (packet),
+      if (!wg_create_buffer (vm, rewrite, (u8 *) &packet, sizeof (packet),
 			     &bi0, is_ip4))
 	return false;
     }
@@ -356,8 +359,9 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   packet->header.type = MESSAGE_DATA;
+  u8 *rewrite = wg_peer_get_rewrite (peer);
 
-  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) packet, size_of_packet,
+  if (!wg_create_buffer (vm, rewrite, (u8 *) packet, size_of_packet,
 			 &bi0, is_ip4))
     {
       ret = false;
@@ -400,7 +404,8 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 
 	  u32 bi0 = 0;
 	  u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
-	  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet,
+	  u8 *rewrite = wg_peer_get_rewrite (peer);
+	  if (!wg_create_buffer (vm, rewrite, (u8 *) &packet,
 				 sizeof (packet), &bi0, is_ip4))
 	    return false;
 
