@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5710a1d7_be0bfe70",
+        "filename": "test-c/hs-test/ldp_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-05T19:46:36Z",
+      "side": 1,
+      "message": "any idea what\u0027s wrong? is it crashing or failing?",
+      "revId": "2e2fdf683e7122e895fb32be8e9525bf28188682",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1522297_2aad1dfd",
+        "filename": "test-c/hs-test/proxy_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-05T19:46:36Z",
+      "side": 1,
+      "message": "no server log printed here?",
+      "revId": "2e2fdf683e7122e895fb32be8e9525bf28188682",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
