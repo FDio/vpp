@@ -22,6 +22,30 @@
       },
       "revId": "f5e2995824daa6236530240f37b817b5cc69a541",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ae085c5_7c9ddc48",
+        "filename": "test-c/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-05T07:37:17Z",
+      "side": 1,
+      "message": "Done.\nFurther simplified tests by removing goroutines (apart from client start goroutines in proxy tests)",
+      "parentUuid": "71ee53ae_2dd150e6",
+      "range": {
+        "startLine": 100,
+        "startChar": 43,
+        "endLine": 100,
+        "endChar": 45
+      },
+      "revId": "f5e2995824daa6236530240f37b817b5cc69a541",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
