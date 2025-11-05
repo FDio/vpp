@@ -60,6 +60,8 @@ add_vpp_plugin(wireguard
   wireguard_index_table.h
   wireguard_awg.c
   wireguard_awg.h
+  wireguard_awg_tags.c
+  wireguard_awg_tags.h
   wireguard_api.c
 
   LINK_LIBRARIES ${OPENSSL_CRYPTO_LIBRARIES}

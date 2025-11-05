@@ -239,6 +239,14 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   u32 bi0 = 0;
+  f64 now = vlib_time_now (vm);
+
+  /* Check if this is a special handshake (every 120s) for i-headers */
+  if (wg_awg_is_enabled (awg_cfg) && wg_awg_needs_special_handshake (awg_cfg, now))
+    {
+      /* Send i-header signature chain (i1-i5) for protocol masquerading */
+      wg_awg_send_i_header_packets (vm, awg_cfg, peer->rewrite, is_ip4);
+    }
 
   /* Send junk packets before handshake if AWG is enabled */
   if (wg_awg_is_enabled (awg_cfg))

@@ -19,7 +19,7 @@
 #include <wireguard/wireguard_send.h>
 
 /* Thread-local random state for junk generation */
-static __thread u64 wg_awg_random_state = 0;
+__thread u64 wg_awg_random_state = 0;
 
 static_always_inline void
 wg_awg_init_random (void)
@@ -102,6 +102,42 @@ wg_awg_send_junk_packets (vlib_main_t *vm, const wg_awg_cfg_t *cfg,
 	}
 
       clib_mem_free (junk_packet);
+    }
+}
+
+/* Send i-header signature chain packets (AmneziaWG 1.5) */
+void
+wg_awg_send_i_header_packets (vlib_main_t *vm, wg_awg_cfg_t *cfg,
+			      const u8 *rewrite, u8 is_ip4)
+{
+  u32 i;
+
+  if (!cfg->i_headers_enabled)
+    return;
+
+  /* Send i1 through i5 packets (if configured) */
+  for (i = 0; i < WG_AWG_MAX_I_HEADERS; i++)
+    {
+      wg_awg_i_header_t *ihdr = &cfg->i_headers[i];
+
+      if (!ihdr->enabled)
+	continue; /* Skip if i-header not configured */
+
+      /* Generate packet from tags */
+      u8 *packet = wg_awg_generate_i_header_packet (ihdr);
+      if (!packet)
+	continue;
+
+      u32 packet_len = ihdr->total_size;
+
+      /* Send the i-header packet */
+      u32 bi = 0;
+      if (wg_create_buffer (vm, rewrite, packet, packet_len, &bi, is_ip4))
+	{
+	  ip46_enqueue_packet (vm, bi, is_ip4);
+	}
+
+      clib_mem_free (packet);
     }
 }
 

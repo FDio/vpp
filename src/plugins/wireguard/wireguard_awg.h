@@ -18,6 +18,7 @@
 
 #include <vppinfra/types.h>
 #include <wireguard/wireguard_messages.h>
+#include <wireguard/wireguard_awg_tags.h>
 
 /* AmneziaWG Configuration - for traffic obfuscation */
 
@@ -41,6 +42,11 @@ typedef struct wg_awg_cfg_t_
   /* Magic headers - custom message type values for obfuscation */
   u32 magic_header[4];	/* Custom message type IDs [init, response, cookie, data] */
 
+  /* AmneziaWG 1.5: i-header signature chain (i1-i5) */
+  wg_awg_i_header_t i_headers[WG_AWG_MAX_I_HEADERS]; /* i1 through i5 */
+  u8 i_headers_enabled; /* If any i-header is configured */
+  f64 last_special_handshake; /* Track when to send i-headers (every 120s) */
+
 } wg_awg_cfg_t;
 
 /* Default AWG configuration values */
@@ -63,10 +69,14 @@ typedef struct wg_awg_cfg_t_
 #define WG_AWG_MAX_JUNK_PACKET_SIZE 1280
 #define WG_AWG_MAX_JUNK_PACKET_COUNT 10
 
+/* AmneziaWG 1.5: Special handshake interval (send i-headers every 120 seconds) */
+#define WG_AWG_SPECIAL_HANDSHAKE_INTERVAL 120.0
+
 /* Initialize AWG configuration with defaults */
 static_always_inline void
 wg_awg_cfg_init (wg_awg_cfg_t *cfg)
 {
+  u32 i;
   clib_memset (cfg, 0, sizeof (*cfg));
   cfg->enabled = 0;
   cfg->junk_packet_count = WG_AWG_DEFAULT_JUNK_COUNT;
@@ -80,6 +90,13 @@ wg_awg_cfg_init (wg_awg_cfg_t *cfg)
   cfg->magic_header[1] = WG_AWG_DEFAULT_MAGIC_HEADER_RESPONSE;
   cfg->magic_header[2] = WG_AWG_DEFAULT_MAGIC_HEADER_COOKIE;
   cfg->magic_header[3] = WG_AWG_DEFAULT_MAGIC_HEADER_DATA;
+  cfg->i_headers_enabled = 0;
+  cfg->last_special_handshake = 0.0;
+  for (i = 0; i < WG_AWG_MAX_I_HEADERS; i++)
+    {
+      cfg->i_headers[i].enabled = 0;
+      cfg->i_headers[i].tags = NULL;
+    }
 }
 
 /* Check if AWG is enabled */
@@ -159,6 +176,25 @@ void wg_awg_generate_junk (u8 *buffer, u32 size);
 /* Create junk packets and send them */
 void wg_awg_send_junk_packets (vlib_main_t *vm, const wg_awg_cfg_t *cfg,
 			       const u8 *rewrite, u8 is_ip4);
+
+/* Send i-header signature chain packets (i1-i5) before special handshakes */
+void wg_awg_send_i_header_packets (vlib_main_t *vm, wg_awg_cfg_t *cfg,
+				   const u8 *rewrite, u8 is_ip4);
+
+/* Check if it's time for a special handshake (every 120s) */
+static_always_inline u8
+wg_awg_needs_special_handshake (wg_awg_cfg_t *cfg, f64 now)
+{
+  if (!cfg->i_headers_enabled)
+    return 0;
+
+  if ((now - cfg->last_special_handshake) >= WG_AWG_SPECIAL_HANDSHAKE_INTERVAL)
+    {
+      cfg->last_special_handshake = now;
+      return 1;
+    }
+  return 0;
+}
 
 #endif /* __included_wg_awg_h__ */
 

@@ -600,6 +600,195 @@ VLIB_CLI_COMMAND (wg_show_awg_command, static) = {
   .function = wg_show_awg_command_fn,
 };
 
+/* AmneziaWG 1.5: i-header configuration */
+static clib_error_t *
+wg_set_i_header_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  wg_if_t *wg_if;
+  index_t wgii;
+  clib_error_t *error = NULL;
+  u32 i_num = 0;
+  u8 *tag_string = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected interface name");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+		    vnet_get_main (), &sw_if_index))
+	;
+      else if (unformat (line_input, "i%u %s", &i_num, &tag_string))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      error = clib_error_return (0, "interface not specified");
+      goto done;
+    }
+
+  if (i_num < 1 || i_num > 5)
+    {
+      error = clib_error_return (0, "i-header number must be 1-5");
+      goto done;
+    }
+
+  if (!tag_string)
+    {
+      error = clib_error_return (0, "tag string not specified");
+      goto done;
+    }
+
+  wgii = wg_if_find_by_sw_if_index (sw_if_index);
+  if (wgii == INDEX_INVALID)
+    {
+      error = clib_error_return (0, "interface is not a wireguard interface");
+      goto done;
+    }
+
+  wg_if = wg_if_get (wgii);
+  wg_awg_i_header_t *ihdr = &wg_if->awg_cfg.i_headers[i_num - 1];
+
+  /* Free previous configuration if any */
+  wg_awg_free_i_header (ihdr);
+
+  /* Parse new tag string */
+  if (wg_awg_parse_tag_string ((char *) tag_string, ihdr) < 0)
+    {
+      error = clib_error_return (0, "failed to parse tag string");
+      goto done;
+    }
+
+  /* Mark i-headers as enabled if i1 is configured */
+  if (i_num == 1 && ihdr->enabled)
+    {
+      wg_if->awg_cfg.i_headers_enabled = 1;
+    }
+
+  vlib_cli_output (vm, "i-header i%u configured for %U", i_num,
+		   format_vnet_sw_if_index_name, vnet_get_main (),
+		   sw_if_index);
+
+done:
+  if (tag_string)
+    vec_free (tag_string);
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (wg_set_i_header_command, static) = {
+  .path = "set wireguard i-header",
+  .short_help = "set wireguard i-header <interface> i<1-5> <tag-string>\n"
+    "  Example: set wireguard i-header wg0 i1 \"<b 0xc00000000108...><r 16><c><t>\"\n"
+    "  Tags: <b 0xHEX> <c> <t> <r N> <rc N> <rd N>",
+  .function = wg_set_i_header_command_fn,
+};
+
+static clib_error_t *
+wg_clear_i_header_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  wg_if_t *wg_if;
+  index_t wgii;
+  clib_error_t *error = NULL;
+  u32 i_num = 0;
+  u32 i;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected interface name");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+		    vnet_get_main (), &sw_if_index))
+	;
+      else if (unformat (line_input, "i%u", &i_num))
+	;
+      else if (unformat (line_input, "all"))
+	i_num = 99; /* Special value for all */
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      error = clib_error_return (0, "interface not specified");
+      goto done;
+    }
+
+  wgii = wg_if_find_by_sw_if_index (sw_if_index);
+  if (wgii == INDEX_INVALID)
+    {
+      error = clib_error_return (0, "interface is not a wireguard interface");
+      goto done;
+    }
+
+  wg_if = wg_if_get (wgii);
+
+  if (i_num == 99)
+    {
+      /* Clear all i-headers */
+      for (i = 0; i < WG_AWG_MAX_I_HEADERS; i++)
+	{
+	  wg_awg_free_i_header (&wg_if->awg_cfg.i_headers[i]);
+	}
+      wg_if->awg_cfg.i_headers_enabled = 0;
+      vlib_cli_output (vm, "All i-headers cleared for %U",
+		       format_vnet_sw_if_index_name, vnet_get_main (),
+		       sw_if_index);
+    }
+  else if (i_num >= 1 && i_num <= 5)
+    {
+      wg_awg_free_i_header (&wg_if->awg_cfg.i_headers[i_num - 1]);
+
+      /* Check if we should disable i-headers entirely */
+      u8 any_enabled = 0;
+      for (i = 0; i < WG_AWG_MAX_I_HEADERS; i++)
+	{
+	  if (wg_if->awg_cfg.i_headers[i].enabled)
+	    {
+	      any_enabled = 1;
+	      break;
+	    }
+	}
+      wg_if->awg_cfg.i_headers_enabled = any_enabled;
+
+      vlib_cli_output (vm, "i-header i%u cleared for %U", i_num,
+		       format_vnet_sw_if_index_name, vnet_get_main (),
+		       sw_if_index);
+    }
+  else
+    {
+      error = clib_error_return (0, "i-header number must be 1-5 or 'all'");
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (wg_clear_i_header_command, static) = {
+  .path = "clear wireguard i-header",
+  .short_help = "clear wireguard i-header <interface> {i<1-5>|all}",
+  .function = wg_clear_i_header_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
