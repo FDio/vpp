@@ -111,7 +111,6 @@ func (s *NginxProxySuite) SetupTest() {
 		s.Skip("Dry run mode = true")
 	}
 
-	s.AssertNil(s.Containers.NginxProxy.Start())
 	s.AssertNil(s.Containers.NginxServerTransient.Start())
 }
 
