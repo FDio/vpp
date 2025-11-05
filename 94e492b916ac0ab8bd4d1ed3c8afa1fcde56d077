@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8374aa4_f87d1d05",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-05T15:38:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7b605818_93f55fcc",
+      "revId": "94e492b916ac0ab8bd4d1ed3c8afa1fcde56d077",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "57d1bc77_330c1ac0",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2daf7795_5ebc1c47",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-05T15:38:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "57d1bc77_330c1ac0",
+      "revId": "94e492b916ac0ab8bd4d1ed3c8afa1fcde56d077",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f55180eb_4384e9e3",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-11-03T22:21:01Z",
       "side": 1,
       "message": "I think this should be ip4-drop?",
+      "revId": "94e492b916ac0ab8bd4d1ed3c8afa1fcde56d077",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7b5ffcf_87647903",
+        "filename": "src/vnet/session/transport.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-05T15:38:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f55180eb_4384e9e3",
       "revId": "94e492b916ac0ab8bd4d1ed3c8afa1fcde56d077",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
