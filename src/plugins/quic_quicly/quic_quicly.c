@@ -713,8 +713,6 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self,
   stream_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, qctx->udp_is_ip4);
   quic_session = session_get (qctx->c_s_index, qctx->c_thread_index);
-  /* Make sure quic session is in listening state */
-  quic_session->session_state = SESSION_STATE_LISTENING;
   stream_session->listener_handle = listen_session_get_handle (quic_session);
 
   app_wrk = app_worker_get (stream_session->app_wrk_index);
@@ -1328,33 +1326,22 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   return (ret);
 }
 
-static u8 *
-quic_quicly_format_quicly_conn_id (u8 *s, va_list *args)
+static i64
+quic_quicly_stream_get_stream_id (quic_ctx_t *ctx)
 {
-  quicly_cid_plaintext_t *mid = va_arg (*args, quicly_cid_plaintext_t *);
-  s = format (s, "C%x_%x", mid->master_id, mid->thread_id);
-  return s;
+  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
+
+  return stream->stream_id;
 }
 
 static u8 *
-quic_quicly_format_stream_ctx_stream_id (u8 *s, va_list *args)
+quic_quicly_format_stream_stats (u8 *s, va_list *args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
   quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
 
-  s = format (s, "%U S%lx", quic_quicly_format_quicly_conn_id,
-	      quicly_get_master_id (stream->conn), stream->stream_id);
-  return s;
-}
-
-static u8 *
-quic_quicly_format_stream_connection (u8 *s, va_list *args)
-{
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  quicly_stream_t *stream = (quicly_stream_t *) ctx->stream;
-
-  s = format (s, "Stream %ld conn %d", stream->stream_id,
-	      ctx->quic_connection_ctx_id);
+  s = format (s, " snd-wnd %lu rcv-wnd %lu\n",
+	      stream->_send_aux.max_stream_data, stream->_recv_aux.window);
   return s;
 }
 
@@ -1381,37 +1368,34 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
   quicly_stats_t quicly_stats;
 
-  s = format (s, "[%U]", quic_quicly_format_quicly_conn_id,
-	      quicly_get_master_id (ctx->conn));
-
   quicly_get_stats (ctx->conn, &quicly_stats);
 
-  s = format (s, "[RTT >%3d, ~%3d, V%3d, last %3d]", quicly_stats.rtt.minimum,
-	      quicly_stats.rtt.smoothed, quicly_stats.rtt.variance,
-	      quicly_stats.rtt.latest);
-  s = format (s, " TX:%d RX:%d loss:%d ack:%d", quicly_stats.num_packets.sent,
-	      quicly_stats.num_packets.received, quicly_stats.num_packets.lost,
-	      quicly_stats.num_packets.ack_received);
+  s = format (s, " rtt: min %lu smoothed %lu var %lu last %lu\n",
+	      quicly_stats.rtt.minimum, quicly_stats.rtt.smoothed,
+	      quicly_stats.rtt.variance, quicly_stats.rtt.latest);
   s =
-    format (s, "\ncwnd:%u ssthresh:%u recovery_end:%lu", quicly_stats.cc.cwnd,
-	    quicly_stats.cc.ssthresh, quicly_stats.cc.recovery_end);
-
-  quicly_context_t *quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
-  if (quicly_ctx->init_cc == &quicly_cc_cubic_init)
-    {
-      s = format (s,
-		  "\nk:%d w_max:%u w_last_max:%u avoidance_start:%ld "
-		  "last_sent_time:%ld",
-		  quicly_stats.cc.state.cubic.k,
-		  quicly_stats.cc.state.cubic.w_max,
-		  quicly_stats.cc.state.cubic.w_last_max,
-		  quicly_stats.cc.state.cubic.avoidance_start,
-		  quicly_stats.cc.state.cubic.last_sent_time);
-    }
-  else if (quicly_ctx->init_cc == &quicly_cc_reno_init)
-    {
-      s = format (s, " stash:%u", quicly_stats.cc.state.reno.stash);
-    }
+    format (s, " rx: pkt %lu initial %lu zero-rtt %lu handshake %lu ack %lu\n",
+	    quicly_stats.num_packets.received,
+	    quicly_stats.num_packets.initial_received,
+	    quicly_stats.num_packets.zero_rtt_received,
+	    quicly_stats.num_packets.handshake_received,
+	    quicly_stats.num_packets.ack_received);
+  s = format (s, " tx: pkt %lu initial %lu zero-rtt %lu handshake %lu\n",
+	      quicly_stats.num_packets.sent,
+	      quicly_stats.num_packets.initial_sent,
+	      quicly_stats.num_packets.zero_rtt_sent,
+	      quicly_stats.num_packets.handshake_sent);
+  s =
+    format (s, " pkt-lost %lu late-ack %lu decrypt-failed %lu pkt-ooo %lu\n",
+	    quicly_stats.num_packets.lost, quicly_stats.num_packets.late_acked,
+	    quicly_stats.num_packets.decryption_failed,
+	    quicly_stats.num_packets.received_out_of_order);
+  s = format (s, " cc-algo %s cwnd %u ssthresh: %u recovery_end %lu\n",
+	      quicly_stats.cc.type->name, quicly_stats.cc.cwnd,
+	      quicly_stats.cc.ssthresh, quicly_stats.cc.recovery_end);
+  s = format (s, " cwnd-init %u cwnd-min %u cwnd-max %u\n",
+	      quicly_stats.cc.cwnd_initial, quicly_stats.cc.cwnd_minimum,
+	      quicly_stats.cc.cwnd_maximum);
   return s;
 }
 
@@ -1768,8 +1752,8 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .stream_tx = quic_quicly_stream_tx,
   .send_packets = quic_quicly_send_packets,
   .format_connection_stats = quic_quicly_format_connection_stats,
-  .format_stream_connection = quic_quicly_format_stream_connection,
-  .format_stream_ctx_stream_id = quic_quicly_format_stream_ctx_stream_id,
+  .format_stream_stats = quic_quicly_format_stream_stats,
+  .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_proto_on_close,
 };
 

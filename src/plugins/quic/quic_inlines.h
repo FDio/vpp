@@ -287,7 +287,7 @@ quic_eng_format_connection_stats (u8 *s, va_list *args)
 }
 
 static_always_inline u8 *
-quic_eng_format_stream_connection (u8 *s, va_list *args)
+quic_eng_format_stream_stats (u8 *s, va_list *args)
 {
   quic_main_t *qm = &quic_main;
 
@@ -296,37 +296,33 @@ quic_eng_format_stream_connection (u8 *s, va_list *args)
       QUIC_DBG (1, "No QUIC engine is available\n");
       return s;
     }
-  if (PREDICT_FALSE (
-	!quic_engine_vfts[qm->engine_type].format_stream_connection))
+  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].format_stream_stats))
     {
       QUIC_DBG (1, "format_stream_connection() not available for %s engine\n",
 		quic_engine_type_str (qm->engine_type));
       return s;
     }
-  return (
-    quic_engine_vfts[qm->engine_type].format_stream_connection (s, args));
+  return (quic_engine_vfts[qm->engine_type].format_stream_stats (s, args));
 }
 
-static_always_inline u8 *
-quic_eng_format_stream_ctx_stream_id (u8 *s, va_list *args)
+static_always_inline i64
+quic_eng_stream_get_stream_id (quic_ctx_t *ctx)
 {
   quic_main_t *qm = &quic_main;
 
   if (PREDICT_FALSE (qm->engine_type == QUIC_ENGINE_NONE))
     {
       QUIC_DBG (1, "No QUIC engine is available\n");
-      return s;
+      return INT64_MAX;
     }
-  if (PREDICT_FALSE (
-	!quic_engine_vfts[qm->engine_type].format_stream_ctx_stream_id))
+  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].stream_get_stream_id))
     {
       QUIC_DBG (1,
 		"format_stream_ctx_stream_id() not available for %s engine\n",
 		quic_engine_type_str (qm->engine_type));
-      return s;
+      return INT64_MAX;
     }
-  return (
-    quic_engine_vfts[qm->engine_type].format_stream_ctx_stream_id (s, args));
+  return (quic_engine_vfts[qm->engine_type].stream_get_stream_id (ctx));
 }
 
 static_always_inline void
