@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0554ab95_3fedef0f",
+        "filename": "test-c/hs-test/infra/container.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-05T20:00:16Z",
+      "side": 1,
+      "message": "seems to bork some test :)",
+      "revId": "b7b5df11478e955e83876a2e490ee628facb303d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
