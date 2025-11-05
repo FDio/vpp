@@ -363,6 +363,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
               { .val = MVPP2_PORT_DSA_ENABLED_OFF, .name = "off", },
               { .val = MVPP2_PORT_DSA_ENABLED_ON, .name = "on", },
               { .val = MVPP2_PORT_DSA_ENABLED_AUTO, .name = "auto", },
+              { .val = MVPP2_PORT_DSA_ENABLED_BYPASS, .name = "bypass", },
             ),
           }),
           .ops = {

@@ -54,6 +54,7 @@ typedef enum
   MVPP2_PORT_DSA_ENABLED_OFF = 0,
   MVPP2_PORT_DSA_ENABLED_ON = 1,
   MVPP2_PORT_DSA_ENABLED_AUTO = 2,
+  MVPP2_PORT_DSA_ENABLED_BYPASS = 3,
 } mvpp2_port_dsa_enabled_t;
 
 typedef enum

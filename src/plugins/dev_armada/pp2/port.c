@@ -26,6 +26,8 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   struct pp2_ppio_link_info li;
   enum pp2_ppio_hash_type hash_type = PP2_PPIO_HASH_T_5_TUPLE;
   struct pp2_ppio_inq_params *inqs_params = 0;
+  enum pp2_ppio_eth_start_hdr eth_start_hdr =
+    mp->is_dsa ? PP2_PPIO_HDR_ETH_DSA : PP2_PPIO_HDR_ETH;
   char match[16];
   int mrv;
   u16 n_rxq = 0;
@@ -50,11 +52,17 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	{
 	case MVPP2_PORT_DSA_ENABLED_ON:
 	  mp->is_dsa = 1;
+	  eth_start_hdr = PP2_PPIO_HDR_ETH_DSA;
 	  break;
 	case MVPP2_PORT_DSA_ENABLED_OFF:
 	  mp->is_dsa = 0;
+	  eth_start_hdr = PP2_PPIO_HDR_ETH;
 	  break;
 	case MVPP2_PORT_DSA_ENABLED_AUTO:
+	  break;
+	case MVPP2_PORT_DSA_ENABLED_BYPASS:
+	  mp->is_dsa = 0;
+	  eth_start_hdr = PP2_PPIO_HDR_ETH_DSA;
 	  break;
 	default:
 	  ASSERT (0);
@@ -96,7 +104,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   struct pp2_ppio_params ppio_params = {
     .match = match,
     .type = PP2_PPIO_T_NIC,
-    .eth_start_hdr = mp->is_dsa ? PP2_PPIO_HDR_ETH_DSA : PP2_PPIO_HDR_ETH,
+    .eth_start_hdr = eth_start_hdr,
     .inqs_params = {
       .num_tcs = 1,
       .hash_type = n_rxq > 1 ? hash_type : PP2_PPIO_HASH_T_NONE,
