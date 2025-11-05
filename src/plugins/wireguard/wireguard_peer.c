@@ -85,6 +85,9 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   peer->timer_need_another_keepalive = false;
   peer->handshake_is_sent = false;
   vec_free (peer->rewrite);
+  vec_free (peer->obfuscated_rewrite);
+  peer->obfuscate = false;
+  wg_peer_endpoint_reset (&peer->obfuscation_dst);
   vec_free (peer->allowed_ips);
   vec_free (peer->adj_indices);
 }
@@ -294,9 +297,10 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 	  wg_peer_by_adj_index[*adj_index] = peeri;
 
 	  fixup = wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));
+	  u8 *rewrite = wg_peer_get_rewrite (peer);
 	  adj_nbr_midchain_update_rewrite (*adj_index, fixup, NULL,
 					   ADJ_FLAG_MIDCHAIN_IP_STACK,
-					   vec_dup (peer->rewrite));
+					   vec_dup (rewrite));
 
 	  wg_peer_adj_stack (peer, *adj_index);
 	  return (WALK_STOP);
@@ -325,7 +329,9 @@ static int
 wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
 	      const ip46_address_t *dst, u16 port,
 	      u16 persistent_keepalive_interval,
-	      const fib_prefix_t *allowed_ips, u32 wg_sw_if_index)
+	      const fib_prefix_t *allowed_ips, u32 wg_sw_if_index,
+	      bool obfuscate, const ip46_address_t *obfuscation_dst,
+	      u16 obfuscation_port)
 {
   index_t perri = peer - wg_peer_pool;
   wg_peer_endpoint_init (&peer->dst, dst, port);
@@ -348,6 +354,23 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   peer->rewrite = wg_build_rewrite (&peer->src.addr, peer->src.port,
 				    &peer->dst.addr, peer->dst.port, is_ip4);
+
+  /* Configure obfuscation if enabled */
+  peer->obfuscate = obfuscate;
+  if (obfuscate && obfuscation_dst && obfuscation_port)
+    {
+      wg_peer_endpoint_init (&peer->obfuscation_dst, obfuscation_dst,
+			     obfuscation_port);
+      u8 is_obf_ip4 = ip46_address_is_ip4 (obfuscation_dst);
+      peer->obfuscated_rewrite =
+	wg_build_rewrite (&peer->src.addr, peer->src.port, obfuscation_dst,
+			  obfuscation_port, is_obf_ip4);
+    }
+  else
+    {
+      wg_peer_endpoint_reset (&peer->obfuscation_dst);
+      peer->obfuscated_rewrite = NULL;
+    }
 
   u32 ii;
   vec_validate (peer->allowed_ips, vec_len (allowed_ips) - 1);
@@ -399,9 +422,10 @@ wg_peer_update_endpoint (index_t peeri, const ip46_address_t *addr, u16 port)
 	{
 	  adj_midchain_fixup_t fixup =
 	    wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));
+	  u8 *rewrite = wg_peer_get_rewrite (peer);
 	  adj_nbr_midchain_update_rewrite (*adj_index, fixup, NULL,
 					   ADJ_FLAG_MIDCHAIN_IP_STACK,
-					   vec_dup (peer->rewrite));
+					   vec_dup (rewrite));
 
 	  wg_peer_adj_reset_stacking (*adj_index);
 	  wg_peer_adj_stack (peer, *adj_index);
@@ -440,7 +464,9 @@ int
 wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 	     u32 table_id, const ip46_address_t *endpoint,
 	     const fib_prefix_t *allowed_ips, u16 port,
-	     u16 persistent_keepalive, u32 *peer_index)
+	     u16 persistent_keepalive, bool obfuscate,
+	     const ip46_address_t *obfuscation_endpoint, u16 obfuscation_port,
+	     u32 *peer_index)
 {
   wg_if_t *wg_if;
   wg_peer_t *peer;
@@ -471,7 +497,8 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   wg_peer_init (vm, peer);
 
   rv = wg_peer_fill (vm, peer, table_id, endpoint, (u16) port,
-		     persistent_keepalive, allowed_ips, tun_sw_if_index);
+		     persistent_keepalive, allowed_ips, tun_sw_if_index,
+		     obfuscate, obfuscation_endpoint, obfuscation_port);
 
   if (rv)
     {
@@ -560,6 +587,11 @@ format_wg_peer (u8 * s, va_list * va)
     &peer->dst, format_vnet_sw_if_index_name, vnet_get_main (),
     peer->wg_sw_if_index, peer->persistent_keepalive_interval, peer->flags,
     pool_elts (peer->api_clients));
+  if (peer->obfuscate)
+    {
+      s = format (s, "\n  obfuscation: enabled, endpoint: %U",
+		  format_wg_peer_endpoint, &peer->obfuscation_dst);
+    }
   s = format (s, "\n  adj:");
   vec_foreach (adj_index, peer->adj_indices)
     {

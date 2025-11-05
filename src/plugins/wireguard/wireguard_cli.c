@@ -162,10 +162,13 @@ wg_peer_add_command_fn (vlib_main_t * vm,
   fib_prefix_t allowed_ip, *allowed_ips = NULL;
   ip_prefix_t pfx;
   ip_address_t ip = ip_address_initializer;
+  ip_address_t obfuscation_ip = ip_address_initializer;
   u32 portDst = 0, table_id = 0;
   u32 persistent_keepalive = 0;
   u32 tun_sw_if_index = ~0;
   u32 peer_index;
+  bool obfuscate = false;
+  u32 obfuscation_port = 0;
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -193,6 +196,13 @@ wg_peer_add_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "persistent-keepalive %d",
 			 &persistent_keepalive))
 	;
+      else if (unformat (line_input, "obfuscate"))
+	obfuscate = true;
+      else if (unformat (line_input, "obfuscation-endpoint %U",
+			 unformat_ip_address, &obfuscation_ip))
+	;
+      else if (unformat (line_input, "obfuscation-port %d", &obfuscation_port))
+	;
       else if (unformat (line_input, "allowed-ip %U",
 			 unformat_ip_prefix, &pfx))
 	{
@@ -216,7 +226,9 @@ wg_peer_add_command_fn (vlib_main_t * vm,
     }
 
   rv = wg_peer_add (tun_sw_if_index, public_key, table_id, &ip_addr_46 (&ip),
-		    allowed_ips, portDst, persistent_keepalive, &peer_index);
+		    allowed_ips, portDst, persistent_keepalive, obfuscate,
+		    &ip_addr_46 (&obfuscation_ip), obfuscation_port,
+		    &peer_index);
 
   switch (rv)
     {
@@ -252,7 +264,8 @@ VLIB_CLI_COMMAND (wg_peer_add_command, static) = {
   .short_help =
     "wireguard peer add <wg_int> public-key <pub_key_other> "
     "endpoint <ip4_dst> allowed-ip <prefix> "
-    "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
+    "dst-port [port_dst] persistent-keepalive [keepalive_interval] "
+    "[obfuscate] [obfuscation-endpoint <ip>] [obfuscation-port <port>]",
   .function = wg_peer_add_command_fn,
 };
 

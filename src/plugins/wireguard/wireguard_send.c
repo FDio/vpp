@@ -193,7 +193,8 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   u32 bi0 = 0;
-  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet, sizeof (packet),
+  u8 *rewrite = wg_peer_get_rewrite (peer);
+  if (!wg_create_buffer (vm, rewrite, (u8 *) &packet, sizeof (packet),
 			 &bi0, is_ip4))
     return false;
 
@@ -284,8 +285,9 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   packet->header.type = MESSAGE_DATA;
+  u8 *rewrite = wg_peer_get_rewrite (peer);
 
-  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) packet, size_of_packet,
+  if (!wg_create_buffer (vm, rewrite, (u8 *) packet, size_of_packet,
 			 &bi0, is_ip4))
     {
       ret = false;
@@ -328,7 +330,8 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 
 	  u32 bi0 = 0;
 	  u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
-	  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet,
+	  u8 *rewrite = wg_peer_get_rewrite (peer);
+	  if (!wg_create_buffer (vm, rewrite, (u8 *) &packet,
 				 sizeof (packet), &bi0, is_ip4))
 	    return false;
 
