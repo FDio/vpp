@@ -44,6 +44,12 @@ wg_peer_endpoint_init (wg_peer_endpoint_t *ep, const ip46_address_t *addr,
 }
 
 static void
+wg_peer_adj_reset_stacking (adj_index_t ai)
+{
+  adj_midchain_delegate_remove (ai);
+}
+
+static void
 wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 {
   index_t perri = peer - wg_peer_pool;
@@ -69,7 +75,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
       wg_peer_by_adj_index[*adj_index] = INDEX_INVALID;
 
       if (adj_is_valid (*adj_index))
-	adj_midchain_delegate_unstack (*adj_index);
+	wg_peer_adj_reset_stacking (*adj_index);
     }
   peer->input_thread_index = ~0;
   peer->output_thread_index = ~0;
@@ -121,7 +127,7 @@ wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
   if (!vnet_sw_interface_is_admin_up (vnet_get_main (), wgi->sw_if_index) ||
       !wg_peer_can_send (peer))
     {
-      adj_midchain_delegate_unstack (ai);
+      wg_peer_adj_reset_stacking (ai);
     }
   else
     {
@@ -136,12 +142,6 @@ wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
 
       adj_midchain_delegate_stack (ai, fib_index, &dst);
     }
-}
-
-static void
-wg_peer_adj_reset_stacking (adj_index_t ai)
-{
-  adj_midchain_delegate_remove (ai);
 }
 
 static void
