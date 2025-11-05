@@ -58,6 +58,8 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
       u64 as_u64;
       u64x4u as_u64x4;
     };
+    u32u as_u32[10];
+    u8 as_u8[40];
   } k;
   u8x8 swap_A;
   u32x8 swap_B;
@@ -84,7 +86,7 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
       pr = sfdp_buffer (b)->ip6_final_proto;
       ext_hdr = 0;
       next_header = b->data + vnet_buffer (b)->l4_hdr_offset;
-      k.as_u8x8 = u8x8_insert (k.as_u8x8, pr, 6); /* use final proto in key */
+      k.as_u8[6] = pr;
     }
   else
     {
@@ -131,8 +133,7 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
 	    ip6_ext_next_header_offset (ip, chain.eh[chain.length - 1].offset);
 	  pr = chain.eh[chain.length - 1].protocol;
 	  tcp_or_udp = pr == IP_PROTOCOL_TCP || pr == IP_PROTOCOL_UDP;
-	  k.as_u8x8 =
-	    u8x8_insert (k.as_u8x8, pr, 6); /* use final proto in key */
+	  k.as_u8[6] = pr;
 	}
     }
   l4_hdr_offset[0] = (u8 *) next_header - b[0].data;
@@ -215,14 +216,13 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
   else
     l4_hdr = *(u32 *) next_header & pow2_mask (l4_mask_bits[pr]);
 
-  k.as_u32x2 = u32x2_insert (k.as_u32x2, l4_hdr, 0);
-
-  k.as_u8x8 = u8x8_shuffle (k.as_u8x8, swap_A);
+  k.as_u32[0] = l4_hdr;
+  k.as_u8x8 = u8x8_shuffle_dynamic (k.as_u8x8, swap_A);
   k.as_u32x8 = u32x8_shuffle_dynamic (k.as_u32x8, swap_B);
   /* Reshuffle for ICMP
      TODO: merge with fast path? */
   if (slow_path && pr == IP_PROTOCOL_ICMP6)
-    k.as_u8x8 += u8x8_shuffle (k.as_u8x8, key_ip6_swap_icmp);
+    k.as_u8x8 += u8x8_shuffle_dynamic (k.as_u8x8, key_ip6_swap_icmp);
   lookup_val[0] = ((u32x4) norm)[0] & 0x1;
 
   /* extract tcp flags */

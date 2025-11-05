@@ -325,6 +325,7 @@ set(test_files
   test/compress.c
   test/count_equal.c
   test/crc32c.c
+  test/dynamic_shuffle.c
   test/index_to_ptr.c
   test/ip_csum.c
   test/mask_compare.c
