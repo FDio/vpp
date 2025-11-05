@@ -153,6 +153,10 @@ tor_client_stream_create(char *addr, u16 port, u32 *stream_index_out)
   stream->dst_port = port;
   stream->created_at = vlib_time_now(tcm->vlib_main);
 
+  /* Get event FD from Arti stream for event loop integration */
+  stream->event_fd = arti_stream_get_fd(arti_stream);
+  stream->file_index = ~0; /* Will be set by SOCKS5 layer */
+
   tcm->active_streams++;
   tcm->total_connections++;
 

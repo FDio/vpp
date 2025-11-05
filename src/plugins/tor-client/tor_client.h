@@ -35,8 +35,12 @@ extern void *arti_init(const char *config_dir, const char *cache_dir);
 extern int arti_connect(void *client, const char *addr, uint16_t port, void **stream_out);
 extern ssize_t arti_send(void *stream, const uint8_t *data, size_t len);
 extern ssize_t arti_recv(void *stream, uint8_t *buf, size_t len);
+extern int arti_stream_get_fd(void *stream);
+extern void arti_stream_clear_event(void *stream);
 extern void arti_close_stream(void *stream);
 extern void arti_shutdown(void *client);
+extern char *arti_last_error(void);
+extern void arti_free_string(char *s);
 extern const char *arti_version(void);
 
 /**
@@ -71,6 +75,12 @@ typedef struct
 
   /** VPP session index */
   u32 vpp_session_index;
+
+  /** Event FD for data availability notification */
+  int event_fd;
+
+  /** File registration for event loop */
+  u32 file_index;
 
   /** Destination address */
   ip46_address_t dst_addr;
