@@ -10,6 +10,20 @@ containers:
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
 
+  - name: "server-app"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+    is-optional: true
+
+  - name: "client-app"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+    is-optional: true
+
   - name: "nginx"
     volumes:
       - <<: *shared-vol

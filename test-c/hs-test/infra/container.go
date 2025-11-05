@@ -223,7 +223,7 @@ func (c *Container) Start() error {
 	for nTries = 0; nTries < 5; nTries++ {
 		err = c.Suite.Docker.ContainerStart(c.ctx, c.ID, containerTypes.StartOptions{})
 		if err == nil {
-			continue
+			break
 		}
 		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
 		time.Sleep(1 * time.Second)
@@ -233,7 +233,7 @@ func (c *Container) Start() error {
 	}
 
 	// wait for container to start
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
 	// check if container exited right after startup
 	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
@@ -243,12 +243,14 @@ func (c *Container) Start() error {
 	if err != nil {
 		return err
 	}
-	if containers[0].State == "exited" {
+
+	c.Suite.Log("Container '%s': %s", c.Name, containers[0].Status)
+	if !(strings.Contains(strings.ToLower(containers[0].Status), "up") || strings.Contains(strings.ToLower(containers[0].Status), "exited (0)")) {
 		c.Suite.Log("Container details: " + fmt.Sprint(containers[0]))
 		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
 	}
 
-	return err
+	return nil
 }
 
 func (c *Container) GetOutput() (string, string) {
@@ -516,10 +518,33 @@ func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, comma
 
 	// ignore SIGKILL errors
 	if IsKilledError(err) {
+		c.Suite.Log("'%v' error ignored (context cancelled)", err)
 		err = nil
 	}
 
 	return outputBuffer.String(), errBuffer.String(), err
+}
+
+func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command string, arguments ...any) (string, error) {
+	var envVars string
+	serverCommand := fmt.Sprintf(command, arguments...)
+	if useEnvVars {
+		envVars = c.getEnvVarsAsCliOption()
+	} else {
+		envVars = ""
+	}
+	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
+	ginkgo.GinkgoHelper()
+	c.Suite.Log(containerExecCommand)
+	byteOutput, err := exechelper.CombinedOutput(containerExecCommand, exechelper.WithContext(ctx))
+
+	// ignore SIGKILL errors
+	if IsKilledError(err) {
+		c.Suite.Log("'%v' error ignored (context cancelled)", err)
+		err = nil
+	}
+
+	return string(byteOutput), err
 }
 
 func (c *Container) saveLogs() {
