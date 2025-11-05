@@ -20,8 +20,9 @@
 #include <vlibmemory/api.h>
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_send.h>
+#include <wireguard/wireguard_awg.h>
 
-static int
+int
 ip46_enqueue_packet (vlib_main_t *vm, u32 bi0, int is_ip4)
 {
   vlib_frame_t *f = 0;
@@ -83,7 +84,10 @@ wg_buffer_prepend_rewrite (vlib_main_t *vm, vlib_buffer_t *b0,
     }
 }
 
-static bool
+/* Forward declaration */
+static int ip46_enqueue_packet (vlib_main_t *vm, u32 bi0, int is_ip4);
+
+bool
 wg_create_buffer (vlib_main_t *vm, const u8 *rewrite, const u8 *packet,
 		  u32 packet_len, u32 *bi, u8 is_ip4)
 {
@@ -100,6 +104,42 @@ wg_create_buffer (vlib_main_t *vm, const u8 *rewrite, const u8 *packet,
   clib_memcpy (payload, packet, packet_len);
 
   b0->current_length = packet_len;
+
+  wg_buffer_prepend_rewrite (vm, b0, rewrite, is_ip4);
+
+  return true;
+}
+
+/* Create buffer with AWG junk header prepended */
+static bool
+wg_create_buffer_with_junk (vlib_main_t *vm, const u8 *rewrite,
+			    const u8 *packet, u32 packet_len, u32 *bi,
+			    u8 is_ip4, const wg_awg_cfg_t *awg_cfg,
+			    message_type_t msg_type)
+{
+  u32 junk_size = wg_awg_get_header_junk_size (awg_cfg, msg_type);
+  u32 total_len = junk_size + packet_len;
+  u32 n_buf0 = 0;
+  vlib_buffer_t *b0;
+
+  n_buf0 = vlib_buffer_alloc (vm, bi, 1);
+  if (!n_buf0)
+    return false;
+
+  b0 = vlib_get_buffer (vm, *bi);
+
+  u8 *payload = vlib_buffer_get_current (b0);
+
+  /* Fill junk data */
+  if (junk_size > 0)
+    {
+      wg_awg_generate_junk (payload, junk_size);
+    }
+
+  /* Copy actual packet after junk */
+  clib_memcpy (payload + junk_size, packet, packet_len);
+
+  b0->current_length = total_len;
 
   wg_buffer_prepend_rewrite (vm, b0, rewrite, is_ip4);
 
@@ -172,6 +212,11 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
       wg_peer_is_dead (peer))
     return true;
 
+  /* Get AWG configuration from interface */
+  index_t wgii = wg_if_find_by_sw_if_index (peer->wg_sw_if_index);
+  wg_if_t *wg_if = wg_if_get (wgii);
+  wg_awg_cfg_t *awg_cfg = &wg_if->awg_cfg;
+
   if (noise_create_initiation (vm,
 			       &peer->remote,
 			       &packet.sender_index,
@@ -179,7 +224,8 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 			       packet.encrypted_static,
 			       packet.encrypted_timestamp))
     {
-      packet.header.type = MESSAGE_HANDSHAKE_INITIATION;
+      /* Use AWG magic header if enabled */
+      packet.header.type = wg_awg_get_magic_header (awg_cfg, MESSAGE_HANDSHAKE_INITIATION);
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
       wg_timers_any_authenticated_packet_sent (peer);
@@ -193,9 +239,35 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   u32 bi0 = 0;
-  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet, sizeof (packet),
-			 &bi0, is_ip4))
-    return false;
+  f64 now = vlib_time_now (vm);
+
+  /* Check if this is a special handshake (every 120s) for i-headers */
+  if (wg_awg_is_enabled (awg_cfg) && wg_awg_needs_special_handshake (awg_cfg, now))
+    {
+      /* Send i-header signature chain (i1-i5) for protocol masquerading */
+      wg_awg_send_i_header_packets (vm, awg_cfg, peer->rewrite, is_ip4);
+    }
+
+  /* Send junk packets before handshake if AWG is enabled */
+  if (wg_awg_is_enabled (awg_cfg))
+    {
+      wg_awg_send_junk_packets (vm, awg_cfg, peer->rewrite, is_ip4);
+    }
+
+  /* Create packet with or without AWG junk header */
+  if (wg_awg_is_enabled (awg_cfg))
+    {
+      if (!wg_create_buffer_with_junk (vm, peer->rewrite, (u8 *) &packet,
+				       sizeof (packet), &bi0, is_ip4, awg_cfg,
+				       MESSAGE_HANDSHAKE_INITIATION))
+	return false;
+    }
+  else
+    {
+      if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet, sizeof (packet),
+			     &bi0, is_ip4))
+	return false;
+    }
 
   ip46_enqueue_packet (vm, bi0, is_ip4);
   return true;
