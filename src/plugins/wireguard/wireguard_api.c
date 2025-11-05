@@ -53,7 +53,8 @@ static void
     clib_memcpy (private_key, mp->interface.private_key, NOISE_PUBLIC_KEY_LEN);
 
   rv = wg_if_create (ntohl (mp->interface.user_instance), private_key,
-		     ntohs (mp->interface.port), &src, &sw_if_index);
+		     ntohs (mp->interface.port), &src,
+		     (wg_transport_type_t) mp->interface.transport, &sw_if_index);
 
   REPLY_MACRO2(VL_API_WIREGUARD_INTERFACE_CREATE_REPLY,
   {
@@ -158,6 +159,7 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
   int ii, rv = 0;
 
   ip_address_t endpoint;
+  ip_address_t obfuscation_endpoint;
   fib_prefix_t *allowed_ips = NULL;
 
   VALIDATE_SW_IF_INDEX (&(mp->peer));
@@ -172,6 +174,7 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
 
   vec_validate (allowed_ips, mp->peer.n_allowed_ips - 1);
   ip_address_decode2 (&mp->peer.endpoint, &endpoint);
+  ip_address_decode2 (&mp->peer.obfuscation_endpoint, &obfuscation_endpoint);
 
   for (ii = 0; ii < mp->peer.n_allowed_ips; ii++)
     ip_prefix_decode (&mp->peer.allowed_ips[ii], &allowed_ips[ii]);
@@ -179,7 +182,9 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
   rv = wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.public_key,
 		    ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
 		    allowed_ips, ntohs (mp->peer.port),
-		    ntohs (mp->peer.persistent_keepalive), &peeri);
+		    ntohs (mp->peer.persistent_keepalive), mp->peer.obfuscate,
+		    &ip_addr_46 (&obfuscation_endpoint),
+		    ntohs (mp->peer.obfuscation_port), &peeri);
 
   vec_free (allowed_ips);
 done:
@@ -239,6 +244,15 @@ wg_api_send_peers_details (index_t peeri, void *data)
   rmp->peer.sw_if_index = htonl (peer->wg_sw_if_index);
   rmp->peer.persistent_keepalive = htons (peer->persistent_keepalive_interval);
   rmp->peer.table_id = htonl (peer->table_id);
+
+  /* Encode obfuscation parameters */
+  rmp->peer.obfuscate = peer->obfuscate;
+  if (peer->obfuscate)
+    {
+      ip_address_encode (&peer->obfuscation_dst.addr, IP46_TYPE_ANY,
+			 &rmp->peer.obfuscation_endpoint);
+      rmp->peer.obfuscation_port = htons (peer->obfuscation_dst.port);
+    }
 
   int ii;
   for (ii = 0; ii < n_allowed_ips; ii++)
