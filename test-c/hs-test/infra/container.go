@@ -223,7 +223,7 @@ func (c *Container) Start() error {
 	for nTries = 0; nTries < 5; nTries++ {
 		err = c.Suite.Docker.ContainerStart(c.ctx, c.ID, containerTypes.StartOptions{})
 		if err == nil {
-			continue
+			break
 		}
 		c.Suite.Log("Error while starting " + c.Name + ". Retrying...")
 		time.Sleep(1 * time.Second)
@@ -233,7 +233,7 @@ func (c *Container) Start() error {
 	}
 
 	// wait for container to start
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
 	// check if container exited right after startup
 	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
