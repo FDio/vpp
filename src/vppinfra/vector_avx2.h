@@ -474,6 +474,65 @@ u8x32_store_partial (u8x32 r, u8 *data, uword n)
 #endif
 }
 
+#define CLIB_VEC256_DYNAMIC_SHUFFLE_DEFINED
+
+static_always_inline u8x32
+u8x32_shuffle_dynamic (u8x32 v, u8x32 idx)
+{
+  const u8x32 interlane_or_clear_mask = u8x32_splat (0xF0);
+  const u8x32 flip_mask_second_lane = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10
+  };
+  const u8x32 flip_mask_first_lane = {
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+  const u8x32 flip_mask_all_lanes = { 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+				      0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+				      0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+				      0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+				      0x10, 0x10, 0x10, 0x10 };
+
+  u8x32 idx1 = ((idx ^ flip_mask_second_lane) & interlane_or_clear_mask) != 0;
+  idx1 |= idx;
+
+  u8x32 idx2 = ((idx ^ flip_mask_first_lane) & interlane_or_clear_mask) != 0;
+  idx2 |= idx ^ flip_mask_all_lanes;
+
+  u8x32 res1 = (u8x32) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) idx1);
+  v = (u8x32) _mm256_permute4x64_epi64 ((__m256i) v, 0x4E);
+  u8x32 res2 = (u8x32) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) idx2);
+
+  return (u8x32) ((__m256i) res1 | (__m256i) res2);
+}
+
+static_always_inline u16x16
+u16x16_shuffle_dynamic (u16x16 v, u16x16 idx)
+{
+  u16x16 dbled = idx << 1;
+  u16x16 plus_one = dbled + u16x16_splat (1);
+  u8x32 dbled_u8 =
+    (u8x32) _mm256_packs_epi16 ((__m256i) dbled, (__m256i) dbled);
+  u8x32 plus_one_u8 =
+    (u8x32) _mm256_packs_epi16 ((__m256i) plus_one, (__m256i) plus_one);
+  u8x32 indices_8 =
+    (u8x32) _mm256_unpacklo_epi8 ((__m256i) dbled_u8, (__m256i) plus_one_u8);
+  return (u16x16) u8x32_shuffle_dynamic ((u8x32) v, indices_8);
+}
+
+static_always_inline u32x8
+u32x8_shuffle_dynamic (u32x8 v, u32x8 idx)
+{
+  u32x8 clear_mask = idx & u32x8_splat (0xFFFFFFF8);
+  u32x8 res;
+  clear_mask = clear_mask == 0;
+  res = (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);
+  return res & clear_mask;
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
