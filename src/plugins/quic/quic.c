@@ -20,8 +20,8 @@
 #include <quic/quic_timer.h>
 #include <quic/quic_inlines.h>
 
-static char *quic_error_strings[] = {
-#define quic_error(n,s) s,
+static vlib_error_desc_t quic_error_counters[] = {
+#define quic_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
 #include <quic/quic_error.def>
 #undef quic_error
 };
@@ -477,33 +477,87 @@ format_quic_ctx_state (u8 *s, va_list *args)
 }
 
 static u8 *
-format_quic_ctx (u8 * s, va_list * args)
+format_quic_connection_id (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  u32 udp_si, udp_ti;
+
+  session_parse_handle (ctx->udp_session_handle, &udp_si, &udp_ti);
+  s = format (s, "[%d:%d][Q] conn %u app_wrk %u ts %d:%d", ctx->c_thread_index,
+	      ctx->c_s_index, ctx->c_c_index, ctx->parent_app_wrk_id, udp_ti,
+	      udp_si);
+  return s;
+}
+
+static u8 *
+format_quic_ctx_connection (u8 *s, va_list *args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
   u32 verbose = va_arg (*args, u32);
-  u8 *str = 0;
 
-  if (!ctx)
-    return s;
-  str = format (str, "[%d:%d][Q] ", ctx->c_thread_index, ctx->c_s_index);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_connection_id, ctx);
+  if (verbose)
+    {
+      s =
+	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+      if (verbose > 1)
+	s = format (s, "\n%U", quic_eng_format_connection_stats, ctx);
+    }
+  return s;
+}
 
-  if (quic_ctx_is_listener (ctx))
-    str = format (str, "Listener, UDP %ld", ctx->udp_session_handle);
-  else if (quic_ctx_is_stream (ctx))
-    str = format (str, "%U", quic_eng_format_stream_connection, ctx);
-  else /* connection */
-    str =
-      format (str, "Conn %d UDP %d", ctx->c_c_index, ctx->udp_session_handle);
+static u8 *
+format_quic_stream_id (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  s =
+    format (s, "[%d:%d][Q] stream %u stream-id 0x%lx conn %u",
+	    ctx->c_thread_index, ctx->c_s_index, ctx->c_c_index,
+	    quic_eng_stream_get_stream_id (ctx), ctx->quic_connection_ctx_id);
+  return s;
+}
 
-  str =
-    format (str, " app %d wrk %d", ctx->parent_app_id, ctx->parent_app_wrk_id);
+static u8 *
+format_quic_ctx_stream (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  u32 verbose = va_arg (*args, u32);
 
-  if (verbose == 1)
-    s = format (s, "%-" SESSION_CLI_ID_LEN "s%-" SESSION_CLI_STATE_LEN "U",
-		str, format_quic_ctx_state, ctx);
-  else
-    s = format (s, "%s\n", str);
-  vec_free (str);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_stream_id, ctx);
+  if (verbose)
+    {
+      s =
+	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+      if (verbose > 1)
+	s = format (s, "\n%U", quic_eng_format_stream_stats, ctx);
+    }
+  return s;
+}
+
+static u8 *
+format_quic_ctx_listener (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  app_listener_t *al;
+  session_t *lts;
+
+  al = app_listener_get_w_handle (ctx->udp_session_handle);
+  lts = app_listener_get_session (al);
+  s = format (s, "[%d:%d][Q] app_wrk %u ts %d:%d", ctx->c_thread_index,
+	      ctx->c_s_index, ctx->parent_app_wrk_id, lts->thread_index,
+	      lts->session_index);
+  return s;
+}
+
+static u8 *
+format_quic_ho_conn_id (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+
+  s = format (s, "[%d:%d][Q] half-open app_wrk %u ts %d:%d",
+	      ctx->c_thread_index, ctx->c_s_index, ctx->parent_app_wrk_id,
+	      session_thread_from_handle (ctx->udp_session_handle),
+	      session_index_from_handle (ctx->udp_session_handle));
   return s;
 }
 
@@ -514,7 +568,11 @@ format_quic_connection (u8 * s, va_list * args)
   clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
-  s = format (s, "%U", format_quic_ctx, ctx, verbose);
+
+  if (quic_ctx_is_stream (ctx))
+    s = format (s, "%U", format_quic_ctx_stream, ctx, verbose);
+  else
+    s = format (s, "%U", format_quic_ctx_connection, ctx, verbose);
   return s;
 }
 
@@ -523,13 +581,15 @@ format_quic_half_open (u8 * s, va_list * args)
 {
   u32 qc_index = va_arg (*args, u32);
   clib_thread_index_t thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
-  s =
-    format (s, "[#%d][Q] half-open app %u", thread_index, ctx->parent_app_id);
+
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ho_conn_id, ctx);
+  if (verbose)
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
   return s;
 }
 
-/* TODO improve */
 static u8 *
 format_quic_listener (u8 * s, va_list * args)
 {
@@ -537,7 +597,10 @@ format_quic_listener (u8 * s, va_list * args)
   clib_thread_index_t thread_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
   quic_ctx_t *ctx = quic_ctx_get (tci, thread_index);
-  s = format (s, "%U", format_quic_ctx, ctx, verbose);
+
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ctx_listener, ctx);
+  if (verbose)
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
   return s;
 }
 
@@ -1168,63 +1231,12 @@ quic_show_aggregated_stats (vlib_main_t * vm)
   vlib_cli_output (vm, "TX bytes         %lu", agg_stats.num_bytes_sent);
 }
 
-static u8 *
-quic_format_listener_ctx (u8 * s, va_list * args)
-{
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  s = format (s, "[#%d][%x][Listener]", ctx->c_thread_index, ctx->c_c_index);
-  return s;
-}
-
-static u8 *
-quic_format_connection_ctx (u8 * s, va_list * args)
-{
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-
-  s = format (s, "[#%d][%x]", ctx->c_thread_index, ctx->c_c_index);
-
-  if (!ctx->conn)
-    {
-      s = format (s, "- no conn -\n");
-      return s;
-    }
-
-  s = format (s, "%U", quic_eng_format_connection_stats, ctx);
-
-  return s;
-}
-
-static u8 *
-quic_format_stream_ctx (u8 * s, va_list * args)
-{
-  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
-  session_t *stream_session;
-  u32 txs, rxs;
-
-  s = format (s, "[#%d][%x]", ctx->c_thread_index, ctx->c_c_index);
-  s = format (s, "[%U]", quic_eng_format_stream_ctx_stream_id, ctx);
-
-  stream_session = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
-  if (!stream_session)
-    {
-      s = format (s, "- no session -\n");
-      return s;
-    }
-  txs = svm_fifo_max_dequeue (stream_session->tx_fifo);
-  rxs = svm_fifo_max_dequeue (stream_session->rx_fifo);
-  s = format (s, "[rx %d tx %d]\n", rxs, txs);
-  return s;
-}
-
 static clib_error_t *
 quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 show_listeners = 0, show_conn = 0, show_stream = 0;
-  u32 num_workers = vlib_num_workers ();
   clib_error_t *error = 0;
-  quic_ctx_t *ctx = NULL;
   quic_main_t *qm = &quic_main;
 
   session_cli_return_if_not_enabled ();
@@ -1252,34 +1264,11 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
       quic_show_aggregated_stats (vm);
       return 0;
     }
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  else
     {
-      if (unformat (line_input, "listener"))
-	show_listeners = 1;
-      else if (unformat (line_input, "conn"))
-	show_conn = 1;
-      else if (unformat (line_input, "stream"))
-	show_stream = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  for (int i = 0; i < num_workers + 1; i++)
-    {
-      pool_foreach (ctx, quic_main.wrk_ctx[i].ctx_pool)
-	{
-	  if (quic_ctx_is_stream (ctx) && show_stream)
-	    vlib_cli_output (vm, "%U", quic_format_stream_ctx, ctx);
-	  else if (quic_ctx_is_listener (ctx) && show_listeners)
-	    vlib_cli_output (vm, "%U", quic_format_listener_ctx, ctx);
-	  else if (quic_ctx_is_conn (ctx) && show_conn)
-	    vlib_cli_output (vm, "%U", quic_format_connection_ctx, ctx);
-	}
+      error = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, line_input);
+      goto done;
     }
 
 done:
@@ -1383,14 +1372,13 @@ quic_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
   return 0;
 }
 
-VLIB_REGISTER_NODE (quic_input_node) =
-{
+VLIB_REGISTER_NODE (quic_input_node) = {
   .function = quic_node_fn,
   .name = "quic-input",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (quic_error_strings),
-  .error_strings = quic_error_strings,
+  .n_errors = ARRAY_LEN (quic_error_counters),
+  .error_counters = quic_error_counters,
 };
 
 /*

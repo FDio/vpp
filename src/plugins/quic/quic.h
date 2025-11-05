@@ -97,7 +97,7 @@ extern vlib_node_registration_t quic_input_node;
 
 typedef enum
 {
-#define quic_error(n,s) QUIC_ERROR_##n,
+#define quic_error(f, n, s, d) QUIC_ERROR_##f,
 #include <plugins/quic/quic_error.def>
 #undef quic_error
   QUIC_N_ERROR,
@@ -381,8 +381,8 @@ typedef struct quic_engine_vft_
   u64 (*stream_tx) (quic_ctx_t *ctx, session_t *stream_session);
   int (*send_packets) (quic_ctx_t *ctx);
   u8 *(*format_connection_stats) (u8 *s, va_list *args);
-  u8 *(*format_stream_connection) (u8 *s, va_list *args);
-  u8 *(*format_stream_ctx_stream_id) (u8 *s, va_list *args);
+  u8 *(*format_stream_stats) (u8 *s, va_list *args);
+  i64 (*stream_get_stream_id) (quic_ctx_t *ctx);
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
 } quic_engine_vft_t;
 
