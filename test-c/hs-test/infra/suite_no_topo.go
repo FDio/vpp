@@ -32,6 +32,7 @@ type NoTopoSuite struct {
 		NginxServerSsl string
 		NginxHttp3     string
 		Http           string
+		CutThru        string
 	}
 }
 
@@ -61,6 +62,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.Ports.NginxServer = s.GeneratePort()
 	s.Ports.NginxServerSsl = s.GeneratePort()
 	s.Ports.NginxHttp3 = s.GeneratePort()
+	s.Ports.CutThru = s.GeneratePort()
 }
 
 func (s *NoTopoSuite) SetupTest() {
@@ -195,6 +197,24 @@ func (s *NoTopoSuite) CreateNginxHttp3Config(container *Container) {
 		"./resources/nginx/nginx_http3.conf",
 		nginxSettings,
 	)
+}
+
+func (s *NoTopoSuite) CreateGenericVclConfig(container *Container) {
+	var vclConf Stanza
+	vclFileName := container.GetHostWorkDir() + "/vcl.conf"
+
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		container.GetContainerWorkDir())
+	err := vclConf.
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(appSocketApi).Close().
+		SaveToFile(vclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 }
 
 var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, Label("Generic"), func() {
