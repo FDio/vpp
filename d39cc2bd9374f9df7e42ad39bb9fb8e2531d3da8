@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa0102a2_e0eb4235",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 716,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-05T22:23:06Z",
+      "side": 0,
+      "message": "Nice!",
+      "revId": "d39cc2bd9374f9df7e42ad39bb9fb8e2531d3da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
