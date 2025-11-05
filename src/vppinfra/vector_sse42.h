@@ -578,6 +578,97 @@ u64x2_clmul64 (u64x2 a, const int a_hi, u64x2 b, const int b_hi)
   return p;
 }
 #endif
+#define CLIB_VEC128_INSERT_DEFINED
+
+static_always_inline u8x16
+u8x16_insert (u8x16 v, u8 x, int index)
+{
+  return (u8x16) _mm_insert_epi8 ((__m128i) v, x, index);
+}
+
+static_always_inline u16x8
+u16x8_insert (u16x8 v, u16 x, int index)
+{
+  return (u16x8) _mm_insert_epi16 ((__m128i) v, x, index);
+}
+
+static_always_inline u32x4
+u32x4_insert (u32x4 v, u32 x, int index)
+{
+  return (u32x4) _mm_insert_epi32 ((__m128i) v, x, index);
+}
+static_always_inline u64x2
+u64x2_insert (u64x2 v, u64 x, int index)
+{
+  return (u64x2) _mm_insert_epi64 ((__m128i) v, x, index);
+}
+
+#define CLIB_VEC64_DYNAMIC_SHUFFLE_DEFINED
+static_always_inline u8x8
+u8x8_shuffle_dynamic (u8x8 v, u8x8 indices)
+{
+  return (u8x8) _mm_shuffle_pi8 ((__m64i) v, (__m64i) indices);
+}
+
+static_always_inline u16x4
+u16x4_shuffle_dynamic (u16x4 v, u16x4 indices)
+{
+  u16x4 res;
+  /* indices_16 = {i0, i1, i2, i3}
+     indices_8  = {2*i0, 2*i0 + 1,
+		   2*i1, 2*i1 + 1,
+		   2*i2, 2*i2 + 1,
+		   2*i3, 2*i3 + 1}
+  */
+  u16x4 dbled = indices << 1;
+  u16x4 plus_one = dbled + 1;
+  u8x8 dbled_u8 = __mm_packs_pu16 ((__m64i) dbled, (__m64i) dbled);
+  u8x8 plus_one_u8 = __mm_packs_pu16 ((__m64i) plus_one, (__m64i) plus_one);
+  u8x8 indices_8 = __mm_unpacklo_pi8 (dbled_u8, plus_one_u8);
+  res = (u16x4) _mm_shuffle_pi8 ((__m64i) v, (__m64i) indices_8);
+  return res;
+}
+
+#define CLIB_VEC128_DYNAMIC_SHUFFLE_DEFINED
+#define u8x16_shuffle_dynamic(v, i)                                           \
+  (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) i)
+
+static_always_inline u16x8
+u16x8_shuffle_dynamic (u16x8 v, u16x8 indices)
+{
+  u16x8 res;
+  /* indices_16 = {i0, i1, i2, i3, i4, i5, i6, i7}
+     indices_8  = {2*i0, 2*i0 + 1,
+		   2*i1, 2*i1 + 1,
+		   2*i2, 2*i2 + 1,
+		   2*i3, 2*i3 + 1,
+		   2*i4, 2*i4 + 1,
+		   2*i5, 2*i5 + 1,
+		   2*i6, 2*i6 + 1,
+		   2*i7, 2*i7 + 1}
+  */
+  u16x8 dbled = indices << 1;
+  u16x8 plus_one = dbled + 1;
+  u8x16 dbled_u8 = _mm_packus_epi16 ((__m128i) dbled, (__m128i) dbled);
+  u8x16 plus_one_u8 =
+    _mm_packus_epi16 ((__m128i) plus_one, (__m128i) plus_one);
+  u8x16 indices_8 =
+    _mm_unpacklo_epi8 ((__m128i) dbled_u8, (__m128i) plus_one_u8);
+  res = (u16x8) _mm_shuffle_epi8 ((__m128i) v, (__m128i) indices_8);
+  return res;
+}
+
+static_always_inline u32x4
+u32x4_shuffle_dynamic (u32x4 v, u32x4 indices)
+{
+  u32x4 fourtupled = indices << 2;
+  const u8x16 mask1 = { 0, 0, 0, 0, 4, 4, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12 };
+  const u8x16 offset = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
+  u8x16 new_mask =
+    (u8x16) _mm_shuffle_epi8 ((__m128i) fourtupled, (__m128i) mask1);
+  new_mask += offset;
+  return (u32x4) _mm_shuffle_epi8 ((__m128i) v, (__m128i) new_mask);
+}
 
 #endif /* included_vector_sse2_h */
 
