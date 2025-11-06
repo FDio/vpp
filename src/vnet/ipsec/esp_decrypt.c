@@ -509,27 +509,35 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   vnet_crypto_op_t **ops;
   vnet_crypto_op_t _op, *op = &_op;
   const u8 esp_sz = sizeof (esp_header_t);
+  const vnet_crypto_op_t *tmpl = irt->op_tmpl;
 
   if (irt->key_index == ~0 || !irt->op_id)
     return ESP_DECRYPT_ERROR_RX_PKTS;
 
-  vnet_crypto_op_init (op, irt->op_id);
-  op->key_index = irt->key_index;
+  clib_memcpy_fast (op, tmpl + VNET_CRYPTO_HANDLER_TYPE_SIMPLE, sizeof (*op));
   op->user_data = index;
 
   if (irt->integ_icv_size && !irt->is_aead)
     {
+      u32 integ_len = len;
+      ops = &ptd->crypto_ops;
+
+      if (pd->is_chain)
+	{
+	  clib_memcpy_fast (op, tmpl + VNET_CRYPTO_HANDLER_TYPE_CHAINED,
+			    sizeof (*op));
+	  op->user_data = index;
+	  ops = &ptd->chained_crypto_ops;
+	  integ_len = pd->current_length;
+	}
+
       op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
       op->digest = payload + len;
       op->digest_len = icv_sz;
       op->integ_src = payload;
-      u32 integ_len = len;
 
       if (pd->is_chain)
 	{
-	  ops = &ptd->chained_crypto_ops;
-	  integ_len = pd->current_length;
-
 	  /* special case when ICV is splitted and needs to be reassembled
 	   * first -> move it to the last buffer. Also take into account
 	   * that ESN needs to be added after encrypted data and may or
@@ -568,7 +576,6 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	}
       else
 	{
-	  ops = &ptd->crypto_ops;
 	  esp_insert_esn (vm, irt, pd, pd2, &integ_len, &op->digest, &len, b,
 			  payload);
 	  op->integ_len = (u16) integ_len;

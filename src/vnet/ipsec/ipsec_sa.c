@@ -33,6 +33,41 @@ vlib_combined_counter_main_t ipsec_sa_counters = {
 /* Per-SA error counters */
 vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];
 
+static_always_inline void
+ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
+{
+  if (!irt)
+    return;
+
+  if (irt->is_async || irt->key_index == ~0 || !irt->op_id)
+    {
+      clib_memset (irt->op_tmpl, 0, sizeof (irt->op_tmpl));
+      return;
+    }
+
+  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
+		       irt->op_id);
+  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],
+		       irt->op_id);
+
+  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].key_index = irt->key_index;
+  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].key_index = irt->key_index;
+
+  if (irt->integ_icv_size && !irt->is_aead)
+    {
+      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags =
+	VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
+	VNET_CRYPTO_OP_FLAG_HMAC_CHECK | VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+    }
+  else
+    {
+      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags = 0;
+      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
+	VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+    }
+}
+
 static clib_error_t *
 ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
 			      u32 sa_index, int is_add)
@@ -143,6 +178,7 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
       irt->key_index = key_index;
       irt->op_id = inb_op_id;
       irt->is_async = is_async;
+      ipsec_sa_inb_refresh_op_tmpl (irt);
     }
 
   if (ipsec_sa_get_outb_rt (sa))
@@ -239,6 +275,7 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       irt->integ_icv_size = integ_icv_size;
       irt->salt = sa->salt;
       irt->async_op_id = sa->crypto_async_dec_op_id;
+      ipsec_sa_inb_refresh_op_tmpl (irt);
       ASSERT (irt->cipher_iv_size <= ESP_MAX_IV_SIZE);
     }
 
