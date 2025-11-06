@@ -531,7 +531,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  integ_len = pd->current_length;
 	}
 
-      op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
       op->digest = payload + len;
       op->digest_len = icv_sz;
       op->integ_src = payload;
@@ -621,7 +621,7 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	      op->aad = (u8 *) aad_t;
 	      op->aad_len = irt->aad_len;
 	      op->tag = payload + len;
-	      op->tag_len = 16;
+	      op->tag_len = icv_sz;
 	      if (PREDICT_FALSE (irt->is_null_gmac))
 		{
 		  /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
