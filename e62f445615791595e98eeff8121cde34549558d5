@@ -16,6 +16,24 @@
       "message": "this was working just because we don\u0027t check return value in nginxMirroring? please add assert to nginxMirroring",
       "revId": "e62f445615791595e98eeff8121cde34549558d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ad8503f_35ae5020",
+        "filename": "test-c/hs-test/infra/suite_nginx_proxy.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-06T16:26:27Z",
+      "side": 0,
+      "message": "No the asserts are fine, the bug was in container.go. It skipped checking a container\u0027s status after starting. NginxProxy container didn\u0027t have a VCL config and it errored out.",
+      "parentUuid": "d060db9c_c1740093",
+      "revId": "e62f445615791595e98eeff8121cde34549558d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
