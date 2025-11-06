@@ -12,6 +12,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -166,4 +168,77 @@ func (pod *Pod) CreateConfigFromTemplate(targetConfigName string, templateName s
 	pod.suite.AssertNil(err, err)
 
 	pod.CopyToPod(f.Name(), targetConfigName)
+}
+
+// CreateDynamicPod creates a simple busybox pod for testing purposes in the specified namespace
+func (s *BaseSuite) CreateDynamicPod(ctx context.Context, namespace, podName, appName string) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app": appName,
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				{
+					Name:  "busybox",
+					Image: "busybox:1.35",
+					Command: []string{
+						"sh",
+						"-c",
+						fmt.Sprintf("echo 'Pod %s started at $(date)'; sleep 5; echo 'Pod %s completed at $(date)'", podName, podName),
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+							corev1.ResourceCPU:    resource.MustParse("25m"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("16Mi"),
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.ClientSet.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		s.Log("Failed to create pod %s: %v", podName, err)
+		return err
+	}
+
+	s.Log("Created dynamic pod: %s", podName)
+	return nil
+}
+
+// DeleteDynamicPod deletes a pod in the specified namespace
+func (s *BaseSuite) DeleteDynamicPod(ctx context.Context, namespace, podName string) error {
+	err := s.ClientSet.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	if err != nil {
+		s.Log("Failed to delete pod %s: %v", podName, err)
+		return err
+	}
+
+	s.Log("Deleted dynamic pod: %s", podName)
+	return nil
+}
+
+// ListPodsInNamespace lists all pods in a specific namespace
+func (s *BaseSuite) ListPodsInNamespace(ctx context.Context, namespace string) ([]string, error) {
+	podList, err := s.ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var podNames []string
+	for _, pod := range podList.Items {
+		podNames = append(podNames, pod.Name)
+	}
+
+	return podNames, nil
 }
