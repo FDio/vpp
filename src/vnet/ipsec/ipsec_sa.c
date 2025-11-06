@@ -295,11 +295,13 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa);
       ort->esp_block_align =
 	clib_max (4, im->crypto_algs[sa->crypto_alg].block_align);
+      ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
       ort->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
       ort->integ_icv_size = integ_icv_size;
       ort->salt = sa->salt;
       ort->spi_be = clib_host_to_net_u32 (sa->spi);
       ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
+      ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
       ort->async_op_id = sa->crypto_async_enc_op_id;
       ort->t_dscp = sa->tunnel.t_dscp;
       vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
@@ -436,6 +438,8 @@ ipsec_sa_update (u32 id, u16 src_port, u16 dst_port, const tunnel_t *tun,
 	  dpo_reset (&ort->dpo);
 
 	  ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
+	  ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
+	  ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
 
 	  rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
 

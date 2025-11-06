@@ -200,6 +200,8 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
+  u16 need_udp_cksum : 1;
+  u16 need_tunnel_fixup : 1;
   u16 op_id;
   vnet_crypto_op_t op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
   ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];

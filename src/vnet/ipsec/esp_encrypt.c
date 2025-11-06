@@ -692,21 +692,25 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (VNET_LINK_IP6 == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_IPV6;
-		  tunnel_encap_fixup_6o6 (ort->tunnel_flags,
-					  (const ip6_header_t *) payload, ip6);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_6o6 (
+		      ort->tunnel_flags, (const ip6_header_t *) payload, ip6);
 		}
 	      else if (VNET_LINK_IP4 == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
-		  tunnel_encap_fixup_4o6 (ort->tunnel_flags, b[0],
-					  (const ip4_header_t *) payload, ip6);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_4o6 (ort->tunnel_flags, b[0],
+					    (const ip4_header_t *) payload,
+					    ip6);
 		}
 	      else if (VNET_LINK_MPLS == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
-		  tunnel_encap_fixup_mplso6 (
-		    ort->tunnel_flags, b[0],
-		    (const mpls_unicast_header_t *) payload, ip6);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_mplso6 (
+		      ort->tunnel_flags, b[0],
+		      (const mpls_unicast_header_t *) payload, ip6);
 		}
 	      else
 		ASSERT (0);
@@ -726,21 +730,24 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (VNET_LINK_IP6 == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_IPV6;
-		  tunnel_encap_fixup_6o4_w_chksum (
-		    ort->tunnel_flags, (const ip6_header_t *) payload, ip4);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_6o4_w_chksum (
+		      ort->tunnel_flags, (const ip6_header_t *) payload, ip4);
 		}
 	      else if (VNET_LINK_IP4 == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
-		  tunnel_encap_fixup_4o4_w_chksum (
-		    ort->tunnel_flags, (const ip4_header_t *) payload, ip4);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_4o4_w_chksum (
+		      ort->tunnel_flags, (const ip4_header_t *) payload, ip4);
 		}
 	      else if (VNET_LINK_MPLS == lt)
 		{
 		  *next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
-		  tunnel_encap_fixup_mplso4_w_chksum (
-		    ort->tunnel_flags, (const mpls_unicast_header_t *) payload,
-		    ip4);
+		  if (ort->need_tunnel_fixup)
+		    tunnel_encap_fixup_mplso4_w_chksum (
+		      ort->tunnel_flags,
+		      (const mpls_unicast_header_t *) payload, ip4);
 		}
 	      else
 		ASSERT (0);
@@ -749,7 +756,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
 	    }
 
-	  if (ort->udp_encap && ort->is_tunnel_v6)
+	  if (ort->need_udp_cksum)
 	    {
 	      i16 l3_off = b[0]->current_data - hdr_len;
 	      i16 l4_off = l3_off + sizeof (ip6_header_t);
