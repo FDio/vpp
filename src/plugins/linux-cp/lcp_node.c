@@ -32,6 +32,8 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/mpls/mpls.h>
+#include <plugins/osi/osi.h>
+#include <vnet/plugin/plugin.h>
 
 #define foreach_lip_punt                                                      \
   _ (IO, "punt to host")                                                      \
@@ -1096,6 +1098,162 @@ VNET_FEATURE_INIT (lcp_arp_host_arp_feat, static) = {
   .node_name = "linux-cp-arp-host",
   .runs_before = VNET_FEATURES ("arp-reply"),
 };
+
+typedef struct l2_punt_trace_t_
+{
+  u8 direction;
+  u32 phy_sw_if_index;
+  u32 host_sw_if_index;
+} l2_punt_trace_t;
+
+static u8 *
+format_l2_punt_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  l2_punt_trace_t *t = va_arg (*args, l2_punt_trace_t *);
+
+  if (t->direction)
+    {
+      s = format (s, "l2-punt: %u -> %u", t->host_sw_if_index,
+                 t->phy_sw_if_index);
+    }
+  else
+    {
+      s = format (s, "l2-punt: %u -> %u", t->phy_sw_if_index,
+                 t->host_sw_if_index);
+    }
+
+  return s;
+}
+
+VLIB_NODE_FN (l2_punt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next, n_left_to_next;
+  lip_punt_xc_next_t next_index;
+
+  next_index = node->cached_next_index;
+  n_left_from = frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+       {
+         vlib_buffer_t *b0;
+         const lcp_itf_pair_t *lip0 = NULL;
+         u32 next0 = ~0;
+         u32 bi0, lipi0;
+         u32 sw_if_index0;
+         u8 direction = 0;
+         u8 len0;
+
+         bi0 = to_next[0] = from[0];
+
+         from += 1;
+         to_next += 1;
+         n_left_from -= 1;
+         n_left_to_next -= 1;
+         next0 = LIP_PUNT_XC_NEXT_DROP;
+
+         b0 = vlib_get_buffer (vm, bi0);
+
+         sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+         lipi0 = lcp_itf_pair_find_by_phy (sw_if_index0);
+         if (lipi0 == INDEX_INVALID)
+           {
+             lipi0 = lcp_itf_pair_find_by_host (sw_if_index0);
+             if (lipi0 == INDEX_INVALID)
+               goto trace0;
+
+             direction = 1;
+           }
+
+         lip0 = lcp_itf_pair_get (lipi0);
+         next0 = LIP_PUNT_XC_NEXT_IO;
+         vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+           direction ? lip0->lip_phy_sw_if_index : lip0->lip_host_sw_if_index;
+
+         if (PREDICT_TRUE (lip0->lip_host_type == LCP_ITF_HOST_TAP))
+           {
+             /*
+              * rewind to ethernet header
+              */
+             len0 = ((u8 *) vlib_buffer_get_current (b0) -
+                     (u8 *) ethernet_buffer_get_header (b0));
+             vlib_buffer_advance (b0, -len0);
+           }
+
+       trace0:
+         if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
+           {
+             l2_punt_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+             t->direction = direction;
+             if (direction)
+               {
+                 t->phy_sw_if_index =
+                   (lipi0 == INDEX_INVALID) ? ~0 : lip0->lip_phy_sw_if_index;
+                 t->host_sw_if_index = sw_if_index0;
+               }
+             else
+               {
+
+                 t->phy_sw_if_index = sw_if_index0;
+                 t->host_sw_if_index =
+                   (lipi0 == INDEX_INVALID) ? ~0 : lip0->lip_host_sw_if_index;
+               }
+           }
+
+         vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+                                          n_left_to_next, bi0, next0);
+       }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (l2_punt_node) = {
+    .name = "linux-cp-punt-l2",
+    .vector_size = sizeof (u32),
+    .format_trace = format_l2_punt_trace,
+    .type = VLIB_NODE_TYPE_INTERNAL,
+
+    .n_next_nodes = LIP_PUNT_XC_N_NEXT,
+    .next_nodes = {
+      [LIP_PUNT_XC_NEXT_DROP] = "error-drop",
+      [LIP_PUNT_XC_NEXT_IO] = "interface-output",
+    },
+  };
+
+typedef void (*osi_register_input_protocol_fn)(osi_protocol_t protocol,
+                                               u32 node_index);
+
+static clib_error_t *
+lcp_osi_init (vlib_main_t *vm)
+{
+  clib_error_t *error = NULL;
+  osi_register_input_protocol_fn fn;
+
+  fn = (osi_register_input_protocol_fn)
+       vlib_get_plugin_symbol("osi_plugin.so", "osi_register_input_protocol");
+
+  if (fn == NULL)
+    {
+      error = clib_error_return(0, "osi_register_input_protocol not found in osi_plugin.so");
+      return error;
+    }
+
+  fn(OSI_PROTOCOL_isis, l2_punt_node.index);
+
+  return NULL;
+}
+
+VLIB_INIT_FUNCTION (lcp_osi_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
