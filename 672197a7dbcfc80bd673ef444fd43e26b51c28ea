@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "953b0fd9_72a0cc37",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2025-11-06T17:00:30Z",
+      "side": 1,
+      "message": "Ivan\u0027s +1 -\u003e +2",
+      "revId": "672197a7dbcfc80bd673ef444fd43e26b51c28ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
