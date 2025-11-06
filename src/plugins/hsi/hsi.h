@@ -26,6 +26,7 @@ typedef enum _hsi_error
   HSI_N_ERROR,
 } hsi_error_t;
 
-__clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4);
+__clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
+					u8 is_enable);
 
 #endif /* SRC_PLUGINS_HSI_HSI_H_ */

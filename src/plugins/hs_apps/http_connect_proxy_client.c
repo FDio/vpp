@@ -122,7 +122,8 @@ typedef struct
   hcpc_wrk_stats_t stats;
 } hcpc_worker_t;
 
-typedef void (*hsi_intercept_proto_fn) (transport_proto_t proto, u8 is_ip4);
+typedef void (*hsi_intercept_proto_fn) (transport_proto_t proto, u8 is_ip4,
+					u8 is_enable);
 
 typedef enum
 {
@@ -748,13 +749,15 @@ hcpc_listen (hcpc_listener_t *l)
 	{
 	  if (l->sep.ip.ip4.as_u32 != 0)
 	    return;
-	  hcpcm->intercept_proto_fn (l->sep.transport_proto, 1);
+	  hcpcm->intercept_proto_fn (l->sep.transport_proto, 1,
+				     1 /* is_enable */);
 	}
       else
 	{
 	  if (!(l->sep.ip.ip6.as_u64[0] == 0 || l->sep.ip.ip6.as_u64[1] == 0))
 	    return;
-	  hcpcm->intercept_proto_fn (l->sep.transport_proto, 0);
+	  hcpcm->intercept_proto_fn (l->sep.transport_proto, 0,
+				     1 /* is_enable */);
 	}
     }
 }
@@ -786,10 +789,12 @@ hcpc_http_stop_listeners ()
       if (l->sep.port == 0)
 	{
 	  if (l->sep.is_ip4 && l->sep.ip.ip4.as_u32 == 0)
-	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0);
+	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0,
+				       0 /* is_enable */);
 	  else if (!l->sep.is_ip4 && l->sep.ip.ip6.as_u64[0] == 0 &&
 		   l->sep.ip.ip6.as_u64[1] == 0)
-	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0);
+	    hcpcm->intercept_proto_fn (l->sep.transport_proto, 0,
+				       0 /* is_enable */);
 	}
 
       vnet_unlisten_args_t a = { .handle = l->session_handle,
