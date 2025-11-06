@@ -89,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3094db39_b1aa1fec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2025-11-06T10:48:32Z",
+      "side": 1,
+      "message": "I\u0027d like to clarify more on the possibility of using atomic operations in this particular case.\n\n\u003e For the race condition of a simple variable, it makes more sense to use atomic operations and not spinlock [...]\n\nThe point is that this patch doesn\u0027t fix a race condition of a simple variable. It fixes a race of the decision-making procedure. Basically, we can divide the procedure on these three steps: (1) read the controlling variables, (2) make the decision based on them, and (3) write/reset the controlling variables. And the bigger the gap is between (1) and (3), the higher are the chances for the race. In order to fix the race, the whole procedure needs to happen as a single, uninterrupted step. This is what the spinlock does. Otherwise, we can\u0027t fully eliminate the race. Even if we make (1) and (3) atomic, it doesn\u0027t guarantee that the whole decision will be atomic. It would still be possible for two threads to atomically read the variables about the same time, duplicate the decision, and atomically write/reset the variables.\n\nI guess the race may be fixed not using a spinlock. One of the ways I can think of is to make (1) atomic and do atomic compare-and-swap on step (3). Then, if (3) succedes, meaning the values we have read on step (1) are still valid, we can proceed to the syscall. If it fails, meaning the other thread has changed the values since our read, we can tell what exactly has changed (time or the number), whether our decision is still actual or the other thread outperformed us and we should skip the syscall. However, there will likely be needed a version of compare-and-swap that can work with 128 bit values to be able to reset the controlling variables in one step (they are f64 and u16). And such version may not be supported.",
+      "parentUuid": "696a4ff9_04e0cf12",
+      "revId": "1e08ee2a4620ffbbeece38d4433f4adac0ba03f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "440fec1f_d2a8d228",
