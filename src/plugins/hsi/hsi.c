@@ -447,20 +447,31 @@ VNET_FEATURE_INIT (hsi6_out_feature, static) = {
 };
 
 void
-hsi_intercept_proto (transport_proto_t proto, u8 is_ip4)
+hsi_intercept_proto (transport_proto_t proto, u8 is_ip4, u8 is_enable)
 {
   hsi_main_t *hm = &hsi_main;
   session_endpoint_t sep = { .transport_proto = proto, .is_ip4 = is_ip4 };
   session_t *ls;
 
   ls = session_lookup_listener_wildcard (0, &sep);
-  if (ls)
+  if (!ls)
+    return;
+
+  if (is_enable)
     {
       if (proto == TRANSPORT_PROTO_TCP)
 	hm->intercept_listeners[!is_ip4][proto] = ls->connection_index;
       else
 	hm->intercept_listeners[!is_ip4][proto] = ls->handle;
       hm->intercept_type |= hsi_intercept_proto_flag (proto, is_ip4);
+    }
+  else
+    {
+      if (proto == TRANSPORT_PROTO_TCP)
+	hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
+      else
+	hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
+      hm->intercept_type &= ~hsi_intercept_proto_flag (proto, is_ip4);
     }
 }
 
@@ -470,28 +481,33 @@ hsi_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
+  u8 is_enable = 1;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "intercept tcp"))
+      if (unformat (line_input, "disable"))
 	{
-	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
-	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
+	  is_enable = 0;
+	}
+      else if (unformat (line_input, "intercept tcp"))
+	{
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1 /* is_ip4 */, is_enable);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0 /* is_ip4 */, is_enable);
 	}
       else if (unformat (line_input, "intercept udp"))
 	{
-	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
-	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1 /* is_ip4 */, is_enable);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0 /* is_ip4 */, is_enable);
 	}
       else if (unformat (line_input, "intercept all"))
 	{
-	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1);
-	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0);
-	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1);
-	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 1 /* is_ip4 */, is_enable);
+	  hsi_intercept_proto (TRANSPORT_PROTO_TCP, 0 /* is_ip4 */, is_enable);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 1 /* is_ip4 */, is_enable);
+	  hsi_intercept_proto (TRANSPORT_PROTO_UDP, 0 /* is_ip4 */, is_enable);
 	}
       else
 	{
