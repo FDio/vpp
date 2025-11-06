@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b935e01_88152c01",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-06T11:22:59Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "abb0589b10da25ae158e7a25f4d049180d6e4a90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5a5dfe88_0ce3f681",
@@ -49,6 +66,24 @@
       "side": 1,
       "message": "this should stay as it was, we need to be sure that both sides of proxy are cleanup properly",
       "parentUuid": "5a5dfe88_0ce3f681",
+      "revId": "abb0589b10da25ae158e7a25f4d049180d6e4a90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "de8fd0b7_e833a4de",
+        "filename": "test-c/hs-test/proxy_test.go",
+        "patchSetId": 20
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-06T11:22:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c6a8457a_8c0a583b",
       "revId": "abb0589b10da25ae158e7a25f4d049180d6e4a90",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
