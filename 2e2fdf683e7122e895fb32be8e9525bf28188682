@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aebd6303_0a9b62e5",
+        "filename": "test-c/hs-test/ldp_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-06T13:47:25Z",
+      "side": 1,
+      "message": "No clue, LdpIperfUdpReorderTest just hangs sometimes, last 3 lines of server logs are missing.",
+      "parentUuid": "5710a1d7_be0bfe70",
+      "revId": "2e2fdf683e7122e895fb32be8e9525bf28188682",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d1522297_2aad1dfd",
         "filename": "test-c/hs-test/proxy_test.go",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-05T19:46:36Z",
       "side": 1,
       "message": "no server log printed here?",
+      "revId": "2e2fdf683e7122e895fb32be8e9525bf28188682",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "537e705c_17e3b9df",
+        "filename": "test-c/hs-test/proxy_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-06T13:47:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1522297_2aad1dfd",
       "revId": "2e2fdf683e7122e895fb32be8e9525bf28188682",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
