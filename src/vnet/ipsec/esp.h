@@ -53,32 +53,6 @@ typedef CLIB_PACKED (struct {
   esp_header_t esp;
 }) ip6_and_esp_header_t;
 
-/**
- * AES counter mode nonce
- */
-typedef struct
-{
-  u32 salt;
-  u64 iv;
-  u32 ctr; /* counter: 1 in big-endian for ctr, unused for gcm */
-} __clib_packed esp_ctr_nonce_t;
-
-STATIC_ASSERT_SIZEOF (esp_ctr_nonce_t, 16);
-
-/**
- * AES GCM Additional Authentication data
- */
-typedef struct esp_aead_t_
-{
-  /**
-   * for GCM: when using ESN it's:
-   *   SPI, seq-hi, seg-low
-   * else
-   *   SPI, seq-low
-   */
-  u32 data[3];
-} __clib_packed esp_aead_t;
-
 u8 *format_esp_header (u8 * s, va_list * args);
 
 /* TODO seq increment should be atomic to be accessed by multiple workers */
@@ -248,6 +222,131 @@ STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
 #define esp_post_data2(b) \
     ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
         + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
+
+/* IPsec IV generation: IV requirements differ depending on the encryption
+ * mode: IVs must be unpredictable for AES-CBC whereas it can be predictable
+ * but should never be reused with the same key material for CTR/GCM.
+ * To avoid IV reuse across VPP instances and restarts we rely on a PRNG.
+ * To ensure the IV is unpredictable for CBC it is then encrypted using the
+ * same key as the message. See NIST SP800-38a/SP800-38d for details. */
+static_always_inline void *
+esp_generate_iv (ipsec_sa_outb_rt_t *ort, void *payload, int iv_sz)
+{
+  ASSERT (iv_sz >= sizeof (u64));
+  u8 *iv_ptr = (u8 *) payload - iv_sz;
+  u64 *iv = (u64 *) iv_ptr;
+  clib_memset_u8 (iv, 0, iv_sz);
+  *iv = clib_pcg64i_random_r (&ort->iv_prng);
+  return iv;
+}
+
+static_always_inline esp_ctr_nonce_t *
+ipsec_setup_ctr_nonce (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
+		       void *pkt_iv, u32 hdr_len)
+{
+  u8 *iv = (u8 *) pkt_iv;
+  esp_ctr_nonce_t *nonce =
+    (esp_ctr_nonce_t *) (iv - hdr_len - sizeof (*nonce));
+  *nonce = ort->ctr_nonce_tmpl;
+  nonce->iv = *(u64 *) pkt_iv;
+  op->iv = (u8 *) nonce;
+  return nonce;
+}
+
+static_always_inline void
+ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
+			 u8 *payload, u16 payload_len, u8 *aad,
+			 esp_header_t *esp)
+{
+  u32 seq_hi = ort->seq64 >> 32;
+  esp_aead_t *aad_t = (esp_aead_t *) aad;
+
+  *aad_t = ort->aad_tmpl;
+  esp_aad_fill ((u8 *) aad_t, esp, ort->use_esn, seq_hi);
+  op->aad = aad;
+  op->tag = payload + payload_len - ort->integ_icv_size;
+}
+
+static_always_inline u32
+esp_encrypt_chain_crypto (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
+			  vlib_buffer_t *b, vlib_buffer_t *lb, u8 icv_sz,
+			  u8 *start, u32 start_len, u16 *n_ch)
+{
+  vnet_crypto_op_chunk_t *ch;
+  vlib_buffer_t *cb = b;
+  u32 n_chunks = 1;
+  u32 total_len;
+  vec_add2 (ptd->chunks, ch, 1);
+  total_len = ch->len = start_len;
+  ch->src = ch->dst = start;
+  cb = vlib_get_buffer (vm, cb->next_buffer);
+
+  while (1)
+    {
+      vec_add2 (ptd->chunks, ch, 1);
+      n_chunks += 1;
+      if (lb == cb)
+	total_len += ch->len = cb->current_length - icv_sz;
+      else
+	total_len += ch->len = cb->current_length;
+      ch->src = ch->dst = vlib_buffer_get_current (cb);
+
+      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
+      cb = vlib_get_buffer (vm, cb->next_buffer);
+    }
+
+  if (n_ch)
+    *n_ch = n_chunks;
+
+  return total_len;
+}
+
+static_always_inline u32
+esp_encrypt_chain_integ (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
+			 ipsec_sa_outb_rt_t *ort, vlib_buffer_t *b,
+			 vlib_buffer_t *lb, u8 icv_sz, u8 *start,
+			 u32 start_len, u8 *digest, u16 *n_ch)
+{
+  vnet_crypto_op_chunk_t *ch;
+  vlib_buffer_t *cb = b;
+  u32 n_chunks = 1;
+  u32 total_len;
+  vec_add2 (ptd->chunks, ch, 1);
+  total_len = ch->len = start_len;
+  ch->src = start;
+  cb = vlib_get_buffer (vm, cb->next_buffer);
+
+  while (1)
+    {
+      vec_add2 (ptd->chunks, ch, 1);
+      n_chunks += 1;
+      if (lb == cb)
+	{
+	  total_len += ch->len = cb->current_length - icv_sz;
+	  if (ort->use_esn)
+	    {
+	      *(u32u *) digest = clib_net_to_host_u32 (ort->seq64 >> 32);
+	      ch->len += sizeof (u32);
+	      total_len += sizeof (u32);
+	    }
+	}
+      else
+	total_len += ch->len = cb->current_length;
+      ch->src = vlib_buffer_get_current (cb);
+
+      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
+      cb = vlib_get_buffer (vm, cb->next_buffer);
+    }
+
+  if (n_ch)
+    *n_ch = n_chunks;
+
+  return total_len;
+}
 
 typedef struct
 {

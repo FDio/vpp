@@ -293,8 +293,7 @@ STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 #define foreach_crypto_handler_type                                           \
   _ (SIMPLE, "simple")                                                        \
   _ (CHAINED, "chained")                                                      \
-  _ (ASYNC, "async")                                                          \
-  _ (THREAD_SAFE, "thread-safe")
+  _ (ASYNC, "async")
 
 typedef enum
 {

@@ -121,7 +121,6 @@ typedef struct
   const u8 is_aead : 1;
   const u8 is_ctr : 1;
   const u8 is_null_gmac : 1;
-  ipsec_build_op_tmpl_fn_t bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
 } ipsec_main_crypto_alg_t;
 
 typedef struct
@@ -129,7 +128,6 @@ typedef struct
   const vnet_crypto_op_id_t op_id;
   const vnet_crypto_alg_t alg;
   const u8 icv_size;
-  ipsec_build_op_tmpl_fn_t bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
 } ipsec_main_integ_alg_t;
 
 typedef struct
@@ -230,10 +228,6 @@ typedef struct
 
   /* crypto integ data */
   ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
-
-  /* crypto op builder */
-  ipsec_build_op_fn_t op_bldrs[VNET_CRYPTO_OP_N_TYPES]
-			      [VNET_CRYPTO_HANDLER_N_TYPES];
 
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;

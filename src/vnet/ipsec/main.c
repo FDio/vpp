@@ -5,19 +5,6 @@
 #include <vlib/vlib.h>
 #include <vnet/ipsec/ipsec.h>
 
-void
-ipsec_default_build_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
-{
-  /* no-op */
-}
-
-/* full op builder (no-op default) */
-void
-ipsec_default_build_op (IPSEC_BUILD_OP_ARGS)
-{
-  /* no-op */
-}
-
 ipsec_main_t ipsec_main = {
   .crypto_algs = {
     [IPSEC_CRYPTO_ALG_NONE] = {
@@ -26,8 +13,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_NONE,
       .iv_size = 0,
       .block_align = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_DES_CBC] = {
@@ -36,8 +21,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_DES_CBC,
       .iv_size = 8,
       .block_align = 8,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_3DES_CBC] = {
@@ -46,8 +29,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_3DES_CBC,
       .iv_size = 8,
       .block_align = 8,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CBC_128] = {
@@ -56,8 +37,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_128_CBC,
       .iv_size = 16,
       .block_align = 16,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CBC_192] = {
@@ -66,8 +45,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_192_CBC,
       .iv_size = 16,
       .block_align = 16,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CBC_256] = {
@@ -76,8 +53,6 @@ ipsec_main_t ipsec_main = {
       .alg = VNET_CRYPTO_ALG_AES_256_CBC,
       .iv_size = 16,
       .block_align = 16,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CTR_128] = {
@@ -87,8 +62,6 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CTR_192] = {
@@ -98,8 +71,6 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_CTR_256] = {
@@ -109,8 +80,6 @@ ipsec_main_t ipsec_main = {
       .iv_size = 8,
       .block_align = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_128] = {
@@ -122,8 +91,6 @@ ipsec_main_t ipsec_main = {
       .icv_size = 16,
       .is_aead = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_192] = {
@@ -135,8 +102,6 @@ ipsec_main_t ipsec_main = {
       .icv_size = 16,
       .is_aead = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_GCM_256] = {
@@ -148,8 +113,6 @@ ipsec_main_t ipsec_main = {
       .icv_size = 16,
       .is_aead = 1,
       .is_ctr = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_CHACHA20_POLY1305] = {
@@ -160,8 +123,6 @@ ipsec_main_t ipsec_main = {
       .icv_size = 16,
       .is_ctr = 1,
       .is_aead = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128] = {
@@ -174,8 +135,6 @@ ipsec_main_t ipsec_main = {
       .is_ctr = 1,
       .is_aead = 1,
       .is_null_gmac = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192] = {
@@ -188,8 +147,6 @@ ipsec_main_t ipsec_main = {
       .is_ctr = 1,
       .is_aead = 1,
       .is_null_gmac = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256] = {
@@ -202,8 +159,6 @@ ipsec_main_t ipsec_main = {
       .is_ctr = 1,
       .is_aead = 1,
       .is_null_gmac = 1,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_enc_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
   },
   .integ_algs = {
@@ -211,62 +166,41 @@ ipsec_main_t ipsec_main = {
       .op_id = VNET_CRYPTO_OP_NONE,
       .alg = VNET_CRYPTO_ALG_NONE,
       .icv_size = 0,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
     [IPSEC_INTEG_ALG_MD5_96] = {
       .op_id = VNET_CRYPTO_OP_MD5_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_MD5,
       .icv_size = 12,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_INTEG_ALG_SHA1_96] = {
       .op_id = VNET_CRYPTO_OP_SHA1_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
       .icv_size = 12,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_INTEG_ALG_SHA_256_96] = {
       .op_id = VNET_CRYPTO_OP_SHA1_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
       .icv_size = 12,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_INTEG_ALG_SHA_256_128] = {
       .op_id = VNET_CRYPTO_OP_SHA256_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_SHA256,
       .icv_size = 16,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_INTEG_ALG_SHA_384_192] = {
       .op_id = VNET_CRYPTO_OP_SHA384_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_SHA384,
       .icv_size = 24,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
 
     [IPSEC_INTEG_ALG_SHA_512_256] = {
       .op_id = VNET_CRYPTO_OP_SHA512_HMAC,
       .alg = VNET_CRYPTO_ALG_HMAC_SHA512,
       .icv_size = 32,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op_tmpl,
-      .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
   },
-  .op_bldrs = {
-    [VNET_CRYPTO_OP_TYPE_ENCRYPT] = {
-      [VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op,
-      [VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op,
-      [VNET_CRYPTO_HANDLER_TYPE_ASYNC] = ipsec_default_build_op,
-    },
-  }
 };

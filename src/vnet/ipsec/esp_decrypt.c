@@ -509,12 +509,11 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   vnet_crypto_op_t **ops;
   vnet_crypto_op_t _op, *op = &_op;
   const u8 esp_sz = sizeof (esp_header_t);
-  const vnet_crypto_op_t *tmpl = irt->op_tmpl;
 
   if (irt->key_index == ~0 || !irt->op_id)
     return ESP_DECRYPT_ERROR_RX_PKTS;
 
-  clib_memcpy_fast (op, tmpl + VNET_CRYPTO_HANDLER_TYPE_SIMPLE, sizeof (*op));
+  clib_memcpy_fast (op, &irt->op_tmpl_simple, sizeof (*op));
   op->user_data = index;
 
   if (irt->integ_icv_size && !irt->is_aead)
@@ -524,14 +523,13 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 
       if (pd->is_chain)
 	{
-	  clib_memcpy_fast (op, tmpl + VNET_CRYPTO_HANDLER_TYPE_CHAINED,
-			    sizeof (*op));
+	  clib_memcpy_fast (op, &irt->op_tmpl_chained, sizeof (*op));
 	  op->user_data = index;
 	  ops = &ptd->chained_crypto_ops;
 	  integ_len = pd->current_length;
 	}
 
-      op->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
       op->digest = payload + len;
       op->digest_len = icv_sz;
       op->integ_src = payload;
@@ -601,15 +599,19 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  esp_ctr_nonce_t *nonce =
 	    (esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz -
 				 sizeof (*nonce));
+	  *nonce = irt->ctr_nonce_tmpl;
 	  if (irt->is_aead)
 	    {
 	      /* constuct aad in a scratch space in front of the nonce */
 	      esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
-	      op->aad = (u8 *) nonce - sizeof (esp_aead_t);
-	      op->aad_len =
-		esp_aad_fill (op->aad, esp0, irt->use_esn, pd->seq_hi);
+	      esp_aead_t *aad_t =
+		(esp_aead_t *) ((u8 *) nonce - sizeof (esp_aead_t));
+	      *aad_t = irt->aad_tmpl;
+	      esp_aad_fill ((u8 *) aad_t, esp0, irt->use_esn, pd->seq_hi);
+	      op->aad = (u8 *) aad_t;
+	      op->aad_len = irt->aad_len;
 	      op->tag = payload + len;
-	      op->tag_len = 16;
+	      op->tag_len = icv_sz;
 	      if (PREDICT_FALSE (irt->is_null_gmac))
 		{
 		  /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
@@ -619,9 +621,8 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	    }
 	  else
 	    {
-	      nonce->ctr = clib_host_to_net_u32 (1);
+	      /* ctr preset in template */
 	    }
-	  nonce->salt = irt->salt;
 	  ASSERT (sizeof (u64) == iv_sz);
 	  nonce->iv = *(u64 *) op->iv;
 	  op->iv = (u8 *) nonce;
@@ -738,12 +739,16 @@ out:
       /* construct nonce in a scratch space in front of the IP header */
       esp_ctr_nonce_t *nonce =
 	(esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz - sizeof (*nonce));
+      *nonce = irt->ctr_nonce_tmpl;
       if (irt->is_aead)
 	{
 	  /* constuct aad in a scratch space in front of the nonce */
 	  esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
-	  aad = (u8 *) nonce - sizeof (esp_aead_t);
-	  esp_aad_fill (aad, esp0, irt->use_esn, pd->seq_hi);
+	  esp_aead_t *aad_t =
+	    (esp_aead_t *) ((u8 *) nonce - sizeof (esp_aead_t));
+	  *aad_t = irt->aad_tmpl;
+	  esp_aad_fill ((u8 *) aad_t, esp0, irt->use_esn, pd->seq_hi);
+	  aad = (u8 *) aad_t;
 	  tag = payload + len;
 	  if (PREDICT_FALSE (irt->is_null_gmac))
 	    {
@@ -754,9 +759,8 @@ out:
 	}
       else
 	{
-	  nonce->ctr = clib_host_to_net_u32 (1);
+	  /* ctr preset in template */
 	}
-      nonce->salt = irt->salt;
       ASSERT (sizeof (u64) == iv_sz);
       nonce->iv = *(u64 *) iv;
       iv = (u8 *) nonce;
