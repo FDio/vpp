@@ -306,7 +306,6 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
   if (ipsec_sa_get_outb_rt (sa))
     {
       ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
-      ort->use_anti_replay = ipsec_sa_is_set_USE_ANTI_REPLAY (sa);
       ort->use_esn = ipsec_sa_is_set_USE_ESN (sa);
       ort->is_ctr = alg->is_ctr;
       ort->is_aead = alg->is_aead;
