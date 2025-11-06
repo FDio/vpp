@@ -45,26 +45,37 @@ ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
       return;
     }
 
-  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
-		       irt->op_id);
-  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],
-		       irt->op_id);
+  vnet_crypto_op_t *simple = &irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *chained = &irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
 
-  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].key_index = irt->key_index;
-  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].key_index = irt->key_index;
+  vnet_crypto_op_init (simple, irt->op_id);
+  vnet_crypto_op_init (chained, irt->op_id);
+
+  simple->key_index = irt->key_index;
+  chained->key_index = irt->key_index;
+  simple->aad_len = chained->aad_len = irt->is_aead ? irt->aad_len : 0;
 
   if (irt->integ_icv_size && !irt->is_aead)
     {
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags =
-	VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
+      simple->flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      chained->flags =
 	VNET_CRYPTO_OP_FLAG_HMAC_CHECK | VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      simple->digest_len = chained->digest_len = irt->integ_icv_size;
+      simple->tag_len = chained->tag_len = 0;
     }
   else
     {
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags = 0;
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
-	VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      simple->flags = 0;
+      chained->flags = VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      simple->digest_len = chained->digest_len = 0;
+      if (irt->is_aead)
+	{
+	  simple->tag_len = chained->tag_len = irt->integ_icv_size;
+	}
+      else
+	{
+	  simple->tag_len = chained->tag_len = 0;
+	}
     }
 }
 
@@ -278,15 +289,16 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       irt->salt = sa->salt;
       irt->async_op_id = sa->crypto_async_dec_op_id;
       irt->aad_len = irt->use_esn ? 12 : 8;
-      clib_memset (&irt->ctr_nonce_tmpl, 0, sizeof (irt->ctr_nonce_tmpl));
-      clib_memset (&irt->aad_tmpl, 0, sizeof (irt->aad_tmpl));
       if (irt->is_ctr)
-	{
-	  irt->ctr_nonce_tmpl.salt = irt->salt;
-	  irt->ctr_nonce_tmpl.ctr = clib_host_to_net_u32 (1);
-	}
-      if (irt->is_aead)
-	irt->aad_tmpl.data[0] = clib_host_to_net_u32 (sa->spi);
+	irt->ctr_nonce_tmpl = (esp_ctr_nonce_t){
+	  .salt = irt->salt,
+	  .ctr = clib_host_to_net_u32 (1),
+	};
+      else
+	irt->ctr_nonce_tmpl = (esp_ctr_nonce_t){};
+      irt->aad_tmpl = (esp_aead_t){
+	.data = { irt->is_aead ? clib_host_to_net_u32 (sa->spi) : 0, 0, 0 },
+      };
       ipsec_sa_inb_refresh_op_tmpl (irt);
       ASSERT (irt->cipher_iv_size <= ESP_MAX_IV_SIZE);
     }
@@ -315,24 +327,38 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
       ort->async_op_id = sa->crypto_async_enc_op_id;
       ort->t_dscp = sa->tunnel.t_dscp;
-      clib_memset (&ort->ctr_nonce_tmpl, 0, sizeof (ort->ctr_nonce_tmpl));
-      clib_memset (&ort->aad_tmpl, 0, sizeof (ort->aad_tmpl));
       if (ort->is_ctr)
+	ort->ctr_nonce_tmpl = (esp_ctr_nonce_t){
+	  .salt = ort->salt,
+	  .ctr = clib_host_to_net_u32 (1),
+	};
+      else
+	ort->ctr_nonce_tmpl = (esp_ctr_nonce_t){};
+
+      ort->aad_tmpl = (esp_aead_t){
+	.data = { ort->is_aead ? ort->spi_be : 0, 0, 0 },
+      };
+      vnet_crypto_op_t *simple =
+	ort->op_tmpl + VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
+      vnet_crypto_op_t *chained =
+	ort->op_tmpl + VNET_CRYPTO_HANDLER_TYPE_CHAINED;
+
+      vnet_crypto_op_init (simple, ort->op_id);
+      vnet_crypto_op_init (chained, ort->op_id);
+      simple->key_index = chained->key_index = ort->key_index;
+      chained->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      simple->aad_len = chained->aad_len = ort->is_aead ? ort->aad_len : 0;
+      if (ort->integ_icv_size && !ort->is_aead)
 	{
-	  ort->ctr_nonce_tmpl.salt = ort->salt;
-	  ort->ctr_nonce_tmpl.ctr = clib_host_to_net_u32 (1);
+	  simple->digest_len = chained->digest_len = ort->integ_icv_size;
+	  simple->tag_len = chained->tag_len = 0;
 	}
-      if (ort->is_aead)
-	ort->aad_tmpl.data[0] = ort->spi_be;
-      vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
-			   ort->op_id);
-      vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],
-			   ort->op_id);
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].key_index = ort->key_index;
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].key_index =
-	ort->key_index;
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags |=
-	VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      else
+	{
+	  u8 tag_len = ort->is_aead ? ort->integ_icv_size : 0;
+	  simple->digest_len = chained->digest_len = 0;
+	  simple->tag_len = chained->tag_len = tag_len;
+	}
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT] =
 	im->crypto_algs[sa->crypto_alg].bld_enc_op_tmpl;
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC] =
