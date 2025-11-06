@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2452ca17_1e98952c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2025-11-06T23:30:00Z",
+      "side": 1,
+      "message": "Hi Dave,\n\nCould you approve this patch? It reverts an earlier patch to fix a problem introduced in 25.10 with linux-cp. Details are in vpp-dev threads:\n\n- https://lists.fd.io/g/vpp-dev/topic/setting_up_vpp_with_linux_cp/116118759\n- https://lists.fd.io/g/vpp-dev/topic/lcp_regression_was_re/116147008\n\nThanks,\n-Matt",
+      "revId": "c9f86ce9ff75d7075f26cc456077fe726fc3337b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
