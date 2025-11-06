@@ -1,15 +1,19 @@
 package kube_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func boolPtr(b bool) *bool {
@@ -18,6 +22,10 @@ func boolPtr(b bool) *bool {
 
 func int64Ptr(integer int64) *int64 {
 	return &integer
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
 }
 
 func GetTestFilename() string {
@@ -199,4 +207,75 @@ func (s *BaseSuite) handleNewVarsFile() error {
 			"To create it, please set both CALICOVPP_INTERFACE and CALICOVPP_VERSION env vars", EnvVarsFile)
 	}
 	return nil
+}
+
+// findNodePod finds a pod with the given prefix running on the specified node
+func (s *BaseSuite) findNodePod(nodeName, podPrefix, namespace string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	s.Log("Searching for pods with prefix '%s' in namespace '%s' on node '%s'", podPrefix, namespace, nodeName)
+
+	pods, err := s.ClientSet.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+	})
+	if err != nil {
+		s.Log("Failed to list pods in namespace %s: %v", namespace, err)
+		return "", err
+	}
+
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, podPrefix) {
+			s.Log("Found pod %s on node %s", pod.Name, nodeName)
+			return pod.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("pod with prefix '%s' not found on node '%s' in namespace '%s'", podPrefix, nodeName, namespace)
+}
+
+// execInContainer executes a command in the given container within the specified pod
+func (s *BaseSuite) execInContainer(namespace, podName, containerName string, command ...string) ([]byte, error) {
+	kubectlArgs := append([]string{
+		"exec",
+		"-n", namespace,
+		"-c", containerName,
+		podName,
+		"--",
+	}, command...)
+
+	cmd := exec.Command("kubectl", kubectlArgs...)
+	s.Log(cmd.String())
+	return cmd.CombinedOutput()
+}
+
+// ExecInKubeContainer executes a command in a container on a Kubernetes node
+// This uses kubectl exec to access pods running on the specified Kubernetes node
+// nodeName: name of the Kubernetes node (e.g., "kind-worker", "kind-worker2")
+// containerName: name of the container within the pod (e.g., "vpp", "agent")
+// command: the command to execute as separate arguments
+func (s *BaseSuite) ExecInKubeContainer(nodeName, containerName string, command ...string) ([]byte, error) {
+	// Find the Calico VPP pod on the specified node
+	podName, err := s.findNodePod(nodeName, "calico-vpp-node", "calico-vpp-dataplane")
+	if err != nil {
+		s.Log("Failed to find Calico VPP pod on %s: %v", nodeName, err)
+		return nil, err
+	}
+
+	// Execute the command in the pod
+	output, err := s.execInContainer("calico-vpp-dataplane", podName, containerName, command...)
+	if err != nil {
+		s.Log("Command failed on %s in container %s: %v", nodeName, containerName, err)
+		return output, err
+	}
+
+	return output, nil
+}
+
+// ExecVppctlInKubeNode executes a vppctl command in the VPP container on a Kubernetes node
+func (s *BaseSuite) ExecVppctlInKubeNode(nodeName string, vppctlArgs ...string) ([]byte, error) {
+	command := []string{"/usr/bin/vppctl", "-s", "/var/run/vpp/cli.sock"}
+	command = append(command, vppctlArgs...)
+
+	return s.ExecInKubeContainer(nodeName, "vpp", command...)
 }
