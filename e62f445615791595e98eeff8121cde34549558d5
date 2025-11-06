@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d060db9c_c1740093",
+        "filename": "test-c/hs-test/infra/suite_nginx_proxy.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-06T15:22:35Z",
+      "side": 0,
+      "message": "this was working just because we don\u0027t check return value in nginxMirroring? please add assert to nginxMirroring",
+      "revId": "e62f445615791595e98eeff8121cde34549558d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

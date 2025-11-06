@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a92713c4_173907c0",
+        "filename": "test-c/hs-test/cut-thru_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-06T15:22:35Z",
+      "side": 1,
+      "message": "in redisCutThru you don\u0027t use ToLower(o)",
+      "revId": "add22f11840caf8812256d8660b6236a42b5d226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
