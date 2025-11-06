@@ -26,6 +26,20 @@
 #define ESP_MAX_IV_SIZE	   (16)
 #define ESP_MAX_BLOCK_SIZE (16)
 
+typedef struct
+{
+  u32 salt;
+  u64 iv;
+  u32 ctr; /* counter: 1 in big-endian for ctr, unused for gcm */
+} __clib_packed esp_ctr_nonce_t;
+
+STATIC_ASSERT_SIZEOF (esp_ctr_nonce_t, 16);
+
+typedef struct
+{
+  u32 data[3];
+} __clib_packed esp_aead_t;
+
 #define foreach_ipsec_crypto_alg                                              \
   _ (0, NONE, "none")                                                         \
   _ (1, AES_CBC_128, "aes-cbc-128")                                           \
@@ -158,10 +172,13 @@ typedef struct
   u8 udp_sz;
   u8 esp_advance;
   u8 tail_base;
+  u8 aad_len;
   clib_thread_index_t thread_index;
   u32 salt;
   u64 seq64;
   u16 async_op_id;
+  esp_ctr_nonce_t ctr_nonce_tmpl;
+  esp_aead_t aad_tmpl;
   vnet_crypto_key_index_t key_index;
   vnet_crypto_op_t op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
   u32 anti_replay_window_size;
@@ -209,6 +226,7 @@ typedef struct ipsec_sa_outb_rt_t_
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
+  u8 aad_len;
   ip_dscp_t t_dscp;
   tunnel_encap_decap_flags_t tunnel_flags;
   clib_thread_index_t thread_index;
@@ -216,6 +234,8 @@ typedef struct ipsec_sa_outb_rt_t_
   u32 salt;
   u32 spi_be;
   u64 seq64;
+  esp_ctr_nonce_t ctr_nonce_tmpl;
+  esp_aead_t aad_tmpl;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
   vnet_crypto_key_index_t key_index;

@@ -277,6 +277,16 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       irt->tail_base = sizeof (esp_footer_t) + irt->integ_icv_size;
       irt->salt = sa->salt;
       irt->async_op_id = sa->crypto_async_dec_op_id;
+      irt->aad_len = irt->use_esn ? 12 : 8;
+      clib_memset (&irt->ctr_nonce_tmpl, 0, sizeof (irt->ctr_nonce_tmpl));
+      clib_memset (&irt->aad_tmpl, 0, sizeof (irt->aad_tmpl));
+      if (irt->is_ctr)
+	{
+	  irt->ctr_nonce_tmpl.salt = irt->salt;
+	  irt->ctr_nonce_tmpl.ctr = clib_host_to_net_u32 (1);
+	}
+      if (irt->is_aead)
+	irt->aad_tmpl.data[0] = clib_host_to_net_u32 (sa->spi);
       ipsec_sa_inb_refresh_op_tmpl (irt);
       ASSERT (irt->cipher_iv_size <= ESP_MAX_IV_SIZE);
     }
@@ -298,12 +308,22 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
       ort->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
       ort->integ_icv_size = integ_icv_size;
+      ort->aad_len = ort->use_esn ? 12 : 8;
       ort->salt = sa->salt;
       ort->spi_be = clib_host_to_net_u32 (sa->spi);
       ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;
       ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
       ort->async_op_id = sa->crypto_async_enc_op_id;
       ort->t_dscp = sa->tunnel.t_dscp;
+      clib_memset (&ort->ctr_nonce_tmpl, 0, sizeof (ort->ctr_nonce_tmpl));
+      clib_memset (&ort->aad_tmpl, 0, sizeof (ort->aad_tmpl));
+      if (ort->is_ctr)
+	{
+	  ort->ctr_nonce_tmpl.salt = ort->salt;
+	  ort->ctr_nonce_tmpl.ctr = clib_host_to_net_u32 (1);
+	}
+      if (ort->is_aead)
+	ort->aad_tmpl.data[0] = ort->spi_be;
       vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
 			   ort->op_id);
       vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],

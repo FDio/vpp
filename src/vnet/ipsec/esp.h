@@ -53,32 +53,6 @@ typedef CLIB_PACKED (struct {
   esp_header_t esp;
 }) ip6_and_esp_header_t;
 
-/**
- * AES counter mode nonce
- */
-typedef struct
-{
-  u32 salt;
-  u64 iv;
-  u32 ctr; /* counter: 1 in big-endian for ctr, unused for gcm */
-} __clib_packed esp_ctr_nonce_t;
-
-STATIC_ASSERT_SIZEOF (esp_ctr_nonce_t, 16);
-
-/**
- * AES GCM Additional Authentication data
- */
-typedef struct esp_aead_t_
-{
-  /**
-   * for GCM: when using ESN it's:
-   *   SPI, seq-hi, seg-low
-   * else
-   *   SPI, seq-low
-   */
-  u32 data[3];
-} __clib_packed esp_aead_t;
-
 u8 *format_esp_header (u8 * s, va_list * args);
 
 /* TODO seq increment should be atomic to be accessed by multiple workers */
@@ -93,29 +67,6 @@ esp_seq_advance (ipsec_sa_outb_rt_t *ort)
 }
 
 always_inline u16
-esp_aad_fill (u8 *data, const esp_header_t *esp, int use_esn, u32 seq_hi)
-{
-  esp_aead_t *aad;
-
-  aad = (esp_aead_t *) data;
-  aad->data[0] = esp->spi;
-
-  if (use_esn)
-    {
-      /* SPI, seq-hi, seq-low */
-      aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
-      aad->data[2] = esp->seq;
-      return 12;
-    }
-  else
-    {
-      /* SPI, seq-low */
-      aad->data[1] = esp->seq;
-      return 8;
-    }
-}
-
-always_inline u32
 esp_encrypt_err_to_sa_err (u32 err)
 {
   switch (err)

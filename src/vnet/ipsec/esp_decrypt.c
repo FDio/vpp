@@ -601,13 +601,25 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  esp_ctr_nonce_t *nonce =
 	    (esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz -
 				 sizeof (*nonce));
+	  *nonce = irt->ctr_nonce_tmpl;
 	  if (irt->is_aead)
 	    {
 	      /* constuct aad in a scratch space in front of the nonce */
 	      esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
-	      op->aad = (u8 *) nonce - sizeof (esp_aead_t);
-	      op->aad_len =
-		esp_aad_fill (op->aad, esp0, irt->use_esn, pd->seq_hi);
+	      esp_aead_t *aad_t =
+		(esp_aead_t *) ((u8 *) nonce - sizeof (esp_aead_t));
+	      *aad_t = irt->aad_tmpl;
+	      if (irt->use_esn)
+		{
+		  aad_t->data[1] = clib_host_to_net_u32 (pd->seq_hi);
+		  aad_t->data[2] = esp0->seq;
+		}
+	      else
+		{
+		  aad_t->data[1] = esp0->seq;
+		}
+	      op->aad = (u8 *) aad_t;
+	      op->aad_len = irt->aad_len;
 	      op->tag = payload + len;
 	      op->tag_len = 16;
 	      if (PREDICT_FALSE (irt->is_null_gmac))
@@ -619,9 +631,8 @@ esp_decrypt_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	    }
 	  else
 	    {
-	      nonce->ctr = clib_host_to_net_u32 (1);
+	      /* ctr preset in template */
 	    }
-	  nonce->salt = irt->salt;
 	  ASSERT (sizeof (u64) == iv_sz);
 	  nonce->iv = *(u64 *) op->iv;
 	  op->iv = (u8 *) nonce;
@@ -738,12 +749,24 @@ out:
       /* construct nonce in a scratch space in front of the IP header */
       esp_ctr_nonce_t *nonce =
 	(esp_ctr_nonce_t *) (payload - esp_sz - pd->hdr_sz - sizeof (*nonce));
+      *nonce = irt->ctr_nonce_tmpl;
       if (irt->is_aead)
 	{
 	  /* constuct aad in a scratch space in front of the nonce */
 	  esp_header_t *esp0 = (esp_header_t *) (payload - esp_sz);
-	  aad = (u8 *) nonce - sizeof (esp_aead_t);
-	  esp_aad_fill (aad, esp0, irt->use_esn, pd->seq_hi);
+	  esp_aead_t *aad_t =
+	    (esp_aead_t *) ((u8 *) nonce - sizeof (esp_aead_t));
+	  *aad_t = irt->aad_tmpl;
+	  if (irt->use_esn)
+	    {
+	      aad_t->data[1] = clib_host_to_net_u32 (pd->seq_hi);
+	      aad_t->data[2] = esp0->seq;
+	    }
+	  else
+	    {
+	      aad_t->data[1] = esp0->seq;
+	    }
+	  aad = (u8 *) aad_t;
 	  tag = payload + len;
 	  if (PREDICT_FALSE (irt->is_null_gmac))
 	    {
@@ -754,9 +777,8 @@ out:
 	}
       else
 	{
-	  nonce->ctr = clib_host_to_net_u32 (1);
+	  /* ctr preset in template */
 	}
-      nonce->salt = irt->salt;
       ASSERT (sizeof (u64) == iv_sz);
       nonce->iv = *(u64 *) iv;
       iv = (u8 *) nonce;

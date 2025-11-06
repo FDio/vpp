@@ -401,11 +401,25 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       /* construct nonce in a scratch space in front of the IP header */
       esp_ctr_nonce_t *nonce =
 	(esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
+      *nonce = ort->ctr_nonce_tmpl;
+      nonce->iv = *(u64 *) pkt_iv;
       if (ort->is_aead)
 	{
 	  /* constuct aad in a scratch space in front of the nonce */
-	  aad = (u8 *) nonce - sizeof (esp_aead_t);
-	  esp_aad_fill (aad, esp, ort->use_esn, ort->seq64 >> 32);
+	  esp_aead_t *aad_t =
+	    (esp_aead_t *) ((u8 *) nonce - sizeof (esp_aead_t));
+	  *aad_t = ort->aad_tmpl;
+	  if (ort->use_esn)
+	    {
+	      u32 seq_hi = ort->seq64 >> 32;
+	      aad_t->data[1] = clib_host_to_net_u32 (seq_hi);
+	      aad_t->data[2] = esp->seq;
+	    }
+	  else
+	    {
+	      aad_t->data[1] = esp->seq;
+	    }
+	  aad = (u8 *) aad_t;
 	  if (PREDICT_FALSE (ort->is_null_gmac))
 	    {
 	      /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
@@ -413,13 +427,6 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	      crypto_total_len += iv_sz;
 	    }
 	}
-      else
-	{
-	  nonce->ctr = clib_host_to_net_u32 (1);
-	}
-
-      nonce->salt = ort->salt;
-      nonce->iv = *(u64 *) pkt_iv;
       iv = (u8 *) nonce;
     }
   else
@@ -1340,8 +1347,7 @@ ipsec_setup_ctr_nonce (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 {
   esp_ctr_nonce_t *nonce =
     (esp_ctr_nonce_t *) (pkt_iv - hdr_len - sizeof (*nonce));
-  nonce->ctr = clib_host_to_net_u32 (1);
-  nonce->salt = ort->salt;
+  *nonce = ort->ctr_nonce_tmpl;
   nonce->iv = *(u64 *) pkt_iv;
   op->iv = (u8 *) nonce;
   return nonce;
@@ -1365,8 +1371,19 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 			 esp_header_t *esp)
 {
   u32 seq_hi = ort->seq64 >> 32;
+  esp_aead_t *aad_t = (esp_aead_t *) aad;
+  *aad_t = ort->aad_tmpl;
+  if (ort->use_esn)
+    {
+      aad_t->data[1] = clib_host_to_net_u32 (seq_hi);
+      aad_t->data[2] = esp->seq;
+    }
+  else
+    {
+      aad_t->data[1] = esp->seq;
+    }
   op->aad = aad;
-  op->aad_len = esp_aad_fill (op->aad, esp, ort->use_esn, seq_hi);
+  op->aad_len = ort->aad_len;
   op->tag = payload + payload_len - ort->integ_icv_size;
   op->tag_len = ort->integ_icv_size;
 }
