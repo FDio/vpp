@@ -96,16 +96,16 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 void
 ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
 {
-  u32 key_index;
+  vnet_crypto_key_t *key = NULL;
   vnet_crypto_op_id_t inb_op_id, outb_op_id;
   u32 is_async;
 
-      if (sa->linked_key_index != ~0)
-    key_index = sa->linked_key_index;
-      else
-    key_index = sa->crypto_sync_key_index;
+  if (sa->linked_key != NULL)
+    key = sa->linked_key;
+  else
+    key = sa->crypto_sync_key;
 
-      if (is_enabled)
+  if (is_enabled)
     {
       outb_op_id = sa->crypto_async_enc_op_id;
       inb_op_id = sa->crypto_async_dec_op_id;
@@ -113,17 +113,16 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
     }
   else
     {
-      if (key_index == ~0)
-	key_index = sa->integ_sync_key_index;
+      if (!key)
+	key = sa->integ_sync_key;
 
-      if (key_index == ~0)
+      if (!key)
 	{
 	  outb_op_id = sa->crypto_sync_enc_op_id;
 	  inb_op_id = sa->crypto_sync_dec_op_id;
 	}
       else
 	{
-	  vnet_crypto_key_t *key = vnet_crypto_get_key (key_index);
 	  vnet_crypto_op_id_t *op_ids = vnet_crypto_ops_from_alg (key->alg);
 	  outb_op_id = op_ids[VNET_CRYPTO_OP_TYPE_HMAC];
 	  inb_op_id = op_ids[VNET_CRYPTO_OP_TYPE_HMAC];
@@ -140,7 +139,7 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
   if (ipsec_sa_get_inb_rt (sa))
     {
       ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
-      irt->key_index = key_index;
+      irt->key_index = key ? key->index : ~0;
       irt->op_id = inb_op_id;
       irt->is_async = is_async;
     }
@@ -148,7 +147,7 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
   if (ipsec_sa_get_outb_rt (sa))
     {
       ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
-      ort->key_index = key_index;
+      ort->key_index = key ? key->index : ~0;
       ort->op_id = outb_op_id;
       ort->is_async = is_async;
     }
@@ -530,8 +529,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->salt = salt;
-  sa->crypto_sync_key_index = ~0;
-  sa->integ_sync_key_index = ~0;
+  sa->crypto_sync_key = NULL;
+  sa->integ_sync_key = NULL;
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
@@ -545,9 +544,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   if (crypto_alg != IPSEC_CRYPTO_ALG_NONE)
     {
-      sa->crypto_sync_key_index = vnet_crypto_key_add (
+      sa->crypto_sync_key = vnet_crypto_key_add_obj (
 	vm, im->crypto_algs[crypto_alg].alg, (u8 *) ck->data, ck->len);
-      if (~0 == sa->crypto_sync_key_index)
+      if (!sa->crypto_sync_key)
 	{
 	  pool_put (im->sa_pool, sa);
 	  return VNET_API_ERROR_KEY_LENGTH;
@@ -556,9 +555,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
-      sa->integ_sync_key_index = vnet_crypto_key_add (
+      sa->integ_sync_key = vnet_crypto_key_add_obj (
 	vm, im->integ_algs[integ_alg].alg, (u8 *) ik->data, ik->len);
-      if (~0 == sa->integ_sync_key_index)
+      if (!sa->integ_sync_key)
 	{
 	  pool_put (im->sa_pool, sa);
 	  return VNET_API_ERROR_KEY_LENGTH;
@@ -566,11 +565,11 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     }
 
   if (sa->crypto_sync_enc_op_id && sa->integ_sync_op_id)
-    sa->linked_key_index =
-      vnet_crypto_key_add_linked (vm, sa->crypto_sync_key_index,
-				  sa->integ_sync_key_index); // AES-CBC & HMAC
+    sa->linked_key =
+      vnet_crypto_key_add_linked_obj (vm, sa->crypto_sync_key,
+				      sa->integ_sync_key); // AES-CBC & HMAC
   else
-    sa->linked_key_index = ~0;
+    sa->linked_key = NULL;
 
   if (im->async_mode)
     {
@@ -682,8 +681,8 @@ ipsec_sa_del (ipsec_sa_t * sa)
   /* no recovery possible when deleting an SA */
   (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
 
-  if (sa->linked_key_index != ~0)
-    vnet_crypto_key_del (vm, sa->linked_key_index);
+  if (sa->linked_key != NULL)
+    vnet_crypto_key_del_obj (vm, sa->linked_key);
 
   if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
     ipsec_unregister_udp_port (sa->udp_dst_port,
@@ -692,9 +691,9 @@ ipsec_sa_del (ipsec_sa_t * sa)
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&ort->dpo);
   if (sa->crypto_alg != IPSEC_CRYPTO_ALG_NONE)
-    vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
+    vnet_crypto_key_del_obj (vm, sa->crypto_sync_key);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
-    vnet_crypto_key_del (vm, sa->integ_sync_key_index);
+    vnet_crypto_key_del_obj (vm, sa->integ_sync_key);
   foreach_pointer (p, irt, ort)
     if (p)
       clib_mem_free (p);

@@ -247,9 +247,9 @@ typedef struct
   u32 stat_index;
   vnet_crypto_alg_t integ_calg;
   vnet_crypto_alg_t crypto_calg;
-  u32 crypto_sync_key_index;
-  u32 integ_sync_key_index;
-  u32 linked_key_index;
+  vnet_crypto_key_t *crypto_sync_key;
+  vnet_crypto_key_t *integ_sync_key;
+  vnet_crypto_key_t *linked_key;
 
   /* elements with u16 size */
   u16 crypto_sync_enc_op_id;

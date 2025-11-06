@@ -20,6 +20,7 @@
 
 #define VNET_CRYPTO_FRAME_SIZE 64
 #define VNET_CRYPTO_FRAME_POOL_SIZE 1024
+#define VNET_CRYPTO_KEY_NUM_INITIAL 16384
 
 /* CRYPTO_ID, PRETTY_NAME, ARGS*/
 #define foreach_crypto_cipher_alg                                             \
@@ -172,6 +173,7 @@ typedef struct
   u32 index;
   u16 length;
   u8 is_link : 1;
+  u8 is_deleted : 1;
   vnet_crypto_alg_t alg : 8;
   union
   {
@@ -293,8 +295,7 @@ STATIC_ASSERT_SIZEOF (vnet_crypto_op_t, CLIB_CACHE_LINE_BYTES);
 #define foreach_crypto_handler_type                                           \
   _ (SIMPLE, "simple")                                                        \
   _ (CHAINED, "chained")                                                      \
-  _ (ASYNC, "async")                                                          \
-  _ (THREAD_SAFE, "thread-safe")
+  _ (ASYNC, "async")
 
 typedef enum
 {
@@ -449,6 +450,15 @@ typedef struct
 {
   vnet_crypto_key_t **keys;
   u8 keys_lock;
+
+  /* NEW: Memory arena for vnet_crypto_key_t */
+  vnet_crypto_key_t *keys_arena_base; /* fixed-size array */
+  u32 keys_arena_max_keys;	      /* max key count */
+  u32 keys_per_thread;		      /* keys per thread */
+  /* NEW: Bitmap for free slots (1 = free, 0 = occupied) */
+  uword *keys_free_bitmap;
+  u32 num_threads;
+
   u32 crypto_node_index;
   vnet_crypto_thread_t *threads;
   vnet_crypto_frame_dequeue_t **dequeue_handlers;
@@ -486,9 +496,13 @@ typedef struct
 int vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
+vnet_crypto_key_t *vnet_crypto_key_add_obj (vlib_main_t *vm,
+					    vnet_crypto_alg_t alg, u8 *data,
+					    u16 length);
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
+void vnet_crypto_key_del_obj (vlib_main_t *vm, vnet_crypto_key_t *key);
 void vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index);
 
 /**
@@ -498,6 +512,9 @@ void vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index);
 u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
 				vnet_crypto_key_index_t index_crypto,
 				vnet_crypto_key_index_t index_integ);
+vnet_crypto_key_t *
+vnet_crypto_key_add_linked_obj (vlib_main_t *vm, vnet_crypto_key_t *key_crypto,
+				vnet_crypto_key_t *key_integ);
 
 vnet_crypto_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 					 vnet_crypto_alg_t integ_alg);
@@ -535,7 +552,7 @@ static_always_inline vnet_crypto_key_t *
 vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  return cm->keys[index];
+  return &cm->keys_arena_base[index];
 }
 
 /** async crypto inline functions **/
