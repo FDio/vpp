@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "adfd7f4e_b7ce7d6a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-06T17:42:25Z",
+      "side": 1,
+      "message": "Last one",
+      "revId": "7fbc6115edcef8eca61572cc1aa5b88fcbc25915",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29d69454_8b7c27db",
+        "filename": "src/vnet/udp/udp.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-06T17:42:25Z",
+      "side": 1,
+      "message": "This needs to be valid because we have connection",
+      "revId": "7fbc6115edcef8eca61572cc1aa5b88fcbc25915",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
