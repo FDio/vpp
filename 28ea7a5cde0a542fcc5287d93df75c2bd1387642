@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "49b5db22_298a454d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-06T16:07:02Z",
+      "side": 1,
+      "message": "Maxime, let\u0027s have a chat about this",
+      "revId": "28ea7a5cde0a542fcc5287d93df75c2bd1387642",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5ce0af2_3c524780",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2946,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-06T16:07:02Z",
+      "side": 1,
+      "message": "I\u0027d really like to avoid this, the function is used in many places out of tree.",
+      "revId": "28ea7a5cde0a542fcc5287d93df75c2bd1387642",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
