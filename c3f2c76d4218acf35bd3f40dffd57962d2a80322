@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2a4fd22_ab4851b0",
+        "filename": "test-c/kube-test/infra/utils.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-11-06T08:38:19Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0df0140e_99dc0ac4",
+      "range": {
+        "startLine": 227,
+        "startChar": 1,
+        "endLine": 227,
+        "endChar": 78
+      },
+      "revId": "c3f2c76d4218acf35bd3f40dffd57962d2a80322",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "374bbb04_07fbe6c5",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-09-24T15:13:10Z",
       "side": 1,
       "message": "Replace every mention of Kind with Kube or kubernetes. Also, replace \"s \\*KubeSuite\" with \"s \\*BaseSuite\" where possible and suitable.",
+      "range": {
+        "startLine": 202,
+        "startChar": 0,
+        "endLine": 234,
+        "endChar": 66
+      },
+      "revId": "c3f2c76d4218acf35bd3f40dffd57962d2a80322",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "814f5058_c7c45336",
+        "filename": "test-c/kube-test/infra/utils.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2025-11-06T08:38:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "374bbb04_07fbe6c5",
       "range": {
         "startLine": 202,
         "startChar": 0,
