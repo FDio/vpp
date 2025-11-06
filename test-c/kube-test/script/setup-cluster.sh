@@ -5,7 +5,6 @@ COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
 VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%test-c*}
-COMMIT_HASH=$(git rev-parse HEAD)
 reg_name='kind-registry'
 reg_port='5000'
 BASE=${BASE:-"master"}
@@ -88,40 +87,12 @@ push_release_to_registry() {
 }
 
 cherry_pick() {
-  STASHED_CHANGES=0
-  echo "checkpoint: $COMMIT_HASH"
-  # chery-vpp hard resets the repo to a commit - we want to keep our changes
-
-  # disabled for now
-  # if ! git diff --quiet; then
-	#     echo "Saving stash"
-  #     git stash push -u
-  #     STASHED_CHANGES=1
-	# fi
   make -C $CALICOVPP_DIR cherry-vpp FORCE=y BASE=$BASE
-
-  # pop the stash to build VPP with CalicoVPP's patches + our changes
-  # if [ $STASHED_CHANGES -eq 1 ]; then
-	#     git stash pop
-	# fi
 }
 
 build_load_start_cni() {
-  # make -C $VPP_DIR/test-c/kube-test build-vpp-release
   make -C $CALICOVPP_DIR image-kind TAG=latest
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
-}
-
-restore_repo() {
-  # stash changes, reset local repo to the original state and unstash changes (removes CalicoVPP's patches)
-  if ! git diff --quiet; then
-	    echo "Saving stash"
-      git stash push -u
-      git reset --hard $COMMIT_HASH
-      git stash pop
-	else
-    git reset --hard $COMMIT_HASH
-  fi
 }
 
 setup_master() {
@@ -142,11 +113,10 @@ setup_master() {
   connect_registry
   push_calico_to_registry
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
+  while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
   cherry_pick
   build_load_start_cni
-  # temporarily disabled
-  # restore_repo
 }
 
 rebuild_master() {
@@ -154,8 +124,6 @@ rebuild_master() {
   timeout 1m kubectl delete -f kubernetes/kind-calicovpp-config.yaml || true
   cherry_pick
   build_load_start_cni
-  # temporarily disabled
-  # restore_repo
 }
 
 setup_release() {
