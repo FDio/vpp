@@ -797,9 +797,10 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt_by_index (pd->sa_index);
   vlib_buffer_t *lb = b;
-  const u8 esp_sz = sizeof (esp_header_t);
   u8 pad_length = 0, next_header = 0;
   u16 icv_sz;
+  u16 tail_adjust = 0;
+  u16 tail_base = pd->tail_base;
   u64 n_lost;
 
   /*
@@ -842,6 +843,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       lb = pd2->lb;
       icv_sz = pd2->icv_removed ? 0 : pd->icv_sz;
+      tail_adjust = pd2->icv_removed ? pd->icv_sz : 0;
       if (pd2->free_buffer_index)
 	{
 	  vlib_buffer_free_one (vm, pd2->free_buffer_index);
@@ -892,15 +894,15 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
       next_header = f->next_header;
     }
 
-  u16 adv = pd->iv_sz + esp_sz;
-  u16 tail = sizeof (esp_footer_t) + pad_length + icv_sz;
-  u16 tail_orig = sizeof (esp_footer_t) + pad_length + pd->icv_sz;
+  u16 adv = pd->esp_advance;
+  u16 tail = pad_length + tail_base - tail_adjust;
+  u16 tail_orig = pad_length + tail_base;
   b->flags &=
     ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
-  if (pd->is_transport && !is_tun) /* transport mode */
+  if (irt->is_transport && !is_tun) /* transport mode */
     {
-      u8 udp_sz = is_ip6 ? 0 : pd->udp_sz;
+      u8 udp_sz = is_ip6 ? 0 : irt->udp_sz;
       u16 ip_hdr_sz = pd->hdr_sz - udp_sz;
       u8 *old_ip = b->data + pd->current_data - ip_hdr_sz - udp_sz;
       u8 *ip = old_ip + adv + udp_sz;
@@ -1159,8 +1161,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  cpd.icv_sz = irt->integ_icv_size;
 	  cpd.iv_sz = irt->cipher_iv_size;
-	  cpd.udp_sz = irt->udp_sz;
-	  cpd.is_transport = irt->is_transport;
+	  cpd.esp_advance = irt->esp_advance;
+	  cpd.tail_base = irt->tail_base;
 	  cpd.sa_index = current_sa_index;
 	  is_async = irt->is_async;
 	}

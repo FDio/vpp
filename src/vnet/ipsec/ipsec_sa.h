@@ -156,6 +156,8 @@ typedef struct
   u8 cipher_iv_size;
   u8 integ_icv_size;
   u8 udp_sz;
+  u8 esp_advance;
+  u8 tail_base;
   clib_thread_index_t thread_index;
   u32 salt;
   u64 seq64;

@@ -272,7 +272,9 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       irt->is_null_gmac = alg->is_null_gmac;
       irt->op_id = alg->is_null_gmac ? sa->crypto_sync_dec_op_id : irt->op_id;
       irt->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
+      irt->esp_advance = irt->cipher_iv_size + sizeof (esp_header_t);
       irt->integ_icv_size = integ_icv_size;
+      irt->tail_base = sizeof (esp_footer_t) + irt->integ_icv_size;
       irt->salt = sa->salt;
       irt->async_op_id = sa->crypto_async_dec_op_id;
       ipsec_sa_inb_refresh_op_tmpl (irt);

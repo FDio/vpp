@@ -200,8 +200,8 @@ typedef struct
     {
       u8 icv_sz;
       u8 iv_sz;
-      u8 udp_sz;
-      u8 is_transport;
+      u8 esp_advance;
+      u8 tail_base;
       u32 sa_index;
     };
     u64 sa_data;
