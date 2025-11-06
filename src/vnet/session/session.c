@@ -1557,8 +1557,10 @@ session_close (session_t * s)
 void
 session_reset (session_t * s)
 {
-  if (s->session_state >= SESSION_STATE_CLOSING)
+  if (s->flags & SESSION_F_APP_CLOSED)
     return;
+  s->flags |= SESSION_F_APP_CLOSED;
+  s->flags &= ~SESSION_F_CUSTOM_FIFO_TUNING;
   /* Drop all outstanding tx data
    * App might disconnect session before connected, in this case,
    * tx_fifo may not be setup yet, so clear only it's inited. */
