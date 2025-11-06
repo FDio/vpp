@@ -306,7 +306,6 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
   if (ipsec_sa_get_outb_rt (sa))
     {
       ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
-      ort->use_anti_replay = ipsec_sa_is_set_USE_ANTI_REPLAY (sa);
       ort->use_esn = ipsec_sa_is_set_USE_ESN (sa);
       ort->is_ctr = alg->is_ctr;
       ort->is_aead = alg->is_aead;
@@ -338,10 +337,8 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->aad_tmpl = (esp_aead_t){
 	.data = { ort->is_aead ? ort->spi_be : 0, 0, 0 },
       };
-      vnet_crypto_op_t *simple =
-	ort->op_tmpl + VNET_CRYPTO_HANDLER_TYPE_SIMPLE;
-      vnet_crypto_op_t *chained =
-	ort->op_tmpl + VNET_CRYPTO_HANDLER_TYPE_CHAINED;
+      vnet_crypto_op_t *simple = &ort->op_tmpl_simple;
+      vnet_crypto_op_t *chained = &ort->op_tmpl_chained;
 
       vnet_crypto_op_init (simple, ort->op_id);
       vnet_crypto_op_init (chained, ort->op_id);
@@ -365,19 +362,15 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
 	im->integ_algs[sa->integ_alg].bld_integ_op_tmpl;
       if (ort->key_index == ~0 || !ort->op_id || ort->is_async)
 	{
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =
-	    ipsec_default_build_op;
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =
-	    ipsec_default_build_op;
+	  ort->bld_op_simple = ipsec_default_build_op;
+	  ort->bld_op_chained = ipsec_default_build_op;
 	}
       else
 	{
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =
-	    im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-			[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =
-	    im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-			[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+	  ort->bld_op_simple = im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
+					   [VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+	  ort->bld_op_chained = im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
+					    [VNET_CRYPTO_HANDLER_TYPE_CHAINED];
 	}
 
       ASSERT (ort->cipher_iv_size <= ESP_MAX_IV_SIZE);

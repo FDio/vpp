@@ -166,22 +166,23 @@ typedef struct
   u16 is_tunnel : 1;
   u16 is_transport : 1;
   u16 is_async : 1;
+  u16 reserved_flags : 7;
   u16 op_id;
+  clib_thread_index_t thread_index;
+  u16 async_op_id;
+  u32 salt;
+  vnet_crypto_key_index_t key_index;
+  u32 anti_replay_window_size;
   u8 cipher_iv_size;
   u8 integ_icv_size;
   u8 udp_sz;
   u8 esp_advance;
-  u8 tail_base;
-  u8 aad_len;
-  clib_thread_index_t thread_index;
-  u32 salt;
   u64 seq64;
-  u16 async_op_id;
   esp_ctr_nonce_t ctr_nonce_tmpl;
   esp_aead_t aad_tmpl;
-  vnet_crypto_key_index_t key_index;
+  u8 tail_base;
+  u8 aad_len;
   vnet_crypto_op_t op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
-  u32 anti_replay_window_size;
   uword replay_window[];
 } ipsec_sa_inb_rt_t;
 
@@ -189,20 +190,25 @@ typedef struct
 typedef struct ipsec_sa_outb_rt_t_ ipsec_sa_outb_rt_t;
 
 /* Function signature and pointer type for IPsec builder callbacks */
-#define IPSEC_BUILD_OP_TMPL_ARGS                                              \
-  ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd, vlib_buffer_t **b,     \
-    vlib_buffer_t *lb, u8 *payload, u16 payload_len, u32 hdr_len, void *esp
-
-#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS, u32 user_data
-
-typedef void ipsec_build_op_tmpl_sig (IPSEC_BUILD_OP_TMPL_ARGS);
+typedef void ipsec_build_op_tmpl_sig (ipsec_sa_outb_rt_t *ort, vlib_main_t *vm,
+				      void *ptd, vlib_buffer_t **b,
+				      vlib_buffer_t *lb, u8 *payload,
+				      u16 payload_len, u32 hdr_len, void *esp);
 typedef ipsec_build_op_tmpl_sig *ipsec_build_op_tmpl_fn_t;
 
-typedef void ipsec_build_op_sig (IPSEC_BUILD_OP_ARGS);
+typedef void ipsec_build_op_sig (ipsec_sa_outb_rt_t *ort, vlib_main_t *vm,
+				 void *ptd, vlib_buffer_t **b,
+				 vlib_buffer_t *lb, u8 *payload,
+				 u16 payload_len, u32 hdr_len, void *esp,
+				 u32 user_data);
 typedef ipsec_build_op_sig *ipsec_build_op_fn_t;
 
 /* default no-op builder (defined once in main.c) */
-extern void ipsec_default_build_op (IPSEC_BUILD_OP_ARGS);
+extern void ipsec_default_build_op (ipsec_sa_outb_rt_t *ort, vlib_main_t *vm,
+				    void *ptd, vlib_buffer_t **b,
+				    vlib_buffer_t *lb, u8 *payload,
+				    u16 payload_len, u32 hdr_len, void *esp,
+				    u32 user_data);
 
 typedef struct ipsec_sa_outb_rt_t_
 {
@@ -214,43 +220,44 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 is_tunnel_v6 : 1;
   u16 udp_encap : 1;
   u16 use_esn : 1;
-  u16 use_anti_replay : 1;
   u16 drop_no_crypto : 1;
   u16 is_async : 1;
   u16 need_udp_cksum : 1;
   u16 need_tunnel_fixup : 1;
+  u16 reserved_flags : 5;
   u16 op_id;
-  vnet_crypto_op_t op_tmpl[VNET_CRYPTO_HANDLER_N_TYPES];
-  ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
-  ipsec_build_op_fn_t bld_op[VNET_CRYPTO_HANDLER_N_TYPES];
-  u8 cipher_iv_size;
-  u8 esp_block_align;
-  u8 integ_icv_size;
-  u8 aad_len;
-  ip_dscp_t t_dscp;
-  tunnel_encap_decap_flags_t tunnel_flags;
   clib_thread_index_t thread_index;
   u16 async_op_id;
   u32 salt;
   u32 spi_be;
   u64 seq64;
-  esp_ctr_nonce_t ctr_nonce_tmpl;
-  esp_aead_t aad_tmpl;
+  u8 cipher_iv_size;
+  u8 esp_block_align;
+  u8 integ_icv_size;
+  u8 aad_len;
+  vnet_crypto_key_index_t key_index;
   dpo_id_t dpo;
   clib_pcg64i_random_t iv_prng;
-  vnet_crypto_key_index_t key_index;
+  udp_header_t udp_hdr;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  esp_ctr_nonce_t ctr_nonce_tmpl;
+  esp_aead_t aad_tmpl;
+  ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
+  ip_dscp_t t_dscp;
+  tunnel_encap_decap_flags_t tunnel_flags;
   union
   {
     ip4_header_t ip4_hdr;
     ip6_header_t ip6_hdr;
   };
-  udp_header_t udp_hdr;
+  ipsec_build_op_fn_t bld_op_simple;
+  ipsec_build_op_fn_t bld_op_chained;
+  vnet_crypto_op_t op_tmpl_simple;
+  vnet_crypto_op_t op_tmpl_chained;
 } ipsec_sa_outb_rt_t;
 
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
   u32 spi;
 
   ipsec_sa_flags_t flags;

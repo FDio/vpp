@@ -6,16 +6,19 @@
 #include <vnet/ipsec/ipsec.h>
 
 void
-ipsec_default_build_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
+ipsec_default_build_op_tmpl (ipsec_sa_outb_rt_t *ort, vlib_main_t *vm,
+			     void *ptd, vlib_buffer_t **b, vlib_buffer_t *lb,
+			     u8 *payload, u16 payload_len, u32 hdr_len,
+			     void *esp)
 {
-  /* no-op */
 }
 
 /* full op builder (no-op default) */
 void
-ipsec_default_build_op (IPSEC_BUILD_OP_ARGS)
+ipsec_default_build_op (ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd,
+			vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload,
+			u16 payload_len, u32 hdr_len, void *esp, u32 user_data)
 {
-  /* no-op */
 }
 
 ipsec_main_t ipsec_main = {
