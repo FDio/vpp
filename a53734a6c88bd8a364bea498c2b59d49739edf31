@@ -22,6 +22,30 @@
       },
       "revId": "a53734a6c88bd8a364bea498c2b59d49739edf31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36312a5b_73c0d940",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1371,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-07T12:49:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "25864b79_6501a62a",
+      "range": {
+        "startLine": 1371,
+        "startChar": 7,
+        "endLine": 1371,
+        "endChar": 20
+      },
+      "revId": "a53734a6c88bd8a364bea498c2b59d49739edf31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
