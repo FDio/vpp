@@ -314,6 +314,17 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->need_udp_cksum = ort->udp_encap && ort->is_tunnel_v6;
       ort->cipher_iv_size = im->crypto_algs[sa->crypto_alg].iv_size;
       ort->integ_icv_size = integ_icv_size;
+      if (ort->is_null_gmac || (!ort->is_ctr && !ort->is_aead))
+	{
+	  ort->payload_adj = -((i8) ort->cipher_iv_size);
+	  ort->payload_len_adj =
+	    ((i8) ort->cipher_iv_size) - ((i8) ort->integ_icv_size);
+	}
+      else
+	{
+	  ort->payload_adj = 0;
+	  ort->payload_len_adj = -((i8) ort->integ_icv_size);
+	}
       ort->salt = sa->salt;
       ort->spi_be = clib_host_to_net_u32 (sa->spi);
       ort->tunnel_flags = sa->tunnel.t_encap_decap_flags;

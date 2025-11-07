@@ -206,6 +206,8 @@ typedef struct ipsec_sa_outb_rt_t_
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
+  i8 payload_adj;
+  i8 payload_len_adj;
   ip_dscp_t t_dscp;
   tunnel_encap_decap_flags_t tunnel_flags;
   clib_thread_index_t thread_index;
