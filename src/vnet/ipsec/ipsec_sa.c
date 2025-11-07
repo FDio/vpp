@@ -351,21 +351,9 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC] =
 	im->integ_algs[sa->integ_alg].bld_integ_op_tmpl;
       if (ort->key_index == ~0 || !ort->op_id || ort->is_async)
-	{
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =
-	    ipsec_default_build_op;
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =
-	    ipsec_default_build_op;
-	}
+	ort->prepare_sync_op = 0;
       else
-	{
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_SIMPLE] =
-	    im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-			[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
-	  ort->bld_op[VNET_CRYPTO_HANDLER_TYPE_CHAINED] =
-	    im->op_bldrs[VNET_CRYPTO_OP_TYPE_ENCRYPT]
-			[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
-	}
+	ort->prepare_sync_op = 1;
 
       ASSERT (ort->cipher_iv_size <= ESP_MAX_IV_SIZE);
       ASSERT (ort->esp_block_align <= ESP_MAX_BLOCK_SIZE);

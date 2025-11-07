@@ -174,19 +174,14 @@ typedef struct ipsec_sa_outb_rt_t_ ipsec_sa_outb_rt_t;
 
 /* Function signature and pointer type for IPsec builder callbacks */
 #define IPSEC_BUILD_OP_TMPL_ARGS                                              \
-  ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd, vlib_buffer_t **b,     \
-    vlib_buffer_t *lb, u8 *payload, u16 payload_len, u32 hdr_len, void *esp
+  vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort, vlib_main_t *vm, void *ptd,  \
+    vlib_buffer_t **b, vlib_buffer_t *lb, u8 *payload, u16 payload_len,       \
+    u32 hdr_len, void *esp
 
-#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS, u32 user_data
+#define IPSEC_BUILD_OP_ARGS IPSEC_BUILD_OP_TMPL_ARGS
 
 typedef void ipsec_build_op_tmpl_sig (IPSEC_BUILD_OP_TMPL_ARGS);
 typedef ipsec_build_op_tmpl_sig *ipsec_build_op_tmpl_fn_t;
-
-typedef void ipsec_build_op_sig (IPSEC_BUILD_OP_ARGS);
-typedef ipsec_build_op_sig *ipsec_build_op_fn_t;
-
-/* default no-op builder (defined once in main.c) */
-extern void ipsec_default_build_op (IPSEC_BUILD_OP_ARGS);
 
 typedef struct ipsec_sa_outb_rt_t_
 {
@@ -203,11 +198,11 @@ typedef struct ipsec_sa_outb_rt_t_
   u16 is_async : 1;
   u16 need_udp_cksum : 1;
   u16 need_tunnel_fixup : 1;
+  u16 prepare_sync_op : 1;
   u16 op_id;
   vnet_crypto_op_t op_tmpl_single;
   vnet_crypto_op_t op_tmpl_chained;
   ipsec_build_op_tmpl_fn_t *bld_op_tmpl[VNET_CRYPTO_OP_N_TYPES];
-  ipsec_build_op_fn_t bld_op[VNET_CRYPTO_HANDLER_N_TYPES];
   u8 cipher_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
