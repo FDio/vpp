@@ -514,10 +514,13 @@ session_alloc_for_stream (session_handle_t parent_handle)
 
   ASSERT (thread_index == vlib_get_thread_index ());
 
+  s = session_alloc (thread_index);
   ps = session_get_from_handle_if_valid (parent_handle);
   if (!ps)
-    return 0;
-  s = session_alloc (thread_index);
+    {
+      session_free (s);
+      return 0;
+    }
   s->listener_handle = SESSION_INVALID_HANDLE;
   s->session_type = ps->session_type;
   session_set_state (s, SESSION_STATE_CLOSED);
