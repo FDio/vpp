@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb75c151_c5ca52d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-11-07T03:24:02Z",
+      "side": 1,
+      "message": "Nice change - I think you ought to make the OSI protocols that are to be punted configurable with an API.",
+      "revId": "c15fddd451081bf5e3e745541775df87021b1412",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4dd67aea_082d9698",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1251,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2025-11-07T03:24:02Z",
+      "side": 1,
+      "message": "You should not unilaterally register ISIS as a punt without the user\u0027s consent.\nAlso, it would be possible with the same code to add other L2 OSI protocols to be punted).\n\nI suggest you add an API and accompanying CLI to register them based on the OSI protocol type.",
+      "revId": "c15fddd451081bf5e3e745541775df87021b1412",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
