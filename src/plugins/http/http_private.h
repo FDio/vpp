@@ -180,6 +180,7 @@ typedef enum http_conn_flags_bit_
 #define _(sym, str) HTTP_CONN_F_BIT_##sym,
   foreach_http_conn_flags
 #undef _
+    HTTP_CONN_N_F_BITS
 } http_conn_flags_bit_t;
 
 typedef enum http_conn_flags_
@@ -340,6 +341,7 @@ typedef http_sm_result_t (*http_sm_handler) (http_conn_t *hc, http_req_t *req,
 
 u8 *format_http_req_state (u8 *s, va_list *va);
 u8 *format_http_conn_state (u8 *s, va_list *args);
+u8 *format_http_conn_flags (u8 *s, va_list *args);
 u8 *format_http_time_now (u8 *s, va_list *args);
 
 http_conn_t *http_conn_get_w_thread (u32 hc_index,

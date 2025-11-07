@@ -105,6 +105,36 @@ format_http_conn_state (u8 *s, va_list *args)
   return format (s, "%s", t);
 }
 
+const char *http_conn_flags_str[] = {
+#define _(sym, str) str,
+  foreach_http_conn_flags
+#undef _
+};
+
+u8 *
+format_http_conn_flags (u8 *s, va_list *args)
+{
+  http_conn_t *hc = va_arg (*args, http_conn_t *);
+  int i, last = -1;
+
+  for (i = 0; i < HTTP_CONN_N_F_BITS; i++)
+    {
+      if (hc->flags & (1 << i))
+	last = i;
+    }
+
+  for (i = 0; i < last; i++)
+    {
+      if (hc->flags & (1 << i))
+	s = format (s, "%s | ", http_conn_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", http_conn_flags_str[i]);
+
+  return s;
+  return s;
+}
+
 u8 *
 format_http_time_now (u8 *s, va_list *args)
 {

@@ -3,6 +3,7 @@
  */
 
 #include <vppinfra/llist.h>
+#include <vppinfra/ring.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
 #include <http/http_private.h>
@@ -81,6 +82,7 @@ typedef enum http2_conn_flags_bit_
 #define _(sym, str) HTTP2_CONN_F_BIT_##sym,
   foreach_http2_conn_flags
 #undef _
+    HTTP2_CONN_N_F_BITS
 } http2_conn_flags_bit_t;
 
 typedef enum http2_conn_flags_
@@ -2787,14 +2789,59 @@ format_http2_req_flags (u8 *s, va_list *args)
   return s;
 }
 
+const char *http2_conn_flags_str[] = {
+#define _(sym, str) str,
+  foreach_http2_conn_flags
+#undef _
+};
+
+static u8 *
+format_http2_conn_flags (u8 *s, va_list *args)
+{
+  http2_conn_ctx_t *h2c = va_arg (*args, http2_conn_ctx_t *);
+  int i, last = -1;
+
+  for (i = 0; i < HTTP2_REQ_N_F_BITS; i++)
+    {
+      if (h2c->flags & (1 << i))
+	last = i;
+    }
+
+  for (i = 0; i < last; i++)
+    {
+      if (h2c->flags & (1 << i))
+	s = format (s, "%s | ", http2_conn_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", http2_conn_flags_str[i]);
+
+  return s;
+}
+
 static u8 *
 format_http2_req_vars (u8 *s, va_list *args)
 {
   http2_req_t *req = va_arg (*args, http2_req_t *);
-  s = format (s, " our_wnd %u peer_wnd %u scheduled %u is_tunnel %u\n",
+  http_conn_t *hc = va_arg (*args, http_conn_t *);
+  http2_conn_ctx_t *h2c;
+
+  s = format (s, " our_wnd %u peer_wnd %d scheduled %u is_tunnel %u\n",
 	      req->our_window, req->peer_window,
 	      clib_llist_elt_is_linked (req, sched_list), req->base.is_tunnel);
   s = format (s, " flags: %U\n", format_http2_req_flags, req);
+  if (req->flags & HTTP2_REQ_F_IS_PARENT)
+    {
+      h2c = http2_conn_ctx_get_w_thread (hc);
+      s = format (s, " conn_state: %U\n", format_http_conn_state, hc);
+      s = format (s, " hc_flags: %U\n", format_http_conn_flags, hc);
+      s = format (s, " h2c_flags: %U\n", format_http2_conn_flags, h2c);
+      s = format (s, " conn_wnd_our %u conn_wnd_peer %u scheduled %u\n",
+		  h2c->our_window, h2c->peer_window,
+		  clib_llist_elt_is_linked (h2c, sched_list));
+      s = format (s, " decoder table: %u entries %u bytes\n",
+		  clib_ring_n_enq (h2c->decoder_dynamic_table.entries),
+		  h2c->decoder_dynamic_table.used);
+    }
   return s;
 }
 
@@ -2815,7 +2862,7 @@ http2_format_req (u8 *s, va_list *args)
       s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http2_stream_state,
 		  req->stream_state);
       if (verbose > 1)
-	s = format (s, "\n%U", format_http2_req_vars, req);
+	s = format (s, "\n%U", format_http2_req_vars, req, hc);
     }
 
   return s;
