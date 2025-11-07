@@ -41,30 +41,27 @@ ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
 
   if (irt->is_async || irt->key_index == ~0 || !irt->op_id)
     {
-      clib_memset (irt->op_tmpl, 0, sizeof (irt->op_tmpl));
+      irt->op_tmpl_single = (vnet_crypto_op_t){};
+      irt->op_tmpl_chained = (vnet_crypto_op_t){};
       return;
     }
 
-  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
-		       irt->op_id);
-  vnet_crypto_op_init (&irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],
-		       irt->op_id);
+  vnet_crypto_op_init (&irt->op_tmpl_single, irt->op_id);
+  vnet_crypto_op_init (&irt->op_tmpl_chained, irt->op_id);
 
-  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].key_index = irt->key_index;
-  irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].key_index = irt->key_index;
+  irt->op_tmpl_single.key_index = irt->key_index;
+  irt->op_tmpl_chained.key_index = irt->key_index;
 
   if (irt->integ_icv_size && !irt->is_aead)
     {
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags =
-	VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
+      irt->op_tmpl_single.flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      irt->op_tmpl_chained.flags =
 	VNET_CRYPTO_OP_FLAG_HMAC_CHECK | VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
     }
   else
     {
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].flags = 0;
-      irt->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags =
-	VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      irt->op_tmpl_single.flags = 0;
+      irt->op_tmpl_chained.flags = VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
     }
 }
 
@@ -304,15 +301,11 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->need_tunnel_fixup = (ort->tunnel_flags != 0);
       ort->async_op_id = sa->crypto_async_enc_op_id;
       ort->t_dscp = sa->tunnel.t_dscp;
-      vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE],
-			   ort->op_id);
-      vnet_crypto_op_init (&ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED],
-			   ort->op_id);
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE].key_index = ort->key_index;
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].key_index =
-	ort->key_index;
-      ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED].flags |=
-	VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      vnet_crypto_op_init (&ort->op_tmpl_single, ort->op_id);
+      vnet_crypto_op_init (&ort->op_tmpl_chained, ort->op_id);
+      ort->op_tmpl_single.key_index = ort->key_index;
+      ort->op_tmpl_chained.key_index = ort->key_index;
+      ort->op_tmpl_chained.flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT] =
 	im->crypto_algs[sa->crypto_alg].bld_enc_op_tmpl;
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC] =

@@ -1374,7 +1374,7 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 void
 ipsec_cbc_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *op = &ort->op_tmpl_single;
 
   op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
   op->src = op->dst = payload - ort->cipher_iv_size;
@@ -1388,7 +1388,7 @@ ipsec_cbc_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_cbc_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+  vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
   u8 *crypto_start = payload - ort->cipher_iv_size;
 
@@ -1404,7 +1404,7 @@ ipsec_cbc_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_ctr_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *op = &ort->op_tmpl_single;
   op->src = op->dst = payload;
   op->len = payload_len - ort->integ_icv_size;
 
@@ -1415,7 +1415,7 @@ ipsec_ctr_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_ctr_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+  vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
@@ -1426,7 +1426,7 @@ ipsec_ctr_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_gcm_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *op = &ort->op_tmpl_single;
   op->src = op->dst = payload;
   op->len = payload_len - ort->integ_icv_size;
 
@@ -1439,7 +1439,7 @@ ipsec_gcm_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_gcm_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+  vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
@@ -1452,7 +1452,7 @@ ipsec_gcm_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_null_gmac_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *op = &ort->op_tmpl_single;
   op->src = op->dst = payload - ort->cipher_iv_size;
   op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
 
@@ -1465,7 +1465,7 @@ ipsec_null_gmac_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_null_gmac_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+  vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
@@ -1479,7 +1479,7 @@ ipsec_null_gmac_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_build_integ_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_SIMPLE];
+  vnet_crypto_op_t *op = &ort->op_tmpl_single;
 
   op->integ_src = payload - ort->cipher_iv_size - sizeof (esp_header_t);
   op->integ_len = payload_len - ort->integ_icv_size + ort->cipher_iv_size +
@@ -1500,7 +1500,7 @@ ipsec_build_integ_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_build_integ_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  vnet_crypto_op_t *op = &ort->op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED];
+  vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
   op->digest_len = ort->integ_icv_size;
   op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
@@ -1523,7 +1523,10 @@ ipsec_outb_build_sync_op (IPSEC_BUILD_OP_ARGS,
     ort, vm, ptd, b, lb, payload, payload_len, hdr_len, esp);
   vnet_crypto_op_t *op;
   vec_add2_aligned (ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
-  clib_memcpy_fast (op, &ort->op_tmpl[crypto_type], sizeof (vnet_crypto_op_t));
+  vnet_crypto_op_t *tmpl = crypto_type == VNET_CRYPTO_HANDLER_TYPE_SIMPLE ?
+			     &ort->op_tmpl_single :
+			     &ort->op_tmpl_chained;
+  *op = *tmpl;
   op->user_data = user_data;
 }
 
