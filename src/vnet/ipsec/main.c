@@ -262,11 +262,4 @@ ipsec_main_t ipsec_main = {
       .bld_integ_op_tmpl[VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op_tmpl
     },
   },
-  .op_bldrs = {
-    [VNET_CRYPTO_OP_TYPE_ENCRYPT] = {
-      [VNET_CRYPTO_HANDLER_TYPE_SIMPLE] = ipsec_default_build_op,
-      [VNET_CRYPTO_HANDLER_TYPE_CHAINED] = ipsec_default_build_op,
-      [VNET_CRYPTO_HANDLER_TYPE_ASYNC] = ipsec_default_build_op,
-    },
-  }
 };

@@ -231,10 +231,6 @@ typedef struct
   /* crypto integ data */
   ipsec_main_integ_alg_t integ_algs[IPSEC_INTEG_N_ALG];
 
-  /* crypto op builder */
-  ipsec_build_op_fn_t op_bldrs[VNET_CRYPTO_OP_N_TYPES]
-			      [VNET_CRYPTO_HANDLER_N_TYPES];
-
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
 
