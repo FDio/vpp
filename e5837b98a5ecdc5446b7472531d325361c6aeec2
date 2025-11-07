@@ -34,6 +34,24 @@
       "parentUuid": "c1ba272a_11a4bc41",
       "revId": "e5837b98a5ecdc5446b7472531d325361c6aeec2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d0286d1d_a4e1ef4d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2025-11-07T15:36:43Z",
+      "side": 1,
+      "message": "Updated the patchset https://gerrit.fd.io/r/c/vpp/+/42257 . Added oct_tx_tm_node to implement the TM path for dev_octeon.",
+      "parentUuid": "cd6c8853_bb63fc65",
+      "revId": "e5837b98a5ecdc5446b7472531d325361c6aeec2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
