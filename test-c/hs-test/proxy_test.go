@@ -733,12 +733,12 @@ func vppConnectProxyClientCheckCleanup(s *MasqueSuite) {
 		}
 	}
 	// one stream for http/2 connection (parent stays open)
-	s.AssertEqual(streamsOpened-streamsClosed, 1)
+	s.AssertEqual(streamsOpened-streamsClosed, 1, "only parent stream should stays open")
 }
 
 func vppConnectProxyServerCheckCleanup(s *MasqueSuite) {
 	o := s.Containers.VppServer.VppInstance.Vppctl("show session verbose")
-	s.AssertNotContains(o, "[H2]")
+	s.AssertEqual(1, strings.Count(o, "[H2]"), "there should be http/2 connection session")
 	h2Stats := s.Containers.VppServer.VppInstance.Vppctl("show http stats")
 	streamsOpened := 0
 	streamsClosed := 0
@@ -753,7 +753,7 @@ func vppConnectProxyServerCheckCleanup(s *MasqueSuite) {
 			streamsClosed, _ = strconv.Atoi(tmp[1])
 		}
 	}
-	s.AssertEqual(streamsOpened-streamsClosed, 0)
+	s.AssertEqual(streamsOpened-streamsClosed, 0, "all streams should be closed")
 }
 
 func VppConnectProxyClientDownloadTcpMWTest(s *MasqueSuite) {

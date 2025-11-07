@@ -1868,7 +1868,7 @@ http1_format_req (u8 *s, va_list *args)
       s =
 	format (s, "%-" SESSION_CLI_STATE_LEN "U", format_http_conn_state, hc);
       if (verbose > 1)
-	s = format (s, "\n");
+	s = format (s, " \nconn_flags: %U\n", format_http_conn_flags, hc);
     }
 
   return s;
