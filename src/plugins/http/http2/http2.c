@@ -33,7 +33,8 @@ typedef enum http2_stream_state_
   _ (APP_CLOSED, "app-closed")                                                \
   _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                      \
   _ (NEED_WINDOW_UPDATE, "need-window-update")                                \
-  _ (IS_PARENT, "is-parent")
+  _ (IS_PARENT, "is-parent")                                                  \
+  _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")
 
 typedef enum http2_req_flags_bit_
 {
@@ -109,6 +110,7 @@ typedef struct http2_conn_ctx_
   u32 unsent_headers_offset;
   u32 req_num;
   u32 parent_req_index;
+  u32 *pending_win_updates;
 } http2_conn_ctx_t;
 
 typedef struct http2_worker_ctx_
@@ -227,6 +229,7 @@ http2_conn_ctx_free (http_conn_t *hc)
   pool_put_index (wrk->req_pool, h2c->new_tx_streams);
   pool_put_index (wrk->req_pool, h2c->old_tx_streams);
   hash_free (h2c->req_by_stream_id);
+  vec_free (h2c->pending_win_updates);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
     hpack_dynamic_table_free (&h2c->decoder_dynamic_table);
   if (CLIB_DEBUG)
@@ -555,6 +558,30 @@ http2_stream_close (http2_req_t *req, http_conn_t *hc)
   h2c = http2_conn_ctx_get_w_thread (hc);
   session_transport_delete_notify (&req->base.connection);
   http2_conn_free_req (h2c, req, hc->c_thread_index);
+}
+
+always_inline void
+http2_send_window_update (http_conn_t *hc, u32 increment, u32 stream_id)
+{
+  u8 *tx_buf;
+
+  tx_buf = http_get_tx_buf (hc);
+  http2_frame_write_window_update (increment, stream_id, &tx_buf);
+  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+  http_io_ts_after_write (hc, 1);
+}
+
+always_inline u32
+http2_req_get_win_increment (http2_req_t *req, http_conn_t *hc)
+{
+  u32 increment;
+
+  increment = http_io_as_max_write (&req->base) - req->our_window;
+  /* keep some space for dgram headers */
+  if (req->base.is_tunnel && hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
+    increment -= clib_min (increment, HTTP2_CONNECT_UDP_FIFO_THRESH);
+  HTTP_DBG (1, "stream %u window increment %u", req->stream_id, increment);
+  return increment;
 }
 
 always_inline void
@@ -2850,7 +2877,7 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
 			   clib_thread_index_t thread_index)
 {
   http2_req_t *req;
-  u8 *response;
+  http2_conn_ctx_t *h2c;
   u32 increment;
   http2_stream_state_t expected_state;
 
@@ -2869,18 +2896,25 @@ http2_app_rx_evt_callback (http_conn_t *hc, u32 req_index,
   if (req->stream_state == expected_state)
     {
       http_io_as_reset_has_read_ntf (&req->base);
-      response = http_get_tx_buf (hc);
-      increment = http_io_as_max_write (&req->base) - req->our_window;
-      /* keep some space for dgram headers */
-      if (req->base.is_tunnel && hc->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM)
-	increment -= clib_min (increment, HTTP2_CONNECT_UDP_FIFO_THRESH);
-      HTTP_DBG (1, "stream window increment %u", increment);
+      increment = http2_req_get_win_increment (req, hc);
       if (increment == 0)
 	return;
+      /* check if we have enough space in fifo */
+      if (http_io_ts_max_write (hc, 0) < HTTP2_WINDOW_UPDATE_FRAME_SIZE)
+	{
+	  HTTP_DBG (1,
+		    "transport fifo full postponing stream %d window update",
+		    req->stream_id);
+	  if (!(req->flags & HTTP2_REQ_F_PENDING_SND_WIN_UPDATE))
+	    {
+	      http_io_ts_add_want_deq_ntf (hc);
+	      h2c = http2_conn_ctx_get_w_thread (hc);
+	      vec_add1 (h2c->pending_win_updates, req->stream_id);
+	    }
+	  return;
+	}
       req->our_window += increment;
-      http2_frame_write_window_update (increment, req->stream_id, &response);
-      http_io_ts_write (hc, response, vec_len (response), 0);
-      http_io_ts_after_write (hc, 0);
+      http2_send_window_update (hc, increment, req->stream_id);
     }
 }
 
@@ -3159,14 +3193,21 @@ http2_transport_rx_callback (http_conn_t *hc)
   /* send connection window update if more than half consumed */
   if (h2c->our_window < HTTP2_CONNECTION_WINDOW_SIZE / 2)
     {
-      HTTP_DBG (1, "connection window increment %u",
-		HTTP2_CONNECTION_WINDOW_SIZE - h2c->our_window);
-      u8 *response = http_get_tx_buf (hc);
-      http2_frame_write_window_update (
-	HTTP2_CONNECTION_WINDOW_SIZE - h2c->our_window, 0, &response);
-      http_io_ts_write (hc, response, vec_len (response), 0);
-      http_io_ts_after_write (hc, 0);
-      h2c->our_window = HTTP2_CONNECTION_WINDOW_SIZE;
+      /* check if we have enough space in fifo */
+      if (http_io_ts_max_write (hc, 0) >= HTTP2_WINDOW_UPDATE_FRAME_SIZE)
+	{
+	  HTTP_DBG (1, "connection window increment %u",
+		    HTTP2_CONNECTION_WINDOW_SIZE - h2c->our_window);
+	  http2_send_window_update (
+	    hc, HTTP2_CONNECTION_WINDOW_SIZE - h2c->our_window, 0);
+	  h2c->our_window = HTTP2_CONNECTION_WINDOW_SIZE;
+	}
+      else
+	{
+	  HTTP_DBG (1,
+		    "transport fifo full postponing connection window update");
+	  http_io_ts_add_want_deq_ntf (hc);
+	}
     }
 
   /* reset http connection expiration timer */
@@ -3262,20 +3303,68 @@ http2_transport_conn_reschedule_callback (http_conn_t *hc)
 {
   http2_worker_ctx_t *wrk = http2_get_worker (hc->c_thread_index);
   http2_conn_ctx_t *h2c;
+  http2_req_t *req;
+  u32 max_write, need_write, increment, *stream_id = 0;
+  u8 *tx_buf;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
 
   h2c = http2_conn_ctx_get_w_thread (hc);
-  h2c->flags &= ~HTTP2_CONN_F_TS_DESCHED;
-  /* reschedule connection if something is waiting in queue */
-  if (!clib_llist_is_empty (
-	wrk->req_pool, sched_list,
-	clib_llist_elt (wrk->req_pool, h2c->new_tx_streams)) ||
-      !clib_llist_is_empty (
-	wrk->req_pool, sched_list,
-	clib_llist_elt (wrk->req_pool, h2c->old_tx_streams)))
-    http2_conn_schedule (h2c, hc->c_thread_index);
+  max_write = http_io_ts_max_write (hc, 0);
+
+  /* first checkif we have some pending stream window updates */
+  if (vec_len (h2c->pending_win_updates))
+    {
+      need_write =
+	vec_len (h2c->pending_win_updates) * HTTP2_WINDOW_UPDATE_FRAME_SIZE;
+      if (max_write >= need_write)
+	{
+	  tx_buf = http_get_tx_buf (hc);
+	  vec_foreach (stream_id, h2c->pending_win_updates)
+	    {
+	      req = http2_conn_get_req (hc, *stream_id);
+	      if (!req)
+		continue;
+	      req->flags &= ~HTTP2_REQ_F_PENDING_SND_WIN_UPDATE;
+	      increment = http2_req_get_win_increment (req, hc);
+	      if (!increment)
+		continue;
+	      req->our_window += increment;
+	      http2_frame_write_window_update (increment, req->stream_id,
+					       &tx_buf);
+	    }
+	  vec_reset_length (h2c->pending_win_updates);
+	  http_io_ts_write (hc, tx_buf, vec_len (tx_buf), 0);
+	  http_io_ts_after_write (hc, 1);
+	  max_write -= need_write;
+	}
+    }
+  /* maybe we need to update also connection window */
+  if ((h2c->our_window < HTTP2_CONNECTION_WINDOW_SIZE / 2) &&
+      (max_write >= HTTP2_WINDOW_UPDATE_FRAME_SIZE))
+    {
+      http2_send_window_update (
+	hc, HTTP2_CONNECTION_WINDOW_SIZE - h2c->our_window, 0);
+      h2c->our_window = HTTP2_CONNECTION_WINDOW_SIZE;
+    }
+
+  /* last deschedule data sending */
+  if (h2c->flags & HTTP2_CONN_F_TS_DESCHED)
+    {
+      /* do it only when we have still wnough space in fifo */
+      if (http_io_ts_check_write_thresh (hc))
+	http_io_ts_add_want_deq_ntf (hc);
+      h2c->flags &= ~HTTP2_CONN_F_TS_DESCHED;
+      /* reschedule connection if something is waiting in queue */
+      if (!clib_llist_is_empty (
+	    wrk->req_pool, sched_list,
+	    clib_llist_elt (wrk->req_pool, h2c->new_tx_streams)) ||
+	  !clib_llist_is_empty (
+	    wrk->req_pool, sched_list,
+	    clib_llist_elt (wrk->req_pool, h2c->old_tx_streams)))
+	http2_conn_schedule (h2c, hc->c_thread_index);
+    }
 }
 
 static void
