@@ -937,6 +937,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      *op = ort->op_tmpl_single;
 	      esp_prepare_sync_op (op, ort, vm, ptd, b, lb, payload,
 				   payload_len, hdr_len, esp);
+	      op->len = payload_len + ort->payload_len_adj;
+	      op->src = op->dst = payload + ort->payload_adj;
 	    }
 	  op->user_data = n_sync;
 	}
@@ -1407,8 +1409,6 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 void
 ipsec_cbc_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
-  op->src = op->dst = payload - ort->cipher_iv_size;
   clib_memset_u8 (op->src, 0, ort->cipher_iv_size);
   *op->src = clib_pcg64i_random_r (&ort->iv_prng);
 
@@ -1433,9 +1433,6 @@ ipsec_cbc_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_ctr_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  op->src = op->dst = payload;
-  op->len = payload_len - ort->integ_icv_size;
-
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
 }
@@ -1453,9 +1450,6 @@ ipsec_ctr_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_gcm_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  op->src = op->dst = payload;
-  op->len = payload_len - ort->integ_icv_size;
-
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
   u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
@@ -1476,9 +1470,6 @@ ipsec_gcm_build_enc_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 void
 ipsec_null_gmac_build_enc_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
 {
-  op->src = op->dst = payload - ort->cipher_iv_size;
-  op->len = payload_len - ort->integ_icv_size + ort->cipher_iv_size;
-
   void *pkt_iv = esp_generate_iv (ort, payload, ort->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
   u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
