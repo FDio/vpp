@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd53aaf4_2001066e",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 882,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-07T18:28:43Z",
+      "side": 1,
+      "message": "it\u0027s fine to zero only one, this is union and fib_index overlap",
+      "range": {
+        "startLine": 881,
+        "startChar": 1,
+        "endLine": 882,
+        "endChar": 37
+      },
+      "revId": "2a2a12df20f985989a3c028721dc4a9bdbd4ac11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "670e77a2_9efca2c3",
+        "filename": "src/vnet/fib/fib_table.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-07T18:28:43Z",
+      "side": 1,
+      "message": "fib_table_is_valid?",
+      "range": {
+        "startLine": 917,
+        "startChar": 0,
+        "endLine": 917,
+        "endChar": 15
+      },
+      "revId": "2a2a12df20f985989a3c028721dc4a9bdbd4ac11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
