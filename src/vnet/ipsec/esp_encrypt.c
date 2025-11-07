@@ -1366,9 +1366,8 @@ ipsec_setup_aead_fields (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 {
   u32 seq_hi = ort->seq64 >> 32;
   op->aad = aad;
-  op->aad_len = esp_aad_fill (op->aad, esp, ort->use_esn, seq_hi);
+  esp_aad_fill (op->aad, esp, ort->use_esn, seq_hi);
   op->tag = payload + payload_len - ort->integ_icv_size;
-  op->tag_len = ort->integ_icv_size;
 }
 
 void
@@ -1485,7 +1484,6 @@ ipsec_build_integ_op_tmpl (IPSEC_BUILD_OP_TMPL_ARGS)
   op->integ_len = payload_len - ort->integ_icv_size + ort->cipher_iv_size +
 		  sizeof (esp_header_t);
 
-  op->digest_len = ort->integ_icv_size;
   op->digest = payload + payload_len - ort->integ_icv_size;
 
   if (ort->use_esn)
@@ -1502,7 +1500,6 @@ ipsec_build_integ_op_tmpl_chain (IPSEC_BUILD_OP_TMPL_ARGS)
 {
   vnet_crypto_op_t *op = &ort->op_tmpl_chained;
 
-  op->digest_len = ort->integ_icv_size;
   op->digest = vlib_buffer_get_tail (lb) - ort->integ_icv_size;
   op->integ_chunk_index = vec_len (((ipsec_per_thread_data_t *) ptd)->chunks);
   esp_encrypt_chain_integ (

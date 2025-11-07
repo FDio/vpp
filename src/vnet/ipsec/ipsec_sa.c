@@ -52,16 +52,35 @@ ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
   irt->op_tmpl_single.key_index = irt->key_index;
   irt->op_tmpl_chained.key_index = irt->key_index;
 
-  if (irt->integ_icv_size && !irt->is_aead)
+  irt->op_tmpl_chained.flags = VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+  irt->op_tmpl_single.flags = 0;
+
+  if (irt->is_aead)
     {
-      irt->op_tmpl_single.flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-      irt->op_tmpl_chained.flags =
-	VNET_CRYPTO_OP_FLAG_HMAC_CHECK | VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      u8 aad_len = irt->use_esn ? 12 : 8;
+      irt->op_tmpl_single.aad_len = aad_len;
+      irt->op_tmpl_chained.aad_len = aad_len;
+      irt->op_tmpl_single.digest_len = 0;
+      irt->op_tmpl_chained.digest_len = 0;
+      u8 tag_len = irt->integ_icv_size;
+      irt->op_tmpl_single.tag_len = tag_len;
+      irt->op_tmpl_chained.tag_len = tag_len;
+    }
+  else if (irt->integ_icv_size)
+    {
+      irt->op_tmpl_single.aad_len = 0;
+      irt->op_tmpl_chained.aad_len = 0;
+      irt->op_tmpl_single.flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      irt->op_tmpl_chained.flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      irt->op_tmpl_single.digest_len = irt->integ_icv_size;
+      irt->op_tmpl_chained.digest_len = irt->integ_icv_size;
     }
   else
     {
-      irt->op_tmpl_single.flags = 0;
-      irt->op_tmpl_chained.flags = VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      irt->op_tmpl_single.aad_len = 0;
+      irt->op_tmpl_chained.aad_len = 0;
+      irt->op_tmpl_single.digest_len = 0;
+      irt->op_tmpl_chained.digest_len = 0;
     }
 }
 
@@ -306,6 +325,27 @@ ipsec_sa_init_runtime (ipsec_sa_t *sa)
       ort->op_tmpl_single.key_index = ort->key_index;
       ort->op_tmpl_chained.key_index = ort->key_index;
       ort->op_tmpl_chained.flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      if (ort->is_aead)
+	{
+	  u8 aad_len = ort->use_esn ? 12 : 8;
+	  ort->op_tmpl_single.aad_len = aad_len;
+	  ort->op_tmpl_chained.aad_len = aad_len;
+	  ort->op_tmpl_single.digest_len = 0;
+	  ort->op_tmpl_chained.digest_len = 0;
+	  u8 tag_len = ort->integ_icv_size;
+	  ort->op_tmpl_single.tag_len = tag_len;
+	  ort->op_tmpl_chained.tag_len = tag_len;
+	}
+      else if (ort->integ_icv_size)
+	{
+	  ort->op_tmpl_single.digest_len = ort->integ_icv_size;
+	  ort->op_tmpl_chained.digest_len = ort->integ_icv_size;
+	}
+      else
+	{
+	  ort->op_tmpl_single.digest_len = 0;
+	  ort->op_tmpl_chained.digest_len = 0;
+	}
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_ENCRYPT] =
 	im->crypto_algs[sa->crypto_alg].bld_enc_op_tmpl;
       ort->bld_op_tmpl[VNET_CRYPTO_OP_TYPE_HMAC] =
