@@ -282,6 +282,13 @@ quic_ctx_alloc (quic_main_t *qm, clib_thread_index_t thread_index)
   return ctx - qm->wrk_ctx[thread_index].ctx_pool;
 }
 
+static_always_inline quic_ctx_t *
+quic_ctx_get (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  return pool_elt_at_index (
+    quic_wrk_ctx_get (&quic_main, thread_index)->ctx_pool, ctx_index);
+}
+
 static_always_inline void
 quic_ctx_free (quic_main_t *qm, quic_ctx_t *ctx)
 {
@@ -392,6 +399,12 @@ extern void quic_register_engine (const quic_engine_vft_t *vft,
 				  quic_engine_type_t engine_type);
 typedef void (*quic_register_engine_fn) (const quic_engine_vft_t *vft,
 					 quic_engine_type_t engine_type);
+
+void quic_update_fifo_size ();
+
+u8 *format_quic_listener (u8 *s, va_list *args);
+u8 *format_quic_half_open (u8 *s, va_list *args);
+u8 *format_quic_connection (u8 *s, va_list *args);
 
 #endif /* __included_quic_h__ */
 
