@@ -688,9 +688,10 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
 }
 
 static void
-quic_udp_session_disconnect_callback (session_t * s)
+quic_udp_session_disconnect_callback (session_t *ts)
 {
-  clib_warning ("UDP session disconnected???");
+  quic_ctx_t *ctx = quic_ctx_get (ts->opaque, ts->thread_index);
+  quic_eng_transport_closed (ctx);
 }
 
 static void

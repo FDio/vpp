@@ -384,6 +384,7 @@ typedef struct quic_engine_vft_
   u8 *(*format_stream_stats) (u8 *s, va_list *args);
   i64 (*stream_get_stream_id) (quic_ctx_t *ctx);
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
+  void (*transport_closed) (quic_ctx_t *ctx);
 } quic_engine_vft_t;
 
 extern quic_engine_vft_t *quic_engine_vfts;

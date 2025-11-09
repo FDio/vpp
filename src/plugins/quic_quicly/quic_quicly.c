@@ -1737,6 +1737,12 @@ rx_start:
   return 0;
 }
 
+static void
+quic_quicly_transport_closed (quic_ctx_t *ctx)
+{
+  quic_quicly_connection_closed (ctx);
+}
+
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
   .app_cert_key_pair_delete = quic_quicly_app_cert_key_pair_delete,
@@ -1755,6 +1761,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .format_stream_stats = quic_quicly_format_stream_stats,
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_proto_on_close,
+  .transport_closed = quic_quicly_transport_closed,
 };
 
 static clib_error_t *
