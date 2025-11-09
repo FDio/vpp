@@ -85,6 +85,12 @@ quic_eng_crypto_context_release (u32 crypto_context_index, u8 thread_index)
     crypto_context_index, thread_index);
 }
 
+static_always_inline void
+quic_eng_transport_closed (quic_ctx_t *ctx)
+{
+  quic_engine_vfts[quic_main.engine_type].transport_closed (ctx);
+}
+
 static_always_inline int
 quic_eng_connect (quic_ctx_t *ctx, u32 ctx_index,
 		  clib_thread_index_t thread_index, struct sockaddr *sa)
