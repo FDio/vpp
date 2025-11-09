@@ -2,10 +2,8 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
-#include "quic.h"
 #include <sys/socket.h>
 #include <sys/syscall.h>
-
 #include <openssl/rand.h>
 
 #include <vnet/session/application.h>
@@ -677,13 +675,65 @@ static transport_proto_vft_t quic_proto = {
 };
 
 static clib_error_t *
+quic_app_enable (quic_main_t *qm, u8 is_en)
+{
+  /* TODO: Don't use hard-coded values for segment_size */
+  u32 segment_size = 256 << 20;
+
+  if (is_en && qm->app_index == APP_INVALID_INDEX)
+    {
+      vnet_app_attach_args_t _a = {}, *a = &_a;
+      u64 options[APP_OPTIONS_N_OPTIONS];
+
+      clib_memset (a, 0, sizeof (*a));
+      clib_memset (options, 0, sizeof (options));
+
+      a->session_cb_vft = &quic_app_cb_vft;
+      a->api_client_index = APP_INVALID_INDEX;
+      a->options = options;
+      a->name = format (0, "quic");
+      a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+      a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+      a->options[APP_OPTIONS_RX_FIFO_SIZE] = qm->udp_fifo_size;
+      a->options[APP_OPTIONS_TX_FIFO_SIZE] = qm->udp_fifo_size;
+      a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = qm->udp_fifo_prealloc;
+      a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+      a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
+
+      if (vnet_application_attach (a))
+	{
+	  clib_warning ("failed to attach quic app");
+	  return clib_error_return (0, "failed to attach quic app");
+	}
+      qm->app_index = a->app_index;
+      vec_free (a->name);
+    }
+  else if (!is_en && qm->app_index != APP_INVALID_INDEX)
+    {
+      vnet_app_detach_args_t _da = {}, *da = &_da;
+
+      da->app_index = qm->app_index;
+      if (vnet_application_detach (da))
+	{
+	  clib_warning ("failed to detach quic app");
+	  return clib_error_return (0, "failed to detach quic app");
+	}
+      qm->app_index = APP_INVALID_INDEX;
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 quic_enable (vlib_main_t *vm, u8 is_en)
 {
-  quic_main_t *qm = &quic_main;
-  quic_worker_ctx_t *qwc;
-  quic_ctx_t *ctx;
-  crypto_context_t *crctx;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  quic_main_t *qm = &quic_main;
+  crypto_context_t *crctx;
+  quic_worker_ctx_t *qwc;
+  clib_error_t *err;
+  quic_ctx_t *ctx;
   u64 i;
 
   qm->engine_type =
@@ -703,6 +753,9 @@ quic_enable (vlib_main_t *vm, u8 is_en)
 	"\nEnable a quic engine plugin in the startup configuration.");
       return clib_error_return (0, "No QUIC engine plugin enabled");
     }
+
+  if ((err = quic_app_enable (qm, is_en)))
+    return err;
 
   QUIC_DBG (1, "QUIC engine %s init", quic_engine_type_str (qm->engine_type));
   if (!is_en || qm->engine_is_initialized[qm->engine_type])
@@ -755,10 +808,6 @@ static clib_error_t *
 quic_init (vlib_main_t * vm)
 {
   quic_main_t *qm = &quic_main;
-  vnet_app_attach_args_t _a, *a = &_a;
-  u64 options[APP_OPTIONS_N_OPTIONS];
-  /* TODO: Don't use hard-coded values for segment_size and seed[] */
-  u32 segment_size = 256 << 20;
   u8 seed[32];
 
   QUIC_DBG (1, "QUIC plugin init");
@@ -767,35 +816,13 @@ quic_init (vlib_main_t * vm)
     return clib_error_return_unix (0, "getrandom() failed");
   RAND_seed (seed, sizeof (seed));
 
-  clib_memset (a, 0, sizeof (*a));
-  clib_memset (options, 0, sizeof (options));
-
-  a->session_cb_vft = &quic_app_cb_vft;
-  a->api_client_index = APP_INVALID_INDEX;
-  a->options = options;
-  a->name = format (0, "quic");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = qm->udp_fifo_size;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = qm->udp_fifo_size;
-  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = qm->udp_fifo_prealloc;
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-  a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
-
-  if (vnet_application_attach (a))
-    {
-      clib_warning ("failed to attach quic app");
-      return clib_error_return (0, "failed to attach quic app");
-    }
-  qm->app_index = a->app_index;
-
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
-  vec_free (a->name);
+  qm->app_index = APP_INVALID_INDEX;
+
   return 0;
 }
 
