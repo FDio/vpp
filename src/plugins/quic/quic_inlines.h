@@ -169,25 +169,6 @@ quic_eng_rpc_evt_to_thread_connection_migrate (u32 dest_thread,
     dest_thread, quic_engine_vfts[qm->engine_type].connection_migrate, ctx);
 }
 
-static_always_inline void
-quic_eng_connection_get_stats (void *conn, quic_stats_t *conn_stats)
-{
-  quic_main_t *qm = &quic_main;
-
-  if (PREDICT_FALSE (qm->engine_type == QUIC_ENGINE_NONE))
-    {
-      QUIC_DBG (1, "No QUIC engine is available\n");
-      return;
-    }
-  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].connection_get_stats))
-    {
-      QUIC_DBG (1, "connection_get_stats() not available for %s engine\n",
-		quic_engine_type_str (qm->engine_type));
-      return;
-    }
-  quic_engine_vfts[qm->engine_type].connection_get_stats (conn, conn_stats);
-}
-
 static_always_inline int
 quic_eng_udp_session_rx_packets (session_t *udp_session)
 {
@@ -264,45 +245,6 @@ quic_eng_send_packets (void *conn)
       return 0;
     }
   return (quic_engine_vfts[qm->engine_type].send_packets (conn));
-}
-
-static_always_inline u8 *
-quic_eng_format_connection_stats (u8 *s, va_list *args)
-{
-  quic_main_t *qm = &quic_main;
-
-  if (PREDICT_FALSE (qm->engine_type == QUIC_ENGINE_NONE))
-    {
-      QUIC_DBG (1, "No QUIC engine is available\n");
-      return s;
-    }
-  if (PREDICT_FALSE (
-	!quic_engine_vfts[qm->engine_type].format_connection_stats))
-    {
-      QUIC_DBG (1, "format_connection_stats() not available for %s engine\n",
-		quic_engine_type_str (qm->engine_type));
-      return s;
-    }
-  return (quic_engine_vfts[qm->engine_type].format_connection_stats (s, args));
-}
-
-static_always_inline u8 *
-quic_eng_format_stream_stats (u8 *s, va_list *args)
-{
-  quic_main_t *qm = &quic_main;
-
-  if (PREDICT_FALSE (qm->engine_type == QUIC_ENGINE_NONE))
-    {
-      QUIC_DBG (1, "No QUIC engine is available\n");
-      return s;
-    }
-  if (PREDICT_FALSE (!quic_engine_vfts[qm->engine_type].format_stream_stats))
-    {
-      QUIC_DBG (1, "format_stream_connection() not available for %s engine\n",
-		quic_engine_type_str (qm->engine_type));
-      return s;
-    }
-  return (quic_engine_vfts[qm->engine_type].format_stream_stats (s, args));
 }
 
 static_always_inline i64
