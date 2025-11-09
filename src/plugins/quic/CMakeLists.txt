@@ -9,6 +9,7 @@ endif()
 add_vpp_plugin(quic
   SOURCES
   quic.c
+  quic_cli.c
 
   LINK_LIBRARIES ${OPENSSL_LIBRARIES}
 )
