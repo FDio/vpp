@@ -411,6 +411,8 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
   ctx->bytes_written += delta;
   rv = svm_fifo_dequeue_drop (f, delta);
   QUIC_ASSERT (rv == delta);
+  if (svm_fifo_needs_deq_ntf (f, delta))
+    session_dequeue_notify (stream_session);
 
   rv = quicly_stream_sync_sendbuf (stream, 0);
   QUIC_ASSERT (!rv);
