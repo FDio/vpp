@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "88f5abd8_1fb60b31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-11-10T22:33:10Z",
+      "side": 1,
+      "message": "Verifying +1 manually since chained merge got bogged up.\n\nRebased on the previous parent that is now HEAD.",
+      "revId": "c1adefb38036b26352b1bd513139199b68dcb510",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
