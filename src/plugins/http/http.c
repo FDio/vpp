@@ -318,18 +318,20 @@ http_shutdown_transport (http_conn_t *hc)
 }
 
 int
-http_connect_transport_stream (http_conn_t *parent, u8 is_unidirectional,
-			       http_conn_t **stream)
+http_connect_transport_stream (u32 parent_index,
+			       clib_thread_index_t thread_index,
+			       u8 is_unidirectional, http_conn_t **stream)
 {
   vnet_connect_args_t _cargs, *cargs = &_cargs;
   http_main_t *hm = &http_main;
-  http_conn_t *hc;
+  http_conn_t *hc, *parent;
   http_conn_handle_t hc_handle;
   u32 hc_index;
   int error;
 
-  hc_index = http_conn_alloc_w_thread (parent->c_thread_index);
-  hc = http_conn_get_w_thread (hc_index, parent->c_thread_index);
+  hc_index = http_conn_alloc_w_thread (thread_index);
+  hc = http_conn_get_w_thread (hc_index, thread_index);
+  parent = http_conn_get_w_thread (parent_index, thread_index);
   clib_memcpy_fast (hc, parent, sizeof (*parent));
   hc->hc_hc_index = hc_index;
   hc->hc_http_conn_index = parent->hc_hc_index;
@@ -1260,6 +1262,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   lhc_index = http_listener_alloc ();
   lhc = http_listener_get (lhc_index);
+  HTTP_DBG (1, "app_listener_index %u http_listener_index %u",
+	    app_listener_index, lhc_index);
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
@@ -1387,6 +1391,8 @@ http_stop_listen (u32 listener_index)
   int rv;
 
   lhc = http_listener_get (listener_index);
+  HTTP_DBG (1, "app_listener_index %u http_listener_index %u", lhc->c_s_index,
+	    listener_index);
 
   if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
     {

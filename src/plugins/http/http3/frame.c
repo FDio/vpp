@@ -29,6 +29,7 @@ http3_frame_header_read (u8 *src, u64 src_len, http3_stream_type_t stream_type,
   if (fh->length == HTTP_INVALID_VARINT)
     return HTTP3_ERROR_INCOMPLETE;
   fh->payload = p;
+  fh->header_len = (u8) (p - src);
 
   /* validate if received on correct stream type */
   switch (fh->type)

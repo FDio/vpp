@@ -32,6 +32,7 @@ typedef struct
   u64 type;
   u64 length;
   u8 *payload;
+  u8 header_len;
 } http3_frame_header_t;
 
 /**

@@ -26,6 +26,8 @@ static const http_token_t http2_conn_preface = { http_token_lit (
   _ (connections_reset_by_app, "connections reset by app")                    \
   _ (app_streams_opened, "application streams opened")                        \
   _ (app_streams_closed, "application streams closed")                        \
+  _ (ctrl_streams_opened, "control streams opened")                           \
+  _ (ctrl_streams_closed, "control streams closed")                           \
   _ (stream_reset_by_peer, "streams reset by peer")                           \
   _ (stream_reset_by_app, "streams reset by app")                             \
   _ (requests_received, "requests received")                                  \
@@ -471,14 +473,16 @@ void http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg);
 /**
  * Open new stream on existing transport connection.
  *
- * @param parent            Parent transport connection ctx.
+ * @param parent_index      Parent connection index.
+ * @param thread_index      Thread index.
  * @param is_unidirectional Stream can be unidirectional or bidirectional.
  * @param stream            Opened stream ctx.
  *
  * @return @c 0 if stream was opened, non-zero value otherwise.
  */
-int http_connect_transport_stream (http_conn_t *parent, u8 is_unidirectional,
-				   http_conn_t **stream);
+int http_connect_transport_stream (u32 parent_index,
+				   clib_thread_index_t thread_index,
+				   u8 is_unidirectional, http_conn_t **stream);
 
 /**
  * Reset stream.
@@ -815,11 +819,11 @@ http_io_ts_read_segs (http_conn_t *hc, svm_fifo_seg_t *segs, u32 *n_segs,
   ASSERT (n_read > 0);
 }
 
-always_inline void
+always_inline u32
 http_io_ts_drain (http_conn_t *hc, u32 len)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
-  svm_fifo_dequeue_drop (ts->rx_fifo, len);
+  return svm_fifo_dequeue_drop (ts->rx_fifo, len);
 }
 
 always_inline void
