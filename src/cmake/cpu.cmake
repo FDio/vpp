@@ -148,11 +148,13 @@ macro(add_vpp_march_variant v)
 endmacro()
 
 if(DEFINED VPP_PLATFORM)
-  if(DEFINED VPP_PLATFORM_MARCH_FLAGS)
-     set(VPP_DEFAULT_MARCH_FLAGS ${VPP_PLATFORM_MARCH_FLAGS})
-     check_c_compiler_flag(${VPP_DEFAULT_MARCH_FLAGS} compiler_flag_march)
+  if(DEFINED VPP_PLATFORM_CFLAGS)
+     set(VPP_DEFAULT_MARCH_FLAGS ${VPP_PLATFORM_CFLAGS})
+     separate_arguments(VPP_DEFAULT_MARCH_FLAGS)
+     string(REPLACE ";" " " march_flags_str "${VPP_DEFAULT_MARCH_FLAGS}")
+     check_c_compiler_flag("${march_flags_str}" compiler_flag_march)
      if(NOT compiler_flag_march)
-       message(FATAL_ERROR "platform build with ${VPP_DEFAULT_MARCH_FLAGS} is not supported by compiler")
+       message(FATAL_ERROR "platform build with ${march_flags_str} is not supported by compiler")
      endif()
   else()
      set(VPP_DEFAULT_MARCH_FLAGS "")
@@ -161,63 +163,32 @@ if(DEFINED VPP_PLATFORM)
 elseif(VPP_BUILD_NATIVE_ONLY)
   set(VPP_BUILD_NATIVE_ARCH "native" CACHE STRING "native CPU -march= value.")
   set(VPP_DEFAULT_MARCH_FLAGS -march=${VPP_BUILD_NATIVE_ARCH})
-  check_c_compiler_flag(${VPP_DEFAULT_MARCH_FLAGS} compiler_flag_march)
+  separate_arguments(VPP_DEFAULT_MARCH_FLAGS)
+  string(REPLACE ";" " " march_flags_str "${VPP_DEFAULT_MARCH_FLAGS}")
+  check_c_compiler_flag("${march_flags_str}" compiler_flag_march)
   if(NOT compiler_flag_march)
-    message(FATAL_ERROR "Native-only build with ${VPP_DEFAULT_MARCH_FLAGS} is not supported by compiler")
+    message(FATAL_ERROR "Native-only build with ${march_flags_str} is not supported by compiler")
   endif()
   set(MARCH_VARIANTS_NAMES "native-only")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  set(VPP_DEFAULT_MARCH_FLAGS -march=corei7 -mtune=corei7-avx)
+  set(VPP_DEFAULT_MARCH_FLAGS -march=x86-64-v2 -mtune=generic)
 
-  add_vpp_march_variant(hsw
-    FLAGS -march=haswell -mtune=haswell
+  add_vpp_march_variant(x86_64_v3
+    FLAGS -march=x86-64-v3 -mtune=generic
   )
 
-  add_vpp_march_variant(trm
-    FLAGS -march=tremont -mtune=tremont
-    OFF
-  )
-
-  add_vpp_march_variant(adl
-    FLAGS -march=alderlake -mtune=alderlake -mprefer-vector-width=256
-    OFF
-  )
+  if (GNU_ASSEMBLER_AVX512_BUG)
+     message(WARNING "x86-64-v4 multiarch variant disabled due to GNU Assembler bug")
+  else()
+    add_vpp_march_variant(x86_64_v4
+      FLAGS -march=x86-64-v4 -mtune=generic -mprefer-vector-width=512
+    )
+  endif()
 
   add_vpp_march_variant(scalar
     FLAGS -march=core2 -mno-mmx -mno-sse
     OFF
   )
-
-  add_vpp_march_variant(znver3
-    FLAGS -march=znver3 -mtune=znver3 -mprefer-vector-width=256
-    OFF
-  )
-
-  if (GNU_ASSEMBLER_AVX512_BUG)
-     message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
-  else()
-    add_vpp_march_variant(skx
-      FLAGS -march=skylake-avx512 -mtune=skylake-avx512 -mprefer-vector-width=256
-    )
-
-    add_vpp_march_variant(icl
-      FLAGS -march=icelake-client -mtune=icelake-client -mprefer-vector-width=512
-    )
-
-    add_vpp_march_variant(spr
-      FLAGS -march=sapphirerapids -mtune=sapphirerapids -mprefer-vector-width=512
-      OFF
-    )
-
-    add_vpp_march_variant(znver4
-      FLAGS -march=znver4 -mtune=znver4 -mprefer-vector-width=512
-    )
-
-    add_vpp_march_variant(znver5
-      FLAGS -march=znver5 -mtune=znver5 -mprefer-vector-width=512
-      OFF
-    )
-  endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   set(VPP_DEFAULT_MARCH_FLAGS -march=armv8-a+crc)
 

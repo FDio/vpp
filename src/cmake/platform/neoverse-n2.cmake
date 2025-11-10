@@ -1,4 +1,4 @@
 
 set(VPP_PLATFORM_CACHE_LINE_SIZE 64)
 set(VPP_PLATFORM_N_PREFETCHES 6)
-set(VPP_PLATFORM_MARCH_FLAGS -mcpu=neoverse-n2+crypto)
+set(VPP_PLATFORM_CFLAGS -mcpu=neoverse-n2+crypto)
