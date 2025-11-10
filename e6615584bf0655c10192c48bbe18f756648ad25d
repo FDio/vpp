@@ -34,6 +34,24 @@
       "parentUuid": "b7397b5c_0ff9df53",
       "revId": "e6615584bf0655c10192c48bbe18f756648ad25d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15f6a539_92886bcb",
+        "filename": "src/plugins/quic/quic_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-11-10T18:41:56Z",
+      "side": 0,
+      "message": "I\u0027d prefer they be left in quic_inlines.h.  I\u0027ll push a separate patch with the renaming of the file after this set of stacked patches is merged.",
+      "parentUuid": "cff095b2_be0eb6fb",
+      "revId": "e6615584bf0655c10192c48bbe18f756648ad25d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
