@@ -39,8 +39,7 @@ typedef struct http3_stream_ctx_
 } http3_stream_ctx_t;
 
 #define foreach_http3_conn_flags                                              \
-  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                            \
-  _ (CLOSING, "closing")
+  _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")
 
 typedef enum http3_conn_flags_bit_
 {
@@ -59,7 +58,6 @@ typedef enum http3_conn_flags_
 typedef struct
 {
   u32 hc_index;
-  u32 stream_num;
   u32 our_ctrl_stream_index;
   u32 peer_ctrl_stream_index;
   http3_conn_flags_t flags;
@@ -121,12 +119,6 @@ http3_conn_ctx_free (http_conn_t *hc)
   HTTP_DBG (1, "h3c [%u]%x", hc->c_thread_index,
 	    pointer_to_uword (hc->opaque));
   h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
-  if (h3c->stream_num != 0)
-    {
-      ASSERT (h3c->flags & HTTP3_CONN_F_CLOSING);
-      HTTP_DBG (1, "postpone cleanup");
-      return;
-    }
   if (CLIB_DEBUG)
     memset (h3c, 0xba, sizeof (*h3c));
   pool_put (wrk->conn_pool, h3c);
@@ -140,7 +132,6 @@ http3_stream_ctx_alloc (http_conn_t *stream)
   u32 si;
   http_req_handle_t sh;
   http_conn_t *hc;
-  http3_conn_ctx_t *h3c;
 
   pool_get_zero (wrk->stream_pool, sctx);
   si = sctx - wrk->stream_pool;
@@ -157,8 +148,6 @@ http3_stream_ctx_alloc (http_conn_t *stream)
 			       stream->c_thread_index);
   sctx->h3c_index = pointer_to_uword (hc->opaque);
   HTTP_DBG (1, "h3c [%u]%x sctx_index %x", hc->c_thread_index, hc->opaque, si);
-  h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
-  h3c->stream_num++;
 
   return sctx;
 }
@@ -175,23 +164,11 @@ http3_stream_ctx_free (http_conn_t *stream)
 {
   http3_stream_ctx_t *sctx;
   http3_worker_ctx_t *wrk = http3_worker_get (stream->c_thread_index);
-  http_conn_t *hc;
-  http3_conn_ctx_t *h3c;
 
   sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
 			       stream->c_thread_index);
   HTTP_DBG (1, "sctx [%u]%x", stream->c_thread_index,
 	    ((http_req_handle_t) sctx->base.hr_req_handle).req_index);
-  hc = http_conn_get_w_thread (stream->hc_http_conn_index,
-			       stream->c_thread_index);
-  h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
-  h3c->stream_num--;
-  if (h3c->stream_num == 0 && h3c->flags & HTTP3_CONN_F_CLOSING)
-    {
-      if (CLIB_DEBUG)
-	memset (h3c, 0xba, sizeof (*h3c));
-      pool_put (wrk->conn_pool, h3c);
-    }
   stream->opaque = uword_to_pointer (SESSION_INVALID_INDEX, void *);
   if (CLIB_DEBUG)
     memset (sctx, 0xba, sizeof (*sctx));
@@ -995,22 +972,13 @@ http3_transport_rx_callback (http_conn_t *stream)
 static void
 http3_transport_close_callback (http_conn_t *hc)
 {
-  http3_conn_ctx_t *h3c;
-
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
-  h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
-  h3c->flags |= HTTP3_CONN_F_CLOSING;
-  http_disconnect_transport (hc);
 }
 
 static void
 http3_transport_reset_callback (http_conn_t *hc)
 {
-  http3_conn_ctx_t *h3c;
-
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
-  h3c = http3_conn_ctx_get (pointer_to_uword (hc->opaque), hc->c_thread_index);
-  h3c->flags |= HTTP3_CONN_F_CLOSING;
 }
 
 static void
