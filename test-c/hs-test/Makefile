@@ -139,16 +139,22 @@ list-tests:
 	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'test.go' | \
 		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
+.PHONY: .set-core-pattern
+.set-core-pattern:
+	-if [ -n "$(BUILD_NUMBER)" ]; then \
+        echo /var/lib/vpp/vppcore.%e.%p | sudo tee /proc/sys/kernel/core_pattern; \
+    fi
+
 .PHONY: build-vpp-release
-build-vpp-release:
+build-vpp-release: .set-core-pattern
 	@$(MAKE) -C ../.. build-release
 
 .PHONY: build-vpp-debug
-build-vpp-debug:
+build-vpp-debug: .set-core-pattern
 	@$(MAKE) -C ../.. build
 
 .PHONY: build-vpp-gcov
-build-vpp-gcov:
+build-vpp-gcov: .set-core-pattern
 	@$(MAKE) -C ../.. build-gcov
 
 .build.ok: build
