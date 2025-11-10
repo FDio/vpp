@@ -85,8 +85,8 @@ ipsec_sa_inb_refresh_op_tmpl (ipsec_sa_inb_rt_t *irt)
 }
 
 static clib_error_t *
-ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
-			      u32 sa_index, int is_add)
+ipsec_call_add_del_callbacks (ipsec_main_t *im, ipsec_sa_t *sa, u32 sa_index,
+			      int is_add)
 {
   ipsec_ah_backend_t *ab;
   ipsec_esp_backend_t *eb;
@@ -107,7 +107,7 @@ ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
 }
 
 void
-ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
+ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len)
 {
   memset (key, 0, sizeof (*key));
 
@@ -123,7 +123,7 @@ ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
  * 'stack' (resolve the recursion for) the SA tunnel destination
  */
 static void
-ipsec_sa_stack (ipsec_sa_t * sa)
+ipsec_sa_stack (ipsec_sa_t *sa)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
@@ -151,12 +151,12 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
   vnet_crypto_op_id_t inb_op_id, outb_op_id;
   u32 is_async;
 
-      if (sa->linked_key_index != ~0)
+  if (sa->linked_key_index != ~0)
     key_index = sa->linked_key_index;
-      else
+  else
     key_index = sa->crypto_sync_key_index;
 
-      if (is_enabled)
+  if (is_enabled)
     {
       outb_op_id = sa->crypto_async_enc_op_id;
       inb_op_id = sa->crypto_async_dec_op_id;
@@ -207,7 +207,7 @@ ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled)
 }
 
 void
-ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
+ipsec_sa_set_crypto_alg (ipsec_sa_t *sa, ipsec_crypto_alg_t crypto_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_main_crypto_alg_t *alg = im->crypto_algs + crypto_alg;
@@ -218,7 +218,7 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
 }
 
 void
-ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
+ipsec_sa_set_integ_alg (ipsec_sa_t *sa, ipsec_integ_alg_t integ_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   sa->integ_alg = integ_alg;
@@ -731,23 +731,34 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 }
 
 static void
-ipsec_sa_del (ipsec_sa_t * sa)
+ipsec_sa_del (ipsec_sa_t *sa)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
   u32 sa_index;
+  vnet_crypto_main_t *cm = &crypto_main;
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
 
+  vlib_worker_thread_barrier_sync (vm);
   sa_index = sa - im->sa_pool;
   hash_unset (im->sa_index_by_sa_id, sa->id);
   tunnel_unresolve (&sa->tunnel);
+  im->inb_sa_runtimes[sa_index] = 0;
+  im->outb_sa_runtimes[sa_index] = 0;
+  vlib_worker_thread_barrier_release (vm);
 
   /* no recovery possible when deleting an SA */
   (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
 
   if (sa->linked_key_index != ~0)
-    vnet_crypto_key_del (vm, sa->linked_key_index);
+    {
+      if (vnet_crypto_key_unref (cm->keys[sa->linked_key_index]))
+	{
+	  vnet_crypto_key_del (vm, sa->linked_key_index);
+	}
+    }
+  vnet_crypto_key_del (vm, sa->linked_key_index);
 
   if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
     ipsec_unregister_udp_port (sa->udp_dst_port,
@@ -756,15 +767,22 @@ ipsec_sa_del (ipsec_sa_t * sa)
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&ort->dpo);
   if (sa->crypto_alg != IPSEC_CRYPTO_ALG_NONE)
-    vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
+    {
+      if (vnet_crypto_key_unref (cm->keys[sa->crypto_sync_key_index]))
+	{
+	  vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
+	}
+    }
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
-    vnet_crypto_key_del (vm, sa->integ_sync_key_index);
+    {
+      if (vnet_crypto_key_unref (cm->keys[sa->crypto_sync_key_index]))
+	{
+	  vnet_crypto_key_del (vm, sa->crypto_sync_key_index);
+	}
+    }
   foreach_pointer (p, irt, ort)
     if (p)
       clib_mem_free (p);
-
-  im->inb_sa_runtimes[sa_index] = 0;
-  im->outb_sa_runtimes[sa_index] = 0;
 
   pool_put (im->sa_pool, sa);
 }
