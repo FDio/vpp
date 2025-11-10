@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-#include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/virtio/pci.h>
-
 /* common configuration */
 #define VIRTIO_FEATURE_SELECT_HI 1
 #define VIRTIO_FEATURE_SELECT_LO 0
