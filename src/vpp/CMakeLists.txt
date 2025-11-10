@@ -87,6 +87,13 @@ if(VPP_API_TEST_BUILTIN)
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()
 
+if(VPP_LUA_AVAILABLE)
+  list(APPEND VPP_SOURCES
+    lua/vpp.c
+    lua/node.c
+  )
+endif()
+
 add_vpp_executable(vpp
   ENABLE_EXPORTS
   SOURCES ${VPP_SOURCES}
