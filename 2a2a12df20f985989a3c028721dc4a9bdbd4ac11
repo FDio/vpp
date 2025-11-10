@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d101b39_6f99daea",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 882,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-10T13:51:12Z",
+      "side": 1,
+      "message": "Thanks, I keep forgetting about this one...",
+      "parentUuid": "cd53aaf4_2001066e",
+      "range": {
+        "startLine": 881,
+        "startChar": 1,
+        "endLine": 882,
+        "endChar": 37
+      },
+      "revId": "2a2a12df20f985989a3c028721dc4a9bdbd4ac11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "670e77a2_9efca2c3",
@@ -37,6 +61,30 @@
       "writtenOn": "2025-11-07T18:28:43Z",
       "side": 1,
       "message": "fib_table_is_valid?",
+      "range": {
+        "startLine": 917,
+        "startChar": 0,
+        "endLine": 917,
+        "endChar": 15
+      },
+      "revId": "2a2a12df20f985989a3c028721dc4a9bdbd4ac11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2921afb0_c757771b",
+        "filename": "src/vnet/fib/fib_table.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 3161
+      },
+      "writtenOn": "2025-11-10T13:51:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "670e77a2_9efca2c3",
       "range": {
         "startLine": 917,
         "startChar": 0,
