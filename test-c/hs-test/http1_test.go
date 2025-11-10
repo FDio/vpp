@@ -75,7 +75,7 @@ func HttpGetTpsTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	url := "http://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://%s", serverAddress)
+	vpp.Vppctl("http tps uri http://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
@@ -85,7 +85,7 @@ func HttpGetTpsTlsTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	url := "https://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://%s", serverAddress)
+	vpp.Vppctl("http tps uri https://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps download 10M", 10, 0, httpDownloadBenchmark, url)
 }
@@ -118,7 +118,7 @@ func HttpPostTpsTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	url := "http://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tcp://%s", serverAddress)
+	vpp.Vppctl("http tps uri http://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
@@ -128,7 +128,7 @@ func HttpPostTpsTlsTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	url := "https://" + serverAddress + "/test_file_10M"
 
-	vpp.Vppctl("http tps uri tls://%s", serverAddress)
+	vpp.Vppctl("http tps uri https://%s", serverAddress)
 
 	s.RunBenchmark("HTTP tps upload 10M", 10, 0, httpUploadBenchmark, url)
 }
