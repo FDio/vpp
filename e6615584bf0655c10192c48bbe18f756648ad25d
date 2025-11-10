@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7397b5c_0ff9df53",
+        "filename": "src/plugins/quic/quic_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-11-10T17:46:41Z",
+      "side": 0,
+      "message": "What is the purpose of moving these to quic_cli.c?\n\nIt makes more sense to me to keep the quic engine API wrapper inline functions together rather than spread them across the .c files\n\nAs an aside, I think it would have been better to name this file quic_eng_inlines.h",
+      "revId": "e6615584bf0655c10192c48bbe18f756648ad25d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
