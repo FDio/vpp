@@ -1,3 +1,3 @@
 
 set(VPP_PLATFORM_CACHE_LINE_SIZE 64)
-set(VPP_PLATFORM_MARCH_FLAGS -mcpu=cortex-a72+crypto)
+set(VPP_PLATFORM_CFLAGS -mcpu=cortex-a72+crypto)

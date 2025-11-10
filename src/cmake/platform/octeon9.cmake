@@ -1,4 +1,4 @@
 
 set(VPP_PLATFORM_CACHE_LINE_SIZE 128)
-set(VPP_PLATFORM_MARCH_FLAGS -march=armv8.2-a+crc+crypto)
+set(VPP_PLATFORM_CFLAGS -march=armv8.2-a+crc+crypto)
 set(VPP_PLATFORM_BUFFER_ALIGN 128)
