@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ac71a1_8d4fb023",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 706,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2025-11-10T17:53:09Z",
+      "side": 1,
+      "message": "vec_free (a-\u003ename);",
+      "revId": "13e1a5c44de208429939e30b3a0dceb056051643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
