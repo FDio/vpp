@@ -12,15 +12,8 @@
 #if defined(__x86_64__)
 #define foreach_march_variant                                                                      \
   _ (scalar, "Generic (SIMD disabled)")                                                            \
-  _ (hsw, "Intel Haswell")                                                                         \
-  _ (trm, "Intel Tremont")                                                                         \
-  _ (skx, "Intel Skylake (server) / Cascade Lake")                                                 \
-  _ (icl, "Intel Ice Lake")                                                                        \
-  _ (adl, "Intel Alder Lake")                                                                      \
-  _ (spr, "Intel Sapphire Rapids")                                                                 \
-  _ (znver3, "AMD Milan (Zen 3)")                                                                  \
-  _ (znver4, "AMD Genoa (Zen 4)")                                                                  \
-  _ (znver5, "AMD Turin (Zen 5)")
+  _ (x86_64_v3, "x86-64-v3")                                                                       \
+  _ (x86_64_v4, "x86-64-v4")
 #elif defined(__aarch64__)
 #define foreach_march_variant                                                 \
   _ (octeontx2, "Marvell Octeon TX2")                                         \
@@ -139,6 +132,19 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (movdir64b, 7, ecx, 28)                                                                        \
   _ (enqcmd, 7, ecx, 29)                                                                           \
   _ (avx512_fp16, 7, edx, 23)                                                                      \
+  _ (fma, 1, ecx, 12)                                                                              \
+  _ (movbe, 1, ecx, 22)                                                                            \
+  _ (popcnt, 1, ecx, 23)                                                                           \
+  _ (f16c, 1, ecx, 29)                                                                             \
+  _ (bmi1, 7, ebx, 3)                                                                              \
+  _ (lzcnt, 0x80000001, ecx, 5)                                                                    \
+  _ (avx512dq, 7, ebx, 17)                                                                         \
+  _ (avx512cd, 7, ebx, 28)                                                                         \
+  _ (avx512bw, 7, ebx, 30)                                                                         \
+  _ (avx512vl, 7, ebx, 31)                                                                         \
+  _ (cmpxchg16b, 1, ecx, 13)                                                                       \
+  _ (lahf_sahf, 0x80000001, ecx, 0)                                                                \
+  _ (osxsave, 1, ecx, 27)                                                                          \
   _ (aperfmperf, 0x00000006, ecx, 0)                                                               \
   _ (invariant_tsc, 0x80000007, edx, 8)                                                            \
   _ (monitorx, 0x80000001, ecx, 29)
@@ -277,81 +283,29 @@ clib_cpu_is_intel ()
 }
 
 static inline int
+clib_cpu_march_priority_x86_64_v4 ()
+{
+  if (clib_cpu_supports_avx512f () && clib_cpu_supports_avx512bw () &&
+      clib_cpu_supports_avx512dq () && clib_cpu_supports_avx512vl () &&
+      clib_cpu_supports_avx512cd ())
+    return 95;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_x86_64_v3 ()
+{
+  if (clib_cpu_supports_avx2 () && clib_cpu_supports_bmi2 () && clib_cpu_supports_fma () &&
+      clib_cpu_supports_bmi1 () && clib_cpu_supports_movbe () && clib_cpu_supports_lzcnt () &&
+      clib_cpu_supports_osxsave ())
+    return 45;
+  return -1;
+}
+
+static inline int
 clib_cpu_march_priority_scalar ()
 {
   return 1;
-}
-
-static inline int
-clib_cpu_march_priority_spr ()
-{
-  if (clib_cpu_is_intel () && clib_cpu_supports_enqcmd ())
-    return 300;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_icl ()
-{
-  if (clib_cpu_is_intel () && clib_cpu_supports_avx512_bitalg ())
-    return 200;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_adl ()
-{
-  if (clib_cpu_is_intel () && clib_cpu_supports_movdiri () && clib_cpu_supports_avx2 ())
-    return 150;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_skx ()
-{
-  if (clib_cpu_is_intel () && clib_cpu_supports_avx512f ())
-    return 100;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_trm ()
-{
-  if (clib_cpu_is_intel () && clib_cpu_supports_movdiri ())
-    return 40;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_hsw ()
-{
-  if (clib_cpu_supports_avx2 ())
-    return 50;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_znver5 ()
-{
-  if (clib_cpu_is_amd () && clib_cpu_supports_avx512_vp2intersect ())
-    return 350;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_znver4 ()
-{
-  if (clib_cpu_is_amd () && clib_cpu_supports_avx512f ())
-    return 250;
-  return -1;
-}
-
-static inline int
-clib_cpu_march_priority_znver3 ()
-{
-  if (clib_cpu_is_amd () && clib_cpu_supports_vaes ())
-    return 70;
-  return -1;
 }
 
 #define X86_CPU_ARCH_PERF_FUNC 0xA
