@@ -151,6 +151,22 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
   if (PREDICT_FALSE (ring_elt == NULL))
     return -1;
 
+  vnet_crypto_key_t *vnet_key = NULL;
+  vnet_crypto_key_index_t last_key_index = ~0;
+  u16 n_elts = frame->n_elts;
+  u16 index = 0;
+  while (n_elts)
+    {
+      if (last_key_index != frame->elts[index].key_index)
+	{
+	  last_key_index = frame->elts[index].key_index;
+	  vnet_key = vnet_crypto_get_key (last_key_index);
+	}
+      vnet_crypto_key_ref (vnet_key);
+      ++index;
+      --n_elts;
+    }
+
   ring_elt->aad_len = 1;
   ring_elt->op_type = (u8) op_type;
   return 0;
@@ -591,6 +607,33 @@ cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	  vlib_node_set_interrupt_pending (
 	    vlib_get_main_by_index (vm->thread_index), cm->crypto_node_index);
 	  ret_frame = cryptodev_cache_ring_pop (ring);
+	  if (ret_frame)
+	    {
+	      vnet_crypto_key_t *vnet_key = NULL;
+	      vnet_crypto_key_index_t last_key_index = ~0;
+	      u16 n_ret_frame_elts = ret_frame->n_elts;
+	      u16 ret_frame_index = 0;
+	      while (n_ret_frame_elts)
+		{
+		  if (last_key_index !=
+		      ret_frame->elts[ret_frame_index].key_index)
+		    {
+		      last_key_index =
+			ret_frame->elts[ret_frame_index].key_index;
+		      vnet_key = vnet_crypto_get_key (last_key_index);
+		    }
+		  if (vnet_crypto_key_unref (vnet_key))
+		    {
+		      void vl_api_rpc_call_main_thread (void *fp, u8 *data,
+							u32 data_length);
+		      vl_api_rpc_call_main_thread (
+			vnet_crypto_key_del_main, (u8 *) &last_key_index,
+			sizeof (vnet_crypto_key_index_t));
+		    }
+		  --n_ret_frame_elts;
+		  ++ret_frame_index;
+		}
+	    }
 	  return ret_frame;
 	}
     }
@@ -726,7 +769,7 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
     if (ref_cnt)
       vnet_crypto_register_dequeue_handler (vm, eidx, cryptodev_frame_dequeue);
 
-    return 0;
+  return 0;
 
 error_exit:
   vec_foreach (cet, cmt->per_thread_data)
