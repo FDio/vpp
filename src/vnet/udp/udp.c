@@ -530,27 +530,32 @@ format_udp_listener_session (u8 * s, va_list * args)
 }
 
 void
-udp_connection_handle_icmp (transport_connection_t *tconn, u8 icmp_type,
+udp_connection_handle_icmp (transport_connection_t *tc, u8 icmp_type,
 			    u8 icmp_code)
 {
   udp_connection_t *uc;
   session_t *s;
-  uc = udp_connection_from_transport (tconn);
-  if (tconn->is_ip4)
+
+  uc = udp_connection_from_transport (tc);
+  if (tc->is_ip4)
     {
       switch (icmp_type)
 	{
 	case ICMP4_destination_unreachable:
-	  s =
-	    session_get (uc->connection.s_index, uc->connection.thread_index);
-	  /* Ignore connectionless UDP */
-	  if (s->session_state != SESSION_STATE_LISTENING)
-	    {
-	      session_transport_closing_notify (&uc->connection);
-	      session_transport_closed_notify (&uc->connection);
-	      session_transport_delete_request (&uc->connection,
-						udp_connection_cleanup);
-	    }
+	  s = session_get (uc->c_s_index, uc->c_thread_index);
+
+	  /* Ignore connectionless UDP and sessions that have already been
+	   * closed */
+	  if (s->session_state == SESSION_STATE_LISTENING ||
+	      s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	    break;
+
+	  session_transport_closing_notify (&uc->connection);
+	  session_transport_closed_notify (&uc->connection);
+
+	  /* ICMPs will probably not hash identically to original connection */
+	  udp_connection_program_cleanup (uc);
+
 	  break;
 	default:
 	  break;

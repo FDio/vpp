@@ -347,8 +347,6 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 				 vlib_frame_t *frame)
 {
   u32 next_index, n_left_from, *from, *to_next;
-  u8 is_filtered = 0;
-  clib_thread_index_t t_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -369,7 +367,7 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vlib_buffer_t *b0;
 	  icmp46_header_t *icmp0;
 	  ip4_header_t *ip0, *ip1;
-	  transport_connection_t *tc;
+	  session_t *s0;
 
 	  bi0 = from[0];
 	  b0 = vlib_get_buffer (vm, bi0);
@@ -382,18 +380,19 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip1 = vlib_buffer_get_current (b0);
 	  src_port = (u16 *) ip4_next_header (ip1);
 	  dst_port = src_port + 1;
-	  tc = session_lookup_connection_wt4 (
-	    0, &ip0->dst_address, &ip0->src_address, *src_port, *dst_port,
-	    transport_proto_from_ip_proto (ip1->protocol), t_index,
-	    &is_filtered);
-	  if (PREDICT_TRUE (tc != NULL))
+	  s0 = session_lookup_safe4 (
+	    vnet_buffer (b0)->ip.fib_index, &ip0->dst_address,
+	    &ip0->src_address, *src_port, *dst_port,
+	    transport_proto_from_ip_proto (ip1->protocol));
+	  if (s0)
 	    {
 	      /* direct calls here since vft used only for N to S notifications
 	       */
-	      switch (tc->proto)
+	      switch (session_get_transport_proto (s0))
 		{
 		case TRANSPORT_PROTO_UDP:
-		  udp_connection_handle_icmp (tc, icmp0->type, icmp0->code);
+		  udp_connection_handle_icmp (session_get_transport (s0),
+					      icmp0->type, icmp0->code);
 		  break;
 		default:
 		  if (CLIB_DEBUG > 0)
@@ -407,8 +406,13 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 };
 
-static char *transport_icmp_dest_unreachable_node_error_strings[] = {
-  "received ICMPs",
+#define foreach_transport_icmp_dest_unreachable_error                         \
+  _ (RECEIVED, received, WARN, "received ICMPs")
+
+static vlib_error_desc_t transport_icmp_unreach_error[] = {
+#define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
+  foreach_transport_icmp_dest_unreachable_error
+#undef _
 };
 
 VLIB_REGISTER_NODE (transport_icmp_dest_unreachable_node) = {
@@ -420,8 +424,8 @@ VLIB_REGISTER_NODE (transport_icmp_dest_unreachable_node) = {
   .next_nodes = {
     [0] = "ip4-drop",
   },
-  .error_strings = transport_icmp_dest_unreachable_node_error_strings,
-  .n_errors = 1,
+  .error_counters = transport_icmp_unreach_error,
+  .n_errors = ARRAY_LEN(transport_icmp_unreach_error),
 };
 
 /**
