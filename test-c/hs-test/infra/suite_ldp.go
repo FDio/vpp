@@ -44,10 +44,10 @@ func RegisterLdpMWTests(tests ...func(s *LdpSuite)) {
 func (s *LdpSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("2peerVeth")
+	s.LoadNetworkTopology("2taps")
 	s.LoadContainerTopology("2peerVeth")
-	s.Interfaces.Client = s.GetInterfaceByName("cln")
-	s.Interfaces.Server = s.GetInterfaceByName("srv")
+	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
+	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
 	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
 	s.Containers.ClientVpp = s.GetContainerByName("client-vpp")
 	s.Containers.ServerApp = s.GetContainerByName("server-app")
@@ -91,6 +91,34 @@ func (s *LdpSuite) SetupTest() {
 	s.CreateVclConfig(s.Containers.ClientApp)
 	s.SetupServerVpp(s.Containers.ServerVpp)
 	s.setupClientVpp(s.Containers.ClientVpp)
+
+	arp := fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Server.Peer.Name(),
+		s.Interfaces.Client.Peer.Ip4AddressString(),
+		s.Interfaces.Client.HwAddress)
+	s.Log(serverVpp.Vppctl(arp))
+
+	arp = fmt.Sprintf("set ip neighbor %s %s %s",
+		s.Interfaces.Client.Peer.Name(),
+		s.Interfaces.Server.Peer.Ip4AddressString(),
+		s.Interfaces.Server.HwAddress)
+	s.Log(clientVpp.Vppctl(arp))
+
+	parts := strings.Split(s.Interfaces.Client.Ip4AddressString(), ".")
+	parts[3] = "0/24"
+	route := fmt.Sprintf("ip route add %s via %s %s",
+		strings.Join(parts, "."),
+		s.Interfaces.Server.Ip4AddressString(),
+		s.Interfaces.Server.Peer.name)
+	s.Log(serverVpp.Vppctl(route))
+
+	parts = strings.Split(s.Interfaces.Server.Ip4AddressString(), ".")
+	parts[3] = "0/24"
+	route = fmt.Sprintf("ip route add %s via %s %s",
+		strings.Join(parts, "."),
+		s.Interfaces.Client.Ip4AddressString(),
+		s.Interfaces.Client.Peer.name)
+	s.Log(clientVpp.Vppctl(route))
 
 	if *DryRun {
 		s.LogStartedContainers()
@@ -139,22 +167,16 @@ func (s *LdpSuite) SetupServerVpp(serverContainer *Container) {
 	serverVpp := serverContainer.VppInstance
 	s.AssertNil(serverVpp.Start())
 
-	numCpus := uint16(len(serverContainer.AllocatedCpus))
-	numWorkers := uint16(max(numCpus-1, 1))
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
+	err := serverVpp.CreateTap(s.Interfaces.Server, false, 1)
 	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
 }
 
 func (s *LdpSuite) setupClientVpp(clientContainer *Container) {
 	clientVpp := clientContainer.VppInstance
 	s.AssertNil(clientVpp.Start())
 
-	numCpus := uint16(len(clientContainer.AllocatedCpus))
-	numWorkers := uint16(max(numCpus-1, 1))
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
+	err := clientVpp.CreateTap(s.Interfaces.Client, false, 2)
 	s.AssertNil(err, fmt.Sprint(err))
-	s.AssertNotEqual(0, idx)
 }
 
 var _ = Describe("LdpSuite", Ordered, ContinueOnFailure, Label("LDP", "VCL"), func() {
