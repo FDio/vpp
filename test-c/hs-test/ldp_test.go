@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"time"
@@ -19,22 +20,22 @@ func init() {
 func LdpIperfUdpMWTest(s *LdpSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u -P 5"), 50)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g -P 5", false), 50)
 }
 
 func LdpIperfUdpVppInterruptModeTest(s *LdpSuite) {
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
 }
 
 func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs string) {
-	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Peer.Name(),
+	cmd := exec.Command("tc", "qdisc", "del", "dev", netInterface.Name(),
 		"root")
 	s.Log("defer '%s'", cmd.String())
 	defer cmd.Run()
 
 	// "10% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms"
 	// https://www.man7.org/linux/man-pages/man8/tc-netem.8.html
-	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Peer.Name(),
+	cmd = exec.Command("tc", "qdisc", "add", "dev", netInterface.Name(),
 		"root", "netem", "delay", "10ms", "reorder", "10%", "50%")
 	s.Log(cmd.String())
 	o, err := cmd.CombinedOutput()
@@ -44,11 +45,8 @@ func ldpIperfTcpReorder(s *LdpSuite, netInterface *NetInterface, extraIperfArgs 
 	delete(s.Containers.ClientApp.EnvVars, "LD_PRELOAD")
 	delete(s.Containers.ClientApp.EnvVars, "VCL_DEBUG")
 	delete(s.Containers.ClientApp.EnvVars, "LDP_DEBUG")
-	s.Containers.ClientVpp.VppInstance.Disconnect()
-	s.Containers.ClientVpp.VppInstance.Stop()
-	s.Containers.ClientVpp.Exec(false, "ip addr add dev %s %s", s.Interfaces.Client.Name(), s.Interfaces.Client.Ip4Address)
 
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, extraIperfArgs), 20)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, extraIperfArgs, true), 20)
 }
 
 func LdpIperfTcpReorderTest(s *LdpSuite) {
@@ -60,11 +58,11 @@ func LdpIperfReverseTcpReorderTest(s *LdpSuite) {
 }
 
 func LdpIperfUdpReorderTest(s *LdpSuite) {
-	ldpIperfTcpReorder(s, s.Interfaces.Server, "-u")
+	ldpIperfTcpReorder(s, s.Interfaces.Server, "-u -b 1g")
 }
 
 func LdpIperfReverseUdpReorderTest(s *LdpSuite) {
-	ldpIperfTcpReorder(s, s.Interfaces.Client, "-u -R")
+	ldpIperfTcpReorder(s, s.Interfaces.Client, "-u -b 1g -R")
 }
 
 func LdpIperfTlsTcpTest(s *LdpSuite) {
@@ -77,43 +75,52 @@ func LdpIperfTlsTcpTest(s *LdpSuite) {
 		c.AddEnvVar("LDP_TLS_CERT_FILE", "/crt.crt")
 		c.AddEnvVar("LDP_TLS_KEY_FILE", "/key.key")
 	}
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, ""), 100)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
 }
 
 func LdpIperfTcpTest(s *LdpSuite) {
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, ""), 100)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "", false), 100)
 }
 
 func LdpIperfUdpTest(s *LdpSuite) {
-	s.AssertIperfMinTransfer(ldPreloadIperf(s, "-u"), 100)
+	s.AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperf(s, "-u -b 1g", false), 100)
 }
 
-func ldPreloadIperf(s *LdpSuite, extraClientArgs string) IPerfResult {
-	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+func ldPreloadIperf(s *LdpSuite, extraClientArgs string, isReorder bool) float64 {
+	serverAddress := s.Interfaces.Server.Peer.Ip4AddressString()
+	var clientBindAddress string
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	defer cancel()
+
+	if isReorder {
+		clientBindAddress = s.Interfaces.Client.Ip4AddressString()
+	} else {
+		clientBindAddress = s.Interfaces.Client.Peer.Ip4AddressString()
+	}
 
 	// running as daemon makes reorder tests unstable
 	cmd := fmt.Sprintf("sh -c \"iperf3 -4 -s --one-off -B %s -p %s --logfile %s\"",
-		serverVethAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
+		serverAddress, s.Ports.Port1, s.IperfLogFileName(s.Containers.ServerApp))
 	s.Containers.ServerApp.ExecServer(true, cmd)
 
-	cmd = fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -b 10g -J -p %s %s", serverVethAddress, s.Interfaces.Client.Ip4AddressString(), s.Ports.Port1, extraClientArgs)
-	o, err := s.Containers.ClientApp.Exec(true, cmd)
+	cmd = fmt.Sprintf("iperf3 -c %s -B %s -l 1460 -p %s %s", serverAddress, clientBindAddress, s.Ports.Port1, extraClientArgs)
+	o, err := s.Containers.ClientApp.ExecContext(ctx, true, cmd)
 
 	fileLog, _ := s.Containers.ServerApp.Exec(false, "cat "+s.IperfLogFileName(s.Containers.ServerApp))
 	s.Log("*** Server logs: \n%s\n***", fileLog)
 
+	s.Log(o)
 	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
-
-	return result
+	result, err := ParseIperfText(o)
+	s.AssertNil(err)
+	return result.BitrateMbps
 }
 
 func RedisBenchmarkTest(s *LdpSuite) {
 	s.SkipIfMultiWorker()
 	s.SkipIfArm()
 
-	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+	serverVethAddress := s.Interfaces.Server.Peer.Ip4AddressString()
 	runningSrv := make(chan error)
 	doneSrv := make(chan struct{})
 	clnCh := make(chan error)
