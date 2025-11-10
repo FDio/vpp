@@ -65,7 +65,7 @@ func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
 	s.ConfigureVppProxy("tcp", s.Ports.Proxy)
 	if proto == "udp" {
 		s.ConfigureVppProxy("udp", s.Ports.Proxy)
-		proto = "-u"
+		proto = "-u -b 10g"
 	} else {
 		proto = ""
 	}
@@ -75,17 +75,18 @@ func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
 	o, err := s.Containers.IperfS.Exec(true, cmd)
 
 	s.AssertNil(err, o)
-	cmd = fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -b 10g -J -p %d -B %s %s",
+	cmd = fmt.Sprintf("iperf3 -c %s -P 4 -l 1460 -p %d -B %s %s",
 		s.VppProxyAddr(), s.Ports.Proxy, s.ClientAddr(), proto)
 	o, err = s.Containers.IperfC.Exec(true, cmd)
 
 	fileLog, _ := s.Containers.IperfS.Exec(false, "cat "+s.IperfLogFileName(s.Containers.IperfS))
 	s.Log("*** Server logs: \n%s\n***", fileLog)
 
+	s.Log(o)
 	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 200)
+	result, err := ParseIperfText(o)
+	s.AssertNil(err)
+	s.AssertGreaterEqualUnlessCoverageBuild(result.BitrateMbps, 200)
 }
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {
@@ -648,7 +649,7 @@ func vppConnectUdpStressLoad(s *VppUdpProxySuite) {
 			}
 		}()
 	}
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		GinkgoWriter.Print(".")
 		time.Sleep(time.Second)
 	}

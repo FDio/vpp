@@ -288,11 +288,9 @@ func TcpWithLossTest(s *VethsSuite) {
 	withLoss, err := s.ParseEchoClientTransfer(output)
 	s.AssertNil(err)
 
-	if !s.CoverageRun {
-		s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
-		s.AssertGreaterEqual(baseline, withLoss)
-		s.AssertGreaterEqual(withLoss, uint64(float64(baseline)*0.15))
-	}
+	s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
+	s.AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss)
+	s.AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15))
 }
 
 func tcpWithoutLoss6(s *Veths6Suite) string {
@@ -343,11 +341,9 @@ func TcpWithLoss6Test(s *Veths6Suite) {
 	withLoss, err := s.ParseEchoClientTransfer(output)
 	s.AssertNil(err)
 
-	if !s.CoverageRun {
-		s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
-		s.AssertGreaterEqual(baseline, withLoss)
-		s.AssertGreaterEqual(withLoss, uint64(float64(baseline)*0.15))
-	}
+	s.Log("\nBaseline:  %.2f bytes/s\nWith loss: %.2f bytes/s", baseline, withLoss)
+	s.AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss)
+	s.AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15))
 }
 
 func TlsSingleConnectionTest(s *VethsSuite) {

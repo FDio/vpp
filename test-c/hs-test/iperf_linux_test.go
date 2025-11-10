@@ -21,14 +21,16 @@ func IperfUdpLinuxTest(s *IperfSuite) {
 	s.Log("server running")
 
 	cmd = "iperf3 -c " + serverIpAddress + " -B " + clientIpAddress +
-		" -u -l 1460 -b 10g -J -p " + s.Ports.Port1
+		" -u -l 1460 -b 10g -p " + s.Ports.Port1
 	o, err = s.Containers.Client.Exec(false, cmd)
 
 	fileLog, _ := s.Containers.Server.Exec(false, "cat "+s.IperfLogFileName(s.Containers.Server))
 	s.Log("*** Server logs: \n%s\n***", fileLog)
 
+	s.Log(o)
 	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
-	s.AssertIperfMinTransfer(result, 400)
+	result, err := ParseIperfText(o)
+	s.AssertNil(err)
+
+	s.AssertGreaterEqualUnlessCoverageBuild(result.BitrateMbps, 400)
 }
