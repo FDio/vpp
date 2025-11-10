@@ -98,17 +98,3 @@ func (s *HstSuite) AssertChannelClosed(timeout time.Duration, channel chan error
 	}
 	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
 }
-
-// Pass the parsed result struct and the minimum amount of data transferred in MB.
-// Won't do anything when testing a coverage build.
-func (s *HstSuite) AssertIperfMinTransfer(result IPerfResult, minTransferred int) {
-	if *IsCoverage {
-		s.Log("Coverage build; not asserting")
-		return
-	}
-	if result.Start.Details.Protocol == "TCP" {
-		s.AssertGreaterEqual(result.End.TcpReceived.MBytes, minTransferred)
-	} else {
-		s.AssertGreaterEqual(result.End.Udp.MBytes, minTransferred)
-	}
-}

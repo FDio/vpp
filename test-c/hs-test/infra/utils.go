@@ -1,8 +1,8 @@
 package hst
 
 import (
+	"bufio"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -306,7 +306,7 @@ func (s *HstSuite) StartCurl(finished chan error, uri, netNs, expectedRespCode s
 		finished <- fmt.Errorf("curl error: '%v\n\n%s'", err, o)
 		return
 	} else if !strings.Contains(string(o), expectedRespCode) {
-		finished <- fmt.Errorf("curl error: response not " + expectedRespCode)
+		finished <- fmt.Errorf("curl error: response not %s", expectedRespCode)
 		return
 	}
 	finished <- nil
@@ -326,8 +326,7 @@ func (s *HstSuite) StartIperfClient(finished chan error, clientAddress, serverAd
 		finished <- fmt.Errorf("iperf client error: '%v\n\n%s'", err, o)
 		return
 	}
-	result := s.ParseJsonIperfOutput(o)
-	s.LogJsonIperfOutput(result)
+	s.Log(o)
 	finished <- nil
 }
 
@@ -480,123 +479,114 @@ func TestCounterFunc() {
 		testCounter, TestsThatWillRun, float64(testCounter)/float64(TestsThatWillRun)*100, time.Since(startTime).Seconds())
 }
 
-type IPerfResult struct {
-	Start struct {
-		Timestamp struct {
-			Time string `json:"time"`
-		} `json:"timestamp"`
-		Connected []struct {
-			Socket     int    `json:"socket"`
-			LocalHost  string `json:"local_host"`
-			LocalPort  int    `json:"local_port"`
-			RemoteHost string `json:"remote_host"`
-			RemotePort int    `json:"remote_port"`
-		} `json:"connected"`
-		Version string `json:"version"`
-		Details struct {
-			Protocol string `json:"protocol"`
-		} `json:"test_start"`
-	} `json:"start"`
-	End struct {
-		TcpSent *struct {
-			MbitsPerSecond float64 `json:"bits_per_second"`
-			MBytes         float64 `json:"bytes"`
-		} `json:"sum_sent,omitempty"`
-		TcpReceived *struct {
-			MbitsPerSecond float64 `json:"bits_per_second"`
-			MBytes         float64 `json:"bytes"`
-		} `json:"sum_received,omitempty"`
-		Udp *struct {
-			MbitsPerSecond float64 `json:"bits_per_second"`
-			JitterMs       float64 `json:"jitter_ms,omitempty"`
-			LostPackets    int     `json:"lost_packets,omitempty"`
-			Packets        int     `json:"packets,omitempty"`
-			LostPercent    float64 `json:"lost_percent,omitempty"`
-			MBytes         float64 `json:"bytes"`
-		} `json:"sum,omitempty"`
-	} `json:"end"`
+// Helper functions
+func convertToMB(value, unit string) float64 {
+	val, _ := strconv.ParseFloat(value, 64)
+	switch unit {
+	case "K":
+		return val / 1024
+	case "M":
+		return val
+	case "G":
+		return val * 1024
+	default:
+		return val
+	}
 }
 
-func (s *HstSuite) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
-	var result IPerfResult
+func convertToMbps(value, unit string) float64 {
+	val, _ := strconv.ParseFloat(value, 64)
+	switch unit {
+	case "K":
+		return val / 1000
+	case "M":
+		return val
+	case "G":
+		return val * 1000
+	default:
+		return val
+	}
+}
 
-	// VCL/LDP debugging can pollute output so find the first occurrence of a curly brace to locate the start of JSON data
-	jsonStart := -1
-	jsonEnd := len(jsonResult)
-	braceCount := 0
-	for i := 0; i < len(jsonResult); i++ {
-		if jsonResult[i] == '{' {
-			if jsonStart == -1 {
-				jsonStart = i
-			}
-			braceCount++
-		} else if jsonResult[i] == '}' {
-			braceCount--
-			if braceCount == 0 {
-				jsonEnd = i + 1
-				break
+// IperfResult contains the parsed performance metrics
+type IperfResult struct {
+	BitrateMbps   float64
+	TransferredMB float64
+	Jitter        float64 // UDP only
+	PacketLoss    float64 // UDP only, percentage
+	Protocol      string  // "TCP" or "UDP"
+	Retransmits   int     // TCP only
+}
+
+// ParseIperfText parses iperf text output (default format)
+func ParseIperfText(output string) (*IperfResult, error) {
+	result := &IperfResult{}
+
+	// Pattern for TCP summary: [SUM]  0.0-10.0 sec  1.10 GBytes   941 Mbits/sec   123  sender
+	// Or: [  3]  0.0-10.0 sec  1.10 GBytes   941 Mbits/sec   123  sender
+	tcpPattern := regexp.MustCompile(`\[[\s\w]+\]\s+([\d\.]+)-([\d\.]+)\s+sec\s+([\d\.]+)\s+([KMG])Bytes\s+([\d\.]+)\s+([KMG])bits/sec(?:\s+(\d+))?\s+(sender|receiver)`)
+
+	// Pattern for UDP summary with packet loss
+	// [  3]  0.0-10.0 sec  1.25 MBytes  1.05 Mbits/sec  0.123 ms  10/1000 (1%)
+	udpPattern := regexp.MustCompile(`\[[\s\w]+\]\s+([\d\.]+)-([\d\.]+)\s+sec\s+([\d\.]+)\s+([KMG])Bytes\s+([\d\.]+)\s+([KMG])bits/sec\s+([\d\.]+)\s+ms\s+(\d+)/(\d+)\s+\(([\d\.]+)%\)`)
+
+	// Simpler UDP pattern without jitter/loss (sometimes iperf shows this)
+	udpSimplePattern := regexp.MustCompile(`\[[\s\w]+\]\s+([\d\.]+)-([\d\.]+)\s+sec\s+([\d\.]+)\s+([KMG])Bytes\s+([\d\.]+)\s+([KMG])bits/sec.*receiver`)
+
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	lines := []string{}
+
+	// Collect all lines
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	// Parse from the end (summary lines are at the bottom)
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+
+		// Try UDP pattern with full stats first
+		if matches := udpPattern.FindStringSubmatch(line); matches != nil {
+			result.Protocol = "UDP"
+			result.TransferredMB = convertToMB(matches[3], matches[4])
+			result.BitrateMbps = convertToMbps(matches[5], matches[6])
+			result.Jitter, _ = strconv.ParseFloat(matches[7], 64)
+			result.PacketLoss, _ = strconv.ParseFloat(matches[10], 64)
+			return result, nil
+		}
+
+		// Try simple UDP pattern
+		if matches := udpSimplePattern.FindStringSubmatch(line); matches != nil {
+			result.Protocol = "UDP"
+			result.TransferredMB = convertToMB(matches[3], matches[4])
+			result.BitrateMbps = convertToMbps(matches[5], matches[6])
+			return result, nil
+		}
+
+		// Try TCP pattern (look for sender/receiver)
+		if matches := tcpPattern.FindStringSubmatch(line); matches != nil {
+			// Prefer "sender" line for client tests
+			if matches[8] == "sender" || result.Protocol == "" {
+				result.Protocol = "TCP"
+				result.TransferredMB = convertToMB(matches[3], matches[4])
+				result.BitrateMbps = convertToMbps(matches[5], matches[6])
+
+				if len(matches) > 7 && matches[7] != "" {
+					result.Retransmits, _ = strconv.Atoi(matches[7])
+				}
+
+				if matches[8] == "sender" {
+					return result, nil
+				}
 			}
 		}
 	}
-	jsonResult = jsonResult[jsonStart:jsonEnd]
 
-	// remove iperf warning line if present
-	if strings.Contains(string(jsonResult), "warning") {
-		index := strings.Index(string(jsonResult), "\n")
-		jsonResult = jsonResult[index+1:]
+	if result.Protocol != "" {
+		return result, nil
 	}
 
-	err := json.Unmarshal(jsonResult, &result)
-	s.AssertNil(err)
-
-	if result.Start.Details.Protocol == "TCP" {
-		result.End.TcpSent.MbitsPerSecond = result.End.TcpSent.MbitsPerSecond / 1000000
-		result.End.TcpSent.MBytes = result.End.TcpSent.MBytes / 1000000
-		result.End.TcpReceived.MbitsPerSecond = result.End.TcpReceived.MbitsPerSecond / 1000000
-		result.End.TcpReceived.MBytes = result.End.TcpReceived.MBytes / 1000000
-	} else {
-		result.End.Udp.MBytes = result.End.Udp.MBytes / 1000000
-		result.End.Udp.MbitsPerSecond = result.End.Udp.MbitsPerSecond / 1000000
-	}
-
-	return result
-}
-
-func (s *HstSuite) LogJsonIperfOutput(result IPerfResult) {
-	s.Log("\n*******************************************\n"+
-		"%s\n"+
-		"[%s] %s:%d connected to %s:%d\n"+
-		"Started:  %s\n",
-		result.Start.Version,
-		result.Start.Details.Protocol,
-		result.Start.Connected[0].LocalHost, result.Start.Connected[0].LocalPort,
-		result.Start.Connected[0].RemoteHost, result.Start.Connected[0].RemotePort,
-		result.Start.Timestamp.Time)
-
-	if result.Start.Details.Protocol == "TCP" {
-		s.Log("Transfer (sent):     %.2f MBytes\n"+
-			"Bitrate  (sent):     %.2f Mbits/sec\n"+
-			"Transfer (received): %.2f MBytes\n"+
-			"Bitrate  (received): %.2f Mbits/sec",
-			result.End.TcpSent.MBytes,
-			result.End.TcpSent.MbitsPerSecond,
-			result.End.TcpReceived.MBytes,
-			result.End.TcpReceived.MbitsPerSecond)
-	} else {
-		s.Log("Transfer:     %.2f MBytes\n"+
-			"Bitrate:      %.2f Mbits/sec\n"+
-			"Jitter:       %.3f ms\n"+
-			"Packets:      %d\n"+
-			"Packets lost: %d\n"+
-			"Percent lost: %.2f%%",
-			result.End.Udp.MBytes,
-			result.End.Udp.MbitsPerSecond,
-			result.End.Udp.JitterMs,
-			result.End.Udp.Packets,
-			result.End.Udp.LostPackets,
-			result.End.Udp.LostPercent)
-	}
-	s.Log("*******************************************\n")
+	return nil, fmt.Errorf("failed to parse iperf output: no summary line found")
 }
 
 // Check if the error is an exec.ExitError caused by SIGKILL

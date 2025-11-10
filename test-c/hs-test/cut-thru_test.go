@@ -75,20 +75,20 @@ func redisCutThru(s *NoTopoSuite) {
 }
 
 func LdpIperfTcpCutThruTest(s *NoTopoSuite) {
-	s.AssertIperfMinTransfer(ldPreloadIperfCutThru(s, ""), 100)
+	s.AssertGreaterEqual(ldPreloadIperfCutThru(s, ""), 100)
 }
 
 func LdpIperfTcpCutThruMWTest(s *NoTopoSuite) {
 	s.CpusPerVppContainer = 3
 	s.CpusPerContainer = 3
 	s.SetupTest()
-	s.AssertIperfMinTransfer(ldPreloadIperfCutThru(s, ""), 100)
+	s.AssertGreaterEqual(ldPreloadIperfCutThru(s, ""), 100)
 }
 
 // hangs
 func LdpIperfUdpCutThruTest(s *NoTopoSuite) {
 	s.Skip("Broken")
-	s.AssertIperfMinTransfer(ldPreloadIperfCutThru(s, "-u"), 100)
+	s.AssertGreaterEqual(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
 }
 
 // hangs
@@ -96,11 +96,11 @@ func LdpIperfUdpCutThruMWTest(s *NoTopoSuite) {
 	s.Skip("Broken")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	s.AssertIperfMinTransfer(ldPreloadIperfCutThru(s, "-u"), 100)
+	s.AssertGreaterEqual(ldPreloadIperfCutThru(s, "-u -b 10g"), 100)
 }
 
 // only runs iperf for 5s
-func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) IPerfResult {
+func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.CreateGenericVclConfig(s.Containers.Vpp)
@@ -139,16 +139,17 @@ func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) IPerfResult {
 		}
 	}()
 
-	cmd = fmt.Sprintf("iperf3 -c %s -t 5 -l 1460 -b 10g -J -p %s %s",
+	cmd = fmt.Sprintf("iperf3 -c %s -t 5 -l 1460 -p %s %s",
 		serverAddress, s.Ports.CutThru, extraClientArgs)
 	o, err := s.Containers.ClientApp.ExecContext(ctx, true, cmd)
 
 	fileLog, _ := s.Containers.ServerApp.Exec(false, "cat "+s.IperfLogFileName(s.Containers.ServerApp))
 	s.Log("*** Server logs: \n%s\n***", fileLog)
 
+	s.Log(o)
 	s.AssertNil(err, o)
-	result := s.ParseJsonIperfOutput([]byte(o))
-	s.LogJsonIperfOutput(result)
+	result, err := ParseIperfText(o)
+	s.AssertNil(err)
 
-	return result
+	return result.BitrateMbps
 }
