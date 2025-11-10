@@ -438,6 +438,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
 
   key = vnet_crypoto_key_alloc (length);
   key->alg = alg;
+  key->ref_count = 1;
 
   clib_memcpy (key->data, data, length);
   vec_foreach (engine, cm->engines)
@@ -461,6 +462,32 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
   clib_memset (key, 0xfe, sz);
   clib_mem_free (key);
   pool_put_index (cm->keys, index);
+}
+
+void vnet_crypto_key_ref(vnet_crypto_key_t *key)
+{
+  if (!key)
+    return;
+  clib_atomic_fetch_add(&key->ref_count, 1);
+}
+
+bool vnet_crypto_key_unref(vnet_crypto_key_t *key)
+{
+  if (!key)
+    return false;
+  u32 nv = clib_atomic_fetch_sub(&key->ref_count, 1);
+  ASSERT(nv != 0);
+  return nv == 1;
+}
+
+void
+vnet_crypto_key_del_main (vnet_crypto_key_t **pkey)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_key_t *key = *pkey;
+  vnet_crypto_key_index_t index = key - cm->keys;
+  vlib_main_t * vm = vlib_get_main();
+  vnet_crypto_key_del (vm, index);
 }
 
 void
@@ -516,6 +543,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   key->index_crypto = index_crypto;
   key->index_integ = index_integ;
   key->alg = linked_alg;
+  key->ref_count = 1;
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)

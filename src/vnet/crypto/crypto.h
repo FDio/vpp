@@ -181,6 +181,7 @@ typedef struct
       u32 index_integ;
     };
   };
+  u32 ref_count;
   u8 data[];
 } vnet_crypto_key_t;
 
@@ -489,6 +490,9 @@ int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
+void vnet_crypto_key_ref(vnet_crypto_key_t *key);
+bool vnet_crypto_key_unref(vnet_crypto_key_t *key);
+void vnet_crypto_key_del_main (vnet_crypto_key_t **pkey);
 void vnet_crypto_key_update (vlib_main_t *vm, vnet_crypto_key_index_t index);
 
 /**
