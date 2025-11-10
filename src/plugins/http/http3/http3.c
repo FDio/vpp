@@ -179,21 +179,26 @@ static_always_inline void
 http3_stream_close (http_conn_t *stream, http3_stream_ctx_t *sctx)
 {
   http_close_transport_stream (stream);
-  if (sctx->flags & HTTP3_STREAM_F_APP_CLOSED)
+  if (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM)
     {
-      HTTP_DBG (1, "stream [%u]%x sctx %x app already closed, confirm",
-		stream->c_thread_index, stream->hc_hc_index,
-		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
-      session_transport_closed_notify (&sctx->base.connection);
+      http_stats_app_streams_closed_inc (stream->c_thread_index);
+      if (sctx->flags & HTTP3_STREAM_F_APP_CLOSED)
+	{
+	  HTTP_DBG (1, "stream [%u]%x sctx %x app already closed, confirm",
+		    stream->c_thread_index, stream->hc_hc_index,
+		    ((http_req_handle_t) sctx->base.hr_req_handle).req_index);
+	  session_transport_closed_notify (&sctx->base.connection);
+	}
+      else
+	{
+	  HTTP_DBG (1, "stream [%u]%x sctx %x all done closing, notify app",
+		    stream->c_thread_index, stream->hc_hc_index,
+		    ((http_req_handle_t) sctx->base.hr_req_handle).req_index);
+	  session_transport_closing_notify (&sctx->base.connection);
+	}
     }
   else
-    {
-      HTTP_DBG (1, "stream [%u]%x sctx %x all done closing, notify app",
-		stream->c_thread_index, stream->hc_hc_index,
-		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
-      session_transport_closing_notify (&sctx->base.connection);
-    }
-  session_transport_delete_notify (&sctx->base.connection);
+    http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
 }
 
 static_always_inline void
@@ -210,7 +215,9 @@ http3_conn_init (http_conn_t *hc, http3_conn_ctx_t *h3c)
       /* FIXME:*/
       return;
     }
+  ctrl_stream->opaque = uword_to_pointer (SESSION_INVALID_INDEX, void *);
   h3c->our_ctrl_stream_index = ctrl_stream->hc_hc_index;
+  http_stats_ctrl_streams_opened_inc (hc->c_thread_index);
 
   buf = http_get_tx_buf (ctrl_stream);
   /* write stream type first */
@@ -292,6 +299,13 @@ http3_req_state_app_io_more_data (http_conn_t *stream,
   ASSERT (http_buffer_bytes_left (hb) > 0);
 
   max_write = http_io_ts_max_write (stream, 0);
+  if (max_write <= HTTP3_FRAME_HEADER_MAX_LEN)
+    {
+      HTTP_DBG (1, "ts tx fifo full");
+      http_req_deschedule (&sctx->base, sp);
+      http_io_ts_add_want_deq_ntf (stream);
+      return HTTP_SM_STOP;
+    }
   max_write -= HTTP3_FRAME_HEADER_MAX_LEN;
 
   n_read = http_buffer_get_segs (hb, max_write, &app_segs, &n_segs);
@@ -973,6 +987,8 @@ static void
 http3_transport_close_callback (http_conn_t *hc)
 {
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
+  if (hc->state != HTTP_CONN_STATE_CLOSED)
+    http_disconnect_transport (hc);
 }
 
 static void
@@ -982,10 +998,15 @@ http3_transport_reset_callback (http_conn_t *hc)
 }
 
 static void
-http3_transport_conn_reschedule_callback (http_conn_t *hc)
+http3_transport_conn_reschedule_callback (http_conn_t *stream)
 {
-  HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
-  /* FIXME: */
+  http3_stream_ctx_t *sctx;
+
+  HTTP_DBG (1, "hc [%u]%x", stream->c_thread_index, stream->hc_hc_index);
+  ASSERT (http_conn_is_stream (stream));
+  sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
+			       stream->c_thread_index);
+  transport_connection_reschedule (&sctx->base.connection);
 }
 
 static int
@@ -1007,6 +1028,7 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
 	  HTTP_DBG (1, "http_conn_accept_request failed");
 	  return -1;
 	}
+      http_stats_app_streams_opened_inc (stream->c_thread_index);
     }
   else
     {
@@ -1014,6 +1036,7 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
       HTTP_DBG (1, "new unidirectional stream accepted [%u]%x",
 		sctx->base.c_thread_index,
 		((http_req_handle_t) sctx->base.hr_req_handle).req_index);
+      http_stats_ctrl_streams_opened_inc (stream->c_thread_index);
     }
   return 0;
 }
@@ -1021,9 +1044,24 @@ http3_transport_stream_accept_callback (http_conn_t *stream)
 static void
 http3_transport_stream_close_callback (http_conn_t *stream)
 {
+  http3_stream_ctx_t *sctx;
+
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
-  /* FIXME: */
+  if (stream->state != HTTP_CONN_STATE_CLOSED)
+    {
+      /* we don't allocate sctx for unidirectional streams initiated by us */
+      if (pointer_to_uword (stream->opaque) == SESSION_INVALID_INDEX)
+	{
+	  http_close_transport_stream (stream);
+	  http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
+	  return;
+	}
+
+      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
+				   stream->c_thread_index);
+      http3_stream_close (stream, sctx);
+    }
 }
 
 static void
@@ -1043,6 +1081,7 @@ http3_conn_accept_callback (http_conn_t *hc)
   h3c = http3_conn_ctx_alloc (hc);
   h3c->flags |= HTTP3_CONN_F_EXPECT_PEER_SETTINGS;
   http3_conn_init (hc, h3c);
+  http_stats_connections_accepted_inc (hc->c_thread_index);
 }
 
 static int
@@ -1063,8 +1102,19 @@ http3_conn_cleanup_callback (http_conn_t *hc)
 static void
 http3_stream_cleanup_callback (http_conn_t *stream)
 {
+  http3_stream_ctx_t *sctx;
+
   HTTP_DBG (1, "stream [%u]%x sctx %x", stream->c_thread_index,
 	    stream->hc_hc_index, pointer_to_uword (stream->opaque));
+  /* we don't allocate sctx for unidirectional streams initiated by us */
+  if (pointer_to_uword (stream->opaque) == SESSION_INVALID_INDEX)
+    return;
+  if (stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM)
+    {
+      sctx = http3_stream_ctx_get (pointer_to_uword (stream->opaque),
+				   stream->c_thread_index);
+      session_transport_delete_notify (&sctx->base.connection);
+    }
   http3_stream_ctx_free (stream);
 }
 

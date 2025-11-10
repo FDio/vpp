@@ -26,6 +26,8 @@ static const http_token_t http2_conn_preface = { http_token_lit (
   _ (connections_reset_by_app, "connections reset by app")                    \
   _ (app_streams_opened, "application streams opened")                        \
   _ (app_streams_closed, "application streams closed")                        \
+  _ (ctrl_streams_opened, "control streams opened")                           \
+  _ (ctrl_streams_closed, "control streams closed")                           \
   _ (stream_reset_by_peer, "streams reset by peer")                           \
   _ (stream_reset_by_app, "streams reset by app")                             \
   _ (requests_received, "requests received")                                  \

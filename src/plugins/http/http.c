@@ -1260,6 +1260,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   lhc_index = http_listener_alloc ();
   lhc = http_listener_get (lhc_index);
+  HTTP_DBG (1, "app_listener_index %u http_listener_index %u",
+	    app_listener_index, lhc_index);
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
   if (ext_cfg)
@@ -1387,6 +1389,8 @@ http_stop_listen (u32 listener_index)
   int rv;
 
   lhc = http_listener_get (listener_index);
+  HTTP_DBG (1, "app_listener_index %u http_listener_index %u", lhc->c_s_index,
+	    listener_index);
 
   if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
     {
