@@ -16,6 +16,24 @@
       "message": "vec_free (a-\u003ename);",
       "revId": "13e1a5c44de208429939e30b3a0dceb056051643",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37460e48_b8c43576",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 706,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2025-11-10T17:55:40Z",
+      "side": 1,
+      "message": "Good catch, but I just moved the code ... fixing",
+      "parentUuid": "b7ac71a1_8d4fb023",
+      "revId": "13e1a5c44de208429939e30b3a0dceb056051643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
