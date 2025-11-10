@@ -24,7 +24,7 @@ VLIB_REGISTER_LOG_CLASS (crypto_main_log, static) = {
   vlib_log (VLIB_LOG_LEVEL_ERR, crypto_main_log.class, f, ##__VA_ARGS__)
 
 static_always_inline void
-crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)
+crypto_set_op_status (vnet_crypto_op_t *ops[], u32 n_ops, int status)
 {
   while (n_ops--)
     {
@@ -34,11 +34,10 @@ crypto_set_op_status (vnet_crypto_op_t * ops[], u32 n_ops, int status)
 }
 
 static_always_inline u32
-vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
-				      vnet_crypto_main_t * cm,
+vnet_crypto_process_ops_call_handler (vlib_main_t *vm, vnet_crypto_main_t *cm,
 				      vnet_crypto_op_id_t opt,
-				      vnet_crypto_op_t * ops[],
-				      vnet_crypto_op_chunk_t * chunks,
+				      vnet_crypto_op_t *ops[],
+				      vnet_crypto_op_chunk_t *chunks,
 				      u32 n_ops)
 {
   vnet_crypto_op_data_t *od = cm->opt_data + opt;
@@ -71,8 +70,8 @@ vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 }
 
 static_always_inline u32
-vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
-				vnet_crypto_op_chunk_t * chunks, u32 n_ops)
+vnet_crypto_process_ops_inline (vlib_main_t *vm, vnet_crypto_op_t ops[],
+				vnet_crypto_op_chunk_t *chunks, u32 n_ops)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   const int op_q_size = VLIB_FRAME_SIZE;
@@ -89,9 +88,8 @@ vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
 
       if (current_op_type != opt || n_op_queue >= op_q_size)
 	{
-	  rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
-						      op_queue, chunks,
-						      n_op_queue);
+	  rv += vnet_crypto_process_ops_call_handler (
+	    vm, cm, current_op_type, op_queue, chunks, n_op_queue);
 	  n_op_queue = 0;
 	  current_op_type = opt;
 	}
@@ -105,21 +103,20 @@ vnet_crypto_process_ops_inline (vlib_main_t * vm, vnet_crypto_op_t ops[],
 }
 
 u32
-vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
+vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[], u32 n_ops)
 {
   return vnet_crypto_process_ops_inline (vm, ops, 0, n_ops);
 }
 
 u32
-vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
-				 vnet_crypto_op_chunk_t * chunks, u32 n_ops)
+vnet_crypto_process_chained_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
+				 vnet_crypto_op_chunk_t *chunks, u32 n_ops)
 {
   return vnet_crypto_process_ops_inline (vm, ops, chunks, n_ops);
 }
 
 u32
-vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
-			     char *desc)
+vnet_crypto_register_engine (vlib_main_t *vm, char *name, int prio, char *desc)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *p;
@@ -414,7 +411,7 @@ vnet_crypoto_key_alloc (u32 length)
 }
 
 u32
-vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
+vnet_crypto_key_add (vlib_main_t *vm, vnet_crypto_alg_t alg, u8 *data,
 		     u16 length)
 {
   vnet_crypto_main_t *cm = &crypto_main;
@@ -438,6 +435,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
 
   key = vnet_crypoto_key_alloc (length);
   key->alg = alg;
+  key->ref_count = 1;
 
   clib_memcpy (key->data, data, length);
   vec_foreach (engine, cm->engines)
@@ -447,7 +445,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
 }
 
 void
-vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
+vnet_crypto_key_del (vlib_main_t *vm, vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *engine;
@@ -461,6 +459,34 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
   clib_memset (key, 0xfe, sz);
   clib_mem_free (key);
   pool_put_index (cm->keys, index);
+}
+
+void
+vnet_crypto_key_ref (vnet_crypto_key_t *key)
+{
+  if (!key)
+    return;
+  clib_atomic_fetch_add (&key->ref_count, 1);
+}
+
+bool
+vnet_crypto_key_unref (vnet_crypto_key_t *key)
+{
+  if (!key)
+    return false;
+  u32 nv = clib_atomic_fetch_sub (&key->ref_count, 1);
+  ASSERT (nv != 0);
+  return nv == 1;
+}
+
+void
+vnet_crypto_key_del_main (vnet_crypto_key_t **pkey)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_key_t *key = *pkey;
+  vnet_crypto_key_index_t index = key - cm->keys;
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_crypto_key_del (vm, index);
 }
 
 void
@@ -478,9 +504,9 @@ vnet_crypto_alg_t
 vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 		       vnet_crypto_alg_t integ_alg)
 {
-#define _(c, h, s, k ,d) \
-  if (crypto_alg == VNET_CRYPTO_ALG_##c && \
-      integ_alg == VNET_CRYPTO_ALG_HMAC_##h) \
+#define _(c, h, s, k, d)                                                      \
+  if (crypto_alg == VNET_CRYPTO_ALG_##c &&                                    \
+      integ_alg == VNET_CRYPTO_ALG_HMAC_##h)                                  \
     return VNET_CRYPTO_ALG_##c##_##h##_TAG##d;
   foreach_crypto_link_async_alg
 #undef _
@@ -495,7 +521,7 @@ vnet_crypto_ops_from_alg (vnet_crypto_alg_t alg)
 }
 
 u32
-vnet_crypto_key_add_linked (vlib_main_t * vm,
+vnet_crypto_key_add_linked (vlib_main_t *vm,
 			    vnet_crypto_key_index_t index_crypto,
 			    vnet_crypto_key_index_t index_integ)
 {
@@ -516,6 +542,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   key->index_crypto = index_crypto;
   key->index_integ = index_integ;
   key->alg = linked_alg;
+  key->ref_count = 1;
 
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
@@ -525,7 +552,7 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
 }
 
 u32
-vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
+vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_next_node_t *nn = 0;
@@ -709,7 +736,7 @@ done:
 }
 
 clib_error_t *
-vnet_crypto_init (vlib_main_t * vm)
+vnet_crypto_init (vlib_main_t *vm)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -717,8 +744,7 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_engine_t *p;
 
   vec_add2 (cm->engines, p, 1);
-  cm->engine_index_by_name = hash_create_string ( /* size */ 0,
-						 sizeof (uword));
+  cm->engine_index_by_name = hash_create_string (/* size */ 0, sizeof (uword));
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_foreach (ct, cm->threads)
