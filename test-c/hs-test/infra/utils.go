@@ -538,6 +538,9 @@ func (s *HstSuite) ParseJsonIperfOutput(jsonResult []byte) IPerfResult {
 			}
 		}
 	}
+	if jsonStart == -1 {
+		s.AssertNil(fmt.Errorf("invalid output: '%s'", string(jsonResult)))
+	}
 	jsonResult = jsonResult[jsonStart:jsonEnd]
 
 	// remove iperf warning line if present
