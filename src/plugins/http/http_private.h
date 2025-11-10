@@ -26,6 +26,8 @@ static const http_token_t http2_conn_preface = { http_token_lit (
   _ (connections_reset_by_app, "connections reset by app")                    \
   _ (app_streams_opened, "application streams opened")                        \
   _ (app_streams_closed, "application streams closed")                        \
+  _ (ctrl_streams_opened, "control streams opened")                           \
+  _ (ctrl_streams_closed, "control streams closed")                           \
   _ (stream_reset_by_peer, "streams reset by peer")                           \
   _ (stream_reset_by_app, "streams reset by app")                             \
   _ (requests_received, "requests received")                                  \
@@ -471,14 +473,15 @@ void http_req_tx_buffer_init (http_req_t *req, http_msg_t *msg);
 /**
  * Open new stream on existing transport connection.
  *
- * @param parent            Parent transport connection ctx.
+ * @param parent_index      Parent connection index.
  * @param is_unidirectional Stream can be unidirectional or bidirectional.
  * @param stream            Opened stream ctx.
  *
  * @return @c 0 if stream was opened, non-zero value otherwise.
  */
-int http_connect_transport_stream (http_conn_t *parent, u8 is_unidirectional,
-				   http_conn_t **stream);
+int http_connect_transport_stream (u32 parent_index,
+				   clib_thread_index_t thread_index,
+				   u8 is_unidirectional, http_conn_t **stream);
 
 /**
  * Reset stream.

@@ -122,7 +122,7 @@ format_http3_stream_type (u8 *s, va_list *va)
     case HTTP3_STREAM_TYPE_REQUEST:
       return format (s, "request-stream");
     default:
-      return format (s, "BUG: unknown");
+      return format (s, "unknown-stream-type");
     }
 }
 
