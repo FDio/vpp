@@ -13,7 +13,7 @@ class TestBihash(VppAsfTestCase):
     def setUpClass(cls):
         # increase vapi timeout, to avoid spurious "test bihash ..."
         # failures reported on aarch64 w/ test-debug
-        cls.vapi_response_timeout = 120
+        cls.vapi_response_timeout = 200
         super(TestBihash, cls).setUpClass()
 
     @classmethod
