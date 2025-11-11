@@ -190,7 +190,7 @@ func VppH2ConnectProxyGetTest(s *VppProxySuite) {
 	proxyUri := fmt.Sprintf("https://%s:%d", s.VppProxyAddr(), s.Ports.Proxy)
 	_, log := s.CurlDownloadResourceViaTunnel(targetUri, proxyUri, "--proxy-http2")
 	// ALPN result check
-	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
+	s.AssertContains(log, "CONNECT: 'h2' negotiated")
 }
 
 func VppConnectProxyConnectionFailedMWTest(s *VppProxySuite) {
@@ -222,7 +222,7 @@ func VppH2ConnectProxyPutTest(s *VppProxySuite) {
 	targetUri := fmt.Sprintf("http://%s:%d/upload/testFile", s.ServerAddr(), s.Ports.Server)
 	_, log := s.CurlUploadResourceViaTunnel(targetUri, proxyUri, CurlContainerTestFile, "--proxy-http2")
 	// ALPN result check
-	s.AssertContains(log, "CONNECT tunnel: HTTP/2 negotiated")
+	s.AssertContains(log, "CONNECT: 'h2' negotiated")
 }
 
 func vppConnectProxyStressLoad(s *VppProxySuite, proxyPort string) {
