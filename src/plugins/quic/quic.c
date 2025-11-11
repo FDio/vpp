@@ -16,7 +16,7 @@
 
 #include <quic/quic.h>
 #include <quic/quic_timer.h>
-#include <quic/quic_inlines.h>
+#include <quic/quic_eng_inline.h>
 
 static vlib_error_desc_t quic_error_counters[] = {
 #define quic_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
