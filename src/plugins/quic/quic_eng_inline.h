@@ -2,8 +2,8 @@
  * Copyright(c) 2025 Cisco Systems, Inc.
  */
 
-#ifndef __included_quic_inlines_h__
-#define __included_quic_inlines_h__
+#ifndef __included_quic_eng_inline_h__
+#define __included_quic_eng_inline_h__
 
 #include <quic/quic.h>
 
@@ -350,4 +350,4 @@ quic_eng_proto_on_close (u32 ctx_index, u32 thread_index)
   quic_engine_vfts[qm->engine_type].proto_on_close (ctx_index, thread_index);
 }
 
-#endif /* __included_quic_inliqm->nes_h__ */
+#endif /* __included_quic_eng_inline_h__ */

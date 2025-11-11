@@ -3,7 +3,7 @@
  */
 
 #include <quic/quic.h>
-#include <quic/quic_inlines.h>
+#include <quic/quic_eng_inline.h>
 #include <quic/quic_timer.h>
 #include <vnet/session/application.h>
 
