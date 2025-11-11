@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CALICOVPP_DIR="$HOME/vpp-dataplane"
+CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
 VPP_DIR=$(pwd)
 VPP_DIR=${VPP_DIR%test-c*}
 
