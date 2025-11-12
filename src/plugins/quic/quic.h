@@ -373,7 +373,6 @@ typedef enum quic_session_connected_
 typedef struct quic_engine_vft_
 {
   void (*engine_init) (quic_main_t *qm);
-  int (*app_cert_key_pair_delete) (app_cert_key_pair_t *ckpair);
   int (*crypto_context_acquire) (quic_ctx_t *ctx);
   void (*crypto_context_release) (u32 crypto_context_index, u8 thread_index);
   int (*connect) (quic_ctx_t *ctx, u32 ctx_index,
