@@ -1747,7 +1747,6 @@ quic_quicly_transport_closed (quic_ctx_t *ctx)
 
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
-  .app_cert_key_pair_delete = quic_quicly_app_cert_key_pair_delete,
   .crypto_context_acquire = quic_quicly_crypto_context_acquire,
   .crypto_context_release = quic_quicly_crypto_context_release,
   .connect = quic_quicly_connect,

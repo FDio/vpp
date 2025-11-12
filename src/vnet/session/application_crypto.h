@@ -17,6 +17,7 @@ typedef struct app_certkey_int_
   void *key;	    /**< key, possible format EVP_PKEY */
   u32 ckpair_index; /**< parent certkey */
   app_certkey_cleanup_it_ctx_fn cleanup_cb; /**< cleanup callback */
+  clib_thread_index_t thread_index;
 } app_certkey_int_ctx_t;
 
 typedef struct certificate_

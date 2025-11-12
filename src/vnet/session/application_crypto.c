@@ -18,11 +18,14 @@ static app_cert_key_pair_t *
 app_cert_key_pair_alloc ()
 {
   app_cert_key_pair_t *ckpair;
+  app_certkey_int_ctx_t *cki;
   pool_get (app_crypto_main.cert_key_pair_store, ckpair);
   clib_memset (ckpair, 0, sizeof (*ckpair));
   ckpair->cert_key_index = ckpair - app_crypto_main.cert_key_pair_store;
   /* Avoid need for locks when used by workers */
   vec_validate (ckpair->cki, vlib_num_workers ());
+  vec_foreach (cki, ckpair->cki)
+    cki->thread_index = cki - ckpair->cki;
   return ckpair;
 }
 
