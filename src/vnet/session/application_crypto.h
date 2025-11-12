@@ -17,6 +17,7 @@ typedef struct app_certkey_int_
   void *key;	    /**< key, possible format EVP_PKEY */
   u32 ckpair_index; /**< parent certkey */
   app_certkey_cleanup_it_ctx_fn cleanup_cb; /**< cleanup callback */
+  clib_thread_index_t thread_index;
 } app_certkey_int_ctx_t;
 
 typedef struct certificate_
@@ -25,7 +26,7 @@ typedef struct certificate_
   u32 cert_key_index; /**< index in cert & key pool */
   u8 *key;	      /**< PEM encoded key */
   u8 *cert;	      /**< PEM encoded cert */
-  app_certkey_int_ctx_t *cki; /**< per-thread internal cert/key */
+  app_certkey_int_ctx_t **cki; /**< per-thread and engine internal cert/key */
 } app_cert_key_pair_t;
 
 struct app_crypto_ca_trust_int_ctx_;
@@ -51,10 +52,10 @@ typedef enum crypto_engine_type_
 {
   CRYPTO_ENGINE_NONE,
   CRYPTO_ENGINE_OPENSSL,
-  CRYPTO_ENGINE_MBEDTLS,
-  CRYPTO_ENGINE_VPP,
   CRYPTO_ENGINE_PICOTLS,
-  CRYPTO_ENGINE_LAST = CRYPTO_ENGINE_PICOTLS,
+  CRYPTO_ENGINE_VPP,
+  CRYPTO_ENGINE_MBEDTLS,
+  CRYPTO_ENGINE_LAST = CRYPTO_ENGINE_MBEDTLS,
 } crypto_engine_type_t;
 
 typedef struct _vnet_app_add_cert_key_pair_args_
@@ -194,18 +195,27 @@ int vnet_app_del_cert_key_pair (u32 index);
 
 static inline app_certkey_int_ctx_t *
 app_certkey_get_int_ctx (app_cert_key_pair_t *ck,
-			 clib_thread_index_t thread_index)
+			 clib_thread_index_t thread_index,
+			 crypto_engine_type_t engine)
 {
-  if (vec_len (ck->cki) <= thread_index)
+  if (vec_len (ck->cki) <= thread_index ||
+      vec_len (ck->cki[thread_index]) < engine)
     return 0;
-  return vec_elt_at_index (ck->cki, thread_index);
+  return vec_elt_at_index (ck->cki[thread_index], engine);
 }
 
 static inline app_certkey_int_ctx_t *
 app_certkey_alloc_int_ctx (app_cert_key_pair_t *ck,
-			   clib_thread_index_t thread_index)
+			   clib_thread_index_t thread_index,
+			   crypto_engine_type_t engine)
 {
-  return vec_elt_at_index (ck->cki, thread_index);
+  app_certkey_int_ctx_t *cki;
+
+  cki = vec_elt_at_index (ck->cki[thread_index], engine);
+  cki->thread_index = thread_index;
+  cki->ckpair_index = ck->cert_key_index;
+
+  return cki;
 }
 
 app_crypto_async_req_ticket_t
