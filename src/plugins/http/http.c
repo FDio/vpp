@@ -1700,6 +1700,21 @@ http_transport_cleanup_ho (u32 ho_hc_index)
   http_ho_conn_free (ho_hc);
 }
 
+static session_handle_t
+http_transport_get_next_transport_session (u32 rh,
+					   clib_thread_index_t thread_index)
+{
+  http_req_handle_t hr_handle = { .as_u32 = rh };
+  http_conn_t *hc;
+  u32 hc_index;
+
+  hc_index = http_vfts[hr_handle.version].hc_index_get_by_req_index (
+    hr_handle.req_index, thread_index);
+  hc = http_conn_get_w_thread (hc_index, thread_index);
+
+  return hc->hc_tc_session_handle;
+}
+
 static const transport_proto_vft_t http_proto = {
   .enable = http_transport_enable,
   .connect = http_transport_connect,
@@ -1715,6 +1730,7 @@ static const transport_proto_vft_t http_proto = {
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,
   .get_half_open = http_transport_get_ho,
+  .get_next_transport_session = http_transport_get_next_transport_session,
   .get_transport_endpoint = http_transport_get_endpoint,
   .format_connection = format_http_transport_connection,
   .format_listener = format_http_transport_listener,
