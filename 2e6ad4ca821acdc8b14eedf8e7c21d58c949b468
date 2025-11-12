@@ -22,6 +22,30 @@
       },
       "revId": "2e6ad4ca821acdc8b14eedf8e7c21d58c949b468",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "821ff9a9_10ff7e91",
+        "filename": "test-c/hs-test/infra/suite_ldp.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2025-11-12T07:28:00Z",
+      "side": 1,
+      "message": "no but i switched it to net.ParseCIDR",
+      "parentUuid": "ab270ac0_50b88b7b",
+      "range": {
+        "startLine": 108,
+        "startChar": 1,
+        "endLine": 108,
+        "endChar": 18
+      },
+      "revId": "2e6ad4ca821acdc8b14eedf8e7c21d58c949b468",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
