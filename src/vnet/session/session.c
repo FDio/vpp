@@ -1880,6 +1880,16 @@ session_get_transport (session_t * s)
 				   s->connection_index);
 }
 
+session_handle_t
+session_get_next_transport_session (session_t *s)
+{
+  if (s->session_state != SESSION_STATE_LISTENING)
+    return transport_get_next_transport_session (
+      session_get_transport_proto (s), s->connection_index, s->thread_index);
+  else
+    return SESSION_INVALID_HANDLE;
+}
+
 void
 session_get_endpoint (session_t *s, transport_endpoint_t *tep_rmt,
 		      transport_endpoint_t *tep_lcl)
