@@ -160,6 +160,11 @@ typedef struct app_crypto_ctx_
 {
   app_crypto_wrk_t *wrk;
   app_crypto_ca_trust_t *ca_trust_stores;
+  /** Preferred tls engine */
+  u8 tls_engine;
+  /** quic initialization vector */
+  char quic_iv[17];
+  u8 quic_iv_set;
 } app_crypto_ctx_t;
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);

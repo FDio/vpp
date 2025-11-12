@@ -661,7 +661,8 @@ tls_connect (transport_endpoint_cfg_t * tep)
   app = application_get (app_wrk->app_index);
 
   ccfg = &ext_cfg->crypto;
-  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
+  engine_type = tls_get_engine_type (ccfg->crypto_engine,
+				     app_crypto_ctx_get (app)->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -767,7 +768,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   app = application_get (app_wrk->app_index);
 
   ccfg = &ext_cfg->crypto;
-  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
+  engine_type = tls_get_engine_type (ccfg->crypto_engine,
+				     app_crypto_ctx_get (app)->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -1200,7 +1202,8 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   app = application_get (app_wrk->app_index);
 
   ccfg = &ext_cfg->crypto;
-  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
+  engine_type = tls_get_engine_type (ccfg->crypto_engine,
+				     app_crypto_ctx_get (app)->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
