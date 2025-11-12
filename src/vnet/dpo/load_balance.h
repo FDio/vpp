@@ -181,9 +181,11 @@ STATIC_ASSERT (LB_MAX_BUCKETS && !(LB_MAX_BUCKETS & (LB_MAX_BUCKETS - 1)),
 /**
  * Flags controlling load-balance formatting/display
  */
-typedef enum load_balance_format_flags_t_ {
-    LOAD_BALANCE_FORMAT_NONE,
-    LOAD_BALANCE_FORMAT_DETAIL = (1 << 0),
+typedef enum load_balance_format_flags_t_
+{
+  LOAD_BALANCE_FORMAT_NONE,
+  LOAD_BALANCE_FORMAT_DETAIL = (1 << 0),
+  LOAD_BALANCE_FORMAT_RANGE = (1 << 1),
 } load_balance_format_flags_t;
 
 extern index_t load_balance_create(u32 num_buckets,
