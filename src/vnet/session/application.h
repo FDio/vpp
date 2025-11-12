@@ -151,13 +151,6 @@ typedef struct application_
 
   u16 proxied_transports;
 
-  /** Preferred tls engine */
-  u8 tls_engine;
-
-  /** quic initialization vector */
-  char quic_iv[17];
-  u8 quic_iv_set;
-
   /** Segment where rx mqs were allocated */
   fifo_segment_t rx_mqs_segment;
 
@@ -176,6 +169,12 @@ typedef struct application_
   /** app crypto state */
   app_crypto_ctx_t crypto_ctx;
 } application_t;
+
+static inline app_crypto_ctx_t *
+app_crypto_ctx_get (application_t *app)
+{
+  return &app->crypto_ctx;
+}
 
 static inline app_crypto_wrk_t *
 app_crypto_wrk_get (application_t *app, clib_thread_index_t thread_index)

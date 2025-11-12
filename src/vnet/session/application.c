@@ -847,7 +847,7 @@ application_alloc_and_init (app_init_args_t *a)
   if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     props->use_mq_eventfd = 1;
   if (opts[APP_OPTIONS_TLS_ENGINE])
-    app->tls_engine = opts[APP_OPTIONS_TLS_ENGINE];
+    app->crypto_ctx.tls_engine = opts[APP_OPTIONS_TLS_ENGINE];
   if (opts[APP_OPTIONS_MAX_FIFO_SIZE])
     props->max_fifo_size = opts[APP_OPTIONS_MAX_FIFO_SIZE];
   if (opts[APP_OPTIONS_HIGH_WATERMARK])
