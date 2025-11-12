@@ -18,11 +18,18 @@ static app_cert_key_pair_t *
 app_cert_key_pair_alloc ()
 {
   app_cert_key_pair_t *ckpair;
+  app_certkey_int_ctx_t *cki, **ckip;
   pool_get (app_crypto_main.cert_key_pair_store, ckpair);
   clib_memset (ckpair, 0, sizeof (*ckpair));
   ckpair->cert_key_index = ckpair - app_crypto_main.cert_key_pair_store;
   /* Avoid need for locks when used by workers */
   vec_validate (ckpair->cki, vlib_num_workers ());
+  vec_foreach (ckip, ckpair->cki)
+    {
+      vec_validate (*ckip, CRYPTO_ENGINE_LAST);
+      vec_foreach (cki, *ckip)
+	cki->thread_index = ckip - ckpair->cki;
+    }
   return ckpair;
 }
 
@@ -132,14 +139,18 @@ vnet_app_add_cert_key_interest (u32 index, u32 app_index)
 static void
 app_certkey_free_int_ctx (app_cert_key_pair_t *ck)
 {
+  app_certkey_int_ctx_t **ckip;
   app_certkey_int_ctx_t *cki;
 
-  vec_foreach (cki, ck->cki)
+  vec_foreach (ckip, ck->cki)
     {
-      if (cki->cleanup_cb)
-	(cki->cleanup_cb) (cki);
-      cki->cert = 0;
-      cki->key = 0;
+      vec_foreach (cki, *ckip)
+	{
+	  if (cki->cleanup_cb)
+	    (cki->cleanup_cb) (cki);
+	  cki->cert = 0;
+	  cki->key = 0;
+	}
     }
   vec_free (ck->cki);
 }

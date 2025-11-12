@@ -38,29 +38,6 @@ quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t *kv,
   kv->key[2] = data->quicly_ctx.transport_params.max_stream_data.bidi_remote;
 }
 
-int
-quic_quicly_app_cert_key_pair_delete (app_cert_key_pair_t *ckpair)
-{
-  quic_main_t *qm = quic_quicly_main.qm;
-  clib_bihash_24_8_t *crctx_hash = quic_quicly_main.crypto_ctx_hash;
-  crypto_context_t *crctx;
-  clib_bihash_kv_24_8_t kv;
-  int i;
-
-  for (i = 0; i < qm->num_threads; i++)
-    {
-      pool_foreach (crctx, quic_wrk_ctx_get (qm, i)->crypto_ctx_pool)
-	{
-	  if (crctx->ckpair_index == ckpair->cert_key_index)
-	    {
-	      quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
-	      clib_bihash_add_del_24_8 (&crctx_hash[i], &kv, 0 /* is_add */);
-	    }
-	}
-    }
-  return 0;
-}
-
 static crypto_context_t *
 quic_quicly_crypto_context_alloc (u8 thread_index)
 {
@@ -155,6 +132,55 @@ quic_quicly_on_client_hello_ptls (ptls_on_client_hello_t *self, ptls_t *tls,
   return 0;
 }
 
+static void
+quic_quicly_cleanup_certkey_int_ctx (app_certkey_int_ctx_t *cki)
+{
+  quic_main_t *qm = quic_quicly_main.qm;
+  clib_bihash_24_8_t *crctx_hash = quic_quicly_main.crypto_ctx_hash;
+  crypto_context_t *crctx;
+  clib_bihash_kv_24_8_t kv;
+  quic_worker_ctx_t *qwrk;
+
+  qwrk = quic_wrk_ctx_get (qm, cki->thread_index);
+  pool_foreach (crctx, qwrk->crypto_ctx_pool)
+    {
+      if (crctx->ckpair_index == cki->ckpair_index)
+	{
+	  quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
+	  clib_bihash_add_del_24_8 (&crctx_hash[cki->thread_index], &kv,
+				    0 /* is_add */);
+	}
+    }
+
+  EVP_PKEY_free (cki->key);
+  clib_mem_free (cki->cert);
+}
+
+static app_certkey_int_ctx_t *
+quic_quicly_certkey_init_ctx (app_cert_key_pair_t *ckpair,
+			      clib_thread_index_t thread_index)
+{
+  quic_quicly_ptls_cert_list_t *cl;
+  app_certkey_int_ctx_t *cki;
+  EVP_PKEY *pkey;
+
+  pkey = ptls_load_private_key ((char *) ckpair->key);
+  if (pkey == NULL)
+    return 0;
+
+  cl = ptls_load_certificate_chain ((char *) ckpair->cert);
+  if (!cl)
+    return 0;
+
+  cki =
+    app_certkey_alloc_int_ctx (ckpair, thread_index, CRYPTO_ENGINE_PICOTLS);
+  cki->key = pkey;
+  cki->cert = cl;
+  cki->cleanup_cb = quic_quicly_cleanup_certkey_int_ctx;
+
+  return cki;
+}
+
 static int
 quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
 {
@@ -167,6 +193,7 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
   quic_quicly_crypto_context_data_t *data;
   ptls_context_t *ptls_ctx;
   app_crypto_ctx_t *app_cctx;
+  app_certkey_int_ctx_t *cki;
 
   ASSERT (QUIC_CRCTX_CTX_INDEX_DECODE_THREAD (crctx->ctx_index) ==
 	  ctx->c_thread_index);
@@ -297,16 +324,21 @@ quic_quicly_init_crypto_context (crypto_context_t *crctx, quic_ctx_t *ctx)
       QUIC_DBG (1, "Wrong ckpair id %d\n", crctx->ckpair_index);
       return -1;
     }
-  if (load_bio_private_key (quicly_ctx->tls, (char *) ckpair->key))
+  cki = app_certkey_get_int_ctx (ckpair, ctx->c_thread_index,
+				 CRYPTO_ENGINE_PICOTLS);
+  if (!cki || !cki->cert)
     {
-      QUIC_DBG (1, "failed to read private key from app configuration\n");
-      return -1;
+      cki = quic_quicly_certkey_init_ctx (ckpair, ctx->c_thread_index);
+      if (!cki)
+	{
+	  clib_warning ("unable to initialize certificate/key pair");
+	  return -1;
+	}
     }
-  if (load_bio_certificate_chain (quicly_ctx->tls, (char *) ckpair->cert))
-    {
-      QUIC_DBG (1, "failed to load certificate\n");
-      return -1;
-    }
+
+  ptls_assign_private_key (quicly_ctx->tls, cki->key);
+  ptls_assign_certificate_chain (quicly_ctx->tls, cki->cert);
+
   return 0;
 }
 
@@ -356,8 +388,6 @@ quic_quicly_crypto_context_init (quic_ctx_t *ctx)
   crctx->crypto_engine = ctx->crypto_engine;
   crctx->ckpair_index = ctx->ckpair_index;
   if (quic_quicly_init_crypto_context (crctx, ctx))
-    goto error;
-  if (vnet_app_add_cert_key_interest (ctx->ckpair_index, qm->app_index))
     goto error;
   crctx->n_subscribers++;
   clib_bihash_add_del_24_8 (&crctx_hash[ctx->c_thread_index], &kv,
