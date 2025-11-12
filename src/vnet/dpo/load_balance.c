@@ -137,7 +137,7 @@ load_balance_format (index_t lbi,
     vlib_counter_t to, via;
     load_balance_t *lb;
     dpo_id_t *buckets;
-    u32 i;
+    u32 i, j = 0;
 
     lb = load_balance_get_or_null(lbi);
     if (lb == NULL)
@@ -185,6 +185,20 @@ load_balance_format (index_t lbi,
     }
     for (i = 0; i < lb->lb_n_buckets; i++)
     {
+        if (flags & LOAD_BALANCE_FORMAT_RANGE) {
+            u32 si, ni = i + 1;
+            if (ni < lb->lb_n_buckets && dpo_cmp(&buckets[i], &buckets[ni]) == 0)
+                continue;
+            si = j, j = ni;
+            if (si < i) {
+                s = format(s, "\n%U[%d-%d] %U",
+                           format_white_space, indent+2,
+                           si, i,
+                           format_dpo_id,
+                           &buckets[i], indent+6);
+                continue;
+            }
+        }
         s = format(s, "\n%U[%d] %U",
                    format_white_space, indent+2,
                    i,
@@ -209,7 +223,7 @@ format_load_balance_dpo (u8 * s, va_list * args)
     index_t lbi = va_arg(*args, index_t);
     u32 indent = va_arg(*args, u32);
 
-    return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL, indent, s));
+    return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL|LOAD_BALANCE_FORMAT_RANGE, indent, s));
 }
 
 flow_hash_config_t
