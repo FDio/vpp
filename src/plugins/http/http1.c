@@ -1452,8 +1452,6 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 			/* Content-Length */
 			msg.data.body_len);
 
-      http_req_tx_buffer_init (req, &msg);
-
       next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
     }
@@ -1473,8 +1471,6 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 		    hc->host,
 		    /* User-Agent */
 		    hc->app_name);
-
-	  http_req_tx_buffer_init (req, &msg);
 
 	  /* For streaming, we need a different state */
 	  next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
@@ -1500,8 +1496,6 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
 		    hc->app_name,
 		    /* Content-Length */
 		    msg.data.body_len);
-
-	  http_req_tx_buffer_init (req, &msg);
 
 	  next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
 	  sm_result = HTTP_SM_CONTINUE;
@@ -1532,6 +1526,9 @@ http1_req_state_wait_app_method (http_conn_t *hc, http_req_t *req,
       goto error;
     }
   http_io_ts_write (hc, request, vec_len (request), sp);
+
+  if (next_state != HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY)
+    http_req_tx_buffer_init (req, &msg);
 
   http_req_state_change (req, next_state);
 

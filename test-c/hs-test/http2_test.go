@@ -16,7 +16,7 @@ func init() {
 		Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest, Http2ClientMultiplexingTest,
 		Http2ClientH2cTest, Http2ClientMemLeakTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
-	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest)
+	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
 
 func Http2TcpGetTest(s *Http2Suite) {
@@ -205,6 +205,27 @@ func Http2CliTlsTest(s *VethsSuite) {
 	s.AssertContains(o, "2 responses sent")
 	s.AssertContains(o, "2 application streams opened")
 	s.AssertContains(o, "2 application streams closed")
+}
+
+func http2ClientPostFormTest(s *VethsSuite, usePtr bool) {
+	uri := "http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	o := s.Containers.ServerVpp.VppInstance.Vppctl("http static server uri " + uri + " url-handlers debug")
+	s.Log(o)
+	cmd := "http client post http2 verbose uri " + uri + "/interface_stats.json data host-" + s.Interfaces.Server.Name()
+	if usePtr {
+		cmd += " use-ptr"
+	}
+	o = s.Containers.ClientVpp.VppInstance.Vppctl(cmd)
+	s.Log(o)
+	s.AssertContains(o, "HTTP/2 200 OK")
+}
+
+func Http2ClientPostFormTest(s *VethsSuite) {
+	http2ClientPostFormTest(s, false)
+}
+
+func Http2ClientPostFormPtrTest(s *VethsSuite) {
+	http2ClientPostFormTest(s, true)
 }
 
 func Http2ClientGetTest(s *Http2Suite) {

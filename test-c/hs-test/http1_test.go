@@ -33,7 +33,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathSanitizationTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest, HttpClientTest,
-		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
+		HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest, HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest,
 		HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpConnTimeoutTest,
 		HttpClientGetRepeatTest, HttpClientPostRepeatTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
@@ -470,7 +470,7 @@ func HttpClientErrRespTest(s *Http1Suite) {
 	s.AssertContains(o, "404: Not Found", "error not found in the result!")
 }
 
-func HttpClientPostFormTest(s *Http1Suite) {
+func httpClientPostFormTest(s *Http1Suite, usePtr bool) {
 	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	body := "field1=value1&field2=value2"
 
@@ -492,10 +492,22 @@ func HttpClientPostFormTest(s *Http1Suite) {
 
 	uri := "http://" + serverAddress + "/test"
 	vpp := s.Containers.Vpp.VppInstance
-	o := vpp.Vppctl("http client post verbose header Hello:World uri " + uri + " data " + body)
+	cmd := "http client post verbose header Hello:World uri " + uri + " data " + body
+	if usePtr {
+		cmd += " use-ptr"
+	}
+	o := vpp.Vppctl(cmd)
 
 	s.Log(o)
 	s.AssertContains(o, "200 OK")
+}
+
+func HttpClientPostFormTest(s *Http1Suite) {
+	httpClientPostFormTest(s, false)
+}
+
+func HttpClientPostFormPtrTest(s *Http1Suite) {
+	httpClientPostFormTest(s, true)
 }
 
 func HttpClientNoPrintTest(s *Http1Suite) {
