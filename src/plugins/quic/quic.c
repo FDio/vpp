@@ -743,6 +743,13 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   return 0;
 }
 
+static session_handle_t
+quic_next_transport_get (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx = quic_ctx_get (ctx_index, thread_index);
+  return ctx->udp_session_handle;
+}
+
 static transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect_connection,
@@ -752,6 +759,7 @@ static transport_proto_vft_t quic_proto = {
   .stop_listen = quic_stop_listen,
   .get_connection = quic_connection_get,
   .get_listener = quic_listener_get,
+  .get_next_transport = quic_next_transport_get,
   .update_time = quic_update_time,
   .app_rx_evt = quic_custom_app_rx_callback,
   .custom_tx = quic_custom_tx_callback,
