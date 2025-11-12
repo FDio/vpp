@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "deeb4ca7_6dafaf4c",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2025-11-12T11:34:55Z",
+      "side": 1,
+      "message": "this should go to else down, non POST branch",
+      "revId": "4a1beece3066fc97345bb58a385132daa83c5e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
