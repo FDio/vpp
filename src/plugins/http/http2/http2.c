@@ -1219,6 +1219,13 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
   control_data.user_agent = hc->app_name;
   control_data.user_agent_len = vec_len (hc->app_name);
 
+  if (msg.data.headers_len)
+    {
+      n_deq += msg.data.type == HTTP_MSG_DATA_PTR ? sizeof (uword) :
+						    msg.data.headers_len;
+      app_headers = http_get_app_header_list (&req->base, &msg);
+    }
+
   if (msg.data.body_len)
     {
       control_data.content_len = msg.data.body_len;
@@ -1228,13 +1235,6 @@ http2_sched_dispatch_req_headers (http2_req_t *req, http_conn_t *hc,
     {
       control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
       flags |= req->base.is_tunnel ? 0 : HTTP2_FRAME_FLAG_END_STREAM;
-    }
-
-  if (msg.data.headers_len)
-    {
-      n_deq += msg.data.type == HTTP_MSG_DATA_PTR ? sizeof (uword) :
-						    msg.data.headers_len;
-      app_headers = http_get_app_header_list (&req->base, &msg);
     }
 
   hpack_serialize_request (app_headers, msg.data.headers_len, &control_data,
