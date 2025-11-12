@@ -136,8 +136,6 @@ ptls_load_bio_pem_objects (BIO * bio, const char *label, ptls_iovec_t * list,
   return ret;
 }
 
-#define PTLS_MAX_CERTS_IN_CONTEXT 16
-
 int
 ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
 {
@@ -194,5 +192,66 @@ load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
   EVP_PKEY_free (pkey);
 
   ctx->sign_certificate = &sc.super;
+  return 0;
+}
+
+EVP_PKEY *
+ptls_load_private_key (const char *pk_data)
+{
+  EVP_PKEY *pkey;
+  BIO *key_bio;
+
+  key_bio = BIO_new_mem_buf (pk_data, -1);
+  pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
+  BIO_free (key_bio);
+
+  return pkey;
+}
+
+quic_quicly_ptls_cert_list_t *
+ptls_load_certificate_chain (const char *cert_data)
+{
+  quic_quicly_ptls_cert_list_t *cl;
+  BIO *cert_bio;
+  int rv;
+
+  cl = clib_mem_alloc (PTLS_MAX_CERTS_IN_CONTEXT * sizeof (ptls_iovec_t) +
+		       sizeof (quic_quicly_ptls_cert_list_t));
+  cert_bio = BIO_new_mem_buf (cert_data, -1);
+  rv = ptls_load_bio_pem_objects (cert_bio, "CERTIFICATE", cl->certs,
+				  PTLS_MAX_CERTS_IN_CONTEXT, &cl->count);
+  BIO_free (cert_bio);
+  if (rv)
+    return 0;
+
+  return cl;
+}
+
+int
+ptls_assign_private_key (ptls_context_t *ctx, EVP_PKEY *pkey)
+{
+  static ptls_openssl_sign_certificate_t sc;
+
+  ptls_openssl_init_sign_certificate (&sc, pkey);
+
+  ctx->sign_certificate = &sc.super;
+  return 0;
+}
+
+int
+ptls_assign_certificate_chain (ptls_context_t *ctx,
+			       quic_quicly_ptls_cert_list_t *cl)
+{
+  ctx->certificates.list =
+    (ptls_iovec_t *) malloc (cl->count * sizeof (ptls_iovec_t));
+  if (ctx->certificates.list == NULL)
+    {
+      return PTLS_ERROR_NO_MEMORY;
+    }
+
+  memcpy (ctx->certificates.list, cl->certs,
+	  cl->count * sizeof (ptls_iovec_t));
+  ctx->certificates.count = cl->count;
+
   return 0;
 }

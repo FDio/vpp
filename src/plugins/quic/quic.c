@@ -56,12 +56,6 @@ quic_register_engine (const quic_engine_vft_t *vft,
   quic_engine_vfts[engine_type] = *vft;
 }
 
-static int
-quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t *ckpair)
-{
-  return quic_eng_app_cert_key_pair_delete (ckpair);
-}
-
 /* Transport proto functions */
 static_always_inline void
 quic_ctx_set_alpn_protos (quic_ctx_t *ctx, transport_endpt_crypto_cfg_t *ccfg)
@@ -643,7 +637,6 @@ static session_cb_vft_t quic_app_cb_vft = {
   .del_segment_callback = quic_del_segment_callback,
   .builtin_app_rx_callback = quic_udp_session_rx_callback,
   .session_cleanup_callback = quic_udp_session_cleanup_callback,
-  .app_cert_key_pair_delete_callback = quic_app_cert_key_pair_delete_callback,
 };
 
 static clib_error_t *quic_enable (vlib_main_t *vm, u8 is_en);

@@ -703,7 +703,8 @@ openssl_init_certkey_init_ctx (app_cert_key_pair_t *ckpair,
   X509 *cert;
   BIO *bio;
 
-  cki = app_certkey_alloc_int_ctx (ckpair, thread_index);
+  cki =
+    app_certkey_alloc_int_ctx (ckpair, thread_index, CRYPTO_ENGINE_OPENSSL);
   bio = BIO_new (BIO_s_mem ());
   BIO_write (bio, ckpair->cert, vec_len (ckpair->cert));
   cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL);
@@ -750,7 +751,7 @@ openssl_set_ckpair (SSL *ssl, u32 ckpair_index,
       return -1;
     }
 
-  cki = app_certkey_get_int_ctx (ckpair, thread_index);
+  cki = app_certkey_get_int_ctx (ckpair, thread_index, CRYPTO_ENGINE_OPENSSL);
   if (!cki || !cki->cert)
     {
       cki = openssl_init_certkey_init_ctx (ckpair, thread_index);
@@ -1155,7 +1156,8 @@ openssl_start_listen (tls_ctx_t * lctx)
 	  return -1;
 	}
 
-      cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index);
+      cki = app_certkey_get_int_ctx (ckpair, lctx->c_thread_index,
+				     CRYPTO_ENGINE_OPENSSL);
       if (!cki || !cki->cert)
 	{
 	  cki = openssl_init_certkey_init_ctx (ckpair, lctx->c_thread_index);
@@ -1314,7 +1316,7 @@ openssl_server_async_cert_cb (app_crypto_async_reply_t *reply)
     }
 
   /* Get or initialize certificate context */
-  cki = app_certkey_get_int_ctx (ckpair, thread_index);
+  cki = app_certkey_get_int_ctx (ckpair, thread_index, CRYPTO_ENGINE_OPENSSL);
   if (!cki || !cki->cert)
     {
       cki = openssl_init_certkey_init_ctx (ckpair, thread_index);
