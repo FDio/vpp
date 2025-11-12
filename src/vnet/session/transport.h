@@ -104,6 +104,8 @@ typedef struct _transport_proto_vft
 					     clib_thread_index_t thread_idx);
   transport_connection_t *(*get_listener) (u32 conn_index);
   transport_connection_t *(*get_half_open) (u32 conn_index);
+  session_handle_t (*get_next_transport) (u32 conn_idx,
+					  clib_thread_index_t tidx);
 
   /*
    * Format
@@ -173,6 +175,15 @@ transport_get_connection (transport_proto_t tp, u32 conn_index,
 			  u8 thread_index)
 {
   return tp_vfts[tp].get_connection (conn_index, thread_index);
+}
+
+static inline session_handle_t
+transport_get_next_transport (transport_proto_t tp, u32 conn_index,
+			      u8 thread_index)
+{
+  if (!tp_vfts[tp].get_next_transport)
+    return SESSION_INVALID_HANDLE;
+  return tp_vfts[tp].get_next_transport (conn_index, thread_index);
 }
 
 static inline transport_connection_t *
