@@ -12,40 +12,15 @@ crypto_native_main_t crypto_native_main;
 vnet_crypto_engine_op_handlers_t op_handlers[64], *ophp = op_handlers;
 
 static void
-crypto_native_key_handler (vnet_crypto_key_op_t kop,
-			   vnet_crypto_key_index_t idx)
+crypto_native_key_handler (vnet_crypto_key_op_t kop, void *key_data,
+			   vnet_crypto_alg_t alg, const u8 *data, u16 length)
 {
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   crypto_native_main_t *cm = &crypto_native_main;
 
-  /** TODO: add linked alg support **/
-  if (key->is_link)
+  if (cm->key_fn[alg] == 0)
     return;
 
-  if (cm->key_fn[key->alg] == 0)
-    return;
-
-  if (kop == VNET_CRYPTO_KEY_OP_DEL)
-    {
-      if (idx >= vec_len (cm->key_data))
-	return;
-
-      if (cm->key_data[idx] == 0)
-	return;
-
-      clib_mem_free_s (cm->key_data[idx]);
-      cm->key_data[idx] = 0;
-      return;
-    }
-
-  vec_validate_aligned (cm->key_data, idx, CLIB_CACHE_LINE_BYTES);
-
-  if (kop == VNET_CRYPTO_KEY_OP_MODIFY && cm->key_data[idx])
-    {
-      clib_mem_free_s (cm->key_data[idx]);
-    }
-
-  cm->key_data[idx] = cm->key_fn[key->alg] (key);
+  cm->key_fn[alg](kop, key_data, data, length);
 }
 
 static char *
@@ -60,6 +35,10 @@ crypto_native_init (vnet_crypto_engine_registration_t *r)
   crypto_native_key_handler_t *kh = cm->key_handlers;
   crypto_native_op_handler_t **best_by_op_id = 0;
   crypto_native_key_handler_t **best_by_alg_id = 0;
+
+  cm->num_threads = r->num_threads;
+  cm->stride = r->stride;
+  cm->per_thread_data = r->per_thread_data;
 
   while (oh)
     {
@@ -107,6 +86,7 @@ VNET_CRYPTO_ENGINE_REGISTRATION () = {
   .name = "native",
   .desc = "Native ISA Optimized Crypto",
   .prio = 100,
+  .per_thread_data_sz = sizeof (crypto_native_per_thread_data_t),
   .init_fn = crypto_native_init,
   .key_handler = crypto_native_key_handler,
   .op_handlers = op_handlers,
